@@ -32,19 +32,34 @@ describe("source collection flow", () => {
   it("connects discovery candidates to collection plans", async () => {
     const discovery = new SourceDiscoveryRunner({
       async discover() {
-        return [{ id: "candidate-1" }] as never;
+        return [
+          {
+            candidateId: "candidate-1",
+            locator: "https://example.test/trademarks",
+            discoveredAt: "2026-08-08T00:00:00Z",
+            status: "DISCOVERED" as const,
+          },
+        ];
       },
     });
 
     const flow = new SourceCollectionFlow(discovery, {
       async createPlan(item) {
-        return { id: `plan-${item.id}` } as never;
+        return {
+          planId: `plan-${item.candidateId}`,
+          targets: [],
+          createdAt: "2026-08-08T00:00:00Z",
+        };
       },
     });
 
-    const result = await flow.run({ id: "batch-1" } as never);
+    const result = await flow.run({
+      batchId: "batch-1",
+      seeds: [{ seedId: "seed-1", locator: "https://example.test/" }],
+      createdAt: "2026-08-08T00:00:00Z",
+    });
 
     expect(result.candidates).toHaveLength(1);
-    expect(result.plans[0]?.id).toBe("plan-candidate-1");
+    expect(result.plans[0]?.planId).toBe("plan-candidate-1");
   });
 });
