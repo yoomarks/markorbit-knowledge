@@ -30,6 +30,8 @@ export * from "./connector-request-middleware";
 export * from "./connector-retry-middleware";
 export * from "./source-adapter-port";
 export * from "./source-registry";
+export * from "./source-metadata-schema";
+export * from "./source-adapter-registry";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = { executorId: "fixture-connector-runtime", version: "1.0.0", mode: "FIXTURE" };
 export type FixtureExecutionScenario = "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
