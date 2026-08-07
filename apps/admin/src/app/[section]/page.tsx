@@ -7,6 +7,7 @@ import { ConnectorList } from "@/components/connectors/connector-list";
 import { ConversionRunList } from "@/components/conversion-runs/conversion-run-list";
 import { ConverterControl } from "@/components/converters/converter-control";
 import { DashboardPage } from "@/components/dashboard";
+import { DiscoveryWorkspace } from "@/components/discovery/discovery-workspace";
 import { ModulePreview } from "@/components/module-preview";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
@@ -23,15 +24,15 @@ function SourcesPage() {
   return (
     <>
       <PageHeading
-        title="数据源"
-        description="登记、分类和维护真实 SourceDefinition。采集、预览和连接测试将在 Connector Runtime 阶段启用。"
+        title="Sources"
+        description="登记、分类和维护真实 SourceDefinition。vNext 将把 Discovery 接受的候选安全转换为来源与采集意图。"
         actions={
           <Link
             href="/sources/new"
             className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white"
           >
             <Plus size={17} aria-hidden="true" />
-            新建数据源
+            直接创建 Source
           </Link>
         }
       />
@@ -44,8 +45,8 @@ function CollectionPlansPage() {
   return (
     <>
       <PageHeading
-        title="采集计划"
-        description="管理 CollectionPlan 的策略、输出和调度意图。启用的计划可创建待 Worker 执行的运行记录。"
+        title="Collection Plans"
+        description="高级控制面：管理 CollectionPlan 的策略、输出和调度意图。启用的计划可创建待 Worker 执行的运行记录。"
         actions={
           <Link
             href="/jobs/new"
@@ -65,8 +66,8 @@ function RunsPage() {
   return (
     <>
       <PageHeading
-        title="运行记录"
-        description="查看 CollectionRun 与 Job 的不可变派发快照。PENDING 表示待领取，LEASED 表示已保留但尚未执行。"
+        title="Execution Runs"
+        description="高级控制面：查看 CollectionRun 与 Job 的不可变派发快照。PENDING 表示待领取，LEASED 表示已保留但尚未执行。"
       />
       <RunList />
     </>
@@ -77,8 +78,8 @@ function ArtifactsPage() {
   return (
     <>
       <PageHeading
-        title="文件与版本"
-        description="查看经过流式校验、内容寻址存储并登记为不可变来源证据的 RawArtifact。"
+        title="Raw Artifacts"
+        description="高级控制面：查看经过流式校验、内容寻址存储并登记为不可变来源证据的 RawArtifact。"
       />
       <ArtifactList />
     </>
@@ -90,7 +91,7 @@ function WorkersPage() {
     <>
       <PageHeading
         title="Workers"
-        description="管理独立执行节点、一次性凭证、认证心跳与 Job 租约。当前阶段不会运行 Connector 或 Crawl4AI。"
+        description="高级控制面：管理独立执行节点、一次性凭证、认证心跳与 Job 租约。"
         actions={
           <Link
             href="/workers/new"
@@ -111,7 +112,7 @@ function ConnectorsPage() {
     <>
       <PageHeading
         title="Connectors"
-        description="登记不可变 ConnectorManifest 版本、能力与兼容范围。Registry 仅管理契约，不执行 Connector 代码。"
+        description="高级控制面：登记不可变 ConnectorManifest 版本、能力与兼容范围。Registry 仅管理契约，不拥有来源业务含义。"
         actions={
           <Link
             href="/connectors/new"
@@ -131,8 +132,8 @@ function ConversionRunsPage() {
   return (
     <>
       <PageHeading
-        title="ConversionRuns"
-        description="查看真实持久化 ConversionRun、Manual Dispatch 和等待转换运行时处理状态。"
+        title="Conversion Runs"
+        description="高级控制面：查看真实持久化 ConversionRun、Manual Dispatch 和等待转换运行时处理状态。"
       />
       <ConversionRunList />
     </>
@@ -144,7 +145,7 @@ function ConvertersPage() {
     <>
       <PageHeading
         title="Converters"
-        description="登记不可变 ConverterManifest 版本并配置 Conversion Profile。当前阶段仅保存转换意图，不执行转换。"
+        description="高级控制面：登记不可变 ConverterManifest 版本并配置 Conversion Profile。"
       />
       <ConverterControl />
     </>
@@ -160,6 +161,8 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
     <AdminShell>
       {moduleKey === "dashboard" ? (
         <DashboardPage />
+      ) : moduleKey === "discovery" ? (
+        <DiscoveryWorkspace />
       ) : moduleKey === "sources" ? (
         <SourcesPage />
       ) : moduleKey === "jobs" ? (
