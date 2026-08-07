@@ -22,6 +22,8 @@ export * from "./failure-recovery-orchestrator";
 export * from "./observability-port";
 export * from "./external-connector-port";
 export * from "./memory-external-connector";
+export * from "./http-external-connector";
+export * from "./rate-limit-policy-port";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = { executorId: "fixture-connector-runtime", version: "1.0.0", mode: "FIXTURE" };
 export type FixtureExecutionScenario = "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
