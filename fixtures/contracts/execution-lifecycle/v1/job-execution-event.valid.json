@@ -1,0 +1,24 @@
+{
+  "contractVersion": "1.0",
+  "objectType": "JOB_EXECUTION_EVENT",
+  "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FAF",
+  "workspaceId": "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "workerId": "wrk_01ARZ3NDEKTSV4RRFFQ69G5FAA",
+  "jobId": "job_01ARZ3NDEKTSV4RRFFQ69G5FAD",
+  "runId": "run_01ARZ3NDEKTSV4RRFFQ69G5FAE",
+  "leaseId": "lse_01ARZ3NDEKTSV4RRFFQ69G5FAC",
+  "sequence": 1,
+  "eventType": "STARTED",
+  "observedAt": "2026-07-16T02:02:30Z",
+  "message": "Execution accepted by the worker runtime.",
+  "metrics": {
+    "processedCount": 0,
+    "warningCount": 0
+  },
+  "metadata": {
+    "x-markorbit-runtime": "fixture-runtime"
+  },
+  "fromStatus": "LEASED",
+  "toStatus": "RUNNING",
+  "recordedAt": "2026-07-16T02:02:31Z"
+}

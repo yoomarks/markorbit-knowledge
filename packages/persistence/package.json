@@ -1,0 +1,37 @@
+{
+  "name": "@markorbit/persistence",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./connectors": "./src/connector-registry.ts",
+    "./collection-plans": "./src/collection-plan-registry.ts",
+    "./execution-ledger": "./src/execution-ledger.ts",
+    "./workers": "./src/safe-worker-registry.ts",
+    "./worker-execution": "./src/controlled-worker-execution.ts",
+    "./raw-artifacts": "./src/raw-artifact-registry.ts",
+    "./converters": "./src/converter-registry.ts",
+    "./conversion-runs": "./src/conversion-runs.ts",
+    "./conversion-runtime": "./src/conversion-runtime-persistence.ts",
+    "./conversion-runtime-transitions": "./src/conversion-runtime-transitions.ts",
+    "./staging-content": "./src/staging-content-registry.ts",
+    "./staging-verification": "./src/staging-verification.ts",
+    "./verified-staging-finalization": "./src/verified-staging-finalization.ts",
+    "./local-pipeline-adapter": "./src/local-pipeline-adapter.ts",
+    "./conversion-pipeline-inspection": "./src/conversion-pipeline-inspection.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@markorbit/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

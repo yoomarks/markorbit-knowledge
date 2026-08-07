@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0",
+  "objectType": "SOURCE_DEFINITION",
+  "id": "src_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+  "workspaceId": "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "name": "USPTO News",
+  "slug": "uspto-news",
+  "sourceType": "WEB",
+  "category": "OFFICIAL_AUTHORITY",
+  "authorityLevel": "PRIMARY_OFFICIAL",
+  "status": "ACTIVE",
+  "jurisdictions": ["US"],
+  "languages": ["en-US"],
+  "connector": {
+    "connectorId": "crawl4ai-web",
+    "version": "1.0.0"
+  },
+  "connectorConfig": {
+    "renderJavascript": false,
+    "allowedDomains": ["uspto.gov"],
+    "maxDepth": 2
+  },
+  "canonicalUri": "https://www.uspto.gov/about-us/news-updates",
+  "entrypoints": [
+    {
+      "uri": "https://www.uspto.gov/about-us/news-updates",
+      "label": "News and updates"
+    }
+  ],
+  "defaultCollectionPlanId": "pln_01ARZ3NDEKTSV4RRFFQ69G5FAX",
+  "tags": ["official", "trademark", "us"],
+  "createdAt": "2026-07-15T16:00:00Z",
+  "updatedAt": "2026-07-15T16:00:00Z"
+}

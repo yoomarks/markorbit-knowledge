@@ -1,0 +1,29 @@
+{
+  "name": "markorbit-knowledge",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.13.0",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @markorbit/admin dev",
+    "build": "pnpm -r build",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@typescript-eslint/eslint-plugin": "8.64.0",
+    "@typescript-eslint/parser": "8.64.0",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.2.10",
+    "prettier": "3.9.5",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

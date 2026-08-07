@@ -1,0 +1,130 @@
+{
+  "contractVersion": "1.0",
+  "objectType": "COLLECTION_RUN",
+  "id": "run_01ARZ3NDEKTSV4RRFFQ69G5FB5",
+  "workspaceId": "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "sourceId": "src_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+  "planId": "pln_01ARZ3NDEKTSV4RRFFQ69G5FAX",
+  "status": "PENDING",
+  "trigger": {
+    "type": "MANUAL",
+    "requestedBy": {
+      "actorType": "LOCAL_ADMIN",
+      "actorId": "local-admin"
+    },
+    "idempotencyKey": "fixture-manual-run-001"
+  },
+  "planSnapshot": {
+    "schemaVersion": "1.0",
+    "objectType": "COLLECTION_PLAN",
+    "id": "pln_01ARZ3NDEKTSV4RRFFQ69G5FAX",
+    "workspaceId": "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "sourceId": "src_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+    "name": "USPTO News Daily Check",
+    "status": "ACTIVE",
+    "schedule": {
+      "mode": "CRON",
+      "expression": "0 7 * * *",
+      "timezone": "Asia/Shanghai"
+    },
+    "priority": "HIGH",
+    "policy": {
+      "includePatterns": ["/news/**"],
+      "excludePatterns": ["/news/archive/**"],
+      "maxDepth": 2,
+      "maxItems": 500,
+      "renderJavascript": false,
+      "fetchAttachments": true,
+      "respectRobots": true,
+      "rateLimitPerMinute": 10,
+      "timeoutSeconds": 60,
+      "retry": {
+        "maxAttempts": 3,
+        "backoffSeconds": 30
+      },
+      "locale": "en-US"
+    },
+    "output": {
+      "artifactKinds": ["HTML", "MARKDOWN"]
+    },
+    "createdAt": "2026-07-15T16:00:00Z",
+    "updatedAt": "2026-07-15T16:00:00Z"
+  },
+  "sourceSnapshot": {
+    "schemaVersion": "1.0",
+    "objectType": "SOURCE_DEFINITION",
+    "id": "src_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+    "workspaceId": "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "name": "USPTO News",
+    "slug": "uspto-news",
+    "sourceType": "WEB",
+    "category": "OFFICIAL_AUTHORITY",
+    "authorityLevel": "PRIMARY_OFFICIAL",
+    "status": "ACTIVE",
+    "jurisdictions": ["US"],
+    "languages": ["en-US"],
+    "connector": {
+      "connectorId": "crawl4ai-web",
+      "version": "1.0.0"
+    },
+    "connectorConfig": {
+      "renderJavascript": false,
+      "allowedDomains": ["uspto.gov"],
+      "maxDepth": 2
+    },
+    "canonicalUri": "https://www.uspto.gov/about-us/news-updates",
+    "entrypoints": [
+      {
+        "uri": "https://www.uspto.gov/about-us/news-updates",
+        "label": "News and updates"
+      }
+    ],
+    "defaultCollectionPlanId": "pln_01ARZ3NDEKTSV4RRFFQ69G5FAX",
+    "tags": ["official", "trademark", "us"],
+    "createdAt": "2026-07-15T16:00:00Z",
+    "updatedAt": "2026-07-15T16:00:00Z"
+  },
+  "connectorSnapshot": {
+    "schemaVersion": "1.0",
+    "objectType": "CONNECTOR_MANIFEST",
+    "connectorId": "crawl4ai-web",
+    "displayName": "Crawl4AI Web Connector",
+    "version": "1.0.0",
+    "sourceTypes": ["WEB"],
+    "runtime": "PYTHON",
+    "capabilities": [
+      "TEST_CONNECTION",
+      "DISCOVER",
+      "PREVIEW",
+      "COLLECT",
+      "CHECK_UPDATE",
+      "DEEP_CRAWL",
+      "RENDER_JAVASCRIPT",
+      "FETCH_ATTACHMENTS"
+    ],
+    "supportedJobTypes": ["WEB_DISCOVERY", "WEB_CRAWL", "PAGE_UPDATE_CHECK"],
+    "configurationSchema": {
+      "type": "object",
+      "properties": {
+        "renderJavascript": { "type": "boolean" },
+        "maxDepth": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "secretSchema": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputArtifactKinds": ["HTML", "MARKDOWN", "JSON"],
+    "healthCheck": {
+      "mode": "WORKER_PROBE",
+      "timeoutSeconds": 30
+    },
+    "status": "ACTIVE",
+    "extensions": {
+      "x-markorbit-default-provider": true
+    }
+  },
+  "requestedAt": "2026-07-16T00:30:00Z",
+  "createdAt": "2026-07-16T00:30:00Z",
+  "updatedAt": "2026-07-16T00:30:00Z"
+}

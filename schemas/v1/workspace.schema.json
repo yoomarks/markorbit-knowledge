@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.markorbit.dev/knowledge/v1/workspace.schema.json",
+  "title": "Workspace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "objectType",
+    "id",
+    "slug",
+    "name",
+    "dataDomain",
+    "status",
+    "defaultLocale",
+    "timezone",
+    "syncPolicy",
+    "retentionPolicy",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "objectType": { "const": "WORKSPACE" },
+    "id": { "$ref": "common.schema.json#/$defs/workspaceId" },
+    "slug": { "$ref": "common.schema.json#/$defs/slug" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "dataDomain": { "enum": ["PUBLIC", "ORGANIZATION", "WORKSPACE_PRIVATE", "USER_LOCAL"] },
+    "status": { "enum": ["ACTIVE", "SUSPENDED", "ARCHIVED"] },
+    "defaultLocale": { "$ref": "common.schema.json#/$defs/locale" },
+    "timezone": { "type": "string", "minLength": 1 },
+    "syncPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "allowPublicPromotion"],
+      "properties": {
+        "mode": { "enum": ["RAW", "METADATA", "LOCAL_ONLY"] },
+        "allowPublicPromotion": { "type": "boolean" }
+      }
+    },
+    "retentionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rawArtifactDays", "derivedDocumentDays"],
+      "properties": {
+        "rawArtifactDays": { "type": ["integer", "null"], "minimum": 0 },
+        "derivedDocumentDays": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "createdAt": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "updatedAt": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "extensions": { "$ref": "common.schema.json#/$defs/extensions" }
+  }
+}

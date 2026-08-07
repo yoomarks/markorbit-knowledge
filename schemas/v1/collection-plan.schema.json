@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.markorbit.dev/knowledge/v1/collection-plan.schema.json",
+  "title": "CollectionPlan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "objectType",
+    "id",
+    "workspaceId",
+    "sourceId",
+    "name",
+    "status",
+    "schedule",
+    "priority",
+    "policy",
+    "output",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "objectType": { "const": "COLLECTION_PLAN" },
+    "id": { "$ref": "common.schema.json#/$defs/planId" },
+    "workspaceId": { "$ref": "common.schema.json#/$defs/workspaceId" },
+    "sourceId": { "$ref": "common.schema.json#/$defs/sourceId" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "status": { "enum": ["ACTIVE", "PAUSED", "ARCHIVED"] },
+    "schedule": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": { "mode": { "const": "MANUAL" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "intervalSeconds"],
+          "properties": {
+            "mode": { "const": "INTERVAL" },
+            "intervalSeconds": { "type": "integer", "minimum": 60 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "expression", "timezone"],
+          "properties": {
+            "mode": { "const": "CRON" },
+            "expression": { "type": "string", "minLength": 9 },
+            "timezone": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "pollIntervalSeconds"],
+          "properties": {
+            "mode": { "const": "CHANGE_WATCH" },
+            "pollIntervalSeconds": { "type": "integer", "minimum": 60 }
+          }
+        }
+      ]
+    },
+    "priority": { "enum": ["CRITICAL", "HIGH", "NORMAL", "LOW"] },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "includePatterns",
+        "excludePatterns",
+        "maxDepth",
+        "maxItems",
+        "renderJavascript",
+        "fetchAttachments",
+        "respectRobots",
+        "rateLimitPerMinute",
+        "timeoutSeconds",
+        "retry"
+      ],
+      "properties": {
+        "includePatterns": { "type": "array", "items": { "type": "string" } },
+        "excludePatterns": { "type": "array", "items": { "type": "string" } },
+        "maxDepth": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "maxItems": { "type": "integer", "minimum": 1 },
+        "renderJavascript": { "type": "boolean" },
+        "fetchAttachments": { "type": "boolean" },
+        "respectRobots": { "type": "boolean" },
+        "rateLimitPerMinute": { "type": "integer", "minimum": 1 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "retry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maxAttempts", "backoffSeconds"],
+          "properties": {
+            "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 20 },
+            "backoffSeconds": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "locale": { "$ref": "common.schema.json#/$defs/locale" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactKinds"],
+      "properties": {
+        "artifactKinds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/artifactKind" }
+        },
+        "conversionProfileId": { "$ref": "common.schema.json#/$defs/conversionProfileId" }
+      }
+    },
+    "createdAt": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "updatedAt": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "extensions": { "$ref": "common.schema.json#/$defs/extensions" }
+  }
+}

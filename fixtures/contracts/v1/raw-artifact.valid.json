@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0",
+  "objectType": "RAW_ARTIFACT",
+  "id": "art_01ARZ3NDEKTSV4RRFFQ69G5FAY",
+  "workspaceId": "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "sourceId": "src_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+  "collectionRunId": "run_01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+  "logicalDocumentId": "doc_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+  "version": 1,
+  "artifactKind": "HTML",
+  "mimeType": "text/html",
+  "originalName": "uspto-news-update.html",
+  "canonicalUri": "https://www.uspto.gov/about-us/news-updates/example-update",
+  "storage": {
+    "provider": "OBJECT_STORAGE",
+    "uri": "raw://global-public/sha256/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  },
+  "binaryHash": {
+    "algorithm": "SHA-256",
+    "value": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  },
+  "contentHash": {
+    "algorithm": "SHA-256",
+    "value": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+  },
+  "sizeBytes": 18422,
+  "capturedAt": "2026-07-15T16:00:00Z",
+  "publishedAt": "2026-07-15T12:00:00Z",
+  "collector": {
+    "connectorId": "crawl4ai-web",
+    "connectorVersion": "1.0.0",
+    "workerId": "wrk_01ARZ3NDEKTSV4RRFFQ69G5FB1",
+    "requestId": "REQ-USPTO-20260715-001"
+  },
+  "provenance": {
+    "sourceUri": "https://www.uspto.gov/about-us/news-updates/example-update"
+  },
+  "status": "REGISTERED",
+  "createdAt": "2026-07-15T16:00:01Z"
+}

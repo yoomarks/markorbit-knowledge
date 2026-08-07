@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.markorbit.dev/knowledge/v1/common.schema.json",
+  "title": "MarkOrbit Knowledge Schema v1 common definitions",
+  "$defs": {
+    "schemaVersion": { "const": "1.0" },
+    "ulid": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+    "workspaceId": { "type": "string", "pattern": "^wsp_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "sourceId": { "type": "string", "pattern": "^src_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "planId": { "type": "string", "pattern": "^pln_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "artifactId": { "type": "string", "pattern": "^art_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "runId": { "type": "string", "pattern": "^run_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "documentId": { "type": "string", "pattern": "^doc_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "secretRef": { "type": "string", "pattern": "^sec_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "workerId": { "type": "string", "pattern": "^wrk_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "conversionProfileId": { "type": "string", "pattern": "^cnv_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "connectorId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "semver": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "timestamp": { "type": "string", "format": "date-time", "pattern": "Z$" },
+    "uri": { "type": "string", "format": "uri" },
+    "locale": { "type": "string", "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$" },
+    "extensions": {
+      "type": "object",
+      "propertyNames": { "pattern": "^x-[a-z0-9][a-z0-9.-]*$" },
+      "additionalProperties": true
+    },
+    "sourceType": {
+      "enum": ["WEB", "API", "EMAIL", "LOCAL_FOLDER", "DATABASE", "GITHUB", "RSS", "MANUAL_UPLOAD"]
+    },
+    "sourceStatus": { "enum": ["DRAFT", "ACTIVE", "PAUSED", "ERROR", "ARCHIVED"] },
+    "jobType": {
+      "enum": [
+        "WEB_DISCOVERY",
+        "WEB_CRAWL",
+        "PAGE_UPDATE_CHECK",
+        "API_COLLECTION",
+        "EMAIL_IMPORT",
+        "LOCAL_FILE_SCAN",
+        "DOCUMENT_CONVERSION",
+        "VAULT_EXPORT",
+        "VAULT_IMPORT",
+        "PACKAGE_BUILD"
+      ]
+    },
+    "artifactStatus": {
+      "enum": [
+        "RECEIVED",
+        "REGISTERED",
+        "DUPLICATE_CHECKED",
+        "READY_FOR_CONVERSION",
+        "CONVERTED",
+        "STAGED",
+        "ARCHIVED"
+      ]
+    },
+    "artifactKind": {
+      "enum": [
+        "HTML",
+        "PDF",
+        "DOCX",
+        "XLSX",
+        "CSV",
+        "JSON",
+        "XML",
+        "EMAIL",
+        "IMAGE",
+        "AUDIO",
+        "VIDEO",
+        "TEXT",
+        "MARKDOWN",
+        "OTHER"
+      ]
+    },
+    "sha256": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": { "const": "SHA-256" },
+        "value": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}

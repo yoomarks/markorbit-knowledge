@@ -1,0 +1,67 @@
+name: UI Preview
+
+on:
+  pull_request:
+    paths:
+      - "apps/admin/**"
+      - "packages/contracts/**"
+      - "packages/persistence/**"
+      - "packages/worker-runtime/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".github/workflows/ui-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @markorbit/admin build
+      - name: Install CJK fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fonts-noto-cjk
+          fc-cache --force
+      - name: Start admin preview
+        run: |
+          pnpm --filter @markorbit/admin start > /tmp/markorbit-admin.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/dashboard > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/markorbit-admin.log
+          exit 1
+      - name: Capture screenshots
+        run: |
+          mkdir -p screenshots
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROME"
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/dashboard.png http://127.0.0.1:3000/dashboard
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/sources.png http://127.0.0.1:3000/sources
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/jobs.png http://127.0.0.1:3000/jobs
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/runs.png http://127.0.0.1:3000/runs
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/artifacts.png http://127.0.0.1:3000/artifacts
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/workers.png http://127.0.0.1:3000/workers
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/connectors.png http://127.0.0.1:3000/connectors
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/converters.png http://127.0.0.1:3000/converters
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/converter-detail.png http://127.0.0.1:3000/converters/builtin-text-markdown/1.0.0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: admin-ui-preview
+          path: screenshots/*.png
+          if-no-files-found: error

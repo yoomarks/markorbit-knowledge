@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.markorbit.dev/knowledge/v1/raw-artifact.schema.json",
+  "title": "RawArtifact",
+  "description": "Immutable evidence record. Content changes create a new artifact version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "objectType",
+    "id",
+    "workspaceId",
+    "sourceId",
+    "version",
+    "artifactKind",
+    "mimeType",
+    "originalName",
+    "storage",
+    "binaryHash",
+    "sizeBytes",
+    "capturedAt",
+    "collector",
+    "provenance",
+    "status",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "objectType": { "const": "RAW_ARTIFACT" },
+    "id": { "$ref": "common.schema.json#/$defs/artifactId" },
+    "workspaceId": { "$ref": "common.schema.json#/$defs/workspaceId" },
+    "sourceId": { "$ref": "common.schema.json#/$defs/sourceId" },
+    "collectionRunId": { "$ref": "common.schema.json#/$defs/runId" },
+    "logicalDocumentId": { "$ref": "common.schema.json#/$defs/documentId" },
+    "version": { "type": "integer", "minimum": 1 },
+    "supersedesArtifactId": { "$ref": "common.schema.json#/$defs/artifactId" },
+    "artifactKind": { "$ref": "common.schema.json#/$defs/artifactKind" },
+    "mimeType": { "type": "string", "pattern": "^[\\w.+-]+/[\\w.+-]+$" },
+    "originalName": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "canonicalUri": { "$ref": "common.schema.json#/$defs/uri" },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "uri"],
+      "properties": {
+        "provider": { "enum": ["LOCAL", "S3", "OBJECT_STORAGE", "REMOTE_REFERENCE"] },
+        "uri": {
+          "$ref": "common.schema.json#/$defs/uri",
+          "description": "Stable internal reference; signed URLs and embedded credentials are prohibited."
+        }
+      }
+    },
+    "binaryHash": { "$ref": "common.schema.json#/$defs/sha256" },
+    "contentHash": { "$ref": "common.schema.json#/$defs/sha256" },
+    "sizeBytes": { "type": "integer", "minimum": 0 },
+    "capturedAt": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "publishedAt": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "collector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["connectorId", "connectorVersion"],
+      "properties": {
+        "connectorId": { "$ref": "common.schema.json#/$defs/connectorId" },
+        "connectorVersion": { "$ref": "common.schema.json#/$defs/semver" },
+        "workerId": { "$ref": "common.schema.json#/$defs/workerId" },
+        "requestId": { "type": "string", "minLength": 1, "maxLength": 160 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceUri"],
+      "properties": {
+        "sourceUri": { "$ref": "common.schema.json#/$defs/uri" },
+        "parentArtifactIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/artifactId" }
+        }
+      }
+    },
+    "status": { "$ref": "common.schema.json#/$defs/artifactStatus" },
+    "createdAt": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "extensions": { "$ref": "common.schema.json#/$defs/extensions" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "version": { "const": 1 } }, "required": ["version"] },
+      "then": { "not": { "required": ["supersedesArtifactId"] } }
+    },
+    {
+      "if": { "properties": { "version": { "minimum": 2 } }, "required": ["version"] },
+      "then": { "required": ["supersedesArtifactId"] }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@markorbit/integration-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "consume:ready-package": "jiti src/obsidian-vault-consumer-cli.ts consume",
+    "diff:vault-handoff-snapshots": "jiti src/vault-handoff-inventory-snapshot-cli.ts",
+    "inspect:vault-handoff": "jiti src/vault-handoff-inspection-cli.ts",
+    "inventory:vault-handoffs": "jiti src/vault-handoff-inventory-cli.ts",
+    "manual:fixture": "jiti src/manual-fixture-cli.ts",
+    "prepare:ready-package": "jiti src/ready-package-cli.ts",
+    "snapshot:vault-handoffs": "jiti src/vault-handoff-inventory-snapshot-cli.ts",
+    "verify:evidence": "jiti src/evidence-bundle-cli.ts",
+    "verify:ready-package": "jiti src/ready-package-cli.ts --verify",
+    "verify:vault-handoff": "jiti src/obsidian-vault-consumer-cli.ts verify",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@markorbit/contracts": "workspace:*",
+    "@markorbit/persistence": "workspace:*",
+    "@markorbit/worker-runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "jiti": "2.7.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

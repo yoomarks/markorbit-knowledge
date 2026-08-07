@@ -1,0 +1,26 @@
+{
+  "protocolVersion": "1.0",
+  "objectType": "ARTIFACT_INGESTION_SESSION",
+  "id": "ing_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "workspaceId": "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "sourceId": "src_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "runId": "run_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "jobId": "job_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "jobAttempt": 1,
+  "executionAttemptId": "exa_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "leaseId": "lse_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "workerId": "wrk_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "connector": { "connectorId": "crawl4ai-web", "version": "1.0.0" },
+  "descriptor": {
+    "artifactKind": "HTML",
+    "mimeType": "text/html",
+    "originalName": "page.html",
+    "expectedSizeBytes": 12,
+    "expectedSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sourceUri": "https://example.com/page"
+  },
+  "status": "CREATED",
+  "idempotencyKey": "page-1",
+  "createdAt": "2026-07-16T19:00:00Z",
+  "updatedAt": "2026-07-16T19:00:00Z"
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0",
+  "objectType": "CONNECTOR_MANIFEST",
+  "connectorId": "crawl4ai-web",
+  "displayName": "Crawl4AI Web Connector",
+  "version": "1.0.0",
+  "sourceTypes": ["WEB"],
+  "runtime": "PYTHON",
+  "capabilities": [
+    "TEST_CONNECTION",
+    "DISCOVER",
+    "PREVIEW",
+    "COLLECT",
+    "CHECK_UPDATE",
+    "DEEP_CRAWL",
+    "RENDER_JAVASCRIPT",
+    "FETCH_ATTACHMENTS"
+  ],
+  "supportedJobTypes": ["WEB_DISCOVERY", "WEB_CRAWL", "PAGE_UPDATE_CHECK"],
+  "configurationSchema": {
+    "type": "object",
+    "properties": {
+      "renderJavascript": { "type": "boolean" },
+      "maxDepth": { "type": "integer", "minimum": 0 }
+    }
+  },
+  "secretSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "outputArtifactKinds": ["HTML", "MARKDOWN", "JSON"],
+  "healthCheck": {
+    "mode": "WORKER_PROBE",
+    "timeoutSeconds": 30
+  },
+  "status": "ACTIVE",
+  "extensions": {
+    "x-markorbit-default-provider": true
+  }
+}

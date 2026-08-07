@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0",
+  "objectType": "COLLECTION_PLAN",
+  "id": "pln_01ARZ3NDEKTSV4RRFFQ69G5FAX",
+  "workspaceId": "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "sourceId": "src_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+  "name": "USPTO News Daily Check",
+  "status": "ACTIVE",
+  "schedule": {
+    "mode": "CRON",
+    "expression": "0 7 * * *",
+    "timezone": "Asia/Shanghai"
+  },
+  "priority": "HIGH",
+  "policy": {
+    "includePatterns": ["/news/**"],
+    "excludePatterns": ["/news/archive/**"],
+    "maxDepth": 2,
+    "maxItems": 500,
+    "renderJavascript": false,
+    "fetchAttachments": true,
+    "respectRobots": true,
+    "rateLimitPerMinute": 10,
+    "timeoutSeconds": 60,
+    "retry": {
+      "maxAttempts": 3,
+      "backoffSeconds": 30
+    },
+    "locale": "en-US"
+  },
+  "output": {
+    "artifactKinds": ["HTML", "MARKDOWN", "PDF"],
+    "conversionProfileId": "cnv_01ARZ3NDEKTSV4RRFFQ69G5FB2"
+  },
+  "createdAt": "2026-07-15T16:00:00Z",
+  "updatedAt": "2026-07-15T16:00:00Z"
+}

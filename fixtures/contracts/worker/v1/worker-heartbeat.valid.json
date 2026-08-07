@@ -1,0 +1,12 @@
+{
+  "contractVersion": "1.0",
+  "objectType": "WORKER_HEARTBEAT",
+  "id": "hbt_01ARZ3NDEKTSV4RRFFQ69G5FAB",
+  "workerId": "wrk_01ARZ3NDEKTSV4RRFFQ69G5FAA",
+  "workspaceId": "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "observedAt": "2026-07-16T02:01:00Z",
+  "receivedAt": "2026-07-16T02:01:01Z",
+  "runtimeVersion": "1.0.0",
+  "health": "HEALTHY",
+  "activeLeaseIds": []
+}

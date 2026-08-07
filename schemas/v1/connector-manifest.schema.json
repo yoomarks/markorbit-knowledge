@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.markorbit.dev/knowledge/v1/connector-manifest.schema.json",
+  "title": "ConnectorManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "objectType",
+    "connectorId",
+    "displayName",
+    "version",
+    "sourceTypes",
+    "runtime",
+    "capabilities",
+    "supportedJobTypes",
+    "configurationSchema",
+    "secretSchema",
+    "outputArtifactKinds",
+    "healthCheck",
+    "status"
+  ],
+  "properties": {
+    "schemaVersion": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "objectType": { "const": "CONNECTOR_MANIFEST" },
+    "connectorId": { "$ref": "common.schema.json#/$defs/connectorId" },
+    "displayName": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "version": { "$ref": "common.schema.json#/$defs/semver" },
+    "sourceTypes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/sourceType" }
+    },
+    "runtime": { "enum": ["PYTHON", "NODE", "EXTERNAL", "LOCAL_AGENT"] },
+    "capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "TEST_CONNECTION",
+          "DISCOVER",
+          "PREVIEW",
+          "COLLECT",
+          "CHECK_UPDATE",
+          "DEEP_CRAWL",
+          "RENDER_JAVASCRIPT",
+          "FETCH_ATTACHMENTS",
+          "WATCH",
+          "IMPORT"
+        ]
+      }
+    },
+    "supportedJobTypes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/jobType" }
+    },
+    "configurationSchema": {
+      "type": "object",
+      "description": "Declarative non-secret configuration schema used to generate and validate provider configuration."
+    },
+    "secretSchema": {
+      "type": "object",
+      "description": "Definitions of required secrets only. Secret values are never stored in the manifest."
+    },
+    "outputArtifactKinds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/artifactKind" }
+    },
+    "healthCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "timeoutSeconds"],
+      "properties": {
+        "mode": { "enum": ["NONE", "DECLARATIVE_ENDPOINT", "WORKER_PROBE"] },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 }
+      }
+    },
+    "status": { "enum": ["ACTIVE", "DEPRECATED", "DISABLED"] },
+    "extensions": { "$ref": "common.schema.json#/$defs/extensions" }
+  }
+}
