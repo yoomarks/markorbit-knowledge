@@ -10,6 +10,7 @@ export * from "./source-connector-port";
 export * from "./http-source-connector";
 export * from "./collection-scheduler-port";
 export * from "./source-discovery-runner";
+export * from "./http-website-discovery-provider";
 export * from "./core-intake-adapter";
 export * from "./intake-pipeline-orchestrator";
 export * from "./persistence-adapter-port";
