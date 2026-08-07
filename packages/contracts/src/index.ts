@@ -19,7 +19,7 @@ export type {
 export { COLLECTION_VERSION } from "./collection-v1";
 export type {
   CollectionTarget,
-  CollectionRun,
+  CollectionRun as CollectionRegistryRun,
   CollectionPlan as CollectionRegistryPlan,
 } from "./collection-v1";
 export * from "./source-discovery-v1";
