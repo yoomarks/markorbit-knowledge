@@ -16,6 +16,7 @@ export * from "./http-source-connector";
 export * from "./collection-scheduler-port";
 export * from "./source-discovery-runner";
 export * from "./core-intake-adapter";
+export * from "./intake-pipeline-orchestrator";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   executorId: "fixture-connector-runtime",
