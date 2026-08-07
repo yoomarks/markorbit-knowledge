@@ -1,19 +1,23 @@
-import type { CollectionPlan, CollectionRun, CollectionTarget } from "@markorbit/contracts";
+import type {
+  CollectionRegistryPlan,
+  CollectionRun,
+  CollectionTarget,
+} from "@markorbit/contracts";
 
 export class CollectionRegistry {
-  private readonly plans = new Map<string, CollectionPlan>();
+  private readonly plans = new Map<string, CollectionRegistryPlan>();
   private readonly runs = new Map<string, CollectionRun>();
 
-  createPlan(plan: CollectionPlan): CollectionPlan {
+  createPlan(plan: CollectionRegistryPlan): CollectionRegistryPlan {
     this.plans.set(plan.planId, plan);
     return plan;
   }
 
-  getPlan(planId: string): CollectionPlan | null {
+  getPlan(planId: string): CollectionRegistryPlan | null {
     return this.plans.get(planId) ?? null;
   }
 
-  addTarget(planId: string, target: CollectionTarget): CollectionPlan {
+  addTarget(planId: string, target: CollectionTarget): CollectionRegistryPlan {
     const plan = this.plans.get(planId);
     if (!plan) throw new Error(`Collection plan ${planId} not found`);
     const updated = { ...plan, targets: [...plan.targets, target] };
