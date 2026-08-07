@@ -18,6 +18,7 @@ export * from "./source-discovery-runner";
 export * from "./core-intake-adapter";
 export * from "./intake-pipeline-orchestrator";
 export * from "./persistence-adapter-port";
+export * from "./queue-execution-port";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   executorId: "fixture-connector-runtime",
