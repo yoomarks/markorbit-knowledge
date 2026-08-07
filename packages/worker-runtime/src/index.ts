@@ -32,6 +32,9 @@ export * from "./source-adapter-port";
 export * from "./source-registry";
 export * from "./source-metadata-schema";
 export * from "./source-adapter-registry";
+export * from "./uspto-source-adapter";
+export * from "./wipo-source-adapter";
+export * from "./cnipa-source-adapter";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = { executorId: "fixture-connector-runtime", version: "1.0.0", mode: "FIXTURE" };
 export type FixtureExecutionScenario = "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
