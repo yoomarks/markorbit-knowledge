@@ -13,6 +13,7 @@ export * from "./artifact-ingestion-port";
 export * from "./local-file-connector";
 export * from "./source-connector-port";
 export * from "./http-source-connector";
+export * from "./collection-scheduler-port";
 export * from "./source-discovery-runner";
 export * from "./core-intake-adapter";
 
