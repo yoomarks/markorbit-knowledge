@@ -21,6 +21,8 @@ export * from "./persistence-adapter-port";
 export * from "./memory-persistence-adapter";
 export * from "./queue-execution-port";
 export * from "./memory-queue-execution";
+export * from "./retry-policy-port";
+export * from "./exponential-retry-policy";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   executorId: "fixture-connector-runtime",
