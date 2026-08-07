@@ -37,6 +37,8 @@ export * from "./wipo-source-adapter";
 export * from "./cnipa-source-adapter";
 export * from "./source-capability-matrix";
 export * from "./source-config-registry";
+export * from "./source-parser-port";
+export * from "./source-normalizer-port";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = { executorId: "fixture-connector-runtime", version: "1.0.0", mode: "FIXTURE" };
 export type FixtureExecutionScenario = "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
