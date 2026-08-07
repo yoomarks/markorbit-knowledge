@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./connectors": "./src/connector-registry.ts",
     "./collection-plans": "./src/collection-plan-registry.ts",
+    "./collection-registry": "./src/collection-registry.ts",
     "./source-registry": "./src/source-registry.ts",
     "./execution-ledger": "./src/execution-ledger.ts",
     "./workers": "./src/safe-worker-registry.ts",
