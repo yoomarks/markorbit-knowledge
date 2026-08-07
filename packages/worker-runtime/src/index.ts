@@ -41,6 +41,7 @@ export * from "./source-parser-port";
 export * from "./source-normalizer-port";
 export * from "./uspto-source-parser";
 export * from "./uspto-source-normalizer";
+export * from "./uspto-pipeline-runner";
 export * from "./raw-artifact-schema";
 export * from "./artifact-storage-port";
 export * from "./memory-artifact-storage";
