@@ -8,6 +8,7 @@ import {
 
 export * from "./conversion-fixture";
 export * from "./controlled-fixture-pipeline";
+export * from "./runtime-runner";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   executorId: "fixture-connector-runtime",
@@ -71,48 +72,11 @@ export class FixtureConnectorExecutor implements ConnectorExecutor {
   ): Promise<ExecutionReceipt | null> {
     const prefix = `fixture-${context.lease.id}`;
     await client.start(context, this.executor, `${prefix}-start`);
-
-    if (scenario === "FAIL_AFTER_START") {
-      await client.fail(
-        context,
-        {
-          code: "FIXTURE_FAILURE_AFTER_START",
-          message: "Deterministic fixture failure after execution start.",
-          retryable: false,
-        },
-        `${prefix}-fail-start`,
-      );
-      return null;
-    }
-
+    if (scenario === "FAIL_AFTER_START") return null;
     await client.uploading(context, `${prefix}-uploading`);
-    if (scenario === "FAIL_DURING_UPLOAD") {
-      await client.fail(
-        context,
-        {
-          code: "FIXTURE_FAILURE_DURING_UPLOAD",
-          message: "Deterministic fixture failure during upload stage.",
-          retryable: false,
-        },
-        `${prefix}-fail-upload`,
-      );
-      return null;
-    }
-
+    if (scenario === "FAIL_DURING_UPLOAD") return null;
     await client.verifying(context, `${prefix}-verifying`);
-    if (scenario === "FAIL_DURING_VERIFY") {
-      await client.fail(
-        context,
-        {
-          code: "FIXTURE_FAILURE_DURING_VERIFY",
-          message: "Deterministic fixture failure during verification stage.",
-          retryable: false,
-        },
-        `${prefix}-fail-verify`,
-      );
-      return null;
-    }
-
+    if (scenario === "FAIL_DURING_VERIFY") return null;
     const receipt = fixtureReceipt(context.job);
     await client.complete(context, receipt, `${prefix}-complete`);
     return receipt;
