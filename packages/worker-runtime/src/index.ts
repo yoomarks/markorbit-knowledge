@@ -10,6 +10,7 @@ export * from "./conversion-fixture";
 export * from "./controlled-fixture-pipeline";
 export * from "./runtime-runner";
 export * from "./artifact-ingestion-port";
+export * from "./local-file-connector";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   executorId: "fixture-connector-runtime",
