@@ -13,5 +13,6 @@ export * from "./conversion-runtime-v1";
 export * from "./source-registry-v1";
 export * from "./collection-v1";
 export * from "./source-discovery-v1";
+export * from "./discovery-observation-v1";
 export * from "./ready-package-v1";
 export * from "./core-intake-v1";
