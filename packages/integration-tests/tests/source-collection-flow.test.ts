@@ -8,21 +8,21 @@ describe("source collection flow", () => {
 
     const plan = registry.createPlan({
       planId: "plan_test",
-      sourceId: "src_test",
       targets: [],
-      status: "ACTIVE",
-    } as any);
+      createdAt: "2026-08-08T00:00:00Z",
+    });
 
     const updated = registry.addTarget("plan_test", {
       targetId: "target_test",
-      uri: "file:///fixture.txt",
-    } as any);
+      sourceId: "src_test",
+      locator: "file:///fixture.txt",
+    });
 
     const run = registry.createRun({
       runId: "run_test",
       planId: "plan_test",
-      status: "PENDING",
-    } as any);
+      status: "created",
+    });
 
     expect(plan.planId).toBe("plan_test");
     expect(updated.targets).toHaveLength(1);
