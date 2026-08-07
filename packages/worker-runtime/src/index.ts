@@ -11,6 +11,7 @@ export * from "./controlled-fixture-pipeline";
 export * from "./runtime-runner";
 export * from "./artifact-ingestion-port";
 export * from "./local-file-connector";
+export * from "./source-discovery-runner";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   executorId: "fixture-connector-runtime",
@@ -32,20 +33,12 @@ export interface WorkerExecutionClient {
   uploading(context: ClaimedExecutionContext, key: string): Promise<void>;
   verifying(context: ClaimedExecutionContext, key: string): Promise<void>;
   complete(context: ClaimedExecutionContext, receipt: ExecutionReceipt, key: string): Promise<void>;
-  fail(
-    context: ClaimedExecutionContext,
-    failure: { code: string; message: string; retryable: boolean },
-    key: string,
-  ): Promise<void>;
+  fail(context: ClaimedExecutionContext, failure: { code: string; message: string; retryable: boolean }, key: string): Promise<void>;
 }
 
 export interface ConnectorExecutor {
   readonly executor: ExecutionExecutor;
-  execute(
-    context: ClaimedExecutionContext,
-    client: WorkerExecutionClient,
-    scenario?: FixtureExecutionScenario,
-  ): Promise<ExecutionReceipt | null>;
+  execute(context: ClaimedExecutionContext, client: WorkerExecutionClient, scenario?: FixtureExecutionScenario): Promise<ExecutionReceipt | null>;
 }
 
 function deterministicNumber(jobId: string, offset: number, modulo: number): number {
@@ -54,24 +47,12 @@ function deterministicNumber(jobId: string, offset: number, modulo: number): num
 }
 
 function fixtureReceipt(job: Job): ExecutionReceipt {
-  return {
-    executor: FIXTURE_EXECUTOR,
-    outputKinds: [...job.planSnapshot.output.artifactKinds],
-    itemsObserved: deterministicNumber(job.id, 1, 25) + 1,
-    bytesPrepared: deterministicNumber(job.id, 2, 50_000),
-    metadataOnly: true,
-    summary: "Deterministic fixture execution; no external I/O or RawArtifact was produced.",
-  };
+  return { executor: FIXTURE_EXECUTOR, outputKinds: [...job.planSnapshot.output.artifactKinds], itemsObserved: deterministicNumber(job.id, 1, 25) + 1, bytesPrepared: deterministicNumber(job.id, 2, 50000), metadataOnly: true, summary: "Deterministic fixture execution; no external I/O or RawArtifact was produced." };
 }
 
 export class FixtureConnectorExecutor implements ConnectorExecutor {
   readonly executor = FIXTURE_EXECUTOR;
-
-  async execute(
-    context: ClaimedExecutionContext,
-    client: WorkerExecutionClient,
-    scenario: FixtureExecutionScenario = "SUCCESS",
-  ): Promise<ExecutionReceipt | null> {
+  async execute(context: ClaimedExecutionContext, client: WorkerExecutionClient, scenario: FixtureExecutionScenario = "SUCCESS"): Promise<ExecutionReceipt | null> {
     const prefix = `fixture-${context.lease.id}`;
     await client.start(context, this.executor, `${prefix}-start`);
     if (scenario === "FAIL_AFTER_START") return null;
