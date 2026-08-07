@@ -11,6 +11,7 @@ export * from "./controlled-fixture-pipeline";
 export * from "./runtime-runner";
 export * from "./artifact-ingestion-port";
 export * from "./local-file-connector";
+export * from "./source-connector-port";
 export * from "./source-discovery-runner";
 export * from "./core-intake-adapter";
 
