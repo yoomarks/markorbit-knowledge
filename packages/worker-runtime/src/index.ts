@@ -39,6 +39,9 @@ export * from "./source-capability-matrix";
 export * from "./source-config-registry";
 export * from "./source-parser-port";
 export * from "./source-normalizer-port";
+export * from "./raw-artifact-schema";
+export * from "./artifact-storage-port";
+export * from "./memory-artifact-storage";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = { executorId: "fixture-connector-runtime", version: "1.0.0", mode: "FIXTURE" };
 export type FixtureExecutionScenario = "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
