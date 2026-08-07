@@ -8,7 +8,7 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
       source: this.sourceId,
       status: "SKELETON",
       request,
-      message: "CNIPA adapter ready for API implementation"
+      message: "CNIPA adapter ready for API implementation",
     };
   }
 }

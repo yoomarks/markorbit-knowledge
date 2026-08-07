@@ -16,8 +16,10 @@ export class UsptoSourceParser implements SourceParserPort<ParsedTrademarkRecord
 
     return {
       source: "USPTO",
-      applicationNumber: typeof data.applicationNumber === "string" ? data.applicationNumber : undefined,
-      registrationNumber: typeof data.registrationNumber === "string" ? data.registrationNumber : undefined,
+      applicationNumber:
+        typeof data.applicationNumber === "string" ? data.applicationNumber : undefined,
+      registrationNumber:
+        typeof data.registrationNumber === "string" ? data.registrationNumber : undefined,
       mark: typeof data.mark === "string" ? data.mark : undefined,
       owner: typeof data.owner === "string" ? data.owner : undefined,
       status: typeof data.status === "string" ? data.status : undefined,

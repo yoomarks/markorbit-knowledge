@@ -1,7 +1,7 @@
 # MarkOrbit Knowledge vNext
 
 > Status: Draft implementation direction
-> 
+>
 > Scope: acquisition, discovery, evidence preservation and operator control plane
 
 ## 1. Product definition

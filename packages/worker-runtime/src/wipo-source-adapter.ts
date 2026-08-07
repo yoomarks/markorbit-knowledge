@@ -8,7 +8,7 @@ export class WipoSourceAdapter implements SourceAdapterPort {
       source: this.sourceId,
       status: "SKELETON",
       request,
-      message: "WIPO adapter ready for API implementation"
+      message: "WIPO adapter ready for API implementation",
     };
   }
 }

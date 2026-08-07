@@ -9,12 +9,14 @@ Source → Collection → Artifact → Conversion → Staging → ReadyPackage �
 ## Next implementation targets
 
 ### P1
+
 - Production source connectors
 - Collection execution runtime
 - Artifact ingestion integration
 - Pipeline observability
 
 ### P2
+
 - Scheduler
 - Retry policy
 - External repository intake

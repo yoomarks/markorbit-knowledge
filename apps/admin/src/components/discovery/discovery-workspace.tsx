@@ -51,7 +51,8 @@ export function DiscoveryWorkspace() {
         <div className="flex items-start gap-3">
           <ShieldCheck className="mt-0.5 shrink-0" size={18} />
           <p>
-            <strong>当前实现状态：</strong> 已加入受控 HTML 链接发现 Runtime；本页 Seed 提交、审核持久化与 sitemap / robots 接线仍在后续任务中，因此不会伪装成可执行按钮。
+            <strong>当前实现状态：</strong> 已加入受控 HTML 链接发现 Runtime；本页 Seed
+            提交、审核持久化与 sitemap / robots 接线仍在后续任务中，因此不会伪装成可执行按钮。
           </p>
         </div>
       </div>
@@ -64,7 +65,9 @@ export function DiscoveryWorkspace() {
             </span>
             <div>
               <h2 className="font-semibold text-slate-950">添加 Seed</h2>
-              <p className="mt-1 text-xs text-slate-500">正常使用时只需要先给主页，不必手工列出站内所有 URL。</p>
+              <p className="mt-1 text-xs text-slate-500">
+                正常使用时只需要先给主页，不必手工列出站内所有 URL。
+              </p>
             </div>
           </div>
 
@@ -92,7 +95,8 @@ export function DiscoveryWorkspace() {
               </button>
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-500">
-              UI wiring pending. Runtime 已支持 maxDepth、maxCandidates、sameHost、allowedHosts、deny patterns 与 URL 去重。
+              UI wiring pending. Runtime 已支持
+              maxDepth、maxCandidates、sameHost、allowedHosts、deny patterns 与 URL 去重。
             </p>
           </div>
 
@@ -123,7 +127,10 @@ export function DiscoveryWorkspace() {
           </div>
           <div className="mt-4 space-y-2">
             {autonomyLevels.map(([level, name, detail]) => (
-              <div key={level} className="flex items-start gap-3 rounded-xl border border-slate-100 px-3 py-3">
+              <div
+                key={level}
+                className="flex items-start gap-3 rounded-xl border border-slate-100 px-3 py-3"
+              >
                 <span className="mt-0.5 w-8 text-xs font-semibold text-slate-400">{level}</span>
                 <div>
                   <p className="text-sm font-medium text-slate-800">{name}</p>
@@ -139,26 +146,41 @@ export function DiscoveryWorkspace() {
         <div className="flex flex-col gap-2 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold text-slate-950">Review Queue · Interaction Preview</h2>
-            <p className="mt-1 text-xs text-slate-500">示例仅展示审核信息密度，不代表真实采集结果。</p>
+            <p className="mt-1 text-xs text-slate-500">
+              示例仅展示审核信息密度，不代表真实采集结果。
+            </p>
           </div>
-          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">Fixture preview</span>
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+            Fixture preview
+          </span>
         </div>
         <div className="divide-y divide-slate-100">
           {previewCandidates.map((item) => (
-            <div key={item.title} className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_auto] md:items-center">
+            <div
+              key={item.title}
+              className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_auto] md:items-center"
+            >
               <div>
                 <div className="flex items-center gap-2">
-                  <span className={`size-2 rounded-full ${item.tone === "emerald" ? "bg-emerald-500" : item.tone === "blue" ? "bg-blue-500" : "bg-amber-500"}`} />
+                  <span
+                    className={`size-2 rounded-full ${item.tone === "emerald" ? "bg-emerald-500" : item.tone === "blue" ? "bg-blue-500" : "bg-amber-500"}`}
+                  />
                   <p className="text-sm font-semibold text-slate-900">{item.title}</p>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">{item.source}</p>
                 <p className="mt-2 text-sm text-slate-600">{item.reason}</p>
               </div>
               <div className="flex gap-2">
-                <button disabled className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-400">
+                <button
+                  disabled
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-400"
+                >
                   <CircleAlert size={14} /> Reject
                 </button>
-                <button disabled className="inline-flex items-center gap-1.5 rounded-lg bg-slate-200 px-3 py-2 text-xs font-medium text-white">
+                <button
+                  disabled
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-200 px-3 py-2 text-xs font-medium text-white"
+                >
                   <Check size={14} /> Accept
                 </button>
               </div>

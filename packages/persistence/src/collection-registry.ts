@@ -1,8 +1,4 @@
-import type {
-  CollectionRegistryPlan,
-  CollectionRun,
-  CollectionTarget,
-} from "@markorbit/contracts";
+import type { CollectionRegistryPlan, CollectionRun, CollectionTarget } from "@markorbit/contracts";
 
 export class CollectionRegistry {
   private readonly plans = new Map<string, CollectionRegistryPlan>();

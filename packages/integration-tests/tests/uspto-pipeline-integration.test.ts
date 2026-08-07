@@ -8,7 +8,7 @@ describe("USPTO pipeline integration", () => {
       applicationNumber: "TEST-001",
       mark: "MARK ORBIT",
       owner: "Example Owner",
-      status: "LIVE"
+      status: "LIVE",
     });
 
     expect(result.record.mark).toBe("MARK ORBIT");

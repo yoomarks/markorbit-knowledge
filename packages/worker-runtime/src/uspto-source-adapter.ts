@@ -8,7 +8,7 @@ export class UsptoSourceAdapter implements SourceAdapterPort {
       source: this.sourceId,
       status: "SKELETON",
       request,
-      message: "USPTO adapter ready for API implementation"
+      message: "USPTO adapter ready for API implementation",
     };
   }
 }

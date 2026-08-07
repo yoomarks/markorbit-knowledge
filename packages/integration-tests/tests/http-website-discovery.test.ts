@@ -29,9 +29,7 @@ describe("http website discovery", () => {
     const fetcher = (async (input: string | URL | Request) => {
       const locator = typeof input === "string" ? input : input.toString();
       const body = pages.get(locator);
-      return body === undefined
-        ? new Response("not found", { status: 404 })
-        : htmlResponse(body);
+      return body === undefined ? new Response("not found", { status: 404 }) : htmlResponse(body);
     }) as typeof globalThis.fetch;
 
     const provider = new HttpWebsiteDiscoveryProvider(fetcher);

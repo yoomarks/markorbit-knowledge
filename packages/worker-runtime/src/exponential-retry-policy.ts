@@ -1,7 +1,10 @@
 import type { FailureContext, RetryDecision, RetryPolicyPort } from "./retry-policy-port";
 
 export class ExponentialRetryPolicy implements RetryPolicyPort {
-  constructor(private readonly maxAttempts = 5, private readonly baseDelayMs = 1000) {}
+  constructor(
+    private readonly maxAttempts = 5,
+    private readonly baseDelayMs = 1000,
+  ) {}
 
   decide(context: FailureContext): RetryDecision {
     if (!context.retryable || context.attempt >= this.maxAttempts) {

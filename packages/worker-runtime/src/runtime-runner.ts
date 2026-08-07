@@ -2,8 +2,7 @@ import type { ExecutionReceipt } from "@markorbit/contracts";
 import type { ClaimedExecutionContext, ConnectorExecutor, WorkerExecutionClient } from "./index";
 
 export type RuntimeRunnerResult =
-  | { status: "COMPLETED"; receipt: ExecutionReceipt }
-  | { status: "FAILED" };
+  { status: "COMPLETED"; receipt: ExecutionReceipt } | { status: "FAILED" };
 
 export class WorkerRuntimeRunner {
   constructor(private readonly client: WorkerExecutionClient) {}

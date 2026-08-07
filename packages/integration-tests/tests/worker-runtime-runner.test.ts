@@ -24,13 +24,10 @@ describe("worker runtime runner", () => {
       summary: "test",
     };
 
-    const result = await runner.run(
-      {} as never,
-      {
-        executor: receipt.executor,
-        execute: async () => receipt,
-      },
-    );
+    const result = await runner.run({} as never, {
+      executor: receipt.executor,
+      execute: async () => receipt,
+    });
 
     expect(result.status).toBe("COMPLETED");
     if (result.status === "COMPLETED") {

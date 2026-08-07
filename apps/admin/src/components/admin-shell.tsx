@@ -4,12 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, Menu, Orbit, Search, X } from "lucide-react";
 import { useState } from "react";
-import {
-  modules,
-  primaryModuleOrder,
-  systemModuleOrder,
-  type ModuleKey,
-} from "@/lib/modules";
+import { modules, primaryModuleOrder, systemModuleOrder, type ModuleKey } from "@/lib/modules";
 
 function isModuleActive(pathname: string, key: ModuleKey) {
   const href = `/${key}`;
@@ -81,7 +76,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             Workbench
           </p>
           <div className="space-y-1">
-            <NavItems keys={primaryModuleOrder} pathname={pathname} onNavigate={() => setOpen(false)} />
+            <NavItems
+              keys={primaryModuleOrder}
+              pathname={pathname}
+              onNavigate={() => setOpen(false)}
+            />
           </div>
 
           <div className="my-4 border-t border-white/10" />
@@ -89,7 +88,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             System · Advanced
           </p>
           <div className="space-y-1">
-            <NavItems keys={systemModuleOrder} pathname={pathname} onNavigate={() => setOpen(false)} />
+            <NavItems
+              keys={systemModuleOrder}
+              pathname={pathname}
+              onNavigate={() => setOpen(false)}
+            />
           </div>
         </nav>
 

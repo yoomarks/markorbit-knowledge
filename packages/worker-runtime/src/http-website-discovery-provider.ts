@@ -12,7 +12,12 @@ const DEFAULT_MAX_CANDIDATES = 250;
 const MAX_MAX_DEPTH = 4;
 const MAX_MAX_CANDIDATES = 5_000;
 
-function clampInteger(value: number | undefined, fallback: number, minimum: number, maximum: number) {
+function clampInteger(
+  value: number | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+) {
   if (value === undefined || !Number.isFinite(value)) return fallback;
   return Math.min(maximum, Math.max(minimum, Math.floor(value)));
 }
@@ -63,11 +68,7 @@ function isDenied(url: URL, patterns: string[] | undefined) {
   return patterns.some((pattern) => locator.includes(pattern.toLowerCase()));
 }
 
-function canDiscover(
-  url: URL,
-  seed: URL,
-  constraints: SourceDiscoveryConstraints,
-) {
+function canDiscover(url: URL, seed: URL, constraints: SourceDiscoveryConstraints) {
   if (isDenied(url, constraints.deniedUrlPatterns)) return false;
 
   const allowedHosts = constraints.allowedHosts?.map((host) => host.toLowerCase());

@@ -12,7 +12,8 @@ export type DiscoverySourceFamily =
   | "INTERNAL_SOURCE"
   | "OTHER";
 
-export type DiscoveryAutonomyLevel = "L0_MANUAL" | "L1_ASSISTED" | "L2_GUIDED" | "L3_AUTONOMOUS" | "L4_TRUSTED_MONITORING";
+export type DiscoveryAutonomyLevel =
+  "L0_MANUAL" | "L1_ASSISTED" | "L2_GUIDED" | "L3_AUTONOMOUS" | "L4_TRUSTED_MONITORING";
 
 export type ObservedEntityKind =
   | "ORGANIZATION"
@@ -36,10 +37,7 @@ export type ObservedBusinessContactKind =
 export type ObservationConfidence = "LOW" | "MEDIUM" | "HIGH";
 
 export type ObservationVisibility =
-  | "PUBLIC_BUSINESS"
-  | "ORGANIZATION_PRIVATE"
-  | "WORKSPACE_PRIVATE"
-  | "USER_LOCAL";
+  "PUBLIC_BUSINESS" | "ORGANIZATION_PRIVATE" | "WORKSPACE_PRIVATE" | "USER_LOCAL";
 
 export interface DiscoveryEvidenceRef {
   sourceUri: string;
