@@ -24,5 +24,9 @@ export type {
 } from "./collection-v1";
 export * from "./source-discovery-v1";
 export * from "./discovery-observation-v1";
-export * from "./ready-package-v1";
+export type {
+  ReadyPackageStatus as ReadyPackageHandoffStatus,
+  ReadyPackageEvidence,
+  ReadyPackage,
+} from "./ready-package-v1";
 export * from "./core-intake-v1";
