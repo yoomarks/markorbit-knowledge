@@ -9,6 +9,7 @@ import {
 export * from "./conversion-fixture";
 export * from "./controlled-fixture-pipeline";
 export * from "./runtime-runner";
+export * from "./artifact-ingestion-port";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   executorId: "fixture-connector-runtime",
