@@ -12,3 +12,4 @@ export * from "./conversion-execution-v1";
 export * from "./conversion-runtime-v1";
 export * from "./source-registry-v1";
 export * from "./collection-v1";
+export * from "./source-discovery-v1";
