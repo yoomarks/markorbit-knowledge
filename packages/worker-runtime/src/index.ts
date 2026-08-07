@@ -12,6 +12,7 @@ export * from "./runtime-runner";
 export * from "./artifact-ingestion-port";
 export * from "./local-file-connector";
 export * from "./source-discovery-runner";
+export * from "./core-intake-adapter";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   executorId: "fixture-connector-runtime",
