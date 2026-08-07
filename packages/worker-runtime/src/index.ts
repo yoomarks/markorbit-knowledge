@@ -26,6 +26,8 @@ export * from "./http-external-connector";
 export * from "./rate-limit-policy-port";
 export * from "./auth-provider-port";
 export * from "./memory-auth-provider";
+export * from "./connector-request-middleware";
+export * from "./connector-retry-middleware";
 
 export const FIXTURE_EXECUTOR: ExecutionExecutor = { executorId: "fixture-connector-runtime", version: "1.0.0", mode: "FIXTURE" };
 export type FixtureExecutionScenario = "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
