@@ -2,7 +2,7 @@
 
 ## Status
 
-Production extraction boundary for Source Graph Protocol v1. This increment does not modify locked acquisition Schema v1 and does not introduce a legal-truth or professional-verification state.
+Production extraction boundary for Source Graph Protocol v1. This increment does not modify locked acquisition Schema v1 and does not introduce a legal-truth or professional-verification state. The extractor is an evidence projection step after acquisition; it is not a second crawler and cannot expand collection authority.
 
 ## Production flow
 
