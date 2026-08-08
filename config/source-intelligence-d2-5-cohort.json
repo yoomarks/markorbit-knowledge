@@ -1,5 +1,5 @@
 {
-  "version": "2.0",
+  "version": "1.0",
   "purpose": "D2.5 dual-axis real-source calibration. Human priority and authority labels are explicit calibration inputs only; they do not establish legal truth, professional quality or identity.",
   "sources": [
     {
@@ -27,8 +27,8 @@
     {
       "key": "euipo-trademarks",
       "name": "EUIPO Trade Marks",
-      "locator": "https://www.euipo.europa.eu/en/trade-marks",
-      "calibrationEntrypoint": "https://www.euipo.europa.eu/en/trade-marks/how-to-apply",
+      "locator": "https://www.euipo.europa.eu/en/trade-marks/how-to-apply",
+      "canonicalLocator": "https://www.euipo.europa.eu/en/trade-marks",
       "category": "OFFICIAL_AUTHORITY",
       "authorityLevel": "PRIMARY_OFFICIAL",
       "jurisdictions": ["EU"],
