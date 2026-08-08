@@ -164,12 +164,20 @@ function acquisitionCostScore(
 }
 
 function fingerprint(snapshot: SourceIntelligenceInputSnapshot): string {
-  const {
-    previousAssessmentId: _previousAssessmentId,
-    previousGraphNodeCount: _previousGraphNodeCount,
-    previousDistinctArtifactHashCount: _previousDistinctArtifactHashCount,
-    ...currentEvidence
-  } = snapshot;
+  const currentEvidence = {
+    sourceCategory: snapshot.sourceCategory,
+    sourceStatus: snapshot.sourceStatus,
+    explicitAuthorityLevel: snapshot.explicitAuthorityLevel,
+    graphNodeCount: snapshot.graphNodeCount,
+    contentNodeCount: snapshot.contentNodeCount,
+    relevantContentNodeCount: snapshot.relevantContentNodeCount,
+    retainedNodeCount: snapshot.retainedNodeCount,
+    rawProvenanceNodeCount: snapshot.rawProvenanceNodeCount,
+    rawArtifactCount: snapshot.rawArtifactCount,
+    distinctArtifactHashCount: snapshot.distinctArtifactHashCount,
+    rawArtifactBytes: snapshot.rawArtifactBytes,
+    ...(snapshot.latestCapturedAt ? { latestCapturedAt: snapshot.latestCapturedAt } : {}),
+  };
   const stable = JSON.stringify(currentEvidence, Object.keys(currentEvidence).sort());
   return createHash("sha256").update(stable).digest("hex");
 }
