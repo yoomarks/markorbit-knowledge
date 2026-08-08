@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CollectionRegistry } from "@markorbit/persistence/collection-plans";
+import { CollectionRegistry } from "@markorbit/persistence/collection-registry";
 
 describe("CollectionRegistry", () => {
   it("creates plans, targets and runs", () => {
