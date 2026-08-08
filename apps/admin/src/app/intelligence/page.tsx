@@ -9,7 +9,7 @@ export default function SourceIntelligencePage() {
     <AdminShell>
       <PageHeading
         title="Source Intelligence"
-        description="比较来源的运营价值、证据基础与复查建议；保持运营优先级、法律权威和执行权限彼此独立。"
+        description="默认以 Source Value × Evidence Maturity 双轴比较来源；Acquisition Cost 独立展示，legacy v1 Tier 仅保留在 Advanced compatibility。"
       />
       <SourceIntelligenceWorkbench />
     </AdminShell>
