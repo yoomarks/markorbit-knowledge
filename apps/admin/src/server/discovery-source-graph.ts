@@ -23,6 +23,18 @@ export function websiteOrigin(locator: string): string {
   return `${url.origin}/`;
 }
 
+function canonicalCandidateUri(locator: string): string {
+  const url = new URL(locator);
+  url.hash = "";
+  return url.toString();
+}
+
+function isWebsiteRootUri(locator: string, profile: WebsiteSourceProfile): boolean {
+  const url = new URL(canonicalCandidateUri(locator));
+  const profileUrl = new URL(profile.canonicalOrigin);
+  return url.origin === profileUrl.origin && url.pathname === "/" && url.search === "";
+}
+
 function publicPathLooksLikeDocument(url: URL): boolean {
   return /\.(?:pdf|doc|docx|xls|xlsx|csv|json|xml|txt|zip)$/i.test(url.pathname);
 }
@@ -137,7 +149,8 @@ export function candidateToGraphNode(
   batchId: string,
   candidate: SourceCandidate,
 ): SourceGraphNode {
-  const url = new URL(candidate.locator);
+  const canonicalUri = canonicalCandidateUri(candidate.locator);
+  const url = new URL(canonicalUri);
   const base = {
     protocolVersion: SOURCE_GRAPH_PROTOCOL_VERSION,
     objectType: "SOURCE_GRAPH_NODE" as const,
@@ -145,7 +158,7 @@ export function candidateToGraphNode(
     workspaceId: source.workspaceId,
     sourceId: source.id,
     profileId: profile.id,
-    identity: { strategy: "CANONICAL_URI" as const, key: candidate.locator },
+    identity: { strategy: "CANONICAL_URI" as const, key: canonicalUri },
     reviewState: candidateReviewState(candidate),
     lifecycleState: "ACTIVE" as const,
     firstObservedAt: candidate.discoveredAt,
@@ -157,7 +170,7 @@ export function candidateToGraphNode(
     return {
       ...base,
       kind: "SITEMAP",
-      canonicalUri: candidate.locator,
+      canonicalUri,
       sitemapType: "UNKNOWN",
     };
   }
@@ -165,7 +178,7 @@ export function candidateToGraphNode(
     return {
       ...base,
       kind: "DOCUMENT",
-      canonicalUri: candidate.locator,
+      canonicalUri,
       ...(candidate.title ? { title: candidate.title } : {}),
       ...(inferredMediaType(url) ? { mediaType: inferredMediaType(url) } : {}),
     };
@@ -173,7 +186,7 @@ export function candidateToGraphNode(
   return {
     ...base,
     kind: "PAGE",
-    canonicalUri: candidate.locator,
+    canonicalUri,
     ...(candidate.title ? { title: candidate.title } : {}),
   };
 }
@@ -245,11 +258,14 @@ export function writeDiscoveryBatchToSourceGraph(
     );
   }
 
-  const candidateNodes = candidates.map((candidate) =>
-    candidateToGraphNode(source, profile, discoveryBatch.batchId, candidate),
-  );
-  const byLocator = new Map<string, SourceGraphNode>();
-  for (const node of candidateNodes) {
+  const candidateEntries = candidates
+    .filter((candidate) => !isWebsiteRootUri(candidate.locator, profile))
+    .map((candidate) => ({
+      candidate,
+      node: candidateToGraphNode(source, profile, discoveryBatch.batchId, candidate),
+    }));
+  const byLocator = new Map<string, SourceGraphNode>([[profile.canonicalOrigin, root]]);
+  for (const { node } of candidateEntries) {
     if ("canonicalUri" in node) byLocator.set(node.canonicalUri, node);
   }
 
@@ -270,17 +286,16 @@ export function writeDiscoveryBatchToSourceGraph(
         ),
       ],
     },
-    ...candidateNodes,
+    ...candidateEntries.map(({ node }) => node),
   ];
-  const edges: SourceGraphEdge[] = candidateNodes.map((node) =>
+  const edges: SourceGraphEdge[] = candidateEntries.map(({ node }) =>
     containsEdge(source, profile, root.id, node),
   );
 
-  for (let index = 0; index < candidates.length; index += 1) {
-    const candidate = candidates[index];
-    const child = candidateNodes[index];
-    if (!candidate?.discoveredFrom || !child) continue;
-    const parent = byLocator.get(candidate.discoveredFrom);
+  for (const { candidate, node: child } of candidateEntries) {
+    if (!candidate.discoveredFrom) continue;
+    const parentLocator = canonicalCandidateUri(candidate.discoveredFrom);
+    const parent = byLocator.get(parentLocator);
     if (!parent || parent.id === child.id) continue;
     edges.push(discoveredFromEdge(source, profile, child, parent));
   }
@@ -314,7 +329,10 @@ export function reviewCandidateGraphNode(
   candidate: SourceCandidate,
   decision: "ACCEPTED" | "REJECTED",
 ): SourceGraphNode | null {
-  const node = graph.findNodeByIdentity(profile.id, "CANONICAL_URI", candidate.locator);
+  const identityKey = isWebsiteRootUri(candidate.locator, profile)
+    ? profile.canonicalOrigin
+    : canonicalCandidateUri(candidate.locator);
+  const node = graph.findNodeByIdentity(profile.id, "CANONICAL_URI", identityKey);
   if (!node) return null;
   return graph.reviewNode(node.id, decision === "ACCEPTED" ? "RETAINED" : "REJECTED");
 }
