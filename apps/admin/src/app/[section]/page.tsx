@@ -12,6 +12,7 @@ import { ModulePreview } from "@/components/module-preview";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
 import { RunList } from "@/components/runs/run-list";
+import { SourceIntelligenceReviewHealth } from "@/components/sources/source-intelligence-review-health";
 import { SourceIntelligenceReviewQueue } from "@/components/sources/source-intelligence-review-queue";
 import { SourceIntelligenceWorkbench } from "@/components/sources/source-intelligence-workbench";
 import { SourceList } from "@/components/sources/source-list";
@@ -48,9 +49,10 @@ function SourceIntelligencePage() {
     <>
       <PageHeading
         title="Source Intelligence"
-        description="先处理 D2.9 Observation Review Queue，再查看 Source Value × Evidence Maturity 双轴详情；人工确认或忽略都不会授权 Scheduler 或 CollectionPlan 自动执行。"
+        description="先看 D2.10 Review Queue Operational Health，再处理 D2.9 Observation Review Queue，最后查看 Source Value × Evidence Maturity 双轴详情；所有运营指标都只供人工判断。"
       />
       <div className="space-y-6">
+        <SourceIntelligenceReviewHealth />
         <SourceIntelligenceReviewQueue />
         <SourceIntelligenceWorkbench />
       </div>
