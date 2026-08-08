@@ -42,6 +42,7 @@ jobs:
           echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-golden-source.sqlite" >> "$GITHUB_ENV"
           echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-artifacts" >> "$GITHUB_ENV"
           echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
 
       - name: Install workspace
         run: pnpm install --frozen-lockfile
