@@ -1,0 +1,156 @@
+name: Source Intelligence Evidence Calibration
+
+on:
+  workflow_dispatch:
+    inputs:
+      keys:
+        description: Comma-separated calibration source keys
+        required: false
+        default: "uspto-trademarks,finnegan,inta"
+      min_success:
+        description: Minimum successful before/after sources required
+        required: false
+        default: "2"
+  workflow_call:
+    inputs:
+      keys:
+        description: Comma-separated calibration source keys
+        required: false
+        type: string
+        default: "uspto-trademarks,finnegan,inta"
+      min_success:
+        description: Minimum successful before/after sources required
+        required: false
+        type: string
+        default: "2"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-intelligence-evidence-calibration
+  cancel-in-progress: false
+
+jobs:
+  calibration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+      MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure isolated state
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-source-intelligence-evidence-calibration.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-evidence-calibration-artifacts" >> "$GITHUB_ENV"
+          echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+
+      - name: Validate calibration harness
+        run: |
+          node --check scripts/source-intelligence-evidence-calibration.mjs
+          node -e 'const fs=require("node:fs"); const x=JSON.parse(fs.readFileSync("config/source-intelligence-calibration-cohort.json","utf8")); if(x.version!=="1.0"||!Array.isArray(x.sources)) process.exit(1)'
+
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/admin.log"
+          exit 1
+
+      - name: Run bounded before/after evidence calibration
+        env:
+          NODE_ENV: test
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
+          MARKORBIT_CRAWL4AI_PYTHON: python
+        run: |
+          node scripts/source-intelligence-evidence-calibration.mjs \
+            --base-url "$MARKORBIT_CONTROL_PLANE_URL" \
+            --manifest config/source-intelligence-calibration-cohort.json \
+            --keys "${{ inputs.keys }}" \
+            --min-success "${{ inputs.min_success }}" \
+            --timeout-ms 300000 \
+            --output "$RUNNER_TEMP/source-intelligence-evidence-calibration.json"
+
+      - name: Verify evidence and governance boundaries
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const report = JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP, 'source-intelligence-evidence-calibration.json'), 'utf8'));
+          if (report.calibrationMode !== 'BEFORE_AFTER_BOUNDED_RAW_EVIDENCE') throw new Error('Unexpected calibration mode');
+          const b = report.boundaries || {};
+          if (!b.isolatedRegistryRequired || !b.humanAcceptanceExplicit || !b.collectionAuthorizationExplicit) {
+            throw new Error('Evidence calibration governance boundary is incomplete');
+          }
+          if (b.collectionMaxDepth !== 0 || b.collectionMaxItemsPerSource !== 1 || !b.robotsRespected) {
+            throw new Error('Collection escaped the bounded D2.3 policy');
+          }
+          const successful = report.results.filter((item) => item.status === 'SUCCESS');
+          for (const item of successful) {
+            if (item.connector !== 'crawl4ai-web@1.1.0') throw new Error(`${item.key} connector drift`);
+            if (!item.collectionPolicy?.explicitlyAuthorized || item.collectionPolicy?.maxDepth !== 0 || item.collectionPolicy?.maxItems !== 1) {
+              throw new Error(`${item.key} collection policy drift`);
+            }
+            if (item.artifacts?.count < 2) throw new Error(`${item.key} lacks RawArtifact evidence`);
+            if (!item.artifacts?.kinds?.includes('HTML') || !item.artifacts?.kinds?.includes('MARKDOWN')) {
+              throw new Error(`${item.key} lacks HTML/Markdown evidence`);
+            }
+            if (item.after?.evidence?.rawArtifactCount <= item.before?.evidence?.rawArtifactCount) {
+              throw new Error(`${item.key} assessment did not observe new RawArtifact evidence`);
+            }
+            if (item.after?.dimensions?.FRESHNESS?.score === null) {
+              throw new Error(`${item.key} post-evidence Freshness remained unknown`);
+            }
+          }
+          process.stdout.write(`${JSON.stringify({ event: 'source-intelligence.evidence-calibration.verified', summary: report.summary }, null, 2)}\n`);
+          NODE
+
+      - name: Stop local process
+        if: always()
+        run: |
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+
+      - name: Upload calibration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-intelligence-evidence-calibration-report
+          path: |
+            ${{ runner.temp }}/source-intelligence-evidence-calibration.json
+            ${{ runner.temp }}/admin.log
+          if-no-files-found: ignore
+          retention-days: 14
