@@ -5,6 +5,7 @@ import type {
   SourceCandidateRecord,
   SourceDiscoveryRepository,
 } from "@markorbit/persistence/source-discovery";
+import type { SourceGraphRepository } from "@markorbit/persistence/source-graph";
 import type { SourceRepository } from "@markorbit/persistence";
 import type {
   CollectionPlan,
@@ -16,10 +17,21 @@ import {
   HttpWebsiteDiscoveryProvider,
   type SourceDiscoveryProvider,
 } from "@markorbit/worker-runtime";
-import { RegistryValidationError } from "@markorbit/persistence";
+import {
+  DEFAULT_WORKSPACE,
+  RegistryConflictError,
+  RegistryValidationError,
+} from "@markorbit/persistence";
+import {
+  ensureWebsiteSourceProfile,
+  reviewCandidateGraphNode,
+  websiteOrigin,
+  writeDiscoveryBatchToSourceGraph,
+} from "./discovery-source-graph";
 import {
   getCollectionPlanRepository,
   getSourceDiscoveryRepository,
+  getSourceGraphRepository,
   getSourceRepository,
   withRegistryTransaction,
 } from "./source-registry";
@@ -65,6 +77,7 @@ export type ReviewDiscoveryCandidateResult = {
 
 type DiscoveryServiceDependencies = {
   discovery: SourceDiscoveryRepository;
+  graph: SourceGraphRepository;
   sources: SourceRepository;
   plans: CollectionPlanRepository;
   provider: SourceDiscoveryProvider;
@@ -134,7 +147,7 @@ function normalizedDeniedPatterns(values: string[] | undefined): string[] {
     .slice(0, 50);
 }
 
-function sourceSlug(locator: string, candidateId: string): string {
+function websiteSourceSlug(locator: string, seedId: string): string {
   const url = new URL(locator);
   const host = url.hostname
     .toLowerCase()
@@ -142,17 +155,15 @@ function sourceSlug(locator: string, candidateId: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 50);
-  const suffix = candidateId
+  const suffix = seedId
     .replace(/[^a-zA-Z0-9]/g, "")
     .slice(-8)
     .toLowerCase();
-  return `${host || "discovered-source"}-${suffix}`;
+  return `${host || "discovered-website"}-${suffix}`;
 }
 
-function sourceName(locator: string): string {
-  const url = new URL(locator);
-  const path = url.pathname === "/" ? "" : ` ${url.pathname}`;
-  return `${url.hostname}${path}`.slice(0, 120);
+function websiteSourceName(locator: string): string {
+  return new URL(locator).hostname.slice(0, 120);
 }
 
 export class DiscoveryWorkflowService {
@@ -204,6 +215,25 @@ export class DiscoveryWorkflowService {
       const discovered = await this.dependencies.provider.discover(batch);
       const candidates = discovered.map(enrichDiscoveryCandidate);
       const completed = this.dependencies.discovery.completeBatch(batch.batchId, candidates);
+
+      const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
+        DEFAULT_WORKSPACE.id,
+        websiteOrigin(seed.locator),
+      );
+      if (profile) {
+        const source = this.dependencies.sources.getById(profile.sourceId);
+        if (source) {
+          this.dependencies.transaction(() => {
+            writeDiscoveryBatchToSourceGraph(
+              this.dependencies.graph,
+              source,
+              profile,
+              completed.batch,
+              candidates,
+            );
+          });
+        }
+      }
       return { seed, batch: completed, candidates };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Discovery failed";
@@ -227,87 +257,187 @@ export class DiscoveryWorkflowService {
       };
     }
 
+    const batchRecord = this.dependencies.discovery.getBatch(current.batchId);
+    if (!batchRecord || batchRecord.batch.seeds.length === 0) {
+      throw new RegistryConflictError(
+        "DISCOVERY_BATCH_CONTEXT_MISSING",
+        `Discovery candidate ${candidateId} has no usable seed context`,
+      );
+    }
+    const seed = batchRecord.batch.seeds[0];
+    if (!seed) {
+      throw new RegistryConflictError(
+        "DISCOVERY_SEED_CONTEXT_MISSING",
+        `Discovery candidate ${candidateId} has no usable seed`,
+      );
+    }
+    const origin = websiteOrigin(seed.locator);
+    const existingProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
+      DEFAULT_WORKSPACE.id,
+      origin,
+    );
+
     if (input.decision === "REJECTED") {
-      return {
-        candidate: this.dependencies.discovery.reviewCandidate(candidateId, {
+      return this.dependencies.transaction(() => {
+        const candidate = this.dependencies.discovery.reviewCandidate(candidateId, {
           decision: "REJECTED",
           note: input.note,
           reviewer: input.reviewer,
-        }),
-      };
+        });
+        if (existingProfile) {
+          reviewCandidateGraphNode(
+            this.dependencies.graph,
+            existingProfile,
+            candidate.candidate,
+            "REJECTED",
+          );
+        }
+        return { candidate };
+      });
     }
 
     if (current.candidate.status === "ACCEPTED") {
-      return { candidate: current };
+      const source = current.review?.acceptedSourceId
+        ? this.dependencies.sources.getById(current.review.acceptedSourceId)
+        : null;
+      const plan = current.review?.collectionPlanId
+        ? this.dependencies.plans.getById(current.review.collectionPlanId)?.plan
+        : undefined;
+      return { candidate: current, ...(source ? { source } : {}), ...(plan ? { plan } : {}) };
     }
 
     return this.dependencies.transaction(() => {
-      const source = this.dependencies.sources.create({
-        name: sourceName(current.candidate.locator),
-        slug: sourceSlug(current.candidate.locator, current.candidate.candidateId),
-        sourceType: "WEB",
-        category: "OTHER",
-        authorityLevel: "UNKNOWN",
-        status: "ACTIVE",
-        jurisdictions: ["GLOBAL"],
-        languages: ["und"],
-        connector: {
-          connectorId: "crawl4ai-web",
-          version: "1.0.0",
-        },
-        canonicalUri: current.candidate.locator,
-        entrypoints: [{ uri: current.candidate.locator, label: "Accepted discovery candidate" }],
-        tags: ["discovery-accepted"],
-        extensions: {
-          "x-markorbit-discovery-candidate-id": current.candidate.candidateId,
-          "x-markorbit-discovery-batch-id": current.batchId,
-        },
-      });
+      let source: SourceDefinition;
+      let plan: CollectionPlan;
+      let profile = existingProfile;
 
-      const planRecord = this.dependencies.plans.create({
-        sourceId: source.id,
-        name: `Collect ${source.name}`,
-        status: "PAUSED",
-        schedule: { mode: "MANUAL" },
-        priority: "NORMAL",
-        policy: {
-          includePatterns: [],
-          excludePatterns: [],
-          maxDepth: 1,
-          maxItems: 100,
-          renderJavascript: false,
-          fetchAttachments: false,
-          respectRobots: true,
-          rateLimitPerMinute: 30,
-          timeoutSeconds: 30,
-          retry: {
-            maxAttempts: 3,
-            backoffSeconds: 5,
+      if (profile) {
+        const existingSource = this.dependencies.sources.getById(profile.sourceId);
+        if (!existingSource) {
+          throw new RegistryConflictError(
+            "DISCOVERY_GRAPH_SOURCE_MISSING",
+            `WebsiteSourceProfile ${profile.id} points to missing source ${profile.sourceId}`,
+          );
+        }
+        const planRecord = existingSource.defaultCollectionPlanId
+          ? this.dependencies.plans.getById(existingSource.defaultCollectionPlanId)
+          : null;
+        if (!planRecord) {
+          throw new RegistryConflictError(
+            "DISCOVERY_GRAPH_PLAN_MISSING",
+            `Website source ${existingSource.id} has no default collection plan`,
+          );
+        }
+        source = existingSource;
+        plan = planRecord.plan;
+      } else {
+        const created = this.dependencies.sources.create({
+          name: websiteSourceName(seed.locator),
+          slug: websiteSourceSlug(seed.locator, seed.seedId),
+          sourceType: "WEB",
+          category: "OTHER",
+          authorityLevel: "UNKNOWN",
+          status: "ACTIVE",
+          jurisdictions: ["GLOBAL"],
+          languages: ["und"],
+          connector: {
+            connectorId: "crawl4ai-web",
+            version: "1.0.0",
           },
-        },
-        output: {
-          artifactKinds: ["HTML", "MARKDOWN", "JSON"],
-        },
-        extensions: {
-          "x-markorbit-created-from-discovery": true,
-          "x-markorbit-discovery-candidate-id": current.candidate.candidateId,
-        },
-      });
+          canonicalUri: origin,
+          entrypoints: [{ uri: seed.locator, label: "Discovery seed" }],
+          tags: ["discovery-accepted", "website-source"],
+          extensions: {
+            "x-markorbit-discovery-seed-id": seed.seedId,
+            "x-markorbit-discovery-batch-id": current.batchId,
+          },
+        });
 
-      const sourceWithPlan = this.dependencies.plans.setSourceDefaultPlan(
-        source.id,
-        planRecord.plan.id,
-        source.updatedAt,
-      );
+        const createdPlan = this.dependencies.plans.create({
+          sourceId: created.id,
+          name: `Collect ${created.name}`,
+          status: "PAUSED",
+          schedule: { mode: "MANUAL" },
+          priority: "NORMAL",
+          policy: {
+            includePatterns: [],
+            excludePatterns: [],
+            maxDepth: 1,
+            maxItems: 100,
+            renderJavascript: false,
+            fetchAttachments: false,
+            respectRobots: true,
+            rateLimitPerMinute: 30,
+            timeoutSeconds: 30,
+            retry: {
+              maxAttempts: 3,
+              backoffSeconds: 5,
+            },
+          },
+          output: {
+            artifactKinds: ["HTML", "MARKDOWN", "JSON"],
+          },
+          extensions: {
+            "x-markorbit-created-from-discovery": true,
+            "x-markorbit-discovery-seed-id": seed.seedId,
+          },
+        });
+
+        source = this.dependencies.plans.setSourceDefaultPlan(
+          created.id,
+          createdPlan.plan.id,
+          created.updatedAt,
+        );
+        plan = createdPlan.plan;
+        profile = ensureWebsiteSourceProfile(
+          this.dependencies.graph,
+          source,
+          seed.locator,
+          batchRecord.batch.createdAt,
+          batchRecord.batch.batchId,
+        );
+      }
+
       const candidate = this.dependencies.discovery.reviewCandidate(candidateId, {
         decision: "ACCEPTED",
         note: input.note,
         reviewer: input.reviewer,
         acceptedSourceId: source.id,
-        collectionPlanId: planRecord.plan.id,
+        collectionPlanId: plan.id,
       });
 
-      return { candidate, source: sourceWithPlan, plan: planRecord.plan };
+      let graphNode = reviewCandidateGraphNode(
+        this.dependencies.graph,
+        profile,
+        candidate.candidate,
+        "ACCEPTED",
+      );
+      if (!graphNode) {
+        const batchCandidates = this.dependencies.discovery
+          .listCandidates({ batchId: current.batchId, limit: 500 })
+          .items.map((item) => item.candidate);
+        writeDiscoveryBatchToSourceGraph(
+          this.dependencies.graph,
+          source,
+          profile,
+          batchRecord.batch,
+          batchCandidates,
+        );
+        graphNode = reviewCandidateGraphNode(
+          this.dependencies.graph,
+          profile,
+          candidate.candidate,
+          "ACCEPTED",
+        );
+      }
+      if (!graphNode) {
+        throw new RegistryConflictError(
+          "DISCOVERY_GRAPH_NODE_MISSING",
+          `Accepted candidate ${candidateId} could not be represented in Source Graph`,
+        );
+      }
+
+      return { candidate, source, plan };
     });
   }
 }
@@ -318,6 +448,7 @@ export function getDiscoveryWorkflowService(): DiscoveryWorkflowService {
   if (!singleton) {
     singleton = new DiscoveryWorkflowService({
       discovery: getSourceDiscoveryRepository(),
+      graph: getSourceGraphRepository(),
       sources: getSourceRepository(),
       plans: getCollectionPlanRepository(),
       provider: new HttpWebsiteDiscoveryProvider(),

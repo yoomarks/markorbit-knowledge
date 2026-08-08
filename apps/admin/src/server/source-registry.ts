@@ -39,6 +39,10 @@ import {
   type SourceDiscoveryRepository,
 } from "@markorbit/persistence/source-discovery";
 import {
+  SqliteSourceGraphRepository,
+  type SourceGraphRepository,
+} from "@markorbit/persistence/source-graph";
+import {
   SqliteWorkerRegistryRepository,
   type WorkerRegistryRepository,
 } from "@markorbit/persistence/workers";
@@ -48,6 +52,7 @@ const globalRegistry = globalThis as typeof globalThis & {
     database: DatabaseSync;
     sources: SourceRepository;
     discovery: SourceDiscoveryRepository;
+    graph: SourceGraphRepository;
     connectors: ConnectorRepository;
     plans: CollectionPlanRepository;
     runs: ExecutionLedgerRepository;
@@ -91,6 +96,7 @@ function getRegistries() {
       database,
       sources: new SqliteSourceRepository(database),
       discovery: new SqliteSourceDiscoveryRepository(database),
+      graph: new SqliteSourceGraphRepository(database),
       connectors: new SqliteConnectorRepository(database),
       plans: new SqliteCollectionPlanRepository(database),
       runs: new SqliteExecutionLedgerRepository(database),
@@ -136,6 +142,10 @@ export function getSourceRepository(): SourceRepository {
 
 export function getSourceDiscoveryRepository(): SourceDiscoveryRepository {
   return getRegistries().discovery;
+}
+
+export function getSourceGraphRepository(): SourceGraphRepository {
+  return getRegistries().graph;
 }
 
 export function getConnectorRepository(): ConnectorRepository {
