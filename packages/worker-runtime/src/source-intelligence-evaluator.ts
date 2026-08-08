@@ -23,7 +23,7 @@ export const SOURCE_INTELLIGENCE_EVALUATOR = {
 
 export const SOURCE_INTELLIGENCE_DUAL_AXIS_EVALUATOR = {
   name: "markorbit-source-intelligence-dual-axis",
-  version: "2.0.0",
+  version: "2.1.0",
 } as const;
 
 export type SourceIntelligenceEvaluationInput = {
@@ -303,6 +303,15 @@ function sourceValueBand(score: number): SourceValuePriorityBand {
   return "LOW";
 }
 
+function sourceValueRelevance(category: SourceCategory): SourceIntelligenceDimension {
+  return dimension(
+    categoryBaseline(category),
+    "MEDIUM",
+    "SOURCE_CATEGORY_RELEVANCE_BASELINE",
+    "SOURCE_VALUE_RELEVANCE_EXCLUDES_GRAPH_EVIDENCE",
+  );
+}
+
 function sourceValueConfidence(
   relevance: SourceIntelligenceDimension,
   authority: SourceIntelligenceDimension,
@@ -361,7 +370,7 @@ function dualAxisAssessmentId(legacy: SourceIntelligenceAssessment): string {
 export function projectSourceIntelligenceV2(
   legacy: SourceIntelligenceAssessment,
 ): SourceIntelligenceAssessmentV2 {
-  const relevance = legacy.dimensions.RELEVANCE;
+  const relevance = sourceValueRelevance(legacy.input.sourceCategory);
   const authority = legacy.dimensions.AUTHORITY_SIGNAL;
   const valueScore = weightedScore([
     [relevance, 0.4],
@@ -397,6 +406,7 @@ export function projectSourceIntelligenceV2(
       reasonCodes: [
         `SOURCE_VALUE_${valueBand}`,
         "SOURCE_VALUE_EXCLUDES_EVIDENCE_MATURITY_SIGNALS",
+        "SOURCE_VALUE_RELEVANCE_IS_SOURCE_CATEGORY_BASELINE",
         ...(authority.score === null ? ["EXPLICIT_AUTHORITY_UNKNOWN"] : []),
       ],
     },
