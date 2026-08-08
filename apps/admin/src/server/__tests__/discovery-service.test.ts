@@ -43,6 +43,17 @@ describe("DiscoveryWorkflowService", () => {
               depth: 1,
               metadata: { kind: "DOCUMENT" },
             },
+            {
+              candidateId: "cand_cccccccccccccccccccccccc",
+              locator: "https://example.com/",
+              title: "Example home",
+              discoveredAt: "2026-08-08T01:00:02.000Z",
+              status: "DISCOVERED" as const,
+              discoveredFrom: batch.seeds[0]?.locator,
+              discoveryMethod: "HTML_LINK" as const,
+              depth: 1,
+              metadata: { kind: "PAGE" },
+            },
           ];
         },
       },
@@ -64,8 +75,8 @@ describe("DiscoveryWorkflowService", () => {
       maxDepth: 1,
       maxCandidates: 10,
     });
-    expect(run.candidates).toHaveLength(2);
-    expect(service.overview().candidates.summary.DISCOVERED).toBe(2);
+    expect(run.candidates).toHaveLength(3);
+    expect(service.overview().candidates.summary.DISCOVERED).toBe(3);
 
     const first = service.review("cand_aaaaaaaaaaaaaaaaaaaaaaaa", {
       decision: "ACCEPTED",
@@ -90,6 +101,9 @@ describe("DiscoveryWorkflowService", () => {
       ? graph.findNodeByIdentity(profile.id, "CANONICAL_URI", "https://example.com/trademarks")
       : null;
     expect(trademarkNode?.reviewState).toBe("RETAINED");
+    expect(
+      profile ? graph.findNodeByIdentity(profile.id, "CANONICAL_URI", "https://example.com/") : null,
+    )?.toMatchObject({ id: profile?.rootNodeId, kind: "WEBSITE" });
 
     const second = service.review("cand_bbbbbbbbbbbbbbbbbbbbbbbb", {
       decision: "ACCEPTED",
