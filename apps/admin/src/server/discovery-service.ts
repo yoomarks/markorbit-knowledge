@@ -6,7 +6,11 @@ import type {
   SourceDiscoveryRepository,
 } from "@markorbit/persistence/source-discovery";
 import type { SourceRepository } from "@markorbit/persistence";
-import type { SourceDiscoveryConstraints } from "@markorbit/contracts";
+import type {
+  CollectionPlan,
+  SourceDefinition,
+  SourceDiscoveryConstraints,
+} from "@markorbit/contracts";
 import {
   HttpWebsiteDiscoveryProvider,
   type SourceDiscoveryProvider,
@@ -38,6 +42,12 @@ export type ReviewDiscoveryCandidateInput = {
   decision: CandidateReviewDecision;
   note?: string;
   reviewer?: string;
+};
+
+export type ReviewDiscoveryCandidateResult = {
+  candidate: SourceCandidateRecord;
+  source?: SourceDefinition;
+  plan?: CollectionPlan;
 };
 
 type DiscoveryServiceDependencies = {
@@ -179,14 +189,19 @@ export class DiscoveryWorkflowService {
     }
   }
 
-  review(candidateId: string, input: ReviewDiscoveryCandidateInput) {
+  review(
+    candidateId: string,
+    input: ReviewDiscoveryCandidateInput,
+  ): ReviewDiscoveryCandidateResult {
     const current = this.dependencies.discovery.getCandidate(candidateId);
     if (!current) {
-      return this.dependencies.discovery.reviewCandidate(candidateId, {
-        decision: input.decision,
-        note: input.note,
-        reviewer: input.reviewer,
-      });
+      return {
+        candidate: this.dependencies.discovery.reviewCandidate(candidateId, {
+          decision: input.decision,
+          note: input.note,
+          reviewer: input.reviewer,
+        }),
+      };
     }
 
     if (input.decision === "REJECTED") {
@@ -287,8 +302,4 @@ export function getDiscoveryWorkflowService(): DiscoveryWorkflowService {
     });
   }
   return singleton;
-}
-
-export function candidateStatusLabel(record: SourceCandidateRecord): string {
-  return record.candidate.status;
 }
