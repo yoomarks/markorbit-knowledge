@@ -32,6 +32,23 @@ The canonical source remains the EUIPO Trade Marks website. D2.5 uses a known pu
 
 This is deliberately a calibration-harness accommodation, not a relaxation of the production host boundary. `sameHostOnly`, robots handling and the existing Website Source semantics remain unchanged.
 
+## Calibration correction discovered by D2.5
+
+The first live D2.5 wider-cohort run exposed a semantic leak in the initial v2 projection: Source Value reused the persisted v1 `RELEVANCE` dimension, but v1 Relevance is partly derived from currently held Source Graph topic coverage. In a Discovery-only registry, primary official sources therefore had explicit Authority `100` but graph-conditioned Relevance `34`, producing Source Value `74 / HIGH` rather than the required `VERY_HIGH × UNOBSERVED` state.
+
+D2.5 corrects that at the projection layer rather than tuning weights or lowering band thresholds:
+
+- persisted v1 assessments and v1 Relevance remain unchanged;
+- v2 Source Value Relevance now uses the existing `sourceCategory` baseline as a stable source-level signal;
+- explicit Authority remains the only Authority input;
+- held graph topic coverage remains available in the legacy v1 assessment but no longer changes v2 Source Value;
+- Evidence Maturity continues to use Freshness, Evidenceability and Novelty;
+- Acquisition Cost remains separate.
+
+The v2 evaluator implementation version is therefore advanced to `2.1.0` while the opt-in protocol remains `2.0`. This is still a read-compatible projection over v1 storage.
+
+This correction makes Source Value change when its source-level metadata changes, rather than merely because more evidence was captured. It is a semantic separation fix, not score beautification.
+
 ## Mode 1 — Source Value calibration
 
 The wider cohort runs through:
@@ -66,9 +83,9 @@ Collection remains constrained to:
 - `crawl4ai-web@1.1.0`;
 - isolated calibration registry and artifact store.
 
-The harness requires Evidence Maturity to advance from `UNOBSERVED`. If Relevance and explicit Authority signals are unchanged, Source Value score and band must also remain unchanged.
+The harness requires Evidence Maturity to advance from `UNOBSERVED`. Source Value is independently projected from stable source category plus explicit Authority, so bounded evidence acquisition must not change its score or band.
 
-A real acquisition may legitimately change Relevance if newly extracted evidence changes the observed topical graph. Such a change is reported as an observed Source Value signal change rather than mislabeled as Evidence Maturity leakage.
+The harness also reports whether legacy v1 graph Relevance changed during acquisition. That diagnostic is intentionally separate: a graph-observation change is allowed to affect v1, but it must not leak into the v2 Source Value axis.
 
 ## Acquisition Cost
 
