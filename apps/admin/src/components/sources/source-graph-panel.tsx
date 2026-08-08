@@ -40,7 +40,8 @@ function nodeLabel(node: SourceGraphNode): string {
   if (node.kind === "SECTION") return node.label;
   if (node.kind === "ORGANIZATION" || node.kind === "PERSON") return node.displayName;
   if (node.kind === "CONTACT_POINT") return node.value;
-  return node.title ?? node.canonicalUri;
+  if (node.kind === "PAGE" || node.kind === "DOCUMENT") return node.title ?? node.canonicalUri;
+  return node.canonicalUri;
 }
 
 function nodeLocator(node: SourceGraphNode): string {
