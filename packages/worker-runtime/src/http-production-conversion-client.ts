@@ -85,6 +85,12 @@ function requiredString(value: unknown, field: string): string {
   return value;
 }
 
+function exactArrayBuffer(content: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(content.byteLength);
+  copy.set(content);
+  return copy.buffer;
+}
+
 export class HttpProductionConversionClient
   implements
     ProductionRawArtifactReader,
@@ -165,7 +171,7 @@ export class HttpProductionConversionClient
         "x-markorbit-upload-grant-id": evidence.uploadGrantId,
         "idempotency-key": idempotencyKey,
       },
-      body: content,
+      body: exactArrayBuffer(content),
     });
     if (!response.ok)
       throw new Error(`PRODUCTION_CONVERSION_OUTPUT_FAILED: ${await errorMessage(response)}`);
