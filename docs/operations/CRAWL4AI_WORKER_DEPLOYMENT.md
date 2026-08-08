@@ -64,12 +64,14 @@ crawl4ai-setup
 crawl4ai-doctor
 ```
 
-Then export the values returned by bootstrap:
+Then export the values returned by bootstrap. Keep the repository/script paths explicit because pnpm filter commands execute the Worker from its workspace directory:
 
 ```bash
 export MARKORBIT_CONTROL_PLANE_URL=http://localhost:3000
 export MARKORBIT_WORKER_ID=wrk_...
 export MARKORBIT_WORKER_CREDENTIAL=mwk_...
+export MARKORBIT_REPOSITORY_ROOT="$(pwd)"
+export MARKORBIT_CRAWL4AI_SCRIPT="$MARKORBIT_REPOSITORY_ROOT/workers/crawl4ai/acquire.py"
 ```
 
 Direct egress is a local-development exception only:
@@ -105,7 +107,29 @@ A production crawl can exceed the default JobLease duration. `ControlledCollecti
 
 The Worker also caps a single acquisition below the default maximum lease lifetime: 12 minutes by default and 14 minutes maximum. This prevents application execution from intentionally outliving the control plane's default 15-minute maximum lease window.
 
-## What to verify after the first run
+## Live Golden Source smoke
+
+The repository contains the manually triggered GitHub Actions workflow `USPTO Golden Source Live Smoke`. It intentionally does **not** run on ordinary pushes or pull requests because it depends on a live external authority and must not turn transient USPTO/network conditions into normal CI failures.
+
+The workflow creates isolated SQLite/artifact storage, starts the real control plane, bootstraps an authorized USPTO run, starts the real Worker Protocol with a CI-only direct-egress exception, performs a live Crawl4AI acquisition and then runs:
+
+```bash
+pnpm --filter @markorbit/worker verify:uspto -- run_...
+```
+
+The verifier requires all of the following before the smoke passes:
+
+1. CollectionRun and its Job reach `COMPLETED`;
+2. the execution attempt is `COMPLETED` and contains `STARTED → UPLOADING → VERIFYING → COMPLETED` evidence;
+3. RawArtifacts include both `HTML` and `MARKDOWN`;
+4. every RawArtifact is `REGISTERED`, has an HTTPS `*.uspto.gov` provenance URI and valid SHA-256 binary identity;
+5. persisted content-object SHA-256 and byte size exactly match the RawArtifact;
+6. the collector is `crawl4ai-web@1.1.0`;
+7. the terminal execution receipt references every finalized artifact receipt.
+
+The reference live proof on 2026-08-08 completed the bounded 8-page USPTO crawl and verified **16 RawArtifacts**: 8 HTML and 8 Markdown artifacts. This proves the real acquisition/evidence chain, not merely fixture behavior.
+
+## What to verify after any production run
 
 A successful Golden Source run must leave durable evidence in the control plane:
 
