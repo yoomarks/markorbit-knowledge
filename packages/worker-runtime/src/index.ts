@@ -36,6 +36,7 @@ export * from "./discovery-candidate-intelligence";
 export * from "./source-intelligence-evaluator";
 export * from "./source-intelligence-observation";
 export * from "./source-intelligence-cross-source-observation";
+export * from "./source-intelligence-review-queue";
 export * from "./http-website-discovery-provider";
 export * from "./core-intake-adapter";
 export * from "./intake-pipeline-orchestrator";

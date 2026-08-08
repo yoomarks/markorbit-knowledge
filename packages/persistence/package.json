@@ -12,6 +12,7 @@
     "./source-discovery": "./src/source-discovery-registry.ts",
     "./source-graph": "./src/source-graph-registry.ts",
     "./source-intelligence": "./src/source-intelligence-registry.ts",
+    "./source-intelligence-reviews": "./src/source-intelligence-review-registry.ts",
     "./execution-ledger": "./src/execution-ledger.ts",
     "./workers": "./src/safe-worker-registry.ts",
     "./worker-execution": "./src/controlled-worker-execution.ts",
