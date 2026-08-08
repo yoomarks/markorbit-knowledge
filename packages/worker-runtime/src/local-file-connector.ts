@@ -36,7 +36,7 @@ export class LocalFileConnectorExecutor implements ConnectorExecutor {
     const content = await readFile(filePath);
     const sha256 = createHash("sha256").update(content).digest("hex");
 
-    await this.ingestion.ingest({
+    const ingestionReceipt = await this.ingestion.ingest({
       artifactId: `${context.job.id}-${sha256.slice(0, 12)}`,
       sourceId: context.job.sourceId,
       contentHash: sha256,
@@ -54,6 +54,7 @@ export class LocalFileConnectorExecutor implements ConnectorExecutor {
       itemsObserved: 1,
       bytesPrepared: content.length,
       metadataOnly: false,
+      artifactReceiptIds: [ingestionReceipt.receiptId],
       summary: "Local file ingested as RawArtifact.",
     };
 
