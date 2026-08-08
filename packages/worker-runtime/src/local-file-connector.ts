@@ -11,6 +11,42 @@ export const LOCAL_FILE_EXECUTOR: ExecutionExecutor = {
   mode: "PRODUCTION",
 };
 
+export type LocalFileIntakeRequest = {
+  sourceId: string;
+  fileName: string;
+  content: string | Uint8Array;
+};
+
+export type LocalFileIntakeResult = {
+  sourceId: string;
+  artifactCandidates: Array<{
+    id: string;
+    fileName: string;
+    contentHash: string;
+    sizeBytes: number;
+  }>;
+};
+
+/** Lightweight local-ingest preparation boundary retained for callers that do
+ * not yet participate in the leased ConnectorExecutor lifecycle. */
+export class LocalFileConnector {
+  async ingest(request: LocalFileIntakeRequest): Promise<LocalFileIntakeResult> {
+    const bytes = typeof request.content === "string" ? Buffer.from(request.content) : request.content;
+    const contentHash = createHash("sha256").update(bytes).digest("hex");
+    return {
+      sourceId: request.sourceId,
+      artifactCandidates: [
+        {
+          id: `local-${contentHash.slice(0, 16)}`,
+          fileName: request.fileName,
+          contentHash,
+          sizeBytes: bytes.byteLength,
+        },
+      ],
+    };
+  }
+}
+
 export class LocalFileConnectorExecutor implements ConnectorExecutor {
   readonly executor = LOCAL_FILE_EXECUTOR;
 
