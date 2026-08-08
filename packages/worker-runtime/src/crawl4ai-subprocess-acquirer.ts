@@ -86,7 +86,7 @@ function safeEnvironment(): NodeJS.ProcessEnv {
     "PLAYWRIGHT_BROWSERS_PATH",
     "MARKORBIT_CRAWL4AI_EGRESS_PROXY",
   ] as const;
-  const env: NodeJS.ProcessEnv = {};
+  const env: NodeJS.ProcessEnv = { NODE_ENV: process.env.NODE_ENV };
   for (const key of allowed) {
     const value = process.env[key];
     if (value !== undefined) env[key] = value;
