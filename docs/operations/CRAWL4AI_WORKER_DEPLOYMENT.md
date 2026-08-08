@@ -39,7 +39,7 @@ pnpm --filter @markorbit/worker bootstrap:uspto
 
 The bootstrap is idempotent. It ensures:
 
-- `crawl4ai-web@1.1.0`, a production manifest that advertises only the currently implemented HTML/Markdown acquisition boundary;
+- `crawl4ai-web@1.1.0`, a production manifest that advertises only the implemented `WEB_CRAWL` path with `COLLECT`, `DEEP_CRAWL` and `RENDER_JAVASCRIPT` capabilities and HTML/Markdown output; discovery, preview and update-check capabilities are deliberately not declared yet;
 - `USPTO Trademarks — Golden Source` with `https://www.uspto.gov/trademarks` as its accepted official entrypoint;
 - a bounded manual CollectionPlan: depth 1, at most 8 pages, robots enabled, 12 requests/minute, HTML + Markdown only;
 - one compatible production Worker registration.
@@ -97,11 +97,13 @@ MARKORBIT_CRAWL4AI_EGRESS_PROXY
 
 Use `deploy/crawl4ai-worker/compose.example.yml` as the deployment baseline. The egress proxy or equivalent network policy must independently reject loopback, RFC1918/private networks, link-local ranges, cloud metadata endpoints and other non-public destinations. Application DNS/URL checks are defense in depth and cannot by themselves defeat DNS rebinding or malicious browser subresources.
 
-The container runs as a non-root user, drops Linux capabilities, uses a read-only root filesystem and a bounded writable `/tmp` for browser and acquisition scratch data.
+The container runs as a non-root user, drops Linux capabilities and uses a read-only root filesystem. Runtime `HOME`, XDG cache and temporary paths are redirected into the bounded writable `/tmp` tmpfs so browser/acquisition scratch state does not require writes to the image filesystem.
 
 ## Lease keepalive
 
 A production crawl can exceed the default JobLease duration. `ControlledCollectionWorkerRuntime` therefore renews the active lease and reports an active heartbeat while acquisition is in progress. The default keepalive interval is 30 seconds. A keepalive transport failure is logged by the Worker; it does not grant the Worker authority to rewrite lease or Job state. The control plane still decides expiry and reconciliation.
+
+The Worker also caps a single acquisition below the default maximum lease lifetime: 12 minutes by default and 14 minutes maximum. This prevents application execution from intentionally outliving the control plane's default 15-minute maximum lease window.
 
 ## What to verify after the first run
 
