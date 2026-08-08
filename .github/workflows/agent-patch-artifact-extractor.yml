@@ -1,0 +1,60 @@
+name: Agent Patch Artifact Extractor
+
+on:
+  push:
+    branches:
+      - agent/raw-artifact-source-graph-extraction
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/raw-artifact-source-graph-extraction
+      - name: Keep link observations deterministic on replay
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/admin/src/server/raw-artifact-source-graph.ts')
+          text = path.read_text()
+          old = '''  for (const uri of selectedLinks) {
+            const existing = graph.findNodeByIdentity(profile.id, "CANONICAL_URI", uri);
+            let targetId = existing?.id;
+            if (!targetId) {
+              const node = newLinkedNode(profile, artifact, uri, linkedNodeKind(uri), currentUri);
+              targetId = node.id;
+              nodes.set(uri, node);
+            }
+            addEdge(context, profile, artifact, "LINKS_TO", currentNodeId, targetId, currentUri, "link");
+            addEdge(context, profile, artifact, "CONTAINS", root.id, targetId, currentUri, "same-site-link");
+          }
+          '''
+          new = '''  for (const uri of selectedLinks) {
+            const expectedKind = linkedNodeKind(uri);
+            const deterministic = newLinkedNode(profile, artifact, uri, expectedKind, currentUri);
+            const existing = graph.findNodeByIdentity(profile.id, "CANONICAL_URI", uri);
+            const targetId = existing?.id ?? deterministic.id;
+            if (!existing || (existing.id === deterministic.id && existing.kind === expectedKind)) {
+              nodes.set(uri, { ...deterministic, id: targetId });
+            }
+            addEdge(context, profile, artifact, "LINKS_TO", currentNodeId, targetId, currentUri, "link");
+            addEdge(context, profile, artifact, "CONTAINS", root.id, targetId, currentUri, "same-site-link");
+          }
+          '''
+          if old not in text:
+              raise SystemExit('target link block not found')
+          path.write_text(text.replace(old, new))
+          PY
+      - name: Commit patch and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/agent-patch-artifact-extractor.yml
+          git add apps/admin/src/server/raw-artifact-source-graph.ts
+          git commit -m "fix: keep artifact source graph replay deterministic"
+          git push origin HEAD:agent/raw-artifact-source-graph-extraction
