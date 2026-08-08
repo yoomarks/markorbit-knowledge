@@ -1,0 +1,253 @@
+name: Source Intelligence D2.5 Calibration
+
+on:
+  pull_request:
+    paths:
+      - "config/source-intelligence-d2-5-cohort.json"
+      - "scripts/source-intelligence-d2-5-calibration.mjs"
+      - "packages/contracts/src/source-intelligence-v2.ts"
+      - "packages/worker-runtime/src/source-intelligence-evaluator.ts"
+      - "packages/worker-runtime/tests/source-intelligence-d2-5.test.ts"
+      - "apps/admin/src/server/source-intelligence-service.ts"
+      - "apps/admin/src/app/api/source-intelligence/route.ts"
+      - ".github/workflows/source-intelligence-d2-5-calibration.yml"
+  workflow_dispatch:
+    inputs:
+      value_limit:
+        description: Number of real sources to attempt for Source Value calibration
+        required: false
+        default: "12"
+      value_min_success:
+        description: Minimum successful Source Value sources
+        required: false
+        default: "8"
+      evidence_keys:
+        description: Comma-separated sources for bounded evidence progression
+        required: false
+        default: "uspto-trademarks,finnegan,inta"
+      evidence_min_success:
+        description: Minimum successful evidence-progressing sources
+        required: false
+        default: "2"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-intelligence-d2-5-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-value:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+      VALUE_LIMIT: ${{ inputs.value_limit || '12' }}
+      VALUE_MIN_SUCCESS: ${{ inputs.value_min_success || '8' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Configure isolated state
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-d2-5-value.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-d2-5-value-artifacts" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate D2.5 harness
+        run: |
+          node --check scripts/source-intelligence-d2-5-calibration.mjs
+          node -e 'const fs=require("node:fs"); const x=JSON.parse(fs.readFileSync("config/source-intelligence-d2-5-cohort.json","utf8")); if(x.version!=="1.0"||!Array.isArray(x.sources)||x.sources.length<10) process.exit(1)'
+
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin-value.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/admin-value.log"
+          exit 1
+
+      - name: Run wider real-source Source Value calibration
+        run: |
+          node scripts/source-intelligence-d2-5-calibration.mjs \
+            --mode value \
+            --base-url "$MARKORBIT_CONTROL_PLANE_URL" \
+            --manifest config/source-intelligence-d2-5-cohort.json \
+            --limit "$VALUE_LIMIT" \
+            --min-success "$VALUE_MIN_SUCCESS" \
+            --output "$RUNNER_TEMP/source-intelligence-d2-5-value.json"
+
+      - name: Verify dual-axis Source Value boundaries
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const report = JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP, 'source-intelligence-d2-5-value.json'), 'utf8'));
+          if (report.protocolVersion !== '2.0' || report.calibrationStage !== 'D2.5') throw new Error('Unexpected D2.5 report protocol');
+          if (report.calibrationMode !== 'DUAL_AXIS_REAL_SOURCE_VALUE') throw new Error('Unexpected Source Value calibration mode');
+          if (report.boundaries?.collectionAuthorized !== false || report.boundaries?.noAutomaticProductionScheduling !== true) {
+            throw new Error('Source Value calibration crossed an execution boundary');
+          }
+          const successful = report.results.filter((item) => item.status === 'SUCCESS');
+          const officials = successful.filter((item) => item.authorityLevel === 'PRIMARY_OFFICIAL');
+          if (successful.length < Number(process.env.VALUE_MIN_SUCCESS)) throw new Error('Insufficient successful real sources');
+          if (officials.length < 3) throw new Error('Insufficient primary-official anchors');
+          for (const item of successful) {
+            if (item.planStatusAfterAcceptance !== 'PAUSED') throw new Error(`${item.key} plan was not PAUSED`);
+            if (item.evidenceMaturity?.stage !== 'UNOBSERVED') throw new Error(`${item.key} was not UNOBSERVED before acquisition`);
+            if (item.scheduling?.policyStatus !== 'NOT_AUTHORIZED_UNCALIBRATED') throw new Error(`${item.key} scheduling boundary drift`);
+            if (item.boundaries?.authorityInferred !== false || item.boundaries?.legalTruthVerified !== false) {
+              throw new Error(`${item.key} governance boundary drift`);
+            }
+          }
+          for (const item of officials) {
+            if (item.sourceValuePriority?.band !== 'VERY_HIGH') throw new Error(`${item.key} primary official source was not VERY_HIGH while UNOBSERVED`);
+          }
+          process.stdout.write(`${JSON.stringify({ event: 'source-intelligence.d2-5.value.verified', summary: report.summary }, null, 2)}\n`);
+          NODE
+
+      - name: Stop local process
+        if: always()
+        run: |
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+
+      - name: Upload Source Value calibration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-intelligence-d2-5-value
+          path: |
+            ${{ runner.temp }}/source-intelligence-d2-5-value.json
+            ${{ runner.temp }}/admin-value.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  evidence-maturity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+      MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
+      EVIDENCE_KEYS: ${{ inputs.evidence_keys || 'uspto-trademarks,finnegan,inta' }}
+      EVIDENCE_MIN_SUCCESS: ${{ inputs.evidence_min_success || '2' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure isolated state
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-d2-5-evidence.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-d2-5-evidence-artifacts" >> "$GITHUB_ENV"
+          echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+
+      - name: Validate D2.5 harness
+        run: node --check scripts/source-intelligence-d2-5-calibration.mjs
+
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin-evidence.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/admin-evidence.log"
+          exit 1
+
+      - name: Run bounded Evidence Maturity progression
+        env:
+          NODE_ENV: test
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
+          MARKORBIT_CRAWL4AI_PYTHON: python
+        run: |
+          node scripts/source-intelligence-d2-5-calibration.mjs \
+            --mode evidence \
+            --base-url "$MARKORBIT_CONTROL_PLANE_URL" \
+            --manifest config/source-intelligence-d2-5-cohort.json \
+            --keys "$EVIDENCE_KEYS" \
+            --min-success "$EVIDENCE_MIN_SUCCESS" \
+            --timeout-ms 300000 \
+            --output "$RUNNER_TEMP/source-intelligence-d2-5-evidence.json"
+
+      - name: Verify maturity progression and independence
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const report = JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP, 'source-intelligence-d2-5-evidence.json'), 'utf8'));
+          if (report.calibrationMode !== 'DUAL_AXIS_BOUNDED_EVIDENCE_PROGRESSION') throw new Error('Unexpected Evidence Maturity calibration mode');
+          const b = report.boundaries || {};
+          if (!b.collectionAuthorized || !b.collectionOnlyAfterExplicitAuthorization || b.collectionMaxDepth !== 0 || b.collectionMaxItemsPerSource !== 1) {
+            throw new Error('Evidence calibration escaped bounded explicit authorization');
+          }
+          const successful = report.results.filter((item) => item.status === 'SUCCESS');
+          if (successful.length < Number(process.env.EVIDENCE_MIN_SUCCESS)) throw new Error('Insufficient evidence calibration successes');
+          for (const item of successful) {
+            if (item.connector !== 'crawl4ai-web@1.1.0') throw new Error(`${item.key} connector drift`);
+            if (item.beforeDualAxis?.evidenceMaturity?.stage !== 'UNOBSERVED') throw new Error(`${item.key} baseline was not UNOBSERVED`);
+            if (!item.invariants?.evidenceMaturityAdvanced) throw new Error(`${item.key} maturity did not advance`);
+            if (!item.invariants?.sourceSignalsStable) throw new Error(`${item.key} Source Value signals changed during bounded evidence-only calibration`);
+            if (!item.invariants?.sourceValueStable) throw new Error(`${item.key} Source Value changed during bounded evidence-only calibration`);
+            if (item.afterDualAxis?.scheduling?.policyStatus !== 'NOT_AUTHORIZED_UNCALIBRATED') throw new Error(`${item.key} scheduler policy was authorized`);
+            if (item.afterDualAxis?.observedAcquisitionCost?.score === null) throw new Error(`${item.key} acquisition cost was not separately observed`);
+            if (!item.artifacts?.kinds?.includes('HTML') || !item.artifacts?.kinds?.includes('MARKDOWN')) throw new Error(`${item.key} lacks dual RawArtifact evidence`);
+          }
+          process.stdout.write(`${JSON.stringify({ event: 'source-intelligence.d2-5.evidence.verified', summary: report.summary }, null, 2)}\n`);
+          NODE
+
+      - name: Stop local process
+        if: always()
+        run: |
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+
+      - name: Upload Evidence Maturity calibration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-intelligence-d2-5-evidence
+          path: |
+            ${{ runner.temp }}/source-intelligence-d2-5-evidence.json
+            ${{ runner.temp }}/admin-evidence.log
+          if-no-files-found: ignore
+          retention-days: 14
