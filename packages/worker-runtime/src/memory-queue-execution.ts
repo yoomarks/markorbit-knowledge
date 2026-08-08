@@ -1,15 +1,28 @@
-import type { Job } from "@markorbit/contracts";
-import type { QueueExecutionPort } from "./queue-execution-port";
+import type { QueueExecutionPort, QueueJob } from "./queue-execution-port";
 
 export class MemoryQueueExecution implements QueueExecutionPort {
-  private readonly queue: Job[] = [];
+  private readonly queue: QueueJob[] = [];
+  private readonly inFlight = new Map<string, QueueJob>();
 
-  async enqueue(job: Job): Promise<void> {
+  async enqueue(job: QueueJob): Promise<void> {
     this.queue.push(job);
   }
 
-  async dequeue(): Promise<Job | null> {
-    return this.queue.shift() ?? null;
+  async dequeue(): Promise<QueueJob | null> {
+    const job = this.queue.shift() ?? null;
+    if (job) this.inFlight.set(job.id, job);
+    return job;
+  }
+
+  async acknowledge(jobId: string): Promise<void> {
+    this.inFlight.delete(jobId);
+  }
+
+  async retry(jobId: string): Promise<void> {
+    const job = this.inFlight.get(jobId);
+    if (!job) return;
+    this.inFlight.delete(jobId);
+    this.queue.unshift(job);
   }
 
   size(): number {

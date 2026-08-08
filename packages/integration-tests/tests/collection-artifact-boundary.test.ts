@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CollectionRegistry } from "@markorbit/persistence";
+import { CollectionRegistry } from "@markorbit/persistence/collection-registry";
 
 describe("collection artifact boundary", () => {
   it("keeps collection run linked to artifact ingestion handoff", () => {
@@ -7,18 +7,17 @@ describe("collection artifact boundary", () => {
 
     const plan = registry.createPlan({
       planId: "plan_artifact_test",
-      sourceId: "src_artifact_test",
       targets: [],
-      status: "ACTIVE",
-    } as any);
+      createdAt: "2026-08-08T00:00:00Z",
+    });
 
     const run = registry.createRun({
       runId: "run_artifact_test",
       planId: plan.planId,
-      status: "PENDING",
-    } as any);
+      status: "created",
+    });
 
     expect(run.planId).toBe(plan.planId);
-    expect(run.status).toBe("PENDING");
+    expect(run.status).toBe("created");
   });
 });

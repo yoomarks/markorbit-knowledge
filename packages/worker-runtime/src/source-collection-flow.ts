@@ -1,13 +1,17 @@
-import type { SourceCandidate, SourceDiscoveryBatch, CollectionPlan } from "@markorbit/contracts";
+import type {
+  SourceCandidate,
+  SourceDiscoveryBatch,
+  CollectionRegistryPlan,
+} from "@markorbit/contracts";
 import { SourceDiscoveryRunner } from "./source-discovery-runner";
 
 export type CollectionPlanner = {
-  createPlan(candidate: SourceCandidate): Promise<CollectionPlan>;
+  createPlan(candidate: SourceCandidate): Promise<CollectionRegistryPlan>;
 };
 
 export type SourceCollectionResult = {
   candidates: SourceCandidate[];
-  plans: CollectionPlan[];
+  plans: CollectionRegistryPlan[];
 };
 
 export class SourceCollectionFlow {

@@ -1,12 +1,12 @@
 export type CollectionScheduleRequest = {
   collectionPlanId: string;
-  trigger: "MANUAL" | "SCHEDULED";
+  trigger?: "MANUAL" | "SCHEDULED";
   metadata?: Record<string, unknown>;
 };
 
 export type CollectionScheduleResult = {
   collectionRunId: string;
-  status: "QUEUED" | "STARTED";
+  status?: "QUEUED" | "STARTED";
 };
 
 /**

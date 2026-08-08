@@ -9,7 +9,7 @@ export class InMemorySourceCandidateRepository implements SourceCandidateReposit
   private readonly items = new Map<string, SourceCandidate>();
 
   save(candidate: SourceCandidate): SourceCandidate {
-    this.items.set(candidate.id, candidate);
+    this.items.set(candidate.candidateId, candidate);
     return candidate;
   }
 

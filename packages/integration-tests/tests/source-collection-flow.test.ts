@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CollectionRegistry } from "@markorbit/persistence";
+import { CollectionRegistry } from "@markorbit/persistence/collection-registry";
 import { SourceCollectionFlow, SourceDiscoveryRunner } from "@markorbit/worker-runtime";
 
 describe("source collection flow", () => {
@@ -8,21 +8,21 @@ describe("source collection flow", () => {
 
     const plan = registry.createPlan({
       planId: "plan_test",
-      sourceId: "src_test",
       targets: [],
-      status: "ACTIVE",
-    } as any);
+      createdAt: "2026-08-08T00:00:00Z",
+    });
 
     const updated = registry.addTarget("plan_test", {
       targetId: "target_test",
-      uri: "file:///fixture.txt",
-    } as any);
+      sourceId: "src_test",
+      locator: "file:///fixture.txt",
+    });
 
     const run = registry.createRun({
       runId: "run_test",
       planId: "plan_test",
-      status: "PENDING",
-    } as any);
+      status: "created",
+    });
 
     expect(plan.planId).toBe("plan_test");
     expect(updated.targets).toHaveLength(1);
@@ -32,19 +32,34 @@ describe("source collection flow", () => {
   it("connects discovery candidates to collection plans", async () => {
     const discovery = new SourceDiscoveryRunner({
       async discover() {
-        return [{ id: "candidate-1" }] as never;
+        return [
+          {
+            candidateId: "candidate-1",
+            locator: "https://example.test/trademarks",
+            discoveredAt: "2026-08-08T00:00:00Z",
+            status: "DISCOVERED" as const,
+          },
+        ];
       },
     });
 
     const flow = new SourceCollectionFlow(discovery, {
       async createPlan(item) {
-        return { id: `plan-${item.id}` } as never;
+        return {
+          planId: `plan-${item.candidateId}`,
+          targets: [],
+          createdAt: "2026-08-08T00:00:00Z",
+        };
       },
     });
 
-    const result = await flow.run({ id: "batch-1" } as never);
+    const result = await flow.run({
+      batchId: "batch-1",
+      seeds: [{ seedId: "seed-1", locator: "https://example.test/" }],
+      createdAt: "2026-08-08T00:00:00Z",
+    });
 
     expect(result.candidates).toHaveLength(1);
-    expect(result.plans[0]?.id).toBe("plan-candidate-1");
+    expect(result.plans[0]?.planId).toBe("plan-candidate-1");
   });
 });

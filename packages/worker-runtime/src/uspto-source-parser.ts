@@ -10,14 +10,17 @@ export type ParsedTrademarkRecord = {
   raw: unknown;
 };
 
-export class UsptoSourceParser implements SourceParserPort<ParsedTrademarkRecord> {
-  parse(input: unknown): ParsedTrademarkRecord {
-    const data = input as Record<string, unknown>;
+export class UsptoSourceParser implements SourceParserPort<unknown, ParsedTrademarkRecord> {
+  async parse(input: unknown): Promise<ParsedTrademarkRecord> {
+    const data =
+      typeof input === "object" && input !== null ? (input as Record<string, unknown>) : {};
 
     return {
       source: "USPTO",
-      applicationNumber: typeof data.applicationNumber === "string" ? data.applicationNumber : undefined,
-      registrationNumber: typeof data.registrationNumber === "string" ? data.registrationNumber : undefined,
+      applicationNumber:
+        typeof data.applicationNumber === "string" ? data.applicationNumber : undefined,
+      registrationNumber:
+        typeof data.registrationNumber === "string" ? data.registrationNumber : undefined,
       mark: typeof data.mark === "string" ? data.mark : undefined,
       owner: typeof data.owner === "string" ? data.owner : undefined,
       status: typeof data.status === "string" ? data.status : undefined,

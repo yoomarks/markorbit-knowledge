@@ -21,8 +21,6 @@ export class DefaultFailureRecoveryOrchestrator implements FailureRecoveryOrches
 
   async recover(context: FailureRecoveryContext): Promise<FailureRecoveryResult> {
     const decision = this.retryPolicy.decide(context.attempt);
-    return decision.retry
-      ? { action: "RETRY", decision }
-      : { action: "STOP", decision };
+    return decision.retry ? { action: "RETRY", decision } : { action: "STOP", decision };
   }
 }

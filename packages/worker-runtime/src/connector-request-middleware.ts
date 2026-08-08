@@ -20,9 +20,16 @@ export class DefaultConnectorRequestMiddleware implements ConnectorRequestMiddle
     private readonly rateLimit: RateLimitPolicyPort,
   ) {}
 
-  async prepare(request: ConnectorRequest, context: ConnectorRequestContext): Promise<ConnectorRequest> {
-    await this.rateLimit.acquire(context.connectorId);
-    const headers = await this.auth.headers(context.connectorId);
-    return { ...request, headers: { ...(request.headers ?? {}), ...headers } };
+  async prepare(
+    request: ConnectorRequest,
+    context: ConnectorRequestContext,
+  ): Promise<ConnectorRequest> {
+    void context;
+    await this.rateLimit.wait();
+    const authContext = await this.auth.getAuthContext();
+    return {
+      ...request,
+      headers: { ...(request.headers ?? {}), ...authContext.headers },
+    };
   }
 }

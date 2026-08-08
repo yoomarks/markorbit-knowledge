@@ -1,4 +1,8 @@
-import type { SourceConnectorPort, SourceFetchRequest, SourceFetchResult } from "./source-connector-port";
+import type {
+  SourceConnectorPort,
+  SourceFetchRequest,
+  SourceFetchResult,
+} from "./source-connector-port";
 
 /**
  * Basic HTTP source connector.

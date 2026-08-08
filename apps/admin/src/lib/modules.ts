@@ -17,77 +17,97 @@ import {
 
 export const modules = {
   dashboard: {
-    label: "总览",
-    description: "查看数据源、任务、文件、Worker 与 Vault 的整体运行状态。",
+    label: "Overview",
+    description: "查看发现、来源、待审核项目、采集与 Ready Package 的整体健康状态。",
+    icon: Gauge,
+  },
+  discovery: {
+    label: "Discovery",
+    description: "从少量 Seed 出发，发现值得审核的页面、文档和相关来源。",
     icon: Gauge,
   },
   sources: {
-    label: "数据源",
-    description: "统一登记、分类、筛选和操作网页、API、本地目录及其他来源。",
+    label: "Sources",
+    description: "用业务视角管理已接受的数据源、来源类型、国家和采集状态。",
     icon: Database,
   },
+  people: {
+    label: "People & Organizations",
+    description: "查看从来源中观察到的机构、专业人士及公开业务联系方式候选。",
+    icon: Boxes,
+  },
+  knowledge: {
+    label: "Knowledge",
+    description: "按文档、案例、公告、媒体和私有证据查看进入 Staging 的信息资产。",
+    icon: LibraryBig,
+  },
+  collection: {
+    label: "Collection",
+    description: "从运营视角查看正在采集、计划采集和失败待处理的工作。",
+    icon: Workflow,
+  },
+  packages: {
+    label: "Packages",
+    description: "查看通过验证并准备交付 MarkOrbit Core 的 Ready Package。",
+    icon: PackageCheck,
+  },
   jobs: {
-    label: "采集计划",
-    description: "管理采集策略、输出与调度意图，不代表已经创建或执行 Job。",
+    label: "Collection Plans",
+    description: "高级：管理 CollectionPlan 的策略、输出与调度意图。",
     icon: Workflow,
   },
   runs: {
-    label: "运行记录",
-    description: "查看手动派发的 CollectionRun、Job 快照和待 Worker 执行状态。",
+    label: "Execution Runs",
+    description: "高级：查看 CollectionRun、Job 快照和 Worker 执行状态。",
     icon: History,
   },
   artifacts: {
-    label: "文件与版本",
-    description: "查看不可变 Raw Artifact、重复状态、历史版本和内容差异。",
+    label: "Raw Artifacts",
+    description: "高级：查看不可变 RawArtifact、重复状态、版本和来源证据。",
     icon: FileStack,
   },
   staging: {
-    label: "Staging 文档",
-    description: "浏览由转换器生成、等待进入 Obsidian 加工的标准 Markdown。",
+    label: "Staging",
+    description: "高级：检查转换后的 Markdown、YAML 与 Provenance。",
     icon: LibraryBig,
   },
   workers: {
     label: "Workers",
-    description: "查看执行节点、能力、心跳、并发和任务分配状态。",
+    description: "高级：查看执行节点、能力、心跳、并发和任务分配状态。",
     icon: Boxes,
   },
   connectors: {
     label: "Connectors",
-    description: "管理可替换的采集 Provider、Manifest 和 Capability。",
+    description: "高级：管理采集 Provider、Manifest 和 Capability。",
     icon: Cable,
   },
   conversionRuns: {
-    label: "ConversionRuns",
-    description: "管理 PENDING ConversionRun ledger、Manual Dispatch 和取消边界。",
+    label: "Conversion Runs",
+    description: "高级：管理 ConversionRun ledger、Manual Dispatch 和取消边界。",
     icon: History,
   },
   converters: {
     label: "Converters",
-    description: "管理可替换的转换器 Manifest 和 Conversion Profile 意图。",
+    description: "高级：管理转换器 Manifest 和 Conversion Profile。",
     icon: FileCog,
   },
   vault: {
-    label: "Obsidian",
-    description: "管理 Vault 绑定、导入导出、格式校验、断链和同步冲突。",
+    label: "Obsidian / Vault",
+    description: "高级：管理 Vault 绑定、导入导出、格式校验和同步冲突。",
     icon: Archive,
   },
-  packages: {
-    label: "Ready Packages",
-    description: "构建并发布经过校验、可供 MarkOrbit Core 消费的 Package。",
-    icon: PackageCheck,
-  },
   errors: {
-    label: "错误中心",
+    label: "Errors",
     description: "集中处理 Connector、Worker、转换、存储和 Vault 错误。",
     icon: CircleAlert,
   },
   audit: {
-    label: "审计",
+    label: "Audit",
     description: "追踪关键操作、对象变化、Trace ID 与责任主体。",
     icon: ScrollText,
   },
   settings: {
-    label: "设置",
+    label: "Settings",
     description: "配置 Workspace、环境、策略和系统级默认值。",
     icon: Settings,
   },
@@ -95,19 +115,29 @@ export const modules = {
 
 export type ModuleKey = keyof typeof modules;
 
-export const moduleOrder: ModuleKey[] = [
+export const primaryModuleOrder: ModuleKey[] = [
   "dashboard",
+  "discovery",
   "sources",
+  "people",
+  "knowledge",
+  "collection",
+  "packages",
+];
+
+export const systemModuleOrder: ModuleKey[] = [
   "jobs",
   "runs",
   "artifacts",
   "staging",
   "workers",
   "connectors",
+  "conversionRuns",
   "converters",
   "vault",
-  "packages",
   "errors",
   "audit",
   "settings",
 ];
+
+export const moduleOrder: ModuleKey[] = [...primaryModuleOrder, ...systemModuleOrder];
