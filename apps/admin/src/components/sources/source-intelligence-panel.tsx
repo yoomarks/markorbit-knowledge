@@ -194,7 +194,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
                   </p>
                   <p className="mt-1 text-sm">来源本身的长期优先价值</p>
                 </div>
-                <span className="text-3xl font-semibold">{assessment.sourceValuePriority.score}</span>
+                <span className="text-3xl font-semibold">
+                  {assessment.sourceValuePriority.score}
+                </span>
               </div>
               <p className="mt-4 text-xs leading-5">
                 仅由来源类别相关性基线与显式 Authority 信号组成，不因当前是否已采集而降低。
@@ -213,7 +215,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
                   <p className="mt-1 text-sm">当前证据成熟度</p>
                 </div>
                 <span className="text-3xl font-semibold">
-                  {assessment.evidenceMaturity.score === null ? "—" : assessment.evidenceMaturity.score}
+                  {assessment.evidenceMaturity.score === null
+                    ? "—"
+                    : assessment.evidenceMaturity.score}
                 </span>
               </div>
               <p className="mt-4 text-xs leading-5">
@@ -228,9 +232,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
               <div>
                 <p className="font-semibold">双轴展示 ≠ 执行授权</p>
                 <p className="mt-2 leading-6">
-                  Scheduler 当前仍为 <strong>{assessment.scheduling.policyStatus}</strong>。系统不会从
-                  Source Value 推断法律权威，不会从 Evidence Maturity 推断法律真实性，也不会自动写入
-                  CollectionPlan、启动采集或授予 MGSN 资格。
+                  Scheduler 当前仍为 <strong>{assessment.scheduling.policyStatus}</strong>
+                  。系统不会从 Source Value 推断法律权威，不会从 Evidence Maturity
+                  推断法律真实性，也不会自动写入 CollectionPlan、启动采集或授予 MGSN 资格。
                 </p>
               </div>
             </div>
@@ -239,15 +243,24 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
           <div>
             <h3 className="text-sm font-semibold text-slate-950">Source Value 信号</h3>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <SignalCard title="来源类别相关性基线" signal={assessment.sourceValuePriority.signals.relevance} />
-              <SignalCard title="显式 Authority 信号" signal={assessment.sourceValuePriority.signals.authority} />
+              <SignalCard
+                title="来源类别相关性基线"
+                signal={assessment.sourceValuePriority.signals.relevance}
+              />
+              <SignalCard
+                title="显式 Authority 信号"
+                signal={assessment.sourceValuePriority.signals.authority}
+              />
             </div>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold text-slate-950">Evidence Maturity 信号</h3>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
-              <SignalCard title="Freshness" signal={assessment.evidenceMaturity.signals.freshness} />
+              <SignalCard
+                title="Freshness"
+                signal={assessment.evidenceMaturity.signals.freshness}
+              />
               <SignalCard
                 title="Evidenceability"
                 signal={assessment.evidenceMaturity.signals.evidenceability}
@@ -259,7 +272,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
           <div className="rounded-2xl border border-slate-200 p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-slate-950">Decision Context · Acquisition Cost</h3>
+                <h3 className="text-sm font-semibold text-slate-950">
+                  Decision Context · Acquisition Cost
+                </h3>
                 <p className="mt-1 text-xs text-slate-500">
                   采集成本保持独立，不进入 Source Value，也不决定 Evidence Maturity。
                 </p>

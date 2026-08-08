@@ -1,7 +1,4 @@
-import type {
-  EvidenceMaturityStage,
-  SourceValuePriorityBand,
-} from "@markorbit/contracts";
+import type { EvidenceMaturityStage, SourceValuePriorityBand } from "@markorbit/contracts";
 
 export type SourceValueFilter = "ALL" | "UNASSESSED" | SourceValuePriorityBand;
 export type EvidenceMaturityFilter = "ALL" | EvidenceMaturityStage;
@@ -63,10 +60,7 @@ export function matchesDualAxisFilters(
   if (!assessment) {
     return sourceValueFilter === "ALL" && evidenceMaturityFilter === "ALL";
   }
-  if (
-    sourceValueFilter !== "ALL" &&
-    assessment.sourceValuePriority.band !== sourceValueFilter
-  ) {
+  if (sourceValueFilter !== "ALL" && assessment.sourceValuePriority.band !== sourceValueFilter) {
     return false;
   }
   if (

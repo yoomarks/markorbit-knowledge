@@ -63,16 +63,13 @@ function evidenceMaturityClass(stage: EvidenceMaturityStage): string {
 
 function legacyRescanLabel(assessment: SourceIntelligenceAssessmentV2): string {
   const recommendation = assessment.compatibility.legacyRecommendedRescan;
-  return recommendation.mode === "DAYS"
-    ? `${recommendation.intervalDays} 天后复查`
-    : "人工决定";
+  return recommendation.mode === "DAYS" ? `${recommendation.intervalDays} 天后复查` : "人工决定";
 }
 
 async function readCohort(signal?: AbortSignal): Promise<CohortSnapshot> {
   const sourceResponse = await fetch(`/api/sources?limit=${COHORT_LIMIT}&offset=0`, { signal });
   const sourceBody = (await sourceResponse.json()) as
-    | SourceListResult
-    | { error?: { message?: string } };
+    SourceListResult | { error?: { message?: string } };
   if (!sourceResponse.ok) {
     const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
     throw new Error(message ?? "无法读取 Sources");
@@ -89,8 +86,7 @@ async function readCohort(signal?: AbortSignal): Promise<CohortSnapshot> {
     signal,
   });
   const intelligenceBody = (await intelligenceResponse.json()) as
-    | IntelligenceBatchResponse
-    | { error?: { message?: string } };
+    IntelligenceBatchResponse | { error?: { message?: string } };
   if (!intelligenceResponse.ok) {
     const message = "error" in intelligenceBody ? intelligenceBody.error?.message : undefined;
     throw new Error(message ?? "无法读取 Source Intelligence");
@@ -222,8 +218,9 @@ export function SourceIntelligenceWorkbench() {
           <div>
             <p className="font-semibold">D2.6 默认运营视图：Source Value × Evidence Maturity</p>
             <p className="mt-1 leading-6">
-              Source Value 回答“这个来源本身有多值得长期关注”，Evidence Maturity 回答“我们当前掌握的证据有多成熟”。
-              两者独立展示；Authority 仍来自显式人工分类，Scheduler 仍未授权。
+              Source Value 回答“这个来源本身有多值得长期关注”，Evidence Maturity
+              回答“我们当前掌握的证据有多成熟”。 两者独立展示；Authority
+              仍来自显式人工分类，Scheduler 仍未授权。
             </p>
           </div>
         </div>
@@ -397,7 +394,8 @@ export function SourceIntelligenceWorkbench() {
                     ) : null}
                   </td>
                   <td className="px-5 py-4 text-slate-700">
-                    {assessment?.decisionContext.observedAcquisitionCost.score === null || !assessment
+                    {assessment?.decisionContext.observedAcquisitionCost.score === null ||
+                    !assessment
                       ? "尚未观察"
                       : `${assessment.decisionContext.observedAcquisitionCost.score} / 100`}
                   </td>
