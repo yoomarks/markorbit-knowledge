@@ -2,15 +2,17 @@ import { describe, expect, it } from "vitest";
 import type { SourceDiscoveryBatch } from "@markorbit/contracts";
 import { openRegistryDatabase, SqliteSourceRepository } from "@markorbit/persistence";
 import { SqliteCollectionPlanRepository } from "@markorbit/persistence/collection-plans";
+import { SqliteConnectorRepository } from "@markorbit/persistence/connectors";
 import { SqliteSourceDiscoveryRepository } from "@markorbit/persistence/source-discovery";
 import { SqliteSourceGraphRepository } from "@markorbit/persistence/source-graph";
 import { DiscoveryWorkflowService } from "../discovery-service";
 
 describe("DiscoveryWorkflowService", () => {
-  it("promotes one governed website source and writes accepted pages into its Source Graph", async () => {
+  it("promotes one production-collectable website source and writes accepted pages into its Source Graph", async () => {
     const database = openRegistryDatabase(":memory:");
     const sources = new SqliteSourceRepository(database);
     const plans = new SqliteCollectionPlanRepository(database);
+    const connectors = new SqliteConnectorRepository(database);
     const discovery = new SqliteSourceDiscoveryRepository(database);
     const graph = new SqliteSourceGraphRepository(database);
     const service = new DiscoveryWorkflowService({
@@ -18,6 +20,7 @@ describe("DiscoveryWorkflowService", () => {
       graph,
       sources,
       plans,
+      connectors,
       provider: {
         async discover(batch: SourceDiscoveryBatch) {
           return [
@@ -70,6 +73,9 @@ describe("DiscoveryWorkflowService", () => {
       },
     });
 
+    const legacyConnectorBefore = connectors.get("crawl4ai-web", "1.0.0");
+    expect(legacyConnectorBefore).not.toBeNull();
+
     const run = await service.start({
       locator: "https://example.com/start-here",
       maxDepth: 1,
@@ -87,8 +93,13 @@ describe("DiscoveryWorkflowService", () => {
     expect(first.source?.authorityLevel).toBe("UNKNOWN");
     expect(first.source?.canonicalUri).toBe("https://example.com/");
     expect(first.source?.entrypoints[0]?.uri).toBe("https://example.com/start-here");
+    expect(first.source?.connector).toEqual({ connectorId: "crawl4ai-web", version: "1.1.0" });
     expect(first.plan?.status).toBe("PAUSED");
+    expect(first.plan?.output.artifactKinds).toEqual(["HTML", "MARKDOWN"]);
     expect(first.source?.defaultCollectionPlanId).toBe(first.plan?.id);
+    expect(connectors.get("crawl4ai-web", "1.1.0")?.manifest.status).toBe("ACTIVE");
+    expect(connectors.get("crawl4ai-web", "1.0.0")).toEqual(legacyConnectorBefore);
+    expect(connectors.get("crawl4ai-web", "1.0.0")?.boundSourceCount).toBe(0);
 
     const profile = first.source ? graph.getProfileBySourceId(first.source.id) : null;
     expect(profile?.canonicalOrigin).toBe("https://example.com/");

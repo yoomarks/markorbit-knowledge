@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { CollectionPlanRepository } from "@markorbit/persistence/collection-plans";
+import type { ConnectorRepository } from "@markorbit/persistence/connectors";
 import type {
   CandidateReviewDecision,
   SourceCandidateRecord,
@@ -29,7 +30,12 @@ import {
   writeDiscoveryBatchToSourceGraph,
 } from "./discovery-source-graph";
 import {
+  CRAWL4AI_PRODUCTION_CONNECTOR,
+  ensureCrawl4AiProductionConnector,
+} from "./crawl4ai-production-connector";
+import {
   getCollectionPlanRepository,
+  getConnectorRepository,
   getSourceDiscoveryRepository,
   getSourceGraphRepository,
   getSourceRepository,
@@ -80,6 +86,7 @@ type DiscoveryServiceDependencies = {
   graph: SourceGraphRepository;
   sources: SourceRepository;
   plans: CollectionPlanRepository;
+  connectors: ConnectorRepository;
   provider: SourceDiscoveryProvider;
   transaction: <T>(operation: () => T) => T;
 };
@@ -331,6 +338,7 @@ export class DiscoveryWorkflowService {
         source = existingSource;
         plan = planRecord.plan;
       } else {
+        const connector = ensureCrawl4AiProductionConnector(this.dependencies.connectors).manifest;
         const created = this.dependencies.sources.create({
           name: websiteSourceName(seed.locator),
           slug: websiteSourceSlug(seed.locator, seed.seedId),
@@ -341,8 +349,8 @@ export class DiscoveryWorkflowService {
           jurisdictions: ["GLOBAL"],
           languages: ["und"],
           connector: {
-            connectorId: "crawl4ai-web",
-            version: "1.0.0",
+            connectorId: connector.connectorId,
+            version: connector.version,
           },
           canonicalUri: origin,
           entrypoints: [{ uri: seed.locator, label: "Discovery seed" }],
@@ -375,11 +383,12 @@ export class DiscoveryWorkflowService {
             },
           },
           output: {
-            artifactKinds: ["HTML", "MARKDOWN", "JSON"],
+            artifactKinds: ["HTML", "MARKDOWN"],
           },
           extensions: {
             "x-markorbit-created-from-discovery": true,
             "x-markorbit-discovery-seed-id": seed.seedId,
+            "x-markorbit-production-connector": `${CRAWL4AI_PRODUCTION_CONNECTOR.connectorId}@${CRAWL4AI_PRODUCTION_CONNECTOR.version}`,
           },
         });
 
@@ -451,6 +460,7 @@ export function getDiscoveryWorkflowService(): DiscoveryWorkflowService {
       graph: getSourceGraphRepository(),
       sources: getSourceRepository(),
       plans: getCollectionPlanRepository(),
+      connectors: getConnectorRepository(),
       provider: new HttpWebsiteDiscoveryProvider(),
       transaction: withRegistryTransaction,
     });

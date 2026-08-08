@@ -90,6 +90,9 @@ async function workerContext(workerId: string): Promise<{ workspaceId: string }>
 }
 
 async function sourceId(workspaceId: string): Promise<string> {
+  const configured = process.env.MARKORBIT_SOURCE_ID?.trim();
+  if (configured) return configured;
+
   const body = await json(
     `/api/sources?workspaceId=${encodeURIComponent(workspaceId)}&q=${encodeURIComponent(SOURCE_SLUG)}&limit=100`,
   );
@@ -97,7 +100,9 @@ async function sourceId(workspaceId: string): Promise<string> {
     const source = record(item);
     if (source?.slug === SOURCE_SLUG) return string(source.id, "source.id");
   }
-  throw new Error("USPTO Golden Source not found; run bootstrap:uspto first");
+  throw new Error(
+    "USPTO Golden Source not found; run bootstrap:uspto first or set MARKORBIT_SOURCE_ID to an accepted Source",
+  );
 }
 
 async function ensureProfile(
