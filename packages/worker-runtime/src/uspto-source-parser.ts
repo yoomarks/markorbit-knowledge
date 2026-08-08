@@ -10,9 +10,10 @@ export type ParsedTrademarkRecord = {
   raw: unknown;
 };
 
-export class UsptoSourceParser implements SourceParserPort<ParsedTrademarkRecord> {
-  parse(input: unknown): ParsedTrademarkRecord {
-    const data = input as Record<string, unknown>;
+export class UsptoSourceParser implements SourceParserPort<unknown, ParsedTrademarkRecord> {
+  async parse(input: unknown): Promise<ParsedTrademarkRecord> {
+    const data =
+      typeof input === "object" && input !== null ? (input as Record<string, unknown>) : {};
 
     return {
       source: "USPTO",
