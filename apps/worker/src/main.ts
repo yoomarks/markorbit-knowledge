@@ -28,6 +28,7 @@ async function main(): Promise<void> {
   );
   const acquirer = new Crawl4AiSubprocessAcquirer({
     requireEgressProxy: config.requireEgressProxy,
+    maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
   });
   const runtime = new ControlledCollectionWorkerRuntime(client, acquirer, {
     runtimeVersion: config.runtimeVersion,
@@ -50,6 +51,7 @@ async function main(): Promise<void> {
     workerId: config.workerId,
     runtimeVersion: config.runtimeVersion,
     requireEgressProxy: config.requireEgressProxy,
+    maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
   });
 
   while (!stopping) {
