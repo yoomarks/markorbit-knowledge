@@ -547,6 +547,8 @@ export function isSourceGraphNode(value: unknown): value is SourceGraphNode {
         (value.lastVerifiedAt === undefined || isTimestamp(value.lastVerifiedAt))
       );
   }
+
+  return false;
 }
 
 export function isSourceGraphEdge(value: unknown): value is SourceGraphEdge {
