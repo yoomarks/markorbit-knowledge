@@ -78,26 +78,59 @@ function verifyArtifacts(payload: unknown): {
   for (const item of items) {
     const artifact = record(item.artifact);
     if (!artifact) throw new Error("RawArtifact list item is missing artifact");
+
+    const provenance = record(artifact.provenance);
+    const binaryHash = record(artifact.binaryHash);
+    const collector = record(artifact.collector);
+    const contentObject = record(item.contentObject);
+    if (!provenance || !binaryHash || !collector || !contentObject) {
+      throw new Error(`RawArtifact ${String(artifact.id)} is missing governed evidence metadata`);
+    }
+
     const kind = requiredString(artifact.artifactKind, "artifact.artifactKind");
-    const sourceUri = requiredString(artifact.sourceUri, "artifact.sourceUri");
-    const sha256 = requiredString(artifact.sha256, "artifact.sha256");
+    const sourceUri = requiredString(provenance.sourceUri, "artifact.provenance.sourceUri");
+    const hashAlgorithm = requiredString(binaryHash.algorithm, "artifact.binaryHash.algorithm");
+    const sha256 = requiredString(binaryHash.value, "artifact.binaryHash.value");
+    const contentSha256 = requiredString(contentObject.sha256, "contentObject.sha256");
     const sizeBytes = artifact.sizeBytes;
     const status = requiredString(artifact.status, "artifact.status");
+    const connectorId = requiredString(collector.connectorId, "artifact.collector.connectorId");
+    const connectorVersion = requiredString(
+      collector.connectorVersion,
+      "artifact.collector.connectorVersion",
+    );
+    const receiptId = requiredString(item.receiptId, "artifact.receiptId");
+
     const source = new URL(sourceUri);
-    if (source.protocol !== "https:" || !source.hostname.endsWith("uspto.gov")) {
+    if (
+      source.protocol !== "https:" ||
+      (source.hostname !== "uspto.gov" && !source.hostname.endsWith(".uspto.gov"))
+    ) {
       throw new Error(`Unexpected Golden Source provenance URI: ${sourceUri}`);
     }
-    if (!/^[a-f0-9]{64}$/.test(sha256)) {
-      throw new Error(`RawArtifact ${String(artifact.id)} has invalid SHA-256`);
+    if (hashAlgorithm !== "SHA-256" || !/^[a-f0-9]{64}$/.test(sha256)) {
+      throw new Error(`RawArtifact ${String(artifact.id)} has invalid SHA-256 evidence`);
+    }
+    if (contentSha256 !== sha256) {
+      throw new Error(`RawArtifact ${String(artifact.id)} hash differs from content object`);
     }
     if (typeof sizeBytes !== "number" || !Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) {
       throw new Error(`RawArtifact ${String(artifact.id)} has invalid sizeBytes`);
     }
-    if (status !== "VERIFIED") {
-      throw new Error(`RawArtifact ${String(artifact.id)} is not VERIFIED: ${status}`);
+    if (contentObject.sizeBytes !== sizeBytes) {
+      throw new Error(`RawArtifact ${String(artifact.id)} size differs from content object`);
     }
+    if (status !== "REGISTERED") {
+      throw new Error(`RawArtifact ${String(artifact.id)} is not REGISTERED: ${status}`);
+    }
+    if (connectorId !== "crawl4ai-web" || connectorVersion !== "1.1.0") {
+      throw new Error(
+        `RawArtifact ${String(artifact.id)} has unexpected collector ${connectorId}@${connectorVersion}`,
+      );
+    }
+
     kinds.add(kind);
-    receiptIds.push(requiredString(item.receiptId, "artifact.receiptId"));
+    receiptIds.push(receiptId);
   }
 
   for (const requiredKind of ["HTML", "MARKDOWN"]) {
