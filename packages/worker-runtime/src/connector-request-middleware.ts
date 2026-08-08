@@ -24,8 +24,12 @@ export class DefaultConnectorRequestMiddleware implements ConnectorRequestMiddle
     request: ConnectorRequest,
     context: ConnectorRequestContext,
   ): Promise<ConnectorRequest> {
-    await this.rateLimit.acquire(context.connectorId);
-    const headers = await this.auth.headers(context.connectorId);
-    return { ...request, headers: { ...(request.headers ?? {}), ...headers } };
+    void context;
+    await this.rateLimit.wait();
+    const authContext = await this.auth.getAuthContext();
+    return {
+      ...request,
+      headers: { ...(request.headers ?? {}), ...authContext.headers },
+    };
   }
 }
