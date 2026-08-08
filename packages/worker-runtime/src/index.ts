@@ -24,6 +24,7 @@ export * from "./worker-concurrency-controller";
 export * from "./worker-crash-recovery-manager";
 export * from "./worker-heartbeat-manager";
 export * from "./source-discovery-runner";
+export * from "./source-collection-flow";
 export * from "./http-website-discovery-provider";
 export * from "./core-intake-adapter";
 export * from "./intake-pipeline-orchestrator";
