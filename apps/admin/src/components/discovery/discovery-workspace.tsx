@@ -130,8 +130,30 @@ export function DiscoveryWorkspace() {
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let active = true;
+
+    fetch("/api/discovery", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(await readError(response));
+        return (await response.json()) as DiscoveryOverview;
+      })
+      .then((data) => {
+        if (!active) return;
+        setOverview(data);
+        setError(null);
+      })
+      .catch((loadError: unknown) => {
+        if (!active) return;
+        setError(loadError instanceof Error ? loadError.message : "Failed to load discovery state");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function startDiscovery() {
     setRunning(true);
