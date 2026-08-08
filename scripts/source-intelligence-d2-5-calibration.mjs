@@ -412,7 +412,8 @@ async function evidenceMode(options, rawPath) {
       successful: successful.length,
       failed: results.length - successful.length,
       stableSourceSignals: successful.filter((item) => item.invariants.sourceSignalsStable).length,
-      stableGraphRelevance: successful.filter((item) => item.invariants.graphRelevanceStable).length,
+      stableGraphRelevance: successful.filter((item) => item.invariants.graphRelevanceStable)
+        .length,
       stableSourceValue: successful.filter((item) => item.invariants.sourceValueStable).length,
       advancedEvidenceMaturity: successful.filter(
         (item) => item.invariants.evidenceMaturityAdvanced,
