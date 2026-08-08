@@ -163,7 +163,7 @@ async function ensurePlan(baseUrl: string, sourceId: string): Promise<string> {
       priority: "HIGH",
       policy: {
         includePatterns: ["https://www.uspto.gov/trademarks*"],
-        excludePatterns: ["*?*"],
+        excludePatterns: ["*[?]*"],
         maxDepth: 1,
         maxItems: 8,
         renderJavascript: false,
@@ -181,7 +181,8 @@ async function ensurePlan(baseUrl: string, sourceId: string): Promise<string> {
       },
     }),
   );
-  const plan = record(record(created.body)?.plan);
+  const createdRecord = record(record(created.body)?.plan);
+  const plan = record(createdRecord?.plan);
   return identifier(plan?.id, "plan.id");
 }
 
@@ -232,7 +233,10 @@ async function dispatch(baseUrl: string, planId: string): Promise<string> {
     {
       ...jsonPost({
         planId,
-        requestedBy: { actorType: "USER", actorId: "bootstrap-uspto-golden-source" },
+        requestedBy: {
+          actorType: "LOCAL_ADMIN",
+          actorId: "bootstrap-uspto-golden-source",
+        },
       }),
       headers: {
         "content-type": "application/json",
