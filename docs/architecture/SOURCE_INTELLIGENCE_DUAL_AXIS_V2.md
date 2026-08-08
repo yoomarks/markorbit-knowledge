@@ -10,11 +10,11 @@ The protocol is based on the D2.3 bounded before/after evidence calibration comp
 
 D2.3 collected one governed page from each of three real sources:
 
-| Source | Before | After | Delta |
-| --- | ---: | ---: | ---: |
-| USPTO Trademarks | 32 / D | 64 / B | +32 |
-| Finnegan | 30 / D | 60 / B | +30 |
-| INTA | 29 / D | 61 / B | +32 |
+| Source           | Before |  After | Delta |
+| ---------------- | -----: | -----: | ----: |
+| USPTO Trademarks | 32 / D | 64 / B |   +32 |
+| Finnegan         | 30 / D | 60 / B |   +30 |
+| INTA             | 29 / D | 61 / B |   +32 |
 
 All three sources changed from D to B after a single collection even though their Relevance and explicit Authority Signal did not change. The score movement came from Freshness, Evidenceability and Novelty.
 

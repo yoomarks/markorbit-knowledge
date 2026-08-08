@@ -285,9 +285,7 @@ export function evaluateSourceIntelligence(
   };
 }
 
-function weightedScore(
-  weighted: Array<[SourceIntelligenceDimension, number]>,
-): number | null {
+function weightedScore(weighted: Array<[SourceIntelligenceDimension, number]>): number | null {
   let total = 0;
   let weight = 0;
   for (const [signal, signalWeight] of weighted) {
@@ -314,9 +312,7 @@ function sourceValueConfidence(
   return "MEDIUM";
 }
 
-function evidenceMaturityStage(
-  legacy: SourceIntelligenceAssessment,
-): EvidenceMaturityStage {
+function evidenceMaturityStage(legacy: SourceIntelligenceAssessment): EvidenceMaturityStage {
   if (legacy.input.rawArtifactCount === 0) return "UNOBSERVED";
   const { FRESHNESS, EVIDENCEABILITY } = legacy.dimensions;
   if (
@@ -355,7 +351,9 @@ function evidenceMaturityConfidence(
 
 function dualAxisAssessmentId(legacy: SourceIntelligenceAssessment): string {
   return `si2_${createHash("sha256")
-    .update(`${SOURCE_INTELLIGENCE_DUAL_AXIS_PROTOCOL_VERSION}:${legacy.id}:${legacy.inputFingerprint}`)
+    .update(
+      `${SOURCE_INTELLIGENCE_DUAL_AXIS_PROTOCOL_VERSION}:${legacy.id}:${legacy.inputFingerprint}`,
+    )
     .digest("hex")
     .slice(0, 24)}`;
 }

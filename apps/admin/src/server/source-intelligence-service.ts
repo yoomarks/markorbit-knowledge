@@ -2,10 +2,7 @@ import { RegistryNotFoundError, type SourceRepository } from "@markorbit/persist
 import type { RawArtifactRepository, RawArtifactView } from "@markorbit/persistence/raw-artifacts";
 import type { SourceGraphRepository } from "@markorbit/persistence/source-graph";
 import type { SourceIntelligenceRepository } from "@markorbit/persistence/source-intelligence";
-import {
-  evaluateSourceIntelligence,
-  projectSourceIntelligenceV2,
-} from "@markorbit/worker-runtime";
+import { evaluateSourceIntelligence, projectSourceIntelligenceV2 } from "@markorbit/worker-runtime";
 import type {
   SourceGraphNode,
   SourceIntelligenceAssessment,

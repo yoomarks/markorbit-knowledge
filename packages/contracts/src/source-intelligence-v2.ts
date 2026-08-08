@@ -16,7 +16,10 @@ export const EVIDENCE_MATURITY_STAGES = [
   "CURRENT_TRACEABLE",
 ] as const;
 
-export const SOURCE_VALUE_SIGNAL_DIMENSIONS = ["RELEVANCE", "AUTHORITY_SIGNAL"] as const satisfies readonly SourceIntelligenceDimensionName[];
+export const SOURCE_VALUE_SIGNAL_DIMENSIONS = [
+  "RELEVANCE",
+  "AUTHORITY_SIGNAL",
+] as const satisfies readonly SourceIntelligenceDimensionName[];
 export const EVIDENCE_MATURITY_SIGNAL_DIMENSIONS = [
   "FRESHNESS",
   "EVIDENCEABILITY",
@@ -136,9 +139,12 @@ export function isSourceIntelligenceAssessmentV2(
   if (typeof value.id !== "string" || !/^si2_[a-f0-9]{24}$/.test(value.id)) return false;
   if (typeof value.workspaceId !== "string" || typeof value.sourceId !== "string") return false;
   if (value.profileId !== undefined && typeof value.profileId !== "string") return false;
-  if (typeof value.assessedAt !== "string" || !Number.isFinite(Date.parse(value.assessedAt))) return false;
-  if (typeof value.evaluator.name !== "string" || typeof value.evaluator.version !== "string") return false;
-  if (typeof value.inputFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(value.inputFingerprint)) return false;
+  if (typeof value.assessedAt !== "string" || !Number.isFinite(Date.parse(value.assessedAt)))
+    return false;
+  if (typeof value.evaluator.name !== "string" || typeof value.evaluator.version !== "string")
+    return false;
+  if (typeof value.inputFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(value.inputFingerprint))
+    return false;
 
   const sourceValue = value.sourceValuePriority;
   if (!isScore(sourceValue.score) || sourceValue.score === null) return false;
@@ -146,7 +152,9 @@ export function isSourceIntelligenceAssessmentV2(
     typeof sourceValue.band !== "string" ||
     !SOURCE_VALUE_PRIORITY_BANDS.includes(sourceValue.band as SourceValuePriorityBand) ||
     typeof sourceValue.confidence !== "string" ||
-    !SOURCE_INTELLIGENCE_CONFIDENCE.includes(sourceValue.confidence as SourceIntelligenceConfidence) ||
+    !SOURCE_INTELLIGENCE_CONFIDENCE.includes(
+      sourceValue.confidence as SourceIntelligenceConfidence,
+    ) ||
     !isRecord(sourceValue.signals) ||
     !isDimension(sourceValue.signals.relevance) ||
     !isDimension(sourceValue.signals.authority) ||
