@@ -10,6 +10,7 @@ export * from "./conversion-fixture";
 export * from "./controlled-fixture-pipeline";
 export * from "./runtime-runner";
 export * from "./artifact-ingestion-port";
+export * from "./artifact-backed-collection-executor";
 export * from "./local-file-connector";
 export * from "./source-connector-port";
 export * from "./http-source-connector";
@@ -69,7 +70,10 @@ export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   mode: "FIXTURE",
 };
 export type FixtureExecutionScenario =
-  "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
+  | "SUCCESS"
+  | "FAIL_AFTER_START"
+  | "FAIL_DURING_UPLOAD"
+  | "FAIL_DURING_VERIFY";
 export type ClaimedExecutionContext = { workerId: string; job: Job; lease: JobLease };
 export interface WorkerExecutionClient {
   start(context: ClaimedExecutionContext, executor: ExecutionExecutor, key: string): Promise<void>;
