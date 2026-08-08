@@ -13,6 +13,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_BATCH_SOURCE_IDS = 100;
+const DEFAULT_HISTORY_LIMIT = 20;
+const MAX_HISTORY_LIMIT = 100;
 type RequestedProtocolVersion = "1.0" | "2.0";
 
 function service(): SourceIntelligenceService {
@@ -29,6 +31,23 @@ function requestedProtocolVersion(value: unknown): RequestedProtocolVersion {
   if (!normalized || normalized === "1.0") return "1.0";
   if (normalized === "2.0") return "2.0";
   throw new RegistryValidationError("protocolVersion must be 1.0 or 2.0");
+}
+
+function includeHistoryValue(value: string | null): boolean {
+  if (value === null || value === "" || value === "false") return false;
+  if (value === "true") return true;
+  throw new RegistryValidationError("includeHistory must be true or false");
+}
+
+function historyLimitValue(value: string | null): number {
+  if (value === null || value === "") return DEFAULT_HISTORY_LIMIT;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > MAX_HISTORY_LIMIT) {
+    throw new RegistryValidationError(
+      `historyLimit must be an integer between 1 and ${MAX_HISTORY_LIMIT}`,
+    );
+  }
+  return parsed;
 }
 
 function sourceIdsValue(value: string): string[] {
@@ -55,9 +74,20 @@ export async function GET(request: Request) {
     const sourceId = url.searchParams.get("sourceId")?.trim();
     const sourceIds = url.searchParams.get("sourceIds")?.trim();
     const protocolVersion = requestedProtocolVersion(url.searchParams.get("protocolVersion"));
+    const includeHistory = includeHistoryValue(url.searchParams.get("includeHistory"));
+    const historyLimitRequested = url.searchParams.has("historyLimit");
     if (sourceId && sourceIds) {
       throw new RegistryValidationError("Use sourceId or sourceIds, not both");
     }
+    if (historyLimitRequested && !includeHistory) {
+      throw new RegistryValidationError("historyLimit requires includeHistory=true");
+    }
+    if (includeHistory && (protocolVersion !== "2.0" || !sourceId || sourceIds)) {
+      throw new RegistryValidationError(
+        "includeHistory requires one sourceId with protocolVersion=2.0",
+      );
+    }
+    const historyLimit = historyLimitValue(url.searchParams.get("historyLimit"));
     const intelligence = service();
     if (sourceId) {
       return NextResponse.json({
@@ -65,6 +95,7 @@ export async function GET(request: Request) {
           protocolVersion === "2.0"
             ? intelligence.latestV2(sourceId)
             : intelligence.latest(sourceId),
+        ...(includeHistory ? { history: intelligence.historyV2(sourceId, historyLimit) } : {}),
       });
     }
     if (sourceIds) {
