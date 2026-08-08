@@ -37,6 +37,7 @@ export interface SourceDiscoveryBatch {
 export interface SourceCandidate {
   candidateId: string;
   locator: string;
+  title?: string;
   discoveredAt: string;
   status: SourceCandidateStatus;
   discoveredFrom?: string;
