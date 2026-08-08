@@ -52,13 +52,21 @@ function median(values: number[]): number | null {
   const sorted = [...values].sort((left, right) => left - right);
   const middle = Math.floor(sorted.length / 2);
   const value =
-    sorted.length % 2 === 0 ? ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2 : sorted[middle];
+    sorted.length % 2 === 0
+      ? ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2
+      : sorted[middle];
   return value === undefined ? null : Math.round(value * 10) / 10;
 }
 
 function compareAttention(
-  left: SourceIntelligenceObservationReviewQueueItemV2 & { pendingAgeHours: number; occurrenceCount: number },
-  right: SourceIntelligenceObservationReviewQueueItemV2 & { pendingAgeHours: number; occurrenceCount: number },
+  left: SourceIntelligenceObservationReviewQueueItemV2 & {
+    pendingAgeHours: number;
+    occurrenceCount: number;
+  },
+  right: SourceIntelligenceObservationReviewQueueItemV2 & {
+    pendingAgeHours: number;
+    occurrenceCount: number;
+  },
 ): number {
   if (left.flag.severity !== right.flag.severity) {
     return left.flag.severity === "ATTENTION" ? -1 : 1;
@@ -120,7 +128,8 @@ export function buildSourceIntelligenceReviewQueueOperationalHealthV2(input: {
   const pendingWithAge = pendingItems.map((item) => ({
     ...item,
     pendingAgeHours: ageHours(item.flag.observedAt, input.generatedAt),
-    occurrenceCount: recurrenceMap.get(recurrenceKey(item.sourceId, item.flag.kind))?.dates.length ?? 1,
+    occurrenceCount:
+      recurrenceMap.get(recurrenceKey(item.sourceId, item.flag.kind))?.dates.length ?? 1,
   }));
   const oldestPending = [...pendingWithAge].sort(
     (left, right) => Date.parse(left.flag.observedAt) - Date.parse(right.flag.observedAt),
@@ -219,7 +228,9 @@ export function buildSourceIntelligenceReviewQueueOperationalHealthV2(input: {
       historicalOccurrenceCount: occurrences.length,
       recurringSourceFlagPairCount: recurrenceRows.length,
       maxOccurrenceCount:
-        recurrenceRows.length === 0 ? 0 : Math.max(...recurrenceRows.map((entry) => entry.occurrenceCount)),
+        recurrenceRows.length === 0
+          ? 0
+          : Math.max(...recurrenceRows.map((entry) => entry.occurrenceCount)),
       top: recurrenceRows.slice(0, RECURRENCE_LIMIT),
     },
     reviewActivity: {

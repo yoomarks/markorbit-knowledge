@@ -4,10 +4,7 @@ import type { SourceIntelligenceObservationReviewStatus } from "./source-intelli
 export const SOURCE_INTELLIGENCE_REVIEW_HEALTH_PROTOCOL_VERSION = "2.0" as const;
 
 export type SourceIntelligenceObservationReviewEventAction =
-  | "SNAPSHOT_BACKFILL"
-  | "DISPOSITION_CHANGED"
-  | "NOTE_UPDATED"
-  | "REVIEW_TOUCHED";
+  "SNAPSHOT_BACKFILL" | "DISPOSITION_CHANGED" | "NOTE_UPDATED" | "REVIEW_TOUCHED";
 
 export type SourceIntelligenceObservationReviewEventV2 = {
   eventId: string;

@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import {
-  Activity,
-  Clock3,
-  History,
-  RefreshCw,
-  Repeat2,
-  ShieldAlert,
-} from "lucide-react";
+import { Activity, Clock3, History, RefreshCw, Repeat2, ShieldAlert } from "lucide-react";
 import type {
   SourceDefinition,
   SourceIntelligenceObservationFlagKind,
@@ -47,8 +40,7 @@ function formatHours(value: number | null): string {
 async function readHealth(signal?: AbortSignal): Promise<HealthSnapshot> {
   const sourceResponse = await fetch(`/api/sources?limit=${COHORT_LIMIT}&offset=0`, { signal });
   const sourceBody = (await sourceResponse.json()) as
-    | SourceListResult
-    | { error?: { message?: string } };
+    SourceListResult | { error?: { message?: string } };
   if (!sourceResponse.ok) {
     const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
     throw new Error(message ?? "无法读取 Sources");
@@ -64,10 +56,9 @@ async function readHealth(signal?: AbortSignal): Promise<HealthSnapshot> {
     historyLimit: "50",
     reviewEventLimit: "200",
   });
-  const response = await fetch(
-    `/api/source-intelligence/reviews/health?${params.toString()}`,
-    { signal },
-  );
+  const response = await fetch(`/api/source-intelligence/reviews/health?${params.toString()}`, {
+    signal,
+  });
   const body = (await response.json()) as {
     health?: SourceIntelligenceReviewQueueOperationalHealthV2;
     error?: { message?: string };
@@ -124,11 +115,13 @@ export function SourceIntelligenceReviewHealth() {
         <div>
           <div className="flex items-center gap-2">
             <Activity size={19} className="text-violet-700" aria-hidden="true" />
-            <h2 className="font-semibold text-slate-950">D2.10 · Review Queue Operational Health</h2>
+            <h2 className="font-semibold text-slate-950">
+              D2.10 · Review Queue Operational Health
+            </h2>
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-            描述人工复核队列的积压年龄、重复 Observation、处理分布与 Source 级复核历史。这里的
-            age 是运营 backlog age，不是 Source Evidence freshness，也不会转化为 Scheduler priority。
+            描述人工复核队列的积压年龄、重复 Observation、处理分布与 Source 级复核历史。这里的 age
+            是运营 backlog age，不是 Source Evidence freshness，也不会转化为 Scheduler priority。
           </p>
         </div>
         <button
@@ -151,7 +144,9 @@ export function SourceIntelligenceReviewHealth() {
       {loading ? <div className="p-6 text-sm text-slate-500">正在计算队列运营健康状态…</div> : null}
 
       {!loading && !health ? (
-        <div className="p-6 text-sm text-slate-500">当前没有 Source 可用于计算复核队列健康状态。</div>
+        <div className="p-6 text-sm text-slate-500">
+          当前没有 Source 可用于计算复核队列健康状态。
+        </div>
       ) : null}
 
       {health ? (
@@ -193,10 +188,12 @@ export function SourceIntelligenceReviewHealth() {
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-xs font-medium text-slate-500">当前处理分布</p>
               <p className="mt-2 text-sm font-semibold text-slate-950">
-                {health.currentCounts.acknowledged} confirmed · {health.currentCounts.ignored} ignored
+                {health.currentCounts.acknowledged} confirmed · {health.currentCounts.ignored}{" "}
+                ignored
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                {health.reviewActivity.reopenedToPendingEvents} reopened · {health.reviewActivity.noteUpdateEvents} note updates
+                {health.reviewActivity.reopenedToPendingEvents} reopened ·{" "}
+                {health.reviewActivity.noteUpdateEvents} note updates
               </p>
             </div>
           </div>
@@ -242,7 +239,8 @@ export function SourceIntelligenceReviewHealth() {
               <div className="border-b border-amber-100 px-4 py-3">
                 <h3 className="text-sm font-semibold text-amber-950">Operator attention order</h3>
                 <p className="mt-1 text-xs text-amber-800">
-                  仅用于人工阅读顺序：ATTENTION severity → backlog age → occurrence count。不是自动优先级。
+                  仅用于人工阅读顺序：ATTENTION severity → backlog age → occurrence
+                  count。不是自动优先级。
                 </p>
               </div>
               <div className="divide-y divide-amber-100">
@@ -284,9 +282,12 @@ export function SourceIntelligenceReviewHealth() {
           {health.recurrence.top.length > 0 ? (
             <div className="rounded-xl border border-slate-200">
               <div className="border-b border-slate-200 px-4 py-3">
-                <h3 className="text-sm font-semibold text-slate-950">Recurring observation patterns</h3>
+                <h3 className="text-sm font-semibold text-slate-950">
+                  Recurring observation patterns
+                </h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  基于 distinct Evidence State history 重建历史 occurrence；重复本身不代表法律或质量异常。
+                  基于 distinct Evidence State history 重建历史
+                  occurrence；重复本身不代表法律或质量异常。
                 </p>
               </div>
               <div className="divide-y divide-slate-100">
@@ -332,7 +333,8 @@ export function SourceIntelligenceReviewHealth() {
                           {source ? source.name : event.sourceId} · {flagLabels[event.flagKind]}
                         </p>
                         <p className="mt-1 text-slate-500">
-                          {eventLabels[event.action]} · {event.previousStatus} → {event.status} · {event.reviewer}
+                          {eventLabels[event.action]} · {event.previousStatus} → {event.status} ·{" "}
+                          {event.reviewer}
                         </p>
                         {event.note ? <p className="mt-1 text-slate-500">{event.note}</p> : null}
                       </div>
