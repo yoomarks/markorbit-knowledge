@@ -28,7 +28,8 @@ export async function POST(request: Request, context: RouteContext) {
       id,
     );
 
-    let sourceGraphExtraction: Awaited<ReturnType<typeof extractRawArtifactIntoSourceGraph>> | DeferredExtraction;
+    let sourceGraphExtraction:
+      Awaited<ReturnType<typeof extractRawArtifactIntoSourceGraph>> | DeferredExtraction;
     try {
       sourceGraphExtraction = await extractRawArtifactIntoSourceGraph(
         result.artifact.artifact.id,

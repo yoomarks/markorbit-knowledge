@@ -173,12 +173,18 @@ function allowedHosts(profile: WebsiteSourceProfile): Set<string> {
 
 function inProfileScope(uri: string, profile: WebsiteSourceProfile): boolean {
   const normalized = normalizeHttpUri(uri);
-  return normalized !== null && allowedHosts(profile).has(new URL(normalized).hostname.toLowerCase());
+  return (
+    normalized !== null && allowedHosts(profile).has(new URL(normalized).hostname.toLowerCase())
+  );
 }
 
 function isWebsiteRoot(uri: string, profile: WebsiteSourceProfile): boolean {
   const origin = normalizeOrigin(uri);
-  return origin !== null && origin === normalizeOrigin(profile.canonicalOrigin) && new URL(uri).pathname === "/";
+  return (
+    origin !== null &&
+    origin === normalizeOrigin(profile.canonicalOrigin) &&
+    new URL(uri).pathname === "/"
+  );
 }
 
 function decodeHtmlEntities(value: string): string {
@@ -198,7 +204,9 @@ function compactText(value: string | undefined): string | undefined {
 
 function extractAttribute(tag: string, name: string): string | undefined {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = tag.match(new RegExp(`\\b${escaped}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"));
+  const match = tag.match(
+    new RegExp(`\\b${escaped}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"),
+  );
   return compactText(match?.[1] ?? match?.[2] ?? match?.[3]);
 }
 
@@ -224,12 +232,19 @@ function extractHtmlFacts(content: string, baseUri: string): HtmlFacts {
     const href = extractAttribute(tag, "href");
     if (!href) continue;
     if (/^mailto:/i.test(href)) {
-      const value = href.slice(href.indexOf(":") + 1).split("?")[0]?.trim().toLowerCase();
+      const value = href
+        .slice(href.indexOf(":") + 1)
+        .split("?")[0]
+        ?.trim()
+        .toLowerCase();
       if (value) contacts.push({ kind: "GENERAL_EMAIL", value, fragment: "html:mailto" });
       continue;
     }
     if (/^tel:/i.test(href)) {
-      const value = href.slice(href.indexOf(":") + 1).split("?")[0]?.trim();
+      const value = href
+        .slice(href.indexOf(":") + 1)
+        .split("?")[0]
+        ?.trim();
       if (value) contacts.push({ kind: "OFFICE_PHONE", value, fragment: "html:tel" });
       continue;
     }
@@ -238,7 +253,8 @@ function extractHtmlFacts(content: string, baseUri: string): HtmlFacts {
   }
 
   const jsonLd: unknown[] = [];
-  const scriptPattern = /<script\b[^>]*type\s*=\s*(?:"application\/ld\+json"|'application\/ld\+json'|application\/ld\+json)[^>]*>([\s\S]*?)<\/script\s*>/gi;
+  const scriptPattern =
+    /<script\b[^>]*type\s*=\s*(?:"application\/ld\+json"|'application\/ld\+json'|application\/ld\+json)[^>]*>([\s\S]*?)<\/script\s*>/gi;
   for (const match of content.matchAll(scriptPattern)) {
     const raw = match[1]?.trim();
     if (!raw || raw.length > 1_000_000) continue;
@@ -253,24 +269,33 @@ function extractHtmlFacts(content: string, baseUri: string): HtmlFacts {
 }
 
 function extractMarkdownFacts(content: string, baseUri: string): HtmlFacts {
-  const frontmatterTitle = content.match(/^---\s*[\r\n]+[\s\S]*?^title:\s*["']?(.+?)["']?\s*$[\s\S]*?^---\s*$/im)?.[1];
+  const frontmatterTitle = content.match(
+    /^---\s*[\r\n]+[\s\S]*?^title:\s*["']?(.+?)["']?\s*$[\s\S]*?^---\s*$/im,
+  )?.[1];
   const headingTitle = content.match(/^#\s+(.+?)\s*$/m)?.[1];
   const links: string[] = [];
   const contacts: HtmlFacts["contacts"] = [];
   const candidates = [
-    ...(content.matchAll(/!?(?:\[[^\]]*\])\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g)),
-    ...(content.matchAll(/<((?:https?:\/\/|mailto:|tel:)[^>]+)>/gi)),
+    ...content.matchAll(/!?(?:\[[^\]]*\])\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g),
+    ...content.matchAll(/<((?:https?:\/\/|mailto:|tel:)[^>]+)>/gi),
   ];
   for (const match of candidates) {
     const href = match[1]?.trim();
     if (!href) continue;
     if (/^mailto:/i.test(href)) {
-      const value = href.slice(href.indexOf(":") + 1).split("?")[0]?.trim().toLowerCase();
+      const value = href
+        .slice(href.indexOf(":") + 1)
+        .split("?")[0]
+        ?.trim()
+        .toLowerCase();
       if (value) contacts.push({ kind: "GENERAL_EMAIL", value, fragment: "markdown:mailto" });
       continue;
     }
     if (/^tel:/i.test(href)) {
-      const value = href.slice(href.indexOf(":") + 1).split("?")[0]?.trim();
+      const value = href
+        .slice(href.indexOf(":") + 1)
+        .split("?")[0]
+        ?.trim();
       if (value) contacts.push({ kind: "OFFICE_PHONE", value, fragment: "markdown:tel" });
       continue;
     }
@@ -289,7 +314,8 @@ function fileExtension(uri: string): string {
 
 function linkedNodeKind(uri: string): "PAGE" | "DOCUMENT" | "SITEMAP" {
   const pathname = new URL(uri).pathname.toLowerCase();
-  if (pathname.endsWith("sitemap.xml") || /(?:^|\/)sitemap[^/]*\.xml$/.test(pathname)) return "SITEMAP";
+  if (pathname.endsWith("sitemap.xml") || /(?:^|\/)sitemap[^/]*\.xml$/.test(pathname))
+    return "SITEMAP";
   return DOCUMENT_EXTENSIONS.has(fileExtension(uri)) ? "DOCUMENT" : "PAGE";
 }
 
@@ -308,7 +334,12 @@ function baseProvenance(
   };
 }
 
-function nodeIdFor(profile: WebsiteSourceProfile, kind: SourceGraphNode["kind"], identityKey: string, at: string): string {
+function nodeIdFor(
+  profile: WebsiteSourceProfile,
+  kind: SourceGraphNode["kind"],
+  identityKey: string,
+  at: string,
+): string {
   return stableGraphId("sgn", `${profile.id}|${kind}|${identityKey}`, at);
 }
 
@@ -320,7 +351,11 @@ function edgeIdFor(
   artifactId: string,
   at: string,
 ): string {
-  return stableGraphId("sge", `${profile.id}|${kind}|${subjectNodeId}|${objectNodeId}|${artifactId}`, at);
+  return stableGraphId(
+    "sge",
+    `${profile.id}|${kind}|${subjectNodeId}|${objectNodeId}|${artifactId}`,
+    at,
+  );
 }
 
 function sourceLocalKey(kind: string, value: string): string {
@@ -328,7 +363,7 @@ function sourceLocalKey(kind: string, value: string): string {
 }
 
 function normalizedEntityName(value: unknown): string | null {
-  return typeof value === "string" ? compactText(value) ?? null : null;
+  return typeof value === "string" ? (compactText(value) ?? null) : null;
 }
 
 function jsonObject(value: unknown): Record<string, unknown> | null {
@@ -347,9 +382,16 @@ function jsonTypes(value: Record<string, unknown>): string[] {
 function organizationType(types: string[]): SourceGraphOrganizationType {
   const lower = types.map((value) => value.toLowerCase());
   if (lower.some((value) => value.includes("government"))) return "AUTHORITY";
-  if (lower.some((value) => ["legalservice", "attorney", "lawfirm"].includes(value))) return "LAW_FIRM";
-  if (lower.some((value) => value.includes("association") || value.includes("ngo"))) return "ASSOCIATION";
-  if (lower.some((value) => ["corporation", "localbusiness", "professionalservice", "company"].includes(value))) return "COMPANY";
+  if (lower.some((value) => ["legalservice", "attorney", "lawfirm"].includes(value)))
+    return "LAW_FIRM";
+  if (lower.some((value) => value.includes("association") || value.includes("ngo")))
+    return "ASSOCIATION";
+  if (
+    lower.some((value) =>
+      ["corporation", "localbusiness", "professionalservice", "company"].includes(value),
+    )
+  )
+    return "COMPANY";
   return "OTHER";
 }
 
@@ -358,7 +400,15 @@ function isOrganization(types: string[]): boolean {
   return lower.some(
     (value) =>
       value.includes("organization") ||
-      ["corporation", "localbusiness", "professionalservice", "legalservice", "attorney", "lawfirm", "company"].includes(value),
+      [
+        "corporation",
+        "localbusiness",
+        "professionalservice",
+        "legalservice",
+        "attorney",
+        "lawfirm",
+        "company",
+      ].includes(value),
   );
 }
 
@@ -436,12 +486,21 @@ function addContact(
     context.contactCount += 1;
   }
   context.contactKeys.add(identityKey);
-  addEdge(context, profile, artifact, "HAS_CONTACT_POINT", ownerNodeId, nodeId, sourceUri, fragment);
+  addEdge(
+    context,
+    profile,
+    artifact,
+    "HAS_CONTACT_POINT",
+    ownerNodeId,
+    nodeId,
+    sourceUri,
+    fragment,
+  );
 }
 
 function explicitWebsiteUri(value: Record<string, unknown>, baseUri: string): string | undefined {
   const raw = typeof value.url === "string" ? value.url : undefined;
-  return raw ? normalizeHttpUri(raw, baseUri) ?? undefined : undefined;
+  return raw ? (normalizeHttpUri(raw, baseUri) ?? undefined) : undefined;
 }
 
 function addOrganization(
@@ -484,10 +543,30 @@ function addOrganization(
   });
   context.entityCount += 1;
   if (typeof value.email === "string") {
-    addContact(context, profile, artifact, nodeId, "BUSINESS_EMAIL", value.email, baseUri, "jsonld:email", maxContacts);
+    addContact(
+      context,
+      profile,
+      artifact,
+      nodeId,
+      "BUSINESS_EMAIL",
+      value.email,
+      baseUri,
+      "jsonld:email",
+      maxContacts,
+    );
   }
   if (typeof value.telephone === "string") {
-    addContact(context, profile, artifact, nodeId, "OFFICE_PHONE", value.telephone, baseUri, "jsonld:telephone", maxContacts);
+    addContact(
+      context,
+      profile,
+      artifact,
+      nodeId,
+      "OFFICE_PHONE",
+      value.telephone,
+      baseUri,
+      "jsonld:telephone",
+      maxContacts,
+    );
   }
   return nodeId;
 }
@@ -531,15 +610,53 @@ function addPerson(
   });
   context.entityCount += 1;
   if (typeof value.email === "string") {
-    addContact(context, profile, artifact, nodeId, "BUSINESS_EMAIL", value.email, baseUri, "jsonld:email", maxContacts);
+    addContact(
+      context,
+      profile,
+      artifact,
+      nodeId,
+      "BUSINESS_EMAIL",
+      value.email,
+      baseUri,
+      "jsonld:email",
+      maxContacts,
+    );
   }
   if (typeof value.telephone === "string") {
-    addContact(context, profile, artifact, nodeId, "OFFICE_PHONE", value.telephone, baseUri, "jsonld:telephone", maxContacts);
+    addContact(
+      context,
+      profile,
+      artifact,
+      nodeId,
+      "OFFICE_PHONE",
+      value.telephone,
+      baseUri,
+      "jsonld:telephone",
+      maxContacts,
+    );
   }
   const worksFor = jsonObject(value.worksFor);
   if (worksFor) {
-    const organizationId = addOrganization(context, profile, artifact, worksFor, baseUri, maxEntities, maxContacts);
-    if (organizationId) addEdge(context, profile, artifact, "WORKS_AT", nodeId, organizationId, baseUri, "jsonld:worksFor");
+    const organizationId = addOrganization(
+      context,
+      profile,
+      artifact,
+      worksFor,
+      baseUri,
+      maxEntities,
+      maxContacts,
+    );
+    if (organizationId)
+      addEdge(
+        context,
+        profile,
+        artifact,
+        "WORKS_AT",
+        nodeId,
+        organizationId,
+        baseUri,
+        "jsonld:worksFor",
+      );
   }
   return nodeId;
 }
@@ -580,18 +697,58 @@ function addJsonLdEntities(
         addOrganization(context, profile, artifact, object, baseUri, maxEntities, maxContacts);
       }
 
-      const authorValues = Array.isArray(object.author) ? object.author : object.author ? [object.author] : [];
+      const authorValues = Array.isArray(object.author)
+        ? object.author
+        : object.author
+          ? [object.author]
+          : [];
       for (const rawAuthor of authorValues) {
         const author = jsonObject(rawAuthor);
         if (!author) continue;
-        const authorId = addPerson(context, profile, artifact, author, baseUri, maxEntities, maxContacts);
-        if (authorId) addEdge(context, profile, artifact, "AUTHORED_BY", currentNodeId, authorId, baseUri, "jsonld:author");
+        const authorId = addPerson(
+          context,
+          profile,
+          artifact,
+          author,
+          baseUri,
+          maxEntities,
+          maxContacts,
+        );
+        if (authorId)
+          addEdge(
+            context,
+            profile,
+            artifact,
+            "AUTHORED_BY",
+            currentNodeId,
+            authorId,
+            baseUri,
+            "jsonld:author",
+          );
       }
 
       const publisher = jsonObject(object.publisher);
       if (publisher) {
-        const publisherId = addOrganization(context, profile, artifact, publisher, baseUri, maxEntities, maxContacts);
-        if (publisherId) addEdge(context, profile, artifact, "PUBLISHED_BY", currentNodeId, publisherId, baseUri, "jsonld:publisher");
+        const publisherId = addOrganization(
+          context,
+          profile,
+          artifact,
+          publisher,
+          baseUri,
+          maxEntities,
+          maxContacts,
+        );
+        if (publisherId)
+          addEdge(
+            context,
+            profile,
+            artifact,
+            "PUBLISHED_BY",
+            currentNodeId,
+            publisherId,
+            baseUri,
+            "jsonld:publisher",
+          );
       }
     });
   }
@@ -640,7 +797,9 @@ export function buildRawArtifactSourceGraphBatch(
   options: RawArtifactSourceGraphOptions = {},
 ): RawArtifactSourceGraphBuild {
   if (artifact.sourceId !== profile.sourceId || artifact.workspaceId !== profile.workspaceId) {
-    throw new RegistryValidationError("RawArtifact and WebsiteSourceProfile must share exact source scope");
+    throw new RegistryValidationError(
+      "RawArtifact and WebsiteSourceProfile must share exact source scope",
+    );
   }
   const suppliedUri = artifact.canonicalUri ?? artifact.provenance.sourceUri;
   const initialUri = normalizeHttpUri(suppliedUri);
@@ -648,8 +807,14 @@ export function buildRawArtifactSourceGraphBatch(
     throw new RegistryValidationError("RawArtifact URI is outside its WebsiteSourceProfile scope");
   }
 
-  const facts = artifact.artifactKind === "HTML" ? extractHtmlFacts(content, initialUri) : extractMarkdownFacts(content, initialUri);
-  const candidateCanonical = facts.canonicalUri && inProfileScope(facts.canonicalUri, profile) ? facts.canonicalUri : initialUri;
+  const facts =
+    artifact.artifactKind === "HTML"
+      ? extractHtmlFacts(content, initialUri)
+      : extractMarkdownFacts(content, initialUri);
+  const candidateCanonical =
+    facts.canonicalUri && inProfileScope(facts.canonicalUri, profile)
+      ? facts.canonicalUri
+      : initialUri;
   const currentUri = normalizeHttpUri(candidateCanonical) ?? initialUri;
   const maxLinks = options.maxLinks ?? DEFAULT_MAX_LINKS;
   const maxEntities = options.maxEntities ?? DEFAULT_MAX_ENTITIES;
@@ -657,10 +822,19 @@ export function buildRawArtifactSourceGraphBatch(
   const nodes = new Map<string, SourceGraphNode>();
   const edges = new Map<string, SourceGraphEdge>();
   const contactKeys = new Set<string>();
-  const context: EntityContext = { nodes, edges, contactKeys, entityCount: 0, contactCount: 0, truncated: false };
+  const context: EntityContext = {
+    nodes,
+    edges,
+    contactKeys,
+    entityCount: 0,
+    contactCount: 0,
+    truncated: false,
+  };
   const root = graph.getNode(profile.rootNodeId);
   if (!root || root.kind !== "WEBSITE") {
-    throw new RegistryValidationError(`WebsiteSourceProfile ${profile.id} has no valid WEBSITE root`);
+    throw new RegistryValidationError(
+      `WebsiteSourceProfile ${profile.id} has no valid WEBSITE root`,
+    );
   }
 
   let currentNodeId = root.id;
@@ -730,35 +904,70 @@ export function buildRawArtifactSourceGraphBatch(
     addEdge(context, profile, artifact, "CONTAINS", root.id, currentNodeId, currentUri, "document");
   }
 
-  const uniqueLinks = [...new Set(facts.links.map((uri) => normalizeHttpUri(uri)).filter((uri): uri is string => uri !== null))].filter(
-    (uri) => inProfileScope(uri, profile) && uri !== currentUri,
-  );
+  const uniqueLinks = [
+    ...new Set(
+      facts.links.map((uri) => normalizeHttpUri(uri)).filter((uri): uri is string => uri !== null),
+    ),
+  ].filter((uri) => inProfileScope(uri, profile) && uri !== currentUri);
   if (uniqueLinks.length > maxLinks) context.truncated = true;
   const selectedLinks = uniqueLinks.slice(0, maxLinks);
   for (const uri of selectedLinks) {
-  const expectedKind = linkedNodeKind(uri);
-  const deterministic = newLinkedNode(profile, artifact, uri, expectedKind, currentUri);
-  const existing = graph.findNodeByIdentity(profile.id, "CANONICAL_URI", uri);
-  const targetId = existing?.id ?? deterministic.id;
-  if (!existing || (existing.id === deterministic.id && existing.kind === expectedKind)) {
-    nodes.set(uri, { ...deterministic, id: targetId });
+    const expectedKind = linkedNodeKind(uri);
+    const deterministic = newLinkedNode(profile, artifact, uri, expectedKind, currentUri);
+    const existing = graph.findNodeByIdentity(profile.id, "CANONICAL_URI", uri);
+    const targetId = existing?.id ?? deterministic.id;
+    if (!existing || (existing.id === deterministic.id && existing.kind === expectedKind)) {
+      nodes.set(uri, { ...deterministic, id: targetId });
+    }
+    addEdge(context, profile, artifact, "LINKS_TO", currentNodeId, targetId, currentUri, "link");
+    addEdge(
+      context,
+      profile,
+      artifact,
+      "CONTAINS",
+      root.id,
+      targetId,
+      currentUri,
+      "same-site-link",
+    );
   }
-  addEdge(context, profile, artifact, "LINKS_TO", currentNodeId, targetId, currentUri, "link");
-  addEdge(context, profile, artifact, "CONTAINS", root.id, targetId, currentUri, "same-site-link");
-}
 
   const uniqueAnchorContacts = new Map<string, HtmlFacts["contacts"][number]>();
-  for (const contact of facts.contacts) uniqueAnchorContacts.set(`${contact.kind}|${contact.value.toLowerCase()}`, contact);
+  for (const contact of facts.contacts)
+    uniqueAnchorContacts.set(`${contact.kind}|${contact.value.toLowerCase()}`, contact);
   for (const contact of uniqueAnchorContacts.values()) {
-    addContact(context, profile, artifact, root.id, contact.kind, contact.value, currentUri, contact.fragment, maxContacts);
+    addContact(
+      context,
+      profile,
+      artifact,
+      root.id,
+      contact.kind,
+      contact.value,
+      currentUri,
+      contact.fragment,
+      maxContacts,
+    );
   }
 
-  addJsonLdEntities(context, profile, artifact, facts.jsonLd, currentNodeId, currentUri, maxEntities, maxContacts);
+  addJsonLdEntities(
+    context,
+    profile,
+    artifact,
+    facts.jsonLd,
+    currentNodeId,
+    currentUri,
+    maxEntities,
+    maxContacts,
+  );
 
   const batch: SourceGraphObservationBatch = {
     protocolVersion: SOURCE_GRAPH_PROTOCOL_VERSION,
     objectType: "SOURCE_GRAPH_OBSERVATION_BATCH",
-    id: stableGraphId("sgb", `${artifact.id}|${EXTRACTOR_NAME}|${EXTRACTOR_VERSION}`, artifact.capturedAt),
+    id: stableGraphId(
+      "sgb",
+      `${artifact.id}|${EXTRACTOR_NAME}|${EXTRACTOR_VERSION}`,
+      artifact.capturedAt,
+    ),
     workspaceId: profile.workspaceId,
     sourceId: profile.sourceId,
     profileId: profile.id,
@@ -797,28 +1006,58 @@ export async function extractRawArtifactIntoSourceGraph(
   if (!view) throw new RegistryValidationError(`RawArtifact ${artifactId} was not found`);
   const artifact = view.artifact;
   if (artifact.artifactKind !== "HTML" && artifact.artifactKind !== "MARKDOWN") {
-    return { status: "SKIPPED", artifactId, sourceId: artifact.sourceId, reason: "UNSUPPORTED_ARTIFACT_KIND" };
+    return {
+      status: "SKIPPED",
+      artifactId,
+      sourceId: artifact.sourceId,
+      reason: "UNSUPPORTED_ARTIFACT_KIND",
+    };
   }
   const profile = graph.getProfileBySourceId(artifact.sourceId);
-  if (!profile) return { status: "SKIPPED", artifactId, sourceId: artifact.sourceId, reason: "NO_SOURCE_GRAPH_PROFILE" };
+  if (!profile)
+    return {
+      status: "SKIPPED",
+      artifactId,
+      sourceId: artifact.sourceId,
+      reason: "NO_SOURCE_GRAPH_PROFILE",
+    };
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
-  if (artifact.sizeBytes > maxBytes) return { status: "SKIPPED", artifactId, sourceId: artifact.sourceId, reason: "ARTIFACT_TOO_LARGE" };
+  if (artifact.sizeBytes > maxBytes)
+    return {
+      status: "SKIPPED",
+      artifactId,
+      sourceId: artifact.sourceId,
+      reason: "ARTIFACT_TOO_LARGE",
+    };
   const sourceUri = normalizeHttpUri(artifact.canonicalUri ?? artifact.provenance.sourceUri);
   if (!sourceUri || !inProfileScope(sourceUri, profile)) {
-    return { status: "SKIPPED", artifactId, sourceId: artifact.sourceId, reason: "OUTSIDE_SOURCE_SCOPE" };
+    return {
+      status: "SKIPPED",
+      artifactId,
+      sourceId: artifact.sourceId,
+      reason: "OUTSIDE_SOURCE_SCOPE",
+    };
   }
 
   const contentLocation = artifacts.contentPath(artifactId);
   const bytes = await readFile(contentLocation.path);
-  if (bytes.byteLength !== artifact.sizeBytes || bytes.byteLength !== view.contentObject.sizeBytes) {
-    throw new RegistryValidationError(`RawArtifact ${artifactId} byte size no longer matches immutable evidence`);
+  if (
+    bytes.byteLength !== artifact.sizeBytes ||
+    bytes.byteLength !== view.contentObject.sizeBytes
+  ) {
+    throw new RegistryValidationError(
+      `RawArtifact ${artifactId} byte size no longer matches immutable evidence`,
+    );
   }
   const digest = sha256Hex(bytes);
   if (digest !== artifact.binaryHash.value || digest !== view.contentObject.sha256) {
-    throw new RegistryValidationError(`RawArtifact ${artifactId} SHA-256 no longer matches immutable evidence`);
+    throw new RegistryValidationError(
+      `RawArtifact ${artifactId} SHA-256 no longer matches immutable evidence`,
+    );
   }
   const content = bytes.toString("utf8");
-  if (!content.trim()) return { status: "SKIPPED", artifactId, sourceId: artifact.sourceId, reason: "EMPTY_CONTENT" };
+  if (!content.trim())
+    return { status: "SKIPPED", artifactId, sourceId: artifact.sourceId, reason: "EMPTY_CONTENT" };
 
   const built = buildRawArtifactSourceGraphBatch(artifact, profile, content, graph, options);
   const ingest = graph.ingestObservationBatch(built.batch);
