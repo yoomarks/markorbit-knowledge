@@ -25,6 +25,9 @@ const SECOND_BATCH_ID = "sgb_01ARZ3NDEKTSV4RRFFQ69G5FAW";
 const T0 = "2026-08-08T00:00:00Z";
 const T1 = "2026-08-08T01:00:00Z";
 
+type WebsiteNode = Extract<SourceGraphNode, { kind: "WEBSITE" }>;
+type PageNode = Extract<SourceGraphNode, { kind: "PAGE" }>;
+
 function provenance(sourceUri: string, observedAt = T0) {
   return {
     kind: "DISCOVERY" as const,
@@ -52,7 +55,7 @@ function profile(sourceId = SOURCE_ID): WebsiteSourceProfile {
   };
 }
 
-function root(sourceId = SOURCE_ID): SourceGraphNode {
+function root(sourceId = SOURCE_ID): WebsiteNode {
   return {
     protocolVersion: SOURCE_GRAPH_PROTOCOL_VERSION,
     objectType: "SOURCE_GRAPH_NODE",
@@ -73,7 +76,7 @@ function root(sourceId = SOURCE_ID): SourceGraphNode {
   };
 }
 
-function page(id = PAGE_ID, observedAt = T0): SourceGraphNode {
+function page(id = PAGE_ID, observedAt = T0): PageNode {
   return {
     protocolVersion: SOURCE_GRAPH_PROTOCOL_VERSION,
     objectType: "SOURCE_GRAPH_NODE",
