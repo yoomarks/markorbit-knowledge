@@ -129,8 +129,8 @@ describe("buildSourceIntelligenceCrossSourceObservationSummaryV2", () => {
     expect(summary.flags.map((flag) => flag.kind)).toEqual([
       "EVIDENCE_MATURITY_REGRESSION",
       "HIGH_VALUE_UNOBSERVED",
-      "SOURCE_VALUE_BAND_CHANGED",
       "ACQUISITION_COST_INCREASED",
+      "SOURCE_VALUE_BAND_CHANGED",
     ]);
     expect(summary.boundaries.authorityInferred).toBe(false);
     expect(summary.boundaries.legalTruthVerified).toBe(false);
