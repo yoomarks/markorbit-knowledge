@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import type { DatabaseSync } from "node:sqlite";
 import {
   RegistryValidationError,
   SqliteSourceRepository,
@@ -34,13 +35,19 @@ import {
   type RawArtifactRepository,
 } from "@markorbit/persistence/raw-artifacts";
 import {
+  SqliteSourceDiscoveryRepository,
+  type SourceDiscoveryRepository,
+} from "@markorbit/persistence/source-discovery";
+import {
   SqliteWorkerRegistryRepository,
   type WorkerRegistryRepository,
 } from "@markorbit/persistence/workers";
 
 const globalRegistry = globalThis as typeof globalThis & {
   markorbitRegistries?: {
+    database: DatabaseSync;
     sources: SourceRepository;
+    discovery: SourceDiscoveryRepository;
     connectors: ConnectorRepository;
     plans: CollectionPlanRepository;
     runs: ExecutionLedgerRepository;
@@ -81,7 +88,9 @@ function getRegistries() {
     const databasePath = process.env.MARKORBIT_KNOWLEDGE_DB_PATH ?? defaultDatabasePath();
     const database = openRegistryDatabase(databasePath);
     globalRegistry.markorbitRegistries = {
+      database,
       sources: new SqliteSourceRepository(database),
+      discovery: new SqliteSourceDiscoveryRepository(database),
       connectors: new SqliteConnectorRepository(database),
       plans: new SqliteCollectionPlanRepository(database),
       runs: new SqliteExecutionLedgerRepository(database),
@@ -104,8 +113,29 @@ function getRegistries() {
   return globalRegistry.markorbitRegistries;
 }
 
+export function getRegistryDatabase(): DatabaseSync {
+  return getRegistries().database;
+}
+
+export function withRegistryTransaction<T>(operation: () => T): T {
+  const database = getRegistryDatabase();
+  database.exec("BEGIN IMMEDIATE;");
+  try {
+    const result = operation();
+    database.exec("COMMIT;");
+    return result;
+  } catch (error) {
+    database.exec("ROLLBACK;");
+    throw error;
+  }
+}
+
 export function getSourceRepository(): SourceRepository {
   return getRegistries().sources;
+}
+
+export function getSourceDiscoveryRepository(): SourceDiscoveryRepository {
+  return getRegistries().discovery;
 }
 
 export function getConnectorRepository(): ConnectorRepository {
