@@ -1,17 +1,29 @@
 import { createHash } from "node:crypto";
 import type {
   AuthorityLevel,
+  EvidenceMaturityStage,
   SourceCategory,
   SourceIntelligenceAssessment,
+  SourceIntelligenceAssessmentV2,
+  SourceIntelligenceConfidence,
   SourceIntelligenceDimension,
   SourceIntelligenceInputSnapshot,
   SourceIntelligenceTier,
+  SourceValuePriorityBand,
 } from "@markorbit/contracts";
-import { SOURCE_INTELLIGENCE_PROTOCOL_VERSION } from "@markorbit/contracts";
+import {
+  SOURCE_INTELLIGENCE_DUAL_AXIS_PROTOCOL_VERSION,
+  SOURCE_INTELLIGENCE_PROTOCOL_VERSION,
+} from "@markorbit/contracts";
 
 export const SOURCE_INTELLIGENCE_EVALUATOR = {
   name: "markorbit-source-intelligence",
   version: "1.0.0",
+} as const;
+
+export const SOURCE_INTELLIGENCE_DUAL_AXIS_EVALUATOR = {
+  name: "markorbit-source-intelligence-dual-axis",
+  version: "2.0.0",
 } as const;
 
 export type SourceIntelligenceEvaluationInput = {
@@ -269,6 +281,168 @@ export function evaluateSourceIntelligence(
       legalTruthVerified: false,
       authorityInferred: false,
       autoScheduleApplied: false,
+    },
+  };
+}
+
+function weightedScore(
+  weighted: Array<[SourceIntelligenceDimension, number]>,
+): number | null {
+  let total = 0;
+  let weight = 0;
+  for (const [signal, signalWeight] of weighted) {
+    if (signal.score === null) continue;
+    total += signal.score * signalWeight;
+    weight += signalWeight;
+  }
+  return weight === 0 ? null : clamp(total / weight);
+}
+
+function sourceValueBand(score: number): SourceValuePriorityBand {
+  if (score >= 80) return "VERY_HIGH";
+  if (score >= 60) return "HIGH";
+  if (score >= 40) return "MEDIUM";
+  return "LOW";
+}
+
+function sourceValueConfidence(
+  relevance: SourceIntelligenceDimension,
+  authority: SourceIntelligenceDimension,
+): SourceIntelligenceConfidence {
+  if (authority.score === null) return "LOW";
+  if (relevance.confidence === "HIGH" && authority.confidence === "HIGH") return "HIGH";
+  return "MEDIUM";
+}
+
+function evidenceMaturityStage(
+  legacy: SourceIntelligenceAssessment,
+): EvidenceMaturityStage {
+  if (legacy.input.rawArtifactCount === 0) return "UNOBSERVED";
+  const { FRESHNESS, EVIDENCEABILITY } = legacy.dimensions;
+  if (
+    legacy.input.rawProvenanceNodeCount > 0 &&
+    FRESHNESS.score !== null &&
+    FRESHNESS.score >= 80 &&
+    EVIDENCEABILITY.score !== null &&
+    EVIDENCEABILITY.score >= 50
+  ) {
+    return "CURRENT_TRACEABLE";
+  }
+  if (
+    legacy.input.rawProvenanceNodeCount > 0 &&
+    EVIDENCEABILITY.score !== null &&
+    EVIDENCEABILITY.score >= 40
+  ) {
+    return "TRACEABLE";
+  }
+  return "CAPTURED";
+}
+
+function evidenceMaturityConfidence(
+  legacy: SourceIntelligenceAssessment,
+  stage: EvidenceMaturityStage,
+): SourceIntelligenceConfidence {
+  if (stage === "UNOBSERVED") return "LOW";
+  if (
+    legacy.dimensions.FRESHNESS.confidence === "HIGH" &&
+    legacy.dimensions.EVIDENCEABILITY.confidence === "HIGH" &&
+    legacy.dimensions.NOVELTY.score !== null
+  ) {
+    return "HIGH";
+  }
+  return "MEDIUM";
+}
+
+function dualAxisAssessmentId(legacy: SourceIntelligenceAssessment): string {
+  return `si2_${createHash("sha256")
+    .update(`${SOURCE_INTELLIGENCE_DUAL_AXIS_PROTOCOL_VERSION}:${legacy.id}:${legacy.inputFingerprint}`)
+    .digest("hex")
+    .slice(0, 24)}`;
+}
+
+export function projectSourceIntelligenceV2(
+  legacy: SourceIntelligenceAssessment,
+): SourceIntelligenceAssessmentV2 {
+  const relevance = legacy.dimensions.RELEVANCE;
+  const authority = legacy.dimensions.AUTHORITY_SIGNAL;
+  const valueScore = weightedScore([
+    [relevance, 0.4],
+    [authority, 0.6],
+  ]);
+  const sourceValueScore = valueScore ?? 0;
+  const valueBand = sourceValueBand(sourceValueScore);
+  const maturityStage = evidenceMaturityStage(legacy);
+  const maturityScore =
+    maturityStage === "UNOBSERVED"
+      ? null
+      : weightedScore([
+          [legacy.dimensions.FRESHNESS, 0.4],
+          [legacy.dimensions.EVIDENCEABILITY, 0.4],
+          [legacy.dimensions.NOVELTY, 0.2],
+        ]);
+
+  return {
+    protocolVersion: SOURCE_INTELLIGENCE_DUAL_AXIS_PROTOCOL_VERSION,
+    objectType: "SOURCE_INTELLIGENCE_DUAL_AXIS_ASSESSMENT",
+    id: dualAxisAssessmentId(legacy),
+    workspaceId: legacy.workspaceId,
+    sourceId: legacy.sourceId,
+    ...(legacy.profileId ? { profileId: legacy.profileId } : {}),
+    assessedAt: legacy.assessedAt,
+    evaluator: SOURCE_INTELLIGENCE_DUAL_AXIS_EVALUATOR,
+    inputFingerprint: legacy.inputFingerprint,
+    sourceValuePriority: {
+      score: sourceValueScore,
+      band: valueBand,
+      confidence: sourceValueConfidence(relevance, authority),
+      signals: { relevance, authority },
+      reasonCodes: [
+        `SOURCE_VALUE_${valueBand}`,
+        "SOURCE_VALUE_EXCLUDES_EVIDENCE_MATURITY_SIGNALS",
+        ...(authority.score === null ? ["EXPLICIT_AUTHORITY_UNKNOWN"] : []),
+      ],
+    },
+    evidenceMaturity: {
+      score: maturityScore,
+      stage: maturityStage,
+      confidence: evidenceMaturityConfidence(legacy, maturityStage),
+      signals: {
+        freshness: legacy.dimensions.FRESHNESS,
+        evidenceability: legacy.dimensions.EVIDENCEABILITY,
+        novelty: legacy.dimensions.NOVELTY,
+      },
+      reasonCodes: [
+        `EVIDENCE_MATURITY_${maturityStage}`,
+        ...(maturityStage === "UNOBSERVED" ? ["NO_RAW_ARTIFACT_EVIDENCE_HELD"] : []),
+      ],
+    },
+    decisionContext: {
+      observedAcquisitionCost: legacy.dimensions.ACQUISITION_COST,
+    },
+    compatibility: {
+      projectionMode: "V1_READ_COMPATIBLE",
+      legacyProtocolVersion: SOURCE_INTELLIGENCE_PROTOCOL_VERSION,
+      legacyAssessmentId: legacy.id,
+      legacyPriorityScore: legacy.priorityScore,
+      legacyOperationalTier: legacy.operationalTier,
+      legacyRecommendedRescan: legacy.recommendedRescan,
+    },
+    scheduling: {
+      policyStatus: "NOT_AUTHORIZED_UNCALIBRATED",
+    },
+    reasonCodes: [
+      `SOURCE_VALUE_${valueBand}`,
+      `EVIDENCE_MATURITY_${maturityStage}`,
+      "DUAL_AXIS_NOT_SCHEDULING_AUTHORITY",
+    ],
+    boundaries: {
+      legalTruthVerified: false,
+      authorityInferred: false,
+      professionalQualityVerified: false,
+      identityVerified: false,
+      autoScheduleApplied: false,
+      grantsCollectionAuthority: false,
+      grantsMgsnQualification: false,
     },
   };
 }
