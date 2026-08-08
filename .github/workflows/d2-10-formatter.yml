@@ -1,0 +1,44 @@
+name: D2.10 Formatter
+
+on:
+  push:
+    branches:
+      - codex/d2-10-review-queue-operational-health
+    paths:
+      - .github/workflows/d2-10-formatter.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/d2-10-review-queue-operational-health
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format D2.10 files
+        run: |
+          pnpm exec prettier --write \
+            apps/admin/src/components/sources/source-intelligence-review-health.tsx \
+            packages/contracts/src/source-intelligence-review-health-v2.ts \
+            packages/worker-runtime/src/source-intelligence-review-health.ts
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/admin/src/components/sources/source-intelligence-review-health.tsx \
+            packages/contracts/src/source-intelligence-review-health-v2.ts \
+            packages/worker-runtime/src/source-intelligence-review-health.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "style: format D2.10 review health"
+          git push origin HEAD:codex/d2-10-review-queue-operational-health
