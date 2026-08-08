@@ -175,8 +175,10 @@ export class SubprocessCrawl4AiRunner implements Crawl4AiProcessRunner {
   private readonly maxStderrBytes: number;
 
   constructor(options: Crawl4AiSubprocessRunnerOptions = {}) {
-    this.pythonExecutable = options.pythonExecutable ?? process.env.MARKORBIT_CRAWL4AI_PYTHON ?? "python3";
-    this.scriptPath = options.scriptPath ?? process.env.MARKORBIT_CRAWL4AI_SCRIPT ?? "workers/crawl4ai/acquire.py";
+    this.pythonExecutable =
+      options.pythonExecutable ?? process.env.MARKORBIT_CRAWL4AI_PYTHON ?? "python3";
+    this.scriptPath =
+      options.scriptPath ?? process.env.MARKORBIT_CRAWL4AI_SCRIPT ?? "workers/crawl4ai/acquire.py";
     this.cwd = options.cwd ?? process.cwd();
     this.maxStdoutBytes = options.maxStdoutBytes ?? 1024 * 1024;
     this.maxStderrBytes = options.maxStderrBytes ?? 64 * 1024;
@@ -537,7 +539,10 @@ export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
         requireEgressProxy: this.requireEgressProxy,
       };
 
-      const response = await this.runner.run(request, processTimeoutMs(context, this.maxProcessTimeoutMs));
+      const response = await this.runner.run(
+        request,
+        processTimeoutMs(context, this.maxProcessTimeoutMs),
+      );
       if (!response.ok) {
         throw new CollectionAcquisitionError(
           response.error.code,
