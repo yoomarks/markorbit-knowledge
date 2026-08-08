@@ -8,13 +8,19 @@ export type CoreIntakeHandoff = {
 
 /**
  * Boundary adapter for handing a verified package toward MarkOrbit Core.
- * The default implementation is intentionally side-effect free; a production
- * transport can subclass or wrap this adapter without moving Core logic into
- * Knowledge.
+ * The default implementation is side-effect free; a production transport can
+ * replace it without moving Core interpretation or decision logic into Knowledge.
  */
 export class CoreIntakeAdapter {
-  async accept(handoff: CoreIntakeHandoff): Promise<CoreIntakeHandoff> {
-    return handoff;
+  accept(input: ReadyPackage | CoreIntakeHandoff): CoreIntakeHandoff {
+    if ("evidence" in input) {
+      return {
+        readyPackageId: input.id,
+        sourceId: "ready-package",
+        artifactId: input.evidence.artifactIds[0] ?? "",
+      };
+    }
+    return input;
   }
 }
 
