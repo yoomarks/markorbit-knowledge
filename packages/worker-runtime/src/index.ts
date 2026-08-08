@@ -11,6 +11,7 @@ export * from "./controlled-fixture-pipeline";
 export * from "./runtime-runner";
 export * from "./artifact-ingestion-port";
 export * from "./artifact-backed-collection-executor";
+export * from "./http-controlled-collection-client";
 export * from "./local-file-connector";
 export * from "./source-connector-port";
 export * from "./http-source-connector";
