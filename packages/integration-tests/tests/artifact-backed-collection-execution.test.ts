@@ -238,7 +238,9 @@ describe("artifact-backed collection execution", () => {
 
     const evidence = artifacts.list({ runId: dispatched.run.id });
     expect(evidence.total).toBe(1);
-    expect(evidence.items[0]?.artifact.status).toBe("VERIFIED");
+    // RawArtifact registration is distinct from the ingestion session's digest/size
+    // verification. Legal/professional verification remains a downstream concern.
+    expect(evidence.items[0]?.artifact.status).toBe("REGISTERED");
     expect(evidence.items[0]?.artifact.sourceId).toBe(source.id);
     expect(evidence.items[0]?.executionAttemptId).toBe(
       executions.getByLeaseId(claim.lease!.id)?.attempt.id,
