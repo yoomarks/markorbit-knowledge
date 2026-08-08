@@ -2,9 +2,6 @@ name: USPTO Golden Source Live Smoke
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/uspto-golden-source-live-smoke
 
 permissions:
   contents: read
