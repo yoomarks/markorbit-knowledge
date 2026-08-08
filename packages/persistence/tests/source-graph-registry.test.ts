@@ -7,11 +7,7 @@ import {
   type SourceGraphObservationBatch,
   type WebsiteSourceProfile,
 } from "@markorbit/contracts";
-import {
-  RegistryConflictError,
-  RegistryValidationError,
-  initializeRegistry,
-} from "../src/index";
+import { RegistryConflictError, RegistryValidationError, initializeRegistry } from "../src/index";
 import { SqliteSourceGraphRepository } from "../src/source-graph-registry";
 
 const WORKSPACE_ID = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
@@ -97,11 +93,7 @@ function page(id = PAGE_ID, observedAt = T0): SourceGraphNode {
   };
 }
 
-function containsEdge(
-  id = EDGE_ID,
-  objectNodeId = PAGE_ID,
-  observedAt = T0,
-): SourceGraphEdge {
+function containsEdge(id = EDGE_ID, objectNodeId = PAGE_ID, observedAt = T0): SourceGraphEdge {
   return {
     protocolVersion: SOURCE_GRAPH_PROTOCOL_VERSION,
     objectType: "SOURCE_GRAPH_EDGE",
@@ -198,7 +190,11 @@ describe("SqliteSourceGraphRepository", () => {
     graph.createProfile(profile(), root());
     graph.ingestObservationBatch(batch());
 
-    const secondRoot = { ...root(), lastObservedAt: T1, provenance: [provenance("https://example.com/", T1)] };
+    const secondRoot = {
+      ...root(),
+      lastObservedAt: T1,
+      provenance: [provenance("https://example.com/", T1)],
+    };
     const duplicatePage = page(DUPLICATE_PAGE_ID, T1);
     const second = batch(
       SECOND_BATCH_ID,
@@ -227,7 +223,13 @@ describe("SqliteSourceGraphRepository", () => {
 
     const observedAgain = page(DUPLICATE_PAGE_ID, T1);
     graph.ingestObservationBatch(
-      batch(SECOND_BATCH_ID, "discovery:two", [root(), observedAgain], [containsEdge(SECOND_EDGE_ID, DUPLICATE_PAGE_ID, T1)], T1),
+      batch(
+        SECOND_BATCH_ID,
+        "discovery:two",
+        [root(), observedAgain],
+        [containsEdge(SECOND_EDGE_ID, DUPLICATE_PAGE_ID, T1)],
+        T1,
+      ),
     );
     expect(graph.getNode(PAGE_ID)?.reviewState).toBe("RETAINED");
   });
@@ -237,14 +239,14 @@ describe("SqliteSourceGraphRepository", () => {
     graph.createProfile(profile(), root());
 
     const escaped = { ...page(), sourceId: OTHER_SOURCE_ID } as SourceGraphNode;
-    expect(() => graph.ingestObservationBatch(batch(BATCH_ID, "bad-scope", [root(), escaped], []))).toThrow(
-      RegistryValidationError,
-    );
+    expect(() =>
+      graph.ingestObservationBatch(batch(BATCH_ID, "bad-scope", [root(), escaped], [])),
+    ).toThrow(RegistryValidationError);
 
     const dangling = containsEdge(EDGE_ID, OTHER_PAGE_ID);
-    expect(() => graph.ingestObservationBatch(batch(SECOND_BATCH_ID, "dangling", [root()], [dangling]))).toThrow(
-      RegistryValidationError,
-    );
+    expect(() =>
+      graph.ingestObservationBatch(batch(SECOND_BATCH_ID, "dangling", [root()], [dangling])),
+    ).toThrow(RegistryValidationError);
   });
 
   it("keeps contact points as evidence observations without inventing a VERIFIED state", () => {

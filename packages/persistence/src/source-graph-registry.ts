@@ -52,7 +52,10 @@ export interface SourceGraphRepository {
   createProfile(profile: WebsiteSourceProfile, rootNode: SourceGraphNode): WebsiteSourceProfile;
   getProfileById(profileId: string): WebsiteSourceProfile | null;
   getProfileBySourceId(sourceId: string): WebsiteSourceProfile | null;
-  getProfileByCanonicalOrigin(workspaceId: string, canonicalOrigin: string): WebsiteSourceProfile | null;
+  getProfileByCanonicalOrigin(
+    workspaceId: string,
+    canonicalOrigin: string,
+  ): WebsiteSourceProfile | null;
   getNode(nodeId: string): SourceGraphNode | null;
   findNodeByIdentity(
     profileId: string,
@@ -93,7 +96,9 @@ function canonicalOrigin(value: string): string {
 function parseProfile(value: unknown): WebsiteSourceProfile {
   const parsed = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
   if (!isWebsiteSourceProfile(parsed)) {
-    throw new RegistryValidationError("Persisted WebsiteSourceProfile violates Source Graph Protocol v1");
+    throw new RegistryValidationError(
+      "Persisted WebsiteSourceProfile violates Source Graph Protocol v1",
+    );
   }
   return parsed;
 }
@@ -101,7 +106,9 @@ function parseProfile(value: unknown): WebsiteSourceProfile {
 function parseNode(value: unknown): SourceGraphNode {
   const parsed = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
   if (!isSourceGraphNode(parsed)) {
-    throw new RegistryValidationError("Persisted SourceGraphNode violates Source Graph Protocol v1");
+    throw new RegistryValidationError(
+      "Persisted SourceGraphNode violates Source Graph Protocol v1",
+    );
   }
   return parsed;
 }
@@ -109,14 +116,18 @@ function parseNode(value: unknown): SourceGraphNode {
 function parseEdge(value: unknown): SourceGraphEdge {
   const parsed = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
   if (!isSourceGraphEdge(parsed)) {
-    throw new RegistryValidationError("Persisted SourceGraphEdge violates Source Graph Protocol v1");
+    throw new RegistryValidationError(
+      "Persisted SourceGraphEdge violates Source Graph Protocol v1",
+    );
   }
   return parsed;
 }
 
 function ensureSourceGraphMigration(database: DatabaseSync): void {
   initializeRegistry(database);
-  const applied = database.prepare("SELECT id FROM schema_migrations WHERE id = ?").get(MIGRATION_ID);
+  const applied = database
+    .prepare("SELECT id FROM schema_migrations WHERE id = ?")
+    .get(MIGRATION_ID);
   if (applied) return;
 
   database.exec("BEGIN IMMEDIATE;");
@@ -358,15 +369,22 @@ export class SqliteSourceGraphRepository implements SourceGraphRepository {
       rootNode.sourceId !== profile.sourceId ||
       rootNode.profileId !== profile.id
     ) {
-      throw new RegistryValidationError("WebsiteSourceProfile and root node must share exact scope");
+      throw new RegistryValidationError(
+        "WebsiteSourceProfile and root node must share exact scope",
+      );
     }
     if (canonicalOrigin(rootNode.canonicalOrigin) !== canonicalOrigin(profile.canonicalOrigin)) {
-      throw new RegistryValidationError("WebsiteSourceProfile and root node must share canonical origin");
+      throw new RegistryValidationError(
+        "WebsiteSourceProfile and root node must share canonical origin",
+      );
     }
 
     const existingBySource = this.getProfileBySourceId(profile.sourceId);
     if (existingBySource) {
-      if (canonicalOrigin(existingBySource.canonicalOrigin) !== canonicalOrigin(profile.canonicalOrigin)) {
+      if (
+        canonicalOrigin(existingBySource.canonicalOrigin) !==
+        canonicalOrigin(profile.canonicalOrigin)
+      ) {
         throw new RegistryConflictError(
           "SOURCE_GRAPH_PROFILE_SOURCE_CONFLICT",
           `Source ${profile.sourceId} is already bound to another website profile`,
@@ -498,8 +516,7 @@ export class SqliteSourceGraphRepository implements SourceGraphRepository {
          WHERE profile_id = ? AND idempotency_key = ?`,
       )
       .get(batch.profileId, batch.idempotencyKey) as
-      | { batch_id: string; payload_sha256: string; result_json: string }
-      | undefined;
+      { batch_id: string; payload_sha256: string; result_json: string } | undefined;
     if (replay) {
       if (replay.payload_sha256 !== payloadSha256) {
         throw new RegistryConflictError(
@@ -578,10 +595,14 @@ export class SqliteSourceGraphRepository implements SourceGraphRepository {
           throw new RegistryValidationError(`Edge ${incoming.id} references a missing node`);
         }
         if (subject.profileId !== batch.profileId || object.profileId !== batch.profileId) {
-          throw new RegistryValidationError(`Edge ${incoming.id} crosses WebsiteSourceProfile boundaries`);
+          throw new RegistryValidationError(
+            `Edge ${incoming.id} crosses WebsiteSourceProfile boundaries`,
+          );
         }
         if (subjectNodeId === objectNodeId) {
-          throw new RegistryValidationError(`Edge ${incoming.id} collapses to a self-edge after deduplication`);
+          throw new RegistryValidationError(
+            `Edge ${incoming.id} collapses to a self-edge after deduplication`,
+          );
         }
 
         const rewired: SourceGraphEdge = {
@@ -590,7 +611,9 @@ export class SqliteSourceGraphRepository implements SourceGraphRepository {
           objectNodeId,
         };
         if (!isSourceGraphEdge(rewired)) {
-          throw new RegistryValidationError(`Edge ${incoming.id} is invalid after node deduplication`);
+          throw new RegistryValidationError(
+            `Edge ${incoming.id} is invalid after node deduplication`,
+          );
         }
 
         const semantic = this.database
@@ -599,12 +622,15 @@ export class SqliteSourceGraphRepository implements SourceGraphRepository {
              WHERE profile_id = ? AND kind = ? AND subject_node_id = ? AND object_node_id = ?`,
           )
           .get(batch.profileId, rewired.kind, subjectNodeId, objectNodeId) as
-          | { document_json: string }
-          | undefined;
+          { document_json: string } | undefined;
         const byId = this.database
           .prepare("SELECT document_json FROM source_graph_edges WHERE edge_id = ?")
           .get(rewired.id) as { document_json: string } | undefined;
-        const existing = semantic ? parseEdge(semantic.document_json) : byId ? parseEdge(byId.document_json) : null;
+        const existing = semantic
+          ? parseEdge(semantic.document_json)
+          : byId
+            ? parseEdge(byId.document_json)
+            : null;
         if (!existing) {
           this.insertEdge(rewired);
           edgesInserted += 1;
@@ -650,15 +676,22 @@ export class SqliteSourceGraphRepository implements SourceGraphRepository {
 
   reviewNode(nodeId: string, state: Exclude<SourceGraphReviewState, "OBSERVED">): SourceGraphNode {
     if (state !== "RETAINED" && state !== "REJECTED") {
-      throw new RegistryValidationError("Source Graph human review state must be RETAINED or REJECTED");
+      throw new RegistryValidationError(
+        "Source Graph human review state must be RETAINED or REJECTED",
+      );
     }
     const current = this.getNode(nodeId);
     if (!current) {
-      throw new RegistryConflictError("SOURCE_GRAPH_NODE_NOT_FOUND", `Source Graph node ${nodeId} was not found`);
+      throw new RegistryConflictError(
+        "SOURCE_GRAPH_NODE_NOT_FOUND",
+        `Source Graph node ${nodeId} was not found`,
+      );
     }
     const next: SourceGraphNode = { ...current, reviewState: state };
     if (!isSourceGraphNode(next)) {
-      throw new RegistryValidationError("Reviewed Source Graph node violates Source Graph Protocol v1");
+      throw new RegistryValidationError(
+        "Reviewed Source Graph node violates Source Graph Protocol v1",
+      );
     }
     this.updateNode(next);
     return next;

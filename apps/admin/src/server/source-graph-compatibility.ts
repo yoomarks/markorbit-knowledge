@@ -118,7 +118,9 @@ export function projectLegacyWebSource(
   observedAt = new Date().toISOString(),
 ): CompatibleSourceGraph {
   if (source.sourceType !== "WEB") {
-    throw new RegistryValidationError("Only WEB SourceDefinitions can be projected into Website Source Graph");
+    throw new RegistryValidationError(
+      "Only WEB SourceDefinitions can be projected into Website Source Graph",
+    );
   }
   const profile = ensureLegacyProfile(graph, source, observedAt);
   const governedSourceId = profile.sourceId;

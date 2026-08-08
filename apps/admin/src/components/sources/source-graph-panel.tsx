@@ -85,7 +85,9 @@ export function SourceGraphPanel({ sourceId }: { sourceId: string }) {
     load(controller.signal)
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-        setError(requestError instanceof Error ? requestError.message : "Unable to load Source Map");
+        setError(
+          requestError instanceof Error ? requestError.message : "Unable to load Source Map",
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -113,7 +115,10 @@ export function SourceGraphPanel({ sourceId }: { sourceId: string }) {
   }
 
   const visibleNodes = useMemo(
-    () => graph?.snapshot.nodes.slice().sort((a, b) => b.lastObservedAt.localeCompare(a.lastObservedAt)) ?? [],
+    () =>
+      graph?.snapshot.nodes
+        .slice()
+        .sort((a, b) => b.lastObservedAt.localeCompare(a.lastObservedAt)) ?? [],
     [graph],
   );
 
@@ -170,8 +175,8 @@ export function SourceGraphPanel({ sourceId }: { sourceId: string }) {
           {graph.compatibilityProjection ? (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
               当前旧 Source 通过相同网站 Origin 映射到治理 Source：
-              <span className="ml-1 font-mono text-xs">{graph.governedSourceId}</span>。旧 SourceDefinition
-              未被删除或改写。
+              <span className="ml-1 font-mono text-xs">{graph.governedSourceId}</span>。旧
+              SourceDefinition 未被删除或改写。
             </div>
           ) : null}
 

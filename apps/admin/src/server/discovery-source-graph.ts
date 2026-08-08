@@ -47,7 +47,11 @@ function candidateReviewState(candidate: SourceCandidate): SourceGraphNode["revi
   return "OBSERVED";
 }
 
-function candidateProvenance(sourceId: string, batchId: string, candidate: SourceCandidate): SourceGraphProvenance {
+function candidateProvenance(
+  sourceId: string,
+  batchId: string,
+  candidate: SourceCandidate,
+): SourceGraphProvenance {
   return {
     kind: "DISCOVERY",
     sourceId,
@@ -236,7 +240,9 @@ export function writeDiscoveryBatchToSourceGraph(
   if (candidates.length === 0) return;
   const root = graph.getNode(profile.rootNodeId);
   if (!root || root.kind !== "WEBSITE") {
-    throw new RegistryValidationError(`WebsiteSourceProfile ${profile.id} has no valid WEBSITE root`);
+    throw new RegistryValidationError(
+      `WebsiteSourceProfile ${profile.id} has no valid WEBSITE root`,
+    );
   }
 
   const candidateNodes = candidates.map((candidate) =>
