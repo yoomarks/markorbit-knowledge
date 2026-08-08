@@ -1,4 +1,5 @@
-import type { AuthorityLevel, SourceCategory, SourceStatus } from "./schema-v1";
+import type { AuthorityLevel, SourceCategory } from "./schema-v1";
+import type { SourceStatus } from "./vocabularies";
 
 export const SOURCE_INTELLIGENCE_PROTOCOL_VERSION = "1.0" as const;
 export const SOURCE_INTELLIGENCE_TIERS = ["A", "B", "C", "D"] as const;
