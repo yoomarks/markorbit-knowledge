@@ -28,10 +28,10 @@ const T1 = "2026-08-08T01:00:00Z";
 type WebsiteNode = Extract<SourceGraphNode, { kind: "WEBSITE" }>;
 type PageNode = Extract<SourceGraphNode, { kind: "PAGE" }>;
 
-function provenance(sourceUri: string, observedAt = T0) {
+function provenance(sourceUri: string, observedAt = T0, sourceId = SOURCE_ID) {
   return {
     kind: "DISCOVERY" as const,
-    sourceId: SOURCE_ID,
+    sourceId,
     sourceUri,
     observedAt,
     discoveryCandidateId: "cand_aaaaaaaaaaaaaaaaaaaaaaaa",
@@ -69,7 +69,7 @@ function root(sourceId = SOURCE_ID): WebsiteNode {
     lifecycleState: "ACTIVE",
     firstObservedAt: T0,
     lastObservedAt: T0,
-    provenance: [provenance("https://example.com/")],
+    provenance: [provenance("https://example.com/", T0, sourceId)],
     canonicalOrigin: "https://example.com/",
     host: "example.com",
     displayName: "Example",
