@@ -1,0 +1,126 @@
+{
+  "version": "1.0",
+  "purpose": "Observed Source Intelligence calibration only. Human labels in this file are explicit calibration inputs, not system-inferred legal truth.",
+  "sources": [
+    {
+      "key": "uspto-trademarks",
+      "name": "USPTO Trademarks",
+      "locator": "https://www.uspto.gov/trademarks",
+      "category": "OFFICIAL_AUTHORITY",
+      "authorityLevel": "PRIMARY_OFFICIAL",
+      "jurisdictions": ["US"],
+      "languages": ["en"],
+      "humanPriority": 5
+    },
+    {
+      "key": "wipo-trademarks",
+      "name": "WIPO Trademarks",
+      "locator": "https://www.wipo.int/en/web/trademarks",
+      "category": "OFFICIAL_AUTHORITY",
+      "authorityLevel": "PRIMARY_OFFICIAL",
+      "jurisdictions": ["GLOBAL"],
+      "languages": ["en"],
+      "humanPriority": 5
+    },
+    {
+      "key": "euipo-trademarks",
+      "name": "EUIPO Trade Marks",
+      "locator": "https://www.euipo.europa.eu/en/trade-marks",
+      "category": "OFFICIAL_AUTHORITY",
+      "authorityLevel": "PRIMARY_OFFICIAL",
+      "jurisdictions": ["EU"],
+      "languages": ["en"],
+      "humanPriority": 5
+    },
+    {
+      "key": "ukipo",
+      "name": "UK Intellectual Property Office",
+      "locator": "https://www.gov.uk/government/organisations/intellectual-property-office",
+      "category": "OFFICIAL_AUTHORITY",
+      "authorityLevel": "PRIMARY_OFFICIAL",
+      "jurisdictions": ["GB"],
+      "languages": ["en"],
+      "humanPriority": 5
+    },
+    {
+      "key": "inta",
+      "name": "International Trademark Association",
+      "locator": "https://www.inta.org/",
+      "category": "RESEARCH",
+      "authorityLevel": "INDUSTRY",
+      "jurisdictions": ["GLOBAL"],
+      "languages": ["en"],
+      "humanPriority": 4
+    },
+    {
+      "key": "finnegan",
+      "name": "Finnegan",
+      "locator": "https://www.finnegan.com/",
+      "category": "LAW_FIRM",
+      "authorityLevel": "PROFESSIONAL",
+      "jurisdictions": ["GLOBAL"],
+      "languages": ["en"],
+      "humanPriority": 3
+    },
+    {
+      "key": "fish-richardson",
+      "name": "Fish & Richardson",
+      "locator": "https://www.fr.com/",
+      "category": "LAW_FIRM",
+      "authorityLevel": "PROFESSIONAL",
+      "jurisdictions": ["GLOBAL"],
+      "languages": ["en"],
+      "humanPriority": 3
+    },
+    {
+      "key": "marks-clerk",
+      "name": "Marks & Clerk",
+      "locator": "https://www.marks-clerk.com/",
+      "category": "LAW_FIRM",
+      "authorityLevel": "PROFESSIONAL",
+      "jurisdictions": ["GLOBAL"],
+      "languages": ["en"],
+      "humanPriority": 3
+    },
+    {
+      "key": "boult",
+      "name": "Boult",
+      "locator": "https://www.boult.com/",
+      "category": "LAW_FIRM",
+      "authorityLevel": "PROFESSIONAL",
+      "jurisdictions": ["GLOBAL"],
+      "languages": ["en"],
+      "humanPriority": 3
+    },
+    {
+      "key": "murgitroyd",
+      "name": "Murgitroyd",
+      "locator": "https://www.murgitroyd.com/",
+      "category": "LAW_FIRM",
+      "authorityLevel": "PROFESSIONAL",
+      "jurisdictions": ["GLOBAL"],
+      "languages": ["en"],
+      "humanPriority": 3
+    },
+    {
+      "key": "rouse",
+      "name": "Rouse",
+      "locator": "https://rouse.com/",
+      "category": "LAW_FIRM",
+      "authorityLevel": "PROFESSIONAL",
+      "jurisdictions": ["GLOBAL"],
+      "languages": ["en"],
+      "humanPriority": 3
+    },
+    {
+      "key": "world-trademark-review",
+      "name": "World Trademark Review",
+      "locator": "https://www.worldtrademarkreview.com/",
+      "category": "NEWS",
+      "authorityLevel": "INDUSTRY",
+      "jurisdictions": ["GLOBAL"],
+      "languages": ["en"],
+      "humanPriority": 2
+    }
+  ]
+}
