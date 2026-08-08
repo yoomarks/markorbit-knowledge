@@ -13,7 +13,7 @@ permissions:
 jobs:
   calibration:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
     steps:
@@ -43,12 +43,12 @@ jobs:
           done
           cat "$RUNNER_TEMP/admin.log"
           exit 1
-      - name: Run first bounded real cohort
+      - name: Run complete real cohort
         run: |
           node scripts/source-intelligence-calibration.mjs \
             --base-url "$MARKORBIT_CONTROL_PLANE_URL" \
-            --limit 8 \
-            --min-success 4 \
+            --limit 12 \
+            --min-success 6 \
             --output "$RUNNER_TEMP/source-intelligence-calibration.json"
       - name: Show calibration summary
         if: always()
