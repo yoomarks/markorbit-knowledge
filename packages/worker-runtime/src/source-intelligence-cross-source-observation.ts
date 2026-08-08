@@ -49,7 +49,9 @@ function maturityRegression(
   previous: SourceIntelligenceObservationPointV2,
   current: SourceIntelligenceObservationPointV2,
 ): SourceIntelligenceObservationFlagV2 | null {
-  if (MATURITY_RANK[current.evidenceMaturity.stage] >= MATURITY_RANK[previous.evidenceMaturity.stage]) {
+  if (
+    MATURITY_RANK[current.evidenceMaturity.stage] >= MATURITY_RANK[previous.evidenceMaturity.stage]
+  ) {
     return null;
   }
   return {
@@ -132,7 +134,10 @@ export function buildSourceIntelligenceCrossSourceObservationSummaryV2(
     const { current, previous } = latestPoints(history);
     if (!current) continue;
     assessedSourceCount += 1;
-    if (summarizedThrough === null || Date.parse(current.assessedAt) > Date.parse(summarizedThrough)) {
+    if (
+      summarizedThrough === null ||
+      Date.parse(current.assessedAt) > Date.parse(summarizedThrough)
+    ) {
       summarizedThrough = current.assessedAt;
     }
 

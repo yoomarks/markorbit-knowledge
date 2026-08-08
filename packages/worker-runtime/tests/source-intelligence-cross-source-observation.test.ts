@@ -24,7 +24,10 @@ function point(input: {
     evaluatorVersion: "2.1.0",
     sourceValue: { score: input.value, band: input.band },
     evidenceMaturity: { score: input.maturityScore, stage: input.maturity },
-    observedAcquisitionCost: { score: input.cost, confidence: input.cost === null ? "LOW" : "MEDIUM" },
+    observedAcquisitionCost: {
+      score: input.cost,
+      confidence: input.cost === null ? "LOW" : "MEDIUM",
+    },
   };
 }
 

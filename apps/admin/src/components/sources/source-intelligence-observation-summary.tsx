@@ -42,8 +42,7 @@ function flagDetail(flag: SourceIntelligenceObservationFlagV2): string {
 async function readSummary(signal?: AbortSignal): Promise<SummarySnapshot> {
   const sourceResponse = await fetch(`/api/sources?limit=${COHORT_LIMIT}&offset=0`, { signal });
   const sourceBody = (await sourceResponse.json()) as
-    | SourceListResult
-    | { error?: { message?: string } };
+    SourceListResult | { error?: { message?: string } };
   if (!sourceResponse.ok) {
     const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
     throw new Error(message ?? "无法读取 Sources");
@@ -97,7 +96,9 @@ export function SourceIntelligenceObservationSummary() {
       })
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-        setError(requestError instanceof Error ? requestError.message : "无法读取跨 Source 观测摘要");
+        setError(
+          requestError instanceof Error ? requestError.message : "无法读取跨 Source 观测摘要",
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -116,7 +117,8 @@ export function SourceIntelligenceObservationSummary() {
             <h2 className="font-semibold text-slate-950">D2.8 · Cross-source observation flags</h2>
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-            比较每个 Source 最近两个不同 Evidence State，只输出确定性运营观测；不是法律真实性、专业质量或身份异常判定。
+            比较每个 Source 最近两个不同 Evidence
+            State，只输出确定性运营观测；不是法律真实性、专业质量或身份异常判定。
           </p>
         </div>
         <button
@@ -139,17 +141,23 @@ export function SourceIntelligenceObservationSummary() {
       {loading ? <div className="p-6 text-sm text-slate-500">正在汇总跨 Source 变化…</div> : null}
 
       {!loading && !summary ? (
-        <div className="p-6 text-sm text-slate-500">当前没有可汇总的 Source Intelligence 状态。</div>
+        <div className="p-6 text-sm text-slate-500">
+          当前没有可汇总的 Source Intelligence 状态。
+        </div>
       ) : null}
 
       {summary ? (
         <div className="space-y-5 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
             <span>
-              已评估 {summary.assessedSourceCount} / {summary.sourceCount} · 有观测旗标的 Source {summary.flaggedSourceCount}
+              已评估 {summary.assessedSourceCount} / {summary.sourceCount} · 有观测旗标的 Source{" "}
+              {summary.flaggedSourceCount}
             </span>
             <span>
-              summarized through {summary.summarizedThrough ? new Date(summary.summarizedThrough).toLocaleString("zh-CN") : "—"}
+              summarized through{" "}
+              {summary.summarizedThrough
+                ? new Date(summary.summarizedThrough).toLocaleString("zh-CN")
+                : "—"}
             </span>
           </div>
 
@@ -160,7 +168,10 @@ export function SourceIntelligenceObservationSummary() {
               ["Value band changes", summary.counts.sourceValueBandChanges],
               ["Cost increases ≥20", summary.counts.acquisitionCostIncreases],
             ].map(([label, value]) => (
-              <div key={String(label)} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div
+                key={String(label)}
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+              >
                 <p className="text-xs font-medium text-slate-500">{label}</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
               </div>
@@ -188,13 +199,18 @@ export function SourceIntelligenceObservationSummary() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <p className="text-sm font-semibold text-slate-900">{flagLabels[flag.kind]}</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {flagLabels[flag.kind]}
+                        </p>
                         <span className="text-xs text-slate-400">{flag.severity}</span>
                       </div>
                       <p className="mt-1 text-sm text-slate-600">{flagDetail(flag)}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                         {source ? (
-                          <Link href={`/sources/${source.id}`} className="font-medium text-emerald-700 hover:underline">
+                          <Link
+                            href={`/sources/${source.id}`}
+                            className="font-medium text-emerald-700 hover:underline"
+                          >
                             {source.name}
                           </Link>
                         ) : (
@@ -213,7 +229,10 @@ export function SourceIntelligenceObservationSummary() {
             <div className="flex gap-3">
               <ShieldAlert className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
               <p className="leading-6">
-                Observation Flag 只提示“值得人工看一眼”。Scheduler 仍为 <strong>{summary.scheduling.policyStatus}</strong>；不会创建 CollectionPlan、启动采集、推断 Authority、验证法律真实性、做跨来源身份合并或授予 MGSN 资格。
+                Observation Flag 只提示“值得人工看一眼”。Scheduler 仍为{" "}
+                <strong>{summary.scheduling.policyStatus}</strong>；不会创建
+                CollectionPlan、启动采集、推断 Authority、验证法律真实性、做跨来源身份合并或授予
+                MGSN 资格。
               </p>
             </div>
           </div>

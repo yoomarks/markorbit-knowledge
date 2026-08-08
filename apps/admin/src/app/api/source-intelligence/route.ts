@@ -95,7 +95,10 @@ export async function GET(request: Request) {
         "includeHistory requires sourceId or sourceIds with protocolVersion=2.0",
       );
     }
-    if (includeSummary && (protocolVersion !== "2.0" || !sourceIds || sourceId || !includeHistory)) {
+    if (
+      includeSummary &&
+      (protocolVersion !== "2.0" || !sourceIds || sourceId || !includeHistory)
+    ) {
       throw new RegistryValidationError(
         "includeSummary requires sourceIds, protocolVersion=2.0, and includeHistory=true",
       );
