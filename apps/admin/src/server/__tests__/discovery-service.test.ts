@@ -102,7 +102,9 @@ describe("DiscoveryWorkflowService", () => {
       : null;
     expect(trademarkNode?.reviewState).toBe("RETAINED");
     expect(
-      profile ? graph.findNodeByIdentity(profile.id, "CANONICAL_URI", "https://example.com/") : null,
+      profile
+        ? graph.findNodeByIdentity(profile.id, "CANONICAL_URI", "https://example.com/")
+        : null,
     )?.toMatchObject({ id: profile?.rootNodeId, kind: "WEBSITE" });
 
     const second = service.review("cand_bbbbbbbbbbbbbbbbbbbbbbbb", {
