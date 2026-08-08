@@ -17,6 +17,11 @@ type IntelligenceBatchResponse = {
   items: Array<{ sourceId: string; assessment: SourceIntelligenceAssessment | null }>;
 };
 
+type CohortSnapshot = {
+  sources: SourceDefinition[];
+  assessments: Record<string, SourceIntelligenceAssessment | null>;
+};
+
 function tierClass(tier: SourceIntelligenceTier): string {
   return {
     A: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -33,6 +38,40 @@ function rescanLabel(assessment: SourceIntelligenceAssessment | null): string {
     : "人工决定";
 }
 
+async function readCohort(signal?: AbortSignal): Promise<CohortSnapshot> {
+  const sourceResponse = await fetch(`/api/sources?limit=${COHORT_LIMIT}&offset=0`, { signal });
+  const sourceBody = (await sourceResponse.json()) as
+    | SourceListResult
+    | { error?: { message?: string } };
+  if (!sourceResponse.ok) {
+    const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
+    throw new Error(message ?? "无法读取 Sources");
+  }
+
+  const sources = (sourceBody as SourceListResult).items;
+  if (sources.length === 0) return { sources, assessments: {} };
+
+  const params = new URLSearchParams({
+    sourceIds: sources.map((source) => source.id).join(","),
+  });
+  const intelligenceResponse = await fetch(`/api/source-intelligence?${params.toString()}`, {
+    signal,
+  });
+  const intelligenceBody = (await intelligenceResponse.json()) as
+    | IntelligenceBatchResponse
+    | { error?: { message?: string } };
+  if (!intelligenceResponse.ok) {
+    const message = "error" in intelligenceBody ? intelligenceBody.error?.message : undefined;
+    throw new Error(message ?? "无法读取 Source Intelligence");
+  }
+
+  const assessments: Record<string, SourceIntelligenceAssessment | null> = {};
+  for (const item of (intelligenceBody as IntelligenceBatchResponse).items) {
+    assessments[item.sourceId] = item.assessment;
+  }
+  return { sources, assessments };
+}
+
 export function SourceIntelligenceWorkbench() {
   const [sources, setSources] = useState<SourceDefinition[]>([]);
   const [assessments, setAssessments] = useState<
@@ -44,39 +83,13 @@ export function SourceIntelligenceWorkbench() {
   const [assessingSourceId, setAssessingSourceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const sourceResponse = await fetch(`/api/sources?limit=${COHORT_LIMIT}&offset=0`);
-      const sourceBody = (await sourceResponse.json()) as
-        SourceListResult | { error?: { message?: string } };
-      if (!sourceResponse.ok) {
-        const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
-        throw new Error(message ?? "无法读取 Sources");
-      }
-      const nextSources = (sourceBody as SourceListResult).items;
-      setSources(nextSources);
-      if (nextSources.length === 0) {
-        setAssessments({});
-        return;
-      }
-
-      const params = new URLSearchParams({
-        sourceIds: nextSources.map((source) => source.id).join(","),
-      });
-      const intelligenceResponse = await fetch(`/api/source-intelligence?${params.toString()}`);
-      const intelligenceBody = (await intelligenceResponse.json()) as
-        IntelligenceBatchResponse | { error?: { message?: string } };
-      if (!intelligenceResponse.ok) {
-        const message = "error" in intelligenceBody ? intelligenceBody.error?.message : undefined;
-        throw new Error(message ?? "无法读取 Source Intelligence");
-      }
-      const nextAssessments: Record<string, SourceIntelligenceAssessment | null> = {};
-      for (const item of (intelligenceBody as IntelligenceBatchResponse).items) {
-        nextAssessments[item.sourceId] = item.assessment;
-      }
-      setAssessments(nextAssessments);
+      const snapshot = await readCohort();
+      setSources(snapshot.sources);
+      setAssessments(snapshot.assessments);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -89,8 +102,26 @@ export function SourceIntelligenceWorkbench() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const controller = new AbortController();
+    void readCohort(controller.signal)
+      .then((snapshot) => {
+        setSources(snapshot.sources);
+        setAssessments(snapshot.assessments);
+        setError(null);
+      })
+      .catch((requestError: unknown) => {
+        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "无法读取 Source Intelligence 工作台",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
 
   async function assess(sourceId: string) {
     setAssessingSourceId(sourceId);
@@ -223,7 +254,7 @@ export function SourceIntelligenceWorkbench() {
           </div>
           <button
             type="button"
-            onClick={() => void load()}
+            onClick={() => void reload()}
             disabled={loading}
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-800 disabled:opacity-50"
           >
