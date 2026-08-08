@@ -2,7 +2,7 @@ import { type SourceAdapterPort } from "./source-adapter-port";
 
 export type CollectionJob = {
   sourceId: string;
-  payload: unknown;
+  payload?: unknown;
 };
 
 export type CollectionJobResult = {
@@ -22,7 +22,7 @@ export class CollectionJobRunner {
     }
 
     try {
-      const output = await adapter.collect(job.payload);
+      const output = await adapter.fetch(job.payload);
       return { sourceId: job.sourceId, success: true, output };
     } catch (error) {
       return {
