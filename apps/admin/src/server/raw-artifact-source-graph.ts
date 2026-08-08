@@ -736,16 +736,16 @@ export function buildRawArtifactSourceGraphBatch(
   if (uniqueLinks.length > maxLinks) context.truncated = true;
   const selectedLinks = uniqueLinks.slice(0, maxLinks);
   for (const uri of selectedLinks) {
-    const existing = graph.findNodeByIdentity(profile.id, "CANONICAL_URI", uri);
-    let targetId = existing?.id;
-    if (!targetId) {
-      const node = newLinkedNode(profile, artifact, uri, linkedNodeKind(uri), currentUri);
-      targetId = node.id;
-      nodes.set(uri, node);
-    }
-    addEdge(context, profile, artifact, "LINKS_TO", currentNodeId, targetId, currentUri, "link");
-    addEdge(context, profile, artifact, "CONTAINS", root.id, targetId, currentUri, "same-site-link");
+  const expectedKind = linkedNodeKind(uri);
+  const deterministic = newLinkedNode(profile, artifact, uri, expectedKind, currentUri);
+  const existing = graph.findNodeByIdentity(profile.id, "CANONICAL_URI", uri);
+  const targetId = existing?.id ?? deterministic.id;
+  if (!existing || (existing.id === deterministic.id && existing.kind === expectedKind)) {
+    nodes.set(uri, { ...deterministic, id: targetId });
   }
+  addEdge(context, profile, artifact, "LINKS_TO", currentNodeId, targetId, currentUri, "link");
+  addEdge(context, profile, artifact, "CONTAINS", root.id, targetId, currentUri, "same-site-link");
+}
 
   const uniqueAnchorContacts = new Map<string, HtmlFacts["contacts"][number]>();
   for (const contact of facts.contacts) uniqueAnchorContacts.set(`${contact.kind}|${contact.value.toLowerCase()}`, contact);
