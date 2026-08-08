@@ -242,9 +242,7 @@ function ensureDiscoveryMigration(database: DatabaseSync): void {
         accepted_source_id TEXT,
         collection_plan_id TEXT,
         FOREIGN KEY (first_batch_id) REFERENCES discovery_batches(batch_id),
-        FOREIGN KEY (last_batch_id) REFERENCES discovery_batches(batch_id),
-        FOREIGN KEY (accepted_source_id) REFERENCES source_definitions(id),
-        FOREIGN KEY (collection_plan_id) REFERENCES collection_plans(id)
+        FOREIGN KEY (last_batch_id) REFERENCES discovery_batches(batch_id)
       ) STRICT;
 
       CREATE INDEX IF NOT EXISTS idx_discovery_batches_created
