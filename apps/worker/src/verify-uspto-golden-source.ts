@@ -147,7 +147,10 @@ function verifyExecutions(payload: unknown, artifactReceiptIds: string[]): void 
 }
 
 async function main(): Promise<void> {
-  const runId = requiredString(process.argv[2], "runId argument");
+  const runId = requiredString(
+    process.argv.slice(2).find((value) => value !== "--"),
+    "runId argument",
+  );
   const timeoutMs = Number(process.env.MARKORBIT_GOLDEN_SOURCE_TIMEOUT_MS ?? "300000");
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 30_000 || timeoutMs > 900_000) {
     throw new Error("MARKORBIT_GOLDEN_SOURCE_TIMEOUT_MS must be 30000..900000");
