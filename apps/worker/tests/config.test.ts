@@ -18,6 +18,7 @@ describe("loadWorkerProcessConfig", () => {
     expect(config.workerId).toBe("wrk_test");
     expect(config.pollIntervalMs).toBe(2_000);
     expect(config.keepAliveIntervalMs).toBe(30_000);
+    expect(config.maxCollectionRuntimeMs).toBe(12 * 60_000);
     expect(config.requireEgressProxy).toBe(true);
   });
 
@@ -41,12 +42,15 @@ describe("loadWorkerProcessConfig", () => {
     ).toThrow(/cannot disable/i);
   });
 
-  it("rejects missing credentials and invalid timing limits", () => {
+  it("rejects missing credentials and unsafe timing limits", () => {
     expect(() => loadWorkerProcessConfig(env({ MARKORBIT_WORKER_CREDENTIAL: "" }))).toThrow(
       /MARKORBIT_WORKER_CREDENTIAL/,
     );
     expect(() =>
       loadWorkerProcessConfig(env({ MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "10" })),
     ).toThrow(/KEEPALIVE/);
+    expect(() =>
+      loadWorkerProcessConfig(env({ MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: "900000" })),
+    ).toThrow(/MAX_COLLECTION_RUNTIME/);
   });
 });
