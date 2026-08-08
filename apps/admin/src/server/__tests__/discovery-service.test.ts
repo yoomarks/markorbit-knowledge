@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { SourceDiscoveryBatch } from "@markorbit/contracts";
 import { openRegistryDatabase, SqliteSourceRepository } from "@markorbit/persistence";
 import { SqliteCollectionPlanRepository } from "@markorbit/persistence/collection-plans";
 import { SqliteSourceDiscoveryRepository } from "@markorbit/persistence/source-discovery";
@@ -15,15 +16,15 @@ describe("DiscoveryWorkflowService", () => {
       sources,
       plans,
       provider: {
-        async discover(batch) {
+        async discover(batch: SourceDiscoveryBatch) {
           return [
             {
               candidateId: "cand_example_trademarks",
               locator: "https://example.com/trademarks",
               discoveredAt: "2026-08-08T01:00:00.000Z",
-              status: "DISCOVERED",
+              status: "DISCOVERED" as const,
               discoveredFrom: batch.seeds[0]?.locator,
-              discoveryMethod: "HTML_LINK",
+              discoveryMethod: "HTML_LINK" as const,
               depth: 1,
               metadata: { kind: "PAGE" },
             },
