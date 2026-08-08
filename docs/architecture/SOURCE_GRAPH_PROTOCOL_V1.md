@@ -89,16 +89,16 @@ Node IDs use `sgn_<ULID>`.
 
 Kinds:
 
-| Kind | Meaning | Identity policy |
-| --- | --- | --- |
-| WEBSITE | graph root for the governed website | canonical URI |
-| SECTION | navigation/structural section | canonical URI when addressable, otherwise source-local |
-| PAGE | HTML/web page | canonical URI |
-| DOCUMENT | PDF/DOCX/XML/other document target | canonical URI |
-| SITEMAP | sitemap URL set or index | canonical URI |
-| ORGANIZATION | organization observed in this source | source-local |
-| PERSON | professional/person observed in this source | source-local |
-| CONTACT_POINT | public/business or correctly scoped private professional contact observation | source-local |
+| Kind          | Meaning                                                                      | Identity policy                                        |
+| ------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------ |
+| WEBSITE       | graph root for the governed website                                          | canonical URI                                          |
+| SECTION       | navigation/structural section                                                | canonical URI when addressable, otherwise source-local |
+| PAGE          | HTML/web page                                                                | canonical URI                                          |
+| DOCUMENT      | PDF/DOCX/XML/other document target                                           | canonical URI                                          |
+| SITEMAP       | sitemap URL set or index                                                     | canonical URI                                          |
+| ORGANIZATION  | organization observed in this source                                         | source-local                                           |
+| PERSON        | professional/person observed in this source                                  | source-local                                           |
+| CONTACT_POINT | public/business or correctly scoped private professional contact observation | source-local                                           |
 
 Organization/person/contact nodes are evidence observations, not globally resolved entities.
 

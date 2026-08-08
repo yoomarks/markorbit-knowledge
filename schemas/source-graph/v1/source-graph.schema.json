@@ -281,12 +281,7 @@
             },
             "value": { "type": "string", "minLength": 1 },
             "visibility": {
-              "enum": [
-                "PUBLIC_BUSINESS",
-                "ORGANIZATION_PRIVATE",
-                "WORKSPACE_PRIVATE",
-                "USER_LOCAL"
-              ]
+              "enum": ["PUBLIC_BUSINESS", "ORGANIZATION_PRIVATE", "WORKSPACE_PRIVATE", "USER_LOCAL"]
             },
             "roleLabel": { "type": "string" },
             "lastVerifiedAt": { "$ref": "#/$defs/timestamp" }

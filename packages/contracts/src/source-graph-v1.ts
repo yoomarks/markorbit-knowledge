@@ -273,11 +273,7 @@ function isOptionalString(value: unknown): value is string | undefined {
 }
 
 function isTimestamp(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.endsWith("Z") &&
-    Number.isFinite(Date.parse(value))
-  );
+  return typeof value === "string" && value.endsWith("Z") && Number.isFinite(Date.parse(value));
 }
 
 function isHttpUri(value: unknown): value is string {
@@ -469,7 +465,10 @@ export function isSourceGraphNode(value: unknown): value is SourceGraphNode {
       const origin = new URL(value.canonicalOrigin);
       return (
         value.host === origin.hostname.toLowerCase() &&
-        hasUriIdentity(value, value.canonicalOrigin === origin.origin ? origin.origin : `${origin.origin}/`)
+        hasUriIdentity(
+          value,
+          value.canonicalOrigin === origin.origin ? origin.origin : `${origin.origin}/`,
+        )
       );
     }
     case "SECTION": {
@@ -517,12 +516,7 @@ export function isSourceGraphNode(value: unknown): value is SourceGraphNode {
       );
     case "ORGANIZATION":
       return (
-        hasOnlyKeys(value, [
-          ...NODE_BASE_KEYS,
-          "displayName",
-          "organizationType",
-          "websiteUri",
-        ]) &&
+        hasOnlyKeys(value, [...NODE_BASE_KEYS, "displayName", "organizationType", "websiteUri"]) &&
         (value.identity as SourceGraphIdentity).strategy === "SOURCE_LOCAL" &&
         isNonEmptyString(value.displayName) &&
         isEnumValue(SOURCE_GRAPH_ORGANIZATION_TYPES, value.organizationType) &&
@@ -612,15 +606,7 @@ export function isSourceGraphEdge(value: unknown): value is SourceGraphEdge {
 
 function isProducer(value: unknown): value is SourceGraphProducer {
   if (!isRecord(value)) return false;
-  if (
-    !hasOnlyKeys(value, [
-      "kind",
-      "name",
-      "version",
-      "discoveryBatchId",
-      "collectionRunId",
-    ])
-  ) {
+  if (!hasOnlyKeys(value, ["kind", "name", "version", "discoveryBatchId", "collectionRunId"])) {
     return false;
   }
 
@@ -728,6 +714,8 @@ export function validateSourceGraphObservationBatch(value: unknown): string[] {
   return issues;
 }
 
-export function isSourceGraphObservationBatch(value: unknown): value is SourceGraphObservationBatch {
+export function isSourceGraphObservationBatch(
+  value: unknown,
+): value is SourceGraphObservationBatch {
   return validateSourceGraphObservationBatch(value).length === 0;
 }
