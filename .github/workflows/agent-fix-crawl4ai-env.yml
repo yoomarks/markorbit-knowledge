@@ -1,0 +1,46 @@
+name: Agent Fix Crawl4AI Env
+
+on:
+  push:
+    branches:
+      - agent/crawl4ai-production-acquirer
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/crawl4ai-production-acquirer
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch sanitized environment typing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/worker-runtime/src/crawl4ai-subprocess-acquirer.ts')
+          text = path.read_text()
+          old = '  const env: NodeJS.ProcessEnv = {};\n'
+          new = '  const env: NodeJS.ProcessEnv = { NODE_ENV: process.env.NODE_ENV };\n'
+          if old not in text:
+              raise SystemExit('safe environment anchor not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - run: pnpm exec prettier --write packages/worker-runtime/src/crawl4ai-subprocess-acquirer.ts
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/worker-runtime/src/crawl4ai-subprocess-acquirer.ts
+          git commit -m "fix: preserve NODE_ENV in sanitized Crawl4AI environment"
+          git push origin HEAD:agent/crawl4ai-production-acquirer
