@@ -14,10 +14,20 @@ export * from "./local-file-connector";
 export * from "./source-connector-port";
 export * from "./http-source-connector";
 export * from "./collection-scheduler-port";
+export * from "./memory-collection-scheduler";
+export * from "./scheduled-collection-dispatcher";
+export * from "./collection-job-runner";
+export * from "./collection-queue-consumer";
+export * from "./collection-worker-loop";
+export * from "./collection-job-lease-manager";
+export * from "./worker-concurrency-controller";
+export * from "./worker-crash-recovery-manager";
+export * from "./worker-heartbeat-manager";
 export * from "./source-discovery-runner";
 export * from "./http-website-discovery-provider";
 export * from "./core-intake-adapter";
 export * from "./intake-pipeline-orchestrator";
+export * from "./ready-package-builder";
 export * from "./persistence-adapter-port";
 export * from "./memory-persistence-adapter";
 export * from "./queue-execution-port";
@@ -48,7 +58,6 @@ export * from "./source-normalizer-port";
 export * from "./uspto-source-parser";
 export * from "./uspto-source-normalizer";
 export * from "./uspto-pipeline-runner";
-export * from "./collection-job-runner";
 export * from "./raw-artifact-schema";
 export * from "./artifact-storage-port";
 export * from "./memory-artifact-storage";
@@ -59,7 +68,10 @@ export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   mode: "FIXTURE",
 };
 export type FixtureExecutionScenario =
-  "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
+  | "SUCCESS"
+  | "FAIL_AFTER_START"
+  | "FAIL_DURING_UPLOAD"
+  | "FAIL_DURING_VERIFY";
 export type ClaimedExecutionContext = { workerId: string; job: Job; lease: JobLease };
 export interface WorkerExecutionClient {
   start(context: ClaimedExecutionContext, executor: ExecutionExecutor, key: string): Promise<void>;
