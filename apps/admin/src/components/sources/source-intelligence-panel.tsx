@@ -73,9 +73,12 @@ async function readAssessment(
   sourceId: string,
   signal?: AbortSignal,
 ): Promise<SourceIntelligenceAssessment | null> {
-  const response = await fetch(`/api/source-intelligence?sourceId=${encodeURIComponent(sourceId)}`, {
-    signal,
-  });
+  const response = await fetch(
+    `/api/source-intelligence?sourceId=${encodeURIComponent(sourceId)}`,
+    {
+      signal,
+    },
+  );
   const body = (await response.json()) as {
     assessment?: SourceIntelligenceAssessment | null;
     error?: { message?: string };

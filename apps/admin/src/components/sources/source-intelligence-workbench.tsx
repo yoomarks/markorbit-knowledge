@@ -41,8 +41,7 @@ function rescanLabel(assessment: SourceIntelligenceAssessment | null): string {
 async function readCohort(signal?: AbortSignal): Promise<CohortSnapshot> {
   const sourceResponse = await fetch(`/api/sources?limit=${COHORT_LIMIT}&offset=0`, { signal });
   const sourceBody = (await sourceResponse.json()) as
-    | SourceListResult
-    | { error?: { message?: string } };
+    SourceListResult | { error?: { message?: string } };
   if (!sourceResponse.ok) {
     const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
     throw new Error(message ?? "无法读取 Sources");
@@ -58,8 +57,7 @@ async function readCohort(signal?: AbortSignal): Promise<CohortSnapshot> {
     signal,
   });
   const intelligenceBody = (await intelligenceResponse.json()) as
-    | IntelligenceBatchResponse
-    | { error?: { message?: string } };
+    IntelligenceBatchResponse | { error?: { message?: string } };
   if (!intelligenceResponse.ok) {
     const message = "error" in intelligenceBody ? intelligenceBody.error?.message : undefined;
     throw new Error(message ?? "无法读取 Source Intelligence");
