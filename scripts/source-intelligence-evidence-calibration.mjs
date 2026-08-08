@@ -40,11 +40,16 @@ function parseArgs(argv) {
     throw new Error("--base-url must use http or https");
   }
   options.baseUrl = normalized.toString().replace(/\/$/, "");
-  if (options.keys.length === 0) throw new Error("--keys must contain at least one calibration key");
+  if (options.keys.length === 0)
+    throw new Error("--keys must contain at least one calibration key");
   if (!Number.isInteger(options.minSuccess) || options.minSuccess < 1) {
     throw new Error("--min-success must be a positive integer");
   }
-  if (!Number.isInteger(options.timeoutMs) || options.timeoutMs < 30_000 || options.timeoutMs > 900_000) {
+  if (
+    !Number.isInteger(options.timeoutMs) ||
+    options.timeoutMs < 30_000 ||
+    options.timeoutMs > 900_000
+  ) {
     throw new Error("--timeout-ms must be an integer from 30000 to 900000");
   }
   return options;
@@ -78,7 +83,11 @@ function chooseCandidate(locator, candidates) {
   const seed = new URL(locator);
   const host = normalizedHost(locator);
   const sameHost = candidates.filter((candidate) => {
-    if (!candidate || candidate.status !== "DISCOVERED" || typeof candidate.candidateId !== "string") {
+    if (
+      !candidate ||
+      candidate.status !== "DISCOVERED" ||
+      typeof candidate.candidateId !== "string"
+    ) {
       return false;
     }
     try {
@@ -200,7 +209,10 @@ async function prepareSource(baseUrl, source) {
   );
   const candidates = array(discovery?.candidates);
   const selected = chooseCandidate(source.locator, candidates);
-  if (!selected) throw new Error(`No governed DISCOVERED candidate remained on ${normalizedHost(source.locator)}`);
+  if (!selected)
+    throw new Error(
+      `No governed DISCOVERED candidate remained on ${normalizedHost(source.locator)}`,
+    );
 
   const review = await requestJson(
     baseUrl,
@@ -214,7 +226,10 @@ async function prepareSource(baseUrl, source) {
   if (review?.candidate?.candidate?.status !== "ACCEPTED") {
     throw new Error(`${source.key} review did not reach ACCEPTED`);
   }
-  if (review?.source?.connector?.connectorId !== "crawl4ai-web" || review?.source?.connector?.version !== "1.1.0") {
+  if (
+    review?.source?.connector?.connectorId !== "crawl4ai-web" ||
+    review?.source?.connector?.version !== "1.1.0"
+  ) {
     throw new Error(`${source.key} is not using crawl4ai-web@1.1.0`);
   }
   if (review?.plan?.status !== "PAUSED") {
@@ -266,7 +281,11 @@ async function prepareSource(baseUrl, source) {
     }),
   );
 
-  const beforeResponse = await requestJson(baseUrl, "/api/source-intelligence", postJson({ sourceId: patchedSource.source.id }));
+  const beforeResponse = await requestJson(
+    baseUrl,
+    "/api/source-intelligence",
+    postJson({ sourceId: patchedSource.source.id }),
+  );
   const before = beforeResponse?.assessment;
   if (!before) throw new Error(`${source.key} baseline assessment missing`);
 
@@ -385,11 +404,19 @@ async function collectAndAssess(baseUrl, prepared, timeoutMs) {
 
   const terminal = await waitForRun(baseUrl, runId, timeoutMs);
   if (terminal.status !== "COMPLETED") {
-    const executions = await requestJson(baseUrl, `/api/runs/${encodeURIComponent(runId)}/executions`);
-    throw new Error(`${prepared.source.key} collection ended ${terminal.status}: ${JSON.stringify(executions)}`);
+    const executions = await requestJson(
+      baseUrl,
+      `/api/runs/${encodeURIComponent(runId)}/executions`,
+    );
+    throw new Error(
+      `${prepared.source.key} collection ended ${terminal.status}: ${JSON.stringify(executions)}`,
+    );
   }
 
-  const artifactPayload = await requestJson(baseUrl, `/api/artifacts?runId=${encodeURIComponent(runId)}&limit=100`);
+  const artifactPayload = await requestJson(
+    baseUrl,
+    `/api/artifacts?runId=${encodeURIComponent(runId)}&limit=100`,
+  );
   const artifacts = array(artifactPayload?.items);
   const kinds = new Set();
   const htmlArtifacts = [];
@@ -399,7 +426,10 @@ async function collectAndAssess(baseUrl, prepared, timeoutMs) {
     if (artifact.sourceId !== prepared.sourceId) {
       throw new Error(`${prepared.source.key} artifact escaped source boundary`);
     }
-    if (artifact.collector?.connectorId !== "crawl4ai-web" || artifact.collector?.connectorVersion !== "1.1.0") {
+    if (
+      artifact.collector?.connectorId !== "crawl4ai-web" ||
+      artifact.collector?.connectorVersion !== "1.1.0"
+    ) {
       throw new Error(`${prepared.source.key} artifact collector drifted from crawl4ai-web@1.1.0`);
     }
     kinds.add(artifact.artifactKind);
@@ -408,7 +438,8 @@ async function collectAndAssess(baseUrl, prepared, timeoutMs) {
   for (const kind of ["HTML", "MARKDOWN"]) {
     if (!kinds.has(kind)) throw new Error(`${prepared.source.key} collection is missing ${kind}`);
   }
-  if (htmlArtifacts.length === 0) throw new Error(`${prepared.source.key} produced no HTML artifact for graph extraction`);
+  if (htmlArtifacts.length === 0)
+    throw new Error(`${prepared.source.key} produced no HTML artifact for graph extraction`);
 
   const extractions = [];
   for (const artifact of htmlArtifacts) {
@@ -421,7 +452,11 @@ async function collectAndAssess(baseUrl, prepared, timeoutMs) {
     extractions.push({ artifactId: artifact.id, result: response?.result ?? null });
   }
 
-  const afterResponse = await requestJson(baseUrl, "/api/source-intelligence", postJson({ sourceId: prepared.sourceId }));
+  const afterResponse = await requestJson(
+    baseUrl,
+    "/api/source-intelligence",
+    postJson({ sourceId: prepared.sourceId }),
+  );
   const after = afterResponse?.assessment;
   if (!after) throw new Error(`${prepared.source.key} post-evidence assessment missing`);
 
@@ -487,7 +522,9 @@ function summarize(results) {
   const successful = results.filter((item) => item.status === "SUCCESS");
   const failed = results.filter((item) => item.status === "FAILED");
   const average = (values) =>
-    values.length === 0 ? null : Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2));
+    values.length === 0
+      ? null
+      : Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2));
   return {
     attempted: results.length,
     successful: successful.length,
@@ -611,6 +648,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
