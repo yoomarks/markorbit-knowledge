@@ -2,11 +2,16 @@ import { RegistryNotFoundError, type SourceRepository } from "@markorbit/persist
 import type { RawArtifactRepository, RawArtifactView } from "@markorbit/persistence/raw-artifacts";
 import type { SourceGraphRepository } from "@markorbit/persistence/source-graph";
 import type { SourceIntelligenceRepository } from "@markorbit/persistence/source-intelligence";
-import { evaluateSourceIntelligence, projectSourceIntelligenceV2 } from "@markorbit/worker-runtime";
+import {
+  buildSourceIntelligenceObservationHistoryV2,
+  evaluateSourceIntelligence,
+  projectSourceIntelligenceV2,
+} from "@markorbit/worker-runtime";
 import type {
   SourceGraphNode,
   SourceIntelligenceAssessment,
   SourceIntelligenceAssessmentV2,
+  SourceIntelligenceObservationHistoryV2,
 } from "@markorbit/contracts";
 
 const RELEVANT_TOPICS = new Set(["TRADEMARKS", "SEARCH", "FEES", "FORMS", "GUIDANCE", "LEGAL"]);
@@ -52,6 +57,13 @@ export class SourceIntelligenceService {
   latestV2(sourceId: string): SourceIntelligenceAssessmentV2 | null {
     const latest = this.latest(sourceId);
     return latest ? projectSourceIntelligenceV2(latest) : null;
+  }
+
+  historyV2(sourceId: string, limit = 20): SourceIntelligenceObservationHistoryV2 {
+    const projected = this.dependencies.intelligence
+      .listForSource(sourceId, limit)
+      .map(projectSourceIntelligenceV2);
+    return buildSourceIntelligenceObservationHistoryV2(sourceId, projected);
   }
 
   assess(sourceId: string): SourceIntelligenceAssessment {
