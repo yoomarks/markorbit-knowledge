@@ -94,7 +94,10 @@ function normalizeUrl(locator: string, base?: string): URL | null {
 }
 
 function normalizedHost(hostname: string): string {
-  return hostname.toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
+  return hostname
+    .toLowerCase()
+    .replace(/\.$/, "")
+    .replace(/^www\./, "");
 }
 
 function sameWebsiteHost(left: string, right: string): boolean {
@@ -122,7 +125,9 @@ function decodeMarkup(value: string): string {
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
     .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(Number.parseInt(code, 16)));
+    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) =>
+      String.fromCodePoint(Number.parseInt(code, 16)),
+    );
 }
 
 function extractXmlLocators(xml: string): string[] {
@@ -345,9 +350,7 @@ export class HttpWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
 
       const queuedPages = new Set<string>([normalizedSeedLocator]);
       const visitedPages = new Set<string>();
-      const pageQueue: QueueItem[] = [
-        { locator: normalizedSeedLocator, depth: 0, seed, seedUrl },
-      ];
+      const pageQueue: QueueItem[] = [{ locator: normalizedSeedLocator, depth: 0, seed, seedUrl }];
 
       const addCandidate = (
         url: URL,
@@ -429,11 +432,7 @@ export class HttpWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
           .filter((url): url is URL => !!url && isHostAllowed(url, seedUrl, constraints));
         const defaultSitemap = normalizeUrl("/sitemap.xml", seedUrl.origin);
         const initialSitemaps =
-          declaredSitemaps.length > 0
-            ? declaredSitemaps
-            : defaultSitemap
-              ? [defaultSitemap]
-              : [];
+          declaredSitemaps.length > 0 ? declaredSitemaps : defaultSitemap ? [defaultSitemap] : [];
         const sitemapQueue: SitemapQueueItem[] = initialSitemaps.map((url) => ({
           locator: url.toString(),
           discoveredFrom: robots?.locator ?? normalizedSeedLocator,
@@ -491,11 +490,7 @@ export class HttpWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
         }
       }
 
-      while (
-        pageQueue.length > 0 &&
-        candidates.length < maxCandidates &&
-        fetchCount < maxFetches
-      ) {
+      while (pageQueue.length > 0 && candidates.length < maxCandidates && fetchCount < maxFetches) {
         await visitNextPage();
       }
     }

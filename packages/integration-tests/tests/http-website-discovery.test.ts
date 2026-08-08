@@ -90,10 +90,7 @@ describe("http website discovery", () => {
 
   it("uses robots and sitemap indexes to discover structure without crawling blocked pages", async () => {
     const requested: string[] = [];
-    const pages = new Map<
-      string,
-      { body: string; contentType: string }
-    >([
+    const pages = new Map<string, { body: string; contentType: string }>([
       [
         "https://example.test/robots.txt",
         {
@@ -254,10 +251,7 @@ describe("http website discovery", () => {
       },
     });
 
-    expect(requested).toEqual([
-      "https://example.test/robots.txt",
-      "https://example.test/",
-    ]);
+    expect(requested).toEqual(["https://example.test/robots.txt", "https://example.test/"]);
     expect(result.map((candidate) => candidate.locator)).toEqual([
       "https://example.test/one",
       "https://example.test/two",
