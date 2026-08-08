@@ -5,7 +5,7 @@ export class SourceRegistry {
   private readonly candidates = new Map<string, SourceCandidate>();
 
   register(definition: SourceDefinition): SourceDefinition {
-    this.definitions.set(definition.sourceId, definition);
+    this.definitions.set(definition.id, definition);
     return definition;
   }
 
