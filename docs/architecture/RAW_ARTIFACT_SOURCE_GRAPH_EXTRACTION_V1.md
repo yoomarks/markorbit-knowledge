@@ -104,3 +104,5 @@ The first production extractor is bounded and deterministic. It does not:
 - authorize a collection run.
 
 Later increments may add richer structured extraction, extraction-run observability and Source Intelligence scoring while preserving these authority and provenance boundaries.
+
+This boundary is intentionally source-local and evidence-first.
