@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CollectionRegistry } from "@markorbit/persistence";
+import { CollectionRegistry } from "@markorbit/persistence/collection-registry";
 
 describe("collection artifact boundary", () => {
   it("keeps collection run linked to artifact ingestion handoff", () => {
