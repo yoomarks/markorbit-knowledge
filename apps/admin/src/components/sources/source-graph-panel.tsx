@@ -59,39 +59,41 @@ export function SourceGraphPanel({ sourceId }: { sourceId: string }) {
   const [projecting, setProjecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function load(signal?: AbortSignal) {
-    setError(null);
-    const [sourceResponse, graphResponse] = await Promise.all([
-      fetch(`/api/sources/${sourceId}`, { signal }),
-      fetch(`/api/sources/${sourceId}/graph`, { signal }),
-    ]);
-    const sourceBody = (await sourceResponse.json()) as {
-      source?: SourceDefinition;
-      error?: { message?: string };
-    };
-    const graphBody = (await graphResponse.json()) as GraphResponse;
-    if (!sourceResponse.ok || !sourceBody.source) {
-      throw new Error(sourceBody.error?.message ?? "Unable to load source");
-    }
-    if (!graphResponse.ok) {
-      throw new Error(graphBody.error?.message ?? "Unable to load Source Map");
-    }
-    setSource(sourceBody.source);
-    setGraph(graphBody.graph);
-  }
-
   useEffect(() => {
     const controller = new AbortController();
-    load(controller.signal)
-      .catch((requestError: unknown) => {
-        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+
+    async function loadInitialGraph() {
+      try {
+        const [sourceResponse, graphResponse] = await Promise.all([
+          fetch(`/api/sources/${sourceId}`, { signal: controller.signal }),
+          fetch(`/api/sources/${sourceId}/graph`, { signal: controller.signal }),
+        ]);
+        const sourceBody = (await sourceResponse.json()) as {
+          source?: SourceDefinition;
+          error?: { message?: string };
+        };
+        const graphBody = (await graphResponse.json()) as GraphResponse;
+        if (!sourceResponse.ok || !sourceBody.source) {
+          throw new Error(sourceBody.error?.message ?? "Unable to load source");
+        }
+        if (!graphResponse.ok) {
+          throw new Error(graphBody.error?.message ?? "Unable to load Source Map");
+        }
+        if (controller.signal.aborted) return;
+        setSource(sourceBody.source);
+        setGraph(graphBody.graph);
+        setError(null);
+      } catch (requestError: unknown) {
+        if (controller.signal.aborted) return;
         setError(
           requestError instanceof Error ? requestError.message : "Unable to load Source Map",
         );
-      })
-      .finally(() => {
+      } finally {
         if (!controller.signal.aborted) setLoading(false);
-      });
+      }
+    }
+
+    void loadInitialGraph();
     return () => controller.abort();
   }, [sourceId]);
 
