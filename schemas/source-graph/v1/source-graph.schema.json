@@ -1,0 +1,417 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.markorbit.dev/knowledge/source-graph/v1/source-graph.schema.json",
+  "title": "MarkOrbit Knowledge Source Graph Protocol v1",
+  "oneOf": [
+    { "$ref": "#/$defs/websiteSourceProfile" },
+    { "$ref": "#/$defs/node" },
+    { "$ref": "#/$defs/edge" },
+    { "$ref": "#/$defs/observationBatch" }
+  ],
+  "$defs": {
+    "protocolVersion": { "const": "1.0" },
+    "workspaceId": { "type": "string", "pattern": "^wsp_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "sourceId": { "type": "string", "pattern": "^src_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "profileId": { "type": "string", "pattern": "^spf_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "nodeId": { "type": "string", "pattern": "^sgn_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "edgeId": { "type": "string", "pattern": "^sge_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "batchId": { "type": "string", "pattern": "^sgb_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "artifactId": { "type": "string", "pattern": "^art_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "timestamp": { "type": "string", "format": "date-time", "pattern": "Z$" },
+    "httpUri": { "type": "string", "format": "uri", "pattern": "^https?://" },
+    "canonicalOrigin": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://[^/?#]+/?$"
+    },
+    "extensions": {
+      "type": "object",
+      "propertyNames": { "pattern": "^x-[a-z0-9][a-z0-9.-]*$" },
+      "additionalProperties": true
+    },
+    "reviewState": { "enum": ["OBSERVED", "RETAINED", "REJECTED"] },
+    "lifecycleState": { "enum": ["ACTIVE", "STALE", "REMOVED"] },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "key"],
+      "properties": {
+        "strategy": { "enum": ["CANONICAL_URI", "SOURCE_LOCAL"] },
+        "key": { "type": "string", "minLength": 1 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sourceId", "sourceUri", "observedAt"],
+      "properties": {
+        "kind": { "enum": ["DISCOVERY", "RAW_ARTIFACT", "MANUAL", "IMPORT"] },
+        "sourceId": { "$ref": "#/$defs/sourceId" },
+        "sourceUri": { "$ref": "#/$defs/httpUri" },
+        "observedAt": { "$ref": "#/$defs/timestamp" },
+        "discoveryCandidateId": {
+          "type": "string",
+          "pattern": "^cand_[a-f0-9]{24}$"
+        },
+        "discoveryBatchId": {
+          "type": "string",
+          "pattern": "^disc_[a-f0-9]{32}$"
+        },
+        "rawArtifactId": { "$ref": "#/$defs/artifactId" },
+        "locatorFragment": { "type": "string" }
+      }
+    },
+    "websiteSourceProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "objectType",
+        "id",
+        "workspaceId",
+        "sourceId",
+        "canonicalOrigin",
+        "canonicalHost",
+        "observedHostAliases",
+        "rootNodeId",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "objectType": { "const": "WEBSITE_SOURCE_PROFILE" },
+        "id": { "$ref": "#/$defs/profileId" },
+        "workspaceId": { "$ref": "#/$defs/workspaceId" },
+        "sourceId": { "$ref": "#/$defs/sourceId" },
+        "canonicalOrigin": { "$ref": "#/$defs/canonicalOrigin" },
+        "canonicalHost": { "type": "string", "minLength": 1 },
+        "observedHostAliases": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "rootNodeId": { "$ref": "#/$defs/nodeId" },
+        "createdAt": { "$ref": "#/$defs/timestamp" },
+        "updatedAt": { "$ref": "#/$defs/timestamp" },
+        "extensions": { "$ref": "#/$defs/extensions" }
+      }
+    },
+    "nodeBase": {
+      "type": "object",
+      "required": [
+        "protocolVersion",
+        "objectType",
+        "id",
+        "workspaceId",
+        "sourceId",
+        "profileId",
+        "kind",
+        "identity",
+        "reviewState",
+        "lifecycleState",
+        "firstObservedAt",
+        "lastObservedAt",
+        "provenance"
+      ],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "objectType": { "const": "SOURCE_GRAPH_NODE" },
+        "id": { "$ref": "#/$defs/nodeId" },
+        "workspaceId": { "$ref": "#/$defs/workspaceId" },
+        "sourceId": { "$ref": "#/$defs/sourceId" },
+        "profileId": { "$ref": "#/$defs/profileId" },
+        "kind": {
+          "enum": [
+            "WEBSITE",
+            "SECTION",
+            "PAGE",
+            "DOCUMENT",
+            "SITEMAP",
+            "ORGANIZATION",
+            "PERSON",
+            "CONTACT_POINT"
+          ]
+        },
+        "identity": { "$ref": "#/$defs/identity" },
+        "reviewState": { "$ref": "#/$defs/reviewState" },
+        "lifecycleState": { "$ref": "#/$defs/lifecycleState" },
+        "firstObservedAt": { "$ref": "#/$defs/timestamp" },
+        "lastObservedAt": { "$ref": "#/$defs/timestamp" },
+        "provenance": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/provenance" }
+        },
+        "extensions": { "$ref": "#/$defs/extensions" }
+      }
+    },
+    "websiteNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeBase" },
+        {
+          "type": "object",
+          "required": ["canonicalOrigin", "host"],
+          "properties": {
+            "kind": { "const": "WEBSITE" },
+            "canonicalOrigin": { "$ref": "#/$defs/canonicalOrigin" },
+            "host": { "type": "string", "minLength": 1 },
+            "displayName": { "type": "string" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "sectionNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeBase" },
+        {
+          "type": "object",
+          "required": ["label"],
+          "properties": {
+            "kind": { "const": "SECTION" },
+            "label": { "type": "string", "minLength": 1 },
+            "canonicalUri": { "$ref": "#/$defs/httpUri" },
+            "pathPrefix": { "type": "string" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "pageNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeBase" },
+        {
+          "type": "object",
+          "required": ["canonicalUri"],
+          "properties": {
+            "kind": { "const": "PAGE" },
+            "canonicalUri": { "$ref": "#/$defs/httpUri" },
+            "title": { "type": "string" },
+            "language": { "type": "string" },
+            "topic": { "type": "string" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "documentNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeBase" },
+        {
+          "type": "object",
+          "required": ["canonicalUri"],
+          "properties": {
+            "kind": { "const": "DOCUMENT" },
+            "canonicalUri": { "$ref": "#/$defs/httpUri" },
+            "title": { "type": "string" },
+            "mediaType": { "type": "string" },
+            "documentType": { "type": "string" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "sitemapNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeBase" },
+        {
+          "type": "object",
+          "required": ["canonicalUri", "sitemapType"],
+          "properties": {
+            "kind": { "const": "SITEMAP" },
+            "canonicalUri": { "$ref": "#/$defs/httpUri" },
+            "sitemapType": { "enum": ["URL_SET", "INDEX", "UNKNOWN"] }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "organizationNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeBase" },
+        {
+          "type": "object",
+          "required": ["displayName", "organizationType"],
+          "properties": {
+            "kind": { "const": "ORGANIZATION" },
+            "displayName": { "type": "string", "minLength": 1 },
+            "organizationType": {
+              "enum": ["AUTHORITY", "LAW_FIRM", "COMPANY", "ASSOCIATION", "OTHER"]
+            },
+            "websiteUri": { "$ref": "#/$defs/httpUri" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "personNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeBase" },
+        {
+          "type": "object",
+          "required": ["displayName"],
+          "properties": {
+            "kind": { "const": "PERSON" },
+            "displayName": { "type": "string", "minLength": 1 },
+            "roleLabel": { "type": "string" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "contactPointNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeBase" },
+        {
+          "type": "object",
+          "required": ["contactKind", "value", "visibility"],
+          "properties": {
+            "kind": { "const": "CONTACT_POINT" },
+            "contactKind": {
+              "enum": [
+                "BUSINESS_EMAIL",
+                "GENERAL_EMAIL",
+                "OFFICE_PHONE",
+                "OFFICE_ADDRESS",
+                "CONTACT_FORM",
+                "PROFESSIONAL_PROFILE_URL",
+                "BUSINESS_MESSAGING",
+                "OTHER"
+              ]
+            },
+            "value": { "type": "string", "minLength": 1 },
+            "visibility": {
+              "enum": [
+                "PUBLIC_BUSINESS",
+                "ORGANIZATION_PRIVATE",
+                "WORKSPACE_PRIVATE",
+                "USER_LOCAL"
+              ]
+            },
+            "roleLabel": { "type": "string" },
+            "lastVerifiedAt": { "$ref": "#/$defs/timestamp" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "node": {
+      "oneOf": [
+        { "$ref": "#/$defs/websiteNode" },
+        { "$ref": "#/$defs/sectionNode" },
+        { "$ref": "#/$defs/pageNode" },
+        { "$ref": "#/$defs/documentNode" },
+        { "$ref": "#/$defs/sitemapNode" },
+        { "$ref": "#/$defs/organizationNode" },
+        { "$ref": "#/$defs/personNode" },
+        { "$ref": "#/$defs/contactPointNode" }
+      ]
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "objectType",
+        "id",
+        "workspaceId",
+        "sourceId",
+        "profileId",
+        "kind",
+        "subjectNodeId",
+        "objectNodeId",
+        "reviewState",
+        "lifecycleState",
+        "firstObservedAt",
+        "lastObservedAt",
+        "provenance"
+      ],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "objectType": { "const": "SOURCE_GRAPH_EDGE" },
+        "id": { "$ref": "#/$defs/edgeId" },
+        "workspaceId": { "$ref": "#/$defs/workspaceId" },
+        "sourceId": { "$ref": "#/$defs/sourceId" },
+        "profileId": { "$ref": "#/$defs/profileId" },
+        "kind": {
+          "enum": [
+            "CONTAINS",
+            "DISCOVERED_FROM",
+            "LINKS_TO",
+            "PUBLISHED_BY",
+            "AUTHORED_BY",
+            "WORKS_AT",
+            "HAS_CONTACT_POINT",
+            "MENTIONS",
+            "REFERENCES",
+            "CITES"
+          ]
+        },
+        "subjectNodeId": { "$ref": "#/$defs/nodeId" },
+        "objectNodeId": { "$ref": "#/$defs/nodeId" },
+        "reviewState": { "$ref": "#/$defs/reviewState" },
+        "lifecycleState": { "$ref": "#/$defs/lifecycleState" },
+        "firstObservedAt": { "$ref": "#/$defs/timestamp" },
+        "lastObservedAt": { "$ref": "#/$defs/timestamp" },
+        "provenance": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/provenance" }
+        },
+        "extensions": { "$ref": "#/$defs/extensions" }
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "name"],
+      "properties": {
+        "kind": { "enum": ["DISCOVERY", "COLLECTION", "EXTRACTION", "MANUAL_IMPORT"] },
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" },
+        "discoveryBatchId": {
+          "type": "string",
+          "pattern": "^disc_[a-f0-9]{32}$"
+        },
+        "collectionRunId": { "type": "string" }
+      }
+    },
+    "observationBatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "objectType",
+        "id",
+        "workspaceId",
+        "sourceId",
+        "profileId",
+        "idempotencyKey",
+        "observedAt",
+        "producer",
+        "nodes",
+        "edges"
+      ],
+      "properties": {
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "objectType": { "const": "SOURCE_GRAPH_OBSERVATION_BATCH" },
+        "id": { "$ref": "#/$defs/batchId" },
+        "workspaceId": { "$ref": "#/$defs/workspaceId" },
+        "sourceId": { "$ref": "#/$defs/sourceId" },
+        "profileId": { "$ref": "#/$defs/profileId" },
+        "idempotencyKey": { "type": "string", "minLength": 1 },
+        "observedAt": { "$ref": "#/$defs/timestamp" },
+        "producer": { "$ref": "#/$defs/producer" },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/node" }
+        },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/edge" }
+        },
+        "extensions": { "$ref": "#/$defs/extensions" }
+      }
+    }
+  }
+}
