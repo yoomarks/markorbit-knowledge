@@ -2,6 +2,8 @@ import {
   ControlledCollectionWorkerRuntime,
   Crawl4AiSubprocessAcquirer,
   HttpControlledCollectionClient,
+  HttpProductionConversionClient,
+  ProductionConversionWorkerRuntime,
 } from "@markorbit/worker-runtime";
 import { loadWorkerProcessConfig } from "./config";
 
@@ -21,7 +23,7 @@ function log(event: string, fields: Record<string, unknown> = {}): void {
 
 async function main(): Promise<void> {
   const config = loadWorkerProcessConfig();
-  const client = new HttpControlledCollectionClient(
+  const collectionClient = new HttpControlledCollectionClient(
     config.controlPlaneUrl,
     config.workerId,
     config.workerCredential,
@@ -30,13 +32,39 @@ async function main(): Promise<void> {
     requireEgressProxy: config.requireEgressProxy,
     maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
   });
-  const runtime = new ControlledCollectionWorkerRuntime(client, acquirer, {
+  const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
     onBackgroundError(error) {
       log("worker.keepalive.error", { message: errorMessage(error) });
     },
   });
+  const conversionRuntime =
+    config.conversionEnabled && config.workspaceId
+      ? new ProductionConversionWorkerRuntime(
+          new HttpProductionConversionClient(
+            config.controlPlaneUrl,
+            config.workerId,
+            config.workerCredential,
+          ),
+          config.workspaceId,
+          {
+            capabilityRevision: config.conversionCapabilityRevision,
+            requestedLeaseDurationSeconds: config.conversionLeaseDurationSeconds,
+            onResult(result) {
+              if (!result) {
+                log("worker.conversion.failed");
+                return;
+              }
+              log("worker.conversion.completed", {
+                stagingDocumentId: result.commit.stagingDocumentId,
+                decision: result.commit.finalizationDecision,
+                readyPackageId: result.commit.readyPackageId ?? null,
+              });
+            },
+          },
+        )
+      : null;
 
   let stopping = false;
   let consecutiveFailures = 0;
@@ -52,13 +80,16 @@ async function main(): Promise<void> {
     runtimeVersion: config.runtimeVersion,
     requireEgressProxy: config.requireEgressProxy,
     maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
+    conversionEnabled: config.conversionEnabled,
   });
 
   while (!stopping) {
     try {
-      const processed = await runtime.runOnce();
+      const collectionProcessed = await collectionRuntime.runOnce();
+      const conversionProcessed =
+        !collectionProcessed && conversionRuntime ? await conversionRuntime.runOnce() : false;
       consecutiveFailures = 0;
-      if (!processed) await delay(config.pollIntervalMs);
+      if (!collectionProcessed && !conversionProcessed) await delay(config.pollIntervalMs);
     } catch (error) {
       consecutiveFailures += 1;
       const backoff = Math.min(
