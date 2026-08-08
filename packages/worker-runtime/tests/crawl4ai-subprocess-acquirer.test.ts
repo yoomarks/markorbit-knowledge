@@ -33,7 +33,7 @@ function context(): ArtifactBackedExecutionContext {
       },
       output: { artifactKinds: ["HTML"] },
     },
-  } as Job;
+  } as unknown as Job;
   return { job } as ArtifactBackedExecutionContext;
 }
 
