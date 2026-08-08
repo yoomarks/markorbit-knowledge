@@ -121,7 +121,7 @@ describe("production Markdown staging converter", () => {
     );
   });
 
-  it("uses Runtime reports and never self-completes verification", async () => {
+  it("reports output evidence before the control plane commits Staging", async () => {
     const calls: string[] = [];
     const client: ProductionConversionRuntimeClient = {
       async started() {
@@ -137,22 +137,38 @@ describe("production Markdown staging converter", () => {
         calls.push("failed");
       },
     };
-    const reader: ProductionRawArtifactReader = { async read() { return input; } };
+    const reader: ProductionRawArtifactReader = {
+      async read() {
+        return input;
+      },
+    };
     const uploader: ProductionStagingUploader = {
-      async upload(grant, markdown) {
+      async upload(_context, markdown, evidence) {
+        calls.push("staging-commit");
+        expect(evidence.sha256).toBe(createHash("sha256").update(markdown).digest("hex"));
         return {
-          uploadGrantId: grant.id,
-          targetPath: grant.normalizedTargetPath,
-          sha256: createHash("sha256").update(markdown).digest("hex"),
-          sizeBytes: markdown.byteLength,
-          mediaType: "text/markdown",
+          stagingDocumentId: "std_01H00000000000000000000000",
+          stagingStatus: "READY",
+          verificationOutcome: "PASS",
+          finalizationDecision: "COMPLETED",
+          readyPackageId: "rdp_01H00000000000000000000000",
+          coreIntakeReceiptId: "cir_01H00000000000000000000000",
         };
       },
     };
     const result = await new ProductionMarkdownStagingExecutor().execute(
-      context(), reader, uploader, client,
+      context(),
+      reader,
+      uploader,
+      client,
     );
-    expect(result).not.toBeNull();
-    expect(calls).toEqual(["started", "progress:25", "progress:75", "output-ready"]);
+    expect(result?.commit.finalizationDecision).toBe("COMPLETED");
+    expect(calls).toEqual([
+      "started",
+      "progress:25",
+      "progress:75",
+      "output-ready",
+      "staging-commit",
+    ]);
   });
 });
