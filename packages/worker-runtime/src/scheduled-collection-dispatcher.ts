@@ -2,7 +2,8 @@ import type { CollectionSchedulerPort } from "./collection-scheduler-port";
 import type { QueueExecutionPort } from "./queue-execution-port";
 
 export type CollectionDispatchRequest = {
-  sourceId: string;
+  collectionPlanId: string;
+  sourceId?: string;
   cursor?: string;
   metadata?: Record<string, unknown>;
 };
@@ -14,7 +15,20 @@ export class ScheduledCollectionDispatcher {
   ) {}
 
   async dispatch(request: CollectionDispatchRequest): Promise<void> {
-    const job = await this.scheduler.schedule(request);
-    await this.queue.enqueue(job);
+    const schedule = await this.scheduler.schedule({
+      collectionPlanId: request.collectionPlanId,
+      trigger: "SCHEDULED",
+      metadata: request.metadata,
+    });
+
+    await this.queue.enqueue({
+      id: schedule.collectionRunId,
+      payload: {
+        collectionPlanId: request.collectionPlanId,
+        sourceId: request.sourceId,
+        cursor: request.cursor,
+        schedule,
+      },
+    });
   }
 }
