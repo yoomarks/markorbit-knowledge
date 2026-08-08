@@ -126,8 +126,32 @@ function sourceValueBand(score) {
   return "LOW";
 }
 
-function localProjection(legacy) {
-  const relevance = legacy.dimensions.RELEVANCE;
+function categoryBaseline(category) {
+  switch (category) {
+    case "OFFICIAL_AUTHORITY":
+      return 85;
+    case "OFFICIAL_GUIDANCE":
+      return 80;
+    case "LAW_FIRM":
+      return 70;
+    case "RESEARCH":
+      return 65;
+    case "INTERNAL":
+      return 60;
+    case "NEWS":
+    case "TECHNICAL":
+      return 55;
+    case "USER_PROVIDED":
+      return 50;
+    case "OTHER":
+      return 45;
+    default:
+      throw new Error(`Unknown source category in D2.5 historical projection: ${category}`);
+  }
+}
+
+function localProjection(legacy, category) {
+  const relevance = { score: categoryBaseline(category) };
   const authority = legacy.dimensions.AUTHORITY_SIGNAL;
   const sourceValueScore =
     weightedScore([
@@ -341,11 +365,11 @@ async function evidenceMode(options, rawPath) {
     if (latest.v1.id !== item.after.assessmentId) {
       throw new Error(`${item.key} latest v1 does not match D2.3 post-evidence assessment`);
     }
-    const localAfter = localProjection(item.after);
+    const localAfter = localProjection(item.after, item.category);
     if (!projectionMatches(localAfter, latest.v2)) {
       throw new Error(`${item.key} local historical projector drifted from live v2 projection`);
     }
-    const before = localProjection(item.before);
+    const before = localProjection(item.before, item.category);
     const after = {
       sourceValuePriority: latest.v2.sourceValuePriority,
       evidenceMaturity: latest.v2.evidenceMaturity,
@@ -354,10 +378,11 @@ async function evidenceMode(options, rawPath) {
       boundaries: latest.v2.boundaries,
       compatibility: latest.v2.compatibility,
     };
+    const graphRelevanceStable =
+      item.before.dimensions.RELEVANCE.score === item.after.dimensions.RELEVANCE.score;
     const sourceSignalsStable =
-      item.before.dimensions.RELEVANCE.score === item.after.dimensions.RELEVANCE.score &&
       item.before.dimensions.AUTHORITY_SIGNAL.score ===
-        item.after.dimensions.AUTHORITY_SIGNAL.score;
+      item.after.dimensions.AUTHORITY_SIGNAL.score;
     const sourceValueStable =
       before.sourceValuePriority.score === after.sourceValuePriority.score &&
       before.sourceValuePriority.band === after.sourceValuePriority.band;
@@ -370,6 +395,7 @@ async function evidenceMode(options, rawPath) {
       afterDualAxis: after,
       invariants: {
         sourceSignalsStable,
+        graphRelevanceStable,
         sourceValueStable,
         evidenceMaturityAdvanced,
         acquisitionCostSeparated:
@@ -386,6 +412,7 @@ async function evidenceMode(options, rawPath) {
       successful: successful.length,
       failed: results.length - successful.length,
       stableSourceSignals: successful.filter((item) => item.invariants.sourceSignalsStable).length,
+      stableGraphRelevance: successful.filter((item) => item.invariants.graphRelevanceStable).length,
       stableSourceValue: successful.filter((item) => item.invariants.sourceValueStable).length,
       advancedEvidenceMaturity: successful.filter(
         (item) => item.invariants.evidenceMaturityAdvanced,
