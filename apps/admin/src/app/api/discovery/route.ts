@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       locator: body.locator,
       maxDepth: optionalInteger(body.maxDepth, "maxDepth"),
       maxCandidates: optionalInteger(body.maxCandidates, "maxCandidates"),
+      maxFetches: optionalInteger(body.maxFetches, "maxFetches"),
       deniedUrlPatterns: optionalStringArray(body.deniedUrlPatterns, "deniedUrlPatterns"),
     });
     return NextResponse.json(result, { status: 201 });
