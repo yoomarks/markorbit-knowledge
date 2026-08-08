@@ -47,7 +47,9 @@ function node(id: string, topic: string, raw: boolean): SourceGraphNode {
         sourceId: source.id,
         sourceUri: `https://example.com/${id}`,
         observedAt: "2026-08-08T00:00:00.000Z",
-        ...(raw ? { rawArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAV" } : { discoveryBatchId: "sdb_01ARZ3NDEKTSV4RRFFQ69G5FAV" }),
+        ...(raw
+          ? { rawArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAV" }
+          : { discoveryBatchId: "sdb_01ARZ3NDEKTSV4RRFFQ69G5FAV" }),
       },
     ],
   };
@@ -73,9 +75,18 @@ describe("SourceIntelligenceService", () => {
             createdAt: "2026-08-08T00:00:00.000Z",
             updatedAt: "2026-08-08T00:00:00.000Z",
           },
-          nodes: [node("sgn_01ARZ3NDEKTSV4RRFFQ69G5FAA", "TRADEMARKS", true), node("sgn_01ARZ3NDEKTSV4RRFFQ69G5FAB", "GENERAL", false)],
+          nodes: [
+            node("sgn_01ARZ3NDEKTSV4RRFFQ69G5FAA", "TRADEMARKS", true),
+            node("sgn_01ARZ3NDEKTSV4RRFFQ69G5FAB", "GENERAL", false),
+          ],
           edges: [],
-          summary: { nodeCount: 2, edgeCount: 0, nodeKinds: { PAGE: 2 }, reviewStates: { OBSERVED: 2 }, lifecycleStates: { ACTIVE: 2 } },
+          summary: {
+            nodeCount: 2,
+            edgeCount: 0,
+            nodeKinds: { PAGE: 2 },
+            reviewStates: { OBSERVED: 2 },
+            lifecycleStates: { ACTIVE: 2 },
+          },
         }),
       },
       artifacts: {

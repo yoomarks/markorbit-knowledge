@@ -77,10 +77,7 @@ function freshnessScore(
   assessedAt: string,
 ): SourceIntelligenceDimension {
   if (!latestCapturedAt) return dimension(null, "LOW", "NO_RAW_ARTIFACT_RECENCY_EVIDENCE");
-  const ageDays = Math.max(
-    0,
-    (Date.parse(assessedAt) - Date.parse(latestCapturedAt)) / 86_400_000,
-  );
+  const ageDays = Math.max(0, (Date.parse(assessedAt) - Date.parse(latestCapturedAt)) / 86_400_000);
   if (ageDays <= 7) return dimension(95, "HIGH", "CAPTURED_WITHIN_7_DAYS");
   if (ageDays <= 30) return dimension(80, "HIGH", "CAPTURED_WITHIN_30_DAYS");
   if (ageDays <= 90) return dimension(60, "HIGH", "CAPTURED_WITHIN_90_DAYS");
@@ -156,9 +153,7 @@ function acquisitionCostScore(
   const mb = snapshot.rawArtifactBytes / 1_048_576;
   const score = Math.min(
     100,
-    10 +
-      Math.log2(Math.max(1, averageBytes / 32_768)) * 10 +
-      Math.log2(Math.max(1, mb)) * 5,
+    10 + Math.log2(Math.max(1, averageBytes / 32_768)) * 10 + Math.log2(Math.max(1, mb)) * 5,
   );
   return dimension(
     score,
@@ -258,10 +253,7 @@ export function evaluateSourceIntelligence(
     priorityScore,
     operationalTier,
     recommendedRescan: rescanFor(operationalTier),
-    reasonCodes: [
-      `OPERATIONAL_TIER_${operationalTier}`,
-      "RECOMMENDATION_REQUIRES_OPERATOR_ACTION",
-    ],
+    reasonCodes: [`OPERATIONAL_TIER_${operationalTier}`, "RECOMMENDATION_REQUIRES_OPERATOR_ACTION"],
     boundaries: {
       legalTruthVerified: false,
       authorityInferred: false,

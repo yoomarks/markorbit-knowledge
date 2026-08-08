@@ -56,7 +56,8 @@ export class SourceIntelligenceService {
     const hashes = new Set(artifacts.map((view) => view.artifact.binaryHash.value));
     const rawArtifactBytes = artifacts.reduce((sum, view) => sum + view.artifact.sizeBytes, 0);
     const latestCapturedAt = artifacts.reduce<string | undefined>((latest, view) => {
-      if (!latest || Date.parse(view.artifact.capturedAt) > Date.parse(latest)) return view.artifact.capturedAt;
+      if (!latest || Date.parse(view.artifact.capturedAt) > Date.parse(latest))
+        return view.artifact.capturedAt;
       return latest;
     }, undefined);
 

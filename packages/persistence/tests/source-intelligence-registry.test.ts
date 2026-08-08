@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { SourceIntelligenceAssessment } from "@markorbit/contracts";
 import { SqliteSourceIntelligenceRepository } from "../src/source-intelligence-registry";
 
-function assessment(input: { id: string; fingerprint: string; assessedAt: string; nodeCount: number }): SourceIntelligenceAssessment {
+function assessment(input: {
+  id: string;
+  fingerprint: string;
+  assessedAt: string;
+  nodeCount: number;
+}): SourceIntelligenceAssessment {
   return {
     protocolVersion: "1.0",
     objectType: "SOURCE_INTELLIGENCE_ASSESSMENT",
@@ -47,14 +52,28 @@ describe("SqliteSourceIntelligenceRepository", () => {
   it("persists history and reuses the same evidence fingerprint idempotently", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteSourceIntelligenceRepository(database);
-    const first = assessment({ id: "sia_aaaaaaaaaaaaaaaaaaaaaaaa", fingerprint: "a".repeat(64), assessedAt: "2026-08-08T08:00:00.000Z", nodeCount: 8 });
+    const first = assessment({
+      id: "sia_aaaaaaaaaaaaaaaaaaaaaaaa",
+      fingerprint: "a".repeat(64),
+      assessedAt: "2026-08-08T08:00:00.000Z",
+      nodeCount: 8,
+    });
     expect(repository.save(first)).toEqual(first);
 
-    const replay = { ...first, id: "sia_bbbbbbbbbbbbbbbbbbbbbbbb", assessedAt: "2026-08-08T09:00:00.000Z" };
+    const replay = {
+      ...first,
+      id: "sia_bbbbbbbbbbbbbbbbbbbbbbbb",
+      assessedAt: "2026-08-08T09:00:00.000Z",
+    };
     expect(repository.save(replay).id).toBe(first.id);
     expect(repository.latestForSource(first.sourceId)?.id).toBe(first.id);
 
-    const changed = assessment({ id: "sia_cccccccccccccccccccccccc", fingerprint: "c".repeat(64), assessedAt: "2026-08-09T08:00:00.000Z", nodeCount: 10 });
+    const changed = assessment({
+      id: "sia_cccccccccccccccccccccccc",
+      fingerprint: "c".repeat(64),
+      assessedAt: "2026-08-09T08:00:00.000Z",
+      nodeCount: 10,
+    });
     repository.save(changed);
     expect(repository.latestForSource(first.sourceId)?.id).toBe(changed.id);
     expect(repository.listLatest(first.workspaceId)).toHaveLength(1);

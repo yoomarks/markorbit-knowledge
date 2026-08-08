@@ -40,12 +40,14 @@ export class SqliteSourceIntelligenceRepository implements SourceIntelligenceRep
     const existing = this.getByFingerprint(assessment.sourceId, assessment.inputFingerprint);
     if (existing) return existing;
     this.database
-      .prepare(`
+      .prepare(
+        `
         INSERT INTO source_intelligence_assessments (
           assessment_id, workspace_id, source_id, input_fingerprint, assessed_at,
           operational_tier, priority_score, document_json
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `)
+      `,
+      )
       .run(
         assessment.id,
         assessment.workspaceId,
@@ -61,9 +63,7 @@ export class SqliteSourceIntelligenceRepository implements SourceIntelligenceRep
 
   get(id: string): SourceIntelligenceAssessment | null {
     const row = this.database
-      .prepare(
-        "SELECT document_json FROM source_intelligence_assessments WHERE assessment_id = ?",
-      )
+      .prepare("SELECT document_json FROM source_intelligence_assessments WHERE assessment_id = ?")
       .get(id) as { document_json: string } | undefined;
     return row ? this.parse(row.document_json) : null;
   }
@@ -82,10 +82,12 @@ export class SqliteSourceIntelligenceRepository implements SourceIntelligenceRep
 
   latestForSource(sourceId: string): SourceIntelligenceAssessment | null {
     const row = this.database
-      .prepare(`
+      .prepare(
+        `
         SELECT document_json FROM source_intelligence_assessments
         WHERE source_id = ? ORDER BY assessed_at DESC, assessment_id DESC LIMIT 1
-      `)
+      `,
+      )
       .get(sourceId) as { document_json: string } | undefined;
     return row ? this.parse(row.document_json) : null;
   }
@@ -93,7 +95,8 @@ export class SqliteSourceIntelligenceRepository implements SourceIntelligenceRep
   listLatest(workspaceId: string, limit = 100): SourceIntelligenceAssessment[] {
     const safeLimit = Math.max(1, Math.min(500, Math.floor(limit)));
     const rows = this.database
-      .prepare(`
+      .prepare(
+        `
         SELECT a.document_json
         FROM source_intelligence_assessments a
         JOIN (
@@ -104,7 +107,8 @@ export class SqliteSourceIntelligenceRepository implements SourceIntelligenceRep
         WHERE a.workspace_id = ?
         ORDER BY a.priority_score DESC, a.source_id ASC
         LIMIT ?
-      `)
+      `,
+      )
       .all(workspaceId, workspaceId, safeLimit) as Array<{ document_json: string }>;
     return rows.map((row) => this.parse(row.document_json));
   }

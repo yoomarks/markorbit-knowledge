@@ -30,7 +30,11 @@ describe("source intelligence evaluator", () => {
     });
     expect(assessment.operationalTier).toBe("A");
     expect(assessment.dimensions.AUTHORITY_SIGNAL.score).toBeNull();
-    expect(assessment.boundaries).toEqual({ legalTruthVerified: false, authorityInferred: false, autoScheduleApplied: false });
+    expect(assessment.boundaries).toEqual({
+      legalTruthVerified: false,
+      authorityInferred: false,
+      autoScheduleApplied: false,
+    });
     expect(isSourceIntelligenceAssessment(assessment)).toBe(true);
   });
 
@@ -53,7 +57,9 @@ describe("source intelligence evaluator", () => {
       },
     });
     expect(assessment.dimensions.AUTHORITY_SIGNAL.score).toBe(100);
-    expect(assessment.dimensions.AUTHORITY_SIGNAL.reasonCodes).toContain("EXPLICIT_AUTHORITY_PRIMARY");
+    expect(assessment.dimensions.AUTHORITY_SIGNAL.reasonCodes).toContain(
+      "EXPLICIT_AUTHORITY_PRIMARY",
+    );
     expect(assessment.boundaries.authorityInferred).toBe(false);
   });
 
