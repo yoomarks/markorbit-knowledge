@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Globe2,
   Loader2,
+  Play,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -110,6 +111,7 @@ export function DiscoveryWorkspace() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [authorizingId, setAuthorizingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -202,6 +204,38 @@ export function DiscoveryWorkspace() {
       setError(reviewError instanceof Error ? reviewError.message : "Review failed");
     } finally {
       setReviewingId(null);
+    }
+  }
+
+  async function authorizeCollection(candidateId: string) {
+    setAuthorizingId(candidateId);
+    setMessage(null);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/discovery/candidates/${candidateId}/authorize-collection`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ requestedBy: "admin-console" }),
+        },
+      );
+      if (!response.ok) throw new Error(await readError(response));
+      const result = (await response.json()) as { run: { id: string }; replayed: boolean };
+      setMessage(
+        result.replayed
+          ? `Collection already authorized · existing run ${result.run.id}`
+          : `Collection authorized · run ${result.run.id} queued for a compatible Worker`,
+      );
+      await refresh();
+    } catch (authorizationError) {
+      setError(
+        authorizationError instanceof Error
+          ? authorizationError.message
+          : "Collection authorization failed",
+      );
+    } finally {
+      setAuthorizingId(null);
     }
   }
 
@@ -504,6 +538,21 @@ export function DiscoveryWorkspace() {
                     <Link href="/jobs" className="text-xs font-medium text-slate-600">
                       Collection plan: {record.review.collectionPlanId.slice(0, 12)}…
                     </Link>
+                  ) : null}
+                  {record.candidate.status === "ACCEPTED" && record.review?.collectionPlanId ? (
+                    <button
+                      type="button"
+                      disabled={authorizingId === record.candidate.candidateId}
+                      onClick={() => void authorizeCollection(record.candidate.candidateId)}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-950 px-3 py-2 text-xs font-medium text-white disabled:bg-slate-300"
+                    >
+                      {authorizingId === record.candidate.candidateId ? (
+                        <Loader2 className="animate-spin" size={13} />
+                      ) : (
+                        <Play size={13} />
+                      )}
+                      Authorize & Run
+                    </button>
                   ) : null}
                 </div>
               </div>
