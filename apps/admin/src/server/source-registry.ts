@@ -23,6 +23,14 @@ import {
   type ConversionRunLedgerRepository,
 } from "@markorbit/persistence/conversion-runs";
 import {
+  SqliteConversionRuntimePersistenceRepository,
+  type ConversionRuntimePersistenceRepository,
+} from "@markorbit/persistence/conversion-runtime";
+import {
+  SqliteConversionRuntimeTransitionRepository,
+  type ConversionRuntimeTransitionRepository,
+} from "@markorbit/persistence/conversion-runtime-transitions";
+import {
   SqliteExecutionLedgerRepository,
   type ExecutionLedgerRepository,
 } from "@markorbit/persistence/execution-ledger";
@@ -35,6 +43,10 @@ import {
   type RawArtifactRepository,
 } from "@markorbit/persistence/raw-artifacts";
 import {
+  SqliteReadyPackageRegistryRepository,
+  type ReadyPackageRegistryRepository,
+} from "@markorbit/persistence/ready-packages";
+import {
   SqliteSourceDiscoveryRepository,
   type SourceDiscoveryRepository,
 } from "@markorbit/persistence/source-discovery";
@@ -42,6 +54,18 @@ import {
   SqliteSourceGraphRepository,
   type SourceGraphRepository,
 } from "@markorbit/persistence/source-graph";
+import {
+  SqliteStagingContentRegistryRepository,
+  type StagingContentRegistryRepository,
+} from "@markorbit/persistence/staging-content";
+import {
+  SqliteStagingVerificationRepository,
+  type StagingVerificationRepository,
+} from "@markorbit/persistence/staging-verification";
+import {
+  ControlPlaneVerifiedStagingFinalizer,
+  type VerifiedStagingFinalizationRepository,
+} from "@markorbit/persistence/verified-staging-finalization";
 import {
   SqliteWorkerRegistryRepository,
   type WorkerRegistryRepository,
@@ -61,19 +85,29 @@ const globalRegistry = globalThis as typeof globalThis & {
     artifacts: RawArtifactRepository;
     converters: ConverterRegistryRepository;
     conversionRuns: ConversionRunLedgerRepository;
+    conversionRuntime: ConversionRuntimePersistenceRepository;
+    conversionTransitions: ConversionRuntimeTransitionRepository;
+    staging: StagingContentRegistryRepository;
+    stagingVerification: StagingVerificationRepository;
+    stagingFinalizer: VerifiedStagingFinalizationRepository;
+    readyPackages: ReadyPackageRegistryRepository;
   };
 };
 
+function repositoryRoot(): string {
+  return process.env.MARKORBIT_REPOSITORY_ROOT ?? process.env.INIT_CWD ?? process.cwd();
+}
+
 function defaultDatabasePath(): string {
-  const repositoryRoot =
-    process.env.MARKORBIT_REPOSITORY_ROOT ?? process.env.INIT_CWD ?? process.cwd();
-  return resolve(repositoryRoot, ".data", "markorbit-knowledge.sqlite");
+  return resolve(repositoryRoot(), ".data", "markorbit-knowledge.sqlite");
 }
 
 function defaultArtifactStorePath(): string {
-  const repositoryRoot =
-    process.env.MARKORBIT_REPOSITORY_ROOT ?? process.env.INIT_CWD ?? process.cwd();
-  return resolve(repositoryRoot, ".data", "artifacts");
+  return resolve(repositoryRoot(), ".data", "artifacts");
+}
+
+function defaultStagingStorePath(): string {
+  return resolve(repositoryRoot(), ".data", "staging");
 }
 
 function artifactMaxBytes(): number | undefined {
@@ -92,6 +126,12 @@ function getRegistries() {
   if (!globalRegistry.markorbitRegistries) {
     const databasePath = process.env.MARKORBIT_KNOWLEDGE_DB_PATH ?? defaultDatabasePath();
     const database = openRegistryDatabase(databasePath);
+    const staging = new SqliteStagingContentRegistryRepository(
+      database,
+      process.env.MARKORBIT_STAGING_STORE_PATH ?? defaultStagingStorePath(),
+    );
+    const conversionTransitions = new SqliteConversionRuntimeTransitionRepository(database);
+    const stagingVerification = new SqliteStagingVerificationRepository(database, staging);
     globalRegistry.markorbitRegistries = {
       database,
       sources: new SqliteSourceRepository(database),
@@ -104,6 +144,16 @@ function getRegistries() {
       executions: new SqliteWorkerExecutionRepository(database),
       converters: new SqliteConverterRegistryRepository(database),
       conversionRuns: new SqliteConversionRunLedgerRepository(database),
+      conversionRuntime: new SqliteConversionRuntimePersistenceRepository(database),
+      conversionTransitions,
+      staging,
+      stagingVerification,
+      stagingFinalizer: new ControlPlaneVerifiedStagingFinalizer(
+        staging,
+        stagingVerification,
+        conversionTransitions,
+      ),
+      readyPackages: new SqliteReadyPackageRegistryRepository(database),
       artifacts: new SqliteRawArtifactRepository(
         database,
         process.env.MARKORBIT_ARTIFACT_STORE_PATH ?? defaultArtifactStorePath(),
@@ -178,4 +228,28 @@ export function getConverterRegistryRepository(): ConverterRegistryRepository {
 
 export function getConversionRunLedgerRepository(): ConversionRunLedgerRepository {
   return getRegistries().conversionRuns;
+}
+
+export function getConversionRuntimeRepository(): ConversionRuntimePersistenceRepository {
+  return getRegistries().conversionRuntime;
+}
+
+export function getConversionRuntimeTransitionRepository(): ConversionRuntimeTransitionRepository {
+  return getRegistries().conversionTransitions;
+}
+
+export function getStagingContentRepository(): StagingContentRegistryRepository {
+  return getRegistries().staging;
+}
+
+export function getStagingVerificationRepository(): StagingVerificationRepository {
+  return getRegistries().stagingVerification;
+}
+
+export function getVerifiedStagingFinalizer(): VerifiedStagingFinalizationRepository {
+  return getRegistries().stagingFinalizer;
+}
+
+export function getReadyPackageRepository(): ReadyPackageRegistryRepository {
+  return getRegistries().readyPackages;
 }
