@@ -1,18 +1,21 @@
-import type { CollectionSchedulerPort } from "./collection-scheduler-port";
-
-export type ScheduledCollectionJob = {
-  sourceId: string;
-  runAt: Date;
-};
+import type {
+  CollectionScheduleRequest,
+  CollectionScheduleResult,
+  CollectionSchedulerPort,
+} from "./collection-scheduler-port";
 
 export class MemoryCollectionScheduler implements CollectionSchedulerPort {
-  private readonly jobs: ScheduledCollectionJob[] = [];
+  private readonly requests: CollectionScheduleRequest[] = [];
 
-  schedule(job: ScheduledCollectionJob): void {
-    this.jobs.push(job);
+  async schedule(request: CollectionScheduleRequest): Promise<CollectionScheduleResult> {
+    this.requests.push(request);
+    return {
+      collectionRunId: `run-${request.collectionPlanId}-${this.requests.length}`,
+      status: "QUEUED",
+    };
   }
 
-  list(): ScheduledCollectionJob[] {
-    return [...this.jobs];
+  list(): CollectionScheduleRequest[] {
+    return [...this.requests];
   }
 }
