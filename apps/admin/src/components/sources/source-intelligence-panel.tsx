@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity, Database, RefreshCw, ShieldAlert } from "lucide-react";
 import {
   SOURCE_INTELLIGENCE_DIMENSIONS,
@@ -69,37 +69,45 @@ function rescanLabel(assessment: SourceIntelligenceAssessment): string {
     : "建议仅在人工判断需要时重新扫描";
 }
 
+async function readAssessment(
+  sourceId: string,
+  signal?: AbortSignal,
+): Promise<SourceIntelligenceAssessment | null> {
+  const response = await fetch(`/api/source-intelligence?sourceId=${encodeURIComponent(sourceId)}`, {
+    signal,
+  });
+  const body = (await response.json()) as {
+    assessment?: SourceIntelligenceAssessment | null;
+    error?: { message?: string };
+  };
+  if (!response.ok) throw new Error(body.error?.message ?? "无法读取 Source Intelligence");
+  return body.assessment ?? null;
+}
+
 export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
   const [assessment, setAssessment] = useState<SourceIntelligenceAssessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [assessing, setAssessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(
-        `/api/source-intelligence?sourceId=${encodeURIComponent(sourceId)}`,
-      );
-      const body = (await response.json()) as {
-        assessment?: SourceIntelligenceAssessment | null;
-        error?: { message?: string };
-      };
-      if (!response.ok) throw new Error(body.error?.message ?? "无法读取 Source Intelligence");
-      setAssessment(body.assessment ?? null);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error ? requestError.message : "无法读取 Source Intelligence",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [sourceId]);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    const controller = new AbortController();
+    void readAssessment(sourceId, controller.signal)
+      .then((nextAssessment) => {
+        setAssessment(nextAssessment);
+        setError(null);
+      })
+      .catch((requestError: unknown) => {
+        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+        setError(
+          requestError instanceof Error ? requestError.message : "无法读取 Source Intelligence",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [sourceId]);
 
   async function assess() {
     setAssessing(true);
