@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ExecutionExecutor, ExecutionReceipt } from "@markorbit/contracts";
 import { WorkerRuntimeRunner } from "@markorbit/worker-runtime";
 
 describe("worker runtime runner", () => {
@@ -11,12 +12,13 @@ describe("worker runtime runner", () => {
       fail: async () => {},
     });
 
-    const receipt = {
-      executor: {
-        executorId: "test-executor",
-        version: "1.0.0",
-        mode: "FIXTURE",
-      },
+    const executor: ExecutionExecutor = {
+      executorId: "test-executor",
+      version: "1.0.0",
+      mode: "FIXTURE",
+    };
+    const receipt: ExecutionReceipt = {
+      executor,
       outputKinds: ["MARKDOWN"],
       itemsObserved: 1,
       bytesPrepared: 10,
@@ -25,7 +27,7 @@ describe("worker runtime runner", () => {
     };
 
     const result = await runner.run({} as never, {
-      executor: receipt.executor,
+      executor,
       execute: async () => receipt,
     });
 
