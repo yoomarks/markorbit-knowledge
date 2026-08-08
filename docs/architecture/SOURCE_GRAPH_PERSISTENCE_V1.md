@@ -62,6 +62,8 @@ Seed website
 
 Additional accepted candidates from the same website reuse the same SourceDefinition and CollectionPlan. They do not create page-level sources.
 
+The canonical website homepage is represented by the profile's `WEBSITE` root node. If Discovery also emits the homepage as a page candidate, that observation is collapsed into the root identity rather than creating a duplicate `PAGE` node.
+
 When a governed website already exists, later Discovery runs write new candidate observations directly into its graph. This is an evidence update only; it does not dispatch a collection job.
 
 ## Legacy compatibility migration
