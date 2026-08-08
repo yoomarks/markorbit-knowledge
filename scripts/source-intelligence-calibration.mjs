@@ -62,7 +62,8 @@ function assertManifest(manifest) {
   }
   const keys = new Set();
   for (const source of manifest.sources) {
-    if (!source || typeof source !== "object") throw new Error("Each calibration source must be an object");
+    if (!source || typeof source !== "object")
+      throw new Error("Each calibration source must be an object");
     for (const field of ["key", "name", "locator", "category", "authorityLevel"]) {
       if (typeof source[field] !== "string" || source[field].trim() === "") {
         throw new Error(`Calibration source is missing ${field}`);
@@ -84,7 +85,11 @@ function assertManifest(manifest) {
     if (!Array.isArray(source.languages) || source.languages.length === 0) {
       throw new Error(`${source.key} must declare languages`);
     }
-    if (!Number.isInteger(source.humanPriority) || source.humanPriority < 1 || source.humanPriority > 5) {
+    if (
+      !Number.isInteger(source.humanPriority) ||
+      source.humanPriority < 1 ||
+      source.humanPriority > 5
+    ) {
       throw new Error(`${source.key} humanPriority must be an integer from 1 to 5`);
     }
   }
@@ -105,7 +110,11 @@ function chooseCandidate(locator, candidates) {
   const seed = new URL(locator);
   const host = normalizedHost(locator);
   const sameHost = candidates.filter((candidate) => {
-    if (!candidate || candidate.status !== "DISCOVERED" || typeof candidate.candidateId !== "string") {
+    if (
+      !candidate ||
+      candidate.status !== "DISCOVERED" ||
+      typeof candidate.candidateId !== "string"
+    ) {
       return false;
     }
     try {
@@ -154,14 +163,17 @@ function average(values) {
 }
 
 function rank(values) {
-  const indexed = values.map((value, index) => ({ value, index })).sort((a, b) => a.value - b.value);
+  const indexed = values
+    .map((value, index) => ({ value, index }))
+    .sort((a, b) => a.value - b.value);
   const ranks = new Array(values.length);
   let position = 0;
   while (position < indexed.length) {
     let end = position + 1;
     while (end < indexed.length && indexed[end].value === indexed[position].value) end += 1;
     const averageRank = (position + 1 + end) / 2;
-    for (let cursor = position; cursor < end; cursor += 1) ranks[indexed[cursor].index] = averageRank;
+    for (let cursor = position; cursor < end; cursor += 1)
+      ranks[indexed[cursor].index] = averageRank;
     position = end;
   }
   return ranks;
@@ -204,7 +216,10 @@ function summarize(results) {
     authorityScores[result.authorityLevel].push(result.priorityScore);
   }
   const authorityAverages = Object.fromEntries(
-    Object.entries(authorityScores).map(([authority, scores]) => [authority, Number(average(scores).toFixed(2))]),
+    Object.entries(authorityScores).map(([authority, scores]) => [
+      authority,
+      Number(average(scores).toFixed(2)),
+    ]),
   );
   const ordered = [...successful].sort((left, right) => right.priorityScore - left.priorityScore);
   return {
@@ -243,21 +258,33 @@ async function calibrateSource(baseUrl, source) {
   );
   const candidates = Array.isArray(discovery?.candidates) ? discovery.candidates : [];
   const selected = chooseCandidate(source.locator, candidates);
-  if (!selected) throw new Error(`No governed DISCOVERED candidate remained on ${normalizedHost(source.locator)}`);
+  if (!selected)
+    throw new Error(
+      `No governed DISCOVERED candidate remained on ${normalizedHost(source.locator)}`,
+    );
 
-  const review = await requestJson(baseUrl, `/api/discovery/candidates/${selected.candidateId}/review`, {
-    method: "POST",
-    body: JSON.stringify({
-      decision: "ACCEPTED",
-      reviewer: "source-intelligence-calibration-v1",
-      note: "Explicit isolated calibration acceptance from the human-maintained calibration manifest; never a production auto-accept policy.",
-    }),
-  });
+  const review = await requestJson(
+    baseUrl,
+    `/api/discovery/candidates/${selected.candidateId}/review`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        decision: "ACCEPTED",
+        reviewer: "source-intelligence-calibration-v1",
+        note: "Explicit isolated calibration acceptance from the human-maintained calibration manifest; never a production auto-accept policy.",
+      }),
+    },
+  );
   if (review?.candidate?.candidate?.status !== "ACCEPTED") {
     throw new Error("Calibration review did not reach ACCEPTED");
   }
-  if (review?.source?.connector?.connectorId !== "crawl4ai-web" || review?.source?.connector?.version !== "1.1.0") {
-    throw new Error(`Calibration Source is not on crawl4ai-web@1.1.0: ${JSON.stringify(review?.source?.connector)}`);
+  if (
+    review?.source?.connector?.connectorId !== "crawl4ai-web" ||
+    review?.source?.connector?.version !== "1.1.0"
+  ) {
+    throw new Error(
+      `Calibration Source is not on crawl4ai-web@1.1.0: ${JSON.stringify(review?.source?.connector)}`,
+    );
   }
   if (review?.plan?.status !== "PAUSED") {
     throw new Error("Candidate acceptance crossed the collection authorization boundary");
@@ -273,7 +300,13 @@ async function calibrateSource(baseUrl, source) {
       authorityLevel: source.authorityLevel,
       jurisdictions: source.jurisdictions,
       languages: source.languages,
-      tags: [...new Set([...(currentSource.tags ?? []), "source-intelligence-calibration", `calibration:${source.key}`])],
+      tags: [
+        ...new Set([
+          ...(currentSource.tags ?? []),
+          "source-intelligence-calibration",
+          `calibration:${source.key}`,
+        ]),
+      ],
     }),
   });
 
@@ -385,6 +418,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });

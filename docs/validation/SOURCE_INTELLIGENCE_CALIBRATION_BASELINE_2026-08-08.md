@@ -21,10 +21,10 @@ The run executed against an isolated Knowledge registry and used the same govern
 ## Observed results
 
 | Calibration group | Successful sources | Average machine priority |
-| --- | ---: | ---: |
-| PRIMARY_OFFICIAL | 3 | 32 |
-| PROFESSIONAL | 6 | 30 |
-| INDUSTRY | 2 | 29 |
+| ----------------- | -----------------: | -----------------------: |
+| PRIMARY_OFFICIAL  |                  3 |                       32 |
+| PROFESSIONAL      |                  6 |                       30 |
+| INDUSTRY          |                  2 |                       29 |
 
 Tier distribution:
 
