@@ -113,20 +113,29 @@ export async function GET(request: Request) {
     }
     if (sourceIds) {
       const ids = sourceIdsValue(sourceIds);
-      const histories = includeHistory
-        ? ids.map((id) => intelligence.historyV2(id, historyLimit))
-        : null;
-      const items = ids.map((id, index) => ({
-        sourceId: id,
-        assessment:
-          protocolVersion === "2.0" ? intelligence.latestV2(id) : intelligence.latest(id),
-        ...(histories ? { history: histories[index] } : {}),
-      }));
+      if (includeHistory) {
+        const items = ids.map((id) => ({
+          sourceId: id,
+          assessment: intelligence.latestV2(id),
+          history: intelligence.historyV2(id, historyLimit),
+        }));
+        return NextResponse.json({
+          items,
+          ...(includeSummary
+            ? {
+                summary: buildSourceIntelligenceCrossSourceObservationSummaryV2(
+                  items.map((item) => item.history),
+                ),
+              }
+            : {}),
+        });
+      }
       return NextResponse.json({
-        items,
-        ...(includeSummary
-          ? { summary: buildSourceIntelligenceCrossSourceObservationSummaryV2(histories ?? []) }
-          : {}),
+        items: ids.map((id) => ({
+          sourceId: id,
+          assessment:
+            protocolVersion === "2.0" ? intelligence.latestV2(id) : intelligence.latest(id),
+        })),
       });
     }
     throw new RegistryValidationError("sourceId or sourceIds query parameter is required");
