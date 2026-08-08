@@ -31,7 +31,8 @@ export type LocalFileIntakeResult = {
  * not yet participate in the leased ConnectorExecutor lifecycle. */
 export class LocalFileConnector {
   async ingest(request: LocalFileIntakeRequest): Promise<LocalFileIntakeResult> {
-    const bytes = typeof request.content === "string" ? Buffer.from(request.content) : request.content;
+    const bytes =
+      typeof request.content === "string" ? Buffer.from(request.content) : request.content;
     const contentHash = createHash("sha256").update(bytes).digest("hex");
     return {
       sourceId: request.sourceId,

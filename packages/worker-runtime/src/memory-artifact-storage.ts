@@ -11,7 +11,9 @@ export type LegacyRawArtifactCandidate = {
   capturedAt: string;
 };
 
-function isCanonicalArtifact(artifact: RawArtifact | LegacyRawArtifactCandidate): artifact is RawArtifact {
+function isCanonicalArtifact(
+  artifact: RawArtifact | LegacyRawArtifactCandidate,
+): artifact is RawArtifact {
   return "objectType" in artifact && artifact.objectType === "RAW_ARTIFACT";
 }
 
