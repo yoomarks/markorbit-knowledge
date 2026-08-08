@@ -29,7 +29,10 @@ RUN python3 -m venv /opt/markorbit-venv \
     && chmod -R a+rX /ms-playwright /opt/markorbit-venv
 
 ENV PATH="/opt/markorbit-venv/bin:${PATH}" \
-    NODE_ENV=production
+    NODE_ENV=production \
+    HOME=/tmp/markorbit-worker \
+    XDG_CACHE_HOME=/tmp/markorbit-worker/.cache \
+    TMPDIR=/tmp
 
 USER node
 ENTRYPOINT ["dumb-init", "--"]
