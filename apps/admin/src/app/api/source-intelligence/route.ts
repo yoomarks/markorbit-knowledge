@@ -113,20 +113,19 @@ export async function GET(request: Request) {
     }
     if (sourceIds) {
       const ids = sourceIdsValue(sourceIds);
-      const items = ids.map((id) => ({
+      const histories = includeHistory
+        ? ids.map((id) => intelligence.historyV2(id, historyLimit))
+        : null;
+      const items = ids.map((id, index) => ({
         sourceId: id,
         assessment:
           protocolVersion === "2.0" ? intelligence.latestV2(id) : intelligence.latest(id),
-        ...(includeHistory ? { history: intelligence.historyV2(id, historyLimit) } : {}),
+        ...(histories ? { history: histories[index] } : {}),
       }));
       return NextResponse.json({
         items,
         ...(includeSummary
-          ? {
-              summary: buildSourceIntelligenceCrossSourceObservationSummaryV2(
-                items.flatMap((item) => ("history" in item ? [item.history] : [])),
-              ),
-            }
+          ? { summary: buildSourceIntelligenceCrossSourceObservationSummaryV2(histories ?? []) }
           : {}),
       });
     }
