@@ -44,7 +44,7 @@ describe("Source Intelligence D2.5 calibration invariants", () => {
     });
     const currentTraceable = project({
       ...common,
-      rawProvenanceNodeCount: 2,
+      rawProvenanceNodeCount: 4,
       latestCapturedAt: "2026-08-08T07:00:00.000Z",
     });
 
