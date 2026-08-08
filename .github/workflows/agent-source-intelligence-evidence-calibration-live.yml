@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
 
+# Temporary clean-proof trigger after fixing calibration Worker process-tree shutdown.
 jobs:
   live-proof:
     uses: ./.github/workflows/source-intelligence-evidence-calibration.yml
