@@ -230,6 +230,52 @@ describe("http website discovery", () => {
     });
   });
 
+  it("falls back to the governed seed when a site exposes no reviewable structure", async () => {
+    const requested: string[] = [];
+    const fetcher = (async (input: string | URL | Request) => {
+      const locator = typeof input === "string" ? input : input.toString();
+      requested.push(locator);
+      return new Response("forbidden", { status: 403 });
+    }) as typeof globalThis.fetch;
+
+    const provider = new HttpWebsiteDiscoveryProvider(fetcher);
+    const result = await provider.discover({
+      batchId: "batch_seed_fallback",
+      createdAt: "2026-08-08T00:00:00Z",
+      seeds: [
+        {
+          seedId: "seed_euipo",
+          locator: "https://www.euipo.europa.eu/en/trade-marks/how-to-apply",
+        },
+      ],
+      constraints: {
+        maxDepth: 1,
+        maxCandidates: 10,
+        maxFetches: 8,
+        sameHostOnly: true,
+        respectRobots: true,
+        discoverSitemaps: true,
+      },
+    });
+
+    expect(requested).toEqual([
+      "https://www.euipo.europa.eu/robots.txt",
+      "https://www.euipo.europa.eu/en/trade-marks/how-to-apply",
+      "https://www.euipo.europa.eu/sitemap.xml",
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      locator: "https://www.euipo.europa.eu/en/trade-marks/how-to-apply",
+      status: "DISCOVERED",
+      discoveryMethod: "SEED",
+      depth: 0,
+      metadata: {
+        seedFallback: true,
+        fallbackReason: "NO_REVIEWABLE_STRUCTURE",
+      },
+    });
+  });
+
   it("bounds network work independently from candidate count", async () => {
     const requested: string[] = [];
     const fetcher = (async (input: string | URL | Request) => {

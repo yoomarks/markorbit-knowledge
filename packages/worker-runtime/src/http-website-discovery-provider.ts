@@ -336,6 +336,7 @@ export class HttpWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
       if (!seedUrl || !isHostAllowed(seedUrl, seedUrl, constraints)) continue;
       const normalizedSeedLocator = seedUrl.toString();
       seedLocators.add(normalizedSeedLocator);
+      const candidateCountBeforeSeed = candidates.length;
 
       let robots: RobotsPolicy | null = null;
       const robotsUrl = new URL("/robots.txt", seedUrl.origin).toString();
@@ -492,6 +493,34 @@ export class HttpWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
 
       while (pageQueue.length > 0 && candidates.length < maxCandidates && fetchCount < maxFetches) {
         await visitNextPage();
+      }
+
+      if (
+        candidates.length === candidateCountBeforeSeed &&
+        candidates.length < maxCandidates &&
+        canDiscover(seedUrl, seedUrl, constraints) &&
+        !candidateLocators.has(normalizedSeedLocator)
+      ) {
+        const robotsAllowed = !respectRobots || robotsAllows(robots, seedUrl);
+        candidates.push({
+          candidateId: candidateId(normalizedSeedLocator),
+          locator: normalizedSeedLocator,
+          discoveredAt: new Date().toISOString(),
+          status: "DISCOVERED",
+          discoveredFrom: seed.locator,
+          discoveryMethod: "SEED",
+          depth: 0,
+          metadata: {
+            kind: candidateKind(seedUrl),
+            seedId: seed.seedId,
+            seedLocator: seed.locator,
+            host: seedUrl.hostname,
+            robotsAllowed,
+            seedFallback: true,
+            fallbackReason: "NO_REVIEWABLE_STRUCTURE",
+          },
+        });
+        candidateLocators.add(normalizedSeedLocator);
       }
     }
 
