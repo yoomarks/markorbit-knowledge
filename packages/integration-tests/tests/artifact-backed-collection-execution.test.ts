@@ -3,10 +3,7 @@ import { rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  SqliteSourceRepository,
-  openRegistryDatabase,
-} from "@markorbit/persistence";
+import { SqliteSourceRepository, openRegistryDatabase } from "@markorbit/persistence";
 import { SqliteCollectionPlanRepository } from "@markorbit/persistence/collection-plans";
 import { SqliteExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
@@ -196,13 +193,10 @@ describe("artifact-backed collection execution", () => {
         );
       },
       async fail(current, failure, idempotencyKey) {
-        executions.fail(
-          current.workerId,
-          worker.credential,
-          current.lease.id,
-          current.leaseToken,
-          { ...failure, idempotencyKey },
-        );
+        executions.fail(current.workerId, worker.credential, current.lease.id, current.leaseToken, {
+          ...failure,
+          idempotencyKey,
+        });
       },
     };
 

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  openRegistryDatabase,
-  SqliteSourceRepository,
-} from "@markorbit/persistence";
+import { openRegistryDatabase, SqliteSourceRepository } from "@markorbit/persistence";
 import { SqliteCollectionPlanRepository } from "@markorbit/persistence/collection-plans";
 import { SqliteExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
 import { SqliteSourceDiscoveryRepository } from "@markorbit/persistence/source-discovery";

@@ -114,7 +114,8 @@ export class HttpControlledCollectionClient implements ArtifactBackedExecutionCl
     );
     if (!payload) throw new Error("Worker claim response must be an object");
     const job = payload.job === null ? null : isJob(payload.job) ? payload.job : undefined;
-    const lease = payload.lease === null ? null : isJobLease(payload.lease) ? payload.lease : undefined;
+    const lease =
+      payload.lease === null ? null : isJobLease(payload.lease) ? payload.lease : undefined;
     const leaseToken =
       payload.leaseToken === null
         ? null
