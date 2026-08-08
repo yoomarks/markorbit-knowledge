@@ -1,1 +1,0 @@
-Implementation note: `production-markdown-staging.ts` is the exact deterministic Converter implementation for `builtin-markdown-staging@1.0.0`. Runtime transport and control-plane verification are wired separately; this file never performs external I/O by itself.
