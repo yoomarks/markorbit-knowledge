@@ -55,76 +55,95 @@ function node(id: string, topic: string, raw: boolean): SourceGraphNode {
   };
 }
 
+function createService() {
+  let saved = null as ReturnType<typeof evaluateSourceIntelligence> | null;
+  const intelligence = {
+    save: (assessment: ReturnType<typeof evaluateSourceIntelligence>) => {
+      saved = assessment;
+      return assessment;
+    },
+    get: () => null,
+    getByFingerprint: () => null,
+    latestForSource: () => saved,
+    listLatest: () => (saved ? [saved] : []),
+  };
+  const service = new SourceIntelligenceService({
+    sources: { getById: () => source },
+    graph: {
+      snapshotBySourceId: () => ({
+        profile: {
+          protocolVersion: "1.0",
+          objectType: "WEBSITE_SOURCE_PROFILE",
+          id: "sgp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          workspaceId: source.workspaceId,
+          sourceId: source.id,
+          canonicalOrigin: "https://example.com/",
+          canonicalHost: "example.com",
+          observedHostAliases: [],
+          rootNodeId: "sgn_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          createdAt: "2026-08-08T00:00:00.000Z",
+          updatedAt: "2026-08-08T00:00:00.000Z",
+        },
+        nodes: [
+          node("sgn_01ARZ3NDEKTSV4RRFFQ69G5FAA", "TRADEMARKS", true),
+          node("sgn_01ARZ3NDEKTSV4RRFFQ69G5FAB", "GENERAL", false),
+        ],
+        edges: [],
+        summary: {
+          nodeCount: 2,
+          edgeCount: 0,
+          nodeKinds: { PAGE: 2 },
+          reviewStates: { OBSERVED: 2 },
+          lifecycleStates: { ACTIVE: 2 },
+        },
+      }),
+    },
+    artifacts: {
+      list: () => ({
+        items: [],
+        total: 0,
+        limit: 100,
+        offset: 0,
+        summary: {
+          RECEIVED: 0,
+          REGISTERED: 0,
+          DUPLICATE_CHECKED: 0,
+          READY_FOR_CONVERSION: 0,
+          CONVERTED: 0,
+          STAGED: 0,
+          ARCHIVED: 0,
+          total: 0,
+        },
+      }),
+    },
+    intelligence,
+    now: () => "2026-08-08T08:00:00.000Z",
+  });
+  return { service, saved: () => saved };
+}
+
 describe("SourceIntelligenceService", () => {
   it("assesses graph evidence without changing authority or schedules", () => {
-    let saved = null as ReturnType<typeof evaluateSourceIntelligence> | null;
-    const service = new SourceIntelligenceService({
-      sources: { getById: () => source },
-      graph: {
-        snapshotBySourceId: () => ({
-          profile: {
-            protocolVersion: "1.0",
-            objectType: "WEBSITE_SOURCE_PROFILE",
-            id: "sgp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-            workspaceId: source.workspaceId,
-            sourceId: source.id,
-            canonicalOrigin: "https://example.com/",
-            canonicalHost: "example.com",
-            observedHostAliases: [],
-            rootNodeId: "sgn_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-            createdAt: "2026-08-08T00:00:00.000Z",
-            updatedAt: "2026-08-08T00:00:00.000Z",
-          },
-          nodes: [
-            node("sgn_01ARZ3NDEKTSV4RRFFQ69G5FAA", "TRADEMARKS", true),
-            node("sgn_01ARZ3NDEKTSV4RRFFQ69G5FAB", "GENERAL", false),
-          ],
-          edges: [],
-          summary: {
-            nodeCount: 2,
-            edgeCount: 0,
-            nodeKinds: { PAGE: 2 },
-            reviewStates: { OBSERVED: 2 },
-            lifecycleStates: { ACTIVE: 2 },
-          },
-        }),
-      },
-      artifacts: {
-        list: () => ({
-          items: [],
-          total: 0,
-          limit: 100,
-          offset: 0,
-          summary: {
-            RECEIVED: 0,
-            REGISTERED: 0,
-            DUPLICATE_CHECKED: 0,
-            READY_FOR_CONVERSION: 0,
-            CONVERTED: 0,
-            STAGED: 0,
-            ARCHIVED: 0,
-            total: 0,
-          },
-        }),
-      },
-      intelligence: {
-        save: (assessment) => {
-          saved = assessment;
-          return assessment;
-        },
-        get: () => null,
-        getByFingerprint: () => null,
-        latestForSource: () => null,
-        listLatest: () => [],
-      },
-      now: () => "2026-08-08T08:00:00.000Z",
-    });
-
-    const assessment = service.assess(source.id);
-    expect(saved?.id).toBe(assessment.id);
+    const fixture = createService();
+    const assessment = fixture.service.assess(source.id);
+    expect(fixture.saved()?.id).toBe(assessment.id);
     expect(assessment.input.relevantContentNodeCount).toBe(1);
     expect(assessment.dimensions.AUTHORITY_SIGNAL.score).toBeNull();
     expect(assessment.boundaries.autoScheduleApplied).toBe(false);
     expect(assessment.boundaries.authorityInferred).toBe(false);
+  });
+
+  it("persists v1 and exposes v2 only as an opt-in deterministic projection", () => {
+    const fixture = createService();
+    const v1 = fixture.service.assess(source.id);
+    const persisted = fixture.saved();
+    const v2 = fixture.service.latestV2(source.id);
+
+    expect(persisted).toBe(v1);
+    expect(persisted?.protocolVersion).toBe("1.0");
+    expect(v2?.protocolVersion).toBe("2.0");
+    expect(v2?.compatibility.legacyAssessmentId).toBe(v1.id);
+    expect(v2?.evidenceMaturity.stage).toBe("UNOBSERVED");
+    expect(fixture.saved()).toBe(persisted);
   });
 });
