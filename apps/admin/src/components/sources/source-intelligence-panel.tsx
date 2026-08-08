@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, Database, RefreshCw, ShieldAlert } from "lucide-react";
+import { Activity, Database, History, RefreshCw, ShieldAlert } from "lucide-react";
 import type {
   EvidenceMaturityStage,
   SourceIntelligenceAssessmentV2,
   SourceIntelligenceDimension,
+  SourceIntelligenceObservationHistoryV2,
+  SourceIntelligenceObservationTransitionV2,
   SourceValuePriorityBand,
 } from "@markorbit/contracts";
+
+const OBSERVATION_HISTORY_LIMIT = 12;
 
 const sourceValueLabels: Record<SourceValuePriorityBand, string> = {
   VERY_HIGH: "Very High",
@@ -52,6 +56,33 @@ function legacyRescanLabel(assessment: SourceIntelligenceAssessmentV2): string {
     : "仅在人工判断需要时复查";
 }
 
+function deltaLabel(value: number | null): string {
+  if (value === null) return "—";
+  if (value > 0) return `+${value}`;
+  return String(value);
+}
+
+function ObservationChange({
+  transition,
+}: {
+  transition: SourceIntelligenceObservationTransitionV2 | undefined;
+}) {
+  if (!transition) return <span className="text-slate-400">Baseline</span>;
+  return (
+    <div className="space-y-1 text-xs text-slate-600">
+      <p>
+        Source Value: {transition.sourceValue.changed ? deltaLabel(transition.sourceValue.scoreDelta) : "stable"}
+      </p>
+      <p>
+        Evidence: {transition.evidenceMaturity.fromStage} → {transition.evidenceMaturity.toStage}
+      </p>
+      <p>
+        Cost: {transition.observedAcquisitionCost.changed ? deltaLabel(transition.observedAcquisitionCost.scoreDelta) : "stable"}
+      </p>
+    </div>
+  );
+}
+
 function SignalCard({ title, signal }: { title: string; signal: SourceIntelligenceDimension }) {
   return (
     <div className="rounded-2xl border border-slate-200 p-4">
@@ -73,22 +104,37 @@ function SignalCard({ title, signal }: { title: string; signal: SourceIntelligen
   );
 }
 
+type IntelligenceSnapshot = {
+  assessment: SourceIntelligenceAssessmentV2 | null;
+  history: SourceIntelligenceObservationHistoryV2 | null;
+};
+
 async function readAssessment(
   sourceId: string,
   signal?: AbortSignal,
-): Promise<SourceIntelligenceAssessmentV2 | null> {
-  const params = new URLSearchParams({ sourceId, protocolVersion: "2.0" });
+): Promise<IntelligenceSnapshot> {
+  const params = new URLSearchParams({
+    sourceId,
+    protocolVersion: "2.0",
+    includeHistory: "true",
+    historyLimit: String(OBSERVATION_HISTORY_LIMIT),
+  });
   const response = await fetch(`/api/source-intelligence?${params.toString()}`, { signal });
   const body = (await response.json()) as {
     assessment?: SourceIntelligenceAssessmentV2 | null;
+    history?: SourceIntelligenceObservationHistoryV2;
     error?: { message?: string };
   };
   if (!response.ok) throw new Error(body.error?.message ?? "无法读取 Source Intelligence");
-  return body.assessment ?? null;
+  return {
+    assessment: body.assessment ?? null,
+    history: body.history ?? null,
+  };
 }
 
 export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
   const [assessment, setAssessment] = useState<SourceIntelligenceAssessmentV2 | null>(null);
+  const [history, setHistory] = useState<SourceIntelligenceObservationHistoryV2 | null>(null);
   const [loading, setLoading] = useState(true);
   const [assessing, setAssessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,8 +142,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
   useEffect(() => {
     const controller = new AbortController();
     void readAssessment(sourceId, controller.signal)
-      .then((nextAssessment) => {
-        setAssessment(nextAssessment);
+      .then((snapshot) => {
+        setAssessment(snapshot.assessment);
+        setHistory(snapshot.history);
         setError(null);
       })
       .catch((requestError: unknown) => {
@@ -128,7 +175,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
       if (!response.ok || !body.assessment) {
         throw new Error(body.error?.message ?? "无法完成 Source Intelligence 评估");
       }
-      setAssessment(body.assessment);
+      const snapshot = await readAssessment(sourceId);
+      setAssessment(snapshot.assessment ?? body.assessment);
+      setHistory(snapshot.history);
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : "无法完成 Source Intelligence 评估",
@@ -137,6 +186,11 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
       setAssessing(false);
     }
   }
+
+  const transitionsByAssessmentId = new Map(
+    history?.transitions.map((transition) => [transition.toAssessmentId, transition]) ?? [],
+  );
+  const recentObservations = history ? [...history.observations].reverse() : [];
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -293,6 +347,80 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
               </div>
             </div>
           </div>
+
+          {history && history.observations.length > 0 ? (
+            <div className="overflow-hidden rounded-2xl border border-slate-200">
+              <div className="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <History size={17} className="text-slate-600" aria-hidden="true" />
+                    <h3 className="text-sm font-semibold text-slate-950">D2.7 Observation History</h3>
+                  </div>
+                  <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-500">
+                    记录不同 evidence fingerprint 对应的历史状态。相同 fingerprint 的重复评估保持幂等折叠；这里观察变化，不生成调度规则。
+                  </p>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                  {history.observations.length} distinct states
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[920px] text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Observed</th>
+                      <th className="px-5 py-3 font-medium">Source Value</th>
+                      <th className="px-5 py-3 font-medium">Evidence Maturity</th>
+                      <th className="px-5 py-3 font-medium">Acquisition Cost</th>
+                      <th className="px-5 py-3 font-medium">Change from prior state</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {recentObservations.map((observation) => (
+                      <tr key={observation.assessmentId} className="align-top">
+                        <td className="px-5 py-4 text-slate-600">
+                          <p>{new Date(observation.assessedAt).toLocaleString("zh-CN")}</p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {observation.inputFingerprint.slice(0, 12)}…
+                          </p>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${sourceValueClass(observation.sourceValue.band)}`}
+                          >
+                            {sourceValueLabels[observation.sourceValue.band]} · {observation.sourceValue.score}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${evidenceMaturityClass(observation.evidenceMaturity.stage)}`}
+                          >
+                            {evidenceMaturityLabels[observation.evidenceMaturity.stage]}
+                            {observation.evidenceMaturity.score === null
+                              ? ""
+                              : ` · ${observation.evidenceMaturity.score}`}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-slate-700">
+                          {observation.observedAcquisitionCost.score === null
+                            ? "Unobserved"
+                            : observation.observedAcquisitionCost.score}
+                        </td>
+                        <td className="px-5 py-4">
+                          <ObservationChange
+                            transition={transitionsByAssessmentId.get(observation.assessmentId)}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
+                Scheduler policy remains {history.scheduling.policyStatus}. Observation history does not grant collection authority.
+              </div>
+            </div>
+          ) : null}
 
           <details className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <summary className="cursor-pointer text-sm font-semibold text-slate-900">
