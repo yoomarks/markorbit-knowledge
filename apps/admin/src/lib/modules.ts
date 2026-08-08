@@ -1,4 +1,5 @@
 import {
+  Activity,
   Archive,
   Boxes,
   Cable,
@@ -30,6 +31,11 @@ export const modules = {
     label: "Sources",
     description: "用业务视角管理已接受的数据源、来源类型、国家和采集状态。",
     icon: Database,
+  },
+  intelligence: {
+    label: "Source Intelligence",
+    description: "比较来源的运营价值、证据基础与人工复查建议，不替代法律权威判断。",
+    icon: Activity,
   },
   people: {
     label: "People & Organizations",
@@ -119,6 +125,7 @@ export const primaryModuleOrder: ModuleKey[] = [
   "dashboard",
   "discovery",
   "sources",
+  "intelligence",
   "people",
   "knowledge",
   "collection",

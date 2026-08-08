@@ -12,6 +12,8 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const MAX_BATCH_SOURCE_IDS = 100;
+
 function service(): SourceIntelligenceService {
   return new SourceIntelligenceService({
     sources: getSourceRepository(),
@@ -21,11 +23,45 @@ function service(): SourceIntelligenceService {
   });
 }
 
+function sourceIdsValue(value: string): string[] {
+  const sourceIds = [
+    ...new Set(
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (sourceIds.length === 0) {
+    throw new RegistryValidationError("sourceIds must contain at least one source id");
+  }
+  if (sourceIds.length > MAX_BATCH_SOURCE_IDS) {
+    throw new RegistryValidationError(`sourceIds supports at most ${MAX_BATCH_SOURCE_IDS} ids`);
+  }
+  return sourceIds;
+}
+
 export async function GET(request: Request) {
   try {
-    const sourceId = new URL(request.url).searchParams.get("sourceId")?.trim();
-    if (!sourceId) throw new RegistryValidationError("sourceId query parameter is required");
-    return NextResponse.json({ assessment: service().latest(sourceId) });
+    const url = new URL(request.url);
+    const sourceId = url.searchParams.get("sourceId")?.trim();
+    const sourceIds = url.searchParams.get("sourceIds")?.trim();
+    if (sourceId && sourceIds) {
+      throw new RegistryValidationError("Use sourceId or sourceIds, not both");
+    }
+    const intelligence = service();
+    if (sourceId) {
+      return NextResponse.json({ assessment: intelligence.latest(sourceId) });
+    }
+    if (sourceIds) {
+      return NextResponse.json({
+        items: sourceIdsValue(sourceIds).map((id) => ({
+          sourceId: id,
+          assessment: intelligence.latest(id),
+        })),
+      });
+    }
+    throw new RegistryValidationError("sourceId or sourceIds query parameter is required");
   } catch (error) {
     return apiError(error);
   }
