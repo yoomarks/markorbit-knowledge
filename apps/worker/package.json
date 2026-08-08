@@ -8,6 +8,7 @@
     "bootstrap:uspto": "tsx src/bootstrap-uspto.ts",
     "bootstrap:uspto-conversion": "tsx src/bootstrap-uspto-conversion.ts",
     "verify:uspto": "tsx src/verify-uspto-golden-source.ts",
+    "verify:uspto-pipeline": "tsx src/verify-uspto-full-pipeline.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

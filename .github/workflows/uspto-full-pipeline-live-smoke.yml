@@ -1,0 +1,269 @@
+name: USPTO Full Pipeline Live Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uspto-full-pipeline-live-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+      MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
+      MARKORBIT_GOLDEN_SOURCE_TIMEOUT_MS: "420000"
+      MARKORBIT_GOLDEN_PIPELINE_TIMEOUT_MS: "420000"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure isolated evidence stores
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-full-pipeline.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-artifacts" >> "$GITHUB_ENV"
+          echo "MARKORBIT_STAGING_STORE_PATH=$RUNNER_TEMP/markorbit-staging" >> "$GITHUB_ENV"
+          echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/admin.log"
+          exit 1
+
+      - name: Discover real USPTO trademark source
+        run: |
+          curl --silent --show-error --fail-with-body --max-time 240 \
+            -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" \
+            -H 'content-type: application/json' \
+            --data '{"locator":"https://www.uspto.gov/trademarks","maxDepth":1,"maxCandidates":75,"maxFetches":20,"deniedUrlPatterns":["/login","/signin","/logout"]}' \
+            > "$RUNNER_TEMP/discovery.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/discovery.json', 'utf8'));
+          const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+          if (candidates.length < 3) throw new Error(`Expected >=3 USPTO candidates, got ${candidates.length}`);
+          const usable = candidates.filter((candidate) => {
+            if (!candidate || candidate.status !== 'DISCOVERED' || typeof candidate.candidateId !== 'string') return false;
+            const url = new URL(candidate.locator);
+            return url.protocol === 'https:' && (url.hostname === 'uspto.gov' || url.hostname.endsWith('.uspto.gov'));
+          });
+          if (usable.length < 3) throw new Error('USPTO discovery did not remain inside the governed host boundary');
+          const selected = usable.find((candidate) => new URL(candidate.locator).pathname.startsWith('/trademarks')) ?? usable[0];
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_DISCOVERY_CANDIDATE_ID=${selected.candidateId}\n`);
+          process.stdout.write(`${JSON.stringify({ event: 'full-pipeline.discovery.selected', candidateCount: candidates.length, candidateId: selected.candidateId, locator: selected.locator }, null, 2)}\n`);
+          NODE
+
+      - name: Explicitly accept one discovery candidate in isolated smoke state
+        run: |
+          REVIEWER="${GITHUB_ACTOR:-github-actions}-live-smoke-explicit-review"
+          curl --silent --show-error --fail-with-body \
+            -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/discovery/candidates/$MARKORBIT_DISCOVERY_CANDIDATE_ID/review" \
+            -H 'content-type: application/json' \
+            --data "{\"decision\":\"ACCEPTED\",\"reviewer\":\"$REVIEWER\",\"note\":\"Isolated live evidence smoke: explicit review transition only; not an automatic production acceptance policy.\"}" \
+            > "$RUNNER_TEMP/review.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/review.json', 'utf8'));
+          const candidate = data?.candidate?.candidate;
+          const source = data?.source;
+          const plan = data?.plan;
+          if (candidate?.status !== 'ACCEPTED') throw new Error('Explicit review did not ACCEPT the candidate');
+          if (!source?.id || source?.connector?.connectorId !== 'crawl4ai-web' || source?.connector?.version !== '1.1.0') {
+            throw new Error(`Accepted Source is not bound to production Crawl4AI 1.1.0: ${JSON.stringify(source?.connector)}`);
+          }
+          if (!plan?.id || plan?.status !== 'PAUSED') throw new Error('Acceptance crossed the execution authorization boundary');
+          const outputKinds = plan?.output?.artifactKinds;
+          if (!Array.isArray(outputKinds) || outputKinds.join(',') !== 'HTML,MARKDOWN') {
+            throw new Error(`Unexpected discovery plan output kinds: ${JSON.stringify(outputKinds)}`);
+          }
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_SOURCE_ID=${source.id}\nMARKORBIT_PLAN_ID=${plan.id}\nMARKORBIT_PLAN_UPDATED_AT=${plan.updatedAt}\n`);
+          NODE
+
+      - name: Tighten the isolated collection plan
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const payload = {
+            expectedUpdatedAt: process.env.MARKORBIT_PLAN_UPDATED_AT,
+            priority: 'HIGH',
+            policy: {
+              includePatterns: ['https://www.uspto.gov/trademarks*'],
+              excludePatterns: ['*[?]*'],
+              maxDepth: 1,
+              maxItems: 8,
+              renderJavascript: false,
+              fetchAttachments: false,
+              respectRobots: true,
+              rateLimitPerMinute: 12,
+              timeoutSeconds: 45,
+              retry: { maxAttempts: 2, backoffSeconds: 15 },
+              locale: 'en-US',
+            },
+            output: { artifactKinds: ['HTML', 'MARKDOWN'] },
+          };
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/plan-patch.json', JSON.stringify(payload));
+          NODE
+          curl --silent --show-error --fail-with-body \
+            -X PATCH "$MARKORBIT_CONTROL_PLANE_URL/api/plans/$MARKORBIT_PLAN_ID" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/plan-patch.json" \
+            > "$RUNNER_TEMP/plan.json"
+
+      - name: Register production Worker
+        run: |
+          cat > "$RUNNER_TEMP/worker-request.json" <<'JSON'
+          {
+            "displayName": "USPTO Full Pipeline Live Smoke Worker",
+            "desiredState": "ACTIVE",
+            "runtime": { "runtimeId": "crawl4ai-worker", "version": "1.0.0" },
+            "supportedJobTypes": ["WEB_CRAWL"],
+            "connectorBindings": [
+              {
+                "connectorId": "crawl4ai-web",
+                "version": "1.1.0",
+                "capabilities": ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"]
+              }
+            ],
+            "maxConcurrency": 1,
+            "labels": ["production", "crawl4ai", "uspto-full-pipeline-smoke"]
+          }
+          JSON
+          curl --silent --show-error --fail-with-body \
+            -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/workers" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/worker-request.json" \
+            > "$RUNNER_TEMP/worker-create.secret.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/worker-create.secret.json', 'utf8'));
+          const workerId = data?.view?.worker?.id;
+          const credential = data?.credential;
+          if (!workerId || !credential) throw new Error('Worker registration did not return one-time credential');
+          process.stdout.write(`::add-mask::${credential}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_WORKER_ID=${workerId}\nMARKORBIT_WORKER_CREDENTIAL=${credential}\n`);
+          NODE
+          rm -f "$RUNNER_TEMP/worker-create.secret.json"
+
+      - name: Provision conversion path for the accepted Source
+        run: |
+          pnpm --filter @markorbit/worker bootstrap:uspto-conversion > "$RUNNER_TEMP/conversion-bootstrap.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/conversion-bootstrap.json', 'utf8');
+          const start = raw.indexOf('{');
+          const end = raw.lastIndexOf('}');
+          if (start < 0 || end < start) throw new Error('Conversion bootstrap did not emit JSON');
+          const data = JSON.parse(raw.slice(start, end + 1));
+          if (data.sourceId !== process.env.MARKORBIT_SOURCE_ID) throw new Error('Conversion bootstrap changed Source boundary');
+          if (!data.workspaceId || !Number.isInteger(data.capabilityRevision)) throw new Error('Conversion bootstrap missing Worker capability context');
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_WORKSPACE_ID=${data.workspaceId}\nMARKORBIT_CONVERSION_ENABLED=1\nMARKORBIT_CONVERSION_CAPABILITY_REVISION=${data.capabilityRevision}\n`);
+          NODE
+
+      - name: Explicitly authorize collection execution
+        run: |
+          curl --silent --show-error --fail-with-body \
+            -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/discovery/candidates/$MARKORBIT_DISCOVERY_CANDIDATE_ID/authorize-collection" \
+            -H 'content-type: application/json' \
+            --data '{"requestedBy":"github-actions-live-smoke","idempotencyKey":"uspto-full-pipeline-live-smoke"}' \
+            > "$RUNNER_TEMP/collection-authorize.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/collection-authorize.json', 'utf8'));
+          if (data?.plan?.status !== 'ACTIVE') throw new Error('Collection plan was not explicitly activated');
+          if (!data?.run?.id || data?.run?.status !== 'PENDING') throw new Error('Authorized collection did not create a PENDING run');
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_COLLECTION_RUN_ID=${data.run.id}\n`);
+          NODE
+
+      - name: Start production Worker with CI direct-egress exception
+        env:
+          NODE_ENV: test
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
+          MARKORBIT_CRAWL4AI_PYTHON: python
+          MARKORBIT_WORKER_POLL_INTERVAL_MS: "500"
+          MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "15000"
+          MARKORBIT_WORKER_MAX_ACQUISITION_MS: "360000"
+          MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS: "300"
+        run: |
+          pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker.log" 2>&1 &
+          echo "WORKER_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Verify live collection and immutable RawArtifact evidence
+        run: pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_COLLECTION_RUN_ID"
+
+      - name: Dispatch latest real USPTO Markdown to production conversion
+        run: |
+          pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/conversion-dispatch.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/conversion-dispatch.json', 'utf8');
+          const start = raw.indexOf('{');
+          const end = raw.lastIndexOf('}');
+          if (start < 0 || end < start) throw new Error('Conversion dispatch did not emit JSON');
+          const data = JSON.parse(raw.slice(start, end + 1));
+          if (!data.conversionRunId) throw new Error('No real USPTO Markdown RawArtifact was dispatched');
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_CONVERSION_RUN_ID=${data.conversionRunId}\n`);
+          NODE
+
+      - name: Verify Source Graph, Staging, ReadyPackage and Core boundary
+        run: pnpm --filter @markorbit/worker verify:uspto-pipeline -- "$MARKORBIT_SOURCE_ID" "$MARKORBIT_CONVERSION_RUN_ID"
+
+      - name: Stop local processes
+        if: always()
+        run: |
+          if [ -n "${WORKER_PID:-}" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+
+      - name: Upload sanitized smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uspto-full-pipeline-live-smoke-logs
+          path: |
+            ${{ runner.temp }}/admin.log
+            ${{ runner.temp }}/worker.log
+            ${{ runner.temp }}/discovery.json
+            ${{ runner.temp }}/review.json
+            ${{ runner.temp }}/plan.json
+            ${{ runner.temp }}/collection-authorize.json
+            ${{ runner.temp }}/conversion-bootstrap.json
+            ${{ runner.temp }}/conversion-dispatch.json
+          if-no-files-found: ignore
+          retention-days: 7
