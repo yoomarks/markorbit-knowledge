@@ -25,6 +25,7 @@ export type {
 export * from "./source-discovery-v1";
 export * from "./discovery-observation-v1";
 export * from "./source-graph-v1";
+export * from "./source-intelligence-v1";
 export type {
   ReadyPackageStatus as ReadyPackageHandoffStatus,
   ReadyPackageEvidence,
