@@ -58,7 +58,8 @@ function parseArgs(argv) {
   if (!new Set(["value", "evidence"]).has(options.mode)) {
     throw new Error("--mode must be value or evidence");
   }
-  if (!Number.isFinite(options.limit) || options.limit <= 0) throw new Error("--limit must be positive");
+  if (!Number.isFinite(options.limit) || options.limit <= 0)
+    throw new Error("--limit must be positive");
   if (!Number.isFinite(options.minSuccess) || options.minSuccess <= 0) {
     throw new Error("--min-success must be positive");
   }
@@ -95,7 +96,10 @@ function runNode(script, args) {
     child.once("error", rejectPromise);
     child.once("exit", (code, signal) => {
       if (code === 0) resolvePromise();
-      else rejectPromise(new Error(`${script} exited code=${code ?? "null"} signal=${signal ?? "none"}`));
+      else
+        rejectPromise(
+          new Error(`${script} exited code=${code ?? "null"} signal=${signal ?? "none"}`),
+        );
     });
   });
 }
@@ -125,10 +129,11 @@ function sourceValueBand(score) {
 function localProjection(legacy) {
   const relevance = legacy.dimensions.RELEVANCE;
   const authority = legacy.dimensions.AUTHORITY_SIGNAL;
-  const sourceValueScore = weightedScore([
-    [relevance, 0.4],
-    [authority, 0.6],
-  ]) ?? 0;
+  const sourceValueScore =
+    weightedScore([
+      [relevance, 0.4],
+      [authority, 0.6],
+    ]) ?? 0;
   let stage = "CAPTURED";
   if ((legacy.evidence?.rawArtifactCount ?? 0) === 0) {
     stage = "UNOBSERVED";
@@ -195,9 +200,11 @@ async function pairedLatest(baseUrl, sourceId) {
 }
 
 function ranks(values) {
-  const indexed = values.map((value, index) => ({ value, index })).sort((a, b) => a.value - b.value);
+  const indexed = values
+    .map((value, index) => ({ value, index }))
+    .sort((a, b) => a.value - b.value);
   const result = Array(values.length).fill(0);
-  for (let start = 0; start < indexed.length; ) {
+  for (let start = 0; start < indexed.length;) {
     let end = start;
     while (end + 1 < indexed.length && indexed[end + 1].value === indexed[start].value) end += 1;
     const rank = (start + end + 2) / 2;
@@ -259,7 +266,10 @@ async function valueMode(options, rawPath) {
       continue;
     }
     const latest = await pairedLatest(options.baseUrl, item.sourceId);
-    if (latest.v1.priorityScore !== item.priorityScore || latest.v1.operationalTier !== item.operationalTier) {
+    if (
+      latest.v1.priorityScore !== item.priorityScore ||
+      latest.v1.operationalTier !== item.operationalTier
+    ) {
       throw new Error(`${item.key} latest v1 drifted from the D2.2 calibration result`);
     }
     results.push({
@@ -346,7 +356,8 @@ async function evidenceMode(options, rawPath) {
     };
     const sourceSignalsStable =
       item.before.dimensions.RELEVANCE.score === item.after.dimensions.RELEVANCE.score &&
-      item.before.dimensions.AUTHORITY_SIGNAL.score === item.after.dimensions.AUTHORITY_SIGNAL.score;
+      item.before.dimensions.AUTHORITY_SIGNAL.score ===
+        item.after.dimensions.AUTHORITY_SIGNAL.score;
     const sourceValueStable =
       before.sourceValuePriority.score === after.sourceValuePriority.score &&
       before.sourceValuePriority.band === after.sourceValuePriority.band;
@@ -376,7 +387,9 @@ async function evidenceMode(options, rawPath) {
       failed: results.length - successful.length,
       stableSourceSignals: successful.filter((item) => item.invariants.sourceSignalsStable).length,
       stableSourceValue: successful.filter((item) => item.invariants.sourceValueStable).length,
-      advancedEvidenceMaturity: successful.filter((item) => item.invariants.evidenceMaturityAdvanced).length,
+      advancedEvidenceMaturity: successful.filter(
+        (item) => item.invariants.evidenceMaturityAdvanced,
+      ).length,
       transitions: successful.map((item) => ({
         key: item.key,
         sourceValue: `${item.beforeDualAxis.sourceValuePriority.band}->${item.afterDualAxis.sourceValuePriority.band}`,
@@ -393,7 +406,9 @@ async function main() {
   const rawPath = join(workdir, `${options.mode}-underlying.json`);
   try {
     const calibration =
-      options.mode === "value" ? await valueMode(options, rawPath) : await evidenceMode(options, rawPath);
+      options.mode === "value"
+        ? await valueMode(options, rawPath)
+        : await evidenceMode(options, rawPath);
     const report = {
       reportVersion: "2.0",
       protocolVersion: "2.0",
@@ -434,6 +449,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
