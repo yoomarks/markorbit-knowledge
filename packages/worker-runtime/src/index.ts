@@ -8,6 +8,9 @@ import {
 
 export * from "./conversion-fixture";
 export * from "./controlled-fixture-pipeline";
+export * from "./production-markdown-staging";
+export * from "./http-production-conversion-client";
+export * from "./production-conversion-worker-runtime";
 export * from "./runtime-runner";
 export * from "./artifact-ingestion-port";
 export * from "./artifact-backed-collection-executor";

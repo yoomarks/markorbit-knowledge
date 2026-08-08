@@ -9,6 +9,10 @@ export type WorkerProcessConfig = {
   errorBackoffMinMs: number;
   errorBackoffMaxMs: number;
   requireEgressProxy: boolean;
+  conversionEnabled: boolean;
+  workspaceId?: string;
+  conversionCapabilityRevision: number;
+  conversionLeaseDurationSeconds: number;
 };
 
 function required(env: NodeJS.ProcessEnv, key: string): string {
@@ -31,6 +35,14 @@ function integer(
     throw new Error(`${key} must be an integer between ${minimum} and ${maximum}`);
   }
   return value;
+}
+
+function enabled(env: NodeJS.ProcessEnv, key: string, fallback = false): boolean {
+  const raw = env[key]?.trim().toLowerCase();
+  if (!raw) return fallback;
+  if (["1", "true", "yes", "on"].includes(raw)) return true;
+  if (["0", "false", "no", "off"].includes(raw)) return false;
+  throw new Error(`${key} must be a boolean value`);
 }
 
 function normalizedControlPlaneUrl(value: string): string {
@@ -61,6 +73,11 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     errorBackoffMinMs,
     300_000,
   );
+  const conversionEnabled = enabled(env, "MARKORBIT_CONVERSION_ENABLED", false);
+  const workspaceId = env.MARKORBIT_WORKSPACE_ID?.trim() || undefined;
+  if (conversionEnabled && !workspaceId) {
+    throw new Error("MARKORBIT_WORKSPACE_ID is required when production conversion is enabled");
+  }
 
   return {
     controlPlaneUrl: normalizedControlPlaneUrl(required(env, "MARKORBIT_CONTROL_PLANE_URL")),
@@ -85,5 +102,21 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     errorBackoffMinMs,
     errorBackoffMaxMs,
     requireEgressProxy,
+    conversionEnabled,
+    ...(workspaceId ? { workspaceId } : {}),
+    conversionCapabilityRevision: integer(
+      env,
+      "MARKORBIT_CONVERSION_CAPABILITY_REVISION",
+      1,
+      1,
+      1_000_000,
+    ),
+    conversionLeaseDurationSeconds: integer(
+      env,
+      "MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS",
+      300,
+      30,
+      3600,
+    ),
   };
 }

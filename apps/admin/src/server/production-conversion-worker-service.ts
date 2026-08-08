@@ -1,0 +1,284 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import {
+  isConversionFailedReport,
+  isConversionOutputReadyReport,
+  isConversionProgressReport,
+  isConversionStartedReport,
+  isRawArtifactReadGrant,
+  type ConversionClaimRequest,
+  type ConversionClaimResult,
+  type ConversionFailedReport,
+  type ConversionOutputReadyReport,
+  type ConversionProgressReport,
+  type ConversionStartedReport,
+  type CoreIntakeRequest,
+  type RawArtifactReadGrant,
+} from "@markorbit/contracts";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+} from "@markorbit/persistence";
+import { createCoreIntakeRequest } from "@markorbit/worker-runtime";
+import {
+  getConversionRunLedgerRepository,
+  getConversionRuntimeRepository,
+  getConversionRuntimeTransitionRepository,
+  getRawArtifactRepository,
+  getReadyPackageRepository,
+  getRegistryDatabase,
+  getStagingContentRepository,
+  getStagingVerificationRepository,
+  getVerifiedStagingFinalizer,
+  getWorkerRegistryRepository,
+} from "./source-registry";
+
+const SHA256 = /^[a-f0-9]{64}$/;
+const KEY = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
+
+export type ProductionStagingCommitInput = {
+  workspaceId: string;
+  workerId: string;
+  conversionRunId: string;
+  conversionAttemptId: string;
+  uploadGrantId: string;
+  idempotencyKey: string;
+  content: Uint8Array;
+};
+
+export type ProductionStagingCommitResult = {
+  stagingDocumentId: string;
+  stagingStatus: "READY" | "BLOCKED";
+  verificationOutcome: "PASS" | "PASS_WITH_WARNINGS" | "FAIL";
+  finalizationDecision: "COMPLETED" | "FAILED";
+  readyPackageId?: string;
+  coreIntakeRequest?: CoreIntakeRequest;
+};
+
+function sha256(content: Uint8Array): string {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+function parseReadGrant(value: string): RawArtifactReadGrant {
+  const parsed = JSON.parse(value) as unknown;
+  if (!isRawArtifactReadGrant(parsed)) {
+    throw new RegistryValidationError("Persisted RawArtifactReadGrant is invalid");
+  }
+  return parsed;
+}
+
+export class ProductionConversionWorkerService {
+  claim(
+    request: ConversionClaimRequest,
+    credential: string,
+  ): {
+    result: ConversionClaimResult;
+    replayed: boolean;
+  } {
+    const worker = getWorkerRegistryRepository().verifyCredential(request.workerId, credential);
+    if (worker.workspaceId !== request.workspaceId) {
+      throw new RegistryConflictError(
+        "CONVERSION_WORKER_WORKSPACE_MISMATCH",
+        "Worker credential belongs to another Workspace",
+      );
+    }
+    return getConversionRuntimeRepository().claim(request);
+  }
+
+  readInput(
+    grantId: string,
+    workerId: string,
+    credential: string,
+  ): { bytes: Uint8Array; mimeType: string; originalName: string } {
+    const worker = getWorkerRegistryRepository().verifyCredential(workerId, credential);
+    const database = getRegistryDatabase();
+    database.exec("BEGIN IMMEDIATE;");
+    try {
+      const row = database
+        .prepare("SELECT document_json FROM conversion_read_grants WHERE id = ?")
+        .get(grantId) as { document_json: string } | undefined;
+      if (!row)
+        throw new RegistryError(
+          "RAW_ARTIFACT_READ_GRANT_NOT_FOUND",
+          `Read grant ${grantId} was not found`,
+        );
+      const grant = parseReadGrant(row.document_json);
+      if (grant.workerId !== workerId || grant.workspaceId !== worker.workspaceId) {
+        throw new RegistryConflictError(
+          "RAW_ARTIFACT_READ_GRANT_SCOPE_MISMATCH",
+          "Read grant does not belong to the authenticated Worker",
+        );
+      }
+      if (Date.parse(grant.expiresAt) < Date.now()) {
+        throw new RegistryConflictError(
+          "RAW_ARTIFACT_READ_GRANT_EXPIRED",
+          "Read grant has expired",
+        );
+      }
+      if (grant.readsUsed >= grant.maximumReads) {
+        throw new RegistryConflictError(
+          "RAW_ARTIFACT_READ_GRANT_EXHAUSTED",
+          "Read grant has already been consumed",
+        );
+      }
+
+      const artifact = getRawArtifactRepository().getArtifact(grant.rawArtifactId);
+      if (!artifact || artifact.artifact.workspaceId !== grant.workspaceId) {
+        throw new RegistryError(
+          "RAW_ARTIFACT_NOT_FOUND",
+          `RawArtifact ${grant.rawArtifactId} was not found`,
+        );
+      }
+      if (
+        artifact.artifact.binaryHash.value !== grant.expectedSha256 ||
+        artifact.artifact.sizeBytes !== grant.expectedBytes ||
+        artifact.artifact.mimeType !== grant.expectedMime
+      ) {
+        throw new RegistryConflictError(
+          "RAW_ARTIFACT_READ_GRANT_EVIDENCE_MISMATCH",
+          "RawArtifact no longer matches the immutable read grant",
+        );
+      }
+      const path = getRawArtifactRepository().contentPath(grant.rawArtifactId);
+      const bytes = new Uint8Array(readFileSync(path.path));
+      if (
+        bytes.byteLength !== grant.expectedBytes ||
+        !SHA256.test(grant.expectedSha256) ||
+        sha256(bytes) !== grant.expectedSha256
+      ) {
+        throw new RegistryConflictError(
+          "RAW_ARTIFACT_READ_INTEGRITY_MISMATCH",
+          "Stored RawArtifact bytes do not match the read grant",
+        );
+      }
+      const consumed: RawArtifactReadGrant = { ...grant, readsUsed: grant.readsUsed + 1 };
+      database
+        .prepare("UPDATE conversion_read_grants SET document_json = ? WHERE id = ?")
+        .run(JSON.stringify(consumed), grant.id);
+      database.exec("COMMIT;");
+      return { bytes, mimeType: path.mimeType, originalName: path.originalName };
+    } catch (error) {
+      database.exec("ROLLBACK;");
+      throw error;
+    }
+  }
+
+  submitReport(
+    report:
+      | ConversionStartedReport
+      | ConversionProgressReport
+      | ConversionOutputReadyReport
+      | ConversionFailedReport,
+    credential: string,
+  ) {
+    const transitions = getConversionRuntimeTransitionRepository();
+    if (isConversionStartedReport(report)) return transitions.submitStarted(report, credential);
+    if (isConversionProgressReport(report)) return transitions.submitProgress(report, credential);
+    if (isConversionOutputReadyReport(report))
+      return transitions.submitOutputReady(report, credential);
+    if (isConversionFailedReport(report)) return transitions.submitFailed(report, credential);
+    throw new RegistryValidationError("Unsupported Conversion Runtime report");
+  }
+
+  commitStaging(
+    input: ProductionStagingCommitInput,
+    credential: string,
+  ): ProductionStagingCommitResult {
+    if (!KEY.test(input.idempotencyKey)) {
+      throw new RegistryValidationError("Invalid production Staging commit idempotency key");
+    }
+    const worker = getWorkerRegistryRepository().verifyCredential(input.workerId, credential);
+    if (worker.workspaceId !== input.workspaceId) {
+      throw new RegistryConflictError(
+        "STAGING_WORKER_WORKSPACE_MISMATCH",
+        "Worker credential belongs to another Workspace",
+      );
+    }
+    const staging = getStagingContentRepository().ingestGenerated({
+      workspaceId: input.workspaceId,
+      workerId: input.workerId,
+      conversionRunId: input.conversionRunId,
+      conversionAttemptId: input.conversionAttemptId,
+      uploadGrantId: input.uploadGrantId,
+      idempotencyKey: `${input.idempotencyKey}:ingest`,
+      title: `Converted ${input.conversionRunId}`,
+      content: input.content,
+    });
+    const verification = getStagingVerificationRepository().verifyGenerated({
+      workspaceId: input.workspaceId,
+      stagingDocumentId: staging.record.descriptor.id,
+      idempotencyKey: `${input.idempotencyKey}:verify`,
+    });
+    const status = verification.record.descriptor.status;
+    if (status !== "READY" && status !== "BLOCKED") {
+      throw new RegistryConflictError(
+        "STAGING_VERIFICATION_STATUS_INVALID",
+        "Staging verification did not produce a terminal decision",
+      );
+    }
+    const finalization = getVerifiedStagingFinalizer().finalize({
+      workspaceId: input.workspaceId,
+      stagingDocumentId: staging.record.descriptor.id,
+      idempotencyKey: `${input.idempotencyKey}:finalize`,
+    });
+
+    if (finalization.decision === "FAILED") {
+      return {
+        stagingDocumentId: staging.record.descriptor.id,
+        stagingStatus: status,
+        verificationOutcome: verification.evidence.outcome,
+        finalizationDecision: "FAILED",
+      };
+    }
+
+    const run = getConversionRunLedgerRepository().getById(
+      input.conversionRunId,
+      input.workspaceId,
+    );
+    if (!run || run.run.status !== "COMPLETED") {
+      throw new RegistryConflictError(
+        "READY_PACKAGE_RUN_NOT_COMPLETED",
+        "ReadyPackage requires a completed ConversionRun",
+      );
+    }
+    const artifact = getRawArtifactRepository().getArtifact(run.run.rawArtifactId);
+    if (!artifact) {
+      throw new RegistryError(
+        "RAW_ARTIFACT_NOT_FOUND",
+        `RawArtifact ${run.run.rawArtifactId} was not found`,
+      );
+    }
+    const descriptor = verification.record.descriptor;
+    const outcome = verification.evidence.outcome;
+    if (outcome !== "PASS" && outcome !== "PASS_WITH_WARNINGS") {
+      throw new RegistryConflictError(
+        "READY_PACKAGE_VERIFICATION_NOT_PASSING",
+        "ReadyPackage requires passing Staging verification",
+      );
+    }
+    const packageResult = getReadyPackageRepository().createVerified({
+      workspaceId: input.workspaceId,
+      sourceId: run.run.sourceId,
+      rawArtifactId: run.run.rawArtifactId,
+      rawArtifactSha256: artifact.artifact.binaryHash.value,
+      capturedAt: artifact.artifact.capturedAt,
+      conversionRunId: run.run.id,
+      converter: run.run.converter,
+      stagingDocumentId: descriptor.id,
+      stagingSha256: descriptor.contentHash.value,
+      verificationId: verification.evidence.id,
+      verificationOutcome: outcome,
+      idempotencyKey: `${input.idempotencyKey}:ready-package`,
+    });
+    const coreIntakeRequest = createCoreIntakeRequest(packageResult.readyPackage);
+    return {
+      stagingDocumentId: descriptor.id,
+      stagingStatus: "READY",
+      verificationOutcome: outcome,
+      finalizationDecision: "COMPLETED",
+      readyPackageId: packageResult.readyPackage.id,
+      coreIntakeRequest,
+    };
+  }
+}

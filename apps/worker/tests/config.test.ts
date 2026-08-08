@@ -20,6 +20,27 @@ describe("loadWorkerProcessConfig", () => {
     expect(config.keepAliveIntervalMs).toBe(30_000);
     expect(config.maxCollectionRuntimeMs).toBe(12 * 60_000);
     expect(config.requireEgressProxy).toBe(true);
+    expect(config.conversionEnabled).toBe(false);
+    expect(config.workspaceId).toBeUndefined();
+  });
+
+  it("enables production conversion only with an explicit Workspace", () => {
+    const config = loadWorkerProcessConfig(
+      env({
+        MARKORBIT_CONVERSION_ENABLED: "1",
+        MARKORBIT_WORKSPACE_ID: "wsp_01H00000000000000000000000",
+        MARKORBIT_CONVERSION_CAPABILITY_REVISION: "7",
+        MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS: "240",
+      }),
+    );
+    expect(config.conversionEnabled).toBe(true);
+    expect(config.workspaceId).toBe("wsp_01H00000000000000000000000");
+    expect(config.conversionCapabilityRevision).toBe(7);
+    expect(config.conversionLeaseDurationSeconds).toBe(240);
+
+    expect(() => loadWorkerProcessConfig(env({ MARKORBIT_CONVERSION_ENABLED: "true" }))).toThrow(
+      /MARKORBIT_WORKSPACE_ID/,
+    );
   });
 
   it("allows direct egress only outside production", () => {
@@ -52,5 +73,14 @@ describe("loadWorkerProcessConfig", () => {
     expect(() =>
       loadWorkerProcessConfig(env({ MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: "900000" })),
     ).toThrow(/MAX_COLLECTION_RUNTIME/);
+    expect(() =>
+      loadWorkerProcessConfig(
+        env({
+          MARKORBIT_CONVERSION_ENABLED: "1",
+          MARKORBIT_WORKSPACE_ID: "wsp_01H00000000000000000000000",
+          MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS: "5",
+        }),
+      ),
+    ).toThrow(/CONVERSION_LEASE_DURATION/);
   });
 });
