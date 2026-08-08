@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { openRegistryDatabase, SqliteSourceRepository } from "@markorbit/persistence";
+import {
+  openRegistryDatabase,
+  SqliteSourceRepository,
+} from "@markorbit/persistence";
 import { SqliteSourceGraphRepository } from "@markorbit/persistence/source-graph";
 import {
   findCompatibleSourceGraph,
