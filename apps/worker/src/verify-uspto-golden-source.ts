@@ -44,7 +44,9 @@ function runStatus(payload: unknown): string {
 function jobs(payload: unknown): Record<string, unknown>[] {
   const outer = record(payload);
   const runRecord = record(outer?.run);
-  return array(runRecord?.jobs).map(record).filter((value): value is Record<string, unknown> => !!value);
+  return array(runRecord?.jobs)
+    .map(record)
+    .filter((value): value is Record<string, unknown> => !!value);
 }
 
 async function waitForTerminal(runId: string, timeoutMs: number): Promise<unknown> {
@@ -68,7 +70,9 @@ function verifyArtifacts(payload: unknown): {
   receiptIds: string[];
 } {
   const outer = record(payload);
-  const items = array(outer?.items).map(record).filter((value): value is Record<string, unknown> => !!value);
+  const items = array(outer?.items)
+    .map(record)
+    .filter((value): value is Record<string, unknown> => !!value);
   if (items.length < 2) {
     throw new Error(`Expected at least two RawArtifacts, received ${items.length}`);
   }
@@ -170,8 +174,13 @@ function verifyExecutions(payload: unknown, artifactReceiptIds: string[]): void 
     }
   }
 
-  const events = array(executions[0]?.events).map(record).filter(Boolean) as Record<string, unknown>[];
-  const eventTypes = events.map((event) => event.eventType).filter((value): value is string => typeof value === "string");
+  const events = array(executions[0]?.events).map(record).filter(Boolean) as Record<
+    string,
+    unknown
+  >[];
+  const eventTypes = events
+    .map((event) => event.eventType)
+    .filter((value): value is string => typeof value === "string");
   for (const requiredEvent of ["STARTED", "UPLOADING", "VERIFYING", "COMPLETED"]) {
     if (!eventTypes.includes(requiredEvent)) {
       throw new Error(`Execution evidence is missing lifecycle event ${requiredEvent}`);
@@ -203,7 +212,9 @@ async function main(): Promise<void> {
     throw new Error(`Golden Source Job did not complete cleanly: ${JSON.stringify(runJobs)}`);
   }
 
-  const artifactPayload = await getJson(`/api/artifacts?runId=${encodeURIComponent(runId)}&limit=100`);
+  const artifactPayload = await getJson(
+    `/api/artifacts?runId=${encodeURIComponent(runId)}&limit=100`,
+  );
   const artifactEvidence = verifyArtifacts(artifactPayload);
   const executionPayload = await getJson(`/api/runs/${encodeURIComponent(runId)}/executions`);
   verifyExecutions(executionPayload, artifactEvidence.receiptIds);
@@ -225,6 +236,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
