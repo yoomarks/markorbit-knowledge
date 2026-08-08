@@ -1,0 +1,46 @@
+name: Agent Fix Discovery Effect
+
+on:
+  push:
+    branches:
+      - agent/discovery-review-production-loop
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/discovery-review-production-loop
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch initial discovery load
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/admin/src/components/discovery/discovery-workspace.tsx')
+          text = path.read_text()
+          old = '''  useEffect(() => {\n    void refresh();\n  }, [refresh]);'''
+          new = '''  useEffect(() => {\n    let active = true;\n\n    fetch("/api/discovery", { cache: "no-store" })\n      .then(async (response) => {\n        if (!response.ok) throw new Error(await readError(response));\n        return (await response.json()) as DiscoveryOverview;\n      })\n      .then((data) => {\n        if (!active) return;\n        setOverview(data);\n        setError(null);\n      })\n      .catch((loadError: unknown) => {\n        if (!active) return;\n        setError(loadError instanceof Error ? loadError.message : "Failed to load discovery state");\n      })\n      .finally(() => {\n        if (active) setLoading(false);\n      });\n\n    return () => {\n      active = false;\n    };\n  }, []);'''
+          if old not in text:
+              raise SystemExit('target effect block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - run: pnpm format
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/admin/src/components/discovery/discovery-workspace.tsx
+          git commit -m "fix: load discovery state asynchronously in effect"
+          git push origin HEAD:agent/discovery-review-production-loop
