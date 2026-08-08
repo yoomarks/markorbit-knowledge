@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CollectionRegistry } from "@markorbit/persistence";
+import { CollectionRegistry } from "@markorbit/persistence/collection-registry";
 import { SourceCollectionFlow, SourceDiscoveryRunner } from "@markorbit/worker-runtime";
 
 describe("source collection flow", () => {
