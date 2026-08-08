@@ -36,9 +36,7 @@ describe("ReadyPackage registry", () => {
     const created = repository.createVerified(input());
     expect(created.replayed).toBe(false);
     expect(created.readyPackage.status).toBe("VERIFIED");
-    expect(created.readyPackage.evidence.artifactIds).toEqual([
-      "art_01H00000000000000000000000",
-    ]);
+    expect(created.readyPackage.evidence.artifactIds).toEqual(["art_01H00000000000000000000000"]);
     expect(created.readyPackage.evidence.rawArtifactSha256).toBe(SHA_A);
     expect(created.readyPackage.evidence.stagingSha256).toBe(SHA_B);
     expect(created.readyPackage.evidence.legalTruthVerified).toBe(false);
@@ -64,9 +62,9 @@ describe("ReadyPackage registry", () => {
     expect(replay.replayed).toBe(true);
     expect(replay.readyPackage).toEqual(first.readyPackage);
 
-    expect(() =>
-      repository.createVerified({ ...input(), stagingSha256: "c".repeat(64) }),
-    ).toThrow(RegistryConflictError);
+    expect(() => repository.createVerified({ ...input(), stagingSha256: "c".repeat(64) })).toThrow(
+      RegistryConflictError,
+    );
 
     database.close();
   });

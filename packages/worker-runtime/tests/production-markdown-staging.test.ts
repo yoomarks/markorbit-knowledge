@@ -152,7 +152,6 @@ describe("production Markdown staging converter", () => {
           verificationOutcome: "PASS",
           finalizationDecision: "COMPLETED",
           readyPackageId: "rdp_01H00000000000000000000000",
-          coreIntakeReceiptId: "cir_01H00000000000000000000000",
         };
       },
     };

@@ -44,7 +44,6 @@ export type ProductionStagingCommitResult = {
   verificationOutcome: StagingValidationOutcome;
   finalizationDecision: "COMPLETED" | "FAILED";
   readyPackageId?: string;
-  coreIntakeReceiptId?: string;
 };
 
 export interface ProductionRawArtifactReader {

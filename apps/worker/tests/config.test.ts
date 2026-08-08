@@ -38,9 +38,9 @@ describe("loadWorkerProcessConfig", () => {
     expect(config.conversionCapabilityRevision).toBe(7);
     expect(config.conversionLeaseDurationSeconds).toBe(240);
 
-    expect(() =>
-      loadWorkerProcessConfig(env({ MARKORBIT_CONVERSION_ENABLED: "true" })),
-    ).toThrow(/MARKORBIT_WORKSPACE_ID/);
+    expect(() => loadWorkerProcessConfig(env({ MARKORBIT_CONVERSION_ENABLED: "true" }))).toThrow(
+      /MARKORBIT_WORKSPACE_ID/,
+    );
   });
 
   it("allows direct egress only outside production", () => {
