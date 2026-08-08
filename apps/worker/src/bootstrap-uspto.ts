@@ -75,16 +75,8 @@ async function ensureConnector(baseUrl: string): Promise<void> {
       version: CONNECTOR_VERSION,
       sourceTypes: ["WEB"],
       runtime: "PYTHON",
-      capabilities: [
-        "TEST_CONNECTION",
-        "DISCOVER",
-        "PREVIEW",
-        "COLLECT",
-        "CHECK_UPDATE",
-        "DEEP_CRAWL",
-        "RENDER_JAVASCRIPT",
-      ],
-      supportedJobTypes: ["WEB_DISCOVERY", "WEB_CRAWL", "PAGE_UPDATE_CHECK"],
+      capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"],
+      supportedJobTypes: ["WEB_CRAWL"],
       configurationSchema: {
         type: "object",
         additionalProperties: false,
@@ -208,7 +200,7 @@ async function ensureWorker(
         {
           connectorId: CONNECTOR_ID,
           version: CONNECTOR_VERSION,
-          capabilities: ["COLLECT", "DEEP_CRAWL"],
+          capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"],
         },
       ],
       maxConcurrency: 1,
