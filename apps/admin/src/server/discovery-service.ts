@@ -12,6 +12,7 @@ import type {
   SourceDiscoveryConstraints,
 } from "@markorbit/contracts";
 import {
+  enrichDiscoveryCandidate,
   HttpWebsiteDiscoveryProvider,
   type SourceDiscoveryProvider,
 } from "@markorbit/worker-runtime";
@@ -200,7 +201,8 @@ export class DiscoveryWorkflowService {
 
     this.dependencies.discovery.createBatch(batch);
     try {
-      const candidates = await this.dependencies.provider.discover(batch);
+      const discovered = await this.dependencies.provider.discover(batch);
+      const candidates = discovered.map(enrichDiscoveryCandidate);
       const completed = this.dependencies.discovery.completeBatch(batch.batchId, candidates);
       return { seed, batch: completed, candidates };
     } catch (error) {
