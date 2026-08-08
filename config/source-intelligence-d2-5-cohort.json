@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "purpose": "D2.5 dual-axis real-source calibration. Human priority and authority labels are explicit calibration inputs only; they do not establish legal truth, professional quality or identity.",
+  "purpose": "D2.5 dual-axis real-source calibration, including governed seed fallback compatibility for structurally inaccessible websites. Human priority and authority labels are explicit calibration inputs only; they do not establish legal truth, professional quality or identity.",
   "sources": [
     {
       "key": "uspto-trademarks",
