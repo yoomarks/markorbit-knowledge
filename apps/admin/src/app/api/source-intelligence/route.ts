@@ -13,6 +13,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_BATCH_SOURCE_IDS = 100;
+type RequestedProtocolVersion = "1.0" | "2.0";
 
 function service(): SourceIntelligenceService {
   return new SourceIntelligenceService({
@@ -21,6 +22,13 @@ function service(): SourceIntelligenceService {
     artifacts: getRawArtifactRepository(),
     intelligence: getSourceIntelligenceRepository(),
   });
+}
+
+function requestedProtocolVersion(value: unknown): RequestedProtocolVersion {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!normalized || normalized === "1.0") return "1.0";
+  if (normalized === "2.0") return "2.0";
+  throw new RegistryValidationError("protocolVersion must be 1.0 or 2.0");
 }
 
 function sourceIdsValue(value: string): string[] {
@@ -46,18 +54,25 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const sourceId = url.searchParams.get("sourceId")?.trim();
     const sourceIds = url.searchParams.get("sourceIds")?.trim();
+    const protocolVersion = requestedProtocolVersion(url.searchParams.get("protocolVersion"));
     if (sourceId && sourceIds) {
       throw new RegistryValidationError("Use sourceId or sourceIds, not both");
     }
     const intelligence = service();
     if (sourceId) {
-      return NextResponse.json({ assessment: intelligence.latest(sourceId) });
+      return NextResponse.json({
+        assessment:
+          protocolVersion === "2.0"
+            ? intelligence.latestV2(sourceId)
+            : intelligence.latest(sourceId),
+      });
     }
     if (sourceIds) {
       return NextResponse.json({
         items: sourceIdsValue(sourceIds).map((id) => ({
           sourceId: id,
-          assessment: intelligence.latest(id),
+          assessment:
+            protocolVersion === "2.0" ? intelligence.latestV2(id) : intelligence.latest(id),
         })),
       });
     }
@@ -72,7 +87,11 @@ export async function POST(request: Request) {
     const body = requireRecord(await readJson(request));
     const sourceId = typeof body.sourceId === "string" ? body.sourceId.trim() : "";
     if (!sourceId) throw new RegistryValidationError("sourceId is required");
-    return NextResponse.json({ assessment: service().assess(sourceId) });
+    const protocolVersion = requestedProtocolVersion(body.protocolVersion);
+    return NextResponse.json({
+      assessment:
+        protocolVersion === "2.0" ? service().assessV2(sourceId) : service().assess(sourceId),
+    });
   } catch (error) {
     return apiError(error);
   }
