@@ -31,11 +31,11 @@ For every source:
 
 ## Results
 
-| Source | Authority input | BEFORE | AFTER | Score delta | RawArtifacts | Raw-provenance node delta | Graph node delta |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| USPTO Trademarks | PRIMARY_OFFICIAL | 32 / D | 64 / B | +32 | +2 | +115 | +115 |
-| Finnegan | PROFESSIONAL | 30 / D | 60 / B | +30 | +2 | +31 | +30 |
-| INTA | INDUSTRY | 29 / D | 61 / B | +32 | +2 | +83 | +82 |
+| Source           | Authority input  | BEFORE |  AFTER | Score delta | RawArtifacts | Raw-provenance node delta | Graph node delta |
+| ---------------- | ---------------- | -----: | -----: | ----------: | -----------: | ------------------------: | ---------------: |
+| USPTO Trademarks | PRIMARY_OFFICIAL | 32 / D | 64 / B |         +32 |           +2 |                      +115 |             +115 |
+| Finnegan         | PROFESSIONAL     | 30 / D | 60 / B |         +30 |           +2 |                       +31 |              +30 |
+| INTA             | INDUSTRY         | 29 / D | 61 / B |         +32 |           +2 |                       +83 |              +82 |
 
 Cohort totals:
 
@@ -51,36 +51,36 @@ Cohort totals:
 
 ### USPTO Trademarks
 
-| Dimension | BEFORE | AFTER |
-| --- | ---: | ---: |
-| Relevance | 34 | 34 |
-| Authority Signal | 100 | 100 |
-| Freshness | unknown | 95 |
-| Evidenceability | 15 | 77 |
-| Novelty | unknown | 100 |
-| Acquisition Cost | unknown | 25 |
+| Dimension        |  BEFORE | AFTER |
+| ---------------- | ------: | ----: |
+| Relevance        |      34 |    34 |
+| Authority Signal |     100 |   100 |
+| Freshness        | unknown |    95 |
+| Evidenceability  |      15 |    77 |
+| Novelty          | unknown |   100 |
+| Acquisition Cost | unknown |    25 |
 
 ### Finnegan
 
-| Dimension | BEFORE | AFTER |
-| --- | ---: | ---: |
-| Relevance | 34 | 34 |
-| Authority Signal | 70 | 70 |
-| Freshness | unknown | 95 |
-| Evidenceability | 15 | 58 |
-| Novelty | unknown | 100 |
-| Acquisition Cost | unknown | 10 |
+| Dimension        |  BEFORE | AFTER |
+| ---------------- | ------: | ----: |
+| Relevance        |      34 |    34 |
+| Authority Signal |      70 |    70 |
+| Freshness        | unknown |    95 |
+| Evidenceability  |      15 |    58 |
+| Novelty          | unknown |   100 |
+| Acquisition Cost | unknown |    10 |
 
 ### INTA
 
-| Dimension | BEFORE | AFTER |
-| --- | ---: | ---: |
-| Relevance | 34 | 34 |
-| Authority Signal | 55 | 55 |
-| Freshness | unknown | 95 |
-| Evidenceability | 15 | 72 |
-| Novelty | unknown | 100 |
-| Acquisition Cost | unknown | 20 |
+| Dimension        |  BEFORE | AFTER |
+| ---------------- | ------: | ----: |
+| Relevance        |      34 |    34 |
+| Authority Signal |      55 |    55 |
+| Freshness        | unknown |    95 |
+| Evidenceability  |      15 |    72 |
+| Novelty          | unknown |   100 |
+| Acquisition Cost | unknown |    20 |
 
 The `freshness` and `novelty` arithmetic deltas in the machine summary are `null` because the BEFORE values are intentionally unknown rather than zero. Their AFTER values are nevertheless explicitly observed and high-confidence: Freshness = 95 and Novelty = 100 for all three successful sources.
 
