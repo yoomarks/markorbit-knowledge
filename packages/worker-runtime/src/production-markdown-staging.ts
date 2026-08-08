@@ -4,6 +4,7 @@ import {
   type RawArtifactReadGrant,
   type RuntimeConverterRef,
   type StagingOutputUploadGrant,
+  type StagingValidationOutcome,
 } from "@markorbit/contracts";
 
 export const PRODUCTION_MARKDOWN_STAGING_CONVERTER = {
@@ -37,15 +38,26 @@ export type ProductionStagingUploadEvidence = {
   mediaType: "text/markdown";
 };
 
+export type ProductionStagingCommitResult = {
+  stagingDocumentId: string;
+  stagingStatus: "READY" | "BLOCKED";
+  verificationOutcome: StagingValidationOutcome;
+  finalizationDecision: "COMPLETED" | "FAILED";
+  readyPackageId?: string;
+  coreIntakeReceiptId?: string;
+};
+
 export interface ProductionRawArtifactReader {
   read(grant: RawArtifactReadGrant): Promise<Uint8Array>;
 }
 
 export interface ProductionStagingUploader {
   upload(
-    grant: StagingOutputUploadGrant,
+    context: ProductionMarkdownStagingContext,
     content: Uint8Array,
-  ): Promise<ProductionStagingUploadEvidence>;
+    evidence: ProductionStagingUploadEvidence,
+    idempotencyKey: string,
+  ): Promise<ProductionStagingCommitResult>;
 }
 
 export interface ProductionConversionRuntimeClient {
@@ -70,6 +82,7 @@ export interface ProductionConversionRuntimeClient {
 export type ProductionMarkdownStagingResult = {
   markdown: Uint8Array;
   evidence: ProductionStagingUploadEvidence;
+  commit: ProductionStagingCommitResult;
 };
 
 function sha256(content: Uint8Array): string {
@@ -153,7 +166,9 @@ export function convertProductionMarkdownToStaging(
     "---",
     "",
   ].join("\n");
-  const output = new TextEncoder().encode(`${frontmatter}${body}${body.endsWith("\n") ? "" : "\n"}`);
+  const output = new TextEncoder().encode(
+    `${frontmatter}${body}${body.endsWith("\n") ? "" : "\n"}`,
+  );
   const maximumOutput = Math.min(
     PRODUCTION_MARKDOWN_STAGING_LIMITS.maximumOutputBytes,
     context.outputGrant.maximumBytes,
@@ -162,9 +177,24 @@ export function convertProductionMarkdownToStaging(
   return output;
 }
 
+function outputEvidence(
+  context: ProductionMarkdownStagingContext,
+  markdown: Uint8Array,
+): ProductionStagingUploadEvidence {
+  return {
+    uploadGrantId: context.outputGrant.id,
+    targetPath: context.outputGrant.normalizedTargetPath,
+    sha256: sha256(markdown),
+    sizeBytes: markdown.byteLength,
+    mediaType: "text/markdown",
+  };
+}
+
 function failureCode(error: unknown): string {
   const raw = error instanceof Error ? error.message : "MARKDOWN_STAGING_CONVERSION_FAILED";
-  return /^[A-Z0-9][A-Z0-9_]{1,99}$/.test(raw) ? raw : "MARKDOWN_STAGING_CONVERSION_FAILED";
+  return /^[A-Z0-9][A-Z0-9_]{1,99}$/.test(raw)
+    ? raw
+    : "MARKDOWN_STAGING_CONVERSION_FAILED";
 }
 
 export class ProductionMarkdownStagingExecutor {
@@ -175,6 +205,7 @@ export class ProductionMarkdownStagingExecutor {
     client: ProductionConversionRuntimeClient,
   ): Promise<ProductionMarkdownStagingResult | null> {
     const prefix = `markdown-staging-${context.lease.id}`;
+    let outputReported = false;
     try {
       assertExactBinding(context);
       await client.started(context, `${prefix}-started`);
@@ -185,33 +216,34 @@ export class ProductionMarkdownStagingExecutor {
       );
       const input = await reader.read(context.inputGrant);
       const markdown = convertProductionMarkdownToStaging(context, input);
+      const evidence = outputEvidence(context, markdown);
       await client.progress(
         context,
-        { percent: 75, message: "Uploading provenance-bound Markdown staging output" },
-        `${prefix}-upload`,
+        { percent: 75, message: "Reporting deterministic Markdown output evidence" },
+        `${prefix}-output-evidence`,
       );
-      const evidence = await uploader.upload(context.outputGrant, markdown);
-      if (
-        evidence.uploadGrantId !== context.outputGrant.id ||
-        evidence.targetPath !== context.outputGrant.normalizedTargetPath ||
-        evidence.mediaType !== "text/markdown" ||
-        evidence.sizeBytes !== markdown.byteLength ||
-        evidence.sha256 !== sha256(markdown)
-      ) {
-        throw new Error("MARKDOWN_STAGING_UPLOAD_EVIDENCE_MISMATCH");
-      }
       await client.outputReady(context, evidence, `${prefix}-output-ready`);
-      return { markdown, evidence };
-    } catch (error) {
-      await client.failed(
+      outputReported = true;
+      const commit = await uploader.upload(
         context,
-        {
-          code: failureCode(error),
-          message: error instanceof Error ? error.message : "Controlled Markdown staging conversion failed",
-          retryable: false,
-        },
-        `${prefix}-failed`,
+        markdown,
+        evidence,
+        `${prefix}-staging-commit`,
       );
+      return { markdown, evidence, commit };
+    } catch (error) {
+      if (!outputReported) {
+        await client.failed(
+          context,
+          {
+            code: failureCode(error),
+            message:
+              error instanceof Error ? error.message : "Controlled Markdown staging conversion failed",
+            retryable: false,
+          },
+          `${prefix}-failed`,
+        );
+      }
       return null;
     }
   }
