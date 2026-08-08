@@ -6,6 +6,7 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "bootstrap:uspto": "tsx src/bootstrap-uspto.ts",
+    "bootstrap:uspto-conversion": "tsx src/bootstrap-uspto-conversion.ts",
     "verify:uspto": "tsx src/verify-uspto-golden-source.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
