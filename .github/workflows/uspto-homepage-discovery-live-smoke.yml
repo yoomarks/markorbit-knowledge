@@ -2,9 +2,6 @@ name: USPTO Homepage Discovery Live Smoke
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/homepage-discovery-mvp
 
 permissions:
   contents: read
