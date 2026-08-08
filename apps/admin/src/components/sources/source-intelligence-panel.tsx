@@ -71,13 +71,17 @@ function ObservationChange({
   return (
     <div className="space-y-1 text-xs text-slate-600">
       <p>
-        Source Value: {transition.sourceValue.changed ? deltaLabel(transition.sourceValue.scoreDelta) : "stable"}
+        Source Value:{" "}
+        {transition.sourceValue.changed ? deltaLabel(transition.sourceValue.scoreDelta) : "stable"}
       </p>
       <p>
         Evidence: {transition.evidenceMaturity.fromStage} → {transition.evidenceMaturity.toStage}
       </p>
       <p>
-        Cost: {transition.observedAcquisitionCost.changed ? deltaLabel(transition.observedAcquisitionCost.scoreDelta) : "stable"}
+        Cost:{" "}
+        {transition.observedAcquisitionCost.changed
+          ? deltaLabel(transition.observedAcquisitionCost.scoreDelta)
+          : "stable"}
       </p>
     </div>
   );
@@ -354,10 +358,13 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
                 <div>
                   <div className="flex items-center gap-2">
                     <History size={17} className="text-slate-600" aria-hidden="true" />
-                    <h3 className="text-sm font-semibold text-slate-950">D2.7 Observation History</h3>
+                    <h3 className="text-sm font-semibold text-slate-950">
+                      D2.7 Observation History
+                    </h3>
                   </div>
                   <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-500">
-                    记录不同 evidence fingerprint 对应的历史状态。相同 fingerprint 的重复评估保持幂等折叠；这里观察变化，不生成调度规则。
+                    记录不同 evidence fingerprint 对应的历史状态。相同 fingerprint
+                    的重复评估保持幂等折叠；这里观察变化，不生成调度规则。
                   </p>
                 </div>
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
@@ -388,7 +395,8 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
                           <span
                             className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${sourceValueClass(observation.sourceValue.band)}`}
                           >
-                            {sourceValueLabels[observation.sourceValue.band]} · {observation.sourceValue.score}
+                            {sourceValueLabels[observation.sourceValue.band]} ·{" "}
+                            {observation.sourceValue.score}
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -417,7 +425,8 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
                 </table>
               </div>
               <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
-                Scheduler policy remains {history.scheduling.policyStatus}. Observation history does not grant collection authority.
+                Scheduler policy remains {history.scheduling.policyStatus}. Observation history does
+                not grant collection authority.
               </div>
             </div>
           ) : null}
