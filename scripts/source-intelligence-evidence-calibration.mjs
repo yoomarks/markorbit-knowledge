@@ -348,6 +348,7 @@ function startWorker(baseUrl, worker) {
       MARKORBIT_CONVERSION_ENABLED: "0",
     },
     stdio: ["ignore", "pipe", "pipe"],
+    detached: process.platform !== "win32",
   });
   const logs = [];
   const capture = (chunk) => {
@@ -362,14 +363,38 @@ function startWorker(baseUrl, worker) {
   return { child, logs };
 }
 
+function signalWorkerTree(child, signal) {
+  if (!child || child.pid === undefined) return;
+  if (process.platform === "win32") {
+    child.kill(signal);
+    return;
+  }
+  try {
+    process.kill(-child.pid, signal);
+  } catch (error) {
+    if (error?.code !== "ESRCH") throw error;
+  }
+}
+
 async function stopWorker(runtime) {
-  if (!runtime || runtime.child.exitCode !== null) return;
-  runtime.child.kill("SIGTERM");
-  await Promise.race([
-    new Promise((resolvePromise) => runtime.child.once("exit", resolvePromise)),
-    new Promise((resolvePromise) => setTimeout(resolvePromise, 5_000)),
-  ]);
-  if (runtime.child.exitCode === null) runtime.child.kill("SIGKILL");
+  if (!runtime) return;
+  const { child } = runtime;
+  if (child.exitCode === null) {
+    signalWorkerTree(child, "SIGTERM");
+    await Promise.race([
+      new Promise((resolvePromise) => child.once("exit", resolvePromise)),
+      new Promise((resolvePromise) => setTimeout(resolvePromise, 5_000)),
+    ]);
+  }
+  if (child.exitCode === null) {
+    signalWorkerTree(child, "SIGKILL");
+    await Promise.race([
+      new Promise((resolvePromise) => child.once("exit", resolvePromise)),
+      new Promise((resolvePromise) => setTimeout(resolvePromise, 2_000)),
+    ]);
+  }
+  child.stdout?.destroy();
+  child.stderr?.destroy();
 }
 
 function runStatus(payload) {
