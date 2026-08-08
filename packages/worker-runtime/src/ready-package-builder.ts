@@ -24,4 +24,8 @@ export class ReadyPackageBuilder {
       createdAt: new Date().toISOString(),
     };
   }
+
+  build(input: ReadyPackageInput): ReadyPackage {
+    return this.create(input);
+  }
 }
