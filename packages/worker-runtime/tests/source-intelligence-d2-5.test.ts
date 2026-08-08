@@ -53,6 +53,44 @@ describe("Source Intelligence D2.5 calibration invariants", () => {
     expect(currentTraceable.evidenceMaturity.stage).toBe("CURRENT_TRACEABLE");
   });
 
+  it("keeps Source Value stable when held graph relevance changes", () => {
+    const common = {
+      sourceCategory: "OFFICIAL_AUTHORITY" as const,
+      sourceStatus: "ACTIVE" as const,
+      explicitAuthorityLevel: "PRIMARY_OFFICIAL" as const,
+      retainedNodeCount: 0,
+      rawProvenanceNodeCount: 0,
+      rawArtifactCount: 0,
+      distinctArtifactHashCount: 0,
+      rawArtifactBytes: 0,
+    };
+
+    const discoveryOnly = project({
+      ...common,
+      graphNodeCount: 40,
+      contentNodeCount: 39,
+      relevantContentNodeCount: 0,
+    });
+    const topicRichGraph = project({
+      ...common,
+      graphNodeCount: 80,
+      contentNodeCount: 70,
+      relevantContentNodeCount: 60,
+    });
+
+    expect(discoveryOnly.sourceValuePriority).toEqual(topicRichGraph.sourceValuePriority);
+    expect(discoveryOnly.sourceValuePriority).toMatchObject({
+      score: 94,
+      band: "VERY_HIGH",
+      signals: {
+        relevance: {
+          score: 85,
+          reasonCodes: expect.arrayContaining(["SOURCE_VALUE_RELEVANCE_EXCLUDES_GRAPH_EVIDENCE"]),
+        },
+      },
+    });
+  });
+
   it("keeps acquisition cost outside both dual-axis scores", () => {
     const common = {
       sourceCategory: "OFFICIAL_AUTHORITY" as const,
