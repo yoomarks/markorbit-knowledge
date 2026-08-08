@@ -69,7 +69,10 @@ export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   mode: "FIXTURE",
 };
 export type FixtureExecutionScenario =
-  "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
+  | "SUCCESS"
+  | "FAIL_AFTER_START"
+  | "FAIL_DURING_UPLOAD"
+  | "FAIL_DURING_VERIFY";
 export type ClaimedExecutionContext = { workerId: string; job: Job; lease: JobLease };
 export interface WorkerExecutionClient {
   start(context: ClaimedExecutionContext, executor: ExecutionExecutor, key: string): Promise<void>;
@@ -104,6 +107,23 @@ function fixtureReceipt(job: Job): ExecutionReceipt {
     summary: "Deterministic fixture execution; no external I/O or RawArtifact was produced.",
   };
 }
+async function failFixture(
+  context: ClaimedExecutionContext,
+  client: WorkerExecutionClient,
+  prefix: string,
+  code: string,
+): Promise<null> {
+  await client.fail(
+    context,
+    {
+      code,
+      message: `Deterministic fixture failure: ${code}`,
+      retryable: false,
+    },
+    `${prefix}-fail`,
+  );
+  return null;
+}
 export class FixtureConnectorExecutor implements ConnectorExecutor {
   readonly executor = FIXTURE_EXECUTOR;
   async execute(
@@ -113,11 +133,17 @@ export class FixtureConnectorExecutor implements ConnectorExecutor {
   ): Promise<ExecutionReceipt | null> {
     const prefix = `fixture-${context.lease.id}`;
     await client.start(context, this.executor, `${prefix}-start`);
-    if (scenario === "FAIL_AFTER_START") return null;
+    if (scenario === "FAIL_AFTER_START") {
+      return failFixture(context, client, prefix, "FIXTURE_FAILURE_AFTER_START");
+    }
     await client.uploading(context, `${prefix}-uploading`);
-    if (scenario === "FAIL_DURING_UPLOAD") return null;
+    if (scenario === "FAIL_DURING_UPLOAD") {
+      return failFixture(context, client, prefix, "FIXTURE_FAILURE_DURING_UPLOAD");
+    }
     await client.verifying(context, `${prefix}-verifying`);
-    if (scenario === "FAIL_DURING_VERIFY") return null;
+    if (scenario === "FAIL_DURING_VERIFY") {
+      return failFixture(context, client, prefix, "FIXTURE_FAILURE_DURING_VERIFY");
+    }
     const receipt = fixtureReceipt(context.job);
     await client.complete(context, receipt, `${prefix}-complete`);
     return receipt;
