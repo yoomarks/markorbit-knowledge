@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { buildSourceIntelligenceCrossSourceObservationSummaryV2 } from "@markorbit/worker-runtime";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { SourceIntelligenceService } from "@/server/source-intelligence-service";
 import {
@@ -33,10 +34,10 @@ function requestedProtocolVersion(value: unknown): RequestedProtocolVersion {
   throw new RegistryValidationError("protocolVersion must be 1.0 or 2.0");
 }
 
-function includeHistoryValue(value: string | null): boolean {
+function booleanQueryValue(name: string, value: string | null): boolean {
   if (value === null || value === "" || value === "false") return false;
   if (value === "true") return true;
-  throw new RegistryValidationError("includeHistory must be true or false");
+  throw new RegistryValidationError(`${name} must be true or false`);
 }
 
 function historyLimitValue(value: string | null): number {
@@ -74,7 +75,14 @@ export async function GET(request: Request) {
     const sourceId = url.searchParams.get("sourceId")?.trim();
     const sourceIds = url.searchParams.get("sourceIds")?.trim();
     const protocolVersion = requestedProtocolVersion(url.searchParams.get("protocolVersion"));
-    const includeHistory = includeHistoryValue(url.searchParams.get("includeHistory"));
+    const includeHistory = booleanQueryValue(
+      "includeHistory",
+      url.searchParams.get("includeHistory"),
+    );
+    const includeSummary = booleanQueryValue(
+      "includeSummary",
+      url.searchParams.get("includeSummary"),
+    );
     const historyLimitRequested = url.searchParams.has("historyLimit");
     if (sourceId && sourceIds) {
       throw new RegistryValidationError("Use sourceId or sourceIds, not both");
@@ -82,9 +90,14 @@ export async function GET(request: Request) {
     if (historyLimitRequested && !includeHistory) {
       throw new RegistryValidationError("historyLimit requires includeHistory=true");
     }
-    if (includeHistory && (protocolVersion !== "2.0" || !sourceId || sourceIds)) {
+    if (includeHistory && (protocolVersion !== "2.0" || (!sourceId && !sourceIds))) {
       throw new RegistryValidationError(
-        "includeHistory requires one sourceId with protocolVersion=2.0",
+        "includeHistory requires sourceId or sourceIds with protocolVersion=2.0",
+      );
+    }
+    if (includeSummary && (protocolVersion !== "2.0" || !sourceIds || sourceId || !includeHistory)) {
+      throw new RegistryValidationError(
+        "includeSummary requires sourceIds, protocolVersion=2.0, and includeHistory=true",
       );
     }
     const historyLimit = historyLimitValue(url.searchParams.get("historyLimit"));
@@ -99,12 +112,22 @@ export async function GET(request: Request) {
       });
     }
     if (sourceIds) {
+      const ids = sourceIdsValue(sourceIds);
+      const items = ids.map((id) => ({
+        sourceId: id,
+        assessment:
+          protocolVersion === "2.0" ? intelligence.latestV2(id) : intelligence.latest(id),
+        ...(includeHistory ? { history: intelligence.historyV2(id, historyLimit) } : {}),
+      }));
       return NextResponse.json({
-        items: sourceIdsValue(sourceIds).map((id) => ({
-          sourceId: id,
-          assessment:
-            protocolVersion === "2.0" ? intelligence.latestV2(id) : intelligence.latest(id),
-        })),
+        items,
+        ...(includeSummary
+          ? {
+              summary: buildSourceIntelligenceCrossSourceObservationSummaryV2(
+                items.flatMap((item) => ("history" in item ? [item.history] : [])),
+              ),
+            }
+          : {}),
       });
     }
     throw new RegistryValidationError("sourceId or sourceIds query parameter is required");
