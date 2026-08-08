@@ -291,7 +291,13 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
            seed_id, locator, metadata_json, status, created_at, updated_at
          ) VALUES (?, ?, ?, 'ACTIVE', ?, ?)`,
       )
-      .run(seedId, locator, input.metadata ? JSON.stringify(input.metadata) : null, timestamp, timestamp);
+      .run(
+        seedId,
+        locator,
+        input.metadata ? JSON.stringify(input.metadata) : null,
+        timestamp,
+        timestamp,
+      );
 
     return {
       seedId,

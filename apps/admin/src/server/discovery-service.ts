@@ -97,7 +97,9 @@ function boundedInteger(
 ): number {
   if (value === undefined) return fallback;
   if (!Number.isInteger(value) || value < minimum || value > maximum) {
-    throw new RegistryValidationError(`${field} must be an integer between ${minimum} and ${maximum}`);
+    throw new RegistryValidationError(
+      `${field} must be an integer between ${minimum} and ${maximum}`,
+    );
   }
   return value;
 }
@@ -117,7 +119,10 @@ function sourceSlug(locator: string, candidateId: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 50);
-  const suffix = candidateId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toLowerCase();
+  const suffix = candidateId
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(-8)
+    .toLowerCase();
   return `${host || "discovered-source"}-${suffix}`;
 }
 

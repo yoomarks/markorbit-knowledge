@@ -121,7 +121,9 @@ export function DiscoveryWorkspace() {
       setOverview((await response.json()) as DiscoveryOverview);
       setError(null);
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "Failed to load discovery state");
+      setError(
+        refreshError instanceof Error ? refreshError.message : "Failed to load discovery state",
+      );
     } finally {
       setLoading(false);
     }
@@ -210,8 +212,8 @@ export function DiscoveryWorkspace() {
           <ShieldCheck className="mt-0.5 shrink-0" size={18} />
           <p>
             <strong>Live workflow：</strong> Seed、Discovery Batch、Candidate Review 已写入 SQLite。
-            接受候选后自动创建 ACTIVE SourceDefinition 与一个 <strong>PAUSED</strong> 的默认 Collection
-            Plan；不会在没有进一步执行确认时自动抓取。
+            接受候选后自动创建 ACTIVE SourceDefinition 与一个 <strong>PAUSED</strong> 的默认
+            Collection Plan；不会在没有进一步执行确认时自动抓取。
           </p>
         </div>
       </div>
@@ -313,7 +315,9 @@ export function DiscoveryWorkspace() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="font-semibold text-slate-950">Recent batches</h2>
-              <p className="mt-1 text-xs text-slate-500">每次 Discovery 的执行意图与结果数量均被持久化。</p>
+              <p className="mt-1 text-xs text-slate-500">
+                每次 Discovery 的执行意图与结果数量均被持久化。
+              </p>
             </div>
             <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
               L1 Assisted
@@ -326,7 +330,10 @@ export function DiscoveryWorkspace() {
               </p>
             ) : (
               overview.batches.slice(0, 6).map((record) => (
-                <div key={record.batch.batchId} className="rounded-xl border border-slate-100 px-3 py-3">
+                <div
+                  key={record.batch.batchId}
+                  className="rounded-xl border border-slate-100 px-3 py-3"
+                >
                   <div className="flex items-center justify-between gap-3">
                     <p className="truncate text-sm font-medium text-slate-800">
                       {record.batch.seeds[0]?.locator ?? record.batch.batchId}
@@ -344,8 +351,8 @@ export function DiscoveryWorkspace() {
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
-                    {record.candidateCount} candidates · depth {record.batch.constraints?.maxDepth ?? 1} ·{" "}
-                    {shortTime(record.batch.createdAt)}
+                    {record.candidateCount} candidates · depth{" "}
+                    {record.batch.constraints?.maxDepth ?? 1} · {shortTime(record.batch.createdAt)}
                   </p>
                 </div>
               ))
@@ -359,7 +366,8 @@ export function DiscoveryWorkspace() {
           <div>
             <h2 className="font-semibold text-slate-950">Review Queue</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Accept = 允许进入 Source / Collection；Source authority 默认保持 UNKNOWN，避免把采集接受误写成专业真值。
+              Accept = 允许进入 Source / Collection；Source authority 默认保持
+              UNKNOWN，避免把采集接受误写成专业真值。
             </p>
           </div>
           <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
@@ -395,7 +403,8 @@ export function DiscoveryWorkspace() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
-                      depth {record.candidate.depth ?? 0} · discovered {shortTime(record.candidate.discoveredAt)}
+                      depth {record.candidate.depth ?? 0} · discovered{" "}
+                      {shortTime(record.candidate.discoveredAt)}
                     </p>
                     {record.candidate.discoveredFrom ? (
                       <p className="mt-2 truncate text-xs text-slate-400">
@@ -426,7 +435,8 @@ export function DiscoveryWorkspace() {
                       onClick={() => void review(record.candidate.candidateId, "ACCEPTED")}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-slate-950 px-3 py-2 text-xs font-medium text-white disabled:bg-slate-300"
                     >
-                      {busy ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />} Accept
+                      {busy ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}{" "}
+                      Accept
                     </button>
                   </div>
                 </div>
@@ -440,7 +450,9 @@ export function DiscoveryWorkspace() {
         <section className="mt-5 rounded-2xl border border-slate-200 bg-white">
           <div className="border-b border-slate-200 px-5 py-4">
             <h2 className="font-semibold text-slate-950">Recently reviewed</h2>
-            <p className="mt-1 text-xs text-slate-500">保留审核结果与 Source / Collection Plan 关联。</p>
+            <p className="mt-1 text-xs text-slate-500">
+              保留审核结果与 Source / Collection Plan 关联。
+            </p>
           </div>
           <div className="divide-y divide-slate-100">
             {reviewed.slice(0, 12).map((record) => (
@@ -449,9 +461,12 @@ export function DiscoveryWorkspace() {
                 className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center md:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-800">{record.candidate.locator}</p>
+                  <p className="truncate text-sm font-medium text-slate-800">
+                    {record.candidate.locator}
+                  </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {record.candidate.status} · {record.review ? shortTime(record.review.reviewedAt) : "reviewed"}
+                    {record.candidate.status} ·{" "}
+                    {record.review ? shortTime(record.review.reviewedAt) : "reviewed"}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
