@@ -24,7 +24,14 @@ function service(): SourceIntelligenceService {
 }
 
 function sourceIdsValue(value: string): string[] {
-  const sourceIds = [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+  const sourceIds = [
+    ...new Set(
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
   if (sourceIds.length === 0) {
     throw new RegistryValidationError("sourceIds must contain at least one source id");
   }

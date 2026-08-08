@@ -79,7 +79,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/source-intelligence?sourceId=${encodeURIComponent(sourceId)}`);
+      const response = await fetch(
+        `/api/source-intelligence?sourceId=${encodeURIComponent(sourceId)}`,
+      );
       const body = (await response.json()) as {
         assessment?: SourceIntelligenceAssessment | null;
         error?: { message?: string };
@@ -87,7 +89,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
       if (!response.ok) throw new Error(body.error?.message ?? "无法读取 Source Intelligence");
       setAssessment(body.assessment ?? null);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "无法读取 Source Intelligence");
+      setError(
+        requestError instanceof Error ? requestError.message : "无法读取 Source Intelligence",
+      );
     } finally {
       setLoading(false);
     }
@@ -115,7 +119,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
       }
       setAssessment(body.assessment);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "无法完成 Source Intelligence 评估");
+      setError(
+        requestError instanceof Error ? requestError.message : "无法完成 Source Intelligence 评估",
+      );
     } finally {
       setAssessing(false);
     }
@@ -157,7 +163,8 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
           <Database className="mx-auto text-slate-400" size={28} aria-hidden="true" />
           <p className="mt-3 font-medium text-slate-900">尚未建立 Source Intelligence 基线</p>
           <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-500">
-            首次评估只读取当前 Source、Source Graph 与 RawArtifact 证据并保存评估快照；不会改变 Authority、CollectionPlan 或执行状态。
+            首次评估只读取当前 Source、Source Graph 与 RawArtifact 证据并保存评估快照；不会改变
+            Authority、CollectionPlan 或执行状态。
           </p>
         </div>
       ) : null}
@@ -180,8 +187,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
                 <div>
                   <p className="font-semibold">运营优先级 ≠ 法律权威评级</p>
                   <p className="mt-2 leading-6">
-                    当前显式 Authority 为 <strong>{assessment.input.explicitAuthorityLevel}</strong>。系统不会从 Tier
-                    反推 Authority，也不会验证法律真实性；重扫建议不会自动写入 CollectionPlan，更不会自动授权执行。
+                    当前显式 Authority 为 <strong>{assessment.input.explicitAuthorityLevel}</strong>
+                    。系统不会从 Tier 反推 Authority，也不会验证法律真实性；重扫建议不会自动写入
+                    CollectionPlan，更不会自动授权执行。
                   </p>
                 </div>
               </div>
@@ -210,7 +218,9 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
                       ))}
                     </div>
                     {name === "ACQUISITION_COST" ? (
-                      <p className="mt-3 text-xs text-slate-500">该项越高表示观察到的采集体量越高，并作为轻量成本惩罚项。</p>
+                      <p className="mt-3 text-xs text-slate-500">
+                        该项越高表示观察到的采集体量越高，并作为轻量成本惩罚项。
+                      </p>
                     ) : null}
                   </div>
                 );

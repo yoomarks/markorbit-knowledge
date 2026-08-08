@@ -35,9 +35,9 @@ function rescanLabel(assessment: SourceIntelligenceAssessment | null): string {
 
 export function SourceIntelligenceWorkbench() {
   const [sources, setSources] = useState<SourceDefinition[]>([]);
-  const [assessments, setAssessments] = useState<Record<string, SourceIntelligenceAssessment | null>>(
-    {},
-  );
+  const [assessments, setAssessments] = useState<
+    Record<string, SourceIntelligenceAssessment | null>
+  >({});
   const [query, setQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("ALL");
   const [loading, setLoading] = useState(true);
@@ -50,8 +50,7 @@ export function SourceIntelligenceWorkbench() {
     try {
       const sourceResponse = await fetch(`/api/sources?limit=${COHORT_LIMIT}&offset=0`);
       const sourceBody = (await sourceResponse.json()) as
-        | SourceListResult
-        | { error?: { message?: string } };
+        SourceListResult | { error?: { message?: string } };
       if (!sourceResponse.ok) {
         const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
         throw new Error(message ?? "无法读取 Sources");
@@ -63,11 +62,12 @@ export function SourceIntelligenceWorkbench() {
         return;
       }
 
-      const params = new URLSearchParams({ sourceIds: nextSources.map((source) => source.id).join(",") });
+      const params = new URLSearchParams({
+        sourceIds: nextSources.map((source) => source.id).join(","),
+      });
       const intelligenceResponse = await fetch(`/api/source-intelligence?${params.toString()}`);
       const intelligenceBody = (await intelligenceResponse.json()) as
-        | IntelligenceBatchResponse
-        | { error?: { message?: string } };
+        IntelligenceBatchResponse | { error?: { message?: string } };
       if (!intelligenceResponse.ok) {
         const message = "error" in intelligenceBody ? intelligenceBody.error?.message : undefined;
         throw new Error(message ?? "无法读取 Source Intelligence");
@@ -78,7 +78,11 @@ export function SourceIntelligenceWorkbench() {
       }
       setAssessments(nextAssessments);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "无法读取 Source Intelligence 工作台");
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "无法读取 Source Intelligence 工作台",
+      );
     } finally {
       setLoading(false);
     }
@@ -106,7 +110,9 @@ export function SourceIntelligenceWorkbench() {
       }
       setAssessments((current) => ({ ...current, [sourceId]: body.assessment ?? null }));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "无法完成 Source Intelligence 评估");
+      setError(
+        requestError instanceof Error ? requestError.message : "无法完成 Source Intelligence 评估",
+      );
     } finally {
       setAssessingSourceId(null);
     }
@@ -135,7 +141,8 @@ export function SourceIntelligenceWorkbench() {
         return assessment?.operationalTier === tierFilter;
       })
       .sort((left, right) => {
-        const scoreDelta = (right.assessment?.priorityScore ?? -1) - (left.assessment?.priorityScore ?? -1);
+        const scoreDelta =
+          (right.assessment?.priorityScore ?? -1) - (left.assessment?.priorityScore ?? -1);
         if (scoreDelta !== 0) return scoreDelta;
         return left.source.name.localeCompare(right.source.name);
       });
@@ -159,7 +166,9 @@ export function SourceIntelligenceWorkbench() {
           <div>
             <p className="font-semibold">这是运营排序工作台，不是法律权威排行榜</p>
             <p className="mt-1 leading-6">
-              Tier 只回答“这个 Source 当前值不值得优先继续采集和复查”。Authority 仍来自 SourceDefinition 的显式人工分类；本页面不会自动改 Authority、CollectionPlan、调度或执行权限。
+              Tier 只回答“这个 Source 当前值不值得优先继续采集和复查”。Authority 仍来自
+              SourceDefinition 的显式人工分类；本页面不会自动改
+              Authority、CollectionPlan、调度或执行权限。
             </p>
           </div>
         </div>
@@ -186,7 +195,11 @@ export function SourceIntelligenceWorkbench() {
           <div className="flex flex-1 flex-col gap-3 sm:flex-row">
             <label className="relative flex-1 sm:max-w-md">
               <span className="sr-only">搜索来源</span>
-              <Search className="absolute left-3 top-3 text-slate-400" size={17} aria-hidden="true" />
+              <Search
+                className="absolute left-3 top-3 text-slate-400"
+                size={17}
+                aria-hidden="true"
+              />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -220,7 +233,8 @@ export function SourceIntelligenceWorkbench() {
         </div>
 
         <div className="border-b border-slate-100 px-5 py-3 text-xs text-slate-500">
-          当前是受控验证批次，最多读取前 {COHORT_LIMIT} 个 Source；优先用于 USPTO + 首批真实专业来源的人工校准。
+          当前是受控验证批次，最多读取前 {COHORT_LIMIT} 个 Source；优先用于 USPTO +
+          首批真实专业来源的人工校准。
         </div>
 
         {error ? (
@@ -246,7 +260,10 @@ export function SourceIntelligenceWorkbench() {
               {rows.map(({ source, assessment }) => (
                 <tr key={source.id} className="align-top hover:bg-slate-50">
                   <td className="px-5 py-4">
-                    <Link href={`/sources/${source.id}`} className="font-medium text-slate-950 hover:text-emerald-700">
+                    <Link
+                      href={`/sources/${source.id}`}
+                      className="font-medium text-slate-950 hover:text-emerald-700"
+                    >
                       {source.name}
                     </Link>
                     <p className="mt-1 max-w-xs truncate text-xs text-slate-500">
@@ -259,10 +276,14 @@ export function SourceIntelligenceWorkbench() {
                   <td className="px-5 py-4">
                     {assessment ? (
                       <div className="flex items-center gap-2">
-                        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${tierClass(assessment.operationalTier)}`}>
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${tierClass(assessment.operationalTier)}`}
+                        >
                           Tier {assessment.operationalTier}
                         </span>
-                        <span className="font-medium text-slate-800">{assessment.priorityScore}</span>
+                        <span className="font-medium text-slate-800">
+                          {assessment.priorityScore}
+                        </span>
                       </div>
                     ) : (
                       <span className="text-slate-400">未评估</span>
@@ -281,7 +302,8 @@ export function SourceIntelligenceWorkbench() {
                       <>
                         <p>{assessment.input.relevantContentNodeCount} 个相关内容节点</p>
                         <p className="mt-1 text-xs text-slate-500">
-                          {assessment.input.rawArtifactCount} RawArtifact · {assessment.input.rawProvenanceNodeCount} Raw provenance
+                          {assessment.input.rawArtifactCount} RawArtifact ·{" "}
+                          {assessment.input.rawProvenanceNodeCount} Raw provenance
                         </p>
                       </>
                     ) : (
@@ -300,7 +322,11 @@ export function SourceIntelligenceWorkbench() {
                         disabled={assessingSourceId !== null}
                         className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {assessingSourceId === source.id ? "评估中…" : assessment ? "重新评估" : "评估"}
+                        {assessingSourceId === source.id
+                          ? "评估中…"
+                          : assessment
+                            ? "重新评估"
+                            : "评估"}
                       </button>
                       <Link
                         href={`/sources/${source.id}`}
@@ -317,9 +343,13 @@ export function SourceIntelligenceWorkbench() {
           </table>
         </div>
 
-        {loading ? <div className="px-6 py-12 text-center text-sm text-slate-500">正在读取受控来源批次…</div> : null}
+        {loading ? (
+          <div className="px-6 py-12 text-center text-sm text-slate-500">正在读取受控来源批次…</div>
+        ) : null}
         {!loading && rows.length === 0 ? (
-          <div className="px-6 py-14 text-center text-sm text-slate-500">当前筛选条件下没有 Source。</div>
+          <div className="px-6 py-14 text-center text-sm text-slate-500">
+            当前筛选条件下没有 Source。
+          </div>
         ) : null}
       </section>
     </div>
