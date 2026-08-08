@@ -314,7 +314,9 @@ export function DiscoveryWorkspace() {
       const highPriority = candidates.filter(
         (candidate) => candidate.metadata?.reviewPriority === "HIGH",
       ).length;
-      setMessage(`分析完成：发现 ${candidates.length} 个候选，其中 ${highPriority} 个建议优先审核。`);
+      setMessage(
+        `分析完成：发现 ${candidates.length} 个候选，其中 ${highPriority} 个建议优先审核。`,
+      );
       setFilter(highPriority > 0 ? "RECOMMENDED" : "ALL");
       await refresh();
     } catch (runError) {
@@ -416,7 +418,9 @@ export function DiscoveryWorkspace() {
   const sourceMap = useMemo(() => {
     return (Object.keys(TOPICS) as DiscoveryTopic[])
       .map((topic) => {
-        const items = overview.candidates.items.filter((record) => candidateTopic(record) === topic);
+        const items = overview.candidates.items.filter(
+          (record) => candidateTopic(record) === topic,
+        );
         return {
           topic,
           total: items.length,
@@ -518,13 +522,20 @@ export function DiscoveryWorkspace() {
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
-              {["读取 robots.txt", "发现 sitemap", "分析主页导航", "同站点去重", "进入人工审核队列"].map(
-                (item) => (
-                  <span key={item} className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                    {item}
-                  </span>
-                ),
-              )}
+              {[
+                "读取 robots.txt",
+                "发现 sitemap",
+                "分析主页导航",
+                "同站点去重",
+                "进入人工审核队列",
+              ].map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1"
+                >
+                  {item}
+                </span>
+              ))}
             </div>
 
             <button
@@ -585,7 +596,9 @@ export function DiscoveryWorkspace() {
         <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Latest analysis</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Latest analysis
+              </p>
               <h2 className="mt-1 font-semibold text-slate-950">最近一次来源分析</h2>
             </div>
             <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
@@ -603,7 +616,9 @@ export function DiscoveryWorkspace() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-lg font-semibold text-slate-950">{latestBatch.candidateCount}</p>
+                  <p className="text-lg font-semibold text-slate-950">
+                    {latestBatch.candidateCount}
+                  </p>
                   <p className="text-xs text-slate-500">发现候选</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 p-3">
@@ -623,12 +638,16 @@ export function DiscoveryWorkspace() {
                 <p className="flex items-center justify-between gap-3">
                   <span>sitemap</span>
                   <span className="font-medium text-slate-700">
-                    {latestBatch.batch.constraints?.discoverSitemaps === false ? "关闭" : "自动发现"}
+                    {latestBatch.batch.constraints?.discoverSitemaps === false
+                      ? "关闭"
+                      : "自动发现"}
                   </span>
                 </p>
                 <p className="flex items-center justify-between gap-3">
                   <span>时间</span>
-                  <span className="font-medium text-slate-700">{shortTime(latestBatch.batch.createdAt)}</span>
+                  <span className="font-medium text-slate-700">
+                    {shortTime(latestBatch.batch.createdAt)}
+                  </span>
                 </p>
               </div>
             </div>
@@ -670,7 +689,9 @@ export function DiscoveryWorkspace() {
                   key={group.topic}
                   onClick={() => {
                     setFilter("ALL");
-                    document.getElementById("discovery-review-queue")?.scrollIntoView({ behavior: "smooth" });
+                    document
+                      .getElementById("discovery-review-queue")
+                      ?.scrollIntoView({ behavior: "smooth" });
                   }}
                   className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-slate-300 hover:bg-slate-50"
                 >
@@ -680,7 +701,9 @@ export function DiscoveryWorkspace() {
                       {group.total}
                     </span>
                   </div>
-                  <p className="mt-2 min-h-8 text-xs leading-4 text-slate-500">{config.description}</p>
+                  <p className="mt-2 min-h-8 text-xs leading-4 text-slate-500">
+                    {config.description}
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
                     {group.high > 0 ? <span>{group.high} 个优先</span> : null}
                     {group.documents > 0 ? <span>{group.documents} 个文档</span> : null}
@@ -798,7 +821,9 @@ export function DiscoveryWorkspace() {
                           ))}
                         </div>
                       ) : (
-                        <p className="mt-3 text-xs text-slate-400">暂无明显专业信号，建议按需检查。</p>
+                        <p className="mt-3 text-xs text-slate-400">
+                          暂无明显专业信号，建议按需检查。
+                        </p>
                       )}
 
                       {blocked ? (
@@ -839,7 +864,11 @@ export function DiscoveryWorkspace() {
                         onClick={() => void review(record.candidate.candidateId, "ACCEPTED")}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white disabled:bg-slate-300"
                       >
-                        {busy ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+                        {busy ? (
+                          <Loader2 className="animate-spin" size={14} />
+                        ) : (
+                          <Check size={14} />
+                        )}
                         采纳候选
                       </button>
                     </div>
@@ -880,7 +909,8 @@ export function DiscoveryWorkspace() {
                     </p>
                   </div>
                   <p className="mt-1 truncate text-xs text-slate-500">
-                    {compactLocator(record.candidate.locator)} · {record.candidate.status === "ACCEPTED" ? "已采纳" : "已忽略"}
+                    {compactLocator(record.candidate.locator)} ·{" "}
+                    {record.candidate.status === "ACCEPTED" ? "已采纳" : "已忽略"}
                     {record.review ? ` · ${shortTime(record.review.reviewedAt)}` : ""}
                   </p>
                 </div>
