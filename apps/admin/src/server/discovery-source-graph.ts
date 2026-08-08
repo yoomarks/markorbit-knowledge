@@ -266,7 +266,9 @@ export function writeDiscoveryBatchToSourceGraph(
     }));
   const byLocator = new Map<string, SourceGraphNode>([[profile.canonicalOrigin, root]]);
   for (const { node } of candidateEntries) {
-    if ("canonicalUri" in node) byLocator.set(node.canonicalUri, node);
+    if ("canonicalUri" in node && typeof node.canonicalUri === "string") {
+      byLocator.set(node.canonicalUri, node);
+    }
   }
 
   const nodes: SourceGraphNode[] = [
