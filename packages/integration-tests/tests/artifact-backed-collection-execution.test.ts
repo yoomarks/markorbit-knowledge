@@ -226,8 +226,11 @@ describe("artifact-backed collection execution", () => {
     const receipt = await executor.execute(context);
 
     expect(receipt?.metadataOnly).toBe(false);
-    expect(receipt?.artifactReceiptIds).toHaveLength(1);
-    expect(receipt?.bytesPrepared).toBeGreaterThan(0);
+    if (!receipt || receipt.metadataOnly) {
+      throw new Error("Expected an artifact-backed execution receipt");
+    }
+    expect(receipt.artifactReceiptIds).toHaveLength(1);
+    expect(receipt.bytesPrepared).toBeGreaterThan(0);
 
     const completed = runs.getById(dispatched.run.id);
     expect(completed?.run.status).toBe("COMPLETED");
