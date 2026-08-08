@@ -5,6 +5,7 @@ export type WorkerProcessConfig = {
   runtimeVersion: string;
   pollIntervalMs: number;
   keepAliveIntervalMs: number;
+  maxCollectionRuntimeMs: number;
   errorBackoffMinMs: number;
   errorBackoffMaxMs: number;
   requireEgressProxy: boolean;
@@ -43,9 +44,7 @@ function normalizedControlPlaneUrl(value: string): string {
 export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): WorkerProcessConfig {
   const requireEgressProxy = env.MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY?.trim() !== "0";
   if (env.NODE_ENV === "production" && !requireEgressProxy) {
-    throw new Error(
-      "Production Worker cannot disable the Crawl4AI egress-proxy requirement",
-    );
+    throw new Error("Production Worker cannot disable the Crawl4AI egress-proxy requirement");
   }
 
   const errorBackoffMinMs = integer(
@@ -75,6 +74,13 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
       30_000,
       1_000,
       60_000,
+    ),
+    maxCollectionRuntimeMs: integer(
+      env,
+      "MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS",
+      12 * 60_000,
+      30_000,
+      14 * 60_000,
     ),
     errorBackoffMinMs,
     errorBackoffMaxMs,
