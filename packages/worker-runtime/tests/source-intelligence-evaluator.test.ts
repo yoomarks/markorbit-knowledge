@@ -14,7 +14,7 @@ describe("source intelligence evaluator", () => {
     const assessment = evaluateSourceIntelligence({
       ...base,
       snapshot: {
-        sourceCategory: "DOMAIN_OTHER",
+        sourceCategory: "OTHER",
         sourceStatus: "ACTIVE",
         explicitAuthorityLevel: "UNKNOWN",
         graphNodeCount: 100,
@@ -44,7 +44,7 @@ describe("source intelligence evaluator", () => {
       snapshot: {
         sourceCategory: "OFFICIAL_AUTHORITY",
         sourceStatus: "ACTIVE",
-        explicitAuthorityLevel: "PRIMARY",
+        explicitAuthorityLevel: "PRIMARY_OFFICIAL",
         graphNodeCount: 60,
         contentNodeCount: 40,
         relevantContentNodeCount: 36,
@@ -58,7 +58,7 @@ describe("source intelligence evaluator", () => {
     });
     expect(assessment.dimensions.AUTHORITY_SIGNAL.score).toBe(100);
     expect(assessment.dimensions.AUTHORITY_SIGNAL.reasonCodes).toContain(
-      "EXPLICIT_AUTHORITY_PRIMARY",
+      "EXPLICIT_AUTHORITY_PRIMARY_OFFICIAL",
     );
     expect(assessment.boundaries.authorityInferred).toBe(false);
   });
@@ -67,7 +67,7 @@ describe("source intelligence evaluator", () => {
     const assessment = evaluateSourceIntelligence({
       ...base,
       snapshot: {
-        sourceCategory: "DOMAIN_OTHER",
+        sourceCategory: "OTHER",
         sourceStatus: "ACTIVE",
         explicitAuthorityLevel: "UNKNOWN",
         graphNodeCount: 1,
@@ -89,7 +89,7 @@ describe("source intelligence evaluator", () => {
     const snapshot = {
       sourceCategory: "LAW_FIRM" as const,
       sourceStatus: "ACTIVE" as const,
-      explicitAuthorityLevel: "COMMENTARY" as const,
+      explicitAuthorityLevel: "PROFESSIONAL" as const,
       graphNodeCount: 12,
       contentNodeCount: 10,
       relevantContentNodeCount: 7,
