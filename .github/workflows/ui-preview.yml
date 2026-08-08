@@ -53,6 +53,7 @@ jobs:
           test -n "$CHROME"
           "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/dashboard.png http://127.0.0.1:3000/dashboard
           "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/sources.png http://127.0.0.1:3000/sources
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/intelligence.png http://127.0.0.1:3000/intelligence
           "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/jobs.png http://127.0.0.1:3000/jobs
           "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/runs.png http://127.0.0.1:3000/runs
           "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/artifacts.png http://127.0.0.1:3000/artifacts

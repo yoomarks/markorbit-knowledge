@@ -2,85 +2,85 @@
 
 import { useEffect, useState } from "react";
 import { Activity, Database, RefreshCw, ShieldAlert } from "lucide-react";
-import {
-  SOURCE_INTELLIGENCE_DIMENSIONS,
-  type SourceIntelligenceAssessment,
-  type SourceIntelligenceDimensionName,
-  type SourceIntelligenceTier,
+import type {
+  EvidenceMaturityStage,
+  SourceIntelligenceAssessmentV2,
+  SourceIntelligenceDimension,
+  SourceValuePriorityBand,
 } from "@markorbit/contracts";
 
-const dimensionLabels: Record<SourceIntelligenceDimensionName, string> = {
-  RELEVANCE: "商标相关性",
-  AUTHORITY_SIGNAL: "显式权威信号",
-  FRESHNESS: "证据新鲜度",
-  EVIDENCEABILITY: "可证据化程度",
-  NOVELTY: "新增信息",
-  ACQUISITION_COST: "采集成本代理值",
+const sourceValueLabels: Record<SourceValuePriorityBand, string> = {
+  VERY_HIGH: "Very High",
+  HIGH: "High",
+  MEDIUM: "Medium",
+  LOW: "Low",
 };
 
-const reasonLabels: Record<string, string> = {
-  EXPLICIT_AUTHORITY_PRIMARY_OFFICIAL: "来源已明确标记为一手官方",
-  EXPLICIT_AUTHORITY_SECONDARY_OFFICIAL: "来源已明确标记为官方衍生信息",
-  EXPLICIT_AUTHORITY_PROFESSIONAL: "来源已明确标记为专业机构",
-  EXPLICIT_AUTHORITY_INTERNAL: "来源已明确标记为内部资料",
-  EXPLICIT_AUTHORITY_INDUSTRY: "来源已明确标记为行业来源",
-  EXPLICIT_AUTHORITY_COMMUNITY: "来源已明确标记为社区来源",
-  AUTHORITY_NOT_EXPLICITLY_ASSIGNED: "尚未人工明确权威等级",
-  NO_RAW_ARTIFACT_RECENCY_EVIDENCE: "尚无 RawArtifact 时间证据",
-  CAPTURED_WITHIN_7_DAYS: "最近 7 天内有采集证据",
-  CAPTURED_WITHIN_30_DAYS: "最近 30 天内有采集证据",
-  CAPTURED_WITHIN_90_DAYS: "最近 90 天内有采集证据",
-  CAPTURED_WITHIN_365_DAYS: "最近一年内有采集证据",
-  CAPTURE_OLDER_THAN_365_DAYS: "最近采集证据已超过一年",
-  NO_ARTIFACT_BACKED_GRAPH_EVIDENCE: "Source Graph 尚缺 RawArtifact 支撑",
-  RAW_ARTIFACT_PROVENANCE_COVERAGE: "评分参考 RawArtifact provenance 覆盖率",
-  IMMUTABLE_ARTIFACT_EVIDENCE_PRESENT: "已有不可变原始证据",
-  CATEGORY_BASELINE_ONLY: "当前仅能使用 Source 分类基线",
-  NO_CONTENT_NODES_YET: "Source Graph 尚无内容节点",
-  GRAPH_TOPIC_COVERAGE: "评分参考 Source Graph 主题覆盖",
-  HUMAN_RETAINED_EVIDENCE: "存在人工保留的证据节点",
-  NO_PREVIOUS_ASSESSMENT_BASELINE: "尚无上一次评估作为变化基线",
-  NO_NEW_GRAPH_OR_ARTIFACT_EVIDENCE: "相较上次评估未发现新增图谱或 Artifact",
-  NEW_EVIDENCE_SINCE_PREVIOUS_ASSESSMENT: "相较上次评估发现新增证据",
-  NO_ACQUISITION_FOOTPRINT_YET: "尚无采集体量数据",
-  OBSERVED_BYTE_FOOTPRINT_PROXY: "成本仅以已观察字节体量近似",
-  COST_SCORE_IS_HEURISTIC_NOT_BILLING_DATA: "该分值不是实际费用数据",
+const evidenceMaturityLabels: Record<EvidenceMaturityStage, string> = {
+  UNOBSERVED: "Unobserved",
+  CAPTURED: "Captured",
+  TRACEABLE: "Traceable",
+  CURRENT_TRACEABLE: "Current + Traceable",
 };
 
-function tierClass(tier: SourceIntelligenceTier): string {
+function sourceValueClass(band: SourceValuePriorityBand): string {
   return {
-    A: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    B: "border-sky-200 bg-sky-50 text-sky-800",
-    C: "border-amber-200 bg-amber-50 text-amber-800",
-    D: "border-slate-200 bg-slate-100 text-slate-700",
-  }[tier];
+    VERY_HIGH: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    HIGH: "border-sky-200 bg-sky-50 text-sky-900",
+    MEDIUM: "border-amber-200 bg-amber-50 text-amber-900",
+    LOW: "border-slate-200 bg-slate-100 text-slate-800",
+  }[band];
 }
 
-function formatBytes(value: number): string {
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  if (value < 1024 * 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
-  return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`;
+function evidenceMaturityClass(stage: EvidenceMaturityStage): string {
+  return {
+    CURRENT_TRACEABLE: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    TRACEABLE: "border-sky-200 bg-sky-50 text-sky-900",
+    CAPTURED: "border-amber-200 bg-amber-50 text-amber-900",
+    UNOBSERVED: "border-slate-200 bg-slate-100 text-slate-800",
+  }[stage];
 }
 
-function rescanLabel(assessment: SourceIntelligenceAssessment): string {
-  return assessment.recommendedRescan.mode === "DAYS"
-    ? `建议 ${assessment.recommendedRescan.intervalDays} 天后人工复查是否需要重扫`
-    : "建议仅在人工判断需要时重新扫描";
+function reasonLabel(reason: string): string {
+  return reason.replaceAll("_", " ").toLowerCase();
+}
+
+function legacyRescanLabel(assessment: SourceIntelligenceAssessmentV2): string {
+  const recommendation = assessment.compatibility.legacyRecommendedRescan;
+  return recommendation.mode === "DAYS"
+    ? `${recommendation.intervalDays} 天后人工复查`
+    : "仅在人工判断需要时复查";
+}
+
+function SignalCard({ title, signal }: { title: string; signal: SourceIntelligenceDimension }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-medium text-slate-900">{title}</p>
+          <p className="mt-1 text-xs text-slate-500">置信度 {signal.confidence}</p>
+        </div>
+        <span className="text-2xl font-semibold text-slate-950">
+          {signal.score === null ? "—" : signal.score}
+        </span>
+      </div>
+      <div className="mt-3 space-y-1.5 text-xs leading-5 text-slate-600">
+        {signal.reasonCodes.map((reason) => (
+          <p key={reason}>• {reasonLabel(reason)}</p>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 async function readAssessment(
   sourceId: string,
   signal?: AbortSignal,
-): Promise<SourceIntelligenceAssessment | null> {
-  const response = await fetch(
-    `/api/source-intelligence?sourceId=${encodeURIComponent(sourceId)}`,
-    {
-      signal,
-    },
-  );
+): Promise<SourceIntelligenceAssessmentV2 | null> {
+  const params = new URLSearchParams({ sourceId, protocolVersion: "2.0" });
+  const response = await fetch(`/api/source-intelligence?${params.toString()}`, { signal });
   const body = (await response.json()) as {
-    assessment?: SourceIntelligenceAssessment | null;
+    assessment?: SourceIntelligenceAssessmentV2 | null;
     error?: { message?: string };
   };
   if (!response.ok) throw new Error(body.error?.message ?? "无法读取 Source Intelligence");
@@ -88,7 +88,7 @@ async function readAssessment(
 }
 
 export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
-  const [assessment, setAssessment] = useState<SourceIntelligenceAssessment | null>(null);
+  const [assessment, setAssessment] = useState<SourceIntelligenceAssessmentV2 | null>(null);
   const [loading, setLoading] = useState(true);
   const [assessing, setAssessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,10 +119,10 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
       const response = await fetch("/api/source-intelligence", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sourceId }),
+        body: JSON.stringify({ sourceId, protocolVersion: "2.0" }),
       });
       const body = (await response.json()) as {
-        assessment?: SourceIntelligenceAssessment;
+        assessment?: SourceIntelligenceAssessmentV2;
         error?: { message?: string };
       };
       if (!response.ok || !body.assessment) {
@@ -147,7 +147,7 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
             <h2 className="font-semibold text-slate-950">Source Intelligence</h2>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            用现有 Source Graph 与 RawArtifact 证据计算运营优先级，不判断法律事实。
+            默认使用 Source Value × Evidence Maturity 双轴；Acquisition Cost 保持独立决策上下文。
           </p>
         </div>
         <button
@@ -174,101 +174,160 @@ export function SourceIntelligencePanel({ sourceId }: { sourceId: string }) {
           <Database className="mx-auto text-slate-400" size={28} aria-hidden="true" />
           <p className="mt-3 font-medium text-slate-900">尚未建立 Source Intelligence 基线</p>
           <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-500">
-            首次评估只读取当前 Source、Source Graph 与 RawArtifact 证据并保存评估快照；不会改变
-            Authority、CollectionPlan 或执行状态。
+            首次评估仍保存 v1 历史评估快照，再只读投影为双轴 v2；不会改变 Authority、CollectionPlan
+            或执行状态。
           </p>
         </div>
       ) : null}
 
       {assessment ? (
         <div className="space-y-6 p-5">
-          <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
-            <div className={`rounded-2xl border p-5 ${tierClass(assessment.operationalTier)}`}>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em]">Operational Tier</p>
-              <div className="mt-3 flex items-end gap-3">
-                <span className="text-5xl font-semibold">{assessment.operationalTier}</span>
-                <span className="pb-1 text-sm">{assessment.priorityScore} / 100</span>
-              </div>
-              <p className="mt-4 text-xs leading-5">{rescanLabel(assessment)}</p>
-            </div>
-
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
-              <div className="flex gap-3">
-                <ShieldAlert className="mt-0.5 shrink-0" size={19} aria-hidden="true" />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div
+              className={`rounded-2xl border p-5 ${sourceValueClass(assessment.sourceValuePriority.band)}`}
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.14em]">Source Value</p>
+              <div className="mt-3 flex items-end justify-between gap-4">
                 <div>
-                  <p className="font-semibold">运营优先级 ≠ 法律权威评级</p>
-                  <p className="mt-2 leading-6">
-                    当前显式 Authority 为 <strong>{assessment.input.explicitAuthorityLevel}</strong>
-                    。系统不会从 Tier 反推 Authority，也不会验证法律真实性；重扫建议不会自动写入
-                    CollectionPlan，更不会自动授权执行。
+                  <p className="text-3xl font-semibold">
+                    {sourceValueLabels[assessment.sourceValuePriority.band]}
                   </p>
+                  <p className="mt-1 text-sm">来源本身的长期优先价值</p>
                 </div>
+                <span className="text-3xl font-semibold">
+                  {assessment.sourceValuePriority.score}
+                </span>
+              </div>
+              <p className="mt-4 text-xs leading-5">
+                仅由来源类别相关性基线与显式 Authority 信号组成，不因当前是否已采集而降低。
+              </p>
+            </div>
+
+            <div
+              className={`rounded-2xl border p-5 ${evidenceMaturityClass(assessment.evidenceMaturity.stage)}`}
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.14em]">Evidence Maturity</p>
+              <div className="mt-3 flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-3xl font-semibold">
+                    {evidenceMaturityLabels[assessment.evidenceMaturity.stage]}
+                  </p>
+                  <p className="mt-1 text-sm">当前证据成熟度</p>
+                </div>
+                <span className="text-3xl font-semibold">
+                  {assessment.evidenceMaturity.score === null
+                    ? "—"
+                    : assessment.evidenceMaturity.score}
+                </span>
+              </div>
+              <p className="mt-4 text-xs leading-5">
+                UNOBSERVED 表示尚无可用采集证据，不代表来源价值低，也不授权自动采集。
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
+            <div className="flex gap-3">
+              <ShieldAlert className="mt-0.5 shrink-0" size={19} aria-hidden="true" />
+              <div>
+                <p className="font-semibold">双轴展示 ≠ 执行授权</p>
+                <p className="mt-2 leading-6">
+                  Scheduler 当前仍为 <strong>{assessment.scheduling.policyStatus}</strong>
+                  。系统不会从 Source Value 推断法律权威，不会从 Evidence Maturity
+                  推断法律真实性，也不会自动写入 CollectionPlan、启动采集或授予 MGSN 资格。
+                </p>
               </div>
             </div>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-slate-950">六维解释</h3>
-            <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {SOURCE_INTELLIGENCE_DIMENSIONS.map((name) => {
-                const item = assessment.dimensions[name];
-                return (
-                  <div key={name} className="rounded-2xl border border-slate-200 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-slate-900">{dimensionLabels[name]}</p>
-                        <p className="mt-1 text-xs text-slate-500">置信度 {item.confidence}</p>
-                      </div>
-                      <span className="text-2xl font-semibold text-slate-950">
-                        {item.score === null ? "—" : item.score}
-                      </span>
-                    </div>
-                    <div className="mt-3 space-y-1.5 text-xs leading-5 text-slate-600">
-                      {item.reasonCodes.map((reason) => (
-                        <p key={reason}>• {reasonLabels[reason] ?? reason.replaceAll("_", " ")}</p>
-                      ))}
-                    </div>
-                    {name === "ACQUISITION_COST" ? (
-                      <p className="mt-3 text-xs text-slate-500">
-                        该项越高表示观察到的采集体量越高，并作为轻量成本惩罚项。
-                      </p>
-                    ) : null}
-                  </div>
-                );
-              })}
+            <h3 className="text-sm font-semibold text-slate-950">Source Value 信号</h3>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <SignalCard
+                title="来源类别相关性基线"
+                signal={assessment.sourceValuePriority.signals.relevance}
+              />
+              <SignalCard
+                title="显式 Authority 信号"
+                signal={assessment.sourceValuePriority.signals.authority}
+              />
             </div>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-slate-950">证据快照</h3>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-              {[
-                ["Graph 节点", assessment.input.graphNodeCount],
-                ["内容节点", assessment.input.contentNodeCount],
-                ["相关内容", assessment.input.relevantContentNodeCount],
-                ["人工保留", assessment.input.retainedNodeCount],
-                ["Raw provenance", assessment.input.rawProvenanceNodeCount],
-                ["RawArtifact", assessment.input.rawArtifactCount],
-                ["唯一内容哈希", assessment.input.distinctArtifactHashCount],
-              ].map(([label, value]) => (
-                <div key={String(label)} className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500">{label}</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-950">{value}</p>
-                </div>
-              ))}
+            <h3 className="text-sm font-semibold text-slate-950">Evidence Maturity 信号</h3>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <SignalCard
+                title="Freshness"
+                signal={assessment.evidenceMaturity.signals.freshness}
+              />
+              <SignalCard
+                title="Evidenceability"
+                signal={assessment.evidenceMaturity.signals.evidenceability}
+              />
+              <SignalCard title="Novelty" signal={assessment.evidenceMaturity.signals.novelty} />
             </div>
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-500">
-              <span>采集体量：{formatBytes(assessment.input.rawArtifactBytes)}</span>
-              <span>
-                最近采集：
-                {assessment.input.latestCapturedAt
-                  ? new Date(assessment.input.latestCapturedAt).toLocaleString("zh-CN")
-                  : "暂无"}
-              </span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-950">
+                  Decision Context · Acquisition Cost
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  采集成本保持独立，不进入 Source Value，也不决定 Evidence Maturity。
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-semibold text-slate-950">
+                  {assessment.decisionContext.observedAcquisitionCost.score === null
+                    ? "—"
+                    : assessment.decisionContext.observedAcquisitionCost.score}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {assessment.decisionContext.observedAcquisitionCost.score === null
+                    ? "尚未观察"
+                    : "observed footprint proxy"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <details className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+              Advanced · Legacy v1 compatibility
+            </summary>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <p className="text-xs text-slate-500">Legacy Tier</p>
+                <p className="mt-1 font-semibold text-slate-900">
+                  Tier {assessment.compatibility.legacyOperationalTier}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Legacy priority score</p>
+                <p className="mt-1 font-semibold text-slate-900">
+                  {assessment.compatibility.legacyPriorityScore}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Legacy rescan</p>
+                <p className="mt-1 font-semibold text-slate-900">{legacyRescanLabel(assessment)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Projection</p>
+                <p className="mt-1 font-semibold text-slate-900">
+                  {assessment.compatibility.projectionMode}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-500">
+              <span>Legacy assessment: {assessment.compatibility.legacyAssessmentId}</span>
               <span>评估时间：{new Date(assessment.assessedAt).toLocaleString("zh-CN")}</span>
               <span>Evaluator：{assessment.evaluator.version}</span>
             </div>
-          </div>
+          </details>
         </div>
       ) : null}
     </section>

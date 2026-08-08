@@ -12,6 +12,7 @@ import { ModulePreview } from "@/components/module-preview";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
 import { RunList } from "@/components/runs/run-list";
+import { SourceIntelligenceWorkbench } from "@/components/sources/source-intelligence-workbench";
 import { SourceList } from "@/components/sources/source-list";
 import { WorkerList } from "@/components/workers/worker-list";
 import { moduleOrder, type ModuleKey } from "@/lib/modules";
@@ -37,6 +38,18 @@ function SourcesPage() {
         }
       />
       <SourceList />
+    </>
+  );
+}
+
+function SourceIntelligencePage() {
+  return (
+    <>
+      <PageHeading
+        title="Source Intelligence"
+        description="默认以 Source Value × Evidence Maturity 双轴比较来源；Acquisition Cost 独立展示，legacy v1 Tier 仅保留在 Advanced compatibility。"
+      />
+      <SourceIntelligenceWorkbench />
     </>
   );
 }
@@ -165,6 +178,8 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
         <DiscoveryWorkspace />
       ) : moduleKey === "sources" ? (
         <SourcesPage />
+      ) : moduleKey === "intelligence" ? (
+        <SourceIntelligencePage />
       ) : moduleKey === "jobs" ? (
         <CollectionPlansPage />
       ) : moduleKey === "runs" ? (
