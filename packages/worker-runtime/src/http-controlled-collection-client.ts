@@ -131,6 +131,20 @@ export class HttpControlledCollectionClient implements ArtifactBackedExecutionCl
     return { job, lease, leaseToken };
   }
 
+  async renewLease(leaseId: string, leaseToken: string): Promise<JobLease> {
+    const payload = record(
+      await this.jsonRequest(
+        `/api/worker/v1/leases/${leaseId}/renew`,
+        { workerId: this.workerId },
+        leaseToken,
+      ),
+    );
+    if (!payload || !isJobLease(payload.lease)) {
+      throw new Error("Worker lease renewal response does not contain a valid JobLease");
+    }
+    return payload.lease;
+  }
+
   async start(
     context: ArtifactBackedExecutionContext,
     executor: ExecutionExecutor,

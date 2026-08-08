@@ -48,6 +48,9 @@ The repository now contains:
 - authenticated and lease-token-bound controlled execution transitions;
 - append-only execution attempts, events, receipts and structured failure evidence;
 - deterministic fixture Connector runtime with no external I/O;
+- production Crawl4AI 0.9.2 HTML/Markdown acquisition behind the governed Worker lease and RawArtifact evidence boundary;
+- deployable external Crawl4AI Worker process with lease renewal, heartbeat keepalive, bounded runtime and production egress-proxy enforcement;
+- USPTO trademark Golden Source bootstrap for a first controlled official-source collection path;
 - explicit reconciliation that fails started work when its lease expires;
 - immutable RawArtifact ingestion, SHA-256 verification and local content-addressed storage;
 - real RawArtifact provenance, ingestion evidence and controlled-download administration;
@@ -61,7 +64,7 @@ The repository now contains:
 - fixture-only previews for modules that have not reached production runtime implementation;
 - architecture boundaries, compatibility policy and Node 22/24 CI.
 
-Real Crawl4AI invocation, converter execution, automatic scheduling, retry creation, Vault filesystem access and MarkOrbit Core logic are not implemented yet. Conversion Runtime Protocol v1 is locked, but converter execution is not implemented.
+Production web acquisition now exists for bounded HTML/Markdown collection. Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, retry creation, Vault filesystem access and MarkOrbit Core logic are not implemented yet. Conversion Runtime Protocol v1 is locked, but converter execution is not implemented.
 
 Lifecycle meanings are deliberately distinct:
 
@@ -148,6 +151,24 @@ pnpm dev
 
 The local registries are created at `.data/markorbit-knowledge.sqlite`. Set `MARKORBIT_KNOWLEDGE_DB_PATH` to use another absolute path.
 
+## Production Crawl4AI Worker
+
+Bootstrap the first controlled USPTO trademark source, plan and Worker registration:
+
+```bash
+pnpm --filter @markorbit/worker bootstrap:uspto
+```
+
+Add `-- --dispatch` to create the first authorized PENDING run. The command returns a newly created Worker credential once; store it as `MARKORBIT_WORKER_CREDENTIAL` in a secret manager.
+
+For local development only, direct egress can be enabled explicitly:
+
+```bash
+MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY=0 pnpm --filter @markorbit/worker start
+```
+
+Production Worker execution requires `MARKORBIT_CRAWL4AI_EGRESS_PROXY` and refuses to disable that boundary. See [Crawl4AI Worker deployment and USPTO Golden Source](docs/operations/CRAWL4AI_WORKER_DEPLOYMENT.md).
+
 ## Validate
 
 ```bash
@@ -174,6 +195,7 @@ pnpm check
 - [CollectionPlan Registry](docs/architecture/COLLECTION_PLAN_REGISTRY.md)
 - [Execution Ledger](docs/architecture/EXECUTION_LEDGER.md)
 - [Worker Registry and leases](docs/architecture/WORKER_REGISTRY_AND_LEASES.md)
+- [Crawl4AI Worker deployment and USPTO Golden Source](docs/operations/CRAWL4AI_WORKER_DEPLOYMENT.md)
 - [Canonical schemas](schemas/v1/README.md)
 - [Runtime baseline decision](docs/decisions/ADR-0001-repository-and-runtime-baseline.md)
 - [Schema v1 decision](docs/decisions/ADR-0002-schema-v1-and-compatibility.md)
