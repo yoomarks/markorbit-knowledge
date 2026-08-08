@@ -128,9 +128,7 @@ async function ensureSource(baseUrl: string): Promise<string> {
       connector: { connectorId: CONNECTOR_ID, version: CONNECTOR_VERSION },
       connectorConfig: { renderJavascript: false, maxDepth: 1 },
       canonicalUri: "https://www.uspto.gov/trademarks",
-      entrypoints: [
-        { uri: "https://www.uspto.gov/trademarks", label: "USPTO Trademarks" },
-      ],
+      entrypoints: [{ uri: "https://www.uspto.gov/trademarks", label: "USPTO Trademarks" }],
       tags: ["official", "primary-authority", "trademark", "us", "golden-source"],
       extensions: {
         "x-markorbit-golden-source": true,
@@ -186,7 +184,9 @@ async function ensurePlan(baseUrl: string, sourceId: string): Promise<string> {
   return identifier(plan?.id, "plan.id");
 }
 
-async function ensureWorker(baseUrl: string): Promise<{ workerId: string; credential: string | null }> {
+async function ensureWorker(
+  baseUrl: string,
+): Promise<{ workerId: string; credential: string | null }> {
   const existing = await requestJson(
     baseUrl,
     `/api/workers?label=${encodeURIComponent(WORKER_LABEL)}&limit=100`,
@@ -227,23 +227,19 @@ async function ensureWorker(baseUrl: string): Promise<{ workerId: string; creden
 }
 
 async function dispatch(baseUrl: string, planId: string): Promise<string> {
-  const result = await requestJson(
-    baseUrl,
-    "/api/runs",
-    {
-      ...jsonPost({
-        planId,
-        requestedBy: {
-          actorType: "LOCAL_ADMIN",
-          actorId: "bootstrap-uspto-golden-source",
-        },
-      }),
-      headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": `bootstrap-uspto-${new Date().toISOString().slice(0, 10)}`,
+  const result = await requestJson(baseUrl, "/api/runs", {
+    ...jsonPost({
+      planId,
+      requestedBy: {
+        actorType: "LOCAL_ADMIN",
+        actorId: "bootstrap-uspto-golden-source",
       },
+    }),
+    headers: {
+      "content-type": "application/json",
+      "Idempotency-Key": `bootstrap-uspto-${new Date().toISOString().slice(0, 10)}`,
     },
-  );
+  });
   const recordValue = record(record(result.body)?.record);
   const run = record(recordValue?.run);
   return identifier(run?.id, "run.id");
@@ -281,6 +277,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
