@@ -1,0 +1,58 @@
+name: Agent Patch Collection Authorization UI
+
+on:
+  push:
+    branches:
+      - agent/accepted-source-collection-evidence-loop
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/accepted-source-collection-evidence-loop
+      - name: Patch Discovery authorization controls
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/admin/src/components/discovery/discovery-workspace.tsx')
+          text = path.read_text()
+          text = text.replace('  Loader2,\n  RefreshCw,', '  Loader2,\n  Play,\n  RefreshCw,', 1)
+          text = text.replace(
+              '  const [reviewingId, setReviewingId] = useState<string | null>(null);\n',
+              '  const [reviewingId, setReviewingId] = useState<string | null>(null);\n  const [authorizingId, setAuthorizingId] = useState<string | null>(null);\n',
+              1,
+          )
+          anchor = '''  async function review(candidateId: string, decision: "ACCEPTED" | "REJECTED") {\n    setReviewingId(candidateId);\n    setMessage(null);\n    setError(null);\n    try {\n      const response = await fetch(`/api/discovery/candidates/${candidateId}/review`, {\n        method: "POST",\n        headers: { "content-type": "application/json" },\n        body: JSON.stringify({ decision, reviewer: "admin-console" }),\n      });\n      if (!response.ok) throw new Error(await readError(response));\n      setMessage(\n        decision === "ACCEPTED"\n          ? "Candidate accepted · Source and default Collection Plan created"\n          : "Candidate rejected",\n      );\n      await refresh();\n    } catch (reviewError) {\n      setError(reviewError instanceof Error ? reviewError.message : "Review failed");\n    } finally {\n      setReviewingId(null);\n    }\n  }\n'''
+          addition = anchor + '''\n  async function authorizeCollection(candidateId: string) {\n    setAuthorizingId(candidateId);\n    setMessage(null);\n    setError(null);\n    try {\n      const response = await fetch(\n        `/api/discovery/candidates/${candidateId}/authorize-collection`,\n        {\n          method: "POST",\n          headers: { "content-type": "application/json" },\n          body: JSON.stringify({ requestedBy: "admin-console" }),\n        },\n      );\n      if (!response.ok) throw new Error(await readError(response));\n      const result = (await response.json()) as { run: { id: string }; replayed: boolean };\n      setMessage(\n        result.replayed\n          ? `Collection already authorized · existing run ${result.run.id}`\n          : `Collection authorized · run ${result.run.id} queued for a compatible Worker`,\n      );\n      await refresh();\n    } catch (authorizationError) {\n      setError(\n        authorizationError instanceof Error\n          ? authorizationError.message\n          : "Collection authorization failed",\n      );\n    } finally {\n      setAuthorizingId(null);\n    }\n  }\n'''
+          if anchor not in text:
+              raise SystemExit('review function anchor not found')
+          text = text.replace(anchor, addition, 1)
+          old = '''                  {record.review?.collectionPlanId ? (\n                    <Link href="/jobs" className="text-xs font-medium text-slate-600">\n                      Collection plan: {record.review.collectionPlanId.slice(0, 12)}…\n                    </Link>\n                  ) : null}\n'''
+          new = '''                  {record.review?.collectionPlanId ? (\n                    <Link href="/jobs" className="text-xs font-medium text-slate-600">\n                      Collection plan: {record.review.collectionPlanId.slice(0, 12)}…\n                    </Link>\n                  ) : null}\n                  {record.candidate.status === "ACCEPTED" && record.review?.collectionPlanId ? (\n                    <button\n                      type="button"\n                      disabled={authorizingId === record.candidate.candidateId}\n                      onClick={() => void authorizeCollection(record.candidate.candidateId)}\n                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-950 px-3 py-2 text-xs font-medium text-white disabled:bg-slate-300"\n                    >\n                      {authorizingId === record.candidate.candidateId ? (\n                        <Loader2 className="animate-spin" size={13} />\n                      ) : (\n                        <Play size={13} />\n                      )}\n                      Authorize & Run\n                    </button>\n                  ) : null}\n'''
+          if old not in text:
+              raise SystemExit('reviewed action anchor not found')
+          text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format
+      - name: Commit UI patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/admin/src/components/discovery/discovery-workspace.tsx
+          git commit -m "feat: add explicit authorize and run discovery action"
+          git push origin HEAD:agent/accepted-source-collection-evidence-loop
