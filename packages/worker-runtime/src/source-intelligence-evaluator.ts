@@ -37,34 +37,37 @@ function dimension(
 function categoryBaseline(category: SourceCategory): number {
   switch (category) {
     case "OFFICIAL_AUTHORITY":
-    case "GAZETTE":
-    case "COURT":
-    case "LAW_DATABASE":
       return 85;
+    case "OFFICIAL_GUIDANCE":
+      return 80;
     case "LAW_FIRM":
       return 70;
-    case "NEWS_MEDIA":
-    case "BLOG":
-    case "VIDEO_CHANNEL":
-    case "PODCAST_CHANNEL":
-      return 55;
-    case "API_PROVIDER":
+    case "RESEARCH":
       return 65;
-    default:
+    case "INTERNAL":
+      return 60;
+    case "NEWS":
+    case "TECHNICAL":
+      return 55;
+    case "USER_PROVIDED":
+      return 50;
+    case "OTHER":
       return 45;
   }
 }
 
 function authorityScore(level: AuthorityLevel): SourceIntelligenceDimension {
   switch (level) {
-    case "PRIMARY":
-      return dimension(100, "HIGH", "EXPLICIT_AUTHORITY_PRIMARY");
-    case "SECONDARY":
-      return dimension(80, "HIGH", "EXPLICIT_AUTHORITY_SECONDARY");
-    case "PRIVATE":
-      return dimension(65, "HIGH", "EXPLICIT_AUTHORITY_PRIVATE");
-    case "COMMENTARY":
-      return dimension(55, "HIGH", "EXPLICIT_AUTHORITY_COMMENTARY");
+    case "PRIMARY_OFFICIAL":
+      return dimension(100, "HIGH", "EXPLICIT_AUTHORITY_PRIMARY_OFFICIAL");
+    case "SECONDARY_OFFICIAL":
+      return dimension(85, "HIGH", "EXPLICIT_AUTHORITY_SECONDARY_OFFICIAL");
+    case "PROFESSIONAL":
+      return dimension(70, "HIGH", "EXPLICIT_AUTHORITY_PROFESSIONAL");
+    case "INTERNAL":
+      return dimension(65, "HIGH", "EXPLICIT_AUTHORITY_INTERNAL");
+    case "INDUSTRY":
+      return dimension(55, "HIGH", "EXPLICIT_AUTHORITY_INDUSTRY");
     case "COMMUNITY":
       return dimension(35, "HIGH", "EXPLICIT_AUTHORITY_COMMUNITY");
     case "UNKNOWN":
