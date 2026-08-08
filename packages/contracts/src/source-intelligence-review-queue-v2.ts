@@ -5,10 +5,7 @@ import type {
 
 export const SOURCE_INTELLIGENCE_REVIEW_QUEUE_PROTOCOL_VERSION = "2.0" as const;
 
-export type SourceIntelligenceObservationReviewStatus =
-  | "PENDING"
-  | "ACKNOWLEDGED"
-  | "IGNORED";
+export type SourceIntelligenceObservationReviewStatus = "PENDING" | "ACKNOWLEDGED" | "IGNORED";
 
 export type SourceIntelligenceObservationReviewRecordV2 = {
   observationKey: string;

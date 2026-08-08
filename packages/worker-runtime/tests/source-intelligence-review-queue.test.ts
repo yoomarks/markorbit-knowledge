@@ -35,7 +35,9 @@ function flag(currentId: string, previousId?: string): SourceIntelligenceObserva
   };
 }
 
-function summary(flags: SourceIntelligenceObservationFlagV2[]): SourceIntelligenceCrossSourceObservationSummaryV2 {
+function summary(
+  flags: SourceIntelligenceObservationFlagV2[],
+): SourceIntelligenceCrossSourceObservationSummaryV2 {
   return {
     protocolVersion: "2.0",
     objectType: "SOURCE_INTELLIGENCE_CROSS_SOURCE_OBSERVATION_SUMMARY",
@@ -46,7 +48,8 @@ function summary(flags: SourceIntelligenceObservationFlagV2[]): SourceIntelligen
     counts: {
       highValueUnobserved: flags.filter((item) => item.kind === "HIGH_VALUE_UNOBSERVED").length,
       evidenceMaturityRegressions: 0,
-      sourceValueBandChanges: flags.filter((item) => item.kind === "SOURCE_VALUE_BAND_CHANGED").length,
+      sourceValueBandChanges: flags.filter((item) => item.kind === "SOURCE_VALUE_BAND_CHANGED")
+        .length,
       acquisitionCostIncreases: 0,
     },
     flags,
@@ -93,8 +96,12 @@ describe("D2.9 review queue", () => {
     const first = flag("current-a", "previous-a");
     const same = flag("current-a", "previous-a");
     const changed = flag("current-b", "current-a");
-    expect(sourceIntelligenceObservationReviewKey(first)).toBe(sourceIntelligenceObservationReviewKey(same));
-    expect(sourceIntelligenceObservationReviewKey(changed)).not.toBe(sourceIntelligenceObservationReviewKey(first));
+    expect(sourceIntelligenceObservationReviewKey(first)).toBe(
+      sourceIntelligenceObservationReviewKey(same),
+    );
+    expect(sourceIntelligenceObservationReviewKey(changed)).not.toBe(
+      sourceIntelligenceObservationReviewKey(first),
+    );
   });
 
   it("joins exact reviews and preserves the no-automation boundary", () => {
@@ -117,10 +124,9 @@ describe("D2.9 review queue", () => {
   it("resets a changed occurrence to pending instead of carrying an old disposition forward", () => {
     const oldOccurrence = flag("old-current", "old-previous");
     const newOccurrence = flag("new-current", "old-current");
-    const queue = buildSourceIntelligenceObservationReviewQueueV2(
-      summary([newOccurrence]),
-      [review(oldOccurrence, "IGNORED")],
-    );
+    const queue = buildSourceIntelligenceObservationReviewQueueV2(summary([newOccurrence]), [
+      review(oldOccurrence, "IGNORED"),
+    ]);
     expect(queue.counts).toEqual({ pending: 1, acknowledged: 0, ignored: 0 });
     expect(queue.items[0]?.status).toBe("PENDING");
     expect(queue.items[0]?.review).toBeNull();

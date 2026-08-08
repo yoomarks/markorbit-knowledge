@@ -229,7 +229,10 @@ export function SourceIntelligenceReviewQueue() {
               ["已确认", queue.counts.acknowledged],
               ["已忽略", queue.counts.ignored],
             ].map(([label, value]) => (
-              <div key={String(label)} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div
+                key={String(label)}
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+              >
                 <p className="text-xs font-medium text-slate-500">{label}</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
               </div>
@@ -246,10 +249,15 @@ export function SourceIntelligenceReviewQueue() {
                 const source = sources[item.sourceId];
                 const saving = savingKey === item.observationKey;
                 return (
-                  <article key={item.observationKey} className="grid gap-4 p-4 xl:grid-cols-[1fr_340px]">
+                  <article
+                    key={item.observationKey}
+                    className="grid gap-4 p-4 xl:grid-cols-[1fr_340px]"
+                  >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-slate-950">{flagLabels[item.flag.kind]}</p>
+                        <p className="text-sm font-semibold text-slate-950">
+                          {flagLabels[item.flag.kind]}
+                        </p>
                         <span
                           className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(item.status)}`}
                         >
@@ -275,7 +283,9 @@ export function SourceIntelligenceReviewQueue() {
                       <details className="mt-3 text-xs text-slate-500">
                         <summary className="cursor-pointer">查看确定性 reason codes</summary>
                         <p className="mt-1 leading-5">{item.flag.reasonCodes.join(" · ")}</p>
-                        <p className="mt-1 font-mono text-[11px] text-slate-400">{item.observationKey}</p>
+                        <p className="mt-1 font-mono text-[11px] text-slate-400">
+                          {item.observationKey}
+                        </p>
                       </details>
                     </div>
 

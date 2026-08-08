@@ -2,10 +2,7 @@ import type {
   SourceIntelligenceObservationReviewQueueV2,
   SourceIntelligenceObservationReviewStatus,
 } from "@markorbit/contracts";
-import {
-  RegistryConflictError,
-  RegistryValidationError,
-} from "@markorbit/persistence";
+import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import type { SourceIntelligenceObservationReviewRepository } from "@markorbit/persistence/source-intelligence-reviews";
 import {
   buildSourceIntelligenceCrossSourceObservationSummaryV2,
@@ -43,7 +40,9 @@ function normalizeSourceIds(sourceIds: string[]): string[] {
     throw new RegistryValidationError("At least one source id is required");
   }
   if (normalized.length > MAX_SOURCE_IDS) {
-    throw new RegistryValidationError(`At most ${MAX_SOURCE_IDS} source ids may be reviewed at once`);
+    throw new RegistryValidationError(
+      `At most ${MAX_SOURCE_IDS} source ids may be reviewed at once`,
+    );
   }
   return normalized;
 }

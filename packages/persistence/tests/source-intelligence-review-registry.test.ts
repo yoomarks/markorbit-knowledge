@@ -5,10 +5,7 @@ import { SqliteSourceIntelligenceObservationReviewRepository } from "../src/sour
 describe("SqliteSourceIntelligenceObservationReviewRepository", () => {
   it("persists and updates one review occurrence without mutating its identity", () => {
     const database = new DatabaseSync(":memory:");
-    const times = [
-      new Date("2026-08-09T03:00:00.000Z"),
-      new Date("2026-08-09T03:05:00.000Z"),
-    ];
+    const times = [new Date("2026-08-09T03:00:00.000Z"), new Date("2026-08-09T03:05:00.000Z")];
     const repository = new SqliteSourceIntelligenceObservationReviewRepository(
       database,
       () => times.shift() ?? new Date("2026-08-09T03:10:00.000Z"),

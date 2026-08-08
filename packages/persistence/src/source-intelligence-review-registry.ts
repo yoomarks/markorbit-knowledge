@@ -36,7 +36,9 @@ export type SaveSourceIntelligenceObservationReviewInput = {
 export interface SourceIntelligenceObservationReviewRepository {
   get(observationKey: string): SourceIntelligenceObservationReviewRecordV2 | null;
   listByObservationKeys(observationKeys: string[]): SourceIntelligenceObservationReviewRecordV2[];
-  save(input: SaveSourceIntelligenceObservationReviewInput): SourceIntelligenceObservationReviewRecordV2;
+  save(
+    input: SaveSourceIntelligenceObservationReviewInput,
+  ): SourceIntelligenceObservationReviewRecordV2;
 }
 
 function requiredText(value: string, field: string, maxLength = 500): string {
@@ -83,9 +85,7 @@ function parseReview(row: Record<string, unknown>): SourceIntelligenceObservatio
   };
 }
 
-export class SqliteSourceIntelligenceObservationReviewRepository
-  implements SourceIntelligenceObservationReviewRepository
-{
+export class SqliteSourceIntelligenceObservationReviewRepository implements SourceIntelligenceObservationReviewRepository {
   constructor(
     private readonly database: DatabaseSync,
     private readonly clock: () => Date = () => new Date(),
