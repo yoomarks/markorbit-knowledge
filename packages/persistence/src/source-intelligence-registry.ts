@@ -9,6 +9,7 @@ export interface SourceIntelligenceRepository {
   get(id: string): SourceIntelligenceAssessment | null;
   getByFingerprint(sourceId: string, inputFingerprint: string): SourceIntelligenceAssessment | null;
   latestForSource(sourceId: string): SourceIntelligenceAssessment | null;
+  listForSource(sourceId: string, limit?: number): SourceIntelligenceAssessment[];
   listLatest(workspaceId: string, limit?: number): SourceIntelligenceAssessment[];
 }
 
@@ -90,6 +91,21 @@ export class SqliteSourceIntelligenceRepository implements SourceIntelligenceRep
       )
       .get(sourceId) as { document_json: string } | undefined;
     return row ? this.parse(row.document_json) : null;
+  }
+
+  listForSource(sourceId: string, limit = 20): SourceIntelligenceAssessment[] {
+    const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)));
+    const rows = this.database
+      .prepare(
+        `
+        SELECT document_json FROM source_intelligence_assessments
+        WHERE source_id = ?
+        ORDER BY assessed_at DESC, assessment_id DESC
+        LIMIT ?
+      `,
+      )
+      .all(sourceId, safeLimit) as Array<{ document_json: string }>;
+    return rows.map((row) => this.parse(row.document_json));
   }
 
   listLatest(workspaceId: string, limit = 100): SourceIntelligenceAssessment[] {

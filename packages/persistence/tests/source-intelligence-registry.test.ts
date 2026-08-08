@@ -49,7 +49,7 @@ function assessment(input: {
 }
 
 describe("SqliteSourceIntelligenceRepository", () => {
-  it("persists history and reuses the same evidence fingerprint idempotently", () => {
+  it("persists distinct evidence-state history and reuses the same fingerprint idempotently", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteSourceIntelligenceRepository(database);
     const first = assessment({
@@ -76,6 +76,13 @@ describe("SqliteSourceIntelligenceRepository", () => {
     });
     repository.save(changed);
     expect(repository.latestForSource(first.sourceId)?.id).toBe(changed.id);
+    expect(repository.listForSource(first.sourceId).map((item) => item.id)).toEqual([
+      changed.id,
+      first.id,
+    ]);
+    expect(repository.listForSource(first.sourceId, 1).map((item) => item.id)).toEqual([
+      changed.id,
+    ]);
     expect(repository.listLatest(first.workspaceId)).toHaveLength(1);
     database.close();
   });
