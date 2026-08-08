@@ -158,7 +158,10 @@ describe("RawArtifact → Source Graph extraction", () => {
     expect(built.batch.nodes.some((node) => node.kind === "CONTACT_POINT")).toBe(true);
     expect(
       built.batch.nodes.some(
-        (node) => "canonicalUri" in node && node.canonicalUri.includes("outside.example"),
+        (node) =>
+          "canonicalUri" in node &&
+          typeof node.canonicalUri === "string" &&
+          node.canonicalUri.includes("outside.example"),
       ),
     ).toBe(false);
     expect(
