@@ -1,7 +1,4 @@
-import type {
-  PersistenceAdapterPort,
-  PersistenceRecord,
-} from "./persistence-adapter-port";
+import type { PersistenceAdapterPort, PersistenceRecord } from "./persistence-adapter-port";
 
 export class MemoryPersistenceAdapter implements PersistenceAdapterPort {
   private readonly records = new Map<string, PersistenceRecord>();

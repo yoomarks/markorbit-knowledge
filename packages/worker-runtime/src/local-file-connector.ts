@@ -25,7 +25,9 @@ export class LocalFileConnectorExecutor implements ConnectorExecutor {
       sourceSnapshot?: { connectorConfig?: Record<string, unknown> };
     };
     const filePath = String(
-      compatibleJob.planSnapshot.input?.path ?? compatibleJob.sourceSnapshot?.connectorConfig?.path ?? "",
+      compatibleJob.planSnapshot.input?.path ??
+        compatibleJob.sourceSnapshot?.connectorConfig?.path ??
+        "",
     );
     if (!filePath) return null;
 
