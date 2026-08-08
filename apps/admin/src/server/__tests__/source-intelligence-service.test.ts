@@ -65,6 +65,7 @@ function createService() {
     get: () => null,
     getByFingerprint: () => null,
     latestForSource: () => saved,
+    listForSource: () => (saved ? [saved] : []),
     listLatest: () => (saved ? [saved] : []),
   };
   const service = new SourceIntelligenceService({
@@ -145,5 +146,20 @@ describe("SourceIntelligenceService", () => {
     expect(v2?.compatibility.legacyAssessmentId).toBe(v1.id);
     expect(v2?.evidenceMaturity.stage).toBe("UNOBSERVED");
     expect(fixture.saved()).toBe(persisted);
+  });
+
+  it("projects persisted v1 history into bounded read-only v2 observations", () => {
+    const fixture = createService();
+    const v1 = fixture.service.assess(source.id);
+    const history = fixture.service.historyV2(source.id, 12);
+
+    expect(history.protocolVersion).toBe("2.0");
+    expect(history.sourceId).toBe(source.id);
+    expect(history.observations).toHaveLength(1);
+    expect(history.observations[0]?.legacyAssessmentId).toBe(v1.id);
+    expect(history.transitions).toHaveLength(0);
+    expect(history.semantics.observationUnit).toBe("DISTINCT_EVIDENCE_STATE");
+    expect(history.scheduling.policyStatus).toBe("NOT_AUTHORIZED_UNCALIBRATED");
+    expect(history.boundaries.grantsCollectionAuthority).toBe(false);
   });
 });
