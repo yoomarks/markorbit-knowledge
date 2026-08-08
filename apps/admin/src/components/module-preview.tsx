@@ -10,6 +10,11 @@ const plannedActions: Record<Exclude<ModuleKey, "dashboard">, string[]> = {
     "维护 Include / Exclude Discovery Policy",
   ],
   sources: ["创建与分类数据源", "按国家、类型和状态筛选", "测试连接、预览采集和检查更新"],
+  intelligence: [
+    "比较 Source 的运营优先级与显式 Authority",
+    "查看六维评分解释和证据快照",
+    "人工触发评估或复查建议，不自动授权执行",
+  ],
   people: [
     "查看机构与专业人士候选",
     "核对公开业务联系方式及来源证据",
