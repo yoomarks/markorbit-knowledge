@@ -43,7 +43,7 @@ function node(id: string, topic: string, raw: boolean): SourceGraphNode {
     lastObservedAt: "2026-08-08T00:00:00.000Z",
     provenance: [
       {
-        kind: raw ? "RAW_ARTIFACT" : "DISCOVERY_BATCH",
+        kind: raw ? "RAW_ARTIFACT" : "DISCOVERY",
         sourceId: source.id,
         sourceUri: `https://example.com/${id}`,
         observedAt: "2026-08-08T00:00:00.000Z",
