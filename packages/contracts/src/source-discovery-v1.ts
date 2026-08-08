@@ -9,12 +9,22 @@ export interface SourceDiscoverySeed {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Operator-controlled bounds for one discovery run.
+ *
+ * maxCandidates bounds what may enter the human review queue, while maxFetches
+ * independently bounds network work. This distinction prevents a sitemap or a
+ * highly connected site from turning source discovery into an unbounded crawl.
+ */
 export interface SourceDiscoveryConstraints {
   maxDepth?: number;
   maxCandidates?: number;
+  maxFetches?: number;
   sameHostOnly?: boolean;
   allowedHosts?: string[];
   deniedUrlPatterns?: string[];
+  respectRobots?: boolean;
+  discoverSitemaps?: boolean;
 }
 
 export interface SourceDiscoveryBatch {

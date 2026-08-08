@@ -1,0 +1,127 @@
+name: USPTO Homepage Discovery Live Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uspto-homepage-discovery-live-smoke
+  cancel-in-progress: false
+
+jobs:
+  discovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Configure isolated registry
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-discovery.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-artifacts" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/admin.log"
+          exit 1
+
+      - name: Discover live USPTO homepage
+        run: |
+          curl --silent --show-error --fail-with-body --max-time 240 \
+            -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" \
+            -H 'content-type: application/json' \
+            --data '{"locator":"https://www.uspto.gov/","maxDepth":1,"maxCandidates":75,"maxFetches":20,"deniedUrlPatterns":["/login","/signin","/logout"]}' \
+            > "$RUNNER_TEMP/discovery-result.json"
+          curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" \
+            > "$RUNNER_TEMP/discovery-overview.json"
+
+      - name: Verify governed discovery evidence
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const temp = process.env.RUNNER_TEMP;
+          const result = JSON.parse(fs.readFileSync(path.join(temp, 'discovery-result.json'), 'utf8'));
+          const overview = JSON.parse(fs.readFileSync(path.join(temp, 'discovery-overview.json'), 'utf8'));
+          const candidates = Array.isArray(result.candidates) ? result.candidates : [];
+          if (candidates.length < 3) {
+            throw new Error(`Expected at least 3 live USPTO candidates, received ${candidates.length}`);
+          }
+          const methods = new Set();
+          for (const candidate of candidates) {
+            if (!candidate || candidate.status !== 'DISCOVERED') {
+              throw new Error('Live discovery produced a candidate outside DISCOVERED review state');
+            }
+            const url = new URL(candidate.locator);
+            if (url.protocol !== 'https:' || (url.hostname !== 'uspto.gov' && !url.hostname.endsWith('.uspto.gov'))) {
+              throw new Error(`Discovery escaped the USPTO host boundary: ${candidate.locator}`);
+            }
+            if (candidate.discoveryMethod) methods.add(candidate.discoveryMethod);
+          }
+          if (!methods.has('HTML_LINK') && !methods.has('SITEMAP')) {
+            throw new Error(`Expected HTML_LINK or SITEMAP provenance, received ${[...methods].join(', ')}`);
+          }
+          const summary = overview?.candidates?.summary;
+          if (!summary || summary.ACCEPTED !== 0 || summary.REJECTED !== 0) {
+            throw new Error('Live discovery crossed the human review boundary');
+          }
+          if (summary.DISCOVERED < candidates.length) {
+            throw new Error('Persisted review queue does not contain the live discovery result');
+          }
+          const batches = Array.isArray(overview.batches) ? overview.batches : [];
+          const latest = batches.find((entry) => entry?.batch?.batchId === result?.batch?.batch?.batchId) ?? batches[0];
+          const constraints = latest?.batch?.constraints;
+          if (!constraints || constraints.respectRobots !== true || constraints.discoverSitemaps !== true) {
+            throw new Error('Persisted discovery policy is missing robots/sitemap governance');
+          }
+          process.stdout.write(`${JSON.stringify({
+            event: 'homepage-discovery.verified',
+            source: 'USPTO',
+            candidateCount: candidates.length,
+            methods: [...methods].sort(),
+            accepted: summary.ACCEPTED,
+            reviewState: 'DISCOVERED',
+          }, null, 2)}\n`);
+          NODE
+
+      - name: Stop local process
+        if: always()
+        run: |
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+
+      - name: Upload smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uspto-homepage-discovery-live-smoke-logs
+          path: |
+            ${{ runner.temp }}/admin.log
+          if-no-files-found: ignore
+          retention-days: 7

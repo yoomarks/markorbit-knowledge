@@ -14,6 +14,13 @@ export type SourceCollectionResult = {
   plans: CollectionRegistryPlan[];
 };
 
+/**
+ * Bridges discovery to collection without collapsing the human review gate.
+ * Fresh DISCOVERED/REVIEWED candidates are returned for review; only candidates
+ * already carrying the explicit ACCEPTED state may be handed to a collection
+ * planner. Production admin review persists that transition before creating the
+ * governed SourceDefinition and paused Collection Plan.
+ */
 export class SourceCollectionFlow {
   constructor(
     private readonly discovery: SourceDiscoveryRunner,
@@ -22,8 +29,9 @@ export class SourceCollectionFlow {
 
   async run(batch: SourceDiscoveryBatch): Promise<SourceCollectionResult> {
     const candidates = await this.discovery.run(batch);
+    const accepted = candidates.filter((candidate) => candidate.status === "ACCEPTED");
     const plans = await Promise.all(
-      candidates.map((candidate) => this.planner.createPlan(candidate)),
+      accepted.map((candidate) => this.planner.createPlan(candidate)),
     );
 
     return { candidates, plans };

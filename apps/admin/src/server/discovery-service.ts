@@ -24,17 +24,29 @@ import {
 } from "./source-registry";
 
 const DEFAULT_CONSTRAINTS: Required<
-  Pick<SourceDiscoveryConstraints, "maxDepth" | "maxCandidates" | "sameHostOnly">
+  Pick<
+    SourceDiscoveryConstraints,
+    | "maxDepth"
+    | "maxCandidates"
+    | "maxFetches"
+    | "sameHostOnly"
+    | "respectRobots"
+    | "discoverSitemaps"
+  >
 > = {
   maxDepth: 1,
   maxCandidates: 100,
+  maxFetches: 50,
   sameHostOnly: true,
+  respectRobots: true,
+  discoverSitemaps: true,
 };
 
 export type StartDiscoveryInput = {
   locator: string;
   maxDepth?: number;
   maxCandidates?: number;
+  maxFetches?: number;
   deniedUrlPatterns?: string[];
 };
 
@@ -172,7 +184,16 @@ export class DiscoveryWorkflowService {
           500,
           "maxCandidates",
         ),
-        sameHostOnly: true,
+        maxFetches: boundedInteger(
+          input.maxFetches,
+          DEFAULT_CONSTRAINTS.maxFetches,
+          1,
+          200,
+          "maxFetches",
+        ),
+        sameHostOnly: DEFAULT_CONSTRAINTS.sameHostOnly,
+        respectRobots: DEFAULT_CONSTRAINTS.respectRobots,
+        discoverSitemaps: DEFAULT_CONSTRAINTS.discoverSitemaps,
         deniedUrlPatterns: normalizedDeniedPatterns(input.deniedUrlPatterns),
       },
     };
