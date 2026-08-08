@@ -28,25 +28,27 @@ export type ConversionAuthorizationResult = {
 function findProfile(workspaceId: string, artifact: RawArtifact): ConversionProfile | null {
   const converters = getConverterRegistryRepository();
   return (
-    converters
-      .listProfiles({ workspaceId, status: "ACTIVE", limit: 100 })
-      .items.find((profile) => {
-        if (profile.sourceId && profile.sourceId !== artifact.sourceId) return false;
-        if (!profile.input.artifactKinds.includes(artifact.artifactKind)) return false;
-        if (!profile.input.mimePatterns.some((pattern) => mimePatternMatches(pattern, artifact.mimeType))) {
-          return false;
-        }
-        const manifest = converters.getManifest(
-          profile.converter.converterId,
-          profile.converter.version,
-        )?.manifest;
-        return Boolean(
-          manifest &&
-            manifest.status === "ACTIVE" &&
-            manifest.outputFormat === "MARKDOWN" &&
-            converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
-        );
-      }) ?? null
+    converters.listProfiles({ workspaceId, status: "ACTIVE", limit: 100 }).items.find((profile) => {
+      if (profile.sourceId && profile.sourceId !== artifact.sourceId) return false;
+      if (!profile.input.artifactKinds.includes(artifact.artifactKind)) return false;
+      if (
+        !profile.input.mimePatterns.some((pattern) =>
+          mimePatternMatches(pattern, artifact.mimeType),
+        )
+      ) {
+        return false;
+      }
+      const manifest = converters.getManifest(
+        profile.converter.converterId,
+        profile.converter.version,
+      )?.manifest;
+      return Boolean(
+        manifest &&
+        manifest.status === "ACTIVE" &&
+        manifest.outputFormat === "MARKDOWN" &&
+        converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
+      );
+    }) ?? null
   );
 }
 
@@ -56,7 +58,8 @@ export function authorizeRawArtifactForConversion(
 ): ConversionAuthorizationResult {
   const artifacts = getRawArtifactRepository();
   const view = artifacts.getArtifact(artifactId);
-  if (!view) throw new RegistryError("RAW_ARTIFACT_NOT_FOUND", `RawArtifact ${artifactId} was not found`);
+  if (!view)
+    throw new RegistryError("RAW_ARTIFACT_NOT_FOUND", `RawArtifact ${artifactId} was not found`);
   const artifact = view.artifact;
   if (artifact.workspaceId !== workspaceId) {
     throw new RegistryConflictError(
@@ -72,7 +75,12 @@ export function authorizeRawArtifactForConversion(
     );
   }
   if (artifact.status === "READY_FOR_CONVERSION") {
-    return { artifactId, status: "READY_FOR_CONVERSION", conversionProfileId: profile.id, replayed: true };
+    return {
+      artifactId,
+      status: "READY_FOR_CONVERSION",
+      conversionProfileId: profile.id,
+      replayed: true,
+    };
   }
   if (artifact.status !== "REGISTERED" && artifact.status !== "DUPLICATE_CHECKED") {
     throw new RegistryConflictError(
@@ -116,7 +124,9 @@ export function authorizeRawArtifactForConversion(
     throw new RegistryValidationError("Conversion authorization produced an invalid RawArtifact");
   }
   const update = getRegistryDatabase()
-    .prepare("UPDATE raw_artifacts SET status = ?, document_json = ? WHERE id = ? AND workspace_id = ? AND status = ?")
+    .prepare(
+      "UPDATE raw_artifacts SET status = ?, document_json = ? WHERE id = ? AND workspace_id = ? AND status = ?",
+    )
     .run(next.status, JSON.stringify(next), artifactId, workspaceId, artifact.status);
   if (Number(update.changes) !== 1) {
     throw new RegistryConflictError(
@@ -124,5 +134,10 @@ export function authorizeRawArtifactForConversion(
       "RawArtifact changed while conversion authorization was being applied",
     );
   }
-  return { artifactId, status: "READY_FOR_CONVERSION", conversionProfileId: profile.id, replayed: false };
+  return {
+    artifactId,
+    status: "READY_FOR_CONVERSION",
+    conversionProfileId: profile.id,
+    replayed: false,
+  };
 }

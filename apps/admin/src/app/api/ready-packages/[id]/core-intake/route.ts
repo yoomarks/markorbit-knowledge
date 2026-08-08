@@ -15,7 +15,8 @@ export async function GET(request: Request, context: RouteContext) {
     if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
     const { id } = await context.params;
     const readyPackage = getReadyPackageRepository().getById(id, workspaceId);
-    if (!readyPackage) throw new RegistryError("READY_PACKAGE_NOT_FOUND", `ReadyPackage ${id} was not found`);
+    if (!readyPackage)
+      throw new RegistryError("READY_PACKAGE_NOT_FOUND", `ReadyPackage ${id} was not found`);
     return NextResponse.json({
       readyPackageStatus: readyPackage.status,
       coreIntakeRequest: createCoreIntakeRequest(readyPackage),

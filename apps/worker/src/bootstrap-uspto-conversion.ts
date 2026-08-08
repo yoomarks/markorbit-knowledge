@@ -32,7 +32,9 @@ function id(prefix: string): string {
 
 type Json = Record<string, unknown>;
 function record(value: unknown): Json | null {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Json) : null;
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Json)
+    : null;
 }
 function string(value: unknown, field: string): string {
   if (typeof value !== "string" || !value) throw new Error(`Missing ${field}`);
@@ -56,7 +58,9 @@ async function ensureConverter(): Promise<void> {
   const listed = await json(`/api/converters?q=${CONVERTER.converterId}&limit=100`);
   const exists = array(listed.items).some((item) => {
     const manifest = record(record(item)?.manifest);
-    return manifest?.converterId === CONVERTER.converterId && manifest?.version === CONVERTER.version;
+    return (
+      manifest?.converterId === CONVERTER.converterId && manifest?.version === CONVERTER.version
+    );
   });
   if (exists) return;
   await json("/api/converters", {
@@ -96,14 +100,20 @@ async function sourceId(workspaceId: string): Promise<string> {
   throw new Error("USPTO Golden Source not found; run bootstrap:uspto first");
 }
 
-async function ensureProfile(workspaceId: string, source: string): Promise<{ id: string; targetPathTemplate: string }> {
+async function ensureProfile(
+  workspaceId: string,
+  source: string,
+): Promise<{ id: string; targetPathTemplate: string }> {
   const body = await json(
     `/api/conversion-profiles?workspaceId=${encodeURIComponent(workspaceId)}&sourceId=${encodeURIComponent(source)}&converterId=${CONVERTER.converterId}&status=ACTIVE&limit=100`,
   );
   for (const item of array(body.items)) {
     const profile = record(item);
     const converter = record(profile?.converter);
-    if (converter?.converterId === CONVERTER.converterId && converter?.version === CONVERTER.version) {
+    if (
+      converter?.converterId === CONVERTER.converterId &&
+      converter?.version === CONVERTER.version
+    ) {
       return {
         id: string(profile?.id, "profile.id"),
         targetPathTemplate: string(profile?.targetPathTemplate, "profile.targetPathTemplate"),
@@ -142,9 +152,13 @@ async function ensureCapability(workerId: string, workspaceId: string): Promise<
     const capability = record(record(item)?.capability);
     const supported = array(capability?.supportedConverters).some((value) => {
       const support = record(value);
-      return support?.converterId === CONVERTER.converterId && array(support?.versions).includes(CONVERTER.version);
+      return (
+        support?.converterId === CONVERTER.converterId &&
+        array(support?.versions).includes(CONVERTER.version)
+      );
     });
-    if (supported && typeof capability?.capabilityRevision === "number") return capability.capabilityRevision;
+    if (supported && typeof capability?.capabilityRevision === "number")
+      return capability.capabilityRevision;
   }
   const revision = 1;
   await json("/api/conversion-runtime/capabilities", {
@@ -179,16 +193,22 @@ async function dispatchLatest(
     .map((item) => record(record(item)?.artifact))
     .filter((item): item is Json => Boolean(item))
     .sort((left, right) => String(right.capturedAt).localeCompare(String(left.capturedAt)));
-  const candidate = artifacts.find((artifact) =>
-    artifact.status === "REGISTERED" || artifact.status === "DUPLICATE_CHECKED" || artifact.status === "READY_FOR_CONVERSION",
+  const candidate = artifacts.find(
+    (artifact) =>
+      artifact.status === "REGISTERED" ||
+      artifact.status === "DUPLICATE_CHECKED" ||
+      artifact.status === "READY_FOR_CONVERSION",
   );
   if (!candidate) return null;
   const artifactId = string(candidate.id, "artifact.id");
-  const authorization = await json(`/api/raw-artifacts/${encodeURIComponent(artifactId)}/authorize-conversion`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ workspaceId }),
-  });
+  const authorization = await json(
+    `/api/raw-artifacts/${encodeURIComponent(artifactId)}/authorize-conversion`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId }),
+    },
+  );
   const authorized = record(authorization.result);
   const conversionProfileId = string(authorized?.conversionProfileId, "conversionProfileId");
   const dispatched = await json("/api/conversion-runs", {
@@ -242,6 +262,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });

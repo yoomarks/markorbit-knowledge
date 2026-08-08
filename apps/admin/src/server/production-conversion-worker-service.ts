@@ -69,7 +69,10 @@ function parseReadGrant(value: string): RawArtifactReadGrant {
 }
 
 export class ProductionConversionWorkerService {
-  claim(request: ConversionClaimRequest, credential: string): {
+  claim(
+    request: ConversionClaimRequest,
+    credential: string,
+  ): {
     result: ConversionClaimResult;
     replayed: boolean;
   } {
@@ -95,7 +98,11 @@ export class ProductionConversionWorkerService {
       const row = database
         .prepare("SELECT document_json FROM conversion_read_grants WHERE id = ?")
         .get(grantId) as { document_json: string } | undefined;
-      if (!row) throw new RegistryError("RAW_ARTIFACT_READ_GRANT_NOT_FOUND", `Read grant ${grantId} was not found`);
+      if (!row)
+        throw new RegistryError(
+          "RAW_ARTIFACT_READ_GRANT_NOT_FOUND",
+          `Read grant ${grantId} was not found`,
+        );
       const grant = parseReadGrant(row.document_json);
       if (grant.workerId !== workerId || grant.workspaceId !== worker.workspaceId) {
         throw new RegistryConflictError(
@@ -104,15 +111,24 @@ export class ProductionConversionWorkerService {
         );
       }
       if (Date.parse(grant.expiresAt) < Date.now()) {
-        throw new RegistryConflictError("RAW_ARTIFACT_READ_GRANT_EXPIRED", "Read grant has expired");
+        throw new RegistryConflictError(
+          "RAW_ARTIFACT_READ_GRANT_EXPIRED",
+          "Read grant has expired",
+        );
       }
       if (grant.readsUsed >= grant.maximumReads) {
-        throw new RegistryConflictError("RAW_ARTIFACT_READ_GRANT_EXHAUSTED", "Read grant has already been consumed");
+        throw new RegistryConflictError(
+          "RAW_ARTIFACT_READ_GRANT_EXHAUSTED",
+          "Read grant has already been consumed",
+        );
       }
 
       const artifact = getRawArtifactRepository().getArtifact(grant.rawArtifactId);
       if (!artifact || artifact.artifact.workspaceId !== grant.workspaceId) {
-        throw new RegistryError("RAW_ARTIFACT_NOT_FOUND", `RawArtifact ${grant.rawArtifactId} was not found`);
+        throw new RegistryError(
+          "RAW_ARTIFACT_NOT_FOUND",
+          `RawArtifact ${grant.rawArtifactId} was not found`,
+        );
       }
       if (
         artifact.artifact.binaryHash.value !== grant.expectedSha256 ||
@@ -159,12 +175,16 @@ export class ProductionConversionWorkerService {
     const transitions = getConversionRuntimeTransitionRepository();
     if (isConversionStartedReport(report)) return transitions.submitStarted(report, credential);
     if (isConversionProgressReport(report)) return transitions.submitProgress(report, credential);
-    if (isConversionOutputReadyReport(report)) return transitions.submitOutputReady(report, credential);
+    if (isConversionOutputReadyReport(report))
+      return transitions.submitOutputReady(report, credential);
     if (isConversionFailedReport(report)) return transitions.submitFailed(report, credential);
     throw new RegistryValidationError("Unsupported Conversion Runtime report");
   }
 
-  commitStaging(input: ProductionStagingCommitInput, credential: string): ProductionStagingCommitResult {
+  commitStaging(
+    input: ProductionStagingCommitInput,
+    credential: string,
+  ): ProductionStagingCommitResult {
     if (!KEY.test(input.idempotencyKey)) {
       throw new RegistryValidationError("Invalid production Staging commit idempotency key");
     }
@@ -212,7 +232,10 @@ export class ProductionConversionWorkerService {
       };
     }
 
-    const run = getConversionRunLedgerRepository().getById(input.conversionRunId, input.workspaceId);
+    const run = getConversionRunLedgerRepository().getById(
+      input.conversionRunId,
+      input.workspaceId,
+    );
     if (!run || run.run.status !== "COMPLETED") {
       throw new RegistryConflictError(
         "READY_PACKAGE_RUN_NOT_COMPLETED",
@@ -221,7 +244,10 @@ export class ProductionConversionWorkerService {
     }
     const artifact = getRawArtifactRepository().getArtifact(run.run.rawArtifactId);
     if (!artifact) {
-      throw new RegistryError("RAW_ARTIFACT_NOT_FOUND", `RawArtifact ${run.run.rawArtifactId} was not found`);
+      throw new RegistryError(
+        "RAW_ARTIFACT_NOT_FOUND",
+        `RawArtifact ${run.run.rawArtifactId} was not found`,
+      );
     }
     const descriptor = verification.record.descriptor;
     const outcome = verification.evidence.outcome;

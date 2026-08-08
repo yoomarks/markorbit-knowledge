@@ -192,9 +192,7 @@ function outputEvidence(
 
 function failureCode(error: unknown): string {
   const raw = error instanceof Error ? error.message : "MARKDOWN_STAGING_CONVERSION_FAILED";
-  return /^[A-Z0-9][A-Z0-9_]{1,99}$/.test(raw)
-    ? raw
-    : "MARKDOWN_STAGING_CONVERSION_FAILED";
+  return /^[A-Z0-9][A-Z0-9_]{1,99}$/.test(raw) ? raw : "MARKDOWN_STAGING_CONVERSION_FAILED";
 }
 
 export class ProductionMarkdownStagingExecutor {
@@ -224,12 +222,7 @@ export class ProductionMarkdownStagingExecutor {
       );
       await client.outputReady(context, evidence, `${prefix}-output-ready`);
       outputReported = true;
-      const commit = await uploader.upload(
-        context,
-        markdown,
-        evidence,
-        `${prefix}-staging-commit`,
-      );
+      const commit = await uploader.upload(context, markdown, evidence, `${prefix}-staging-commit`);
       return { markdown, evidence, commit };
     } catch (error) {
       if (!outputReported) {
@@ -238,7 +231,9 @@ export class ProductionMarkdownStagingExecutor {
           {
             code: failureCode(error),
             message:
-              error instanceof Error ? error.message : "Controlled Markdown staging conversion failed",
+              error instanceof Error
+                ? error.message
+                : "Controlled Markdown staging conversion failed",
             retryable: false,
           },
           `${prefix}-failed`,

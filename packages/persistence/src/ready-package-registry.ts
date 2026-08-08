@@ -1,7 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import type { ReadyPackage, ReadyPackageEvidence } from "@markorbit/contracts";
-import { RegistryConflictError, RegistryError, RegistryValidationError, initializeRegistry } from "./index";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+  initializeRegistry,
+} from "./index";
 
 const MIGRATION_ID = "0014_ready_package_registry";
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -82,7 +87,8 @@ function parseReadyPackage(value: string): ReadyPackage {
 }
 
 function validate(input: CreateVerifiedReadyPackageInput): void {
-  if (!KEY.test(input.idempotencyKey)) throw new RegistryValidationError("Invalid ReadyPackage idempotency key");
+  if (!KEY.test(input.idempotencyKey))
+    throw new RegistryValidationError("Invalid ReadyPackage idempotency key");
   if (!SHA256.test(input.rawArtifactSha256) || !SHA256.test(input.stagingSha256)) {
     throw new RegistryValidationError("ReadyPackage evidence requires SHA-256 digests");
   }
@@ -125,7 +131,8 @@ export function ensureReadyPackageRegistry(database: DatabaseSync): void {
       CREATE INDEX IF NOT EXISTS idx_ready_packages_workspace_status
         ON ready_packages(workspace_id, status, created_at DESC);
     `);
-    database.prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)")
+    database
+      .prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)")
       .run(MIGRATION_ID, new Date().toISOString());
     database.exec("COMMIT;");
   } catch (error) {
@@ -148,12 +155,13 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
     const requestDigest = digest(input);
     this.database.exec("BEGIN IMMEDIATE;");
     try {
-      const replay = this.database.prepare(
-        `SELECT request_digest, ready_package_id FROM ready_package_idempotency
+      const replay = this.database
+        .prepare(
+          `SELECT request_digest, ready_package_id FROM ready_package_idempotency
          WHERE workspace_id = ? AND idempotency_key = ?`,
-      ).get(input.workspaceId, input.idempotencyKey) as
-        | { request_digest: string; ready_package_id: string }
-        | undefined;
+        )
+        .get(input.workspaceId, input.idempotencyKey) as
+        { request_digest: string; ready_package_id: string } | undefined;
       if (replay) {
         if (replay.request_digest !== requestDigest) {
           throw new RegistryConflictError(
@@ -198,29 +206,33 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
         verifiedAt: createdAt,
       };
 
-      this.database.prepare(
-        `INSERT INTO ready_packages
+      this.database
+        .prepare(
+          `INSERT INTO ready_packages
          (id, workspace_id, source_id, raw_artifact_id, conversion_run_id, staging_document_id,
           digest, status, document_json, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(
-        readyPackage.id,
-        input.workspaceId,
-        input.sourceId,
-        input.rawArtifactId,
-        input.conversionRunId,
-        input.stagingDocumentId,
-        packageDigest,
-        readyPackage.status,
-        JSON.stringify(readyPackage),
-        createdAt,
-        createdAt,
-      );
-      this.database.prepare(
-        `INSERT INTO ready_package_idempotency
+        )
+        .run(
+          readyPackage.id,
+          input.workspaceId,
+          input.sourceId,
+          input.rawArtifactId,
+          input.conversionRunId,
+          input.stagingDocumentId,
+          packageDigest,
+          readyPackage.status,
+          JSON.stringify(readyPackage),
+          createdAt,
+          createdAt,
+        );
+      this.database
+        .prepare(
+          `INSERT INTO ready_package_idempotency
          (workspace_id, idempotency_key, request_digest, ready_package_id, created_at)
          VALUES (?, ?, ?, ?, ?)`,
-      ).run(input.workspaceId, input.idempotencyKey, requestDigest, readyPackage.id, createdAt);
+        )
+        .run(input.workspaceId, input.idempotencyKey, requestDigest, readyPackage.id, createdAt);
       this.database.exec("COMMIT;");
       return { readyPackage, replayed: false };
     } catch (error) {
@@ -230,40 +242,51 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
   }
 
   getById(id: string, workspaceId: string): ReadyPackage | null {
-    const row = this.database.prepare(
-      "SELECT document_json FROM ready_packages WHERE id = ? AND workspace_id = ?",
-    ).get(id, workspaceId) as { document_json: string } | undefined;
+    const row = this.database
+      .prepare("SELECT document_json FROM ready_packages WHERE id = ? AND workspace_id = ?")
+      .get(id, workspaceId) as { document_json: string } | undefined;
     return row ? parseReadyPackage(row.document_json) : null;
   }
 
   getByConversionRun(conversionRunId: string, workspaceId: string): ReadyPackage | null {
-    const row = this.database.prepare(
-      "SELECT document_json FROM ready_packages WHERE conversion_run_id = ? AND workspace_id = ?",
-    ).get(conversionRunId, workspaceId) as { document_json: string } | undefined;
+    const row = this.database
+      .prepare(
+        "SELECT document_json FROM ready_packages WHERE conversion_run_id = ? AND workspace_id = ?",
+      )
+      .get(conversionRunId, workspaceId) as { document_json: string } | undefined;
     return row ? parseReadyPackage(row.document_json) : null;
   }
 
   markHandedOff(id: string, workspaceId: string, expectedDigest: string): ReadyPackage {
     const current = this.require(id, workspaceId);
     if (current.evidence.digest !== expectedDigest) {
-      throw new RegistryConflictError("READY_PACKAGE_DIGEST_MISMATCH", "ReadyPackage digest mismatch");
+      throw new RegistryConflictError(
+        "READY_PACKAGE_DIGEST_MISMATCH",
+        "ReadyPackage digest mismatch",
+      );
     }
     if (current.status === "HANDED_OFF") return current;
     if (current.status !== "VERIFIED") {
-      throw new RegistryConflictError("READY_PACKAGE_NOT_VERIFIED", "Only VERIFIED packages can be handed off");
+      throw new RegistryConflictError(
+        "READY_PACKAGE_NOT_VERIFIED",
+        "Only VERIFIED packages can be handed off",
+      );
     }
     const now = this.clock().toISOString();
     const next: ReadyPackage = { ...current, status: "HANDED_OFF", handedOffAt: now };
-    this.database.prepare(
-      `UPDATE ready_packages SET status = 'HANDED_OFF', document_json = ?, updated_at = ?
+    this.database
+      .prepare(
+        `UPDATE ready_packages SET status = 'HANDED_OFF', document_json = ?, updated_at = ?
        WHERE id = ? AND workspace_id = ? AND status = 'VERIFIED'`,
-    ).run(JSON.stringify(next), now, id, workspaceId);
+      )
+      .run(JSON.stringify(next), now, id, workspaceId);
     return next;
   }
 
   private require(id: string, workspaceId: string): ReadyPackage {
     const readyPackage = this.getById(id, workspaceId);
-    if (!readyPackage) throw new RegistryError("READY_PACKAGE_NOT_FOUND", `ReadyPackage ${id} was not found`);
+    if (!readyPackage)
+      throw new RegistryError("READY_PACKAGE_NOT_FOUND", `ReadyPackage ${id} was not found`);
     return readyPackage;
   }
 }

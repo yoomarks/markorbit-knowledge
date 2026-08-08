@@ -80,12 +80,16 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 function requiredString(value: unknown, field: string): string {
-  if (typeof value !== "string" || !value) throw new Error(`PRODUCTION_CONVERSION_RESPONSE_MISSING_${field}`);
+  if (typeof value !== "string" || !value)
+    throw new Error(`PRODUCTION_CONVERSION_RESPONSE_MISSING_${field}`);
   return value;
 }
 
 export class HttpProductionConversionClient
-  implements ProductionRawArtifactReader, ProductionStagingUploader, ProductionConversionRuntimeClient
+  implements
+    ProductionRawArtifactReader,
+    ProductionStagingUploader,
+    ProductionConversionRuntimeClient
 {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
@@ -106,7 +110,8 @@ export class HttpProductionConversionClient
       headers: this.jsonHeaders(),
       body: JSON.stringify(request),
     });
-    if (!response.ok) throw new Error(`PRODUCTION_CONVERSION_CLAIM_FAILED: ${await errorMessage(response)}`);
+    if (!response.ok)
+      throw new Error(`PRODUCTION_CONVERSION_CLAIM_FAILED: ${await errorMessage(response)}`);
     const body = record(await response.json());
     if (!body || !isConversionClaimResult(body.result) || typeof body.replayed !== "boolean") {
       throw new Error("PRODUCTION_CONVERSION_CLAIM_RESPONSE_INVALID");
@@ -119,7 +124,8 @@ export class HttpProductionConversionClient
       `${this.baseUrl}/api/worker/v1/conversion/run/${encodeURIComponent(conversionRunId)}?workerId=${encodeURIComponent(this.workerId)}`,
       { headers: this.authHeaders() },
     );
-    if (!response.ok) throw new Error(`PRODUCTION_CONVERSION_CONTEXT_FAILED: ${await errorMessage(response)}`);
+    if (!response.ok)
+      throw new Error(`PRODUCTION_CONVERSION_CONTEXT_FAILED: ${await errorMessage(response)}`);
     const body = record(await response.json());
     if (!body) throw new Error("PRODUCTION_CONVERSION_CONTEXT_RESPONSE_INVALID");
     return {
@@ -135,7 +141,8 @@ export class HttpProductionConversionClient
       `${this.baseUrl}/api/worker/v1/conversion/input/${encodeURIComponent(grant.id)}?workerId=${encodeURIComponent(this.workerId)}`,
       { headers: this.authHeaders() },
     );
-    if (!response.ok) throw new Error(`PRODUCTION_CONVERSION_INPUT_FAILED: ${await errorMessage(response)}`);
+    if (!response.ok)
+      throw new Error(`PRODUCTION_CONVERSION_INPUT_FAILED: ${await errorMessage(response)}`);
     return new Uint8Array(await response.arrayBuffer());
   }
 
@@ -160,7 +167,8 @@ export class HttpProductionConversionClient
       },
       body: content,
     });
-    if (!response.ok) throw new Error(`PRODUCTION_CONVERSION_OUTPUT_FAILED: ${await errorMessage(response)}`);
+    if (!response.ok)
+      throw new Error(`PRODUCTION_CONVERSION_OUTPUT_FAILED: ${await errorMessage(response)}`);
     const body = record(await response.json());
     if (!body) throw new Error("PRODUCTION_CONVERSION_OUTPUT_RESPONSE_INVALID");
     const stagingStatus = body.stagingStatus;
@@ -176,7 +184,8 @@ export class HttpProductionConversionClient
     return {
       stagingDocumentId: requiredString(body.stagingDocumentId, "STAGING_DOCUMENT_ID"),
       stagingStatus,
-      verificationOutcome: verificationOutcome as ProductionStagingCommitResult["verificationOutcome"],
+      verificationOutcome:
+        verificationOutcome as ProductionStagingCommitResult["verificationOutcome"],
       finalizationDecision,
       ...(typeof body.readyPackageId === "string" ? { readyPackageId: body.readyPackageId } : {}),
     };
@@ -210,7 +219,13 @@ export class HttpProductionConversionClient
     idempotencyKey: string,
   ): Promise<void> {
     const report: ConversionOutputReadyReport = {
-      ...this.reportBase(context, "CONVERSION_OUTPUT_READY_REPORT", idempotencyKey, "RUNNING", "cor"),
+      ...this.reportBase(
+        context,
+        "CONVERSION_OUTPUT_READY_REPORT",
+        idempotencyKey,
+        "RUNNING",
+        "cor",
+      ),
       objectType: "CONVERSION_OUTPUT_READY_REPORT",
       output: evidence,
     };
@@ -257,14 +272,19 @@ export class HttpProductionConversionClient
   }
 
   private async report(
-    report: ConversionStartedReport | ConversionProgressReport | ConversionOutputReadyReport | ConversionFailedReport,
+    report:
+      | ConversionStartedReport
+      | ConversionProgressReport
+      | ConversionOutputReadyReport
+      | ConversionFailedReport,
   ): Promise<void> {
     const response = await this.fetchImpl(`${this.baseUrl}/api/worker/v1/conversion/report`, {
       method: "POST",
       headers: this.jsonHeaders(),
       body: JSON.stringify(report),
     });
-    if (!response.ok) throw new Error(`PRODUCTION_CONVERSION_REPORT_FAILED: ${await errorMessage(response)}`);
+    if (!response.ok)
+      throw new Error(`PRODUCTION_CONVERSION_REPORT_FAILED: ${await errorMessage(response)}`);
   }
 
   private authHeaders(): Record<string, string> {

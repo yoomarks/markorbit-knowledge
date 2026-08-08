@@ -25,10 +25,12 @@ It does **not** prove legal truth, current law, professional correctness, contac
 `builtin-markdown-staging@1.0.0`
 
 Input:
+
 - Artifact kind: `MARKDOWN`
 - MIME: `text/markdown`
 
 Output:
+
 - `text/markdown`
 - deterministic UTF-8/newline normalization
 - required `markorbit.*` provenance frontmatter

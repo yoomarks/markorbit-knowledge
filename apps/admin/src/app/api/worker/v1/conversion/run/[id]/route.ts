@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { RegistryConflictError, RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+} from "@markorbit/persistence";
 import { apiError, bearerCredential } from "@/server/api-errors";
 import {
   getConversionRunLedgerRepository,
@@ -19,7 +23,8 @@ export async function GET(request: Request, context: RouteContext) {
     const worker = getWorkerRegistryRepository().verifyCredential(workerId, credential);
     const { id } = await context.params;
     const record = getConversionRunLedgerRepository().getById(id, worker.workspaceId);
-    if (!record) throw new RegistryError("CONVERSION_RUN_NOT_FOUND", `ConversionRun ${id} was not found`);
+    if (!record)
+      throw new RegistryError("CONVERSION_RUN_NOT_FOUND", `ConversionRun ${id} was not found`);
     if (record.run.workspaceId !== worker.workspaceId) {
       throw new RegistryConflictError(
         "CONVERSION_RUN_WORKSPACE_MISMATCH",
