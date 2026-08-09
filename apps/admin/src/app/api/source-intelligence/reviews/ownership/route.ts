@@ -41,7 +41,10 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     requireV2(url.searchParams.get("protocolVersion"));
     const sourceIds = sourceIdsValue(url.searchParams.get("sourceIds"));
-    const eventLimit = optionalInteger(url.searchParams.get("ownershipEventLimit"), "ownershipEventLimit");
+    const eventLimit = optionalInteger(
+      url.searchParams.get("ownershipEventLimit"),
+      "ownershipEventLimit",
+    );
     const ownershipQueue = getSourceIntelligenceReviewService().ownershipQueue(
       sourceIds,
       eventLimit,

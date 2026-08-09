@@ -94,6 +94,4 @@ export type SourceIntelligenceOwnershipMutationV2 = {
 };
 
 export type SourceIntelligenceOwnershipViewFilter =
-  | { view: "TEAM" }
-  | { view: "UNASSIGNED" }
-  | { view: "MINE"; operator: string };
+  { view: "TEAM" } | { view: "UNASSIGNED" } | { view: "MINE"; operator: string };

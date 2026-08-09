@@ -27,7 +27,10 @@ type OwnershipSnapshot = {
   sources: Record<string, SourceDefinition>;
 };
 
-const flagLabels: Record<SourceIntelligenceObservationOwnershipQueueItemV2["flag"]["kind"], string> = {
+const flagLabels: Record<
+  SourceIntelligenceObservationOwnershipQueueItemV2["flag"]["kind"],
+  string
+> = {
   HIGH_VALUE_UNOBSERVED: "高价值但 Evidence Unobserved",
   EVIDENCE_MATURITY_REGRESSION: "Evidence Maturity 回退",
   SOURCE_VALUE_BAND_CHANGED: "Source Value 档位变化",
@@ -51,8 +54,7 @@ function statusClass(status: SourceIntelligenceObservationOwnershipQueueItemV2["
 async function readOwnership(signal?: AbortSignal): Promise<OwnershipSnapshot> {
   const sourceResponse = await fetch(`/api/sources?limit=${COHORT_LIMIT}&offset=0`, { signal });
   const sourceBody = (await sourceResponse.json()) as
-    | SourceListResult
-    | { error?: { message?: string } };
+    SourceListResult | { error?: { message?: string } };
   if (!sourceResponse.ok) {
     const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
     throw new Error(message ?? "无法读取 Sources");
@@ -185,7 +187,9 @@ export function SourceIntelligenceReviewOwnership() {
         <div>
           <div className="flex items-center gap-2">
             <Users size={19} className="text-indigo-700" aria-hidden="true" />
-            <h2 className="font-semibold text-slate-950">D2.11 · Operator Ownership &amp; Handoff</h2>
+            <h2 className="font-semibold text-slate-950">
+              D2.11 · Operator Ownership &amp; Handoff
+            </h2>
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
             为当前 Observation occurrence 记录人工负责人，支持领取、转交、释放、团队视图和个人视图。
@@ -244,7 +248,10 @@ export function SourceIntelligenceReviewOwnership() {
               ["已分配待处理", queue.counts.assignedPending],
               ["未分配待处理", queue.counts.unassignedPending],
             ].map(([label, value]) => (
-              <div key={String(label)} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div
+                key={String(label)}
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+              >
                 <p className="text-xs font-medium text-slate-500">{label}</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
               </div>
@@ -261,11 +268,13 @@ export function SourceIntelligenceReviewOwnership() {
                   <div key={workload.operator} className="rounded-xl border border-slate-200 p-4">
                     <div className="flex items-center gap-2">
                       <UserCheck size={15} className="text-indigo-700" />
-                      <p className="truncate text-sm font-semibold text-slate-950">{workload.operator}</p>
+                      <p className="truncate text-sm font-semibold text-slate-950">
+                        {workload.operator}
+                      </p>
                     </div>
                     <p className="mt-2 text-xs leading-5 text-slate-500">
-                      {workload.itemCount} items · {workload.pendingCount} pending · {workload.attentionCount}{" "}
-                      ATTENTION
+                      {workload.itemCount} items · {workload.pendingCount} pending ·{" "}
+                      {workload.attentionCount} ATTENTION
                     </p>
                   </div>
                 ))}
@@ -290,26 +299,41 @@ export function SourceIntelligenceReviewOwnership() {
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-slate-950">{flagLabels[item.flag.kind]}</p>
-                        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(item.status)}`}>
+                        <p className="text-sm font-semibold text-slate-950">
+                          {flagLabels[item.flag.kind]}
+                        </p>
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(item.status)}`}
+                        >
                           {statusLabels[item.status]}
                         </span>
                         <span className="text-xs text-slate-400">{item.flag.severity}</span>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                         {source ? (
-                          <Link href={`/sources/${source.id}`} className="font-medium text-indigo-700 hover:underline">
+                          <Link
+                            href={`/sources/${source.id}`}
+                            className="font-medium text-indigo-700 hover:underline"
+                          >
                             {source.name}
                           </Link>
                         ) : (
                           <span>{item.sourceId}</span>
                         )}
                         <span>{new Date(item.flag.observedAt).toLocaleString("zh-CN")}</span>
-                        <span className={item.owner ? "font-semibold text-slate-700" : "font-semibold text-amber-700"}>
+                        <span
+                          className={
+                            item.owner
+                              ? "font-semibold text-slate-700"
+                              : "font-semibold text-amber-700"
+                          }
+                        >
                           {item.owner ? `owner: ${item.owner}` : "未领取"}
                         </span>
                       </div>
-                      <p className="mt-2 font-mono text-[11px] text-slate-400">{item.observationKey}</p>
+                      <p className="mt-2 font-mono text-[11px] text-slate-400">
+                        {item.observationKey}
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -382,9 +406,14 @@ export function SourceIntelligenceReviewOwnership() {
               </p>
               <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
                 {queue.recentOwnershipEvents.slice(0, 8).map((event) => (
-                  <div key={event.eventId} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-xs text-slate-600">
+                  <div
+                    key={event.eventId}
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-xs text-slate-600"
+                  >
                     <span className="font-semibold text-slate-900">{event.action}</span>
-                    <span>{event.previousOwner ?? "unassigned"} → {event.owner ?? "unassigned"}</span>
+                    <span>
+                      {event.previousOwner ?? "unassigned"} → {event.owner ?? "unassigned"}
+                    </span>
                     <span>by {event.actor}</span>
                     <span>{new Date(event.occurredAt).toLocaleString("zh-CN")}</span>
                   </div>
@@ -397,9 +426,11 @@ export function SourceIntelligenceReviewOwnership() {
             <div className="flex gap-3">
               <ShieldAlert className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
               <p className="leading-6">
-                D2.11 的 owner / actor 是人工填写的 workflow label，当前系统不把它当作已认证身份或权限。
-                领取、转交和释放都不会改变 D2.9 disposition、Source Value、Evidence Maturity 或 Observation evidence；
-                Scheduler 仍为 <strong>{queue.scheduling.policyStatus}</strong>，不会创建或修改 CollectionPlan、启动采集或授予 MGSN 资格。
+                D2.11 的 owner / actor 是人工填写的 workflow
+                label，当前系统不把它当作已认证身份或权限。 领取、转交和释放都不会改变 D2.9
+                disposition、Source Value、Evidence Maturity 或 Observation evidence； Scheduler
+                仍为 <strong>{queue.scheduling.policyStatus}</strong>，不会创建或修改
+                CollectionPlan、启动采集或授予 MGSN 资格。
               </p>
             </div>
           </div>

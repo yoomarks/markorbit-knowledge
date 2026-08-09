@@ -38,7 +38,9 @@ export type SourceIntelligenceObservationOwnershipEventFilters = {
 
 export interface SourceIntelligenceObservationOwnershipRepository {
   get(observationKey: string): SourceIntelligenceObservationOwnershipRecordV2 | null;
-  listByObservationKeys(observationKeys: string[]): SourceIntelligenceObservationOwnershipRecordV2[];
+  listByObservationKeys(
+    observationKeys: string[],
+  ): SourceIntelligenceObservationOwnershipRecordV2[];
   listEvents(
     filters?: SourceIntelligenceObservationOwnershipEventFilters,
   ): SourceIntelligenceObservationOwnershipEventV2[];
@@ -94,7 +96,9 @@ function normalizeSourceIds(values: string[] | undefined): string[] {
   return normalized;
 }
 
-function parseOwnership(row: Record<string, unknown>): SourceIntelligenceObservationOwnershipRecordV2 {
+function parseOwnership(
+  row: Record<string, unknown>,
+): SourceIntelligenceObservationOwnershipRecordV2 {
   return {
     observationKey: String(row.observation_key),
     sourceId: String(row.source_id),
@@ -222,7 +226,9 @@ export class SqliteSourceIntelligenceObservationOwnershipRepository implements S
     const existing = this.get(observationKey);
     const previousOwner = existing?.owner ?? null;
     if (Object.prototype.hasOwnProperty.call(input, "expectedOwner")) {
-      const expectedOwner = input.expectedOwner ? operatorLabel(input.expectedOwner, "expectedOwner") : null;
+      const expectedOwner = input.expectedOwner
+        ? operatorLabel(input.expectedOwner, "expectedOwner")
+        : null;
       if (expectedOwner !== previousOwner) {
         throw new RegistryConflictError(
           "SOURCE_INTELLIGENCE_OWNERSHIP_CHANGED",
@@ -264,7 +270,9 @@ export class SqliteSourceIntelligenceObservationOwnershipRepository implements S
       }
       nextOwner = null;
     } else {
-      throw new RegistryValidationError("ownership action must be CLAIMED, TRANSFERRED, or RELEASED");
+      throw new RegistryValidationError(
+        "ownership action must be CLAIMED, TRANSFERRED, or RELEASED",
+      );
     }
 
     const timestamp = this.clock().toISOString();

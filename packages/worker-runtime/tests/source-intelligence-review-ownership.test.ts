@@ -7,7 +7,12 @@ import type {
 } from "@markorbit/contracts";
 import { buildSourceIntelligenceObservationOwnershipQueueV2 } from "../src/source-intelligence-review-ownership";
 
-function flag(sourceId: string, kind: SourceIntelligenceObservationFlagV2["kind"], severity: "INFO" | "ATTENTION", assessedAt: string): SourceIntelligenceObservationFlagV2 {
+function flag(
+  sourceId: string,
+  kind: SourceIntelligenceObservationFlagV2["kind"],
+  severity: "INFO" | "ATTENTION",
+  assessedAt: string,
+): SourceIntelligenceObservationFlagV2 {
   return {
     sourceId,
     kind,
