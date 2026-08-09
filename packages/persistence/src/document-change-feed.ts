@@ -52,6 +52,12 @@ type SectionSnapshot = {
   firstOrdinal: number;
 };
 
+type OrderedSectionChange = {
+  order: number;
+  key: string;
+  change: Omit<DocumentSectionChange, "ordinal">;
+};
+
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -171,41 +177,31 @@ function sectionDiff(
   const after = snapshots(afterChunks);
   const beforeMap = new Map(before.map((section) => [section.key, section]));
   const afterMap = new Map(after.map((section) => [section.key, section]));
-  const order = new Map<string, number>();
-  for (const section of before) order.set(section.key, section.firstOrdinal * 2);
-  for (const section of after) {
-    const existing = order.get(section.key);
-    order.set(section.key, existing === undefined ? section.firstOrdinal * 2 + 1 : existing);
-  }
+  const ordered: OrderedSectionChange[] = [];
 
-  const changes: DocumentSectionChange[] = [];
   for (const key of new Set([...beforeMap.keys(), ...afterMap.keys()])) {
     const previous = beforeMap.get(key);
     const next = afterMap.get(key);
     if (previous && next && previous.contentSha256 === next.contentSha256) continue;
-    const changeKind = previous ? (next ? "MODIFIED" : "REMOVED") : "ADDED";
-    changes.push({
-      ordinal: 0,
-      changeKind,
-      headingPath: [...(next?.headingPath ?? previous?.headingPath ?? [])],
-      beforeChunkIds: previous?.chunkIds ?? [],
-      afterChunkIds: next?.chunkIds ?? [],
-      beforeContentSha256: previous?.contentSha256 ?? null,
-      afterContentSha256: next?.contentSha256 ?? null,
-      beforeText: previous?.text ?? null,
-      afterText: next?.text ?? null,
+    const kind = previous ? (next ? "MODIFIED" : "REMOVED") : "ADDED";
+    ordered.push({
+      key,
+      order: next?.firstOrdinal ?? previous?.firstOrdinal ?? Number.MAX_SAFE_INTEGER,
+      change: {
+        changeKind: kind,
+        headingPath: [...(next?.headingPath ?? previous?.headingPath ?? [])],
+        beforeChunkIds: previous?.chunkIds ?? [],
+        afterChunkIds: next?.chunkIds ?? [],
+        beforeContentSha256: previous?.contentSha256 ?? null,
+        afterContentSha256: next?.contentSha256 ?? null,
+        beforeText: previous?.text ?? null,
+        afterText: next?.text ?? null,
+      },
     });
   }
-  changes.sort((left, right) => {
-    const leftKey = [...beforeMap, ...afterMap].find(
-      ([, section]) => JSON.stringify(section.headingPath) === JSON.stringify(left.headingPath),
-    )?.[0];
-    const rightKey = [...beforeMap, ...afterMap].find(
-      ([, section]) => JSON.stringify(section.headingPath) === JSON.stringify(right.headingPath),
-    )?.[0];
-    return (order.get(leftKey ?? "") ?? 0) - (order.get(rightKey ?? "") ?? 0);
-  });
-  return changes.map((change, ordinal) => ({ ...change, ordinal: ordinal + 1 }));
+
+  ordered.sort((left, right) => left.order - right.order || left.key.localeCompare(right.key));
+  return ordered.map((entry, index) => ({ ordinal: index + 1, ...entry.change }));
 }
 
 function summary(sections: DocumentSectionChange[]): DocumentChangeSummary {
@@ -220,12 +216,12 @@ function summary(sections: DocumentSectionChange[]): DocumentChangeSummary {
   };
 }
 
-function changeKind(
+function classifyChange(
   previous: RetrievalDocument | null,
-  current: RetrievalDocument,
+  sections: DocumentSectionChange[],
 ): DocumentChangeKind {
   if (!previous) return "CREATED";
-  return previous.contentSha256 === current.contentSha256 ? "UNCHANGED" : "UPDATED";
+  return sections.length === 0 ? "UNCHANGED" : "UPDATED";
 }
 
 function eventId(
@@ -338,10 +334,17 @@ export class SqliteDocumentChangeFeedRepository implements DocumentChangeFeedRep
     chunks: RetrievalChunk[],
   ): RecordIndexedVersionResult {
     if (!document.isCurrent) return { event: null, replayed: false };
-    if (chunks.some((chunk) => chunk.stagingDocumentId !== document.stagingDocumentId)) {
+    if (
+      chunks.some(
+        (chunk) =>
+          chunk.stagingDocumentId !== document.stagingDocumentId ||
+          chunk.documentId !== document.documentId ||
+          chunk.artifactVersion !== document.artifactVersion,
+      )
+    ) {
       throw new RegistryConflictError(
         "CHANGE_FEED_CHUNK_PROVENANCE_MISMATCH",
-        "Retrieval chunks do not belong to the indexed document",
+        "Retrieval chunks do not belong to the indexed document version",
       );
     }
     const replay = this.database
@@ -350,11 +353,13 @@ export class SqliteDocumentChangeFeedRepository implements DocumentChangeFeedRep
     if (replay) return { event: eventRow(replay), replayed: true };
 
     const previous = this.previousDocument(document);
-    const beforeChunks = previous ? this.loadChunks(previous.stagingDocumentId, document.workspaceId) : [];
+    const beforeChunks = previous
+      ? this.loadChunks(previous.stagingDocumentId, document.workspaceId)
+      : [];
     const sections = sectionDiff(beforeChunks, chunks);
-    const kind = changeKind(previous, document);
-    const changeSummary = kind === "UNCHANGED" ? summary([]) : summary(sections);
+    const kind = classifyChange(previous, sections);
     const persistedSections = kind === "UNCHANGED" ? [] : sections;
+    const changeSummary = summary(persistedSections);
     const id = eventId(document.workspaceId, document.documentId, previous, document);
 
     this.database.exec("BEGIN IMMEDIATE;");
@@ -408,12 +413,15 @@ export class SqliteDocumentChangeFeedRepository implements DocumentChangeFeedRep
         );
       }
       const sequence = Number(insert.lastInsertRowid);
-      this.database.exec("COMMIT;");
       const row = this.database
         .prepare("SELECT * FROM document_change_events WHERE sequence = ?")
         .get(sequence) as Record<string, unknown> | undefined;
-      if (!row) throw new RegistryError("CHANGE_FEED_WRITE_FAILED", "Change event was not persisted");
-      return { event: eventRow(row), replayed: false };
+      if (!row) {
+        throw new RegistryError("CHANGE_FEED_WRITE_FAILED", "Change event was not persisted");
+      }
+      const event = eventRow(row);
+      this.database.exec("COMMIT;");
+      return { event, replayed: false };
     } catch (error) {
       this.database.exec("ROLLBACK;");
       throw error;
@@ -469,6 +477,7 @@ export class SqliteDocumentChangeFeedRepository implements DocumentChangeFeedRep
     if (fromVersion !== null && fromVersion >= toVersion) {
       throw new RegistryValidationError("fromVersion must be lower than toVersion");
     }
+
     const current = this.requireDocument(workspaceId, documentId, toVersion);
     const previous =
       fromVersion === null ? null : this.requireDocument(workspaceId, documentId, fromVersion);
@@ -480,8 +489,9 @@ export class SqliteDocumentChangeFeedRepository implements DocumentChangeFeedRep
     }
     const beforeChunks = previous ? this.loadChunks(previous.stagingDocumentId, workspaceId) : [];
     const afterChunks = this.loadChunks(current.stagingDocumentId, workspaceId);
-    const kind = changeKind(previous, current);
-    const sections = kind === "UNCHANGED" ? [] : sectionDiff(beforeChunks, afterChunks);
+    const rawSections = sectionDiff(beforeChunks, afterChunks);
+    const kind = classifyChange(previous, rawSections);
+    const sections = kind === "UNCHANGED" ? [] : rawSections;
     return {
       protocolVersion: CHANGE_FEED_PROTOCOL_VERSION,
       objectType: "DOCUMENT_VERSION_DIFF",
