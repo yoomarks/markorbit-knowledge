@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FoundationalActionExecution } from "@markorbit/worker-runtime/foundational-action-execution";
 import type { FoundationalActionIntent } from "@markorbit/worker-runtime/foundational-action-intent";
+import type { FoundationalCollectionOutcome } from "@markorbit/worker-runtime/foundational-collection-outcome";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 import {
   foundationalOperatorPhase,
@@ -8,6 +9,7 @@ import {
   listControlledCollectionActions,
   operatorExecutionIdempotencyKey,
   operatorIntentIdempotencyKey,
+  outcomeForExecution,
 } from "./foundational-operator-state";
 
 function intent(
@@ -79,7 +81,48 @@ function execution(intentId: string): FoundationalActionExecution {
   };
 }
 
-describe("M25 foundational operator state", () => {
+function outcome(
+  executionId: string,
+  retryDisposition: FoundationalCollectionOutcome["retryDisposition"],
+): FoundationalCollectionOutcome {
+  const state: FoundationalCollectionOutcome["state"] =
+    retryDisposition === "BLOCKED_ACTIVE_RUN"
+      ? "ACTIVE"
+      : retryDisposition === "BLOCKED_MISSING_RUN"
+        ? "MISSING_RUN"
+        : retryDisposition === "REQUIRES_NEW_APPROVAL"
+          ? "FAILED"
+          : "COMPLETED";
+  return {
+    protocolVersion: "1.0",
+    objectType: "FOUNDATIONAL_COLLECTION_OUTCOME",
+    executionId,
+    intentId: "fai_0123456789abcdef0123456789abcdef",
+    workspaceId: "wsp_test",
+    jurisdiction: "US",
+    targetId: "us-uspto-tmep-current",
+    runId: "run_test",
+    runStatus:
+      state === "ACTIVE"
+        ? "RUNNING"
+        : state === "FAILED"
+          ? "FAILED"
+          : state === "COMPLETED"
+            ? "COMPLETED"
+            : null,
+    runUpdatedAt: "2026-08-10T00:02:00.000Z",
+    state,
+    currentCollectionActionRequired: retryDisposition !== "NO_ACTION_REQUIRED",
+    retryDisposition,
+    requiresNewIntent:
+      retryDisposition === "REQUIRES_NEW_APPROVAL" ||
+      retryDisposition === "REVIEW_COMPLETED_COLLECTION",
+    automaticRetry: false,
+    observedAt: "2026-08-10T00:03:00.000Z",
+  };
+}
+
+describe("M26 foundational operator state", () => {
   it("exposes only explicitly governed COLLECT actions", () => {
     const snapshot = {
       remediationQueue: {
@@ -134,6 +177,32 @@ describe("M25 foundational operator state", () => {
     expect(foundationalOperatorPhase(approved, null)).toBe("READY_TO_EXECUTE");
     expect(foundationalOperatorPhase(approved, execution(approved.intentId))).toBe("DISPATCHED");
     expect(foundationalOperatorPhase(canceled, null)).toBe("REQUEST_APPROVAL");
+  });
+
+  it("uses live outcome feedback to block active duplicates and require fresh approval after failure", () => {
+    const approved = intent("APPROVED", "2026-08-10T00:02:00.000Z");
+    const dispatched = execution(approved.intentId);
+    const active = outcome(dispatched.executionId, "BLOCKED_ACTIVE_RUN");
+    const failed = outcome(dispatched.executionId, "REQUIRES_NEW_APPROVAL");
+    const completedNeedsReview = outcome(
+      dispatched.executionId,
+      "REVIEW_COMPLETED_COLLECTION",
+    );
+    const complete = outcome(dispatched.executionId, "NO_ACTION_REQUIRED");
+    const missing = outcome(dispatched.executionId, "BLOCKED_MISSING_RUN");
+
+    expect(foundationalOperatorPhase(approved, dispatched, active)).toBe("RUN_ACTIVE");
+    expect(foundationalOperatorPhase(approved, dispatched, failed)).toBe(
+      "RETRY_APPROVAL_REQUIRED",
+    );
+    expect(foundationalOperatorPhase(approved, dispatched, completedNeedsReview)).toBe(
+      "REVIEW_COMPLETED_COLLECTION",
+    );
+    expect(foundationalOperatorPhase(approved, dispatched, complete)).toBe("RUN_COMPLETED");
+    expect(foundationalOperatorPhase(approved, dispatched, missing)).toBe(
+      "EXECUTION_INTEGRITY_BLOCKED",
+    );
+    expect(outcomeForExecution([active], dispatched.executionId)?.runStatus).toBe("RUNNING");
   });
 
   it("uses the newest matching intent and stable execution idempotency", () => {
