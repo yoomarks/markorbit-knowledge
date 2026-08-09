@@ -6,7 +6,11 @@ import {
   type ConversionRun,
   type ConversionTrigger,
 } from "@markorbit/contracts";
-import { RegistryConflictError, RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+} from "@markorbit/persistence";
 import { getConversionRunLedgerRepository, getRegistryDatabase } from "./source-registry";
 
 const MIGRATION_ID = "m11_conversion_failure_recovery";
@@ -145,8 +149,11 @@ function parseRecoveryCase(value: string): ConversionRecoveryCase {
     typeof parsed.rawArtifactId !== "string" ||
     typeof parsed.conversionProfileId !== "string" ||
     !CONVERSION_RECOVERY_STATES.includes(parsed.state as ConversionRecoveryState) ||
+    typeof parsed.retryCount !== "number" ||
     !Number.isInteger(parsed.retryCount) ||
+    typeof parsed.maxRetries !== "number" ||
     !Number.isInteger(parsed.maxRetries) ||
+    typeof parsed.operatorOverrideCount !== "number" ||
     !Number.isInteger(parsed.operatorOverrideCount) ||
     typeof parsed.retryable !== "boolean" ||
     typeof parsed.lastFailureRunId !== "string" ||
@@ -300,7 +307,11 @@ export function failedConversionRecoveryCandidateIds(
   return rows.map((row) => row.id);
 }
 
-function getCase(database: DatabaseSync, id: string, workspaceId?: string): ConversionRecoveryCase | null {
+function getCase(
+  database: DatabaseSync,
+  id: string,
+  workspaceId?: string,
+): ConversionRecoveryCase | null {
   const row = database
     .prepare(
       `SELECT document_json FROM conversion_recovery_cases
@@ -311,9 +322,8 @@ function getCase(database: DatabaseSync, id: string, workspaceId?: string): Conv
 }
 
 function loadRun(database: DatabaseSync, id: string): ConversionRun {
-  const row = database
-    .prepare("SELECT document_json FROM conversion_runs WHERE id = ?")
-    .get(id) as { document_json: string } | undefined;
+  const row = database.prepare("SELECT document_json FROM conversion_runs WHERE id = ?").get(id) as
+    { document_json: string } | undefined;
   if (!row) throw new RegistryError("CONVERSION_RUN_NOT_FOUND", `ConversionRun ${id} not found`);
   return parseRun(row.document_json);
 }
@@ -354,7 +364,8 @@ function createCase(
   maxRetries: number,
 ): ConversionRecoveryCase {
   const failure = failureOrUnknown(run);
-  const retryable = conversionFailureIsAutoRetryable(failure) && maxRetries > 0;
+  const autoRetryable = conversionFailureIsAutoRetryable(failure);
+  const retryable = autoRetryable && maxRetries > 0;
   const value: ConversionRecoveryCase = {
     objectType: "CONVERSION_RECOVERY_CASE",
     version: "1.0",
@@ -374,7 +385,13 @@ function createCase(
     lastFailure: clone(failure),
     replacementRunIds: [],
     ...(retryable ? { nextRetryAt: nextRetryAt(run.failedAt ?? run.updatedAt, 0) } : {}),
-    ...(!retryable ? { deadLetterReason: "NON_RETRYABLE_FAILURE" as const } : {}),
+    ...(!retryable
+      ? {
+          deadLetterReason: autoRetryable
+            ? ("RETRY_BUDGET_EXHAUSTED" as const)
+            : ("NON_RETRYABLE_FAILURE" as const),
+        }
+      : {}),
     createdAt: now,
     updatedAt: now,
     ...(!retryable ? { deadLetteredAt: now } : {}),
@@ -558,7 +575,11 @@ function deadLetterDispatchFailure(
   return next;
 }
 
-function openCases(database: DatabaseSync, workspaceId: string, limit: number): ConversionRecoveryCase[] {
+function openCases(
+  database: DatabaseSync,
+  workspaceId: string,
+  limit: number,
+): ConversionRecoveryCase[] {
   const rows = database
     .prepare(
       `SELECT document_json FROM conversion_recovery_cases
@@ -628,11 +649,7 @@ export function reconcileConversionFailures(
     }
   }
 
-  const candidateIds = failedConversionRecoveryCandidateIds(
-    database,
-    normalizedWorkspaceId,
-    limit,
-  );
+  const candidateIds = failedConversionRecoveryCandidateIds(database, normalizedWorkspaceId, limit);
   for (const runId of candidateIds) {
     try {
       const run = loadRun(database, runId);
