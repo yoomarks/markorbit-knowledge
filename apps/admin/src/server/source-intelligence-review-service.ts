@@ -1,12 +1,14 @@
 import type {
   SourceIntelligenceObservationReviewQueueV2,
   SourceIntelligenceObservationReviewStatus,
+  SourceIntelligenceReviewQueueOperationalHealthV2,
 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import type { SourceIntelligenceObservationReviewRepository } from "@markorbit/persistence/source-intelligence-reviews";
 import {
   buildSourceIntelligenceCrossSourceObservationSummaryV2,
   buildSourceIntelligenceObservationReviewQueueV2,
+  buildSourceIntelligenceReviewQueueOperationalHealthV2,
   sourceIntelligenceObservationReviewKey,
 } from "@markorbit/worker-runtime";
 import { SourceIntelligenceService } from "./source-intelligence-service";
@@ -20,6 +22,10 @@ import {
 
 const MAX_SOURCE_IDS = 100;
 const REVIEW_HISTORY_LIMIT = 2;
+const DEFAULT_HEALTH_HISTORY_LIMIT = 50;
+const MAX_HEALTH_HISTORY_LIMIT = 100;
+const DEFAULT_REVIEW_EVENT_LIMIT = 200;
+const MAX_REVIEW_EVENT_LIMIT = 500;
 
 export type ReviewObservationInput = {
   sourceId: string;
@@ -29,9 +35,15 @@ export type ReviewObservationInput = {
   note?: string;
 };
 
+export type ReviewHealthOptions = {
+  historyLimit?: number;
+  reviewEventLimit?: number;
+};
+
 type ReviewServiceDependencies = {
   intelligence: SourceIntelligenceService;
   reviews: SourceIntelligenceObservationReviewRepository;
+  now?: () => string;
 };
 
 function normalizeSourceIds(sourceIds: string[]): string[] {
@@ -47,8 +59,28 @@ function normalizeSourceIds(sourceIds: string[]): string[] {
   return normalized;
 }
 
+function boundedInteger(
+  value: number | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+  field: string,
+): number {
+  if (value === undefined) return fallback;
+  if (!Number.isInteger(value) || value < minimum || value > maximum) {
+    throw new RegistryValidationError(
+      `${field} must be an integer between ${minimum} and ${maximum}`,
+    );
+  }
+  return value;
+}
+
 export class SourceIntelligenceReviewService {
-  constructor(private readonly dependencies: ReviewServiceDependencies) {}
+  private readonly now: () => string;
+
+  constructor(private readonly dependencies: ReviewServiceDependencies) {
+    this.now = dependencies.now ?? (() => new Date().toISOString());
+  }
 
   queue(sourceIds: string[]): SourceIntelligenceObservationReviewQueueV2 {
     const ids = normalizeSourceIds(sourceIds);
@@ -59,6 +91,41 @@ export class SourceIntelligenceReviewService {
     const observationKeys = summary.flags.map(sourceIntelligenceObservationReviewKey);
     const reviews = this.dependencies.reviews.listByObservationKeys(observationKeys);
     return buildSourceIntelligenceObservationReviewQueueV2(summary, reviews);
+  }
+
+  health(
+    sourceIds: string[],
+    options: ReviewHealthOptions = {},
+  ): SourceIntelligenceReviewQueueOperationalHealthV2 {
+    const ids = normalizeSourceIds(sourceIds);
+    const historyLimit = boundedInteger(
+      options.historyLimit,
+      DEFAULT_HEALTH_HISTORY_LIMIT,
+      2,
+      MAX_HEALTH_HISTORY_LIMIT,
+      "historyLimit",
+    );
+    const reviewEventLimit = boundedInteger(
+      options.reviewEventLimit,
+      DEFAULT_REVIEW_EVENT_LIMIT,
+      1,
+      MAX_REVIEW_EVENT_LIMIT,
+      "reviewEventLimit",
+    );
+    const queue = this.queue(ids);
+    const histories = ids.map((sourceId) =>
+      this.dependencies.intelligence.historyV2(sourceId, historyLimit),
+    );
+    const reviewEvents = this.dependencies.reviews.listEvents({
+      sourceIds: ids,
+      limit: reviewEventLimit,
+    });
+    return buildSourceIntelligenceReviewQueueOperationalHealthV2({
+      queue,
+      histories,
+      reviewEvents,
+      generatedAt: this.now(),
+    });
   }
 
   review(input: ReviewObservationInput) {
