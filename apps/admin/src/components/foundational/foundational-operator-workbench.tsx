@@ -113,7 +113,10 @@ async function loadRunStatuses(
       try {
         const envelope = await requestJson<RunListEnvelope>(`/api/runs?${query.toString()}`);
         const status = envelope.items?.[0]?.run?.status;
-        return [execution.runId, typeof status === "string" ? status : execution.runStatusAtDispatch];
+        return [
+          execution.runId,
+          typeof status === "string" ? status : execution.runStatusAtDispatch,
+        ];
       } catch {
         return [execution.runId, execution.runStatusAtDispatch];
       }
@@ -243,18 +246,15 @@ export function FoundationalOperatorWorkbench({
 
   async function executeIntent(intentId: string) {
     await runMutation(`execute:${intentId}`, () =>
-      requestJson(
-        `/api/foundational/action-intents/${encodeURIComponent(intentId)}/execute`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            executedByActorId: actors.executor,
-            idempotencyKey: operatorExecutionIdempotencyKey(intentId),
-            execute: true,
-          }),
-        },
-      ),
+      requestJson(`/api/foundational/action-intents/${encodeURIComponent(intentId)}/execute`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          executedByActorId: actors.executor,
+          idempotencyKey: operatorExecutionIdempotencyKey(intentId),
+          execute: true,
+        }),
+      }),
     );
     setArmedIntentId(null);
     setDispatchAcknowledged(false);
@@ -331,10 +331,12 @@ export function FoundationalOperatorWorkbench({
           <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-slate-700">
             <ShieldCheck className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
             <div>
-              <p className="text-sm font-semibold">No executable COLLECT action is currently exposed.</p>
+              <p className="text-sm font-semibold">
+                No executable COLLECT action is currently exposed.
+              </p>
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                REGISTER、INGEST、CONVERT、INDEX、QUALITY、RELEVANCE 与 HEALTH 仍只显示人工处理路径，
-                不会在这里执行。
+                REGISTER、INGEST、CONVERT、INDEX、QUALITY、RELEVANCE 与 HEALTH
+                仍只显示人工处理路径， 不会在这里执行。
               </p>
             </div>
           </div>
@@ -397,8 +399,10 @@ export function FoundationalOperatorWorkbench({
                     {phase === "PENDING_APPROVAL" && intent ? (
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-xs leading-5 text-slate-500">
-                          Requested by <strong className="text-slate-700">{intent.requestedByActorId}</strong>
-                          <br />Approval is still required; execution authorization remains NONE.
+                          Requested by{" "}
+                          <strong className="text-slate-700">{intent.requestedByActorId}</strong>
+                          <br />
+                          Approval is still required; execution authorization remains NONE.
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <button
@@ -425,7 +429,8 @@ export function FoundationalOperatorWorkbench({
                       <div className="space-y-3">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="text-xs leading-5 text-slate-500">
-                            Approved by <strong className="text-slate-700">{intent.approvedByActorId}</strong>.
+                            Approved by{" "}
+                            <strong className="text-slate-700">{intent.approvedByActorId}</strong>.
                             Approval alone has not dispatched collection.
                           </div>
                           {!isArmed ? (
@@ -449,9 +454,10 @@ export function FoundationalOperatorWorkbench({
                               Final explicit dispatch confirmation
                             </p>
                             <p className="mt-1 text-xs leading-5 text-amber-900">
-                              Confirming will create one real CollectionRun + Job for only {action.targetId}.
-                              The server will revalidate the current queue, registered source and prepared MANUAL
-                              plan before writing execution state.
+                              Confirming will create one real CollectionRun + Job for only{" "}
+                              {action.targetId}. The server will revalidate the current queue,
+                              registered source and prepared MANUAL plan before writing execution
+                              state.
                             </p>
                             <label className="mt-3 flex items-start gap-2 text-sm text-amber-950">
                               <input
@@ -460,7 +466,9 @@ export function FoundationalOperatorWorkbench({
                                 onChange={(event) => setDispatchAcknowledged(event.target.checked)}
                                 className="mt-0.5 size-4"
                               />
-                              <span>I understand this performs a real single-target collection dispatch.</span>
+                              <span>
+                                I understand this performs a real single-target collection dispatch.
+                              </span>
                             </label>
                             <div className="mt-4 flex flex-wrap gap-2">
                               <button
@@ -492,10 +500,12 @@ export function FoundationalOperatorWorkbench({
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-xs leading-5 text-slate-500">
                           <p>
-                            Run <strong className="font-mono text-slate-700">{execution.runId}</strong>
+                            Run{" "}
+                            <strong className="font-mono text-slate-700">{execution.runId}</strong>
                           </p>
                           <p>
-                            Dispatched {timestampLabel(execution.dispatchedAt)} by {execution.executedByActorId}
+                            Dispatched {timestampLabel(execution.dispatchedAt)} by{" "}
+                            {execution.executedByActorId}
                           </p>
                           <p>{execution.jobIds.length} job(s) recorded</p>
                         </div>

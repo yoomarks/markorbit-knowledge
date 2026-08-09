@@ -13,10 +13,7 @@ export type ControlledCollectionAction = {
 };
 
 export type FoundationalOperatorPhase =
-  | "REQUEST_APPROVAL"
-  | "PENDING_APPROVAL"
-  | "READY_TO_EXECUTE"
-  | "DISPATCHED";
+  "REQUEST_APPROVAL" | "PENDING_APPROVAL" | "READY_TO_EXECUTE" | "DISPATCHED";
 
 export function listControlledCollectionActions(
   snapshot: FoundationalRemediationQueueSnapshot,

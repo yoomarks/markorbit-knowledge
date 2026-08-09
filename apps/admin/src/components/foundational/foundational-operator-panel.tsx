@@ -77,7 +77,9 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
       .catch((loadError: unknown) => {
         if (!active) return;
         setSnapshot(null);
-        setError(loadError instanceof Error ? loadError.message : "Unable to load operator snapshot");
+        setError(
+          loadError instanceof Error ? loadError.message : "Unable to load operator snapshot",
+        );
         setLoading(false);
       });
     return () => {
@@ -105,8 +107,9 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
               <span className="text-xs text-amber-900/70">Workspace · {workspaceId}</span>
             </div>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-950/80">
-              M25 仅把 M23/M24 已有的受控 COLLECT 流程接入 UI。审批不会自动执行；真正派发仍需第二次显式确认，
-              且服务端会再次验证当前 queue、source 与 MANUAL plan。
+              M25 仅把 M23/M24 已有的受控 COLLECT 流程接入
+              UI。审批不会自动执行；真正派发仍需第二次显式确认， 且服务端会再次验证当前
+              queue、source 与 MANUAL plan。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -149,8 +152,8 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
 
       {loading && !snapshot ? (
         <section className="flex min-h-28 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm text-slate-500">
-          <RefreshCw className="animate-spin" size={16} aria-hidden="true" /> Loading governed operator
-          snapshot…
+          <RefreshCw className="animate-spin" size={16} aria-hidden="true" /> Loading governed
+          operator snapshot…
         </section>
       ) : null}
 

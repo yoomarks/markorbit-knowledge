@@ -148,15 +148,10 @@ describe("M25 foundational operator state", () => {
       "fai_22222222222222222222222222222222",
     );
     expect(
-      latestIntentForAction(
-        [older, newer],
-        "us-uspto-tmep-current",
-        "DISPATCH_GOVERNED_COLLECTION",
-      )?.intentId,
+      latestIntentForAction([older, newer], "us-uspto-tmep-current", "DISPATCH_GOVERNED_COLLECTION")
+        ?.intentId,
     ).toBe(newer.intentId);
-    expect(operatorExecutionIdempotencyKey(newer.intentId)).toBe(
-      `m25-exec:${newer.intentId}`,
-    );
+    expect(operatorExecutionIdempotencyKey(newer.intentId)).toBe(`m25-exec:${newer.intentId}`);
     expect(
       operatorIntentIdempotencyKey({
         jurisdiction: "US",
