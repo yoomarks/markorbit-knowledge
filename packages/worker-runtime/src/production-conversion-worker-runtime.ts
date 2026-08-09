@@ -83,7 +83,8 @@ export class ProductionConversionWorkerRuntime {
     if (
       runContext.workspaceId !== this.workspaceId ||
       runContext.conversionRunId !== summary.conversionRunId ||
-      runContext.rawArtifactId !== summary.rawArtifactId
+      runContext.rawArtifactId !== summary.rawArtifactId ||
+      runContext.documentMetadata.inputSha256 !== claimed.result.rawArtifactReadGrant.expectedSha256
     ) {
       throw new Error("PRODUCTION_CONVERSION_RUN_CONTEXT_MISMATCH");
     }
@@ -95,6 +96,7 @@ export class ProductionConversionWorkerRuntime {
       conversionAttemptId: claimed.result.lease.conversionAttemptId,
       rawArtifactId: summary.rawArtifactId,
       sourceId: runContext.sourceId,
+      documentMetadata: runContext.documentMetadata,
       lease: claimed.result.lease,
       converter: claimed.result.converter,
       inputGrant: claimed.result.rawArtifactReadGrant,
