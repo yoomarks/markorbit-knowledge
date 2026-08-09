@@ -1,0 +1,44 @@
+name: M25 Format
+
+on:
+  push:
+    branches:
+      - m25-foundational-operator-workbench
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m25-foundational-operator-workbench
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format M25 files
+        run: |
+          pnpm exec prettier --write \
+            apps/admin/src/components/foundational/foundational-operator-state.ts \
+            apps/admin/src/components/foundational/foundational-operator-state.test.ts \
+            apps/admin/src/components/foundational/foundational-operator-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-operator-panel.tsx \
+            'apps/admin/src/app/[section]/page.tsx' \
+            docs/architecture/M25_FOUNDATIONAL_OPERATOR_WORKBENCH.md
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps docs
+          git commit -m "M25 format foundational operator workbench"
+          git push
