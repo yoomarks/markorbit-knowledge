@@ -229,7 +229,7 @@ function buildChunks(
   return grouped.map((item, index) => {
     const ordinal = index + 1;
     const contentSha256 = sha256(
-      `${documentId}\u0000${artifactVersion}\u0000${ordinal}\u0000${item.headingPath.join("\u0000")}\u0000${item.text}`,
+      `${stagingDocumentId}\u0000${documentId}\u0000${artifactVersion}\u0000${ordinal}\u0000${item.headingPath.join("\u0000")}\u0000${item.text}`,
     );
     return {
       protocolVersion: RETRIEVAL_PROTOCOL_VERSION,
@@ -331,7 +331,7 @@ function rowChunk(row: Record<string, unknown>): RetrievalChunk {
     ordinal: Number(row.ordinal),
     headingPath: JSON.parse(String(row.heading_path_json)) as string[],
     text: String(row.text),
-    contentSha256: String(row.content_sha256),
+    contentSha256: String(row.chunk_content_sha256 ?? row.content_sha256),
   };
 }
 
@@ -614,7 +614,8 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
     const where = clauses.join(" AND ");
     const rows = this.database
       .prepare(
-        `SELECT c.*, d.*, bm25(retrieval_chunks_fts, 0.0, 0.0, 0.0, 7.0, 4.0, 1.0) AS rank,
+        `SELECT c.*, d.*, c.content_sha256 AS chunk_content_sha256,
+          bm25(retrieval_chunks_fts, 0.0, 0.0, 0.0, 7.0, 4.0, 1.0) AS rank,
           snippet(retrieval_chunks_fts, 5, '', '', ' … ', 32) AS snippet
          FROM retrieval_chunks_fts
          JOIN retrieval_chunks c ON c.chunk_id = retrieval_chunks_fts.chunk_id
