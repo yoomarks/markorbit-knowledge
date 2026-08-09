@@ -9,6 +9,7 @@ import {
 export * from "./conversion-fixture";
 export * from "./controlled-fixture-pipeline";
 export * from "./production-markdown-staging";
+export * from "./production-document-normalization";
 export * from "./http-production-conversion-client";
 export * from "./production-conversion-worker-runtime";
 export * from "./runtime-runner";
