@@ -29,6 +29,7 @@ import {
   getRawArtifactRepository,
   getReadyPackageRepository,
   getRegistryDatabase,
+  getRetrievalIndexRepository,
   getSourceRepository,
   getStagingContentRepository,
   getStagingVerificationRepository,
@@ -308,6 +309,15 @@ export class ProductionConversionWorkerService {
       verificationId: verification.evidence.id,
       verificationOutcome: outcome,
       idempotencyKey: `${input.idempotencyKey}:ready-package`,
+    });
+    getRetrievalIndexRepository().indexVerified({
+      metadata,
+      stagingDocumentId: descriptor.id,
+      readyPackageId: packageResult.readyPackage.id,
+      title: descriptor.title,
+      targetPath: descriptor.targetPath,
+      contentSha256: descriptor.contentHash.value,
+      canonicalMarkdown: input.content,
     });
     const coreIntakeRequest = createCoreIntakeRequest(packageResult.readyPackage);
     return {
