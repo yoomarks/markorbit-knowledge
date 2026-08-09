@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 import {
+  CANONICAL_MARKDOWN_OBJECT_TYPE,
+  CANONICAL_MARKDOWN_VERSION,
+  isCanonicalMarkdownMetadataV1,
+  type CanonicalMarkdownMetadataV1,
   type ConversionLease,
   type RawArtifactReadGrant,
   type RuntimeConverterRef,
@@ -24,6 +28,7 @@ export type ProductionMarkdownStagingContext = {
   conversionAttemptId: string;
   rawArtifactId: string;
   sourceId: string;
+  documentMetadata: CanonicalMarkdownMetadataV1;
   lease: ConversionLease;
   converter: RuntimeConverterRef;
   inputGrant: RawArtifactReadGrant;
@@ -92,6 +97,14 @@ function quoted(value: string): string {
   return JSON.stringify(value);
 }
 
+function nullableQuoted(value: string | null): string {
+  return value === null ? "null" : quoted(value);
+}
+
+function quotedList(values: string[]): string {
+  return `[${values.map(quoted).join(", ")}]`;
+}
+
 function assertExactBinding(context: ProductionMarkdownStagingContext): void {
   const expected = PRODUCTION_MARKDOWN_STAGING_CONVERTER;
   if (
@@ -119,6 +132,21 @@ function assertExactBinding(context: ProductionMarkdownStagingContext): void {
   ) {
     throw new Error("MARKDOWN_STAGING_GRANT_SCOPE_MISMATCH");
   }
+  const metadata = context.documentMetadata;
+  if (
+    !isCanonicalMarkdownMetadataV1(metadata) ||
+    metadata.schemaVersion !== CANONICAL_MARKDOWN_VERSION ||
+    metadata.objectType !== CANONICAL_MARKDOWN_OBJECT_TYPE ||
+    metadata.workspaceId !== context.workspaceId ||
+    metadata.sourceId !== context.sourceId ||
+    metadata.rawArtifactId !== context.rawArtifactId ||
+    metadata.conversionRunId !== context.conversionRunId ||
+    metadata.converterId !== context.converter.converterId ||
+    metadata.converterVersion !== context.converter.version ||
+    metadata.inputSha256 !== context.inputGrant.expectedSha256
+  ) {
+    throw new Error("MARKDOWN_STAGING_CANONICAL_METADATA_MISMATCH");
+  }
   if (context.lease.status !== "ACTIVE") throw new Error("MARKDOWN_STAGING_LEASE_NOT_ACTIVE");
   if (context.inputGrant.expectedMime.toLowerCase() !== "text/markdown") {
     throw new Error("MARKDOWN_STAGING_INPUT_MIME_UNSUPPORTED");
@@ -133,6 +161,41 @@ function decodeUtf8(content: Uint8Array): string {
     .decode(content)
     .replace(/^\uFEFF/, "")
     .replace(/\r\n?/g, "\n");
+}
+
+export function canonicalMarkdownFrontmatter(metadata: CanonicalMarkdownMetadataV1): string {
+  if (!isCanonicalMarkdownMetadataV1(metadata)) {
+    throw new Error("CANONICAL_MARKDOWN_METADATA_INVALID");
+  }
+  return [
+    "---",
+    "markorbit:",
+    `  schemaVersion: ${quoted(metadata.schemaVersion)}`,
+    `  objectType: ${quoted(metadata.objectType)}`,
+    `  documentId: ${quoted(metadata.documentId)}`,
+    `  workspaceId: ${quoted(metadata.workspaceId)}`,
+    `  sourceId: ${quoted(metadata.sourceId)}`,
+    `  sourceName: ${quoted(metadata.sourceName)}`,
+    `  sourceCategory: ${quoted(metadata.sourceCategory)}`,
+    `  authorityLevel: ${quoted(metadata.authorityLevel)}`,
+    `  jurisdictions: ${quotedList(metadata.jurisdictions)}`,
+    `  languages: ${quotedList(metadata.languages)}`,
+    `  rawArtifactId: ${quoted(metadata.rawArtifactId)}`,
+    `  logicalDocumentId: ${nullableQuoted(metadata.logicalDocumentId)}`,
+    `  artifactVersion: ${metadata.artifactVersion}`,
+    `  artifactKind: ${quoted(metadata.artifactKind)}`,
+    `  originalName: ${quoted(metadata.originalName)}`,
+    `  canonicalUri: ${nullableQuoted(metadata.canonicalUri)}`,
+    `  sourceUri: ${quoted(metadata.sourceUri)}`,
+    `  capturedAt: ${quoted(metadata.capturedAt)}`,
+    `  publishedAt: ${nullableQuoted(metadata.publishedAt)}`,
+    `  conversionRunId: ${quoted(metadata.conversionRunId)}`,
+    `  converterId: ${quoted(metadata.converterId)}`,
+    `  converterVersion: ${quoted(metadata.converterVersion)}`,
+    `  inputSha256: ${quoted(metadata.inputSha256)}`,
+    "---",
+    "",
+  ].join("\n");
 }
 
 export function convertProductionMarkdownToStaging(
@@ -152,21 +215,8 @@ export function convertProductionMarkdownToStaging(
 
   const body = decodeUtf8(input);
   if (!body.trim()) throw new Error("MARKDOWN_STAGING_INPUT_EMPTY");
-  const frontmatter = [
-    "---",
-    "markorbit:",
-    `  workspaceId: ${quoted(context.workspaceId)}`,
-    `  sourceId: ${quoted(context.sourceId)}`,
-    `  rawArtifactId: ${quoted(context.rawArtifactId)}`,
-    `  conversionRunId: ${quoted(context.conversionRunId)}`,
-    `  converterId: ${quoted(PRODUCTION_MARKDOWN_STAGING_CONVERTER.converterId)}`,
-    `  converterVersion: ${quoted(PRODUCTION_MARKDOWN_STAGING_CONVERTER.version)}`,
-    `  inputSha256: ${quoted(context.inputGrant.expectedSha256)}`,
-    "---",
-    "",
-  ].join("\n");
   const output = new TextEncoder().encode(
-    `${frontmatter}${body}${body.endsWith("\n") ? "" : "\n"}`,
+    `${canonicalMarkdownFrontmatter(context.documentMetadata)}${body}${body.endsWith("\n") ? "" : "\n"}`,
   );
   const maximumOutput = Math.min(
     PRODUCTION_MARKDOWN_STAGING_LIMITS.maximumOutputBytes,
@@ -216,7 +266,7 @@ export class ProductionMarkdownStagingExecutor {
       const evidence = outputEvidence(context, markdown);
       await client.progress(
         context,
-        { percent: 75, message: "Reporting deterministic Markdown output evidence" },
+        { percent: 75, message: "Reporting canonical Markdown output evidence" },
         `${prefix}-output-evidence`,
       );
       await client.outputReady(context, evidence, `${prefix}-output-ready`);
