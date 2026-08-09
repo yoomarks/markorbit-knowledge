@@ -42,9 +42,54 @@ The control plane recomputes the expected frontmatter before Staging ingestion a
 
 ## Current input boundary
 
-M3.1 canonicalizes collected `MARKDOWN` RawArtifacts. The existing Crawl4AI collection path already produces Markdown evidence, so M3.1 deliberately reuses that bounded production path instead of adding a second HTML parser.
+M3.1 canonicalized collected `MARKDOWN` RawArtifacts.
 
-Arbitrary HTML/PDF/DOCX normalization, OCR and attachment extraction remain later M3 work and must preserve the same canonical document/provenance contract.
+M3.2 extends the same controlled production path to:
+
+- `HTML` / `text/html` / `application/xhtml+xml` RawArtifacts;
+- `PDF` / `application/pdf` RawArtifacts that contain an extractable text layer.
+
+All three production converters are explicit, versioned and registered in the control plane:
+
+- `builtin-markdown-staging@1.0.0`;
+- `builtin-html-markdown@1.0.0`;
+- `builtin-pdf-markdown@1.0.0`.
+
+The production Worker advertises only these exact converter versions and dispatches by the ConversionRun-bound converter identity. HTML/PDF conversion therefore uses the same lease, immutable RawArtifact read grant, output grant, provenance verification, Staging verification and ReadyPackage finalization controls already established by M3.1.
+
+## HTML normalization
+
+The built-in HTML normalizer is deterministic and evidence-oriented. It preserves document-level structure needed for retrieval while avoiding professional interpretation:
+
+- headings;
+- paragraphs and block boundaries;
+- lists;
+- links, except unsafe executable/data schemes;
+- emphasis and inline code;
+- simple table cell/row boundaries;
+- preformatted text.
+
+Scripts, styles, templates, SVG content and comments are removed. HTML entities are decoded. The converter does not infer trademark rules, deadlines, procedures, legal effect or business meaning.
+
+## PDF normalization
+
+M3.2 supports text-layer PDFs without adding OCR. The built-in PDF normalizer:
+
+- validates the `%PDF-` header;
+- reads text operators from PDF content streams;
+- supports uncompressed streams and Flate-compressed streams;
+- handles common literal-string and hexadecimal text operators;
+- emits ordinary Markdown text under the same Canonical Markdown provenance block.
+
+If a PDF has no extractable text through the bounded deterministic parser, conversion fails closed with `PDF_NORMALIZATION_NO_EXTRACTABLE_TEXT`. It does not guess, synthesize content or silently treat an image-only/scanned PDF as text.
+
+This means scanned documents, complex font/CMap decoding, OCR and richer PDF layout reconstruction remain later acquisition/normalization work. They must preserve the same RawArtifact and provenance chain rather than bypassing it.
+
+## Converter registration and policy
+
+The admin control plane ensures the three M3 converter manifests exist when repositories are initialized. This only makes conversion capabilities available; it does not create collection authority, collection schedules or professional knowledge semantics.
+
+Conversion Profiles remain explicit control-plane configuration. M3.2 does not silently create source-specific policy or decide which sources MO should collect.
 
 ## Obsidian
 
@@ -74,9 +119,9 @@ Those meanings remain owned by MarkOrbit Core / MO. M3 supplies reliable evidenc
 
 ## Next increments
 
-After M3.1 is proven on the live USPTO path, the next data-supply gaps are:
+With MARKDOWN/HTML/text-layer PDF normalization in place, the next data-supply gaps are:
 
-1. arbitrary HTML/PDF normalization into the same Canonical Markdown contract;
-2. lightweight enrichment and chunk/index generation;
+1. OCR and richer attachment/document extraction where deterministic text extraction is insufficient;
+2. lightweight enrichment, chunking and index generation;
 3. stable retrieval APIs for MO;
 4. change feed/version delivery.
