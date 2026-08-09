@@ -1,0 +1,135 @@
+name: USPTO Foundational Coverage Live Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/us-foundational-source-bootstrap
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uspto-foundational-coverage-live-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+      MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
+      MARKORBIT_COVERAGE_TIMEOUT_MS: "900000"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure isolated state
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-coverage.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-coverage-artifacts" >> "$GITHUB_ENV"
+          echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/source-coverage?jurisdiction=US&coverageTier=FOUNDATIONAL" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/admin.log"
+          exit 1
+
+      - name: Register foundational sources and dispatch representative manual runs
+        run: |
+          pnpm --filter @markorbit/worker bootstrap:coverage -- --dispatch-representative > "$RUNNER_TEMP/bootstrap.raw"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/bootstrap.raw', 'utf8');
+          const start = raw.indexOf('{');
+          const end = raw.lastIndexOf('}');
+          if (start < 0 || end < start) throw new Error('Coverage bootstrap did not emit JSON');
+          const value = JSON.parse(raw.slice(start, end + 1));
+          if (value.targetCount !== 11 || value.registeredCount !== 11) {
+            throw new Error(`Expected 11 registered foundational targets, got ${value.registeredCount}/${value.targetCount}`);
+          }
+          if (!Array.isArray(value.runs) || value.runs.length !== 4) {
+            throw new Error(`Expected four representative runs, got ${value.runs?.length}`);
+          }
+          if (typeof value.workerId !== 'string' || !value.workerId) throw new Error('Missing workerId');
+          if (typeof value.workerCredential !== 'string' || !value.workerCredential) {
+            throw new Error('Fresh isolated bootstrap must return workerCredential');
+          }
+          process.stdout.write(`::add-mask::${value.workerCredential}\n`);
+          fs.appendFileSync(
+            process.env.GITHUB_ENV,
+            [
+              `MARKORBIT_WORKER_ID=${value.workerId}`,
+              `MARKORBIT_WORKER_CREDENTIAL=${value.workerCredential}`,
+              `MARKORBIT_COVERAGE_RUN_IDS=${value.runs.map((run) => run.runId).join(',')}`,
+              '',
+            ].join('\n'),
+          );
+          NODE
+          rm -f "$RUNNER_TEMP/bootstrap.raw"
+
+      - name: Start production Worker protocol with CI direct-egress exception
+        env:
+          NODE_ENV: test
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
+          MARKORBIT_CRAWL4AI_PYTHON: python
+          MARKORBIT_WORKER_POLL_INTERVAL_MS: "500"
+          MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "15000"
+          MARKORBIT_WORKER_MAX_ACQUISITION_MS: "420000"
+        run: |
+          pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker.log" 2>&1 &
+          echo "WORKER_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Verify registration and representative live RawArtifact evidence
+        run: pnpm --filter @markorbit/worker verify:coverage -- "$MARKORBIT_COVERAGE_RUN_IDS"
+
+      - name: Stop local processes
+        if: always()
+        run: |
+          if [ -n "${WORKER_PID:-}" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+
+      - name: Upload sanitized smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uspto-foundational-coverage-live-smoke-logs
+          path: |
+            ${{ runner.temp }}/admin.log
+            ${{ runner.temp }}/worker.log
+          if-no-files-found: ignore
+          retention-days: 7

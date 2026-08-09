@@ -7,8 +7,10 @@
     "start": "tsx src/main.ts",
     "bootstrap:uspto": "tsx src/bootstrap-uspto.ts",
     "bootstrap:uspto-conversion": "tsx src/bootstrap-uspto-conversion.ts",
+    "bootstrap:coverage": "tsx src/bootstrap-source-coverage.ts",
     "verify:uspto": "tsx src/verify-uspto-golden-source.ts",
     "verify:uspto-pipeline": "tsx src/verify-uspto-full-pipeline.ts",
+    "verify:coverage": "tsx src/verify-source-coverage.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
