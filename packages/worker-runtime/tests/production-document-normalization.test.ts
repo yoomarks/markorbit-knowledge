@@ -22,7 +22,8 @@ function context(
   mime: string,
   input: Uint8Array,
 ): ProductionMarkdownStagingContext {
-  const converter = kind === "HTML" ? PRODUCTION_HTML_MARKDOWN_CONVERTER : PRODUCTION_PDF_MARKDOWN_CONVERTER;
+  const converter =
+    kind === "HTML" ? PRODUCTION_HTML_MARKDOWN_CONVERTER : PRODUCTION_PDF_MARKDOWN_CONVERTER;
   const inputSha = createHash("sha256").update(input).digest("hex");
   return {
     workspaceId: "wsp_01H00000000000000000000000",

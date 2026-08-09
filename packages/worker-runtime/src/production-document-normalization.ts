@@ -108,12 +108,15 @@ export function normalizeHtmlToMarkdown(input: Uint8Array): string {
       const plain = decodeHtmlEntities(String(body).replace(/<[^>]+>/g, "")).trim();
       return plain ? `\`${plain.replace(/`/g, "\\`")}\`` : "";
     })
-    .replace(/<a\b[^>]*href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a\s*>/gi, (_match, doubleQuoted, singleQuoted, bare, body) => {
-      const label = decodeHtmlEntities(String(body).replace(/<[^>]+>/g, "")).trim();
-      const href = safeHref(String(doubleQuoted ?? singleQuoted ?? bare ?? ""));
-      if (!label) return href ?? "";
-      return href ? `[${label}](${href})` : label;
-    });
+    .replace(
+      /<a\b[^>]*href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a\s*>/gi,
+      (_match, doubleQuoted, singleQuoted, bare, body) => {
+        const label = decodeHtmlEntities(String(body).replace(/<[^>]+>/g, "")).trim();
+        const href = safeHref(String(doubleQuoted ?? singleQuoted ?? bare ?? ""));
+        if (!label) return href ?? "";
+        return href ? `[${label}](${href})` : label;
+      },
+    );
 
   for (let level = 6; level >= 1; level -= 1) {
     const pattern = new RegExp(`<h${level}\\b[^>]*>([\\s\\S]*?)<\\/h${level}\\s*>`, "gi");
@@ -205,7 +208,10 @@ function extractPdfTextOperators(stream: string): string[] {
   const output: string[] = [];
   const textBlocks = stream.match(/BT[\s\S]*?ET/g) ?? [];
   for (const block of textBlocks) {
-    const operators = block.match(/\((?:\\.|[^\\)])*\)\s*(?:Tj|'|")|<\s*[0-9A-Fa-f\s]+\s*>\s*Tj|\[[\s\S]*?\]\s*TJ/g) ?? [];
+    const operators =
+      block.match(
+        /\((?:\\.|[^\\)])*\)\s*(?:Tj|'|")|<\s*[0-9A-Fa-f\s]+\s*>\s*Tj|\[[\s\S]*?\]\s*TJ/g,
+      ) ?? [];
     for (const operator of operators) {
       if (operator.trimStart().startsWith("[")) {
         const body = operator.slice(operator.indexOf("[") + 1, operator.lastIndexOf("]"));
@@ -317,7 +323,11 @@ function assertExactBinding(context: ProductionMarkdownStagingContext): void {
   }
   if (context.lease.status !== "ACTIVE") throw new Error("DOCUMENT_NORMALIZATION_LEASE_NOT_ACTIVE");
   const mime = context.inputGrant.expectedMime.toLowerCase();
-  if (metadata.artifactKind === "HTML" && mime !== "text/html" && mime !== "application/xhtml+xml") {
+  if (
+    metadata.artifactKind === "HTML" &&
+    mime !== "text/html" &&
+    mime !== "application/xhtml+xml"
+  ) {
     throw new Error("HTML_NORMALIZATION_INPUT_MIME_UNSUPPORTED");
   }
   if (metadata.artifactKind === "PDF" && mime !== "application/pdf") {
@@ -389,7 +399,10 @@ export class ProductionDocumentNormalizationExecutor {
       await client.started(context, `${prefix}-started`);
       await client.progress(
         context,
-        { percent: 25, message: `Reading immutable ${context.documentMetadata.artifactKind} RawArtifact` },
+        {
+          percent: 25,
+          message: `Reading immutable ${context.documentMetadata.artifactKind} RawArtifact`,
+        },
         `${prefix}-read`,
       );
       const input = await reader.read(context.inputGrant);
@@ -410,7 +423,8 @@ export class ProductionDocumentNormalizationExecutor {
           context,
           {
             code: failureCode(error),
-            message: error instanceof Error ? error.message : "Controlled document normalization failed",
+            message:
+              error instanceof Error ? error.message : "Controlled document normalization failed",
             retryable: false,
           },
           `${prefix}-failed`,

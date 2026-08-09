@@ -103,7 +103,8 @@ export class ProductionConversionWorkerRuntime {
       runContext.workspaceId !== this.workspaceId ||
       runContext.conversionRunId !== summary.conversionRunId ||
       runContext.rawArtifactId !== summary.rawArtifactId ||
-      runContext.documentMetadata.inputSha256 !== claimed.result.rawArtifactReadGrant.expectedSha256 ||
+      runContext.documentMetadata.inputSha256 !==
+        claimed.result.rawArtifactReadGrant.expectedSha256 ||
       runContext.documentMetadata.converterId !== claimed.result.converter.converterId ||
       runContext.documentMetadata.converterVersion !== claimed.result.converter.version
     ) {
