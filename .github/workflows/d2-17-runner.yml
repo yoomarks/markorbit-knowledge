@@ -1,0 +1,77 @@
+name: D2.17 Runner
+
+on:
+  push:
+    branches:
+      - codex/d2-17-historical-policy-resolution
+    paths:
+      - .github/workflows/d2-17-runner.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/d2-17-historical-policy-resolution
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Execute implementation block
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+          source = Path('.github/workflows/d2-17-apply.yml').read_text()
+          marker = "          python - <<'PY'\n"
+          start = source.index(marker) + len(marker)
+          end = source.index("\n          PY\n", start)
+          block = textwrap.dedent(source[start:end])
+          exec(compile(block, 'd2-17-apply.py', 'exec'))
+          PY
+      - name: Format and focused tests
+        run: |
+          pnpm exec prettier --write \
+            packages/contracts/src/source-intelligence-historical-policy-resolution-v2.ts \
+            packages/contracts/src/index.ts \
+            packages/persistence/package.json \
+            packages/persistence/src/source-intelligence-policy-resolution-registry.ts \
+            packages/persistence/tests/source-intelligence-policy-resolution-registry.test.ts \
+            packages/worker-runtime/src/index.ts \
+            packages/worker-runtime/src/source-intelligence-historical-policy-resolution.ts \
+            packages/worker-runtime/tests/source-intelligence-historical-policy-resolution.test.ts \
+            apps/admin/src/server/source-intelligence-review-service.ts \
+            apps/admin/src/app/api/source-intelligence/reviews/policy-resolution/route.ts \
+            apps/admin/src/components/sources/source-intelligence-policy-resolution.tsx \
+            'apps/admin/src/app/[section]/page.tsx' \
+            docs/architecture/SOURCE_INTELLIGENCE_D2_17_HISTORICAL_POLICY_RESOLUTION.md
+          pnpm --filter @markorbit/persistence test -- source-intelligence-policy-resolution-registry.test.ts
+          pnpm --filter @markorbit/worker-runtime test -- source-intelligence-historical-policy-resolution.test.ts
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/contracts/src/source-intelligence-historical-policy-resolution-v2.ts \
+            packages/contracts/src/index.ts \
+            packages/persistence/package.json \
+            packages/persistence/src/source-intelligence-policy-resolution-registry.ts \
+            packages/persistence/tests/source-intelligence-policy-resolution-registry.test.ts \
+            packages/worker-runtime/src/index.ts \
+            packages/worker-runtime/src/source-intelligence-historical-policy-resolution.ts \
+            packages/worker-runtime/tests/source-intelligence-historical-policy-resolution.test.ts \
+            apps/admin/src/server/source-intelligence-review-service.ts \
+            apps/admin/src/app/api/source-intelligence/reviews/policy-resolution/route.ts \
+            apps/admin/src/components/sources/source-intelligence-policy-resolution.tsx \
+            'apps/admin/src/app/[section]/page.tsx' \
+            docs/architecture/SOURCE_INTELLIGENCE_D2_17_HISTORICAL_POLICY_RESOLUTION.md
+          git commit -m "feat: add D2.17 historical policy resolution"
+          git push origin HEAD:codex/d2-17-historical-policy-resolution
