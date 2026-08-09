@@ -9,7 +9,8 @@
     "./foundational-remediation-queue": "./src/foundational-remediation-queue.ts",
     "./foundational-remediation-snapshot": "./src/foundational-remediation-snapshot.ts",
     "./foundational-action-intent": "./src/foundational-action-intent.ts",
-    "./foundational-action-execution": "./src/foundational-action-execution.ts"
+    "./foundational-action-execution": "./src/foundational-action-execution.ts",
+    "./foundational-collection-outcome": "./src/foundational-collection-outcome.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
