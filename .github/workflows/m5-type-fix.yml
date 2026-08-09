@@ -27,15 +27,17 @@ jobs:
       - run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           path = Path('packages/persistence/src/source-coverage-catalog.ts')
           text = path.read_text()
-          old = '    | "catalogState"\n  > & {'
-          new = '    | "catalogState"\n    | "verificationEvidenceUri"\n  > & {'
-          if old not in text:
-              raise SystemExit('source coverage helper target not found')
-          path.write_text(text.replace(old, new, 1))
+          pattern = r'(\| "catalogState"\s*\n)(\s*\| "verifiedAt")'
+          updated, count = re.subn(pattern, r'\1    | "verificationEvidenceUri"\n\2', text, count=1)
+          if count != 1:
+              raise SystemExit(f'expected one source coverage helper target, got {count}')
+          path.write_text(updated)
           PY
           pnpm exec prettier --write packages/persistence/src/source-coverage-catalog.ts
+          pnpm --filter @markorbit/persistence typecheck
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
