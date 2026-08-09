@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   fix:
-    if: github.actor != 'github-actions[bot]'
+    if: ${{ !contains(github.event.head_commit.message, 'M11 close retry lineage crash window') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,32 +24,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Exclude retry lineage from new recovery cases
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('apps/admin/src/server/conversion-failure-recovery.ts')
-          text = path.read_text()
-          old = """           WHERE c.workspace_id = r.workspace_id
-             AND (c.root_run_id = r.id OR c.latest_run_id = r.id)
-         )"""
-          new = """           WHERE c.workspace_id = r.workspace_id
-             AND (
-               c.root_run_id = r.id
-               OR c.latest_run_id = r.id
-               OR EXISTS (
-                 SELECT 1
-                 FROM json_each(c.document_json, '$.replacementRunIds') replacements
-                 WHERE replacements.value = r.id
-               )
-               OR r.idempotency_key LIKE 'failure-retry:' || c.id || ':%'
-               OR r.idempotency_key LIKE 'operator-retry:' || c.id || ':%'
-             )
-         )"""
-          if old not in text:
-              raise SystemExit('candidate query pattern not found')
-          path.write_text(text.replace(old, new))
-          PY
+      - run: python scripts/m11-lineage-fix.py
       - run: pnpm exec prettier --write apps/admin/src/server/conversion-failure-recovery.ts apps/admin/src/server/__tests__/conversion-failure-recovery.test.ts
       - run: pnpm --filter @markorbit/admin typecheck
       - run: pnpm --filter @markorbit/admin test -- conversion-failure-recovery
