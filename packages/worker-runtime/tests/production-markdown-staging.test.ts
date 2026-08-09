@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   PRODUCTION_MARKDOWN_STAGING_CONVERTER,
   ProductionMarkdownStagingExecutor,
+  canonicalMarkdownFrontmatter,
   convertProductionMarkdownToStaging,
   type ProductionConversionRuntimeClient,
   type ProductionMarkdownStagingContext,
@@ -21,6 +22,31 @@ function context(): ProductionMarkdownStagingContext {
     conversionAttemptId: "cva_01H00000000000000000000000",
     rawArtifactId: "art_01H00000000000000000000000",
     sourceId: "src_01H00000000000000000000000",
+    documentMetadata: {
+      schemaVersion: "1.0",
+      objectType: "CANONICAL_MARKDOWN_METADATA",
+      documentId: "doc-uspto-trademarks",
+      workspaceId: "wsp_01H00000000000000000000000",
+      sourceId: "src_01H00000000000000000000000",
+      sourceName: "USPTO Trademarks",
+      sourceCategory: "OFFICIAL_GUIDANCE",
+      authorityLevel: "PRIMARY_OFFICIAL",
+      jurisdictions: ["US"],
+      languages: ["en"],
+      rawArtifactId: "art_01H00000000000000000000000",
+      logicalDocumentId: "doc-uspto-trademarks",
+      artifactVersion: 3,
+      artifactKind: "MARKDOWN",
+      originalName: "trademarks.md",
+      canonicalUri: "https://www.uspto.gov/trademarks",
+      sourceUri: "https://www.uspto.gov/trademarks",
+      capturedAt: "2026-08-08T00:00:00.000Z",
+      publishedAt: null,
+      conversionRunId: "cvr_01H00000000000000000000000",
+      converterId: PRODUCTION_MARKDOWN_STAGING_CONVERTER.converterId,
+      converterVersion: PRODUCTION_MARKDOWN_STAGING_CONVERTER.version,
+      inputSha256: inputSha,
+    },
     converter: PRODUCTION_MARKDOWN_STAGING_CONVERTER,
     lease: {
       contractVersion: "1.0",
@@ -84,18 +110,25 @@ function context(): ProductionMarkdownStagingContext {
 }
 
 describe("production Markdown staging converter", () => {
-  it("produces deterministic verifier-compatible provenance frontmatter", () => {
+  it("produces deterministic canonical verifier-compatible frontmatter", () => {
     const first = convertProductionMarkdownToStaging(context(), input);
     const second = convertProductionMarkdownToStaging(context(), input);
     expect(Buffer.from(first).equals(Buffer.from(second))).toBe(true);
     const markdown = new TextDecoder().decode(first);
+    expect(markdown).toContain('objectType: "CANONICAL_MARKDOWN_METADATA"');
+    expect(markdown).toContain('documentId: "doc-uspto-trademarks"');
+    expect(markdown).toContain('sourceName: "USPTO Trademarks"');
+    expect(markdown).toContain('authorityLevel: "PRIMARY_OFFICIAL"');
+    expect(markdown).toContain('jurisdictions: ["US"]');
+    expect(markdown).toContain('canonicalUri: "https://www.uspto.gov/trademarks"');
     expect(markdown).toContain('converterId: "builtin-markdown-staging"');
     expect(markdown).toContain(`inputSha256: "${inputSha}"`);
     expect(markdown).toContain("# USPTO Trademarks\n\nOfficial guidance.\n");
     expect(markdown).not.toContain("\r");
+    expect(markdown.startsWith(canonicalMarkdownFrontmatter(context().documentMetadata))).toBe(true);
   });
 
-  it("rejects MIME, size, digest and exact Converter mismatches", () => {
+  it("rejects MIME, size, digest, metadata and exact Converter mismatches", () => {
     const wrongMime = context();
     wrongMime.inputGrant.expectedMime = "text/html";
     expect(() => convertProductionMarkdownToStaging(wrongMime, input)).toThrow(
@@ -111,7 +144,13 @@ describe("production Markdown staging converter", () => {
     const wrongDigest = context();
     wrongDigest.inputGrant.expectedSha256 = "d".repeat(64);
     expect(() => convertProductionMarkdownToStaging(wrongDigest, input)).toThrow(
-      "MARKDOWN_STAGING_INPUT_DIGEST_MISMATCH",
+      "MARKDOWN_STAGING_CANONICAL_METADATA_MISMATCH",
+    );
+
+    const wrongMetadata = context();
+    wrongMetadata.documentMetadata.sourceId = "src_01H11111111111111111111111";
+    expect(() => convertProductionMarkdownToStaging(wrongMetadata, input)).toThrow(
+      "MARKDOWN_STAGING_CANONICAL_METADATA_MISMATCH",
     );
 
     const wrongConverter = context();
