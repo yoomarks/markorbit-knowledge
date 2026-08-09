@@ -343,7 +343,8 @@ export async function operateUsFoundationalBatch(
     approvedTargetIds: selected,
     approvalRequired: false,
     runs: execution.runs,
-    collectionAuthorization: execution.collectionAuthorization,
+    collectionAuthorization:
+      execution.runs.length > 0 ? "EXPLICIT_TARGET_MANUAL_RUNS_DISPATCHED" : "NONE",
     readiness: await loadReadiness(fetchImpl, baseUrl, options.workspaceId, allTargetIds),
   };
 }
