@@ -23,6 +23,10 @@ import {
 import { canonicalMarkdownFrontmatter, createCoreIntakeRequest } from "@markorbit/worker-runtime";
 import { canonicalDocumentMetadata } from "./canonical-document-metadata";
 import {
+  reconcileAutomaticConversions,
+  type AutomaticConversionReconciliationResult,
+} from "./raw-artifact-auto-conversion";
+import {
   getConversionRunLedgerRepository,
   getConversionRuntimeRepository,
   getConversionRuntimeTransitionRepository,
@@ -58,6 +62,14 @@ export type ProductionStagingCommitResult = {
   readyPackageId?: string;
   coreIntakeRequest?: CoreIntakeRequest;
 };
+
+export type AutomaticConversionRecoveryStatus =
+  | AutomaticConversionReconciliationResult
+  | {
+      status: "DEFERRED";
+      workspaceId: string;
+      reason: "RECOVERY_SCAN_FAILED";
+    };
 
 function sha256(content: Uint8Array): string {
   return createHash("sha256").update(content).digest("hex");
@@ -96,6 +108,7 @@ export class ProductionConversionWorkerService {
   ): {
     result: ConversionClaimResult;
     replayed: boolean;
+    reconciliation: AutomaticConversionRecoveryStatus;
   } {
     const worker = getWorkerRegistryRepository().verifyCredential(request.workerId, credential);
     if (worker.workspaceId !== request.workspaceId) {
@@ -104,7 +117,23 @@ export class ProductionConversionWorkerService {
         "Worker credential belongs to another Workspace",
       );
     }
-    return getConversionRuntimeRepository().claim(request);
+
+    let reconciliation: AutomaticConversionRecoveryStatus;
+    try {
+      reconciliation = reconcileAutomaticConversions(request.workspaceId, { limit: 25 });
+    } catch {
+      // Recovery must never prevent a Worker from claiming ConversionRuns that are already queued.
+      reconciliation = {
+        status: "DEFERRED",
+        workspaceId: request.workspaceId,
+        reason: "RECOVERY_SCAN_FAILED",
+      };
+    }
+
+    return {
+      ...getConversionRuntimeRepository().claim(request),
+      reconciliation,
+    };
   }
 
   readInput(
