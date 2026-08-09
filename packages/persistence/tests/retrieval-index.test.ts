@@ -135,11 +135,15 @@ describe("retrieval index", () => {
     };
     expect(repository.indexVerified(input).replayed).toBe(false);
     expect(repository.indexVerified(input).replayed).toBe(true);
-    expect(() =>
+
+    try {
       repository.indexVerified({
         ...input,
         contentSha256: "f".repeat(64),
-      }),
-    ).toThrow("RETRIEVAL_CONTENT_DIGEST_MISMATCH");
+      });
+      throw new Error("expected digest mismatch");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "RETRIEVAL_CONTENT_DIGEST_MISMATCH" });
+    }
   });
 });
