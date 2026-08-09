@@ -31,6 +31,10 @@ import {
   type ConversionRuntimeTransitionRepository,
 } from "@markorbit/persistence/conversion-runtime-transitions";
 import {
+  SqliteDocumentIndexRegistryRepository,
+  type DocumentIndexRegistryRepository,
+} from "@markorbit/persistence/document-index";
+import {
   SqliteExecutionLedgerRepository,
   type ExecutionLedgerRepository,
 } from "@markorbit/persistence/execution-ledger";
@@ -101,6 +105,7 @@ const globalRegistry = globalThis as typeof globalThis & {
     staging: StagingContentRegistryRepository;
     stagingVerification: StagingVerificationRepository;
     stagingFinalizer: VerifiedStagingFinalizationRepository;
+    documentIndexes: DocumentIndexRegistryRepository;
     readyPackages: ReadyPackageRegistryRepository;
   };
 };
@@ -168,6 +173,7 @@ function getRegistries() {
         stagingVerification,
         conversionTransitions,
       ),
+      documentIndexes: new SqliteDocumentIndexRegistryRepository(database),
       readyPackages: new SqliteReadyPackageRegistryRepository(database),
       artifacts: new SqliteRawArtifactRepository(
         database,
@@ -271,6 +277,10 @@ export function getStagingVerificationRepository(): StagingVerificationRepositor
 
 export function getVerifiedStagingFinalizer(): VerifiedStagingFinalizationRepository {
   return getRegistries().stagingFinalizer;
+}
+
+export function getDocumentIndexRepository(): DocumentIndexRegistryRepository {
+  return getRegistries().documentIndexes;
 }
 
 export function getReadyPackageRepository(): ReadyPackageRegistryRepository {
