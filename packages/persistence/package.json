@@ -31,6 +31,7 @@
     "./obsidian-vault-projection": "./src/obsidian-vault-projection.ts",
     "./ready-packages": "./src/ready-package-registry.ts",
     "./retrieval-index": "./src/retrieval-index.ts",
+    "./document-change-feed": "./src/document-change-feed.ts",
     "./local-pipeline-adapter": "./src/local-pipeline-adapter.ts",
     "./conversion-pipeline-inspection": "./src/conversion-pipeline-inspection.ts"
   },

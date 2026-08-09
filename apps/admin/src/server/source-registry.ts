@@ -31,6 +31,10 @@ import {
   type ConversionRuntimeTransitionRepository,
 } from "@markorbit/persistence/conversion-runtime-transitions";
 import {
+  SqliteDocumentChangeFeedRepository,
+  type DocumentChangeFeedRepository,
+} from "@markorbit/persistence/document-change-feed";
+import {
   SqliteExecutionLedgerRepository,
   type ExecutionLedgerRepository,
 } from "@markorbit/persistence/execution-ledger";
@@ -82,6 +86,7 @@ import {
   SqliteWorkerRegistryRepository,
   type WorkerRegistryRepository,
 } from "@markorbit/persistence/workers";
+import { ChangeAwareRetrievalIndexRepository } from "./change-aware-retrieval-index";
 import { ensureM3CanonicalDocumentConverters } from "./m3-converter-bootstrap";
 
 const globalRegistry = globalThis as typeof globalThis & {
@@ -107,6 +112,7 @@ const globalRegistry = globalThis as typeof globalThis & {
     stagingFinalizer: VerifiedStagingFinalizationRepository;
     readyPackages: ReadyPackageRegistryRepository;
     retrieval: RetrievalIndexRepository;
+    changeFeed: DocumentChangeFeedRepository;
   };
 };
 
@@ -149,6 +155,9 @@ function getRegistries() {
     const conversionTransitions = new SqliteConversionRuntimeTransitionRepository(database);
     const stagingVerification = new SqliteStagingVerificationRepository(database, staging);
     const converters = new SqliteConverterRegistryRepository(database);
+    const retrievalBase = new SqliteRetrievalIndexRepository(database);
+    const changeFeed = new SqliteDocumentChangeFeedRepository(database);
+    const retrieval = new ChangeAwareRetrievalIndexRepository(retrievalBase, changeFeed);
     ensureM3CanonicalDocumentConverters(converters);
     globalRegistry.markorbitRegistries = {
       database,
@@ -174,7 +183,8 @@ function getRegistries() {
         conversionTransitions,
       ),
       readyPackages: new SqliteReadyPackageRegistryRepository(database),
-      retrieval: new SqliteRetrievalIndexRepository(database),
+      retrieval,
+      changeFeed,
       artifacts: new SqliteRawArtifactRepository(
         database,
         process.env.MARKORBIT_ARTIFACT_STORE_PATH ?? defaultArtifactStorePath(),
@@ -285,4 +295,8 @@ export function getReadyPackageRepository(): ReadyPackageRegistryRepository {
 
 export function getRetrievalIndexRepository(): RetrievalIndexRepository {
   return getRegistries().retrieval;
+}
+
+export function getDocumentChangeFeedRepository(): DocumentChangeFeedRepository {
+  return getRegistries().changeFeed;
 }

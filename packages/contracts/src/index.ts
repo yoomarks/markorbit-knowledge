@@ -12,6 +12,7 @@ export * from "./conversion-execution-v1";
 export * from "./conversion-runtime-v1";
 export * from "./canonical-markdown-v1";
 export * from "./retrieval-v1";
+export * from "./change-feed-v1";
 export { SOURCE_REGISTRY_VERSION } from "./source-registry-v1";
 export type {
   SourceKind as RegistrySourceKind,
