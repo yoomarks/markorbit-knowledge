@@ -16,6 +16,7 @@
     "./source-intelligence-review-ownership": "./src/source-intelligence-review-ownership-registry.ts",
     "./source-intelligence-manual-sla": "./src/source-intelligence-manual-sla-registry.ts",
     "./source-intelligence-policy-scope": "./src/source-intelligence-policy-scope-registry.ts",
+    "./source-intelligence-policy-resolution": "./src/source-intelligence-policy-resolution-registry.ts",
     "./execution-ledger": "./src/execution-ledger.ts",
     "./workers": "./src/safe-worker-registry.ts",
     "./worker-execution": "./src/controlled-worker-execution.ts",

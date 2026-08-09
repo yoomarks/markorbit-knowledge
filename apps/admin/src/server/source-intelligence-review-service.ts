@@ -15,6 +15,7 @@ import type {
   SourceIntelligencePolicyAuditScope,
   SourceIntelligencePolicyCohortV2,
   SourceIntelligencePolicyScopeAndCohortsV2,
+  SourceIntelligenceHistoricalPolicyResolutionV2,
   SourceIntelligenceReviewQueueOperationalHealthV2,
 } from "@markorbit/contracts";
 import { SOURCE_INTELLIGENCE_POLICY_AUDIT_EXPORT_MAX_EVENTS } from "@markorbit/contracts";
@@ -27,6 +28,10 @@ import {
   SqliteSourceIntelligencePolicyScopeRepository,
   type SourceIntelligencePolicyScopeRepository,
 } from "@markorbit/persistence/source-intelligence-policy-scope";
+import {
+  SqliteSourceIntelligencePolicyResolutionRepository,
+  type SourceIntelligencePolicyResolutionRepository,
+} from "@markorbit/persistence/source-intelligence-policy-resolution";
 import {
   SqliteSourceIntelligenceObservationOwnershipRepository,
   type SourceIntelligenceObservationOwnershipRepository,
@@ -45,6 +50,7 @@ import {
   normalizeSourceIntelligencePolicyAuditFiltersV2,
   normalizeSourceIntelligencePolicyAuditQueryV2,
   buildSourceIntelligencePolicyScopeAndCohortsV2,
+  buildSourceIntelligenceHistoricalPolicyResolutionV2,
   buildSourceIntelligenceReviewQueueOperationalHealthV2,
   sourceIntelligenceObservationReviewKey,
 } from "@markorbit/worker-runtime";
@@ -155,6 +161,7 @@ type ReviewServiceDependencies = {
   ownership: SourceIntelligenceObservationOwnershipRepository;
   manualSla: SourceIntelligenceManualSlaRepository;
   policyScope: SourceIntelligencePolicyScopeRepository;
+  policyResolution: SourceIntelligencePolicyResolutionRepository;
   now?: () => string;
 };
 
@@ -283,6 +290,58 @@ export class SourceIntelligenceReviewService {
       cohorts: this.dependencies.policyScope.listCohorts(),
       memberships: this.dependencies.policyScope.listMemberships({ sourceIds: ids }),
       generatedAt: this.now(),
+    });
+  }
+
+  historicalPolicyResolution(
+    sourceIds: string[],
+    asOf: string,
+  ): SourceIntelligenceHistoricalPolicyResolutionV2 {
+    const ids = normalizeSourceIds(sourceIds);
+    const asOfDate = new Date(asOf);
+    if (!Number.isFinite(asOfDate.getTime())) {
+      throw new RegistryValidationError("asOf must be a valid ISO instant");
+    }
+    const now = new Date(this.now());
+    if (asOfDate.getTime() > now.getTime()) {
+      throw new RegistryValidationError("asOf cannot be in the future");
+    }
+    const checkpoint = this.dependencies.policyResolution.ensureCheckpoint();
+    const completeFromCheckpoint = asOfDate.getTime() >= Date.parse(checkpoint.checkpointAt);
+    const toExclusive = new Date(asOfDate.getTime() + 1).toISOString();
+    const common = {
+      ...(completeFromCheckpoint ? { occurredFromInclusive: checkpoint.checkpointAt } : {}),
+      occurredToExclusive: toExclusive,
+      limit: 5001,
+    };
+    const membershipEvents = this.dependencies.policyScope.listMembershipAuditEvents({
+      ...common,
+      sourceIds: ids,
+    });
+    const relevantCohortIds = [
+      ...new Set([
+        ...checkpoint.memberships
+          .filter((membership) => ids.includes(membership.sourceId))
+          .map((membership) => membership.cohortId),
+        ...membershipEvents
+          .map((event) => event.cohortId)
+          .filter((id): id is string => Boolean(id)),
+      ]),
+    ];
+    const cohortEvents = relevantCohortIds.length
+      ? this.dependencies.policyScope.listCohortAuditEvents({
+          ...common,
+          cohortIds: relevantCohortIds,
+        })
+      : [];
+    return buildSourceIntelligenceHistoricalPolicyResolutionV2({
+      sourceIds: ids,
+      asOf: asOfDate.toISOString(),
+      checkpoint,
+      globalPolicyEvents: this.dependencies.manualSla.listPolicyAuditEvents(common),
+      cohortEvents,
+      membershipEvents,
+      generatedAt: now.toISOString(),
     });
   }
 
@@ -633,6 +692,7 @@ export function getSourceIntelligenceReviewService(): SourceIntelligenceReviewSe
       ownership: new SqliteSourceIntelligenceObservationOwnershipRepository(database),
       manualSla: new SqliteSourceIntelligenceManualSlaRepository(database),
       policyScope: new SqliteSourceIntelligencePolicyScopeRepository(database),
+      policyResolution: new SqliteSourceIntelligencePolicyResolutionRepository(database),
     });
   }
   return singleton;
