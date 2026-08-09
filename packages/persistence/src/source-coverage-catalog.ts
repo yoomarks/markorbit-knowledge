@@ -9,6 +9,7 @@ import {
   type SourceCoverageTier,
   type SourceDefinition,
 } from "@markorbit/contracts";
+import { WIPO_SOURCE_COVERAGE_TARGETS } from "./wipo-source-coverage";
 
 const VERIFIED_AT = "2026-08-09T08:55:00Z";
 const USPTO = "United States Patent and Trademark Office";
@@ -374,6 +375,12 @@ export const US_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+export { WIPO_SOURCE_COVERAGE_TARGETS };
+export const SOURCE_COVERAGE_TARGETS = [
+  ...US_SOURCE_COVERAGE_TARGETS,
+  ...WIPO_SOURCE_COVERAGE_TARGETS,
+] satisfies readonly SourceCoverageTarget[];
+
 export type SourceCoverageFilters = {
   jurisdiction?: string;
   family?: SourceCoverageFamily;
@@ -398,7 +405,7 @@ function normalizeUri(uri: string): string {
 export function listSourceCoverageTargets(
   filters: SourceCoverageFilters = {},
 ): SourceCoverageTarget[] {
-  return US_SOURCE_COVERAGE_TARGETS.filter((item) => {
+  return SOURCE_COVERAGE_TARGETS.filter((item) => {
     if (filters.jurisdiction && item.jurisdiction !== filters.jurisdiction.toUpperCase())
       return false;
     if (filters.family && item.family !== filters.family) return false;
@@ -413,7 +420,7 @@ export function listSourceCoverageTargets(
 }
 
 export function getSourceCoverageTarget(id: string): SourceCoverageTarget | undefined {
-  const item = US_SOURCE_COVERAGE_TARGETS.find((candidate) => candidate.id === id);
+  const item = SOURCE_COVERAGE_TARGETS.find((candidate) => candidate.id === id);
   if (!item) return undefined;
   return { ...item, entrypoints: [...item.entrypoints], acquisition: { ...item.acquisition } };
 }
@@ -441,7 +448,7 @@ export function summarizeSourceCoverage(
 
 export function evaluateSourceCoverage(
   sources: readonly SourceDefinition[],
-  targets: readonly SourceCoverageTarget[] = US_SOURCE_COVERAGE_TARGETS,
+  targets: readonly SourceCoverageTarget[] = SOURCE_COVERAGE_TARGETS,
 ): SourceCoverageRegistration[] {
   const sourceUris = sources.map((source) => ({
     sourceId: source.id,

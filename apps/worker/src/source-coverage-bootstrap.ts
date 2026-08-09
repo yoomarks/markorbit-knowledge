@@ -262,11 +262,12 @@ async function loadCoverage(
   fetchImpl: FetchLike,
   baseUrl: string,
   workspaceId: string,
+  jurisdiction: string,
 ): Promise<{ targets: CoverageTarget[]; registrations: CoverageRegistration[] }> {
   const response = await requestJson(
     fetchImpl,
     baseUrl,
-    `/api/source-coverage?jurisdiction=US&coverageTier=FOUNDATIONAL&catalogState=ACTIVE&workspaceId=${encodeURIComponent(workspaceId)}`,
+    `/api/source-coverage?jurisdiction=${encodeURIComponent(jurisdiction)}&coverageTier=FOUNDATIONAL&catalogState=ACTIVE&workspaceId=${encodeURIComponent(workspaceId)}`,
   );
   return {
     targets: parseCoverageTargets(response.body),
@@ -395,19 +396,24 @@ async function dispatchPlan(
 export type BootstrapCoverageOptions = {
   baseUrl: string;
   workspaceId?: string;
+  jurisdiction?: string;
   dispatchRepresentative?: boolean;
+  representativeTargetIds?: readonly string[];
   fetchImpl?: FetchLike;
 };
 
-export async function bootstrapUsFoundationalCoverage(options: BootstrapCoverageOptions) {
+export async function bootstrapFoundationalCoverage(options: BootstrapCoverageOptions) {
   const fetchImpl = options.fetchImpl ?? fetch;
   const baseUrl = normalizedBaseUrl(options.baseUrl);
   const workspaceId = options.workspaceId ?? DEFAULT_WORKSPACE_ID;
+  const jurisdiction = (options.jurisdiction ?? "US").trim().toUpperCase();
+  if (!jurisdiction) throw new Error("jurisdiction is required");
   await ensureConnector(fetchImpl, baseUrl);
 
-  const initial = await loadCoverage(fetchImpl, baseUrl, workspaceId);
-  if (initial.targets.length === 0)
-    throw new Error("No active US FOUNDATIONAL coverage targets found");
+  const initial = await loadCoverage(fetchImpl, baseUrl, workspaceId, jurisdiction);
+  if (initial.targets.length === 0) {
+    throw new Error(`No active ${jurisdiction} FOUNDATIONAL coverage targets found`);
+  }
   const byRegistration = new Map(initial.registrations.map((value) => [value.targetId, value]));
   const created: Array<{ targetId: string; sourceId: string }> = [];
   const reused: Array<{ targetId: string; sourceIds: string[] }> = [];
@@ -428,7 +434,7 @@ export async function bootstrapUsFoundationalCoverage(options: BootstrapCoverage
     created.push({ targetId: target.id, sourceId: requiredString(source?.id, "source.id") });
   }
 
-  const finalCoverage = await loadCoverage(fetchImpl, baseUrl, workspaceId);
+  const finalCoverage = await loadCoverage(fetchImpl, baseUrl, workspaceId, jurisdiction);
   const missing = finalCoverage.registrations.filter((value) => value.state !== "REGISTERED");
   if (missing.length > 0) {
     throw new Error(
@@ -436,15 +442,17 @@ export async function bootstrapUsFoundationalCoverage(options: BootstrapCoverage
     );
   }
 
+  const representativeTargetIds =
+    options.representativeTargetIds ?? (jurisdiction === "US" ? REPRESENTATIVE_TARGET_IDS : []);
   let worker: { workerId: string; credential: string | null } | null = null;
   const runs: Array<{ targetId: string; sourceId: string; planId: string; runId: string }> = [];
-  if (options.dispatchRepresentative) {
+  if (options.dispatchRepresentative && representativeTargetIds.length > 0) {
     worker = await ensureWorker(fetchImpl, baseUrl);
     const targetMap = new Map(finalCoverage.targets.map((value) => [value.id, value]));
     const registrationMap = new Map(
       finalCoverage.registrations.map((value) => [value.targetId, value]),
     );
-    for (const targetId of REPRESENTATIVE_TARGET_IDS) {
+    for (const targetId of representativeTargetIds) {
       const target = targetMap.get(targetId);
       const registration = registrationMap.get(targetId);
       if (!target || !registration || registration.state !== "REGISTERED") {
@@ -460,6 +468,7 @@ export async function bootstrapUsFoundationalCoverage(options: BootstrapCoverage
   return {
     controlPlaneUrl: baseUrl,
     workspaceId,
+    jurisdiction,
     connector: `${COVERAGE_CONNECTOR_ID}@${COVERAGE_CONNECTOR_VERSION}`,
     targetCount: finalCoverage.targets.length,
     registeredCount: finalCoverage.registrations.length,
@@ -468,8 +477,28 @@ export async function bootstrapUsFoundationalCoverage(options: BootstrapCoverage
     workerId: worker?.workerId ?? null,
     workerCredential: worker?.credential ?? null,
     runs,
-    collectionAuthorization: options.dispatchRepresentative
-      ? "REPRESENTATIVE_MANUAL_RUNS_EXPLICITLY_DISPATCHED"
-      : "NONE",
+    collectionAuthorization:
+      runs.length > 0 ? "REPRESENTATIVE_MANUAL_RUNS_EXPLICITLY_DISPATCHED" : "NONE",
   };
+}
+
+export type JurisdictionBootstrapCoverageOptions = Omit<
+  BootstrapCoverageOptions,
+  "jurisdiction" | "representativeTargetIds"
+>;
+
+export function bootstrapUsFoundationalCoverage(options: JurisdictionBootstrapCoverageOptions) {
+  return bootstrapFoundationalCoverage({
+    ...options,
+    jurisdiction: "US",
+    representativeTargetIds: REPRESENTATIVE_TARGET_IDS,
+  });
+}
+
+export function bootstrapWipoFoundationalCoverage(options: JurisdictionBootstrapCoverageOptions) {
+  return bootstrapFoundationalCoverage({
+    ...options,
+    jurisdiction: "WO",
+    representativeTargetIds: [],
+  });
 }
