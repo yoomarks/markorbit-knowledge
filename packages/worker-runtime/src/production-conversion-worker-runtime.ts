@@ -14,6 +14,11 @@ import {
   ProductionDocumentNormalizationExecutor,
 } from "./production-document-normalization";
 import {
+  PRODUCTION_OCR_MARKDOWN_CONVERTER,
+  PRODUCTION_RICH_DOCUMENT_MARKDOWN_CONVERTER,
+  ProductionLocalDocumentExtractionExecutor,
+} from "./local-document-extraction";
+import {
   PRODUCTION_MARKDOWN_STAGING_CONVERTER,
   ProductionMarkdownStagingExecutor,
   type ProductionMarkdownStagingContext,
@@ -30,6 +35,8 @@ const PRODUCTION_SUPPORTED_CONVERTERS = [
   PRODUCTION_MARKDOWN_STAGING_CONVERTER,
   PRODUCTION_HTML_MARKDOWN_CONVERTER,
   PRODUCTION_PDF_MARKDOWN_CONVERTER,
+  PRODUCTION_RICH_DOCUMENT_MARKDOWN_CONVERTER,
+  PRODUCTION_OCR_MARKDOWN_CONVERTER,
 ] as const;
 
 function supportsConverter(converter: RuntimeConverterRef): boolean {
@@ -64,6 +71,7 @@ export class ProductionConversionWorkerRuntime {
   private readonly requestedLeaseDurationSeconds: number;
   private readonly markdownExecutor = new ProductionMarkdownStagingExecutor();
   private readonly documentExecutor = new ProductionDocumentNormalizationExecutor();
+  private readonly localExtractionExecutor = new ProductionLocalDocumentExtractionExecutor();
 
   constructor(
     private readonly client: HttpProductionConversionClient,
@@ -124,10 +132,24 @@ export class ProductionConversionWorkerRuntime {
       inputGrant: claimed.result.rawArtifactReadGrant,
       outputGrant: claimed.result.stagingOutputUploadGrant,
     };
-    const result =
-      claimed.result.converter.converterId === PRODUCTION_MARKDOWN_STAGING_CONVERTER.converterId
-        ? await this.markdownExecutor.execute(context, this.client, this.client, this.client)
-        : await this.documentExecutor.execute(context, this.client, this.client, this.client);
+
+    const converterId = claimed.result.converter.converterId;
+    let result: ProductionMarkdownStagingResult | null;
+    if (converterId === PRODUCTION_MARKDOWN_STAGING_CONVERTER.converterId) {
+      result = await this.markdownExecutor.execute(context, this.client, this.client, this.client);
+    } else if (
+      converterId === PRODUCTION_RICH_DOCUMENT_MARKDOWN_CONVERTER.converterId ||
+      converterId === PRODUCTION_OCR_MARKDOWN_CONVERTER.converterId
+    ) {
+      result = await this.localExtractionExecutor.execute(
+        context,
+        this.client,
+        this.client,
+        this.client,
+      );
+    } else {
+      result = await this.documentExecutor.execute(context, this.client, this.client, this.client);
+    }
     this.options.onResult?.(result);
     return true;
   }
