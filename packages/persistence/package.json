@@ -35,6 +35,7 @@
     "./retrieval-index": "./src/retrieval-index.ts",
     "./retrieval-quality-audit": "./src/retrieval-quality-audit.ts",
     "./retrieval-quality-remediation": "./src/retrieval-quality-remediation.ts",
+    "./retrieval-remediation-execution": "./src/retrieval-remediation-execution.ts",
     "./document-change-feed": "./src/document-change-feed.ts",
     "./local-pipeline-adapter": "./src/local-pipeline-adapter.ts",
     "./conversion-pipeline-inspection": "./src/conversion-pipeline-inspection.ts"
