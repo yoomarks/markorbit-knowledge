@@ -43,18 +43,10 @@ export type FoundationalRetrievalRelevanceItem = {
 };
 
 export type FoundationalRetrievalQualityState =
-  | "READY"
-  | "DEGRADED"
-  | "BLOCKED"
-  | "MISSING"
-  | "NOT_APPLICABLE";
+  "READY" | "DEGRADED" | "BLOCKED" | "MISSING" | "NOT_APPLICABLE";
 
 export type FoundationalRetrievalRelevanceState =
-  | "READY"
-  | "DEGRADED"
-  | "BLOCKED"
-  | "MISSING"
-  | "NOT_APPLICABLE";
+  "READY" | "DEGRADED" | "BLOCKED" | "MISSING" | "NOT_APPLICABLE";
 
 export type FoundationalReadinessTarget = {
   targetId: string;
@@ -142,7 +134,8 @@ export function evaluateFoundationalRetrievalQuality(
     return { state: "MISSING", documentCount: 0, gaps: ["RETRIEVAL_AUDIT_MISSING"] };
   }
   const gaps = [...new Set(current.flatMap((quality) => quality.gaps))].sort();
-  if (current.length !== item.currentDocumentCount) gaps.unshift("RETRIEVAL_AUDIT_COVERAGE_MISMATCH");
+  if (current.length !== item.currentDocumentCount)
+    gaps.unshift("RETRIEVAL_AUDIT_COVERAGE_MISMATCH");
   if (
     current.some((quality) => quality.state === "BLOCKED") ||
     current.length !== item.currentDocumentCount
@@ -222,7 +215,8 @@ export function evaluateFoundationalReadiness(
   }
   const healthMap = new Map<string, FoundationalSupplyHealthItem>();
   for (const item of healthItems) {
-    if (healthMap.has(item.targetId)) throw new Error(`Duplicate supply health for ${item.targetId}`);
+    if (healthMap.has(item.targetId))
+      throw new Error(`Duplicate supply health for ${item.targetId}`);
     healthMap.set(item.targetId, item);
   }
   const byStage = Object.fromEntries(
