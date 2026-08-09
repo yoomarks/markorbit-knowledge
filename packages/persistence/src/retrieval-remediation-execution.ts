@@ -37,8 +37,7 @@ const INDEX_GAPS = new Set<RetrievalQualityGap>([
 export const RETRIEVAL_REMEDIATION_EXECUTION_PROTOCOL_VERSION = "1.0" as const;
 
 export type RetrievalRemediationExecutableAction =
-  | "RECONCILE_CURRENT_VERSION"
-  | "REBUILD_RETRIEVAL_INDEX";
+  "RECONCILE_CURRENT_VERSION" | "REBUILD_RETRIEVAL_INDEX";
 
 export type ExecuteRetrievalRemediationInput = {
   workspaceId: string;
@@ -384,7 +383,10 @@ export class SqliteRetrievalRemediationExecutionRepository {
       )
       .get(record.workspaceId, record.documentId) as { version: number | null };
     if (latest.version === null) {
-      throw new RegistryError("RETRIEVAL_DOCUMENT_NOT_FOUND", "No retrieval versions remain to reconcile");
+      throw new RegistryError(
+        "RETRIEVAL_DOCUMENT_NOT_FOUND",
+        "No retrieval versions remain to reconcile",
+      );
     }
     const result = this.database
       .prepare(

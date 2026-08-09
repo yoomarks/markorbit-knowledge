@@ -104,7 +104,9 @@ describe("controlled retrieval remediation execution", () => {
     indexVersion(database, 1);
     indexVersion(database, 2);
     database
-      .prepare("UPDATE retrieval_documents SET is_current = 1 WHERE workspace_id = ? AND document_id = ?")
+      .prepare(
+        "UPDATE retrieval_documents SET is_current = 1 WHERE workspace_id = ? AND document_id = ?",
+      )
       .run(workspaceId, documentId);
 
     const repository = new SqliteRetrievalRemediationExecutionRepository(database);
@@ -148,7 +150,8 @@ describe("controlled retrieval remediation execution", () => {
       )
       .run(stagingDocumentId);
 
-    const audit = new SqliteRetrievalQualityAuditRepository(database).list({ workspaceId }).items[0];
+    const audit = new SqliteRetrievalQualityAuditRepository(database).list({ workspaceId })
+      .items[0];
     expect(audit.gaps).toContain("CHUNK_COUNT_MISMATCH");
     expect(audit.gaps).toContain("STAGING_DOCUMENT_MISSING");
 

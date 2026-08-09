@@ -16,7 +16,10 @@ const ACTION_CODES = new Set<RetrievalQualityRemediationActionCode>([
 ]);
 
 function actionCode(value: unknown): RetrievalQualityRemediationActionCode {
-  if (typeof value !== "string" || !ACTION_CODES.has(value as RetrievalQualityRemediationActionCode)) {
+  if (
+    typeof value !== "string" ||
+    !ACTION_CODES.has(value as RetrievalQualityRemediationActionCode)
+  ) {
     throw new RegistryValidationError("actionCode is invalid");
   }
   return value as RetrievalQualityRemediationActionCode;
@@ -48,8 +51,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       repository.execute({
         workspaceId: typeof body.workspaceId === "string" ? body.workspaceId : "",
-        stagingDocumentId:
-          typeof body.stagingDocumentId === "string" ? body.stagingDocumentId : "",
+        stagingDocumentId: typeof body.stagingDocumentId === "string" ? body.stagingDocumentId : "",
         actionCode: actionCode(body.actionCode),
         actorId: typeof body.actorId === "string" ? body.actorId : "",
         idempotencyKey: typeof body.idempotencyKey === "string" ? body.idempotencyKey : "",
