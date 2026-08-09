@@ -1,4 +1,5 @@
 import type {
+  SourceIntelligenceAssignmentHealthAndCapacityV2,
   SourceIntelligenceObservationOwnershipAction,
   SourceIntelligenceObservationOwnershipQueueV2,
   SourceIntelligenceObservationReviewQueueV2,
@@ -12,6 +13,7 @@ import {
 } from "@markorbit/persistence/source-intelligence-review-ownership";
 import type { SourceIntelligenceObservationReviewRepository } from "@markorbit/persistence/source-intelligence-reviews";
 import {
+  buildSourceIntelligenceAssignmentHealthAndCapacityV2,
   buildSourceIntelligenceCrossSourceObservationSummaryV2,
   buildSourceIntelligenceObservationOwnershipQueueV2,
   buildSourceIntelligenceObservationReviewQueueV2,
@@ -36,6 +38,7 @@ const DEFAULT_REVIEW_EVENT_LIMIT = 200;
 const MAX_REVIEW_EVENT_LIMIT = 500;
 const DEFAULT_OWNERSHIP_EVENT_LIMIT = 100;
 const MAX_OWNERSHIP_EVENT_LIMIT = 500;
+const DEFAULT_ASSIGNMENT_HEALTH_EVENT_LIMIT = 500;
 
 export type ReviewObservationInput = {
   sourceId: string;
@@ -57,6 +60,10 @@ export type ReviewOwnershipInput = {
 export type ReviewHealthOptions = {
   historyLimit?: number;
   reviewEventLimit?: number;
+};
+
+export type AssignmentHealthOptions = {
+  ownershipEventLimit?: number;
 };
 
 type ReviewServiceDependencies = {
@@ -136,6 +143,30 @@ export class SourceIntelligenceReviewService {
       queue,
       ownership,
       ownershipEvents,
+    });
+  }
+
+  assignmentHealth(
+    sourceIds: string[],
+    options: AssignmentHealthOptions = {},
+  ): SourceIntelligenceAssignmentHealthAndCapacityV2 {
+    const ids = normalizeSourceIds(sourceIds);
+    const ownershipEventLimit = boundedInteger(
+      options.ownershipEventLimit,
+      DEFAULT_ASSIGNMENT_HEALTH_EVENT_LIMIT,
+      1,
+      MAX_OWNERSHIP_EVENT_LIMIT,
+      "ownershipEventLimit",
+    );
+    const ownershipQueue = this.ownershipQueue(ids, DEFAULT_OWNERSHIP_EVENT_LIMIT);
+    const ownershipEvents = this.dependencies.ownership.listEvents({
+      sourceIds: ids,
+      limit: ownershipEventLimit,
+    });
+    return buildSourceIntelligenceAssignmentHealthAndCapacityV2({
+      ownershipQueue,
+      ownershipEvents,
+      generatedAt: this.now(),
     });
   }
 
