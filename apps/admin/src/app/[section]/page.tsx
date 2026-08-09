@@ -12,6 +12,7 @@ import { ModulePreview } from "@/components/module-preview";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
 import { RunList } from "@/components/runs/run-list";
+import { SourceIntelligenceAssignmentHealth } from "@/components/sources/source-intelligence-assignment-health";
 import { SourceIntelligenceReviewHealth } from "@/components/sources/source-intelligence-review-health";
 import { SourceIntelligenceReviewOwnership } from "@/components/sources/source-intelligence-review-ownership";
 import { SourceIntelligenceReviewQueue } from "@/components/sources/source-intelligence-review-queue";
@@ -50,9 +51,10 @@ function SourceIntelligencePage() {
     <>
       <PageHeading
         title="Source Intelligence"
-        description="先在 D2.11 Ownership & Handoff 分配人工负责人，再查看 D2.10 运营健康度与 D2.9 Review Queue，最后进入 Source Value × Evidence Maturity 双轴详情；所有运营动作都不构成执行授权。"
+        description="先用 D2.12 Assignment Health & Capacity 看未领取与团队负载，再在 D2.11 Ownership & Handoff 做人工分配；D2.10、D2.9 与双轴详情继续提供运营与证据上下文，所有指标都不构成自动执行授权。"
       />
       <div className="space-y-6">
+        <SourceIntelligenceAssignmentHealth />
         <SourceIntelligenceReviewOwnership />
         <SourceIntelligenceReviewHealth />
         <SourceIntelligenceReviewQueue />
