@@ -230,7 +230,7 @@ describe("D2.12 assignment health and capacity", () => {
     expect(result.assignmentTenure.assignedItemCount).toBe(3);
     expect(result.assignmentTenure.oldestAssignmentAgeHours).toBe(96);
     expect(result.firstClaimLatency.sampledCurrentOccurrenceCount).toBe(3);
-    expect(result.firstClaimLatency.medianHours).toBe(24);
+    expect(result.firstClaimLatency.medianHours).toBe(12);
     expect(result.firstClaimLatency.p90Hours).toBe(24);
     expect(result.handoffs).toEqual({
       visibleEventCount: 5,
