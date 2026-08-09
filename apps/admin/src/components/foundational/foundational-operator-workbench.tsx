@@ -9,10 +9,12 @@ import {
   ExternalLink,
   Play,
   RefreshCw,
+  RotateCcw,
   ShieldCheck,
 } from "lucide-react";
 import type { FoundationalActionExecution } from "@markorbit/worker-runtime/foundational-action-execution";
 import type { FoundationalActionIntent } from "@markorbit/worker-runtime/foundational-action-intent";
+import type { FoundationalCollectionOutcome } from "@markorbit/worker-runtime/foundational-collection-outcome";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 import {
   executionForIntent,
@@ -21,6 +23,7 @@ import {
   listControlledCollectionActions,
   operatorExecutionIdempotencyKey,
   operatorIntentIdempotencyKey,
+  outcomeForExecution,
 } from "./foundational-operator-state";
 
 type Jurisdiction = "US" | "WO";
@@ -36,7 +39,7 @@ type Props = {
 type Actors = Record<ActorField, string>;
 type IntentListEnvelope = { items?: FoundationalActionIntent[] };
 type ExecutionListEnvelope = { items?: FoundationalActionExecution[] };
-type RunListEnvelope = { items?: Array<{ run?: { status?: string } }> };
+type OutcomeListEnvelope = { items?: FoundationalCollectionOutcome[] };
 type ErrorEnvelope = { error?: { message?: string } };
 
 const DEFAULT_ACTORS: Actors = {
@@ -62,35 +65,16 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 async function loadHistory(workspaceId: string, jurisdiction: Jurisdiction) {
   const query = new URLSearchParams({ workspaceId, jurisdiction, limit: "20" });
-  const [intentPayload, executionPayload] = await Promise.all([
+  const [intentPayload, executionPayload, outcomePayload] = await Promise.all([
     requestJson<IntentListEnvelope>(`/api/foundational/action-intents?${query.toString()}`),
     requestJson<ExecutionListEnvelope>(`/api/foundational/action-executions?${query.toString()}`),
+    requestJson<OutcomeListEnvelope>(`/api/foundational/collection-outcomes?${query.toString()}`),
   ]);
   return {
     intents: Array.isArray(intentPayload.items) ? intentPayload.items : [],
     executions: Array.isArray(executionPayload.items) ? executionPayload.items : [],
+    outcomes: Array.isArray(outcomePayload.items) ? outcomePayload.items : [],
   };
-}
-
-async function loadRunStatuses(
-  workspaceId: string,
-  executions: readonly FoundationalActionExecution[],
-): Promise<Record<string, string>> {
-  const entries = await Promise.all(
-    executions.slice(0, 20).map(async (execution) => {
-      const query = new URLSearchParams({ workspaceId, q: execution.runId, limit: "1" });
-      try {
-        const payload = await requestJson<RunListEnvelope>(`/api/runs?${query.toString()}`);
-        return [
-          execution.runId,
-          payload.items?.[0]?.run?.status ?? execution.runStatusAtDispatch,
-        ] as const;
-      } catch {
-        return [execution.runId, execution.runStatusAtDispatch] as const;
-      }
-    }),
-  );
-  return Object.fromEntries(entries);
 }
 
 function timeLabel(value: string): string {
@@ -104,13 +88,27 @@ function timeLabel(value: string): string {
 
 function runStatusClass(status: string): string {
   if (status === "COMPLETED") return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (status === "FAILED" || status === "DEAD_LETTER" || status === "CANCELLED") {
+  if (status === "FAILED" || status === "CANCELLED" || status === "MISSING") {
     return "border-rose-200 bg-rose-50 text-rose-800";
   }
-  if (status === "RUNNING" || status === "LEASED" || status === "VERIFYING") {
-    return "border-blue-200 bg-blue-50 text-blue-800";
-  }
+  if (status === "RUNNING") return "border-blue-200 bg-blue-50 text-blue-800";
   return "border-amber-200 bg-amber-50 text-amber-800";
+}
+
+function outcomeLabel(outcome: FoundationalCollectionOutcome | null): string {
+  if (!outcome) return "Dispatch recorded";
+  switch (outcome.retryDisposition) {
+    case "BLOCKED_ACTIVE_RUN":
+      return "Active run · duplicate dispatch blocked";
+    case "REQUIRES_NEW_APPROVAL":
+      return "Terminal failure · new approval required";
+    case "REVIEW_COMPLETED_COLLECTION":
+      return "Completed · COLLECT still required";
+    case "NO_ACTION_REQUIRED":
+      return "Collection complete · no COLLECT action required";
+    case "BLOCKED_MISSING_RUN":
+      return "Integrity issue · CollectionRun missing";
+  }
 }
 
 export function FoundationalOperatorWorkbench({
@@ -122,7 +120,7 @@ export function FoundationalOperatorWorkbench({
   const actions = useMemo(() => listControlledCollectionActions(snapshot), [snapshot]);
   const [intents, setIntents] = useState<FoundationalActionIntent[]>([]);
   const [executions, setExecutions] = useState<FoundationalActionExecution[]>([]);
-  const [runStatuses, setRunStatuses] = useState<Record<string, string>>({});
+  const [outcomes, setOutcomes] = useState<FoundationalCollectionOutcome[]>([]);
   const [actors, setActors] = useState<Actors>(DEFAULT_ACTORS);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -134,18 +132,17 @@ export function FoundationalOperatorWorkbench({
     const history = await loadHistory(workspaceId, jurisdiction);
     setIntents(history.intents);
     setExecutions(history.executions);
-    setRunStatuses(await loadRunStatuses(workspaceId, history.executions));
+    setOutcomes(history.outcomes);
   }
 
   useEffect(() => {
     let active = true;
     void loadHistory(workspaceId, jurisdiction)
-      .then(async (history) => {
-        const statuses = await loadRunStatuses(workspaceId, history.executions);
+      .then((history) => {
         if (!active) return;
         setIntents(history.intents);
         setExecutions(history.executions);
-        setRunStatuses(statuses);
+        setOutcomes(history.outcomes);
         setLoading(false);
       })
       .catch((loadError: unknown) => {
@@ -163,8 +160,8 @@ export function FoundationalOperatorWorkbench({
     setError(null);
     try {
       await operation();
-      await refreshHistory();
       await onSnapshotRefresh();
+      await refreshHistory();
     } catch (mutationError) {
       setError(
         mutationError instanceof Error ? mutationError.message : "Controlled operation failed",
@@ -176,9 +173,7 @@ export function FoundationalOperatorWorkbench({
 
   async function createIntent(targetId: string): Promise<void> {
     const previousIntent = latestIntentForAction(intents, targetId, "DISPATCH_GOVERNED_COLLECTION");
-    const nonce = previousIntent
-      ? `${previousIntent.intentId}:${previousIntent.updatedAt}`
-      : "first";
+    const nonce = previousIntent ? `${previousIntent.intentId}:${previousIntent.updatedAt}` : "first";
     const idempotencyKey = operatorIntentIdempotencyKey({
       jurisdiction,
       targetId,
@@ -245,10 +240,13 @@ export function FoundationalOperatorWorkbench({
             <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
               Explicit approval + explicit execute
             </span>
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800">
+              Outcome feedback enabled
+            </span>
           </div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
-            这里只开放 M24 的 COLLECT 单目标派发。创建 intent、审批 intent 与真正 dispatch
-            是独立动作；最终执行前服务端仍会重新校验 queue、source 与 MANUAL plan。
+            这里只开放 COLLECT 单目标派发。M26 会读取 exact CollectionRun 结果：运行中禁止重复派发；
+            FAILED / CANCELLED 需要创建新的 approval intent；COMPLETED 但仍处于 COLLECT 时要求再次人工复核。
           </p>
         </div>
         <button
@@ -315,11 +313,10 @@ export function FoundationalOperatorWorkbench({
             {actions.map((action) => {
               const intent = latestIntentForAction(intents, action.targetId, action.actionCode);
               const execution = intent ? executionForIntent(executions, intent.intentId) : null;
-              const phase = foundationalOperatorPhase(intent, execution);
+              const outcome = execution ? outcomeForExecution(outcomes, execution.executionId) : null;
+              const phase = foundationalOperatorPhase(intent, execution, outcome);
               const armed = intent?.intentId === armedIntentId;
-              const liveStatus = execution
-                ? (runStatuses[execution.runId] ?? execution.runStatusAtDispatch)
-                : null;
+              const liveStatus = outcome?.runStatus ?? execution?.runStatusAtDispatch ?? null;
 
               return (
                 <article key={action.targetId} className="rounded-xl border border-slate-200 p-4">
@@ -330,6 +327,9 @@ export function FoundationalOperatorWorkbench({
                           COLLECT
                         </span>
                         <span className="text-xs font-medium text-slate-500">{phase}</span>
+                        {outcome ? (
+                          <span className="text-xs text-slate-400">{outcomeLabel(outcome)}</span>
+                        ) : null}
                       </div>
                       <h3 className="mt-2 break-all font-semibold text-slate-950">
                         {action.targetId}
@@ -421,8 +421,8 @@ export function FoundationalOperatorWorkbench({
                             </p>
                             <p className="mt-1 text-xs leading-5 text-amber-900">
                               This creates one real CollectionRun + Job for only {action.targetId}.
-                              The server revalidates the current queue, source and prepared MANUAL
-                              plan before writing.
+                              The server revalidates the queue, source and prepared MANUAL plan and
+                              now also rejects any already-active foundational run for this target.
                             </p>
                             <label className="mt-3 flex items-start gap-2 text-sm text-amber-950">
                               <input
@@ -461,7 +461,7 @@ export function FoundationalOperatorWorkbench({
                       </div>
                     ) : null}
 
-                    {phase === "DISPATCHED" && execution ? (
+                    {(phase === "DISPATCHED" || phase === "RUN_ACTIVE") && execution ? (
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-xs leading-5 text-slate-500">
                           <p>
@@ -472,13 +472,17 @@ export function FoundationalOperatorWorkbench({
                             Dispatched {timeLabel(execution.dispatchedAt)} by{" "}
                             {execution.executedByActorId}
                           </p>
-                          <p>{execution.jobIds.length} job(s) recorded</p>
+                          {phase === "RUN_ACTIVE" ? (
+                            <p className="font-medium text-blue-700">
+                              A second dispatch is blocked until this run reaches a terminal state.
+                            </p>
+                          ) : null}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span
-                            className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${runStatusClass(liveStatus ?? execution.runStatusAtDispatch)}`}
+                            className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${runStatusClass(liveStatus ?? "PENDING")}`}
                           >
-                            Run · {liveStatus ?? execution.runStatusAtDispatch}
+                            Run · {liveStatus ?? "PENDING"}
                           </span>
                           <a
                             href={`/runs?q=${encodeURIComponent(execution.runId)}`}
@@ -486,6 +490,64 @@ export function FoundationalOperatorWorkbench({
                           >
                             Open run <ExternalLink size={14} aria-hidden="true" />
                           </a>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {phase === "RETRY_APPROVAL_REQUIRED" && execution && outcome ? (
+                      <div className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-rose-950">
+                            Previous collection ended {outcome.runStatus ?? outcome.state}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-rose-800">
+                            Automatic retry is disabled. Because COLLECT is still required, retrying
+                            must start with a brand-new approval intent and a second explicit execute.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={busy !== null || !actors.requester.trim()}
+                          onClick={() => void createIntent(action.targetId)}
+                          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-rose-700 px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                        >
+                          <RotateCcw size={15} aria-hidden="true" /> Request retry approval
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {phase === "REVIEW_COMPLETED_COLLECTION" && execution && outcome ? (
+                      <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-amber-950">
+                            CollectionRun completed, but readiness still requires COLLECT
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-amber-900">
+                            Review the run/evidence first. Another collection is never automatic and
+                            still requires a new approval intent.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={busy !== null || !actors.requester.trim()}
+                          onClick={() => void createIntent(action.targetId)}
+                          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-amber-700 px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                        >
+                          <RotateCcw size={15} aria-hidden="true" /> Request another approval
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {phase === "EXECUTION_INTEGRITY_BLOCKED" && execution ? (
+                      <div className="flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 p-4 text-rose-950">
+                        <AlertTriangle className="mt-0.5 shrink-0" size={17} aria-hidden="true" />
+                        <div>
+                          <p className="text-sm font-semibold">Execution integrity check failed</p>
+                          <p className="mt-1 text-xs leading-5 text-rose-800">
+                            The foundational execution references {execution.runId}, but the exact
+                            CollectionRun could not be loaded. Retry is blocked until the ledger is
+                            repaired or investigated.
+                          </p>
                         </div>
                       </div>
                     ) : null}
@@ -504,7 +566,8 @@ export function FoundationalOperatorWorkbench({
             </div>
             <div className="mt-3 space-y-2">
               {executions.slice(0, 5).map((execution) => {
-                const status = runStatuses[execution.runId] ?? execution.runStatusAtDispatch;
+                const outcome = outcomeForExecution(outcomes, execution.executionId);
+                const status = outcome?.runStatus ?? execution.runStatusAtDispatch;
                 return (
                   <div
                     key={execution.executionId}
@@ -513,14 +576,17 @@ export function FoundationalOperatorWorkbench({
                     <div>
                       <p className="break-all font-medium text-slate-800">{execution.targetId}</p>
                       <p className="mt-0.5 break-all font-mono text-slate-500">{execution.runId}</p>
+                      <p className="mt-1 text-slate-500">{outcomeLabel(outcome)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span
-                        className={`rounded-full border px-2 py-1 font-semibold ${runStatusClass(status)}`}
+                        className={`rounded-full border px-2 py-1 font-semibold ${runStatusClass(status ?? "MISSING")}`}
                       >
-                        {status}
+                        {status ?? "MISSING"}
                       </span>
-                      <span className="text-slate-500">{timeLabel(execution.dispatchedAt)}</span>
+                      <span className="text-slate-500">
+                        {timeLabel(outcome?.runUpdatedAt ?? execution.dispatchedAt)}
+                      </span>
                     </div>
                   </div>
                 );
