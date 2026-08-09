@@ -225,7 +225,12 @@ describe("FOUNDATIONAL readiness gate", () => {
           gaps: ["DUPLICATE_CHUNK_CONTENT"],
         }),
       ],
-      [relevance(degradedHealth.targetId, { state: "BLOCKED", gaps: ["SOURCE_FILTERED_QUERY_MISS"] })],
+      [
+        relevance(degradedHealth.targetId, {
+          state: "BLOCKED",
+          gaps: ["SOURCE_FILTERED_QUERY_MISS"],
+        }),
+      ],
     );
     expect(degraded.targets[0]).toMatchObject({
       stage: "QUALITY",

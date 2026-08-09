@@ -49,18 +49,10 @@ export type FoundationalRetrievalRelevanceItem = {
 };
 
 export type FoundationalRetrievalQualityState =
-  | "READY"
-  | "DEGRADED"
-  | "BLOCKED"
-  | "MISSING"
-  | "NOT_APPLICABLE";
+  "READY" | "DEGRADED" | "BLOCKED" | "MISSING" | "NOT_APPLICABLE";
 
 export type FoundationalRetrievalRelevanceState =
-  | "READY"
-  | "DEGRADED"
-  | "BLOCKED"
-  | "MISSING"
-  | "NOT_APPLICABLE";
+  "READY" | "DEGRADED" | "BLOCKED" | "MISSING" | "NOT_APPLICABLE";
 
 export type FoundationalReadinessTarget = {
   targetId: string;
@@ -365,10 +357,7 @@ export function evaluateFoundationalRetrievalRelevance(
     return {
       state: "BLOCKED",
       probeCount: relevance.probeCount,
-      gaps: [
-        "RETRIEVAL_RELEVANCE_NOT_APPLICABLE_WITH_CURRENT_DOCUMENTS",
-        ...relevance.gaps,
-      ],
+      gaps: ["RETRIEVAL_RELEVANCE_NOT_APPLICABLE_WITH_CURRENT_DOCUMENTS", ...relevance.gaps],
     };
   }
   return {
@@ -493,13 +482,7 @@ export function evaluateUsFoundationalReadiness(
   qualityItems: readonly FoundationalRetrievalQualityItem[],
   relevanceItems: readonly FoundationalRetrievalRelevanceItem[] = [],
 ): FoundationalReadinessGate {
-  return evaluateFoundationalReadiness(
-    "US",
-    targetIds,
-    healthItems,
-    qualityItems,
-    relevanceItems,
-  );
+  return evaluateFoundationalReadiness("US", targetIds, healthItems, qualityItems, relevanceItems);
 }
 
 export function evaluateWipoFoundationalReadiness(
@@ -508,13 +491,7 @@ export function evaluateWipoFoundationalReadiness(
   qualityItems: readonly FoundationalRetrievalQualityItem[],
   relevanceItems: readonly FoundationalRetrievalRelevanceItem[] = [],
 ): FoundationalReadinessGate {
-  return evaluateFoundationalReadiness(
-    "WO",
-    targetIds,
-    healthItems,
-    qualityItems,
-    relevanceItems,
-  );
+  return evaluateFoundationalReadiness("WO", targetIds, healthItems, qualityItems, relevanceItems);
 }
 
 async function loadReadiness(
