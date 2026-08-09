@@ -9,6 +9,7 @@ import { ConversionRunList } from "@/components/conversion-runs/conversion-run-l
 import { ConverterControl } from "@/components/converters/converter-control";
 import { DashboardPage } from "@/components/dashboard";
 import { DiscoveryWorkspace } from "@/components/discovery/discovery-workspace";
+import { FoundationalOperatorPanel } from "@/components/foundational/foundational-operator-panel";
 import { FoundationalRemediationConsole } from "@/components/foundational/foundational-remediation-console";
 import { ModulePreview } from "@/components/module-preview";
 import { PageHeading } from "@/components/page-heading";
@@ -59,9 +60,12 @@ function FoundationalReadinessPage() {
     <>
       <PageHeading
         title="Foundational Readiness"
-        description="查看 US 与 WIPO ACTIVE + FOUNDATIONAL 数据供给从注册、采集、转换、索引到结构质量和检索 smoke relevance 的统一 readiness gate，并按最低失败阶段生成只读人工修复队列。"
+        description="查看 US 与 WIPO ACTIVE + FOUNDATIONAL 数据供给从注册、采集、转换、索引到结构质量和检索 smoke relevance 的统一 readiness gate；COLLECT 阶段可通过 M23/M24 三段式受控流程创建审批意图、审批并显式派发单目标采集。"
       />
-      <FoundationalRemediationConsole workspaceId={DEFAULT_WORKSPACE.id} />
+      <div className="space-y-6">
+        <FoundationalOperatorPanel workspaceId={DEFAULT_WORKSPACE.id} />
+        <FoundationalRemediationConsole workspaceId={DEFAULT_WORKSPACE.id} />
+      </div>
     </>
   );
 }
