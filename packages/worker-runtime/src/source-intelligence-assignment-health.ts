@@ -105,9 +105,7 @@ export function buildSourceIntelligenceAssignmentHealthAndCapacityV2(input: {
     const assignedAt = item.ownership?.assignedAt;
     return assignedAt ? [ageHours(assignedAt, input.generatedAt)] : [];
   });
-  const oldestAssignedAt = earliestIso(
-    assignedItems.map((item) => item.ownership?.assignedAt),
-  );
+  const oldestAssignedAt = earliestIso(assignedItems.map((item) => item.ownership?.assignedAt));
 
   const firstClaimByKey = new Map<string, SourceIntelligenceObservationOwnershipEventV2>();
   for (const event of [...input.ownershipEvents].sort(
@@ -124,29 +122,29 @@ export function buildSourceIntelligenceAssignmentHealthAndCapacityV2(input: {
   });
 
   const operators = [...new Set(assignedItems.flatMap((item) => (item.owner ? [item.owner] : [])))];
-  const operatorRows: SourceIntelligenceAssignmentOperatorCapacityV2[] = operators.map((operator) => {
-    const owned = assignedItems.filter((item) => item.owner === operator);
-    const pending = owned.filter((item) => item.status === "PENDING");
-    const oldestPending = earliestIso(pending.map((item) => item.flag.observedAt));
-    const oldestAssignment = earliestIso(owned.map((item) => item.ownership?.assignedAt));
-    return {
-      operator,
-      assignedItemCount: owned.length,
-      pendingCount: pending.length,
-      acknowledgedCount: owned.filter((item) => item.status === "ACKNOWLEDGED").length,
-      ignoredCount: owned.filter((item) => item.status === "IGNORED").length,
-      attentionPendingCount: pending.filter((item) => item.flag.severity === "ATTENTION").length,
-      oldestPendingObservedAt: oldestPending,
-      oldestPendingAgeHours: oldestPending
-        ? ageHours(oldestPending, input.generatedAt)
-        : null,
-      oldestCurrentAssignmentAt: oldestAssignment,
-      oldestCurrentAssignmentAgeHours: oldestAssignment
-        ? ageHours(oldestAssignment, input.generatedAt)
-        : null,
-      ...eventCountsForOperator(operator, input.ownershipEvents),
-    };
-  });
+  const operatorRows: SourceIntelligenceAssignmentOperatorCapacityV2[] = operators.map(
+    (operator) => {
+      const owned = assignedItems.filter((item) => item.owner === operator);
+      const pending = owned.filter((item) => item.status === "PENDING");
+      const oldestPending = earliestIso(pending.map((item) => item.flag.observedAt));
+      const oldestAssignment = earliestIso(owned.map((item) => item.ownership?.assignedAt));
+      return {
+        operator,
+        assignedItemCount: owned.length,
+        pendingCount: pending.length,
+        acknowledgedCount: owned.filter((item) => item.status === "ACKNOWLEDGED").length,
+        ignoredCount: owned.filter((item) => item.status === "IGNORED").length,
+        attentionPendingCount: pending.filter((item) => item.flag.severity === "ATTENTION").length,
+        oldestPendingObservedAt: oldestPending,
+        oldestPendingAgeHours: oldestPending ? ageHours(oldestPending, input.generatedAt) : null,
+        oldestCurrentAssignmentAt: oldestAssignment,
+        oldestCurrentAssignmentAgeHours: oldestAssignment
+          ? ageHours(oldestAssignment, input.generatedAt)
+          : null,
+        ...eventCountsForOperator(operator, input.ownershipEvents),
+      };
+    },
+  );
   operatorRows.sort((left, right) => {
     const pending = right.pendingCount - left.pendingCount;
     if (pending !== 0) return pending;
@@ -182,9 +180,8 @@ export function buildSourceIntelligenceAssignmentHealthAndCapacityV2(input: {
     unassignedBacklog: {
       itemCount: unassignedItems.length,
       pendingCount: unassignedPending.length,
-      attentionPendingCount: unassignedPending.filter(
-        (item) => item.flag.severity === "ATTENTION",
-      ).length,
+      attentionPendingCount: unassignedPending.filter((item) => item.flag.severity === "ATTENTION")
+        .length,
       oldestPendingObservedAt,
       oldestPendingAgeHours: oldestPendingObservedAt
         ? ageHours(oldestPendingObservedAt, input.generatedAt)

@@ -61,23 +61,13 @@ function reviewQueue(): SourceIntelligenceObservationReviewQueueV2 {
       key: "sir_33333333333333333333333333333333",
       sourceId: "src_bob",
       status: "PENDING" as const,
-      flag: flag(
-        "src_bob",
-        "SOURCE_VALUE_BAND_CHANGED",
-        "INFO",
-        "2026-08-07T12:00:00.000Z",
-      ),
+      flag: flag("src_bob", "SOURCE_VALUE_BAND_CHANGED", "INFO", "2026-08-07T12:00:00.000Z"),
     },
     {
       key: "sir_44444444444444444444444444444444",
       sourceId: "src_bob_ack",
       status: "ACKNOWLEDGED" as const,
-      flag: flag(
-        "src_bob_ack",
-        "ACQUISITION_COST_INCREASED",
-        "INFO",
-        "2026-08-08T12:00:00.000Z",
-      ),
+      flag: flag("src_bob_ack", "ACQUISITION_COST_INCREASED", "INFO", "2026-08-08T12:00:00.000Z"),
     },
   ];
   return {

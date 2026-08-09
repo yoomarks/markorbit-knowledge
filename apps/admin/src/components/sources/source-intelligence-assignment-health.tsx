@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import {
-  Activity,
-  Clock3,
-  RefreshCw,
-  Scale,
-  UserRoundCheck,
-  UsersRound,
-} from "lucide-react";
+import { Activity, Clock3, RefreshCw, Scale, UserRoundCheck, UsersRound } from "lucide-react";
 import type {
   SourceDefinition,
   SourceIntelligenceAssignmentHealthAndCapacityV2,
@@ -47,8 +40,7 @@ function ratioLabel(value: number | null): string {
 async function readAssignmentHealth(signal?: AbortSignal): Promise<AssignmentHealthSnapshot> {
   const sourceResponse = await fetch(`/api/sources?limit=${COHORT_LIMIT}&offset=0`, { signal });
   const sourceBody = (await sourceResponse.json()) as
-    | SourceListResult
-    | { error?: { message?: string } };
+    SourceListResult | { error?: { message?: string } };
   if (!sourceResponse.ok) {
     const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
     throw new Error(message ?? "无法读取 Sources");
@@ -128,8 +120,8 @@ export function SourceIntelligenceAssignmentHealth() {
             </h2>
           </div>
           <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-500">
-            观察未领取时长、当前 assignment tenure、首次领取耗时、handoff 事件与 Operator
-            workload shape。这里的“Capacity”只表示当前可见工作负载，不代表人员真实可用产能，也不会自动派单。
+            观察未领取时长、当前 assignment tenure、首次领取耗时、handoff 事件与 Operator workload
+            shape。这里的“Capacity”只表示当前可见工作负载，不代表人员真实可用产能，也不会自动派单。
           </p>
         </div>
         <button
@@ -148,9 +140,13 @@ export function SourceIntelligenceAssignmentHealth() {
           {error}
         </div>
       ) : null}
-      {loading ? <div className="p-6 text-sm text-slate-500">正在读取 assignment health…</div> : null}
+      {loading ? (
+        <div className="p-6 text-sm text-slate-500">正在读取 assignment health…</div>
+      ) : null}
       {!loading && !health ? (
-        <div className="p-6 text-sm text-slate-500">当前没有可进入 Assignment Health 的 Source。</div>
+        <div className="p-6 text-sm text-slate-500">
+          当前没有可进入 Assignment Health 的 Source。
+        </div>
       ) : null}
 
       {health ? (
@@ -309,7 +305,9 @@ export function SourceIntelligenceAssignmentHealth() {
                           <span>{new Date(item.observedAt).toLocaleString("zh-CN")}</span>
                         </div>
                       </div>
-                      <p className="text-sm font-semibold text-slate-900">{hoursLabel(item.ageHours)}</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {hoursLabel(item.ageHours)}
+                      </p>
                     </div>
                   );
                 })}
