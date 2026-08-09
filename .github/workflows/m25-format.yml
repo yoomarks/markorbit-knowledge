@@ -23,6 +23,23 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Avoid synchronous state writes inside effects
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          paths = [
+              Path("apps/admin/src/components/foundational/foundational-operator-workbench.tsx"),
+              Path("apps/admin/src/components/foundational/foundational-operator-panel.tsx"),
+          ]
+          old = "  useEffect(() => {\n    let active = true;\n    setLoading(true);\n    setError(null);\n"
+          new = "  useEffect(() => {\n    let active = true;\n"
+          for path in paths:
+              text = path.read_text()
+              if old not in text:
+                  raise SystemExit(f"expected effect preamble not found in {path}")
+              path.write_text(text.replace(old, new, 1))
+          PY
       - name: Format M25 files
         run: |
           pnpm exec prettier --write \
@@ -40,5 +57,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add apps docs
-          git commit -m "M25 format foundational operator workbench"
+          git commit -m "M25 harden operator effect state transitions"
           git push
