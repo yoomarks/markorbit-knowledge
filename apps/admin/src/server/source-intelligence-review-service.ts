@@ -1,12 +1,19 @@
 import type {
+  SourceIntelligenceObservationOwnershipAction,
+  SourceIntelligenceObservationOwnershipQueueV2,
   SourceIntelligenceObservationReviewQueueV2,
   SourceIntelligenceObservationReviewStatus,
   SourceIntelligenceReviewQueueOperationalHealthV2,
 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  SqliteSourceIntelligenceObservationOwnershipRepository,
+  type SourceIntelligenceObservationOwnershipRepository,
+} from "@markorbit/persistence/source-intelligence-review-ownership";
 import type { SourceIntelligenceObservationReviewRepository } from "@markorbit/persistence/source-intelligence-reviews";
 import {
   buildSourceIntelligenceCrossSourceObservationSummaryV2,
+  buildSourceIntelligenceObservationOwnershipQueueV2,
   buildSourceIntelligenceObservationReviewQueueV2,
   buildSourceIntelligenceReviewQueueOperationalHealthV2,
   sourceIntelligenceObservationReviewKey,
@@ -14,6 +21,7 @@ import {
 import { SourceIntelligenceService } from "./source-intelligence-service";
 import {
   getRawArtifactRepository,
+  getRegistryDatabase,
   getSourceGraphRepository,
   getSourceIntelligenceRepository,
   getSourceIntelligenceReviewRepository,
@@ -26,6 +34,8 @@ const DEFAULT_HEALTH_HISTORY_LIMIT = 50;
 const MAX_HEALTH_HISTORY_LIMIT = 100;
 const DEFAULT_REVIEW_EVENT_LIMIT = 200;
 const MAX_REVIEW_EVENT_LIMIT = 500;
+const DEFAULT_OWNERSHIP_EVENT_LIMIT = 100;
+const MAX_OWNERSHIP_EVENT_LIMIT = 500;
 
 export type ReviewObservationInput = {
   sourceId: string;
@@ -33,6 +43,15 @@ export type ReviewObservationInput = {
   status: SourceIntelligenceObservationReviewStatus;
   reviewer?: string;
   note?: string;
+};
+
+export type ReviewOwnershipInput = {
+  sourceId: string;
+  observationKey: string;
+  action: SourceIntelligenceObservationOwnershipAction;
+  actor: string;
+  owner?: string;
+  expectedOwner: string | null;
 };
 
 export type ReviewHealthOptions = {
@@ -43,6 +62,7 @@ export type ReviewHealthOptions = {
 type ReviewServiceDependencies = {
   intelligence: SourceIntelligenceService;
   reviews: SourceIntelligenceObservationReviewRepository;
+  ownership: SourceIntelligenceObservationOwnershipRepository;
   now?: () => string;
 };
 
@@ -91,6 +111,32 @@ export class SourceIntelligenceReviewService {
     const observationKeys = summary.flags.map(sourceIntelligenceObservationReviewKey);
     const reviews = this.dependencies.reviews.listByObservationKeys(observationKeys);
     return buildSourceIntelligenceObservationReviewQueueV2(summary, reviews);
+  }
+
+  ownershipQueue(
+    sourceIds: string[],
+    ownershipEventLimit = DEFAULT_OWNERSHIP_EVENT_LIMIT,
+  ): SourceIntelligenceObservationOwnershipQueueV2 {
+    const ids = normalizeSourceIds(sourceIds);
+    const eventLimit = boundedInteger(
+      ownershipEventLimit,
+      DEFAULT_OWNERSHIP_EVENT_LIMIT,
+      1,
+      MAX_OWNERSHIP_EVENT_LIMIT,
+      "ownershipEventLimit",
+    );
+    const queue = this.queue(ids);
+    const observationKeys = queue.items.map((item) => item.observationKey);
+    const ownership = this.dependencies.ownership.listByObservationKeys(observationKeys);
+    const ownershipEvents = this.dependencies.ownership.listEvents({
+      sourceIds: ids,
+      limit: eventLimit,
+    });
+    return buildSourceIntelligenceObservationOwnershipQueueV2({
+      queue,
+      ownership,
+      ownershipEvents,
+    });
   }
 
   health(
@@ -168,6 +214,46 @@ export class SourceIntelligenceReviewService {
     }
     return { review, item };
   }
+
+  changeOwnership(input: ReviewOwnershipInput) {
+    const sourceId = input.sourceId.trim();
+    const observationKey = input.observationKey.trim();
+    const actor = input.actor.trim();
+    if (!sourceId) throw new RegistryValidationError("sourceId is required");
+    if (!observationKey) throw new RegistryValidationError("observationKey is required");
+    if (!actor) throw new RegistryValidationError("actor is required");
+
+    const currentQueue = this.queue([sourceId]);
+    const currentItem = currentQueue.items.find((item) => item.observationKey === observationKey);
+    if (!currentItem) {
+      throw new RegistryConflictError(
+        "SOURCE_INTELLIGENCE_OWNERSHIP_STALE",
+        "This observation occurrence is no longer current; reload before changing ownership",
+        { sourceId, observationKey },
+      );
+    }
+
+    const ownership = this.dependencies.ownership.save({
+      observationKey,
+      sourceId,
+      flagKind: currentItem.flag.kind,
+      action: input.action,
+      actor,
+      ...(input.owner !== undefined ? { owner: input.owner } : {}),
+      expectedOwner: input.expectedOwner,
+    });
+
+    const refreshed = this.ownershipQueue([sourceId]);
+    const item = refreshed.items.find((candidate) => candidate.observationKey === observationKey);
+    if (!item) {
+      throw new RegistryConflictError(
+        "SOURCE_INTELLIGENCE_OWNERSHIP_CHANGED_DURING_WRITE",
+        "The observation occurrence changed while ownership was being saved",
+        { sourceId, observationKey },
+      );
+    }
+    return { ownership, item };
+  }
 }
 
 let singleton: SourceIntelligenceReviewService | undefined;
@@ -182,6 +268,7 @@ export function getSourceIntelligenceReviewService(): SourceIntelligenceReviewSe
         intelligence: getSourceIntelligenceRepository(),
       }),
       reviews: getSourceIntelligenceReviewRepository(),
+      ownership: new SqliteSourceIntelligenceObservationOwnershipRepository(getRegistryDatabase()),
     });
   }
   return singleton;
