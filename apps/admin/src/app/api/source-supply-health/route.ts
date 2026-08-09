@@ -1,0 +1,75 @@
+import { NextResponse } from "next/server";
+import {
+  SOURCE_COVERAGE_CATALOG_STATES,
+  SOURCE_COVERAGE_FAMILIES,
+  SOURCE_COVERAGE_TIERS,
+  SOURCE_SUPPLY_HEALTH_STATES,
+  type SourceCoverageCatalogState,
+  type SourceCoverageFamily,
+  type SourceCoverageTier,
+  type SourceSupplyHealthState,
+} from "@markorbit/contracts";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { SqliteSourceSupplyHealthRepository } from "@markorbit/persistence/source-supply-health";
+import { apiError } from "@/server/api-errors";
+import { getRegistryDatabase } from "@/server/source-registry";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function enumFilter<T extends string>(
+  value: string | null,
+  allowed: readonly T[],
+  name: string,
+): T | undefined {
+  const normalized = value?.trim();
+  if (!normalized) return undefined;
+  if (!allowed.includes(normalized as T)) {
+    throw new RegistryValidationError(`${name} query parameter is invalid`);
+  }
+  return normalized as T;
+}
+
+export async function GET(request: Request) {
+  try {
+    const search = new URL(request.url).searchParams;
+    const workspaceId = search.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const jurisdiction = search.get("jurisdiction")?.trim() || undefined;
+    const targetId = search.get("targetId")?.trim() || undefined;
+    const family = enumFilter<SourceCoverageFamily>(
+      search.get("family"),
+      SOURCE_COVERAGE_FAMILIES,
+      "family",
+    );
+    const coverageTier = enumFilter<SourceCoverageTier>(
+      search.get("coverageTier"),
+      SOURCE_COVERAGE_TIERS,
+      "coverageTier",
+    );
+    const catalogState = enumFilter<SourceCoverageCatalogState>(
+      search.get("catalogState"),
+      SOURCE_COVERAGE_CATALOG_STATES,
+      "catalogState",
+    );
+    const state = enumFilter<SourceSupplyHealthState>(
+      search.get("state"),
+      SOURCE_SUPPLY_HEALTH_STATES,
+      "state",
+    );
+
+    const repository = new SqliteSourceSupplyHealthRepository(getRegistryDatabase());
+    return NextResponse.json(
+      repository.list({
+        workspaceId,
+        jurisdiction,
+        family,
+        coverageTier,
+        catalogState,
+        targetId,
+        state,
+      }),
+    );
+  } catch (error) {
+    return apiError(error);
+  }
+}
