@@ -13,6 +13,7 @@ import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
 import { RunList } from "@/components/runs/run-list";
 import { SourceIntelligenceReviewHealth } from "@/components/sources/source-intelligence-review-health";
+import { SourceIntelligenceReviewOwnership } from "@/components/sources/source-intelligence-review-ownership";
 import { SourceIntelligenceReviewQueue } from "@/components/sources/source-intelligence-review-queue";
 import { SourceIntelligenceWorkbench } from "@/components/sources/source-intelligence-workbench";
 import { SourceList } from "@/components/sources/source-list";
@@ -49,9 +50,10 @@ function SourceIntelligencePage() {
     <>
       <PageHeading
         title="Source Intelligence"
-        description="先看 D2.10 Review Queue Operational Health，再处理 D2.9 Observation Review Queue，最后查看 Source Value × Evidence Maturity 双轴详情；所有运营指标都只供人工判断。"
+        description="先在 D2.11 Ownership & Handoff 分配人工负责人，再查看 D2.10 运营健康度与 D2.9 Review Queue，最后进入 Source Value × Evidence Maturity 双轴详情；所有运营动作都不构成执行授权。"
       />
       <div className="space-y-6">
+        <SourceIntelligenceReviewOwnership />
         <SourceIntelligenceReviewHealth />
         <SourceIntelligenceReviewQueue />
         <SourceIntelligenceWorkbench />
