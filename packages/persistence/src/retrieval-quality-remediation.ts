@@ -9,9 +9,7 @@ import {
 export const RETRIEVAL_QUALITY_REMEDIATION_PROTOCOL_VERSION = "1.0" as const;
 
 export type RetrievalQualityRemediationState =
-  | "NO_ACTION"
-  | "REVIEW_REQUIRED"
-  | "REMEDIATION_REQUIRED";
+  "NO_ACTION" | "REVIEW_REQUIRED" | "REMEDIATION_REQUIRED";
 
 export type RetrievalQualityRemediationActionCode =
   | "RESTORE_PROVENANCE_EVIDENCE"
