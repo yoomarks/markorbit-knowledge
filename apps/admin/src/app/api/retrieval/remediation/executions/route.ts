@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
-import {
-  SqliteRetrievalRemediationExecutionRepository,
-  type RetrievalRemediationExecutableAction,
-} from "@markorbit/persistence/retrieval-remediation-execution";
+import { SqliteRetrievalRemediationExecutionRepository } from "@markorbit/persistence/retrieval-remediation-execution";
 import type { RetrievalQualityRemediationActionCode } from "@markorbit/persistence/retrieval-quality-remediation";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getRegistryDatabase } from "@/server/source-registry";
@@ -63,5 +60,3 @@ export async function POST(request: Request) {
     return apiError(error);
   }
 }
-
-export type _M17ExecutableActionContract = RetrievalRemediationExecutableAction;
