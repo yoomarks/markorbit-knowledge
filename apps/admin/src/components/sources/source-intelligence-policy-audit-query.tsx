@@ -1,14 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Filter,
-  RefreshCw,
-  Search,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Filter, RefreshCw, Search } from "lucide-react";
 import type {
   SourceDefinition,
   SourceIntelligencePolicyAuditAction,
@@ -147,7 +140,10 @@ export function SourceIntelligencePolicyAuditQuery() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void Promise.all([readSources(controller.signal), readQuery(initialFilters, null, controller.signal)])
+    void Promise.all([
+      readSources(controller.signal),
+      readQuery(initialFilters, null, controller.signal),
+    ])
       .then(([nextSources, nextResult]) => {
         setSources(nextSources);
         setResult(nextResult);
@@ -155,7 +151,9 @@ export function SourceIntelligencePolicyAuditQuery() {
       })
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-        setError(requestError instanceof Error ? requestError.message : "无法读取 D2.16 audit query");
+        setError(
+          requestError instanceof Error ? requestError.message : "无法读取 D2.16 audit query",
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -335,8 +333,9 @@ export function SourceIntelligencePolicyAuditQuery() {
           </div>
         </div>
         <p className="mt-3 text-xs leading-5 text-slate-500">
-          Source filter 只匹配 event.sourceId，因此不会自动把 Global/Cohort 变更解释为“影响该 Source”。时间范围采用
-          from inclusive / to exclusive。Cursor 仅是只读分页位置，不是权限令牌。
+          Source filter 只匹配 event.sourceId，因此不会自动把 Global/Cohort 变更解释为“影响该
+          Source”。时间范围采用 from inclusive / to exclusive。Cursor
+          仅是只读分页位置，不是权限令牌。
         </p>
       </div>
 
@@ -399,7 +398,8 @@ export function SourceIntelligencePolicyAuditQuery() {
                           ) : null}
                         </div>
                         <p className="mt-2 text-sm font-medium text-slate-900">
-                          {eventIdentity(event)}{source ? ` · ${source.name}` : ""}
+                          {eventIdentity(event)}
+                          {source ? ` · ${source.name}` : ""}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
                           {event.changes.map((change) => (
@@ -407,7 +407,8 @@ export function SourceIntelligencePolicyAuditQuery() {
                               key={`${event.eventId}-${change.field}`}
                               className="rounded-lg bg-slate-100 px-2.5 py-1"
                             >
-                              {change.field}: {String(change.before ?? "∅")} → {String(change.after ?? "∅")}
+                              {change.field}: {String(change.before ?? "∅")} →{" "}
+                              {String(change.after ?? "∅")}
                             </span>
                           ))}
                         </div>
@@ -425,8 +426,9 @@ export function SourceIntelligencePolicyAuditQuery() {
           )}
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600">
-            JSON / CSV export 使用与当前查询相同的规范化筛选，最多导出 5,000 条，并保持 occurredAt + eventId
-            的确定性 newest-first 顺序；导出不包含 generatedAt，因此相同已存储事件与筛选条件可得到相同 payload。
+            JSON / CSV export 使用与当前查询相同的规范化筛选，最多导出 5,000 条，并保持 occurredAt +
+            eventId 的确定性 newest-first 顺序；导出不包含
+            generatedAt，因此相同已存储事件与筛选条件可得到相同 payload。
           </div>
         </div>
       ) : null}

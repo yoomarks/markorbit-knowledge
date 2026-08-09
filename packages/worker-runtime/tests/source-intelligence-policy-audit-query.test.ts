@@ -129,20 +129,25 @@ describe("D2.16 policy audit query", () => {
   });
 
   it("produces deterministic JSON and fixed-schema CSV exports from the same filters", () => {
-    const filters = normalizeSourceIntelligencePolicyAuditFiltersV2({ actorLabels: ["ops,\"lead\""] });
+    const filters = normalizeSourceIntelligencePolicyAuditFiltersV2({
+      actorLabels: ['ops,"lead"'],
+    });
     const events = [
       event({
         eventId: "sica_export",
         scope: "COHORT",
         action: "COHORT_UPDATED",
-        actorLabel: "ops,\"lead\"",
+        actorLabel: 'ops,"lead"',
         occurredAt: "2026-08-09T04:00:00.000Z",
         cohortId: "sic_alpha",
         changes: [{ field: "priority", before: 10, after: 20 }],
       }),
     ];
     const first = buildSourceIntelligencePolicyAuditExportV2({ events, filters });
-    const second = buildSourceIntelligencePolicyAuditExportV2({ events: [...events].reverse(), filters });
+    const second = buildSourceIntelligencePolicyAuditExportV2({
+      events: [...events].reverse(),
+      filters,
+    });
     const firstJson = serializeSourceIntelligencePolicyAuditExportJsonV2(first);
     const secondJson = serializeSourceIntelligencePolicyAuditExportJsonV2(second);
     expect(firstJson).toBe(secondJson);

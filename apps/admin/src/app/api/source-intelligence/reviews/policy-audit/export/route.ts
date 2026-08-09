@@ -53,9 +53,7 @@ export async function GET(request: Request) {
     return new Response(body, {
       status: 200,
       headers: {
-        "Content-Type": isCsv
-          ? "text/csv; charset=utf-8"
-          : "application/json; charset=utf-8",
+        "Content-Type": isCsv ? "text/csv; charset=utf-8" : "application/json; charset=utf-8",
         "Content-Disposition": `attachment; filename="source-intelligence-policy-audit.${format}"`,
         "Cache-Control": "no-store",
         "X-MarkOrbit-Audit-Event-Count": String(auditExport.eventCount),

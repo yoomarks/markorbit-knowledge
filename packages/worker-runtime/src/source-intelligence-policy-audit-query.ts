@@ -111,7 +111,9 @@ export function normalizeSourceIntelligencePolicyAuditQueryV2(
 export function encodeSourceIntelligencePolicyAuditCursorV2(
   cursor: SourceIntelligencePolicyAuditCursorV2,
 ): string {
-  return Buffer.from(JSON.stringify([cursor.occurredAt, cursor.eventId]), "utf8").toString("base64url");
+  return Buffer.from(JSON.stringify([cursor.occurredAt, cursor.eventId]), "utf8").toString(
+    "base64url",
+  );
 }
 
 export function decodeSourceIntelligencePolicyAuditCursorV2(
@@ -154,10 +156,16 @@ function matchesFilters(
   if (filters.scopes.length && !filters.scopes.includes(event.scope)) return false;
   if (filters.actions.length && !filters.actions.includes(event.action)) return false;
   if (filters.actorLabels.length && !filters.actorLabels.includes(event.actorLabel)) return false;
-  if (filters.sourceIds.length && (!event.sourceId || !filters.sourceIds.includes(event.sourceId))) {
+  if (
+    filters.sourceIds.length &&
+    (!event.sourceId || !filters.sourceIds.includes(event.sourceId))
+  ) {
     return false;
   }
-  if (filters.cohortIds.length && (!event.cohortId || !filters.cohortIds.includes(event.cohortId))) {
+  if (
+    filters.cohortIds.length &&
+    (!event.cohortId || !filters.cohortIds.includes(event.cohortId))
+  ) {
     return false;
   }
   if (
@@ -264,7 +272,9 @@ export function buildSourceIntelligencePolicyAuditExportV2(input: {
   events: SourceIntelligencePolicyAuditEventV2[];
   filters: SourceIntelligencePolicyAuditQueryFiltersV2;
 }): SourceIntelligencePolicyAuditExportV2 {
-  const matching = uniqueSortedEvents(input.events).filter((event) => matchesFilters(event, input.filters));
+  const matching = uniqueSortedEvents(input.events).filter((event) =>
+    matchesFilters(event, input.filters),
+  );
   const truncated = matching.length > SOURCE_INTELLIGENCE_POLICY_AUDIT_EXPORT_MAX_EVENTS;
   const events = matching.slice(0, SOURCE_INTELLIGENCE_POLICY_AUDIT_EXPORT_MAX_EVENTS);
   return {
