@@ -17,12 +17,13 @@ Canonical Markdown + YAML provenance
     ↓
 Verified Staging CAS
     ├── Ready Package → MarkOrbit Core / MO
+    ├── Retrieval Index → MO search/read API
     └── Optional Obsidian Vault projection → human review
 ```
 
 ## Canonical asset
 
-The canonical derived document is the verified Staging Markdown object, not an Obsidian file. Obsidian is a replaceable projection for human browsing and review.
+The canonical derived document is the verified Staging Markdown object, not an Obsidian file and not the retrieval index. Obsidian and retrieval indexes are replaceable projections built from verified canonical Markdown.
 
 A Canonical Markdown document uses ordinary UTF-8 Markdown plus a restricted YAML frontmatter block under `markorbit:`. The metadata is generated from control-plane SourceDefinition, RawArtifact and ConversionRun state; the conversion Worker does not invent source identity or provenance.
 
@@ -85,11 +86,63 @@ If a PDF has no extractable text through the bounded deterministic parser, conve
 
 This means scanned documents, complex font/CMap decoding, OCR and richer PDF layout reconstruction remain later acquisition/normalization work. They must preserve the same RawArtifact and provenance chain rather than bypassing it.
 
+## M3.3 retrieval foundation
+
+M3.3 makes verified canonical documents directly retrievable by MO without making the retrieval layer the source of truth.
+
+A document is indexed only after:
+
+1. canonical Markdown provenance matches control-plane evidence;
+2. Staging verification reaches `READY`;
+3. the ConversionRun is finalized `COMPLETED`;
+4. a verified ReadyPackage has been created.
+
+The indexing path is deterministic and derivative:
+
+```text
+Verified Canonical Markdown
+    ↓
+Heading-aware document chunking
+    ↓
+Lexical keyword extraction
+    ↓
+SQLite FTS5 full-text index
+    ↓
+BM25-ranked retrieval
+```
+
+Chunking preserves heading ancestry and paragraph/block boundaries. Long text is split by bounded character windows without attempting legal or professional semantic segmentation. Keywords are frequency/structure weighted lexical terms derived from the title, headings and document text; they are not trademark ontology labels or legal conclusions.
+
+The current retrieval index stores all indexed artifact versions and marks only the highest observed `artifactVersion` for a logical document as current. Default search returns current versions only. Historical versions remain addressable explicitly by version and are therefore available for later change/diff delivery work.
+
+### MO retrieval API
+
+M3.3 exposes two stable read paths:
+
+```text
+GET /api/retrieval/search
+  ?workspaceId=...
+  &q=Section%208%20maintenance
+  &sourceId=...
+  &jurisdiction=US
+  &language=en
+  &authorityLevel=PRIMARY_OFFICIAL
+  &limit=20
+
+GET /api/retrieval/documents/{documentId}
+  ?workspaceId=...
+  &version=...
+```
+
+Search returns BM25-ranked document/chunk hits with provenance-bearing document metadata. Document retrieval returns the indexed document metadata, deterministic chunks and the exact verified canonical Markdown bytes read from Staging CAS.
+
+The current index mode is `SQLITE_FTS5_BM25`. Vector embeddings are intentionally not canonical data and are not required for correctness; a later vector index may be added as another rebuildable projection over the same canonical Markdown/chunks.
+
 ## Converter registration and policy
 
 The admin control plane ensures the three M3 converter manifests exist when repositories are initialized. This only makes conversion capabilities available; it does not create collection authority, collection schedules or professional knowledge semantics.
 
-Conversion Profiles remain explicit control-plane configuration. M3.2 does not silently create source-specific policy or decide which sources MO should collect.
+Conversion Profiles remain explicit control-plane configuration. M3 does not silently create source-specific policy or decide which sources MO should collect.
 
 ## Obsidian
 
@@ -115,13 +168,13 @@ M3 does not extract or assert:
 - Source Value or Evidence Maturity changes;
 - collection scheduling authority.
 
-Those meanings remain owned by MarkOrbit Core / MO. M3 supplies reliable evidence and normalized documents.
+Those meanings remain owned by MarkOrbit Core / MO. M3 supplies reliable evidence, normalized documents, retrieval primitives and provenance.
 
 ## Next increments
 
-With MARKDOWN/HTML/text-layer PDF normalization in place, the next data-supply gaps are:
+With canonicalization and retrieval now connected, the remaining large data-supply gaps are:
 
 1. OCR and richer attachment/document extraction where deterministic text extraction is insufficient;
-2. lightweight enrichment, chunking and index generation;
-3. stable retrieval APIs for MO;
-4. change feed/version delivery.
+2. optional vector/embedding projection and retrieval fusion after the lexical baseline is proven;
+3. change feed/version diff delivery to MO;
+4. source-coverage and acquisition reliability expansion across target jurisdictions.
