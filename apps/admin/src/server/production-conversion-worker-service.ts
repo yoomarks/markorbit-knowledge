@@ -20,12 +20,17 @@ import {
   RegistryError,
   RegistryValidationError,
 } from "@markorbit/persistence";
-import { canonicalMarkdownFrontmatter, createCoreIntakeRequest } from "@markorbit/worker-runtime";
+import {
+  buildCanonicalDocumentIndex,
+  canonicalMarkdownFrontmatter,
+  createCoreIntakeRequest,
+} from "@markorbit/worker-runtime";
 import { canonicalDocumentMetadata } from "./canonical-document-metadata";
 import {
   getConversionRunLedgerRepository,
   getConversionRuntimeRepository,
   getConversionRuntimeTransitionRepository,
+  getDocumentIndexRepository,
   getRawArtifactRepository,
   getReadyPackageRepository,
   getRegistryDatabase,
@@ -54,6 +59,8 @@ export type ProductionStagingCommitResult = {
   stagingStatus: "READY" | "BLOCKED";
   verificationOutcome: "PASS" | "PASS_WITH_WARNINGS" | "FAIL";
   finalizationDecision: "COMPLETED" | "FAILED";
+  documentIndexId?: string;
+  chunkCount?: number;
   readyPackageId?: string;
   coreIntakeRequest?: CoreIntakeRequest;
 };
@@ -262,6 +269,26 @@ export class ProductionConversionWorkerService {
         "Staging verification did not produce a terminal decision",
       );
     }
+
+    let documentIndexId: string | undefined;
+    let chunkCount: number | undefined;
+    if (status === "READY") {
+      const documentIndex = buildCanonicalDocumentIndex({
+        workspaceId: input.workspaceId,
+        stagingDocumentId: staging.record.descriptor.id,
+        documentId: metadata.documentId,
+        sourceId: metadata.sourceId,
+        rawArtifactId: metadata.rawArtifactId,
+        conversionRunId: metadata.conversionRunId,
+        contentSha256: staging.record.descriptor.contentHash.value,
+        declaredLanguages: metadata.languages,
+        markdown: input.content,
+      });
+      const indexed = getDocumentIndexRepository().persistVerified(documentIndex);
+      documentIndexId = indexed.record.index.id;
+      chunkCount = indexed.record.index.chunks.length;
+    }
+
     const finalization = getVerifiedStagingFinalizer().finalize({
       workspaceId: input.workspaceId,
       stagingDocumentId: staging.record.descriptor.id,
@@ -275,6 +302,13 @@ export class ProductionConversionWorkerService {
         verificationOutcome: verification.evidence.outcome,
         finalizationDecision: "FAILED",
       };
+    }
+
+    if (!documentIndexId || !chunkCount) {
+      throw new RegistryConflictError(
+        "READY_PACKAGE_DOCUMENT_INDEX_REQUIRED",
+        "ReadyPackage requires an indexed verified Staging document",
+      );
     }
 
     const completedRun = getConversionRunLedgerRepository().getById(
@@ -315,6 +349,8 @@ export class ProductionConversionWorkerService {
       stagingStatus: "READY",
       verificationOutcome: outcome,
       finalizationDecision: "COMPLETED",
+      documentIndexId,
+      chunkCount,
       readyPackageId: packageResult.readyPackage.id,
       coreIntakeRequest,
     };
