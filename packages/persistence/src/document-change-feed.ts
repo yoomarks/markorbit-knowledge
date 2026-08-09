@@ -158,7 +158,7 @@ function snapshots(chunks: RetrievalChunk[]): SectionSnapshot[] {
     const pathJson = JSON.stringify(chunk.headingPath);
     if (!current || current.pathJson !== pathJson) {
       flush();
-      const occurrence = (occurrences.get(pathJson) ?? 0) + 1;
+      const occurrence: number = (occurrences.get(pathJson) ?? 0) + 1;
       occurrences.set(pathJson, occurrence);
       current = { pathJson, chunks: [chunk], occurrence };
     } else {
