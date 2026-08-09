@@ -158,6 +158,42 @@ function currentCollectionAction(
   return { snapshot, item, action };
 }
 
+function assertNoActiveCollectionExecution(
+  database: DatabaseSync,
+  input: { workspaceId: string; jurisdiction: string; targetId: string },
+  clock: () => Date,
+): void {
+  const executionRepository = new SqliteFoundationalActionExecutionRepository(database);
+  const runRepository = new SqliteExecutionLedgerRepository(database, clock);
+  const previous = executionRepository.list({
+    workspaceId: input.workspaceId,
+    jurisdiction: input.jurisdiction,
+    targetId: input.targetId,
+    limit: 100,
+  });
+  for (const execution of previous) {
+    const runRecord = runRepository.getById(execution.runId);
+    if (!runRecord) {
+      throw new RegistryConflictError(
+        "FOUNDATIONAL_COLLECTION_EXECUTION_RUN_MISSING",
+        "A prior foundational collection execution references a missing CollectionRun",
+        { executionId: execution.executionId, runId: execution.runId },
+      );
+    }
+    if (runRecord.run.status === "PENDING" || runRecord.run.status === "RUNNING") {
+      throw new RegistryConflictError(
+        "FOUNDATIONAL_COLLECTION_ALREADY_ACTIVE",
+        `Foundational target ${input.targetId} already has an active collection run`,
+        {
+          executionId: execution.executionId,
+          runId: execution.runId,
+          runStatus: runRecord.run.status,
+        },
+      );
+    }
+  }
+}
+
 export function executeApprovedFoundationalCollectionIntent(
   database: DatabaseSync,
   input: ExecuteFoundationalCollectionIntentInput,
@@ -217,6 +253,15 @@ export function executeApprovedFoundationalCollectionIntent(
     return { ...asExecution(existing), replayed: true };
   }
 
+  assertNoActiveCollectionExecution(
+    database,
+    {
+      workspaceId: intent.workspaceId,
+      jurisdiction: intent.jurisdiction,
+      targetId: intent.targetId,
+    },
+    clock,
+  );
   const { snapshot } = currentCollectionAction(
     database,
     {
