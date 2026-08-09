@@ -96,6 +96,42 @@ describe("D2.17 historical policy resolution", () => {
     );
   });
 
+  it("marks an equal-timestamp checkpoint mutation UNKNOWN instead of guessing order", () => {
+    const result = buildSourceIntelligenceHistoricalPolicyResolutionV2({
+      sourceIds: ["src_a"],
+      asOf: "2026-08-09T03:30:00.000Z",
+      checkpoint,
+      globalPolicyEvents: [],
+      cohortEvents: [],
+      membershipEvents: [event({ occurredAt: checkpoint.checkpointAt })],
+      generatedAt: "2026-08-09T05:00:00.000Z",
+    });
+    expect(result.items[0]?.status).toBe("UNKNOWN");
+    expect(result.items[0]?.completeness).toBe("AMBIGUOUS_CHECKPOINT_BOUNDARY");
+  });
+
+  it("isolates same-timestamp ambiguity to the Source whose direct membership changed", () => {
+    const result = buildSourceIntelligenceHistoricalPolicyResolutionV2({
+      sourceIds: ["src_a", "src_b"],
+      asOf: "2026-08-09T04:30:00.000Z",
+      checkpoint,
+      globalPolicyEvents: [],
+      cohortEvents: [],
+      membershipEvents: [
+        event({ eventId: "sima_a", occurredAt: "2026-08-09T04:00:00.000Z" }),
+        event({
+          eventId: "sima_b",
+          action: "MEMBERSHIP_ADDED",
+          occurredAt: "2026-08-09T04:00:00.000Z",
+          changes: [{ field: "membershipPresent", before: false, after: true }],
+        }),
+      ],
+      generatedAt: "2026-08-09T05:00:00.000Z",
+    });
+    expect(result.items.find((item) => item.sourceId === "src_a")?.status).toBe("UNKNOWN");
+    expect(result.items.find((item) => item.sourceId === "src_b")?.status).toBe("RESOLVED");
+  });
+
   it("returns UNKNOWN for ambiguous same-timestamp mutations", () => {
     const result = buildSourceIntelligenceHistoricalPolicyResolutionV2({
       sourceIds: ["src_a"],

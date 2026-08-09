@@ -45,6 +45,7 @@ export type SourceIntelligenceHistoricalPolicyResolutionItemV2 = {
     | "COMPLETE_FROM_CHECKPOINT"
     | "PARTIAL_PRE_CHECKPOINT"
     | "EVENT_WINDOW_TRUNCATED"
+    | "AMBIGUOUS_CHECKPOINT_BOUNDARY"
     | "AMBIGUOUS_SAME_TIMESTAMP";
   resolvedPolicy: SourceIntelligenceHistoricalEffectivePolicyV2 | null;
   observedPolicy: SourceIntelligenceHistoricalEffectivePolicyV2 | null;

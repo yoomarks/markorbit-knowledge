@@ -168,6 +168,7 @@ function relevantTrace(
   events: SourceIntelligencePolicyAuditEventV2[],
   policy: SourceIntelligenceHistoricalEffectivePolicyV2,
   complete: boolean,
+  asOf: string,
 ): SourceIntelligenceHistoricalPolicyTraceStepV2[] {
   const matched = new Set(policy.matchedCohortIds);
   const steps: SourceIntelligenceHistoricalPolicyTraceStepV2[] = [];
@@ -205,10 +206,7 @@ function relevantTrace(
   }
   steps.push({
     kind: "PRECEDENCE",
-    occurredAt:
-      policy.scope === "COHORT"
-        ? (events.at(-1)?.occurredAt ?? checkpoint.checkpointAt)
-        : checkpoint.checkpointAt,
+    occurredAt: asOf,
     eventId: null,
     summary:
       policy.scope === "COHORT"
@@ -239,16 +237,33 @@ export function buildSourceIntelligenceHistoricalPolicyResolutionV2(input: {
     .flatMap((events) => events.slice(0, MAX_REPLAY_EVENTS_PER_STREAM))
     .filter((event) => {
       const time = Date.parse(event.occurredAt);
-      return time <= asOfTime && (!completeFromCheckpoint || time > checkpointTime);
+      return time <= asOfTime && (!completeFromCheckpoint || time >= checkpointTime);
     })
     .sort(chronological);
-  const ambiguous = ambiguousSameTimestamp(allEvents);
 
   const items: SourceIntelligenceHistoricalPolicyResolutionItemV2[] = sourceIds.map((sourceId) => {
+    const sourceCohortIds = new Set([
+      ...input.checkpoint.memberships
+        .filter((membership) => membership.sourceId === sourceId)
+        .map((membership) => membership.cohortId),
+      ...allEvents
+        .filter((event) => event.scope === "MEMBERSHIP" && event.sourceId === sourceId)
+        .map((event) => event.cohortId)
+        .filter((cohortId): cohortId is string => Boolean(cohortId)),
+    ]);
+    const relevantEvents = allEvents.filter((event) => {
+      if (event.scope === "GLOBAL_POLICY") return true;
+      if (event.scope === "MEMBERSHIP") return event.sourceId === sourceId;
+      return Boolean(event.cohortId && sourceCohortIds.has(event.cohortId));
+    });
+    const boundaryAmbiguous =
+      completeFromCheckpoint &&
+      relevantEvents.some((event) => Date.parse(event.occurredAt) === checkpointTime);
+    const ambiguous = ambiguousSameTimestamp(relevantEvents);
     const state = completeFromCheckpoint ? checkpointState(input.checkpoint) : emptyState();
     for (const event of allEvents) applyEvent(state, event);
     const observedPolicy = effectivePolicy(sourceId, state, input.generatedAt);
-    const snapshotBackfillEventIds = allEvents
+    const snapshotBackfillEventIds = relevantEvents
       .filter((event) => event.action === "SNAPSHOT_BACKFILL")
       .map((event) => event.eventId);
     const unknownReasons: string[] = [];
@@ -260,6 +275,12 @@ export function buildSourceIntelligenceHistoricalPolicyResolutionV2(input: {
       completeness = "EVENT_WINDOW_TRUNCATED";
       unknownReasons.push(
         `At least one replay stream exceeded ${MAX_REPLAY_EVENTS_PER_STREAM} events; no complete result is claimed.`,
+      );
+    } else if (boundaryAmbiguous) {
+      status = "UNKNOWN";
+      completeness = "AMBIGUOUS_CHECKPOINT_BOUNDARY";
+      unknownReasons.push(
+        "A relevant mutation shares the immutable checkpoint timestamp; millisecond timestamps cannot prove whether it preceded or followed the checkpoint snapshot.",
       );
     } else if (ambiguous) {
       status = "UNKNOWN";
@@ -293,12 +314,13 @@ export function buildSourceIntelligenceHistoricalPolicyResolutionV2(input: {
       trace: relevantTrace(
         sourceId,
         input.checkpoint,
-        allEvents,
+        relevantEvents,
         observedPolicy,
         completeFromCheckpoint,
+        input.asOf,
       ),
       unknownReasons,
-      appliedEventIds: allEvents.map((event) => event.eventId),
+      appliedEventIds: relevantEvents.map((event) => event.eventId),
       snapshotBackfillEventIds,
     };
   });
