@@ -173,7 +173,9 @@ export function FoundationalOperatorWorkbench({
 
   async function createIntent(targetId: string): Promise<void> {
     const previousIntent = latestIntentForAction(intents, targetId, "DISPATCH_GOVERNED_COLLECTION");
-    const nonce = previousIntent ? `${previousIntent.intentId}:${previousIntent.updatedAt}` : "first";
+    const nonce = previousIntent
+      ? `${previousIntent.intentId}:${previousIntent.updatedAt}`
+      : "first";
     const idempotencyKey = operatorIntentIdempotencyKey({
       jurisdiction,
       targetId,
@@ -246,7 +248,8 @@ export function FoundationalOperatorWorkbench({
           </div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
             这里只开放 COLLECT 单目标派发。M26 会读取 exact CollectionRun 结果：运行中禁止重复派发；
-            FAILED / CANCELLED 需要创建新的 approval intent；COMPLETED 但仍处于 COLLECT 时要求再次人工复核。
+            FAILED / CANCELLED 需要创建新的 approval intent；COMPLETED 但仍处于 COLLECT
+            时要求再次人工复核。
           </p>
         </div>
         <button
@@ -313,7 +316,9 @@ export function FoundationalOperatorWorkbench({
             {actions.map((action) => {
               const intent = latestIntentForAction(intents, action.targetId, action.actionCode);
               const execution = intent ? executionForIntent(executions, intent.intentId) : null;
-              const outcome = execution ? outcomeForExecution(outcomes, execution.executionId) : null;
+              const outcome = execution
+                ? outcomeForExecution(outcomes, execution.executionId)
+                : null;
               const phase = foundationalOperatorPhase(intent, execution, outcome);
               const armed = intent?.intentId === armedIntentId;
               const liveStatus = outcome?.runStatus ?? execution?.runStatusAtDispatch ?? null;
@@ -502,7 +507,8 @@ export function FoundationalOperatorWorkbench({
                           </p>
                           <p className="mt-1 text-xs leading-5 text-rose-800">
                             Automatic retry is disabled. Because COLLECT is still required, retrying
-                            must start with a brand-new approval intent and a second explicit execute.
+                            must start with a brand-new approval intent and a second explicit
+                            execute.
                           </p>
                         </div>
                         <button

@@ -69,11 +69,7 @@ function planInput(sourceId: string): CreateCollectionPlanInput {
   };
 }
 
-function approvedIntent(
-  database: DatabaseSync,
-  clock: () => Date,
-  idempotencyKey: string,
-) {
+function approvedIntent(database: DatabaseSync, clock: () => Date, idempotencyKey: string) {
   const intent = createFoundationalActionIntent(
     database,
     {

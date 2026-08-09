@@ -184,17 +184,12 @@ describe("M26 foundational operator state", () => {
     const dispatched = execution(approved.intentId);
     const active = outcome(dispatched.executionId, "BLOCKED_ACTIVE_RUN");
     const failed = outcome(dispatched.executionId, "REQUIRES_NEW_APPROVAL");
-    const completedNeedsReview = outcome(
-      dispatched.executionId,
-      "REVIEW_COMPLETED_COLLECTION",
-    );
+    const completedNeedsReview = outcome(dispatched.executionId, "REVIEW_COMPLETED_COLLECTION");
     const complete = outcome(dispatched.executionId, "NO_ACTION_REQUIRED");
     const missing = outcome(dispatched.executionId, "BLOCKED_MISSING_RUN");
 
     expect(foundationalOperatorPhase(approved, dispatched, active)).toBe("RUN_ACTIVE");
-    expect(foundationalOperatorPhase(approved, dispatched, failed)).toBe(
-      "RETRY_APPROVAL_REQUIRED",
-    );
+    expect(foundationalOperatorPhase(approved, dispatched, failed)).toBe("RETRY_APPROVAL_REQUIRED");
     expect(foundationalOperatorPhase(approved, dispatched, completedNeedsReview)).toBe(
       "REVIEW_COMPLETED_COLLECTION",
     );
