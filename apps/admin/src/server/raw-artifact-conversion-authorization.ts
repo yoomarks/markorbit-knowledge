@@ -25,36 +25,58 @@ export type ConversionAuthorizationResult = {
   replayed: boolean;
 };
 
-function findProfile(workspaceId: string, artifact: RawArtifact): ConversionProfile | null {
+export type ConversionAuthorizationOptions = {
+  conversionProfileId?: string;
+};
+
+function profileCompatible(workspaceId: string, artifact: RawArtifact, profile: ConversionProfile) {
+  if (profile.workspaceId !== workspaceId || profile.status !== "ACTIVE") return false;
+  if (profile.sourceId && profile.sourceId !== artifact.sourceId) return false;
+  if (!profile.input.artifactKinds.includes(artifact.artifactKind)) return false;
+  if (
+    !profile.input.mimePatterns.some((pattern) => mimePatternMatches(pattern, artifact.mimeType))
+  ) {
+    return false;
+  }
+  const manifest = getConverterRegistryRepository().getManifest(
+    profile.converter.converterId,
+    profile.converter.version,
+  )?.manifest;
+  return Boolean(
+    manifest &&
+    manifest.status === "ACTIVE" &&
+    manifest.outputFormat === "MARKDOWN" &&
+    converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
+  );
+}
+
+function findProfile(
+  workspaceId: string,
+  artifact: RawArtifact,
+  selectedProfileId?: string,
+): ConversionProfile | null {
   const converters = getConverterRegistryRepository();
+  const profiles = selectedProfileId
+    ? [converters.getProfile(selectedProfileId)].filter(
+        (profile): profile is ConversionProfile => profile !== null,
+      )
+    : converters.listProfiles({ workspaceId, status: "ACTIVE", limit: 100 }).items;
   return (
-    converters.listProfiles({ workspaceId, status: "ACTIVE", limit: 100 }).items.find((profile) => {
-      if (profile.sourceId && profile.sourceId !== artifact.sourceId) return false;
-      if (!profile.input.artifactKinds.includes(artifact.artifactKind)) return false;
-      if (
-        !profile.input.mimePatterns.some((pattern) =>
-          mimePatternMatches(pattern, artifact.mimeType),
-        )
-      ) {
-        return false;
-      }
-      const manifest = converters.getManifest(
-        profile.converter.converterId,
-        profile.converter.version,
-      )?.manifest;
-      return Boolean(
-        manifest &&
-        manifest.status === "ACTIVE" &&
-        manifest.outputFormat === "MARKDOWN" &&
-        converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
-      );
-    }) ?? null
+    profiles
+      .filter((profile) => profileCompatible(workspaceId, artifact, profile))
+      .sort((left, right) => {
+        const sourceScope = Number(Boolean(right.sourceId)) - Number(Boolean(left.sourceId));
+        if (sourceScope !== 0) return sourceScope;
+        if (right.precedence !== left.precedence) return right.precedence - left.precedence;
+        return left.id.localeCompare(right.id);
+      })[0] ?? null
   );
 }
 
 export function authorizeRawArtifactForConversion(
   artifactId: string,
   workspaceId: string,
+  options: ConversionAuthorizationOptions = {},
 ): ConversionAuthorizationResult {
   const artifacts = getRawArtifactRepository();
   const view = artifacts.getArtifact(artifactId);
@@ -67,7 +89,7 @@ export function authorizeRawArtifactForConversion(
       "RawArtifact belongs to another Workspace",
     );
   }
-  const profile = findProfile(workspaceId, artifact);
+  const profile = findProfile(workspaceId, artifact, options.conversionProfileId);
   if (!profile) {
     throw new RegistryConflictError(
       "RAW_ARTIFACT_NO_ACTIVE_CONVERSION_PROFILE",
@@ -75,6 +97,13 @@ export function authorizeRawArtifactForConversion(
     );
   }
   if (artifact.status === "READY_FOR_CONVERSION") {
+    const authorizedProfileId = artifact.extensions?.["x-conversion-profile-id"];
+    if (typeof authorizedProfileId === "string" && authorizedProfileId !== profile.id) {
+      throw new RegistryConflictError(
+        "RAW_ARTIFACT_CONVERSION_PROFILE_CONFLICT",
+        "RawArtifact was already authorized with another Conversion Profile",
+      );
+    }
     return {
       artifactId,
       status: "READY_FOR_CONVERSION",
@@ -86,12 +115,6 @@ export function authorizeRawArtifactForConversion(
     throw new RegistryConflictError(
       "RAW_ARTIFACT_CONVERSION_AUTHORIZATION_INVALID_STATE",
       `RawArtifact in ${artifact.status} cannot be authorized for conversion`,
-    );
-  }
-  if (artifact.artifactKind !== "MARKDOWN" || artifact.mimeType !== "text/markdown") {
-    throw new RegistryConflictError(
-      "RAW_ARTIFACT_PRODUCTION_CONVERTER_UNSUPPORTED",
-      "Production conversion currently accepts MARKDOWN/text/markdown only",
     );
   }
 

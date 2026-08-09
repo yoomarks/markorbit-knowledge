@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError, bearerCredential, leaseToken, workerIdHeader } from "@/server/api-errors";
+import { dispatchAutomaticConversionForArtifact } from "@/server/raw-artifact-auto-conversion";
 import { extractRawArtifactIntoSourceGraph } from "@/server/raw-artifact-source-graph";
 import { getRawArtifactRepository, getSourceGraphRepository } from "@/server/source-registry";
 
@@ -12,6 +13,11 @@ type RouteContext = { params: Promise<{ id: string }> };
 type DeferredExtraction = {
   status: "DEFERRED";
   reason: "EXTRACTION_FAILED";
+};
+
+type DeferredConversionHandoff = {
+  status: "DEFERRED";
+  reason: "HANDOFF_FAILED";
 };
 
 export async function POST(request: Request, context: RouteContext) {
@@ -42,7 +48,20 @@ export async function POST(request: Request, context: RouteContext) {
       sourceGraphExtraction = { status: "DEFERRED", reason: "EXTRACTION_FAILED" };
     }
 
-    return NextResponse.json({ ...result, sourceGraphExtraction });
+    let conversionHandoff:
+      ReturnType<typeof dispatchAutomaticConversionForArtifact> | DeferredConversionHandoff;
+    try {
+      conversionHandoff = dispatchAutomaticConversionForArtifact(
+        result.artifact.artifact.id,
+        result.artifact.artifact.workspaceId,
+      );
+    } catch {
+      // Auto-conversion is derived processing after immutable RawArtifact finalization. Any profile,
+      // authorization or queueing failure remains observable but cannot invalidate acquisition.
+      conversionHandoff = { status: "DEFERRED", reason: "HANDOFF_FAILED" };
+    }
+
+    return NextResponse.json({ ...result, sourceGraphExtraction, conversionHandoff });
   } catch (error) {
     return apiError(error);
   }
