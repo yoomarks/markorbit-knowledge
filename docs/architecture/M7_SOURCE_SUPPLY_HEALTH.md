@@ -62,10 +62,10 @@ Unregistered coverage is intentionally distinct from observed low-quality or inc
 Freshness uses internal operational observation windows derived from the coverage target's configured `changeSensitivity`:
 
 | Change sensitivity | Maximum observed age |
-| --- | ---: |
-| HIGH | 48 hours |
-| NORMAL | 168 hours / 7 days |
-| LOW | 720 hours / 30 days |
+| ------------------ | -------------------: |
+| HIGH               |             48 hours |
+| NORMAL             |   168 hours / 7 days |
+| LOW                |  720 hours / 30 days |
 
 The result is `FRESH`, `STALE`, or `UNOBSERVED` and includes both `ageHours` and `maxAgeHours`.
 

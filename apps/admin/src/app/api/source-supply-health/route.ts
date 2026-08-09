@@ -9,10 +9,7 @@ import {
   type SourceCoverageTier,
   type SourceSupplyHealthState,
 } from "@markorbit/contracts";
-import {
-  DEFAULT_WORKSPACE,
-  RegistryValidationError,
-} from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import { SqliteSourceSupplyHealthRepository } from "@markorbit/persistence/source-supply-health";
 import { apiError } from "@/server/api-errors";
 import { getRegistryDatabase } from "@/server/source-registry";

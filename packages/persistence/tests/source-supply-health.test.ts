@@ -195,11 +195,7 @@ describe("Source Supply Health", () => {
   });
 
   it("derives freshness and degraded gaps without authorizing collection", () => {
-    const freshness = deriveSourceSupplyFreshness(
-      "2026-08-06T00:00:00Z",
-      "HIGH",
-      fixedNow,
-    );
+    const freshness = deriveSourceSupplyFreshness("2026-08-06T00:00:00Z", "HIGH", fixedNow);
     expect(freshness).toMatchObject({ state: "STALE", maxAgeHours: 48 });
 
     const acquisition = {

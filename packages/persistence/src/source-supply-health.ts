@@ -21,10 +21,7 @@ import { ensureExecutionLedger } from "./execution-ledger";
 import { initializeRegistry, RegistryValidationError, SqliteSourceRepository } from "./index";
 import { ensureRawArtifactRegistry } from "./raw-artifact-registry";
 import { ensureRetrievalIndex } from "./retrieval-index";
-import {
-  evaluateSourceCoverage,
-  listSourceCoverageTargets,
-} from "./source-coverage-catalog";
+import { evaluateSourceCoverage, listSourceCoverageTargets } from "./source-coverage-catalog";
 import { ensureStagingContentRegistry } from "./staging-content-registry";
 
 export const SOURCE_SUPPLY_MAX_AGE_HOURS: Record<SourceCoverageChangeSensitivity, number> = {
@@ -71,10 +68,7 @@ type RetrievalCountRow = {
   latest_indexed_at: string | null;
 };
 
-function listWorkspaceSources(
-  database: DatabaseSync,
-  workspaceId: string,
-): SourceDefinition[] {
+function listWorkspaceSources(database: DatabaseSync, workspaceId: string): SourceDefinition[] {
   const repository = new SqliteSourceRepository(database);
   const items: SourceDefinition[] = [];
   let offset = 0;
@@ -91,7 +85,11 @@ function inClause(sourceIds: readonly string[]): { sql: string; values: SQLInput
   return { sql: sourceIds.map(() => "?").join(","), values: [...sourceIds] };
 }
 
-function latestRun(database: DatabaseSync, workspaceId: string, sourceIds: string[]): SourceSupplyLatestRun {
+function latestRun(
+  database: DatabaseSync,
+  workspaceId: string,
+  sourceIds: string[],
+): SourceSupplyLatestRun {
   if (sourceIds.length === 0) return null;
   const sources = inClause(sourceIds);
   const row = database
@@ -103,8 +101,7 @@ function latestRun(database: DatabaseSync, workspaceId: string, sourceIds: strin
        LIMIT 1`,
     )
     .get(workspaceId, ...sources.values) as
-    | { id: string; status: string; requested_at: string; updated_at: string }
-    | undefined;
+    { id: string; status: string; requested_at: string; updated_at: string } | undefined;
   if (!row) return null;
   return {
     runId: row.id,
@@ -253,7 +250,8 @@ export function deriveSourceSupplyGaps(input: {
 }): SourceSupplyGap[] {
   const gaps: SourceSupplyGap[] = [];
   if (!input.registered) gaps.push("SOURCE_UNREGISTERED");
-  if (input.registered && input.acquisition.artifactCount === 0) gaps.push("NO_ACQUISITION_EVIDENCE");
+  if (input.registered && input.acquisition.artifactCount === 0)
+    gaps.push("NO_ACQUISITION_EVIDENCE");
   if (input.latestRun?.status === "FAILED") gaps.push("LATEST_COLLECTION_FAILED");
   if (input.freshness.state === "STALE") gaps.push("STALE_ACQUISITION");
   if (input.registered && input.normalization.readyDocumentCount === 0) {
