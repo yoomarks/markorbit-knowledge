@@ -105,9 +105,8 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
               <span className="text-xs text-amber-900/70">Workspace · {workspaceId}</span>
             </div>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-950/80">
-              M25 仅把 M23/M24 已有的受控 COLLECT 流程接入
-              UI。审批不会自动执行；真正派发仍需第二次显式确认， 且服务端会再次验证当前
-              queue、source 与 MANUAL plan。
+              M25 将 M23/M24 的受控 COLLECT 流程接入 UI；M26 再把 exact CollectionRun
+              结果回流到操作面。审批不会自动执行，运行中禁止并发重复派发，失败/取消后的重试必须重新审批。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

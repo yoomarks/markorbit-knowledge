@@ -1,5 +1,6 @@
 import type { FoundationalActionExecution } from "@markorbit/worker-runtime/foundational-action-execution";
 import type { FoundationalActionIntent } from "@markorbit/worker-runtime/foundational-action-intent";
+import type { FoundationalCollectionOutcome } from "@markorbit/worker-runtime/foundational-collection-outcome";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 
 export type ControlledCollectionAction = {
@@ -13,7 +14,15 @@ export type ControlledCollectionAction = {
 };
 
 export type FoundationalOperatorPhase =
-  "REQUEST_APPROVAL" | "PENDING_APPROVAL" | "READY_TO_EXECUTE" | "DISPATCHED";
+  | "REQUEST_APPROVAL"
+  | "PENDING_APPROVAL"
+  | "READY_TO_EXECUTE"
+  | "DISPATCHED"
+  | "RUN_ACTIVE"
+  | "RUN_COMPLETED"
+  | "RETRY_APPROVAL_REQUIRED"
+  | "REVIEW_COMPLETED_COLLECTION"
+  | "EXECUTION_INTEGRITY_BLOCKED";
 
 export function listControlledCollectionActions(
   snapshot: FoundationalRemediationQueueSnapshot,
@@ -67,14 +76,34 @@ export function executionForIntent(
   return executions.find((execution) => execution.intentId === intentId) ?? null;
 }
 
+export function outcomeForExecution(
+  outcomes: readonly FoundationalCollectionOutcome[],
+  executionId: string,
+): FoundationalCollectionOutcome | null {
+  return outcomes.find((outcome) => outcome.executionId === executionId) ?? null;
+}
+
 export function foundationalOperatorPhase(
   intent: FoundationalActionIntent | null,
   execution: FoundationalActionExecution | null,
+  outcome: FoundationalCollectionOutcome | null = null,
 ): FoundationalOperatorPhase {
   if (!intent || intent.status === "CANCELED") return "REQUEST_APPROVAL";
   if (intent.status === "PENDING_APPROVAL") return "PENDING_APPROVAL";
-  if (execution) return "DISPATCHED";
-  return "READY_TO_EXECUTE";
+  if (!execution) return "READY_TO_EXECUTE";
+  if (!outcome) return "DISPATCHED";
+  switch (outcome.retryDisposition) {
+    case "BLOCKED_ACTIVE_RUN":
+      return "RUN_ACTIVE";
+    case "NO_ACTION_REQUIRED":
+      return "RUN_COMPLETED";
+    case "REQUIRES_NEW_APPROVAL":
+      return "RETRY_APPROVAL_REQUIRED";
+    case "REVIEW_COMPLETED_COLLECTION":
+      return "REVIEW_COMPLETED_COLLECTION";
+    case "BLOCKED_MISSING_RUN":
+      return "EXECUTION_INTEGRITY_BLOCKED";
+  }
 }
 
 export function operatorIntentIdempotencyKey(input: {
