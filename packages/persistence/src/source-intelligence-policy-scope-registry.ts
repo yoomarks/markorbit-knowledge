@@ -56,7 +56,11 @@ function requiredText(value: string, field: string, maxLength: number): string {
   return normalized;
 }
 
-function optionalText(value: string | undefined, field: string, maxLength: number): string | undefined {
+function optionalText(
+  value: string | undefined,
+  field: string,
+  maxLength: number,
+): string | undefined {
   if (value === undefined) return undefined;
   const normalized = value.trim();
   if (!normalized) return undefined;
@@ -128,9 +132,7 @@ function parseMembership(row: Record<string, unknown>): SourceIntelligencePolicy
   };
 }
 
-export class SqliteSourceIntelligencePolicyScopeRepository
-  implements SourceIntelligencePolicyScopeRepository
-{
+export class SqliteSourceIntelligencePolicyScopeRepository implements SourceIntelligencePolicyScopeRepository {
   constructor(
     private readonly database: DatabaseSync,
     private readonly clock: () => Date = () => new Date(),
@@ -202,7 +204,11 @@ export class SqliteSourceIntelligencePolicyScopeRepository
       throw new RegistryConflictError(
         "SOURCE_INTELLIGENCE_POLICY_COHORT_CHANGED",
         "Policy cohort changed before this update was saved; reload before retrying",
-        { cohortId: input.cohortId ?? null, expectedUpdatedAt: input.expectedUpdatedAt, currentUpdatedAt },
+        {
+          cohortId: input.cohortId ?? null,
+          expectedUpdatedAt: input.expectedUpdatedAt,
+          currentUpdatedAt,
+        },
       );
     }
 
@@ -218,7 +224,11 @@ export class SqliteSourceIntelligencePolicyScopeRepository
         throw new RegistryConflictError(
           "SOURCE_INTELLIGENCE_POLICY_PRIORITY_CONFLICT",
           "Enabled policy cohort priorities must be unique; choose a different priority",
-          { priority, conflictingCohortId: String(conflict.cohort_id), conflictingName: String(conflict.name) },
+          {
+            priority,
+            conflictingCohortId: String(conflict.cohort_id),
+            conflictingName: String(conflict.name),
+          },
         );
       }
     }

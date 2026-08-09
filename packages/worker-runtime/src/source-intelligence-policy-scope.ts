@@ -100,12 +100,15 @@ export function buildSourceIntelligencePolicyScopeAndCohortsV2(input: {
       cohortCount: cohorts.length,
       enabledCohortCount: cohorts.filter((cohort) => cohort.enabled).length,
       membershipCount: memberships.length,
-      cohortScopedSourceCount: effectivePolicies.filter((policy) => policy.scope === "COHORT").length,
-      globalFallbackSourceCount: effectivePolicies.filter((policy) => policy.scope === "GLOBAL").length,
+      cohortScopedSourceCount: effectivePolicies.filter((policy) => policy.scope === "COHORT")
+        .length,
+      globalFallbackSourceCount: effectivePolicies.filter((policy) => policy.scope === "GLOBAL")
+        .length,
       unconfiguredSourceCount: effectivePolicies.filter((policy) => policy.scope === "UNCONFIGURED")
         .length,
-      multiCohortSourceCount: effectivePolicies.filter((policy) => policy.matchedCohortIds.length > 1)
-        .length,
+      multiCohortSourceCount: effectivePolicies.filter(
+        (policy) => policy.matchedCohortIds.length > 1,
+      ).length,
     },
     semantics: {
       cohortMembershipIsExplicitHumanMetadata: true,

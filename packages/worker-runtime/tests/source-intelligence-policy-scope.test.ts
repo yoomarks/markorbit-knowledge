@@ -95,7 +95,9 @@ describe("D2.14 policy scope and cohorts", () => {
       generatedAt: "2026-08-09T03:00:00.000Z",
     });
 
-    expect(result.effectivePolicies.find((policy) => policy.sourceId === "src_multi")).toMatchObject({
+    expect(
+      result.effectivePolicies.find((policy) => policy.sourceId === "src_multi"),
+    ).toMatchObject({
       scope: "COHORT",
       cohortId: cohorts[0]!.cohortId,
       priority: 100,
@@ -103,7 +105,9 @@ describe("D2.14 policy scope and cohorts", () => {
       reviewTargetHours: 12,
       matchedCohortIds: [cohorts[0]!.cohortId, cohorts[1]!.cohortId],
     });
-    expect(result.effectivePolicies.find((policy) => policy.sourceId === "src_global")).toMatchObject({
+    expect(
+      result.effectivePolicies.find((policy) => policy.sourceId === "src_global"),
+    ).toMatchObject({
       scope: "GLOBAL",
       claimTargetHours: 24,
       reviewTargetHours: 48,
