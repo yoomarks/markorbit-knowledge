@@ -135,7 +135,9 @@ function currentCollectionAction(
   const item = snapshot.remediationQueue.items.find(
     (candidate) => candidate.targetId === input.targetId,
   );
-  const action = item?.actions.find((candidate) => candidate.code === "DISPATCH_GOVERNED_COLLECTION");
+  const action = item?.actions.find(
+    (candidate) => candidate.code === "DISPATCH_GOVERNED_COLLECTION",
+  );
   if (
     !item ||
     item.stage !== "COLLECT" ||

@@ -145,9 +145,19 @@ describe("controlled foundational collection dispatch", () => {
     expect(execution.jobIds).toHaveLength(1);
     expect(execution.replayed).toBe(false);
     expect(
-      Number((database.prepare("SELECT COUNT(*) AS count FROM collection_runs").get() as { count: number }).count),
+      Number(
+        (
+          database.prepare("SELECT COUNT(*) AS count FROM collection_runs").get() as {
+            count: number;
+          }
+        ).count,
+      ),
     ).toBe(1);
-    expect(Number((database.prepare("SELECT COUNT(*) AS count FROM jobs").get() as { count: number }).count)).toBe(1);
+    expect(
+      Number(
+        (database.prepare("SELECT COUNT(*) AS count FROM jobs").get() as { count: number }).count,
+      ),
+    ).toBe(1);
 
     const replay = executeApprovedFoundationalCollectionIntent(
       database,
@@ -163,15 +173,21 @@ describe("controlled foundational collection dispatch", () => {
     expect(replay.runId).toBe(execution.runId);
     expect(replay.replayed).toBe(true);
     expect(
-      Number((database.prepare("SELECT COUNT(*) AS count FROM collection_runs").get() as { count: number }).count),
+      Number(
+        (
+          database.prepare("SELECT COUNT(*) AS count FROM collection_runs").get() as {
+            count: number;
+          }
+        ).count,
+      ),
     ).toBe(1);
 
     expect(getFoundationalActionExecutionByIntent(database, intent.intentId)?.runId).toBe(
       execution.runId,
     );
-    expect(listFoundationalActionExecutions(database, { workspaceId, jurisdiction: "us" })).toHaveLength(
-      1,
-    );
+    expect(
+      listFoundationalActionExecutions(database, { workspaceId, jurisdiction: "us" }),
+    ).toHaveLength(1);
     database.close();
   });
 

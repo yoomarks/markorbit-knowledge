@@ -209,7 +209,9 @@ describe("foundational action execution ledger", () => {
         dispatchedAt: dispatch.record.run.requestedAt,
         replayed: false,
       }),
-    ).toThrowError(expect.objectContaining({ code: "FOUNDATIONAL_ACTION_EXECUTION_INTENT_MISMATCH" }));
+    ).toThrowError(
+      expect.objectContaining({ code: "FOUNDATIONAL_ACTION_EXECUTION_INTENT_MISMATCH" }),
+    );
     database.close();
   });
 });

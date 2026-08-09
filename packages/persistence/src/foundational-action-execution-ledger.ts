@@ -128,7 +128,10 @@ function assertExecution(execution: FoundationalActionExecutionRecord): void {
   ) {
     throw new RegistryValidationError("Foundational action execution policy fields are invalid");
   }
-  if (execution.executionId !== foundationalActionExecutionId(execution.workspaceId, execution.idempotencyKey)) {
+  if (
+    execution.executionId !==
+    foundationalActionExecutionId(execution.workspaceId, execution.idempotencyKey)
+  ) {
     throw new RegistryValidationError("executionId does not match workspace/idempotency identity");
   }
   if (!execution.runId.trim() || !execution.sourceId.trim() || !execution.planId.trim()) {
@@ -186,7 +189,9 @@ export class SqliteFoundationalActionExecutionRepository {
 
   create(execution: FoundationalActionExecutionRecord): FoundationalActionExecutionRecord {
     assertExecution(execution);
-    const intent = new SqliteFoundationalActionIntentRepository(this.database).getById(execution.intentId);
+    const intent = new SqliteFoundationalActionIntentRepository(this.database).getById(
+      execution.intentId,
+    );
     if (!intent) {
       throw new RegistryConflictError(
         "FOUNDATIONAL_ACTION_INTENT_NOT_FOUND",
@@ -251,7 +256,8 @@ export class SqliteFoundationalActionExecutionRepository {
       .prepare("SELECT * FROM foundational_action_executions WHERE intent_id = ?")
       .get(execution.intentId) as unknown as ExecutionRow | undefined;
     if (byIntent) {
-      if (byIntent.semantic_fingerprint === semanticFingerprint) return rowExecution(byIntent, true);
+      if (byIntent.semantic_fingerprint === semanticFingerprint)
+        return rowExecution(byIntent, true);
       throw new RegistryConflictError(
         "FOUNDATIONAL_ACTION_INTENT_ALREADY_EXECUTED",
         "This foundational action intent already dispatched a collection run",
