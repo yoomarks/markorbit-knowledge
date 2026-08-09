@@ -234,7 +234,19 @@ async function ensureConnector(fetchImpl: FetchLike, baseUrl: string): Promise<v
         },
       },
       secretSchema: { type: "object", properties: {} },
-      outputArtifactKinds: ["HTML", "MARKDOWN", "PDF", "DOCX", "XLSX", "CSV", "JSON", "XML", "EMAIL", "IMAGE", "TEXT"],
+      outputArtifactKinds: [
+        "HTML",
+        "MARKDOWN",
+        "PDF",
+        "DOCX",
+        "XLSX",
+        "CSV",
+        "JSON",
+        "XML",
+        "EMAIL",
+        "IMAGE",
+        "TEXT",
+      ],
       healthCheck: { mode: "WORKER_PROBE", timeoutSeconds: 30 },
       status: "ACTIVE",
       extensions: {
@@ -394,7 +406,8 @@ export async function bootstrapUsFoundationalCoverage(options: BootstrapCoverage
   await ensureConnector(fetchImpl, baseUrl);
 
   const initial = await loadCoverage(fetchImpl, baseUrl, workspaceId);
-  if (initial.targets.length === 0) throw new Error("No active US FOUNDATIONAL coverage targets found");
+  if (initial.targets.length === 0)
+    throw new Error("No active US FOUNDATIONAL coverage targets found");
   const byRegistration = new Map(initial.registrations.map((value) => [value.targetId, value]));
   const created: Array<{ targetId: string; sourceId: string }> = [];
   const reused: Array<{ targetId: string; sourceIds: string[] }> = [];
@@ -418,7 +431,9 @@ export async function bootstrapUsFoundationalCoverage(options: BootstrapCoverage
   const finalCoverage = await loadCoverage(fetchImpl, baseUrl, workspaceId);
   const missing = finalCoverage.registrations.filter((value) => value.state !== "REGISTERED");
   if (missing.length > 0) {
-    throw new Error(`Coverage registration incomplete: ${missing.map((value) => value.targetId).join(", ")}`);
+    throw new Error(
+      `Coverage registration incomplete: ${missing.map((value) => value.targetId).join(", ")}`,
+    );
   }
 
   let worker: { workerId: string; credential: string | null } | null = null;
@@ -426,7 +441,9 @@ export async function bootstrapUsFoundationalCoverage(options: BootstrapCoverage
   if (options.dispatchRepresentative) {
     worker = await ensureWorker(fetchImpl, baseUrl);
     const targetMap = new Map(finalCoverage.targets.map((value) => [value.id, value]));
-    const registrationMap = new Map(finalCoverage.registrations.map((value) => [value.targetId, value]));
+    const registrationMap = new Map(
+      finalCoverage.registrations.map((value) => [value.targetId, value]),
+    );
     for (const targetId of REPRESENTATIVE_TARGET_IDS) {
       const target = targetMap.get(targetId);
       const registration = registrationMap.get(targetId);

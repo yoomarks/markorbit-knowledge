@@ -14,7 +14,8 @@ function array(value: unknown): unknown[] {
 }
 
 function requiredString(value: unknown, field: string): string {
-  if (typeof value !== "string" || !value) throw new Error(`Coverage verification missing ${field}`);
+  if (typeof value !== "string" || !value)
+    throw new Error(`Coverage verification missing ${field}`);
   return value;
 }
 
@@ -105,7 +106,8 @@ async function verifyArtifacts(runId: string): Promise<{ count: number; kinds: s
     kinds.add(kind);
   }
   for (const requiredKind of ["HTML", "MARKDOWN"]) {
-    if (!kinds.has(requiredKind)) throw new Error(`Run ${runId} is missing ${requiredKind} evidence`);
+    if (!kinds.has(requiredKind))
+      throw new Error(`Run ${runId} is missing ${requiredKind} evidence`);
   }
   return { count: items.length, kinds: [...kinds].sort() };
 }
@@ -147,6 +149,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });

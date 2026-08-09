@@ -40,13 +40,14 @@ describe("US foundational source coverage bootstrap", () => {
 
   it("maps a coverage target to an active SourceDefinition payload without collection authority", () => {
     const payload = sourceCreatePayload(
-      target("us-uspto-trademark-fees", "https://www.uspto.gov/trademarks/trademark-fee-information"),
+      target(
+        "us-uspto-trademark-fees",
+        "https://www.uspto.gov/trademarks/trademark-fee-information",
+      ),
       "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
     );
     expect(payload.status).toBe("ACTIVE");
-    expect(payload.canonicalUri).toBe(
-      "https://www.uspto.gov/trademarks/trademark-fee-information",
-    );
+    expect(payload.canonicalUri).toBe("https://www.uspto.gov/trademarks/trademark-fee-information");
     expect(payload.connector).toEqual({ connectorId: "crawl4ai-web", version: "1.2.0" });
     expect(payload.extensions).toMatchObject({
       "x-markorbit-source-coverage-target-id": "us-uspto-trademark-fees",
@@ -63,7 +64,10 @@ describe("US foundational source coverage bootstrap", () => {
   it("registers only missing targets and remains non-dispatching by default", async () => {
     const targets = [
       target("us-uspto-trademarks-root", "https://www.uspto.gov/trademarks"),
-      target("us-uspto-trademark-fees", "https://www.uspto.gov/trademarks/trademark-fee-information"),
+      target(
+        "us-uspto-trademark-fees",
+        "https://www.uspto.gov/trademarks/trademark-fee-information",
+      ),
     ];
     const createdTargetIds: string[] = [];
     let connectorCreated = false;
@@ -104,10 +108,7 @@ describe("US foundational source coverage bootstrap", () => {
         const extensions = body.extensions as Record<string, unknown>;
         const targetId = String(extensions["x-markorbit-source-coverage-target-id"]);
         createdTargetIds.push(targetId);
-        return Response.json(
-          { source: { id: "src_01ARZ3NDEKTSV4RRFFQ69G5FAB" } },
-          { status: 201 },
-        );
+        return Response.json({ source: { id: "src_01ARZ3NDEKTSV4RRFFQ69G5FAB" } }, { status: 201 });
       }
       throw new Error(`Unexpected request ${method} ${url.pathname}`);
     };

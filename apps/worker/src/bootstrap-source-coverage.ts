@@ -2,7 +2,10 @@ import { bootstrapUsFoundationalCoverage, DEFAULT_WORKSPACE_ID } from "./source-
 
 function argument(name: string): string | undefined {
   const prefix = `${name}=`;
-  return process.argv.slice(2).find((value) => value.startsWith(prefix))?.slice(prefix.length);
+  return process.argv
+    .slice(2)
+    .find((value) => value.startsWith(prefix))
+    ?.slice(prefix.length);
 }
 
 async function main(): Promise<void> {
@@ -22,6 +25,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
