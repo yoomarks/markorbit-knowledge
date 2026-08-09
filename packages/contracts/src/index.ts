@@ -34,6 +34,7 @@ export * from "./source-intelligence-review-health-v2";
 export * from "./source-intelligence-review-ownership-v2";
 export * from "./source-intelligence-assignment-health-v2";
 export * from "./source-intelligence-manual-sla-v2";
+export * from "./source-intelligence-policy-scope-v2";
 export type {
   ReadyPackageStatus as ReadyPackageHandoffStatus,
   ReadyPackageEvidence,

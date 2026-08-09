@@ -7,6 +7,8 @@ import type {
   SourceIntelligenceObservationOwnershipQueueV2,
   SourceIntelligenceObservationReviewQueueV2,
   SourceIntelligenceObservationReviewStatus,
+  SourceIntelligencePolicyCohortV2,
+  SourceIntelligencePolicyScopeAndCohortsV2,
   SourceIntelligenceReviewQueueOperationalHealthV2,
 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
@@ -14,6 +16,10 @@ import {
   SqliteSourceIntelligenceManualSlaRepository,
   type SourceIntelligenceManualSlaRepository,
 } from "@markorbit/persistence/source-intelligence-manual-sla";
+import {
+  SqliteSourceIntelligencePolicyScopeRepository,
+  type SourceIntelligencePolicyScopeRepository,
+} from "@markorbit/persistence/source-intelligence-policy-scope";
 import {
   SqliteSourceIntelligenceObservationOwnershipRepository,
   type SourceIntelligenceObservationOwnershipRepository,
@@ -25,6 +31,7 @@ import {
   buildSourceIntelligenceManualSlaAndEscalationV2,
   buildSourceIntelligenceObservationOwnershipQueueV2,
   buildSourceIntelligenceObservationReviewQueueV2,
+  buildSourceIntelligencePolicyScopeAndCohortsV2,
   buildSourceIntelligenceReviewQueueOperationalHealthV2,
   sourceIntelligenceObservationReviewKey,
 } from "@markorbit/worker-runtime";
@@ -92,11 +99,32 @@ export type ManualEscalationInput = {
   expectedEscalated: boolean;
 };
 
+export type PolicyCohortInput = {
+  cohortId?: string;
+  name: string;
+  description?: string;
+  priority: number;
+  enabled: boolean;
+  claimTargetHours: number | null;
+  reviewTargetHours: number | null;
+  actor: string;
+  expectedUpdatedAt: string | null;
+};
+
+export type PolicyCohortMembershipInput = {
+  cohortId: string;
+  sourceId: string;
+  action: "ADDED" | "REMOVED";
+  actor: string;
+  expectedPresent: boolean;
+};
+
 type ReviewServiceDependencies = {
   intelligence: SourceIntelligenceService;
   reviews: SourceIntelligenceObservationReviewRepository;
   ownership: SourceIntelligenceObservationOwnershipRepository;
   manualSla: SourceIntelligenceManualSlaRepository;
+  policyScope: SourceIntelligencePolicyScopeRepository;
   now?: () => string;
 };
 
@@ -197,6 +225,45 @@ export class SourceIntelligenceReviewService {
     });
   }
 
+  policyScopes(sourceIds: string[]): SourceIntelligencePolicyScopeAndCohortsV2 {
+    const ids = normalizeSourceIds(sourceIds);
+    return buildSourceIntelligencePolicyScopeAndCohortsV2({
+      sourceIds: ids,
+      globalPolicy: this.dependencies.manualSla.getPolicy(),
+      cohorts: this.dependencies.policyScope.listCohorts(),
+      memberships: this.dependencies.policyScope.listMemberships({ sourceIds: ids }),
+      generatedAt: this.now(),
+    });
+  }
+
+  updatePolicyCohort(input: PolicyCohortInput): SourceIntelligencePolicyCohortV2 {
+    const actor = input.actor.trim();
+    if (!actor) throw new RegistryValidationError("actor is required");
+    return this.dependencies.policyScope.saveCohort({
+      ...(input.cohortId ? { cohortId: input.cohortId } : {}),
+      name: input.name,
+      ...(input.description !== undefined ? { description: input.description } : {}),
+      priority: input.priority,
+      enabled: input.enabled,
+      claimTargetHours: input.claimTargetHours,
+      reviewTargetHours: input.reviewTargetHours,
+      actor,
+      expectedUpdatedAt: input.expectedUpdatedAt,
+    });
+  }
+
+  changePolicyCohortMembership(input: PolicyCohortMembershipInput) {
+    const actor = input.actor.trim();
+    if (!actor) throw new RegistryValidationError("actor is required");
+    return this.dependencies.policyScope.saveMembership({
+      cohortId: input.cohortId,
+      sourceId: input.sourceId,
+      action: input.action,
+      actor,
+      expectedPresent: input.expectedPresent,
+    });
+  }
+
   manualSla(
     sourceIds: string[],
     escalationEventLimit = DEFAULT_ESCALATION_EVENT_LIMIT,
@@ -217,9 +284,11 @@ export class SourceIntelligenceReviewService {
       sourceIds: ids,
       limit: eventLimit,
     });
+    const scopes = this.policyScopes(ids);
     return buildSourceIntelligenceManualSlaAndEscalationV2({
       ownershipQueue,
       policy: this.dependencies.manualSla.getPolicy(),
+      effectivePolicies: scopes.effectivePolicies,
       escalations,
       escalationEvents,
       generatedAt: this.now(),
@@ -409,6 +478,7 @@ export function getSourceIntelligenceReviewService(): SourceIntelligenceReviewSe
       reviews: getSourceIntelligenceReviewRepository(),
       ownership: new SqliteSourceIntelligenceObservationOwnershipRepository(database),
       manualSla: new SqliteSourceIntelligenceManualSlaRepository(database),
+      policyScope: new SqliteSourceIntelligencePolicyScopeRepository(database),
     });
   }
   return singleton;

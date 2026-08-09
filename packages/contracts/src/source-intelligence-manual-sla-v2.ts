@@ -82,6 +82,7 @@ export type SourceIntelligenceManualSlaAndEscalationV2 = {
   recentEscalationEvents: SourceIntelligenceManualEscalationEventV2[];
   semantics: {
     policyConfiguredByHuman: true;
+    effectiveTargetsMayBeResolvedByD2_14PolicyScope: true;
     nullTargetDisablesClock: true;
     claimClockScope: "CURRENT_UNASSIGNED_PENDING_OCCURRENCE";
     claimClockStartsAtObservation: true;

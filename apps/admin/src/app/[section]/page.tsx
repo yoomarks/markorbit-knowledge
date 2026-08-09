@@ -14,6 +14,7 @@ import { PlanList } from "@/components/plans/plan-list";
 import { RunList } from "@/components/runs/run-list";
 import { SourceIntelligenceAssignmentHealth } from "@/components/sources/source-intelligence-assignment-health";
 import { SourceIntelligenceManualSla } from "@/components/sources/source-intelligence-manual-sla";
+import { SourceIntelligencePolicyScopes } from "@/components/sources/source-intelligence-policy-scopes";
 import { SourceIntelligenceReviewHealth } from "@/components/sources/source-intelligence-review-health";
 import { SourceIntelligenceReviewOwnership } from "@/components/sources/source-intelligence-review-ownership";
 import { SourceIntelligenceReviewQueue } from "@/components/sources/source-intelligence-review-queue";
@@ -52,9 +53,10 @@ function SourceIntelligencePage() {
     <>
       <PageHeading
         title="Source Intelligence"
-        description="先用 D2.13 Manual SLA & Escalation 定义人工运营目标与人工升级，再用 D2.12 看 Assignment Health、D2.11 做人工分配；D2.10、D2.9 与双轴详情继续提供运营与证据上下文，所有状态都不构成自动执行授权。"
+        description="先用 D2.14 Policy Scope & Cohorts 显式定义不同 Source 的人工 workflow policy，再由 D2.13 计算 Manual SLA 与人工升级；D2.12、D2.11、D2.10、D2.9 与双轴详情继续提供运营与证据上下文，所有状态都不构成自动执行授权。"
       />
       <div className="space-y-6">
+        <SourceIntelligencePolicyScopes />
         <SourceIntelligenceManualSla />
         <SourceIntelligenceAssignmentHealth />
         <SourceIntelligenceReviewOwnership />

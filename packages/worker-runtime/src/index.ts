@@ -41,6 +41,7 @@ export * from "./source-intelligence-review-health";
 export * from "./source-intelligence-review-ownership";
 export * from "./source-intelligence-assignment-health";
 export * from "./source-intelligence-manual-sla";
+export * from "./source-intelligence-policy-scope";
 export * from "./http-website-discovery-provider";
 export * from "./core-intake-adapter";
 export * from "./intake-pipeline-orchestrator";
