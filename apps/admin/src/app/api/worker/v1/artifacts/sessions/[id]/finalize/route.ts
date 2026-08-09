@@ -49,8 +49,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     let conversionHandoff:
-      | ReturnType<typeof dispatchAutomaticConversionForArtifact>
-      | DeferredConversionHandoff;
+      ReturnType<typeof dispatchAutomaticConversionForArtifact> | DeferredConversionHandoff;
     try {
       conversionHandoff = dispatchAutomaticConversionForArtifact(
         result.artifact.artifact.id,

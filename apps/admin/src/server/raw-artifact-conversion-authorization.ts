@@ -33,7 +33,9 @@ function profileCompatible(workspaceId: string, artifact: RawArtifact, profile: 
   if (profile.workspaceId !== workspaceId || profile.status !== "ACTIVE") return false;
   if (profile.sourceId && profile.sourceId !== artifact.sourceId) return false;
   if (!profile.input.artifactKinds.includes(artifact.artifactKind)) return false;
-  if (!profile.input.mimePatterns.some((pattern) => mimePatternMatches(pattern, artifact.mimeType))) {
+  if (
+    !profile.input.mimePatterns.some((pattern) => mimePatternMatches(pattern, artifact.mimeType))
+  ) {
     return false;
   }
   const manifest = getConverterRegistryRepository().getManifest(
@@ -42,9 +44,9 @@ function profileCompatible(workspaceId: string, artifact: RawArtifact, profile: 
   )?.manifest;
   return Boolean(
     manifest &&
-      manifest.status === "ACTIVE" &&
-      manifest.outputFormat === "MARKDOWN" &&
-      converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
+    manifest.status === "ACTIVE" &&
+    manifest.outputFormat === "MARKDOWN" &&
+    converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
   );
 }
 

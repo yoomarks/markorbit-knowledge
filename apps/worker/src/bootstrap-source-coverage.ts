@@ -55,9 +55,7 @@ async function main(): Promise<void> {
         bootstrap,
         supply,
         conversion,
-        mode: sourcesOnly
-          ? "SOURCES_ONLY"
-          : "SOURCES_SUPPLY_PLANS_AND_AUTO_CONVERSION_PROFILES",
+        mode: sourcesOnly ? "SOURCES_ONLY" : "SOURCES_SUPPLY_PLANS_AND_AUTO_CONVERSION_PROFILES",
       },
       null,
       2,

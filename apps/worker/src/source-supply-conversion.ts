@@ -217,15 +217,11 @@ function profileInput(target: CoverageTarget, spec: ConverterSpec): JsonRecord |
       : null;
   }
   if (spec.key === "IMAGE") {
-    return expected.has("IMAGE")
-      ? { artifactKinds: ["IMAGE"], mimePatterns: ["image/*"] }
-      : null;
+    return expected.has("IMAGE") ? { artifactKinds: ["IMAGE"], mimePatterns: ["image/*"] } : null;
   }
   const artifactKinds = spec.artifactKinds.filter((kind) => expected.has(kind));
   if (artifactKinds.length === 0) return null;
-  const mimePatterns = [
-    ...new Set(artifactKinds.flatMap((kind) => RICH_MIME_BY_KIND[kind] ?? [])),
-  ];
+  const mimePatterns = [...new Set(artifactKinds.flatMap((kind) => RICH_MIME_BY_KIND[kind] ?? []))];
   return { artifactKinds, mimePatterns };
 }
 
@@ -302,7 +298,8 @@ export async function prepareUsFoundationalAutoConversion(
   }
   const registrations = new Map(coverage.registrations.map((value) => [value.targetId, value]));
 
-  const manifests: Array<{ converterId: string; version: string; state: "CREATED" | "REUSED" }> = [];
+  const manifests: Array<{ converterId: string; version: string; state: "CREATED" | "REUSED" }> =
+    [];
   for (const spec of CONVERTERS) {
     manifests.push({
       converterId: spec.converterId,

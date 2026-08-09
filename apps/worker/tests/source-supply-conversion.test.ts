@@ -132,9 +132,7 @@ describe("US foundational automatic conversion preparation", () => {
     expect(byConverter.get("local-rich-document-markdown")).toMatchObject({
       input: {
         artifactKinds: ["DOCX"],
-        mimePatterns: [
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ],
+        mimePatterns: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
       },
     });
     expect(byConverter.get("local-ocr-markdown")).toMatchObject({
