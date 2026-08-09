@@ -1,0 +1,55 @@
+name: M11 Fix
+
+on:
+  push:
+    branches:
+      - feature/m11-conversion-retry-recovery
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: ${{ !contains(github.event.head_commit.message, 'M11 apply recovery fixes') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/m11-conversion-retry-recovery
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply recovery fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/admin/src/server/conversion-failure-recovery.ts')
+          text = path.read_text()
+          text = text.replace(
+              '!Number.isInteger(parsed.retryCount) ||\n    !Number.isInteger(parsed.maxRetries) ||\n    !Number.isInteger(parsed.operatorOverrideCount) ||',
+              'typeof parsed.retryCount !== "number" ||\n    !Number.isInteger(parsed.retryCount) ||\n    typeof parsed.maxRetries !== "number" ||\n    !Number.isInteger(parsed.maxRetries) ||\n    typeof parsed.operatorOverrideCount !== "number" ||\n    !Number.isInteger(parsed.operatorOverrideCount) ||',
+          )
+          text = text.replace(
+              '  const failure = failureOrUnknown(run);\n  const retryable = conversionFailureIsAutoRetryable(failure) && maxRetries > 0;',
+              '  const failure = failureOrUnknown(run);\n  const autoRetryable = conversionFailureIsAutoRetryable(failure);\n  const retryable = autoRetryable && maxRetries > 0;',
+          )
+          text = text.replace(
+              '    ...(!retryable ? { deadLetterReason: "NON_RETRYABLE_FAILURE" as const } : {}),',
+              '    ...(!retryable\n      ? {\n          deadLetterReason: autoRetryable\n            ? ("RETRY_BUDGET_EXHAUSTED" as const)\n            : ("NON_RETRYABLE_FAILURE" as const),\n        }\n      : {}),',
+          )
+          path.write_text(text)
+          PY
+      - run: pnpm exec prettier --write apps/admin/src/server/conversion-failure-recovery.ts
+      - run: pnpm --filter @markorbit/admin typecheck
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/admin/src/server/conversion-failure-recovery.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "M11 apply recovery fixes"
+          git push
