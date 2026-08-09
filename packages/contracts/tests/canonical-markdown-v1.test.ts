@@ -42,6 +42,8 @@ describe("Canonical Markdown v1", () => {
   it("rejects invalid version, timestamps and digests", () => {
     expect(isCanonicalMarkdownMetadataV1({ ...metadata(), artifactVersion: 0 })).toBe(false);
     expect(isCanonicalMarkdownMetadataV1({ ...metadata(), capturedAt: "not-a-date" })).toBe(false);
-    expect(isCanonicalMarkdownMetadataV1({ ...metadata(), inputSha256: "not-a-digest" })).toBe(false);
+    expect(isCanonicalMarkdownMetadataV1({ ...metadata(), inputSha256: "not-a-digest" })).toBe(
+      false,
+    );
   });
 });

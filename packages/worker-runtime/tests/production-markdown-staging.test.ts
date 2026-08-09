@@ -125,7 +125,9 @@ describe("production Markdown staging converter", () => {
     expect(markdown).toContain(`inputSha256: "${inputSha}"`);
     expect(markdown).toContain("# USPTO Trademarks\n\nOfficial guidance.\n");
     expect(markdown).not.toContain("\r");
-    expect(markdown.startsWith(canonicalMarkdownFrontmatter(context().documentMetadata))).toBe(true);
+    expect(markdown.startsWith(canonicalMarkdownFrontmatter(context().documentMetadata))).toBe(
+      true,
+    );
   });
 
   it("rejects MIME, size, digest, metadata and exact Converter mismatches", () => {

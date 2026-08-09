@@ -10,7 +10,9 @@ import type {
 } from "../src/staging-content-registry";
 
 const cleanup: string[] = [];
-afterEach(() => cleanup.splice(0).forEach((path) => rmSync(path, { recursive: true, force: true })));
+afterEach(() =>
+  cleanup.splice(0).forEach((path) => rmSync(path, { recursive: true, force: true })),
+);
 
 function descriptor(
   status: StagingDocumentDescriptor["status"] = "READY",
@@ -94,13 +96,7 @@ describe("Local Obsidian Vault projection", () => {
     );
     expect(
       readFileSync(
-        join(
-          root,
-          "wsp_01H00000000000000000000000",
-          "sources",
-          "uspto",
-          "trademarks.md",
-        ),
+        join(root, "wsp_01H00000000000000000000000", "sources", "uspto", "trademarks.md"),
       ).equals(Buffer.from(bytes)),
     ).toBe(true);
 
@@ -113,20 +109,17 @@ describe("Local Obsidian Vault projection", () => {
 
   it("rejects unverified staging and unsafe target paths", () => {
     expect(() =>
-      new LocalObsidianVaultProjectionRepository(staging(undefined, "BLOCKED"), vaultRoot()).project(
-        "wsp_01H00000000000000000000000",
-        "std_01H00000000000000000000000",
-      ),
+      new LocalObsidianVaultProjectionRepository(
+        staging(undefined, "BLOCKED"),
+        vaultRoot(),
+      ).project("wsp_01H00000000000000000000000", "std_01H00000000000000000000000"),
     ).toThrow("OBSIDIAN_PROJECTION_REQUIRES_READY_STAGING");
 
     expect(() =>
       new LocalObsidianVaultProjectionRepository(
         staging(undefined, "READY", "../escape.md"),
         vaultRoot(),
-      ).project(
-        "wsp_01H00000000000000000000000",
-        "std_01H00000000000000000000000",
-      ),
+      ).project("wsp_01H00000000000000000000000", "std_01H00000000000000000000000"),
     ).toThrow("unsafe path segment");
   });
 });
