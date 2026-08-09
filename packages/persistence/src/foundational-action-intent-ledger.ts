@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import type { FoundationalActionIntent } from "@markorbit/worker-runtime/foundational-action-intent";
 import {
   RegistryConflictError,
   RegistryValidationError,
@@ -13,11 +12,57 @@ const ACTOR = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,199}$/;
 const ID = /^fai_[a-f0-9]{32}$/;
 const MAX_LIMIT = 100;
 
+export type FoundationalActionIntentRecord = {
+  protocolVersion: "1.0";
+  objectType: "FOUNDATIONAL_ACTION_INTENT";
+  intentId: string;
+  workspaceId: string;
+  jurisdiction: string;
+  targetId: string;
+  readinessStage: "REGISTER" | "COLLECT" | "INGEST" | "CONVERT" | "INDEX" | "QUALITY" | "RELEVANCE" | "HEALTH";
+  actionCode:
+    | "REGISTER_SOURCE"
+    | "DISPATCH_GOVERNED_COLLECTION"
+    | "REVIEW_INGEST_EVIDENCE"
+    | "RUN_CONVERSION_RECOVERY"
+    | "REINDEX_VERIFIED_CANONICAL"
+    | "OPEN_RETRIEVAL_REMEDIATION_PLAN"
+    | "REVIEW_RELEVANCE_AUDIT_COVERAGE"
+    | "REVIEW_RELEVANCE_PROBE_CONFIG"
+    | "REVIEW_SOURCE_FILTERED_RETRIEVAL"
+    | "REVIEW_GLOBAL_RETRIEVAL_RANKING"
+    | "REVIEW_RELEVANCE_AUDIT"
+    | "REVIEW_SUPPLY_HEALTH";
+  operatorInstruction: string;
+  executionPath:
+    | "MANUAL_OPERATOR"
+    | "FOUNDATIONAL_OPERATOR_EXPLICIT_DISPATCH"
+    | "CONVERSION_RECOVERY"
+    | "CANONICAL_INDEXING"
+    | "M16_PLANNER_THEN_M17_EXPLICIT_OPERATOR"
+    | "M18_RELEVANCE_AUDIT";
+  collectionAuthorizationRequired: boolean;
+  automaticExecution: false;
+  executionAuthorization: "NONE";
+  requestedByActorId: string;
+  approvalRequired: true;
+  approvedByActorId: string | null;
+  canceledByActorId: string | null;
+  status: "PENDING_APPROVAL" | "APPROVED" | "CANCELED";
+  idempotencyKey: string;
+  readinessProtocolVersion: string;
+  queueProtocolVersion: string;
+  sourceSnapshotObservedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  replayed: boolean;
+};
+
 export type FoundationalActionIntentListFilters = {
   workspaceId: string;
   jurisdiction?: string;
   targetId?: string;
-  status?: FoundationalActionIntent["status"];
+  status?: FoundationalActionIntentRecord["status"];
   limit?: number;
 };
 
@@ -26,9 +71,9 @@ type IntentRow = {
   workspace_id: string;
   jurisdiction: string;
   target_id: string;
-  readiness_stage: FoundationalActionIntent["readinessStage"];
-  action_code: FoundationalActionIntent["actionCode"];
-  status: FoundationalActionIntent["status"];
+  readiness_stage: FoundationalActionIntentRecord["readinessStage"];
+  action_code: FoundationalActionIntentRecord["actionCode"];
+  status: FoundationalActionIntentRecord["status"];
   requested_by_actor_id: string;
   idempotency_key: string;
   semantic_fingerprint: string;
@@ -42,7 +87,7 @@ export function foundationalActionIntentId(workspaceId: string, idempotencyKey: 
   return `fai_${digest.slice(0, 32)}`;
 }
 
-function semanticFingerprint(intent: FoundationalActionIntent): string {
+function semanticFingerprint(intent: FoundationalActionIntentRecord): string {
   return createHash("sha256")
     .update(
       JSON.stringify({
@@ -57,12 +102,12 @@ function semanticFingerprint(intent: FoundationalActionIntent): string {
     .digest("hex");
 }
 
-function rowIntent(row: IntentRow, replayed = false): FoundationalActionIntent {
-  const parsed = JSON.parse(row.document_json) as FoundationalActionIntent;
+function rowIntent(row: IntentRow, replayed = false): FoundationalActionIntentRecord {
+  const parsed = JSON.parse(row.document_json) as FoundationalActionIntentRecord;
   return { ...parsed, replayed };
 }
 
-function assertIntent(intent: FoundationalActionIntent): void {
+function assertIntent(intent: FoundationalActionIntentRecord): void {
   if (!ID.test(intent.intentId)) throw new RegistryValidationError("intentId is invalid");
   if (!intent.workspaceId.trim()) throw new RegistryValidationError("workspaceId is required");
   if (!intent.jurisdiction.trim()) throw new RegistryValidationError("jurisdiction is required");
@@ -130,7 +175,7 @@ export class SqliteFoundationalActionIntentRepository {
     ensureLedger(database);
   }
 
-  create(intent: FoundationalActionIntent): FoundationalActionIntent {
+  create(intent: FoundationalActionIntentRecord): FoundationalActionIntentRecord {
     assertIntent(intent);
     const fingerprint = semanticFingerprint(intent);
     const existing = this.database
@@ -176,7 +221,7 @@ export class SqliteFoundationalActionIntentRepository {
     return stored;
   }
 
-  getById(intentIdRaw: string): FoundationalActionIntent | null {
+  getById(intentIdRaw: string): FoundationalActionIntentRecord | null {
     const intentId = intentIdRaw.trim();
     if (!ID.test(intentId)) throw new RegistryValidationError("intentId is invalid");
     const row = this.database
@@ -185,15 +230,15 @@ export class SqliteFoundationalActionIntentRepository {
     return row ? rowIntent(row) : null;
   }
 
-  approve(intentIdRaw: string, actorIdRaw: string): FoundationalActionIntent {
+  approve(intentIdRaw: string, actorIdRaw: string): FoundationalActionIntentRecord {
     return this.transition(intentIdRaw, actorIdRaw, "APPROVED");
   }
 
-  cancel(intentIdRaw: string, actorIdRaw: string): FoundationalActionIntent {
+  cancel(intentIdRaw: string, actorIdRaw: string): FoundationalActionIntentRecord {
     return this.transition(intentIdRaw, actorIdRaw, "CANCELED");
   }
 
-  list(filters: FoundationalActionIntentListFilters): FoundationalActionIntent[] {
+  list(filters: FoundationalActionIntentListFilters): FoundationalActionIntentRecord[] {
     const workspaceId = filters.workspaceId.trim();
     if (!workspaceId) throw new RegistryValidationError("workspaceId is required");
     const limitRaw = filters.limit ?? 50;
@@ -230,7 +275,7 @@ export class SqliteFoundationalActionIntentRepository {
     intentIdRaw: string,
     actorIdRaw: string,
     nextStatus: "APPROVED" | "CANCELED",
-  ): FoundationalActionIntent {
+  ): FoundationalActionIntentRecord {
     const current = this.getById(intentIdRaw);
     if (!current) {
       throw new RegistryConflictError(
@@ -256,7 +301,7 @@ export class SqliteFoundationalActionIntentRepository {
     }
 
     const updatedAt = this.clock().toISOString();
-    const next: FoundationalActionIntent = {
+    const next: FoundationalActionIntentRecord = {
       ...current,
       status: nextStatus,
       approvedByActorId: nextStatus === "APPROVED" ? actorId : current.approvedByActorId,
