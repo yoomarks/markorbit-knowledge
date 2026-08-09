@@ -16,6 +16,7 @@ import { SourceIntelligenceAssignmentHealth } from "@/components/sources/source-
 import { SourceIntelligenceManualSla } from "@/components/sources/source-intelligence-manual-sla";
 import { SourceIntelligencePolicyAudit } from "@/components/sources/source-intelligence-policy-audit";
 import { SourceIntelligencePolicyAuditQuery } from "@/components/sources/source-intelligence-policy-audit-query";
+import { SourceIntelligencePolicyComparison } from "@/components/sources/source-intelligence-policy-comparison";
 import { SourceIntelligencePolicyResolution } from "@/components/sources/source-intelligence-policy-resolution";
 import { SourceIntelligencePolicyScopes } from "@/components/sources/source-intelligence-policy-scopes";
 import { SourceIntelligenceReviewHealth } from "@/components/sources/source-intelligence-review-health";
@@ -56,9 +57,10 @@ function SourceIntelligencePage() {
     <>
       <PageHeading
         title="Source Intelligence"
-        description="先用 D2.17 Historical Policy Resolution 从 immutable coverage checkpoint 严格重放人工 policy，再用 D2.16 查询/导出 D2.15 audit；早于 checkpoint 的历史明确保持 PARTIAL/UNKNOWN，所有结果都不构成自动执行授权。"
+        description="先用 D2.18 比较两个 D2.17 Historical Policy Resolution 端点并严格传播 RESOLVED/PARTIAL/UNKNOWN，再用 D2.17 单点重放与 D2.16 audit 查询追溯原因；所有结果都保持只读，不构成 rollback、apply 或自动执行授权。"
       />
       <div className="space-y-6">
+        <SourceIntelligencePolicyComparison />
         <SourceIntelligencePolicyResolution />
         <SourceIntelligencePolicyAuditQuery />
         <SourceIntelligencePolicyAudit />

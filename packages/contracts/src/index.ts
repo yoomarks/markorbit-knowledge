@@ -38,6 +38,7 @@ export * from "./source-intelligence-policy-scope-v2";
 export * from "./source-intelligence-policy-audit-v2";
 export * from "./source-intelligence-policy-audit-query-v2";
 export * from "./source-intelligence-historical-policy-resolution-v2";
+export * from "./source-intelligence-historical-policy-comparison-v2";
 export type {
   ReadyPackageStatus as ReadyPackageHandoffStatus,
   ReadyPackageEvidence,
