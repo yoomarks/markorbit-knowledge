@@ -15,6 +15,7 @@ import { RunList } from "@/components/runs/run-list";
 import { SourceIntelligenceAssignmentHealth } from "@/components/sources/source-intelligence-assignment-health";
 import { SourceIntelligenceManualSla } from "@/components/sources/source-intelligence-manual-sla";
 import { SourceIntelligencePolicyAudit } from "@/components/sources/source-intelligence-policy-audit";
+import { SourceIntelligencePolicyAuditQuery } from "@/components/sources/source-intelligence-policy-audit-query";
 import { SourceIntelligencePolicyScopes } from "@/components/sources/source-intelligence-policy-scopes";
 import { SourceIntelligenceReviewHealth } from "@/components/sources/source-intelligence-review-health";
 import { SourceIntelligenceReviewOwnership } from "@/components/sources/source-intelligence-review-ownership";
@@ -54,9 +55,10 @@ function SourceIntelligencePage() {
     <>
       <PageHeading
         title="Source Intelligence"
-        description="先用 D2.15 Policy Audit 追溯人工策略变化，再用 D2.14 显式定义 Source policy scope，并由 D2.13 计算 Manual SLA 与人工升级；D2.12、D2.11、D2.10、D2.9 与双轴详情继续提供运营与证据上下文，所有状态都不构成自动执行授权。"
+        description="先用 D2.16 Audit Query & Export 对 D2.15 append-only policy audit 做显式筛选、keyset 分页与确定性导出，再查看 D2.15 原始历史和 D2.14 policy scope；所有查询与导出都保持只读，不构成自动执行授权。"
       />
       <div className="space-y-6">
+        <SourceIntelligencePolicyAuditQuery />
         <SourceIntelligencePolicyAudit />
         <SourceIntelligencePolicyScopes />
         <SourceIntelligenceManualSla />
