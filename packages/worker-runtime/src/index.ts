@@ -42,6 +42,7 @@ export * from "./source-intelligence-review-ownership";
 export * from "./source-intelligence-assignment-health";
 export * from "./source-intelligence-manual-sla";
 export * from "./source-intelligence-policy-scope";
+export * from "./source-intelligence-policy-audit";
 export * from "./http-website-discovery-provider";
 export * from "./core-intake-adapter";
 export * from "./intake-pipeline-orchestrator";
@@ -86,7 +87,10 @@ export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   mode: "FIXTURE",
 };
 export type FixtureExecutionScenario =
-  "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
+  | "SUCCESS"
+  | "FAIL_AFTER_START"
+  | "FAIL_DURING_UPLOAD"
+  | "FAIL_DURING_VERIFY";
 export type ClaimedExecutionContext = { workerId: string; job: Job; lease: JobLease };
 export interface WorkerExecutionClient {
   start(context: ClaimedExecutionContext, executor: ExecutionExecutor, key: string): Promise<void>;
