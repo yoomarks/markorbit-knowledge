@@ -1,0 +1,50 @@
+name: M12 One-shot Type Fix
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.event.pull_request.head.ref == 'm12-us-foundational-readiness'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m12-us-foundational-readiness
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Narrow collection authorization result
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/worker/src/source-foundational-readiness.ts')
+          text = path.read_text()
+          old = '    collectionAuthorization: execution.collectionAuthorization,\n'
+          new = '''    collectionAuthorization:\n      execution.runs.length > 0 ? "EXPLICIT_TARGET_MANUAL_RUNS_DISPATCHED" : "NONE",\n'''
+          if old not in text:
+              raise SystemExit('expected collectionAuthorization line not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - run: pnpm exec prettier --write apps/worker/src/source-foundational-readiness.ts
+      - run: pnpm --filter @markorbit/worker typecheck
+      - run: pnpm --filter @markorbit/worker test
+      - name: Commit fix
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/worker/src/source-foundational-readiness.ts
+          git commit -m "M12 narrow operator authorization type"
+          git push origin HEAD:m12-us-foundational-readiness
