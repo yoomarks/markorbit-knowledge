@@ -206,9 +206,15 @@ function parseEnvelope(stdout: string): RunnerEnvelope {
 
 function assertRequest(request: LocalDocumentExtractionRequest): void {
   if (!request.mimeType.trim()) {
-    throw new LocalDocumentExtractionError("DOCUMENT_EXTRACTION_MIME_INVALID", "mimeType is required");
+    throw new LocalDocumentExtractionError(
+      "DOCUMENT_EXTRACTION_MIME_INVALID",
+      "mimeType is required",
+    );
   }
-  if (request.input.byteLength <= 0 || request.input.byteLength > LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumInputBytes) {
+  if (
+    request.input.byteLength <= 0 ||
+    request.input.byteLength > LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumInputBytes
+  ) {
     throw new LocalDocumentExtractionError(
       "DOCUMENT_EXTRACTION_INPUT_SIZE_INVALID",
       "Document extraction input size is outside governed limits",
@@ -244,9 +250,11 @@ export class SubprocessDocumentExtractionRunner implements LocalDocumentExtracti
       "workers/document_extraction/extract.py";
     this.cwd = options.cwd ?? process.env.MARKORBIT_REPOSITORY_ROOT ?? process.cwd();
     this.maximumProtocolStdoutBytes =
-      options.maximumProtocolStdoutBytes ?? LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumProtocolStdoutBytes;
+      options.maximumProtocolStdoutBytes ??
+      LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumProtocolStdoutBytes;
     this.maximumProtocolStderrBytes =
-      options.maximumProtocolStderrBytes ?? LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumProtocolStderrBytes;
+      options.maximumProtocolStderrBytes ??
+      LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumProtocolStderrBytes;
   }
 
   async extract(request: LocalDocumentExtractionRequest): Promise<LocalDocumentExtractionResult> {
@@ -264,13 +272,22 @@ export class SubprocessDocumentExtractionRunner implements LocalDocumentExtracti
       LOCAL_DOCUMENT_EXTRACTION_LIMITS.timeoutSeconds,
     );
     if (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes <= 0) {
-      throw new LocalDocumentExtractionError("DOCUMENT_EXTRACTION_LIMIT_INVALID", "maxOutputBytes is invalid");
+      throw new LocalDocumentExtractionError(
+        "DOCUMENT_EXTRACTION_LIMIT_INVALID",
+        "maxOutputBytes is invalid",
+      );
     }
     if (!Number.isSafeInteger(maxPages) || maxPages <= 0) {
-      throw new LocalDocumentExtractionError("DOCUMENT_EXTRACTION_LIMIT_INVALID", "maxPages is invalid");
+      throw new LocalDocumentExtractionError(
+        "DOCUMENT_EXTRACTION_LIMIT_INVALID",
+        "maxPages is invalid",
+      );
     }
     if (!Number.isSafeInteger(timeoutSeconds) || timeoutSeconds <= 0) {
-      throw new LocalDocumentExtractionError("DOCUMENT_EXTRACTION_LIMIT_INVALID", "timeoutSeconds is invalid");
+      throw new LocalDocumentExtractionError(
+        "DOCUMENT_EXTRACTION_LIMIT_INVALID",
+        "timeoutSeconds is invalid",
+      );
     }
 
     const directory = await mkdtemp(join(tmpdir(), "markorbit-document-extraction-"));
@@ -366,7 +383,10 @@ export class SubprocessDocumentExtractionRunner implements LocalDocumentExtracti
     }
   }
 
-  private async runSubprocess(request: Record<string, unknown>, timeoutMs: number): Promise<RunnerEnvelope> {
+  private async runSubprocess(
+    request: Record<string, unknown>,
+    timeoutMs: number,
+  ): Promise<RunnerEnvelope> {
     return await new Promise<RunnerEnvelope>((resolvePromise, rejectPromise) => {
       const child = spawn(this.pythonExecutable, [this.scriptPath], {
         cwd: this.cwd,
@@ -470,7 +490,9 @@ function modeForConverter(converter: RuntimeConverterRef): LocalDocumentExtracti
   return null;
 }
 
-function assertExactBinding(context: ProductionMarkdownStagingContext): LocalDocumentExtractionMode {
+function assertExactBinding(
+  context: ProductionMarkdownStagingContext,
+): LocalDocumentExtractionMode {
   const mode = modeForConverter(context.converter);
   if (!mode || modeForConverter(context.lease.converter) !== mode) {
     throw new LocalDocumentExtractionError(
@@ -570,7 +592,9 @@ function failure(error: unknown): { code: string; message: string; retryable: fa
 }
 
 export class ProductionLocalDocumentExtractionExecutor {
-  constructor(private readonly runner: LocalDocumentExtractionRunner = new SubprocessDocumentExtractionRunner()) {}
+  constructor(
+    private readonly runner: LocalDocumentExtractionRunner = new SubprocessDocumentExtractionRunner(),
+  ) {}
 
   async execute(
     context: ProductionMarkdownStagingContext,
@@ -585,7 +609,10 @@ export class ProductionLocalDocumentExtractionExecutor {
       await client.started(context, `${prefix}-started`);
       await client.progress(
         context,
-        { percent: 20, message: `Reading immutable ${context.documentMetadata.artifactKind} RawArtifact` },
+        {
+          percent: 20,
+          message: `Reading immutable ${context.documentMetadata.artifactKind} RawArtifact`,
+        },
         `${prefix}-read`,
       );
       const input = await reader.read(context.inputGrant);
@@ -601,7 +628,13 @@ export class ProductionLocalDocumentExtractionExecutor {
       }
       await client.progress(
         context,
-        { percent: 45, message: mode === "OCR" ? "Running governed OCR extraction" : "Running governed rich document extraction" },
+        {
+          percent: 45,
+          message:
+            mode === "OCR"
+              ? "Running governed OCR extraction"
+              : "Running governed rich document extraction",
+        },
         `${prefix}-extract`,
       );
       const extracted = await this.runner.extract({
@@ -642,7 +675,12 @@ export class ProductionLocalDocumentExtractionExecutor {
       );
       await client.outputReady(context, evidence, `${prefix}-output-ready`);
       outputReported = true;
-      const commit = await uploader.upload(context, canonical, evidence, `${prefix}-staging-commit`);
+      const commit = await uploader.upload(
+        context,
+        canonical,
+        evidence,
+        `${prefix}-staging-commit`,
+      );
       return { markdown: canonical, evidence, commit };
     } catch (error) {
       if (!outputReported) {
