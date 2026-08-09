@@ -2,11 +2,17 @@ import {
   CONVERSION_RUNTIME_VERSION,
   type ConversionClaimRequest,
   type ConversionClaimResult,
+  type RuntimeConverterRef,
 } from "@markorbit/contracts";
 import {
   HttpProductionConversionClient,
   productionRuntimeId,
 } from "./http-production-conversion-client";
+import {
+  PRODUCTION_HTML_MARKDOWN_CONVERTER,
+  PRODUCTION_PDF_MARKDOWN_CONVERTER,
+  ProductionDocumentNormalizationExecutor,
+} from "./production-document-normalization";
 import {
   PRODUCTION_MARKDOWN_STAGING_CONVERTER,
   ProductionMarkdownStagingExecutor,
@@ -19,6 +25,19 @@ export type ProductionConversionWorkerRuntimeOptions = {
   requestedLeaseDurationSeconds?: number;
   onResult?: (result: ProductionMarkdownStagingResult | null) => void;
 };
+
+const PRODUCTION_SUPPORTED_CONVERTERS = [
+  PRODUCTION_MARKDOWN_STAGING_CONVERTER,
+  PRODUCTION_HTML_MARKDOWN_CONVERTER,
+  PRODUCTION_PDF_MARKDOWN_CONVERTER,
+] as const;
+
+function supportsConverter(converter: RuntimeConverterRef): boolean {
+  return PRODUCTION_SUPPORTED_CONVERTERS.some(
+    (supported) =>
+      supported.converterId === converter.converterId && supported.version === converter.version,
+  );
+}
 
 function assertClaimed(result: ConversionClaimResult): asserts result is ConversionClaimResult & {
   result: "CLAIMED";
@@ -43,7 +62,8 @@ function assertClaimed(result: ConversionClaimResult): asserts result is Convers
 export class ProductionConversionWorkerRuntime {
   private readonly capabilityRevision: number;
   private readonly requestedLeaseDurationSeconds: number;
-  private readonly executor = new ProductionMarkdownStagingExecutor();
+  private readonly markdownExecutor = new ProductionMarkdownStagingExecutor();
+  private readonly documentExecutor = new ProductionDocumentNormalizationExecutor();
 
   constructor(
     private readonly client: HttpProductionConversionClient,
@@ -74,8 +94,7 @@ export class ProductionConversionWorkerRuntime {
     if (
       claimed.result.workspaceId !== this.workspaceId ||
       claimed.result.workerId !== this.client.workerId ||
-      claimed.result.converter.converterId !== PRODUCTION_MARKDOWN_STAGING_CONVERTER.converterId ||
-      claimed.result.converter.version !== PRODUCTION_MARKDOWN_STAGING_CONVERTER.version
+      !supportsConverter(claimed.result.converter)
     ) {
       throw new Error("PRODUCTION_CONVERSION_CLAIM_SCOPE_MISMATCH");
     }
@@ -84,7 +103,9 @@ export class ProductionConversionWorkerRuntime {
       runContext.workspaceId !== this.workspaceId ||
       runContext.conversionRunId !== summary.conversionRunId ||
       runContext.rawArtifactId !== summary.rawArtifactId ||
-      runContext.documentMetadata.inputSha256 !== claimed.result.rawArtifactReadGrant.expectedSha256
+      runContext.documentMetadata.inputSha256 !== claimed.result.rawArtifactReadGrant.expectedSha256 ||
+      runContext.documentMetadata.converterId !== claimed.result.converter.converterId ||
+      runContext.documentMetadata.converterVersion !== claimed.result.converter.version
     ) {
       throw new Error("PRODUCTION_CONVERSION_RUN_CONTEXT_MISMATCH");
     }
@@ -102,7 +123,10 @@ export class ProductionConversionWorkerRuntime {
       inputGrant: claimed.result.rawArtifactReadGrant,
       outputGrant: claimed.result.stagingOutputUploadGrant,
     };
-    const result = await this.executor.execute(context, this.client, this.client, this.client);
+    const result =
+      claimed.result.converter.converterId === PRODUCTION_MARKDOWN_STAGING_CONVERTER.converterId
+        ? await this.markdownExecutor.execute(context, this.client, this.client, this.client)
+        : await this.documentExecutor.execute(context, this.client, this.client, this.client);
     this.options.onResult?.(result);
     return true;
   }
@@ -117,12 +141,10 @@ export class ProductionConversionWorkerRuntime {
       workerId: this.client.workerId,
       workerCredentialId: `worker-ref:${this.client.workerId}`,
       capabilityRevision: this.capabilityRevision,
-      supportedConverters: [
-        {
-          converterId: PRODUCTION_MARKDOWN_STAGING_CONVERTER.converterId,
-          versions: [PRODUCTION_MARKDOWN_STAGING_CONVERTER.version],
-        },
-      ],
+      supportedConverters: PRODUCTION_SUPPORTED_CONVERTERS.map((converter) => ({
+        converterId: converter.converterId,
+        versions: [converter.version],
+      })),
       maxAcceptedWork: 1,
       idempotencyKey: `conversion-claim:${id}`,
       requestedLeaseDurationSeconds: this.requestedLeaseDurationSeconds,
