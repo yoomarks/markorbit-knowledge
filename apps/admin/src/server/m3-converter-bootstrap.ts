@@ -1,6 +1,9 @@
-import type { ConverterRegistryRepository } from "@markorbit/persistence/converters";
+import type {
+  ConverterRegistryRepository,
+  CreateConverterManifestInput,
+} from "@markorbit/persistence/converters";
 
-const M3_CONVERTERS = [
+const M3_CONVERTERS: CreateConverterManifestInput[] = [
   {
     converterId: "builtin-markdown-staging",
     displayName: "Built-in canonical Markdown staging",
@@ -44,23 +47,11 @@ const M3_CONVERTERS = [
     resourceHints: { maxInputBytes: 12_000_000, timeoutSeconds: 60 },
     status: "ACTIVE",
   },
-] as const;
+];
 
 export function ensureM3CanonicalDocumentConverters(registry: ConverterRegistryRepository): void {
   for (const manifest of M3_CONVERTERS) {
     if (registry.getManifest(manifest.converterId, manifest.version)) continue;
-    registry.createManifest({
-      ...manifest,
-      capabilities: [...manifest.capabilities],
-      inputs: {
-        artifactKinds: [...manifest.inputs.artifactKinds],
-        mimePatterns: [...manifest.inputs.mimePatterns],
-      },
-      configurationSchema: JSON.parse(JSON.stringify(manifest.configurationSchema)) as Record<
-        string,
-        never
-      >,
-      resourceHints: { ...manifest.resourceHints },
-    });
+    registry.createManifest(manifest);
   }
 }
