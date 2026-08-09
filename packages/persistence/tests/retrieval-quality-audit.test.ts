@@ -114,7 +114,9 @@ describe("retrieval quality audit", () => {
     const stagingDocumentId = "std_00000000000000000000000001";
 
     database
-      .prepare("UPDATE retrieval_documents SET chunk_count = chunk_count + 1 WHERE staging_document_id = ?")
+      .prepare(
+        "UPDATE retrieval_documents SET chunk_count = chunk_count + 1 WHERE staging_document_id = ?",
+      )
       .run(stagingDocumentId);
     database
       .prepare(
@@ -125,9 +127,13 @@ describe("retrieval quality audit", () => {
       )
       .run(stagingDocumentId, stagingDocumentId);
     database
-      .prepare("UPDATE retrieval_chunks SET text = 'Repeated retrieval content' WHERE staging_document_id = ?")
+      .prepare(
+        "UPDATE retrieval_chunks SET text = 'Repeated retrieval content' WHERE staging_document_id = ?",
+      )
       .run(stagingDocumentId);
-    database.exec("DELETE FROM retrieval_chunks_fts WHERE rowid = (SELECT MIN(rowid) FROM retrieval_chunks_fts)");
+    database.exec(
+      "DELETE FROM retrieval_chunks_fts WHERE rowid = (SELECT MIN(rowid) FROM retrieval_chunks_fts)",
+    );
 
     const item = new SqliteRetrievalQualityAuditRepository(database).list({ workspaceId }).items[0];
     expect(item.gaps).toEqual(

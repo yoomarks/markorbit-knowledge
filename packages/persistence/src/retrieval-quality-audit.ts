@@ -207,8 +207,10 @@ export class SqliteRetrievalQualityAuditRepository {
       const actualChunkCount = Number(chunkMetrics.actual_count);
       const distinctChunkTexts = Number(chunkMetrics.distinct_text_count);
       const emptyChunkCount = Number(chunkMetrics.empty_count);
-      const firstOrdinal = chunkMetrics.first_ordinal === null ? null : Number(chunkMetrics.first_ordinal);
-      const lastOrdinal = chunkMetrics.last_ordinal === null ? null : Number(chunkMetrics.last_ordinal);
+      const firstOrdinal =
+        chunkMetrics.first_ordinal === null ? null : Number(chunkMetrics.first_ordinal);
+      const lastOrdinal =
+        chunkMetrics.last_ordinal === null ? null : Number(chunkMetrics.last_ordinal);
       const distinctOrdinalCount = Number(chunkMetrics.distinct_ordinal_count);
       const ftsRowCount = Number(fts.total);
       const declaredChunkCount = Number(row.chunk_count);
