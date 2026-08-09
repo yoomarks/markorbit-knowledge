@@ -34,14 +34,38 @@ For local development only, construct the Node acquirer with `requireEgressProxy
 
 The immutable `CollectionPlan` snapshot controls:
 
-- start URLs from the accepted `SourceDefinition` entrypoints
-- `maxDepth` and `maxItems`
-- include/exclude patterns
-- JavaScript enablement
-- robots.txt checking
-- request timeout
-- rate limit
-- locale
-- authorized artifact kinds
+- start URLs from the accepted `SourceDefinition` entrypoints;
+- `maxDepth` and `maxItems`;
+- include/exclude patterns;
+- JavaScript enablement;
+- robots.txt checking;
+- request timeout;
+- rate limit;
+- locale;
+- authorized artifact kinds;
+- whether linked attachments may be fetched.
 
-This runtime currently emits only `HTML` and `MARKDOWN`. It deliberately does not synthesize PDFs or fetch attachments yet; those require separate evidence semantics and download controls.
+## Emitted evidence
+
+The runtime always treats page evidence and attachment evidence separately.
+
+Page acquisition can emit:
+
+- `HTML`;
+- `MARKDOWN`.
+
+When `fetchAttachments` is explicitly enabled by the immutable CollectionPlan and the requested output kind is authorized, same-host linked attachments can additionally emit:
+
+- `PDF`;
+- `DOCX`;
+- `XLSX`;
+- `CSV`;
+- `JSON`;
+- `XML`;
+- `EMAIL`;
+- `IMAGE`;
+- `TEXT`.
+
+Attachment acquisition is bounded by the same public-DNS, host-scope, redirect, proxy, per-artifact and total-byte controls as page acquisition. PDF and OOXML payloads also receive basic signature validation before they become governed RawArtifact evidence.
+
+This is link-driven attachment acquisition, not browser network interception. JSON returned only by hidden XHR/fetch endpoints is therefore not represented as raw JSON evidence unless a separately authorized URL is discovered or a future dedicated structured-data connector is used.

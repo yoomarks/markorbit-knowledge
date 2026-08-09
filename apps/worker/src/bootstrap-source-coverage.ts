@@ -1,4 +1,5 @@
 import { bootstrapUsFoundationalCoverage, DEFAULT_WORKSPACE_ID } from "./source-coverage-bootstrap";
+import { prepareUsFoundationalSupply } from "./source-coverage-operations";
 
 function argument(name: string): string | undefined {
   const prefix = `${name}=`;
@@ -8,6 +9,15 @@ function argument(name: string): string | undefined {
     ?.slice(prefix.length);
 }
 
+function argumentsFor(name: string): string[] {
+  const prefix = `${name}=`;
+  return process.argv
+    .slice(2)
+    .filter((value) => value.startsWith(prefix))
+    .map((value) => value.slice(prefix.length).trim())
+    .filter(Boolean);
+}
+
 async function main(): Promise<void> {
   const baseUrl =
     process.env.MARKORBIT_CONTROL_PLANE_URL?.trim() ||
@@ -15,13 +25,34 @@ async function main(): Promise<void> {
     "http://127.0.0.1:3000";
   const workspaceId = argument("--workspace") || DEFAULT_WORKSPACE_ID;
   const dispatchRepresentative = process.argv.includes("--dispatch-representative");
+  const sourcesOnly = process.argv.includes("--sources-only");
+  const dispatchTargetIds = argumentsFor("--dispatch-target");
 
-  const result = await bootstrapUsFoundationalCoverage({
+  const bootstrap = await bootstrapUsFoundationalCoverage({
     baseUrl,
     workspaceId,
     dispatchRepresentative,
   });
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+
+  const supply = sourcesOnly
+    ? null
+    : await prepareUsFoundationalSupply({
+        baseUrl,
+        workspaceId,
+        dispatchTargetIds,
+      });
+
+  process.stdout.write(
+    `${JSON.stringify(
+      {
+        bootstrap,
+        supply,
+        mode: sourcesOnly ? "SOURCES_ONLY" : "SOURCES_AND_FOUNDATIONAL_SUPPLY_PLANS",
+      },
+      null,
+      2,
+    )}\n`,
+  );
 }
 
 main().catch((error) => {
