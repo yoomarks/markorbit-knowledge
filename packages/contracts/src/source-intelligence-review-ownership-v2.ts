@@ -1,8 +1,5 @@
 import type { SourceIntelligenceObservationFlagKind } from "./source-intelligence-cross-source-observation-v2";
-import type {
-  SourceIntelligenceObservationReviewQueueItemV2,
-  SourceIntelligenceObservationReviewStatus,
-} from "./source-intelligence-review-queue-v2";
+import type { SourceIntelligenceObservationReviewQueueItemV2 } from "./source-intelligence-review-queue-v2";
 
 export const SOURCE_INTELLIGENCE_REVIEW_OWNERSHIP_PROTOCOL_VERSION = "2.0" as const;
 
@@ -93,16 +90,10 @@ export type SourceIntelligenceOwnershipMutationV2 = {
   action: SourceIntelligenceObservationOwnershipAction;
   actor: string;
   owner?: string;
-  expectedOwner?: string | null;
+  expectedOwner: string | null;
 };
 
 export type SourceIntelligenceOwnershipViewFilter =
   | { view: "TEAM" }
   | { view: "UNASSIGNED" }
   | { view: "MINE"; operator: string };
-
-export function isOwnershipRelevantReviewStatus(
-  status: SourceIntelligenceObservationReviewStatus,
-): boolean {
-  return status === "PENDING" || status === "ACKNOWLEDGED" || status === "IGNORED";
-}
