@@ -1,4 +1,5 @@
 import { bootstrapUsFoundationalCoverage, DEFAULT_WORKSPACE_ID } from "./source-coverage-bootstrap";
+import { prepareUsFoundationalAutoConversion } from "./source-supply-conversion";
 import { prepareUsFoundationalSupply } from "./source-coverage-operations";
 
 function argument(name: string): string | undefined {
@@ -41,13 +42,22 @@ async function main(): Promise<void> {
         workspaceId,
         dispatchTargetIds,
       });
+  const conversion = sourcesOnly
+    ? null
+    : await prepareUsFoundationalAutoConversion({
+        baseUrl,
+        workspaceId,
+      });
 
   process.stdout.write(
     `${JSON.stringify(
       {
         bootstrap,
         supply,
-        mode: sourcesOnly ? "SOURCES_ONLY" : "SOURCES_AND_FOUNDATIONAL_SUPPLY_PLANS",
+        conversion,
+        mode: sourcesOnly
+          ? "SOURCES_ONLY"
+          : "SOURCES_SUPPLY_PLANS_AND_AUTO_CONVERSION_PROFILES",
       },
       null,
       2,
