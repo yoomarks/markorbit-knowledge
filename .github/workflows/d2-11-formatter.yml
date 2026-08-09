@@ -1,0 +1,48 @@
+name: D2.11 Formatter
+
+on:
+  push:
+    branches:
+      - codex/d2-11-operator-ownership-handoff
+    paths:
+      - .github/workflows/d2-11-formatter.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/d2-11-operator-ownership-handoff
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format D2.11 files
+        run: |
+          pnpm exec prettier --write \
+            apps/admin/src/app/api/source-intelligence/reviews/ownership/route.ts \
+            apps/admin/src/components/sources/source-intelligence-review-ownership.tsx \
+            packages/contracts/src/source-intelligence-review-ownership-v2.ts \
+            packages/persistence/src/source-intelligence-review-ownership-registry.ts \
+            packages/worker-runtime/tests/source-intelligence-review-ownership.test.ts
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/admin/src/app/api/source-intelligence/reviews/ownership/route.ts \
+            apps/admin/src/components/sources/source-intelligence-review-ownership.tsx \
+            packages/contracts/src/source-intelligence-review-ownership-v2.ts \
+            packages/persistence/src/source-intelligence-review-ownership-registry.ts \
+            packages/worker-runtime/tests/source-intelligence-review-ownership.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "style: format D2.11 ownership and handoff"
+          git push origin HEAD:codex/d2-11-operator-ownership-handoff
