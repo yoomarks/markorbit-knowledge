@@ -31,6 +31,7 @@ const STAGE_LABELS: Record<(typeof STAGE_ORDER)[number], string> = {
 type Jurisdiction = "US" | "WO";
 type Snapshot = FoundationalRemediationQueueSnapshot;
 type QueueItem = Snapshot["remediationQueue"]["items"][number];
+type QueueAction = QueueItem["actions"][number];
 
 type ErrorEnvelope = {
   error?: {
@@ -441,7 +442,7 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
                         </div>
 
                         <div className="mt-4 grid gap-3 xl:grid-cols-2">
-                          {item.actions.map((action) => (
+                          {item.actions.map((action: QueueAction) => (
                             <div
                               key={`${item.targetId}-${action.code}`}
                               className="rounded-xl border border-slate-200 bg-slate-50 p-4"
