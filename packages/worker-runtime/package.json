@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./foundational-readiness": "./src/foundational-readiness.ts",
-    "./foundational-remediation-queue": "./src/foundational-remediation-queue.ts"
+    "./foundational-remediation-queue": "./src/foundational-remediation-queue.ts",
+    "./foundational-remediation-snapshot": "./src/foundational-remediation-snapshot.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
