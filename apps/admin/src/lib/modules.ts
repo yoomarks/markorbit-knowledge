@@ -32,6 +32,12 @@ export const modules = {
     description: "用业务视角管理已接受的数据源、来源类型、国家和采集状态。",
     icon: Database,
   },
+  foundational: {
+    label: "Foundational Readiness",
+    description:
+      "查看 US / WIPO FOUNDATIONAL 来源的供给、检索质量、相关性 smoke gate 与人工修复队列。",
+    icon: PackageCheck,
+  },
   intelligence: {
     label: "Source Intelligence",
     description: "比较来源的运营价值、证据基础与人工复查建议，不替代法律权威判断。",
@@ -125,6 +131,7 @@ export const primaryModuleOrder: ModuleKey[] = [
   "dashboard",
   "discovery",
   "sources",
+  "foundational",
   "intelligence",
   "people",
   "knowledge",
