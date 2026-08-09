@@ -103,7 +103,8 @@ export function SourceIntelligencePolicyComparison() {
           </div>
           <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-500">
             比较同一显式 Source 的两个 D2.17 历史解析端点。只有两端都 RESOLVED 才声明 CHANGED /
-            UNCHANGED；PARTIAL 或 UNKNOWN 不升级为确定结论，新增 event id 也只作为 trace delta，不当作因果证明。
+            UNCHANGED；PARTIAL 或 UNKNOWN 不升级为确定结论，新增 event id 也只作为 trace
+            delta，不当作因果证明。
           </p>
         </div>
         <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
@@ -131,7 +132,11 @@ export function SourceIntelligencePolicyComparison() {
           className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
           aria-label="Comparison from time"
         />
-        <ArrowRight className="hidden self-center text-slate-400 lg:block" size={18} aria-hidden="true" />
+        <ArrowRight
+          className="hidden self-center text-slate-400 lg:block"
+          size={18}
+          aria-hidden="true"
+        />
         <input
           type="datetime-local"
           value={toAsOf}
@@ -189,13 +194,17 @@ export function SourceIntelligencePolicyComparison() {
               <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
                 <div className="font-semibold text-slate-950">Before</div>
                 <div className="mt-2">
-                  {item.beforePolicy?.scope ?? "—"} · Claim {hours(item.beforePolicy?.claimTargetHours ?? null)} · Review {hours(item.beforePolicy?.reviewTargetHours ?? null)}
+                  {item.beforePolicy?.scope ?? "—"} · Claim{" "}
+                  {hours(item.beforePolicy?.claimTargetHours ?? null)} · Review{" "}
+                  {hours(item.beforePolicy?.reviewTargetHours ?? null)}
                 </div>
               </div>
               <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
                 <div className="font-semibold text-slate-950">After</div>
                 <div className="mt-2">
-                  {item.afterPolicy?.scope ?? "—"} · Claim {hours(item.afterPolicy?.claimTargetHours ?? null)} · Review {hours(item.afterPolicy?.reviewTargetHours ?? null)}
+                  {item.afterPolicy?.scope ?? "—"} · Claim{" "}
+                  {hours(item.afterPolicy?.claimTargetHours ?? null)} · Review{" "}
+                  {hours(item.afterPolicy?.reviewTargetHours ?? null)}
                 </div>
               </div>
             </div>
@@ -207,10 +216,15 @@ export function SourceIntelligencePolicyComparison() {
 
           {item.fieldChanges.length ? (
             <div>
-              <div className="mb-2 text-sm font-semibold text-slate-900">Effective policy field changes</div>
+              <div className="mb-2 text-sm font-semibold text-slate-900">
+                Effective policy field changes
+              </div>
               <div className="space-y-2">
                 {item.fieldChanges.map((change) => (
-                  <div key={change.field} className="grid gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm md:grid-cols-[180px_1fr_auto_1fr]">
+                  <div
+                    key={change.field}
+                    className="grid gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm md:grid-cols-[180px_1fr_auto_1fr]"
+                  >
                     <span className="font-medium text-slate-800">{change.field}</span>
                     <code className="text-xs text-slate-600">{JSON.stringify(change.before)}</code>
                     <ArrowRight size={14} className="text-slate-400" aria-hidden="true" />
@@ -224,7 +238,9 @@ export function SourceIntelligencePolicyComparison() {
           <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
             <div className="font-semibold text-slate-950">Explanation</div>
             {item.explanation.map((line) => (
-              <p key={line} className="mt-1 leading-6">{line}</p>
+              <p key={line} className="mt-1 leading-6">
+                {line}
+              </p>
             ))}
             {item.newlyObservedEventIds.length ? (
               <div className="mt-3 font-mono text-[11px] text-slate-500">
@@ -235,7 +251,8 @@ export function SourceIntelligencePolicyComparison() {
 
           <p className="text-xs leading-5 text-slate-500">
             D2.18 只比较 D2.17 的两个证明状态，不执行 rollback / apply / route / notify / collect，
-            不推断 Cohort membership、operator identity、RBAC、Authority 或法律真实性；Scheduler 继续为 NOT_AUTHORIZED_UNCALIBRATED。
+            不推断 Cohort membership、operator identity、RBAC、Authority 或法律真实性；Scheduler
+            继续为 NOT_AUTHORIZED_UNCALIBRATED。
           </p>
         </div>
       ) : null}

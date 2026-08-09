@@ -24,9 +24,14 @@ function value(
   return policy[field];
 }
 
-function sameValue(left: string | number | string[] | null, right: string | number | string[] | null) {
+function sameValue(
+  left: string | number | string[] | null,
+  right: string | number | string[] | null,
+) {
   if (Array.isArray(left) || Array.isArray(right)) {
-    return Array.isArray(left) && Array.isArray(right) && JSON.stringify(left) === JSON.stringify(right);
+    return (
+      Array.isArray(left) && Array.isArray(right) && JSON.stringify(left) === JSON.stringify(right)
+    );
   }
   return left === right;
 }
@@ -61,7 +66,9 @@ function compareItem(
   from: SourceIntelligenceHistoricalPolicyResolutionItemV2,
   to: SourceIntelligenceHistoricalPolicyResolutionItemV2,
 ): SourceIntelligenceHistoricalPolicyComparisonItemV2 {
-  const newlyObservedEventIds = to.appliedEventIds.filter((eventId) => !from.appliedEventIds.includes(eventId));
+  const newlyObservedEventIds = to.appliedEventIds.filter(
+    (eventId) => !from.appliedEventIds.includes(eventId),
+  );
   if (from.status === "UNKNOWN" || to.status === "UNKNOWN") {
     return {
       sourceId: from.sourceId,
@@ -80,7 +87,12 @@ function compareItem(
       ],
     };
   }
-  if (from.status !== "RESOLVED" || to.status !== "RESOLVED" || !from.resolvedPolicy || !to.resolvedPolicy) {
+  if (
+    from.status !== "RESOLVED" ||
+    to.status !== "RESOLVED" ||
+    !from.resolvedPolicy ||
+    !to.resolvedPolicy
+  ) {
     return {
       sourceId: from.sourceId,
       from: endpoint(from),
@@ -125,7 +137,10 @@ export function buildSourceIntelligenceHistoricalPolicyComparisonV2(input: {
   if (Date.parse(input.from.asOf) >= Date.parse(input.to.asOf)) {
     throw new Error("fromAsOf must be earlier than toAsOf");
   }
-  if (input.from.checkpoint.checkpointId !== input.to.checkpoint.checkpointId || input.from.checkpoint.checkpointAt !== input.to.checkpoint.checkpointAt) {
+  if (
+    input.from.checkpoint.checkpointId !== input.to.checkpoint.checkpointId ||
+    input.from.checkpoint.checkpointAt !== input.to.checkpoint.checkpointAt
+  ) {
     throw new Error("D2.18 endpoints must use the same immutable D2.17 checkpoint");
   }
   const toBySource = new Map(input.to.items.map((item) => [item.sourceId, item]));
@@ -134,7 +149,8 @@ export function buildSourceIntelligenceHistoricalPolicyComparisonV2(input: {
     if (!toItem) throw new Error(`Missing to endpoint for source ${fromItem.sourceId}`);
     return compareItem(fromItem, toItem);
   });
-  if (items.length !== input.to.items.length) throw new Error("D2.18 endpoints must contain identical Source sets");
+  if (items.length !== input.to.items.length)
+    throw new Error("D2.18 endpoints must contain identical Source sets");
   return {
     protocolVersion: "2.0",
     objectType: "SOURCE_INTELLIGENCE_HISTORICAL_POLICY_COMPARISON",

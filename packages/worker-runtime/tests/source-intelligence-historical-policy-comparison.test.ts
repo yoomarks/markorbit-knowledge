@@ -130,7 +130,11 @@ describe("D2.18 historical policy comparison", () => {
       "2026-08-09T03:00:00.000Z",
       item("2026-08-09T03:00:00.000Z", "RESOLVED", policy(12)),
     );
-    const result = buildSourceIntelligenceHistoricalPolicyComparisonV2({ from, to, generatedAt: to.generatedAt });
+    const result = buildSourceIntelligenceHistoricalPolicyComparisonV2({
+      from,
+      to,
+      generatedAt: to.generatedAt,
+    });
     expect(result.items[0]).toMatchObject({ status: "PARTIAL", changeStatus: "INDETERMINATE" });
     expect(result.items[0]?.fieldChanges).toEqual([]);
   });
@@ -144,10 +148,18 @@ describe("D2.18 historical policy comparison", () => {
       "2026-08-09T03:00:00.000Z",
       item("2026-08-09T03:00:00.000Z", "UNKNOWN", null),
     );
-    const result = buildSourceIntelligenceHistoricalPolicyComparisonV2({ from, to, generatedAt: to.generatedAt });
+    const result = buildSourceIntelligenceHistoricalPolicyComparisonV2({
+      from,
+      to,
+      generatedAt: to.generatedAt,
+    });
     expect(result.items[0]).toMatchObject({ status: "UNKNOWN", changeStatus: "INDETERMINATE" });
     expect(() =>
-      buildSourceIntelligenceHistoricalPolicyComparisonV2({ from: to, to: from, generatedAt: to.generatedAt }),
+      buildSourceIntelligenceHistoricalPolicyComparisonV2({
+        from: to,
+        to: from,
+        generatedAt: to.generatedAt,
+      }),
     ).toThrow("fromAsOf must be earlier than toAsOf");
   });
 });
