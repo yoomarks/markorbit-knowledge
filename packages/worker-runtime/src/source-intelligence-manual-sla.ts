@@ -194,6 +194,7 @@ export function buildSourceIntelligenceManualSlaAndEscalationV2(input: {
       .slice(0, RECENT_EVENT_LIMIT),
     semantics: {
       policyConfiguredByHuman: true,
+      effectiveTargetsMayBeResolvedByD2_14PolicyScope: true,
       nullTargetDisablesClock: true,
       claimClockScope: "CURRENT_UNASSIGNED_PENDING_OCCURRENCE",
       claimClockStartsAtObservation: true,
