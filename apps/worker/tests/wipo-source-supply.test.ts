@@ -48,7 +48,7 @@ describe("WIPO foundational source supply", () => {
   it("prepares a MANUAL plan through the WO coverage filter without dispatching a run", async () => {
     const coverageTarget = target();
     let observedJurisdiction: string | null = null;
-    let createdPlan: Record<string, unknown> | null = null;
+    const createdPlans: Array<Record<string, unknown>> = [];
 
     const fetchImpl: typeof fetch = async (input, init) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
@@ -66,12 +66,13 @@ describe("WIPO foundational source supply", () => {
         return Response.json({ items: [] });
       }
       if (url.pathname === "/api/plans" && method === "POST") {
-        createdPlan = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        createdPlans.push(body);
         return Response.json({
           plan: {
             plan: {
               id: "pln_01ARZ3NDEKTSV4RRFFQ69G5FWO",
-              name: String(createdPlan.name),
+              name: String(body.name),
               status: "ACTIVE",
               schedule: { mode: "MANUAL" },
             },
@@ -92,12 +93,14 @@ describe("WIPO foundational source supply", () => {
     expect(result.preparedPlanCount).toBe(1);
     expect(result.runs).toEqual([]);
     expect(result.collectionAuthorization).toBe("NONE");
-    expect(record(createdPlan?.schedule)).toEqual({ mode: "MANUAL" });
-    expect(record(createdPlan?.policy)).toMatchObject({
+    expect(createdPlans).toHaveLength(1);
+    const createdPlan = record(createdPlans[0]);
+    expect(record(createdPlan.schedule)).toEqual({ mode: "MANUAL" });
+    expect(record(createdPlan.policy)).toMatchObject({
       fetchAttachments: true,
       respectRobots: true,
     });
-    expect(record(createdPlan?.output)).toEqual({
+    expect(record(createdPlan.output)).toEqual({
       artifactKinds: ["HTML", "MARKDOWN", "PDF"],
     });
   });
@@ -160,9 +163,9 @@ describe("WIPO foundational source supply", () => {
     expect(profiles).toHaveLength(2);
     expect(profiles.every((profile) => profile.sourceId === SOURCE_ID)).toBe(true);
     expect(profiles.every((profile) => profile.autoConvert === true)).toBe(true);
-    expect(profiles.every((profile) => profile.targetPathTemplate === "sources/wipo/{artifactId}.md")).toBe(
-      true,
-    );
+    expect(
+      profiles.every((profile) => profile.targetPathTemplate === "sources/wipo/{artifactId}.md"),
+    ).toBe(true);
     const converterIds = profiles.map(
       (profile) => (profile.converter as Record<string, unknown>).converterId,
     );
