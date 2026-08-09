@@ -1,0 +1,56 @@
+name: D2.17 Replay Hardening Runner
+
+on:
+  push:
+    branches:
+      - codex/d2-17-historical-policy-resolution
+    paths:
+      - .github/workflows/d2-17-quality-runner.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/d2-17-historical-policy-resolution
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Execute hardening block
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source = Path('.github/workflows/d2-17-quality-fix.yml').read_text()
+          marker = "          python - <<'PY'\n"
+          start = source.index(marker) + len(marker)
+          end = source.index("\n          PY\n", start)
+          raw = source[start:end]
+          block = "\n".join(line[10:] if line.startswith("          ") else line for line in raw.splitlines())
+          exec(compile(block, 'd2-17-quality-fix.py', 'exec'))
+          PY
+      - name: Format and test
+        run: |
+          pnpm exec prettier --write \
+            packages/contracts/src/source-intelligence-historical-policy-resolution-v2.ts \
+            packages/worker-runtime/src/source-intelligence-historical-policy-resolution.ts \
+            packages/worker-runtime/tests/source-intelligence-historical-policy-resolution.test.ts
+          pnpm --filter @markorbit/worker-runtime test -- source-intelligence-historical-policy-resolution.test.ts
+      - name: Commit hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/contracts/src/source-intelligence-historical-policy-resolution-v2.ts \
+            packages/worker-runtime/src/source-intelligence-historical-policy-resolution.ts \
+            packages/worker-runtime/tests/source-intelligence-historical-policy-resolution.test.ts
+          git commit -m "fix: harden D2.17 replay completeness"
+          git push origin HEAD:codex/d2-17-historical-policy-resolution
