@@ -1,0 +1,203 @@
+name: M4 Attachment Integration V2
+
+on:
+  push:
+    branches:
+      - feature/m4-attachment-acquisition-reliability
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'M4 integrate attachment acquisition') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/m4-attachment-acquisition-reliability
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Integrate attachment acquisition
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str, count: int = 1):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"target not found in {path}: {old[:100]!r}")
+              p.write_text(text.replace(old, new, count))
+
+          acquire = 'workers/crawl4ai/acquire.py'
+          replace(
+              acquire,
+              'from safety import (\n    SafetyError,\n    assert_public_dns,\n    crawl_host_in_scope,\n    host_of,\n    normalize_http_url,\n    redirect_host_in_scope,\n    url_allowed_by_patterns,\n)\n\nPROTOCOL_VERSION = "1.0"\nSUPPORTED_OUTPUT_KINDS = {"HTML", "MARKDOWN"}\n',
+              'from safety import (\n    SafetyError,\n    assert_public_dns,\n    crawl_host_in_scope,\n    host_of,\n    normalize_http_url,\n    redirect_host_in_scope,\n    url_allowed_by_patterns,\n)\nfrom attachments import (\n    AttachmentDownload,\n    SUPPORTED_ATTACHMENT_KINDS,\n    attachment_kind_for_url,\n    download_attachment,\n)\n\nPROTOCOL_VERSION = "1.0"\nSUPPORTED_OUTPUT_KINDS = {"HTML", "MARKDOWN"} | set(SUPPORTED_ATTACHMENT_KINDS)\n',
+          )
+          replace(
+              acquire,
+              '        "render_javascript": _require_bool(payload.get("renderJavascript"), "renderJavascript"),\n        "respect_robots": _require_bool(payload.get("respectRobots"), "respectRobots"),',
+              '        "render_javascript": _require_bool(payload.get("renderJavascript"), "renderJavascript"),\n        "fetch_attachments": _require_bool(payload.get("fetchAttachments"), "fetchAttachments"),\n        "respect_robots": _require_bool(payload.get("respectRobots"), "respectRobots"),',
+          )
+          marker = '\n\nasync def _crawl(request: dict[str, Any]) -> dict[str, Any]:\n'
+          attachment_writer = '''\n\ndef _write_attachment_artifact(\n    output_directory: Path,\n    sequence: int,\n    attachment: AttachmentDownload,\n    max_artifact_bytes: int,\n    current_total_bytes: int,\n    max_total_bytes: int,\n) -> tuple[dict[str, Any], int]:\n    content = attachment.content\n    if not content:\n        raise SafetyError("EMPTY_ARTIFACT_NOT_ALLOWED", "Attachment output is empty")\n    if len(content) > max_artifact_bytes:\n        raise SafetyError("ARTIFACT_TOO_LARGE", "Attachment exceeds the configured byte limit")\n    if current_total_bytes + len(content) > max_total_bytes:\n        raise SafetyError("COLLECTION_TOO_LARGE", "Collection exceeds the configured total byte limit")\n    digest = hashlib.sha256(content).hexdigest()\n    suffix = Path(attachment.original_name).suffix.lower()\n    if not suffix or len(suffix) > 10 or not re.fullmatch(r"\\.[a-z0-9]+", suffix):\n        suffix = ".bin"\n    filename = f"{sequence:04d}-{_safe_stem(attachment.final_url)}-{digest[:12]}{suffix}"\n    path = output_directory / filename\n    with path.open("xb") as handle:\n        handle.write(content)\n    return (\n        {\n            "artifactKind": attachment.artifact_kind,\n            "mimeType": attachment.mime_type,\n            "originalName": attachment.original_name,\n            "sourceUri": attachment.source_url,\n            "canonicalUri": attachment.final_url,\n            "fileName": filename,\n            "sizeBytes": len(content),\n            "sha256": digest,\n        },\n        current_total_bytes + len(content),\n    )\n'''
+          replace(acquire, marker, attachment_writer + marker)
+          replace(
+              acquire,
+              'async def _crawl(request: dict[str, Any]) -> dict[str, Any]:\n    proxy_config = _proxy_configuration(request["require_egress_proxy"])\n',
+              'async def _crawl(request: dict[str, Any]) -> dict[str, Any]:\n    proxy_config = _proxy_configuration(request["require_egress_proxy"])\n    proxy_server = proxy_config["server"] if proxy_config else None\n',
+          )
+          replace(
+              acquire,
+              '    artifacts: list[dict[str, Any]] = []\n    total_bytes = 0\n    pages_attempted = 0\n    seen: set[str] = set()\n    rate_gate = RateGate(request["rate_limit_per_minute"])\n    last_error: SafetyError | None = None\n',
+              '    artifacts: list[dict[str, Any]] = []\n    total_bytes = 0\n    items_attempted = 0\n    pages_attempted = 0\n    attachments_attempted = 0\n    attachment_hashes: set[str] = set()\n    seen: set[str] = set()\n    rate_gate = RateGate(request["rate_limit_per_minute"])\n    last_error: SafetyError | None = None\n',
+          )
+          replace(acquire, '                if pages_attempted >= request["max_items"]:\n', '                if items_attempted >= request["max_items"]:\n')
+          replace(acquire, '                while queue and pages_attempted < request["max_items"]:\n', '                while queue and items_attempted < request["max_items"]:\n')
+          old_fetch = '''                    seen.add(current_url)\n                    await assert_public_dns(current_url)\n                    await rate_gate.wait()\n                    pages_attempted += 1\n\n                    try:\n                        result = await crawler.arun(url=current_url, config=run_config)\n                    except Exception as exc:\n'''
+          new_fetch = '''                    attachment_kind = attachment_kind_for_url(current_url)\n                    if attachment_kind is not None:\n                        seen.add(current_url)\n                        if (\n                            not request["fetch_attachments"]\n                            or attachment_kind not in request["output_kinds"]\n                        ):\n                            continue\n                        await assert_public_dns(current_url)\n                        await rate_gate.wait()\n                        items_attempted += 1\n                        attachments_attempted += 1\n                        try:\n                            attachment = await download_attachment(\n                                current_url,\n                                seed_host=seed_host,\n                                proxy_server=proxy_server,\n                                locale=request["locale"],\n                                timeout_seconds=request["timeout_seconds"],\n                                max_bytes=min(\n                                    request["max_artifact_bytes"],\n                                    request["max_total_bytes"] - total_bytes,\n                                ),\n                            )\n                        except SafetyError as exc:\n                            last_error = exc\n                            continue\n                        if attachment.artifact_kind not in request["output_kinds"]:\n                            continue\n                        digest = hashlib.sha256(attachment.content).hexdigest()\n                        if digest in attachment_hashes:\n                            continue\n                        attachment_hashes.add(digest)\n                        manifest, total_bytes = _write_attachment_artifact(\n                            request["output_directory"],\n                            len(artifacts) + 1,\n                            attachment,\n                            request["max_artifact_bytes"],\n                            total_bytes,\n                            request["max_total_bytes"],\n                        )\n                        artifacts.append(manifest)\n                        continue\n\n                    seen.add(current_url)\n                    await assert_public_dns(current_url)\n                    await rate_gate.wait()\n                    items_attempted += 1\n                    pages_attempted += 1\n\n                    try:\n                        result = await crawler.arun(url=current_url, config=run_config)\n                    except Exception as exc:\n'''
+          replace(acquire, old_fetch, new_fetch)
+          replace(
+              acquire,
+              '        "pagesAttempted": pages_attempted,\n        "totalBytes": total_bytes,\n',
+              '        "pagesAttempted": pages_attempted,\n        "attachmentsAttempted": attachments_attempted,\n        "totalBytes": total_bytes,\n',
+          )
+
+          ts = 'packages/worker-runtime/src/crawl4ai-subprocess-acquirer.ts'
+          replace(
+              ts,
+              'const SUPPORTED_OUTPUT_KINDS = new Set<ArtifactKind>(["HTML", "MARKDOWN"]);',
+              'const SUPPORTED_OUTPUT_KINDS = new Set<ArtifactKind>([\n  "HTML",\n  "MARKDOWN",\n  "PDF",\n  "DOCX",\n  "XLSX",\n  "CSV",\n  "JSON",\n  "XML",\n  "EMAIL",\n  "IMAGE",\n  "TEXT",\n]);',
+          )
+          replace(
+              ts,
+              '  renderJavascript: boolean;\n  respectRobots: boolean;',
+              '  renderJavascript: boolean;\n  fetchAttachments: boolean;\n  respectRobots: boolean;',
+          )
+          rejection = '''  if (job.planSnapshot.policy.fetchAttachments) {\n    throw new CollectionAcquisitionError(\n      "FETCH_ATTACHMENTS_NOT_SUPPORTED",\n      "Crawl4AI attachment downloads are not authorized by this production adapter yet",\n      false,\n    );\n  }\n'''
+          replace(ts, rejection, '')
+          replace(
+              ts,
+              '      "Crawl4AI production adapter currently supports only HTML and MARKDOWN artifacts",',
+              '      "Crawl4AI production adapter received an unsupported page or attachment artifact kind",',
+          )
+          replace(
+              ts,
+              '    version: "0.9.2",\n    mode: "PRODUCTION",',
+              '    version: "1.0.0",\n    mode: "PRODUCTION",',
+          )
+          replace(
+              ts,
+              '        renderJavascript: policy.renderJavascript,\n        respectRobots: policy.respectRobots,',
+              '        renderJavascript: policy.renderJavascript,\n        fetchAttachments: policy.fetchAttachments,\n        respectRobots: policy.respectRobots,',
+          )
+
+          connector = 'apps/admin/src/server/crawl4ai-production-connector.ts'
+          replace(connector, '  version: "1.1.0",', '  version: "1.2.0",')
+          replace(connector, '  displayName: "Crawl4AI Web Connector — Production HTML/Markdown",', '  displayName: "Crawl4AI Web Connector — Production Pages + Attachments",')
+          replace(connector, '  capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"],', '  capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT", "FETCH_ATTACHMENTS"],')
+          replace(connector, '  outputArtifactKinds: ["HTML", "MARKDOWN"],', '  outputArtifactKinds: [\n    "HTML",\n    "MARKDOWN",\n    "PDF",\n    "DOCX",\n    "XLSX",\n    "CSV",\n    "JSON",\n    "XML",\n    "EMAIL",\n    "IMAGE",\n    "TEXT",\n  ],')
+          replace(connector, '    "x-markorbit-evidence-boundary": "raw-html-markdown",', '    "x-markorbit-evidence-boundary": "raw-pages-and-authorized-attachments",')
+
+          bootstrap = 'apps/worker/src/bootstrap-uspto.ts'
+          replace(bootstrap, 'const CONNECTOR_VERSION = "1.1.0";', 'const CONNECTOR_VERSION = "1.2.0";')
+          replace(bootstrap, '      displayName: "Crawl4AI Web Connector — Production HTML/Markdown",', '      displayName: "Crawl4AI Web Connector — Production Pages + Attachments",')
+          replace(bootstrap, '      capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"],', '      capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT", "FETCH_ATTACHMENTS"],', 2)
+          replace(bootstrap, '      outputArtifactKinds: ["HTML", "MARKDOWN"],', '      outputArtifactKinds: [\n        "HTML",\n        "MARKDOWN",\n        "PDF",\n        "DOCX",\n        "XLSX",\n        "CSV",\n        "JSON",\n        "XML",\n        "EMAIL",\n        "IMAGE",\n        "TEXT",\n      ],')
+          replace(bootstrap, '        "x-markorbit-evidence-boundary": "raw-html-markdown",', '        "x-markorbit-evidence-boundary": "raw-pages-and-authorized-attachments",')
+
+          smoke = '.github/workflows/uspto-full-pipeline-live-smoke.yml'
+          replace(smoke, "source?.connector?.version !== '1.1.0'", "source?.connector?.version !== '1.2.0'")
+          replace(smoke, 'production Crawl4AI 1.1.0', 'production Crawl4AI 1.2.0')
+          replace(smoke, 'version: "1.1.0",', 'version: "1.2.0",')
+          replace(smoke, 'capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"]', 'capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT", "FETCH_ATTACHMENTS"]')
+
+          discovery_test = 'apps/admin/src/server/__tests__/discovery-service.test.ts'
+          replace(discovery_test, 'version: "1.1.0"', 'version: "1.2.0"')
+          replace(discovery_test, 'connectors.get("crawl4ai-web", "1.1.0")', 'connectors.get("crawl4ai-web", "1.2.0")')
+
+          acquirer_test = 'packages/worker-runtime/tests/crawl4ai-subprocess-acquirer.test.ts'
+          p = Path(acquirer_test)
+          text = p.read_text()
+          final = '\n});\n'
+          if not text.endswith(final):
+              raise SystemExit('unexpected acquirer test ending')
+          extra = '''\n\n  it("passes explicit attachment authorization and verifies PDF bytes", async () => {\n    const ctx = context();\n    ctx.job.planSnapshot.policy.fetchAttachments = true;\n    ctx.job.planSnapshot.output.artifactKinds = ["HTML", "PDF"];\n    let sawAttachmentAuthorization = false;\n    const runner: Crawl4AiProcessRunner = {\n      async run(request) {\n        sawAttachmentAuthorization = request.fetchAttachments;\n        const content = new TextEncoder().encode("%PDF-1.4\\nfixture\\n%%EOF\\n");\n        const sha256 = createHash("sha256").update(content).digest("hex");\n        await writeFile(join(request.outputDirectory, "guide.pdf"), content);\n        return {\n          protocolVersion: "1.0",\n          ok: true,\n          pagesAttempted: 1,\n          totalBytes: content.byteLength,\n          artifacts: [{\n            artifactKind: "PDF",\n            mimeType: "application/pdf",\n            originalName: "guide.pdf",\n            sourceUri: "https://example.com/guide.pdf",\n            canonicalUri: "https://example.com/guide.pdf",\n            fileName: "guide.pdf",\n            sizeBytes: content.byteLength,\n            sha256,\n          }],\n        };\n      },\n    };\n    const acquirer = new Crawl4AiSubprocessAcquirer({ runner, requireEgressProxy: false });\n    const artifacts = await acquirer.acquire(ctx);\n    expect(sawAttachmentAuthorization).toBe(true);\n    expect(artifacts).toHaveLength(1);\n    expect(artifacts[0]?.artifactKind).toBe("PDF");\n    expect(new TextDecoder().decode(artifacts[0]?.content)).toContain("%PDF-1.4");\n  });\n'''
+          p.write_text(text[:-len(final)] + extra + final)
+          PY
+      - name: Add attachment unit tests
+        run: |
+          cat > workers/crawl4ai/tests/test_attachments.py <<'PY'
+          import unittest
+          from unittest.mock import patch
+
+          import attachments
+          from attachments import attachment_kind_for_url, download_attachment
+          from safety import SafetyError
+
+
+          class AttachmentTests(unittest.TestCase):
+              def test_classifies_supported_public_attachment_extensions(self):
+                  self.assertEqual(attachment_kind_for_url("https://example.com/guide.pdf"), "PDF")
+                  self.assertEqual(attachment_kind_for_url("https://example.com/form.docx?download=1"), "DOCX")
+                  self.assertEqual(attachment_kind_for_url("https://example.com/scan.png"), "IMAGE")
+                  self.assertIsNone(attachment_kind_for_url("https://example.com/page.html"))
+
+              def test_rejects_html_masquerading_as_attachment(self):
+                  with self.assertRaises(SafetyError) as caught:
+                      attachments._kind_and_mime("https://example.com/guide.pdf", {"Content-Type": "text/html; charset=utf-8"})
+                  self.assertEqual(caught.exception.code, "ATTACHMENT_MEDIA_TYPE_MISMATCH")
+
+              def test_validates_pdf_and_ooxml_signatures(self):
+                  attachments._validate_signature("PDF", b"%PDF-1.7\n")
+                  attachments._validate_signature("DOCX", b"PK\x03\x04fixture")
+                  with self.assertRaises(SafetyError):
+                      attachments._validate_signature("PDF", b"<html>not pdf</html>")
+
+
+          class AttachmentAsyncTests(unittest.IsolatedAsyncioTestCase):
+              async def test_download_preserves_content_disposition_name_and_scope(self):
+                  async def public_dns(_url):
+                      return ("93.184.216.34",)
+
+                  def download_sync(*_args, **_kwargs):
+                      return ("https://example.com/files/guide.pdf", {"Content-Type": "application/pdf", "Content-Disposition": 'attachment; filename="official-guide.pdf"'}, b"%PDF-1.7\nfixture\n")
+
+                  with patch.object(attachments, "assert_public_dns", public_dns), patch.object(attachments, "_download_sync", download_sync):
+                      result = await download_attachment("https://example.com/files/guide.pdf", seed_host="example.com", proxy_server=None, locale="en-US", timeout_seconds=10, max_bytes=1024)
+                  self.assertEqual(result.artifact_kind, "PDF")
+                  self.assertEqual(result.original_name, "official-guide.pdf")
+                  self.assertEqual(result.final_url, "https://example.com/files/guide.pdf")
+
+              async def test_download_rejects_cross_host_final_url(self):
+                  async def public_dns(_url):
+                      return ("93.184.216.34",)
+
+                  def download_sync(*_args, **_kwargs):
+                      return ("https://evil.example.net/file.pdf", {"Content-Type": "application/pdf"}, b"%PDF-1.7\nfixture\n")
+
+                  with patch.object(attachments, "assert_public_dns", public_dns), patch.object(attachments, "_download_sync", download_sync):
+                      with self.assertRaises(SafetyError) as caught:
+                          await download_attachment("https://example.com/file.pdf", seed_host="example.com", proxy_server=None, locale=None, timeout_seconds=10, max_bytes=1024)
+                  self.assertEqual(caught.exception.code, "CROSS_DOMAIN_REDIRECT_BLOCKED")
+
+
+          if __name__ == "__main__":
+              unittest.main()
+          PY
+      - run: pnpm exec prettier --write packages/worker-runtime/src/crawl4ai-subprocess-acquirer.ts packages/worker-runtime/tests/crawl4ai-subprocess-acquirer.test.ts apps/admin/src/server/crawl4ai-production-connector.ts apps/admin/src/server/__tests__/discovery-service.test.ts apps/worker/src/bootstrap-uspto.ts .github/workflows/uspto-full-pipeline-live-smoke.yml
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/crawl4ai/acquire.py workers/crawl4ai/attachments.py workers/crawl4ai/tests/test_attachments.py packages/worker-runtime/src/crawl4ai-subprocess-acquirer.ts packages/worker-runtime/tests/crawl4ai-subprocess-acquirer.test.ts apps/admin/src/server/crawl4ai-production-connector.ts apps/admin/src/server/__tests__/discovery-service.test.ts apps/worker/src/bootstrap-uspto.ts .github/workflows/uspto-full-pipeline-live-smoke.yml
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "M4 integrate attachment acquisition"
+          git push
