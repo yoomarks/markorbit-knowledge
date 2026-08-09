@@ -16,23 +16,32 @@ function database(): DatabaseSync {
       workspace_id TEXT NOT NULL,
       status TEXT NOT NULL,
       updated_at TEXT NOT NULL,
+      idempotency_key TEXT NOT NULL,
       document_json TEXT NOT NULL
     );
     CREATE TABLE conversion_recovery_cases (
       id TEXT PRIMARY KEY,
       workspace_id TEXT NOT NULL,
       root_run_id TEXT NOT NULL,
-      latest_run_id TEXT NOT NULL
+      latest_run_id TEXT NOT NULL,
+      document_json TEXT NOT NULL
     );
   `);
   return db;
 }
 
-function insertRun(db: DatabaseSync, id: string, status: string, updatedAt: string): void {
+function insertRun(
+  db: DatabaseSync,
+  id: string,
+  status: string,
+  updatedAt: string,
+  idempotencyKey = `initial:${id}`,
+): void {
   db.prepare(
-    `INSERT INTO conversion_runs (id, workspace_id, status, updated_at, document_json)
-     VALUES (?, ?, ?, ?, '{}')`,
-  ).run(id, WORKSPACE, status, updatedAt);
+    `INSERT INTO conversion_runs
+       (id, workspace_id, status, updated_at, idempotency_key, document_json)
+     VALUES (?, ?, ?, ?, ?, '{}')`,
+  ).run(id, WORKSPACE, status, updatedAt, idempotencyKey);
 }
 
 describe("conversion failure recovery", () => {
@@ -93,16 +102,29 @@ describe("conversion failure recovery", () => {
     insertRun(db, "failed-middle", "FAILED", "2026-08-09T00:03:00.000Z");
     insertRun(db, "failed-tracked-latest", "FAILED", "2026-08-09T00:04:00.000Z");
     insertRun(db, "completed", "COMPLETED", "2026-08-09T00:00:00.000Z");
+    insertRun(db, "failed-historical-retry", "FAILED", "2026-08-09T00:04:30.000Z");
+    insertRun(
+      db,
+      "failed-crash-window-retry",
+      "FAILED",
+      "2026-08-09T00:04:45.000Z",
+      "failure-retry:case-root:2",
+    );
     insertRun(db, "failed-newest", "FAILED", "2026-08-09T00:05:00.000Z");
 
     db.prepare(
-      `INSERT INTO conversion_recovery_cases (id, workspace_id, root_run_id, latest_run_id)
-       VALUES ('case-root', ?, 'failed-tracked-root', 'failed-tracked-root')`,
-    ).run(WORKSPACE);
+      `INSERT INTO conversion_recovery_cases
+       (id, workspace_id, root_run_id, latest_run_id, document_json)
+       VALUES ('case-root', ?, 'failed-tracked-root', 'failed-tracked-root', ?)`,
+    ).run(
+      WORKSPACE,
+      JSON.stringify({ replacementRunIds: ["failed-historical-retry"] }),
+    );
     db.prepare(
-      `INSERT INTO conversion_recovery_cases (id, workspace_id, root_run_id, latest_run_id)
-       VALUES ('case-latest', ?, 'some-root', 'failed-tracked-latest')`,
-    ).run(WORKSPACE);
+      `INSERT INTO conversion_recovery_cases
+       (id, workspace_id, root_run_id, latest_run_id, document_json)
+       VALUES ('case-latest', ?, 'some-root', 'failed-tracked-latest', ?)`,
+    ).run(WORKSPACE, JSON.stringify({ replacementRunIds: [] }));
 
     expect(failedConversionRecoveryCandidateIds(db, WORKSPACE, 2)).toEqual([
       "failed-oldest",
