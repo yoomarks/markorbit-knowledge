@@ -55,8 +55,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as Record<string, unknown>;
-    const topK = payload.topK;
-    if (topK !== undefined && (!Number.isSafeInteger(topK) || Number(topK) <= 0 || Number(topK) > 20)) {
+    const topK = payload.topK === undefined ? undefined : Number(payload.topK);
+    if (topK !== undefined && (!Number.isSafeInteger(topK) || topK <= 0 || topK > 20)) {
       throw new RegistryValidationError("topK must be an integer between 1 and 20");
     }
     const intent = createFoundationalActionIntent(getRegistryDatabase(), {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       actionCode: requiredString(payload.actionCode, "actionCode"),
       requestedByActorId: requiredString(payload.requestedByActorId, "requestedByActorId"),
       idempotencyKey: requiredString(payload.idempotencyKey, "idempotencyKey"),
-      topK: topK === undefined ? undefined : Number(topK),
+      topK,
     });
     return NextResponse.json(intent, { status: intent.replayed ? 200 : 201 });
   } catch (error) {
