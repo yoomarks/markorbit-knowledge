@@ -29,12 +29,12 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import textwrap
           source = Path('.github/workflows/d2-17-apply.yml').read_text()
           marker = "          python - <<'PY'\n"
           start = source.index(marker) + len(marker)
           end = source.index("\n          PY\n", start)
-          block = textwrap.dedent(source[start:end])
+          raw = source[start:end]
+          block = "\n".join(line[10:] if line.startswith("          ") else line for line in raw.splitlines())
           exec(compile(block, 'd2-17-apply.py', 'exec'))
           PY
       - name: Format and focused tests
