@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   fix:
-    if: ${{ !contains(github.event.head_commit.message, 'M11 close retry lineage crash window') }}
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,10 +30,10 @@ jobs:
           from pathlib import Path
           path = Path('apps/admin/src/server/conversion-failure-recovery.ts')
           text = path.read_text()
-          old = '''           WHERE c.workspace_id = r.workspace_id
+          old = """           WHERE c.workspace_id = r.workspace_id
              AND (c.root_run_id = r.id OR c.latest_run_id = r.id)
-         )'''
-          new = '''           WHERE c.workspace_id = r.workspace_id
+         )"""
+          new = """           WHERE c.workspace_id = r.workspace_id
              AND (
                c.root_run_id = r.id
                OR c.latest_run_id = r.id
@@ -45,7 +45,7 @@ jobs:
                OR r.idempotency_key LIKE 'failure-retry:' || c.id || ':%'
                OR r.idempotency_key LIKE 'operator-retry:' || c.id || ':%'
              )
-         )'''
+         )"""
           if old not in text:
               raise SystemExit('candidate query pattern not found')
           path.write_text(text.replace(old, new))
