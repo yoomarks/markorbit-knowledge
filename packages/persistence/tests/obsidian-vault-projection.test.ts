@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { StagingDocumentDescriptor } from "@markorbit/contracts";
+import { RegistryError } from "../src/index";
 import { LocalObsidianVaultProjectionRepository } from "../src/obsidian-vault-projection";
 import type {
   StagingContentRegistryRepository,
@@ -108,12 +109,16 @@ describe("Local Obsidian Vault projection", () => {
   });
 
   it("rejects unverified staging and unsafe target paths", () => {
-    expect(() =>
+    try {
       new LocalObsidianVaultProjectionRepository(
         staging(undefined, "BLOCKED"),
         vaultRoot(),
-      ).project("wsp_01H00000000000000000000000", "std_01H00000000000000000000000"),
-    ).toThrow("OBSIDIAN_PROJECTION_REQUIRES_READY_STAGING");
+      ).project("wsp_01H00000000000000000000000", "std_01H00000000000000000000000");
+      throw new Error("expected projection to fail");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RegistryError);
+      expect((error as RegistryError).code).toBe("OBSIDIAN_PROJECTION_REQUIRES_READY_STAGING");
+    }
 
     expect(() =>
       new LocalObsidianVaultProjectionRepository(
