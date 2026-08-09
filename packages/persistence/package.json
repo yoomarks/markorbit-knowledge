@@ -34,6 +34,7 @@
     "./ready-packages": "./src/ready-package-registry.ts",
     "./retrieval-index": "./src/retrieval-index.ts",
     "./retrieval-quality-audit": "./src/retrieval-quality-audit.ts",
+    "./retrieval-quality-remediation": "./src/retrieval-quality-remediation.ts",
     "./document-change-feed": "./src/document-change-feed.ts",
     "./local-pipeline-adapter": "./src/local-pipeline-adapter.ts",
     "./conversion-pipeline-inspection": "./src/conversion-pipeline-inspection.ts"
