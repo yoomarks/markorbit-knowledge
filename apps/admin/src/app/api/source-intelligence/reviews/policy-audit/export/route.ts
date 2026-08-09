@@ -58,6 +58,9 @@ export async function GET(request: Request) {
           : "application/json; charset=utf-8",
         "Content-Disposition": `attachment; filename="source-intelligence-policy-audit.${format}"`,
         "Cache-Control": "no-store",
+        "X-MarkOrbit-Audit-Event-Count": String(auditExport.eventCount),
+        "X-MarkOrbit-Audit-Truncated": auditExport.truncated ? "true" : "false",
+        "X-MarkOrbit-Audit-Max-Events": String(auditExport.maxEvents),
       },
     });
   } catch (error) {
