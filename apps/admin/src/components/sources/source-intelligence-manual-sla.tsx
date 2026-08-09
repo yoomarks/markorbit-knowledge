@@ -58,8 +58,7 @@ function targetInput(value: number | null | undefined): string {
 async function readManualSla(signal?: AbortSignal): Promise<Snapshot> {
   const sourceResponse = await fetch(`/api/sources?limit=${COHORT_LIMIT}&offset=0`, { signal });
   const sourceBody = (await sourceResponse.json()) as
-    | SourceListResult
-    | { error?: { message?: string } };
+    SourceListResult | { error?: { message?: string } };
   if (!sourceResponse.ok) {
     const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
     throw new Error(message ?? "无法读取 Sources");
@@ -116,7 +115,8 @@ export function SourceIntelligenceManualSla() {
     setNotes((current) => {
       const nextNotes: Record<string, string> = {};
       for (const item of next.manualSla?.items ?? []) {
-        nextNotes[item.observationKey] = current[item.observationKey] ?? item.escalation?.note ?? "";
+        nextNotes[item.observationKey] =
+          current[item.observationKey] ?? item.escalation?.note ?? "";
       }
       return nextNotes;
     });
@@ -143,7 +143,9 @@ export function SourceIntelligenceManualSla() {
       })
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-        setError(requestError instanceof Error ? requestError.message : "无法读取 D2.13 manual SLA");
+        setError(
+          requestError instanceof Error ? requestError.message : "无法读取 D2.13 manual SLA",
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -243,8 +245,9 @@ export function SourceIntelligenceManualSla() {
             </h2>
           </div>
           <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-500">
-            人工定义领取与复核的运营目标，并对当前 occurrence 手动标记升级。这里的 SLA 只是内部 workflow target，
-            不是 Evidence freshness、法律时限或合同 SLA；超目标不会自动升级、通知、转交或执行。
+            人工定义领取与复核的运营目标，并对当前 occurrence 手动标记升级。这里的 SLA 只是内部
+            workflow target， 不是 Evidence freshness、法律时限或合同
+            SLA；超目标不会自动升级、通知、转交或执行。
           </p>
         </div>
         <button
@@ -265,7 +268,9 @@ export function SourceIntelligenceManualSla() {
       ) : null}
       {loading ? <div className="p-6 text-sm text-slate-500">正在读取 Manual SLA…</div> : null}
       {!loading && !manualSla ? (
-        <div className="p-6 text-sm text-slate-500">当前没有 Source 可用于计算 Manual SLA 状态。</div>
+        <div className="p-6 text-sm text-slate-500">
+          当前没有 Source 可用于计算 Manual SLA 状态。
+        </div>
       ) : null}
 
       {manualSla ? (
@@ -334,7 +339,10 @@ export function SourceIntelligenceManualSla() {
               ["人工升级", manualSla.counts.escalated],
               ["超目标未升级", manualSla.counts.overTargetAndNotEscalated],
             ].map(([label, value]) => (
-              <div key={String(label)} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div
+                key={String(label)}
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+              >
                 <p className="text-xs font-medium text-slate-500">{label}</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
               </div>
@@ -351,7 +359,10 @@ export function SourceIntelligenceManualSla() {
                 const source = sources[item.sourceId];
                 const saving = savingKey === item.observationKey;
                 return (
-                  <article key={item.observationKey} className="grid gap-4 p-4 xl:grid-cols-[1fr_420px]">
+                  <article
+                    key={item.observationKey}
+                    className="grid gap-4 p-4 xl:grid-cols-[1fr_420px]"
+                  >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         {source ? (
@@ -372,14 +383,17 @@ export function SourceIntelligenceManualSla() {
                         ) : null}
                       </div>
                       <p className="mt-2 text-xs leading-5 text-slate-500">
-                        {item.owner ? `owner: ${item.owner}` : "未领取"} · Review {item.reviewStatus} ·
-                        observed {new Date(item.observedAt).toLocaleString("zh-CN")}
+                        {item.owner ? `owner: ${item.owner}` : "未领取"} · Review{" "}
+                        {item.reviewStatus} · observed{" "}
+                        {new Date(item.observedAt).toLocaleString("zh-CN")}
                       </p>
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                         <div className="rounded-lg border border-slate-200 p-3">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-xs font-semibold text-slate-600">领取目标</span>
-                            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${stateClass(item.claim.state)}`}>
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${stateClass(item.claim.state)}`}
+                            >
                               {stateLabels[item.claim.state]}
                             </span>
                           </div>
@@ -388,21 +402,28 @@ export function SourceIntelligenceManualSla() {
                         <div className="rounded-lg border border-slate-200 p-3">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-xs font-semibold text-slate-600">复核目标</span>
-                            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${stateClass(item.review.state)}`}>
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${stateClass(item.review.state)}`}
+                            >
                               {stateLabels[item.review.state]}
                             </span>
                           </div>
                           <p className="mt-2 text-xs text-slate-500">{clockText(item.review)}</p>
                         </div>
                       </div>
-                      <p className="mt-2 font-mono text-[11px] text-slate-400">{item.observationKey}</p>
+                      <p className="mt-2 font-mono text-[11px] text-slate-400">
+                        {item.observationKey}
+                      </p>
                     </div>
 
                     <div className="space-y-2">
                       <textarea
                         value={notes[item.observationKey] ?? ""}
                         onChange={(event) =>
-                          setNotes((current) => ({ ...current, [item.observationKey]: event.target.value }))
+                          setNotes((current) => ({
+                            ...current,
+                            [item.observationKey]: event.target.value,
+                          }))
                         }
                         maxLength={2000}
                         rows={3}
@@ -442,7 +463,10 @@ export function SourceIntelligenceManualSla() {
               </div>
               <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
                 {manualSla.recentEscalationEvents.slice(0, 12).map((event) => (
-                  <div key={event.eventId} className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs">
+                  <div
+                    key={event.eventId}
+                    className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs"
+                  >
                     <span className="font-medium text-slate-700">
                       {event.action} · {event.actor} · {event.sourceId}
                     </span>
@@ -458,8 +482,9 @@ export function SourceIntelligenceManualSla() {
           <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">
             <ShieldAlert size={16} className="mt-0.5 shrink-0" />
             <p>
-              D2.13 只提供人工 workflow target 与人工 escalation state。超目标不会触发通知、自动升级、自动转交、
-              CollectionPlan、采集、Scheduler 或任何执行行为；Operator label 仍不是经过认证的身份。
+              D2.13 只提供人工 workflow target 与人工 escalation
+              state。超目标不会触发通知、自动升级、自动转交、 CollectionPlan、采集、Scheduler
+              或任何执行行为；Operator label 仍不是经过认证的身份。
             </p>
           </div>
         </div>

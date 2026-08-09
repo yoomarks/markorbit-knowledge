@@ -50,7 +50,9 @@ export type SourceIntelligenceManualEscalationEventFilters = {
 
 export interface SourceIntelligenceManualSlaRepository {
   getPolicy(): SourceIntelligenceManualSlaPolicyV2 | null;
-  savePolicy(input: SaveSourceIntelligenceManualSlaPolicyInput): SourceIntelligenceManualSlaPolicyV2;
+  savePolicy(
+    input: SaveSourceIntelligenceManualSlaPolicyInput,
+  ): SourceIntelligenceManualSlaPolicyV2;
   getEscalation(observationKey: string): SourceIntelligenceManualEscalationRecordV2 | null;
   listEscalationsByObservationKeys(
     observationKeys: string[],
@@ -340,7 +342,11 @@ export class SqliteSourceIntelligenceManualSlaRepository implements SourceIntell
       throw new RegistryConflictError(
         "SOURCE_INTELLIGENCE_ESCALATION_CHANGED",
         "Manual escalation state changed before this update was saved; reload before retrying",
-        { observationKey, expectedEscalated: input.expectedEscalated, currentEscalated: previousEscalated },
+        {
+          observationKey,
+          expectedEscalated: input.expectedEscalated,
+          currentEscalated: previousEscalated,
+        },
       );
     }
 
@@ -384,7 +390,15 @@ export class SqliteSourceIntelligenceManualSlaRepository implements SourceIntell
              note = excluded.note,
              updated_at = excluded.updated_at`,
         )
-        .run(observationKey, sourceId, input.flagKind, escalated ? 1 : 0, actor, note ?? null, timestamp);
+        .run(
+          observationKey,
+          sourceId,
+          input.flagKind,
+          escalated ? 1 : 0,
+          actor,
+          note ?? null,
+          timestamp,
+        );
       this.database
         .prepare(
           `INSERT INTO source_intelligence_manual_escalation_events (

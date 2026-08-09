@@ -16,10 +16,7 @@ function escalationBase() {
 describe("D2.13 manual SLA persistence", () => {
   it("persists a human policy with optimistic concurrency", () => {
     const database = new DatabaseSync(":memory:");
-    const times = [
-      new Date("2026-08-09T01:00:00.000Z"),
-      new Date("2026-08-09T01:05:00.000Z"),
-    ];
+    const times = [new Date("2026-08-09T01:00:00.000Z"), new Date("2026-08-09T01:05:00.000Z")];
     const repository = new SqliteSourceIntelligenceManualSlaRepository(
       database,
       () => times.shift() ?? new Date("2026-08-09T01:10:00.000Z"),
@@ -62,10 +59,7 @@ describe("D2.13 manual SLA persistence", () => {
 
   it("records explicit escalation and clearing events without automatic state changes", () => {
     const database = new DatabaseSync(":memory:");
-    const times = [
-      new Date("2026-08-09T02:00:00.000Z"),
-      new Date("2026-08-09T02:30:00.000Z"),
-    ];
+    const times = [new Date("2026-08-09T02:00:00.000Z"), new Date("2026-08-09T02:30:00.000Z")];
     const repository = new SqliteSourceIntelligenceManualSlaRepository(
       database,
       () => times.shift() ?? new Date("2026-08-09T03:00:00.000Z"),

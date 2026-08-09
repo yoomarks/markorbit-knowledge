@@ -211,7 +211,8 @@ export class SourceIntelligenceReviewService {
     );
     const ownershipQueue = this.ownershipQueue(ids, 1);
     const observationKeys = ownershipQueue.items.map((item) => item.observationKey);
-    const escalations = this.dependencies.manualSla.listEscalationsByObservationKeys(observationKeys);
+    const escalations =
+      this.dependencies.manualSla.listEscalationsByObservationKeys(observationKeys);
     const escalationEvents = this.dependencies.manualSla.listEscalationEvents({
       sourceIds: ids,
       limit: eventLimit,

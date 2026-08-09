@@ -53,11 +53,7 @@ function reviewQueue(): SourceIntelligenceObservationReviewQueueV2 {
         observationKey: "sir_22222222222222222222222222222222",
         sourceId: "src_alice",
         status: "PENDING",
-        flag: flag(
-          "src_alice",
-          "EVIDENCE_MATURITY_REGRESSION",
-          "2026-08-05T12:00:00.000Z",
-        ),
+        flag: flag("src_alice", "EVIDENCE_MATURITY_REGRESSION", "2026-08-05T12:00:00.000Z"),
         review: null,
       },
       {

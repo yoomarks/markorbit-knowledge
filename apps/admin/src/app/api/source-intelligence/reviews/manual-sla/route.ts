@@ -46,7 +46,8 @@ function nullableTarget(value: unknown, field: string): number | null {
 
 function nullableString(value: unknown, field: string): string | null {
   if (value === null) return null;
-  if (typeof value !== "string") throw new RegistryValidationError(`${field} must be a string or null`);
+  if (typeof value !== "string")
+    throw new RegistryValidationError(`${field} must be a string or null`);
   return value;
 }
 

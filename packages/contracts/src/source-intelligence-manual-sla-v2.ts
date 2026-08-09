@@ -1,7 +1,8 @@
 import type { SourceIntelligenceObservationFlagKind } from "./source-intelligence-cross-source-observation-v2";
 
 export const SOURCE_INTELLIGENCE_MANUAL_SLA_PROTOCOL_VERSION = "2.0" as const;
-export const SOURCE_INTELLIGENCE_MANUAL_SLA_POLICY_ID = "source-intelligence-review-workflow" as const;
+export const SOURCE_INTELLIGENCE_MANUAL_SLA_POLICY_ID =
+  "source-intelligence-review-workflow" as const;
 
 export type SourceIntelligenceManualSlaPolicyV2 = {
   protocolVersion: typeof SOURCE_INTELLIGENCE_MANUAL_SLA_PROTOCOL_VERSION;
@@ -38,11 +39,7 @@ export type SourceIntelligenceManualEscalationEventV2 = {
 };
 
 export type SourceIntelligenceManualSlaState =
-  | "DISABLED"
-  | "NOT_STARTED"
-  | "WITHIN_TARGET"
-  | "OVER_TARGET"
-  | "COMPLETED";
+  "DISABLED" | "NOT_STARTED" | "WITHIN_TARGET" | "OVER_TARGET" | "COMPLETED";
 
 export type SourceIntelligenceManualSlaClockV2 = {
   state: SourceIntelligenceManualSlaState;

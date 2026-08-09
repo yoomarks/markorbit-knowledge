@@ -23,7 +23,11 @@ function elapsedHours(start: string, end: string): number {
   return round(Math.max(0, difference / HOUR_MS));
 }
 
-function timedClock(targetHours: number, startedAt: string, generatedAt: string): SourceIntelligenceManualSlaClockV2 {
+function timedClock(
+  targetHours: number,
+  startedAt: string,
+  generatedAt: string,
+): SourceIntelligenceManualSlaClockV2 {
   const elapsed = elapsedHours(startedAt, generatedAt);
   const overdue = round(Math.max(0, elapsed - targetHours));
   return {
