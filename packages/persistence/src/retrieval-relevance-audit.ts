@@ -5,11 +5,7 @@ import { SqliteSourceSupplyHealthRepository } from "./source-supply-health";
 
 export const RETRIEVAL_RELEVANCE_AUDIT_PROTOCOL_VERSION = "1.0" as const;
 
-export type RetrievalRelevanceAuditState =
-  | "READY"
-  | "DEGRADED"
-  | "BLOCKED"
-  | "NOT_APPLICABLE";
+export type RetrievalRelevanceAuditState = "READY" | "DEGRADED" | "BLOCKED" | "NOT_APPLICABLE";
 
 export type RetrievalRelevanceGap =
   | "PROBE_NOT_CONFIGURED"
@@ -144,13 +140,17 @@ function unique(values: readonly string[]): string[] {
   return [...new Set(values)];
 }
 
-function targetState(probes: readonly RetrievalRelevanceProbeResult[]): RetrievalRelevanceAuditState {
+function targetState(
+  probes: readonly RetrievalRelevanceProbeResult[],
+): RetrievalRelevanceAuditState {
   if (probes.some((probe) => probe.state === "BLOCKED")) return "BLOCKED";
   if (probes.some((probe) => probe.state === "DEGRADED")) return "DEGRADED";
   return "READY";
 }
 
-function summarize(items: readonly RetrievalRelevanceAuditRecord[]): RetrievalRelevanceAuditSummary {
+function summarize(
+  items: readonly RetrievalRelevanceAuditRecord[],
+): RetrievalRelevanceAuditSummary {
   const summary: RetrievalRelevanceAuditSummary = {
     total: items.length,
     byState: { READY: 0, DEGRADED: 0, BLOCKED: 0, NOT_APPLICABLE: 0 },
@@ -230,14 +230,15 @@ export class SqliteRetrievalRelevanceAuditRepository {
       }
 
       const probeResults = probes.map((probe): RetrievalRelevanceProbeResult => {
-        const matchedSourceIds = item.sourceIds.filter((sourceId) =>
-          this.retrieval.search({
-            workspaceId,
-            query: probe.query,
-            sourceId,
-            jurisdiction: item.jurisdiction,
-            limit: topK,
-          }).total > 0,
+        const matchedSourceIds = item.sourceIds.filter(
+          (sourceId) =>
+            this.retrieval.search({
+              workspaceId,
+              query: probe.query,
+              sourceId,
+              jurisdiction: item.jurisdiction,
+              limit: topK,
+            }).total > 0,
         );
         const global = this.retrieval.search({
           workspaceId,
