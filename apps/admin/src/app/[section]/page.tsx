@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { notFound } from "next/navigation";
+import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import { AdminShell } from "@/components/admin-shell";
 import { ArtifactList } from "@/components/artifacts/artifact-list";
 import { ConnectorList } from "@/components/connectors/connector-list";
@@ -8,6 +9,7 @@ import { ConversionRunList } from "@/components/conversion-runs/conversion-run-l
 import { ConverterControl } from "@/components/converters/converter-control";
 import { DashboardPage } from "@/components/dashboard";
 import { DiscoveryWorkspace } from "@/components/discovery/discovery-workspace";
+import { FoundationalRemediationConsole } from "@/components/foundational/foundational-remediation-console";
 import { ModulePreview } from "@/components/module-preview";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
@@ -48,6 +50,18 @@ function SourcesPage() {
         }
       />
       <SourceList />
+    </>
+  );
+}
+
+function FoundationalReadinessPage() {
+  return (
+    <>
+      <PageHeading
+        title="Foundational Readiness"
+        description="查看 US 与 WIPO ACTIVE + FOUNDATIONAL 数据供给从注册、采集、转换、索引到结构质量和检索 smoke relevance 的统一 readiness gate，并按最低失败阶段生成只读人工修复队列。"
+      />
+      <FoundationalRemediationConsole workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );
 }
@@ -200,6 +214,8 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
         <DiscoveryWorkspace />
       ) : moduleKey === "sources" ? (
         <SourcesPage />
+      ) : moduleKey === "foundational" ? (
+        <FoundationalReadinessPage />
       ) : moduleKey === "intelligence" ? (
         <SourceIntelligencePage />
       ) : moduleKey === "jobs" ? (
