@@ -6,7 +6,9 @@ import {
   type FoundationalActionIntentRecord,
 } from "../src/foundational-action-intent-ledger";
 
-function intent(overrides: Partial<FoundationalActionIntentRecord> = {}): FoundationalActionIntentRecord {
+function intent(
+  overrides: Partial<FoundationalActionIntentRecord> = {},
+): FoundationalActionIntentRecord {
   const workspaceId = overrides.workspaceId ?? "wsp_test";
   const idempotencyKey = overrides.idempotencyKey ?? "intent-1";
   return {
@@ -64,7 +66,9 @@ describe("foundational action intent ledger", () => {
           intentId: foundationalActionIntentId("wsp_test", "intent-1"),
         }),
       ),
-    ).toThrowError(expect.objectContaining({ code: "FOUNDATIONAL_ACTION_INTENT_IDEMPOTENCY_CONFLICT" }));
+    ).toThrowError(
+      expect.objectContaining({ code: "FOUNDATIONAL_ACTION_INTENT_IDEMPOTENCY_CONFLICT" }),
+    );
 
     const approved = repository.approve(first.intentId, "reviewer:alice");
     expect(approved.status).toBe("APPROVED");

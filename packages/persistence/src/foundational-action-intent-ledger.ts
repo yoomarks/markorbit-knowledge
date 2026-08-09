@@ -1,10 +1,6 @@
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import {
-  RegistryConflictError,
-  RegistryValidationError,
-  initializeRegistry,
-} from "./index";
+import { RegistryConflictError, RegistryValidationError, initializeRegistry } from "./index";
 
 const MIGRATION_ID = "0017_foundational_action_intents";
 const KEY = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
@@ -19,7 +15,8 @@ export type FoundationalActionIntentRecord = {
   workspaceId: string;
   jurisdiction: string;
   targetId: string;
-  readinessStage: "REGISTER" | "COLLECT" | "INGEST" | "CONVERT" | "INDEX" | "QUALITY" | "RELEVANCE" | "HEALTH";
+  readinessStage:
+    "REGISTER" | "COLLECT" | "INGEST" | "CONVERT" | "INDEX" | "QUALITY" | "RELEVANCE" | "HEALTH";
   actionCode:
     | "REGISTER_SOURCE"
     | "DISPATCH_GOVERNED_COLLECTION"
@@ -119,10 +116,14 @@ function assertIntent(intent: FoundationalActionIntentRecord): void {
     throw new RegistryValidationError("idempotencyKey is invalid");
   }
   if (intent.automaticExecution !== false || intent.executionAuthorization !== "NONE") {
-    throw new RegistryValidationError("Foundational action intents cannot carry execution authorization");
+    throw new RegistryValidationError(
+      "Foundational action intents cannot carry execution authorization",
+    );
   }
   if (intent.approvalRequired !== true || intent.status !== "PENDING_APPROVAL") {
-    throw new RegistryValidationError("New foundational action intents must start PENDING_APPROVAL");
+    throw new RegistryValidationError(
+      "New foundational action intents must start PENDING_APPROVAL",
+    );
   }
   if (intent.intentId !== foundationalActionIntentId(intent.workspaceId, intent.idempotencyKey)) {
     throw new RegistryValidationError("intentId does not match workspace/idempotency identity");

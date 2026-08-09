@@ -1,8 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import {
-  RegistryConflictError,
-  RegistryValidationError,
-} from "@markorbit/persistence";
+import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import {
   SqliteFoundationalActionIntentRepository,
   foundationalActionIntentId,
@@ -55,7 +52,13 @@ function asIntent(value: unknown): FoundationalActionIntent {
 
 function currentAction(
   database: DatabaseSync,
-  input: { workspaceId: string; jurisdiction: string; targetId: string; actionCode: string; topK?: number },
+  input: {
+    workspaceId: string;
+    jurisdiction: string;
+    targetId: string;
+    actionCode: string;
+    topK?: number;
+  },
   clock: () => Date,
 ) {
   const snapshot = buildFoundationalRemediationQueueSnapshot(
@@ -68,7 +71,9 @@ function currentAction(
     },
     clock,
   );
-  const item = snapshot.remediationQueue.items.find((candidate) => candidate.targetId === input.targetId);
+  const item = snapshot.remediationQueue.items.find(
+    (candidate) => candidate.targetId === input.targetId,
+  );
   if (!item) {
     throw new RegistryConflictError(
       "FOUNDATIONAL_ACTION_NOT_CURRENTLY_REQUIRED",
@@ -178,7 +183,9 @@ export function cancelFoundationalActionIntent(
   clock: () => Date = () => new Date(),
 ): FoundationalActionIntent {
   const actorId = normalizeActor(actorIdRaw, "actorId");
-  return asIntent(new SqliteFoundationalActionIntentRepository(database, clock).cancel(intentId, actorId));
+  return asIntent(
+    new SqliteFoundationalActionIntentRepository(database, clock).cancel(intentId, actorId),
+  );
 }
 
 export function listFoundationalActionIntents(

@@ -10,10 +10,7 @@ import { getRegistryDatabase } from "@/server/source-registry";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ intentId: string }> },
-) {
+export async function PATCH(request: Request, context: { params: Promise<{ intentId: string }> }) {
   try {
     const { intentId } = await context.params;
     const payload = (await request.json()) as Record<string, unknown>;
