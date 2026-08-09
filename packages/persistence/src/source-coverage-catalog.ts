@@ -27,6 +27,7 @@ function target(
     | "authorityLevel"
     | "languages"
     | "catalogState"
+    | "verificationEvidenceUri"
     | "verifiedAt"
   > & {
     verificationEvidenceUri?: string;
