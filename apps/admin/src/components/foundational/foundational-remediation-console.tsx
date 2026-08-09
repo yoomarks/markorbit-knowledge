@@ -115,7 +115,9 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
       setSnapshot(payload);
     } catch (loadError) {
       setSnapshot(null);
-      setError(loadError instanceof Error ? loadError.message : "Unable to load foundational status");
+      setError(
+        loadError instanceof Error ? loadError.message : "Unable to load foundational status",
+      );
     } finally {
       setLoading(false);
     }
@@ -140,19 +142,24 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
                 Workspace · {workspaceId}
               </span>
               {snapshot ? (
-                <span className="text-xs text-slate-500">Observed {observedAtLabel(snapshot.observedAt)}</span>
+                <span className="text-xs text-slate-500">
+                  Observed {observedAtLabel(snapshot.observedAt)}
+                </span>
               ) : null}
             </div>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-              这里汇总 ACTIVE + FOUNDATIONAL 来源的供给、结构质量和检索 smoke relevance gate，并把未通过目标映射为 M20 建议动作。页面不会派发采集、执行修复或修改证据。
+              这里汇总 ACTIVE + FOUNDATIONAL 来源的供给、结构质量和检索 smoke relevance
+              gate，并把未通过目标映射为 M20 建议动作。页面不会派发采集、执行修复或修改证据。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-              {([
-                ["US", "United States"],
-                ["WO", "WIPO"],
-              ] as const).map(([code, label]) => (
+              {(
+                [
+                  ["US", "United States"],
+                  ["WO", "WIPO"],
+                ] as const
+              ).map(([code, label]) => (
                 <button
                   key={code}
                   type="button"
@@ -189,21 +196,27 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
       {loading && !snapshot ? (
         <section className="grid min-h-56 place-items-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500">
           <span className="inline-flex items-center gap-2">
-            <RefreshCw className="animate-spin" size={17} aria-hidden="true" /> Loading control-plane snapshot…
+            <RefreshCw className="animate-spin" size={17} aria-hidden="true" /> Loading
+            control-plane snapshot…
           </span>
         </section>
       ) : null}
 
       {snapshot ? (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Readiness summary">
+          <section
+            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+            aria-label="Readiness summary"
+          >
             <article className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-sm text-slate-500">Readiness gate</p>
               <div className="mt-3 flex items-end justify-between gap-3">
                 <strong className="text-3xl font-semibold tracking-tight text-slate-950">
                   {snapshot.readiness.readyPercent}%
                 </strong>
-                <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${stateClass(snapshot.readiness.state)}`}>
+                <span
+                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${stateClass(snapshot.readiness.state)}`}
+                >
                   {snapshot.readiness.state}
                 </span>
               </div>
@@ -225,7 +238,9 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
               <strong className="mt-3 block text-3xl font-semibold tracking-tight text-slate-950">
                 {snapshot.readiness.blockingCount}
               </strong>
-              <p className="mt-3 text-xs text-slate-500">Lowest failing gate wins stage precedence</p>
+              <p className="mt-3 text-xs text-slate-500">
+                Lowest failing gate wins stage precedence
+              </p>
             </article>
             <article className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-sm text-slate-500">Authorization</p>
@@ -248,7 +263,9 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
                 const count = snapshot.readiness.byStage[stage] ?? 0;
                 return (
                   <div key={stage} className={`rounded-xl px-3 py-3 ${stageClass(stage)}`}>
-                    <p className="text-xs font-semibold uppercase tracking-wide">{STAGE_LABELS[stage]}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide">
+                      {STAGE_LABELS[stage]}
+                    </p>
                     <p className="mt-2 text-2xl font-semibold">{count}</p>
                   </div>
                 );
@@ -261,7 +278,8 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
               <div>
                 <h2 className="font-semibold text-slate-950">Foundational targets</h2>
                 <p className="mt-1 text-xs text-slate-500">
-                  每个目标同时显示当前 stage、supply health、retrieval quality 与 relevance smoke 状态。
+                  每个目标同时显示当前 stage、supply health、retrieval quality 与 relevance smoke
+                  状态。
                 </p>
               </div>
               <span className="text-xs text-slate-500">topK = {snapshot.topK ?? "default"}</span>
@@ -283,22 +301,30 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
                     <tr key={target.targetId} className="align-top">
                       <td className="px-5 py-4 font-medium text-slate-900">{target.targetId}</td>
                       <td className="px-4 py-4">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${stageClass(target.stage)}`}>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${stageClass(target.stage)}`}
+                        >
                           {target.stage}
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`rounded-full border px-2 py-1 text-xs font-medium ${stateClass(target.healthState)}`}>
+                        <span
+                          className={`rounded-full border px-2 py-1 text-xs font-medium ${stateClass(target.healthState)}`}
+                        >
                           {target.healthState}
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`rounded-full border px-2 py-1 text-xs font-medium ${stateClass(target.retrievalQualityState)}`}>
+                        <span
+                          className={`rounded-full border px-2 py-1 text-xs font-medium ${stateClass(target.retrievalQualityState)}`}
+                        >
                           {target.retrievalQualityState}
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`rounded-full border px-2 py-1 text-xs font-medium ${stateClass(target.retrievalRelevanceState)}`}>
+                        <span
+                          className={`rounded-full border px-2 py-1 text-xs font-medium ${stateClass(target.retrievalRelevanceState)}`}
+                        >
                           {target.retrievalRelevanceState}
                         </span>
                       </td>
@@ -320,7 +346,9 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
                   仅给出下一步人工处理路径；所有 action 均保持 automaticExecution = false。
                 </p>
               </div>
-              <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${stateClass(snapshot.remediationQueue.state)}`}>
+              <span
+                className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${stateClass(snapshot.remediationQueue.state)}`}
+              >
                 {snapshot.remediationQueue.state}
               </span>
             </div>
@@ -330,7 +358,9 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
                 <CheckCircle2 size={20} aria-hidden="true" />
                 <div>
                   <p className="font-semibold">No foundational remediation is required.</p>
-                  <p className="mt-1 text-sm text-emerald-800">All targets currently pass the readiness gate.</p>
+                  <p className="mt-1 text-sm text-emerald-800">
+                    All targets currently pass the readiness gate.
+                  </p>
                 </div>
               </div>
             ) : (
@@ -341,25 +371,40 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
                     const item = actionsByTarget.get(target.targetId);
                     if (!item) return null;
                     return (
-                      <article key={item.targetId} className="rounded-2xl border border-slate-200 bg-white p-5">
+                      <article
+                        key={item.targetId}
+                        className="rounded-2xl border border-slate-200 bg-white p-5"
+                      >
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${stageClass(item.stage)}`}>
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${stageClass(item.stage)}`}
+                              >
                                 {item.stage}
                               </span>
-                              <span className="text-xs font-medium text-slate-500">Priority {item.priority}</span>
+                              <span className="text-xs font-medium text-slate-500">
+                                Priority {item.priority}
+                              </span>
                             </div>
-                            <h3 className="mt-2 break-all font-semibold text-slate-950">{item.targetId}</h3>
+                            <h3 className="mt-2 break-all font-semibold text-slate-950">
+                              {item.targetId}
+                            </h3>
                             {item.reason ? (
-                              <p className="mt-1 break-words text-xs leading-5 text-slate-500">{item.reason}</p>
+                              <p className="mt-1 break-words text-xs leading-5 text-slate-500">
+                                {item.reason}
+                              </p>
                             ) : null}
                           </div>
                           <div className="flex flex-wrap gap-2 text-xs">
-                            <span className={`rounded-full border px-2 py-1 font-medium ${stateClass(item.retrievalQualityState)}`}>
+                            <span
+                              className={`rounded-full border px-2 py-1 font-medium ${stateClass(item.retrievalQualityState)}`}
+                            >
                               Quality · {item.retrievalQualityState}
                             </span>
-                            <span className={`rounded-full border px-2 py-1 font-medium ${stateClass(item.retrievalRelevanceState)}`}>
+                            <span
+                              className={`rounded-full border px-2 py-1 font-medium ${stateClass(item.retrievalRelevanceState)}`}
+                            >
                               Relevance · {item.retrievalRelevanceState}
                             </span>
                           </div>
@@ -367,15 +412,24 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
 
                         <div className="mt-4 grid gap-3 xl:grid-cols-2">
                           {item.actions.map((action) => (
-                            <div key={`${item.targetId}-${action.code}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <div
+                              key={`${item.targetId}-${action.code}`}
+                              className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                            >
                               <div className="flex items-start gap-3">
                                 <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-white text-slate-600 shadow-sm">
                                   <Activity size={16} aria-hidden="true" />
                                 </span>
                                 <div className="min-w-0 flex-1">
-                                  <p className="break-words text-sm font-semibold text-slate-900">{action.code}</p>
-                                  <p className="mt-1 text-xs text-slate-500">{action.executionPath}</p>
-                                  <p className="mt-3 text-sm leading-6 text-slate-600">{action.operatorInstruction}</p>
+                                  <p className="break-words text-sm font-semibold text-slate-900">
+                                    {action.code}
+                                  </p>
+                                  <p className="mt-1 text-xs text-slate-500">
+                                    {action.executionPath}
+                                  </p>
+                                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                                    {action.operatorInstruction}
+                                  </p>
                                   <div className="mt-3 flex flex-wrap items-center gap-2">
                                     {action.collectionAuthorizationRequired ? (
                                       <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
@@ -393,7 +447,8 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
                                       rel="noreferrer"
                                       className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800"
                                     >
-                                      {endpointLabel(action.endpoint)} <ExternalLink size={14} aria-hidden="true" />
+                                      {endpointLabel(action.endpoint)}{" "}
+                                      <ExternalLink size={14} aria-hidden="true" />
                                     </a>
                                   ) : null}
                                 </div>

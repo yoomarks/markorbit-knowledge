@@ -34,7 +34,8 @@ export const modules = {
   },
   foundational: {
     label: "Foundational Readiness",
-    description: "查看 US / WIPO FOUNDATIONAL 来源的供给、检索质量、相关性 smoke gate 与人工修复队列。",
+    description:
+      "查看 US / WIPO FOUNDATIONAL 来源的供给、检索质量、相关性 smoke gate 与人工修复队列。",
     icon: PackageCheck,
   },
   intelligence: {
