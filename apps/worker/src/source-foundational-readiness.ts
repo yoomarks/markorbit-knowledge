@@ -1,11 +1,12 @@
 import {
-  prepareUsFoundationalSupply,
+  prepareFoundationalSupply,
   type PreparedSupplyPlan,
   type SupplyCapabilityGap,
   type SupplyRun,
 } from "./source-coverage-operations";
 
-export const US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION = "1.0" as const;
+export const FOUNDATIONAL_READINESS_PROTOCOL_VERSION = "1.1" as const;
+export const US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION = FOUNDATIONAL_READINESS_PROTOCOL_VERSION;
 
 export const FOUNDATIONAL_READINESS_STAGES = [
   "REGISTER",
@@ -13,6 +14,7 @@ export const FOUNDATIONAL_READINESS_STAGES = [
   "INGEST",
   "CONVERT",
   "INDEX",
+  "QUALITY",
   "HEALTH",
   "READY",
 ] as const;
@@ -20,6 +22,7 @@ export type FoundationalReadinessStage = (typeof FOUNDATIONAL_READINESS_STAGES)[
 
 export type FoundationalSupplyHealthItem = {
   targetId: string;
+  sourceIds: string[];
   state: "READY" | "DEGRADED" | "BLOCKED";
   registrationState: "REGISTERED" | "UNREGISTERED";
   latestRunStatus: string | null;
@@ -30,6 +33,16 @@ export type FoundationalSupplyHealthItem = {
   gaps: string[];
 };
 
+export type FoundationalRetrievalQualityItem = {
+  sourceId: string;
+  state: "READY" | "DEGRADED" | "BLOCKED";
+  gaps: string[];
+  isCurrent: boolean;
+};
+
+export type FoundationalRetrievalQualityState =
+  "READY" | "DEGRADED" | "BLOCKED" | "MISSING" | "NOT_APPLICABLE";
+
 export type FoundationalReadinessTarget = {
   targetId: string;
   stage: FoundationalReadinessStage;
@@ -37,11 +50,15 @@ export type FoundationalReadinessTarget = {
   healthState: FoundationalSupplyHealthItem["state"] | "MISSING";
   gaps: string[];
   reason: string | null;
+  retrievalQualityState: FoundationalRetrievalQualityState;
+  retrievalAuditDocumentCount: number;
+  retrievalAuditGaps: string[];
 };
 
 export type FoundationalReadinessGate = {
-  protocolVersion: typeof US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION;
-  objectType: "US_FOUNDATIONAL_READINESS_GATE";
+  protocolVersion: typeof FOUNDATIONAL_READINESS_PROTOCOL_VERSION;
+  objectType: "FOUNDATIONAL_READINESS_GATE";
+  jurisdiction: string;
   state: "READY" | "NOT_READY";
   totalCount: number;
   readyCount: number;
@@ -52,8 +69,9 @@ export type FoundationalReadinessGate = {
 };
 
 export type FoundationalOperatorBatchResult = {
-  protocolVersion: typeof US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION;
-  objectType: "US_FOUNDATIONAL_OPERATOR_BATCH";
+  protocolVersion: typeof FOUNDATIONAL_READINESS_PROTOCOL_VERSION;
+  objectType: "FOUNDATIONAL_OPERATOR_BATCH";
+  jurisdiction: string;
   mode: "REVIEW" | "DISPATCH";
   controlPlaneUrl: string;
   workspaceId: string;
@@ -71,6 +89,12 @@ export type FoundationalOperatorBatchResult = {
 
 type JsonRecord = Record<string, unknown>;
 type FetchLike = typeof fetch;
+
+type RetrievalQualityEvaluation = {
+  state: FoundationalRetrievalQualityState;
+  documentCount: number;
+  gaps: string[];
+};
 
 function record(value: unknown): JsonRecord | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -92,6 +116,13 @@ function nonNegativeNumber(value: unknown, field: string): number {
     throw new Error(`Invalid ${field}`);
   }
   return value;
+}
+
+function normalizedJurisdiction(raw: string): string {
+  const jurisdiction = raw.trim().toUpperCase();
+  if (!jurisdiction) throw new Error("jurisdiction is required");
+  if (!/^[A-Z0-9-]{2,12}$/.test(jurisdiction)) throw new Error("jurisdiction is invalid");
+  return jurisdiction;
 }
 
 function normalizedBaseUrl(raw: string): string {
@@ -143,6 +174,9 @@ export function parseFoundationalSupplyHealth(payload: unknown): FoundationalSup
     }
     return {
       targetId: requiredString(item.targetId, `items[${index}].targetId`),
+      sourceIds: array(item.sourceIds)
+        .map((sourceId) => String(sourceId).trim())
+        .filter(Boolean),
       state,
       registrationState,
       latestRunStatus: latestRun && typeof latestRun.status === "string" ? latestRun.status : null,
@@ -160,6 +194,29 @@ export function parseFoundationalSupplyHealth(payload: unknown): FoundationalSup
       ),
       freshnessState: requiredString(freshness.state, `items[${index}].freshness.state`),
       gaps: array(item.gaps).map((gap) => String(gap)),
+    };
+  });
+}
+
+export function parseFoundationalRetrievalQuality(
+  payload: unknown,
+): FoundationalRetrievalQualityItem[] {
+  const outer = record(payload);
+  return array(outer?.items).map((value, index) => {
+    const item = record(value);
+    if (!item) throw new Error(`Invalid retrieval quality item at index ${index}`);
+    const state = requiredString(item.state, `items[${index}].state`);
+    if (state !== "READY" && state !== "DEGRADED" && state !== "BLOCKED") {
+      throw new Error(`Invalid items[${index}].state`);
+    }
+    if (typeof item.isCurrent !== "boolean") {
+      throw new Error(`Invalid items[${index}].isCurrent`);
+    }
+    return {
+      sourceId: requiredString(item.sourceId, `items[${index}].sourceId`),
+      state,
+      gaps: array(item.gaps).map((gap) => String(gap)),
+      isCurrent: item.isCurrent,
     };
   });
 }
@@ -192,7 +249,42 @@ export function deriveFoundationalReadinessStage(
   return "HEALTH";
 }
 
-function reasonFor(
+export function evaluateFoundationalRetrievalQuality(
+  item: FoundationalSupplyHealthItem,
+  qualityItems: readonly FoundationalRetrievalQualityItem[],
+): RetrievalQualityEvaluation {
+  if (item.currentDocumentCount === 0) {
+    return { state: "NOT_APPLICABLE", documentCount: 0, gaps: [] };
+  }
+  const sourceIds = new Set(item.sourceIds);
+  const current = qualityItems.filter(
+    (quality) => quality.isCurrent && sourceIds.has(quality.sourceId),
+  );
+  if (current.length === 0) {
+    return {
+      state: "MISSING",
+      documentCount: 0,
+      gaps: ["RETRIEVAL_AUDIT_MISSING"],
+    };
+  }
+
+  const gaps = [...new Set(current.flatMap((quality) => quality.gaps))].sort();
+  if (current.length !== item.currentDocumentCount) {
+    gaps.unshift("RETRIEVAL_AUDIT_COVERAGE_MISMATCH");
+  }
+  if (
+    current.some((quality) => quality.state === "BLOCKED") ||
+    current.length !== item.currentDocumentCount
+  ) {
+    return { state: "BLOCKED", documentCount: current.length, gaps };
+  }
+  if (current.some((quality) => quality.state === "DEGRADED")) {
+    return { state: "DEGRADED", documentCount: current.length, gaps };
+  }
+  return { state: "READY", documentCount: current.length, gaps };
+}
+
+function supplyReasonFor(
   item: FoundationalSupplyHealthItem,
   stage: FoundationalReadinessStage,
 ): string | null {
@@ -202,13 +294,22 @@ function reasonFor(
   return `SUPPLY_${item.state}`;
 }
 
-export function evaluateUsFoundationalReadiness(
+function qualityReasonFor(quality: RetrievalQualityEvaluation): string {
+  if (quality.gaps.length > 0) return quality.gaps.join(",");
+  return `RETRIEVAL_QUALITY_${quality.state}`;
+}
+
+export function evaluateFoundationalReadiness(
+  jurisdiction: string,
   targetIds: readonly string[],
   healthItems: readonly FoundationalSupplyHealthItem[],
+  qualityItems: readonly FoundationalRetrievalQualityItem[],
 ): FoundationalReadinessGate {
+  const normalized = normalizedJurisdiction(jurisdiction);
   const expected = [...new Set(targetIds)];
-  if (expected.length === 0)
-    throw new Error("US FOUNDATIONAL readiness requires at least one target");
+  if (expected.length === 0) {
+    throw new Error(`${normalized} FOUNDATIONAL readiness requires at least one target`);
+  }
   const healthMap = new Map<string, FoundationalSupplyHealthItem>();
   for (const item of healthItems) {
     if (healthMap.has(item.targetId))
@@ -230,9 +331,15 @@ export function evaluateUsFoundationalReadiness(
         healthState: "MISSING",
         gaps: ["HEALTH_RECORD_MISSING"],
         reason: "HEALTH_RECORD_MISSING",
+        retrievalQualityState: "NOT_APPLICABLE",
+        retrievalAuditDocumentCount: 0,
+        retrievalAuditGaps: [],
       };
     }
-    const stage = deriveFoundationalReadinessStage(item);
+
+    const supplyStage = deriveFoundationalReadinessStage(item);
+    const quality = evaluateFoundationalRetrievalQuality(item, qualityItems);
+    const stage = supplyStage === "READY" && quality.state !== "READY" ? "QUALITY" : supplyStage;
     byStage[stage] += 1;
     return {
       targetId,
@@ -240,14 +347,18 @@ export function evaluateUsFoundationalReadiness(
       ready: stage === "READY",
       healthState: item.state,
       gaps: item.gaps,
-      reason: reasonFor(item, stage),
+      reason: stage === "QUALITY" ? qualityReasonFor(quality) : supplyReasonFor(item, stage),
+      retrievalQualityState: quality.state,
+      retrievalAuditDocumentCount: quality.documentCount,
+      retrievalAuditGaps: quality.gaps,
     };
   });
   const readyCount = targets.filter((target) => target.ready).length;
   const totalCount = targets.length;
   return {
-    protocolVersion: US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
-    objectType: "US_FOUNDATIONAL_READINESS_GATE",
+    protocolVersion: FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
+    objectType: "FOUNDATIONAL_READINESS_GATE",
+    jurisdiction: normalized,
     state: readyCount === totalCount ? "READY" : "NOT_READY",
     totalCount,
     readyCount,
@@ -258,37 +369,66 @@ export function evaluateUsFoundationalReadiness(
   };
 }
 
+export function evaluateUsFoundationalReadiness(
+  targetIds: readonly string[],
+  healthItems: readonly FoundationalSupplyHealthItem[],
+  qualityItems: readonly FoundationalRetrievalQualityItem[],
+): FoundationalReadinessGate {
+  return evaluateFoundationalReadiness("US", targetIds, healthItems, qualityItems);
+}
+
+export function evaluateWipoFoundationalReadiness(
+  targetIds: readonly string[],
+  healthItems: readonly FoundationalSupplyHealthItem[],
+  qualityItems: readonly FoundationalRetrievalQualityItem[],
+): FoundationalReadinessGate {
+  return evaluateFoundationalReadiness("WO", targetIds, healthItems, qualityItems);
+}
+
 async function loadReadiness(
   fetchImpl: FetchLike,
   baseUrl: string,
   workspaceId: string,
+  jurisdiction: string,
   targetIds: readonly string[],
 ): Promise<FoundationalReadinessGate> {
-  const payload = await requestJson(
-    fetchImpl,
-    baseUrl,
-    `/api/source-supply-health?workspaceId=${encodeURIComponent(workspaceId)}&jurisdiction=US&coverageTier=FOUNDATIONAL&catalogState=ACTIVE`,
+  const query = `workspaceId=${encodeURIComponent(workspaceId)}&jurisdiction=${encodeURIComponent(jurisdiction)}`;
+  const [healthPayload, qualityPayload] = await Promise.all([
+    requestJson(
+      fetchImpl,
+      baseUrl,
+      `/api/source-supply-health?${query}&coverageTier=FOUNDATIONAL&catalogState=ACTIVE`,
+    ),
+    requestJson(fetchImpl, baseUrl, `/api/retrieval/audit?${query}`),
+  ]);
+  return evaluateFoundationalReadiness(
+    jurisdiction,
+    targetIds,
+    parseFoundationalSupplyHealth(healthPayload),
+    parseFoundationalRetrievalQuality(qualityPayload),
   );
-  return evaluateUsFoundationalReadiness(targetIds, parseFoundationalSupplyHealth(payload));
 }
 
-export type OperateUsFoundationalBatchOptions = {
+export type OperateFoundationalBatchOptions = {
   baseUrl: string;
   workspaceId: string;
+  jurisdiction: string;
   dispatchTargetIds?: string[];
   dispatchAll?: boolean;
   approveDispatch?: boolean;
   fetchImpl?: FetchLike;
 };
 
-export async function operateUsFoundationalBatch(
-  options: OperateUsFoundationalBatchOptions,
+export async function operateFoundationalBatch(
+  options: OperateFoundationalBatchOptions,
 ): Promise<FoundationalOperatorBatchResult> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const baseUrl = normalizedBaseUrl(options.baseUrl);
-  const preview = await prepareUsFoundationalSupply({
+  const jurisdiction = normalizedJurisdiction(options.jurisdiction);
+  const preview = await prepareFoundationalSupply({
     baseUrl,
     workspaceId: options.workspaceId,
+    jurisdiction,
     fetchImpl,
   });
   const allTargetIds = preview.plans.map((plan) => plan.targetId);
@@ -299,14 +439,17 @@ export async function operateUsFoundationalBatch(
   const selected = options.dispatchAll ? allTargetIds : requested;
   const allowed = new Set(allTargetIds);
   for (const targetId of selected) {
-    if (!allowed.has(targetId)) throw new Error(`Unknown US FOUNDATIONAL target ${targetId}`);
+    if (!allowed.has(targetId)) {
+      throw new Error(`Unknown ${jurisdiction} FOUNDATIONAL target ${targetId}`);
+    }
   }
 
   const approvalRequired = selected.length > 0 && options.approveDispatch !== true;
   if (selected.length === 0 || approvalRequired) {
     return {
-      protocolVersion: US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
-      objectType: "US_FOUNDATIONAL_OPERATOR_BATCH",
+      protocolVersion: FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
+      objectType: "FOUNDATIONAL_OPERATOR_BATCH",
+      jurisdiction,
       mode: "REVIEW",
       controlPlaneUrl: baseUrl,
       workspaceId: options.workspaceId,
@@ -319,19 +462,27 @@ export async function operateUsFoundationalBatch(
       approvalRequired,
       runs: [],
       collectionAuthorization: "NONE",
-      readiness: await loadReadiness(fetchImpl, baseUrl, options.workspaceId, allTargetIds),
+      readiness: await loadReadiness(
+        fetchImpl,
+        baseUrl,
+        options.workspaceId,
+        jurisdiction,
+        allTargetIds,
+      ),
     };
   }
 
-  const execution = await prepareUsFoundationalSupply({
+  const execution = await prepareFoundationalSupply({
     baseUrl,
     workspaceId: options.workspaceId,
+    jurisdiction,
     dispatchTargetIds: selected,
     fetchImpl,
   });
   return {
-    protocolVersion: US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
-    objectType: "US_FOUNDATIONAL_OPERATOR_BATCH",
+    protocolVersion: FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
+    objectType: "FOUNDATIONAL_OPERATOR_BATCH",
+    jurisdiction,
     mode: "DISPATCH",
     controlPlaneUrl: baseUrl,
     workspaceId: options.workspaceId,
@@ -345,6 +496,25 @@ export async function operateUsFoundationalBatch(
     runs: execution.runs,
     collectionAuthorization:
       execution.runs.length > 0 ? "EXPLICIT_TARGET_MANUAL_RUNS_DISPATCHED" : "NONE",
-    readiness: await loadReadiness(fetchImpl, baseUrl, options.workspaceId, allTargetIds),
+    readiness: await loadReadiness(
+      fetchImpl,
+      baseUrl,
+      options.workspaceId,
+      jurisdiction,
+      allTargetIds,
+    ),
   };
+}
+
+export type OperateJurisdictionFoundationalBatchOptions = Omit<
+  OperateFoundationalBatchOptions,
+  "jurisdiction"
+>;
+
+export function operateUsFoundationalBatch(options: OperateJurisdictionFoundationalBatchOptions) {
+  return operateFoundationalBatch({ ...options, jurisdiction: "US" });
+}
+
+export function operateWipoFoundationalBatch(options: OperateJurisdictionFoundationalBatchOptions) {
+  return operateFoundationalBatch({ ...options, jurisdiction: "WO" });
 }
