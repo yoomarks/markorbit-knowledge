@@ -1,5 +1,6 @@
 import {
   SOURCE_INTELLIGENCE_MANUAL_SLA_PROTOCOL_VERSION,
+  type SourceIntelligenceEffectivePolicyV2,
   type SourceIntelligenceManualEscalationEventV2,
   type SourceIntelligenceManualEscalationRecordV2,
   type SourceIntelligenceManualSlaAndEscalationV2,
@@ -12,6 +13,11 @@ import {
 
 const HOUR_MS = 60 * 60 * 1000;
 const RECENT_EVENT_LIMIT = 100;
+
+type ClockPolicy = {
+  claimTargetHours: number | null;
+  reviewTargetHours: number | null;
+};
 
 function round(value: number): number {
   return Math.round(value * 100) / 100;
@@ -71,7 +77,7 @@ function notStartedClock(targetHours: number): SourceIntelligenceManualSlaClockV
 
 function claimClock(
   item: SourceIntelligenceObservationOwnershipQueueItemV2,
-  policy: SourceIntelligenceManualSlaPolicyV2 | null,
+  policy: ClockPolicy | null,
   generatedAt: string,
 ): SourceIntelligenceManualSlaClockV2 {
   const target = policy?.claimTargetHours ?? null;
@@ -82,7 +88,7 @@ function claimClock(
 
 function reviewClock(
   item: SourceIntelligenceObservationOwnershipQueueItemV2,
-  policy: SourceIntelligenceManualSlaPolicyV2 | null,
+  policy: ClockPolicy | null,
   generatedAt: string,
 ): SourceIntelligenceManualSlaClockV2 {
   const target = policy?.reviewTargetHours ?? null;
@@ -116,6 +122,7 @@ function itemPriority(item: SourceIntelligenceManualSlaItemV2): number {
 export function buildSourceIntelligenceManualSlaAndEscalationV2(input: {
   ownershipQueue: SourceIntelligenceObservationOwnershipQueueV2;
   policy: SourceIntelligenceManualSlaPolicyV2 | null;
+  effectivePolicies?: SourceIntelligenceEffectivePolicyV2[];
   escalations: SourceIntelligenceManualEscalationRecordV2[];
   escalationEvents?: SourceIntelligenceManualEscalationEventV2[];
   generatedAt: string;
@@ -123,9 +130,13 @@ export function buildSourceIntelligenceManualSlaAndEscalationV2(input: {
   const escalationByKey = new Map(
     input.escalations.map((escalation) => [escalation.observationKey, escalation]),
   );
+  const effectivePolicyBySourceId = new Map(
+    (input.effectivePolicies ?? []).map((policy) => [policy.sourceId, policy]),
+  );
   const items: SourceIntelligenceManualSlaItemV2[] = input.ownershipQueue.items.map((item) => {
     const candidate = escalationByKey.get(item.observationKey);
     const escalation = candidate && escalationMatchesItem(candidate, item) ? candidate : null;
+    const effectivePolicy = effectivePolicyBySourceId.get(item.sourceId) ?? input.policy;
     return {
       observationKey: item.observationKey,
       sourceId: item.sourceId,
@@ -135,8 +146,8 @@ export function buildSourceIntelligenceManualSlaAndEscalationV2(input: {
       owner: item.owner,
       observedAt: item.flag.observedAt,
       assignedAt: item.ownership?.assignedAt ?? null,
-      claim: claimClock(item, input.policy, input.generatedAt),
-      review: reviewClock(item, input.policy, input.generatedAt),
+      claim: claimClock(item, effectivePolicy, input.generatedAt),
+      review: reviewClock(item, effectivePolicy, input.generatedAt),
       escalated: escalation?.escalated ?? false,
       escalation,
     };
