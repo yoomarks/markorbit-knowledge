@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import {
   SOURCE_INTELLIGENCE_MANUAL_SLA_POLICY_ID,
@@ -8,6 +8,7 @@ import {
   type SourceIntelligenceManualEscalationRecordV2,
   type SourceIntelligenceManualSlaPolicyV2,
   type SourceIntelligenceObservationFlagKind,
+  type SourceIntelligencePolicyAuditEventV2,
 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "./index";
 
@@ -48,11 +49,19 @@ export type SourceIntelligenceManualEscalationEventFilters = {
   offset?: number;
 };
 
+export type SourceIntelligencePolicyAuditEventFilters = {
+  limit?: number;
+  offset?: number;
+};
+
 export interface SourceIntelligenceManualSlaRepository {
   getPolicy(): SourceIntelligenceManualSlaPolicyV2 | null;
   savePolicy(
     input: SaveSourceIntelligenceManualSlaPolicyInput,
   ): SourceIntelligenceManualSlaPolicyV2;
+  listPolicyAuditEvents(
+    filters?: SourceIntelligencePolicyAuditEventFilters,
+  ): SourceIntelligencePolicyAuditEventV2[];
   getEscalation(observationKey: string): SourceIntelligenceManualEscalationRecordV2 | null;
   listEscalationsByObservationKeys(
     observationKeys: string[],
@@ -118,7 +127,7 @@ function normalizeEventLimit(value: number | undefined): number {
   if (value === undefined) return 100;
   if (!Number.isInteger(value) || value <= 0 || value > MAX_EVENT_LIMIT) {
     throw new RegistryValidationError(
-      `escalation event limit must be an integer between 1 and ${MAX_EVENT_LIMIT}`,
+      `event limit must be an integer between 1 and ${MAX_EVENT_LIMIT}`,
     );
   }
   return value;
@@ -127,7 +136,7 @@ function normalizeEventLimit(value: number | undefined): number {
 function normalizeEventOffset(value: number | undefined): number {
   if (value === undefined) return 0;
   if (!Number.isInteger(value) || value < 0) {
-    throw new RegistryValidationError("escalation event offset must be a non-negative integer");
+    throw new RegistryValidationError("event offset must be a non-negative integer");
   }
   return value;
 }
@@ -146,6 +155,42 @@ function parsePolicy(row: Record<string, unknown>): SourceIntelligenceManualSlaP
         : Number(row.review_target_hours),
     updatedBy: String(row.updated_by),
     updatedAt: String(row.updated_at),
+  };
+}
+
+function parsePolicyAuditEvent(row: Record<string, unknown>): SourceIntelligencePolicyAuditEventV2 {
+  const action = String(row.action) as SourceIntelligencePolicyAuditEventV2["action"];
+  const previousClaim =
+    row.previous_claim_target_hours === null || row.previous_claim_target_hours === undefined
+      ? null
+      : Number(row.previous_claim_target_hours);
+  const previousReview =
+    row.previous_review_target_hours === null || row.previous_review_target_hours === undefined
+      ? null
+      : Number(row.previous_review_target_hours);
+  const claim =
+    row.claim_target_hours === null || row.claim_target_hours === undefined
+      ? null
+      : Number(row.claim_target_hours);
+  const review =
+    row.review_target_hours === null || row.review_target_hours === undefined
+      ? null
+      : Number(row.review_target_hours);
+  return {
+    eventId: String(row.event_id),
+    scope: "GLOBAL_POLICY",
+    action,
+    actorLabel: String(row.actor_label),
+    occurredAt: String(row.occurred_at),
+    policyId: SOURCE_INTELLIGENCE_MANUAL_SLA_POLICY_ID,
+    cohortId: null,
+    sourceId: null,
+    changes: [
+      { field: "claimTargetHours", before: previousClaim, after: claim },
+      { field: "reviewTargetHours", before: previousReview, after: review },
+    ],
+    historicalCompleteness:
+      action === "SNAPSHOT_BACKFILL" ? "SNAPSHOT_BACKFILL" : "EVENT_SOURCED",
   };
 }
 
@@ -178,6 +223,10 @@ function parseEscalationEvent(
   };
 }
 
+function stableBackfillEventId(seed: string): string {
+  return `sipa_${createHash("sha256").update(seed).digest("hex").slice(0, 32)}`;
+}
+
 export class SqliteSourceIntelligenceManualSlaRepository implements SourceIntelligenceManualSlaRepository {
   constructor(
     private readonly database: DatabaseSync,
@@ -191,6 +240,20 @@ export class SqliteSourceIntelligenceManualSlaRepository implements SourceIntell
         updated_by TEXT NOT NULL,
         updated_at TEXT NOT NULL
       ) STRICT;
+
+      CREATE TABLE IF NOT EXISTS source_intelligence_manual_sla_policy_events (
+        event_id TEXT PRIMARY KEY,
+        policy_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        previous_claim_target_hours INTEGER,
+        previous_review_target_hours INTEGER,
+        claim_target_hours INTEGER,
+        review_target_hours INTEGER,
+        actor_label TEXT NOT NULL,
+        occurred_at TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS idx_source_intelligence_manual_sla_policy_events_time
+        ON source_intelligence_manual_sla_policy_events(occurred_at DESC, event_id DESC);
 
       CREATE TABLE IF NOT EXISTS source_intelligence_manual_escalations (
         observation_key TEXT PRIMARY KEY,
@@ -221,6 +284,34 @@ export class SqliteSourceIntelligenceManualSlaRepository implements SourceIntell
       CREATE INDEX IF NOT EXISTS idx_source_intelligence_manual_escalation_event_observation
         ON source_intelligence_manual_escalation_events(observation_key, occurred_at ASC);
     `);
+    this.backfillPolicyAuditSnapshot();
+  }
+
+  private backfillPolicyAuditSnapshot(): void {
+    const policy = this.getPolicy();
+    if (!policy) return;
+    const existing = this.database
+      .prepare(
+        "SELECT event_id FROM source_intelligence_manual_sla_policy_events WHERE policy_id = ? LIMIT 1",
+      )
+      .get(SOURCE_INTELLIGENCE_MANUAL_SLA_POLICY_ID) as Record<string, unknown> | undefined;
+    if (existing) return;
+    this.database
+      .prepare(
+        `INSERT OR IGNORE INTO source_intelligence_manual_sla_policy_events (
+           event_id, policy_id, action,
+           previous_claim_target_hours, previous_review_target_hours,
+           claim_target_hours, review_target_hours, actor_label, occurred_at
+         ) VALUES (?, ?, 'SNAPSHOT_BACKFILL', NULL, NULL, ?, ?, ?, ?)`,
+      )
+      .run(
+        stableBackfillEventId(`${policy.policyId}:${policy.updatedAt}`),
+        policy.policyId,
+        policy.claimTargetHours,
+        policy.reviewTargetHours,
+        policy.updatedBy,
+        policy.updatedAt,
+      );
   }
 
   getPolicy(): SourceIntelligenceManualSlaPolicyV2 | null {
@@ -246,27 +337,68 @@ export class SqliteSourceIntelligenceManualSlaRepository implements SourceIntell
       );
     }
     const timestamp = this.clock().toISOString();
-    this.database
-      .prepare(
-        `INSERT INTO source_intelligence_manual_sla_policy (
-           policy_id, claim_target_hours, review_target_hours, updated_by, updated_at
-         ) VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(policy_id) DO UPDATE SET
-           claim_target_hours = excluded.claim_target_hours,
-           review_target_hours = excluded.review_target_hours,
-           updated_by = excluded.updated_by,
-           updated_at = excluded.updated_at`,
-      )
-      .run(
-        SOURCE_INTELLIGENCE_MANUAL_SLA_POLICY_ID,
-        claimTargetHours,
-        reviewTargetHours,
-        actor,
-        timestamp,
-      );
+    const eventId = `sipa_${randomUUID().replaceAll("-", "")}`;
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      this.database
+        .prepare(
+          `INSERT INTO source_intelligence_manual_sla_policy (
+             policy_id, claim_target_hours, review_target_hours, updated_by, updated_at
+           ) VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(policy_id) DO UPDATE SET
+             claim_target_hours = excluded.claim_target_hours,
+             review_target_hours = excluded.review_target_hours,
+             updated_by = excluded.updated_by,
+             updated_at = excluded.updated_at`,
+        )
+        .run(
+          SOURCE_INTELLIGENCE_MANUAL_SLA_POLICY_ID,
+          claimTargetHours,
+          reviewTargetHours,
+          actor,
+          timestamp,
+        );
+      this.database
+        .prepare(
+          `INSERT INTO source_intelligence_manual_sla_policy_events (
+             event_id, policy_id, action,
+             previous_claim_target_hours, previous_review_target_hours,
+             claim_target_hours, review_target_hours, actor_label, occurred_at
+           ) VALUES (?, ?, 'GLOBAL_POLICY_CHANGED', ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          eventId,
+          SOURCE_INTELLIGENCE_MANUAL_SLA_POLICY_ID,
+          existing?.claimTargetHours ?? null,
+          existing?.reviewTargetHours ?? null,
+          claimTargetHours,
+          reviewTargetHours,
+          actor,
+          timestamp,
+        );
+      this.database.exec("COMMIT;");
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
     const saved = this.getPolicy();
     if (!saved) throw new Error("Failed to persist Source Intelligence manual SLA policy");
     return saved;
+  }
+
+  listPolicyAuditEvents(
+    filters: SourceIntelligencePolicyAuditEventFilters = {},
+  ): SourceIntelligencePolicyAuditEventV2[] {
+    const limit = normalizeEventLimit(filters.limit);
+    const offset = normalizeEventOffset(filters.offset);
+    return this.database
+      .prepare(
+        `SELECT * FROM source_intelligence_manual_sla_policy_events
+         ORDER BY occurred_at DESC, event_id DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(limit, offset)
+      .map((row) => parsePolicyAuditEvent(row as Record<string, unknown>));
   }
 
   getEscalation(observationKey: string): SourceIntelligenceManualEscalationRecordV2 | null {
