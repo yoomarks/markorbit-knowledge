@@ -2,9 +2,6 @@ name: USPTO Foundational Coverage Live Smoke
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/us-foundational-source-bootstrap
 
 permissions:
   contents: read
