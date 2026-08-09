@@ -1,5 +1,5 @@
 import { DEFAULT_WORKSPACE_ID } from "./source-coverage-bootstrap";
-import { operateUsFoundationalBatch } from "./source-foundational-readiness";
+import { operateFoundationalWithRemediationQueue } from "./foundational-remediation-queue";
 
 function argument(name: string): string | undefined {
   const prefix = `${name}=`;
@@ -28,9 +28,10 @@ async function main(): Promise<void> {
   const dispatchAll = process.argv.includes("--dispatch-all");
   const approveDispatch = process.argv.includes("--approve-dispatch");
 
-  const result = await operateUsFoundationalBatch({
+  const result = await operateFoundationalWithRemediationQueue({
     baseUrl,
     workspaceId,
+    jurisdiction: "US",
     dispatchTargetIds,
     dispatchAll,
     approveDispatch,
