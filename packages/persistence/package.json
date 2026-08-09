@@ -11,6 +11,7 @@
     "./source-registry": "./src/source-registry.ts",
     "./source-discovery": "./src/source-discovery-registry.ts",
     "./source-graph": "./src/source-graph-registry.ts",
+    "./source-coverage": "./src/source-coverage-catalog.ts",
     "./source-intelligence": "./src/source-intelligence-registry.ts",
     "./source-intelligence-reviews": "./src/source-intelligence-review-registry.ts",
     "./source-intelligence-review-ownership": "./src/source-intelligence-review-ownership-registry.ts",
