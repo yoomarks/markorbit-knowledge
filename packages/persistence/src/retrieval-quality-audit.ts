@@ -48,7 +48,7 @@ export type RetrievalQualityAuditRecord = {
   metrics: {
     declaredChunkCount: number;
     actualChunkCount: number;
-    distinctChunkHashes: number;
+    distinctChunkTexts: number;
     emptyChunkCount: number;
     ftsRowCount: number;
     firstOrdinal: number | null;
@@ -98,7 +98,7 @@ type DocumentRow = {
 
 type ChunkMetricsRow = {
   actual_count: number;
-  distinct_hash_count: number;
+  distinct_text_count: number;
   empty_count: number;
   first_ordinal: number | null;
   last_ordinal: number | null;
@@ -186,7 +186,7 @@ export class SqliteRetrievalQualityAuditRepository {
       const chunkMetrics = this.database
         .prepare(
           `SELECT COUNT(*) AS actual_count,
-                  COUNT(DISTINCT content_sha256) AS distinct_hash_count,
+                  COUNT(DISTINCT trim(text)) AS distinct_text_count,
                   COALESCE(SUM(CASE WHEN length(trim(text)) = 0 THEN 1 ELSE 0 END), 0) AS empty_count,
                   MIN(ordinal) AS first_ordinal,
                   MAX(ordinal) AS last_ordinal,
@@ -205,7 +205,7 @@ export class SqliteRetrievalQualityAuditRepository {
         .get(row.staging_document_id, row.workspace_id) as { total: number };
 
       const actualChunkCount = Number(chunkMetrics.actual_count);
-      const distinctChunkHashes = Number(chunkMetrics.distinct_hash_count);
+      const distinctChunkTexts = Number(chunkMetrics.distinct_text_count);
       const emptyChunkCount = Number(chunkMetrics.empty_count);
       const firstOrdinal = chunkMetrics.first_ordinal === null ? null : Number(chunkMetrics.first_ordinal);
       const lastOrdinal = chunkMetrics.last_ordinal === null ? null : Number(chunkMetrics.last_ordinal);
@@ -243,7 +243,7 @@ export class SqliteRetrievalQualityAuditRepository {
       }
       if (emptyChunkCount > 0) gaps.push("EMPTY_CHUNK");
       if (ftsRowCount !== actualChunkCount) gaps.push("FTS_ROW_COUNT_MISMATCH");
-      if (actualChunkCount > 1 && distinctChunkHashes < actualChunkCount) {
+      if (actualChunkCount > 1 && distinctChunkTexts < actualChunkCount) {
         gaps.push("DUPLICATE_CHUNK_CONTENT");
       }
 
@@ -265,7 +265,7 @@ export class SqliteRetrievalQualityAuditRepository {
         metrics: {
           declaredChunkCount,
           actualChunkCount,
-          distinctChunkHashes,
+          distinctChunkTexts,
           emptyChunkCount,
           ftsRowCount,
           firstOrdinal,
