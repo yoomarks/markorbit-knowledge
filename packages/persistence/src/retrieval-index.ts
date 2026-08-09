@@ -44,7 +44,11 @@ export type IndexVerifiedDocumentResult = {
 export interface RetrievalIndexRepository {
   indexVerified(input: IndexVerifiedDocumentInput): IndexVerifiedDocumentResult;
   search(request: RetrievalSearchRequest): RetrievalSearchResult;
-  getDocument(workspaceId: string, documentId: string, artifactVersion?: number): RetrievalDocument | null;
+  getDocument(
+    workspaceId: string,
+    documentId: string,
+    artifactVersion?: number,
+  ): RetrievalDocument | null;
   listChunks(stagingDocumentId: string, workspaceId: string): RetrievalChunk[];
   documentResult(
     workspaceId: string,
@@ -243,7 +247,12 @@ function buildChunks(
 }
 
 function lexicalTokens(value: string): string[] {
-  return (value.normalize("NFKC").toLocaleLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}'-]*/gu) ?? [])
+  return (
+    value
+      .normalize("NFKC")
+      .toLocaleLowerCase()
+      .match(/[\p{L}\p{N}][\p{L}\p{N}'-]*/gu) ?? []
+  )
     .map((token) => token.replace(/^[-']+|[-']+$/g, ""))
     .filter((token) => token.length >= 3 && token.length <= 48 && !STOP_WORDS.has(token));
 }
@@ -418,7 +427,8 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
 
   indexVerified(input: IndexVerifiedDocumentInput): IndexVerifiedDocumentResult {
     const title = input.title.trim();
-    if (!title || title.length > 300) throw new RegistryValidationError("retrieval title is invalid");
+    if (!title || title.length > 300)
+      throw new RegistryValidationError("retrieval title is invalid");
     if (!SHA256.test(input.contentSha256)) {
       throw new RegistryValidationError("retrieval contentSha256 must be SHA-256");
     }
@@ -467,9 +477,11 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
         `SELECT staging_document_id FROM retrieval_documents
          WHERE workspace_id = ? AND document_id = ? AND artifact_version = ?`,
       )
-      .get(input.metadata.workspaceId, input.metadata.documentId, input.metadata.artifactVersion) as
-      | { staging_document_id: string }
-      | undefined;
+      .get(
+        input.metadata.workspaceId,
+        input.metadata.documentId,
+        input.metadata.artifactVersion,
+      ) as { staging_document_id: string } | undefined;
     if (sameVersion) {
       throw new RegistryConflictError(
         "RETRIEVAL_DOCUMENT_VERSION_CONFLICT",
@@ -569,7 +581,8 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
       input.metadata.documentId,
       input.metadata.artifactVersion,
     );
-    if (!document) throw new RegistryError("RETRIEVAL_INDEX_WRITE_FAILED", "Indexed document missing");
+    if (!document)
+      throw new RegistryError("RETRIEVAL_INDEX_WRITE_FAILED", "Indexed document missing");
     return { document, chunks, replayed: false };
   }
 
@@ -580,11 +593,7 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
     if (!query) throw new RegistryValidationError("retrieval query is required");
     const limit = normalizeLimit(request.limit);
     const match = ftsQuery(query);
-    const clauses = [
-      "retrieval_chunks_fts MATCH ?",
-      "d.workspace_id = ?",
-      "d.is_current = 1",
-    ];
+    const clauses = ["retrieval_chunks_fts MATCH ?", "d.workspace_id = ?", "d.is_current = 1"];
     const values: SQLInputValue[] = [match, workspaceId];
     if (request.sourceId?.trim()) {
       clauses.push("d.source_id = ?");
@@ -645,7 +654,8 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
     documentId: string,
     artifactVersion?: number,
   ): RetrievalDocument | null {
-    const versionClause = artifactVersion === undefined ? "AND is_current = 1" : "AND artifact_version = ?";
+    const versionClause =
+      artifactVersion === undefined ? "AND is_current = 1" : "AND artifact_version = ?";
     const values: SQLInputValue[] = [workspaceId, documentId];
     if (artifactVersion !== undefined) {
       if (!Number.isSafeInteger(artifactVersion) || artifactVersion <= 0) {

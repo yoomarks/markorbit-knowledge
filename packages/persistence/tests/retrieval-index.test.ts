@@ -45,11 +45,7 @@ function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-function indexVersion(
-  repository: SqliteRetrievalIndexRepository,
-  version: number,
-  body: string,
-) {
+function indexVersion(repository: SqliteRetrievalIndexRepository, version: number, body: string) {
   const markdown = canonicalMarkdown(body);
   return repository.indexVerified({
     metadata: metadata(version),
@@ -77,9 +73,9 @@ describe("retrieval index", () => {
     expect(indexed.replayed).toBe(false);
     expect(indexed.document.chunkCount).toBeGreaterThanOrEqual(2);
     expect(indexed.document.keywords).toContain("maintenance");
-    expect(indexed.chunks.some((chunk) => chunk.headingPath.includes("Section 8 declaration"))).toBe(
-      true,
-    );
+    expect(
+      indexed.chunks.some((chunk) => chunk.headingPath.includes("Section 8 declaration")),
+    ).toBe(true);
 
     const result = repository.search({ workspaceId, query: "Section 8 maintenance" });
     expect(result.indexMode).toBe("SQLITE_FTS5_BM25");
@@ -100,7 +96,11 @@ describe("retrieval index", () => {
       new DatabaseSync(":memory:"),
       () => new Date("2026-08-09T00:00:00.000Z"),
     );
-    indexVersion(repository, 1, "# Maintenance\n\nLegacy specimen guidance for maintenance filings.");
+    indexVersion(
+      repository,
+      1,
+      "# Maintenance\n\nLegacy specimen guidance for maintenance filings.",
+    );
     indexVersion(
       repository,
       2,

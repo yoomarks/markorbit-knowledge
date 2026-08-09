@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
-import {
-  getRetrievalIndexRepository,
-  getStagingContentRepository,
-} from "@/server/source-registry";
+import { getRetrievalIndexRepository, getStagingContentRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,13 +26,22 @@ export async function GET(request: Request, context: RouteContext) {
     const retrieval = getRetrievalIndexRepository();
     const document = retrieval.getDocument(workspaceId, id, artifactVersion);
     if (!document) {
-      throw new RegistryError("RETRIEVAL_DOCUMENT_NOT_FOUND", `Retrieval document ${id} was not found`);
+      throw new RegistryError(
+        "RETRIEVAL_DOCUMENT_NOT_FOUND",
+        `Retrieval document ${id} was not found`,
+      );
     }
-    const bytes = getStagingContentRepository().readContent(document.stagingDocumentId, workspaceId);
+    const bytes = getStagingContentRepository().readContent(
+      document.stagingDocumentId,
+      workspaceId,
+    );
     const canonicalMarkdown = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     const result = retrieval.documentResult(workspaceId, id, canonicalMarkdown, artifactVersion);
     if (!result) {
-      throw new RegistryError("RETRIEVAL_DOCUMENT_NOT_FOUND", `Retrieval document ${id} was not found`);
+      throw new RegistryError(
+        "RETRIEVAL_DOCUMENT_NOT_FOUND",
+        `Retrieval document ${id} was not found`,
+      );
     }
     return NextResponse.json(result);
   } catch (error) {
