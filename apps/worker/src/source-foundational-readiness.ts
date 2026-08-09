@@ -5,7 +5,7 @@ import {
   type SupplyRun,
 } from "./source-coverage-operations";
 
-export const FOUNDATIONAL_READINESS_PROTOCOL_VERSION = "1.1" as const;
+export const FOUNDATIONAL_READINESS_PROTOCOL_VERSION = "1.2" as const;
 export const US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION = FOUNDATIONAL_READINESS_PROTOCOL_VERSION;
 
 export const FOUNDATIONAL_READINESS_STAGES = [
@@ -15,6 +15,7 @@ export const FOUNDATIONAL_READINESS_STAGES = [
   "CONVERT",
   "INDEX",
   "QUALITY",
+  "RELEVANCE",
   "HEALTH",
   "READY",
 ] as const;
@@ -40,8 +41,26 @@ export type FoundationalRetrievalQualityItem = {
   isCurrent: boolean;
 };
 
+export type FoundationalRetrievalRelevanceItem = {
+  targetId: string;
+  state: "READY" | "DEGRADED" | "BLOCKED" | "NOT_APPLICABLE";
+  gaps: string[];
+  probeCount: number;
+};
+
 export type FoundationalRetrievalQualityState =
-  "READY" | "DEGRADED" | "BLOCKED" | "MISSING" | "NOT_APPLICABLE";
+  | "READY"
+  | "DEGRADED"
+  | "BLOCKED"
+  | "MISSING"
+  | "NOT_APPLICABLE";
+
+export type FoundationalRetrievalRelevanceState =
+  | "READY"
+  | "DEGRADED"
+  | "BLOCKED"
+  | "MISSING"
+  | "NOT_APPLICABLE";
 
 export type FoundationalReadinessTarget = {
   targetId: string;
@@ -53,6 +72,9 @@ export type FoundationalReadinessTarget = {
   retrievalQualityState: FoundationalRetrievalQualityState;
   retrievalAuditDocumentCount: number;
   retrievalAuditGaps: string[];
+  retrievalRelevanceState: FoundationalRetrievalRelevanceState;
+  retrievalRelevanceProbeCount: number;
+  retrievalRelevanceGaps: string[];
 };
 
 export type FoundationalReadinessGate = {
@@ -93,6 +115,12 @@ type FetchLike = typeof fetch;
 type RetrievalQualityEvaluation = {
   state: FoundationalRetrievalQualityState;
   documentCount: number;
+  gaps: string[];
+};
+
+type RetrievalRelevanceEvaluation = {
+  state: FoundationalRetrievalRelevanceState;
+  probeCount: number;
   gaps: string[];
 };
 
@@ -221,6 +249,31 @@ export function parseFoundationalRetrievalQuality(
   });
 }
 
+export function parseFoundationalRetrievalRelevance(
+  payload: unknown,
+): FoundationalRetrievalRelevanceItem[] {
+  const outer = record(payload);
+  return array(outer?.items).map((value, index) => {
+    const item = record(value);
+    if (!item) throw new Error(`Invalid retrieval relevance item at index ${index}`);
+    const state = requiredString(item.state, `items[${index}].state`);
+    if (
+      state !== "READY" &&
+      state !== "DEGRADED" &&
+      state !== "BLOCKED" &&
+      state !== "NOT_APPLICABLE"
+    ) {
+      throw new Error(`Invalid items[${index}].state`);
+    }
+    return {
+      targetId: requiredString(item.targetId, `items[${index}].targetId`),
+      state,
+      gaps: array(item.gaps).map((gap) => String(gap)),
+      probeCount: array(item.probes).length,
+    };
+  });
+}
+
 export function deriveFoundationalReadinessStage(
   item: FoundationalSupplyHealthItem,
 ): FoundationalReadinessStage {
@@ -284,6 +337,47 @@ export function evaluateFoundationalRetrievalQuality(
   return { state: "READY", documentCount: current.length, gaps };
 }
 
+export function evaluateFoundationalRetrievalRelevance(
+  item: FoundationalSupplyHealthItem,
+  relevanceItems: readonly FoundationalRetrievalRelevanceItem[],
+): RetrievalRelevanceEvaluation {
+  if (item.currentDocumentCount === 0) {
+    return { state: "NOT_APPLICABLE", probeCount: 0, gaps: [] };
+  }
+  const matching = relevanceItems.filter((relevance) => relevance.targetId === item.targetId);
+  if (matching.length === 0) {
+    return {
+      state: "MISSING",
+      probeCount: 0,
+      gaps: ["RETRIEVAL_RELEVANCE_AUDIT_MISSING"],
+    };
+  }
+  if (matching.length > 1) {
+    return {
+      state: "BLOCKED",
+      probeCount: matching.reduce((total, relevance) => total + relevance.probeCount, 0),
+      gaps: ["RETRIEVAL_RELEVANCE_AUDIT_DUPLICATE"],
+    };
+  }
+
+  const relevance = matching[0];
+  if (relevance.state === "NOT_APPLICABLE") {
+    return {
+      state: "BLOCKED",
+      probeCount: relevance.probeCount,
+      gaps: [
+        "RETRIEVAL_RELEVANCE_NOT_APPLICABLE_WITH_CURRENT_DOCUMENTS",
+        ...relevance.gaps,
+      ],
+    };
+  }
+  return {
+    state: relevance.state,
+    probeCount: relevance.probeCount,
+    gaps: [...relevance.gaps],
+  };
+}
+
 function supplyReasonFor(
   item: FoundationalSupplyHealthItem,
   stage: FoundationalReadinessStage,
@@ -299,11 +393,17 @@ function qualityReasonFor(quality: RetrievalQualityEvaluation): string {
   return `RETRIEVAL_QUALITY_${quality.state}`;
 }
 
+function relevanceReasonFor(relevance: RetrievalRelevanceEvaluation): string {
+  if (relevance.gaps.length > 0) return relevance.gaps.join(",");
+  return `RETRIEVAL_RELEVANCE_${relevance.state}`;
+}
+
 export function evaluateFoundationalReadiness(
   jurisdiction: string,
   targetIds: readonly string[],
   healthItems: readonly FoundationalSupplyHealthItem[],
   qualityItems: readonly FoundationalRetrievalQualityItem[],
+  relevanceItems: readonly FoundationalRetrievalRelevanceItem[] = [],
 ): FoundationalReadinessGate {
   const normalized = normalizedJurisdiction(jurisdiction);
   const expected = [...new Set(targetIds)];
@@ -312,8 +412,9 @@ export function evaluateFoundationalReadiness(
   }
   const healthMap = new Map<string, FoundationalSupplyHealthItem>();
   for (const item of healthItems) {
-    if (healthMap.has(item.targetId))
+    if (healthMap.has(item.targetId)) {
       throw new Error(`Duplicate supply health for ${item.targetId}`);
+    }
     healthMap.set(item.targetId, item);
   }
 
@@ -334,12 +435,21 @@ export function evaluateFoundationalReadiness(
         retrievalQualityState: "NOT_APPLICABLE",
         retrievalAuditDocumentCount: 0,
         retrievalAuditGaps: [],
+        retrievalRelevanceState: "NOT_APPLICABLE",
+        retrievalRelevanceProbeCount: 0,
+        retrievalRelevanceGaps: [],
       };
     }
 
     const supplyStage = deriveFoundationalReadinessStage(item);
     const quality = evaluateFoundationalRetrievalQuality(item, qualityItems);
-    const stage = supplyStage === "READY" && quality.state !== "READY" ? "QUALITY" : supplyStage;
+    const relevance = evaluateFoundationalRetrievalRelevance(item, relevanceItems);
+    let stage = supplyStage;
+    if (supplyStage === "READY" && quality.state !== "READY") {
+      stage = "QUALITY";
+    } else if (supplyStage === "READY" && relevance.state !== "READY") {
+      stage = "RELEVANCE";
+    }
     byStage[stage] += 1;
     return {
       targetId,
@@ -347,10 +457,18 @@ export function evaluateFoundationalReadiness(
       ready: stage === "READY",
       healthState: item.state,
       gaps: item.gaps,
-      reason: stage === "QUALITY" ? qualityReasonFor(quality) : supplyReasonFor(item, stage),
+      reason:
+        stage === "QUALITY"
+          ? qualityReasonFor(quality)
+          : stage === "RELEVANCE"
+            ? relevanceReasonFor(relevance)
+            : supplyReasonFor(item, stage),
       retrievalQualityState: quality.state,
       retrievalAuditDocumentCount: quality.documentCount,
       retrievalAuditGaps: quality.gaps,
+      retrievalRelevanceState: relevance.state,
+      retrievalRelevanceProbeCount: relevance.probeCount,
+      retrievalRelevanceGaps: relevance.gaps,
     };
   });
   const readyCount = targets.filter((target) => target.ready).length;
@@ -373,16 +491,30 @@ export function evaluateUsFoundationalReadiness(
   targetIds: readonly string[],
   healthItems: readonly FoundationalSupplyHealthItem[],
   qualityItems: readonly FoundationalRetrievalQualityItem[],
+  relevanceItems: readonly FoundationalRetrievalRelevanceItem[] = [],
 ): FoundationalReadinessGate {
-  return evaluateFoundationalReadiness("US", targetIds, healthItems, qualityItems);
+  return evaluateFoundationalReadiness(
+    "US",
+    targetIds,
+    healthItems,
+    qualityItems,
+    relevanceItems,
+  );
 }
 
 export function evaluateWipoFoundationalReadiness(
   targetIds: readonly string[],
   healthItems: readonly FoundationalSupplyHealthItem[],
   qualityItems: readonly FoundationalRetrievalQualityItem[],
+  relevanceItems: readonly FoundationalRetrievalRelevanceItem[] = [],
 ): FoundationalReadinessGate {
-  return evaluateFoundationalReadiness("WO", targetIds, healthItems, qualityItems);
+  return evaluateFoundationalReadiness(
+    "WO",
+    targetIds,
+    healthItems,
+    qualityItems,
+    relevanceItems,
+  );
 }
 
 async function loadReadiness(
@@ -393,19 +525,21 @@ async function loadReadiness(
   targetIds: readonly string[],
 ): Promise<FoundationalReadinessGate> {
   const query = `workspaceId=${encodeURIComponent(workspaceId)}&jurisdiction=${encodeURIComponent(jurisdiction)}`;
-  const [healthPayload, qualityPayload] = await Promise.all([
+  const [healthPayload, qualityPayload, relevancePayload] = await Promise.all([
     requestJson(
       fetchImpl,
       baseUrl,
       `/api/source-supply-health?${query}&coverageTier=FOUNDATIONAL&catalogState=ACTIVE`,
     ),
     requestJson(fetchImpl, baseUrl, `/api/retrieval/audit?${query}`),
+    requestJson(fetchImpl, baseUrl, `/api/retrieval/relevance-audit?${query}`),
   ]);
   return evaluateFoundationalReadiness(
     jurisdiction,
     targetIds,
     parseFoundationalSupplyHealth(healthPayload),
     parseFoundationalRetrievalQuality(qualityPayload),
+    parseFoundationalRetrievalRelevance(relevancePayload),
   );
 }
 
