@@ -1,9 +1,4 @@
-import type {
-  ArtifactKind,
-  AuthorityLevel,
-  Extensions,
-  SourceCategory,
-} from "./schema-v1";
+import type { ArtifactKind, AuthorityLevel, Extensions, SourceCategory } from "./schema-v1";
 import type { SourceType } from "./vocabularies";
 
 export const SOURCE_COVERAGE_PROTOCOL_VERSION = "1.0" as const;
@@ -35,15 +30,13 @@ export const SOURCE_COVERAGE_ACQUISITION_MODES = [
   "API_OR_STRUCTURED",
   "MIXED",
 ] as const;
-export type SourceCoverageAcquisitionMode =
-  (typeof SOURCE_COVERAGE_ACQUISITION_MODES)[number];
+export type SourceCoverageAcquisitionMode = (typeof SOURCE_COVERAGE_ACQUISITION_MODES)[number];
 
 export const SOURCE_COVERAGE_CATALOG_STATES = ["ACTIVE", "WATCH", "RETIRED"] as const;
 export type SourceCoverageCatalogState = (typeof SOURCE_COVERAGE_CATALOG_STATES)[number];
 
 export const SOURCE_COVERAGE_CHANGE_SENSITIVITIES = ["HIGH", "NORMAL", "LOW"] as const;
-export type SourceCoverageChangeSensitivity =
-  (typeof SOURCE_COVERAGE_CHANGE_SENSITIVITIES)[number];
+export type SourceCoverageChangeSensitivity = (typeof SOURCE_COVERAGE_CHANGE_SENSITIVITIES)[number];
 
 export type SourceCoverageEntrypoint = {
   uri: string;

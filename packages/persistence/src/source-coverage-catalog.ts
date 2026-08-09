@@ -128,9 +128,7 @@ export const US_SOURCE_COVERAGE_TARGETS = [
     family: "EXAMINATION_MANUAL",
     displayName: "Trademark Manual of Examining Procedure — Current",
     canonicalUri: "https://tmep.uspto.gov/RDMS/TMEP/current",
-    entrypoints: [
-      { uri: "https://tmep.uspto.gov/RDMS/TMEP/current", label: "Current TMEP" },
-    ],
+    entrypoints: [{ uri: "https://tmep.uspto.gov/RDMS/TMEP/current", label: "Current TMEP" }],
     coverageTier: "FOUNDATIONAL",
     changeSensitivity: "HIGH",
     acquisition: {
@@ -167,9 +165,7 @@ export const US_SOURCE_COVERAGE_TARGETS = [
     family: "TTAB_PROCEDURE",
     displayName: "Trademark Trial and Appeal Board Manual of Procedure — Current",
     canonicalUri: "https://tbmp.uspto.gov/RDMS/TBMP/current",
-    entrypoints: [
-      { uri: "https://tbmp.uspto.gov/RDMS/TBMP/current", label: "Current TBMP" },
-    ],
+    entrypoints: [{ uri: "https://tbmp.uspto.gov/RDMS/TBMP/current", label: "Current TBMP" }],
     coverageTier: "FOUNDATIONAL",
     changeSensitivity: "HIGH",
     acquisition: {
@@ -356,7 +352,8 @@ export const US_SOURCE_COVERAGE_TARGETS = [
     id: "us-uspto-trademark-examination-guides",
     family: "POLICY_NOTICES",
     displayName: "Trademark Examination Guides",
-    canonicalUri: "https://www.uspto.gov/trademarks/guides-and-manuals/trademark-examination-guides",
+    canonicalUri:
+      "https://www.uspto.gov/trademarks/guides-and-manuals/trademark-examination-guides",
     entrypoints: [
       {
         uri: "https://www.uspto.gov/trademarks/guides-and-manuals/trademark-examination-guides",
@@ -401,12 +398,17 @@ export function listSourceCoverageTargets(
   filters: SourceCoverageFilters = {},
 ): SourceCoverageTarget[] {
   return US_SOURCE_COVERAGE_TARGETS.filter((item) => {
-    if (filters.jurisdiction && item.jurisdiction !== filters.jurisdiction.toUpperCase()) return false;
+    if (filters.jurisdiction && item.jurisdiction !== filters.jurisdiction.toUpperCase())
+      return false;
     if (filters.family && item.family !== filters.family) return false;
     if (filters.coverageTier && item.coverageTier !== filters.coverageTier) return false;
     if (filters.catalogState && item.catalogState !== filters.catalogState) return false;
     return true;
-  }).map((item) => ({ ...item, entrypoints: [...item.entrypoints], acquisition: { ...item.acquisition } }));
+  }).map((item) => ({
+    ...item,
+    entrypoints: [...item.entrypoints],
+    acquisition: { ...item.acquisition },
+  }));
 }
 
 export function getSourceCoverageTarget(id: string): SourceCoverageTarget | undefined {
@@ -415,7 +417,9 @@ export function getSourceCoverageTarget(id: string): SourceCoverageTarget | unde
   return { ...item, entrypoints: [...item.entrypoints], acquisition: { ...item.acquisition } };
 }
 
-export function summarizeSourceCoverage(targets: readonly SourceCoverageTarget[]): SourceCoverageSummary {
+export function summarizeSourceCoverage(
+  targets: readonly SourceCoverageTarget[],
+): SourceCoverageSummary {
   const byTier = Object.fromEntries(SOURCE_COVERAGE_TIERS.map((tier) => [tier, 0])) as Record<
     SourceCoverageTier,
     number
@@ -449,7 +453,9 @@ export function evaluateSourceCoverage(
 
   return targets.map((item) => {
     const targetUris = new Set(
-      [item.canonicalUri, ...item.entrypoints.map((entrypoint) => entrypoint.uri)].map(normalizeUri),
+      [item.canonicalUri, ...item.entrypoints.map((entrypoint) => entrypoint.uri)].map(
+        normalizeUri,
+      ),
     );
     const sourceIds = sourceUris
       .filter((source) => [...targetUris].some((uri) => source.uris.has(uri)))
