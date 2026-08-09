@@ -1,4 +1,4 @@
-export {};
+import { foundationalSupplyPlanName } from "./source-coverage-operations";
 
 const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 const DEFAULT_WORKSPACE_ID = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
@@ -58,20 +58,53 @@ async function waitForRun(runId: string, timeoutMs: number): Promise<unknown> {
   throw new Error(`Coverage run ${runId} timed out with status ${lastStatus}`);
 }
 
-async function verifyRegistration(workspaceId: string): Promise<number> {
+async function loadRegistrations(workspaceId: string): Promise<JsonRecord[]> {
   const payload = await getJson(
     `/api/source-coverage?jurisdiction=US&coverageTier=FOUNDATIONAL&catalogState=ACTIVE&workspaceId=${encodeURIComponent(workspaceId)}`,
   );
   const outer = record(payload);
   const registrations = array(outer?.registration).map(record).filter(Boolean) as JsonRecord[];
   if (registrations.length === 0) throw new Error("Coverage response contains no registrations");
+  return registrations;
+}
+
+async function verifyRegistration(workspaceId: string): Promise<JsonRecord[]> {
+  const registrations = await loadRegistrations(workspaceId);
   const missing = registrations.filter((item) => item.state !== "REGISTERED");
   if (missing.length > 0) {
     throw new Error(
       `Foundational coverage is incomplete: ${missing.map((item) => String(item.targetId)).join(", ")}`,
     );
   }
-  return registrations.length;
+  return registrations;
+}
+
+function planFromEnvelope(value: unknown): JsonRecord | null {
+  const outer = record(value);
+  if (!outer) return null;
+  const direct = record(outer.plan);
+  if (direct && typeof direct.id === "string") return direct;
+  return record(direct?.plan);
+}
+
+async function verifyPreparedPlans(registrations: JsonRecord[]): Promise<number> {
+  let planCount = 0;
+  for (const registration of registrations) {
+    const targetId = requiredString(registration.targetId, "registration.targetId");
+    const sourceId = requiredString(array(registration.sourceIds)[0], `${targetId}.sourceId`);
+    const payload = await getJson(`/api/plans?sourceId=${encodeURIComponent(sourceId)}&limit=100`);
+    const expectedName = foundationalSupplyPlanName(targetId);
+    const match = array(record(payload)?.items)
+      .map(planFromEnvelope)
+      .find((plan) => plan?.name === expectedName);
+    if (!match) throw new Error(`Missing foundational supply plan for ${targetId}`);
+    if (match.status !== "ACTIVE") throw new Error(`Supply plan for ${targetId} is not ACTIVE`);
+    if (record(match.schedule)?.mode !== "MANUAL") {
+      throw new Error(`Supply plan for ${targetId} must remain MANUAL`);
+    }
+    planCount += 1;
+  }
+  return planCount;
 }
 
 async function verifyArtifacts(runId: string): Promise<{ count: number; kinds: string[] }> {
@@ -122,11 +155,13 @@ async function main(): Promise<void> {
     .filter(Boolean);
   const workspaceId = process.env.MARKORBIT_COVERAGE_WORKSPACE_ID?.trim() || DEFAULT_WORKSPACE_ID;
   const timeoutMs = Number(process.env.MARKORBIT_COVERAGE_TIMEOUT_MS ?? "600000");
+  const requirePlans = process.env.MARKORBIT_COVERAGE_REQUIRE_SUPPLY_PLANS !== "0";
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 30_000 || timeoutMs > 1_200_000) {
     throw new Error("MARKORBIT_COVERAGE_TIMEOUT_MS must be 30000..1200000");
   }
 
-  const registrationCount = await verifyRegistration(workspaceId);
+  const registrations = await verifyRegistration(workspaceId);
+  const preparedPlanCount = requirePlans ? await verifyPreparedPlans(registrations) : 0;
   const verifiedRuns: Array<{ runId: string; artifactCount: number; artifactKinds: string[] }> = [];
   for (const runId of runIds) {
     const terminal = await waitForRun(runId, timeoutMs);
@@ -140,7 +175,9 @@ async function main(): Promise<void> {
     `${JSON.stringify(
       {
         event: "source-coverage.verified",
-        registrationCount,
+        registrationCount: registrations.length,
+        preparedPlanCount,
+        requirePlans,
         liveRunCount: verifiedRuns.length,
         runs: verifiedRuns,
       },
