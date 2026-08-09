@@ -86,6 +86,7 @@ import {
   SqliteWorkerRegistryRepository,
   type WorkerRegistryRepository,
 } from "@markorbit/persistence/workers";
+import { ChangeAwareRetrievalIndexRepository } from "./change-aware-retrieval-index";
 import { ensureM3CanonicalDocumentConverters } from "./m3-converter-bootstrap";
 
 const globalRegistry = globalThis as typeof globalThis & {
@@ -154,8 +155,9 @@ function getRegistries() {
     const conversionTransitions = new SqliteConversionRuntimeTransitionRepository(database);
     const stagingVerification = new SqliteStagingVerificationRepository(database, staging);
     const converters = new SqliteConverterRegistryRepository(database);
-    const retrieval = new SqliteRetrievalIndexRepository(database);
+    const retrievalBase = new SqliteRetrievalIndexRepository(database);
     const changeFeed = new SqliteDocumentChangeFeedRepository(database);
+    const retrieval = new ChangeAwareRetrievalIndexRepository(retrievalBase, changeFeed);
     ensureM3CanonicalDocumentConverters(converters);
     globalRegistry.markorbitRegistries = {
       database,
