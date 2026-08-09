@@ -6,38 +6,21 @@ import { SqliteSourceSupplyHealthRepository } from "@markorbit/persistence/sourc
 import {
   evaluateFoundationalReadiness,
   normalizeFoundationalJurisdiction,
-  type FoundationalReadinessGate,
   type FoundationalRetrievalQualityItem,
   type FoundationalRetrievalRelevanceItem,
   type FoundationalSupplyHealthItem,
 } from "@markorbit/worker-runtime/foundational-readiness";
+import { buildFoundationalRemediationQueue } from "@markorbit/worker-runtime/foundational-remediation-queue";
 import {
-  buildFoundationalRemediationQueue,
-  type FoundationalRemediationQueue,
-} from "@markorbit/worker-runtime/foundational-remediation-queue";
-
-export const FOUNDATIONAL_REMEDIATION_QUEUE_SNAPSHOT_PROTOCOL_VERSION = "1.0" as const;
+  assembleFoundationalRemediationQueueSnapshot,
+  type FoundationalRemediationQueueSnapshot,
+} from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 
 export type FoundationalRemediationQueueSnapshotFilters = {
   workspaceId: string;
   jurisdiction: string;
   targetId?: string;
   topK?: number;
-};
-
-export type FoundationalRemediationQueueSnapshot = {
-  protocolVersion: typeof FOUNDATIONAL_REMEDIATION_QUEUE_SNAPSHOT_PROTOCOL_VERSION;
-  objectType: "FOUNDATIONAL_REMEDIATION_QUEUE_SNAPSHOT";
-  workspaceId: string;
-  jurisdiction: string;
-  targetId: string | null;
-  topK: number | null;
-  observedAt: string;
-  readiness: FoundationalReadinessGate;
-  remediationQueue: FoundationalRemediationQueue;
-  executionPolicy: "READ_ONLY";
-  collectionAuthorization: "NONE";
-  mutationPerformed: false;
 };
 
 function normalizeFilters(
@@ -120,19 +103,14 @@ export function buildFoundationalRemediationQueueSnapshot(
     qualityItems,
     relevanceItems,
   );
+  const remediationQueue = buildFoundationalRemediationQueue(readiness, normalized.workspaceId);
 
-  return {
-    protocolVersion: FOUNDATIONAL_REMEDIATION_QUEUE_SNAPSHOT_PROTOCOL_VERSION,
-    objectType: "FOUNDATIONAL_REMEDIATION_QUEUE_SNAPSHOT",
+  return assembleFoundationalRemediationQueueSnapshot({
     workspaceId: normalized.workspaceId,
-    jurisdiction: normalized.jurisdiction,
-    targetId: normalized.targetId ?? null,
-    topK: normalized.topK ?? null,
+    targetId: normalized.targetId,
+    topK: normalized.topK,
     observedAt: clock().toISOString(),
     readiness,
-    remediationQueue: buildFoundationalRemediationQueue(readiness, normalized.workspaceId),
-    executionPolicy: "READ_ONLY",
-    collectionAuthorization: "NONE",
-    mutationPerformed: false,
-  };
+    remediationQueue,
+  });
 }
