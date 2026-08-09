@@ -171,8 +171,6 @@ export function FoundationalOperatorWorkbench({
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError(null);
     void loadOperatorHistory(workspaceId, jurisdiction)
       .then(async (history) => {
         const statuses = await loadRunStatuses(workspaceId, history.executions);

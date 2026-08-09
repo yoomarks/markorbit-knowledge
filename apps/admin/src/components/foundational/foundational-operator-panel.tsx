@@ -66,8 +66,6 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError(null);
     void requestSnapshot(workspaceId, jurisdiction)
       .then((nextSnapshot) => {
         if (!active) return;
