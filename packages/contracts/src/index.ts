@@ -37,6 +37,7 @@ export * from "./source-intelligence-manual-sla-v2";
 export * from "./source-intelligence-policy-scope-v2";
 export * from "./source-intelligence-policy-audit-v2";
 export * from "./source-intelligence-policy-audit-query-v2";
+export * from "./source-intelligence-historical-policy-resolution-v2";
 export type {
   ReadyPackageStatus as ReadyPackageHandoffStatus,
   ReadyPackageEvidence,
