@@ -6,8 +6,7 @@ import {
 } from "./source-coverage-operations";
 
 export const FOUNDATIONAL_READINESS_PROTOCOL_VERSION = "1.1" as const;
-export const US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION =
-  FOUNDATIONAL_READINESS_PROTOCOL_VERSION;
+export const US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION = FOUNDATIONAL_READINESS_PROTOCOL_VERSION;
 
 export const FOUNDATIONAL_READINESS_STAGES = [
   "REGISTER",
@@ -42,11 +41,7 @@ export type FoundationalRetrievalQualityItem = {
 };
 
 export type FoundationalRetrievalQualityState =
-  | "READY"
-  | "DEGRADED"
-  | "BLOCKED"
-  | "MISSING"
-  | "NOT_APPLICABLE";
+  "READY" | "DEGRADED" | "BLOCKED" | "MISSING" | "NOT_APPLICABLE";
 
 export type FoundationalReadinessTarget = {
   targetId: string;
@@ -262,7 +257,9 @@ export function evaluateFoundationalRetrievalQuality(
     return { state: "NOT_APPLICABLE", documentCount: 0, gaps: [] };
   }
   const sourceIds = new Set(item.sourceIds);
-  const current = qualityItems.filter((quality) => quality.isCurrent && sourceIds.has(quality.sourceId));
+  const current = qualityItems.filter(
+    (quality) => quality.isCurrent && sourceIds.has(quality.sourceId),
+  );
   if (current.length === 0) {
     return {
       state: "MISSING",
@@ -275,7 +272,10 @@ export function evaluateFoundationalRetrievalQuality(
   if (current.length !== item.currentDocumentCount) {
     gaps.unshift("RETRIEVAL_AUDIT_COVERAGE_MISMATCH");
   }
-  if (current.some((quality) => quality.state === "BLOCKED") || current.length !== item.currentDocumentCount) {
+  if (
+    current.some((quality) => quality.state === "BLOCKED") ||
+    current.length !== item.currentDocumentCount
+  ) {
     return { state: "BLOCKED", documentCount: current.length, gaps };
   }
   if (current.some((quality) => quality.state === "DEGRADED")) {
@@ -312,7 +312,8 @@ export function evaluateFoundationalReadiness(
   }
   const healthMap = new Map<string, FoundationalSupplyHealthItem>();
   for (const item of healthItems) {
-    if (healthMap.has(item.targetId)) throw new Error(`Duplicate supply health for ${item.targetId}`);
+    if (healthMap.has(item.targetId))
+      throw new Error(`Duplicate supply health for ${item.targetId}`);
     healthMap.set(item.targetId, item);
   }
 
@@ -338,8 +339,7 @@ export function evaluateFoundationalReadiness(
 
     const supplyStage = deriveFoundationalReadinessStage(item);
     const quality = evaluateFoundationalRetrievalQuality(item, qualityItems);
-    const stage =
-      supplyStage === "READY" && quality.state !== "READY" ? "QUALITY" : supplyStage;
+    const stage = supplyStage === "READY" && quality.state !== "READY" ? "QUALITY" : supplyStage;
     byStage[stage] += 1;
     return {
       targetId,
