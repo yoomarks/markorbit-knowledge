@@ -1,4 +1,11 @@
-import type { ArtifactKind, AuthorityLevel, SourceCategory } from "./schema-v1";
+import {
+  ARTIFACT_KINDS,
+  AUTHORITY_LEVELS,
+  SOURCE_CATEGORIES,
+  type ArtifactKind,
+  type AuthorityLevel,
+  type SourceCategory,
+} from "./schema-v1";
 
 export const CANONICAL_MARKDOWN_VERSION = "1.0" as const;
 export const CANONICAL_MARKDOWN_OBJECT_TYPE = "CANONICAL_MARKDOWN_METADATA" as const;
@@ -37,6 +44,10 @@ function stringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string" && item.length > 0);
 }
 
+function oneOf<T extends readonly string[]>(values: T, value: unknown): value is T[number] {
+  return typeof value === "string" && values.includes(value as T[number]);
+}
+
 export function isCanonicalMarkdownMetadataV1(
   value: unknown,
 ): value is CanonicalMarkdownMetadataV1 {
@@ -52,16 +63,17 @@ export function isCanonicalMarkdownMetadataV1(
     value.sourceId.length > 0 &&
     typeof value.sourceName === "string" &&
     value.sourceName.length > 0 &&
-    typeof value.sourceCategory === "string" &&
-    typeof value.authorityLevel === "string" &&
+    oneOf(SOURCE_CATEGORIES, value.sourceCategory) &&
+    oneOf(AUTHORITY_LEVELS, value.authorityLevel) &&
     stringArray(value.jurisdictions) &&
     stringArray(value.languages) &&
     typeof value.rawArtifactId === "string" &&
     value.rawArtifactId.length > 0 &&
     (value.logicalDocumentId === null || typeof value.logicalDocumentId === "string") &&
+    typeof value.artifactVersion === "number" &&
     Number.isSafeInteger(value.artifactVersion) &&
-    Number(value.artifactVersion) > 0 &&
-    typeof value.artifactKind === "string" &&
+    value.artifactVersion > 0 &&
+    oneOf(ARTIFACT_KINDS, value.artifactKind) &&
     typeof value.originalName === "string" &&
     value.originalName.length > 0 &&
     (value.canonicalUri === null || typeof value.canonicalUri === "string") &&
