@@ -37,6 +37,7 @@
     "./retrieval-quality-remediation": "./src/retrieval-quality-remediation.ts",
     "./retrieval-remediation-execution": "./src/retrieval-remediation-execution.ts",
     "./retrieval-relevance-audit": "./src/retrieval-relevance-audit.ts",
+    "./foundational-action-intents": "./src/foundational-action-intent-ledger.ts",
     "./document-change-feed": "./src/document-change-feed.ts",
     "./local-pipeline-adapter": "./src/local-pipeline-adapter.ts",
     "./conversion-pipeline-inspection": "./src/conversion-pipeline-inspection.ts"
