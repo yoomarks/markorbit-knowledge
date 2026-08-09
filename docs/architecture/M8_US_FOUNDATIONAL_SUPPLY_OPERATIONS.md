@@ -46,13 +46,13 @@ The legacy `--dispatch-representative` smoke path remains available and separate
 
 Plans remain bounded and conservative.
 
-| Family | Max depth | Max items | Intent |
-| --- | ---: | ---: | --- |
-| `EXAMINATION_MANUAL` | 2 | 120 | acquire a useful current manual corpus without an unbounded crawl |
-| `TTAB_PROCEDURE` | 2 | 120 | acquire a useful current procedure-manual corpus |
-| `PORTAL` | 1 | 40 | capture the curated trademark portal and first-level official pages |
-| `MAINTENANCE` | 1 | 40 | capture the maintenance page and first-level official guidance |
-| other families | 0 | 10 | seed-page acquisition only until a family-specific strategy is justified |
+| Family               | Max depth | Max items | Intent                                                                   |
+| -------------------- | --------: | --------: | ------------------------------------------------------------------------ |
+| `EXAMINATION_MANUAL` |         2 |       120 | acquire a useful current manual corpus without an unbounded crawl        |
+| `TTAB_PROCEDURE`     |         2 |       120 | acquire a useful current procedure-manual corpus                         |
+| `PORTAL`             |         1 |        40 | capture the curated trademark portal and first-level official pages      |
+| `MAINTENANCE`        |         1 |        40 | capture the maintenance page and first-level official guidance           |
+| other families       |         0 |        10 | seed-page acquisition only until a family-specific strategy is justified |
 
 All plans:
 

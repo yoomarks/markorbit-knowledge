@@ -284,7 +284,9 @@ export async function prepareUsFoundationalSupply(options: PrepareUsFoundational
     (target) => registrationMap.get(target.id)?.state !== "REGISTERED",
   );
   if (missing.length > 0) {
-    throw new Error(`Foundational sources must be registered first: ${missing.map((v) => v.id).join(", ")}`);
+    throw new Error(
+      `Foundational sources must be registered first: ${missing.map((v) => v.id).join(", ")}`,
+    );
   }
 
   const plans: PreparedSupplyPlan[] = [];
@@ -321,7 +323,9 @@ export async function prepareUsFoundationalSupply(options: PrepareUsFoundational
     .map((target) => ({
       targetId: target.id,
       code: "STRUCTURED_ENDPOINT_NOT_CAPTURED" as const,
-      expectedArtifactKinds: target.acquisition.expectedArtifactKinds.filter((kind) => kind === "JSON"),
+      expectedArtifactKinds: target.acquisition.expectedArtifactKinds.filter(
+        (kind) => kind === "JSON",
+      ),
     }));
 
   return {
@@ -332,7 +336,6 @@ export async function prepareUsFoundationalSupply(options: PrepareUsFoundational
     plans,
     capabilityGaps,
     runs,
-    collectionAuthorization:
-      runs.length > 0 ? "EXPLICIT_TARGET_MANUAL_RUNS_DISPATCHED" : "NONE",
+    collectionAuthorization: runs.length > 0 ? "EXPLICIT_TARGET_MANUAL_RUNS_DISPATCHED" : "NONE",
   };
 }

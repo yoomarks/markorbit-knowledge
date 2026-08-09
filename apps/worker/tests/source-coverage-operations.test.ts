@@ -51,7 +51,11 @@ function record(value: unknown): Record<string, unknown> {
 describe("US foundational source supply operations", () => {
   it("builds bounded deep-crawl plans for official manuals", () => {
     const payload = supplyPlanCreatePayload(
-      target("us-uspto-tmep-current", "EXAMINATION_MANUAL", "https://tmep.uspto.gov/RDMS/TMEP/current"),
+      target(
+        "us-uspto-tmep-current",
+        "EXAMINATION_MANUAL",
+        "https://tmep.uspto.gov/RDMS/TMEP/current",
+      ),
       "src_01ARZ3NDEKTSV4RRFFQ69G5FAA",
     );
     expect(payload.name).toBe(foundationalSupplyPlanName("us-uspto-tmep-current"));
@@ -88,11 +92,7 @@ describe("US foundational source supply operations", () => {
   });
 
   it("prepares every registered foundational source and dispatches only explicitly selected targets", async () => {
-    const first = target(
-      "us-uspto-trademarks-root",
-      "PORTAL",
-      "https://www.uspto.gov/trademarks",
-    );
+    const first = target("us-uspto-trademarks-root", "PORTAL", "https://www.uspto.gov/trademarks");
     const second = target(
       "us-uspto-trademark-fees",
       "FEES",
@@ -123,8 +123,16 @@ describe("US foundational source supply operations", () => {
         return Response.json({
           targets,
           registration: [
-            { targetId: first.id, state: "REGISTERED", sourceIds: ["src_01ARZ3NDEKTSV4RRFFQ69G5FAA"] },
-            { targetId: second.id, state: "REGISTERED", sourceIds: ["src_01ARZ3NDEKTSV4RRFFQ69G5FAB"] },
+            {
+              targetId: first.id,
+              state: "REGISTERED",
+              sourceIds: ["src_01ARZ3NDEKTSV4RRFFQ69G5FAA"],
+            },
+            {
+              targetId: second.id,
+              state: "REGISTERED",
+              sourceIds: ["src_01ARZ3NDEKTSV4RRFFQ69G5FAB"],
+            },
           ],
         });
       }
@@ -183,11 +191,16 @@ describe("US foundational source supply operations", () => {
   });
 
   it("keeps dynamic JSON endpoints visible as a known supply gap instead of pretending they are captured", async () => {
-    const dynamic = target("us-uspto-id-manual", "GOODS_SERVICES_ID", "https://idm-tmng.uspto.gov/", {
-      renderJavascript: true,
-      fetchAttachments: false,
-      expectedArtifactKinds: ["HTML", "JSON"],
-    });
+    const dynamic = target(
+      "us-uspto-id-manual",
+      "GOODS_SERVICES_ID",
+      "https://idm-tmng.uspto.gov/",
+      {
+        renderJavascript: true,
+        fetchAttachments: false,
+        expectedArtifactKinds: ["HTML", "JSON"],
+      },
+    );
 
     const fetchImpl: typeof fetch = async (input, init) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
