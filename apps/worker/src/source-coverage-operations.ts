@@ -175,16 +175,19 @@ async function loadCoverage(
   fetchImpl: FetchLike,
   baseUrl: string,
   workspaceId: string,
+  jurisdiction: string,
 ): Promise<{ targets: CoverageTarget[]; registrations: CoverageRegistration[] }> {
   const payload = await requestJson(
     fetchImpl,
     baseUrl,
-    `/api/source-coverage?jurisdiction=US&coverageTier=FOUNDATIONAL&catalogState=ACTIVE&workspaceId=${encodeURIComponent(workspaceId)}`,
+    `/api/source-coverage?jurisdiction=${encodeURIComponent(jurisdiction)}&coverageTier=FOUNDATIONAL&catalogState=ACTIVE&workspaceId=${encodeURIComponent(workspaceId)}`,
   );
   const outer = record(payload);
   const targets = array(outer?.targets) as CoverageTarget[];
   const registrations = array(outer?.registration) as CoverageRegistration[];
-  if (targets.length === 0) throw new Error("No active US FOUNDATIONAL coverage targets found");
+  if (targets.length === 0) {
+    throw new Error(`No active ${jurisdiction} FOUNDATIONAL coverage targets found`);
+  }
   return { targets, registrations };
 }
 
@@ -266,17 +269,20 @@ async function dispatchSupplyPlan(
   return requiredString(run?.id, "run.id");
 }
 
-export type PrepareUsFoundationalSupplyOptions = {
+export type PrepareFoundationalSupplyOptions = {
   baseUrl: string;
   workspaceId: string;
+  jurisdiction: string;
   dispatchTargetIds?: string[];
   fetchImpl?: FetchLike;
 };
 
-export async function prepareUsFoundationalSupply(options: PrepareUsFoundationalSupplyOptions) {
+export async function prepareFoundationalSupply(options: PrepareFoundationalSupplyOptions) {
   const fetchImpl = options.fetchImpl ?? fetch;
   const baseUrl = normalizedBaseUrl(options.baseUrl);
-  const coverage = await loadCoverage(fetchImpl, baseUrl, options.workspaceId);
+  const jurisdiction = options.jurisdiction.trim().toUpperCase();
+  if (!jurisdiction) throw new Error("jurisdiction is required");
+  const coverage = await loadCoverage(fetchImpl, baseUrl, options.workspaceId, jurisdiction);
   const registrationMap = new Map(coverage.registrations.map((value) => [value.targetId, value]));
   const targetMap = new Map(coverage.targets.map((value) => [value.id, value]));
 
@@ -298,7 +304,9 @@ export async function prepareUsFoundationalSupply(options: PrepareUsFoundational
 
   const requestedTargets = [...new Set(options.dispatchTargetIds ?? [])];
   for (const targetId of requestedTargets) {
-    if (!targetMap.has(targetId)) throw new Error(`Unknown US FOUNDATIONAL target ${targetId}`);
+    if (!targetMap.has(targetId)) {
+      throw new Error(`Unknown ${jurisdiction} FOUNDATIONAL target ${targetId}`);
+    }
   }
 
   const planMap = new Map(plans.map((plan) => [plan.targetId, plan]));
@@ -331,6 +339,7 @@ export async function prepareUsFoundationalSupply(options: PrepareUsFoundational
   return {
     controlPlaneUrl: baseUrl,
     workspaceId: options.workspaceId,
+    jurisdiction,
     targetCount: coverage.targets.length,
     preparedPlanCount: plans.length,
     plans,
@@ -338,4 +347,19 @@ export async function prepareUsFoundationalSupply(options: PrepareUsFoundational
     runs,
     collectionAuthorization: runs.length > 0 ? "EXPLICIT_TARGET_MANUAL_RUNS_DISPATCHED" : "NONE",
   };
+}
+
+export type PrepareJurisdictionFoundationalSupplyOptions = Omit<
+  PrepareFoundationalSupplyOptions,
+  "jurisdiction"
+>;
+
+export function prepareUsFoundationalSupply(options: PrepareJurisdictionFoundationalSupplyOptions) {
+  return prepareFoundationalSupply({ ...options, jurisdiction: "US" });
+}
+
+export function prepareWipoFoundationalSupply(
+  options: PrepareJurisdictionFoundationalSupplyOptions,
+) {
+  return prepareFoundationalSupply({ ...options, jurisdiction: "WO" });
 }

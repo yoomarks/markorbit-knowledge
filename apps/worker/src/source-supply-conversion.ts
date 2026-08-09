@@ -143,11 +143,12 @@ async function loadCoverage(
   fetchImpl: FetchLike,
   baseUrl: string,
   workspaceId: string,
+  jurisdiction: string,
 ): Promise<{ targets: CoverageTarget[]; registrations: CoverageRegistration[] }> {
   const payload = await requestJson(
     fetchImpl,
     baseUrl,
-    `/api/source-coverage?jurisdiction=US&coverageTier=FOUNDATIONAL&catalogState=ACTIVE&workspaceId=${encodeURIComponent(workspaceId)}`,
+    `/api/source-coverage?jurisdiction=${encodeURIComponent(jurisdiction)}&coverageTier=FOUNDATIONAL&catalogState=ACTIVE&workspaceId=${encodeURIComponent(workspaceId)}`,
   );
   return {
     targets: parseCoverageTargets(payload),
@@ -271,7 +272,7 @@ async function ensureProfile(
       converter: { converterId: spec.converterId, version: spec.version },
       input,
       outputFormat: "MARKDOWN",
-      targetPathTemplate: "sources/uspto/{artifactId}.md",
+      targetPathTemplate: `sources/${target.jurisdiction === "US" ? "uspto" : target.jurisdiction === "WO" ? "wipo" : target.jurisdiction.toLowerCase()}/{artifactId}.md`,
       configuration: {},
       precedence: spec.precedence,
       autoConvert: true,
@@ -281,20 +282,23 @@ async function ensureProfile(
   return { profileId: requiredString(profile?.id, "profile.id"), state: "CREATED" };
 }
 
-export type PrepareUsFoundationalAutoConversionOptions = {
+export type PrepareFoundationalAutoConversionOptions = {
   baseUrl: string;
   workspaceId: string;
+  jurisdiction: string;
   fetchImpl?: FetchLike;
 };
 
-export async function prepareUsFoundationalAutoConversion(
-  options: PrepareUsFoundationalAutoConversionOptions,
+export async function prepareFoundationalAutoConversion(
+  options: PrepareFoundationalAutoConversionOptions,
 ) {
   const fetchImpl = options.fetchImpl ?? fetch;
   const baseUrl = normalizedBaseUrl(options.baseUrl);
-  const coverage = await loadCoverage(fetchImpl, baseUrl, options.workspaceId);
+  const jurisdiction = options.jurisdiction.trim().toUpperCase();
+  if (!jurisdiction) throw new Error("jurisdiction is required");
+  const coverage = await loadCoverage(fetchImpl, baseUrl, options.workspaceId, jurisdiction);
   if (coverage.targets.length === 0) {
-    throw new Error("No active US FOUNDATIONAL coverage targets found");
+    throw new Error(`No active ${jurisdiction} FOUNDATIONAL coverage targets found`);
   }
   const registrations = new Map(coverage.registrations.map((value) => [value.targetId, value]));
 
@@ -341,6 +345,7 @@ export async function prepareUsFoundationalAutoConversion(
 
   return {
     workspaceId: options.workspaceId,
+    jurisdiction,
     targetCount: coverage.targets.length,
     manifestCount: manifests.length,
     profileCount: profiles.length,
@@ -353,4 +358,21 @@ export async function prepareUsFoundationalAutoConversion(
       scannedPdf: "EXPLICIT_OCR_REQUIRED",
     },
   };
+}
+
+export type PrepareJurisdictionFoundationalAutoConversionOptions = Omit<
+  PrepareFoundationalAutoConversionOptions,
+  "jurisdiction"
+>;
+
+export function prepareUsFoundationalAutoConversion(
+  options: PrepareJurisdictionFoundationalAutoConversionOptions,
+) {
+  return prepareFoundationalAutoConversion({ ...options, jurisdiction: "US" });
+}
+
+export function prepareWipoFoundationalAutoConversion(
+  options: PrepareJurisdictionFoundationalAutoConversionOptions,
+) {
+  return prepareFoundationalAutoConversion({ ...options, jurisdiction: "WO" });
 }

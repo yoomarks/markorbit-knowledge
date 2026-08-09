@@ -94,7 +94,10 @@ export const WIPO_SOURCE_COVERAGE_TARGETS = [
     displayName: "WIPO Global Brand Database",
     canonicalUri: "https://www.wipo.int/en/web/global-brand-database/index",
     entrypoints: [
-      { uri: "https://www.wipo.int/en/web/global-brand-database/index", label: "Database guidance" },
+      {
+        uri: "https://www.wipo.int/en/web/global-brand-database/index",
+        label: "Database guidance",
+      },
       { uri: "https://branddb.wipo.int/en/", label: "Global Brand Database" },
     ],
     coverageTier: "FOUNDATIONAL",
@@ -112,7 +115,10 @@ export const WIPO_SOURCE_COVERAGE_TARGETS = [
     displayName: "WIPO Nice Classification",
     canonicalUri: "https://www.wipo.int/en/web/classification-nice/index",
     entrypoints: [
-      { uri: "https://www.wipo.int/en/web/classification-nice/index", label: "Nice Classification" },
+      {
+        uri: "https://www.wipo.int/en/web/classification-nice/index",
+        label: "Nice Classification",
+      },
       { uri: "https://nclpub.wipo.int/", label: "NCLPub" },
     ],
     coverageTier: "FOUNDATIONAL",
@@ -222,7 +228,10 @@ export const WIPO_SOURCE_COVERAGE_TARGETS = [
     displayName: "WIPO Madrid System Information Notices",
     canonicalUri: "https://www.wipo.int/en/web/madrid-system/notices",
     entrypoints: [
-      { uri: "https://www.wipo.int/en/web/madrid-system/notices", label: "Madrid information notices" },
+      {
+        uri: "https://www.wipo.int/en/web/madrid-system/notices",
+        label: "Madrid information notices",
+      },
     ],
     coverageTier: "CHANGE_SIGNAL",
     changeSensitivity: "HIGH",
