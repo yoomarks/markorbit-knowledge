@@ -48,8 +48,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@markorbit/contracts": "workspace:*",
-    "@markorbit/worker-runtime": "workspace:*"
+    "@markorbit/contracts": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "24.10.1",
