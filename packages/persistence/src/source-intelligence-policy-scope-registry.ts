@@ -1,6 +1,8 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import {
+  type SourceIntelligencePolicyAuditChangeV2,
+  type SourceIntelligencePolicyAuditEventV2,
   type SourceIntelligencePolicyCohortMembershipV2,
   type SourceIntelligencePolicyCohortV2,
 } from "@markorbit/contracts";
@@ -13,6 +15,7 @@ const MAX_DESCRIPTION_LENGTH = 1000;
 const MAX_TARGET_HOURS = 8760;
 const MAX_PRIORITY = 10000;
 const MAX_FILTER_VALUES = 100;
+const MAX_EVENT_LIMIT = 500;
 
 export type SaveSourceIntelligencePolicyCohortInput = {
   cohortId?: string;
@@ -34,6 +37,13 @@ export type SaveSourceIntelligencePolicyCohortMembershipInput = {
   expectedPresent: boolean;
 };
 
+export type SourceIntelligencePolicyAuditEventFilters = {
+  sourceIds?: string[];
+  cohortIds?: string[];
+  limit?: number;
+  offset?: number;
+};
+
 export interface SourceIntelligencePolicyScopeRepository {
   getCohort(cohortId: string): SourceIntelligencePolicyCohortV2 | null;
   listCohorts(): SourceIntelligencePolicyCohortV2[];
@@ -45,6 +55,12 @@ export interface SourceIntelligencePolicyScopeRepository {
   saveMembership(
     input: SaveSourceIntelligencePolicyCohortMembershipInput,
   ): SourceIntelligencePolicyCohortMembershipV2 | null;
+  listCohortAuditEvents(
+    filters?: SourceIntelligencePolicyAuditEventFilters,
+  ): SourceIntelligencePolicyAuditEventV2[];
+  listMembershipAuditEvents(
+    filters?: SourceIntelligencePolicyAuditEventFilters,
+  ): SourceIntelligencePolicyAuditEventV2[];
 }
 
 function requiredText(value: string, field: string, maxLength: number): string {
@@ -103,6 +119,24 @@ function normalizedValues(values: string[] | undefined, field: string): string[]
   return normalized;
 }
 
+function normalizeEventLimit(value: number | undefined): number {
+  if (value === undefined) return 100;
+  if (!Number.isInteger(value) || value <= 0 || value > MAX_EVENT_LIMIT) {
+    throw new RegistryValidationError(
+      `event limit must be an integer between 1 and ${MAX_EVENT_LIMIT}`,
+    );
+  }
+  return value;
+}
+
+function normalizeEventOffset(value: number | undefined): number {
+  if (value === undefined) return 0;
+  if (!Number.isInteger(value) || value < 0) {
+    throw new RegistryValidationError("event offset must be a non-negative integer");
+  }
+  return value;
+}
+
 function parseCohort(row: Record<string, unknown>): SourceIntelligencePolicyCohortV2 {
   return {
     cohortId: String(row.cohort_id),
@@ -130,6 +164,92 @@ function parseMembership(row: Record<string, unknown>): SourceIntelligencePolicy
     addedBy: String(row.added_by),
     addedAt: String(row.added_at),
   };
+}
+
+function nullableNumber(value: unknown): number | null {
+  return value === null || value === undefined ? null : Number(value);
+}
+
+function nullableTextValue(value: unknown): string | null {
+  return value === null || value === undefined ? null : String(value);
+}
+
+function nullableBoolean(value: unknown): boolean | null {
+  return value === null || value === undefined ? null : Number(value) === 1;
+}
+
+function changed(
+  field: SourceIntelligencePolicyAuditChangeV2["field"],
+  before: SourceIntelligencePolicyAuditChangeV2["before"],
+  after: SourceIntelligencePolicyAuditChangeV2["after"],
+): SourceIntelligencePolicyAuditChangeV2 | null {
+  return before === after ? null : { field, before, after };
+}
+
+function parseCohortAuditEvent(row: Record<string, unknown>): SourceIntelligencePolicyAuditEventV2 {
+  const action = String(row.action) as SourceIntelligencePolicyAuditEventV2["action"];
+  const changes = [
+    changed("name", nullableTextValue(row.previous_name), String(row.name)),
+    changed(
+      "description",
+      nullableTextValue(row.previous_description),
+      nullableTextValue(row.description),
+    ),
+    changed("priority", nullableNumber(row.previous_priority), Number(row.priority)),
+    changed("enabled", nullableBoolean(row.previous_enabled), Number(row.enabled) === 1),
+    changed(
+      "claimTargetHours",
+      nullableNumber(row.previous_claim_target_hours),
+      nullableNumber(row.claim_target_hours),
+    ),
+    changed(
+      "reviewTargetHours",
+      nullableNumber(row.previous_review_target_hours),
+      nullableNumber(row.review_target_hours),
+    ),
+  ].filter((entry): entry is SourceIntelligencePolicyAuditChangeV2 => entry !== null);
+  return {
+    eventId: String(row.event_id),
+    scope: "COHORT",
+    action,
+    actorLabel: String(row.actor_label),
+    occurredAt: String(row.occurred_at),
+    policyId: null,
+    cohortId: String(row.cohort_id),
+    sourceId: null,
+    changes,
+    historicalCompleteness:
+      action === "SNAPSHOT_BACKFILL" ? "SNAPSHOT_BACKFILL" : "EVENT_SOURCED",
+  };
+}
+
+function parseMembershipAuditEvent(
+  row: Record<string, unknown>,
+): SourceIntelligencePolicyAuditEventV2 {
+  const action = String(row.action) as SourceIntelligencePolicyAuditEventV2["action"];
+  return {
+    eventId: String(row.event_id),
+    scope: "MEMBERSHIP",
+    action,
+    actorLabel: String(row.actor_label),
+    occurredAt: String(row.occurred_at),
+    policyId: null,
+    cohortId: String(row.cohort_id),
+    sourceId: String(row.source_id),
+    changes: [
+      {
+        field: "membershipPresent",
+        before: nullableBoolean(row.previous_present),
+        after: Number(row.present) === 1,
+      },
+    ],
+    historicalCompleteness:
+      action === "SNAPSHOT_BACKFILL" ? "SNAPSHOT_BACKFILL" : "EVENT_SOURCED",
+  };
+}
+
+function stableBackfillEventId(prefix: string, seed: string): string {
+  return `${prefix}_${createHash("sha256").update(seed).digest("hex").slice(0, 32)}`;
 }
 
 export class SqliteSourceIntelligencePolicyScopeRepository implements SourceIntelligencePolicyScopeRepository {
@@ -162,7 +282,111 @@ export class SqliteSourceIntelligencePolicyScopeRepository implements SourceInte
       ) STRICT;
       CREATE INDEX IF NOT EXISTS idx_source_intelligence_policy_membership_source
         ON source_intelligence_policy_cohort_memberships(source_id, cohort_id);
+
+      CREATE TABLE IF NOT EXISTS source_intelligence_policy_cohort_events (
+        event_id TEXT PRIMARY KEY,
+        cohort_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        previous_name TEXT,
+        previous_description TEXT,
+        previous_priority INTEGER,
+        previous_enabled INTEGER CHECK(previous_enabled IS NULL OR previous_enabled IN (0, 1)),
+        previous_claim_target_hours INTEGER,
+        previous_review_target_hours INTEGER,
+        name TEXT NOT NULL,
+        description TEXT,
+        priority INTEGER NOT NULL,
+        enabled INTEGER NOT NULL CHECK(enabled IN (0, 1)),
+        claim_target_hours INTEGER,
+        review_target_hours INTEGER,
+        actor_label TEXT NOT NULL,
+        occurred_at TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS idx_source_intelligence_policy_cohort_events_time
+        ON source_intelligence_policy_cohort_events(occurred_at DESC, event_id DESC);
+
+      CREATE TABLE IF NOT EXISTS source_intelligence_policy_membership_events (
+        event_id TEXT PRIMARY KEY,
+        cohort_id TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        previous_present INTEGER CHECK(previous_present IS NULL OR previous_present IN (0, 1)),
+        present INTEGER NOT NULL CHECK(present IN (0, 1)),
+        actor_label TEXT NOT NULL,
+        occurred_at TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS idx_source_intelligence_policy_membership_events_time
+        ON source_intelligence_policy_membership_events(occurred_at DESC, event_id DESC);
+      CREATE INDEX IF NOT EXISTS idx_source_intelligence_policy_membership_events_source
+        ON source_intelligence_policy_membership_events(source_id, occurred_at DESC);
     `);
+    this.backfillAuditSnapshots();
+  }
+
+  private backfillAuditSnapshots(): void {
+    const cohorts = this.database.prepare("SELECT * FROM source_intelligence_policy_cohorts").all();
+    for (const raw of cohorts) {
+      const row = raw as Record<string, unknown>;
+      const cohortId = String(row.cohort_id);
+      const event = this.database
+        .prepare(
+          "SELECT event_id FROM source_intelligence_policy_cohort_events WHERE cohort_id = ? LIMIT 1",
+        )
+        .get(cohortId) as Record<string, unknown> | undefined;
+      if (event) continue;
+      this.database
+        .prepare(
+          `INSERT OR IGNORE INTO source_intelligence_policy_cohort_events (
+             event_id, cohort_id, action,
+             previous_name, previous_description, previous_priority, previous_enabled,
+             previous_claim_target_hours, previous_review_target_hours,
+             name, description, priority, enabled, claim_target_hours, review_target_hours,
+             actor_label, occurred_at
+           ) VALUES (?, ?, 'SNAPSHOT_BACKFILL', NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          stableBackfillEventId("sica", `${cohortId}:${String(row.updated_at)}`),
+          cohortId,
+          String(row.name),
+          row.description ?? null,
+          Number(row.priority),
+          Number(row.enabled),
+          row.claim_target_hours ?? null,
+          row.review_target_hours ?? null,
+          String(row.updated_by),
+          String(row.updated_at),
+        );
+    }
+
+    const memberships = this.database
+      .prepare("SELECT * FROM source_intelligence_policy_cohort_memberships")
+      .all();
+    for (const raw of memberships) {
+      const row = raw as Record<string, unknown>;
+      const cohortId = String(row.cohort_id);
+      const sourceId = String(row.source_id);
+      const event = this.database
+        .prepare(
+          `SELECT event_id FROM source_intelligence_policy_membership_events
+           WHERE cohort_id = ? AND source_id = ? LIMIT 1`,
+        )
+        .get(cohortId, sourceId) as Record<string, unknown> | undefined;
+      if (event) continue;
+      this.database
+        .prepare(
+          `INSERT OR IGNORE INTO source_intelligence_policy_membership_events (
+             event_id, cohort_id, source_id, action, previous_present, present,
+             actor_label, occurred_at
+           ) VALUES (?, ?, ?, 'SNAPSHOT_BACKFILL', NULL, 1, ?, ?)`,
+        )
+        .run(
+          stableBackfillEventId("sima", `${cohortId}:${sourceId}:${String(row.added_at)}`),
+          cohortId,
+          sourceId,
+          String(row.added_by),
+          String(row.added_at),
+        );
+    }
   }
 
   getCohort(cohortId: string): SourceIntelligencePolicyCohortV2 | null {
@@ -234,33 +458,71 @@ export class SqliteSourceIntelligencePolicyScopeRepository implements SourceInte
     }
 
     const timestamp = this.clock().toISOString();
-    this.database
-      .prepare(
-        `INSERT INTO source_intelligence_policy_cohorts (
-           cohort_id, name, description, priority, enabled,
-           claim_target_hours, review_target_hours, updated_by, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(cohort_id) DO UPDATE SET
-           name = excluded.name,
-           description = excluded.description,
-           priority = excluded.priority,
-           enabled = excluded.enabled,
-           claim_target_hours = excluded.claim_target_hours,
-           review_target_hours = excluded.review_target_hours,
-           updated_by = excluded.updated_by,
-           updated_at = excluded.updated_at`,
-      )
-      .run(
-        cohortId,
-        name,
-        description ?? null,
-        priority,
-        input.enabled ? 1 : 0,
-        claimTargetHours,
-        reviewTargetHours,
-        actor,
-        timestamp,
-      );
+    const eventId = `sica_${randomUUID().replaceAll("-", "")}`;
+    const action = existing ? "COHORT_UPDATED" : "COHORT_CREATED";
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      this.database
+        .prepare(
+          `INSERT INTO source_intelligence_policy_cohorts (
+             cohort_id, name, description, priority, enabled,
+             claim_target_hours, review_target_hours, updated_by, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(cohort_id) DO UPDATE SET
+             name = excluded.name,
+             description = excluded.description,
+             priority = excluded.priority,
+             enabled = excluded.enabled,
+             claim_target_hours = excluded.claim_target_hours,
+             review_target_hours = excluded.review_target_hours,
+             updated_by = excluded.updated_by,
+             updated_at = excluded.updated_at`,
+        )
+        .run(
+          cohortId,
+          name,
+          description ?? null,
+          priority,
+          input.enabled ? 1 : 0,
+          claimTargetHours,
+          reviewTargetHours,
+          actor,
+          timestamp,
+        );
+      this.database
+        .prepare(
+          `INSERT INTO source_intelligence_policy_cohort_events (
+             event_id, cohort_id, action,
+             previous_name, previous_description, previous_priority, previous_enabled,
+             previous_claim_target_hours, previous_review_target_hours,
+             name, description, priority, enabled, claim_target_hours, review_target_hours,
+             actor_label, occurred_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          eventId,
+          cohortId,
+          action,
+          existing?.name ?? null,
+          existing?.description ?? null,
+          existing?.priority ?? null,
+          existing ? (existing.enabled ? 1 : 0) : null,
+          existing?.claimTargetHours ?? null,
+          existing?.reviewTargetHours ?? null,
+          name,
+          description ?? null,
+          priority,
+          input.enabled ? 1 : 0,
+          claimTargetHours,
+          reviewTargetHours,
+          actor,
+          timestamp,
+        );
+      this.database.exec("COMMIT;");
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
     const saved = this.getCohort(cohortId);
     if (!saved) throw new Error("Failed to persist Source Intelligence policy cohort");
     return saved;
@@ -320,6 +582,8 @@ export class SqliteSourceIntelligencePolicyScopeRepository implements SourceInte
       );
     }
 
+    const timestamp = this.clock().toISOString();
+    const eventId = `sima_${randomUUID().replaceAll("-", "")}`;
     if (input.action === "ADDED") {
       if (present) {
         throw new RegistryConflictError(
@@ -328,14 +592,28 @@ export class SqliteSourceIntelligencePolicyScopeRepository implements SourceInte
           { cohortId, sourceId },
         );
       }
-      const timestamp = this.clock().toISOString();
-      this.database
-        .prepare(
-          `INSERT INTO source_intelligence_policy_cohort_memberships (
-             cohort_id, source_id, added_by, added_at
-           ) VALUES (?, ?, ?, ?)`,
-        )
-        .run(cohortId, sourceId, actor, timestamp);
+      this.database.exec("BEGIN IMMEDIATE;");
+      try {
+        this.database
+          .prepare(
+            `INSERT INTO source_intelligence_policy_cohort_memberships (
+               cohort_id, source_id, added_by, added_at
+             ) VALUES (?, ?, ?, ?)`,
+          )
+          .run(cohortId, sourceId, actor, timestamp);
+        this.database
+          .prepare(
+            `INSERT INTO source_intelligence_policy_membership_events (
+               event_id, cohort_id, source_id, action, previous_present, present,
+               actor_label, occurred_at
+             ) VALUES (?, ?, ?, 'MEMBERSHIP_ADDED', 0, 1, ?, ?)`,
+          )
+          .run(eventId, cohortId, sourceId, actor, timestamp);
+        this.database.exec("COMMIT;");
+      } catch (error) {
+        this.database.exec("ROLLBACK;");
+        throw error;
+      }
       const row = this.database
         .prepare(
           `SELECT * FROM source_intelligence_policy_cohort_memberships
@@ -354,15 +632,81 @@ export class SqliteSourceIntelligencePolicyScopeRepository implements SourceInte
           { cohortId, sourceId },
         );
       }
-      this.database
-        .prepare(
-          `DELETE FROM source_intelligence_policy_cohort_memberships
-           WHERE cohort_id = ? AND source_id = ?`,
-        )
-        .run(cohortId, sourceId);
+      this.database.exec("BEGIN IMMEDIATE;");
+      try {
+        this.database
+          .prepare(
+            `DELETE FROM source_intelligence_policy_cohort_memberships
+             WHERE cohort_id = ? AND source_id = ?`,
+          )
+          .run(cohortId, sourceId);
+        this.database
+          .prepare(
+            `INSERT INTO source_intelligence_policy_membership_events (
+               event_id, cohort_id, source_id, action, previous_present, present,
+               actor_label, occurred_at
+             ) VALUES (?, ?, ?, 'MEMBERSHIP_REMOVED', 1, 0, ?, ?)`,
+          )
+          .run(eventId, cohortId, sourceId, actor, timestamp);
+        this.database.exec("COMMIT;");
+      } catch (error) {
+        this.database.exec("ROLLBACK;");
+        throw error;
+      }
       return null;
     }
 
     throw new RegistryValidationError("membership action must be ADDED or REMOVED");
+  }
+
+  listCohortAuditEvents(
+    filters: SourceIntelligencePolicyAuditEventFilters = {},
+  ): SourceIntelligencePolicyAuditEventV2[] {
+    const cohortIds = normalizedValues(filters.cohortIds, "cohort ids").map(normalizedCohortId);
+    const limit = normalizeEventLimit(filters.limit);
+    const offset = normalizeEventOffset(filters.offset);
+    const values: SQLInputValue[] = [];
+    const where = cohortIds.length
+      ? `WHERE cohort_id IN (${cohortIds.map(() => "?").join(", ")})`
+      : "";
+    values.push(...cohortIds);
+    return this.database
+      .prepare(
+        `SELECT * FROM source_intelligence_policy_cohort_events
+         ${where}
+         ORDER BY occurred_at DESC, event_id DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(...values, limit, offset)
+      .map((row) => parseCohortAuditEvent(row as Record<string, unknown>));
+  }
+
+  listMembershipAuditEvents(
+    filters: SourceIntelligencePolicyAuditEventFilters = {},
+  ): SourceIntelligencePolicyAuditEventV2[] {
+    const sourceIds = normalizedValues(filters.sourceIds, "source ids");
+    const cohortIds = normalizedValues(filters.cohortIds, "cohort ids").map(normalizedCohortId);
+    const limit = normalizeEventLimit(filters.limit);
+    const offset = normalizeEventOffset(filters.offset);
+    const clauses: string[] = [];
+    const values: SQLInputValue[] = [];
+    if (sourceIds.length) {
+      clauses.push(`source_id IN (${sourceIds.map(() => "?").join(", ")})`);
+      values.push(...sourceIds);
+    }
+    if (cohortIds.length) {
+      clauses.push(`cohort_id IN (${cohortIds.map(() => "?").join(", ")})`);
+      values.push(...cohortIds);
+    }
+    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+    return this.database
+      .prepare(
+        `SELECT * FROM source_intelligence_policy_membership_events
+         ${where}
+         ORDER BY occurred_at DESC, event_id DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(...values, limit, offset)
+      .map((row) => parseMembershipAuditEvent(row as Record<string, unknown>));
   }
 }
