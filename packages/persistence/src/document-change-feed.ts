@@ -517,8 +517,7 @@ export class SqliteDocumentChangeFeedRepository implements DocumentChangeFeedRep
          ORDER BY artifact_version DESC LIMIT 1`,
       )
       .get(document.workspaceId, document.documentId, document.artifactVersion) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     return row ? documentRow(row) : null;
   }
 

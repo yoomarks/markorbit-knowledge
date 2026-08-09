@@ -48,11 +48,7 @@ function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-function indexVersion(
-  retrieval: SqliteRetrievalIndexRepository,
-  version: number,
-  body: string,
-) {
+function indexVersion(retrieval: SqliteRetrievalIndexRepository, version: number, body: string) {
   const markdown = canonicalMarkdown(version, body);
   return retrieval.indexVerified({
     metadata: metadata(version),
