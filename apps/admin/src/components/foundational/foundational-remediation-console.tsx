@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 
@@ -92,28 +92,53 @@ function queueMap(snapshot: Snapshot): Map<string, QueueItem> {
   return new Map(snapshot.remediationQueue.items.map((item) => [item.targetId, item]));
 }
 
+async function requestSnapshot(workspaceId: string, jurisdiction: Jurisdiction): Promise<Snapshot> {
+  const query = new URLSearchParams({ workspaceId, jurisdiction, topK: "5" });
+  const response = await fetch(`/api/foundational/remediation-queue?${query.toString()}`, {
+    cache: "no-store",
+  });
+  const payload: unknown = await response.json();
+  if (!response.ok) {
+    const message = (payload as ErrorEnvelope)?.error?.message;
+    throw new Error(message || `HTTP ${response.status}`);
+  }
+  if (!isSnapshot(payload)) throw new Error("Invalid foundational remediation snapshot");
+  return payload;
+}
+
 export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: string }) {
   const [jurisdiction, setJurisdiction] = useState<Jurisdiction>("US");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    await Promise.resolve();
+  useEffect(() => {
+    let active = true;
+    void requestSnapshot(workspaceId, jurisdiction)
+      .then((nextSnapshot) => {
+        if (!active) return;
+        setSnapshot(nextSnapshot);
+        setError(null);
+        setLoading(false);
+      })
+      .catch((loadError: unknown) => {
+        if (!active) return;
+        setSnapshot(null);
+        setError(
+          loadError instanceof Error ? loadError.message : "Unable to load foundational status",
+        );
+        setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [jurisdiction, workspaceId]);
+
+  async function refresh() {
     setLoading(true);
     setError(null);
     try {
-      const query = new URLSearchParams({ workspaceId, jurisdiction, topK: "5" });
-      const response = await fetch(`/api/foundational/remediation-queue?${query.toString()}`, {
-        cache: "no-store",
-      });
-      const payload: unknown = await response.json();
-      if (!response.ok) {
-        const message = (payload as ErrorEnvelope)?.error?.message;
-        throw new Error(message || `HTTP ${response.status}`);
-      }
-      if (!isSnapshot(payload)) throw new Error("Invalid foundational remediation snapshot");
-      setSnapshot(payload);
+      setSnapshot(await requestSnapshot(workspaceId, jurisdiction));
     } catch (loadError) {
       setSnapshot(null);
       setError(
@@ -122,11 +147,15 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
     } finally {
       setLoading(false);
     }
-  }, [jurisdiction, workspaceId]);
+  }
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  function chooseJurisdiction(code: Jurisdiction) {
+    if (code === jurisdiction) return;
+    setLoading(true);
+    setError(null);
+    setSnapshot(null);
+    setJurisdiction(code);
+  }
 
   const actionsByTarget = useMemo(() => (snapshot ? queueMap(snapshot) : new Map()), [snapshot]);
 
@@ -164,7 +193,7 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
                 <button
                   key={code}
                   type="button"
-                  onClick={() => setJurisdiction(code)}
+                  onClick={() => chooseJurisdiction(code)}
                   className={`rounded-lg px-3 py-2 text-sm font-medium transition ${jurisdiction === code ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
                 >
                   {label}
@@ -173,7 +202,7 @@ export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: s
             </div>
             <button
               type="button"
-              onClick={() => void load()}
+              onClick={() => void refresh()}
               disabled={loading}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
