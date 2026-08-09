@@ -12,7 +12,19 @@ import {
 } from "./artifact-backed-collection-executor";
 
 const PROTOCOL_VERSION = "1.0" as const;
-const SUPPORTED_OUTPUT_KINDS = new Set<ArtifactKind>(["HTML", "MARKDOWN"]);
+const SUPPORTED_OUTPUT_KINDS = new Set<ArtifactKind>([
+  "HTML",
+  "MARKDOWN",
+  "PDF",
+  "DOCX",
+  "XLSX",
+  "CSV",
+  "JSON",
+  "XML",
+  "EMAIL",
+  "IMAGE",
+  "TEXT",
+]);
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 export type Crawl4AiRunnerRequest = {
@@ -23,6 +35,7 @@ export type Crawl4AiRunnerRequest = {
   maxDepth: number;
   maxItems: number;
   renderJavascript: boolean;
+  fetchAttachments: boolean;
   respectRobots: boolean;
   rateLimitPerMinute: number;
   timeoutSeconds: number;
@@ -328,18 +341,11 @@ function assertSupportedJob(
       false,
     );
   }
-  if (job.planSnapshot.policy.fetchAttachments) {
-    throw new CollectionAcquisitionError(
-      "FETCH_ATTACHMENTS_NOT_SUPPORTED",
-      "Crawl4AI attachment downloads are not authorized by this production adapter yet",
-      false,
-    );
-  }
   const outputs = requestedOutputKinds(context);
   if (outputs.some((kind) => !SUPPORTED_OUTPUT_KINDS.has(kind))) {
     throw new CollectionAcquisitionError(
       "OUTPUT_KIND_NOT_SUPPORTED",
-      "Crawl4AI production adapter currently supports only HTML and MARKDOWN artifacts",
+      "Crawl4AI production adapter received an unsupported page or attachment artifact kind",
       false,
     );
   }
@@ -483,7 +489,7 @@ async function readManifestArtifact(
 export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
   readonly executor: ExecutionExecutor = {
     executorId: "crawl4ai-python",
-    version: "0.9.2",
+    version: "1.0.0",
     mode: "PRODUCTION",
   };
 
@@ -528,6 +534,7 @@ export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
         maxDepth: policy.maxDepth,
         maxItems: policy.maxItems,
         renderJavascript: policy.renderJavascript,
+        fetchAttachments: policy.fetchAttachments,
         respectRobots: policy.respectRobots,
         rateLimitPerMinute: policy.rateLimitPerMinute,
         timeoutSeconds: policy.timeoutSeconds,

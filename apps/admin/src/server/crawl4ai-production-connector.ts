@@ -7,16 +7,16 @@ import type {
 
 export const CRAWL4AI_PRODUCTION_CONNECTOR = {
   connectorId: "crawl4ai-web",
-  version: "1.1.0",
+  version: "1.2.0",
 } as const;
 
 export const CRAWL4AI_PRODUCTION_CONNECTOR_MANIFEST_INPUT: CreateConnectorManifestInput = {
   connectorId: CRAWL4AI_PRODUCTION_CONNECTOR.connectorId,
-  displayName: "Crawl4AI Web Connector — Production HTML/Markdown",
+  displayName: "Crawl4AI Web Connector — Production Pages + Attachments",
   version: CRAWL4AI_PRODUCTION_CONNECTOR.version,
   sourceTypes: ["WEB"],
   runtime: "PYTHON",
-  capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"],
+  capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT", "FETCH_ATTACHMENTS"],
   supportedJobTypes: ["WEB_CRAWL"],
   configurationSchema: {
     type: "object",
@@ -27,13 +27,25 @@ export const CRAWL4AI_PRODUCTION_CONNECTOR_MANIFEST_INPUT: CreateConnectorManife
     },
   },
   secretSchema: { type: "object", properties: {} },
-  outputArtifactKinds: ["HTML", "MARKDOWN"],
+  outputArtifactKinds: [
+    "HTML",
+    "MARKDOWN",
+    "PDF",
+    "DOCX",
+    "XLSX",
+    "CSV",
+    "JSON",
+    "XML",
+    "EMAIL",
+    "IMAGE",
+    "TEXT",
+  ],
   healthCheck: { mode: "WORKER_PROBE", timeoutSeconds: 30 },
   status: "ACTIVE",
   extensions: {
     "x-markorbit-production-provider": true,
     "x-markorbit-crawl4ai-version": "0.9.2",
-    "x-markorbit-evidence-boundary": "raw-html-markdown",
+    "x-markorbit-evidence-boundary": "raw-pages-and-authorized-attachments",
   },
 };
 

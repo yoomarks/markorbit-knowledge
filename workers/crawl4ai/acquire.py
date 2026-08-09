@@ -22,9 +22,15 @@ from safety import (
     redirect_host_in_scope,
     url_allowed_by_patterns,
 )
+from attachments import (
+    AttachmentDownload,
+    SUPPORTED_ATTACHMENT_KINDS,
+    attachment_kind_for_url,
+    download_attachment,
+)
 
 PROTOCOL_VERSION = "1.0"
-SUPPORTED_OUTPUT_KINDS = {"HTML", "MARKDOWN"}
+SUPPORTED_OUTPUT_KINDS = {"HTML", "MARKDOWN"} | set(SUPPORTED_ATTACHMENT_KINDS)
 
 
 def _error(code: str, message: str, retryable: bool = False) -> dict[str, Any]:
@@ -97,6 +103,7 @@ def _parse_request(payload: Any) -> dict[str, Any]:
         "max_depth": _require_int(payload.get("maxDepth"), "maxDepth", 0, 5),
         "max_items": _require_int(payload.get("maxItems"), "maxItems", 1, 500),
         "render_javascript": _require_bool(payload.get("renderJavascript"), "renderJavascript"),
+        "fetch_attachments": _require_bool(payload.get("fetchAttachments"), "fetchAttachments"),
         "respect_robots": _require_bool(payload.get("respectRobots"), "respectRobots"),
         "rate_limit_per_minute": _require_int(
             payload.get("rateLimitPerMinute"), "rateLimitPerMinute", 1, 600
@@ -234,8 +241,44 @@ def _write_artifact(
     )
 
 
+def _write_attachment_artifact(
+    output_directory: Path,
+    sequence: int,
+    attachment: AttachmentDownload,
+    max_artifact_bytes: int,
+    current_total_bytes: int,
+    max_total_bytes: int,
+) -> tuple[dict[str, Any], int]:
+    content = attachment.content
+    if not content:
+        raise SafetyError("EMPTY_ARTIFACT_NOT_ALLOWED", "Attachment output is empty")
+    if len(content) > max_artifact_bytes:
+        raise SafetyError("ARTIFACT_TOO_LARGE", "Attachment exceeds the configured byte limit")
+    if current_total_bytes + len(content) > max_total_bytes:
+        raise SafetyError("COLLECTION_TOO_LARGE", "Collection exceeds the configured total byte limit")
+    digest = hashlib.sha256(content).hexdigest()
+    suffix = Path(attachment.original_name).suffix.lower()
+    if not suffix or len(suffix) > 10 or not re.fullmatch(r"\.[a-z0-9]+", suffix):
+        suffix = ".bin"
+    filename = f"{sequence:04d}-{_safe_stem(attachment.final_url)}-{digest[:12]}{suffix}"
+    path = output_directory / filename
+    with path.open("xb") as handle:
+        handle.write(content)
+    return ({
+        "artifactKind": attachment.artifact_kind,
+        "mimeType": attachment.mime_type,
+        "originalName": attachment.original_name,
+        "sourceUri": attachment.source_url,
+        "canonicalUri": attachment.final_url,
+        "fileName": filename,
+        "sizeBytes": len(content),
+        "sha256": digest,
+    }, current_total_bytes + len(content))
+
+
 async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
     proxy_config = _proxy_configuration(request["require_egress_proxy"])
+    proxy_server = proxy_config["server"] if proxy_config else None
 
     with contextlib.redirect_stdout(sys.stderr):
         from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
@@ -264,7 +307,10 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
 
     artifacts: list[dict[str, Any]] = []
     total_bytes = 0
+    items_attempted = 0
     pages_attempted = 0
+    attachments_attempted = 0
+    attachment_hashes: set[str] = set()
     seen: set[str] = set()
     rate_gate = RateGate(request["rate_limit_per_minute"])
     last_error: SafetyError | None = None
@@ -272,14 +318,14 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
     with contextlib.redirect_stdout(sys.stderr):
         async with AsyncWebCrawler(config=browser_config) as crawler:
             for seed_url in request["start_urls"]:
-                if pages_attempted >= request["max_items"]:
+                if items_attempted >= request["max_items"]:
                     break
                 seed_url = normalize_http_url(seed_url)
                 seed_host = host_of(seed_url)
                 await assert_public_dns(seed_url)
                 queue: deque[tuple[str, int]] = deque([(seed_url, 0)])
 
-                while queue and pages_attempted < request["max_items"]:
+                while queue and items_attempted < request["max_items"]:
                     raw_url, depth = queue.popleft()
                     try:
                         current_url = normalize_http_url(raw_url)
@@ -294,9 +340,44 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
                     ):
                         continue
 
+                    attachment_kind = attachment_kind_for_url(current_url)
+                    if attachment_kind is not None:
+                        seen.add(current_url)
+                        if not request["fetch_attachments"] or attachment_kind not in request["output_kinds"]:
+                            continue
+                        await assert_public_dns(current_url)
+                        await rate_gate.wait()
+                        items_attempted += 1
+                        attachments_attempted += 1
+                        try:
+                            attachment = await download_attachment(
+                                current_url,
+                                seed_host=seed_host,
+                                proxy_server=proxy_server,
+                                locale=request["locale"],
+                                timeout_seconds=request["timeout_seconds"],
+                                max_bytes=min(request["max_artifact_bytes"], request["max_total_bytes"] - total_bytes),
+                            )
+                        except SafetyError as exc:
+                            last_error = exc
+                            continue
+                        if attachment.artifact_kind not in request["output_kinds"]:
+                            continue
+                        digest = hashlib.sha256(attachment.content).hexdigest()
+                        if digest in attachment_hashes:
+                            continue
+                        attachment_hashes.add(digest)
+                        manifest, total_bytes = _write_attachment_artifact(
+                            request["output_directory"], len(artifacts) + 1, attachment,
+                            request["max_artifact_bytes"], total_bytes, request["max_total_bytes"],
+                        )
+                        artifacts.append(manifest)
+                        continue
+
                     seen.add(current_url)
                     await assert_public_dns(current_url)
                     await rate_gate.wait()
+                    items_attempted += 1
                     pages_attempted += 1
 
                     try:
@@ -376,6 +457,7 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
         "ok": True,
         "artifacts": artifacts,
         "pagesAttempted": pages_attempted,
+        "attachmentsAttempted": attachments_attempted,
         "totalBytes": total_bytes,
     }
 

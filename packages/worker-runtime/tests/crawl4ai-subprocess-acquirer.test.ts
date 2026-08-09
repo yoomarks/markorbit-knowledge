@@ -72,4 +72,40 @@ describe("Crawl4AiSubprocessAcquirer", () => {
     expect(artifacts).toHaveLength(1);
     expect(new TextDecoder().decode(artifacts[0]?.content)).toContain("official");
   });
+  it("passes explicit attachment authorization and verifies PDF bytes", async () => {
+    const ctx = context();
+    ctx.job.planSnapshot.policy.fetchAttachments = true;
+    ctx.job.planSnapshot.output.artifactKinds = ["HTML", "PDF"];
+    let authorized = false;
+    const runner: Crawl4AiProcessRunner = {
+      async run(request) {
+        authorized = request.fetchAttachments;
+        const content = new TextEncoder().encode("%PDF-1.4\nfixture\n%%EOF\n");
+        const sha256 = createHash("sha256").update(content).digest("hex");
+        await writeFile(join(request.outputDirectory, "guide.pdf"), content);
+        return {
+          protocolVersion: "1.0",
+          ok: true,
+          pagesAttempted: 1,
+          totalBytes: content.byteLength,
+          artifacts: [
+            {
+              artifactKind: "PDF",
+              mimeType: "application/pdf",
+              originalName: "guide.pdf",
+              sourceUri: "https://example.com/guide.pdf",
+              canonicalUri: "https://example.com/guide.pdf",
+              fileName: "guide.pdf",
+              sizeBytes: content.byteLength,
+              sha256,
+            },
+          ],
+        };
+      },
+    };
+    const acquirer = new Crawl4AiSubprocessAcquirer({ runner, requireEgressProxy: false });
+    const artifacts = await acquirer.acquire(ctx);
+    expect(authorized).toBe(true);
+    expect(artifacts[0]?.artifactKind).toBe("PDF");
+  });
 });

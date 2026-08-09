@@ -106,8 +106,8 @@ jobs:
           const source = data?.source;
           const plan = data?.plan;
           if (candidate?.status !== 'ACCEPTED') throw new Error('Explicit review did not ACCEPT the candidate');
-          if (!source?.id || source?.connector?.connectorId !== 'crawl4ai-web' || source?.connector?.version !== '1.1.0') {
-            throw new Error(`Accepted Source is not bound to production Crawl4AI 1.1.0: ${JSON.stringify(source?.connector)}`);
+          if (!source?.id || source?.connector?.connectorId !== 'crawl4ai-web' || source?.connector?.version !== '1.2.0') {
+            throw new Error(`Accepted Source is not bound to production Crawl4AI 1.2.0: ${JSON.stringify(source?.connector)}`);
           }
           if (!plan?.id || plan?.status !== 'PAUSED') throw new Error('Acceptance crossed the execution authorization boundary');
           const outputKinds = plan?.output?.artifactKinds;
@@ -158,8 +158,8 @@ jobs:
             "connectorBindings": [
               {
                 "connectorId": "crawl4ai-web",
-                "version": "1.1.0",
-                "capabilities": ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"]
+                "version": "1.2.0",
+                "capabilities": ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT", "FETCH_ATTACHMENTS"]
               }
             ],
             "maxConcurrency": 1,
