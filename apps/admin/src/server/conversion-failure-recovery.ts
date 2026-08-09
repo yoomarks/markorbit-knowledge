@@ -298,7 +298,17 @@ export function failedConversionRecoveryCandidateIds(
            SELECT 1
            FROM conversion_recovery_cases c
            WHERE c.workspace_id = r.workspace_id
-             AND (c.root_run_id = r.id OR c.latest_run_id = r.id)
+             AND (
+               c.root_run_id = r.id
+               OR c.latest_run_id = r.id
+               OR EXISTS (
+                 SELECT 1
+                 FROM json_each(c.document_json, '$.replacementRunIds') replacements
+                 WHERE replacements.value = r.id
+               )
+               OR r.idempotency_key LIKE 'failure-retry:' || c.id || ':%'
+               OR r.idempotency_key LIKE 'operator-retry:' || c.id || ':%'
+             )
          )
        ORDER BY r.updated_at ASC, r.id ASC
        LIMIT ?`,

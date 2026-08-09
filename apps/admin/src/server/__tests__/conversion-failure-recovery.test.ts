@@ -116,10 +116,7 @@ describe("conversion failure recovery", () => {
       `INSERT INTO conversion_recovery_cases
        (id, workspace_id, root_run_id, latest_run_id, document_json)
        VALUES ('case-root', ?, 'failed-tracked-root', 'failed-tracked-root', ?)`,
-    ).run(
-      WORKSPACE,
-      JSON.stringify({ replacementRunIds: ["failed-historical-retry"] }),
-    );
+    ).run(WORKSPACE, JSON.stringify({ replacementRunIds: ["failed-historical-retry"] }));
     db.prepare(
       `INSERT INTO conversion_recovery_cases
        (id, workspace_id, root_run_id, latest_run_id, document_json)
