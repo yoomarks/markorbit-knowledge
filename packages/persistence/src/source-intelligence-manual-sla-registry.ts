@@ -8,6 +8,7 @@ import {
   type SourceIntelligenceManualEscalationRecordV2,
   type SourceIntelligenceManualSlaPolicyV2,
   type SourceIntelligenceObservationFlagKind,
+  type SourceIntelligencePolicyAuditAction,
   type SourceIntelligencePolicyAuditEventV2,
 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "./index";
@@ -18,6 +19,8 @@ const MAX_NOTE_LENGTH = 2000;
 const MAX_KEYS = 500;
 const MAX_SOURCE_IDS = 100;
 const MAX_EVENT_LIMIT = 500;
+const MAX_POLICY_AUDIT_EVENT_LIMIT = 5001;
+const MAX_POLICY_AUDIT_FILTER_VALUES = 100;
 const MAX_TARGET_HOURS = 8760;
 const FLAG_KINDS = new Set<SourceIntelligenceObservationFlagKind>([
   "HIGH_VALUE_UNOBSERVED",
@@ -50,6 +53,11 @@ export type SourceIntelligenceManualEscalationEventFilters = {
 };
 
 export type SourceIntelligencePolicyAuditEventFilters = {
+  actorLabels?: string[];
+  actions?: SourceIntelligencePolicyAuditAction[];
+  occurredFromInclusive?: string;
+  occurredToExclusive?: string;
+  before?: { occurredAt: string; eventId: string };
   limit?: number;
   offset?: number;
 };
@@ -139,6 +147,26 @@ function normalizeEventOffset(value: number | undefined): number {
     throw new RegistryValidationError("event offset must be a non-negative integer");
   }
   return value;
+}
+
+function normalizePolicyAuditEventLimit(value: number | undefined): number {
+  if (value === undefined) return 100;
+  if (!Number.isInteger(value) || value <= 0 || value > MAX_POLICY_AUDIT_EVENT_LIMIT) {
+    throw new RegistryValidationError(
+      `policy audit event limit must be an integer between 1 and ${MAX_POLICY_AUDIT_EVENT_LIMIT}`,
+    );
+  }
+  return value;
+}
+
+function normalizeAuditValues(values: string[] | undefined, field: string): string[] {
+  const normalized = [...new Set((values ?? []).map((value) => value.trim()).filter(Boolean))];
+  if (normalized.length > MAX_POLICY_AUDIT_FILTER_VALUES) {
+    throw new RegistryValidationError(
+      `At most ${MAX_POLICY_AUDIT_FILTER_VALUES} ${field} may be queried at once`,
+    );
+  }
+  return normalized;
 }
 
 function parsePolicy(row: Record<string, unknown>): SourceIntelligenceManualSlaPolicyV2 {
@@ -388,15 +416,41 @@ export class SqliteSourceIntelligenceManualSlaRepository implements SourceIntell
   listPolicyAuditEvents(
     filters: SourceIntelligencePolicyAuditEventFilters = {},
   ): SourceIntelligencePolicyAuditEventV2[] {
-    const limit = normalizeEventLimit(filters.limit);
+    const actorLabels = normalizeAuditValues(filters.actorLabels, "actor labels");
+    const actions = normalizeAuditValues(filters.actions, "actions");
+    const limit = normalizePolicyAuditEventLimit(filters.limit);
     const offset = normalizeEventOffset(filters.offset);
+    const clauses: string[] = [];
+    const values: SQLInputValue[] = [];
+    if (actorLabels.length) {
+      clauses.push(`actor_label IN (${actorLabels.map(() => "?").join(", ")})`);
+      values.push(...actorLabels);
+    }
+    if (actions.length) {
+      clauses.push(`action IN (${actions.map(() => "?").join(", ")})`);
+      values.push(...actions);
+    }
+    if (filters.occurredFromInclusive) {
+      clauses.push("occurred_at >= ?");
+      values.push(filters.occurredFromInclusive);
+    }
+    if (filters.occurredToExclusive) {
+      clauses.push("occurred_at < ?");
+      values.push(filters.occurredToExclusive);
+    }
+    if (filters.before) {
+      clauses.push("(occurred_at < ? OR (occurred_at = ? AND event_id < ?))");
+      values.push(filters.before.occurredAt, filters.before.occurredAt, filters.before.eventId);
+    }
+    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     return this.database
       .prepare(
         `SELECT * FROM source_intelligence_manual_sla_policy_events
+         ${where}
          ORDER BY occurred_at DESC, event_id DESC
          LIMIT ? OFFSET ?`,
       )
-      .all(limit, offset)
+      .all(...values, limit, offset)
       .map((row) => parsePolicyAuditEvent(row as Record<string, unknown>));
   }
 

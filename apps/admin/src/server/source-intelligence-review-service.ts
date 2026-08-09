@@ -8,10 +8,16 @@ import type {
   SourceIntelligenceObservationReviewQueueV2,
   SourceIntelligenceObservationReviewStatus,
   SourceIntelligencePolicyAuditHistoryV2,
+  SourceIntelligencePolicyAuditAction,
+  SourceIntelligencePolicyAuditExportV2,
+  SourceIntelligencePolicyAuditQueryFiltersV2,
+  SourceIntelligencePolicyAuditQueryResultV2,
+  SourceIntelligencePolicyAuditScope,
   SourceIntelligencePolicyCohortV2,
   SourceIntelligencePolicyScopeAndCohortsV2,
   SourceIntelligenceReviewQueueOperationalHealthV2,
 } from "@markorbit/contracts";
+import { SOURCE_INTELLIGENCE_POLICY_AUDIT_EXPORT_MAX_EVENTS } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import {
   SqliteSourceIntelligenceManualSlaRepository,
@@ -32,7 +38,12 @@ import {
   buildSourceIntelligenceManualSlaAndEscalationV2,
   buildSourceIntelligenceObservationOwnershipQueueV2,
   buildSourceIntelligenceObservationReviewQueueV2,
+  buildSourceIntelligencePolicyAuditExportV2,
   buildSourceIntelligencePolicyAuditHistoryV2,
+  buildSourceIntelligencePolicyAuditQueryResultV2,
+  decodeSourceIntelligencePolicyAuditCursorV2,
+  normalizeSourceIntelligencePolicyAuditFiltersV2,
+  normalizeSourceIntelligencePolicyAuditQueryV2,
   buildSourceIntelligencePolicyScopeAndCohortsV2,
   buildSourceIntelligenceReviewQueueOperationalHealthV2,
   sourceIntelligenceObservationReviewKey,
@@ -123,6 +134,21 @@ export type PolicyCohortMembershipInput = {
   expectedPresent: boolean;
 };
 
+export type PolicyAuditFilterInput = {
+  scopes?: SourceIntelligencePolicyAuditScope[];
+  actions?: SourceIntelligencePolicyAuditAction[];
+  actorLabels?: string[];
+  sourceIds?: string[];
+  cohortIds?: string[];
+  occurredFromInclusive?: string | null;
+  occurredToExclusive?: string | null;
+};
+
+export type PolicyAuditQueryInput = PolicyAuditFilterInput & {
+  pageSize?: number;
+  cursor?: string | null;
+};
+
 type ReviewServiceDependencies = {
   intelligence: SourceIntelligenceService;
   reviews: SourceIntelligenceObservationReviewRepository;
@@ -169,6 +195,16 @@ function boundedInteger(
     );
   }
   return value;
+}
+
+function auditValidation<T>(builder: () => T): T {
+  try {
+    return builder();
+  } catch (error) {
+    throw new RegistryValidationError(
+      error instanceof Error ? error.message : "Invalid D2.16 policy audit query",
+    );
+  }
 }
 
 export class SourceIntelligenceReviewService {
@@ -272,6 +308,86 @@ export class SourceIntelligenceReviewService {
       generatedAt: this.now(),
       limit,
     });
+  }
+
+  policyAuditQuery(input: PolicyAuditQueryInput = {}): SourceIntelligencePolicyAuditQueryResultV2 {
+    const query = auditValidation(() => normalizeSourceIntelligencePolicyAuditQueryV2(input));
+    const before = query.cursor
+      ? auditValidation(() => decodeSourceIntelligencePolicyAuditCursorV2(query.cursor!))
+      : undefined;
+    const streamLimit = query.pageSize + 1;
+    const common = {
+      ...(query.actorLabels.length ? { actorLabels: query.actorLabels } : {}),
+      ...(query.actions.length ? { actions: query.actions } : {}),
+      ...(query.occurredFromInclusive
+        ? { occurredFromInclusive: query.occurredFromInclusive }
+        : {}),
+      ...(query.occurredToExclusive ? { occurredToExclusive: query.occurredToExclusive } : {}),
+      ...(before ? { before } : {}),
+      limit: streamLimit,
+    };
+    const scopeAllowed = (scope: SourceIntelligencePolicyAuditScope) =>
+      query.scopes.length === 0 || query.scopes.includes(scope);
+    const events = [
+      ...(scopeAllowed("GLOBAL_POLICY") && !query.sourceIds.length && !query.cohortIds.length
+        ? this.dependencies.manualSla.listPolicyAuditEvents(common)
+        : []),
+      ...(scopeAllowed("COHORT") && !query.sourceIds.length
+        ? this.dependencies.policyScope.listCohortAuditEvents({
+            ...common,
+            ...(query.cohortIds.length ? { cohortIds: query.cohortIds } : {}),
+          })
+        : []),
+      ...(scopeAllowed("MEMBERSHIP")
+        ? this.dependencies.policyScope.listMembershipAuditEvents({
+            ...common,
+            ...(query.sourceIds.length ? { sourceIds: query.sourceIds } : {}),
+            ...(query.cohortIds.length ? { cohortIds: query.cohortIds } : {}),
+          })
+        : []),
+    ];
+    return buildSourceIntelligencePolicyAuditQueryResultV2({
+      events,
+      query,
+      generatedAt: this.now(),
+    });
+  }
+
+  policyAuditExport(input: PolicyAuditFilterInput = {}): SourceIntelligencePolicyAuditExportV2 {
+    const filters: SourceIntelligencePolicyAuditQueryFiltersV2 = auditValidation(() =>
+      normalizeSourceIntelligencePolicyAuditFiltersV2(input),
+    );
+    const streamLimit = SOURCE_INTELLIGENCE_POLICY_AUDIT_EXPORT_MAX_EVENTS + 1;
+    const common = {
+      ...(filters.actorLabels.length ? { actorLabels: filters.actorLabels } : {}),
+      ...(filters.actions.length ? { actions: filters.actions } : {}),
+      ...(filters.occurredFromInclusive
+        ? { occurredFromInclusive: filters.occurredFromInclusive }
+        : {}),
+      ...(filters.occurredToExclusive ? { occurredToExclusive: filters.occurredToExclusive } : {}),
+      limit: streamLimit,
+    };
+    const scopeAllowed = (scope: SourceIntelligencePolicyAuditScope) =>
+      filters.scopes.length === 0 || filters.scopes.includes(scope);
+    const events = [
+      ...(scopeAllowed("GLOBAL_POLICY") && !filters.sourceIds.length && !filters.cohortIds.length
+        ? this.dependencies.manualSla.listPolicyAuditEvents(common)
+        : []),
+      ...(scopeAllowed("COHORT") && !filters.sourceIds.length
+        ? this.dependencies.policyScope.listCohortAuditEvents({
+            ...common,
+            ...(filters.cohortIds.length ? { cohortIds: filters.cohortIds } : {}),
+          })
+        : []),
+      ...(scopeAllowed("MEMBERSHIP")
+        ? this.dependencies.policyScope.listMembershipAuditEvents({
+            ...common,
+            ...(filters.sourceIds.length ? { sourceIds: filters.sourceIds } : {}),
+            ...(filters.cohortIds.length ? { cohortIds: filters.cohortIds } : {}),
+          })
+        : []),
+    ];
+    return buildSourceIntelligencePolicyAuditExportV2({ events, filters });
   }
 
   updatePolicyCohort(input: PolicyCohortInput): SourceIntelligencePolicyCohortV2 {

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import {
+  type SourceIntelligencePolicyAuditAction,
   type SourceIntelligencePolicyAuditChangeV2,
   type SourceIntelligencePolicyAuditEventV2,
   type SourceIntelligencePolicyCohortMembershipV2,
@@ -15,7 +16,7 @@ const MAX_DESCRIPTION_LENGTH = 1000;
 const MAX_TARGET_HOURS = 8760;
 const MAX_PRIORITY = 10000;
 const MAX_FILTER_VALUES = 100;
-const MAX_EVENT_LIMIT = 500;
+const MAX_EVENT_LIMIT = 5001;
 
 export type SaveSourceIntelligencePolicyCohortInput = {
   cohortId?: string;
@@ -40,6 +41,11 @@ export type SaveSourceIntelligencePolicyCohortMembershipInput = {
 export type SourceIntelligencePolicyAuditEventFilters = {
   sourceIds?: string[];
   cohortIds?: string[];
+  actorLabels?: string[];
+  actions?: SourceIntelligencePolicyAuditAction[];
+  occurredFromInclusive?: string;
+  occurredToExclusive?: string;
+  before?: { occurredAt: string; eventId: string };
   limit?: number;
   offset?: number;
 };
@@ -661,13 +667,37 @@ export class SqliteSourceIntelligencePolicyScopeRepository implements SourceInte
     filters: SourceIntelligencePolicyAuditEventFilters = {},
   ): SourceIntelligencePolicyAuditEventV2[] {
     const cohortIds = normalizedValues(filters.cohortIds, "cohort ids").map(normalizedCohortId);
+    const actorLabels = normalizedValues(filters.actorLabels, "actor labels");
+    const actions = normalizedValues(filters.actions, "actions");
     const limit = normalizeEventLimit(filters.limit);
     const offset = normalizeEventOffset(filters.offset);
+    const clauses: string[] = [];
     const values: SQLInputValue[] = [];
-    const where = cohortIds.length
-      ? `WHERE cohort_id IN (${cohortIds.map(() => "?").join(", ")})`
-      : "";
-    values.push(...cohortIds);
+    if (cohortIds.length) {
+      clauses.push(`cohort_id IN (${cohortIds.map(() => "?").join(", ")})`);
+      values.push(...cohortIds);
+    }
+    if (actorLabels.length) {
+      clauses.push(`actor_label IN (${actorLabels.map(() => "?").join(", ")})`);
+      values.push(...actorLabels);
+    }
+    if (actions.length) {
+      clauses.push(`action IN (${actions.map(() => "?").join(", ")})`);
+      values.push(...actions);
+    }
+    if (filters.occurredFromInclusive) {
+      clauses.push("occurred_at >= ?");
+      values.push(filters.occurredFromInclusive);
+    }
+    if (filters.occurredToExclusive) {
+      clauses.push("occurred_at < ?");
+      values.push(filters.occurredToExclusive);
+    }
+    if (filters.before) {
+      clauses.push("(occurred_at < ? OR (occurred_at = ? AND event_id < ?))");
+      values.push(filters.before.occurredAt, filters.before.occurredAt, filters.before.eventId);
+    }
+    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     return this.database
       .prepare(
         `SELECT * FROM source_intelligence_policy_cohort_events
@@ -684,6 +714,8 @@ export class SqliteSourceIntelligencePolicyScopeRepository implements SourceInte
   ): SourceIntelligencePolicyAuditEventV2[] {
     const sourceIds = normalizedValues(filters.sourceIds, "source ids");
     const cohortIds = normalizedValues(filters.cohortIds, "cohort ids").map(normalizedCohortId);
+    const actorLabels = normalizedValues(filters.actorLabels, "actor labels");
+    const actions = normalizedValues(filters.actions, "actions");
     const limit = normalizeEventLimit(filters.limit);
     const offset = normalizeEventOffset(filters.offset);
     const clauses: string[] = [];
@@ -695,6 +727,26 @@ export class SqliteSourceIntelligencePolicyScopeRepository implements SourceInte
     if (cohortIds.length) {
       clauses.push(`cohort_id IN (${cohortIds.map(() => "?").join(", ")})`);
       values.push(...cohortIds);
+    }
+    if (actorLabels.length) {
+      clauses.push(`actor_label IN (${actorLabels.map(() => "?").join(", ")})`);
+      values.push(...actorLabels);
+    }
+    if (actions.length) {
+      clauses.push(`action IN (${actions.map(() => "?").join(", ")})`);
+      values.push(...actions);
+    }
+    if (filters.occurredFromInclusive) {
+      clauses.push("occurred_at >= ?");
+      values.push(filters.occurredFromInclusive);
+    }
+    if (filters.occurredToExclusive) {
+      clauses.push("occurred_at < ?");
+      values.push(filters.occurredToExclusive);
+    }
+    if (filters.before) {
+      clauses.push("(occurred_at < ? OR (occurred_at = ? AND event_id < ?))");
+      values.push(filters.before.occurredAt, filters.before.occurredAt, filters.before.eventId);
     }
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     return this.database
