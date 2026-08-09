@@ -93,11 +93,11 @@ describe("DiscoveryWorkflowService", () => {
     expect(first.source?.authorityLevel).toBe("UNKNOWN");
     expect(first.source?.canonicalUri).toBe("https://example.com/");
     expect(first.source?.entrypoints[0]?.uri).toBe("https://example.com/start-here");
-    expect(first.source?.connector).toEqual({ connectorId: "crawl4ai-web", version: "1.1.0" });
+    expect(first.source?.connector).toEqual({ connectorId: "crawl4ai-web", version: "1.2.0" });
     expect(first.plan?.status).toBe("PAUSED");
     expect(first.plan?.output.artifactKinds).toEqual(["HTML", "MARKDOWN"]);
     expect(first.source?.defaultCollectionPlanId).toBe(first.plan?.id);
-    expect(connectors.get("crawl4ai-web", "1.1.0")?.manifest.status).toBe("ACTIVE");
+    expect(connectors.get("crawl4ai-web", "1.2.0")?.manifest.status).toBe("ACTIVE");
     expect(connectors.get("crawl4ai-web", "1.0.0")).toEqual(legacyConnectorBefore);
     expect(connectors.get("crawl4ai-web", "1.0.0")?.boundSourceCount).toBe(0);
 

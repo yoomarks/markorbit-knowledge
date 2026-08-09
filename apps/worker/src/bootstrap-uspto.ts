@@ -1,5 +1,5 @@
 const CONNECTOR_ID = "crawl4ai-web";
-const CONNECTOR_VERSION = "1.1.0";
+const CONNECTOR_VERSION = "1.2.0";
 const SOURCE_SLUG = "uspto-trademarks-golden-source";
 const PLAN_NAME = "USPTO Trademarks Golden Source";
 const WORKER_LABEL = "golden-source-uspto";
@@ -71,11 +71,11 @@ async function ensureConnector(baseUrl: string): Promise<void> {
     "/api/connectors",
     jsonPost({
       connectorId: CONNECTOR_ID,
-      displayName: "Crawl4AI Web Connector — Production HTML/Markdown",
+      displayName: "Crawl4AI Web Connector — Production Pages + Attachments",
       version: CONNECTOR_VERSION,
       sourceTypes: ["WEB"],
       runtime: "PYTHON",
-      capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"],
+      capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT", "FETCH_ATTACHMENTS"],
       supportedJobTypes: ["WEB_CRAWL"],
       configurationSchema: {
         type: "object",
@@ -86,13 +86,25 @@ async function ensureConnector(baseUrl: string): Promise<void> {
         },
       },
       secretSchema: { type: "object", properties: {} },
-      outputArtifactKinds: ["HTML", "MARKDOWN"],
+      outputArtifactKinds: [
+        "HTML",
+        "MARKDOWN",
+        "PDF",
+        "DOCX",
+        "XLSX",
+        "CSV",
+        "JSON",
+        "XML",
+        "EMAIL",
+        "IMAGE",
+        "TEXT",
+      ],
       healthCheck: { mode: "WORKER_PROBE", timeoutSeconds: 30 },
       status: "ACTIVE",
       extensions: {
         "x-markorbit-production-provider": true,
         "x-markorbit-crawl4ai-version": "0.9.2",
-        "x-markorbit-evidence-boundary": "raw-html-markdown",
+        "x-markorbit-evidence-boundary": "raw-pages-and-authorized-attachments",
       },
     }),
   );
@@ -200,7 +212,7 @@ async function ensureWorker(
         {
           connectorId: CONNECTOR_ID,
           version: CONNECTOR_VERSION,
-          capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"],
+          capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT", "FETCH_ATTACHMENTS"],
         },
       ],
       maxConcurrency: 1,
