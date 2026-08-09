@@ -58,8 +58,7 @@ function eventScope(event: SourceIntelligencePolicyAuditEventV2): string {
 async function readPolicyAudit(signal?: AbortSignal): Promise<Snapshot> {
   const sourceResponse = await fetch(`/api/sources?limit=${SOURCE_LIMIT}&offset=0`, { signal });
   const sourceBody = (await sourceResponse.json()) as
-    | SourceListResult
-    | { error?: { message?: string } };
+    SourceListResult | { error?: { message?: string } };
   if (!sourceResponse.ok) {
     const message = "error" in sourceBody ? sourceBody.error?.message : undefined;
     throw new Error(message ?? "无法读取 Sources");
@@ -68,9 +67,12 @@ async function readPolicyAudit(signal?: AbortSignal): Promise<Snapshot> {
   const sources = Object.fromEntries(sourceItems.map((source) => [source.id, source]));
   const params = new URLSearchParams({ protocolVersion: "2.0", eventLimit: "200" });
   if (sourceItems.length) params.set("sourceIds", sourceItems.map((source) => source.id).join(","));
-  const response = await fetch(`/api/source-intelligence/reviews/policy-audit?${params.toString()}`, {
-    signal,
-  });
+  const response = await fetch(
+    `/api/source-intelligence/reviews/policy-audit?${params.toString()}`,
+    {
+      signal,
+    },
+  );
   const body = (await response.json()) as {
     policyAudit?: SourceIntelligencePolicyAuditHistoryV2;
     error?: { message?: string };
@@ -93,7 +95,9 @@ export function SourceIntelligencePolicyAudit() {
       setSnapshot(await readPolicyAudit());
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "无法读取 D2.15 policy audit history",
+        requestError instanceof Error
+          ? requestError.message
+          : "无法读取 D2.15 policy audit history",
       );
     } finally {
       setLoading(false);
@@ -122,7 +126,9 @@ export function SourceIntelligencePolicyAudit() {
   }, []);
 
   const recentActors = useMemo(() => {
-    const labels = [...new Set(snapshot?.policyAudit.events.map((event) => event.actorLabel) ?? [])];
+    const labels = [
+      ...new Set(snapshot?.policyAudit.events.map((event) => event.actorLabel) ?? []),
+    ];
     return labels.slice(0, 4);
   }, [snapshot]);
 
@@ -132,7 +138,9 @@ export function SourceIntelligencePolicyAudit() {
         <div>
           <div className="flex items-center gap-2">
             <History size={19} className="text-violet-700" aria-hidden="true" />
-            <h2 className="font-semibold text-slate-950">D2.15 · Policy Audit &amp; Change History</h2>
+            <h2 className="font-semibold text-slate-950">
+              D2.15 · Policy Audit &amp; Change History
+            </h2>
           </div>
           <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-500">
             记录 Global Policy、Cohort、Priority 与 Source membership 的 append-only workflow
@@ -168,7 +176,10 @@ export function SourceIntelligencePolicyAudit() {
               ["Membership 变更", snapshot.policyAudit.counts.membershipEvents],
               ["Snapshot backfill", snapshot.policyAudit.counts.snapshotBackfills],
             ].map(([label, value]) => (
-              <div key={String(label)} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div
+                key={String(label)}
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+              >
                 <p className="text-xs font-medium text-slate-500">{label}</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
               </div>
@@ -183,8 +194,8 @@ export function SourceIntelligencePolicyAudit() {
 
           {snapshot.policyAudit.events.length === 0 ? (
             <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
-              当前还没有 Policy Audit event。D2.15 只记录显式 workflow configuration
-              变化，不根据 Source 属性生成或推断历史。
+              当前还没有 Policy Audit event。D2.15 只记录显式 workflow configuration 变化，不根据
+              Source 属性生成或推断历史。
             </div>
           ) : (
             <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
@@ -236,8 +247,9 @@ export function SourceIntelligencePolicyAudit() {
           <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600">
             <ScrollText size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
             <p>
-              Audit history 是运营配置的可追溯记录，不修改 D2.14 precedence、D2.13 SLA clocks、review
-              disposition、ownership 或证据状态，也不会触发通知、路由、采集、Scheduler 或任何自动执行。
+              Audit history 是运营配置的可追溯记录，不修改 D2.14 precedence、D2.13 SLA
+              clocks、review disposition、ownership
+              或证据状态，也不会触发通知、路由、采集、Scheduler 或任何自动执行。
             </p>
           </div>
         </div>

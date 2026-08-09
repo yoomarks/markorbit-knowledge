@@ -218,8 +218,7 @@ function parseCohortAuditEvent(row: Record<string, unknown>): SourceIntelligence
     cohortId: String(row.cohort_id),
     sourceId: null,
     changes,
-    historicalCompleteness:
-      action === "SNAPSHOT_BACKFILL" ? "SNAPSHOT_BACKFILL" : "EVENT_SOURCED",
+    historicalCompleteness: action === "SNAPSHOT_BACKFILL" ? "SNAPSHOT_BACKFILL" : "EVENT_SOURCED",
   };
 }
 
@@ -243,8 +242,7 @@ function parseMembershipAuditEvent(
         after: Number(row.present) === 1,
       },
     ],
-    historicalCompleteness:
-      action === "SNAPSHOT_BACKFILL" ? "SNAPSHOT_BACKFILL" : "EVENT_SOURCED",
+    historicalCompleteness: action === "SNAPSHOT_BACKFILL" ? "SNAPSHOT_BACKFILL" : "EVENT_SOURCED",
   };
 }
 

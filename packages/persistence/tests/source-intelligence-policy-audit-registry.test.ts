@@ -82,10 +82,7 @@ describe("D2.15 policy audit persistence", () => {
     });
 
     const cohortEvents = scopes.listCohortAuditEvents({ limit: 10 });
-    expect(cohortEvents.map((event) => event.action)).toEqual([
-      "COHORT_UPDATED",
-      "COHORT_CREATED",
-    ]);
+    expect(cohortEvents.map((event) => event.action)).toEqual(["COHORT_UPDATED", "COHORT_CREATED"]);
     expect(cohortEvents[0]?.changes).toContainEqual({ field: "priority", before: 100, after: 110 });
 
     const membershipEvents = scopes.listMembershipAuditEvents({

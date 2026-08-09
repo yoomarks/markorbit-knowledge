@@ -189,8 +189,7 @@ function parsePolicyAuditEvent(row: Record<string, unknown>): SourceIntelligence
       { field: "claimTargetHours", before: previousClaim, after: claim },
       { field: "reviewTargetHours", before: previousReview, after: review },
     ],
-    historicalCompleteness:
-      action === "SNAPSHOT_BACKFILL" ? "SNAPSHOT_BACKFILL" : "EVENT_SOURCED",
+    historicalCompleteness: action === "SNAPSHOT_BACKFILL" ? "SNAPSHOT_BACKFILL" : "EVENT_SOURCED",
   };
 }
 
