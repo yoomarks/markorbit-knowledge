@@ -63,15 +63,15 @@ The gate is computed from the existing `GET /api/source-supply-health` projectio
 
 A target is assigned to its first actionable blocking stage:
 
-| Stage | Meaning |
-| --- | --- |
-| `REGISTER` | coverage target is not registered as a SourceDefinition |
-| `COLLECT` | governed acquisition has not succeeded, has failed, or is stale |
-| `INGEST` | a collection completed but no governed RawArtifact was registered |
-| `CONVERT` | acquisition evidence exists but no READY normalized document exists |
-| `INDEX` | normalized content exists but no current retrieval document exists |
-| `HEALTH` | health projection is missing/inconsistent or otherwise cannot certify readiness |
-| `READY` | registration, acquisition, normalization, retrieval and freshness are all healthy |
+| Stage      | Meaning                                                                           |
+| ---------- | --------------------------------------------------------------------------------- |
+| `REGISTER` | coverage target is not registered as a SourceDefinition                           |
+| `COLLECT`  | governed acquisition has not succeeded, has failed, or is stale                   |
+| `INGEST`   | a collection completed but no governed RawArtifact was registered                 |
+| `CONVERT`  | acquisition evidence exists but no READY normalized document exists               |
+| `INDEX`    | normalized content exists but no current retrieval document exists                |
+| `HEALTH`   | health projection is missing/inconsistent or otherwise cannot certify readiness   |
+| `READY`    | registration, acquisition, normalization, retrieval and freshness are all healthy |
 
 The aggregate gate is `READY` only when **every active US FOUNDATIONAL target** is `READY`. With the current M5 catalog this means **11/11**.
 

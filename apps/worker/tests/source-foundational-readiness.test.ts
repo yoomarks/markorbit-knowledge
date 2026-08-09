@@ -189,7 +189,10 @@ describe("US FOUNDATIONAL readiness gate", () => {
 
   it("keeps review and unapproved batch requests at zero dispatch", async () => {
     const targets = [target("us-one"), target("us-two")];
-    const harness = controlPlane(targets, targets.map((item) => health(item.id)));
+    const harness = controlPlane(
+      targets,
+      targets.map((item) => health(item.id)),
+    );
 
     const review = await operateUsFoundationalBatch({
       baseUrl: "http://127.0.0.1:3000",
@@ -217,7 +220,10 @@ describe("US FOUNDATIONAL readiness gate", () => {
 
   it("dispatches only explicitly approved targets", async () => {
     const targets = [target("us-one"), target("us-two")];
-    const harness = controlPlane(targets, targets.map((item) => health(item.id)));
+    const harness = controlPlane(
+      targets,
+      targets.map((item) => health(item.id)),
+    );
 
     const result = await operateUsFoundationalBatch({
       baseUrl: "http://127.0.0.1:3000",

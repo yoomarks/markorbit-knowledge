@@ -145,8 +145,7 @@ export function parseFoundationalSupplyHealth(payload: unknown): FoundationalSup
       targetId: requiredString(item.targetId, `items[${index}].targetId`),
       state,
       registrationState,
-      latestRunStatus:
-        latestRun && typeof latestRun.status === "string" ? latestRun.status : null,
+      latestRunStatus: latestRun && typeof latestRun.status === "string" ? latestRun.status : null,
       artifactCount: nonNegativeNumber(
         acquisition.artifactCount,
         `items[${index}].acquisition.artifactCount`,
@@ -159,10 +158,7 @@ export function parseFoundationalSupplyHealth(payload: unknown): FoundationalSup
         retrieval.currentDocumentCount,
         `items[${index}].retrieval.currentDocumentCount`,
       ),
-      freshnessState: requiredString(
-        freshness.state,
-        `items[${index}].freshness.state`,
-      ),
+      freshnessState: requiredString(freshness.state, `items[${index}].freshness.state`),
       gaps: array(item.gaps).map((gap) => String(gap)),
     };
   });
@@ -196,7 +192,10 @@ export function deriveFoundationalReadinessStage(
   return "HEALTH";
 }
 
-function reasonFor(item: FoundationalSupplyHealthItem, stage: FoundationalReadinessStage): string | null {
+function reasonFor(
+  item: FoundationalSupplyHealthItem,
+  stage: FoundationalReadinessStage,
+): string | null {
   if (stage === "READY") return null;
   if (stage === "INGEST") return "COLLECTION_COMPLETED_WITHOUT_RAW_ARTIFACT";
   if (item.gaps.length > 0) return item.gaps.join(",");
@@ -208,10 +207,12 @@ export function evaluateUsFoundationalReadiness(
   healthItems: readonly FoundationalSupplyHealthItem[],
 ): FoundationalReadinessGate {
   const expected = [...new Set(targetIds)];
-  if (expected.length === 0) throw new Error("US FOUNDATIONAL readiness requires at least one target");
+  if (expected.length === 0)
+    throw new Error("US FOUNDATIONAL readiness requires at least one target");
   const healthMap = new Map<string, FoundationalSupplyHealthItem>();
   for (const item of healthItems) {
-    if (healthMap.has(item.targetId)) throw new Error(`Duplicate supply health for ${item.targetId}`);
+    if (healthMap.has(item.targetId))
+      throw new Error(`Duplicate supply health for ${item.targetId}`);
     healthMap.set(item.targetId, item);
   }
 
