@@ -1,0 +1,53 @@
+name: D2.15 Type Fix
+
+on:
+  push:
+    branches:
+      - codex/d2-15-policy-audit-history
+    paths:
+      - .github/workflows/d2-15-type-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/d2-15-policy-audit-history
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Fix SQL input typing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/persistence/src/source-intelligence-policy-scope-registry.ts')
+          text = path.read_text()
+          replacements = {
+              'row.description ?? null,': 'nullableTextValue(row.description),',
+              'row.claim_target_hours ?? null,': 'nullableNumber(row.claim_target_hours),',
+              'row.review_target_hours ?? null,': 'nullableNumber(row.review_target_hours),',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'missing expected text: {old}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+          pnpm exec prettier --write packages/persistence/src/source-intelligence-policy-scope-registry.ts
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/persistence/src/source-intelligence-policy-scope-registry.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: type D2.15 audit snapshot SQL values"
+          git push origin HEAD:codex/d2-15-policy-audit-history
