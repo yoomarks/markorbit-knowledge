@@ -1,0 +1,44 @@
+name: M22 Format
+
+on:
+  push:
+    branches:
+      - m22-foundational-readiness-workbench
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m22-foundational-readiness-workbench
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: >-
+          pnpm exec prettier --write
+          packages/worker-runtime/src/foundational-remediation-snapshot.ts
+          packages/worker-runtime/tests/foundational-remediation-snapshot.test.ts
+          packages/worker-runtime/package.json
+          apps/admin/src/server/foundational-remediation-queue.ts
+          apps/admin/src/components/foundational/foundational-remediation-console.tsx
+          apps/admin/src/app/[section]/page.tsx
+          apps/admin/src/lib/modules.ts
+          .github/workflows/ui-preview.yml
+          docs/architecture/M22_FOUNDATIONAL_READINESS_WORKBENCH.md
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/worker-runtime/src/foundational-remediation-snapshot.ts packages/worker-runtime/tests/foundational-remediation-snapshot.test.ts packages/worker-runtime/package.json apps/admin/src/server/foundational-remediation-queue.ts apps/admin/src/components/foundational/foundational-remediation-console.tsx 'apps/admin/src/app/[section]/page.tsx' apps/admin/src/lib/modules.ts .github/workflows/ui-preview.yml docs/architecture/M22_FOUNDATIONAL_READINESS_WORKBENCH.md
+          git commit -m "chore: format M22 foundational readiness workbench"
+          git push origin HEAD:m22-foundational-readiness-workbench
