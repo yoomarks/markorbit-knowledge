@@ -1,7 +1,9 @@
 import { randomBytes } from "node:crypto";
 import {
   CONVERSION_RUNTIME_VERSION,
+  isCanonicalMarkdownMetadataV1,
   isConversionClaimResult,
+  type CanonicalMarkdownMetadataV1,
   type ConversionClaimRequest,
   type ConversionClaimResult,
   type ConversionFailedReport,
@@ -31,6 +33,7 @@ export type ProductionConversionRunContext = {
   conversionRunId: string;
   sourceId: string;
   rawArtifactId: string;
+  documentMetadata: CanonicalMarkdownMetadataV1;
 };
 
 export type ProductionConversionHttpOptions = {
@@ -133,12 +136,15 @@ export class HttpProductionConversionClient
     if (!response.ok)
       throw new Error(`PRODUCTION_CONVERSION_CONTEXT_FAILED: ${await errorMessage(response)}`);
     const body = record(await response.json());
-    if (!body) throw new Error("PRODUCTION_CONVERSION_CONTEXT_RESPONSE_INVALID");
+    if (!body || !isCanonicalMarkdownMetadataV1(body.documentMetadata)) {
+      throw new Error("PRODUCTION_CONVERSION_CONTEXT_RESPONSE_INVALID");
+    }
     return {
       workspaceId: requiredString(body.workspaceId, "WORKSPACE_ID"),
       conversionRunId: requiredString(body.conversionRunId, "RUN_ID"),
       sourceId: requiredString(body.sourceId, "SOURCE_ID"),
       rawArtifactId: requiredString(body.rawArtifactId, "ARTIFACT_ID"),
+      documentMetadata: body.documentMetadata,
     };
   }
 

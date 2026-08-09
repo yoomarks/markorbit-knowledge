@@ -10,6 +10,7 @@ export * from "./artifact-ingestion-v1";
 export * from "./conversion-control-v1";
 export * from "./conversion-execution-v1";
 export * from "./conversion-runtime-v1";
+export * from "./canonical-markdown-v1";
 export { SOURCE_REGISTRY_VERSION } from "./source-registry-v1";
 export type {
   SourceKind as RegistrySourceKind,

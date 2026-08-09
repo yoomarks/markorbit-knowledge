@@ -20,7 +20,8 @@ import {
   RegistryError,
   RegistryValidationError,
 } from "@markorbit/persistence";
-import { createCoreIntakeRequest } from "@markorbit/worker-runtime";
+import { canonicalMarkdownFrontmatter, createCoreIntakeRequest } from "@markorbit/worker-runtime";
+import { canonicalDocumentMetadata } from "./canonical-document-metadata";
 import {
   getConversionRunLedgerRepository,
   getConversionRuntimeRepository,
@@ -28,6 +29,7 @@ import {
   getRawArtifactRepository,
   getReadyPackageRepository,
   getRegistryDatabase,
+  getSourceRepository,
   getStagingContentRepository,
   getStagingVerificationRepository,
   getVerifiedStagingFinalizer,
@@ -66,6 +68,24 @@ function parseReadGrant(value: string): RawArtifactReadGrant {
     throw new RegistryValidationError("Persisted RawArtifactReadGrant is invalid");
   }
   return parsed;
+}
+
+function assertCanonicalMarkdown(content: Uint8Array, expectedFrontmatter: string): void {
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(content);
+  } catch {
+    throw new RegistryConflictError(
+      "CANONICAL_MARKDOWN_UTF8_INVALID",
+      "Canonical Markdown must be valid UTF-8",
+    );
+  }
+  if (!text.startsWith(expectedFrontmatter)) {
+    throw new RegistryConflictError(
+      "CANONICAL_MARKDOWN_METADATA_MISMATCH",
+      "Canonical Markdown frontmatter does not match control-plane provenance",
+    );
+  }
 }
 
 export class ProductionConversionWorkerService {
@@ -195,6 +215,31 @@ export class ProductionConversionWorkerService {
         "Worker credential belongs to another Workspace",
       );
     }
+
+    const run = getConversionRunLedgerRepository().getById(
+      input.conversionRunId,
+      input.workspaceId,
+    );
+    if (!run) {
+      throw new RegistryError(
+        "CONVERSION_RUN_NOT_FOUND",
+        `ConversionRun ${input.conversionRunId} was not found`,
+      );
+    }
+    const artifact = getRawArtifactRepository().getArtifact(run.run.rawArtifactId);
+    if (!artifact) {
+      throw new RegistryError(
+        "RAW_ARTIFACT_NOT_FOUND",
+        `RawArtifact ${run.run.rawArtifactId} was not found`,
+      );
+    }
+    const source = getSourceRepository().getById(run.run.sourceId);
+    if (!source) {
+      throw new RegistryError("SOURCE_NOT_FOUND", `Source ${run.run.sourceId} was not found`);
+    }
+    const metadata = canonicalDocumentMetadata(run.run, artifact.artifact, source);
+    assertCanonicalMarkdown(input.content, canonicalMarkdownFrontmatter(metadata));
+
     const staging = getStagingContentRepository().ingestGenerated({
       workspaceId: input.workspaceId,
       workerId: input.workerId,
@@ -202,7 +247,7 @@ export class ProductionConversionWorkerService {
       conversionAttemptId: input.conversionAttemptId,
       uploadGrantId: input.uploadGrantId,
       idempotencyKey: `${input.idempotencyKey}:ingest`,
-      title: `Converted ${input.conversionRunId}`,
+      title: source.name,
       content: input.content,
     });
     const verification = getStagingVerificationRepository().verifyGenerated({
@@ -232,21 +277,14 @@ export class ProductionConversionWorkerService {
       };
     }
 
-    const run = getConversionRunLedgerRepository().getById(
+    const completedRun = getConversionRunLedgerRepository().getById(
       input.conversionRunId,
       input.workspaceId,
     );
-    if (!run || run.run.status !== "COMPLETED") {
+    if (!completedRun || completedRun.run.status !== "COMPLETED") {
       throw new RegistryConflictError(
         "READY_PACKAGE_RUN_NOT_COMPLETED",
         "ReadyPackage requires a completed ConversionRun",
-      );
-    }
-    const artifact = getRawArtifactRepository().getArtifact(run.run.rawArtifactId);
-    if (!artifact) {
-      throw new RegistryError(
-        "RAW_ARTIFACT_NOT_FOUND",
-        `RawArtifact ${run.run.rawArtifactId} was not found`,
       );
     }
     const descriptor = verification.record.descriptor;
@@ -259,12 +297,12 @@ export class ProductionConversionWorkerService {
     }
     const packageResult = getReadyPackageRepository().createVerified({
       workspaceId: input.workspaceId,
-      sourceId: run.run.sourceId,
-      rawArtifactId: run.run.rawArtifactId,
+      sourceId: completedRun.run.sourceId,
+      rawArtifactId: completedRun.run.rawArtifactId,
       rawArtifactSha256: artifact.artifact.binaryHash.value,
       capturedAt: artifact.artifact.capturedAt,
-      conversionRunId: run.run.id,
-      converter: run.run.converter,
+      conversionRunId: completedRun.run.id,
+      converter: completedRun.run.converter,
       stagingDocumentId: descriptor.id,
       stagingSha256: descriptor.contentHash.value,
       verificationId: verification.evidence.id,

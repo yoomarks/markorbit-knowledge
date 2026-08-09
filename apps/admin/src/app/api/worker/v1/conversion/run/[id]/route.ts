@@ -5,8 +5,11 @@ import {
   RegistryValidationError,
 } from "@markorbit/persistence";
 import { apiError, bearerCredential } from "@/server/api-errors";
+import { canonicalDocumentMetadata } from "@/server/canonical-document-metadata";
 import {
   getConversionRunLedgerRepository,
+  getRawArtifactRepository,
+  getSourceRepository,
   getWorkerRegistryRepository,
 } from "@/server/source-registry";
 
@@ -31,11 +34,25 @@ export async function GET(request: Request, context: RouteContext) {
         "ConversionRun belongs to another Workspace",
       );
     }
+    const artifactRecord = getRawArtifactRepository().getArtifact(record.run.rawArtifactId);
+    if (!artifactRecord) {
+      throw new RegistryError(
+        "RAW_ARTIFACT_NOT_FOUND",
+        `RawArtifact ${record.run.rawArtifactId} was not found`,
+      );
+    }
+    const source = getSourceRepository().getById(record.run.sourceId);
+    if (!source) {
+      throw new RegistryError("SOURCE_NOT_FOUND", `Source ${record.run.sourceId} was not found`);
+    }
+    const documentMetadata = canonicalDocumentMetadata(record.run, artifactRecord.artifact, source);
+
     return NextResponse.json({
       workspaceId: record.run.workspaceId,
       conversionRunId: record.run.id,
       sourceId: record.run.sourceId,
       rawArtifactId: record.run.rawArtifactId,
+      documentMetadata,
     });
   } catch (error) {
     return apiError(error);
