@@ -340,7 +340,10 @@ export function buildFoundationalRemediationQueue(
         actions: actionsFor(target, normalizedWorkspaceId, readiness.jurisdiction),
       };
     })
-    .sort((left, right) => left.priority - right.priority || left.targetId.localeCompare(right.targetId));
+    .sort(
+      (left, right) =>
+        left.priority - right.priority || left.targetId.localeCompare(right.targetId),
+    );
   const byStage: FoundationalRemediationQueue["byStage"] = {};
   for (const item of items) byStage[item.stage] = (byStage[item.stage] ?? 0) + 1;
   return {

@@ -54,16 +54,16 @@ Every action has `automaticExecution: false`.
 
 ## Stage-to-action mapping
 
-| Stage | Queue action | Boundary |
-| --- | --- | --- |
-| `REGISTER` | `REGISTER_SOURCE` | Source registration only; no collection authorization |
-| `COLLECT` | `DISPATCH_GOVERNED_COLLECTION` | Existing explicit operator approval remains mandatory |
-| `INGEST` | `REVIEW_INGEST_EVIDENCE` | Immutable captured evidence only |
-| `CONVERT` | `RUN_CONVERSION_RECOVERY` | Existing governed conversion recovery; failed history remains immutable |
-| `INDEX` | `REINDEX_VERIFIED_CANONICAL` | Verified ReadyPackage/canonical Markdown only |
-| `QUALITY` | `OPEN_RETRIEVAL_REMEDIATION_PLAN` | M16 plans; M17 executes only explicitly approved policy-eligible derived repairs |
-| `RELEVANCE` | deterministic review actions | M18 smoke audit only; no semantic/legal scoring |
-| `HEALTH` | `REVIEW_SUPPLY_HEALTH` | Inspect the existing supply-health gaps |
+| Stage       | Queue action                      | Boundary                                                                         |
+| ----------- | --------------------------------- | -------------------------------------------------------------------------------- |
+| `REGISTER`  | `REGISTER_SOURCE`                 | Source registration only; no collection authorization                            |
+| `COLLECT`   | `DISPATCH_GOVERNED_COLLECTION`    | Existing explicit operator approval remains mandatory                            |
+| `INGEST`    | `REVIEW_INGEST_EVIDENCE`          | Immutable captured evidence only                                                 |
+| `CONVERT`   | `RUN_CONVERSION_RECOVERY`         | Existing governed conversion recovery; failed history remains immutable          |
+| `INDEX`     | `REINDEX_VERIFIED_CANONICAL`      | Verified ReadyPackage/canonical Markdown only                                    |
+| `QUALITY`   | `OPEN_RETRIEVAL_REMEDIATION_PLAN` | M16 plans; M17 executes only explicitly approved policy-eligible derived repairs |
+| `RELEVANCE` | deterministic review actions      | M18 smoke audit only; no semantic/legal scoring                                  |
+| `HEALTH`    | `REVIEW_SUPPLY_HEALTH`            | Inspect the existing supply-health gaps                                          |
 
 `READY` targets are omitted from the queue.
 

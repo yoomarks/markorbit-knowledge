@@ -57,7 +57,8 @@ function gate(targets: FoundationalReadinessTarget[]): FoundationalReadinessGate
     totalCount: targets.length,
     readyCount,
     blockingCount: targets.length - readyCount,
-    readyPercent: targets.length === 0 ? 0 : Number(((readyCount / targets.length) * 100).toFixed(2)),
+    readyPercent:
+      targets.length === 0 ? 0 : Number(((readyCount / targets.length) * 100).toFixed(2)),
     byStage,
     targets,
   };
