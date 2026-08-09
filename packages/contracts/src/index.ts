@@ -31,6 +31,7 @@ export * from "./source-intelligence-observation-v2";
 export * from "./source-intelligence-cross-source-observation-v2";
 export * from "./source-intelligence-review-queue-v2";
 export * from "./source-intelligence-review-health-v2";
+export * from "./source-intelligence-review-ownership-v2";
 export type {
   ReadyPackageStatus as ReadyPackageHandoffStatus,
   ReadyPackageEvidence,
