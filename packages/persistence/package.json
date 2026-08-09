@@ -14,6 +14,7 @@
     "./source-intelligence": "./src/source-intelligence-registry.ts",
     "./source-intelligence-reviews": "./src/source-intelligence-review-registry.ts",
     "./source-intelligence-review-ownership": "./src/source-intelligence-review-ownership-registry.ts",
+    "./source-intelligence-manual-sla": "./src/source-intelligence-manual-sla-registry.ts",
     "./execution-ledger": "./src/execution-ledger.ts",
     "./workers": "./src/safe-worker-registry.ts",
     "./worker-execution": "./src/controlled-worker-execution.ts",

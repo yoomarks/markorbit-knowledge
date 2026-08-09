@@ -1,5 +1,8 @@
 import type {
   SourceIntelligenceAssignmentHealthAndCapacityV2,
+  SourceIntelligenceManualEscalationAction,
+  SourceIntelligenceManualSlaAndEscalationV2,
+  SourceIntelligenceManualSlaPolicyV2,
   SourceIntelligenceObservationOwnershipAction,
   SourceIntelligenceObservationOwnershipQueueV2,
   SourceIntelligenceObservationReviewQueueV2,
@@ -8,6 +11,10 @@ import type {
 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import {
+  SqliteSourceIntelligenceManualSlaRepository,
+  type SourceIntelligenceManualSlaRepository,
+} from "@markorbit/persistence/source-intelligence-manual-sla";
+import {
   SqliteSourceIntelligenceObservationOwnershipRepository,
   type SourceIntelligenceObservationOwnershipRepository,
 } from "@markorbit/persistence/source-intelligence-review-ownership";
@@ -15,6 +22,7 @@ import type { SourceIntelligenceObservationReviewRepository } from "@markorbit/p
 import {
   buildSourceIntelligenceAssignmentHealthAndCapacityV2,
   buildSourceIntelligenceCrossSourceObservationSummaryV2,
+  buildSourceIntelligenceManualSlaAndEscalationV2,
   buildSourceIntelligenceObservationOwnershipQueueV2,
   buildSourceIntelligenceObservationReviewQueueV2,
   buildSourceIntelligenceReviewQueueOperationalHealthV2,
@@ -39,6 +47,8 @@ const MAX_REVIEW_EVENT_LIMIT = 500;
 const DEFAULT_OWNERSHIP_EVENT_LIMIT = 100;
 const MAX_OWNERSHIP_EVENT_LIMIT = 500;
 const DEFAULT_ASSIGNMENT_HEALTH_EVENT_LIMIT = 500;
+const DEFAULT_ESCALATION_EVENT_LIMIT = 200;
+const MAX_ESCALATION_EVENT_LIMIT = 500;
 
 export type ReviewObservationInput = {
   sourceId: string;
@@ -66,10 +76,27 @@ export type AssignmentHealthOptions = {
   ownershipEventLimit?: number;
 };
 
+export type ManualSlaPolicyInput = {
+  actor: string;
+  claimTargetHours: number | null;
+  reviewTargetHours: number | null;
+  expectedUpdatedAt: string | null;
+};
+
+export type ManualEscalationInput = {
+  sourceId: string;
+  observationKey: string;
+  action: SourceIntelligenceManualEscalationAction;
+  actor: string;
+  note?: string;
+  expectedEscalated: boolean;
+};
+
 type ReviewServiceDependencies = {
   intelligence: SourceIntelligenceService;
   reviews: SourceIntelligenceObservationReviewRepository;
   ownership: SourceIntelligenceObservationOwnershipRepository;
+  manualSla: SourceIntelligenceManualSlaRepository;
   now?: () => string;
 };
 
@@ -168,6 +195,86 @@ export class SourceIntelligenceReviewService {
       ownershipEvents,
       generatedAt: this.now(),
     });
+  }
+
+  manualSla(
+    sourceIds: string[],
+    escalationEventLimit = DEFAULT_ESCALATION_EVENT_LIMIT,
+  ): SourceIntelligenceManualSlaAndEscalationV2 {
+    const ids = normalizeSourceIds(sourceIds);
+    const eventLimit = boundedInteger(
+      escalationEventLimit,
+      DEFAULT_ESCALATION_EVENT_LIMIT,
+      1,
+      MAX_ESCALATION_EVENT_LIMIT,
+      "escalationEventLimit",
+    );
+    const ownershipQueue = this.ownershipQueue(ids, 1);
+    const observationKeys = ownershipQueue.items.map((item) => item.observationKey);
+    const escalations =
+      this.dependencies.manualSla.listEscalationsByObservationKeys(observationKeys);
+    const escalationEvents = this.dependencies.manualSla.listEscalationEvents({
+      sourceIds: ids,
+      limit: eventLimit,
+    });
+    return buildSourceIntelligenceManualSlaAndEscalationV2({
+      ownershipQueue,
+      policy: this.dependencies.manualSla.getPolicy(),
+      escalations,
+      escalationEvents,
+      generatedAt: this.now(),
+    });
+  }
+
+  updateManualSlaPolicy(input: ManualSlaPolicyInput): SourceIntelligenceManualSlaPolicyV2 {
+    const actor = input.actor.trim();
+    if (!actor) throw new RegistryValidationError("actor is required");
+    return this.dependencies.manualSla.savePolicy({
+      actor,
+      claimTargetHours: input.claimTargetHours,
+      reviewTargetHours: input.reviewTargetHours,
+      expectedUpdatedAt: input.expectedUpdatedAt,
+    });
+  }
+
+  changeManualEscalation(input: ManualEscalationInput) {
+    const sourceId = input.sourceId.trim();
+    const observationKey = input.observationKey.trim();
+    const actor = input.actor.trim();
+    if (!sourceId) throw new RegistryValidationError("sourceId is required");
+    if (!observationKey) throw new RegistryValidationError("observationKey is required");
+    if (!actor) throw new RegistryValidationError("actor is required");
+
+    const currentQueue = this.queue([sourceId]);
+    const currentItem = currentQueue.items.find((item) => item.observationKey === observationKey);
+    if (!currentItem) {
+      throw new RegistryConflictError(
+        "SOURCE_INTELLIGENCE_ESCALATION_STALE",
+        "This observation occurrence is no longer current; reload before changing escalation state",
+        { sourceId, observationKey },
+      );
+    }
+
+    const escalation = this.dependencies.manualSla.saveEscalation({
+      observationKey,
+      sourceId,
+      flagKind: currentItem.flag.kind,
+      action: input.action,
+      actor,
+      ...(input.note !== undefined ? { note: input.note } : {}),
+      expectedEscalated: input.expectedEscalated,
+    });
+
+    const refreshed = this.manualSla([sourceId]);
+    const item = refreshed.items.find((candidate) => candidate.observationKey === observationKey);
+    if (!item) {
+      throw new RegistryConflictError(
+        "SOURCE_INTELLIGENCE_ESCALATION_CHANGED_DURING_WRITE",
+        "The observation occurrence changed while manual escalation was being saved",
+        { sourceId, observationKey },
+      );
+    }
+    return { escalation, item };
   }
 
   health(
@@ -291,6 +398,7 @@ let singleton: SourceIntelligenceReviewService | undefined;
 
 export function getSourceIntelligenceReviewService(): SourceIntelligenceReviewService {
   if (!singleton) {
+    const database = getRegistryDatabase();
     singleton = new SourceIntelligenceReviewService({
       intelligence: new SourceIntelligenceService({
         sources: getSourceRepository(),
@@ -299,7 +407,8 @@ export function getSourceIntelligenceReviewService(): SourceIntelligenceReviewSe
         intelligence: getSourceIntelligenceRepository(),
       }),
       reviews: getSourceIntelligenceReviewRepository(),
-      ownership: new SqliteSourceIntelligenceObservationOwnershipRepository(getRegistryDatabase()),
+      ownership: new SqliteSourceIntelligenceObservationOwnershipRepository(database),
+      manualSla: new SqliteSourceIntelligenceManualSlaRepository(database),
     });
   }
   return singleton;

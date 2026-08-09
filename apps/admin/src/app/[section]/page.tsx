@@ -13,6 +13,7 @@ import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
 import { RunList } from "@/components/runs/run-list";
 import { SourceIntelligenceAssignmentHealth } from "@/components/sources/source-intelligence-assignment-health";
+import { SourceIntelligenceManualSla } from "@/components/sources/source-intelligence-manual-sla";
 import { SourceIntelligenceReviewHealth } from "@/components/sources/source-intelligence-review-health";
 import { SourceIntelligenceReviewOwnership } from "@/components/sources/source-intelligence-review-ownership";
 import { SourceIntelligenceReviewQueue } from "@/components/sources/source-intelligence-review-queue";
@@ -51,9 +52,10 @@ function SourceIntelligencePage() {
     <>
       <PageHeading
         title="Source Intelligence"
-        description="先用 D2.12 Assignment Health & Capacity 看未领取与团队负载，再在 D2.11 Ownership & Handoff 做人工分配；D2.10、D2.9 与双轴详情继续提供运营与证据上下文，所有指标都不构成自动执行授权。"
+        description="先用 D2.13 Manual SLA & Escalation 定义人工运营目标与人工升级，再用 D2.12 看 Assignment Health、D2.11 做人工分配；D2.10、D2.9 与双轴详情继续提供运营与证据上下文，所有状态都不构成自动执行授权。"
       />
       <div className="space-y-6">
+        <SourceIntelligenceManualSla />
         <SourceIntelligenceAssignmentHealth />
         <SourceIntelligenceReviewOwnership />
         <SourceIntelligenceReviewHealth />
