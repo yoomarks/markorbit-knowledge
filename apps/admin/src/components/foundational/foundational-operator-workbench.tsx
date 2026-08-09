@@ -81,7 +81,10 @@ async function loadRunStatuses(
       const query = new URLSearchParams({ workspaceId, q: execution.runId, limit: "1" });
       try {
         const payload = await requestJson<RunListEnvelope>(`/api/runs?${query.toString()}`);
-        return [execution.runId, payload.items?.[0]?.run?.status ?? execution.runStatusAtDispatch] as const;
+        return [
+          execution.runId,
+          payload.items?.[0]?.run?.status ?? execution.runStatusAtDispatch,
+        ] as const;
       } catch {
         return [execution.runId, execution.runStatusAtDispatch] as const;
       }
@@ -163,7 +166,9 @@ export function FoundationalOperatorWorkbench({
       await refreshHistory();
       await onSnapshotRefresh();
     } catch (mutationError) {
-      setError(mutationError instanceof Error ? mutationError.message : "Controlled operation failed");
+      setError(
+        mutationError instanceof Error ? mutationError.message : "Controlled operation failed",
+      );
     } finally {
       setBusy(null);
     }
@@ -171,7 +176,9 @@ export function FoundationalOperatorWorkbench({
 
   async function createIntent(targetId: string): Promise<void> {
     const previousIntent = latestIntentForAction(intents, targetId, "DISPATCH_GOVERNED_COLLECTION");
-    const nonce = previousIntent ? `${previousIntent.intentId}:${previousIntent.updatedAt}` : "first";
+    const nonce = previousIntent
+      ? `${previousIntent.intentId}:${previousIntent.updatedAt}`
+      : "first";
     const idempotencyKey = operatorIntentIdempotencyKey({
       jurisdiction,
       targetId,
@@ -265,7 +272,9 @@ export function FoundationalOperatorWorkbench({
             ] as const
           ).map(([field, label, help]) => (
             <label key={field} className="block rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {label}
+              </span>
               <input
                 value={actors[field]}
                 onChange={(event) => updateActor(field, event.target.value)}
@@ -286,14 +295,16 @@ export function FoundationalOperatorWorkbench({
 
         {loading ? (
           <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-            <RefreshCw className="animate-spin" size={16} aria-hidden="true" /> Loading controlled operator
-            state…
+            <RefreshCw className="animate-spin" size={16} aria-hidden="true" /> Loading controlled
+            operator state…
           </div>
         ) : actions.length === 0 ? (
           <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-slate-700">
             <ShieldCheck className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
             <div>
-              <p className="text-sm font-semibold">No executable COLLECT action is currently exposed.</p>
+              <p className="text-sm font-semibold">
+                No executable COLLECT action is currently exposed.
+              </p>
               <p className="mt-1 text-xs leading-5 text-slate-500">
                 REGISTER、INGEST、CONVERT、INDEX、QUALITY、RELEVANCE 与 HEALTH 仍保持非执行状态。
               </p>
@@ -320,7 +331,9 @@ export function FoundationalOperatorWorkbench({
                         </span>
                         <span className="text-xs font-medium text-slate-500">{phase}</span>
                       </div>
-                      <h3 className="mt-2 break-all font-semibold text-slate-950">{action.targetId}</h3>
+                      <h3 className="mt-2 break-all font-semibold text-slate-950">
+                        {action.targetId}
+                      </h3>
                       <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
                         {action.operatorInstruction}
                       </p>
@@ -344,14 +357,17 @@ export function FoundationalOperatorWorkbench({
                         >
                           <ShieldCheck size={15} aria-hidden="true" /> Create approval intent
                         </button>
-                        <span className="text-xs text-slate-500">Intent only · no CollectionRun is created.</span>
+                        <span className="text-xs text-slate-500">
+                          Intent only · no CollectionRun is created.
+                        </span>
                       </div>
                     ) : null}
 
                     {phase === "PENDING_APPROVAL" && intent ? (
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs leading-5 text-slate-500">
-                          Requested by <strong className="text-slate-700">{intent.requestedByActorId}</strong>.
+                          Requested by{" "}
+                          <strong className="text-slate-700">{intent.requestedByActorId}</strong>.
                           Execution authorization remains NONE.
                         </p>
                         <div className="flex flex-wrap gap-2">
@@ -379,7 +395,8 @@ export function FoundationalOperatorWorkbench({
                       <div className="space-y-3">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <p className="text-xs leading-5 text-slate-500">
-                            Approved by <strong className="text-slate-700">{intent.approvedByActorId}</strong>.
+                            Approved by{" "}
+                            <strong className="text-slate-700">{intent.approvedByActorId}</strong>.
                             Approval alone has not dispatched collection.
                           </p>
                           {!armed ? (
@@ -399,10 +416,13 @@ export function FoundationalOperatorWorkbench({
 
                         {armed ? (
                           <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
-                            <p className="text-sm font-semibold text-amber-950">Final explicit dispatch confirmation</p>
+                            <p className="text-sm font-semibold text-amber-950">
+                              Final explicit dispatch confirmation
+                            </p>
                             <p className="mt-1 text-xs leading-5 text-amber-900">
-                              This creates one real CollectionRun + Job for only {action.targetId}. The server
-                              revalidates the current queue, source and prepared MANUAL plan before writing.
+                              This creates one real CollectionRun + Job for only {action.targetId}.
+                              The server revalidates the current queue, source and prepared MANUAL
+                              plan before writing.
                             </p>
                             <label className="mt-3 flex items-start gap-2 text-sm text-amber-950">
                               <input
@@ -411,7 +431,9 @@ export function FoundationalOperatorWorkbench({
                                 onChange={(event) => setAcknowledged(event.target.checked)}
                                 className="mt-0.5 size-4"
                               />
-                              <span>I understand this performs a real single-target collection dispatch.</span>
+                              <span>
+                                I understand this performs a real single-target collection dispatch.
+                              </span>
                             </label>
                             <div className="mt-4 flex flex-wrap gap-2">
                               <button
@@ -443,9 +465,13 @@ export function FoundationalOperatorWorkbench({
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-xs leading-5 text-slate-500">
                           <p>
-                            Run <strong className="font-mono text-slate-700">{execution.runId}</strong>
+                            Run{" "}
+                            <strong className="font-mono text-slate-700">{execution.runId}</strong>
                           </p>
-                          <p>Dispatched {timeLabel(execution.dispatchedAt)} by {execution.executedByActorId}</p>
+                          <p>
+                            Dispatched {timeLabel(execution.dispatchedAt)} by{" "}
+                            {execution.executedByActorId}
+                          </p>
                           <p>{execution.jobIds.length} job(s) recorded</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -489,7 +515,9 @@ export function FoundationalOperatorWorkbench({
                       <p className="mt-0.5 break-all font-mono text-slate-500">{execution.runId}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`rounded-full border px-2 py-1 font-semibold ${runStatusClass(status)}`}>
+                      <span
+                        className={`rounded-full border px-2 py-1 font-semibold ${runStatusClass(status)}`}
+                      >
                         {status}
                       </span>
                       <span className="text-slate-500">{timeLabel(execution.dispatchedAt)}</span>
