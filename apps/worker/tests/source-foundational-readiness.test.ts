@@ -4,11 +4,13 @@ import { foundationalSupplyPlanName } from "../src/source-coverage-operations";
 import {
   deriveFoundationalReadinessStage,
   evaluateFoundationalRetrievalQuality,
+  evaluateFoundationalRetrievalRelevance,
   evaluateUsFoundationalReadiness,
   evaluateWipoFoundationalReadiness,
   operateFoundationalBatch,
   operateUsFoundationalBatch,
   type FoundationalRetrievalQualityItem,
+  type FoundationalRetrievalRelevanceItem,
   type FoundationalSupplyHealthItem,
 } from "../src/source-foundational-readiness";
 
@@ -75,6 +77,19 @@ function quality(
   };
 }
 
+function relevance(
+  targetId: string,
+  overrides: Partial<FoundationalRetrievalRelevanceItem> = {},
+): FoundationalRetrievalRelevanceItem {
+  return {
+    targetId,
+    state: "READY",
+    gaps: [],
+    probeCount: 1,
+    ...overrides,
+  };
+}
+
 function apiHealth(item: FoundationalSupplyHealthItem) {
   return {
     targetId: item.targetId,
@@ -90,10 +105,22 @@ function apiHealth(item: FoundationalSupplyHealthItem) {
   };
 }
 
+function apiRelevance(item: FoundationalRetrievalRelevanceItem) {
+  return {
+    targetId: item.targetId,
+    state: item.state,
+    gaps: item.gaps,
+    probes: Array.from({ length: item.probeCount }, (_, index) => ({ probeId: `probe_${index}` })),
+  };
+}
+
 function controlPlane(
   targets: CoverageTarget[],
   healthItems: FoundationalSupplyHealthItem[],
   qualityItems: FoundationalRetrievalQualityItem[],
+  relevanceItems: FoundationalRetrievalRelevanceItem[] = healthItems.map((item) =>
+    relevance(item.targetId),
+  ),
 ) {
   const runRequests: Array<{ planId: string; idempotencyKey: string | null }> = [];
   const sourceIds = new Map(targets.map((item, index) => [item.id, `src_${index + 1}`]));
@@ -146,6 +173,9 @@ function controlPlane(
     if (url.pathname === "/api/retrieval/audit" && method === "GET") {
       return Response.json({ items: normalizedQuality });
     }
+    if (url.pathname === "/api/retrieval/relevance-audit" && method === "GET") {
+      return Response.json({ items: relevanceItems.map(apiRelevance), semanticJudgment: false });
+    }
     if (url.pathname === "/api/runs" && method === "POST") {
       const body = JSON.parse(String(init?.body)) as { planId: string };
       const headers = new Headers(init?.headers);
@@ -162,15 +192,17 @@ function controlPlane(
 }
 
 describe("FOUNDATIONAL readiness gate", () => {
-  it("requires all US foundational targets and their retrieval audits to be READY", () => {
+  it("requires all US foundational targets, retrieval audits, and relevance probes to be READY", () => {
     const targetIds = Array.from({ length: 11 }, (_, index) => `us-foundational-${index + 1}`);
     const healthItems = targetIds.map((targetId) => health(targetId));
     const gate = evaluateUsFoundationalReadiness(
       targetIds,
       healthItems,
       healthItems.map((item) => quality(item.sourceIds[0])),
+      targetIds.map((targetId) => relevance(targetId)),
     );
     expect(gate).toMatchObject({
+      protocolVersion: "1.2",
       jurisdiction: "US",
       state: "READY",
       totalCount: 11,
@@ -179,9 +211,10 @@ describe("FOUNDATIONAL readiness gate", () => {
       readyPercent: 100,
     });
     expect(gate.byStage.READY).toBe(11);
+    expect(gate.byStage.RELEVANCE).toBe(0);
   });
 
-  it("blocks readiness at QUALITY when retrieval audit is degraded, blocked, or missing", () => {
+  it("blocks readiness at QUALITY before evaluating relevance as the actionable stage", () => {
     const degradedHealth = health("degraded");
     const degraded = evaluateUsFoundationalReadiness(
       [degradedHealth.targetId],
@@ -192,10 +225,12 @@ describe("FOUNDATIONAL readiness gate", () => {
           gaps: ["DUPLICATE_CHUNK_CONTENT"],
         }),
       ],
+      [relevance(degradedHealth.targetId, { state: "BLOCKED", gaps: ["SOURCE_FILTERED_QUERY_MISS"] })],
     );
     expect(degraded.targets[0]).toMatchObject({
       stage: "QUALITY",
       retrievalQualityState: "DEGRADED",
+      retrievalRelevanceState: "BLOCKED",
       ready: false,
     });
 
@@ -215,17 +250,79 @@ describe("FOUNDATIONAL readiness gate", () => {
     expect(mismatch.gaps).toContain("RETRIEVAL_AUDIT_COVERAGE_MISMATCH");
   });
 
-  it("uses the same gate for WIPO foundational supply", () => {
+  it("blocks readiness at RELEVANCE when deterministic smoke probes are degraded, blocked, or missing", () => {
+    const degradedHealth = health("relevance-degraded");
+    const degraded = evaluateUsFoundationalReadiness(
+      [degradedHealth.targetId],
+      [degradedHealth],
+      [quality(degradedHealth.sourceIds[0])],
+      [
+        relevance(degradedHealth.targetId, {
+          state: "DEGRADED",
+          gaps: ["GLOBAL_TOP_K_MISS"],
+        }),
+      ],
+    );
+    expect(degraded.targets[0]).toMatchObject({
+      stage: "RELEVANCE",
+      retrievalQualityState: "READY",
+      retrievalRelevanceState: "DEGRADED",
+      retrievalRelevanceProbeCount: 1,
+      reason: "GLOBAL_TOP_K_MISS",
+      ready: false,
+    });
+
+    const blockedHealth = health("relevance-blocked");
+    const blocked = evaluateUsFoundationalReadiness(
+      [blockedHealth.targetId],
+      [blockedHealth],
+      [quality(blockedHealth.sourceIds[0])],
+      [
+        relevance(blockedHealth.targetId, {
+          state: "BLOCKED",
+          gaps: ["SOURCE_FILTERED_QUERY_MISS"],
+        }),
+      ],
+    );
+    expect(blocked.targets[0]).toMatchObject({
+      stage: "RELEVANCE",
+      retrievalRelevanceState: "BLOCKED",
+      reason: "SOURCE_FILTERED_QUERY_MISS",
+    });
+
+    const missingHealth = health("relevance-missing");
+    const missing = evaluateFoundationalRetrievalRelevance(missingHealth, []);
+    expect(missing).toEqual({
+      state: "MISSING",
+      probeCount: 0,
+      gaps: ["RETRIEVAL_RELEVANCE_AUDIT_MISSING"],
+    });
+
+    const inconsistent = evaluateFoundationalRetrievalRelevance(missingHealth, [
+      relevance(missingHealth.targetId, {
+        state: "NOT_APPLICABLE",
+        gaps: ["NO_CURRENT_RETRIEVAL_DOCUMENT"],
+        probeCount: 0,
+      }),
+    ]);
+    expect(inconsistent.state).toBe("BLOCKED");
+    expect(inconsistent.gaps).toContain(
+      "RETRIEVAL_RELEVANCE_NOT_APPLICABLE_WITH_CURRENT_DOCUMENTS",
+    );
+  });
+
+  it("uses the same quality and relevance gate for WIPO foundational supply", () => {
     const healthItems = [health("wo-one"), health("wo-two")];
     const gate = evaluateWipoFoundationalReadiness(
       healthItems.map((item) => item.targetId),
       healthItems,
       healthItems.map((item) => quality(item.sourceIds[0])),
+      healthItems.map((item) => relevance(item.targetId)),
     );
     expect(gate).toMatchObject({ jurisdiction: "WO", state: "READY", readyCount: 2 });
   });
 
-  it("reports the first actionable supply-pipeline stage before quality", () => {
+  it("reports the first actionable supply-pipeline stage before quality and relevance", () => {
     expect(
       deriveFoundationalReadinessStage(
         health("unregistered", {
@@ -272,7 +369,7 @@ describe("FOUNDATIONAL readiness gate", () => {
     ).toBe("INDEX");
   });
 
-  it("keeps review and unapproved requests at zero dispatch while loading quality", async () => {
+  it("keeps review and unapproved requests at zero dispatch while loading quality and relevance", async () => {
     const targets = [target("us-one"), target("us-two")];
     const healthItems = targets.map((item) => health(item.id));
     const harness = controlPlane(
@@ -288,6 +385,9 @@ describe("FOUNDATIONAL readiness gate", () => {
     });
     expect(review.mode).toBe("REVIEW");
     expect(review.readiness.state).toBe("READY");
+    expect(review.readiness.targets.every((item) => item.retrievalRelevanceState === "READY")).toBe(
+      true,
+    );
     expect(review.collectionAuthorization).toBe("NONE");
     expect(harness.runRequests).toEqual([]);
 
@@ -323,6 +423,7 @@ describe("FOUNDATIONAL readiness gate", () => {
     });
 
     expect(result).toMatchObject({ jurisdiction: "WO", mode: "DISPATCH" });
+    expect(result.readiness.state).toBe("READY");
     expect(result.approvedTargetIds).toEqual(["wo-two"]);
     expect(result.collectionAuthorization).toBe("EXPLICIT_TARGET_MANUAL_RUNS_DISPATCHED");
     expect(result.runs.map((run) => run.targetId)).toEqual(["wo-two"]);
