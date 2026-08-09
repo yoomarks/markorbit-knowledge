@@ -7,6 +7,7 @@ import type {
   SourceIntelligenceObservationOwnershipQueueV2,
   SourceIntelligenceObservationReviewQueueV2,
   SourceIntelligenceObservationReviewStatus,
+  SourceIntelligencePolicyAuditHistoryV2,
   SourceIntelligencePolicyCohortV2,
   SourceIntelligencePolicyScopeAndCohortsV2,
   SourceIntelligenceReviewQueueOperationalHealthV2,
@@ -31,6 +32,7 @@ import {
   buildSourceIntelligenceManualSlaAndEscalationV2,
   buildSourceIntelligenceObservationOwnershipQueueV2,
   buildSourceIntelligenceObservationReviewQueueV2,
+  buildSourceIntelligencePolicyAuditHistoryV2,
   buildSourceIntelligencePolicyScopeAndCohortsV2,
   buildSourceIntelligenceReviewQueueOperationalHealthV2,
   sourceIntelligenceObservationReviewKey,
@@ -56,6 +58,8 @@ const MAX_OWNERSHIP_EVENT_LIMIT = 500;
 const DEFAULT_ASSIGNMENT_HEALTH_EVENT_LIMIT = 500;
 const DEFAULT_ESCALATION_EVENT_LIMIT = 200;
 const MAX_ESCALATION_EVENT_LIMIT = 500;
+const DEFAULT_POLICY_AUDIT_EVENT_LIMIT = 200;
+const MAX_POLICY_AUDIT_EVENT_LIMIT = 500;
 
 export type ReviewObservationInput = {
   sourceId: string;
@@ -133,6 +137,16 @@ function normalizeSourceIds(sourceIds: string[]): string[] {
   if (normalized.length === 0) {
     throw new RegistryValidationError("At least one source id is required");
   }
+  if (normalized.length > MAX_SOURCE_IDS) {
+    throw new RegistryValidationError(
+      `At most ${MAX_SOURCE_IDS} source ids may be reviewed at once`,
+    );
+  }
+  return normalized;
+}
+
+function normalizeOptionalSourceIds(sourceIds: string[]): string[] {
+  const normalized = [...new Set(sourceIds.map((sourceId) => sourceId.trim()).filter(Boolean))];
   if (normalized.length > MAX_SOURCE_IDS) {
     throw new RegistryValidationError(
       `At most ${MAX_SOURCE_IDS} source ids may be reviewed at once`,
@@ -233,6 +247,30 @@ export class SourceIntelligenceReviewService {
       cohorts: this.dependencies.policyScope.listCohorts(),
       memberships: this.dependencies.policyScope.listMemberships({ sourceIds: ids }),
       generatedAt: this.now(),
+    });
+  }
+
+  policyAudit(
+    sourceIds: string[] = [],
+    eventLimit = DEFAULT_POLICY_AUDIT_EVENT_LIMIT,
+  ): SourceIntelligencePolicyAuditHistoryV2 {
+    const ids = normalizeOptionalSourceIds(sourceIds);
+    const limit = boundedInteger(
+      eventLimit,
+      DEFAULT_POLICY_AUDIT_EVENT_LIMIT,
+      1,
+      MAX_POLICY_AUDIT_EVENT_LIMIT,
+      "eventLimit",
+    );
+    return buildSourceIntelligencePolicyAuditHistoryV2({
+      globalPolicyEvents: this.dependencies.manualSla.listPolicyAuditEvents({ limit }),
+      cohortEvents: this.dependencies.policyScope.listCohortAuditEvents({ limit }),
+      membershipEvents: this.dependencies.policyScope.listMembershipAuditEvents({
+        ...(ids.length ? { sourceIds: ids } : {}),
+        limit,
+      }),
+      generatedAt: this.now(),
+      limit,
     });
   }
 
