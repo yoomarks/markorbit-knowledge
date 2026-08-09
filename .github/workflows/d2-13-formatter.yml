@@ -1,0 +1,54 @@
+name: D2.13 Formatter
+
+on:
+  push:
+    branches:
+      - codex/d2-13-manual-sla-escalation
+    paths:
+      - .github/workflows/d2-13-formatter.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/d2-13-manual-sla-escalation
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format D2.13 files
+        run: |
+          pnpm exec prettier --write \
+            apps/admin/src/app/api/source-intelligence/reviews/manual-sla/route.ts \
+            apps/admin/src/components/sources/source-intelligence-manual-sla.tsx \
+            apps/admin/src/server/source-intelligence-review-service.ts \
+            packages/contracts/src/source-intelligence-manual-sla-v2.ts \
+            packages/persistence/src/source-intelligence-manual-sla-registry.ts \
+            packages/persistence/tests/source-intelligence-manual-sla-registry.test.ts \
+            packages/worker-runtime/src/source-intelligence-manual-sla.ts \
+            packages/worker-runtime/tests/source-intelligence-manual-sla.test.ts
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/admin/src/app/api/source-intelligence/reviews/manual-sla/route.ts \
+            apps/admin/src/components/sources/source-intelligence-manual-sla.tsx \
+            apps/admin/src/server/source-intelligence-review-service.ts \
+            packages/contracts/src/source-intelligence-manual-sla-v2.ts \
+            packages/persistence/src/source-intelligence-manual-sla-registry.ts \
+            packages/persistence/tests/source-intelligence-manual-sla-registry.test.ts \
+            packages/worker-runtime/src/source-intelligence-manual-sla.ts \
+            packages/worker-runtime/tests/source-intelligence-manual-sla.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "style: format D2.13 manual SLA and escalation"
+          git push origin HEAD:codex/d2-13-manual-sla-escalation
