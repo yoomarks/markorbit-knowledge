@@ -47,6 +47,10 @@ import {
   type ReadyPackageRegistryRepository,
 } from "@markorbit/persistence/ready-packages";
 import {
+  SqliteRetrievalIndexRepository,
+  type RetrievalIndexRepository,
+} from "@markorbit/persistence/retrieval-index";
+import {
   SqliteSourceDiscoveryRepository,
   type SourceDiscoveryRepository,
 } from "@markorbit/persistence/source-discovery";
@@ -102,6 +106,7 @@ const globalRegistry = globalThis as typeof globalThis & {
     stagingVerification: StagingVerificationRepository;
     stagingFinalizer: VerifiedStagingFinalizationRepository;
     readyPackages: ReadyPackageRegistryRepository;
+    retrieval: RetrievalIndexRepository;
   };
 };
 
@@ -169,6 +174,7 @@ function getRegistries() {
         conversionTransitions,
       ),
       readyPackages: new SqliteReadyPackageRegistryRepository(database),
+      retrieval: new SqliteRetrievalIndexRepository(database),
       artifacts: new SqliteRawArtifactRepository(
         database,
         process.env.MARKORBIT_ARTIFACT_STORE_PATH ?? defaultArtifactStorePath(),
@@ -275,4 +281,8 @@ export function getVerifiedStagingFinalizer(): VerifiedStagingFinalizationReposi
 
 export function getReadyPackageRepository(): ReadyPackageRegistryRepository {
   return getRegistries().readyPackages;
+}
+
+export function getRetrievalIndexRepository(): RetrievalIndexRepository {
+  return getRegistries().retrieval;
 }
