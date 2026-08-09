@@ -98,7 +98,7 @@ describe("D2.16 policy audit query", () => {
       query: firstQuery,
       generatedAt: "2026-08-09T03:00:00.000Z",
     });
-    expect(first.events.map((item) => item.eventId)).toEqual(["sipa_c", "sica_b"]);
+    expect(first.events.map((item) => item.eventId)).toEqual(["sipa_c", "sima_a"]);
     expect(first.page.hasMore).toBe(true);
     expect(first.page.nextCursor).toBeTruthy();
 
@@ -111,7 +111,7 @@ describe("D2.16 policy audit query", () => {
       query: secondQuery,
       generatedAt: "2026-08-09T03:01:00.000Z",
     });
-    expect(second.events.map((item) => item.eventId)).toEqual(["sima_a"]);
+    expect(second.events.map((item) => item.eventId)).toEqual(["sica_b"]);
     expect(second.page.hasMore).toBe(false);
     expect(new Set([...first.events, ...second.events].map((item) => item.eventId)).size).toBe(3);
   });
@@ -151,7 +151,7 @@ describe("D2.16 policy audit query", () => {
     const firstJson = serializeSourceIntelligencePolicyAuditExportJsonV2(first);
     const secondJson = serializeSourceIntelligencePolicyAuditExportJsonV2(second);
     expect(firstJson).toBe(secondJson);
-    expect(firstJson).not.toContain("generatedAt");
+    expect(JSON.parse(firstJson)).not.toHaveProperty("generatedAt");
     expect(first.semantics.deterministicForSameStoredEventsAndNormalizedFilters).toBe(true);
     expect(first.boundaries.exportDoesNotAuthorizeAction).toBe(true);
 

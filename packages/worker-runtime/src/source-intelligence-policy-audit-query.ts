@@ -146,7 +146,8 @@ export function compareSourceIntelligencePolicyAuditEventsNewestFirst(
 ): number {
   const time = Date.parse(right.occurredAt) - Date.parse(left.occurredAt);
   if (time !== 0) return time;
-  return right.eventId.localeCompare(left.eventId);
+  if (left.eventId === right.eventId) return 0;
+  return left.eventId > right.eventId ? -1 : 1;
 }
 
 function matchesFilters(
