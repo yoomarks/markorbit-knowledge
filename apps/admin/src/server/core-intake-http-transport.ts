@@ -6,9 +6,12 @@ const CORE_INTAKE_STATUSES = new Set<CoreIntakeResult["status"]>([
   "REJECTED",
 ]);
 const DEFAULT_CORE_INTAKE_TIMEOUT_MS = 15_000;
+const CORE_WORKSPACE_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface CoreIntakeTransport {
   submit(request: CoreIntakeRequest, idempotencyKey: string): Promise<CoreIntakeResult>;
+  resolveDestinationWorkspaceId?: (knowledgeWorkspaceId: string) => string;
 }
 
 export type CoreIntakeTransportReadiness = {
@@ -67,9 +70,92 @@ function configuredDestination(): string {
   return destination(url);
 }
 
-export function coreIntakeTransportReadiness(): CoreIntakeTransportReadiness {
+function configuredInternalServiceSecret(): string {
+  const secret = process.env.MARKORBIT_CORE_INTERNAL_SERVICE_SECRET;
+  if (!secret) {
+    throw new CoreIntakeTransportError(
+      "CORE_INTAKE_TRANSPORT_AUTH_NOT_CONFIGURED",
+      "Core internal service authorization is not configured",
+      503,
+    );
+  }
+  if (Buffer.byteLength(secret) < 32) {
+    throw new CoreIntakeTransportError(
+      "CORE_INTAKE_TRANSPORT_AUTH_INVALID",
+      "Core internal service authorization must contain at least 32 bytes",
+      503,
+    );
+  }
+  return secret;
+}
+
+function coreWorkspaceId(value: unknown): string | null {
+  return typeof value === "string" && CORE_WORKSPACE_ID.test(value) ? value : null;
+}
+
+export function configuredCoreIntakeWorkspaceId(knowledgeWorkspaceId: string): string {
+  const raw = process.env.MARKORBIT_CORE_WORKSPACE_BINDINGS?.trim();
+  if (!raw) {
+    throw new CoreIntakeTransportError(
+      "CORE_INTAKE_WORKSPACE_BINDINGS_NOT_CONFIGURED",
+      "MARKORBIT_CORE_WORKSPACE_BINDINGS is not configured",
+      503,
+    );
+  }
+  let bindings: unknown;
+  try {
+    bindings = JSON.parse(raw);
+  } catch {
+    throw new CoreIntakeTransportError(
+      "CORE_INTAKE_WORKSPACE_BINDINGS_INVALID",
+      "MARKORBIT_CORE_WORKSPACE_BINDINGS must be a JSON object",
+      503,
+    );
+  }
+  if (!bindings || typeof bindings !== "object" || Array.isArray(bindings)) {
+    throw new CoreIntakeTransportError(
+      "CORE_INTAKE_WORKSPACE_BINDINGS_INVALID",
+      "MARKORBIT_CORE_WORKSPACE_BINDINGS must be a JSON object",
+      503,
+    );
+  }
+  const entries = Object.entries(bindings as Record<string, unknown>);
+  if (entries.some(([key, value]) => !key.trim() || !coreWorkspaceId(value))) {
+    throw new CoreIntakeTransportError(
+      "CORE_INTAKE_WORKSPACE_BINDINGS_INVALID",
+      "MARKORBIT_CORE_WORKSPACE_BINDINGS must map Knowledge workspace IDs to Core workspace UUIDs",
+      503,
+    );
+  }
+  const bound = coreWorkspaceId((bindings as Record<string, unknown>)[knowledgeWorkspaceId]);
+  if (!bound) {
+    throw new CoreIntakeTransportError(
+      "CORE_INTAKE_WORKSPACE_BINDING_NOT_CONFIGURED",
+      "No Core workspace binding is configured for this Knowledge workspace",
+      503,
+    );
+  }
+  return bound;
+}
+
+export function coreIntakeTransportReadiness(
+  knowledgeWorkspaceId?: string,
+  frozenCoreWorkspaceId?: string,
+): CoreIntakeTransportReadiness {
   try {
     configuredDestination();
+    configuredInternalServiceSecret();
+    if (frozenCoreWorkspaceId) {
+      if (!coreWorkspaceId(frozenCoreWorkspaceId)) {
+        throw new CoreIntakeTransportError(
+          "CORE_INTAKE_FROZEN_WORKSPACE_BINDING_INVALID",
+          "Persisted Core workspace binding is invalid",
+          503,
+        );
+      }
+    } else if (knowledgeWorkspaceId) {
+      configuredCoreIntakeWorkspaceId(knowledgeWorkspaceId);
+    }
     return { configured: true, issueCode: null };
   } catch (error) {
     if (error instanceof CoreIntakeTransportError) {
@@ -138,6 +224,7 @@ export class HttpCoreIntakeTransport implements CoreIntakeTransport {
     intakeUrl: string,
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly timeoutMs = DEFAULT_CORE_INTAKE_TIMEOUT_MS,
+    private readonly internalServiceSecret?: string,
   ) {
     this.url = destination(intakeUrl);
   }
@@ -151,6 +238,9 @@ export class HttpCoreIntakeTransport implements CoreIntakeTransport {
         headers: {
           "content-type": "application/json",
           "idempotency-key": idempotencyKey,
+          ...(this.internalServiceSecret
+            ? { "x-markorbit-internal-authorization": this.internalServiceSecret }
+            : {}),
         },
         body: JSON.stringify(request),
         signal,
@@ -189,11 +279,14 @@ export function configuredCoreIntakeTransport(
   fetchImpl: typeof fetch = fetch,
 ): CoreIntakeTransport {
   return {
+    resolveDestinationWorkspaceId: configuredCoreIntakeWorkspaceId,
     async submit(request, idempotencyKey) {
-      return new HttpCoreIntakeTransport(configuredDestination(), fetchImpl).submit(
-        request,
-        idempotencyKey,
-      );
+      return new HttpCoreIntakeTransport(
+        configuredDestination(),
+        fetchImpl,
+        DEFAULT_CORE_INTAKE_TIMEOUT_MS,
+        configuredInternalServiceSecret(),
+      ).submit(request, idempotencyKey);
     },
   };
 }
