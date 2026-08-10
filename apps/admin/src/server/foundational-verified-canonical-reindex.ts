@@ -1,8 +1,7 @@
-import {
-  RegistryConflictError,
-  RegistryValidationError,
-} from "@markorbit/persistence";
+import type { ReadyPackage, StagingDocumentDescriptor } from "@markorbit/contracts";
+import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import { SqliteSourceSupplyHealthRepository } from "@markorbit/persistence/source-supply-health";
+import type { StagingDocumentRecord } from "@markorbit/persistence/staging-content";
 import { normalizeFoundationalJurisdiction } from "@markorbit/worker-runtime/foundational-readiness";
 import { canonicalDocumentMetadata } from "./canonical-document-metadata";
 import {
@@ -22,8 +21,7 @@ export const FOUNDATIONAL_CANONICAL_INDEX_STATES = [
   "EVIDENCE_MISMATCH",
 ] as const;
 
-export type FoundationalCanonicalIndexState =
-  (typeof FOUNDATIONAL_CANONICAL_INDEX_STATES)[number];
+export type FoundationalCanonicalIndexState = (typeof FOUNDATIONAL_CANONICAL_INDEX_STATES)[number];
 
 export type FoundationalVerifiedCanonicalCandidate = {
   stagingDocumentId: string;
@@ -95,11 +93,7 @@ function normalizedTargetId(value: string): string {
   return normalized;
 }
 
-function resolveTarget(input: {
-  workspaceId: string;
-  jurisdiction: string;
-  targetId: string;
-}): {
+function resolveTarget(input: { workspaceId: string; jurisdiction: string; targetId: string }): {
   workspaceId: string;
   jurisdiction: string;
   targetId: string;
@@ -124,9 +118,9 @@ function resolveTarget(input: {
   return { workspaceId, jurisdiction, targetId, sourceIds: [...target.sourceIds] };
 }
 
-function readyDocuments(workspaceId: string, sourceIds: readonly string[]) {
+function readyDocuments(workspaceId: string, sourceIds: readonly string[]): StagingDocumentRecord[] {
   const repository = getStagingContentRepository();
-  const records = new Map<string, ReturnType<typeof repository.listDocuments>["items"][number]>();
+  const records = new Map<string, StagingDocumentRecord>();
   for (const sourceId of sourceIds) {
     let offset = 0;
     while (true) {
@@ -163,15 +157,14 @@ function indexRow(workspaceId: string, stagingDocumentId: string): RetrievalInde
 }
 
 function packageMatchesCandidate(
-  readyPackage: NonNullable<ReturnType<ReturnType<typeof getReadyPackageRepository>["getByConversionRun"]>>,
-  descriptor: ReturnType<ReturnType<typeof getStagingContentRepository>["getDocument"]> extends infer T
-    ? NonNullable<T>["descriptor"]
-    : never,
+  readyPackage: ReadyPackage,
+  descriptor: StagingDocumentDescriptor,
 ): boolean {
   return (
     readyPackage.evidence.stagingDocumentId === descriptor.id &&
     readyPackage.evidence.sourceId === descriptor.sourceId &&
-    readyPackage.evidence.rawArtifactId === descriptor.rawArtifactId &&
+    readyPackage.evidence.artifactIds.length === 1 &&
+    readyPackage.evidence.artifactIds[0] === descriptor.rawArtifactId &&
     readyPackage.evidence.conversionRunId === descriptor.conversionRunId &&
     readyPackage.evidence.stagingSha256 === descriptor.contentHash.value
   );
@@ -179,7 +172,7 @@ function packageMatchesCandidate(
 
 function candidateFor(
   workspaceId: string,
-  record: ReturnType<ReturnType<typeof getStagingContentRepository>["listDocuments"]>["items"][number],
+  record: StagingDocumentRecord,
 ): FoundationalVerifiedCanonicalCandidate {
   const descriptor = record.descriptor;
   const readyPackage = getReadyPackageRepository().getByConversionRun(
@@ -268,10 +261,7 @@ export function reindexFoundationalVerifiedCanonical(input: {
   const stagingDocumentId = input.stagingDocumentId.trim();
   if (!stagingDocumentId) throw new RegistryValidationError("stagingDocumentId is required");
 
-  const staging = getStagingContentRepository().getDocument(
-    stagingDocumentId,
-    target.workspaceId,
-  );
+  const staging = getStagingContentRepository().getDocument(stagingDocumentId, target.workspaceId);
   if (!staging || staging.descriptor.status !== "READY") {
     throw new RegistryConflictError(
       "FOUNDATIONAL_REINDEX_STAGING_NOT_READY",
