@@ -3,14 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, PackageCheck, RefreshCw, Send } from "lucide-react";
 import type { ReadyPackage } from "@markorbit/contracts";
-
-type TransportStatus =
-  | "NOT_SUBMITTED"
-  | "SUBMISSION_PENDING_RESULT"
-  | "SUBMISSION_FINALIZATION_PENDING"
-  | "ACKNOWLEDGED"
-  | "REJECTED"
-  | "HANDED_OFF_WITHOUT_RECEIPT";
+import {
+  isCoreIntakeActionable,
+  type TransportStatus,
+} from "./ready-package-delivery-policy";
 
 type CoreIntakeReceiptView = {
   intakeId: string;
@@ -102,22 +98,6 @@ function actionLabel(status: TransportStatus): string {
   if (status === "SUBMISSION_FINALIZATION_PENDING") return "完成本地 Finalization";
   if (status === "REJECTED") return "再次提交至 Core";
   return "提交至 Core";
-}
-
-export function isCoreIntakeActionable(
-  readyPackageStatus: ReadyPackage["status"],
-  transportStatus: TransportStatus,
-): boolean {
-  if (
-    transportStatus === "SUBMISSION_PENDING_RESULT" ||
-    transportStatus === "SUBMISSION_FINALIZATION_PENDING"
-  ) {
-    return readyPackageStatus === "VERIFIED" || readyPackageStatus === "HANDED_OFF";
-  }
-  return (
-    readyPackageStatus === "VERIFIED" &&
-    (transportStatus === "NOT_SUBMITTED" || transportStatus === "REJECTED")
-  );
 }
 
 function formatDate(value: string | undefined): string {
