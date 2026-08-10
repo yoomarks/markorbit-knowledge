@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
-import {
-  FoundationalConversionRecoveryWorkbench,
-} from "./foundational-conversion-recovery-workbench";
+import { FoundationalConversionRecoveryWorkbench } from "./foundational-conversion-recovery-workbench";
 import { FoundationalOperatorWorkbench } from "./foundational-operator-workbench";
 
 type Jurisdiction = "US" | "WO";
