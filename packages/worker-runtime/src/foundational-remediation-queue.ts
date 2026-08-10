@@ -126,7 +126,12 @@ function relevanceActions(
   jurisdiction: string,
 ): FoundationalRemediationAction[] {
   const gaps = unique(target.retrievalRelevanceGaps);
-  const endpoint = queryEndpoint("/api/retrieval/relevance-audit", workspaceId, jurisdiction);
+  const endpoint = targetQueryEndpoint(
+    "/api/retrieval/relevance-audit",
+    workspaceId,
+    jurisdiction,
+    target.targetId,
+  );
   const actions: FoundationalRemediationAction[] = [];
   const coverageGaps = gaps.filter((gap) =>
     [

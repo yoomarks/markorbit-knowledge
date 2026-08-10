@@ -43,6 +43,21 @@ export type ControlledQualityRemediationAction = {
   automaticExecution: false;
 };
 
+export type ControlledRelevanceAuditAction = {
+  targetId: string;
+  actionCode:
+    | "REVIEW_RELEVANCE_AUDIT_COVERAGE"
+    | "REVIEW_RELEVANCE_PROBE_CONFIG"
+    | "REVIEW_SOURCE_FILTERED_RETRIEVAL"
+    | "REVIEW_GLOBAL_RETRIEVAL_RANKING"
+    | "REVIEW_RELEVANCE_AUDIT";
+  stage: "RELEVANCE";
+  operatorInstruction: string;
+  executionPath: "M18_RELEVANCE_AUDIT";
+  collectionAuthorizationRequired: false;
+  automaticExecution: false;
+};
+
 export type FoundationalOperatorPhase =
   | "REQUEST_APPROVAL"
   | "PENDING_APPROVAL"
@@ -162,6 +177,43 @@ export function listControlledQualityRemediationActions(
         stage: "QUALITY",
         operatorInstruction: action.operatorInstruction,
         executionPath: action.executionPath,
+        collectionAuthorizationRequired: false,
+        automaticExecution: false,
+      });
+    }
+  }
+  return actions;
+}
+
+const RELEVANCE_ACTION_CODES = new Set<ControlledRelevanceAuditAction["actionCode"]>([
+  "REVIEW_RELEVANCE_AUDIT_COVERAGE",
+  "REVIEW_RELEVANCE_PROBE_CONFIG",
+  "REVIEW_SOURCE_FILTERED_RETRIEVAL",
+  "REVIEW_GLOBAL_RETRIEVAL_RANKING",
+  "REVIEW_RELEVANCE_AUDIT",
+]);
+
+export function listControlledRelevanceAuditActions(
+  snapshot: FoundationalRemediationQueueSnapshot,
+): ControlledRelevanceAuditAction[] {
+  const actions: ControlledRelevanceAuditAction[] = [];
+  for (const item of snapshot.remediationQueue.items) {
+    if (item.stage !== "RELEVANCE") continue;
+    for (const action of item.actions) {
+      if (
+        !RELEVANCE_ACTION_CODES.has(action.code as ControlledRelevanceAuditAction["actionCode"]) ||
+        action.executionPath !== "M18_RELEVANCE_AUDIT" ||
+        action.collectionAuthorizationRequired !== false ||
+        action.automaticExecution !== false
+      ) {
+        continue;
+      }
+      actions.push({
+        targetId: item.targetId,
+        actionCode: action.code as ControlledRelevanceAuditAction["actionCode"],
+        stage: "RELEVANCE",
+        operatorInstruction: action.operatorInstruction,
+        executionPath: "M18_RELEVANCE_AUDIT",
         collectionAuthorizationRequired: false,
         automaticExecution: false,
       });

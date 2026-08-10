@@ -10,6 +10,7 @@ import {
   listControlledCollectionActions,
   listControlledConversionRecoveryActions,
   listControlledQualityRemediationActions,
+  listControlledRelevanceAuditActions,
   listControlledVerifiedCanonicalReindexActions,
   operatorExecutionIdempotencyKey,
   operatorIntentIdempotencyKey,
@@ -126,8 +127,8 @@ function outcome(
   };
 }
 
-describe("M29 foundational operator state", () => {
-  it("exposes governed COLLECT, CONVERT, INDEX and QUALITY actions through separate paths", () => {
+describe("M30 foundational operator state", () => {
+  it("exposes governed COLLECT, CONVERT, INDEX, QUALITY and RELEVANCE actions through separate paths", () => {
     const snapshot = {
       remediationQueue: {
         items: [
@@ -183,6 +184,26 @@ describe("M29 foundational operator state", () => {
               },
             ],
           },
+          {
+            targetId: "us-uspto-trademark-search",
+            stage: "RELEVANCE",
+            actions: [
+              {
+                code: "REVIEW_SOURCE_FILTERED_RETRIEVAL",
+                operatorInstruction: "Inspect source-filtered retrieval",
+                executionPath: "M18_RELEVANCE_AUDIT",
+                collectionAuthorizationRequired: false,
+                automaticExecution: false,
+              },
+              {
+                code: "REVIEW_GLOBAL_RETRIEVAL_RANKING",
+                operatorInstruction: "Inspect global top-K ranking",
+                executionPath: "M18_RELEVANCE_AUDIT",
+                collectionAuthorizationRequired: false,
+                automaticExecution: false,
+              },
+            ],
+          },
         ],
       },
     } as unknown as FoundationalRemediationQueueSnapshot;
@@ -219,6 +240,22 @@ describe("M29 foundational operator state", () => {
         stage: "QUALITY",
         actionCode: "OPEN_RETRIEVAL_REMEDIATION_PLAN",
         executionPath: "M16_PLANNER_THEN_M17_EXPLICIT_OPERATOR",
+        automaticExecution: false,
+      }),
+    ]);
+    expect(listControlledRelevanceAuditActions(snapshot)).toEqual([
+      expect.objectContaining({
+        targetId: "us-uspto-trademark-search",
+        stage: "RELEVANCE",
+        actionCode: "REVIEW_SOURCE_FILTERED_RETRIEVAL",
+        executionPath: "M18_RELEVANCE_AUDIT",
+        automaticExecution: false,
+      }),
+      expect.objectContaining({
+        targetId: "us-uspto-trademark-search",
+        stage: "RELEVANCE",
+        actionCode: "REVIEW_GLOBAL_RETRIEVAL_RANKING",
+        executionPath: "M18_RELEVANCE_AUDIT",
         automaticExecution: false,
       }),
     ]);
