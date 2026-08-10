@@ -5,6 +5,7 @@ const CORE_INTAKE_STATUSES = new Set<CoreIntakeResult["status"]>([
   "ACCEPTED",
   "REJECTED",
 ]);
+const DEFAULT_CORE_INTAKE_TIMEOUT_MS = 15_000;
 
 export interface CoreIntakeTransport {
   submit(request: CoreIntakeRequest, idempotencyKey: string): Promise<CoreIntakeResult>;
@@ -93,17 +94,27 @@ function parseResult(value: unknown, readyPackageId: string): CoreIntakeResult {
   };
 }
 
+function timeoutError(): CoreIntakeTransportError {
+  return new CoreIntakeTransportError(
+    "CORE_INTAKE_TRANSPORT_TIMEOUT",
+    "Core intake destination did not respond before the delivery timeout",
+    504,
+  );
+}
+
 export class HttpCoreIntakeTransport implements CoreIntakeTransport {
   private readonly url: string;
 
   constructor(
     intakeUrl: string,
     private readonly fetchImpl: typeof fetch = fetch,
+    private readonly timeoutMs = DEFAULT_CORE_INTAKE_TIMEOUT_MS,
   ) {
     this.url = destination(intakeUrl);
   }
 
   async submit(request: CoreIntakeRequest, idempotencyKey: string): Promise<CoreIntakeResult> {
+    const signal = AbortSignal.timeout(this.timeoutMs);
     let response: Response;
     try {
       response = await this.fetchImpl(this.url, {
@@ -113,8 +124,10 @@ export class HttpCoreIntakeTransport implements CoreIntakeTransport {
           "idempotency-key": idempotencyKey,
         },
         body: JSON.stringify(request),
+        signal,
       });
     } catch {
+      if (signal.aborted) throw timeoutError();
       throw new CoreIntakeTransportError(
         "CORE_INTAKE_TRANSPORT_UNAVAILABLE",
         "Core intake destination is unavailable",
@@ -132,6 +145,7 @@ export class HttpCoreIntakeTransport implements CoreIntakeTransport {
     try {
       body = await response.json();
     } catch {
+      if (signal.aborted) throw timeoutError();
       throw new CoreIntakeTransportError(
         "CORE_INTAKE_TRANSPORT_RESPONSE_INVALID",
         "Core intake response must be valid JSON",
