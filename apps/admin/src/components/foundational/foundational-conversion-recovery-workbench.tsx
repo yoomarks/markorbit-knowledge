@@ -71,6 +71,22 @@ function recoveryUrl(workspaceId: string, jurisdiction: Jurisdiction, targetId: 
   return `/api/foundational/conversion-recovery?${query.toString()}`;
 }
 
+async function fetchRecoverySnapshots(input: {
+  workspaceId: string;
+  jurisdiction: Jurisdiction;
+  targetIds: readonly string[];
+}): Promise<Record<string, RecoverySnapshot>> {
+  const entries = await Promise.all(
+    input.targetIds.map(async (targetId) => {
+      const value = await requestJson<RecoverySnapshot>(
+        recoveryUrl(input.workspaceId, input.jurisdiction, targetId),
+      );
+      return [targetId, value] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
+}
+
 function stateClass(state: RecoveryState): string {
   if (state === "RESOLVED") return "border-emerald-200 bg-emerald-50 text-emerald-800";
   if (state === "RUNNING") return "border-blue-200 bg-blue-50 text-blue-800";
@@ -97,27 +113,21 @@ export function FoundationalConversionRecoveryWorkbench({
   const actions = useMemo(() => listControlledConversionRecoveryActions(snapshot), [snapshot]);
   const [recoveries, setRecoveries] = useState<Record<string, RecoverySnapshot>>({});
   const [actorId, setActorId] = useState("operator:local-admin");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function loadRecoveries(): Promise<void> {
-    if (actions.length === 0) {
-      setRecoveries({});
-      return;
-    }
     setLoading(true);
     setError(null);
     try {
-      const entries = await Promise.all(
-        actions.map(async (action) => {
-          const value = await requestJson<RecoverySnapshot>(
-            recoveryUrl(workspaceId, jurisdiction, action.targetId),
-          );
-          return [action.targetId, value] as const;
+      setRecoveries(
+        await fetchRecoverySnapshots({
+          workspaceId,
+          jurisdiction,
+          targetIds: actions.map((action) => action.targetId),
         }),
       );
-      setRecoveries(Object.fromEntries(entries));
     } catch (loadError) {
       setError(
         loadError instanceof Error ? loadError.message : "Unable to load conversion recovery state",
@@ -128,10 +138,29 @@ export function FoundationalConversionRecoveryWorkbench({
   }
 
   useEffect(() => {
-    void loadRecoveries();
-    // The snapshot observation time is the authoritative signal that foundational state changed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId, jurisdiction, snapshot.observedAt]);
+    let active = true;
+    void fetchRecoverySnapshots({
+      workspaceId,
+      jurisdiction,
+      targetIds: actions.map((action) => action.targetId),
+    })
+      .then((nextRecoveries) => {
+        if (!active) return;
+        setRecoveries(nextRecoveries);
+        setError(null);
+        setLoading(false);
+      })
+      .catch((loadError: unknown) => {
+        if (!active) return;
+        setError(
+          loadError instanceof Error ? loadError.message : "Unable to load conversion recovery state",
+        );
+        setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [actions, jurisdiction, workspaceId]);
 
   async function retry(targetId: string, recoveryCaseId: string): Promise<void> {
     if (!actorId.trim()) return;
