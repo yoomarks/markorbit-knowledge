@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  ExternalLink,
-  RefreshCw,
-  RotateCcw,
-  ShieldCheck,
-} from "lucide-react";
+import { AlertTriangle, ExternalLink, RefreshCw, RotateCcw, ShieldCheck } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 import {
   conversionRecoveryStateAllowsOperatorRetry,
@@ -72,11 +66,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-function recoveryUrl(
-  workspaceId: string,
-  jurisdiction: Jurisdiction,
-  targetId: string,
-): string {
+function recoveryUrl(workspaceId: string, jurisdiction: Jurisdiction, targetId: string): string {
   const query = new URLSearchParams({ workspaceId, jurisdiction, targetId });
   return `/api/foundational/conversion-recovery?${query.toString()}`;
 }
@@ -232,9 +222,7 @@ export function FoundationalConversionRecoveryWorkbench({
                     </span>
                     <span className="text-xs text-slate-500">RUN_CONVERSION_RECOVERY</span>
                   </div>
-                  <h3 className="mt-2 break-all font-semibold text-slate-950">
-                    {action.targetId}
-                  </h3>
+                  <h3 className="mt-2 break-all font-semibold text-slate-950">{action.targetId}</h3>
                   <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
                     {action.operatorInstruction}
                   </p>
@@ -260,8 +248,8 @@ export function FoundationalConversionRecoveryWorkbench({
                       No tracked M11 recovery case for this target.
                     </p>
                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                      M27 does not auto-create or reconcile a case. Inspect the conversion run ledger
-                      before taking any separate recovery action.
+                      M27 does not auto-create or reconcile a case. Inspect the conversion run
+                      ledger before taking any separate recovery action.
                     </p>
                   </div>
                 </div>
@@ -294,13 +282,15 @@ export function FoundationalConversionRecoveryWorkbench({
                               latest run · <span className="font-mono">{item.latestRunId}</span>
                             </p>
                             <p className="mt-2 text-xs leading-5 text-slate-600">
-                              {item.lastFailure.code || item.lastFailure.kind || "Conversion failure"}
+                              {item.lastFailure.code ||
+                                item.lastFailure.kind ||
+                                "Conversion failure"}
                               {item.lastFailure.message ? ` · ${item.lastFailure.message}` : ""}
                             </p>
                             {item.nextRetryAt ? (
                               <p className="mt-1 text-xs text-slate-500">
-                                M11 next retry schedule · {timeLabel(item.nextRetryAt)} (not executed
-                                by this view)
+                                M11 next retry schedule · {timeLabel(item.nextRetryAt)} (not
+                                executed by this view)
                               </p>
                             ) : null}
                             {item.deadLetterReason ? (
