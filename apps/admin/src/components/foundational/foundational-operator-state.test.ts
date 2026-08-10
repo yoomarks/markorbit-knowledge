@@ -4,9 +4,11 @@ import type { FoundationalActionIntent } from "@markorbit/worker-runtime/foundat
 import type { FoundationalCollectionOutcome } from "@markorbit/worker-runtime/foundational-collection-outcome";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 import {
+  conversionRecoveryStateAllowsOperatorRetry,
   foundationalOperatorPhase,
   latestIntentForAction,
   listControlledCollectionActions,
+  listControlledConversionRecoveryActions,
   operatorExecutionIdempotencyKey,
   operatorIntentIdempotencyKey,
   outcomeForExecution,
@@ -122,8 +124,8 @@ function outcome(
   };
 }
 
-describe("M26 foundational operator state", () => {
-  it("exposes only explicitly governed COLLECT actions", () => {
+describe("M27 foundational operator state", () => {
+  it("exposes governed COLLECT and CONVERT actions through separate paths", () => {
     const snapshot = {
       remediationQueue: {
         items: [
@@ -165,6 +167,22 @@ describe("M26 foundational operator state", () => {
         automaticExecution: false,
       }),
     ]);
+    expect(listControlledConversionRecoveryActions(snapshot)).toEqual([
+      expect.objectContaining({
+        targetId: "us-uspto-tbmp-current",
+        stage: "CONVERT",
+        actionCode: "RUN_CONVERSION_RECOVERY",
+        executionPath: "CONVERSION_RECOVERY",
+        automaticExecution: false,
+      }),
+    ]);
+  });
+
+  it("allows explicit operator retry only for M11 retryable terminal states", () => {
+    expect(conversionRecoveryStateAllowsOperatorRetry("WAITING")).toBe(true);
+    expect(conversionRecoveryStateAllowsOperatorRetry("DEAD_LETTERED")).toBe(true);
+    expect(conversionRecoveryStateAllowsOperatorRetry("RUNNING")).toBe(false);
+    expect(conversionRecoveryStateAllowsOperatorRetry("RESOLVED")).toBe(false);
   });
 
   it("keeps request, approval and execution as separate UI phases", () => {

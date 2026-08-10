@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
+import { FoundationalConversionRecoveryWorkbench } from "./foundational-conversion-recovery-workbench";
 import { FoundationalOperatorWorkbench } from "./foundational-operator-workbench";
 
 type Jurisdiction = "US" | "WO";
@@ -105,8 +106,9 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
               <span className="text-xs text-amber-900/70">Workspace · {workspaceId}</span>
             </div>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-950/80">
-              M25 将 M23/M24 的受控 COLLECT 流程接入 UI；M26 再把 exact CollectionRun
-              结果回流到操作面。审批不会自动执行，运行中禁止并发重复派发，失败/取消后的重试必须重新审批。
+              COLLECT 继续使用 M25/M26 的审批 + 显式派发；M27 仅把 CONVERT target 接到已有 M11
+              operator retry。两条路径都不因查看 readiness 而自动执行，M27 也不会从此操作面调用
+              conversion reconcile。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -155,12 +157,20 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
       ) : null}
 
       {snapshot ? (
-        <FoundationalOperatorWorkbench
-          workspaceId={workspaceId}
-          jurisdiction={jurisdiction}
-          snapshot={snapshot}
-          onSnapshotRefresh={refresh}
-        />
+        <div className="space-y-3">
+          <FoundationalOperatorWorkbench
+            workspaceId={workspaceId}
+            jurisdiction={jurisdiction}
+            snapshot={snapshot}
+            onSnapshotRefresh={refresh}
+          />
+          <FoundationalConversionRecoveryWorkbench
+            workspaceId={workspaceId}
+            jurisdiction={jurisdiction}
+            snapshot={snapshot}
+            onSnapshotRefresh={refresh}
+          />
+        </div>
       ) : null}
     </div>
   );

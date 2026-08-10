@@ -13,6 +13,16 @@ export type ControlledCollectionAction = {
   automaticExecution: false;
 };
 
+export type ControlledConversionRecoveryAction = {
+  targetId: string;
+  actionCode: "RUN_CONVERSION_RECOVERY";
+  stage: "CONVERT";
+  operatorInstruction: string;
+  executionPath: "CONVERSION_RECOVERY";
+  collectionAuthorizationRequired: false;
+  automaticExecution: false;
+};
+
 export type FoundationalOperatorPhase =
   | "REQUEST_APPROVAL"
   | "PENDING_APPROVAL"
@@ -51,6 +61,39 @@ export function listControlledCollectionActions(
     }
   }
   return actions;
+}
+
+export function listControlledConversionRecoveryActions(
+  snapshot: FoundationalRemediationQueueSnapshot,
+): ControlledConversionRecoveryAction[] {
+  const actions: ControlledConversionRecoveryAction[] = [];
+  for (const item of snapshot.remediationQueue.items) {
+    if (item.stage !== "CONVERT") continue;
+    for (const action of item.actions) {
+      if (
+        action.code !== "RUN_CONVERSION_RECOVERY" ||
+        action.executionPath !== "CONVERSION_RECOVERY" ||
+        action.collectionAuthorizationRequired !== false ||
+        action.automaticExecution !== false
+      ) {
+        continue;
+      }
+      actions.push({
+        targetId: item.targetId,
+        actionCode: action.code,
+        stage: "CONVERT",
+        operatorInstruction: action.operatorInstruction,
+        executionPath: action.executionPath,
+        collectionAuthorizationRequired: false,
+        automaticExecution: false,
+      });
+    }
+  }
+  return actions;
+}
+
+export function conversionRecoveryStateAllowsOperatorRetry(state: string): boolean {
+  return state === "WAITING" || state === "DEAD_LETTERED";
 }
 
 export function latestIntentForAction(
