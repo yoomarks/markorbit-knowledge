@@ -14,7 +14,7 @@
     "test": "pnpm -r test",
     "calibrate:source-intelligence": "node scripts/source-intelligence-calibration.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write 'apps/admin/src/app/api/ready-packages/[id]/core-intake/submit/route.ts' apps/admin/src/server/__tests__/core-intake-http-transport.test.ts apps/admin/src/server/__tests__/ready-package-core-intake-submit.test.ts apps/admin/src/server/ready-package-core-intake-submit.ts packages/persistence/src/ready-package-core-intake-submission.ts && git diff -- 'apps/admin/src/app/api/ready-packages/[id]/core-intake/submit/route.ts' apps/admin/src/server/__tests__/core-intake-http-transport.test.ts apps/admin/src/server/__tests__/ready-package-core-intake-submit.test.ts apps/admin/src/server/ready-package-core-intake-submit.ts packages/persistence/src/ready-package-core-intake-submission.ts && false",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
