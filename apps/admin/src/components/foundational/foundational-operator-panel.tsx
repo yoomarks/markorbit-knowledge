@@ -109,8 +109,8 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
             </div>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-950/80">
               COLLECT 使用 M25/M26 审批 + 显式派发；CONVERT 使用 M27 的既有 M11 operator
-              retry；INDEX 使用 M28 verified canonical reindex；QUALITY 使用 M29 的 M16 plan +
-              M17 explicit operator execution。查看 readiness 不会自动执行修复，也不会绕过人工
+              retry；INDEX 使用 M28 verified canonical reindex；QUALITY 使用 M29 的 M16 plan + M17
+              explicit operator execution。查看 readiness 不会自动执行修复，也不会绕过人工
               provenance / duplicate review。
             </p>
           </div>
