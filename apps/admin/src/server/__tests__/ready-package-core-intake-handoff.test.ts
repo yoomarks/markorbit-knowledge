@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ReadyPackage } from "@markorbit/contracts";
-import type { ReadyPackageRegistryRepository } from "@markorbit/persistence/ready-package-registry";
-import { recordReadyPackageCoreIntakeAcknowledgment } from "../ready-package-core-intake-handoff";
+import {
+  recordReadyPackageCoreIntakeAcknowledgment,
+  type CoreIntakeHandoffRepository,
+} from "../ready-package-core-intake-handoff";
 
 const DIGEST = "a".repeat(64);
 
@@ -24,11 +26,11 @@ function verifiedPackage(): ReadyPackage {
 function repository(initial = verifiedPackage()) {
   let current = initial;
   let handoffCalls = 0;
-  const repo: Pick<ReadyPackageRegistryRepository, "getById" | "markHandedOff"> = {
-    getById(id, workspaceId) {
+  const repo: CoreIntakeHandoffRepository = {
+    getById(id: string, workspaceId: string) {
       return id === current.id && workspaceId === current.workspaceId ? current : null;
     },
-    markHandedOff(id, workspaceId, expectedDigest) {
+    markHandedOff(id: string, workspaceId: string, expectedDigest: string) {
       handoffCalls += 1;
       if (id !== current.id || workspaceId !== current.workspaceId) throw new Error("not found");
       if (expectedDigest !== current.evidence.digest) throw new Error("digest mismatch");
