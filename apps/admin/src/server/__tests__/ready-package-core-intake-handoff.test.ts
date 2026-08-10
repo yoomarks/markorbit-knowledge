@@ -41,8 +41,8 @@ function input(): ReadyPackageCoreIntakeAcknowledgmentInput {
 
 describe("M33 ReadyPackage Core intake acknowledgment boundary", () => {
   it("delegates explicit acknowledgment evidence to the atomic ReadyPackage repository operation", () => {
-    let persistedInput: Parameters<CoreIntakeHandoffRepository["recordCoreIntakeAcknowledgment"]>[0] | null =
-      null;
+    let persistedInput:
+      Parameters<CoreIntakeHandoffRepository["recordCoreIntakeAcknowledgment"]>[0] | null = null;
     const repo: CoreIntakeHandoffRepository = {
       recordCoreIntakeAcknowledgment(persistenceInput) {
         persistedInput = persistenceInput;
@@ -91,7 +91,10 @@ describe("M33 ReadyPackage Core intake acknowledgment boundary", () => {
         throw new Error("should not persist");
       },
     };
-    const invalid = { ...input(), acknowledge: false } as unknown as ReadyPackageCoreIntakeAcknowledgmentInput;
+    const invalid = {
+      ...input(),
+      acknowledge: false,
+    } as unknown as ReadyPackageCoreIntakeAcknowledgmentInput;
 
     expect(() => recordReadyPackageCoreIntakeAcknowledgment(invalid, repo)).toThrow(
       "acknowledge=true is required",
