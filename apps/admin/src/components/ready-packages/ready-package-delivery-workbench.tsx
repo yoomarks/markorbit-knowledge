@@ -3,14 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, PackageCheck, RefreshCw, Send } from "lucide-react";
 import type { ReadyPackage } from "@markorbit/contracts";
-
-type TransportStatus =
-  | "NOT_SUBMITTED"
-  | "SUBMISSION_PENDING_RESULT"
-  | "SUBMISSION_FINALIZATION_PENDING"
-  | "ACKNOWLEDGED"
-  | "REJECTED"
-  | "HANDED_OFF_WITHOUT_RECEIPT";
+import { isCoreIntakeActionable, type TransportStatus } from "./ready-package-delivery-policy";
 
 type CoreIntakeReceiptView = {
   intakeId: string;
@@ -193,7 +186,9 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
   }
 
   async function submitSelected() {
-    if (!selected || !detail || selected.status !== "VERIFIED") return;
+    if (!selected || !detail || !isCoreIntakeActionable(selected.status, detail.transportStatus)) {
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setActionMessage(null);
@@ -236,10 +231,9 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
   const verifiedCount = readyPackages.filter((item) => item.status === "VERIFIED").length;
   const handedOffCount = readyPackages.filter((item) => item.status === "HANDED_OFF").length;
   const actionable =
-    selected?.status === "VERIFIED" &&
+    selected !== null &&
     detail !== null &&
-    detail.transportStatus !== "ACKNOWLEDGED" &&
-    detail.transportStatus !== "HANDED_OFF_WITHOUT_RECEIPT";
+    isCoreIntakeActionable(selected.status, detail.transportStatus);
 
   return (
     <div className="space-y-6">
