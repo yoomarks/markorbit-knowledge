@@ -1,11 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import type {
-  CoreIntakeResult,
-  CoreIntakeStatus,
-  ReadyPackage,
-  ReadyPackageEvidence,
-} from "@markorbit/contracts";
+import type { CoreIntakeResult, ReadyPackage, ReadyPackageEvidence } from "@markorbit/contracts";
 import {
   RegistryConflictError,
   RegistryError,
@@ -18,7 +13,11 @@ const CORE_INTAKE_RECEIPT_MIGRATION_ID = "0019_ready_package_core_intake_receipt
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const KEY = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
-const CORE_INTAKE_STATUSES = new Set<CoreIntakeStatus>(["RECEIVED", "ACCEPTED", "REJECTED"]);
+const CORE_INTAKE_STATUSES = new Set<CoreIntakeResult["status"]>([
+  "RECEIVED",
+  "ACCEPTED",
+  "REJECTED",
+]);
 
 export type CreateVerifiedReadyPackageInput = {
   workspaceId: string;
@@ -42,7 +41,7 @@ export type ReadyPackageCoreIntakeReceipt = {
   workspaceId: string;
   readyPackageId: string;
   expectedDigest: string;
-  status: CoreIntakeStatus;
+  status: CoreIntakeResult["status"];
   recordedAt: string;
 };
 
@@ -70,7 +69,10 @@ export interface ReadyPackageRegistryRepository {
   recordCoreIntakeAcknowledgment(
     input: RecordReadyPackageCoreIntakeAcknowledgmentInput,
   ): ReadyPackageCoreIntakeAcknowledgmentPersistenceResult;
-  listCoreIntakeReceipts(readyPackageId: string, workspaceId: string): ReadyPackageCoreIntakeReceipt[];
+  listCoreIntakeReceipts(
+    readyPackageId: string,
+    workspaceId: string,
+  ): ReadyPackageCoreIntakeReceipt[];
 }
 
 function encodeBase32(value: bigint, length: number): string {
@@ -127,9 +129,12 @@ function parseCoreIntakeReceipt(value: string): ReadyPackageCoreIntakeReceipt {
   if (
     !parsed ||
     typeof parsed !== "object" ||
-    !KEY.test(parsed.intakeId) ||
-    !KEY.test(parsed.workspaceId) ||
-    !KEY.test(parsed.readyPackageId) ||
+    typeof parsed.intakeId !== "string" ||
+    !parsed.intakeId.trim() ||
+    typeof parsed.workspaceId !== "string" ||
+    !parsed.workspaceId.trim() ||
+    typeof parsed.readyPackageId !== "string" ||
+    !parsed.readyPackageId.trim() ||
     !SHA256.test(parsed.expectedDigest) ||
     !CORE_INTAKE_STATUSES.has(parsed.status) ||
     Number.isNaN(Date.parse(parsed.recordedAt))
@@ -150,20 +155,22 @@ function validate(input: CreateVerifiedReadyPackageInput): void {
   }
 }
 
-function validateCoreIntakeAcknowledgment(input: RecordReadyPackageCoreIntakeAcknowledgmentInput): void {
-  if (!KEY.test(input.workspaceId)) throw new RegistryValidationError("workspaceId is invalid");
-  if (!KEY.test(input.readyPackageId)) throw new RegistryValidationError("readyPackageId is invalid");
+function validateCoreIntakeAcknowledgment(
+  input: RecordReadyPackageCoreIntakeAcknowledgmentInput,
+): void {
+  if (!input.workspaceId?.trim()) throw new RegistryValidationError("workspaceId is required");
+  if (!input.readyPackageId?.trim()) throw new RegistryValidationError("readyPackageId is required");
   if (!SHA256.test(input.expectedDigest)) {
     throw new RegistryValidationError("expectedDigest must be a SHA-256 digest");
   }
   if (!input.coreIntakeResult || typeof input.coreIntakeResult !== "object") {
     throw new RegistryValidationError("coreIntakeResult is required");
   }
-  if (!KEY.test(input.coreIntakeResult.intakeId)) {
-    throw new RegistryValidationError("coreIntakeResult.intakeId is invalid");
+  if (!input.coreIntakeResult.intakeId?.trim()) {
+    throw new RegistryValidationError("coreIntakeResult.intakeId is required");
   }
-  if (!KEY.test(input.coreIntakeResult.readyPackageId)) {
-    throw new RegistryValidationError("coreIntakeResult.readyPackageId is invalid");
+  if (!input.coreIntakeResult.readyPackageId?.trim()) {
+    throw new RegistryValidationError("coreIntakeResult.readyPackageId is required");
   }
   if (!CORE_INTAKE_STATUSES.has(input.coreIntakeResult.status)) {
     throw new RegistryValidationError("coreIntakeResult.status is invalid");
@@ -242,12 +249,17 @@ export function ensureReadyPackageRegistry(database: DatabaseSync): void {
         status TEXT NOT NULL CHECK (status IN ('RECEIVED','ACCEPTED','REJECTED')),
         document_json TEXT NOT NULL,
         recorded_at TEXT NOT NULL,
-        PRIMARY KEY (workspace_id, intake_id),
+        PRIMARY KEY (workspace_id, intake_id, status),
         FOREIGN KEY (ready_package_id) REFERENCES ready_packages(id)
       ) STRICT;
 
       CREATE INDEX IF NOT EXISTS idx_ready_package_core_intake_receipts_package
-        ON ready_package_core_intake_receipts(workspace_id, ready_package_id, recorded_at DESC, intake_id DESC);
+        ON ready_package_core_intake_receipts(
+          workspace_id,
+          ready_package_id,
+          recorded_at DESC,
+          intake_id DESC
+        );
     `,
   );
 }
@@ -272,7 +284,8 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
          WHERE workspace_id = ? AND idempotency_key = ?`,
         )
         .get(input.workspaceId, input.idempotencyKey) as
-        { request_digest: string; ready_package_id: string } | undefined;
+        | { request_digest: string; ready_package_id: string }
+        | undefined;
       if (replay) {
         if (replay.request_digest !== requestDigest) {
           throw new RegistryConflictError(
@@ -387,18 +400,27 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
         );
       }
 
-      const existing = this.getCoreIntakeReceipt(input.coreIntakeResult.intakeId, input.workspaceId);
+      const intakeReceipts = this.getCoreIntakeReceiptsByIntakeId(
+        input.coreIntakeResult.intakeId,
+        input.workspaceId,
+      );
+      if (
+        intakeReceipts.some(
+          (receipt) =>
+            receipt.readyPackageId !== input.readyPackageId ||
+            receipt.expectedDigest !== input.expectedDigest,
+        )
+      ) {
+        throw new RegistryConflictError(
+          "CORE_INTAKE_RECEIPT_IDEMPOTENCY_CONFLICT",
+          "Core intake receipt intakeId was reused for different ReadyPackage evidence",
+        );
+      }
+
+      const existing = intakeReceipts.find(
+        (receipt) => receipt.status === input.coreIntakeResult.status,
+      );
       if (existing) {
-        if (
-          existing.readyPackageId !== input.readyPackageId ||
-          existing.expectedDigest !== input.expectedDigest ||
-          existing.status !== input.coreIntakeResult.status
-        ) {
-          throw new RegistryConflictError(
-            "CORE_INTAKE_RECEIPT_IDEMPOTENCY_CONFLICT",
-            "Core intake receipt intakeId was reused with different acknowledgment evidence",
-          );
-        }
         this.database.exec("COMMIT;");
         const handoffRecorded = existing.status !== "REJECTED";
         return {
@@ -479,23 +501,24 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
       .prepare(
         `SELECT document_json FROM ready_package_core_intake_receipts
          WHERE workspace_id = ? AND ready_package_id = ?
-         ORDER BY recorded_at DESC, intake_id DESC`,
+         ORDER BY recorded_at DESC, rowid DESC`,
       )
       .all(workspaceId, readyPackageId)
       .map((row) => parseCoreIntakeReceipt(String((row as { document_json: string }).document_json)));
   }
 
-  private getCoreIntakeReceipt(
+  private getCoreIntakeReceiptsByIntakeId(
     intakeId: string,
     workspaceId: string,
-  ): ReadyPackageCoreIntakeReceipt | null {
-    const row = this.database
+  ): ReadyPackageCoreIntakeReceipt[] {
+    return this.database
       .prepare(
         `SELECT document_json FROM ready_package_core_intake_receipts
-         WHERE workspace_id = ? AND intake_id = ?`,
+         WHERE workspace_id = ? AND intake_id = ?
+         ORDER BY rowid ASC`,
       )
-      .get(workspaceId, intakeId) as { document_json: string } | undefined;
-    return row ? parseCoreIntakeReceipt(row.document_json) : null;
+      .all(workspaceId, intakeId)
+      .map((row) => parseCoreIntakeReceipt(String((row as { document_json: string }).document_json)));
   }
 
   private transitionHandedOff(
