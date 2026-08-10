@@ -4,7 +4,6 @@ import {
   RegistryError,
   RegistryValidationError,
 } from "@markorbit/persistence";
-import type { ReadyPackageRegistryRepository } from "@markorbit/persistence/ready-package-registry";
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const CORE_INTAKE_STATUSES = new Set<CoreIntakeResult["status"]>([
@@ -13,10 +12,10 @@ const CORE_INTAKE_STATUSES = new Set<CoreIntakeResult["status"]>([
   "REJECTED",
 ]);
 
-type CoreIntakeHandoffRepository = Pick<
-  ReadyPackageRegistryRepository,
-  "getById" | "markHandedOff"
->;
+export type CoreIntakeHandoffRepository = {
+  getById(id: string, workspaceId: string): ReadyPackage | null;
+  markHandedOff(id: string, workspaceId: string, expectedDigest: string): ReadyPackage;
+};
 
 export type ReadyPackageCoreIntakeAcknowledgmentInput = {
   workspaceId: string;
