@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCoreIntakeActionable } from "./ready-package-delivery-workbench";
+import { isCoreIntakeActionable } from "./ready-package-delivery-policy";
 
 describe("ReadyPackage delivery workbench Core intake eligibility", () => {
   it("keeps normal VERIFIED delivery actions available", () => {
