@@ -12,7 +12,6 @@ import {
   type ConversionOutputReadyReport,
   type ConversionProgressReport,
   type ConversionStartedReport,
-  type CoreIntakeRequest,
   type RawArtifactReadGrant,
 } from "@markorbit/contracts";
 import {
@@ -20,7 +19,11 @@ import {
   RegistryError,
   RegistryValidationError,
 } from "@markorbit/persistence";
-import { canonicalMarkdownFrontmatter, createCoreIntakeRequest } from "@markorbit/worker-runtime";
+import {
+  canonicalMarkdownFrontmatter,
+  createCoreIntakeRequestPreview,
+  type CoreIntakeRequestPreview,
+} from "@markorbit/worker-runtime";
 import { canonicalDocumentMetadata } from "./canonical-document-metadata";
 import {
   reconcileAutomaticConversions,
@@ -60,7 +63,7 @@ export type ProductionStagingCommitResult = {
   verificationOutcome: "PASS" | "PASS_WITH_WARNINGS" | "FAIL";
   finalizationDecision: "COMPLETED" | "FAILED";
   readyPackageId?: string;
-  coreIntakeRequest?: CoreIntakeRequest;
+  coreIntakeRequestPreview?: CoreIntakeRequestPreview;
 };
 
 export type AutomaticConversionRecoveryStatus =
@@ -348,14 +351,14 @@ export class ProductionConversionWorkerService {
       contentSha256: descriptor.contentHash.value,
       canonicalMarkdown: input.content,
     });
-    const coreIntakeRequest = createCoreIntakeRequest(packageResult.readyPackage);
+    const coreIntakeRequestPreview = createCoreIntakeRequestPreview(packageResult.readyPackage);
     return {
       stagingDocumentId: descriptor.id,
       stagingStatus: "READY",
       verificationOutcome: outcome,
       finalizationDecision: "COMPLETED",
       readyPackageId: packageResult.readyPackage.id,
-      coreIntakeRequest,
+      coreIntakeRequestPreview,
     };
   }
 }

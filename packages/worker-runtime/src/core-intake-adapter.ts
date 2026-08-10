@@ -6,6 +6,8 @@ export type CoreIntakeHandoff = {
   artifactId: string;
 };
 
+export type CoreIntakeRequestPreview = Omit<CoreIntakeRequest, "submittedAt">;
+
 /**
  * Boundary adapter for handing a verified package toward MarkOrbit Core.
  * The default implementation is side-effect free; a production transport can
@@ -24,7 +26,7 @@ export class CoreIntakeAdapter {
   }
 }
 
-export function createCoreIntakeRequest(pkg: ReadyPackage): CoreIntakeRequest {
+export function createCoreIntakeRequestPreview(pkg: ReadyPackage): CoreIntakeRequestPreview {
   return {
     readyPackageId: pkg.id,
     workspaceId: pkg.workspaceId,
@@ -33,6 +35,12 @@ export function createCoreIntakeRequest(pkg: ReadyPackage): CoreIntakeRequest {
       artifactIds: pkg.evidence.artifactIds,
       stagingDocumentId: pkg.evidence.stagingDocumentId,
     },
-    submittedAt: pkg.createdAt,
+  };
+}
+
+export function createCoreIntakeRequest(pkg: ReadyPackage, submittedAt: string): CoreIntakeRequest {
+  return {
+    ...createCoreIntakeRequestPreview(pkg),
+    submittedAt,
   };
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { CoreIntakeResult } from "@markorbit/contracts";
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
-import { createCoreIntakeRequest } from "@markorbit/worker-runtime";
+import { createCoreIntakeRequestPreview } from "@markorbit/worker-runtime";
 import { apiError } from "@/server/api-errors";
 import { recordReadyPackageCoreIntakeAcknowledgment } from "@/server/ready-package-core-intake-handoff";
 import { getReadyPackageRepository } from "@/server/source-registry";
@@ -37,7 +37,7 @@ export async function GET(request: Request, context: RouteContext) {
         : "NOT_SUBMITTED";
     return NextResponse.json({
       readyPackageStatus: readyPackage.status,
-      coreIntakeRequest: createCoreIntakeRequest(readyPackage),
+      coreIntakeRequestPreview: createCoreIntakeRequestPreview(readyPackage),
       transportStatus,
       latestCoreIntakeReceipt,
       coreIntakeReceipts,
@@ -47,7 +47,7 @@ export async function GET(request: Request, context: RouteContext) {
           : "Knowledge has persisted explicit Core intake receipt evidence for this ReadyPackage."
         : readyPackage.status === "HANDED_OFF"
           ? "This ReadyPackage predates persisted Core intake receipts; Knowledge does not invent historical receipt evidence."
-          : "Knowledge prepares the handoff envelope but does not invent a Core acceptance receipt.",
+          : "Knowledge exposes a handoff preview but does not claim the ReadyPackage has been submitted to Core.",
     });
   } catch (error) {
     return apiError(error);
