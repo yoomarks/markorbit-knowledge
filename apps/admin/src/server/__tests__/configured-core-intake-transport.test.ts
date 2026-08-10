@@ -56,9 +56,7 @@ describe("configured Core intake transport", () => {
 
     const transport = configuredCoreIntakeTransport(fetchImpl);
     expect(fetchImpl).not.toHaveBeenCalled();
-    await expect(
-      transport.submit(request(), "core-intake:cis_lazy_config"),
-    ).rejects.toMatchObject({
+    await expect(transport.submit(request(), "core-intake:cis_lazy_config")).rejects.toMatchObject({
       code: "CORE_INTAKE_TRANSPORT_NOT_CONFIGURED",
       httpStatus: 503,
     });
@@ -120,10 +118,12 @@ describe("configured Core intake transport", () => {
 
     expect(transport.resolveDestinationWorkspaceId?.("wsp_lazy_config")).toBe(CORE_WORKSPACE_ID);
     expect(fetchImpl).not.toHaveBeenCalled();
-    await expect(transport.submit(request(), "core-intake:cis_lazy_config")).resolves.toMatchObject({
-      status: "RECEIVED",
-      readyPackageId: "rdp_lazy_config",
-    });
+    await expect(transport.submit(request(), "core-intake:cis_lazy_config")).resolves.toMatchObject(
+      {
+        status: "RECEIVED",
+        readyPackageId: "rdp_lazy_config",
+      },
+    );
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
