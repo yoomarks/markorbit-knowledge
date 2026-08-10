@@ -36,10 +36,7 @@ function secondInput() {
   };
 }
 
-function repository(
-  database: DatabaseSync,
-  readyPackageId = "rdp_01H00000000000000000000000",
-) {
+function repository(database: DatabaseSync, readyPackageId = "rdp_01H00000000000000000000000") {
   return new SqliteReadyPackageRegistryRepository(
     database,
     () => new Date("2026-08-08T01:00:00.000Z"),
@@ -74,9 +71,7 @@ describe("ReadyPackage registry", () => {
     const created = registry.createVerified(input());
     expect(created.replayed).toBe(false);
     expect(created.readyPackage.status).toBe("VERIFIED");
-    expect(created.readyPackage.evidence.artifactIds).toEqual([
-      "art_01H00000000000000000000000",
-    ]);
+    expect(created.readyPackage.evidence.artifactIds).toEqual(["art_01H00000000000000000000000"]);
     expect(created.readyPackage.evidence.rawArtifactSha256).toBe(SHA_A);
     expect(created.readyPackage.evidence.stagingSha256).toBe(SHA_B);
     expect(created.readyPackage.evidence.legalTruthVerified).toBe(false);
@@ -172,7 +167,9 @@ describe("ReadyPackage registry", () => {
       receipt: { status: "REJECTED" },
     });
     expect(registry.getById(readyPackage.id, readyPackage.workspaceId)?.status).toBe("VERIFIED");
-    expect(registry.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(1);
+    expect(registry.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(
+      1,
+    );
 
     database.close();
   });
@@ -219,12 +216,7 @@ describe("ReadyPackage registry", () => {
     const firstRegistry = repository(database);
     const firstPackage = firstRegistry.createVerified(input()).readyPackage;
     firstRegistry.recordCoreIntakeAcknowledgment(
-      acknowledgment(
-        firstPackage.id,
-        firstPackage.evidence.digest,
-        "RECEIVED",
-        "intake_shared",
-      ),
+      acknowledgment(firstPackage.id, firstPackage.evidence.digest, "RECEIVED", "intake_shared"),
     );
 
     const secondRegistry = repository(database, "rdp_02H00000000000000000000000");
@@ -267,7 +259,9 @@ describe("ReadyPackage registry", () => {
         },
       }),
     ).toThrow("Core intake result belongs to another ReadyPackage");
-    expect(registry.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(0);
+    expect(registry.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(
+      0,
+    );
 
     database.close();
   });
@@ -283,10 +277,17 @@ describe("ReadyPackage registry", () => {
 
     expect(() =>
       registry.recordCoreIntakeAcknowledgment(
-        acknowledgment(readyPackage.id, readyPackage.evidence.digest, "REJECTED", "intake_rejected"),
+        acknowledgment(
+          readyPackage.id,
+          readyPackage.evidence.digest,
+          "REJECTED",
+          "intake_rejected",
+        ),
       ),
     ).toThrow("A rejected Core intake result cannot reverse an already recorded handoff");
-    expect(registry.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(1);
+    expect(registry.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(
+      1,
+    );
 
     database.close();
   });
@@ -310,7 +311,9 @@ describe("ReadyPackage registry", () => {
       ),
     ).toThrow("receipt write failed");
     expect(registry.getById(readyPackage.id, readyPackage.workspaceId)?.status).toBe("VERIFIED");
-    expect(registry.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(0);
+    expect(registry.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(
+      0,
+    );
 
     database.close();
   });
