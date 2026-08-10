@@ -197,7 +197,9 @@ export function FoundationalSupplyHealthWorkbench({ workspaceId, jurisdiction, s
             </span>
           </div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
-            M31 复用现有 source-supply-health，只查看单个 FOUNDATIONAL target 的注册、采集、规范化、索引和 freshness 证据。HEALTH 是完整性兜底诊断层，不新增自动执行、审批或修复捷径。
+            M31 复用现有 source-supply-health，只查看单个 FOUNDATIONAL target
+            的注册、采集、规范化、索引和 freshness 证据。HEALTH
+            是完整性兜底诊断层，不新增自动执行、审批或修复捷径。
           </p>
         </div>
         <button
@@ -249,15 +251,19 @@ export function FoundationalSupplyHealthWorkbench({ workspaceId, jurisdiction, s
 
               {!result && loading ? (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
-                  <RefreshCw className="animate-spin" size={15} aria-hidden="true" /> Loading target health…
+                  <RefreshCw className="animate-spin" size={15} aria-hidden="true" /> Loading target
+                  health…
                 </div>
               ) : result && result.items.length === 0 ? (
                 <div className="mt-4 flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-900">
                   <AlertTriangle className="mt-0.5 shrink-0" size={16} aria-hidden="true" />
                   <div>
-                    <p className="text-sm font-medium">No target-scoped supply-health record was returned.</p>
+                    <p className="text-sm font-medium">
+                      No target-scoped supply-health record was returned.
+                    </p>
                     <p className="mt-1 text-xs leading-5 text-rose-700">
-                      Treat this as HEALTH_RECORD_MISSING integrity evidence. M31 does not synthesize a record or bypass the readiness gate.
+                      Treat this as HEALTH_RECORD_MISSING integrity evidence. M31 does not
+                      synthesize a record or bypass the readiness gate.
                     </p>
                   </div>
                 </div>
@@ -270,7 +276,8 @@ export function FoundationalSupplyHealthWorkbench({ workspaceId, jurisdiction, s
                       {record.state}
                     </span>
                     <span className="text-xs text-slate-500">
-                      {record.family} · {record.coverageTier} · sensitivity {record.changeSensitivity}
+                      {record.family} · {record.coverageTier} · sensitivity{" "}
+                      {record.changeSensitivity}
                     </span>
                   </div>
 
@@ -310,13 +317,13 @@ export function FoundationalSupplyHealthWorkbench({ workspaceId, jurisdiction, s
                       <p>Indexed · {record.retrieval.indexedDocumentCount}</p>
                       <p>Current · {record.retrieval.currentDocumentCount}</p>
                       <p>Chunks · {record.retrieval.currentChunkCount}</p>
-                      <p>
-                        Artifact version · {record.retrieval.currentArtifactVersion ?? "none"}
-                      </p>
+                      <p>Artifact version · {record.retrieval.currentArtifactVersion ?? "none"}</p>
                     </div>
                     <div className="rounded-lg border border-slate-200 p-3 text-xs leading-5 text-slate-600">
                       <p className="font-semibold text-slate-800">Freshness</p>
-                      <p className={freshnessClass(record.freshness.state)}>{record.freshness.state}</p>
+                      <p className={freshnessClass(record.freshness.state)}>
+                        {record.freshness.state}
+                      </p>
                       <p>Age · {record.freshness.ageHours ?? "none"}h</p>
                       <p>Max · {record.freshness.maxAgeHours}h</p>
                       <p>Observed · {timeLabel(record.freshness.lastObservedAt)}</p>
@@ -339,7 +346,8 @@ export function FoundationalSupplyHealthWorkbench({ workspaceId, jurisdiction, s
 
                   {record.state === "READY" && record.gaps.length === 0 ? (
                     <p className="flex items-center gap-1.5 text-xs text-emerald-700">
-                      <ShieldCheck size={14} aria-hidden="true" /> Current supply-health evidence is clear; refresh the parent readiness snapshot before any manual conclusion.
+                      <ShieldCheck size={14} aria-hidden="true" /> Current supply-health evidence is
+                      clear; refresh the parent readiness snapshot before any manual conclusion.
                     </p>
                   ) : null}
                 </div>
