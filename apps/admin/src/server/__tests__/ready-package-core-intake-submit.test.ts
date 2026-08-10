@@ -8,7 +8,10 @@ import {
   type ReadyPackageCoreIntakeSubmissionRepository,
 } from "@markorbit/persistence/ready-package-core-intake-submissions";
 import type { CoreIntakeTransport } from "../core-intake-http-transport";
-import { submitReadyPackageCoreIntake } from "../ready-package-core-intake-submit";
+import {
+  submitReadyPackageCoreIntake,
+  type ReadyPackageCoreIntakeSubmitRepository,
+} from "../ready-package-core-intake-submit";
 
 const WORKSPACE_ID = "wsp_01H00000000000000000000000";
 
@@ -81,6 +84,10 @@ describe("ReadyPackage Core intake submission", () => {
     await expect(
       submitReadyPackageCoreIntake(input, repository, submissions, transport),
     ).rejects.toThrow("uncertain network outcome");
+    const pendingAfterUncertain = submissions.list(readyPackage.id, readyPackage.workspaceId)[0];
+    expect(pendingAfterUncertain.state).toBe("PENDING");
+    expect(pendingAfterUncertain.transportResult).toBeUndefined();
+
     now = "2026-08-10T05:05:00.000Z";
     const recovered = await submitReadyPackageCoreIntake(input, repository, submissions, transport);
 
@@ -91,8 +98,13 @@ describe("ReadyPackage Core intake submission", () => {
       request: { submittedAt: "2026-08-10T05:01:00.000Z" },
     });
     expect(recovered.submissionReplayed).toBe(true);
+    expect(recovered.transportResultReplayed).toBe(false);
     expect(recovered.reconciledFromReceipt).toBe(false);
-    expect(recovered.submission.state).toBe("RESULT_RECORDED");
+    expect(recovered.submission).toMatchObject({
+      state: "RESULT_RECORDED",
+      transportResult: { intakeId: "intake_retry", status: "RECEIVED" },
+      result: { intakeId: "intake_retry", status: "RECEIVED" },
+    });
     expect(recovered.acknowledgment.readyPackage.status).toBe("HANDED_OFF");
     expect(
       repository.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId),
@@ -101,7 +113,7 @@ describe("ReadyPackage Core intake submission", () => {
     database.close();
   });
 
-  it("records a real REJECTED result without marking the ReadyPackage handed off", async () => {
+  it("records a real REJECTED transport result before finalizing the submission", async () => {
     const database = new DatabaseSync(":memory:");
     initializeRegistry(database);
     const { repository, readyPackage } = createReadyPackage(database);
@@ -127,6 +139,7 @@ describe("ReadyPackage Core intake submission", () => {
       transport,
     );
 
+    expect(result.transportResultReplayed).toBe(false);
     expect(result.reconciledFromReceipt).toBe(false);
     expect(result.acknowledgment).toMatchObject({
       handoffRecorded: false,
@@ -135,13 +148,14 @@ describe("ReadyPackage Core intake submission", () => {
     });
     expect(result.submission).toMatchObject({
       state: "RESULT_RECORDED",
+      transportResult: { intakeId: "intake_rejected", status: "REJECTED" },
       result: { intakeId: "intake_rejected", status: "REJECTED" },
     });
 
     database.close();
   });
 
-  it("repairs a pending submission from its persisted receipt without a second transport call", async () => {
+  it("repairs a final-result persistence failure from the exact persisted transport result", async () => {
     const database = new DatabaseSync(":memory:");
     initializeRegistry(database);
     let readyPackageNow = "2026-08-10T05:00:00.000Z";
@@ -155,15 +169,18 @@ describe("ReadyPackage Core intake submission", () => {
       () => new Date(submissionNow),
       () => "cis_partial_commit",
     );
-    let failResultPersistence = true;
+    let failFinalResultPersistence = true;
     const submissions: ReadyPackageCoreIntakeSubmissionRepository = {
       prepare(input) {
         return persistedSubmissions.prepare(input);
       },
+      recordTransportResult(submissionId, workspaceId, result) {
+        return persistedSubmissions.recordTransportResult(submissionId, workspaceId, result);
+      },
       recordResult(submissionId, workspaceId, result) {
-        if (failResultPersistence) {
-          failResultPersistence = false;
-          throw new Error("simulated submission result persistence failure");
+        if (failFinalResultPersistence) {
+          failFinalResultPersistence = false;
+          throw new Error("simulated final submission result persistence failure");
         }
         return persistedSubmissions.recordResult(submissionId, workspaceId, result);
       },
@@ -188,7 +205,7 @@ describe("ReadyPackage Core intake submission", () => {
 
     await expect(
       submitReadyPackageCoreIntake(input, repository, submissions, transport),
-    ).rejects.toThrow("simulated submission result persistence failure");
+    ).rejects.toThrow("simulated final submission result persistence failure");
     expect(transportCalls).toBe(1);
     expect(repository.getById(readyPackage.id, readyPackage.workspaceId)?.status).toBe(
       "HANDED_OFF",
@@ -196,15 +213,23 @@ describe("ReadyPackage Core intake submission", () => {
     expect(
       repository.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId),
     ).toMatchObject([{ intakeId: "intake_partial_commit", status: "RECEIVED" }]);
-    expect(persistedSubmissions.list(readyPackage.id, readyPackage.workspaceId)).toMatchObject([
-      { state: "PENDING", submittedAt: "2026-08-10T05:01:00.000Z" },
-    ]);
+    const pendingAfterFinalizationFailure = persistedSubmissions.list(
+      readyPackage.id,
+      readyPackage.workspaceId,
+    )[0];
+    expect(pendingAfterFinalizationFailure).toMatchObject({
+      state: "PENDING",
+      submittedAt: "2026-08-10T05:01:00.000Z",
+      transportResult: { intakeId: "intake_partial_commit", status: "RECEIVED" },
+    });
+    expect(pendingAfterFinalizationFailure.result).toBeUndefined();
 
     submissionNow = "2026-08-10T05:03:00.000Z";
     const repaired = await submitReadyPackageCoreIntake(input, repository, submissions, transport);
 
     expect(transportCalls).toBe(1);
-    expect(repaired.reconciledFromReceipt).toBe(true);
+    expect(repaired.transportResultReplayed).toBe(true);
+    expect(repaired.reconciledFromReceipt).toBe(false);
     expect(repaired.submissionReplayed).toBe(true);
     expect(repaired.coreIntakeResult).toEqual({
       intakeId: "intake_partial_commit",
@@ -214,13 +239,83 @@ describe("ReadyPackage Core intake submission", () => {
     expect(repaired.acknowledgment.replayed).toBe(true);
     expect(repaired.submission).toMatchObject({
       state: "RESULT_RECORDED",
+      transportResult: { intakeId: "intake_partial_commit", status: "RECEIVED" },
       result: { intakeId: "intake_partial_commit", status: "RECEIVED" },
     });
 
     database.close();
   });
 
-  it("does not reconcile a new submission from an older completed rejection receipt", async () => {
+  it("retries local acknowledgment from a persisted transport result without a second HTTP call", async () => {
+    const database = new DatabaseSync(":memory:");
+    initializeRegistry(database);
+    const { repository, readyPackage } = createReadyPackage(database);
+    let submissionNow = "2026-08-10T05:01:00.000Z";
+    const submissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(
+      database,
+      () => new Date(submissionNow),
+      () => "cis_ack_failure",
+    );
+    let failAcknowledgment = true;
+    const readyPackages: ReadyPackageCoreIntakeSubmitRepository = {
+      getById(id, workspaceId) {
+        return repository.getById(id, workspaceId);
+      },
+      recordCoreIntakeAcknowledgment(input) {
+        if (failAcknowledgment) {
+          failAcknowledgment = false;
+          throw new Error("simulated acknowledgment persistence failure");
+        }
+        return repository.recordCoreIntakeAcknowledgment(input);
+      },
+    };
+    let transportCalls = 0;
+    const transport: CoreIntakeTransport = {
+      async submit(request) {
+        transportCalls += 1;
+        if (transportCalls > 1) throw new Error("transport must not be called twice");
+        return {
+          intakeId: "intake_ack_failure",
+          status: "RECEIVED",
+          readyPackageId: request.readyPackageId,
+        };
+      },
+    };
+    const input = submitInput(readyPackage);
+
+    await expect(
+      submitReadyPackageCoreIntake(input, readyPackages, submissions, transport),
+    ).rejects.toThrow("simulated acknowledgment persistence failure");
+    expect(transportCalls).toBe(1);
+    expect(repository.getById(readyPackage.id, readyPackage.workspaceId)?.status).toBe("VERIFIED");
+    expect(
+      repository.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId),
+    ).toHaveLength(0);
+    expect(submissions.list(readyPackage.id, readyPackage.workspaceId)).toMatchObject([
+      {
+        state: "PENDING",
+        transportResult: { intakeId: "intake_ack_failure", status: "RECEIVED" },
+      },
+    ]);
+
+    submissionNow = "2026-08-10T05:03:00.000Z";
+    const recovered = await submitReadyPackageCoreIntake(
+      input,
+      readyPackages,
+      submissions,
+      transport,
+    );
+
+    expect(transportCalls).toBe(1);
+    expect(recovered.transportResultReplayed).toBe(true);
+    expect(recovered.submissionReplayed).toBe(true);
+    expect(recovered.acknowledgment.readyPackage.status).toBe("HANDED_OFF");
+    expect(recovered.submission.state).toBe("RESULT_RECORDED");
+
+    database.close();
+  });
+
+  it("does not adopt an unrelated manual receipt for a pending submission", async () => {
     const database = new DatabaseSync(":memory:");
     initializeRegistry(database);
     let readyPackageNow = "2026-08-10T05:00:00.000Z";
@@ -229,27 +324,18 @@ describe("ReadyPackage Core intake submission", () => {
       () => new Date(readyPackageNow),
     );
     let submissionNow = "2026-08-10T05:01:00.000Z";
-    let nextSubmission = 0;
     const submissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(
       database,
       () => new Date(submissionNow),
-      () => (nextSubmission++ === 0 ? "cis_old_rejection" : "cis_new_attempt"),
+      () => "cis_manual_receipt_guard",
     );
     let transportCalls = 0;
     const transport: CoreIntakeTransport = {
       async submit(request) {
         transportCalls += 1;
-        if (transportCalls === 1) {
-          readyPackageNow = "2026-08-10T05:02:00.000Z";
-          return {
-            intakeId: "intake_old_rejection",
-            status: "REJECTED",
-            readyPackageId: request.readyPackageId,
-          };
-        }
-        readyPackageNow = "2026-08-10T05:04:00.000Z";
+        if (transportCalls === 1) throw new Error("uncertain network outcome");
         return {
-          intakeId: "intake_new_attempt",
+          intakeId: "intake_network_result",
           status: "RECEIVED",
           readyPackageId: request.readyPackageId,
         };
@@ -257,23 +343,44 @@ describe("ReadyPackage Core intake submission", () => {
     };
     const input = submitInput(readyPackage);
 
-    const rejected = await submitReadyPackageCoreIntake(input, repository, submissions, transport);
-    expect(rejected.acknowledgment.disposition).toBe("REJECTED_NOT_HANDED_OFF");
+    await expect(
+      submitReadyPackageCoreIntake(input, repository, submissions, transport),
+    ).rejects.toThrow("uncertain network outcome");
+    const pendingBeforeManualReceipt = submissions.list(
+      readyPackage.id,
+      readyPackage.workspaceId,
+    )[0];
+    expect(pendingBeforeManualReceipt.state).toBe("PENDING");
+    expect(pendingBeforeManualReceipt.transportResult).toBeUndefined();
+
+    readyPackageNow = "2026-08-10T05:02:00.000Z";
+    repository.recordCoreIntakeAcknowledgment({
+      workspaceId: readyPackage.workspaceId,
+      readyPackageId: readyPackage.id,
+      expectedDigest: readyPackage.evidence.digest,
+      coreIntakeResult: {
+        intakeId: "intake_manual_unrelated",
+        status: "REJECTED",
+        readyPackageId: readyPackage.id,
+      },
+    });
 
     submissionNow = "2026-08-10T05:03:00.000Z";
-    const acceptedLater = await submitReadyPackageCoreIntake(
-      input,
-      repository,
-      submissions,
-      transport,
-    );
+    const recovered = await submitReadyPackageCoreIntake(input, repository, submissions, transport);
 
     expect(transportCalls).toBe(2);
-    expect(acceptedLater.reconciledFromReceipt).toBe(false);
-    expect(acceptedLater.coreIntakeResult).toMatchObject({
-      intakeId: "intake_new_attempt",
+    expect(recovered.transportResultReplayed).toBe(false);
+    expect(recovered.reconciledFromReceipt).toBe(false);
+    expect(recovered.coreIntakeResult).toMatchObject({
+      intakeId: "intake_network_result",
       status: "RECEIVED",
     });
+    expect(
+      repository.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId),
+    ).toMatchObject([
+      { intakeId: "intake_network_result", status: "RECEIVED" },
+      { intakeId: "intake_manual_unrelated", status: "REJECTED" },
+    ]);
 
     database.close();
   });

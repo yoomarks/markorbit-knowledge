@@ -16,6 +16,12 @@ const CORE_INTAKE_STATUSES = new Set<CoreIntakeResult["status"]>([
   "REJECTED",
 ]);
 
+export type ReadyPackageCoreIntakeSubmissionResultEvidence = {
+  intakeId: string;
+  status: CoreIntakeResult["status"];
+  recordedAt: string;
+};
+
 export type ReadyPackageCoreIntakeSubmission = {
   submissionId: string;
   workspaceId: string;
@@ -24,11 +30,8 @@ export type ReadyPackageCoreIntakeSubmission = {
   idempotencyKey: string;
   submittedAt: string;
   state: "PENDING" | "RESULT_RECORDED";
-  result?: {
-    intakeId: string;
-    status: CoreIntakeResult["status"];
-    recordedAt: string;
-  };
+  transportResult?: ReadyPackageCoreIntakeSubmissionResultEvidence;
+  result?: ReadyPackageCoreIntakeSubmissionResultEvidence;
   createdAt: string;
   updatedAt: string;
 };
@@ -48,6 +51,11 @@ export interface ReadyPackageCoreIntakeSubmissionRepository {
   prepare(
     input: PrepareReadyPackageCoreIntakeSubmissionInput,
   ): PrepareReadyPackageCoreIntakeSubmissionResult;
+  recordTransportResult(
+    submissionId: string,
+    workspaceId: string,
+    result: CoreIntakeResult,
+  ): ReadyPackageCoreIntakeSubmission;
   recordResult(
     submissionId: string,
     workspaceId: string,
@@ -67,6 +75,42 @@ function validateScope(input: PrepareReadyPackageCoreIntakeSubmissionInput): voi
   if (!SHA256.test(input.expectedDigest)) {
     throw new RegistryValidationError("expectedDigest must be a SHA-256 digest");
   }
+}
+
+function validateCoreIntakeResult(result: CoreIntakeResult): void {
+  if (
+    !result ||
+    typeof result !== "object" ||
+    typeof result.intakeId !== "string" ||
+    !result.intakeId.trim() ||
+    typeof result.readyPackageId !== "string" ||
+    !result.readyPackageId.trim() ||
+    !CORE_INTAKE_STATUSES.has(result.status)
+  ) {
+    throw new RegistryValidationError("Core intake result is invalid");
+  }
+}
+
+function validateResultEvidence(
+  evidence: ReadyPackageCoreIntakeSubmissionResultEvidence | undefined,
+  message: string,
+): asserts evidence is ReadyPackageCoreIntakeSubmissionResultEvidence {
+  if (
+    !evidence ||
+    typeof evidence.intakeId !== "string" ||
+    !evidence.intakeId.trim() ||
+    !CORE_INTAKE_STATUSES.has(evidence.status) ||
+    Number.isNaN(Date.parse(evidence.recordedAt))
+  ) {
+    throw new RegistryValidationError(message);
+  }
+}
+
+function matchesResult(
+  evidence: ReadyPackageCoreIntakeSubmissionResultEvidence | undefined,
+  result: CoreIntakeResult,
+): boolean {
+  return evidence?.intakeId === result.intakeId && evidence.status === result.status;
 }
 
 function parseSubmission(value: string): ReadyPackageCoreIntakeSubmission {
@@ -90,15 +134,22 @@ function parseSubmission(value: string): ReadyPackageCoreIntakeSubmission {
   ) {
     throw new RegistryValidationError("Persisted Core intake submission is invalid");
   }
+  if (parsed.transportResult !== undefined) {
+    validateResultEvidence(
+      parsed.transportResult,
+      "Persisted Core intake transport result is invalid",
+    );
+  }
   if (parsed.state === "RESULT_RECORDED") {
+    validateResultEvidence(parsed.result, "Persisted Core intake submission result is invalid");
     if (
-      !parsed.result ||
-      typeof parsed.result.intakeId !== "string" ||
-      !parsed.result.intakeId.trim() ||
-      !CORE_INTAKE_STATUSES.has(parsed.result.status) ||
-      Number.isNaN(Date.parse(parsed.result.recordedAt))
+      parsed.transportResult &&
+      (parsed.transportResult.intakeId !== parsed.result.intakeId ||
+        parsed.transportResult.status !== parsed.result.status)
     ) {
-      throw new RegistryValidationError("Persisted Core intake submission result is invalid");
+      throw new RegistryValidationError(
+        "Persisted Core intake transport and submission results do not match",
+      );
     }
   } else if (parsed.result !== undefined) {
     throw new RegistryValidationError("Pending Core intake submission cannot contain a result");
@@ -223,24 +274,14 @@ export class SqliteReadyPackageCoreIntakeSubmissionRepository implements ReadyPa
     }
   }
 
-  recordResult(
+  recordTransportResult(
     submissionIdValue: string,
     workspaceId: string,
     result: CoreIntakeResult,
   ): ReadyPackageCoreIntakeSubmission {
     if (!submissionIdValue?.trim()) throw new RegistryValidationError("submissionId is required");
     if (!workspaceId?.trim()) throw new RegistryValidationError("workspaceId is required");
-    if (
-      !result ||
-      typeof result !== "object" ||
-      typeof result.intakeId !== "string" ||
-      !result.intakeId.trim() ||
-      typeof result.readyPackageId !== "string" ||
-      !result.readyPackageId.trim() ||
-      !CORE_INTAKE_STATUSES.has(result.status)
-    ) {
-      throw new RegistryValidationError("Core intake result is invalid");
-    }
+    validateCoreIntakeResult(result);
 
     this.database.exec("BEGIN IMMEDIATE;");
     try {
@@ -252,10 +293,77 @@ export class SqliteReadyPackageCoreIntakeSubmissionRepository implements ReadyPa
         );
       }
       if (current.state === "RESULT_RECORDED") {
-        if (
-          current.result?.intakeId !== result.intakeId ||
-          current.result.status !== result.status
-        ) {
+        if (!matchesResult(current.result, result)) {
+          throw new RegistryConflictError(
+            "CORE_INTAKE_SUBMISSION_RESULT_CONFLICT",
+            "Core intake submission already recorded a different result",
+          );
+        }
+        this.database.exec("COMMIT;");
+        return current;
+      }
+      if (current.transportResult) {
+        if (!matchesResult(current.transportResult, result)) {
+          throw new RegistryConflictError(
+            "CORE_INTAKE_SUBMISSION_TRANSPORT_RESULT_CONFLICT",
+            "Core intake submission already persisted a different transport result",
+          );
+        }
+        this.database.exec("COMMIT;");
+        return current;
+      }
+
+      const recordedAt = this.clock().toISOString();
+      const next: ReadyPackageCoreIntakeSubmission = {
+        ...current,
+        transportResult: {
+          intakeId: result.intakeId,
+          status: result.status,
+          recordedAt,
+        },
+        updatedAt: recordedAt,
+      };
+      this.database
+        .prepare(
+          `UPDATE ready_package_core_intake_submissions
+           SET document_json = ?, updated_at = ?
+           WHERE workspace_id = ? AND submission_id = ? AND state = 'PENDING'`,
+        )
+        .run(JSON.stringify(next), recordedAt, workspaceId, submissionIdValue);
+      this.database.exec("COMMIT;");
+      return next;
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
+  }
+
+  recordResult(
+    submissionIdValue: string,
+    workspaceId: string,
+    result: CoreIntakeResult,
+  ): ReadyPackageCoreIntakeSubmission {
+    if (!submissionIdValue?.trim()) throw new RegistryValidationError("submissionId is required");
+    if (!workspaceId?.trim()) throw new RegistryValidationError("workspaceId is required");
+    validateCoreIntakeResult(result);
+
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      const current = this.require(submissionIdValue, workspaceId);
+      if (current.readyPackageId !== result.readyPackageId) {
+        throw new RegistryConflictError(
+          "CORE_INTAKE_SUBMISSION_RESULT_PACKAGE_MISMATCH",
+          "Core intake result belongs to another ReadyPackage",
+        );
+      }
+      if (current.transportResult && !matchesResult(current.transportResult, result)) {
+        throw new RegistryConflictError(
+          "CORE_INTAKE_SUBMISSION_TRANSPORT_RESULT_CONFLICT",
+          "Core intake submission transport result differs from the result being finalized",
+        );
+      }
+      if (current.state === "RESULT_RECORDED") {
+        if (!matchesResult(current.result, result)) {
           throw new RegistryConflictError(
             "CORE_INTAKE_SUBMISSION_RESULT_CONFLICT",
             "Core intake submission already recorded a different result",
