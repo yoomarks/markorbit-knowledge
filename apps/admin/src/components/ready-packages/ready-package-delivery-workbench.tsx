@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, PackageCheck, RefreshCw, Send } from "lucide-react";
 import type { ReadyPackage } from "@markorbit/contracts";
 
@@ -38,6 +38,7 @@ type CoreIntakeDetail = {
 };
 
 type ApiError = { error?: { message?: string } };
+type DetailState = { readyPackageId: string; detail: CoreIntakeDetail };
 
 function readError(body: unknown, fallback: string): string {
   if (
@@ -52,6 +53,33 @@ function readError(body: unknown, fallback: string): string {
     return body.error.message;
   }
   return fallback;
+}
+
+async function requestReadyPackages(
+  workspaceId: string,
+  signal?: AbortSignal,
+): Promise<ReadyPackage[]> {
+  const response = await fetch(
+    `/api/ready-packages?${new URLSearchParams({ workspaceId }).toString()}`,
+    { signal },
+  );
+  const body = (await response.json()) as { readyPackages?: ReadyPackage[] } | ApiError;
+  if (!response.ok) throw new Error(readError(body, "Unable to load ReadyPackages"));
+  return "readyPackages" in body ? (body.readyPackages ?? []) : [];
+}
+
+async function requestCoreIntakeDetail(
+  workspaceId: string,
+  readyPackageId: string,
+  signal?: AbortSignal,
+): Promise<CoreIntakeDetail> {
+  const response = await fetch(
+    `/api/ready-packages/${encodeURIComponent(readyPackageId)}/core-intake?${new URLSearchParams({ workspaceId }).toString()}`,
+    { signal },
+  );
+  const body = (await response.json()) as CoreIntakeDetail | ApiError;
+  if (!response.ok) throw new Error(readError(body, "Unable to load Core intake status"));
+  return body as CoreIntakeDetail;
 }
 
 function statusTone(status: ReadyPackage["status"]): string {
@@ -80,12 +108,15 @@ function formatDate(value: string | undefined): string {
   return value ? new Date(value).toLocaleString("zh-CN") : "—";
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
 export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: string }) {
   const [readyPackages, setReadyPackages] = useState<ReadyPackage[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<CoreIntakeDetail | null>(null);
+  const [detailState, setDetailState] = useState<DetailState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -94,17 +125,58 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
     () => readyPackages.find((readyPackage) => readyPackage.id === selectedId) ?? null,
     [readyPackages, selectedId],
   );
+  const detail = detailState?.readyPackageId === selectedId ? detailState.detail : null;
+  const detailLoading = Boolean(selectedId && !detail);
 
-  const loadPackages = useCallback(async () => {
+  useEffect(() => {
+    const controller = new AbortController();
+    void requestReadyPackages(workspaceId, controller.signal)
+      .then((packages) => {
+        setReadyPackages(packages);
+        setSelectedId((current) =>
+          current && packages.some((readyPackage) => readyPackage.id === current)
+            ? current
+            : (packages[0]?.id ?? null),
+        );
+        setError(null);
+      })
+      .catch((requestError: unknown) => {
+        if (isAbortError(requestError)) return;
+        setError(
+          requestError instanceof Error ? requestError.message : "Unable to load ReadyPackages",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [workspaceId]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const readyPackageId = selectedId;
+    const controller = new AbortController();
+    void requestCoreIntakeDetail(workspaceId, readyPackageId, controller.signal)
+      .then((nextDetail) => {
+        setDetailState({ readyPackageId, detail: nextDetail });
+        setError(null);
+      })
+      .catch((requestError: unknown) => {
+        if (isAbortError(requestError)) return;
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to load Core intake status",
+        );
+      });
+    return () => controller.abort();
+  }, [selectedId, workspaceId]);
+
+  async function refreshPackages() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `/api/ready-packages?${new URLSearchParams({ workspaceId }).toString()}`,
-      );
-      const body = (await response.json()) as { readyPackages?: ReadyPackage[] } | ApiError;
-      if (!response.ok) throw new Error(readError(body, "Unable to load ReadyPackages"));
-      const packages = "readyPackages" in body ? (body.readyPackages ?? []) : [];
+      const packages = await requestReadyPackages(workspaceId);
       setReadyPackages(packages);
       setSelectedId((current) =>
         current && packages.some((readyPackage) => readyPackage.id === current)
@@ -118,42 +190,7 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
     } finally {
       setLoading(false);
     }
-  }, [workspaceId]);
-
-  const loadDetail = useCallback(
-    async (readyPackageId: string) => {
-      setDetailLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(
-          `/api/ready-packages/${encodeURIComponent(readyPackageId)}/core-intake?${new URLSearchParams({ workspaceId }).toString()}`,
-        );
-        const body = (await response.json()) as CoreIntakeDetail | ApiError;
-        if (!response.ok) throw new Error(readError(body, "Unable to load Core intake status"));
-        setDetail(body as CoreIntakeDetail);
-      } catch (requestError) {
-        setDetail(null);
-        setError(
-          requestError instanceof Error ? requestError.message : "Unable to load Core intake status",
-        );
-      } finally {
-        setDetailLoading(false);
-      }
-    },
-    [workspaceId],
-  );
-
-  useEffect(() => {
-    void loadPackages();
-  }, [loadPackages]);
-
-  useEffect(() => {
-    if (!selectedId) {
-      setDetail(null);
-      return;
-    }
-    void loadDetail(selectedId);
-  }, [loadDetail, selectedId]);
+  }
 
   async function submitSelected() {
     if (!selected || !detail || selected.status !== "VERIFIED") return;
@@ -175,12 +212,22 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
       );
       const body = (await response.json()) as Record<string, unknown> | ApiError;
       if (!response.ok) throw new Error(readError(body, "Core intake submission failed"));
+
+      const packages = await requestReadyPackages(workspaceId);
+      const nextDetail = await requestCoreIntakeDetail(workspaceId, selected.id);
+      setReadyPackages(packages);
+      setDetailState({ readyPackageId: selected.id, detail: nextDetail });
       setActionMessage("显式 Core intake 操作已完成；状态已从持久化证据重新读取。");
-      await loadPackages();
-      await loadDetail(selected.id);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Core intake submission failed");
-      await loadDetail(selected.id);
+      setError(
+        requestError instanceof Error ? requestError.message : "Core intake submission failed",
+      );
+      try {
+        const nextDetail = await requestCoreIntakeDetail(workspaceId, selected.id);
+        setDetailState({ readyPackageId: selected.id, detail: nextDetail });
+      } catch {
+        // Preserve the original submission error; the next manual refresh can retry evidence loading.
+      }
     } finally {
       setSubmitting(false);
     }
@@ -220,7 +267,7 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
-            onClick={() => void loadPackages()}
+            onClick={() => void refreshPackages()}
             disabled={loading}
           >
             <RefreshCw size={16} aria-hidden="true" />
@@ -256,10 +303,14 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
               {readyPackages.map((readyPackage) => (
                 <tr
                   key={readyPackage.id}
-                  className={selectedId === readyPackage.id ? "bg-emerald-50/40" : "hover:bg-slate-50"}
+                  className={
+                    selectedId === readyPackage.id ? "bg-emerald-50/40" : "hover:bg-slate-50"
+                  }
                 >
                   <td className="px-5 py-4">
-                    <p className="font-mono text-xs font-medium text-slate-900">{readyPackage.id}</p>
+                    <p className="font-mono text-xs font-medium text-slate-900">
+                      {readyPackage.id}
+                    </p>
                     <p className="mt-1 font-mono text-xs text-slate-500">
                       {readyPackage.evidence.conversionRunId ?? "no conversionRunId"}
                     </p>
@@ -277,7 +328,9 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
                   </td>
                   <td className="px-5 py-4 text-slate-600">{formatDate(readyPackage.createdAt)}</td>
                   <td className="px-5 py-4">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(readyPackage.status)}`}>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(readyPackage.status)}`}
+                    >
                       {readyPackage.status}
                     </span>
                   </td>
@@ -287,6 +340,7 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
                       className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
                       onClick={() => {
                         setActionMessage(null);
+                        setError(null);
                         setSelectedId(readyPackage.id);
                       }}
                     >
@@ -309,7 +363,9 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
           </div>
         ) : null}
         {loading ? (
-          <div className="px-6 py-10 text-center text-sm text-slate-500">正在读取 ReadyPackage Registry…</div>
+          <div className="px-6 py-10 text-center text-sm text-slate-500">
+            正在读取 ReadyPackage Registry…
+          </div>
         ) : null}
       </section>
 
@@ -317,11 +373,15 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
         <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Core intake</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Core intake
+              </p>
               <h2 className="mt-1 font-mono text-sm font-semibold text-slate-950">{selected.id}</h2>
             </div>
             {detail ? (
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${transportTone(detail.transportStatus)}`}>
+              <span
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ${transportTone(detail.transportStatus)}`}
+              >
                 {detail.transportStatus}
               </span>
             ) : null}
@@ -347,7 +407,10 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
                 <EvidenceCard
                   label="Transport result"
                   value={detail.latestCoreIntakeSubmission?.transportResult?.status ?? "—"}
-                  detail={detail.latestCoreIntakeSubmission?.transportResult?.intakeId ?? "尚无 Core result"}
+                  detail={
+                    detail.latestCoreIntakeSubmission?.transportResult?.intakeId ??
+                    "尚无 Core result"
+                  }
                 />
                 <EvidenceCard
                   label="Latest receipt"
@@ -357,7 +420,9 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
                 <p className="max-w-2xl text-xs leading-5 text-slate-500">
-                  此动作只调用现有显式 Core intake submit/retry 边界。PENDING 会复用同一 submittedAt 与 idempotency key；已持久化 transport result 的 finalization 不会再次提交到 Core。
+                  此动作只调用现有显式 Core intake submit/retry 边界。PENDING 会复用同一 submittedAt
+                  与 idempotency key；已持久化 transport result 的 finalization 不会再次提交到
+                  Core。
                 </p>
                 <button
                   type="button"
