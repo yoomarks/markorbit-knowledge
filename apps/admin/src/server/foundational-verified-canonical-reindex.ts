@@ -118,7 +118,10 @@ function resolveTarget(input: { workspaceId: string; jurisdiction: string; targe
   return { workspaceId, jurisdiction, targetId, sourceIds: [...target.sourceIds] };
 }
 
-function readyDocuments(workspaceId: string, sourceIds: readonly string[]): StagingDocumentRecord[] {
+function readyDocuments(
+  workspaceId: string,
+  sourceIds: readonly string[],
+): StagingDocumentRecord[] {
   const repository = getStagingContentRepository();
   const records = new Map<string, StagingDocumentRecord>();
   for (const sourceId of sourceIds) {
