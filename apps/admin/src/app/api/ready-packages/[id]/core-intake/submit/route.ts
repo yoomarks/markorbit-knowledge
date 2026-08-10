@@ -23,9 +23,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     const { id } = await context.params;
     const readyPackages = getReadyPackageRepository();
-    const submissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(
-      getRegistryDatabase(),
-    );
+    const submissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(getRegistryDatabase());
     const result = await submitReadyPackageCoreIntake(
       {
         workspaceId,
