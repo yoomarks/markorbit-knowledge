@@ -10,6 +10,8 @@ import {
 
 const MIGRATION_ID = "0020_ready_package_core_intake_submissions";
 const SHA256 = /^[a-f0-9]{64}$/;
+const CORE_WORKSPACE_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CORE_INTAKE_STATUSES = new Set<CoreIntakeResult["status"]>([
   "RECEIVED",
   "ACCEPTED",
@@ -29,6 +31,7 @@ export type ReadyPackageCoreIntakeSubmission = {
   expectedDigest: string;
   idempotencyKey: string;
   submittedAt: string;
+  coreWorkspaceId?: string;
   state: "PENDING" | "RESULT_RECORDED";
   transportResult?: ReadyPackageCoreIntakeSubmissionResultEvidence;
   result?: ReadyPackageCoreIntakeSubmissionResultEvidence;
@@ -40,6 +43,7 @@ export type PrepareReadyPackageCoreIntakeSubmissionInput = {
   workspaceId: string;
   readyPackageId: string;
   expectedDigest: string;
+  coreWorkspaceId?: string;
 };
 
 export type PrepareReadyPackageCoreIntakeSubmissionResult = {
@@ -74,6 +78,9 @@ function validateScope(input: PrepareReadyPackageCoreIntakeSubmissionInput): voi
     throw new RegistryValidationError("readyPackageId is required");
   if (!SHA256.test(input.expectedDigest)) {
     throw new RegistryValidationError("expectedDigest must be a SHA-256 digest");
+  }
+  if (input.coreWorkspaceId !== undefined && !CORE_WORKSPACE_ID.test(input.coreWorkspaceId)) {
+    throw new RegistryValidationError("coreWorkspaceId must be a canonical UUID");
   }
 }
 
@@ -128,6 +135,7 @@ function parseSubmission(value: string): ReadyPackageCoreIntakeSubmission {
     typeof parsed.idempotencyKey !== "string" ||
     !parsed.idempotencyKey.trim() ||
     Number.isNaN(Date.parse(parsed.submittedAt)) ||
+    (parsed.coreWorkspaceId !== undefined && !CORE_WORKSPACE_ID.test(parsed.coreWorkspaceId)) ||
     (parsed.state !== "PENDING" && parsed.state !== "RESULT_RECORDED") ||
     Number.isNaN(Date.parse(parsed.createdAt)) ||
     Number.isNaN(Date.parse(parsed.updatedAt))
@@ -230,6 +238,16 @@ export class SqliteReadyPackageCoreIntakeSubmissionRepository implements ReadyPa
             "Pending Core intake submission belongs to different ReadyPackage evidence",
           );
         }
+        if (
+          input.coreWorkspaceId !== undefined &&
+          submission.coreWorkspaceId !== undefined &&
+          input.coreWorkspaceId !== submission.coreWorkspaceId
+        ) {
+          throw new RegistryConflictError(
+            "CORE_INTAKE_PENDING_WORKSPACE_BINDING_MISMATCH",
+            "Pending Core intake submission is frozen to another Core workspace",
+          );
+        }
         this.database.exec("COMMIT;");
         return { submission, replayed: true };
       }
@@ -244,6 +262,7 @@ export class SqliteReadyPackageCoreIntakeSubmissionRepository implements ReadyPa
         expectedDigest: input.expectedDigest,
         idempotencyKey: `core-intake:${id}`,
         submittedAt: createdAt,
+        ...(input.coreWorkspaceId ? { coreWorkspaceId: input.coreWorkspaceId } : {}),
         state: "PENDING",
         createdAt,
         updatedAt: createdAt,
