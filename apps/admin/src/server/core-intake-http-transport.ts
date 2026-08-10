@@ -11,6 +11,11 @@ export interface CoreIntakeTransport {
   submit(request: CoreIntakeRequest, idempotencyKey: string): Promise<CoreIntakeResult>;
 }
 
+export type CoreIntakeTransportReadiness = {
+  configured: boolean;
+  issueCode: string | null;
+};
+
 export class CoreIntakeTransportError extends Error {
   constructor(
     public readonly code: string,
@@ -48,6 +53,30 @@ function destination(raw: string): string {
     );
   }
   return url.toString();
+}
+
+function configuredDestination(): string {
+  const url = process.env.MARKORBIT_CORE_INTAKE_URL?.trim();
+  if (!url) {
+    throw new CoreIntakeTransportError(
+      "CORE_INTAKE_TRANSPORT_NOT_CONFIGURED",
+      "MARKORBIT_CORE_INTAKE_URL is not configured",
+      503,
+    );
+  }
+  return destination(url);
+}
+
+export function coreIntakeTransportReadiness(): CoreIntakeTransportReadiness {
+  try {
+    configuredDestination();
+    return { configured: true, issueCode: null };
+  } catch (error) {
+    if (error instanceof CoreIntakeTransportError) {
+      return { configured: false, issueCode: error.code };
+    }
+    throw error;
+  }
 }
 
 function parseResult(value: unknown, readyPackageId: string): CoreIntakeResult {
@@ -161,15 +190,10 @@ export function configuredCoreIntakeTransport(
 ): CoreIntakeTransport {
   return {
     async submit(request, idempotencyKey) {
-      const url = process.env.MARKORBIT_CORE_INTAKE_URL?.trim();
-      if (!url) {
-        throw new CoreIntakeTransportError(
-          "CORE_INTAKE_TRANSPORT_NOT_CONFIGURED",
-          "MARKORBIT_CORE_INTAKE_URL is not configured",
-          503,
-        );
-      }
-      return new HttpCoreIntakeTransport(url, fetchImpl).submit(request, idempotencyKey);
+      return new HttpCoreIntakeTransport(configuredDestination(), fetchImpl).submit(
+        request,
+        idempotencyKey,
+      );
     },
   };
 }

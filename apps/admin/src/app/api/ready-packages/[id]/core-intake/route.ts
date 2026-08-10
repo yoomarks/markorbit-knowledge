@@ -4,6 +4,7 @@ import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
 import { SqliteReadyPackageCoreIntakeSubmissionRepository } from "@markorbit/persistence/ready-package-core-intake-submissions";
 import { createCoreIntakeRequestPreview } from "@markorbit/worker-runtime";
 import { apiError } from "@/server/api-errors";
+import { coreIntakeTransportReadiness } from "@/server/core-intake-http-transport";
 import { recordReadyPackageCoreIntakeAcknowledgment } from "@/server/ready-package-core-intake-handoff";
 import { getReadyPackageRepository, getRegistryDatabase } from "@/server/source-registry";
 
@@ -49,6 +50,7 @@ export async function GET(request: Request, context: RouteContext) {
       readyPackageStatus: readyPackage.status,
       coreIntakeRequestPreview: createCoreIntakeRequestPreview(readyPackage),
       transportStatus,
+      outboundTransport: coreIntakeTransportReadiness(),
       latestCoreIntakeSubmission,
       coreIntakeSubmissions,
       latestCoreIntakeReceipt,

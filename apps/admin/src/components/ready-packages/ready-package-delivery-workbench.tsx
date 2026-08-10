@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, PackageCheck, RefreshCw, Send } from "lucide-react";
 import type { ReadyPackage } from "@markorbit/contracts";
-import { isCoreIntakeActionable, type TransportStatus } from "./ready-package-delivery-policy";
+import {
+  coreIntakeActionRequiresOutboundTransport,
+  isCoreIntakeActionable,
+  type TransportStatus,
+} from "./ready-package-delivery-policy";
 
 type CoreIntakeReceiptView = {
   intakeId: string;
@@ -25,6 +29,10 @@ type CoreIntakeSubmissionView = {
 type CoreIntakeDetail = {
   readyPackageStatus: ReadyPackage["status"];
   transportStatus: TransportStatus;
+  outboundTransport: {
+    configured: boolean;
+    issueCode: string | null;
+  };
   latestCoreIntakeSubmission: CoreIntakeSubmissionView | null;
   latestCoreIntakeReceipt: CoreIntakeReceiptView | null;
   note: string;
@@ -186,7 +194,15 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
   }
 
   async function submitSelected() {
-    if (!selected || !detail || !isCoreIntakeActionable(selected.status, detail.transportStatus)) {
+    if (
+      !selected ||
+      !detail ||
+      !isCoreIntakeActionable(
+        selected.status,
+        detail.transportStatus,
+        detail.outboundTransport.configured,
+      )
+    ) {
       return;
     }
     setSubmitting(true);
@@ -233,7 +249,15 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
   const actionable =
     selected !== null &&
     detail !== null &&
-    isCoreIntakeActionable(selected.status, detail.transportStatus);
+    isCoreIntakeActionable(
+      selected.status,
+      detail.transportStatus,
+      detail.outboundTransport.configured,
+    );
+  const outboundRequiredButUnavailable =
+    detail !== null &&
+    !detail.outboundTransport.configured &&
+    coreIntakeActionRequiresOutboundTransport(detail.transportStatus);
 
   return (
     <div className="space-y-6">
@@ -388,7 +412,17 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
                 {detail.note}
               </div>
-              <div className="grid gap-3 md:grid-cols-3">
+              {outboundRequiredButUnavailable ? (
+                <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
+                  <span>
+                    当前动作需要 Core outbound HTTP，但本地 destination 配置未通过校验（
+                    {detail.outboundTransport.issueCode ?? "CORE_INTAKE_TRANSPORT_NOT_CONFIGURED"}
+                    ）。该动作已禁用；已有 transport result 的纯本地 finalization 不受影响。
+                  </span>
+                </div>
+              ) : null}
+              <div className="grid gap-3 md:grid-cols-4">
                 <EvidenceCard
                   label="Latest submission"
                   value={detail.latestCoreIntakeSubmission?.submissionId ?? "—"}
@@ -410,6 +444,15 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
                   label="Latest receipt"
                   value={detail.latestCoreIntakeReceipt?.status ?? "—"}
                   detail={detail.latestCoreIntakeReceipt?.intakeId ?? "尚无 receipt"}
+                />
+                <EvidenceCard
+                  label="Outbound config"
+                  value={detail.outboundTransport.configured ? "CONFIGURED" : "NOT_CONFIGURED"}
+                  detail={
+                    detail.outboundTransport.configured
+                      ? "本地 destination 配置已通过校验；可达性仍在 submit 时验证。"
+                      : (detail.outboundTransport.issueCode ?? "配置不可用")
+                  }
                 />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
