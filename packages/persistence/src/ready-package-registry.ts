@@ -63,6 +63,7 @@ export type ReadyPackageCoreIntakeAcknowledgmentPersistenceResult = {
 
 export interface ReadyPackageRegistryRepository {
   createVerified(input: CreateVerifiedReadyPackageInput): ReadyPackageCreateResult;
+  list(workspaceId: string): ReadyPackage[];
   getById(id: string, workspaceId: string): ReadyPackage | null;
   getByConversionRun(conversionRunId: string, workspaceId: string): ReadyPackage | null;
   markHandedOff(id: string, workspaceId: string, expectedDigest: string): ReadyPackage;
@@ -363,6 +364,18 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
       this.database.exec("ROLLBACK;");
       throw error;
     }
+  }
+
+  list(workspaceId: string): ReadyPackage[] {
+    if (!workspaceId?.trim()) throw new RegistryValidationError("workspaceId is required");
+    return this.database
+      .prepare(
+        `SELECT document_json FROM ready_packages
+         WHERE workspace_id = ?
+         ORDER BY created_at DESC, id DESC`,
+      )
+      .all(workspaceId)
+      .map((row) => parseReadyPackage(String((row as { document_json: string }).document_json)));
   }
 
   getById(id: string, workspaceId: string): ReadyPackage | null {
