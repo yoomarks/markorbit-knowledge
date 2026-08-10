@@ -14,6 +14,7 @@ import { FoundationalRemediationConsole } from "@/components/foundational/founda
 import { ModulePreview } from "@/components/module-preview";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
+import { ReadyPackageDeliveryWorkbench } from "@/components/ready-packages/ready-package-delivery-workbench";
 import { RunList } from "@/components/runs/run-list";
 import { SourceIntelligenceAssignmentHealth } from "@/components/sources/source-intelligence-assignment-health";
 import { SourceIntelligenceManualSla } from "@/components/sources/source-intelligence-manual-sla";
@@ -205,6 +206,18 @@ function ConvertersPage() {
   );
 }
 
+function ReadyPackagesPage() {
+  return (
+    <>
+      <PageHeading
+        title="Ready Packages"
+        description="查看已验证 ReadyPackage 的真实 Core intake 交付证据，并通过现有显式 submit/retry 边界处理未提交、结果未知或本地 finalization 待完成状态。"
+      />
+      <ReadyPackageDeliveryWorkbench workspaceId={DEFAULT_WORKSPACE.id} />
+    </>
+  );
+}
+
 export default async function SectionPage({ params }: { params: Promise<{ section: string }> }) {
   const { section } = await params;
   if (!moduleOrder.includes(section as ModuleKey)) notFound();
@@ -236,6 +249,8 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
         <ConversionRunsPage />
       ) : moduleKey === "converters" ? (
         <ConvertersPage />
+      ) : moduleKey === "packages" ? (
+        <ReadyPackagesPage />
       ) : (
         <ModulePreview moduleKey={moduleKey} />
       )}
