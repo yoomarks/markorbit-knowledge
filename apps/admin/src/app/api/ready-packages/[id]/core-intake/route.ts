@@ -29,7 +29,9 @@ export async function GET(request: Request, context: RouteContext) {
     const coreIntakeReceipts = repository.listCoreIntakeReceipts(id, workspaceId);
     const latestCoreIntakeReceipt = coreIntakeReceipts[0] ?? null;
     const transportStatus = latestCoreIntakeReceipt
-      ? "ACKNOWLEDGED"
+      ? latestCoreIntakeReceipt.status === "REJECTED"
+        ? "REJECTED"
+        : "ACKNOWLEDGED"
       : readyPackage.status === "HANDED_OFF"
         ? "HANDED_OFF_WITHOUT_RECEIPT"
         : "NOT_SUBMITTED";
@@ -40,7 +42,9 @@ export async function GET(request: Request, context: RouteContext) {
       latestCoreIntakeReceipt,
       coreIntakeReceipts,
       note: latestCoreIntakeReceipt
-        ? "Knowledge has persisted explicit Core intake receipt evidence for this ReadyPackage."
+        ? latestCoreIntakeReceipt.status === "REJECTED"
+          ? "Knowledge has persisted a rejected Core intake receipt; this ReadyPackage remains eligible for a later delivery attempt."
+          : "Knowledge has persisted explicit Core intake receipt evidence for this ReadyPackage."
         : readyPackage.status === "HANDED_OFF"
           ? "This ReadyPackage predates persisted Core intake receipts; Knowledge does not invent historical receipt evidence."
           : "Knowledge prepares the handoff envelope but does not invent a Core acceptance receipt.",
