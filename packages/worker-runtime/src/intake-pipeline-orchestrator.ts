@@ -9,11 +9,12 @@ export type IntakePipelineInput = {
 export type IntakePipelineReceipt = {
   readyPackageId: string;
   accepted: boolean;
+  transportStatus: "NOT_SUBMITTED";
 };
 
 /**
- * Boundary orchestrator only.
- * It coordinates the handoff and does not own domain state.
+ * Legacy boundary orchestrator for preparing the local Core handoff shape.
+ * CoreIntakeAdapter is side-effect free, so this path must not claim submission or acceptance.
  */
 export class IntakePipelineOrchestrator {
   constructor(private readonly intake: CoreIntakeAdapter) {}
@@ -27,7 +28,8 @@ export class IntakePipelineOrchestrator {
 
     return {
       readyPackageId: input.readyPackageId,
-      accepted: true,
+      accepted: false,
+      transportStatus: "NOT_SUBMITTED",
     };
   }
 }
