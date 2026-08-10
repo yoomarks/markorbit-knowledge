@@ -56,8 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       executeFoundationalRetrievalQualityRemediation({
         ...scope,
-        stagingDocumentId:
-          typeof body.stagingDocumentId === "string" ? body.stagingDocumentId : "",
+        stagingDocumentId: typeof body.stagingDocumentId === "string" ? body.stagingDocumentId : "",
         actionCode: actionCode(body.actionCode),
         actorId: typeof body.actorId === "string" ? body.actorId : "",
         idempotencyKey: typeof body.idempotencyKey === "string" ? body.idempotencyKey : "",
