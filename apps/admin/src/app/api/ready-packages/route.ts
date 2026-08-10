@@ -12,13 +12,13 @@ export async function GET(request: Request) {
     const workspaceId = search.get("workspaceId")?.trim();
     const conversionRunId = search.get("conversionRunId")?.trim();
     if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+
+    const repository = getReadyPackageRepository();
     if (!conversionRunId) {
-      throw new RegistryValidationError("conversionRunId query parameter is required");
+      return NextResponse.json({ readyPackages: repository.list(workspaceId) });
     }
-    const readyPackage = getReadyPackageRepository().getByConversionRun(
-      conversionRunId,
-      workspaceId,
-    );
+
+    const readyPackage = repository.getByConversionRun(conversionRunId, workspaceId);
     return NextResponse.json({ readyPackage });
   } catch (error) {
     return apiError(error);
