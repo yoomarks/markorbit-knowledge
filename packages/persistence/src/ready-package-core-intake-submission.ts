@@ -148,9 +148,7 @@ function ensureReadyPackageCoreIntakeSubmissionRegistry(database: DatabaseSync):
   }
 }
 
-export class SqliteReadyPackageCoreIntakeSubmissionRepository
-  implements ReadyPackageCoreIntakeSubmissionRepository
-{
+export class SqliteReadyPackageCoreIntakeSubmissionRepository implements ReadyPackageCoreIntakeSubmissionRepository {
   constructor(
     private readonly database: DatabaseSync,
     private readonly clock: () => Date = () => new Date(),
@@ -230,8 +228,7 @@ export class SqliteReadyPackageCoreIntakeSubmissionRepository
     workspaceId: string,
     result: CoreIntakeResult,
   ): ReadyPackageCoreIntakeSubmission {
-    if (!submissionIdValue?.trim())
-      throw new RegistryValidationError("submissionId is required");
+    if (!submissionIdValue?.trim()) throw new RegistryValidationError("submissionId is required");
     if (!workspaceId?.trim()) throw new RegistryValidationError("workspaceId is required");
     if (
       !result ||
@@ -304,12 +301,13 @@ export class SqliteReadyPackageCoreIntakeSubmissionRepository
          ORDER BY created_at DESC, rowid DESC`,
       )
       .all(workspaceId, readyPackageId)
-      .map((row) =>
-        parseSubmission(String((row as { document_json: string }).document_json)),
-      );
+      .map((row) => parseSubmission(String((row as { document_json: string }).document_json)));
   }
 
-  private require(submissionIdValue: string, workspaceId: string): ReadyPackageCoreIntakeSubmission {
+  private require(
+    submissionIdValue: string,
+    workspaceId: string,
+  ): ReadyPackageCoreIntakeSubmission {
     const row = this.database
       .prepare(
         `SELECT document_json FROM ready_package_core_intake_submissions
