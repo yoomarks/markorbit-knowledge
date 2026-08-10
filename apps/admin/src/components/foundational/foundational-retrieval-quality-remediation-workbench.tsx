@@ -11,10 +11,7 @@ type ActionCode =
   | "RECONCILE_CURRENT_VERSION"
   | "REBUILD_RETRIEVAL_INDEX"
   | "REVIEW_DUPLICATE_CHUNKING";
-type ActionDisposition =
-  | "M17_EXECUTABLE"
-  | "MANUAL_REVIEW_ONLY"
-  | "CANONICAL_REINDEX_REQUIRED";
+type ActionDisposition = "M17_EXECUTABLE" | "MANUAL_REVIEW_ONLY" | "CANONICAL_REINDEX_REQUIRED";
 
 type Props = {
   workspaceId: string;
@@ -142,7 +139,9 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
         }),
       );
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Unable to load M16 remediation plans");
+      setError(
+        loadError instanceof Error ? loadError.message : "Unable to load M16 remediation plans",
+      );
     } finally {
       setLoading(false);
     }
@@ -200,7 +199,9 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
       await onSnapshotRefresh();
     } catch (executionError) {
       setError(
-        executionError instanceof Error ? executionError.message : "M17 remediation execution failed",
+        executionError instanceof Error
+          ? executionError.message
+          : "M17 remediation execution failed",
       );
     } finally {
       setBusy(null);
@@ -223,8 +224,8 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
             </span>
           </div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
-            M29 只把 FOUNDATIONAL QUALITY 接到既有 M16/M17。M17 仅执行 policy-eligible
-            projection repair；provenance restoration 与 duplicate review 保持人工，结构性 chunk drift
+            M29 只把 FOUNDATIONAL QUALITY 接到既有 M16/M17。M17 仅执行 policy-eligible projection
+            repair；provenance restoration 与 duplicate review 保持人工，结构性 chunk drift
             继续要求通过既有 verified canonical reindex 边界修复。
           </p>
         </div>
@@ -258,7 +259,10 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
         {actions.map((readinessAction) => {
           const targetSnapshot = snapshots[readinessAction.targetId];
           return (
-            <article key={readinessAction.targetId} className="rounded-xl border border-slate-200 p-4">
+            <article
+              key={readinessAction.targetId}
+              className="rounded-xl border border-slate-200 p-4"
+            >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -285,13 +289,16 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
 
               {!targetSnapshot && loading ? (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
-                  <RefreshCw className="animate-spin" size={15} aria-hidden="true" /> Loading M16 plans…
+                  <RefreshCw className="animate-spin" size={15} aria-hidden="true" /> Loading M16
+                  plans…
                 </div>
               ) : targetSnapshot && targetSnapshot.items.length === 0 ? (
                 <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
                   <AlertTriangle className="mt-0.5 shrink-0" size={16} aria-hidden="true" />
                   <div>
-                    <p className="text-sm font-medium">No current target-scoped M16 plan was produced.</p>
+                    <p className="text-sm font-medium">
+                      No current target-scoped M16 plan was produced.
+                    </p>
                     <p className="mt-1 text-xs leading-5 text-amber-700">
                       Inspect retrieval audit coverage; M29 will not invent a remediation action.
                     </p>
@@ -315,12 +322,14 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
                         {item.stagingDocumentId}
                       </p>
                       <p className="mt-2 text-xs text-slate-500">
-                        Audit gaps · {item.auditGaps.length > 0 ? item.auditGaps.join(", ") : "none"}
+                        Audit gaps ·{" "}
+                        {item.auditGaps.length > 0 ? item.auditGaps.join(", ") : "none"}
                       </p>
 
                       {item.actions.length === 0 ? (
                         <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-700">
-                          <ShieldCheck size={14} aria-hidden="true" /> M16 reports no remediation action.
+                          <ShieldCheck size={14} aria-hidden="true" /> M16 reports no remediation
+                          action.
                         </p>
                       ) : (
                         <div className="mt-3 space-y-2">
@@ -334,7 +343,9 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
                                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                   <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
-                                      <span className="font-mono text-xs text-slate-700">{action.code}</span>
+                                      <span className="font-mono text-xs text-slate-700">
+                                        {action.code}
+                                      </span>
                                       <span
                                         className={`rounded-full border px-2 py-1 text-xs font-semibold ${dispositionClass(action.disposition)}`}
                                       >
@@ -346,8 +357,8 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
                                     </p>
                                     {action.disposition === "CANONICAL_REINDEX_REQUIRED" ? (
                                       <p className="mt-2 text-xs font-medium text-amber-700">
-                                        M17 intentionally blocks this structural repair; use the existing M28
-                                        verified canonical reindex boundary.
+                                        M17 intentionally blocks this structural repair; use the
+                                        existing M28 verified canonical reindex boundary.
                                       </p>
                                     ) : null}
                                   </div>
