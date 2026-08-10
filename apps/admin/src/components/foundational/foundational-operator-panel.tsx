@@ -5,6 +5,7 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 import { FoundationalConversionRecoveryWorkbench } from "./foundational-conversion-recovery-workbench";
 import { FoundationalOperatorWorkbench } from "./foundational-operator-workbench";
+import { FoundationalVerifiedCanonicalReindexWorkbench } from "./foundational-verified-canonical-reindex-workbench";
 
 type Jurisdiction = "US" | "WO";
 
@@ -106,9 +107,7 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
               <span className="text-xs text-amber-900/70">Workspace · {workspaceId}</span>
             </div>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-950/80">
-              COLLECT 继续使用 M25/M26 的审批 + 显式派发；M27 仅把 CONVERT target 接到已有 M11
-              operator retry。两条路径都不因查看 readiness 而自动执行，M27 也不会从此操作面调用
-              conversion reconcile。
+              COLLECT 使用 M25/M26 审批 + 显式派发；CONVERT 使用 M27 的既有 M11 operator retry；INDEX 使用 M28 对既有 verified canonical 的显式 reindex。查看 readiness 不会触发任何一条路径自动执行，M28 也不会创建 ReadyPackage、生成 canonical 或修改 RawArtifact。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -151,8 +150,7 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
 
       {loading && !snapshot ? (
         <section className="flex min-h-28 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm text-slate-500">
-          <RefreshCw className="animate-spin" size={16} aria-hidden="true" /> Loading governed
-          operator snapshot…
+          <RefreshCw className="animate-spin" size={16} aria-hidden="true" /> Loading governed operator snapshot…
         </section>
       ) : null}
 
@@ -165,6 +163,12 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
             onSnapshotRefresh={refresh}
           />
           <FoundationalConversionRecoveryWorkbench
+            workspaceId={workspaceId}
+            jurisdiction={jurisdiction}
+            snapshot={snapshot}
+            onSnapshotRefresh={refresh}
+          />
+          <FoundationalVerifiedCanonicalReindexWorkbench
             workspaceId={workspaceId}
             jurisdiction={jurisdiction}
             snapshot={snapshot}
