@@ -9,6 +9,7 @@ import {
   latestIntentForAction,
   listControlledCollectionActions,
   listControlledConversionRecoveryActions,
+  listControlledQualityRemediationActions,
   listControlledVerifiedCanonicalReindexActions,
   operatorExecutionIdempotencyKey,
   operatorIntentIdempotencyKey,
@@ -125,8 +126,8 @@ function outcome(
   };
 }
 
-describe("M28 foundational operator state", () => {
-  it("exposes governed COLLECT, CONVERT and INDEX actions through separate paths", () => {
+describe("M29 foundational operator state", () => {
+  it("exposes governed COLLECT, CONVERT, INDEX and QUALITY actions through separate paths", () => {
     const snapshot = {
       remediationQueue: {
         items: [
@@ -169,6 +170,19 @@ describe("M28 foundational operator state", () => {
               },
             ],
           },
+          {
+            targetId: "us-uspto-tm-fees-current",
+            stage: "QUALITY",
+            actions: [
+              {
+                code: "OPEN_RETRIEVAL_REMEDIATION_PLAN",
+                operatorInstruction: "Open M16 remediation plan",
+                executionPath: "M16_PLANNER_THEN_M17_EXPLICIT_OPERATOR",
+                collectionAuthorizationRequired: false,
+                automaticExecution: false,
+              },
+            ],
+          },
         ],
       },
     } as unknown as FoundationalRemediationQueueSnapshot;
@@ -196,6 +210,15 @@ describe("M28 foundational operator state", () => {
         stage: "INDEX",
         actionCode: "REINDEX_VERIFIED_CANONICAL",
         executionPath: "CANONICAL_INDEXING",
+        automaticExecution: false,
+      }),
+    ]);
+    expect(listControlledQualityRemediationActions(snapshot)).toEqual([
+      expect.objectContaining({
+        targetId: "us-uspto-tm-fees-current",
+        stage: "QUALITY",
+        actionCode: "OPEN_RETRIEVAL_REMEDIATION_PLAN",
+        executionPath: "M16_PLANNER_THEN_M17_EXPLICIT_OPERATOR",
         automaticExecution: false,
       }),
     ]);

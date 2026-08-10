@@ -154,9 +154,10 @@ describe("foundational remediation queue", () => {
       gapCodes: ["FTS_ROW_COUNT_MISMATCH"],
       automaticExecution: false,
     });
-    expect(remediation?.endpoint).toContain("/api/retrieval/remediation?");
+    expect(remediation?.endpoint).toContain("/api/foundational/retrieval-quality-remediation?");
     expect(remediation?.endpoint).toContain("workspaceId=wsp_test");
     expect(remediation?.endpoint).toContain("jurisdiction=US");
+    expect(remediation?.endpoint).toContain("targetId=quality");
   });
 
   it("turns deterministic relevance gaps into specific operator reviews without semantic scoring", () => {

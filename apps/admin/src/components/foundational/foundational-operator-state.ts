@@ -33,6 +33,16 @@ export type ControlledVerifiedCanonicalReindexAction = {
   automaticExecution: false;
 };
 
+export type ControlledQualityRemediationAction = {
+  targetId: string;
+  actionCode: "OPEN_RETRIEVAL_REMEDIATION_PLAN";
+  stage: "QUALITY";
+  operatorInstruction: string;
+  executionPath: "M16_PLANNER_THEN_M17_EXPLICIT_OPERATOR";
+  collectionAuthorizationRequired: false;
+  automaticExecution: false;
+};
+
 export type FoundationalOperatorPhase =
   | "REQUEST_APPROVAL"
   | "PENDING_APPROVAL"
@@ -121,6 +131,35 @@ export function listControlledVerifiedCanonicalReindexActions(
         targetId: item.targetId,
         actionCode: action.code,
         stage: "INDEX",
+        operatorInstruction: action.operatorInstruction,
+        executionPath: action.executionPath,
+        collectionAuthorizationRequired: false,
+        automaticExecution: false,
+      });
+    }
+  }
+  return actions;
+}
+
+export function listControlledQualityRemediationActions(
+  snapshot: FoundationalRemediationQueueSnapshot,
+): ControlledQualityRemediationAction[] {
+  const actions: ControlledQualityRemediationAction[] = [];
+  for (const item of snapshot.remediationQueue.items) {
+    if (item.stage !== "QUALITY") continue;
+    for (const action of item.actions) {
+      if (
+        action.code !== "OPEN_RETRIEVAL_REMEDIATION_PLAN" ||
+        action.executionPath !== "M16_PLANNER_THEN_M17_EXPLICIT_OPERATOR" ||
+        action.collectionAuthorizationRequired !== false ||
+        action.automaticExecution !== false
+      ) {
+        continue;
+      }
+      actions.push({
+        targetId: item.targetId,
+        actionCode: action.code,
+        stage: "QUALITY",
         operatorInstruction: action.operatorInstruction,
         executionPath: action.executionPath,
         collectionAuthorizationRequired: false,
