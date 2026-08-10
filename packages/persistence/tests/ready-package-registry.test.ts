@@ -23,11 +23,27 @@ function input() {
   };
 }
 
-function repository(database: DatabaseSync) {
+function secondInput() {
+  return {
+    ...input(),
+    rawArtifactId: "art_02H00000000000000000000000",
+    rawArtifactSha256: "c".repeat(64),
+    conversionRunId: "cvr_02H00000000000000000000000",
+    stagingDocumentId: "std_02H00000000000000000000000",
+    stagingSha256: "d".repeat(64),
+    verificationId: "svr_02H00000000000000000000000",
+    idempotencyKey: "ready-package:test:2",
+  };
+}
+
+function repository(
+  database: DatabaseSync,
+  readyPackageId = "rdp_01H00000000000000000000000",
+) {
   return new SqliteReadyPackageRegistryRepository(
     database,
     () => new Date("2026-08-08T01:00:00.000Z"),
-    () => "rdp_01H00000000000000000000000",
+    () => readyPackageId,
   );
 }
 
@@ -58,7 +74,9 @@ describe("ReadyPackage registry", () => {
     const created = registry.createVerified(input());
     expect(created.replayed).toBe(false);
     expect(created.readyPackage.status).toBe("VERIFIED");
-    expect(created.readyPackage.evidence.artifactIds).toEqual(["art_01H00000000000000000000000"]);
+    expect(created.readyPackage.evidence.artifactIds).toEqual([
+      "art_01H00000000000000000000000",
+    ]);
     expect(created.readyPackage.evidence.rawArtifactSha256).toBe(SHA_A);
     expect(created.readyPackage.evidence.stagingSha256).toBe(SHA_B);
     expect(created.readyPackage.evidence.legalTruthVerified).toBe(false);
@@ -159,27 +177,71 @@ describe("ReadyPackage registry", () => {
     database.close();
   });
 
-  it("replays the same intake receipt idempotently and rejects semantic drift", () => {
+  it("replays an exact receipt while allowing RECEIVED to progress to ACCEPTED on the same intake", () => {
     const database = new DatabaseSync(":memory:");
     initializeRegistry(database);
     const registry = repository(database);
     const readyPackage = registry.createVerified(input()).readyPackage;
-    const request = acknowledgment(readyPackage.id, readyPackage.evidence.digest, "RECEIVED");
+    const received = acknowledgment(
+      readyPackage.id,
+      readyPackage.evidence.digest,
+      "RECEIVED",
+      "intake_progress",
+    );
 
-    const first = registry.recordCoreIntakeAcknowledgment(request);
-    const replay = registry.recordCoreIntakeAcknowledgment(request);
+    const first = registry.recordCoreIntakeAcknowledgment(received);
+    const replay = registry.recordCoreIntakeAcknowledgment(received);
     expect(replay.replayed).toBe(true);
     expect(replay.receipt).toEqual(first.receipt);
     expect(replay.disposition).toBe("HANDOFF_ALREADY_RECORDED");
-    expect(registry.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(1);
 
+    const accepted = registry.recordCoreIntakeAcknowledgment({
+      ...received,
+      coreIntakeResult: { ...received.coreIntakeResult, status: "ACCEPTED" },
+    });
+    expect(accepted).toMatchObject({
+      replayed: false,
+      disposition: "HANDOFF_ALREADY_RECORDED",
+      receipt: { intakeId: "intake_progress", status: "ACCEPTED" },
+    });
+    expect(
+      registry
+        .listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)
+        .map((receipt) => receipt.status),
+    ).toEqual(["ACCEPTED", "RECEIVED"]);
+
+    database.close();
+  });
+
+  it("rejects reuse of one intakeId for different ReadyPackage evidence", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeRegistry(database);
+    const firstRegistry = repository(database);
+    const firstPackage = firstRegistry.createVerified(input()).readyPackage;
+    firstRegistry.recordCoreIntakeAcknowledgment(
+      acknowledgment(
+        firstPackage.id,
+        firstPackage.evidence.digest,
+        "RECEIVED",
+        "intake_shared",
+      ),
+    );
+
+    const secondRegistry = repository(database, "rdp_02H00000000000000000000000");
+    const secondPackage = secondRegistry.createVerified(secondInput()).readyPackage;
     expect(() =>
-      registry.recordCoreIntakeAcknowledgment({
-        ...request,
-        coreIntakeResult: { ...request.coreIntakeResult, status: "ACCEPTED" },
-      }),
-    ).toThrow("Core intake receipt intakeId was reused with different acknowledgment evidence");
-    expect(registry.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(1);
+      secondRegistry.recordCoreIntakeAcknowledgment(
+        acknowledgment(
+          secondPackage.id,
+          secondPackage.evidence.digest,
+          "RECEIVED",
+          "intake_shared",
+        ),
+      ),
+    ).toThrow("Core intake receipt intakeId was reused for different ReadyPackage evidence");
+    expect(
+      secondRegistry.listCoreIntakeReceipts(secondPackage.id, secondPackage.workspaceId),
+    ).toHaveLength(0);
 
     database.close();
   });
