@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CoreIntakeRequest } from "@markorbit/contracts";
-import { configuredCoreIntakeTransport } from "../core-intake-http-transport";
+import {
+  configuredCoreIntakeTransport,
+  coreIntakeTransportReadiness,
+} from "../core-intake-http-transport";
 
 function request(): CoreIntakeRequest {
   return {
@@ -16,14 +19,18 @@ function request(): CoreIntakeRequest {
 }
 
 describe("configured Core intake transport", () => {
-  it("defers missing endpoint configuration until an outbound submit is actually required", async () => {
+  it("reports missing configuration without constructing or calling outbound HTTP", async () => {
     const originalUrl = process.env.MARKORBIT_CORE_INTAKE_URL;
     delete process.env.MARKORBIT_CORE_INTAKE_URL;
     const fetchImpl = vi.fn<typeof fetch>();
 
     try {
-      const transport = configuredCoreIntakeTransport(fetchImpl);
+      expect(coreIntakeTransportReadiness()).toEqual({
+        configured: false,
+        issueCode: "CORE_INTAKE_TRANSPORT_NOT_CONFIGURED",
+      });
 
+      const transport = configuredCoreIntakeTransport(fetchImpl);
       expect(fetchImpl).not.toHaveBeenCalled();
       await expect(
         transport.submit(request(), "core-intake:cis_lazy_config"),
@@ -32,6 +39,37 @@ describe("configured Core intake transport", () => {
         httpStatus: 503,
       });
       expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      if (originalUrl === undefined) delete process.env.MARKORBIT_CORE_INTAKE_URL;
+      else process.env.MARKORBIT_CORE_INTAKE_URL = originalUrl;
+    }
+  });
+
+  it("reports only local destination configuration readiness", () => {
+    const originalUrl = process.env.MARKORBIT_CORE_INTAKE_URL;
+    process.env.MARKORBIT_CORE_INTAKE_URL =
+      "https://knowledge.internal.example/v1/ready-package-intake";
+
+    try {
+      expect(coreIntakeTransportReadiness()).toEqual({
+        configured: true,
+        issueCode: null,
+      });
+    } finally {
+      if (originalUrl === undefined) delete process.env.MARKORBIT_CORE_INTAKE_URL;
+      else process.env.MARKORBIT_CORE_INTAKE_URL = originalUrl;
+    }
+  });
+
+  it("surfaces invalid local destination configuration without exposing the URL", () => {
+    const originalUrl = process.env.MARKORBIT_CORE_INTAKE_URL;
+    process.env.MARKORBIT_CORE_INTAKE_URL = "not-a-url";
+
+    try {
+      expect(coreIntakeTransportReadiness()).toEqual({
+        configured: false,
+        issueCode: "CORE_INTAKE_TRANSPORT_URL_INVALID",
+      });
     } finally {
       if (originalUrl === undefined) delete process.env.MARKORBIT_CORE_INTAKE_URL;
       else process.env.MARKORBIT_CORE_INTAKE_URL = originalUrl;
