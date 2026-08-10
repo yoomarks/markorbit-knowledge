@@ -100,7 +100,11 @@ function targetActions(
   return actions.filter((action) => action.targetId === targetId);
 }
 
-export function FoundationalRelevanceAuditWorkbench({ workspaceId, jurisdiction, snapshot }: Props) {
+export function FoundationalRelevanceAuditWorkbench({
+  workspaceId,
+  jurisdiction,
+  snapshot,
+}: Props) {
   const actions = useMemo(() => listControlledRelevanceAuditActions(snapshot), [snapshot]);
   const targetIds = useMemo(
     () => [...new Set(actions.map((action) => action.targetId))],
@@ -116,7 +120,9 @@ export function FoundationalRelevanceAuditWorkbench({ workspaceId, jurisdiction,
     try {
       setAudits(await fetchAudits({ workspaceId, jurisdiction, targetIds }));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Unable to load M18 relevance audit");
+      setError(
+        loadError instanceof Error ? loadError.message : "Unable to load M18 relevance audit",
+      );
     } finally {
       setLoading(false);
     }
@@ -206,7 +212,10 @@ export function FoundationalRelevanceAuditWorkbench({ workspaceId, jurisdiction,
                   <h3 className="mt-2 break-all font-semibold text-slate-950">{targetId}</h3>
                   <div className="mt-2 space-y-1">
                     {requestedActions.map((action) => (
-                      <p key={action.actionCode} className="max-w-3xl text-xs leading-5 text-slate-600">
+                      <p
+                        key={action.actionCode}
+                        className="max-w-3xl text-xs leading-5 text-slate-600"
+                      >
                         {action.operatorInstruction}
                       </p>
                     ))}
@@ -217,16 +226,19 @@ export function FoundationalRelevanceAuditWorkbench({ workspaceId, jurisdiction,
 
               {!audit && loading ? (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
-                  <RefreshCw className="animate-spin" size={15} aria-hidden="true" /> Loading target audit…
+                  <RefreshCw className="animate-spin" size={15} aria-hidden="true" /> Loading target
+                  audit…
                 </div>
               ) : audit && audit.items.length === 0 ? (
                 <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
                   <AlertTriangle className="mt-0.5 shrink-0" size={16} aria-hidden="true" />
                   <div>
-                    <p className="text-sm font-medium">No target-scoped M18 audit record was returned.</p>
+                    <p className="text-sm font-medium">
+                      No target-scoped M18 audit record was returned.
+                    </p>
                     <p className="mt-1 text-xs leading-5 text-amber-700">
-                      Treat this as audit coverage evidence. M30 does not invent a result or bypass M19 coverage
-                      checks.
+                      Treat this as audit coverage evidence. M30 does not invent a result or bypass
+                      M19 coverage checks.
                     </p>
                   </div>
                 </div>
@@ -255,9 +267,12 @@ export function FoundationalRelevanceAuditWorkbench({ workspaceId, jurisdiction,
                           {record.currentDocumentCount} current document(s) · topK {record.topK}
                         </span>
                       </div>
-                      <p className="mt-2 text-sm font-medium text-slate-900">{record.displayName}</p>
+                      <p className="mt-2 text-sm font-medium text-slate-900">
+                        {record.displayName}
+                      </p>
                       <p className="mt-1 break-all text-xs text-slate-500">
-                        Sources · {record.sourceIds.length > 0 ? record.sourceIds.join(", ") : "none"}
+                        Sources ·{" "}
+                        {record.sourceIds.length > 0 ? record.sourceIds.join(", ") : "none"}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
                         Gaps · {record.gaps.length > 0 ? record.gaps.join(", ") : "none"}
@@ -266,24 +281,30 @@ export function FoundationalRelevanceAuditWorkbench({ workspaceId, jurisdiction,
                       {record.gaps.includes("PROBE_NOT_CONFIGURED") ? (
                         <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
                           <AlertTriangle className="mt-0.5 shrink-0" size={14} aria-hidden="true" />
-                          Curated probe configuration is code-reviewed configuration. M30 will not generate or
-                          write a replacement probe at runtime.
+                          Curated probe configuration is code-reviewed configuration. M30 will not
+                          generate or write a replacement probe at runtime.
                         </div>
                       ) : null}
 
                       {record.probes.length === 0 && record.state === "READY" ? (
                         <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-700">
-                          <ShieldCheck size={14} aria-hidden="true" /> No probe remediation evidence reported.
+                          <ShieldCheck size={14} aria-hidden="true" /> No probe remediation evidence
+                          reported.
                         </p>
                       ) : null}
 
                       {record.probes.length > 0 ? (
                         <div className="mt-3 space-y-2">
                           {record.probes.map((probe) => (
-                            <div key={probe.probeId} className="rounded-lg border border-slate-200 bg-white p-3">
+                            <div
+                              key={probe.probeId}
+                              className="rounded-lg border border-slate-200 bg-white p-3"
+                            >
                               <div className="flex flex-wrap items-center gap-2">
                                 <Search size={14} aria-hidden="true" className="text-slate-500" />
-                                <span className="font-mono text-xs text-slate-700">{probe.probeId}</span>
+                                <span className="font-mono text-xs text-slate-700">
+                                  {probe.probeId}
+                                </span>
                                 <span
                                   className={`rounded-full border px-2 py-1 text-xs font-semibold ${stateClass(probe.state)}`}
                                 >
@@ -311,7 +332,8 @@ export function FoundationalRelevanceAuditWorkbench({ workspaceId, jurisdiction,
                                 </p>
                               </div>
                               <p className="mt-2 text-xs text-slate-500">
-                                Probe gaps · {probe.gaps.length > 0 ? probe.gaps.join(", ") : "none"}
+                                Probe gaps ·{" "}
+                                {probe.gaps.length > 0 ? probe.gaps.join(", ") : "none"}
                               </p>
                             </div>
                           ))}
