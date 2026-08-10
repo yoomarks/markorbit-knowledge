@@ -23,6 +23,16 @@ export type ControlledConversionRecoveryAction = {
   automaticExecution: false;
 };
 
+export type ControlledVerifiedCanonicalReindexAction = {
+  targetId: string;
+  actionCode: "REINDEX_VERIFIED_CANONICAL";
+  stage: "INDEX";
+  operatorInstruction: string;
+  executionPath: "CANONICAL_INDEXING";
+  collectionAuthorizationRequired: false;
+  automaticExecution: false;
+};
+
 export type FoundationalOperatorPhase =
   | "REQUEST_APPROVAL"
   | "PENDING_APPROVAL"
@@ -82,6 +92,35 @@ export function listControlledConversionRecoveryActions(
         targetId: item.targetId,
         actionCode: action.code,
         stage: "CONVERT",
+        operatorInstruction: action.operatorInstruction,
+        executionPath: action.executionPath,
+        collectionAuthorizationRequired: false,
+        automaticExecution: false,
+      });
+    }
+  }
+  return actions;
+}
+
+export function listControlledVerifiedCanonicalReindexActions(
+  snapshot: FoundationalRemediationQueueSnapshot,
+): ControlledVerifiedCanonicalReindexAction[] {
+  const actions: ControlledVerifiedCanonicalReindexAction[] = [];
+  for (const item of snapshot.remediationQueue.items) {
+    if (item.stage !== "INDEX") continue;
+    for (const action of item.actions) {
+      if (
+        action.code !== "REINDEX_VERIFIED_CANONICAL" ||
+        action.executionPath !== "CANONICAL_INDEXING" ||
+        action.collectionAuthorizationRequired !== false ||
+        action.automaticExecution !== false
+      ) {
+        continue;
+      }
+      actions.push({
+        targetId: item.targetId,
+        actionCode: action.code,
+        stage: "INDEX",
         operatorInstruction: action.operatorInstruction,
         executionPath: action.executionPath,
         collectionAuthorizationRequired: false,
