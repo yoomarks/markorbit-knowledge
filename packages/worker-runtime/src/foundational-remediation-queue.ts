@@ -266,6 +266,12 @@ function actionsFor(
           "Index the verified ReadyPackage/canonical Markdown through the existing retrieval-index boundary. Do not synthesize canonical bytes or mutate immutable raw evidence.",
           "CANONICAL_INDEXING",
           gaps,
+          targetQueryEndpoint(
+            "/api/foundational/verified-canonical-reindex",
+            workspaceId,
+            jurisdiction,
+            target.targetId,
+          ),
         ),
       ];
     case "QUALITY":
