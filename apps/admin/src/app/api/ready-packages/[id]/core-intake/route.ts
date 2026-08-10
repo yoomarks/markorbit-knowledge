@@ -35,7 +35,9 @@ export async function GET(request: Request, context: RouteContext) {
     const latestCoreIntakeSubmission = coreIntakeSubmissions[0] ?? null;
     const transportStatus =
       latestCoreIntakeSubmission?.state === "PENDING"
-        ? "SUBMISSION_PENDING_RESULT"
+        ? latestCoreIntakeSubmission.transportResult
+          ? "SUBMISSION_FINALIZATION_PENDING"
+          : "SUBMISSION_PENDING_RESULT"
         : latestCoreIntakeReceipt
           ? latestCoreIntakeReceipt.status === "REJECTED"
             ? "REJECTED"
@@ -53,7 +55,9 @@ export async function GET(request: Request, context: RouteContext) {
       coreIntakeReceipts,
       note:
         latestCoreIntakeSubmission?.state === "PENDING"
-          ? "Knowledge has durable submission evidence but no Core result yet; an explicit retry reuses the exact submittedAt and idempotency key."
+          ? latestCoreIntakeSubmission.transportResult
+            ? "Knowledge has durably persisted the Core transport result; an explicit retry completes local receipt/handoff finalization without submitting to Core again."
+            : "Knowledge has durable submission evidence but no Core result yet; an explicit retry reuses the exact submittedAt and idempotency key."
           : latestCoreIntakeReceipt
             ? latestCoreIntakeReceipt.status === "REJECTED"
               ? "Knowledge has persisted a rejected Core intake receipt; this ReadyPackage remains eligible for a later delivery attempt."
