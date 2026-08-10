@@ -23,6 +23,7 @@ import {
   WorkerAuthorizationError,
   WorkerNotFoundError,
 } from "@markorbit/persistence/workers";
+import { CoreIntakeTransportError } from "./core-intake-http-transport";
 
 export type ApiErrorEnvelope = {
   error: {
@@ -33,6 +34,12 @@ export type ApiErrorEnvelope = {
 };
 
 export function apiError(error: unknown): NextResponse<ApiErrorEnvelope> {
+  if (error instanceof CoreIntakeTransportError) {
+    return NextResponse.json(
+      { error: { code: error.code, message: error.message } },
+      { status: error.httpStatus },
+    );
+  }
   if (error instanceof WorkerAuthenticationError) {
     return NextResponse.json(
       { error: { code: error.code, message: error.message, details: error.details } },
