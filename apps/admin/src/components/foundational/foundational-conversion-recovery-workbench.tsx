@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ExternalLink, RefreshCw, RotateCcw, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  ExternalLink,
+  RefreshCw,
+  RotateCcw,
+  ShieldCheck,
+} from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 import {
   conversionRecoveryStateAllowsOperatorRetry,
@@ -66,7 +72,11 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-function recoveryUrl(workspaceId: string, jurisdiction: Jurisdiction, targetId: string): string {
+function recoveryUrl(
+  workspaceId: string,
+  jurisdiction: Jurisdiction,
+  targetId: string,
+): string {
   const query = new URLSearchParams({ workspaceId, jurisdiction, targetId });
   return `/api/foundational/conversion-recovery?${query.toString()}`;
 }
@@ -171,9 +181,9 @@ export function FoundationalConversionRecoveryWorkbench({
             </span>
           </div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
-            M27 只把 FOUNDATIONAL CONVERT target 精确映射到已有 Conversion Recovery case。
-            本操作面不会调用 reconcile，也不会启动自动 retry；只有 WAITING / DEAD_LETTERED case
-            可由操作员显式调用现有 M11 retry。
+            M27 只把 FOUNDATIONAL CONVERT target 精确映射到已有 Conversion Recovery
+            case。本操作面不会调用 reconcile，也不会启动自动 retry；只有 WAITING / DEAD_LETTERED
+            case 可由操作员显式调用现有 M11 retry。
           </p>
         </div>
         <button
@@ -222,27 +232,33 @@ export function FoundationalConversionRecoveryWorkbench({
                     </span>
                     <span className="text-xs text-slate-500">RUN_CONVERSION_RECOVERY</span>
                   </div>
-                  <h3 className="mt-2 break-all font-semibold text-slate-950">{action.targetId}</h3>
+                  <h3 className="mt-2 break-all font-semibold text-slate-950">
+                    {action.targetId}
+                  </h3>
                   <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
                     {action.operatorInstruction}
                   </p>
                 </div>
                 {recovery ? (
                   <span className="text-xs text-slate-500">
-                    {recovery.summary.total} recovery case{recovery.summary.total === 1 ? "" : "s"}
+                    {recovery.summary.total} recovery case
+                    {recovery.summary.total === 1 ? "" : "s"}
                   </span>
                 ) : null}
               </div>
 
               {!recovery && loading ? (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
-                  <RefreshCw className="animate-spin" size={15} aria-hidden="true" /> Loading M11 cases…
+                  <RefreshCw className="animate-spin" size={15} aria-hidden="true" /> Loading M11
+                  cases…
                 </div>
               ) : recovery && recovery.items.length === 0 ? (
                 <div className="mt-4 flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-700">
                   <ShieldCheck className="mt-0.5 shrink-0" size={16} aria-hidden="true" />
                   <div>
-                    <p className="text-sm font-medium">No tracked M11 recovery case for this target.</p>
+                    <p className="text-sm font-medium">
+                      No tracked M11 recovery case for this target.
+                    </p>
                     <p className="mt-1 text-xs leading-5 text-slate-500">
                       M27 does not auto-create or reconcile a case. Inspect the conversion run ledger
                       before taking any separate recovery action.
@@ -254,7 +270,10 @@ export function FoundationalConversionRecoveryWorkbench({
                   {recovery.items.map((item) => {
                     const retryable = conversionRecoveryStateAllowsOperatorRetry(item.state);
                     return (
-                      <div key={item.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <div
+                        key={item.id}
+                        className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                      >
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
@@ -264,10 +283,13 @@ export function FoundationalConversionRecoveryWorkbench({
                                 {item.state}
                               </span>
                               <span className="text-xs text-slate-500">
-                                retry {item.retryCount}/{item.maxRetries} · operator overrides {item.operatorOverrideCount}
+                                retry {item.retryCount}/{item.maxRetries} · operator overrides{" "}
+                                {item.operatorOverrideCount}
                               </span>
                             </div>
-                            <p className="mt-2 break-all font-mono text-xs text-slate-700">{item.id}</p>
+                            <p className="mt-2 break-all font-mono text-xs text-slate-700">
+                              {item.id}
+                            </p>
                             <p className="mt-1 break-all text-xs text-slate-500">
                               latest run · <span className="font-mono">{item.latestRunId}</span>
                             </p>
@@ -277,7 +299,8 @@ export function FoundationalConversionRecoveryWorkbench({
                             </p>
                             {item.nextRetryAt ? (
                               <p className="mt-1 text-xs text-slate-500">
-                                M11 next retry schedule · {timeLabel(item.nextRetryAt)} (not executed by this view)
+                                M11 next retry schedule · {timeLabel(item.nextRetryAt)} (not executed
+                                by this view)
                               </p>
                             ) : null}
                             {item.deadLetterReason ? (
