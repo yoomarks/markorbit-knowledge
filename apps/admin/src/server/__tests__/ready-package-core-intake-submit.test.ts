@@ -68,12 +68,7 @@ describe("M36 explicit ReadyPackage Core intake submission", () => {
       submitReadyPackageCoreIntake(input, repository, submissions, transport),
     ).rejects.toThrow("uncertain network outcome");
     now = "2026-08-10T05:05:00.000Z";
-    const recovered = await submitReadyPackageCoreIntake(
-      input,
-      repository,
-      submissions,
-      transport,
-    );
+    const recovered = await submitReadyPackageCoreIntake(input, repository, submissions, transport);
 
     expect(attempts).toHaveLength(2);
     expect(attempts[1]).toEqual(attempts[0]);
@@ -84,9 +79,9 @@ describe("M36 explicit ReadyPackage Core intake submission", () => {
     expect(recovered.submissionReplayed).toBe(true);
     expect(recovered.submission.state).toBe("RESULT_RECORDED");
     expect(recovered.acknowledgment.readyPackage.status).toBe("HANDED_OFF");
-    expect(repository.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toHaveLength(
-      1,
-    );
+    expect(
+      repository.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId),
+    ).toHaveLength(1);
 
     database.close();
   });
