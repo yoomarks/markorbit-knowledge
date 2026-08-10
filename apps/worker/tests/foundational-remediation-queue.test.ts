@@ -209,6 +209,32 @@ describe("foundational remediation queue", () => {
     expect(actionCodes(queue)).toEqual(["REVIEW_RELEVANCE_AUDIT_COVERAGE"]);
   });
 
+  it("scopes HEALTH diagnostics to one active foundational target without automatic execution", () => {
+    const queue = buildFoundationalRemediationQueue(
+      gate([
+        target("health", "HEALTH", {
+          healthState: "MISSING",
+          gaps: ["HEALTH_RECORD_MISSING"],
+          reason: "HEALTH_RECORD_MISSING",
+        }),
+      ]),
+      "wsp_test",
+    );
+    const remediation = queue.items[0]?.actions[0];
+    expect(remediation).toMatchObject({
+      code: "REVIEW_SUPPLY_HEALTH",
+      executionPath: "MANUAL_OPERATOR",
+      collectionAuthorizationRequired: false,
+      automaticExecution: false,
+    });
+    expect(remediation?.endpoint).toContain("/api/source-supply-health?");
+    expect(remediation?.endpoint).toContain("workspaceId=wsp_test");
+    expect(remediation?.endpoint).toContain("jurisdiction=US");
+    expect(remediation?.endpoint).toContain("targetId=health");
+    expect(remediation?.endpoint).toContain("coverageTier=FOUNDATIONAL");
+    expect(remediation?.endpoint).toContain("catalogState=ACTIVE");
+  });
+
   it("provides deterministic action codes for every upstream supply stage", () => {
     const cases: Array<[FoundationalReadinessStage, FoundationalRemediationActionCode]> = [
       ["REGISTER", "REGISTER_SOURCE"],
