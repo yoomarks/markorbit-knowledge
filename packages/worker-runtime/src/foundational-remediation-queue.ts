@@ -86,6 +86,16 @@ function queryEndpoint(path: string, workspaceId: string, jurisdiction: string):
   return `${path}?${query.toString()}`;
 }
 
+function targetQueryEndpoint(
+  path: string,
+  workspaceId: string,
+  jurisdiction: string,
+  targetId: string,
+): string {
+  const query = new URLSearchParams({ workspaceId, jurisdiction, targetId });
+  return `${path}?${query.toString()}`;
+}
+
 function action(
   target: FoundationalReadinessTarget,
   code: FoundationalRemediationActionCode,
@@ -240,7 +250,12 @@ function actionsFor(
           "Use the governed conversion-recovery workflow for the captured artifact. Preserve failed conversion history and create retry runs rather than overwriting prior evidence.",
           "CONVERSION_RECOVERY",
           gaps,
-          queryEndpoint("/api/conversion-recovery", workspaceId, jurisdiction),
+          targetQueryEndpoint(
+            "/api/foundational/conversion-recovery",
+            workspaceId,
+            jurisdiction,
+            target.targetId,
+          ),
         ),
       ];
     case "INDEX":
