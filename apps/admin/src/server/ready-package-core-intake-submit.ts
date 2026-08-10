@@ -1,10 +1,14 @@
+import type { CoreIntakeResult } from "@markorbit/contracts";
 import { createCoreIntakeRequest } from "@markorbit/worker-runtime";
 import {
   RegistryConflictError,
   RegistryError,
   RegistryValidationError,
 } from "@markorbit/persistence";
-import type { ReadyPackageRegistryRepository } from "@markorbit/persistence/ready-packages";
+import type {
+  ReadyPackageCoreIntakeReceipt,
+  ReadyPackageRegistryRepository,
+} from "@markorbit/persistence/ready-packages";
 import type {
   ReadyPackageCoreIntakeSubmission,
   ReadyPackageCoreIntakeSubmissionRepository,
@@ -16,7 +20,7 @@ const SHA256 = /^[a-f0-9]{64}$/;
 
 export type ReadyPackageCoreIntakeSubmitRepository = Pick<
   ReadyPackageRegistryRepository,
-  "getById" | "recordCoreIntakeAcknowledgment"
+  "getById" | "recordCoreIntakeAcknowledgment" | "listCoreIntakeReceipts"
 >;
 
 export type ReadyPackageCoreIntakeSubmitInput = {
@@ -25,6 +29,41 @@ export type ReadyPackageCoreIntakeSubmitInput = {
   expectedDigest: string;
   submit: true;
 };
+
+function resultKey(intakeId: string, status: CoreIntakeResult["status"]): string {
+  return `${intakeId}\u0000${status}`;
+}
+
+function findReconciliationReceipt(
+  submission: ReadyPackageCoreIntakeSubmission,
+  submissionHistory: ReadyPackageCoreIntakeSubmission[],
+  receipts: ReadyPackageCoreIntakeReceipt[],
+): ReadyPackageCoreIntakeReceipt | null {
+  const recordedResults = new Set(
+    submissionHistory.flatMap((item) =>
+      item.state === "RESULT_RECORDED" && item.result
+        ? [resultKey(item.result.intakeId, item.result.status)]
+        : [],
+    ),
+  );
+  const submittedAt = Date.parse(submission.submittedAt);
+  return (
+    receipts.find(
+      (receipt) =>
+        receipt.expectedDigest === submission.expectedDigest &&
+        Date.parse(receipt.recordedAt) >= submittedAt &&
+        !recordedResults.has(resultKey(receipt.intakeId, receipt.status)),
+    ) ?? null
+  );
+}
+
+function coreIntakeResultFromReceipt(receipt: ReadyPackageCoreIntakeReceipt): CoreIntakeResult {
+  return {
+    intakeId: receipt.intakeId,
+    status: receipt.status,
+    readyPackageId: receipt.readyPackageId,
+  };
+}
 
 export async function submitReadyPackageCoreIntake(
   input: ReadyPackageCoreIntakeSubmitInput,
@@ -54,9 +93,8 @@ export async function submitReadyPackageCoreIntake(
     );
   }
 
-  const pending = submissions
-    .list(input.readyPackageId, input.workspaceId)
-    .find((submission) => submission.state === "PENDING");
+  const submissionHistory = submissions.list(input.readyPackageId, input.workspaceId);
+  const pending = submissionHistory.find((submission) => submission.state === "PENDING");
   if (readyPackage.status === "HANDED_OFF" && !pending) {
     throw new RegistryConflictError(
       "READY_PACKAGE_ALREADY_HANDED_OFF",
@@ -76,7 +114,14 @@ export async function submitReadyPackageCoreIntake(
     expectedDigest: input.expectedDigest,
   });
   const request = createCoreIntakeRequest(readyPackage, prepared.submission.submittedAt);
-  const coreIntakeResult = await transport.submit(request, prepared.submission.idempotencyKey);
+  const reconciliationReceipt = findReconciliationReceipt(
+    prepared.submission,
+    submissionHistory,
+    readyPackages.listCoreIntakeReceipts(input.readyPackageId, input.workspaceId),
+  );
+  const coreIntakeResult = reconciliationReceipt
+    ? coreIntakeResultFromReceipt(reconciliationReceipt)
+    : await transport.submit(request, prepared.submission.idempotencyKey);
 
   const acknowledgment = recordReadyPackageCoreIntakeAcknowledgment(
     {
@@ -99,6 +144,7 @@ export async function submitReadyPackageCoreIntake(
     coreIntakeResult,
     submission,
     submissionReplayed: prepared.replayed,
+    reconciledFromReceipt: reconciliationReceipt !== null,
     acknowledgment,
   };
 }
