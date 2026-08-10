@@ -153,7 +153,9 @@ export function FoundationalConversionRecoveryWorkbench({
       .catch((loadError: unknown) => {
         if (!active) return;
         setError(
-          loadError instanceof Error ? loadError.message : "Unable to load conversion recovery state",
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load conversion recovery state",
         );
         setLoading(false);
       });
