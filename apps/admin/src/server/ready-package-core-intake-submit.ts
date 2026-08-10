@@ -81,12 +81,33 @@ export async function submitReadyPackageCoreIntake(
     );
   }
 
+  if (
+    pending &&
+    !pending.coreWorkspaceId &&
+    !pending.transportResult &&
+    transport.resolveDestinationWorkspaceId
+  ) {
+    throw new RegistryConflictError(
+      "CORE_INTAKE_PENDING_DESTINATION_WORKSPACE_UNBOUND",
+      "A legacy pending Core intake submission cannot be rebound without changing its frozen request",
+    );
+  }
+
+  const coreWorkspaceId =
+    pending?.coreWorkspaceId ??
+    (!pending && transport.resolveDestinationWorkspaceId
+      ? transport.resolveDestinationWorkspaceId(input.workspaceId)
+      : undefined);
   const prepared = submissions.prepare({
     workspaceId: input.workspaceId,
     readyPackageId: input.readyPackageId,
     expectedDigest: input.expectedDigest,
+    ...(coreWorkspaceId ? { coreWorkspaceId } : {}),
   });
-  const request = createCoreIntakeRequest(readyPackage, prepared.submission.submittedAt);
+  const request = {
+    ...createCoreIntakeRequest(readyPackage, prepared.submission.submittedAt),
+    workspaceId: prepared.submission.coreWorkspaceId ?? readyPackage.workspaceId,
+  };
 
   const persistedTransportResult = coreIntakeResultFromTransportEvidence(prepared.submission);
   const transportResultReplayed = persistedTransportResult !== null;
