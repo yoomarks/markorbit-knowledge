@@ -34,39 +34,53 @@ export async function GET(request: Request, context: RouteContext) {
     ).list(id, workspaceId);
     const latestCoreIntakeReceipt = coreIntakeReceipts[0] ?? null;
     const latestCoreIntakeSubmission = coreIntakeSubmissions[0] ?? null;
-    const transportStatus =
-      latestCoreIntakeSubmission?.state === "PENDING"
-        ? latestCoreIntakeSubmission.transportResult
-          ? "SUBMISSION_FINALIZATION_PENDING"
-          : "SUBMISSION_PENDING_RESULT"
-        : latestCoreIntakeReceipt
-          ? latestCoreIntakeReceipt.status === "REJECTED"
-            ? "REJECTED"
-            : "ACKNOWLEDGED"
-          : readyPackage.status === "HANDED_OFF"
-            ? "HANDED_OFF_WITHOUT_RECEIPT"
-            : "NOT_SUBMITTED";
+    const pendingCoreIntakeSubmission =
+      latestCoreIntakeSubmission?.state === "PENDING" ? latestCoreIntakeSubmission : null;
+    const transportStatus = pendingCoreIntakeSubmission
+      ? pendingCoreIntakeSubmission.transportResult
+        ? "SUBMISSION_FINALIZATION_PENDING"
+        : "SUBMISSION_PENDING_RESULT"
+      : latestCoreIntakeReceipt
+        ? latestCoreIntakeReceipt.status === "REJECTED"
+          ? "REJECTED"
+          : "ACKNOWLEDGED"
+        : readyPackage.status === "HANDED_OFF"
+          ? "HANDED_OFF_WITHOUT_RECEIPT"
+          : "NOT_SUBMITTED";
+    const outboundTransport =
+      pendingCoreIntakeSubmission &&
+      !pendingCoreIntakeSubmission.coreWorkspaceId &&
+      !pendingCoreIntakeSubmission.transportResult
+        ? {
+            configured: false,
+            issueCode: "CORE_INTAKE_PENDING_DESTINATION_WORKSPACE_UNBOUND",
+          }
+        : coreIntakeTransportReadiness(
+            readyPackage.workspaceId,
+            pendingCoreIntakeSubmission?.coreWorkspaceId,
+          );
     return NextResponse.json({
       readyPackageStatus: readyPackage.status,
       coreIntakeRequestPreview: createCoreIntakeRequestPreview(readyPackage),
       transportStatus,
-      outboundTransport: coreIntakeTransportReadiness(),
+      outboundTransport,
       latestCoreIntakeSubmission,
       coreIntakeSubmissions,
       latestCoreIntakeReceipt,
       coreIntakeReceipts,
-      note:
-        latestCoreIntakeSubmission?.state === "PENDING"
-          ? latestCoreIntakeSubmission.transportResult
-            ? "Knowledge has durably persisted the Core transport result; an explicit retry completes local receipt/handoff finalization without submitting to Core again."
-            : "Knowledge has durable submission evidence but no Core result yet; an explicit retry reuses the exact submittedAt and idempotency key."
-          : latestCoreIntakeReceipt
-            ? latestCoreIntakeReceipt.status === "REJECTED"
-              ? "Knowledge has persisted a rejected Core intake receipt; this ReadyPackage remains eligible for a later delivery attempt."
-              : "Knowledge has persisted explicit Core intake receipt evidence for this ReadyPackage."
-            : readyPackage.status === "HANDED_OFF"
-              ? "This ReadyPackage predates persisted Core intake receipts; Knowledge does not invent historical receipt evidence."
-              : "Knowledge exposes a handoff preview but does not claim the ReadyPackage has been submitted to Core.",
+      note: pendingCoreIntakeSubmission
+        ? pendingCoreIntakeSubmission.transportResult
+          ? "Knowledge has durably persisted the Core transport result; an explicit retry completes local receipt/handoff finalization without submitting to Core again."
+          : pendingCoreIntakeSubmission.coreWorkspaceId
+            ? "Knowledge has durable submission evidence with a frozen Core workspace binding; an explicit retry reuses the exact destination workspace, submittedAt and idempotency key."
+            : "This legacy pending submission predates durable Core workspace binding. Knowledge will not rewrite its frozen request under the same idempotency key."
+        : latestCoreIntakeReceipt
+          ? latestCoreIntakeReceipt.status === "REJECTED"
+            ? "Knowledge has persisted a rejected Core intake receipt; this ReadyPackage remains eligible for a later delivery attempt."
+            : "Knowledge has persisted explicit Core intake receipt evidence for this ReadyPackage."
+          : readyPackage.status === "HANDED_OFF"
+            ? "This ReadyPackage predates persisted Core intake receipts; Knowledge does not invent historical receipt evidence."
+            : "Knowledge exposes a handoff preview but does not claim the ReadyPackage has been submitted to Core.",
     });
   } catch (error) {
     return apiError(error);
