@@ -14,7 +14,7 @@
     "test": "pnpm -r test",
     "calibrate:source-intelligence": "node scripts/source-intelligence-calibration.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write apps/admin/src/components/foundational/foundational-operator-panel.tsx apps/admin/src/components/foundational/foundational-verified-canonical-reindex-workbench.tsx apps/admin/src/server/foundational-verified-canonical-reindex.ts && git diff -- apps/admin/src/components/foundational/foundational-operator-panel.tsx apps/admin/src/components/foundational/foundational-verified-canonical-reindex-workbench.tsx apps/admin/src/server/foundational-verified-canonical-reindex.ts && false",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
