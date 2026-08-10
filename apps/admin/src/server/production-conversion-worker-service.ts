@@ -12,7 +12,6 @@ import {
   type ConversionOutputReadyReport,
   type ConversionProgressReport,
   type ConversionStartedReport,
-  type CoreIntakeRequest,
   type RawArtifactReadGrant,
 } from "@markorbit/contracts";
 import {
@@ -20,7 +19,11 @@ import {
   RegistryError,
   RegistryValidationError,
 } from "@markorbit/persistence";
-import { canonicalMarkdownFrontmatter, createCoreIntakeRequest } from "@markorbit/worker-runtime";
+import {
+  canonicalMarkdownFrontmatter,
+  createCoreIntakeRequestPreview,
+  type CoreIntakeRequestPreview,
+} from "@markorbit/worker-runtime";
 import { canonicalDocumentMetadata } from "./canonical-document-metadata";
 import {
   reconcileAutomaticConversions,
@@ -60,7 +63,7 @@ export type ProductionStagingCommitResult = {
   verificationOutcome: "PASS" | "PASS_WITH_WARNINGS" | "FAIL";
   finalizationDecision: "COMPLETED" | "FAILED";
   readyPackageId?: string;
-  coreIntakeRequest?: CoreIntakeRequest;
+  coreIntakeRequestPreview?: CoreIntakeRequestPreview;
 };
 
 export type AutomaticConversionRecoveryStatus =
@@ -117,185 +120,193 @@ export class ProductionConversionWorkerService {
         "Worker credential belongs to another Workspace",
       );
     }
-
-    let reconciliation: AutomaticConversionRecoveryStatus;
-    try {
-      reconciliation = reconcileAutomaticConversions(request.workspaceId, { limit: 25 });
-    } catch {
-      // Recovery must never prevent a Worker from claiming ConversionRuns that are already queued.
-      reconciliation = {
-        status: "DEFERRED",
-        workspaceId: request.workspaceId,
-        reason: "RECOVERY_SCAN_FAILED",
-      };
-    }
-
-    return {
-      ...getConversionRuntimeRepository().claim(request),
-      reconciliation,
-    };
+    const reconciliation = this.reconcile(request.workspaceId);
+    const result = getConversionRuntimeTransitionRepository().claim(request);
+    return { result: result.result, replayed: result.replayed, reconciliation };
   }
 
-  readInput(
-    grantId: string,
+  start(
+    report: ConversionStartedReport,
+    credential: string,
+  ): ReturnType<ReturnType<typeof getConversionRuntimeTransitionRepository>["start"]> {
+    if (!isConversionStartedReport(report)) {
+      throw new RegistryValidationError("ConversionStartedReport is invalid");
+    }
+    this.authorizeWorker(report.workspaceId, report.workerId, credential);
+    return getConversionRuntimeTransitionRepository().start(report);
+  }
+
+  progress(
+    report: ConversionProgressReport,
+    credential: string,
+  ): ReturnType<ReturnType<typeof getConversionRuntimeTransitionRepository>["progress"]> {
+    if (!isConversionProgressReport(report)) {
+      throw new RegistryValidationError("ConversionProgressReport is invalid");
+    }
+    this.authorizeWorker(report.workspaceId, report.workerId, credential);
+    return getConversionRuntimeTransitionRepository().progress(report);
+  }
+
+  outputReady(
+    report: ConversionOutputReadyReport,
+    credential: string,
+  ): ReturnType<ReturnType<typeof getConversionRuntimeTransitionRepository>["outputReady"]> {
+    if (!isConversionOutputReadyReport(report)) {
+      throw new RegistryValidationError("ConversionOutputReadyReport is invalid");
+    }
+    this.authorizeWorker(report.workspaceId, report.workerId, credential);
+    return getConversionRuntimeTransitionRepository().outputReady(report);
+  }
+
+  fail(
+    report: ConversionFailedReport,
+    credential: string,
+  ): ReturnType<ReturnType<typeof getConversionRuntimeTransitionRepository>["fail"]> {
+    if (!isConversionFailedReport(report)) {
+      throw new RegistryValidationError("ConversionFailedReport is invalid");
+    }
+    this.authorizeWorker(report.workspaceId, report.workerId, credential);
+    return getConversionRuntimeTransitionRepository().fail(report);
+  }
+
+  rawArtifactRead(
+    workspaceId: string,
     workerId: string,
+    grantId: string,
     credential: string,
-  ): { bytes: Uint8Array; mimeType: string; originalName: string } {
-    const worker = getWorkerRegistryRepository().verifyCredential(workerId, credential);
-    const database = getRegistryDatabase();
-    database.exec("BEGIN IMMEDIATE;");
-    try {
-      const row = database
-        .prepare("SELECT document_json FROM conversion_read_grants WHERE id = ?")
-        .get(grantId) as { document_json: string } | undefined;
-      if (!row)
-        throw new RegistryError(
-          "RAW_ARTIFACT_READ_GRANT_NOT_FOUND",
-          `Read grant ${grantId} was not found`,
-        );
-      const grant = parseReadGrant(row.document_json);
-      if (grant.workerId !== workerId || grant.workspaceId !== worker.workspaceId) {
-        throw new RegistryConflictError(
-          "RAW_ARTIFACT_READ_GRANT_SCOPE_MISMATCH",
-          "Read grant does not belong to the authenticated Worker",
-        );
-      }
-      if (Date.parse(grant.expiresAt) < Date.now()) {
-        throw new RegistryConflictError(
-          "RAW_ARTIFACT_READ_GRANT_EXPIRED",
-          "Read grant has expired",
-        );
-      }
-      if (grant.readsUsed >= grant.maximumReads) {
-        throw new RegistryConflictError(
-          "RAW_ARTIFACT_READ_GRANT_EXHAUSTED",
-          "Read grant has already been consumed",
-        );
-      }
-
-      const artifact = getRawArtifactRepository().getArtifact(grant.rawArtifactId);
-      if (!artifact || artifact.artifact.workspaceId !== grant.workspaceId) {
-        throw new RegistryError(
-          "RAW_ARTIFACT_NOT_FOUND",
-          `RawArtifact ${grant.rawArtifactId} was not found`,
-        );
-      }
-      if (
-        artifact.artifact.binaryHash.value !== grant.expectedSha256 ||
-        artifact.artifact.sizeBytes !== grant.expectedBytes ||
-        artifact.artifact.mimeType !== grant.expectedMime
-      ) {
-        throw new RegistryConflictError(
-          "RAW_ARTIFACT_READ_GRANT_EVIDENCE_MISMATCH",
-          "RawArtifact no longer matches the immutable read grant",
-        );
-      }
-      const path = getRawArtifactRepository().contentPath(grant.rawArtifactId);
-      const bytes = new Uint8Array(readFileSync(path.path));
-      if (
-        bytes.byteLength !== grant.expectedBytes ||
-        !SHA256.test(grant.expectedSha256) ||
-        sha256(bytes) !== grant.expectedSha256
-      ) {
-        throw new RegistryConflictError(
-          "RAW_ARTIFACT_READ_INTEGRITY_MISMATCH",
-          "Stored RawArtifact bytes do not match the read grant",
-        );
-      }
-      const consumed: RawArtifactReadGrant = { ...grant, readsUsed: grant.readsUsed + 1 };
-      database
-        .prepare("UPDATE conversion_read_grants SET document_json = ? WHERE id = ?")
-        .run(JSON.stringify(consumed), grant.id);
-      database.exec("COMMIT;");
-      return { bytes, mimeType: path.mimeType, originalName: path.originalName };
-    } catch (error) {
-      database.exec("ROLLBACK;");
-      throw error;
+  ): { grant: RawArtifactReadGrant; content: Uint8Array } {
+    this.authorizeWorker(workspaceId, workerId, credential);
+    const row = getRegistryDatabase()
+      .prepare(
+        `SELECT grant_json FROM raw_artifact_read_grants
+         WHERE id = ? AND workspace_id = ? AND worker_id = ?`,
+      )
+      .get(grantId, workspaceId, workerId) as { grant_json: string } | undefined;
+    if (!row) {
+      throw new RegistryError("RAW_ARTIFACT_READ_GRANT_NOT_FOUND", `Read grant ${grantId} was not found`);
     }
-  }
-
-  submitReport(
-    report:
-      | ConversionStartedReport
-      | ConversionProgressReport
-      | ConversionOutputReadyReport
-      | ConversionFailedReport,
-    credential: string,
-  ) {
-    const transitions = getConversionRuntimeTransitionRepository();
-    if (isConversionStartedReport(report)) return transitions.submitStarted(report, credential);
-    if (isConversionProgressReport(report)) return transitions.submitProgress(report, credential);
-    if (isConversionOutputReadyReport(report))
-      return transitions.submitOutputReady(report, credential);
-    if (isConversionFailedReport(report)) return transitions.submitFailed(report, credential);
-    throw new RegistryValidationError("Unsupported Conversion Runtime report");
-  }
-
-  commitStaging(
-    input: ProductionStagingCommitInput,
-    credential: string,
-  ): ProductionStagingCommitResult {
-    if (!KEY.test(input.idempotencyKey)) {
-      throw new RegistryValidationError("Invalid production Staging commit idempotency key");
-    }
-    const worker = getWorkerRegistryRepository().verifyCredential(input.workerId, credential);
-    if (worker.workspaceId !== input.workspaceId) {
+    const grant = parseReadGrant(row.grant_json);
+    if (Date.parse(grant.expiresAt) <= Date.now()) {
       throw new RegistryConflictError(
-        "STAGING_WORKER_WORKSPACE_MISMATCH",
-        "Worker credential belongs to another Workspace",
+        "RAW_ARTIFACT_READ_GRANT_EXPIRED",
+        `Read grant ${grantId} has expired`,
       );
     }
-
-    const run = getConversionRunLedgerRepository().getById(
-      input.conversionRunId,
-      input.workspaceId,
+    const artifact = getRawArtifactRepository().getById(grant.rawArtifactId, workspaceId);
+    if (!artifact) {
+      throw new RegistryError(
+        "RAW_ARTIFACT_NOT_FOUND",
+        `RawArtifact ${grant.rawArtifactId} was not found`,
+      );
+    }
+    if (artifact.artifact.storage.uri !== grant.storageUri) {
+      throw new RegistryConflictError(
+        "RAW_ARTIFACT_READ_GRANT_STORAGE_MISMATCH",
+        "Read grant storage URI no longer matches the RawArtifact",
+      );
+    }
+    if (grant.storageUri.startsWith("file://")) {
+      return { grant, content: readFileSync(new URL(grant.storageUri)) };
+    }
+    throw new RegistryConflictError(
+      "RAW_ARTIFACT_READ_UNSUPPORTED_URI",
+      `Unsupported RawArtifact storage URI: ${grant.storageUri}`,
     );
-    if (!run) {
+  }
+
+  commitStaging(input: ProductionStagingCommitInput): ProductionStagingCommitResult {
+    if (!KEY.test(input.idempotencyKey)) {
+      throw new RegistryValidationError("Invalid staging commit idempotency key");
+    }
+    const runtime = getConversionRuntimeRepository().getByRun(input.conversionRunId, input.workspaceId);
+    if (!runtime) {
+      throw new RegistryError(
+        "CONVERSION_RUNTIME_NOT_FOUND",
+        `Conversion runtime for ${input.conversionRunId} was not found`,
+      );
+    }
+    if (runtime.attempt.id !== input.conversionAttemptId || runtime.attempt.workerId !== input.workerId) {
+      throw new RegistryConflictError(
+        "CONVERSION_RUNTIME_ATTEMPT_MISMATCH",
+        "Staging commit attempt does not match the current ConversionAttempt",
+      );
+    }
+    if (runtime.attempt.status !== "OUTPUT_READY") {
+      throw new RegistryConflictError(
+        "CONVERSION_OUTPUT_NOT_READY",
+        "Staging commit requires an OUTPUT_READY ConversionAttempt",
+      );
+    }
+    const grant = runtime.uploadGrant;
+    if (!grant || grant.id !== input.uploadGrantId || Date.parse(grant.expiresAt) <= Date.now()) {
+      throw new RegistryConflictError(
+        "STAGING_UPLOAD_GRANT_INVALID",
+        "Staging upload grant is missing, mismatched, or expired",
+      );
+    }
+    const completed = getConversionRunLedgerRepository().getById(input.conversionRunId, input.workspaceId);
+    if (!completed) {
       throw new RegistryError(
         "CONVERSION_RUN_NOT_FOUND",
         `ConversionRun ${input.conversionRunId} was not found`,
       );
     }
-    const artifact = getRawArtifactRepository().getArtifact(run.run.rawArtifactId);
+    const artifact = getRawArtifactRepository().getById(completed.run.rawArtifactId, input.workspaceId);
     if (!artifact) {
       throw new RegistryError(
         "RAW_ARTIFACT_NOT_FOUND",
-        `RawArtifact ${run.run.rawArtifactId} was not found`,
+        `RawArtifact ${completed.run.rawArtifactId} was not found`,
       );
     }
-    const source = getSourceRepository().getById(run.run.sourceId);
+    const source = getSourceRepository().getById(completed.run.sourceId, input.workspaceId);
     if (!source) {
-      throw new RegistryError("SOURCE_NOT_FOUND", `Source ${run.run.sourceId} was not found`);
+      throw new RegistryError("SOURCE_NOT_FOUND", `Source ${completed.run.sourceId} was not found`);
     }
-    const metadata = canonicalDocumentMetadata(run.run, artifact.artifact, source);
-    assertCanonicalMarkdown(input.content, canonicalMarkdownFrontmatter(metadata));
-
-    const staging = getStagingContentRepository().ingestGenerated({
+    const metadata = canonicalDocumentMetadata({
       workspaceId: input.workspaceId,
-      workerId: input.workerId,
-      conversionRunId: input.conversionRunId,
-      conversionAttemptId: input.conversionAttemptId,
-      uploadGrantId: input.uploadGrantId,
-      idempotencyKey: `${input.idempotencyKey}:ingest`,
-      title: source.name,
-      content: input.content,
+      sourceId: source.source.id,
+      rawArtifactId: artifact.artifact.id,
+      rawArtifactSha256: artifact.artifact.binaryHash.value,
+      capturedAt: artifact.artifact.capturedAt,
+      sourceUri: artifact.artifact.provenance.sourceUri,
+      documentType: "OFFICIAL_GUIDANCE",
+      jurisdiction: source.source.jurisdiction,
+      sourceAuthority: source.source.authority,
+      sourceType: source.source.sourceType,
+      fetchedAt: artifact.artifact.capturedAt,
+      checkedAt: artifact.artifact.capturedAt,
+      validFrom: artifact.artifact.capturedAt,
     });
-    const verification = getStagingVerificationRepository().verifyGenerated({
+    const expectedFrontmatter = canonicalMarkdownFrontmatter(metadata);
+    assertCanonicalMarkdown(input.content, expectedFrontmatter);
+    const contentHash = sha256(input.content);
+    if (contentHash !== grant.expectedContentSha256) {
+      throw new RegistryConflictError(
+        "STAGING_UPLOAD_CONTENT_HASH_MISMATCH",
+        "Staging content hash does not match the granted digest",
+      );
+    }
+    const staging = getStagingContentRepository().commit({
+      workspaceId: input.workspaceId,
+      sourceId: source.source.id,
+      rawArtifactId: artifact.artifact.id,
+      conversionRunId: completed.run.id,
+      title: `${source.source.jurisdiction} ${source.source.authority} official guidance`,
+      targetPath: `${source.source.jurisdiction}/${source.source.authority}/${artifact.artifact.id}.md`,
+      content: input.content,
+      contentSha256: contentHash,
+      idempotencyKey: `${input.idempotencyKey}:staging`,
+    });
+    const verification = getStagingVerificationRepository().verify({
       workspaceId: input.workspaceId,
       stagingDocumentId: staging.record.descriptor.id,
-      idempotencyKey: `${input.idempotencyKey}:verify`,
+      idempotencyKey: `${input.idempotencyKey}:verification`,
     });
-    const status = verification.record.descriptor.status;
-    if (status !== "READY" && status !== "BLOCKED") {
-      throw new RegistryConflictError(
-        "STAGING_VERIFICATION_STATUS_INVALID",
-        "Staging verification did not produce a terminal decision",
-      );
-    }
+    const status = verification.record.status === "VERIFIED" ? "READY" : "BLOCKED";
     const finalization = getVerifiedStagingFinalizer().finalize({
       workspaceId: input.workspaceId,
       stagingDocumentId: staging.record.descriptor.id,
-      idempotencyKey: `${input.idempotencyKey}:finalize`,
+      idempotencyKey: `${input.idempotencyKey}:finalization`,
     });
 
     if (finalization.decision === "FAILED") {
@@ -348,14 +359,32 @@ export class ProductionConversionWorkerService {
       contentSha256: descriptor.contentHash.value,
       canonicalMarkdown: input.content,
     });
-    const coreIntakeRequest = createCoreIntakeRequest(packageResult.readyPackage);
+    const coreIntakeRequestPreview = createCoreIntakeRequestPreview(packageResult.readyPackage);
     return {
       stagingDocumentId: descriptor.id,
       stagingStatus: "READY",
       verificationOutcome: outcome,
       finalizationDecision: "COMPLETED",
       readyPackageId: packageResult.readyPackage.id,
-      coreIntakeRequest,
+      coreIntakeRequestPreview,
     };
+  }
+
+  private authorizeWorker(workspaceId: string, workerId: string, credential: string): void {
+    const worker = getWorkerRegistryRepository().verifyCredential(workerId, credential);
+    if (worker.workspaceId !== workspaceId) {
+      throw new RegistryConflictError(
+        "CONVERSION_WORKER_WORKSPACE_MISMATCH",
+        "Worker credential belongs to another Workspace",
+      );
+    }
+  }
+
+  private reconcile(workspaceId: string): AutomaticConversionRecoveryStatus {
+    try {
+      return reconcileAutomaticConversions(workspaceId);
+    } catch {
+      return { status: "DEFERRED", workspaceId, reason: "RECOVERY_SCAN_FAILED" };
+    }
   }
 }
