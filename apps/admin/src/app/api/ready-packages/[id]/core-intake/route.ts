@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import type { CoreIntakeResult } from "@markorbit/contracts";
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import { SqliteReadyPackageCoreIntakeSubmissionRepository } from "@markorbit/persistence/ready-package-core-intake-submissions";
 import { createCoreIntakeRequestPreview } from "@markorbit/worker-runtime";
 import { apiError } from "@/server/api-errors";
 import { recordReadyPackageCoreIntakeAcknowledgment } from "@/server/ready-package-core-intake-handoff";
-import { getReadyPackageRepository } from "@/server/source-registry";
+import { getReadyPackageRepository, getRegistryDatabase } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,27 +28,39 @@ export async function GET(request: Request, context: RouteContext) {
     if (!readyPackage)
       throw new RegistryError("READY_PACKAGE_NOT_FOUND", `ReadyPackage ${id} was not found`);
     const coreIntakeReceipts = repository.listCoreIntakeReceipts(id, workspaceId);
+    const coreIntakeSubmissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(
+      getRegistryDatabase(),
+    ).list(id, workspaceId);
     const latestCoreIntakeReceipt = coreIntakeReceipts[0] ?? null;
-    const transportStatus = latestCoreIntakeReceipt
-      ? latestCoreIntakeReceipt.status === "REJECTED"
-        ? "REJECTED"
-        : "ACKNOWLEDGED"
-      : readyPackage.status === "HANDED_OFF"
-        ? "HANDED_OFF_WITHOUT_RECEIPT"
-        : "NOT_SUBMITTED";
+    const latestCoreIntakeSubmission = coreIntakeSubmissions[0] ?? null;
+    const transportStatus =
+      latestCoreIntakeSubmission?.state === "PENDING"
+        ? "SUBMISSION_PENDING_RESULT"
+        : latestCoreIntakeReceipt
+          ? latestCoreIntakeReceipt.status === "REJECTED"
+            ? "REJECTED"
+            : "ACKNOWLEDGED"
+          : readyPackage.status === "HANDED_OFF"
+            ? "HANDED_OFF_WITHOUT_RECEIPT"
+            : "NOT_SUBMITTED";
     return NextResponse.json({
       readyPackageStatus: readyPackage.status,
       coreIntakeRequestPreview: createCoreIntakeRequestPreview(readyPackage),
       transportStatus,
+      latestCoreIntakeSubmission,
+      coreIntakeSubmissions,
       latestCoreIntakeReceipt,
       coreIntakeReceipts,
-      note: latestCoreIntakeReceipt
-        ? latestCoreIntakeReceipt.status === "REJECTED"
-          ? "Knowledge has persisted a rejected Core intake receipt; this ReadyPackage remains eligible for a later delivery attempt."
-          : "Knowledge has persisted explicit Core intake receipt evidence for this ReadyPackage."
-        : readyPackage.status === "HANDED_OFF"
-          ? "This ReadyPackage predates persisted Core intake receipts; Knowledge does not invent historical receipt evidence."
-          : "Knowledge exposes a handoff preview but does not claim the ReadyPackage has been submitted to Core.",
+      note:
+        latestCoreIntakeSubmission?.state === "PENDING"
+          ? "Knowledge has durable submission evidence but no Core result yet; an explicit retry reuses the exact submittedAt and idempotency key."
+          : latestCoreIntakeReceipt
+            ? latestCoreIntakeReceipt.status === "REJECTED"
+              ? "Knowledge has persisted a rejected Core intake receipt; this ReadyPackage remains eligible for a later delivery attempt."
+              : "Knowledge has persisted explicit Core intake receipt evidence for this ReadyPackage."
+            : readyPackage.status === "HANDED_OFF"
+              ? "This ReadyPackage predates persisted Core intake receipts; Knowledge does not invent historical receipt evidence."
+              : "Knowledge exposes a handoff preview but does not claim the ReadyPackage has been submitted to Core.",
     });
   } catch (error) {
     return apiError(error);
