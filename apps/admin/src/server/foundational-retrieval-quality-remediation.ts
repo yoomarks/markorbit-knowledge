@@ -14,15 +14,16 @@ import { normalizeFoundationalJurisdiction } from "@markorbit/worker-runtime/fou
 import { getRegistryDatabase } from "./source-registry";
 
 export type FoundationalQualityActionDisposition =
-  | "M17_EXECUTABLE"
-  | "MANUAL_REVIEW_ONLY"
-  | "CANONICAL_REINDEX_REQUIRED";
+  "M17_EXECUTABLE" | "MANUAL_REVIEW_ONLY" | "CANONICAL_REINDEX_REQUIRED";
 
 export type FoundationalQualityRemediationAction = RetrievalQualityRemediationAction & {
   disposition: FoundationalQualityActionDisposition;
 };
 
-export type FoundationalQualityRemediationItem = Omit<RetrievalQualityRemediationRecord, "actions"> & {
+export type FoundationalQualityRemediationItem = Omit<
+  RetrievalQualityRemediationRecord,
+  "actions"
+> & {
   actions: FoundationalQualityRemediationAction[];
 };
 
