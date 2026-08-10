@@ -14,7 +14,7 @@
     "test": "pnpm -r test",
     "calibrate:source-intelligence": "node scripts/source-intelligence-calibration.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --write apps/admin/src/components/ready-packages/ready-package-delivery-workbench.test.ts && git diff -- apps/admin/src/components/ready-packages/ready-package-delivery-workbench.test.ts && false",
+    "format:check": "prettier --check .",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
