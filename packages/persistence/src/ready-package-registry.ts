@@ -159,7 +159,8 @@ function validateCoreIntakeAcknowledgment(
   input: RecordReadyPackageCoreIntakeAcknowledgmentInput,
 ): void {
   if (!input.workspaceId?.trim()) throw new RegistryValidationError("workspaceId is required");
-  if (!input.readyPackageId?.trim()) throw new RegistryValidationError("readyPackageId is required");
+  if (!input.readyPackageId?.trim())
+    throw new RegistryValidationError("readyPackageId is required");
   if (!SHA256.test(input.expectedDigest)) {
     throw new RegistryValidationError("expectedDigest must be a SHA-256 digest");
   }
@@ -284,8 +285,7 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
          WHERE workspace_id = ? AND idempotency_key = ?`,
         )
         .get(input.workspaceId, input.idempotencyKey) as
-        | { request_digest: string; ready_package_id: string }
-        | undefined;
+        { request_digest: string; ready_package_id: string } | undefined;
       if (replay) {
         if (replay.request_digest !== requestDigest) {
           throw new RegistryConflictError(
@@ -429,9 +429,7 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
           coreIntakeResult: input.coreIntakeResult,
           handoffRecorded,
           replayed: true,
-          disposition: handoffRecorded
-            ? "HANDOFF_ALREADY_RECORDED"
-            : "REJECTED_NOT_HANDED_OFF",
+          disposition: handoffRecorded ? "HANDOFF_ALREADY_RECORDED" : "REJECTED_NOT_HANDED_OFF",
         };
       }
 
@@ -504,7 +502,9 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
          ORDER BY recorded_at DESC, rowid DESC`,
       )
       .all(workspaceId, readyPackageId)
-      .map((row) => parseCoreIntakeReceipt(String((row as { document_json: string }).document_json)));
+      .map((row) =>
+        parseCoreIntakeReceipt(String((row as { document_json: string }).document_json)),
+      );
   }
 
   private getCoreIntakeReceiptsByIntakeId(
@@ -518,7 +518,9 @@ export class SqliteReadyPackageRegistryRepository implements ReadyPackageRegistr
          ORDER BY rowid ASC`,
       )
       .all(workspaceId, intakeId)
-      .map((row) => parseCoreIntakeReceipt(String((row as { document_json: string }).document_json)));
+      .map((row) =>
+        parseCoreIntakeReceipt(String((row as { document_json: string }).document_json)),
+      );
   }
 
   private transitionHandedOff(
