@@ -22,17 +22,32 @@ export async function GET(request: Request, context: RouteContext) {
     const workspaceId = new URL(request.url).searchParams.get("workspaceId")?.trim();
     if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
     const { id } = await context.params;
-    const readyPackage = getReadyPackageRepository().getById(id, workspaceId);
+    const repository = getReadyPackageRepository();
+    const readyPackage = repository.getById(id, workspaceId);
     if (!readyPackage)
       throw new RegistryError("READY_PACKAGE_NOT_FOUND", `ReadyPackage ${id} was not found`);
-    const acknowledged = readyPackage.status === "HANDED_OFF";
+    const coreIntakeReceipts = repository.listCoreIntakeReceipts(id, workspaceId);
+    const latestCoreIntakeReceipt = coreIntakeReceipts[0] ?? null;
+    const transportStatus = latestCoreIntakeReceipt
+      ? latestCoreIntakeReceipt.status === "REJECTED"
+        ? "REJECTED"
+        : "ACKNOWLEDGED"
+      : readyPackage.status === "HANDED_OFF"
+        ? "HANDED_OFF_WITHOUT_RECEIPT"
+        : "NOT_SUBMITTED";
     return NextResponse.json({
       readyPackageStatus: readyPackage.status,
       coreIntakeRequest: createCoreIntakeRequest(readyPackage),
-      transportStatus: acknowledged ? "ACKNOWLEDGED" : "NOT_SUBMITTED",
-      note: acknowledged
-        ? "Knowledge has recorded an explicit Core intake acknowledgment for this ReadyPackage."
-        : "Knowledge prepares the handoff envelope but does not invent a Core acceptance receipt.",
+      transportStatus,
+      latestCoreIntakeReceipt,
+      coreIntakeReceipts,
+      note: latestCoreIntakeReceipt
+        ? latestCoreIntakeReceipt.status === "REJECTED"
+          ? "Knowledge has persisted a rejected Core intake receipt; this ReadyPackage remains eligible for a later delivery attempt."
+          : "Knowledge has persisted explicit Core intake receipt evidence for this ReadyPackage."
+        : readyPackage.status === "HANDED_OFF"
+          ? "This ReadyPackage predates persisted Core intake receipts; Knowledge does not invent historical receipt evidence."
+          : "Knowledge prepares the handoff envelope but does not invent a Core acceptance receipt.",
     });
   } catch (error) {
     return apiError(error);
