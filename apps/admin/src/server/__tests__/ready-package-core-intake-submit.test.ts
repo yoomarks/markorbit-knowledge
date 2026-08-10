@@ -38,7 +38,11 @@ function createReadyPackage(
   return { repository, readyPackage };
 }
 
-function submitInput(readyPackage: { workspaceId: string; id: string; evidence: { digest: string } }) {
+function submitInput(readyPackage: {
+  workspaceId: string;
+  id: string;
+  evidence: { digest: string };
+}) {
   return {
     workspaceId: readyPackage.workspaceId,
     readyPackageId: readyPackage.id,
@@ -186,10 +190,12 @@ describe("ReadyPackage Core intake submission", () => {
       submitReadyPackageCoreIntake(input, repository, submissions, transport),
     ).rejects.toThrow("simulated submission result persistence failure");
     expect(transportCalls).toBe(1);
-    expect(repository.getById(readyPackage.id, readyPackage.workspaceId)?.status).toBe("HANDED_OFF");
-    expect(repository.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId)).toMatchObject([
-      { intakeId: "intake_partial_commit", status: "RECEIVED" },
-    ]);
+    expect(repository.getById(readyPackage.id, readyPackage.workspaceId)?.status).toBe(
+      "HANDED_OFF",
+    );
+    expect(
+      repository.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId),
+    ).toMatchObject([{ intakeId: "intake_partial_commit", status: "RECEIVED" }]);
     expect(persistedSubmissions.list(readyPackage.id, readyPackage.workspaceId)).toMatchObject([
       { state: "PENDING", submittedAt: "2026-08-10T05:01:00.000Z" },
     ]);
@@ -255,7 +261,12 @@ describe("ReadyPackage Core intake submission", () => {
     expect(rejected.acknowledgment.disposition).toBe("REJECTED_NOT_HANDED_OFF");
 
     submissionNow = "2026-08-10T05:03:00.000Z";
-    const acceptedLater = await submitReadyPackageCoreIntake(input, repository, submissions, transport);
+    const acceptedLater = await submitReadyPackageCoreIntake(
+      input,
+      repository,
+      submissions,
+      transport,
+    );
 
     expect(transportCalls).toBe(2);
     expect(acceptedLater.reconciledFromReceipt).toBe(false);
