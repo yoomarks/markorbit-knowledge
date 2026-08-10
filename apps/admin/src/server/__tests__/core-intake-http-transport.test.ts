@@ -48,7 +48,46 @@ describe("M36 Core intake HTTP transport", () => {
       "content-type": "application/json",
       "idempotency-key": "core-intake:cis_test",
     });
+    expect(init.signal).toBeInstanceOf(AbortSignal);
     expect(JSON.parse(String(init.body))).toEqual(request());
+  });
+
+  it("aborts a hung downstream request at the bounded delivery timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn(
+        async (_input: RequestInfo | URL, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            const signal = init?.signal;
+            if (!signal) {
+              reject(new Error("expected transport abort signal"));
+              return;
+            }
+            signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+          }),
+      );
+      const transport = new HttpCoreIntakeTransport(
+        "https://knowledge.internal.example/intake",
+        fetchImpl as typeof fetch,
+        100,
+      );
+
+      const assertion = expect(
+        transport.submit(request(), "core-intake:cis_timeout"),
+      ).rejects.toMatchObject({
+        code: "CORE_INTAKE_TRANSPORT_TIMEOUT",
+        httpStatus: 504,
+      });
+      await vi.advanceTimersByTimeAsync(100);
+      await assertion;
+
+      expect(fetchImpl).toHaveBeenCalledOnce();
+      const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+      expect((init.signal as AbortSignal).aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("rejects mismatched or structurally invalid downstream results", async () => {
