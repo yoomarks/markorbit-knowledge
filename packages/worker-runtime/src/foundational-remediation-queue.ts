@@ -305,7 +305,12 @@ function actionsFor(
           "Inspect source supply health and resolve the reported operational gap without bypassing acquisition, normalization, indexing, quality, or relevance gates.",
           "MANUAL_OPERATOR",
           gaps,
-          queryEndpoint("/api/source-supply-health", workspaceId, jurisdiction),
+          `${targetQueryEndpoint(
+            "/api/source-supply-health",
+            workspaceId,
+            jurisdiction,
+            target.targetId,
+          )}&coverageTier=FOUNDATIONAL&catalogState=ACTIVE`,
         ),
       ];
   }

@@ -7,6 +7,7 @@ import { FoundationalConversionRecoveryWorkbench } from "./foundational-conversi
 import { FoundationalOperatorWorkbench } from "./foundational-operator-workbench";
 import { FoundationalRelevanceAuditWorkbench } from "./foundational-relevance-audit-workbench";
 import { FoundationalRetrievalQualityRemediationWorkbench } from "./foundational-retrieval-quality-remediation-workbench";
+import { FoundationalSupplyHealthWorkbench } from "./foundational-supply-health-workbench";
 import { FoundationalVerifiedCanonicalReindexWorkbench } from "./foundational-verified-canonical-reindex-workbench";
 
 type Jurisdiction = "US" | "WO";
@@ -111,9 +112,10 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
             <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-950/80">
               COLLECT 使用 M25/M26 审批 + 显式派发；CONVERT 使用 M27 的既有 M11 operator
               retry；INDEX 使用 M28 verified canonical reindex；QUALITY 使用 M29 的 M16 plan + M17
-              explicit operator execution；RELEVANCE 使用 M30 只读 M18 deterministic audit。查看
-              readiness 不会自动执行修复、生成 probe 或调 ranking，也不会绕过人工 provenance /
-              duplicate review。
+              explicit operator execution；RELEVANCE 使用 M30 只读 M18 deterministic audit；HEALTH
+              使用 M31 只读 target-scoped supply-health diagnostics。查看 readiness
+              不会自动执行修复、 生成 probe 或调 ranking，也不会绕过人工 provenance / duplicate
+              review。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -188,6 +190,11 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
             onSnapshotRefresh={refresh}
           />
           <FoundationalRelevanceAuditWorkbench
+            workspaceId={workspaceId}
+            jurisdiction={jurisdiction}
+            snapshot={snapshot}
+          />
+          <FoundationalSupplyHealthWorkbench
             workspaceId={workspaceId}
             jurisdiction={jurisdiction}
             snapshot={snapshot}
