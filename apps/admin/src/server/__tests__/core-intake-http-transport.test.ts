@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CoreIntakeRequest } from "@markorbit/contracts";
-import {
-  CoreIntakeTransportError,
-  HttpCoreIntakeTransport,
-} from "../core-intake-http-transport";
+import { CoreIntakeTransportError, HttpCoreIntakeTransport } from "../core-intake-http-transport";
 
 function request(): CoreIntakeRequest {
   return {
@@ -20,15 +17,16 @@ function request(): CoreIntakeRequest {
 
 describe("M36 Core intake HTTP transport", () => {
   it("posts the exact submission envelope with its stable idempotency key", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          intakeId: "intake_test",
-          status: "RECEIVED",
-          readyPackageId: "rdp_test",
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      ),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            intakeId: "intake_test",
+            status: "RECEIVED",
+            readyPackageId: "rdp_test",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
     );
     const transport = new HttpCoreIntakeTransport(
       "https://knowledge.internal.example/v1/ready-package-intake",
