@@ -3,10 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, PackageCheck, RefreshCw, Send } from "lucide-react";
 import type { ReadyPackage } from "@markorbit/contracts";
-import {
-  isCoreIntakeActionable,
-  type TransportStatus,
-} from "./ready-package-delivery-policy";
+import { isCoreIntakeActionable, type TransportStatus } from "./ready-package-delivery-policy";
 
 type CoreIntakeReceiptView = {
   intakeId: string;
