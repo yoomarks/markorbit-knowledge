@@ -282,7 +282,12 @@ function actionsFor(
           "Open the M16 structural remediation plan for the reported audit gaps. Execute only M17 actions that are explicitly operator-approved and policy-eligible; provenance restoration and duplicate review remain manual.",
           "M16_PLANNER_THEN_M17_EXPLICIT_OPERATOR",
           target.retrievalAuditGaps,
-          queryEndpoint("/api/retrieval/remediation", workspaceId, jurisdiction),
+          targetQueryEndpoint(
+            "/api/foundational/retrieval-quality-remediation",
+            workspaceId,
+            jurisdiction,
+            target.targetId,
+          ),
         ),
       ];
     case "RELEVANCE":
