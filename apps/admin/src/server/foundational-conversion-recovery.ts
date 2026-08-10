@@ -46,6 +46,17 @@ function recoverySummary(items: readonly ConversionRecoveryCase[]) {
   };
 }
 
+function allRecoveryCases(workspaceId: string): ConversionRecoveryCase[] {
+  const items: ConversionRecoveryCase[] = [];
+  let offset = 0;
+  while (true) {
+    const page = listConversionRecoveryCases({ workspaceId, limit: 100, offset });
+    items.push(...page.items);
+    offset += page.items.length;
+    if (offset >= page.total || page.items.length === 0) return items;
+  }
+}
+
 export function listFoundationalConversionRecovery(input: {
   workspaceId: string;
   jurisdiction: string;
@@ -96,8 +107,9 @@ export function listFoundationalConversionRecovery(input: {
     )
     .all(workspaceId, ...sourceIds) as Array<{ id: string }>;
   const rawArtifactIds = new Set(rows.map((row) => row.id));
-  const recovery = listConversionRecoveryCases({ workspaceId, limit: 100 });
-  const items = recovery.items.filter((item) => rawArtifactIds.has(item.rawArtifactId));
+  const items = allRecoveryCases(workspaceId).filter((item) =>
+    rawArtifactIds.has(item.rawArtifactId),
+  );
 
   return {
     objectType: "FOUNDATIONAL_CONVERSION_RECOVERY_SNAPSHOT",
