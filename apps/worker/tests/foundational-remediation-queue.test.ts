@@ -160,7 +160,7 @@ describe("foundational remediation queue", () => {
     expect(remediation?.endpoint).toContain("targetId=quality");
   });
 
-  it("turns deterministic relevance gaps into specific operator reviews without semantic scoring", () => {
+  it("turns deterministic relevance gaps into target-scoped operator reviews without semantic scoring", () => {
     const queue = buildFoundationalRemediationQueue(
       gate([
         target("relevance", "RELEVANCE", {
@@ -181,6 +181,15 @@ describe("foundational remediation queue", () => {
       "REVIEW_GLOBAL_RETRIEVAL_RANKING",
     ]);
     expect(queue.items[0]?.actions.every((item) => item.automaticExecution === false)).toBe(true);
+    expect(
+      queue.items[0]?.actions.every(
+        (item) =>
+          item.endpoint?.includes("/api/retrieval/relevance-audit?") === true &&
+          item.endpoint.includes("workspaceId=wsp_test") &&
+          item.endpoint.includes("jurisdiction=US") &&
+          item.endpoint.includes("targetId=relevance"),
+      ),
+    ).toBe(true);
     expect(queue.semanticJudgment).toBe(false);
   });
 
