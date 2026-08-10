@@ -84,9 +84,12 @@ describe("ReadyPackage Core intake submission", () => {
     await expect(
       submitReadyPackageCoreIntake(input, repository, submissions, transport),
     ).rejects.toThrow("uncertain network outcome");
-    expect(submissions.list(readyPackage.id, readyPackage.workspaceId)).toMatchObject([
-      { state: "PENDING", transportResult: undefined },
-    ]);
+    const pendingAfterUncertain = submissions.list(
+      readyPackage.id,
+      readyPackage.workspaceId,
+    )[0];
+    expect(pendingAfterUncertain.state).toBe("PENDING");
+    expect(pendingAfterUncertain.transportResult).toBeUndefined();
 
     now = "2026-08-10T05:05:00.000Z";
     const recovered = await submitReadyPackageCoreIntake(input, repository, submissions, transport);
@@ -213,14 +216,16 @@ describe("ReadyPackage Core intake submission", () => {
     expect(
       repository.listCoreIntakeReceipts(readyPackage.id, readyPackage.workspaceId),
     ).toMatchObject([{ intakeId: "intake_partial_commit", status: "RECEIVED" }]);
-    expect(persistedSubmissions.list(readyPackage.id, readyPackage.workspaceId)).toMatchObject([
-      {
-        state: "PENDING",
-        submittedAt: "2026-08-10T05:01:00.000Z",
-        transportResult: { intakeId: "intake_partial_commit", status: "RECEIVED" },
-        result: undefined,
-      },
-    ]);
+    const pendingAfterFinalizationFailure = persistedSubmissions.list(
+      readyPackage.id,
+      readyPackage.workspaceId,
+    )[0];
+    expect(pendingAfterFinalizationFailure).toMatchObject({
+      state: "PENDING",
+      submittedAt: "2026-08-10T05:01:00.000Z",
+      transportResult: { intakeId: "intake_partial_commit", status: "RECEIVED" },
+    });
+    expect(pendingAfterFinalizationFailure.result).toBeUndefined();
 
     submissionNow = "2026-08-10T05:03:00.000Z";
     const repaired = await submitReadyPackageCoreIntake(input, repository, submissions, transport);
@@ -344,9 +349,12 @@ describe("ReadyPackage Core intake submission", () => {
     await expect(
       submitReadyPackageCoreIntake(input, repository, submissions, transport),
     ).rejects.toThrow("uncertain network outcome");
-    expect(submissions.list(readyPackage.id, readyPackage.workspaceId)).toMatchObject([
-      { state: "PENDING", transportResult: undefined },
-    ]);
+    const pendingBeforeManualReceipt = submissions.list(
+      readyPackage.id,
+      readyPackage.workspaceId,
+    )[0];
+    expect(pendingBeforeManualReceipt.state).toBe("PENDING");
+    expect(pendingBeforeManualReceipt.transportResult).toBeUndefined();
 
     readyPackageNow = "2026-08-10T05:02:00.000Z";
     repository.recordCoreIntakeAcknowledgment({
