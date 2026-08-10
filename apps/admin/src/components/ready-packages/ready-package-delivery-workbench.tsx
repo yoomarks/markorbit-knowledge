@@ -104,6 +104,22 @@ function actionLabel(status: TransportStatus): string {
   return "提交至 Core";
 }
 
+export function isCoreIntakeActionable(
+  readyPackageStatus: ReadyPackage["status"],
+  transportStatus: TransportStatus,
+): boolean {
+  if (
+    transportStatus === "SUBMISSION_PENDING_RESULT" ||
+    transportStatus === "SUBMISSION_FINALIZATION_PENDING"
+  ) {
+    return readyPackageStatus === "VERIFIED" || readyPackageStatus === "HANDED_OFF";
+  }
+  return (
+    readyPackageStatus === "VERIFIED" &&
+    (transportStatus === "NOT_SUBMITTED" || transportStatus === "REJECTED")
+  );
+}
+
 function formatDate(value: string | undefined): string {
   return value ? new Date(value).toLocaleString("zh-CN") : "—";
 }
@@ -193,7 +209,9 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
   }
 
   async function submitSelected() {
-    if (!selected || !detail || selected.status !== "VERIFIED") return;
+    if (!selected || !detail || !isCoreIntakeActionable(selected.status, detail.transportStatus)) {
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setActionMessage(null);
@@ -236,10 +254,9 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
   const verifiedCount = readyPackages.filter((item) => item.status === "VERIFIED").length;
   const handedOffCount = readyPackages.filter((item) => item.status === "HANDED_OFF").length;
   const actionable =
-    selected?.status === "VERIFIED" &&
+    selected !== null &&
     detail !== null &&
-    detail.transportStatus !== "ACKNOWLEDGED" &&
-    detail.transportStatus !== "HANDED_OFF_WITHOUT_RECEIPT";
+    isCoreIntakeActionable(selected.status, detail.transportStatus);
 
   return (
     <div className="space-y-6">
