@@ -9,6 +9,7 @@ import {
   latestIntentForAction,
   listControlledCollectionActions,
   listControlledConversionRecoveryActions,
+  listControlledVerifiedCanonicalReindexActions,
   operatorExecutionIdempotencyKey,
   operatorIntentIdempotencyKey,
   outcomeForExecution,
@@ -124,8 +125,8 @@ function outcome(
   };
 }
 
-describe("M27 foundational operator state", () => {
-  it("exposes governed COLLECT and CONVERT actions through separate paths", () => {
+describe("M28 foundational operator state", () => {
+  it("exposes governed COLLECT, CONVERT and INDEX actions through separate paths", () => {
     const snapshot = {
       remediationQueue: {
         items: [
@@ -155,6 +156,19 @@ describe("M27 foundational operator state", () => {
               },
             ],
           },
+          {
+            targetId: "us-uspto-tm-manual-current",
+            stage: "INDEX",
+            actions: [
+              {
+                code: "REINDEX_VERIFIED_CANONICAL",
+                operatorInstruction: "Reindex verified canonical",
+                executionPath: "CANONICAL_INDEXING",
+                collectionAuthorizationRequired: false,
+                automaticExecution: false,
+              },
+            ],
+          },
         ],
       },
     } as unknown as FoundationalRemediationQueueSnapshot;
@@ -173,6 +187,15 @@ describe("M27 foundational operator state", () => {
         stage: "CONVERT",
         actionCode: "RUN_CONVERSION_RECOVERY",
         executionPath: "CONVERSION_RECOVERY",
+        automaticExecution: false,
+      }),
+    ]);
+    expect(listControlledVerifiedCanonicalReindexActions(snapshot)).toEqual([
+      expect.objectContaining({
+        targetId: "us-uspto-tm-manual-current",
+        stage: "INDEX",
+        actionCode: "REINDEX_VERIFIED_CANONICAL",
+        executionPath: "CANONICAL_INDEXING",
         automaticExecution: false,
       }),
     ]);
