@@ -158,14 +158,18 @@ export class HttpCoreIntakeTransport implements CoreIntakeTransport {
 
 export function configuredCoreIntakeTransport(
   fetchImpl: typeof fetch = fetch,
-): HttpCoreIntakeTransport {
-  const url = process.env.MARKORBIT_CORE_INTAKE_URL?.trim();
-  if (!url) {
-    throw new CoreIntakeTransportError(
-      "CORE_INTAKE_TRANSPORT_NOT_CONFIGURED",
-      "MARKORBIT_CORE_INTAKE_URL is not configured",
-      503,
-    );
-  }
-  return new HttpCoreIntakeTransport(url, fetchImpl);
+): CoreIntakeTransport {
+  return {
+    async submit(request, idempotencyKey) {
+      const url = process.env.MARKORBIT_CORE_INTAKE_URL?.trim();
+      if (!url) {
+        throw new CoreIntakeTransportError(
+          "CORE_INTAKE_TRANSPORT_NOT_CONFIGURED",
+          "MARKORBIT_CORE_INTAKE_URL is not configured",
+          503,
+        );
+      }
+      return new HttpCoreIntakeTransport(url, fetchImpl).submit(request, idempotencyKey);
+    },
+  };
 }
