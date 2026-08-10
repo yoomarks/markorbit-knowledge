@@ -32,6 +32,7 @@
     "./verified-staging-finalization": "./src/verified-staging-finalization.ts",
     "./obsidian-vault-projection": "./src/obsidian-vault-projection.ts",
     "./ready-packages": "./src/ready-package-registry.ts",
+    "./ready-package-core-intake-submissions": "./src/ready-package-core-intake-submission.ts",
     "./retrieval-index": "./src/retrieval-index.ts",
     "./retrieval-quality-audit": "./src/retrieval-quality-audit.ts",
     "./retrieval-quality-remediation": "./src/retrieval-quality-remediation.ts",
