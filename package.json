@@ -14,7 +14,7 @@
     "test": "pnpm -r test",
     "calibrate:source-intelligence": "node scripts/source-intelligence-calibration.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write apps/admin/src/components/foundational/foundational-conversion-recovery-workbench.tsx && git diff -- apps/admin/src/components/foundational/foundational-conversion-recovery-workbench.tsx && exit 1",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
