@@ -164,6 +164,7 @@ function packageMatchesCandidate(
   descriptor: StagingDocumentDescriptor,
 ): boolean {
   return (
+    (readyPackage.status === "VERIFIED" || readyPackage.status === "HANDED_OFF") &&
     readyPackage.evidence.stagingDocumentId === descriptor.id &&
     readyPackage.evidence.sourceId === descriptor.sourceId &&
     readyPackage.evidence.artifactIds.length === 1 &&
@@ -292,7 +293,7 @@ export function reindexFoundationalVerifiedCanonical(input: {
   if (!packageMatchesCandidate(readyPackage, descriptor)) {
     throw new RegistryConflictError(
       "FOUNDATIONAL_REINDEX_READY_PACKAGE_MISMATCH",
-      "ReadyPackage evidence does not match the requested staging document",
+      "ReadyPackage evidence does not match the requested verified staging document",
     );
   }
   const existing = indexRow(target.workspaceId, descriptor.id);
