@@ -84,10 +84,7 @@ describe("ReadyPackage Core intake submission", () => {
     await expect(
       submitReadyPackageCoreIntake(input, repository, submissions, transport),
     ).rejects.toThrow("uncertain network outcome");
-    const pendingAfterUncertain = submissions.list(
-      readyPackage.id,
-      readyPackage.workspaceId,
-    )[0];
+    const pendingAfterUncertain = submissions.list(readyPackage.id, readyPackage.workspaceId)[0];
     expect(pendingAfterUncertain.state).toBe("PENDING");
     expect(pendingAfterUncertain.transportResult).toBeUndefined();
 
