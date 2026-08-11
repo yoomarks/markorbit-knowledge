@@ -124,7 +124,11 @@ function setup() {
   return { db, readyPackage, contentExport };
 }
 
-function result(submissionId: string, readyPackageId: string, requestSha256: string): ReadyPackageV2DeliveryResultV1 {
+function result(
+  submissionId: string,
+  readyPackageId: string,
+  requestSha256: string,
+): ReadyPackageV2DeliveryResultV1 {
   return {
     protocolVersion: READY_PACKAGE_V2_DELIVERY_PROTOCOL_VERSION,
     objectType: READY_PACKAGE_V2_DELIVERY_RESULT_OBJECT_TYPE,

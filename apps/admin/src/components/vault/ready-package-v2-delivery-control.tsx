@@ -5,11 +5,7 @@ import { RefreshCw, Send, ShieldAlert, Snowflake } from "lucide-react";
 import type { ReadyPackageV2 } from "@markorbit/contracts";
 
 type DeliveryStage =
-  | "NOT_PREPARED"
-  | "PREPARED"
-  | "OUTCOME_UNKNOWN"
-  | "FINALIZATION_PENDING"
-  | "DELIVERED";
+  "NOT_PREPARED" | "PREPARED" | "OUTCOME_UNKNOWN" | "FINALIZATION_PENDING" | "DELIVERED";
 
 type ResultEvidence = {
   status: "RECEIVED" | "ACCEPTED" | "REJECTED";
@@ -167,7 +163,8 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
             K14 将 V2 delivery 分成冻结与提交两个显式动作。冻结时锁定 Core Workspace、完整 Content
-            Export V2、提交时间、request SHA-256 与 idempotency identity；之后任何重试都只能发送同一份字节。
+            Export V2、提交时间、request SHA-256 与 idempotency
+            identity；之后任何重试都只能发送同一份字节。
           </p>
         </div>
         <button
@@ -185,9 +182,9 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
         <div className="flex items-start gap-2">
           <ShieldAlert className="mt-0.5 shrink-0" size={17} aria-hidden="true" />
           <p>
-            V2 绝不会复用现有 V1 Core intake URL。只有独立的 `MARKORBIT_CORE_V2_DELIVERY_URL`、内部密钥和
-            `MARKORBIT_CORE_V2_PROTOCOL_VERSION=1.0` 同时明确配置时，提交按钮才允许产生网络请求。K14
-            不修改 Core。
+            V2 绝不会复用现有 V1 Core intake URL。只有独立的
+            `MARKORBIT_CORE_V2_DELIVERY_URL`、内部密钥和 `MARKORBIT_CORE_V2_PROTOCOL_VERSION=1.0`
+            同时明确配置时，提交按钮才允许产生网络请求。K14 不修改 Core。
           </p>
         </div>
       </div>
@@ -209,7 +206,8 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
           const submission = item.submission;
           const preparing = acting === `${item.readyPackage.id}:PREPARE`;
           const submitting = acting === `${item.readyPackage.id}:SUBMIT`;
-          const canPrepare = item.stage === "NOT_PREPARED" && overview.currentCoreWorkspaceId !== null;
+          const canPrepare =
+            item.stage === "NOT_PREPARED" && overview.currentCoreWorkspaceId !== null;
           const canSubmit =
             item.stage === "FINALIZATION_PENDING" ||
             ((item.stage === "PREPARED" || item.stage === "OUTCOME_UNKNOWN") &&
@@ -228,7 +226,9 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
                   <p className="break-all text-sm font-medium text-slate-900">
                     {item.readyPackage.id}
                   </p>
-                  <p className="mt-1 text-xs font-medium text-slate-600">{stageLabel(item.stage)}</p>
+                  <p className="mt-1 text-xs font-medium text-slate-600">
+                    {stageLabel(item.stage)}
+                  </p>
                   <p className="mt-1 font-mono text-[11px] text-slate-500">
                     package digest {shortHash(item.readyPackage.evidence.digest)}
                   </p>
@@ -240,7 +240,8 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
                       <p>content export {shortHash(submission.contentExportSha256)}</p>
                       <p>transport attempts {submission.transportAttempts}</p>
                       <p>
-                        result {submission.result?.status ?? submission.transportResult?.status ?? "—"}
+                        result{" "}
+                        {submission.result?.status ?? submission.transportResult?.status ?? "—"}
                       </p>
                     </div>
                   ) : (

@@ -62,12 +62,12 @@ export type PrepareReadyPackageV2DeliveryResult = {
 };
 
 export interface ReadyPackageV2DeliverySubmissionRepository {
-  getByReadyPackage(workspaceId: string, readyPackageId: string): ReadyPackageV2DeliverySubmission | null;
-  prepare(input: PrepareReadyPackageV2DeliveryInput): PrepareReadyPackageV2DeliveryResult;
-  markTransportAttempt(
+  getByReadyPackage(
     workspaceId: string,
-    submissionId: string,
-  ): ReadyPackageV2DeliverySubmission;
+    readyPackageId: string,
+  ): ReadyPackageV2DeliverySubmission | null;
+  prepare(input: PrepareReadyPackageV2DeliveryInput): PrepareReadyPackageV2DeliveryResult;
+  markTransportAttempt(workspaceId: string, submissionId: string): ReadyPackageV2DeliverySubmission;
   recordTransportResult(
     workspaceId: string,
     submissionId: string,
@@ -249,9 +249,7 @@ export function ensureReadyPackageV2DeliverySubmissionRegistry(database: Databas
   }
 }
 
-export class SqliteReadyPackageV2DeliverySubmissionRepository
-  implements ReadyPackageV2DeliverySubmissionRepository
-{
+export class SqliteReadyPackageV2DeliverySubmissionRepository implements ReadyPackageV2DeliverySubmissionRepository {
   constructor(
     private readonly database: DatabaseSync,
     private readonly clock: () => Date = () => new Date(),

@@ -14,7 +14,7 @@ function submission(): ReadyPackageV2DeliverySubmission {
     readyPackageDigest: "b".repeat(64),
     coreWorkspaceId: "123e4567-e89b-12d3-a456-426614174000",
     idempotencyKey: "ready-package-v2-delivery:rvd_01K14TEST000000000000000001",
-    requestJson: "{\"frozen\":true}",
+    requestJson: '{"frozen":true}',
     requestSha256: REQUEST_SHA,
     contentExportSha256: "c".repeat(64),
     state: "PENDING",

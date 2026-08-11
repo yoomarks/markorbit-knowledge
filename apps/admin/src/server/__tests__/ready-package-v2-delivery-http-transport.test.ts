@@ -161,8 +161,10 @@ describe("ReadyPackage V2 delivery transport", () => {
       fetchImpl,
     );
 
-    await expect(transport.submit(frozen, "ready-package-v2-delivery:fixed")).rejects.toMatchObject({
-      code: "CORE_V2_DELIVERY_RESPONSE_MISMATCH",
-    });
+    await expect(transport.submit(frozen, "ready-package-v2-delivery:fixed")).rejects.toMatchObject(
+      {
+        code: "CORE_V2_DELIVERY_RESPONSE_MISMATCH",
+      },
+    );
   });
 });

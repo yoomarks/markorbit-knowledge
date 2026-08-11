@@ -1,6 +1,10 @@
 import { resolve } from "node:path";
 import type { ReadyPackageV2 } from "@markorbit/contracts";
-import { RegistryConflictError, RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+} from "@markorbit/persistence";
 import {
   SqliteCanonicalDownstreamDocumentRepository,
   type CanonicalDownstreamDocumentRepository,
@@ -32,11 +36,7 @@ import {
 import { getRegistryDatabase } from "./source-registry";
 
 export type ReadyPackageV2DeliveryStage =
-  | "NOT_PREPARED"
-  | "PREPARED"
-  | "OUTCOME_UNKNOWN"
-  | "FINALIZATION_PENDING"
-  | "DELIVERED";
+  "NOT_PREPARED" | "PREPARED" | "OUTCOME_UNKNOWN" | "FINALIZATION_PENDING" | "DELIVERED";
 
 export type ReadyPackageV2DeliverySubmissionView = Omit<
   ReadyPackageV2DeliverySubmission,

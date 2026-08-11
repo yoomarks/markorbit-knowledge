@@ -165,7 +165,10 @@ export class HttpReadyPackageV2DeliveryTransport implements ReadyPackageV2Delive
     }
   }
 
-  async submit(requestJson: string, idempotencyKey: string): Promise<ReadyPackageV2DeliveryResultV1> {
+  async submit(
+    requestJson: string,
+    idempotencyKey: string,
+  ): Promise<ReadyPackageV2DeliveryResultV1> {
     let request: unknown;
     try {
       request = JSON.parse(requestJson);
