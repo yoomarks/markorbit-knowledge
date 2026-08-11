@@ -19,7 +19,15 @@ import {
   RegistryValidationError,
   initializeRegistry,
 } from "./index";
+import {
+  appendReadyPackageV2DeliveryAuditEvent,
+  ensureReadyPackageV2DeliveryAuditRegistry,
+  listReadyPackageV2DeliveryAuditEvents,
+  type ReadyPackageV2DeliveryAuditEvent,
+} from "./ready-package-v2-delivery-audit";
 import { ensureReadyPackageV2Registry } from "./ready-package-v2-registry";
+
+export type { ReadyPackageV2DeliveryAuditEvent } from "./ready-package-v2-delivery-audit";
 
 const MIGRATION_ID = "0030_ready_package_v2_delivery_submissions";
 const SHA256 = /^[a-f0-9]{64}$/u;
@@ -61,6 +69,11 @@ export type PrepareReadyPackageV2DeliveryResult = {
   replayed: boolean;
 };
 
+export type ReadyPackageV2DeliveryTransportUncertaintyInput = {
+  issueCode: string;
+  httpStatus: number;
+};
+
 export interface ReadyPackageV2DeliverySubmissionRepository {
   getByReadyPackage(
     workspaceId: string,
@@ -68,6 +81,11 @@ export interface ReadyPackageV2DeliverySubmissionRepository {
   ): ReadyPackageV2DeliverySubmission | null;
   prepare(input: PrepareReadyPackageV2DeliveryInput): PrepareReadyPackageV2DeliveryResult;
   markTransportAttempt(workspaceId: string, submissionId: string): ReadyPackageV2DeliverySubmission;
+  recordTransportUncertainty(
+    workspaceId: string,
+    submissionId: string,
+    uncertainty: ReadyPackageV2DeliveryTransportUncertaintyInput,
+  ): ReadyPackageV2DeliveryAuditEvent;
   recordTransportResult(
     workspaceId: string,
     submissionId: string,
@@ -79,6 +97,11 @@ export interface ReadyPackageV2DeliverySubmissionRepository {
     result: ReadyPackageV2DeliveryResultV1,
   ): ReadyPackageV2DeliverySubmission;
   list(workspaceId: string, limit?: number): ReadyPackageV2DeliverySubmission[];
+  listAuditEvents(
+    workspaceId: string,
+    submissionId: string,
+    limit?: number,
+  ): ReadyPackageV2DeliveryAuditEvent[];
 }
 
 function sha256(value: string | Uint8Array): string {
@@ -264,6 +287,7 @@ export class SqliteReadyPackageV2DeliverySubmissionRepository implements ReadyPa
     private readonly idFactory: () => string = () => deliveryId(),
   ) {
     ensureReadyPackageV2DeliverySubmissionRegistry(database);
+    ensureReadyPackageV2DeliveryAuditRegistry(database);
   }
 
   getByReadyPackage(
@@ -372,26 +396,36 @@ export class SqliteReadyPackageV2DeliverySubmissionRepository implements ReadyPa
       updatedAt: createdAt,
     };
 
-    this.database
-      .prepare(
-        `INSERT INTO ready_package_v2_delivery_submissions
-         (workspace_id, submission_id, ready_package_id, ready_package_digest, core_workspace_id,
-          request_sha256, content_export_sha256, state, document_json, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        submission.workspaceId,
-        submission.submissionId,
-        submission.readyPackageId,
-        submission.readyPackageDigest,
-        submission.coreWorkspaceId,
-        submission.requestSha256,
-        submission.contentExportSha256,
-        submission.state,
-        JSON.stringify(submission),
-        submission.createdAt,
-        submission.updatedAt,
-      );
+    this.withTransaction(() => {
+      this.database
+        .prepare(
+          `INSERT INTO ready_package_v2_delivery_submissions
+           (workspace_id, submission_id, ready_package_id, ready_package_digest, core_workspace_id,
+            request_sha256, content_export_sha256, state, document_json, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          submission.workspaceId,
+          submission.submissionId,
+          submission.readyPackageId,
+          submission.readyPackageDigest,
+          submission.coreWorkspaceId,
+          submission.requestSha256,
+          submission.contentExportSha256,
+          submission.state,
+          JSON.stringify(submission),
+          submission.createdAt,
+          submission.updatedAt,
+        );
+      appendReadyPackageV2DeliveryAuditEvent(this.database, {
+        workspaceId: submission.workspaceId,
+        submissionId: submission.submissionId,
+        readyPackageId: submission.readyPackageId,
+        type: "PREPARED",
+        requestSha256: submission.requestSha256,
+        recordedAt: createdAt,
+      });
+    });
     return { submission, replayed: false };
   }
 
@@ -408,8 +442,70 @@ export class SqliteReadyPackageV2DeliverySubmissionRepository implements ReadyPa
       lastTransportAttemptedAt: updatedAt,
       updatedAt,
     };
-    this.persist(updated);
+    this.withTransaction(() => {
+      this.persistInsideTransaction(updated);
+      appendReadyPackageV2DeliveryAuditEvent(this.database, {
+        workspaceId: updated.workspaceId,
+        submissionId: updated.submissionId,
+        readyPackageId: updated.readyPackageId,
+        type: "TRANSPORT_ATTEMPT_STARTED",
+        requestSha256: updated.requestSha256,
+        recordedAt: updatedAt,
+        attemptNumber: updated.transportAttempts,
+      });
+    });
     return updated;
+  }
+
+  recordTransportUncertainty(
+    workspaceIdValue: string,
+    submissionIdValue: string,
+    uncertainty: ReadyPackageV2DeliveryTransportUncertaintyInput,
+  ): ReadyPackageV2DeliveryAuditEvent {
+    const submission = this.requireSubmission(workspaceIdValue, submissionIdValue);
+    if (submission.state === "RESULT_RECORDED" || submission.transportResult) {
+      throw new RegistryConflictError(
+        "READY_PACKAGE_V2_DELIVERY_AUDIT_AFTER_RESULT_FORBIDDEN",
+        "Unknown transport outcome cannot be recorded after a durable result",
+      );
+    }
+    if (submission.transportAttempts <= 0) {
+      throw new RegistryConflictError(
+        "READY_PACKAGE_V2_DELIVERY_AUDIT_ATTEMPT_REQUIRED",
+        "Unknown transport outcome requires a durable transport attempt",
+      );
+    }
+    const prior = this.listAuditEvents(submission.workspaceId, submission.submissionId, 200).find(
+      (event) =>
+        event.type === "TRANSPORT_OUTCOME_UNKNOWN" &&
+        event.attemptNumber === submission.transportAttempts,
+    );
+    if (prior) {
+      if (
+        prior.issueCode !== uncertainty.issueCode ||
+        prior.httpStatus !== uncertainty.httpStatus
+      ) {
+        throw new RegistryConflictError(
+          "READY_PACKAGE_V2_DELIVERY_AUDIT_UNCERTAINTY_CONFLICT",
+          "A different unknown-outcome event already exists for this transport attempt",
+        );
+      }
+      return prior;
+    }
+    const recordedAt = this.clock().toISOString();
+    return this.withTransaction(() =>
+      appendReadyPackageV2DeliveryAuditEvent(this.database, {
+        workspaceId: submission.workspaceId,
+        submissionId: submission.submissionId,
+        readyPackageId: submission.readyPackageId,
+        type: "TRANSPORT_OUTCOME_UNKNOWN",
+        requestSha256: submission.requestSha256,
+        recordedAt,
+        attemptNumber: submission.transportAttempts,
+        issueCode: uncertainty.issueCode,
+        httpStatus: uncertainty.httpStatus,
+      }),
+    );
   }
 
   recordTransportResult(
@@ -429,13 +525,31 @@ export class SqliteReadyPackageV2DeliverySubmissionRepository implements ReadyPa
       }
       return submission;
     }
+    if (submission.transportAttempts <= 0) {
+      throw new RegistryConflictError(
+        "READY_PACKAGE_V2_DELIVERY_TRANSPORT_ATTEMPT_REQUIRED",
+        "A durable transport result requires a prior durable transport attempt",
+      );
+    }
     const recordedAt = this.clock().toISOString();
     const updated: ReadyPackageV2DeliverySubmission = {
       ...submission,
       transportResult: { ...result, recordedAt },
       updatedAt: recordedAt,
     };
-    this.persist(updated);
+    this.withTransaction(() => {
+      this.persistInsideTransaction(updated);
+      appendReadyPackageV2DeliveryAuditEvent(this.database, {
+        workspaceId: updated.workspaceId,
+        submissionId: updated.submissionId,
+        readyPackageId: updated.readyPackageId,
+        type: "TRANSPORT_RESULT_RECORDED",
+        requestSha256: updated.requestSha256,
+        recordedAt,
+        attemptNumber: updated.transportAttempts,
+        resultStatus: result.status,
+      });
+    });
     return updated;
   }
 
@@ -462,6 +576,12 @@ export class SqliteReadyPackageV2DeliverySubmissionRepository implements ReadyPa
         "Finalization requires the exact durable transport result",
       );
     }
+    if (submission.transportAttempts <= 0) {
+      throw new RegistryConflictError(
+        "READY_PACKAGE_V2_DELIVERY_TRANSPORT_ATTEMPT_REQUIRED",
+        "Finalization requires a prior durable transport attempt",
+      );
+    }
     const recordedAt = this.clock().toISOString();
     const updated: ReadyPackageV2DeliverySubmission = {
       ...submission,
@@ -469,7 +589,19 @@ export class SqliteReadyPackageV2DeliverySubmissionRepository implements ReadyPa
       result: { ...result, recordedAt },
       updatedAt: recordedAt,
     };
-    this.persist(updated);
+    this.withTransaction(() => {
+      this.persistInsideTransaction(updated);
+      appendReadyPackageV2DeliveryAuditEvent(this.database, {
+        workspaceId: updated.workspaceId,
+        submissionId: updated.submissionId,
+        readyPackageId: updated.readyPackageId,
+        type: "FINALIZED",
+        requestSha256: updated.requestSha256,
+        recordedAt,
+        attemptNumber: updated.transportAttempts,
+        resultStatus: result.status,
+      });
+    });
     return updated;
   }
 
@@ -482,6 +614,19 @@ export class SqliteReadyPackageV2DeliverySubmissionRepository implements ReadyPa
       )
       .all(workspaceId, limit(limitValue)) as Array<{ document_json: string }>;
     return rows.map((row) => parseSubmission(row.document_json));
+  }
+
+  listAuditEvents(
+    workspaceIdValue: string,
+    submissionIdValue: string,
+    limitValue = 50,
+  ): ReadyPackageV2DeliveryAuditEvent[] {
+    return listReadyPackageV2DeliveryAuditEvents(
+      this.database,
+      workspaceIdValue,
+      submissionIdValue,
+      limitValue,
+    );
   }
 
   private requireSubmission(
@@ -521,7 +666,7 @@ export class SqliteReadyPackageV2DeliverySubmissionRepository implements ReadyPa
     }
   }
 
-  private persist(submission: ReadyPackageV2DeliverySubmission): void {
+  private persistInsideTransaction(submission: ReadyPackageV2DeliverySubmission): void {
     parseSubmission(JSON.stringify(submission));
     this.database
       .prepare(
@@ -536,5 +681,17 @@ export class SqliteReadyPackageV2DeliverySubmissionRepository implements ReadyPa
         submission.workspaceId,
         submission.submissionId,
       );
+  }
+
+  private withTransaction<T>(work: () => T): T {
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      const result = work();
+      this.database.exec("COMMIT;");
+      return result;
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
   }
 }
