@@ -15,6 +15,7 @@ import {
 } from "@markorbit/persistence/core-workspace-bindings";
 import {
   SqliteReadyPackageV2DeliverySubmissionRepository,
+  type ReadyPackageV2DeliveryAuditEvent,
   type ReadyPackageV2DeliverySubmission,
   type ReadyPackageV2DeliverySubmissionRepository,
 } from "@markorbit/persistence/ready-package-v2-deliveries";
@@ -28,6 +29,7 @@ import {
 } from "@markorbit/persistence/vault-import-executions";
 import { buildReadyPackageContentExportV2 } from "./ready-package-content-export-v2";
 import {
+  ReadyPackageV2DeliveryTransportError,
   configuredReadyPackageV2DeliveryTransport,
   readyPackageV2DeliveryTransportReadiness,
   type ReadyPackageV2DeliveryTransport,
@@ -36,7 +38,11 @@ import {
 import { getRegistryDatabase } from "./source-registry";
 
 export type ReadyPackageV2DeliveryStage =
-  "NOT_PREPARED" | "PREPARED" | "OUTCOME_UNKNOWN" | "FINALIZATION_PENDING" | "DELIVERED";
+  | "NOT_PREPARED"
+  | "PREPARED"
+  | "OUTCOME_UNKNOWN"
+  | "FINALIZATION_PENDING"
+  | "DELIVERED";
 
 export type ReadyPackageV2DeliverySubmissionView = Omit<
   ReadyPackageV2DeliverySubmission,
@@ -47,6 +53,7 @@ export type ReadyPackageV2DeliveryOverviewItem = {
   readyPackage: ReadyPackageV2;
   stage: ReadyPackageV2DeliveryStage;
   submission: ReadyPackageV2DeliverySubmissionView | null;
+  auditEvents: ReadyPackageV2DeliveryAuditEvent[];
   outboundTransport: ReadyPackageV2DeliveryTransportReadiness;
 };
 
@@ -115,6 +122,13 @@ function stagingStorePath(): string {
   return resolve(repositoryRoot, ".data", "staging");
 }
 
+function transportUncertainty(error: unknown): { issueCode: string; httpStatus: number } {
+  if (error instanceof ReadyPackageV2DeliveryTransportError) {
+    return { issueCode: error.code, httpStatus: error.httpStatus };
+  }
+  return { issueCode: "CORE_V2_DELIVERY_TRANSPORT_EXCEPTION", httpStatus: 502 };
+}
+
 export class ReadyPackageV2DeliveryService {
   constructor(private readonly dependencies: ReadyPackageV2DeliveryServiceDependencies) {}
 
@@ -133,6 +147,13 @@ export class ReadyPackageV2DeliveryService {
         readyPackage,
         stage: stage(submission),
         submission: submission ? readyPackageV2DeliverySubmissionView(submission) : null,
+        auditEvents: submission
+          ? this.dependencies.deliveries.listAuditEvents(
+              workspaceId,
+              submission.submissionId,
+              50,
+            )
+          : [],
         outboundTransport: readyPackageV2DeliveryTransportReadiness(targetWorkspaceId),
       } satisfies ReadyPackageV2DeliveryOverviewItem;
     });
@@ -212,10 +233,20 @@ export class ReadyPackageV2DeliveryService {
       workspaceId,
       submission.submissionId,
     );
-    const transportResult = await this.dependencies.transport.submit(
-      submission.requestJson,
-      submission.idempotencyKey,
-    );
+    let transportResult;
+    try {
+      transportResult = await this.dependencies.transport.submit(
+        submission.requestJson,
+        submission.idempotencyKey,
+      );
+    } catch (error) {
+      this.dependencies.deliveries.recordTransportUncertainty(
+        workspaceId,
+        submission.submissionId,
+        transportUncertainty(error),
+      );
+      throw error;
+    }
     submission = this.dependencies.deliveries.recordTransportResult(
       workspaceId,
       submission.submissionId,
