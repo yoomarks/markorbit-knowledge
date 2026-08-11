@@ -35,6 +35,7 @@
     "./vault-export-runs": "./src/vault-export-run-registry.ts",
     "./vault-inspection-runs": "./src/vault-inspection-run-registry.ts",
     "./vault-import-intents": "./src/vault-import-intent-registry.ts",
+    "./vault-import-executions": "./src/vault-import-execution-registry.ts",
     "./ready-packages": "./src/ready-package-registry.ts",
     "./ready-package-core-intake-submissions": "./src/ready-package-core-intake-submission.ts",
     "./core-workspace-bindings": "./src/core-workspace-binding.ts",
