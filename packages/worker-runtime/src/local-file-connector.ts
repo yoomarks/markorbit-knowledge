@@ -99,3 +99,5 @@ export class LocalFileConnectorExecutor implements ConnectorExecutor {
     return receipt;
   }
 }
+
+export * from "./local-folder-acquirer";
