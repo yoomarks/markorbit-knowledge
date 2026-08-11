@@ -87,8 +87,24 @@ function stage(submission: ReadyPackageV2DeliverySubmission | null): ReadyPackag
 export function readyPackageV2DeliverySubmissionView(
   submission: ReadyPackageV2DeliverySubmission,
 ): ReadyPackageV2DeliverySubmissionView {
-  const { requestJson: _requestJson, idempotencyKey: _idempotencyKey, ...view } = submission;
-  return view;
+  return {
+    submissionId: submission.submissionId,
+    workspaceId: submission.workspaceId,
+    readyPackageId: submission.readyPackageId,
+    readyPackageDigest: submission.readyPackageDigest,
+    coreWorkspaceId: submission.coreWorkspaceId,
+    requestSha256: submission.requestSha256,
+    contentExportSha256: submission.contentExportSha256,
+    state: submission.state,
+    transportAttempts: submission.transportAttempts,
+    ...(submission.lastTransportAttemptedAt
+      ? { lastTransportAttemptedAt: submission.lastTransportAttemptedAt }
+      : {}),
+    ...(submission.transportResult ? { transportResult: submission.transportResult } : {}),
+    ...(submission.result ? { result: submission.result } : {}),
+    createdAt: submission.createdAt,
+    updatedAt: submission.updatedAt,
+  };
 }
 
 function stagingStorePath(): string {

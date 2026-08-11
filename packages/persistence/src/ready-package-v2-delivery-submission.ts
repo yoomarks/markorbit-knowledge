@@ -133,7 +133,15 @@ function validateResultEvidence(
       "Persisted ReadyPackage V2 delivery result evidence is invalid",
     );
   }
-  assertReadyPackageV2DeliveryResultV1(value);
+  const result: ReadyPackageV2DeliveryResultV1 = {
+    protocolVersion: value.protocolVersion,
+    objectType: value.objectType,
+    deliveryId: value.deliveryId,
+    readyPackageId: value.readyPackageId,
+    status: value.status,
+    requestSha256: value.requestSha256,
+  };
+  assertReadyPackageV2DeliveryResultV1(result);
 }
 
 function parseSubmission(value: string): ReadyPackageV2DeliverySubmission {
