@@ -57,3 +57,4 @@ export * from "./vault-inspection-v1";
 export * from "./vault-import-intent-v1";
 export * from "./vault-import-execution-v1";
 export * from "./vault-origin-staging-verification-v1";
+export * from "./canonical-downstream-document-v1";
