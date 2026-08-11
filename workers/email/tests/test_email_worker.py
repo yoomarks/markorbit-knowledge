@@ -137,10 +137,18 @@ class AccountBindingTests(unittest.TestCase):
                 "passwordEnv": "TEST_IMAP_PASSWORD",
             }
         }
-        with patch.dict(os.environ, {"MARKORBIT_EMAIL_ACCOUNTS_JSON": json.dumps(value)}):
+        with patch.dict(
+            os.environ,
+            {
+                "MARKORBIT_EMAIL_ACCOUNTS_JSON": json.dumps(value),
+                "TEST_IMAP_PASSWORD": "secret-value",
+            },
+        ):
             parsed = account_bindings_from_environment()
         self.assertEqual(parsed["primary"].password_env, "TEST_IMAP_PASSWORD")
-        self.assertNotIn("password", as_json(parsed["primary"]))
+        serialized = as_json(parsed["primary"])
+        self.assertNotIn("secret-value", serialized)
+        self.assertNotIn('"password":', serialized)
 
     def test_inline_password_field_is_rejected(self):
         value = {
