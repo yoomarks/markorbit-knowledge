@@ -3,11 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  DEFAULT_WORKSPACE,
-  RegistryConflictError,
-  RegistryValidationError,
-} from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import {
   artifactKindForManualUploadMime,
   ingestManualUpload,
@@ -26,6 +22,16 @@ function sha256(value: Uint8Array): string {
 
 async function* chunks(value: Uint8Array): AsyncIterable<Uint8Array> {
   yield value;
+}
+
+async function* delayedChunks(value: Uint8Array): AsyncIterable<Uint8Array> {
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  yield value;
+}
+
+async function* maliciousOversizeChunks(): AsyncIterable<Uint8Array> {
+  yield Buffer.alloc(700 * 1024, 1);
+  yield Buffer.alloc(400 * 1024, 2);
 }
 
 const tempRoot = mkdtempSync(join(tmpdir(), "markorbit-manual-upload-"));
@@ -156,7 +162,7 @@ describe("governed Manual Upload ingestion", () => {
         idempotencyKey,
         chunks: chunks(secondBody),
       }),
-    ).rejects.toMatchObject<Partial<RegistryConflictError>>({
+    ).rejects.toMatchObject({
       code: "MANUAL_UPLOAD_IDEMPOTENCY_CONFLICT",
     });
   });
@@ -174,5 +180,54 @@ describe("governed Manual Upload ingestion", () => {
         chunks: chunks(body),
       }),
     ).rejects.toBeInstanceOf(RegistryValidationError);
+  });
+
+  it("enforces the actual streamed byte limit even when declared metadata is smaller", async () => {
+    const declared = Buffer.from("x", "utf8");
+    await expect(
+      ingestManualUpload({
+        workspaceId: DEFAULT_WORKSPACE.id,
+        originalName: "malicious-stream.txt",
+        mimeType: "text/plain",
+        expectedSizeBytes: declared.byteLength,
+        expectedSha256: sha256(declared),
+        idempotencyKey: "manual-upload-malicious-stream-1",
+        chunks: maliciousOversizeChunks(),
+      }),
+    ).rejects.toBeInstanceOf(RegistryValidationError);
+  });
+
+  it("keeps simultaneous uploads bound to their own governed Run and Job", async () => {
+    const firstBody = Buffer.from("concurrent first", "utf8");
+    const secondBody = Buffer.from("concurrent second", "utf8");
+
+    const [first, second] = await Promise.all([
+      ingestManualUpload({
+        workspaceId: DEFAULT_WORKSPACE.id,
+        originalName: "concurrent-first.txt",
+        mimeType: "text/plain",
+        expectedSizeBytes: firstBody.byteLength,
+        expectedSha256: sha256(firstBody),
+        idempotencyKey: "manual-upload-concurrent-first",
+        chunks: delayedChunks(firstBody),
+      }),
+      ingestManualUpload({
+        workspaceId: DEFAULT_WORKSPACE.id,
+        originalName: "concurrent-second.txt",
+        mimeType: "text/plain",
+        expectedSizeBytes: secondBody.byteLength,
+        expectedSha256: sha256(secondBody),
+        idempotencyKey: "manual-upload-concurrent-second",
+        chunks: delayedChunks(secondBody),
+      }),
+    ]);
+
+    expect(first.runId).not.toBe(second.runId);
+    expect(first.artifact.collectionRunId).toBe(first.runId);
+    expect(second.artifact.collectionRunId).toBe(second.runId);
+    expect(first.artifact.originalName).toBe("concurrent-first.txt");
+    expect(second.artifact.originalName).toBe("concurrent-second.txt");
+    expect(getExecutionLedgerRepository().getById(first.runId)?.jobs[0]?.status).toBe("COMPLETED");
+    expect(getExecutionLedgerRepository().getById(second.runId)?.jobs[0]?.status).toBe("COMPLETED");
   });
 });
