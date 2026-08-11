@@ -39,7 +39,11 @@ describe("R1-K01 Core intake HTTP transport", () => {
 
     const result = await transport.submit(request(), "core-intake:cis_test");
 
-    expect(result).toEqual({ intakeId: "intake_test", status: "RECEIVED", readyPackageId: "rdp_test" });
+    expect(result).toEqual({
+      intakeId: "intake_test",
+      status: "RECEIVED",
+      readyPackageId: "rdp_test",
+    });
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://knowledge.internal.example/v1/ready-package-intake");
     expect(init.headers).toEqual({
@@ -52,8 +56,14 @@ describe("R1-K01 Core intake HTTP transport", () => {
 
   it("blocks non-UUID Core workspace IDs before HTTP", async () => {
     const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
-    const transport = new HttpCoreIntakeTransport("https://knowledge.internal.example/intake", SECRET, fetchImpl as typeof fetch);
-    await expect(transport.submit({ ...request(), workspaceId: "wsp_local" }, "core-intake:cis_bad")).rejects.toMatchObject({
+    const transport = new HttpCoreIntakeTransport(
+      "https://knowledge.internal.example/intake",
+      SECRET,
+      fetchImpl as typeof fetch,
+    );
+    await expect(
+      transport.submit({ ...request(), workspaceId: "wsp_local" }, "core-intake:cis_bad"),
+    ).rejects.toMatchObject({
       code: "CORE_WORKSPACE_BINDING_INVALID",
     });
     expect(fetchImpl).not.toHaveBeenCalled();
@@ -84,16 +94,37 @@ describe("R1-K01 Core intake HTTP transport", () => {
     const mismatch = new HttpCoreIntakeTransport(
       "https://knowledge.internal.example/intake",
       SECRET,
-      (async () => new Response(JSON.stringify({ intakeId: "intake_other", status: "ACCEPTED", readyPackageId: "rdp_other" }), { status: 200 })) as typeof fetch,
+      (async () =>
+        new Response(
+          JSON.stringify({
+            intakeId: "intake_other",
+            status: "ACCEPTED",
+            readyPackageId: "rdp_other",
+          }),
+          { status: 200 },
+        )) as typeof fetch,
     );
-    await expect(mismatch.submit(request(), "core-intake:cis_test")).rejects.toMatchObject({ code: "CORE_INTAKE_TRANSPORT_PACKAGE_MISMATCH" });
+    await expect(mismatch.submit(request(), "core-intake:cis_test")).rejects.toMatchObject({
+      code: "CORE_INTAKE_TRANSPORT_PACKAGE_MISMATCH",
+    });
 
     const extraField = new HttpCoreIntakeTransport(
       "https://knowledge.internal.example/intake",
       SECRET,
-      (async () => new Response(JSON.stringify({ intakeId: "intake_test", status: "RECEIVED", readyPackageId: "rdp_test", accepted: true }), { status: 200 })) as typeof fetch,
+      (async () =>
+        new Response(
+          JSON.stringify({
+            intakeId: "intake_test",
+            status: "RECEIVED",
+            readyPackageId: "rdp_test",
+            accepted: true,
+          }),
+          { status: 200 },
+        )) as typeof fetch,
     );
-    await expect(extraField.submit(request(), "core-intake:cis_test")).rejects.toBeInstanceOf(CoreIntakeTransportError);
+    await expect(extraField.submit(request(), "core-intake:cis_test")).rejects.toBeInstanceOf(
+      CoreIntakeTransportError,
+    );
   });
 
   it("never exposes the internal secret in transport errors", async () => {
