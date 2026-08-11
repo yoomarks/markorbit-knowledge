@@ -1,4 +1,4 @@
-name: Agent R1-K05 Format Preview
+name: Agent R1-K05 Format Apply
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - r1-k05-content-delivery-workbench
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  preview:
+  format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +22,14 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --frozen-lockfile
-      - name: Print exact Prettier diff
+      - name: Apply Prettier
         run: |
           pnpm exec prettier --write apps/admin/src/components/ready-packages/ready-package-delivery-workbench.test.ts apps/admin/src/components/ready-packages/ready-package-delivery-workbench.tsx
-          git diff -- apps/admin/src/components/ready-packages/ready-package-delivery-workbench.test.ts apps/admin/src/components/ready-packages/ready-package-delivery-workbench.tsx
+          if git diff --quiet -- apps/admin/src/components/ready-packages/ready-package-delivery-workbench.test.ts apps/admin/src/components/ready-packages/ready-package-delivery-workbench.tsx; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/admin/src/components/ready-packages/ready-package-delivery-workbench.test.ts apps/admin/src/components/ready-packages/ready-package-delivery-workbench.tsx
+          git commit -m "chore(r1-k05): format content delivery workbench"
+          git push origin HEAD:r1-k05-content-delivery-workbench
