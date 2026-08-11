@@ -5,10 +5,7 @@ import type { CoreIntakeRequest, CoreIntakeResult } from "@markorbit/contracts";
 import { initializeRegistry } from "@markorbit/persistence";
 import { SqliteReadyPackageCoreIntakeSubmissionRepository } from "@markorbit/persistence/ready-package-core-intake-submissions";
 import { SqliteReadyPackageRegistryRepository } from "@markorbit/persistence/ready-packages";
-import {
-  HttpCoreIntakeTransport,
-  type CoreIntakeTransport,
-} from "../core-intake-http-transport";
+import { HttpCoreIntakeTransport, type CoreIntakeTransport } from "../core-intake-http-transport";
 import { submitReadyPackageCoreIntake } from "../ready-package-core-intake-submit";
 
 const KNOWLEDGE_WORKSPACE_ID = "wsp_01H00000000000000000000000";
