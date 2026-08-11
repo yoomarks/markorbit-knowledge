@@ -34,10 +34,9 @@ export async function GET(request: Request, context: RouteContext) {
       workspaceId,
     );
     const coreIntakeReceipts = repository.listCoreIntakeReceipts(id, workspaceId);
-    const coreIntakeSubmissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(database).list(
-      id,
-      workspaceId,
-    );
+    const coreIntakeSubmissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(
+      database,
+    ).list(id, workspaceId);
     const latestCoreIntakeReceipt = coreIntakeReceipts[0] ?? null;
     const latestCoreIntakeSubmission = coreIntakeSubmissions[0] ?? null;
     const transportStatus =
