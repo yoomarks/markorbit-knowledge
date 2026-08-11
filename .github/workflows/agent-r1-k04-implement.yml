@@ -25,6 +25,18 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Fix one-shot implementation marker
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/agent-r1-k04-implement.py')
+          text = path.read_text()
+          old = '''first = text.find(class_list_marker)\nsecond = text.find(class_list_marker, first + 1)\nif second == -1:\n    raise SystemExit("class list method marker not found")\ntext = text[:second] + class_methods + text[second:]'''
+          new = '''position = text.find(class_list_marker)\nif position == -1:\n    raise SystemExit("class list method marker not found")\ntext = text[:position] + class_methods + text[position:]'''
+          if old not in text:
+              raise SystemExit('implementation marker hotfix target not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
       - name: Generate R1-K04 implementation
         run: python scripts/agent-r1-k04-implement.py
       - name: Format generated changes
