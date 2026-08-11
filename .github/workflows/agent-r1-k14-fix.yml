@@ -28,23 +28,11 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           p = Path('packages/persistence/src/ready-package-v2-delivery-submission.ts')
           s = p.read_text()
-          old = '''  if (!value || Number.isNaN(Date.parse(value.recordedAt))) {
-            throw new RegistryConflictError(
-              "READY_PACKAGE_V2_DELIVERY_RESULT_EVIDENCE_INVALID",
-              "Persisted ReadyPackage V2 delivery result evidence is invalid",
-            );
-          }
-          assertReadyPackageV2DeliveryResultV1(value);'''
-          new = '''  if (!value || Number.isNaN(Date.parse(value.recordedAt))) {
-            throw new RegistryConflictError(
-              "READY_PACKAGE_V2_DELIVERY_RESULT_EVIDENCE_INVALID",
-              "Persisted ReadyPackage V2 delivery result evidence is invalid",
-            );
-          }
-          const result: ReadyPackageV2DeliveryResultV1 = {
+          replacement = '''  const result: ReadyPackageV2DeliveryResultV1 = {
             protocolVersion: value.protocolVersion,
             objectType: value.objectType,
             deliveryId: value.deliveryId,
@@ -53,43 +41,45 @@ jobs:
             requestSha256: value.requestSha256,
           };
           assertReadyPackageV2DeliveryResultV1(result);'''
-          if old not in s:
-              raise SystemExit('result evidence snippet not found')
-          p.write_text(s.replace(old, new, 1))
+          s, count = re.subn(
+              r'(?m)^  assertReadyPackageV2DeliveryResultV1\(value\);$',
+              replacement,
+              s,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'result evidence anchor count={count}')
+          p.write_text(s)
 
           p = Path('apps/admin/src/server/ready-package-v2-delivery-service.ts')
           s = p.read_text()
-          old = '''export function readyPackageV2DeliverySubmissionView(
-            submission: ReadyPackageV2DeliverySubmission,
-          ): ReadyPackageV2DeliverySubmissionView {
-            const { requestJson: _requestJson, idempotencyKey: _idempotencyKey, ...view } = submission;
-            return view;
-          }'''
-          new = '''export function readyPackageV2DeliverySubmissionView(
-            submission: ReadyPackageV2DeliverySubmission,
-          ): ReadyPackageV2DeliverySubmissionView {
-            return {
-              submissionId: submission.submissionId,
-              workspaceId: submission.workspaceId,
-              readyPackageId: submission.readyPackageId,
-              readyPackageDigest: submission.readyPackageDigest,
-              coreWorkspaceId: submission.coreWorkspaceId,
-              requestSha256: submission.requestSha256,
-              contentExportSha256: submission.contentExportSha256,
-              state: submission.state,
-              transportAttempts: submission.transportAttempts,
-              ...(submission.lastTransportAttemptedAt
-                ? { lastTransportAttemptedAt: submission.lastTransportAttemptedAt }
-                : {}),
-              ...(submission.transportResult ? { transportResult: submission.transportResult } : {}),
-              ...(submission.result ? { result: submission.result } : {}),
-              createdAt: submission.createdAt,
-              updatedAt: submission.updatedAt,
-            };
-          }'''
-          if old not in s:
-              raise SystemExit('sanitized view snippet not found')
-          p.write_text(s.replace(old, new, 1))
+          replacement = '''  return {
+            submissionId: submission.submissionId,
+            workspaceId: submission.workspaceId,
+            readyPackageId: submission.readyPackageId,
+            readyPackageDigest: submission.readyPackageDigest,
+            coreWorkspaceId: submission.coreWorkspaceId,
+            requestSha256: submission.requestSha256,
+            contentExportSha256: submission.contentExportSha256,
+            state: submission.state,
+            transportAttempts: submission.transportAttempts,
+            ...(submission.lastTransportAttemptedAt
+              ? { lastTransportAttemptedAt: submission.lastTransportAttemptedAt }
+              : {}),
+            ...(submission.transportResult ? { transportResult: submission.transportResult } : {}),
+            ...(submission.result ? { result: submission.result } : {}),
+            createdAt: submission.createdAt,
+            updatedAt: submission.updatedAt,
+          };'''
+          s, count = re.subn(
+              r'(?m)^  const \{ requestJson: _requestJson, idempotencyKey: _idempotencyKey, \.\.\.view \} = submission;\n  return view;$',
+              replacement,
+              s,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'sanitized view anchor count={count}')
+          p.write_text(s)
           PY
           pnpm exec prettier --write \
             packages/persistence/src/ready-package-v2-delivery-submission.ts \
