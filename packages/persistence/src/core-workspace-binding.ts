@@ -94,7 +94,8 @@ export class SqliteCoreWorkspaceBindingRepository implements CoreWorkspaceBindin
 
   getByKnowledgeWorkspaceId(knowledgeWorkspaceId: string): CoreWorkspaceBinding | null {
     const normalizedWorkspaceId = knowledgeWorkspaceId?.trim();
-    if (!normalizedWorkspaceId) throw new RegistryValidationError("knowledgeWorkspaceId is required");
+    if (!normalizedWorkspaceId)
+      throw new RegistryValidationError("knowledgeWorkspaceId is required");
     const row = this.database
       .prepare(
         `SELECT knowledge_workspace_id, core_workspace_id, created_at, updated_at
@@ -114,7 +115,8 @@ export class SqliteCoreWorkspaceBindingRepository implements CoreWorkspaceBindin
 
   bind(knowledgeWorkspaceId: string, coreWorkspaceId: string): CoreWorkspaceBinding {
     const normalizedWorkspaceId = knowledgeWorkspaceId?.trim();
-    if (!normalizedWorkspaceId) throw new RegistryValidationError("knowledgeWorkspaceId is required");
+    if (!normalizedWorkspaceId)
+      throw new RegistryValidationError("knowledgeWorkspaceId is required");
     const normalizedCoreWorkspaceId = normalizeCanonicalCoreWorkspaceId(coreWorkspaceId);
 
     const workspace = this.database
