@@ -23,16 +23,19 @@ The TypeScript source of truth is `packages/contracts/src/ready-package-content-
     verificationId: string;
     verificationOutcome: "PASS" | "PASS_WITH_WARNINGS";
     capturedAt: string;
-    converter: { converterId: string; version: string };
+    converter: {
+      converterId: string;
+      version: string;
+    }
     legalTruthVerified: false;
-  };
+  }
   rawArtifact: {
     artifactId: string;
     sha256: string;
     sizeBytes: number;
     mimeType: string;
     originalName: string;
-  };
+  }
   stagingDocument: {
     documentId: string;
     sha256: string;
@@ -40,7 +43,7 @@ The TypeScript source of truth is `packages/contracts/src/ready-package-content-
     mediaType: "text/markdown";
     encoding: "utf-8";
     content: string;
-  };
+  }
 }
 ```
 
