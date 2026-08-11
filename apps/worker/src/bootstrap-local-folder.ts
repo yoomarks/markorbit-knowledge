@@ -171,7 +171,10 @@ async function ensureSource(
   },
 ): Promise<string> {
   const slug = sourceSlug(input.rootId, input.relativePath);
-  const existing = await requestJson(baseUrl, `/api/sources?q=${encodeURIComponent(slug)}&limit=100`);
+  const existing = await requestJson(
+    baseUrl,
+    `/api/sources?q=${encodeURIComponent(slug)}&limit=100`,
+  );
   for (const candidate of items(existing.body)) {
     const source = record(candidate);
     if (source?.slug === slug) return identifier(source.id, "source.id");
@@ -331,7 +334,9 @@ async function main(): Promise<void> {
   const roots = parseLocalFolderRoots(required("MARKORBIT_LOCAL_FOLDER_ROOTS"));
   const rootId = required("MARKORBIT_LOCAL_FOLDER_ROOT_ID");
   if (!roots[rootId]) {
-    throw new Error(`MARKORBIT_LOCAL_FOLDER_ROOT_ID ${rootId} is not present in LOCAL_FOLDER_ROOTS`);
+    throw new Error(
+      `MARKORBIT_LOCAL_FOLDER_ROOT_ID ${rootId} is not present in LOCAL_FOLDER_ROOTS`,
+    );
   }
   const relativePath = normalizeLocalFolderRelativePath(
     process.env.MARKORBIT_LOCAL_FOLDER_RELATIVE_PATH?.trim() || "",
@@ -368,7 +373,8 @@ async function main(): Promise<void> {
         workerEnvironment: {
           MARKORBIT_COLLECTION_PROVIDER: "local-folder",
           MARKORBIT_LOCAL_FOLDER_ROOT_ID: rootId,
-          MARKORBIT_LOCAL_FOLDER_ROOTS: "<keep this local to the Worker; never persist absolute paths>",
+          MARKORBIT_LOCAL_FOLDER_ROOTS:
+            "<keep this local to the Worker; never persist absolute paths>",
         },
       },
       null,

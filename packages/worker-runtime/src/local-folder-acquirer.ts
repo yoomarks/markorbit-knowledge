@@ -81,6 +81,13 @@ function positiveInteger(value: number, name: string): number {
   return value;
 }
 
+function nonNegativeInteger(value: number, name: string): number {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${name} must be a non-negative safe integer`);
+  }
+  return value;
+}
+
 function hash(value: Uint8Array | string): string {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -303,13 +310,14 @@ function globRegex(pattern: string): RegExp {
       source += "[^/]";
       continue;
     }
-    source += char.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+    source += "\\.^$+{}()|[]".includes(char) ? `\\${char}` : char;
   }
   return new RegExp(`${source}$`);
 }
 
 function matchesPatterns(path: string, includes: string[], excludes: string[]): boolean {
-  const included = includes.length === 0 || includes.some((pattern) => globRegex(pattern).test(path));
+  const included =
+    includes.length === 0 || includes.some((pattern) => globRegex(pattern).test(path));
   if (!included) return false;
   return !excludes.some((pattern) => globRegex(pattern).test(path));
 }
@@ -419,7 +427,7 @@ export class LocalFolderArtifactAcquirer implements CollectionArtifactAcquirer {
       "maxTotalBytes",
     );
     this.maxItems = positiveInteger(options.maxItems ?? DEFAULT_MAX_ITEMS, "maxItems");
-    this.maxDepth = positiveInteger(options.maxDepth ?? DEFAULT_MAX_DEPTH, "maxDepth");
+    this.maxDepth = nonNegativeInteger(options.maxDepth ?? DEFAULT_MAX_DEPTH, "maxDepth");
   }
 
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {

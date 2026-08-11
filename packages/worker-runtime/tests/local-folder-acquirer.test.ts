@@ -117,7 +117,9 @@ describe("LocalFolderArtifactAcquirer", () => {
     ctx.job.planSnapshot.policy.excludePatterns = ["skip*"];
     ctx.job.planSnapshot.policy.maxItems = 1;
 
-    const artifacts = await new LocalFolderArtifactAcquirer({ roots: { legal: root } }).acquire(ctx);
+    const artifacts = await new LocalFolderArtifactAcquirer({ roots: { legal: root } }).acquire(
+      ctx,
+    );
     expect(artifacts).toHaveLength(1);
     expect(artifacts[0]?.originalName).toBe("keep.txt");
   });
