@@ -47,19 +47,42 @@ export function ManualUploadForm() {
   return (
     <div>
       <form onSubmit={submit}>
-        <label>Workspace <input value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} /></label>
-        <label>Operator <input value={actorId} onChange={(e) => setActorId(e.target.value)} /></label>
-        <label>File <input type="file" accept=".md,.txt,.pdf,.docx,.csv,.json" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
-        <button type="submit" disabled={!file || busy}>{busy ? "Uploading..." : "Upload to RawArtifact"}</button>
+        <label>
+          Workspace
+          <input value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)} />
+        </label>
+        <label>
+          Operator
+          <input value={actorId} onChange={(event) => setActorId(event.target.value)} />
+        </label>
+        <label>
+          File
+          <input
+            type="file"
+            accept=".md,.txt,.pdf,.docx,.csv,.json"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          />
+        </label>
+        <button type="submit" disabled={!file || busy}>
+          {busy ? "Uploading..." : "Upload to RawArtifact"}
+        </button>
       </form>
-      <p>Files are limited to 25 MiB and enter immutable RawArtifact storage only; this action does not bypass Staging or Vault review.</p>
+      <p>
+        Files are limited to 25 MiB and enter immutable RawArtifact storage only; this action does
+        not bypass Staging or Vault review.
+      </p>
       {error ? <p role="alert">{error}</p> : null}
       {result ? (
         <div>
           <p>RawArtifact: {result.artifact.id}</p>
           <p>Run: {result.runId}</p>
-          <p>File: {result.artifact.originalName} ({result.artifact.artifactKind}, {result.artifact.sizeBytes} bytes)</p>
-          <a href={`/artifacts/${encodeURIComponent(result.artifact.id)}`}>Inspect artifact and provenance</a>
+          <p>
+            File: {result.artifact.originalName} ({result.artifact.artifactKind},{" "}
+            {result.artifact.sizeBytes} bytes)
+          </p>
+          <a href={`/artifacts/${encodeURIComponent(result.artifact.id)}`}>
+            Inspect artifact and provenance
+          </a>
         </div>
       ) : null}
     </div>
