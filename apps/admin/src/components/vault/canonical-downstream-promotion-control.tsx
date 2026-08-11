@@ -102,8 +102,7 @@ export function CanonicalDownstreamPromotionControl({ workspaceId }: { workspace
         },
       );
       const body = (await response.json()) as
-        | { document?: CanonicalDownstreamDocumentV1; replayed?: boolean }
-        | ApiError;
+        { document?: CanonicalDownstreamDocumentV1; replayed?: boolean } | ApiError;
       if (!response.ok) throw new Error(readError(body, "Canonical promotion failed"));
       applyLoaded(await loadOverview(workspaceId));
     } catch (requestError) {
@@ -164,8 +163,8 @@ export function CanonicalDownstreamPromotionControl({ workspaceId }: { workspace
                   {candidate.staging.bindingRelativePath}
                 </p>
                 <p className="mt-1 font-mono text-xs text-slate-500">
-                  {shortHash(candidate.staging.contentHash.value)} · {candidate.staging.sizeBytes} bytes ·{" "}
-                  {candidate.verification.outcome}
+                  {shortHash(candidate.staging.contentHash.value)} · {candidate.staging.sizeBytes}{" "}
+                  bytes · {candidate.verification.outcome}
                 </p>
               </div>
               <button
@@ -190,9 +189,16 @@ export function CanonicalDownstreamPromotionControl({ workspaceId }: { workspace
           <p className="text-sm text-slate-500">尚未生成 canonical downstream document。</p>
         ) : null}
         {overview?.documents.map((document) => (
-          <div key={document.id} className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
+          <div
+            key={document.id}
+            className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4"
+          >
             <div className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-700" size={18} aria-hidden="true" />
+              <CheckCircle2
+                className="mt-0.5 shrink-0 text-emerald-700"
+                size={18}
+                aria-hidden="true"
+              />
               <div className="min-w-0">
                 <p className="break-all text-sm font-medium text-slate-900">{document.id}</p>
                 <p className="mt-1 break-all text-xs text-slate-600">

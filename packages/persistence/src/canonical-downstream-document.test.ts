@@ -178,9 +178,9 @@ describe("canonical downstream Vault-origin promotion", () => {
 
     expect(replay.replayed).toBe(true);
     expect(replay.document).toEqual(first.document);
-    expect(
-      reopened.getByVaultStagingDocument(DEFAULT_WORKSPACE.id, fixture.staged.id),
-    ).toEqual(first.document);
+    expect(reopened.getByVaultStagingDocument(DEFAULT_WORKSPACE.id, fixture.staged.id)).toEqual(
+      first.document,
+    );
   });
 
   it("rejects content bytes that no longer match the verified immutable CAS identity", () => {

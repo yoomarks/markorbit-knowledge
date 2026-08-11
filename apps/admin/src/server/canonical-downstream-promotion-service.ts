@@ -98,10 +98,7 @@ export class CanonicalDownstreamPromotionService {
     vaultStagingDocumentIdValue: string,
   ): CanonicalDownstreamPromotionResult {
     const workspaceId = required(workspaceIdValue, "workspaceId");
-    const vaultStagingDocumentId = required(
-      vaultStagingDocumentIdValue,
-      "vaultStagingDocumentId",
-    );
+    const vaultStagingDocumentId = required(vaultStagingDocumentIdValue, "vaultStagingDocumentId");
 
     const existing = this.dependencies.canonical.getByVaultStagingDocument(
       workspaceId,
@@ -109,7 +106,10 @@ export class CanonicalDownstreamPromotionService {
     );
     if (existing) return { document: existing, replayed: true };
 
-    const staging = this.dependencies.verifications.getDocument(workspaceId, vaultStagingDocumentId);
+    const staging = this.dependencies.verifications.getDocument(
+      workspaceId,
+      vaultStagingDocumentId,
+    );
     if (!staging) {
       throw new RegistryValidationError(
         `Vault-origin Staging document ${vaultStagingDocumentId} was not found`,
@@ -143,7 +143,10 @@ export class CanonicalDownstreamPromotionService {
         "Vault-origin Staging import intent evidence is missing",
       );
     }
-    const execution = this.dependencies.executions.getByImportIntent(workspaceId, staging.importIntentId);
+    const execution = this.dependencies.executions.getByImportIntent(
+      workspaceId,
+      staging.importIntentId,
+    );
     if (!execution) {
       throw new RegistryConflictError(
         "CANONICAL_DOWNSTREAM_IMPORT_EXECUTION_MISSING",

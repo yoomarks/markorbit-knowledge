@@ -225,7 +225,10 @@ function validateChain(input: PromoteCanonicalVaultImportInput): void {
   if (!(input.content instanceof Uint8Array)) {
     throw new RegistryValidationError("Canonical promotion content must be bytes");
   }
-  if (input.content.byteLength !== staging.sizeBytes || sha256(input.content) !== staging.contentHash.value) {
+  if (
+    input.content.byteLength !== staging.sizeBytes ||
+    sha256(input.content) !== staging.contentHash.value
+  ) {
     throw new RegistryConflictError(
       "CANONICAL_DOWNSTREAM_CAS_INTEGRITY_FAILURE",
       "Canonical promotion content does not match immutable Vault-origin Staging evidence",
@@ -307,9 +310,7 @@ export function ensureCanonicalDownstreamDocumentRegistry(database: DatabaseSync
   }
 }
 
-export class SqliteCanonicalDownstreamDocumentRepository
-  implements CanonicalDownstreamDocumentRepository
-{
+export class SqliteCanonicalDownstreamDocumentRepository implements CanonicalDownstreamDocumentRepository {
   constructor(
     private readonly database: DatabaseSync,
     private readonly clock: () => Date = () => new Date(),
@@ -339,7 +340,10 @@ export class SqliteCanonicalDownstreamDocumentRepository
       return { document: existing, replayed: true };
     }
     if (!this.database.prepare("SELECT id FROM workspaces WHERE id = ?").get(input.workspaceId)) {
-      throw new RegistryError("WORKSPACE_NOT_FOUND", `Workspace ${input.workspaceId} was not found`);
+      throw new RegistryError(
+        "WORKSPACE_NOT_FOUND",
+        `Workspace ${input.workspaceId} was not found`,
+      );
     }
 
     const promotedAt = this.clock().toISOString();
@@ -421,10 +425,7 @@ export class SqliteCanonicalDownstreamDocumentRepository
     vaultStagingDocumentIdValue: string,
   ): CanonicalDownstreamDocumentV1 | null {
     const workspaceId = required(workspaceIdValue, "workspaceId");
-    const vaultStagingDocumentId = required(
-      vaultStagingDocumentIdValue,
-      "vaultStagingDocumentId",
-    );
+    const vaultStagingDocumentId = required(vaultStagingDocumentIdValue, "vaultStagingDocumentId");
     const row = this.database
       .prepare(
         `SELECT document_json FROM canonical_downstream_documents
