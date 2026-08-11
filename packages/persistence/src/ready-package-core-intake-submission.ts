@@ -10,8 +10,7 @@ import {
 
 const MIGRATION_ID = "0020_ready_package_core_intake_submissions";
 const SHA256 = /^[a-f0-9]{64}$/;
-const CORE_WORKSPACE_ID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CORE_WORKSPACE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CORE_INTAKE_STATUSES = new Set<CoreIntakeResult["status"]>([
   "RECEIVED",
   "ACCEPTED",
