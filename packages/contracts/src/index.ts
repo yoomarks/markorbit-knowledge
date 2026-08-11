@@ -50,6 +50,8 @@ export type {
   ReadyPackage,
 } from "./ready-package-v1";
 export * from "./ready-package-content-export-v1";
+export * from "./ready-package-v2";
+export * from "./ready-package-content-export-v2";
 export * from "./core-intake-v1";
 export * from "./vault-binding-v1";
 export * from "./vault-export-v1";
