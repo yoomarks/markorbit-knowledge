@@ -121,9 +121,25 @@ Invariant: one frozen V2 delivery submission per `(workspace_id, ready_package_i
 
 The V1 `ready_package_core_intake_submissions` ledger is not reused or modified.
 
+## K15 audit timeline
+
+R1-K15 adds migration `0031_ready_package_v2_delivery_audit_events` as a separate append-only operational evidence ledger around this protocol. It does not change the V2 request/result envelope or frozen request bytes.
+
+The timeline records only bounded evidence for:
+
+- `PREPARED`;
+- `TRANSPORT_ATTEMPT_STARTED`;
+- `TRANSPORT_OUTCOME_UNKNOWN`;
+- `TRANSPORT_RESULT_RECORDED`;
+- `FINALIZED`.
+
+Where a local delivery state changes, the state mutation and matching audit event commit in the same SQLite transaction. A network exception is recorded separately as bounded `issueCode` plus HTTP-style status after the attempt-start marker is already durable. K14 submissions that predate migration `0031` receive only a reconstructable `PREPARED` event from their frozen submission metadata; K15 does not fabricate historical transport events.
+
+Audit rows cannot contain request JSON, Markdown content, idempotency keys, destination URLs, secrets, arbitrary exception text or arbitrary downstream response bodies. See [ReadyPackage V2 Delivery Audit Timeline V1](READY_PACKAGE_V2_DELIVERY_AUDIT_V1.md).
+
 ## Explicit non-goals
 
-K14 does **not**:
+K14/K15 do **not**:
 
 - modify MarkOrbit Core;
 - claim a Core V2 receiver exists;
