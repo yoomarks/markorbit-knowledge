@@ -5,6 +5,7 @@ import { SqliteCoreWorkspaceBindingRepository } from "@markorbit/persistence/cor
 import { SqliteReadyPackageCoreIntakeSubmissionRepository } from "@markorbit/persistence/ready-package-core-intake-submissions";
 import { createCoreIntakeRequestPreview } from "@markorbit/worker-runtime";
 import { apiError } from "@/server/api-errors";
+import { coreContentTransportReadiness } from "@/server/core-content-http-transport";
 import { coreIntakeTransportReadiness } from "@/server/core-intake-http-transport";
 import { recordReadyPackageCoreIntakeAcknowledgment } from "@/server/ready-package-core-intake-handoff";
 import { getReadyPackageRepository, getRegistryDatabase } from "@/server/source-registry";
@@ -64,6 +65,26 @@ export async function GET(request: Request, context: RouteContext) {
           }
         : coreIntakeTransportReadiness(previewCoreWorkspaceId);
 
+    const completedIntakeSubmission = coreIntakeSubmissions.find(
+      (submission) =>
+        submission.expectedDigest === readyPackage.evidence.digest &&
+        submission.state === "RESULT_RECORDED" &&
+        submission.result,
+    );
+    const contentDelivery = completedIntakeSubmission?.contentDelivery;
+    const contentTransportStatus = !completedIntakeSubmission?.result
+      ? "WAITING_FOR_INTAKE"
+      : completedIntakeSubmission.result.status === "REJECTED"
+        ? "BLOCKED_REJECTED"
+        : !contentDelivery
+          ? "READY_TO_DELIVER"
+          : contentDelivery.state === "RESULT_RECORDED"
+            ? "ACCEPTED"
+            : contentDelivery.transportResult
+              ? "CONTENT_FINALIZATION_PENDING"
+              : "CONTENT_PENDING_RESULT";
+    const contentOutboundTransport = coreContentTransportReadiness();
+
     return NextResponse.json({
       readyPackageStatus: readyPackage.status,
       coreWorkspaceBinding: binding,
@@ -76,6 +97,19 @@ export async function GET(request: Request, context: RouteContext) {
       coreIntakeSubmissions,
       latestCoreIntakeReceipt,
       coreIntakeReceipts,
+      contentTransportStatus,
+      contentOutboundTransport,
+      coreContentDelivery: contentDelivery
+        ? {
+            state: contentDelivery.state,
+            coreIntakeId: contentDelivery.coreIntakeId,
+            requestSha256: contentDelivery.requestSha256,
+            transportResult: contentDelivery.transportResult,
+            result: contentDelivery.result,
+            preparedAt: contentDelivery.preparedAt,
+            updatedAt: contentDelivery.updatedAt,
+          }
+        : null,
       note: pendingCoreIntakeSubmission
         ? pendingCoreIntakeSubmission.transportResult
           ? "Knowledge has durably persisted the Core transport result; an explicit retry completes local receipt/handoff finalization without submitting to Core again."
@@ -89,6 +123,18 @@ export async function GET(request: Request, context: RouteContext) {
           : readyPackage.status === "HANDED_OFF"
             ? "This ReadyPackage predates persisted Core intake receipts; Knowledge does not invent historical receipt evidence."
             : "Knowledge exposes a handoff preview only after a canonical Core workspace binding exists; it does not claim submission before receipt evidence exists.",
+      contentNote:
+        contentTransportStatus === "WAITING_FOR_INTAKE"
+          ? "Content delivery remains blocked until the parent Core intake result is durably recorded."
+          : contentTransportStatus === "BLOCKED_REJECTED"
+            ? "The latest durable Core intake result is REJECTED, so this intake cannot receive content."
+            : contentTransportStatus === "READY_TO_DELIVER"
+              ? "The parent Core intake is durably recorded. An explicit content action will freeze Content Export V1 before outbound HTTP."
+              : contentTransportStatus === "CONTENT_PENDING_RESULT"
+                ? "Knowledge has frozen the exact Content Export V1 request. An explicit retry reuses the same Core intake ID, canonical JSON and SHA-256 fingerprint."
+                : contentTransportStatus === "CONTENT_FINALIZATION_PENDING"
+                  ? "Knowledge has durably persisted the Core content result. An explicit retry completes local finalization without another HTTP request."
+                  : "Knowledge has durably recorded Core acceptance of the frozen ReadyPackage Content Export V1.",
     });
   } catch (error) {
     return apiError(error);
