@@ -6,10 +6,19 @@ import {
   type ReadyPackageContentExportV1,
   type ReadyPackageEvidence,
 } from "@markorbit/contracts";
-import { RegistryConflictError, RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+} from "@markorbit/persistence";
 import type { RawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import type { ReadyPackageRegistryRepository } from "@markorbit/persistence/ready-packages";
 import type { StagingContentRegistryRepository } from "@markorbit/persistence/staging-content";
+import {
+  getRawArtifactRepository,
+  getReadyPackageRepository,
+  getStagingContentRepository,
+} from "./source-registry";
 
 export type ReadyPackageContentExportInput = {
   workspaceId: string;
@@ -267,4 +276,14 @@ export async function buildReadyPackageContentExportV1(
   };
   assertReadyPackageContentExportV1(exported);
   return exported;
+}
+
+export function buildConfiguredReadyPackageContentExportV1(
+  input: ReadyPackageContentExportInput,
+): Promise<ReadyPackageContentExportV1> {
+  return buildReadyPackageContentExportV1(input, {
+    readyPackages: getReadyPackageRepository(),
+    rawArtifacts: getRawArtifactRepository(),
+    staging: getStagingContentRepository(),
+  });
 }
