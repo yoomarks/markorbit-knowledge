@@ -24,15 +24,31 @@ describe("configured Core intake transport", () => {
     try {
       delete process.env.MARKORBIT_CORE_INTAKE_URL;
       delete process.env.MARKORBIT_CORE_INTERNAL_SECRET;
-      expect(coreIntakeTransportReadiness(CORE_WORKSPACE_ID)).toEqual({ configured: false, issueCode: "CORE_INTAKE_TRANSPORT_NOT_CONFIGURED" });
+      expect(coreIntakeTransportReadiness(CORE_WORKSPACE_ID)).toEqual({
+        configured: false,
+        issueCode: "CORE_INTAKE_TRANSPORT_NOT_CONFIGURED",
+      });
 
-      process.env.MARKORBIT_CORE_INTAKE_URL = "https://knowledge.internal.example/v1/ready-package-intake";
-      expect(coreIntakeTransportReadiness(CORE_WORKSPACE_ID)).toEqual({ configured: false, issueCode: "CORE_INTAKE_TRANSPORT_AUTH_NOT_CONFIGURED" });
+      process.env.MARKORBIT_CORE_INTAKE_URL =
+        "https://knowledge.internal.example/v1/ready-package-intake";
+      expect(coreIntakeTransportReadiness(CORE_WORKSPACE_ID)).toEqual({
+        configured: false,
+        issueCode: "CORE_INTAKE_TRANSPORT_AUTH_NOT_CONFIGURED",
+      });
 
       process.env.MARKORBIT_CORE_INTERNAL_SECRET = "test-secret";
-      expect(coreIntakeTransportReadiness()).toEqual({ configured: false, issueCode: "CORE_WORKSPACE_NOT_BOUND" });
-      expect(coreIntakeTransportReadiness("wsp_local")).toEqual({ configured: false, issueCode: "CORE_WORKSPACE_BINDING_INVALID" });
-      expect(coreIntakeTransportReadiness(CORE_WORKSPACE_ID)).toEqual({ configured: true, issueCode: null });
+      expect(coreIntakeTransportReadiness()).toEqual({
+        configured: false,
+        issueCode: "CORE_WORKSPACE_NOT_BOUND",
+      });
+      expect(coreIntakeTransportReadiness("wsp_local")).toEqual({
+        configured: false,
+        issueCode: "CORE_WORKSPACE_BINDING_INVALID",
+      });
+      expect(coreIntakeTransportReadiness(CORE_WORKSPACE_ID)).toEqual({
+        configured: true,
+        issueCode: null,
+      });
     } finally {
       if (originalUrl === undefined) delete process.env.MARKORBIT_CORE_INTAKE_URL;
       else process.env.MARKORBIT_CORE_INTAKE_URL = originalUrl;
@@ -46,9 +62,12 @@ describe("configured Core intake transport", () => {
     const originalSecret = process.env.MARKORBIT_CORE_INTERNAL_SECRET;
     const fetchImpl = vi.fn<typeof fetch>();
     try {
-      process.env.MARKORBIT_CORE_INTAKE_URL = "https://knowledge.internal.example/v1/ready-package-intake";
+      process.env.MARKORBIT_CORE_INTAKE_URL =
+        "https://knowledge.internal.example/v1/ready-package-intake";
       delete process.env.MARKORBIT_CORE_INTERNAL_SECRET;
-      await expect(configuredCoreIntakeTransport(fetchImpl).submit(request(), "core-intake:cis_lazy_config")).rejects.toMatchObject({
+      await expect(
+        configuredCoreIntakeTransport(fetchImpl).submit(request(), "core-intake:cis_lazy_config"),
+      ).rejects.toMatchObject({
         code: "CORE_INTAKE_TRANSPORT_AUTH_NOT_CONFIGURED",
         httpStatus: 503,
       });
@@ -67,7 +86,10 @@ describe("configured Core intake transport", () => {
     process.env.MARKORBIT_CORE_INTAKE_URL = "not-a-url";
     process.env.MARKORBIT_CORE_INTERNAL_SECRET = "test-secret";
     try {
-      expect(coreIntakeTransportReadiness(CORE_WORKSPACE_ID)).toEqual({ configured: false, issueCode: "CORE_INTAKE_TRANSPORT_URL_INVALID" });
+      expect(coreIntakeTransportReadiness(CORE_WORKSPACE_ID)).toEqual({
+        configured: false,
+        issueCode: "CORE_INTAKE_TRANSPORT_URL_INVALID",
+      });
     } finally {
       if (originalUrl === undefined) delete process.env.MARKORBIT_CORE_INTAKE_URL;
       else process.env.MARKORBIT_CORE_INTAKE_URL = originalUrl;
