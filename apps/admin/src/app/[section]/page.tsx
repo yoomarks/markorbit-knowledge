@@ -28,6 +28,7 @@ import { SourceIntelligenceReviewOwnership } from "@/components/sources/source-i
 import { SourceIntelligenceReviewQueue } from "@/components/sources/source-intelligence-review-queue";
 import { SourceIntelligenceWorkbench } from "@/components/sources/source-intelligence-workbench";
 import { SourceList } from "@/components/sources/source-list";
+import { VaultBindingControl } from "@/components/vault/vault-binding-control";
 import { WorkerList } from "@/components/workers/worker-list";
 import { moduleOrder, type ModuleKey } from "@/lib/modules";
 
@@ -218,6 +219,18 @@ function ReadyPackagesPage() {
   );
 }
 
+function VaultPage() {
+  return (
+    <>
+      <PageHeading
+        title="Obsidian / Vault"
+        description="管理 Workspace 到本地 Vault 的持久化绑定与安全目录映射。R1-K06 只建立授权和路径边界，不自动执行 Export、Import 或冲突处理。"
+      />
+      <VaultBindingControl workspaceId={DEFAULT_WORKSPACE.id} />
+    </>
+  );
+}
+
 export default async function SectionPage({ params }: { params: Promise<{ section: string }> }) {
   const { section } = await params;
   if (!moduleOrder.includes(section as ModuleKey)) notFound();
@@ -251,6 +264,8 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
         <ConvertersPage />
       ) : moduleKey === "packages" ? (
         <ReadyPackagesPage />
+      ) : moduleKey === "vault" ? (
+        <VaultPage />
       ) : (
         <ModulePreview moduleKey={moduleKey} />
       )}
