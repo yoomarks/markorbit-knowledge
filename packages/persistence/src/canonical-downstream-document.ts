@@ -240,7 +240,18 @@ function validateChain(input: PromoteCanonicalVaultImportInput): void {
   timestamp(verification.createdAt, "verification.createdAt");
 }
 
+function passingVerificationOutcome(
+  value: VaultOriginStagingVerificationEvidenceV1["outcome"],
+): "PASS" | "PASS_WITH_WARNINGS" {
+  if (value === "PASS" || value === "PASS_WITH_WARNINGS") return value;
+  throw new RegistryConflictError(
+    "CANONICAL_DOWNSTREAM_VERIFICATION_INVALID",
+    "Canonical promotion requires passing verification bound to the exact Staging bytes",
+  );
+}
+
 function frozenEvidence(input: PromoteCanonicalVaultImportInput) {
+  const verificationOutcome = passingVerificationOutcome(input.verification.outcome);
   return {
     workspaceId: input.workspaceId,
     origin: {
@@ -250,7 +261,7 @@ function frozenEvidence(input: PromoteCanonicalVaultImportInput) {
       importExecutionId: input.execution.id,
       vaultStagingDocumentId: input.staging.id,
       verificationId: input.verification.id,
-      verificationOutcome: input.verification.outcome,
+      verificationOutcome,
       finalizationId: input.finalization.id,
       rootFingerprintSha256: input.intent.inspection.rootFingerprintSha256,
       binding: input.intent.inspection.binding,
