@@ -1,0 +1,80 @@
+name: Agent K-EXT-B Fix Format
+
+on:
+  push:
+    branches:
+      - codex/k-ext-b-local-folder-worker
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/k-ext-b-local-folder-worker
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply K-EXT-B guard fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('packages/worker-runtime/src/local-folder-acquirer.ts')
+          text = path.read_text()
+
+          needle = '''function positiveInteger(value: number, name: string): number {
+            if (!Number.isSafeInteger(value) || value <= 0) {
+              throw new Error(`${name} must be a positive safe integer`);
+            }
+            return value;
+          }
+          '''
+          replacement = needle + '''
+          function nonNegativeInteger(value: number, name: string): number {
+            if (!Number.isSafeInteger(value) || value < 0) {
+              throw new Error(`${name} must be a non-negative safe integer`);
+            }
+            return value;
+          }
+          '''
+          if needle not in text:
+              raise SystemExit('positiveInteger anchor not found')
+          text = text.replace(needle, replacement, 1)
+
+          old_glob = '''    source += char.replace(/[|\\\\{}()[\\]^$+?.]/g, "\\\\$&");'''
+          new_glob = '''    source += "\\\\.^$+{}()|[]".includes(char) ? `\\\\${char}` : char;'''
+          if old_glob not in text:
+              raise SystemExit('glob escape anchor not found')
+          text = text.replace(old_glob, new_glob, 1)
+
+          old_depth = '''    this.maxDepth = positiveInteger(options.maxDepth ?? DEFAULT_MAX_DEPTH, "maxDepth");'''
+          new_depth = '''    this.maxDepth = nonNegativeInteger(options.maxDepth ?? DEFAULT_MAX_DEPTH, "maxDepth");'''
+          if old_depth not in text:
+              raise SystemExit('maxDepth anchor not found')
+          text = text.replace(old_depth, new_depth, 1)
+
+          path.write_text(text)
+          PY
+      - name: Format K-EXT-B files
+        run: pnpm exec prettier --write apps/worker/src/bootstrap-local-folder.ts apps/worker/src/config.ts apps/worker/src/main.ts apps/worker/tests/config.test.ts packages/worker-runtime/src/local-folder-acquirer.ts packages/worker-runtime/tests/local-folder-acquirer.test.ts .env.example
+      - name: Commit fixes
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/worker/src/bootstrap-local-folder.ts apps/worker/src/config.ts apps/worker/src/main.ts apps/worker/tests/config.test.ts packages/worker-runtime/src/local-folder-acquirer.ts packages/worker-runtime/tests/local-folder-acquirer.test.ts .env.example
+          git commit -m "fix: harden and format Local Folder Worker"
+          git push origin HEAD:codex/k-ext-b-local-folder-worker
