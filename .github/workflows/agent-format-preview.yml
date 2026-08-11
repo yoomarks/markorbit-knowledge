@@ -21,4 +21,4 @@ jobs:
       - name: Print exact Prettier diff
         run: |
           pnpm prettier --write apps/admin/src/server/ready-package-core-intake-submit.ts packages/persistence/src/ready-package-core-intake-submission.ts
-          git diff --no-ext-diff --unified=80 -- apps/admin/src/server/ready-package-core-intake-submit.ts packages/persistence/src/ready-package-core-intake-submission.ts
+          git diff --no-ext-diff --unified=0 -- apps/admin/src/server/ready-package-core-intake-submit.ts packages/persistence/src/ready-package-core-intake-submission.ts
