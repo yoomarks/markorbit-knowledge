@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import {
-  LOCAL_FOLDER_CONNECTOR_ID,
   LOCAL_FOLDER_CONNECTOR_VERSION,
   localFolderConnectorId,
   normalizeLocalFolderRelativePath,
