@@ -28,6 +28,17 @@ jobs:
         with:
           python-version: '3.12'
       - run: pnpm install --frozen-lockfile
+      - name: Repair staged patch quoting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/k_ext_c_patch.py')
+          lines = path.read_text().splitlines()
+          for index, line in enumerate(lines):
+              if "xml = b'''<!DOCTYPE root" in line:
+                  lines[index] = '        xml = b\'<!DOCTYPE root [<!ENTITY x "expanded">]><root>&x;</root>\''
+          path.write_text('\n'.join(lines) + '\n')
+          PY
       - name: Apply K-EXT-C patch
         run: python scripts/k_ext_c_patch.py
       - name: Format changed files
