@@ -2,11 +2,12 @@ import { createHash } from "node:crypto";
 import {
   LOCAL_FOLDER_CONNECTOR_ID,
   LOCAL_FOLDER_CONNECTOR_VERSION,
+  localFolderConnectorId,
   normalizeLocalFolderRelativePath,
   parseLocalFolderRoots,
 } from "@markorbit/worker-runtime";
 
-const WORKER_LABEL_PREFIX = "local-folder-root";
+const WORKER_LABEL_PREFIX = "local-folder-roots";
 const OUTPUT_KINDS = [
   "MARKDOWN",
   "HTML",
@@ -113,10 +114,11 @@ function sourceSlug(rootId: string, relativePath: string): string {
   return `local-folder-${rootId}-${suffix}`;
 }
 
-async function ensureConnector(baseUrl: string): Promise<void> {
+async function ensureConnector(baseUrl: string, rootId: string): Promise<void> {
+  const connectorId = localFolderConnectorId(rootId);
   const existing = await requestJson(
     baseUrl,
-    `/api/connectors/${LOCAL_FOLDER_CONNECTOR_ID}/${LOCAL_FOLDER_CONNECTOR_VERSION}`,
+    `/api/connectors/${connectorId}/${LOCAL_FOLDER_CONNECTOR_VERSION}`,
     {},
     [404],
   );
@@ -126,8 +128,8 @@ async function ensureConnector(baseUrl: string): Promise<void> {
     baseUrl,
     "/api/connectors",
     jsonPost({
-      connectorId: LOCAL_FOLDER_CONNECTOR_ID,
-      displayName: "Local Folder Worker — governed filesystem acquisition",
+      connectorId,
+      displayName: `Local Folder Worker — ${rootId}`,
       version: LOCAL_FOLDER_CONNECTOR_VERSION,
       sourceTypes: ["LOCAL_FOLDER"],
       runtime: "LOCAL_AGENT",
@@ -138,10 +140,7 @@ async function ensureConnector(baseUrl: string): Promise<void> {
         additionalProperties: false,
         required: ["rootId", "relativePath", "recursive", "includeHidden"],
         properties: {
-          rootId: {
-            type: "string",
-            pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          },
+          rootId: { type: "string", const: rootId },
           relativePath: { type: "string", maxLength: 1024 },
           recursive: { type: "boolean" },
           includeHidden: { type: "boolean" },
@@ -153,6 +152,7 @@ async function ensureConnector(baseUrl: string): Promise<void> {
       status: "ACTIVE",
       extensions: {
         "x-markorbit-production-provider": true,
+        "x-markorbit-local-folder-root-id": rootId,
         "x-markorbit-root-policy": "worker-local-alias-only",
         "x-markorbit-symlink-policy": "fail-closed",
       },
@@ -194,7 +194,7 @@ async function ensureSource(
       jurisdictions: [],
       languages: [],
       connector: {
-        connectorId: LOCAL_FOLDER_CONNECTOR_ID,
+        connectorId: localFolderConnectorId(input.rootId),
         version: LOCAL_FOLDER_CONNECTOR_VERSION,
       },
       connectorConfig: {
@@ -266,9 +266,14 @@ async function ensurePlan(
 
 async function ensureWorker(
   baseUrl: string,
-  rootId: string,
+  rootIds: string[],
 ): Promise<{ workerId: string; credential: string | null }> {
-  const label = `${WORKER_LABEL_PREFIX}-${rootId}`;
+  const normalizedRootIds = [...rootIds].sort();
+  const scopeHash = createHash("sha256")
+    .update(normalizedRootIds.join("\0"))
+    .digest("hex")
+    .slice(0, 12);
+  const label = `${WORKER_LABEL_PREFIX}-${scopeHash}`;
   const existing = await requestJson(
     baseUrl,
     `/api/workers?label=${encodeURIComponent(label)}&limit=100`,
@@ -282,21 +287,24 @@ async function ensureWorker(
     baseUrl,
     "/api/workers",
     jsonPost({
-      displayName: `Local Folder Production Worker — ${rootId}`,
+      displayName: `Local Folder Production Worker — ${normalizedRootIds.join(", ")}`,
       desiredState: "ACTIVE",
       runtime: { runtimeId: "local-folder-worker", version: "1.0.0" },
       supportedJobTypes: ["LOCAL_FILE_SCAN"],
-      connectorBindings: [
-        {
-          connectorId: LOCAL_FOLDER_CONNECTOR_ID,
-          version: LOCAL_FOLDER_CONNECTOR_VERSION,
-          capabilities: ["COLLECT", "IMPORT"],
-        },
-      ],
+      connectorBindings: normalizedRootIds.map((rootId) => ({
+        connectorId: localFolderConnectorId(rootId),
+        version: LOCAL_FOLDER_CONNECTOR_VERSION,
+        capabilities: ["COLLECT", "IMPORT"],
+      })),
       maxConcurrency: 1,
-      labels: ["production", "local-folder", label],
+      labels: [
+        "production",
+        "local-folder",
+        label,
+        ...normalizedRootIds.map((rootId) => `local-folder-root-${rootId}`),
+      ],
       extensions: {
-        "x-markorbit-root-id": rootId,
+        "x-markorbit-root-ids": normalizedRootIds,
       },
     }),
   );
@@ -349,7 +357,9 @@ async function main(): Promise<void> {
     process.env.MARKORBIT_LOCAL_FOLDER_SOURCE_NAME?.trim() ||
     `Local Folder — ${rootId}${relativePath ? `/${relativePath}` : ""}`;
 
-  await ensureConnector(baseUrl);
+  for (const allowedRootId of Object.keys(roots).sort()) {
+    await ensureConnector(baseUrl, allowedRootId);
+  }
   const sourceId = await ensureSource(baseUrl, {
     rootId,
     relativePath,
@@ -358,13 +368,13 @@ async function main(): Promise<void> {
     sourceName,
   });
   const planId = await ensurePlan(baseUrl, sourceId, sourceName, maxDepth, maxItems);
-  const worker = await ensureWorker(baseUrl, rootId);
+  const worker = await ensureWorker(baseUrl, Object.keys(roots));
   const runId = process.argv.includes("--dispatch") ? await dispatch(baseUrl, planId) : null;
 
   process.stdout.write(
     `${JSON.stringify(
       {
-        connector: `${LOCAL_FOLDER_CONNECTOR_ID}@${LOCAL_FOLDER_CONNECTOR_VERSION}`,
+        connector: `${localFolderConnectorId(rootId)}@${LOCAL_FOLDER_CONNECTOR_VERSION}`,
         sourceId,
         planId,
         workerId: worker.workerId,

@@ -44,7 +44,7 @@ Changing the deployment path behind an existing root alias does not rewrite Sour
 
 The frozen production identity is:
 
-- connector: `local-folder@1.0.0`;
+- connector: `local-folder-<rootId>@1.0.0`, for example `local-folder-legal@1.0.0`;
 - source type: `LOCAL_FOLDER`;
 - job type: `LOCAL_FILE_SCAN`;
 - runtime: `LOCAL_AGENT`;
@@ -65,6 +65,8 @@ MARKORBIT_COLLECTION_PROVIDER=local-folder
 ```
 
 The existing Crawl4AI provider remains the default and is unchanged.
+
+The root alias is part of connector identity so Worker compatibility is decided before Job claim. A Worker configured for `legal` binds `local-folder-legal`; it cannot claim a `local-folder-research` Job unless `research` is also in its local allowlist and Worker connector bindings. Absolute paths remain Worker-local and are not encoded in connector identity.
 
 ## Root and traversal policy
 

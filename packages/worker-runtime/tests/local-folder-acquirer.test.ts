@@ -32,7 +32,7 @@ function context(
 ): ArtifactBackedExecutionContext {
   const job = {
     jobType: "LOCAL_FILE_SCAN",
-    connector: { connectorId: "local-folder", version: "1.0.0" },
+    connector: { connectorId: "local-folder-legal", version: "1.0.0" },
     sourceSnapshot: {
       sourceType: "LOCAL_FOLDER",
       connectorConfig,

@@ -11,6 +11,14 @@ import {
 
 export const LOCAL_FOLDER_CONNECTOR_ID = "local-folder";
 export const LOCAL_FOLDER_CONNECTOR_VERSION = "1.0.0";
+
+export function localFolderConnectorId(rootId: string): string {
+  if (!ROOT_ID_PATTERN.test(rootId)) {
+    throw new Error("Local Folder root id must be a lowercase slug");
+  }
+  return `${LOCAL_FOLDER_CONNECTOR_ID}-${rootId}`;
+}
+
 export const LOCAL_FOLDER_EXECUTOR: ExecutionExecutor = {
   executorId: "local-folder-worker",
   version: "1.0.0",
@@ -196,13 +204,15 @@ function sourceConfig(context: ArtifactBackedExecutionContext): LocalFolderSourc
 
 function assertSupportedJob(
   context: ArtifactBackedExecutionContext,
+  rootId: string,
   workerMaxItems: number,
   workerMaxDepth: number,
 ): void {
-  if (context.job.connector.connectorId !== LOCAL_FOLDER_CONNECTOR_ID) {
+  const expectedConnectorId = localFolderConnectorId(rootId);
+  if (context.job.connector.connectorId !== expectedConnectorId) {
     throw new CollectionAcquisitionError(
       "CONNECTOR_NOT_SUPPORTED",
-      `Local Folder acquirer cannot execute connector ${context.job.connector.connectorId}`,
+      `Local Folder root ${rootId} requires connector ${expectedConnectorId}`,
       false,
     );
   }
@@ -431,8 +441,8 @@ export class LocalFolderArtifactAcquirer implements CollectionArtifactAcquirer {
   }
 
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
-    assertSupportedJob(context, this.maxItems, this.maxDepth);
     const config = sourceConfig(context);
+    assertSupportedJob(context, config.rootId, this.maxItems, this.maxDepth);
     const configuredRoot = this.roots[config.rootId];
     if (!configuredRoot) {
       throw new CollectionAcquisitionError(
