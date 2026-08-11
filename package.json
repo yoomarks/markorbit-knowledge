@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "test:e2e:core-intake": "pnpm --filter @markorbit/admin exec vitest run --config vitest.e2e.config.ts",
     "calibrate:source-intelligence": "node scripts/source-intelligence-calibration.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
