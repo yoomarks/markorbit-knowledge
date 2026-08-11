@@ -37,10 +37,11 @@ jobs:
         run: pnpm typecheck
       - name: Focused tests
         run: pnpm --filter @markorbit/admin exec vitest run src/server/__tests__/core-content-http-transport.test.ts src/server/__tests__/ready-package-core-content-submit.test.ts src/server/__tests__/core-intake-frozen-workspace.test.ts src/server/__tests__/ready-package-content-export.test.ts
-      - name: Commit implementation
+      - name: Commit implementation without workflow mutation
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
+          git restore --staged .github/workflows/core-intake-e2e.yml
           git commit -m "feat: deliver frozen ReadyPackage content to Core"
           git push origin HEAD:r1-k04-core-content-delivery
