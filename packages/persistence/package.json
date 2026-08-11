@@ -37,6 +37,7 @@
     "./vault-import-intents": "./src/vault-import-intent-registry.ts",
     "./vault-import-executions": "./src/vault-import-execution-registry.ts",
     "./vault-origin-staging-verification": "./src/vault-origin-staging-verification.ts",
+    "./canonical-downstream-documents": "./src/canonical-downstream-document.ts",
     "./ready-packages": "./src/ready-package-registry.ts",
     "./ready-package-core-intake-submissions": "./src/ready-package-core-intake-submission.ts",
     "./core-workspace-bindings": "./src/core-workspace-binding.ts",
