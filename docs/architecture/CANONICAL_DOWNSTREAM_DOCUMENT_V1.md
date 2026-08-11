@@ -69,6 +69,8 @@ A second promotion of the same Vault-origin Staging document is a local replay o
 
 The Vault Workbench exposes an explicit promotion action for K11 VERIFIED candidates and a read-only list of canonical downstream documents.
 
+Promotion is operator-triggered only. K12 adds no background, scheduled or automatic promotion process.
+
 The operator is told that K12 does not create ReadyPackage V1 and does not call Core.
 
 ## Explicit non-goals
