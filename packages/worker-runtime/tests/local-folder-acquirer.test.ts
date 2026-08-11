@@ -131,6 +131,24 @@ describe("LocalFolderArtifactAcquirer", () => {
     expect(() => normalizeLocalFolderRelativePath("nested\\secret")).toThrow(/relativePath/i);
   });
 
+  it("rejects a root-scoped connector mismatch before filesystem access", async () => {
+    const root = await tempRoot();
+    await writeFile(join(root, "evidence.txt"), "evidence");
+    const ctx = context({
+      rootId: "research",
+      relativePath: "",
+      recursive: true,
+      includeHidden: false,
+    });
+
+    const acquirer = new LocalFolderArtifactAcquirer({
+      roots: { legal: root, research: join(root, "does-not-exist") },
+    });
+    await expect(acquirer.acquire(ctx)).rejects.toMatchObject({
+      code: "CONNECTOR_NOT_SUPPORTED",
+    });
+  });
+
   it("fails closed when a scan encounters a symbolic link", async () => {
     const root = await tempRoot();
     const outside = await tempRoot();
