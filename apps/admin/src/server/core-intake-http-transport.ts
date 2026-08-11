@@ -148,7 +148,8 @@ function parseResult(value: unknown): CoreIntakeResult {
 function isTimeoutFailure(error: unknown, signal: AbortSignal): boolean {
   return (
     signal.aborted ||
-    (error instanceof DOMException && (error.name === "AbortError" || error.name === "TimeoutError"))
+    (error instanceof DOMException &&
+      (error.name === "AbortError" || error.name === "TimeoutError"))
   );
 }
 
@@ -226,7 +227,9 @@ export class HttpCoreIntakeTransport implements CoreIntakeTransport {
   }
 }
 
-export function configuredCoreIntakeTransport(fetchImpl: typeof fetch = fetch): CoreIntakeTransport {
+export function configuredCoreIntakeTransport(
+  fetchImpl: typeof fetch = fetch,
+): CoreIntakeTransport {
   return {
     async submit(request, idempotencyKey) {
       return new HttpCoreIntakeTransport(
