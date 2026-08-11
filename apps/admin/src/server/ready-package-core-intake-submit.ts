@@ -5,6 +5,7 @@ import {
   RegistryError,
   RegistryValidationError,
 } from "@markorbit/persistence";
+import { isCanonicalCoreWorkspaceId } from "@markorbit/persistence/core-workspace-bindings";
 import type { ReadyPackageRegistryRepository } from "@markorbit/persistence/ready-packages";
 import type {
   ReadyPackageCoreIntakeSubmission,
@@ -22,6 +23,7 @@ export type ReadyPackageCoreIntakeSubmitRepository = Pick<
 
 export type ReadyPackageCoreIntakeSubmitInput = {
   workspaceId: string;
+  coreWorkspaceId?: string | null;
   readyPackageId: string;
   expectedDigest: string;
   submit: true;
@@ -36,6 +38,22 @@ function coreIntakeResultFromTransportEvidence(
     status: submission.transportResult.status,
     readyPackageId: submission.readyPackageId,
   };
+}
+
+function requireCoreWorkspaceBinding(coreWorkspaceId: string | null | undefined): string {
+  if (!coreWorkspaceId?.trim()) {
+    throw new RegistryConflictError(
+      "CORE_WORKSPACE_NOT_BOUND",
+      "Knowledge workspace is not bound to a canonical Core workspace",
+    );
+  }
+  if (!isCanonicalCoreWorkspaceId(coreWorkspaceId)) {
+    throw new RegistryConflictError(
+      "CORE_WORKSPACE_BINDING_INVALID",
+      "Knowledge workspace Core binding must be a canonical UUID",
+    );
+  }
+  return coreWorkspaceId.trim().toLowerCase();
 }
 
 export async function submitReadyPackageCoreIntake(
@@ -81,18 +99,34 @@ export async function submitReadyPackageCoreIntake(
     );
   }
 
+  const pendingTransportResult = pending ? coreIntakeResultFromTransportEvidence(pending) : null;
+  const coreWorkspaceId = pendingTransportResult
+    ? isCanonicalCoreWorkspaceId(input.coreWorkspaceId)
+      ? input.coreWorkspaceId.trim().toLowerCase()
+      : null
+    : requireCoreWorkspaceBinding(input.coreWorkspaceId);
+
   const prepared = submissions.prepare({
     workspaceId: input.workspaceId,
     readyPackageId: input.readyPackageId,
     expectedDigest: input.expectedDigest,
   });
-  const request = createCoreIntakeRequest(readyPackage, prepared.submission.submittedAt);
-
   const persistedTransportResult = coreIntakeResultFromTransportEvidence(prepared.submission);
   const transportResultReplayed = persistedTransportResult !== null;
+  const request = coreWorkspaceId
+    ? createCoreIntakeRequest(readyPackage, prepared.submission.submittedAt, coreWorkspaceId)
+    : null;
+
+  if (!persistedTransportResult && !request) {
+    throw new RegistryConflictError(
+      "CORE_WORKSPACE_NOT_BOUND",
+      "Knowledge workspace is not bound to a canonical Core workspace",
+    );
+  }
+
   const coreIntakeResult =
     persistedTransportResult ??
-    (await transport.submit(request, prepared.submission.idempotencyKey));
+    (await transport.submit(request!, prepared.submission.idempotencyKey));
 
   if (!transportResultReplayed) {
     submissions.recordTransportResult(
