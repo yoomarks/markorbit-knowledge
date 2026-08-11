@@ -197,6 +197,23 @@ describe("governed Manual Upload ingestion", () => {
     ).rejects.toBeInstanceOf(RegistryValidationError);
   });
 
+  it("rejects a valid-looking Workspace ID that is not registered", async () => {
+    const body = Buffer.from("isolated", "utf8");
+    await expect(
+      ingestManualUpload({
+        workspaceId: "wsp_00000000000000000000000000",
+        originalName: "isolated.txt",
+        mimeType: "text/plain",
+        expectedSizeBytes: body.byteLength,
+        expectedSha256: sha256(body),
+        idempotencyKey: "manual-upload-missing-workspace-1",
+        chunks: chunks(body),
+      }),
+    ).rejects.toMatchObject({
+      code: "WORKSPACE_NOT_FOUND",
+    });
+  });
+
   it("keeps simultaneous uploads bound to their own governed Run and Job", async () => {
     const firstBody = Buffer.from("concurrent first", "utf8");
     const secondBody = Buffer.from("concurrent second", "utf8");
