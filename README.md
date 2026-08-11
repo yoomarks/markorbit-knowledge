@@ -59,12 +59,15 @@ The repository now contains:
 - locked Conversion Execution Protocol v1 for ConversionRuns, events and Staging output evidence;
 - locked Conversion Runtime Protocol v1 for Worker conversion capability, claims, exclusive leases, attempts, token-bound reports and input/output grants;
 - durable ConversionRun ledger with controlled eligible Artifact / compatible Profile Manual Dispatch, immutable snapshots, idempotency and pending-only cancellation;
+- controlled READY-Staging Markdown projection primitive for local Obsidian Vault files with traversal and symlink protections;
+- persistent Workspace-scoped Vault Binding V1 with portable relative-root policy, optimistic revisions and explicit ACTIVE/DISABLED state;
+- Vault admin control and filesystem-root readiness that never exposes the deployment absolute path;
 - real execution evidence timeline in the Runs administration UI;
 - versioned migrations, optimistic concurrency and secret exclusion;
 - fixture-only previews for modules that have not reached production runtime implementation;
 - architecture boundaries, compatibility policy and Node 22/24 CI.
 
-Production web acquisition now exists for bounded HTML/Markdown collection. Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, retry creation, Vault filesystem access and MarkOrbit Core logic are not implemented yet. Conversion Runtime Protocol v1 is locked, but converter execution is not implemented.
+Production web acquisition now exists for bounded HTML/Markdown collection. Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, retry creation, full Vault export/import/readback/conflict synchronization and MarkOrbit Core semantic logic are not implemented yet. A controlled local Vault projection primitive and Workspace binding foundation exist, but no automatic Vault synchronization is authorized.
 
 Lifecycle meanings are deliberately distinct:
 
@@ -190,6 +193,7 @@ pnpm check
 - [Conversion Execution & Staging Output Protocol v1](docs/architecture/CONVERSION_EXECUTION_PROTOCOL_V1.md)
 - [Conversion Runtime Protocol v1](docs/architecture/CONVERSION_RUNTIME_PROTOCOL_V1.md)
 - [ConversionRun Ledger](docs/architecture/CONVERSION_RUN_LEDGER.md)
+- [Obsidian Vault Binding V1](docs/architecture/OBSIDIAN_VAULT_BINDING_V1.md)
 - [Persistence and Source Registry](docs/architecture/PERSISTENCE_AND_SOURCE_REGISTRY.md)
 - [Connector Registry](docs/architecture/CONNECTOR_REGISTRY.md)
 - [CollectionPlan Registry](docs/architecture/COLLECTION_PLAN_REGISTRY.md)
