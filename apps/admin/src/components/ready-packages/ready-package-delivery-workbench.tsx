@@ -578,9 +578,9 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
                   <p className="max-w-2xl text-xs leading-5 text-slate-500">
-                    Intake PENDING 会复用同一 submittedAt、Core Workspace 与 idempotency key；已持久化
-                    transport result 的 finalization 不会再次提交到 Core。完成 intake 不会自动触发 Content
-                    Export。
+                    Intake PENDING 会复用同一 submittedAt、Core Workspace 与 idempotency
+                    key；已持久化 transport result 的 finalization 不会再次提交到 Core。完成 intake
+                    不会自动触发 Content Export。
                   </p>
                   <button
                     type="button"
@@ -614,7 +614,8 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
                   <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                     <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
                     <span>
-                      当前 Content Export 动作需要 Core outbound HTTP，但 destination/auth 配置未通过校验（
+                      当前 Content Export 动作需要 Core outbound HTTP，但 destination/auth
+                      配置未通过校验（
                       {detail.contentOutboundTransport.issueCode ??
                         "CORE_CONTENT_TRANSPORT_NOT_CONFIGURED"}
                       ）。已持久化 transport result 的纯本地 finalization 仍可继续，而且不依赖当前
@@ -665,9 +666,10 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
                   <p className="max-w-2xl text-xs leading-5 text-slate-500">
-                    Content Export 是显式第二阶段：首次操作先把 canonical V1 JSON 与 SHA-256 冻结到 durable
-                    submission，再发送 HTTP。未知结果只重试同一 frozen body；transport result 已持久化时只做本地
-                    finalization。不会自动提交，也不会把语义理解移入 Knowledge。
+                    Content Export 是显式第二阶段：首次操作先把 canonical V1 JSON 与 SHA-256 冻结到
+                    durable submission，再发送 HTTP。未知结果只重试同一 frozen body；transport
+                    result 已持久化时只做本地 finalization。不会自动提交，也不会把语义理解移入
+                    Knowledge。
                   </p>
                   <button
                     type="button"

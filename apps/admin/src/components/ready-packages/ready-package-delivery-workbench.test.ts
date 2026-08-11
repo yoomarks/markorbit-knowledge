@@ -63,8 +63,6 @@ describe("ReadyPackage delivery workbench Core content eligibility", () => {
 
   it("allows local content finalization without current outbound configuration", () => {
     expect(coreContentActionRequiresOutboundTransport("CONTENT_FINALIZATION_PENDING")).toBe(false);
-    expect(isCoreContentActionable("HANDED_OFF", "CONTENT_FINALIZATION_PENDING", false)).toBe(
-      true,
-    );
+    expect(isCoreContentActionable("HANDED_OFF", "CONTENT_FINALIZATION_PENDING", false)).toBe(true);
   });
 });
