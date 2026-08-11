@@ -249,7 +249,10 @@ export class SqliteVaultExportRunRepository implements VaultExportRunRepository 
       throw new RegistryValidationError("rootFingerprintSha256 must be SHA-256");
     }
     if (!this.database.prepare("SELECT id FROM workspaces WHERE id = ?").get(input.workspaceId)) {
-      throw new RegistryError("WORKSPACE_NOT_FOUND", `Workspace ${input.workspaceId} was not found`);
+      throw new RegistryError(
+        "WORKSPACE_NOT_FOUND",
+        `Workspace ${input.workspaceId} was not found`,
+      );
     }
     const key = idempotencyKey(input);
 
@@ -326,9 +329,7 @@ export class SqliteVaultExportRunRepository implements VaultExportRunRepository 
     const workspaceId = required(workspaceIdValue, "workspaceId");
     const runId = required(runIdValue, "runId");
     const row = this.database
-      .prepare(
-        "SELECT document_json FROM vault_export_runs WHERE workspace_id = ? AND run_id = ?",
-      )
+      .prepare("SELECT document_json FROM vault_export_runs WHERE workspace_id = ? AND run_id = ?")
       .get(workspaceId, runId) as { document_json: string } | undefined;
     return row ? parseRun(row.document_json) : null;
   }
@@ -355,7 +356,8 @@ export class SqliteVaultExportRunRepository implements VaultExportRunRepository 
     receiptInput: Omit<VaultExportReceiptV1, "recordedAt">,
   ): VaultExportRunV1 {
     const run = this.getById(workspaceId, runId);
-    if (!run) throw new RegistryError("VAULT_EXPORT_NOT_FOUND", `Vault export ${runId} was not found`);
+    if (!run)
+      throw new RegistryError("VAULT_EXPORT_NOT_FOUND", `Vault export ${runId} was not found`);
     if (
       receiptInput.contentSha256 !== run.staging.contentSha256 ||
       !receiptInput.vaultRelativePath?.trim() ||
@@ -410,7 +412,8 @@ export class SqliteVaultExportRunRepository implements VaultExportRunRepository 
 
   finalize(workspaceId: string, runId: string): VaultExportRunV1 {
     const run = this.getById(workspaceId, runId);
-    if (!run) throw new RegistryError("VAULT_EXPORT_NOT_FOUND", `Vault export ${runId} was not found`);
+    if (!run)
+      throw new RegistryError("VAULT_EXPORT_NOT_FOUND", `Vault export ${runId} was not found`);
     if (run.state === "SUCCEEDED") return run;
     if (!run.projectionReceipt) {
       throw new RegistryConflictError(

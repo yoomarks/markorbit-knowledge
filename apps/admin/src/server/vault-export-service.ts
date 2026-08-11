@@ -70,10 +70,10 @@ function expectedVaultRelativePath(run: VaultExportRunV1): string {
 function bindingMatchesRun(binding: VaultBindingV1 | null, run: VaultExportRunV1): boolean {
   return Boolean(
     binding &&
-      binding.status === "ACTIVE" &&
-      binding.id === run.binding.bindingId &&
-      binding.revision === run.binding.revision &&
-      binding.relativeRoot === run.binding.relativeRoot,
+    binding.status === "ACTIVE" &&
+    binding.id === run.binding.bindingId &&
+    binding.revision === run.binding.revision &&
+    binding.relativeRoot === run.binding.relativeRoot,
   );
 }
 

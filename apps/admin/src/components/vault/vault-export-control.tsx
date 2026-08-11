@@ -47,9 +47,7 @@ async function requestOverview(workspaceId: string): Promise<Overview> {
 }
 
 function stateTone(state: VaultExportRunV1["state"]): string {
-  return state === "SUCCEEDED"
-    ? "bg-emerald-50 text-emerald-800"
-    : "bg-amber-50 text-amber-800";
+  return state === "SUCCEEDED" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800";
 }
 
 function shortHash(value: string): string {
@@ -156,7 +154,8 @@ export function VaultExportControl({ workspaceId }: { workspaceId: string }) {
             <h2 className="font-semibold">Explicit Vault Export</h2>
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            只允许人工显式触发 READY Staging → 当前 Workspace Vault。先持久化 PENDING，再执行文件系统投影；
+            只允许人工显式触发 READY Staging → 当前 Workspace Vault。先持久化
+            PENDING，再执行文件系统投影；
             文件写入已发生但本地确认中断时，同一请求会核对现有内容并安全收敛。
           </p>
         </div>
@@ -214,7 +213,10 @@ export function VaultExportControl({ workspaceId }: { workspaceId: string }) {
           </select>
           {selected ? (
             <span className="block break-all font-mono text-xs leading-5 text-slate-500">
-              {overview?.eligible.find((item) => item.stagingDocumentId === selected)?.contentSha256}
+              {
+                overview?.eligible.find((item) => item.stagingDocumentId === selected)
+                  ?.contentSha256
+              }
             </span>
           ) : null}
         </label>
@@ -225,11 +227,7 @@ export function VaultExportControl({ workspaceId }: { workspaceId: string }) {
           className="inline-flex min-w-44 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
         >
           <FileOutput size={16} aria-hidden="true" />
-          {submitting
-            ? "处理中…"
-            : selectedPending
-              ? "核对 / 重试 PENDING"
-              : "显式导出到 Vault"}
+          {submitting ? "处理中…" : selectedPending ? "核对 / 重试 PENDING" : "显式导出到 Vault"}
         </button>
       </div>
 
@@ -237,8 +235,8 @@ export function VaultExportControl({ workspaceId }: { workspaceId: string }) {
         <div className="mt-5 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
           <span>
-            新导出要求 ACTIVE Vault binding 与可用服务器 Vault Root。已有 PENDING 只允许按冻结目的地核对；
-            不会因为当前配置变化而静默改写到新目录。
+            新导出要求 ACTIVE Vault binding 与可用服务器 Vault Root。已有 PENDING
+            只允许按冻结目的地核对； 不会因为当前配置变化而静默改写到新目录。
           </span>
         </div>
       ) : null}

@@ -39,8 +39,7 @@ export type ObsidianVaultProjectionInspection = {
 };
 
 export type ObsidianVaultProjectionScope =
-  | { mode: "WORKSPACE_SCOPED" }
-  | { mode: "BOUND_ROOT"; relativeRoot: string };
+  { mode: "WORKSPACE_SCOPED" } | { mode: "BOUND_ROOT"; relativeRoot: string };
 
 export interface ObsidianVaultProjectionRepository {
   inspect(workspaceId: string, stagingDocumentId: string): ObsidianVaultProjectionInspection;
@@ -83,7 +82,10 @@ function assertRoot(root: string): void {
 function assertDirectory(path: string, code: string): void {
   const stat = lstatSync(path);
   if (stat.isSymbolicLink() || !stat.isDirectory()) {
-    throw new RegistryConflictError(code, "Obsidian Vault path contains a non-directory or symlink");
+    throw new RegistryConflictError(
+      code,
+      "Obsidian Vault path contains a non-directory or symlink",
+    );
   }
 }
 

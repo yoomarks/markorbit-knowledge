@@ -52,9 +52,9 @@ describe("Vault export run registry", () => {
     });
     expect(replay.replayed).toBe(true);
     expect(replay.run).toEqual(first.run);
-    expect(repository.getPendingByStaging(DEFAULT_WORKSPACE.id, first.run.staging.stagingDocumentId)).toEqual(
-      first.run,
-    );
+    expect(
+      repository.getPendingByStaging(DEFAULT_WORKSPACE.id, first.run.staging.stagingDocumentId),
+    ).toEqual(first.run);
   });
 
   it("fails closed when an unresolved Staging export is submitted for a different destination", () => {
