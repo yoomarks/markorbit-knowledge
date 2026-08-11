@@ -12,16 +12,49 @@ function env(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
 }
 
 describe("loadWorkerProcessConfig", () => {
-  it("normalizes defaults without exposing secrets", () => {
+  it("normalizes Crawl4AI defaults without exposing secrets", () => {
     const config = loadWorkerProcessConfig(env());
     expect(config.controlPlaneUrl).toBe("http://localhost:3000");
     expect(config.workerId).toBe("wrk_test");
     expect(config.pollIntervalMs).toBe(2_000);
     expect(config.keepAliveIntervalMs).toBe(30_000);
     expect(config.maxCollectionRuntimeMs).toBe(12 * 60_000);
+    expect(config.collectionProvider).toBe("crawl4ai");
     expect(config.requireEgressProxy).toBe(true);
+    expect(config.localFolderRoots).toEqual({});
     expect(config.conversionEnabled).toBe(false);
     expect(config.workspaceId).toBeUndefined();
+  });
+
+  it("loads a bounded local-folder provider only with explicit absolute root aliases", () => {
+    const config = loadWorkerProcessConfig(
+      env({
+        MARKORBIT_COLLECTION_PROVIDER: "local-folder",
+        MARKORBIT_LOCAL_FOLDER_ROOTS: JSON.stringify({ legal: "/srv/markorbit/legal" }),
+        MARKORBIT_LOCAL_FOLDER_MAX_ARTIFACT_BYTES: "1024",
+        MARKORBIT_LOCAL_FOLDER_MAX_TOTAL_BYTES: "4096",
+        MARKORBIT_LOCAL_FOLDER_MAX_ITEMS: "12",
+        MARKORBIT_LOCAL_FOLDER_MAX_DEPTH: "6",
+      }),
+    );
+    expect(config.collectionProvider).toBe("local-folder");
+    expect(config.localFolderRoots).toEqual({ legal: "/srv/markorbit/legal" });
+    expect(config.localFolderMaxArtifactBytes).toBe(1024);
+    expect(config.localFolderMaxTotalBytes).toBe(4096);
+    expect(config.localFolderMaxItems).toBe(12);
+    expect(config.localFolderMaxDepth).toBe(6);
+
+    expect(() =>
+      loadWorkerProcessConfig(env({ MARKORBIT_COLLECTION_PROVIDER: "local-folder" })),
+    ).toThrow(/LOCAL_FOLDER_ROOTS/);
+    expect(() =>
+      loadWorkerProcessConfig(
+        env({
+          MARKORBIT_COLLECTION_PROVIDER: "local-folder",
+          MARKORBIT_LOCAL_FOLDER_ROOTS: '{"legal":"relative"}',
+        }),
+      ),
+    ).toThrow(/absolute path/i);
   });
 
   it("enables production conversion only with an explicit Workspace", () => {
@@ -43,7 +76,7 @@ describe("loadWorkerProcessConfig", () => {
     );
   });
 
-  it("allows direct egress only outside production", () => {
+  it("allows direct Crawl4AI egress only outside production and does not impose it on local folders", () => {
     expect(
       loadWorkerProcessConfig(
         env({
@@ -61,12 +94,26 @@ describe("loadWorkerProcessConfig", () => {
         }),
       ),
     ).toThrow(/cannot disable/i);
+
+    expect(
+      loadWorkerProcessConfig(
+        env({
+          NODE_ENV: "production",
+          MARKORBIT_COLLECTION_PROVIDER: "local-folder",
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0",
+          MARKORBIT_LOCAL_FOLDER_ROOTS: JSON.stringify({ legal: "/srv/legal" }),
+        }),
+      ).collectionProvider,
+    ).toBe("local-folder");
   });
 
-  it("rejects missing credentials and unsafe timing limits", () => {
+  it("rejects missing credentials, unknown providers, and unsafe timing limits", () => {
     expect(() => loadWorkerProcessConfig(env({ MARKORBIT_WORKER_CREDENTIAL: "" }))).toThrow(
       /MARKORBIT_WORKER_CREDENTIAL/,
     );
+    expect(() =>
+      loadWorkerProcessConfig(env({ MARKORBIT_COLLECTION_PROVIDER: "filesystem" })),
+    ).toThrow(/COLLECTION_PROVIDER/);
     expect(() =>
       loadWorkerProcessConfig(env({ MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "10" })),
     ).toThrow(/KEEPALIVE/);
