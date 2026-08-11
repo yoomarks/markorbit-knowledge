@@ -2,7 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { openRegistryDatabase, RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  openRegistryDatabase,
+  RegistryConflictError,
+  RegistryValidationError,
+  SqliteSourceRepository,
+} from "@markorbit/persistence";
 import {
   SqliteManualUploadRequestRepository,
   manualUploadRequestFingerprint,
@@ -39,10 +44,22 @@ describe("K-EXT-A manual upload", () => {
     roots.push(root);
     const dbPath = join(root, "knowledge.sqlite");
     const db = openRegistryDatabase(dbPath);
+    const source = new SqliteSourceRepository(db).create({
+      name: "Test source",
+      slug: "manual-upload-ledger-test",
+      sourceType: "WEB",
+      category: "USER_PROVIDED",
+      authorityLevel: "UNKNOWN",
+      status: "ACTIVE",
+      jurisdictions: [],
+      languages: [],
+      connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
+      entrypoints: [{ uri: "https://example.test/" }],
+    });
     const repository = new SqliteManualUploadRequestRepository(db);
     const base = {
-      workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-      sourceId: "src_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      workspaceId: source.workspaceId,
+      sourceId: source.id,
       idempotencyKey: "upload-1",
       fileSha256: "a".repeat(64),
       fileSizeBytes: 12,
