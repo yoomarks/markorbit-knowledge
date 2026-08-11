@@ -1,0 +1,56 @@
+name: Agent R1-K10 Harden
+
+on:
+  push:
+    branches:
+      - r1-k10-vault-import-execution
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r1-k10-vault-import-execution
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Apply K10 persistence hardening
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/persistence/src/vault-import-execution-registry.ts')
+          text = path.read_text()
+          text = text.replace(
+              '  return { ...parsed, binding, ...candidate };',
+              '''  return {
+    ...parsed,
+    binding,
+    vaultRelativePath: candidate.vaultRelativePath,
+    bindingRelativePath: candidate.bindingRelativePath,
+    contentHash: { algorithm: "SHA-256", value: candidate.observedSha256 },
+    sizeBytes: candidate.sizeBytes,
+  };'''
+          )
+          text = text.replace(
+              'this.database.prepare("SELECT 1 FROM staging_content_objects WHERE sha256 = ?").get(contentHash)',
+              'this.database.prepare("SELECT 1 FROM staging_content_objects WHERE content_hash = ?").get(contentHash)'
+          )
+          path.write_text(text)
+          PY
+          pnpm exec prettier --write packages/persistence/src/vault-import-execution-registry.ts
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/persistence/src/vault-import-execution-registry.ts
+          git commit -m "fix(r1-k10): preserve exact staging replay evidence"
+          git push origin HEAD:r1-k10-vault-import-execution
