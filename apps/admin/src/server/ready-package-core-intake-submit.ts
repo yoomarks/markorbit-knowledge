@@ -100,27 +100,39 @@ export async function submitReadyPackageCoreIntake(
   }
 
   const pendingTransportResult = pending ? coreIntakeResultFromTransportEvidence(pending) : null;
-  const coreWorkspaceId = pendingTransportResult
-    ? isCanonicalCoreWorkspaceId(input.coreWorkspaceId)
-      ? input.coreWorkspaceId.trim().toLowerCase()
-      : null
-    : requireCoreWorkspaceBinding(input.coreWorkspaceId);
+  let coreWorkspaceId: string | null;
+  if (pending?.coreWorkspaceId) {
+    coreWorkspaceId = requireCoreWorkspaceBinding(pending.coreWorkspaceId);
+  } else if (pendingTransportResult) {
+    coreWorkspaceId = null;
+  } else if (pending) {
+    throw new RegistryConflictError(
+      "CORE_INTAKE_PENDING_DESTINATION_WORKSPACE_UNBOUND",
+      "Legacy pending Core intake submission has no frozen Core workspace and cannot be rebound under the same idempotency key",
+    );
+  } else {
+    coreWorkspaceId = requireCoreWorkspaceBinding(input.coreWorkspaceId);
+  }
 
   const prepared = submissions.prepare({
     workspaceId: input.workspaceId,
     readyPackageId: input.readyPackageId,
     expectedDigest: input.expectedDigest,
+    ...(coreWorkspaceId ? { coreWorkspaceId } : {}),
   });
   const persistedTransportResult = coreIntakeResultFromTransportEvidence(prepared.submission);
   const transportResultReplayed = persistedTransportResult !== null;
-  const request = coreWorkspaceId
-    ? createCoreIntakeRequest(readyPackage, prepared.submission.submittedAt, coreWorkspaceId)
+  const frozenCoreWorkspaceId = prepared.submission.coreWorkspaceId
+    ? requireCoreWorkspaceBinding(prepared.submission.coreWorkspaceId)
+    : null;
+  const request = frozenCoreWorkspaceId
+    ? createCoreIntakeRequest(readyPackage, prepared.submission.submittedAt, frozenCoreWorkspaceId)
     : null;
 
   if (!persistedTransportResult && !request) {
     throw new RegistryConflictError(
-      "CORE_WORKSPACE_NOT_BOUND",
-      "Knowledge workspace is not bound to a canonical Core workspace",
+      "CORE_INTAKE_PENDING_DESTINATION_WORKSPACE_UNBOUND",
+      "Core intake submission has no frozen Core workspace and cannot be delivered safely",
     );
   }
 
