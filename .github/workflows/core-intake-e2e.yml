@@ -8,8 +8,12 @@ on:
       - "package.json"
       - "apps/admin/vitest.e2e.config.ts"
       - "apps/admin/src/server/core-intake-http-transport.ts"
+      - "apps/admin/src/server/core-content-http-transport.ts"
       - "apps/admin/src/server/ready-package-core-intake-submit.ts"
+      - "apps/admin/src/server/ready-package-core-content-submit.ts"
+      - "apps/admin/src/app/api/ready-packages/**/core-content/**"
       - "apps/admin/src/server/e2e/**"
+      - "packages/contracts/src/ready-package-content-export-v1.ts"
       - "packages/persistence/src/ready-package-core-intake-submission.ts"
       - "packages/worker-runtime/src/**"
 
@@ -17,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  CORE_REF: 083f4421c1a97e8d6af8e0a988eb68d01a59fa15
+  CORE_REF: bfa7c8a8337fd428b2d85e9d71517a9ffd6755f5
   CORE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/markorbit_core_e2e
   CORE_INTERNAL_SECRET: markorbit-core-intake-e2e-secret-32-bytes
   CORE_WORKSPACE_ID: 01900000-0000-7000-8000-830000000001
@@ -135,6 +139,41 @@ jobs:
           MARKORBIT_CORE_INTERNAL_SECRET: ${{ env.CORE_INTERNAL_SECRET }}
           MARKORBIT_E2E_CORE_WORKSPACE_ID: ${{ env.CORE_WORKSPACE_ID }}
         run: pnpm test:e2e:core-intake
+      - name: Assert Core PostgreSQL content acceptance
+        working-directory: .e2e/markorbit-core
+        env:
+          NODE_ENV: test
+          DATABASE_URL: ${{ env.CORE_DATABASE_URL }}
+          DB_MIGRATION_NAMESPACE: core
+          DB_APPLICATION_NAME: knowledge-core-content-e2e-assert
+        run: |
+          node --input-type=module <<'NODE'
+          import { ManagedDatabase, parseDatabaseConfig } from './packages/persistence/dist/index.js';
+
+          const database = new ManagedDatabase(parseDatabaseConfig(process.env));
+          await database.start();
+          try {
+            const result = await database.getPool().query(
+              `SELECT i.status, c.ready_package_id, c.staging_markdown
+               FROM knowledge_intakes i
+               JOIN knowledge_intake_contents c USING(intake_id)
+               WHERE c.ready_package_id=$1`,
+              ['rdp_01H00000000000000000000001'],
+            );
+            if (result.rowCount !== 1) {
+              throw new Error(`expected one Core content row, got ${result.rowCount}`);
+            }
+            const row = result.rows[0];
+            if (row.status !== 'ACCEPTED') {
+              throw new Error(`expected ACCEPTED, got ${row.status}`);
+            }
+            if (row.staging_markdown !== '# Real Core E2E\n\nFrozen canonical content.\n') {
+              throw new Error('Core PostgreSQL staging Markdown does not match the frozen export');
+            }
+          } finally {
+            await database.close();
+          }
+          NODE
       - name: Core receiver log
         if: always()
         run: cat "$RUNNER_TEMP/core-intake-e2e-core.log" || true
