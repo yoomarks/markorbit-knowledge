@@ -70,7 +70,9 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
         setRelativeRoot(result.binding.relativeRoot);
       }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to load Vault binding");
+      setError(
+        requestError instanceof Error ? requestError.message : "Unable to load Vault binding",
+      );
     } finally {
       setLoading(false);
     }
@@ -87,15 +89,18 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/vault-binding`, {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name,
-          relativeRoot,
-          ...(binding ? { expectedRevision: binding.revision } : {}),
-        }),
-      });
+      const response = await fetch(
+        `/api/workspaces/${encodeURIComponent(workspaceId)}/vault-binding`,
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            name,
+            relativeRoot,
+            ...(binding ? { expectedRevision: binding.revision } : {}),
+          }),
+        },
+      );
       const body = (await response.json()) as VaultBindingResponse | ApiError;
       if (!response.ok) throw new Error(readError(body, "Unable to save Vault binding"));
       const result = body as VaultBindingResponse;
@@ -103,7 +108,9 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
       setFilesystem(result.filesystem);
       setMessage("Vault binding 已持久化；后续 Export/Import 只能在该 Workspace 绑定边界内执行。");
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to save Vault binding");
+      setError(
+        requestError instanceof Error ? requestError.message : "Unable to save Vault binding",
+      );
     } finally {
       setSaving(false);
     }
@@ -116,20 +123,29 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
     setMessage(null);
     try {
       const nextStatus = binding.status === "ACTIVE" ? "DISABLED" : "ACTIVE";
-      const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/vault-binding`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status: nextStatus, expectedRevision: binding.revision }),
-      });
+      const response = await fetch(
+        `/api/workspaces/${encodeURIComponent(workspaceId)}/vault-binding`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: nextStatus, expectedRevision: binding.revision }),
+        },
+      );
       const body = (await response.json()) as VaultBindingResponse | ApiError;
       if (!response.ok) throw new Error(readError(body, "Unable to update Vault binding status"));
       const result = body as VaultBindingResponse;
       setBinding(result.binding);
       setFilesystem(result.filesystem);
-      setMessage(nextStatus === "ACTIVE" ? "Vault binding 已启用。" : "Vault binding 已禁用。当前不会授权后续同步执行。");
+      setMessage(
+        nextStatus === "ACTIVE"
+          ? "Vault binding 已启用。"
+          : "Vault binding 已禁用。当前不会授权后续同步执行。",
+      );
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "Unable to update Vault binding status",
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to update Vault binding status",
       );
     } finally {
       setSaving(false);
@@ -168,7 +184,8 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
               <h2 className="font-semibold">Workspace Vault Binding</h2>
             </div>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-              这里只保存 Workspace 相对于服务器 Vault Root 的安全目录映射；服务器绝对路径由环境配置持有，不通过浏览器 API 暴露。
+              这里只保存 Workspace 相对于服务器 Vault Root
+              的安全目录映射；服务器绝对路径由环境配置持有，不通过浏览器 API 暴露。
             </p>
           </div>
           <button
@@ -187,7 +204,8 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
             <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
             <span>
               服务器 Vault Root 尚不可用（
-              {filesystem.issueCode ?? "OBSIDIAN_VAULT_ROOT_NOT_CONFIGURED"}）。可以先保存绑定，但实际文件系统 Export/Import 在配置修复前必须保持禁用。
+              {filesystem.issueCode ?? "OBSIDIAN_VAULT_ROOT_NOT_CONFIGURED"}
+              ）。可以先保存绑定，但实际文件系统 Export/Import 在配置修复前必须保持禁用。
             </span>
           </div>
         ) : null}
@@ -222,7 +240,10 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
           <EvidenceCard label="Workspace" value={workspaceId} />
           <EvidenceCard label="Binding ID" value={binding?.id ?? "—"} />
           <EvidenceCard label="Revision" value={binding ? String(binding.revision) : "—"} />
-          <EvidenceCard label="Updated" value={binding ? new Date(binding.updatedAt).toLocaleString("zh-CN") : "—"} />
+          <EvidenceCard
+            label="Updated"
+            value={binding ? new Date(binding.updatedAt).toLocaleString("zh-CN") : "—"}
+          />
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">

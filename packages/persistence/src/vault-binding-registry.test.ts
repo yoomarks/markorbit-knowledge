@@ -1,10 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE, initializeRegistry } from "./index";
-import {
-  SqliteVaultBindingRepository,
-  normalizeVaultRelativeRoot,
-} from "./vault-binding-registry";
+import { SqliteVaultBindingRepository, normalizeVaultRelativeRoot } from "./vault-binding-registry";
 
 function fixture() {
   const database = new DatabaseSync(":memory:");
