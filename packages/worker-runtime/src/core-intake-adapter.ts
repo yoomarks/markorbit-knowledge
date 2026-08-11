@@ -44,7 +44,7 @@ export function createCoreIntakeRequestPreview(
 export function createCoreIntakeRequest(
   pkg: ReadyPackage,
   submittedAt: string,
-  coreWorkspaceId: string,
+  coreWorkspaceId: string = pkg.workspaceId,
 ): CoreIntakeRequest {
   return {
     ...createCoreIntakeRequestPreview(pkg, coreWorkspaceId),
