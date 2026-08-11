@@ -56,7 +56,9 @@ export function VaultImportExecutionControl({ workspaceId }: { workspaceId: stri
     try {
       applyLoaded(await loadOverview(workspaceId));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to refresh executions");
+      setError(
+        requestError instanceof Error ? requestError.message : "Unable to refresh executions",
+      );
       setLoading(false);
     }
   }
@@ -69,7 +71,9 @@ export function VaultImportExecutionControl({ workspaceId }: { workspaceId: stri
       },
       (requestError: unknown) => {
         if (!active) return;
-        setError(requestError instanceof Error ? requestError.message : "Unable to load executions");
+        setError(
+          requestError instanceof Error ? requestError.message : "Unable to load executions",
+        );
         setLoading(false);
       },
     );
@@ -80,7 +84,8 @@ export function VaultImportExecutionControl({ workspaceId }: { workspaceId: stri
 
   const executionsByIntent = useMemo(() => {
     const result = new Map<string, VaultImportExecutionV1>();
-    for (const execution of overview?.executions ?? []) result.set(execution.importIntentId, execution);
+    for (const execution of overview?.executions ?? [])
+      result.set(execution.importIntentId, execution);
     return result;
   }, [overview]);
 
@@ -100,7 +105,9 @@ export function VaultImportExecutionControl({ workspaceId }: { workspaceId: stri
       if (!response.ok) throw new Error(readError(body, "Vault import execution failed"));
       applyLoaded(await loadOverview(workspaceId));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Vault import execution failed");
+      setError(
+        requestError instanceof Error ? requestError.message : "Vault import execution failed",
+      );
     } finally {
       setExecuting(null);
     }
@@ -115,8 +122,8 @@ export function VaultImportExecutionControl({ workspaceId }: { workspaceId: stri
             <h2 className="font-semibold">Vault Import Execution</h2>
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            仅执行已经人工批准的 K09 intent。执行前重新读取原 Vault 路径并核对 byte size + SHA-256；通过后写入独立
-            Vault-origin Staging，不伪造 Worker 或 Conversion provenance。
+            仅执行已经人工批准的 K09 intent。执行前重新读取原 Vault 路径并核对 byte size +
+            SHA-256；通过后写入独立 Vault-origin Staging，不伪造 Worker 或 Conversion provenance。
           </p>
         </div>
         <button
@@ -165,7 +172,8 @@ export function VaultImportExecutionControl({ workspaceId }: { workspaceId: stri
                     {intent.candidate.bindingRelativePath}
                   </p>
                   <p className="mt-1 font-mono text-xs text-slate-500">
-                    {shortHash(intent.candidate.observedSha256)} · {intent.candidate.sizeBytes} bytes
+                    {shortHash(intent.candidate.observedSha256)} · {intent.candidate.sizeBytes}{" "}
+                    bytes
                   </p>
                 </div>
                 {execution?.state === "SUCCEEDED" ? (

@@ -1,12 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import {
@@ -54,7 +47,10 @@ export type VaultOriginStagingIngestResult = {
 
 export interface VaultOriginStagingRepository {
   ingest(input: IngestVaultOriginStagingInput): VaultOriginStagingIngestResult;
-  getByImportIntent(workspaceId: string, importIntentId: string): VaultOriginStagingDocumentV1 | null;
+  getByImportIntent(
+    workspaceId: string,
+    importIntentId: string,
+  ): VaultOriginStagingDocumentV1 | null;
   readContent(workspaceId: string, documentId: string): Uint8Array;
 }
 
@@ -127,7 +123,9 @@ function normalizeCandidate(
   const bindingRelativePath = normalizeObsidianTargetPath(value.bindingRelativePath);
   const vaultRelativePath = `${relativeRoot}/${bindingRelativePath}`;
   if (value.vaultRelativePath !== vaultRelativePath) {
-    throw new RegistryValidationError("Vault import execution candidate escaped its frozen Binding");
+    throw new RegistryValidationError(
+      "Vault import execution candidate escaped its frozen Binding",
+    );
   }
   return {
     vaultRelativePath,
@@ -208,7 +206,9 @@ function parseExecution(value: string): VaultImportExecutionV1 {
   }
   const binding = normalizeBinding(parsed.binding);
   const candidate = normalizeCandidate(parsed.candidate, binding.relativeRoot);
-  const stagingReceipt = parsed.stagingReceipt ? normalizeReceipt(parsed.stagingReceipt) : undefined;
+  const stagingReceipt = parsed.stagingReceipt
+    ? normalizeReceipt(parsed.stagingReceipt)
+    : undefined;
   const result = parsed.result ? normalizeReceipt(parsed.result) : undefined;
   if (parsed.state === "PENDING" && (parsed.rejection || parsed.result)) {
     throw new RegistryConflictError(
@@ -321,7 +321,10 @@ export class SqliteVaultOriginStagingRepository implements VaultOriginStagingRep
       throw new RegistryValidationError("Vault-origin Staging content exceeds limits");
     }
     const contentHash = sha256(input.content);
-    if (contentHash !== candidate.observedSha256 || input.content.byteLength !== candidate.sizeBytes) {
+    if (
+      contentHash !== candidate.observedSha256 ||
+      input.content.byteLength !== candidate.sizeBytes
+    ) {
       throw new RegistryConflictError(
         "VAULT_ORIGIN_STAGING_FROZEN_EVIDENCE_MISMATCH",
         "Vault-origin Staging bytes do not match the reviewed import intent",
@@ -419,7 +422,8 @@ export class SqliteVaultOriginStagingRepository implements VaultOriginStagingRep
       }
     } catch (error) {
       if (existsSync(temporaryPath)) rmSync(temporaryPath, { force: true });
-      if (contentCreated && !this.isContentReferenced(contentHash)) rmSync(absolutePath, { force: true });
+      if (contentCreated && !this.isContentReferenced(contentHash))
+        rmSync(absolutePath, { force: true });
       throw error;
     }
   }
@@ -447,7 +451,11 @@ export class SqliteVaultOriginStagingRepository implements VaultOriginStagingRep
          WHERE d.workspace_id = ? AND d.id = ?`,
       )
       .get(workspaceId, documentId) as { document_json: string; storage_ref: string } | undefined;
-    if (!row) throw new RegistryError("VAULT_ORIGIN_STAGING_NOT_FOUND", "Vault-origin Staging document was not found");
+    if (!row)
+      throw new RegistryError(
+        "VAULT_ORIGIN_STAGING_NOT_FOUND",
+        "Vault-origin Staging document was not found",
+      );
     const document = parseDocument(row.document_json);
     const bytes = readFileSync(join(this.storageRoot, row.storage_ref));
     if (sha256(bytes) !== document.contentHash.value || bytes.byteLength !== document.sizeBytes) {
@@ -476,7 +484,9 @@ export class SqliteVaultOriginStagingRepository implements VaultOriginStagingRep
     if (own) return true;
     try {
       return Boolean(
-        this.database.prepare("SELECT 1 FROM staging_content_objects WHERE sha256 = ?").get(contentHash),
+        this.database
+          .prepare("SELECT 1 FROM staging_content_objects WHERE sha256 = ?")
+          .get(contentHash),
       );
     } catch {
       return false;
@@ -617,7 +627,11 @@ export class SqliteVaultImportExecutionRepository implements VaultImportExecutio
         "Staging receipt does not match the frozen Vault candidate",
       );
     }
-    return this.save({ ...current, stagingReceipt: receipt, updatedAt: this.clock().toISOString() });
+    return this.save({
+      ...current,
+      stagingReceipt: receipt,
+      updatedAt: this.clock().toISOString(),
+    });
   }
 
   reject(
@@ -670,7 +684,11 @@ export class SqliteVaultImportExecutionRepository implements VaultImportExecutio
         "SELECT execution_json FROM vault_import_executions WHERE workspace_id = ? AND id = ?",
       )
       .get(workspaceId, executionId) as { execution_json: string } | undefined;
-    if (!row) throw new RegistryError("VAULT_IMPORT_EXECUTION_NOT_FOUND", "Vault import execution was not found");
+    if (!row)
+      throw new RegistryError(
+        "VAULT_IMPORT_EXECUTION_NOT_FOUND",
+        "Vault import execution was not found",
+      );
     return parseExecution(row.execution_json);
   }
 

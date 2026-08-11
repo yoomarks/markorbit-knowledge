@@ -165,9 +165,9 @@ describe("Vault import execution ledger", () => {
     );
     expect(rejected.state).toBe("REJECTED");
     expect(rejected.rejection?.code).toBe("VAULT_IMPORT_SOURCE_CHANGED");
-    expect(repository.reject(DEFAULT_WORKSPACE.id, pending.id, "VAULT_IMPORT_SOURCE_MISSING")).toEqual(
-      rejected,
-    );
+    expect(
+      repository.reject(DEFAULT_WORKSPACE.id, pending.id, "VAULT_IMPORT_SOURCE_MISSING"),
+    ).toEqual(rejected);
   });
 
   it("reopens durable execution state and rejects conflicting frozen evidence", () => {
@@ -182,7 +182,9 @@ describe("Vault import execution ledger", () => {
     };
     const execution = first.prepare(input);
     const reopened = new SqliteVaultImportExecutionRepository(db);
-    expect(reopened.getByImportIntent(DEFAULT_WORKSPACE.id, input.importIntentId)).toEqual(execution);
+    expect(reopened.getByImportIntent(DEFAULT_WORKSPACE.id, input.importIntentId)).toEqual(
+      execution,
+    );
     expect(() =>
       reopened.prepare({ ...input, rootFingerprintSha256: "d".repeat(64) }),
     ).toThrowError(/different frozen evidence/u);

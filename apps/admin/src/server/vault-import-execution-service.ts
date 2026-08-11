@@ -164,7 +164,8 @@ function readFrozenCandidate(root: string, intent: VaultImportIntentV1): Uint8Ar
 function stagingStorePath(): string {
   const configured = process.env.MARKORBIT_STAGING_STORE_PATH?.trim();
   if (configured) return resolve(configured);
-  const repositoryRoot = process.env.MARKORBIT_REPOSITORY_ROOT ?? process.env.INIT_CWD ?? process.cwd();
+  const repositoryRoot =
+    process.env.MARKORBIT_REPOSITORY_ROOT ?? process.env.INIT_CWD ?? process.cwd();
   return resolve(repositoryRoot, ".data", "staging");
 }
 

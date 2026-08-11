@@ -222,13 +222,15 @@ describe("Vault import execution service", () => {
     );
     const durableStaging = f.staging.getByImportIntent(DEFAULT_WORKSPACE.id, f.reviewed.id);
     expect(durableStaging).not.toBeNull();
-    expect(f.executionRepository.getByImportIntent(DEFAULT_WORKSPACE.id, f.reviewed.id)?.state).toBe(
-      "PENDING",
-    );
+    expect(
+      f.executionRepository.getByImportIntent(DEFAULT_WORKSPACE.id, f.reviewed.id)?.state,
+    ).toBe("PENDING");
 
     const completed = subject.execute(DEFAULT_WORKSPACE.id, f.reviewed.id);
     expect(completed.state).toBe("SUCCEEDED");
-    expect(f.staging.getByImportIntent(DEFAULT_WORKSPACE.id, f.reviewed.id)).toEqual(durableStaging);
+    expect(f.staging.getByImportIntent(DEFAULT_WORKSPACE.id, f.reviewed.id)).toEqual(
+      durableStaging,
+    );
   });
 
   it("finalizes locally after receipt persistence even when Vault root and Binding are unavailable", () => {
@@ -291,10 +293,12 @@ describe("Vault import execution service", () => {
       staging: f.staging,
     });
 
-    expect(() => subject.execute(DEFAULT_WORKSPACE.id, f.reviewed.id)).toThrowError(/regular file/u);
-    expect(f.executionRepository.getByImportIntent(DEFAULT_WORKSPACE.id, f.reviewed.id)?.state).toBe(
-      "PENDING",
+    expect(() => subject.execute(DEFAULT_WORKSPACE.id, f.reviewed.id)).toThrowError(
+      /regular file/u,
     );
+    expect(
+      f.executionRepository.getByImportIntent(DEFAULT_WORKSPACE.id, f.reviewed.id)?.state,
+    ).toBe("PENDING");
     expect(f.staging.getByImportIntent(DEFAULT_WORKSPACE.id, f.reviewed.id)).toBeNull();
   });
 });
