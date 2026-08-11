@@ -15,6 +15,7 @@ import {
 } from "./production-document-normalization";
 import {
   PRODUCTION_OCR_MARKDOWN_CONVERTER,
+  PRODUCTION_PDF_TEXT_MARKDOWN_CONVERTER,
   PRODUCTION_RICH_DOCUMENT_MARKDOWN_CONVERTER,
   ProductionLocalDocumentExtractionExecutor,
 } from "./local-document-extraction";
@@ -36,6 +37,7 @@ const PRODUCTION_SUPPORTED_CONVERTERS = [
   PRODUCTION_HTML_MARKDOWN_CONVERTER,
   PRODUCTION_PDF_MARKDOWN_CONVERTER,
   PRODUCTION_RICH_DOCUMENT_MARKDOWN_CONVERTER,
+  PRODUCTION_PDF_TEXT_MARKDOWN_CONVERTER,
   PRODUCTION_OCR_MARKDOWN_CONVERTER,
 ] as const;
 
@@ -139,6 +141,7 @@ export class ProductionConversionWorkerRuntime {
       result = await this.markdownExecutor.execute(context, this.client, this.client, this.client);
     } else if (
       converterId === PRODUCTION_RICH_DOCUMENT_MARKDOWN_CONVERTER.converterId ||
+      converterId === PRODUCTION_PDF_TEXT_MARKDOWN_CONVERTER.converterId ||
       converterId === PRODUCTION_OCR_MARKDOWN_CONVERTER.converterId
     ) {
       result = await this.localExtractionExecutor.execute(

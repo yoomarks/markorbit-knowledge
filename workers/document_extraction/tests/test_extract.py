@@ -101,6 +101,70 @@ class DocumentExtractionTests(unittest.TestCase):
                     os.environ["MARKORBIT_TESSERACT_EXECUTABLE"] = previous
             self.assertEqual(text, "Recognized official notice")
 
+    def test_rich_inputs_fail_closed_on_complexity_and_archive_bombs(self) -> None:
+        wide_csv = (",".join(f"c{index}" for index in range(extract.MAX_CSV_COLUMNS + 1)) + "\n").encode()
+        with self.assertRaises(extract.ExtractionError) as csv_error:
+            extract._extract_csv(wide_csv)
+        self.assertEqual(csv_error.exception.code, "RICH_CSV_COLUMN_LIMIT_EXCEEDED")
+
+        nested: object = "value"
+        for _ in range(extract.MAX_JSON_DEPTH + 1):
+            nested = [nested]
+        with self.assertRaises(extract.ExtractionError) as json_error:
+            extract._extract_json(json.dumps(nested).encode())
+        self.assertEqual(json_error.exception.code, "RICH_JSON_DEPTH_LIMIT_EXCEEDED")
+
+        xml = b'<!DOCTYPE root [<!ENTITY x "expanded">]><root>&x;</root>'
+        with self.assertRaises(extract.ExtractionError) as xml_error:
+            extract._extract_xml(xml)
+        self.assertEqual(xml_error.exception.code, "RICH_XML_DTD_FORBIDDEN")
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("word/document.xml", b"A" * 2_000_000)
+        with self.assertRaises(extract.ExtractionError) as archive_error:
+            extract._extract_docx(buffer.getvalue())
+        self.assertEqual(
+            archive_error.exception.code,
+            "RICH_DOCX_ARCHIVE_COMPRESSION_RATIO_EXCEEDED",
+        )
+
+    def test_pdf_text_layer_uses_fixed_poppler_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pdf = root / "input.pdf"
+            pdf.write_bytes(b"%PDF-1.7\nsynthetic fixture")
+            pdfinfo = root / "fake-pdfinfo"
+            pdfinfo.write_text(
+                "#!/usr/bin/env python3\nprint('Pages: 2')\nprint('Encrypted: no')\n",
+                encoding="utf-8",
+            )
+            pdftotext = root / "fake-pdftotext"
+            pdftotext.write_text(
+                "#!/usr/bin/env python3\nprint('Official PDF text layer')\n",
+                encoding="utf-8",
+            )
+            pdfinfo.chmod(pdfinfo.stat().st_mode | stat.S_IXUSR)
+            pdftotext.chmod(pdftotext.stat().st_mode | stat.S_IXUSR)
+            previous_info = os.environ.get("MARKORBIT_PDFINFO_EXECUTABLE")
+            previous_text = os.environ.get("MARKORBIT_PDFTOTEXT_EXECUTABLE")
+            os.environ["MARKORBIT_PDFINFO_EXECUTABLE"] = str(pdfinfo)
+            os.environ["MARKORBIT_PDFTOTEXT_EXECUTABLE"] = str(pdftotext)
+            try:
+                body, method, pages = extract._pdf_text_extract(pdf, 10, 5)
+            finally:
+                if previous_info is None:
+                    os.environ.pop("MARKORBIT_PDFINFO_EXECUTABLE", None)
+                else:
+                    os.environ["MARKORBIT_PDFINFO_EXECUTABLE"] = previous_info
+                if previous_text is None:
+                    os.environ.pop("MARKORBIT_PDFTOTEXT_EXECUTABLE", None)
+                else:
+                    os.environ["MARKORBIT_PDFTOTEXT_EXECUTABLE"] = previous_text
+            self.assertEqual(body, "Official PDF text layer")
+            self.assertEqual(method, "PDFTOTEXT_TEXT_LAYER")
+            self.assertEqual(pages, 2)
+
     def test_main_writes_bounded_body_and_hash(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

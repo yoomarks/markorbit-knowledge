@@ -9,7 +9,7 @@ type JsonRecord = Record<string, unknown>;
 type FetchLike = typeof fetch;
 
 type ConverterSpec = {
-  key: "MARKDOWN" | "PDF" | "RICH" | "IMAGE";
+  key: "MARKDOWN" | "PDF" | "PDF_TEXT" | "RICH" | "IMAGE";
   converterId: string;
   version: string;
   displayName: string;
@@ -58,6 +58,19 @@ const CONVERTERS: ConverterSpec[] = [
     maxInputBytes: 12_000_000,
     timeoutSeconds: 60,
     precedence: 900,
+  },
+  {
+    key: "PDF_TEXT",
+    converterId: "local-pdf-text-markdown",
+    version: "1.0.0",
+    displayName: "Local Poppler PDF Text Layer to Markdown — Production",
+    runtime: "LOCAL_PROCESS",
+    capabilities: ["CONVERT", "PRESERVE_LINKS"],
+    artifactKinds: ["PDF"],
+    mimePatterns: ["application/pdf"],
+    maxInputBytes: 25_000_000,
+    timeoutSeconds: 180,
+    precedence: 950,
   },
   {
     key: "RICH",
@@ -212,6 +225,10 @@ function profileInput(target: CoverageTarget, spec: ConverterSpec): JsonRecord |
   }
   if (!target.acquisition.fetchAttachmentsHint) return null;
   const expected = new Set(target.acquisition.expectedArtifactKinds);
+  // Preserve the already-frozen automatic PDF path. The production Poppler
+  // provider is provisioned as an opt-in exact converter so existing deployments
+  // do not silently create a second ConversionRun for the same attachment.
+  if (spec.key === "PDF_TEXT") return null;
   if (spec.key === "PDF") {
     return expected.has("PDF")
       ? { artifactKinds: ["PDF"], mimePatterns: ["application/pdf"] }

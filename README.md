@@ -55,6 +55,7 @@ The repository now contains:
 - immutable RawArtifact ingestion, SHA-256 verification and local content-addressed storage;
 - governed Workspace-scoped Manual Upload with bounded media/size policy, exact SHA-256 identity, targeted Job leases, idempotent replay, immutable RawArtifact provenance and Admin UI;
 - production Local Folder Worker ingestion with Worker-local root aliases, root-scoped connector scheduling, traversal/symlink fail-closed controls, stable snapshot digests, bounded scans and immutable RawArtifact/CAS reuse;
+- production attachment/document normalization for PDF, DOCX, XLSX, CSV, JSON, XML, EMAIL, TEXT and IMAGE with bounded OOXML/structured-input hardening, explicit Poppler PDF text-layer extraction and separate OCR provenance;
 - real RawArtifact provenance, ingestion evidence and controlled-download administration;
 - immutable semantic-versioned ConverterManifest administration;
 - persisted Conversion Profiles with exact-version and input/output compatibility enforcement;
@@ -202,6 +203,7 @@ pnpm check
 - [Artifact Ingestion Protocol v1](docs/architecture/ARTIFACT_INGESTION_PROTOCOL_V1.md)
 - [Manual Upload Ingestion V1](docs/architecture/MANUAL_UPLOAD_INGESTION_V1.md)
 - [Local Folder Worker Ingestion V1](docs/architecture/LOCAL_FOLDER_WORKER_INGESTION_V1.md)
+- [Document Extraction Production Hardening V1](docs/architecture/DOCUMENT_EXTRACTION_PRODUCTION_HARDENING_V1.md)
 - [Conversion Control v1](docs/architecture/CONVERSION_CONTROL_V1.md)
 - [Conversion Execution & Staging Output Protocol v1](docs/architecture/CONVERSION_EXECUTION_PROTOCOL_V1.md)
 - [Conversion Runtime Protocol v1](docs/architecture/CONVERSION_RUNTIME_PROTOCOL_V1.md)

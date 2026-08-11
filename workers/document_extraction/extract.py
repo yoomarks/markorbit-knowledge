@@ -28,6 +28,18 @@ MAX_INPUT_BYTES = 25_000_000
 DEFAULT_MAX_OUTPUT_BYTES = 8_000_000
 DEFAULT_MAX_PAGES = 80
 DEFAULT_TIMEOUT_SECONDS = 180
+MAX_ARCHIVE_MEMBERS = 4096
+MAX_ARCHIVE_MEMBER_BYTES = 16_000_000
+MAX_ARCHIVE_UNCOMPRESSED_BYTES = 80_000_000
+MAX_ARCHIVE_COMPRESSION_RATIO = 200
+MAX_CSV_COLUMNS = 256
+MAX_CSV_CELLS = 500_000
+MAX_CSV_CELL_CHARS = 100_000
+MAX_JSON_NODES = 100_000
+MAX_JSON_DEPTH = 64
+MAX_XML_NODES = 100_000
+MAX_XML_DEPTH = 64
+MAX_XML_VALUES = 10_000
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -133,14 +145,53 @@ def _extract_csv(data: bytes) -> str:
     except csv.Error:
         dialect = csv.excel
     rows: list[list[str]] = []
+    cells = 0
     reader = csv.reader(io.StringIO(text), dialect)
     for index, row in enumerate(reader):
         if index >= 5000:
             raise ExtractionError("RICH_CSV_ROW_LIMIT_EXCEEDED", "CSV exceeds the 5000-row extraction limit")
+        if len(row) > MAX_CSV_COLUMNS:
+            raise ExtractionError(
+                "RICH_CSV_COLUMN_LIMIT_EXCEEDED",
+                f"CSV exceeds the {MAX_CSV_COLUMNS}-column extraction limit",
+            )
+        cells += len(row)
+        if cells > MAX_CSV_CELLS:
+            raise ExtractionError(
+                "RICH_CSV_CELL_LIMIT_EXCEEDED",
+                f"CSV exceeds the {MAX_CSV_CELLS}-cell extraction limit",
+            )
+        if any(len(cell) > MAX_CSV_CELL_CHARS for cell in row):
+            raise ExtractionError(
+                "RICH_CSV_CELL_SIZE_EXCEEDED",
+                f"CSV contains a cell larger than {MAX_CSV_CELL_CHARS} characters",
+            )
         rows.append([cell for cell in row])
     if not rows or not any(any(cell.strip() for cell in row) for row in rows):
         raise ExtractionError("RICH_CSV_EMPTY", "CSV contains no extractable cells")
     return _markdown_table(rows)
+
+
+def _assert_json_complexity(value: object) -> None:
+    nodes = 0
+    stack: list[tuple[object, int]] = [(value, 1)]
+    while stack:
+        current, depth = stack.pop()
+        nodes += 1
+        if nodes > MAX_JSON_NODES:
+            raise ExtractionError(
+                "RICH_JSON_NODE_LIMIT_EXCEEDED",
+                f"JSON exceeds the {MAX_JSON_NODES}-node extraction limit",
+            )
+        if depth > MAX_JSON_DEPTH:
+            raise ExtractionError(
+                "RICH_JSON_DEPTH_LIMIT_EXCEEDED",
+                f"JSON exceeds the {MAX_JSON_DEPTH}-level extraction limit",
+            )
+        if isinstance(current, dict):
+            stack.extend((item, depth + 1) for item in current.values())
+        elif isinstance(current, list):
+            stack.extend((item, depth + 1) for item in current)
 
 
 def _extract_json(data: bytes) -> str:
@@ -149,6 +200,12 @@ def _extract_json(data: bytes) -> str:
         value = json.loads(text)
     except json.JSONDecodeError as exc:
         raise ExtractionError("RICH_JSON_INVALID", f"JSON parse failed: {exc.msg}") from exc
+    except RecursionError as exc:
+        raise ExtractionError(
+            "RICH_JSON_DEPTH_LIMIT_EXCEEDED",
+            f"JSON exceeds the {MAX_JSON_DEPTH}-level extraction limit",
+        ) from exc
+    _assert_json_complexity(value)
     rendered = json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True)
     return f"```json\n{rendered}\n```"
 
@@ -157,33 +214,63 @@ def _local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
-def _extract_xml(data: bytes) -> str:
+def _parse_xml_document(data: bytes, code_prefix: str, label: str) -> ET.Element:
+    upper = data.upper()
+    if b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
+        raise ExtractionError(
+            f"{code_prefix}_DTD_FORBIDDEN",
+            f"{label} DTD/entity declarations are not allowed",
+        )
     try:
         root = ET.fromstring(data)
     except ET.ParseError as exc:
-        raise ExtractionError("RICH_XML_INVALID", f"XML parse failed: {exc}") from exc
+        raise ExtractionError(f"{code_prefix}_INVALID", f"{label} parse failed: {exc}") from exc
+    nodes = 0
+    stack: list[tuple[ET.Element, int]] = [(root, 1)]
+    while stack:
+        node, depth = stack.pop()
+        nodes += 1
+        if nodes > MAX_XML_NODES:
+            raise ExtractionError(
+                f"{code_prefix}_NODE_LIMIT_EXCEEDED",
+                f"{label} exceeds the {MAX_XML_NODES}-node extraction limit",
+            )
+        if depth > MAX_XML_DEPTH:
+            raise ExtractionError(
+                f"{code_prefix}_DEPTH_LIMIT_EXCEEDED",
+                f"{label} exceeds the {MAX_XML_DEPTH}-level extraction limit",
+            )
+        stack.extend((child, depth + 1) for child in reversed(list(node)))
+    return root
 
+
+def _extract_xml(data: bytes) -> str:
+    root = _parse_xml_document(data, "RICH_XML", "XML")
     lines = [f"# {_local_name(root.tag)}"]
-    leaves = 0
-
-    def walk(node: ET.Element, path: list[str]) -> None:
-        nonlocal leaves
+    values = 0
+    stack: list[tuple[ET.Element, list[str]]] = [(root, [])]
+    while stack:
+        node, path = stack.pop()
         name = _local_name(node.tag)
         next_path = path + [name]
-        children = list(node)
-        text = (node.text or "").strip()
-        if text:
-            leaves += 1
-            if leaves > 10000:
-                raise ExtractionError("RICH_XML_NODE_LIMIT_EXCEEDED", "XML exceeds the 10000-value extraction limit")
-            lines.append(f"- `{' / '.join(next_path)}`: {text}")
+        text_value = (node.text or "").strip()
+        if text_value:
+            values += 1
+            if values > MAX_XML_VALUES:
+                raise ExtractionError(
+                    "RICH_XML_VALUE_LIMIT_EXCEEDED",
+                    f"XML exceeds the {MAX_XML_VALUES}-value extraction limit",
+                )
+            lines.append(f"- `{' / '.join(next_path)}`: {text_value}")
         for key, value in sorted(node.attrib.items()):
-            leaves += 1
+            values += 1
+            if values > MAX_XML_VALUES:
+                raise ExtractionError(
+                    "RICH_XML_VALUE_LIMIT_EXCEEDED",
+                    f"XML exceeds the {MAX_XML_VALUES}-value extraction limit",
+                )
             lines.append(f"- `{' / '.join(next_path)} / @{_local_name(key)}`: {value}")
-        for child in children:
-            walk(child, next_path)
-
-    walk(root, [])
+        stack.extend((child, next_path) for child in reversed(list(node)))
     if len(lines) == 1:
         raise ExtractionError("RICH_XML_EMPTY", "XML contains no extractable text or attributes")
     return _normalize_markdown("\n".join(lines))
@@ -202,23 +289,96 @@ def _docx_text(node: ET.Element) -> str:
     return "".join(parts).strip()
 
 
+def _validate_ooxml_archive(archive: zipfile.ZipFile, kind: str) -> None:
+    infos = archive.infolist()
+    if not infos or len(infos) > MAX_ARCHIVE_MEMBERS:
+        raise ExtractionError(
+            f"RICH_{kind}_ARCHIVE_MEMBER_LIMIT_EXCEEDED",
+            f"{kind} archive exceeds the {MAX_ARCHIVE_MEMBERS}-member limit",
+        )
+    total_uncompressed = 0
+    for info in infos:
+        name = info.filename
+        normalized = name.rstrip("/")
+        parts = normalized.split("/") if normalized else []
+        if (
+            not normalized
+            or "\\" in name
+            or "\x00" in name
+            or name.startswith("/")
+            or re.match(r"^[A-Za-z]:", name)
+            or any(part in {"", ".", ".."} for part in parts)
+        ):
+            raise ExtractionError(
+                f"RICH_{kind}_ARCHIVE_PATH_INVALID",
+                f"{kind} archive contains an unsafe member path",
+            )
+        unix_type = (info.external_attr >> 16) & 0o170000
+        if unix_type == 0o120000:
+            raise ExtractionError(
+                f"RICH_{kind}_ARCHIVE_SYMLINK_FORBIDDEN",
+                f"{kind} archive contains a symbolic-link member",
+            )
+        if info.flag_bits & 0x1:
+            raise ExtractionError(
+                f"RICH_{kind}_ARCHIVE_ENCRYPTED",
+                f"{kind} archive contains an encrypted member",
+            )
+        if info.is_dir():
+            continue
+        if info.file_size > MAX_ARCHIVE_MEMBER_BYTES:
+            raise ExtractionError(
+                f"RICH_{kind}_ARCHIVE_MEMBER_TOO_LARGE",
+                f"{kind} archive contains a member larger than {MAX_ARCHIVE_MEMBER_BYTES} bytes",
+            )
+        total_uncompressed += info.file_size
+        if total_uncompressed > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
+            raise ExtractionError(
+                f"RICH_{kind}_ARCHIVE_TOO_LARGE",
+                f"{kind} archive exceeds the {MAX_ARCHIVE_UNCOMPRESSED_BYTES}-byte expanded limit",
+            )
+        if info.file_size > 0:
+            if info.compress_size <= 0 or info.file_size / info.compress_size > MAX_ARCHIVE_COMPRESSION_RATIO:
+                raise ExtractionError(
+                    f"RICH_{kind}_ARCHIVE_COMPRESSION_RATIO_EXCEEDED",
+                    f"{kind} archive contains a suspiciously compressed member",
+                )
+
+
+def _read_archive_member(archive: zipfile.ZipFile, name: str, kind: str) -> bytes:
+    try:
+        info = archive.getinfo(name)
+    except KeyError as exc:
+        raise ExtractionError(f"RICH_{kind}_INVALID", f"{kind} package is missing {name}") from exc
+    if info.is_dir() or info.file_size > MAX_ARCHIVE_MEMBER_BYTES:
+        raise ExtractionError(
+            f"RICH_{kind}_ARCHIVE_MEMBER_TOO_LARGE",
+            f"{kind} package member {name} is outside governed limits",
+        )
+    data = archive.read(info)
+    if len(data) != info.file_size:
+        raise ExtractionError(
+            f"RICH_{kind}_ARCHIVE_EVIDENCE_MISMATCH",
+            f"{kind} package member size changed during extraction",
+        )
+    return data
+
+
 def _extract_docx(data: bytes) -> str:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            document = archive.read("word/document.xml")
-    except (zipfile.BadZipFile, KeyError) as exc:
-        raise ExtractionError("RICH_DOCX_INVALID", "DOCX package or word/document.xml is invalid") from exc
-    try:
-        root = ET.fromstring(document)
-    except ET.ParseError as exc:
-        raise ExtractionError("RICH_DOCX_XML_INVALID", "DOCX document XML is invalid") from exc
+            _validate_ooxml_archive(archive, "DOCX")
+            document = _read_archive_member(archive, "word/document.xml", "DOCX")
+    except zipfile.BadZipFile as exc:
+        raise ExtractionError("RICH_DOCX_INVALID", "DOCX package is invalid") from exc
+    root = _parse_xml_document(document, "RICH_DOCX_XML", "DOCX document XML")
 
     blocks: list[str] = []
     for node in root.iter():
         name = _local_name(node.tag)
         if name == "p":
-            text = _docx_text(node)
-            if not text:
+            text_value = _docx_text(node)
+            if not text_value:
                 continue
             style = ""
             for descendant in node.iter():
@@ -226,7 +386,7 @@ def _extract_docx(data: bytes) -> str:
                     style = next((v for k, v in descendant.attrib.items() if _local_name(k) == "val"), "")
                     break
             heading = re.fullmatch(r"Heading([1-6])", style, re.IGNORECASE)
-            blocks.append(f"{'#' * int(heading.group(1))} {text}" if heading else text)
+            blocks.append(f"{'#' * int(heading.group(1))} {text_value}" if heading else text_value)
         elif name == "tbl":
             rows: list[list[str]] = []
             for tr in list(node):
@@ -247,10 +407,11 @@ def _extract_docx(data: bytes) -> str:
 
 def _xlsx_shared_strings(archive: zipfile.ZipFile) -> list[str]:
     try:
-        data = archive.read("xl/sharedStrings.xml")
+        archive.getinfo("xl/sharedStrings.xml")
     except KeyError:
         return []
-    root = ET.fromstring(data)
+    data = _read_archive_member(archive, "xl/sharedStrings.xml", "XLSX")
+    root = _parse_xml_document(data, "RICH_XLSX_XML", "XLSX shared strings XML")
     result: list[str] = []
     for si in root:
         if _local_name(si.tag) != "si":
@@ -262,10 +423,12 @@ def _xlsx_shared_strings(archive: zipfile.ZipFile) -> list[str]:
 def _xlsx_sheet_names(archive: zipfile.ZipFile) -> dict[str, str]:
     names: dict[str, str] = {}
     try:
-        workbook = ET.fromstring(archive.read("xl/workbook.xml"))
-        rels = ET.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
-    except (KeyError, ET.ParseError):
+        workbook_data = _read_archive_member(archive, "xl/workbook.xml", "XLSX")
+        rels_data = _read_archive_member(archive, "xl/_rels/workbook.xml.rels", "XLSX")
+    except ExtractionError:
         return names
+    workbook = _parse_xml_document(workbook_data, "RICH_XLSX_XML", "XLSX workbook XML")
+    rels = _parse_xml_document(rels_data, "RICH_XLSX_XML", "XLSX relationships XML")
     rel_targets: dict[str, str] = {}
     for rel in rels:
         rel_id = next((v for k, v in rel.attrib.items() if _local_name(k) == "Id"), None)
@@ -306,6 +469,7 @@ def _extract_xlsx(data: bytes) -> str:
     except zipfile.BadZipFile as exc:
         raise ExtractionError("RICH_XLSX_INVALID", "XLSX package is invalid") from exc
     with archive:
+        _validate_ooxml_archive(archive, "XLSX")
         shared = _xlsx_shared_strings(archive)
         names = _xlsx_sheet_names(archive)
         sheet_paths = sorted(
@@ -313,23 +477,26 @@ def _extract_xlsx(data: bytes) -> str:
         )
         blocks: list[str] = []
         total_rows = 0
-        for index, path in enumerate(sheet_paths, start=1):
-            try:
-                root = ET.fromstring(archive.read(path))
-            except ET.ParseError:
-                continue
+        for index, sheet_path in enumerate(sheet_paths, start=1):
+            data_xml = _read_archive_member(archive, sheet_path, "XLSX")
+            root = _parse_xml_document(data_xml, "RICH_XLSX_XML", "XLSX worksheet XML")
             rows: list[list[str]] = []
             for row_node in root.iter():
                 if _local_name(row_node.tag) != "row":
                     continue
                 row = [_xlsx_cell_value(cell, shared) for cell in list(row_node) if _local_name(cell.tag) == "c"]
+                if len(row) > MAX_CSV_COLUMNS:
+                    raise ExtractionError(
+                        "RICH_XLSX_COLUMN_LIMIT_EXCEEDED",
+                        f"XLSX exceeds the {MAX_CSV_COLUMNS}-column extraction limit",
+                    )
                 if row:
                     rows.append(row)
                     total_rows += 1
                     if total_rows > 10000:
                         raise ExtractionError("RICH_XLSX_ROW_LIMIT_EXCEEDED", "XLSX exceeds the 10000-row extraction limit")
             if rows:
-                blocks.append(f"# {names.get(path, f'Sheet {index}')}\n\n{_markdown_table(rows)}")
+                blocks.append(f"# {names.get(sheet_path, f'Sheet {index}')}\n\n{_markdown_table(rows)}")
         if not blocks:
             raise ExtractionError("RICH_XLSX_EMPTY", "XLSX contains no extractable cells")
         return _normalize_markdown("\n\n".join(blocks))
@@ -387,18 +554,21 @@ def _tesseract_languages(languages: list[str]) -> str:
 
 
 def _run_fixed(command: list[str], timeout_seconds: int, code: str) -> subprocess.CompletedProcess[str]:
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if key in {"PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "TESSDATA_PREFIX"}
+    }
     try:
         return subprocess.run(
             command,
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout_seconds,
-            env={
-                key: value
-                for key, value in os.environ.items()
-                if key in {"PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "TESSDATA_PREFIX"}
-            },
+            env=environment,
         )
     except FileNotFoundError as exc:
         raise ExtractionError(f"{code}_UNAVAILABLE", f"Required executable is unavailable: {command[0]}") from exc
@@ -407,6 +577,50 @@ def _run_fixed(command: list[str], timeout_seconds: int, code: str) -> subproces
     except subprocess.CalledProcessError as exc:
         diagnostic = (exc.stderr or "").strip()[:1000]
         raise ExtractionError(f"{code}_FAILED", diagnostic or f"Extraction command failed: {command[0]}") from exc
+
+
+def _pdf_text_extract(path: Path, timeout_seconds: int, max_pages: int) -> tuple[str, str, int]:
+    with path.open("rb") as handle:
+        if handle.read(5) != b"%PDF-":
+            raise ExtractionError("PDF_TEXT_HEADER_INVALID", "PDF text extraction requires a valid PDF header")
+    pdfinfo = os.environ.get("MARKORBIT_PDFINFO_EXECUTABLE", "pdfinfo")
+    info = _run_fixed([pdfinfo, str(path)], timeout_seconds, "PDF_INFO")
+    encrypted = re.search(r"^Encrypted:\s*(yes|no)\s*$", info.stdout, flags=re.IGNORECASE | re.MULTILINE)
+    if encrypted and encrypted.group(1).lower() == "yes":
+        raise ExtractionError("PDF_TEXT_ENCRYPTED", "Encrypted/password-protected PDFs are not supported")
+    pages_match = re.search(r"^Pages:\s*(\d+)\s*$", info.stdout, flags=re.IGNORECASE | re.MULTILINE)
+    if not pages_match:
+        raise ExtractionError("PDF_INFO_INVALID", "PDF metadata did not report a deterministic page count")
+    pages = int(pages_match.group(1))
+    if pages <= 0:
+        raise ExtractionError("PDF_INFO_INVALID", "PDF metadata reported an invalid page count")
+    if pages > max_pages:
+        raise ExtractionError("PDF_TEXT_PAGE_LIMIT_EXCEEDED", f"PDF exceeds the {max_pages}-page text extraction limit")
+
+    pdftotext = os.environ.get("MARKORBIT_PDFTOTEXT_EXECUTABLE", "pdftotext")
+    completed = _run_fixed(
+        [
+            pdftotext,
+            "-f",
+            "1",
+            "-l",
+            str(pages),
+            "-layout",
+            "-enc",
+            "UTF-8",
+            str(path),
+            "-",
+        ],
+        timeout_seconds,
+        "PDF_TEXT_ENGINE",
+    )
+    markdown = _normalize_markdown(completed.stdout)
+    if not markdown:
+        raise ExtractionError(
+            "PDF_TEXT_NO_EXTRACTABLE_TEXT",
+            "PDF contains no extractable text layer; explicit OCR is required",
+        )
+    return markdown, "PDFTOTEXT_TEXT_LAYER", pages
 
 
 def _ocr_image(path: Path, languages: list[str], timeout_seconds: int) -> str:
@@ -459,8 +673,8 @@ def _validate_request(value: object) -> dict[str, object]:
     required = ["inputPath", "outputPath", "artifactKind", "mimeType", "mode"]
     if any(not isinstance(value.get(key), str) or not str(value.get(key)).strip() for key in required):
         raise ExtractionError("DOCUMENT_EXTRACTION_PROTOCOL_INVALID", "Missing extraction request fields")
-    if value["mode"] not in {"RICH", "OCR"}:
-        raise ExtractionError("DOCUMENT_EXTRACTION_PROTOCOL_INVALID", "mode must be RICH or OCR")
+    if value["mode"] not in {"RICH", "PDF_TEXT", "OCR"}:
+        raise ExtractionError("DOCUMENT_EXTRACTION_PROTOCOL_INVALID", "mode must be RICH, PDF_TEXT, or OCR")
     return value
 
 
@@ -489,10 +703,17 @@ def main() -> int:
         if not isinstance(languages, list) or not all(isinstance(item, str) for item in languages):
             raise ExtractionError("DOCUMENT_EXTRACTION_PROTOCOL_INVALID", "languages must be an array of strings")
 
-        data = input_path.read_bytes()
         if request["mode"] == "RICH":
+            data = input_path.read_bytes()
             markdown, method = _rich_extract(str(request["artifactKind"]), str(request["mimeType"]), data)
             page_count = None
+        elif request["mode"] == "PDF_TEXT":
+            if str(request["artifactKind"]) != "PDF" or str(request["mimeType"]).lower() != "application/pdf":
+                raise ExtractionError(
+                    "PDF_TEXT_INPUT_UNSUPPORTED",
+                    f"Unsupported PDF text input: {request['artifactKind']} / {request['mimeType']}",
+                )
+            markdown, method, page_count = _pdf_text_extract(input_path, timeout_seconds, max_pages)
         else:
             markdown, method, page_count = _ocr_extract(
                 str(request["artifactKind"]),
