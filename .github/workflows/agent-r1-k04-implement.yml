@@ -59,34 +59,24 @@ jobs:
 
           path = Path('packages/persistence/src/ready-package-core-intake-submission.ts')
           text = path.read_text()
-          old = '''  recordResult(
-            submissionId: string,
-            workspaceId: string,
-            result: CoreIntakeResult,
-          ): ReadyPackageCoreIntakeSubmission;
-          prepareContentDelivery(
-            submissionId: string,
-            workspaceId: string,
-            input: PrepareReadyPackageCoreContentDeliveryInput,
-          ): PrepareReadyPackageCoreContentDeliveryResult;
-          recordContentTransportResult(
-            submissionId: string,
-            workspaceId: string,
-            result: ReadyPackageCoreContentResult,
-          ): ReadyPackageCoreIntakeSubmission;
-          recordContentResult(
-            submissionId: string,
-            workspaceId: string,
-            result: ReadyPackageCoreContentResult,
-          ): ReadyPackageCoreIntakeSubmission;
-          list(readyPackageId: string, workspaceId: string): ReadyPackageCoreIntakeSubmission[];
-          }'''
-          replacement = '''  recordResult(
-            submissionId: string,
-            workspaceId: string,
-            result: CoreIntakeResult,
-          ): ReadyPackageCoreIntakeSubmission;
-          list(readyPackageId: string, workspaceId: string): ReadyPackageCoreIntakeSubmission[];
+          start = text.index('export interface ReadyPackageCoreIntakeSubmissionRepository {')
+          end_marker = '\n}\n\nfunction submissionId'
+          end = text.index(end_marker, start) + 2
+          interfaces = '''export interface ReadyPackageCoreIntakeSubmissionRepository {
+            prepare(
+              input: PrepareReadyPackageCoreIntakeSubmissionInput,
+            ): PrepareReadyPackageCoreIntakeSubmissionResult;
+            recordTransportResult(
+              submissionId: string,
+              workspaceId: string,
+              result: CoreIntakeResult,
+            ): ReadyPackageCoreIntakeSubmission;
+            recordResult(
+              submissionId: string,
+              workspaceId: string,
+              result: CoreIntakeResult,
+            ): ReadyPackageCoreIntakeSubmission;
+            list(readyPackageId: string, workspaceId: string): ReadyPackageCoreIntakeSubmission[];
           }
 
           export interface ReadyPackageCoreContentDeliveryRepository
@@ -107,9 +97,7 @@ jobs:
               result: ReadyPackageCoreContentResult,
             ): ReadyPackageCoreIntakeSubmission;
           }'''
-          if old not in text:
-              raise SystemExit('generated repository interface block not found')
-          text = text.replace(old, replacement, 1)
+          text = text[:start] + interfaces + text[end:]
           text = text.replace(
               'implements ReadyPackageCoreIntakeSubmissionRepository {',
               'implements ReadyPackageCoreContentDeliveryRepository {',
@@ -119,11 +107,20 @@ jobs:
 
           path = Path('apps/admin/src/server/ready-package-core-content-submit.ts')
           text = path.read_text()
-          text = text.replace(
-              '  ReadyPackageCoreContentResult,\n  ReadyPackageCoreIntakeSubmission,\n  ReadyPackageCoreIntakeSubmissionRepository,',
-              '  ReadyPackageCoreContentDeliveryRepository,\n  ReadyPackageCoreContentResult,\n  ReadyPackageCoreContentResultEvidence,\n  ReadyPackageCoreIntakeSubmission,',
-              1,
-          )
+          old_import = '''  ReadyPackageCoreContentResult,
+            ReadyPackageCoreIntakeSubmission,
+            ReadyPackageCoreIntakeSubmissionRepository,'''
+          if old_import not in text:
+              old_import = '''  ReadyPackageCoreContentResult,
+  ReadyPackageCoreIntakeSubmission,
+  ReadyPackageCoreIntakeSubmissionRepository,'''
+          new_import = '''  ReadyPackageCoreContentDeliveryRepository,
+            ReadyPackageCoreContentResult,
+            ReadyPackageCoreContentResultEvidence,
+            ReadyPackageCoreIntakeSubmission,'''
+          if old_import not in text:
+              raise SystemExit('content submit import block not found')
+          text = text.replace(old_import, new_import, 1)
           start = text.index('function resultFromEvidence(')
           end = text.index('\n}\n\nfunction parseFrozenRequest', start) + 2
           simple = '''function resultFromEvidence(
