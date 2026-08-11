@@ -191,6 +191,18 @@ export function ensureReadyPackageV2DeliveryAuditRegistry(database: DatabaseSync
       CREATE INDEX IF NOT EXISTS idx_ready_package_v2_delivery_audit_submission
         ON ready_package_v2_delivery_audit_events(workspace_id, submission_id, sequence);
 
+      CREATE TRIGGER IF NOT EXISTS prevent_ready_package_v2_delivery_audit_update
+        BEFORE UPDATE ON ready_package_v2_delivery_audit_events
+        BEGIN
+          SELECT RAISE(ABORT, 'ReadyPackage V2 delivery audit events are append-only');
+        END;
+
+      CREATE TRIGGER IF NOT EXISTS prevent_ready_package_v2_delivery_audit_delete
+        BEFORE DELETE ON ready_package_v2_delivery_audit_events
+        BEGIN
+          SELECT RAISE(ABORT, 'ReadyPackage V2 delivery audit events are append-only');
+        END;
+
       INSERT OR IGNORE INTO ready_package_v2_delivery_audit_events
         (workspace_id, submission_id, ready_package_id, sequence, event_type,
          request_sha256, recorded_at, attempt_number, issue_code, http_status, result_status)

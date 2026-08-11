@@ -257,4 +257,120 @@ describe("ReadyPackage V2 delivery audit timeline", () => {
     ).toThrowError(/different unknown-outcome event/u);
     expect(repository.listAuditEvents(DEFAULT_WORKSPACE.id, prepared.submissionId)).toHaveLength(3);
   });
+
+  it("enforces append-only audit rows at the SQLite boundary", () => {
+    const { db, readyPackage, contentExport } = setup();
+    const repository = new SqliteReadyPackageV2DeliverySubmissionRepository(
+      db,
+      () => new Date("2026-08-11T17:30:00.000Z"),
+      () => "rvd_01K15TEST000000000000000001",
+    );
+    const prepared = repository.prepare({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      readyPackage,
+      coreWorkspaceId: CORE_WORKSPACE,
+      contentExport,
+    }).submission;
+
+    expect(() =>
+      db
+        .prepare(
+          `UPDATE ready_package_v2_delivery_audit_events
+           SET recorded_at = ? WHERE workspace_id = ? AND submission_id = ? AND sequence = 1`,
+        )
+        .run("2026-08-11T18:00:00.000Z", DEFAULT_WORKSPACE.id, prepared.submissionId),
+    ).toThrowError(/append-only/u);
+    expect(() =>
+      db
+        .prepare(
+          `DELETE FROM ready_package_v2_delivery_audit_events
+           WHERE workspace_id = ? AND submission_id = ? AND sequence = 1`,
+        )
+        .run(DEFAULT_WORKSPACE.id, prepared.submissionId),
+    ).toThrowError(/append-only/u);
+    expect(repository.listAuditEvents(DEFAULT_WORKSPACE.id, prepared.submissionId)).toHaveLength(1);
+  });
+
+  it("backfills only reconstructable PREPARED evidence for a pre-K15 K14 submission", () => {
+    const { db, readyPackage, contentExport } = setup();
+    const initial = new SqliteReadyPackageV2DeliverySubmissionRepository(
+      db,
+      () => new Date("2026-08-11T17:30:00.000Z"),
+      () => "rvd_01K15TEST000000000000000001",
+    );
+    const prepared = initial.prepare({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      readyPackage,
+      coreWorkspaceId: CORE_WORKSPACE,
+      contentExport,
+    }).submission;
+
+    db.exec(`
+      DROP TABLE ready_package_v2_delivery_audit_events;
+      DELETE FROM schema_migrations
+      WHERE id = '0031_ready_package_v2_delivery_audit_events';
+    `);
+
+    const upgraded = new SqliteReadyPackageV2DeliverySubmissionRepository(db);
+    expect(upgraded.listAuditEvents(DEFAULT_WORKSPACE.id, prepared.submissionId)).toEqual([
+      {
+        workspaceId: DEFAULT_WORKSPACE.id,
+        submissionId: prepared.submissionId,
+        readyPackageId: readyPackage.id,
+        sequence: 1,
+        type: "PREPARED",
+        requestSha256: prepared.requestSha256,
+        recordedAt: prepared.createdAt,
+      },
+    ]);
+  });
+
+  it("rolls back local finalization if the FINALIZED audit event cannot commit", () => {
+    const { db, readyPackage, contentExport } = setup();
+    let now = 0;
+    const times = [
+      "2026-08-11T17:30:00.000Z",
+      "2026-08-11T17:31:00.000Z",
+      "2026-08-11T17:32:00.000Z",
+      "2026-08-11T17:33:00.000Z",
+    ];
+    const repository = new SqliteReadyPackageV2DeliverySubmissionRepository(
+      db,
+      () => new Date(times[now++] ?? times.at(-1)!),
+      () => "rvd_01K15TEST000000000000000001",
+    );
+    const prepared = repository.prepare({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      readyPackage,
+      coreWorkspaceId: CORE_WORKSPACE,
+      contentExport,
+    }).submission;
+    repository.markTransportAttempt(DEFAULT_WORKSPACE.id, prepared.submissionId);
+    const received = consumerResult(prepared.submissionId, readyPackage.id, prepared.requestSha256);
+    repository.recordTransportResult(DEFAULT_WORKSPACE.id, prepared.submissionId, received);
+
+    db.exec(`
+      CREATE TRIGGER block_k15_finalized_audit
+      BEFORE INSERT ON ready_package_v2_delivery_audit_events
+      WHEN NEW.event_type = 'FINALIZED'
+      BEGIN
+        SELECT RAISE(ABORT, 'blocked finalized audit insert');
+      END;
+    `);
+
+    expect(() =>
+      repository.recordResult(DEFAULT_WORKSPACE.id, prepared.submissionId, received),
+    ).toThrowError(/blocked finalized audit insert/u);
+
+    const reopened = new SqliteReadyPackageV2DeliverySubmissionRepository(db);
+    const persisted = reopened.getByReadyPackage(DEFAULT_WORKSPACE.id, readyPackage.id);
+    expect(persisted?.state).toBe("PENDING");
+    expect(persisted?.transportResult?.status).toBe("RECEIVED");
+    expect(persisted?.result).toBeUndefined();
+    expect(
+      reopened
+        .listAuditEvents(DEFAULT_WORKSPACE.id, prepared.submissionId)
+        .map((event) => event.type),
+    ).toEqual(["PREPARED", "TRANSPORT_ATTEMPT_STARTED", "TRANSPORT_RESULT_RECORDED"]);
+  });
 });
