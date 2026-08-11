@@ -5,11 +5,7 @@ import { History, RefreshCw, Send, ShieldAlert, Snowflake } from "lucide-react";
 import type { ReadyPackageV2 } from "@markorbit/contracts";
 
 type DeliveryStage =
-  | "NOT_PREPARED"
-  | "PREPARED"
-  | "OUTCOME_UNKNOWN"
-  | "FINALIZATION_PENDING"
-  | "DELIVERED";
+  "NOT_PREPARED" | "PREPARED" | "OUTCOME_UNKNOWN" | "FINALIZATION_PENDING" | "DELIVERED";
 
 type ResultEvidence = {
   status: "RECEIVED" | "ACCEPTED" | "REJECTED";
@@ -220,7 +216,8 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
             K15 在 K14 的冻结/提交恢复语义之上增加 append-only audit timeline。每次冻结、发送尝试、
-            unknown outcome、transport result 落盘与本地 finalization 都留下不可变、无敏感正文的恢复证据。
+            unknown outcome、transport result 落盘与本地 finalization
+            都留下不可变、无敏感正文的恢复证据。
           </p>
         </div>
         <button

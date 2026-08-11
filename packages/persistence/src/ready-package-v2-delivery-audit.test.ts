@@ -220,7 +220,11 @@ describe("ReadyPackage V2 delivery audit timeline", () => {
   it("replays one unknown-outcome event per attempt and rejects conflicting evidence", () => {
     const { db, readyPackage, contentExport } = setup();
     let now = 0;
-    const times = ["2026-08-11T17:30:00.000Z", "2026-08-11T17:31:00.000Z", "2026-08-11T17:32:00.000Z"];
+    const times = [
+      "2026-08-11T17:30:00.000Z",
+      "2026-08-11T17:31:00.000Z",
+      "2026-08-11T17:32:00.000Z",
+    ];
     const repository = new SqliteReadyPackageV2DeliverySubmissionRepository(
       db,
       () => new Date(times[now++] ?? times.at(-1)!),

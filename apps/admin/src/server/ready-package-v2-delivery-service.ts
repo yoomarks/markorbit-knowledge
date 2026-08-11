@@ -38,11 +38,7 @@ import {
 import { getRegistryDatabase } from "./source-registry";
 
 export type ReadyPackageV2DeliveryStage =
-  | "NOT_PREPARED"
-  | "PREPARED"
-  | "OUTCOME_UNKNOWN"
-  | "FINALIZATION_PENDING"
-  | "DELIVERED";
+  "NOT_PREPARED" | "PREPARED" | "OUTCOME_UNKNOWN" | "FINALIZATION_PENDING" | "DELIVERED";
 
 export type ReadyPackageV2DeliverySubmissionView = Omit<
   ReadyPackageV2DeliverySubmission,
@@ -148,11 +144,7 @@ export class ReadyPackageV2DeliveryService {
         stage: stage(submission),
         submission: submission ? readyPackageV2DeliverySubmissionView(submission) : null,
         auditEvents: submission
-          ? this.dependencies.deliveries.listAuditEvents(
-              workspaceId,
-              submission.submissionId,
-              50,
-            )
+          ? this.dependencies.deliveries.listAuditEvents(workspaceId, submission.submissionId, 50)
           : [],
         outboundTransport: readyPackageV2DeliveryTransportReadiness(targetWorkspaceId),
       } satisfies ReadyPackageV2DeliveryOverviewItem;
