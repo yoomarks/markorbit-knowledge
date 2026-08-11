@@ -1,0 +1,28 @@
+name: Agent R1-K05 Format Preview
+
+on:
+  push:
+    branches:
+      - r1-k05-content-delivery-workbench
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r1-k05-content-delivery-workbench
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier diff
+        run: |
+          pnpm exec prettier --write apps/admin/src/components/ready-packages/ready-package-delivery-workbench.test.ts apps/admin/src/components/ready-packages/ready-package-delivery-workbench.tsx
+          git diff -- apps/admin/src/components/ready-packages/ready-package-delivery-workbench.test.ts apps/admin/src/components/ready-packages/ready-package-delivery-workbench.tsx
