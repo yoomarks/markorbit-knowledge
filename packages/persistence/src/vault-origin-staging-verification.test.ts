@@ -31,11 +31,7 @@ function hash(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-function ingest(
-  staging: SqliteVaultOriginStagingRepository,
-  suffix: string,
-  markdown: string,
-) {
+function ingest(staging: SqliteVaultOriginStagingRepository, suffix: string, markdown: string) {
   const content = new TextEncoder().encode(markdown);
   const contentHash = hash(content);
   return staging.ingest({

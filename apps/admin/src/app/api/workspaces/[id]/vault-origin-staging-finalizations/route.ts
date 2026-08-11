@@ -11,9 +11,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 function requestBody(value: unknown): { vaultStagingDocumentId: string; idempotencyKey: string } {
   const body = requireRecord(value);
   if (
-    Object.keys(body).some(
-      (key) => key !== "vaultStagingDocumentId" && key !== "idempotencyKey",
-    )
+    Object.keys(body).some((key) => key !== "vaultStagingDocumentId" && key !== "idempotencyKey")
   ) {
     throw new RegistryValidationError("Vault-origin finalization request contains unknown fields");
   }

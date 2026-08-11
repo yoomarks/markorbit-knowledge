@@ -367,9 +367,7 @@ export function ensureVaultOriginStagingVerification(database: DatabaseSync): vo
   }
 }
 
-export class SqliteVaultOriginStagingVerificationRepository
-  implements VaultOriginStagingVerificationRepository
-{
+export class SqliteVaultOriginStagingVerificationRepository implements VaultOriginStagingVerificationRepository {
   constructor(
     private readonly database: DatabaseSync,
     private readonly staging: VaultOriginStagingRepository,
@@ -391,7 +389,10 @@ export class SqliteVaultOriginStagingVerificationRepository
     return rows.map((row) => parseDocument(row.document_json));
   }
 
-  getDocument(workspaceIdValue: string, documentIdValue: string): VaultOriginStagingDocumentV1 | null {
+  getDocument(
+    workspaceIdValue: string,
+    documentIdValue: string,
+  ): VaultOriginStagingDocumentV1 | null {
     const workspaceId = required(workspaceIdValue, "workspaceId");
     const documentId = required(documentIdValue, "vaultStagingDocumentId");
     const row = this.database
@@ -589,8 +590,7 @@ export class SqliteVaultOriginStagingVerificationRepository
          WHERE workspace_id = ? AND vault_staging_document_id = ? AND idempotency_key = ?`,
       )
       .get(workspaceId, documentId, input.idempotencyKey) as
-      | { request_digest: string; finalization_id: string }
-      | undefined;
+      { request_digest: string; finalization_id: string } | undefined;
     if (replay) {
       if (replay.request_digest !== digest) {
         throw new RegistryConflictError(

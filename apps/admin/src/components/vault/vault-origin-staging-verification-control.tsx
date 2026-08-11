@@ -123,7 +123,8 @@ export function VaultOriginStagingVerificationControl({ workspaceId }: { workspa
         },
       );
       const body = (await response.json()) as unknown;
-      if (!response.ok) throw new Error(readError(body, `Unable to ${action} Vault-origin Staging`));
+      if (!response.ok)
+        throw new Error(readError(body, `Unable to ${action} Vault-origin Staging`));
       applyLoaded(await loadOverview(workspaceId));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : `Unable to ${action}`);
@@ -141,8 +142,8 @@ export function VaultOriginStagingVerificationControl({ workspaceId }: { workspa
             <h2 className="font-semibold">Vault-origin Staging Verification</h2>
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            只验证 K10 已经写入 Staging CAS 的 immutable copy，不重新读取 Vault。验证会检查 CAS、UTF-8、
-            frontmatter 安全边界，并阻止 Vault 内容伪造 markorbit.* 内部 provenance。
+            只验证 K10 已经写入 Staging CAS 的 immutable copy，不重新读取 Vault。验证会检查
+            CAS、UTF-8、 frontmatter 安全边界，并阻止 Vault 内容伪造 markorbit.* 内部 provenance。
           </p>
         </div>
         <button
@@ -157,8 +158,8 @@ export function VaultOriginStagingVerificationControl({ workspaceId }: { workspa
       </div>
 
       <div className="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-900">
-        K11 不修改 K10 原始导入记录。最终只追加 VERIFIED / BLOCKED finalization evidence；即使 VERIFIED，
-        也不会自动进入现有 Conversion Staging、ReadyPackage 或 Core。
+        K11 不修改 K10 原始导入记录。最终只追加 VERIFIED / BLOCKED finalization evidence；即使
+        VERIFIED， 也不会自动进入现有 Conversion Staging、ReadyPackage 或 Core。
       </div>
 
       {error ? (
@@ -185,7 +186,8 @@ export function VaultOriginStagingVerificationControl({ workspaceId }: { workspa
                     {document.bindingRelativePath}
                   </p>
                   <p className="mt-1 font-mono text-xs text-slate-500">
-                    {document.id} · {shortHash(document.contentHash.value)} · {document.sizeBytes} bytes
+                    {document.id} · {shortHash(document.contentHash.value)} · {document.sizeBytes}{" "}
+                    bytes
                   </p>
                 </div>
                 {finalization ? (
@@ -225,8 +227,8 @@ export function VaultOriginStagingVerificationControl({ workspaceId }: { workspa
               </div>
               {verification ? (
                 <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                  <span className="font-medium">{verification.outcome}</span> · {verification.checks.length}{" "}
-                  checks
+                  <span className="font-medium">{verification.outcome}</span> ·{" "}
+                  {verification.checks.length} checks
                   {verification.warnings.length
                     ? ` · ${verification.warnings.length} warning(s)`
                     : ""}
