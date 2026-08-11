@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { ArtifactKind, RawArtifact } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import { claimSpecificJob } from "@markorbit/persistence/targeted-worker-claim";
 import { dispatchAutomaticConversionForArtifact } from "./raw-artifact-auto-conversion";
 import {
   getCollectionPlanRepository,
@@ -136,7 +137,9 @@ export function artifactKindForManualUploadMime(value: string): ArtifactKind {
   const exact = EXACT_MIME_KIND.get(mimeType);
   if (exact) return exact;
   if (ALLOWED_IMAGE_MIME.has(mimeType)) return "IMAGE";
-  throw new RegistryValidationError(`Manual Upload media type ${mimeType || "(empty)"} is not supported`);
+  throw new RegistryValidationError(
+    `Manual Upload media type ${mimeType || "(empty)"} is not supported`,
+  );
 }
 
 function normalizeExpectedSize(value: number): number {
@@ -156,6 +159,20 @@ function normalizeExpectedSha256(value: string): string {
     throw new RegistryValidationError("Manual Upload requires a lowercase SHA-256 digest");
   }
   return sha256;
+}
+
+async function* boundedChunks(
+  chunks: AsyncIterable<Uint8Array>,
+  maxBytes: number,
+): AsyncIterable<Uint8Array> {
+  let observedBytes = 0;
+  for await (const chunk of chunks) {
+    observedBytes += chunk.byteLength;
+    if (observedBytes > maxBytes) {
+      throw new RegistryValidationError(`Manual Upload exceeds the ${maxBytes} byte limit`);
+    }
+    if (chunk.byteLength > 0) yield chunk;
+  }
 }
 
 function ensureManualConnector(): void {
@@ -191,12 +208,14 @@ function ensureManualConnector(): void {
 function ensureManualSource(workspaceId: string) {
   ensureManualConnector();
   const sources = getSourceRepository();
-  const existing = sources.list({
-    workspaceId,
-    sourceType: "MANUAL_UPLOAD",
-    tag: MANUAL_SOURCE_TAG,
-    limit: 10,
-  }).items.find((source) => source.status === "ACTIVE");
+  const existing = sources
+    .list({
+      workspaceId,
+      sourceType: "MANUAL_UPLOAD",
+      tag: MANUAL_SOURCE_TAG,
+      limit: 10,
+    })
+    .items.find((source) => source.status === "ACTIVE");
   if (existing) return existing;
 
   try {
@@ -218,12 +237,14 @@ function ensureManualSource(workspaceId: string) {
     });
   } catch (error) {
     if (error instanceof RegistryConflictError && error.code === "SOURCE_SLUG_CONFLICT") {
-      const raced = sources.list({
-        workspaceId,
-        sourceType: "MANUAL_UPLOAD",
-        tag: MANUAL_SOURCE_TAG,
-        limit: 10,
-      }).items.find((source) => source.status === "ACTIVE");
+      const raced = sources
+        .list({
+          workspaceId,
+          sourceType: "MANUAL_UPLOAD",
+          tag: MANUAL_SOURCE_TAG,
+          limit: 10,
+        })
+        .items.find((source) => source.status === "ACTIVE");
       if (raced) return raced;
     }
     throw error;
@@ -234,7 +255,8 @@ function ensureManualPlan(workspaceId: string, sourceId: string) {
   const plans = getCollectionPlanRepository();
   const existing = plans.listForSource(sourceId).find(
     ({ plan }) =>
-      plan.status === "ACTIVE" && plan.extensions?.["x-markorbit-system-plan"] === MANUAL_PLAN_MARKER,
+      plan.status === "ACTIVE" &&
+      plan.extensions?.["x-markorbit-system-plan"] === MANUAL_PLAN_MARKER,
   );
   if (existing) return existing.plan;
 
@@ -312,7 +334,10 @@ function completedReplay(
   return artifact;
 }
 
-function autoConversion(artifactId: string, workspaceId: string): ManualUploadResult["autoConversion"] {
+function autoConversion(
+  artifactId: string,
+  workspaceId: string,
+): ManualUploadResult["autoConversion"] {
   try {
     const result = dispatchAutomaticConversionForArtifact(artifactId, workspaceId);
     return { status: result.status };
@@ -332,6 +357,7 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
   const artifactKind = artifactKindForManualUploadMime(mimeType);
   const expectedSizeBytes = normalizeExpectedSize(input.expectedSizeBytes);
   const expectedSha256 = normalizeExpectedSha256(input.expectedSha256);
+  const maximumBytes = manualUploadMaxBytes();
 
   const source = ensureManualSource(workspaceId);
   const plan = ensureManualPlan(workspaceId, source.id);
@@ -341,6 +367,13 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
     idempotencyKey: operationKey("manual-upload-run", workspaceId, idempotencyKey),
   });
   const run = runDispatch.record.run;
+  const targetJob = runDispatch.record.jobs[0];
+  if (!targetJob || runDispatch.record.jobs.length !== 1) {
+    throw new RegistryConflictError(
+      "MANUAL_UPLOAD_JOB_CARDINALITY",
+      "Manual Upload requires exactly one governed Job",
+    );
+  }
 
   if (runDispatch.replayed) {
     const replayedArtifact = completedReplay(workspaceId, run.id, {
@@ -359,11 +392,13 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
         autoConversion: autoConversion(replayedArtifact.id, workspaceId),
       };
     }
-    throw new RegistryConflictError(
-      "MANUAL_UPLOAD_IN_PROGRESS_OR_INCOMPLETE",
-      "This Manual Upload idempotency key already has an unfinished execution",
-      { runId: run.id, status: run.status },
-    );
+    if (run.status !== "PENDING" || targetJob.status !== "PENDING") {
+      throw new RegistryConflictError(
+        "MANUAL_UPLOAD_IN_PROGRESS_OR_INCOMPLETE",
+        "This Manual Upload idempotency key already has an unfinished execution",
+        { runId: run.id, status: run.status, jobStatus: targetJob.status },
+      );
+    }
   }
 
   const workers = getWorkerRegistryRepository();
@@ -402,7 +437,12 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
       },
       credential,
     );
-    const claim = workers.claim(workerId, credential);
+    const claim = claimSpecificJob(
+      getRegistryDatabase(),
+      workerId,
+      credential,
+      targetJob.id,
+    );
     if (!claim.job || !claim.lease || !claim.leaseToken || claim.job.runId !== run.id) {
       throw new RegistryConflictError(
         "MANUAL_UPLOAD_JOB_CLAIM_FAILED",
@@ -443,7 +483,7 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
       leaseId,
       leaseToken,
       sessionId,
-      input.chunks,
+      boundedChunks(input.chunks, maximumBytes),
     );
     executions.markVerifying(workerId, credential, leaseId, leaseToken, {
       idempotencyKey: operationKey("manual-verifying", workspaceId, idempotencyKey),
@@ -470,11 +510,7 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
 
     const currentWorker = workers.getById(workerId);
     if (currentWorker) {
-      workers.update(
-        workerId,
-        { desiredState: "DISABLED" },
-        currentWorker.worker.updatedAt,
-      );
+      workers.update(workerId, { desiredState: "DISABLED" }, currentWorker.worker.updatedAt);
     }
 
     return {
@@ -507,11 +543,7 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
     try {
       const currentWorker = workers.getById(workerId);
       if (currentWorker) {
-        workers.update(
-          workerId,
-          { desiredState: "DISABLED" },
-          currentWorker.worker.updatedAt,
-        );
+        workers.update(workerId, { desiredState: "DISABLED" }, currentWorker.worker.updatedAt);
       }
     } catch {
       // Preserve the primary failure.
