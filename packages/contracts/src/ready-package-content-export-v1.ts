@@ -43,7 +43,7 @@ export type ReadyPackageContentExportV1 = {
 };
 
 const IDS = {
-  readyPackage: /^rdp_[A-Za-z0-9][A-Za-z0-9_-]*$/u,
+  readyPackage: /^rdp_[0-9A-HJKMNP-TV-Z]{26}$/u,
   workspace: /^wsp_[0-9A-HJKMNP-TV-Z]{26}$/u,
   source: /^src_[0-9A-HJKMNP-TV-Z]{26}$/u,
   conversionRun: /^cvr_[0-9A-HJKMNP-TV-Z]{26}$/u,
@@ -73,7 +73,9 @@ function isRfc3339(value: unknown): value is string {
   );
 }
 
-export function isReadyPackageContentExportV1(value: unknown): value is ReadyPackageContentExportV1 {
+export function isReadyPackageContentExportV1(
+  value: unknown,
+): value is ReadyPackageContentExportV1 {
   if (
     !isRecord(value) ||
     !exactKeys(value, [
