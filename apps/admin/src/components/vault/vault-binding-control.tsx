@@ -31,11 +31,20 @@ function readError(body: unknown, fallback: string): string {
   return fallback;
 }
 
-async function requestBinding(workspaceId: string): Promise<VaultBindingResponse> {
-  const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/vault-binding`);
+async function requestBinding(
+  workspaceId: string,
+  signal?: AbortSignal,
+): Promise<VaultBindingResponse> {
+  const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/vault-binding`, {
+    signal,
+  });
   const body = (await response.json()) as VaultBindingResponse | ApiError;
   if (!response.ok) throw new Error(readError(body, "Unable to load Vault binding"));
   return body as VaultBindingResponse;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function statusTone(binding: VaultBindingV1 | null): string {
@@ -58,17 +67,20 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  function applyResponse(result: VaultBindingResponse): void {
+    setBinding(result.binding);
+    setFilesystem(result.filesystem);
+    if (result.binding) {
+      setName(result.binding.name);
+      setRelativeRoot(result.binding.relativeRoot);
+    }
+  }
+
   async function refresh() {
     setLoading(true);
     setError(null);
     try {
-      const result = await requestBinding(workspaceId);
-      setBinding(result.binding);
-      setFilesystem(result.filesystem);
-      if (result.binding) {
-        setName(result.binding.name);
-        setRelativeRoot(result.binding.relativeRoot);
-      }
+      applyResponse(await requestBinding(workspaceId));
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : "Unable to load Vault binding",
@@ -79,9 +91,22 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
   }
 
   useEffect(() => {
-    void refresh();
-    // workspaceId is the complete identity scope for this control.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const controller = new AbortController();
+    void requestBinding(workspaceId, controller.signal)
+      .then((result) => {
+        applyResponse(result);
+        setError(null);
+      })
+      .catch((requestError: unknown) => {
+        if (isAbortError(requestError)) return;
+        setError(
+          requestError instanceof Error ? requestError.message : "Unable to load Vault binding",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
   }, [workspaceId]);
 
   async function saveBinding() {
@@ -103,9 +128,7 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
       );
       const body = (await response.json()) as VaultBindingResponse | ApiError;
       if (!response.ok) throw new Error(readError(body, "Unable to save Vault binding"));
-      const result = body as VaultBindingResponse;
-      setBinding(result.binding);
-      setFilesystem(result.filesystem);
+      applyResponse(body as VaultBindingResponse);
       setMessage("Vault binding 已持久化；后续 Export/Import 只能在该 Workspace 绑定边界内执行。");
     } catch (requestError) {
       setError(
@@ -133,9 +156,7 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
       );
       const body = (await response.json()) as VaultBindingResponse | ApiError;
       if (!response.ok) throw new Error(readError(body, "Unable to update Vault binding status"));
-      const result = body as VaultBindingResponse;
-      setBinding(result.binding);
-      setFilesystem(result.filesystem);
+      applyResponse(body as VaultBindingResponse);
       setMessage(
         nextStatus === "ACTIVE"
           ? "Vault binding 已启用。"
