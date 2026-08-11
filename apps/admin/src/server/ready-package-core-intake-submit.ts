@@ -126,11 +126,7 @@ export async function submitReadyPackageCoreIntake(
     ? requireCoreWorkspaceBinding(prepared.submission.coreWorkspaceId)
     : null;
   const request = frozenCoreWorkspaceId
-    ? createCoreIntakeRequest(
-        readyPackage,
-        prepared.submission.submittedAt,
-        frozenCoreWorkspaceId,
-      )
+    ? createCoreIntakeRequest(readyPackage, prepared.submission.submittedAt, frozenCoreWorkspaceId)
     : null;
 
   if (!persistedTransportResult && !request) {
