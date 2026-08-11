@@ -1,0 +1,50 @@
+name: Agent R1-K15 README
+
+on:
+  push:
+    branches:
+      - r1-k15-v2-delivery-audit-timeline
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r1-k15-v2-delivery-audit-timeline
+      - name: Update K15 capability status
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('README.md')
+          s = p.read_text()
+
+          anchor = '- durable ReadyPackage V2 Delivery Protocol V1 foundation with explicit freeze-before-network preparation, exact-request/idempotency retry, transport-result-before-finalization recovery and a dedicated V2-only outbound capability gate that forbids reuse of the frozen Core V1 endpoint;\n'
+          addition = anchor + '- append-only ReadyPackage V2 delivery audit timeline with migration 0031, atomic state/event persistence, bounded unknown-outcome evidence, K14 PREPARED backfill and Admin recovery history without exposing request bodies, Markdown, URLs, secrets or idempotency keys;\n'
+          if anchor not in s:
+              raise SystemExit('capability anchor not found')
+          s = s.replace(anchor, addition, 1)
+
+          old = 'ReadyPackage V1 and Content Export V1 remain conversion-origin contracts; ReadyPackage V2 and Content Export V2 preserve the explicit Vault provenance chain and K14 can durably freeze their V2 delivery request, but outbound V2 transport remains disabled unless a dedicated V2 endpoint and protocol declaration are explicitly configured, and V2 is never sent through the frozen Core V1 consumer boundary.'
+          new = 'ReadyPackage V1 and Content Export V1 remain conversion-origin contracts; ReadyPackage V2 and Content Export V2 preserve the explicit Vault provenance chain, K14 can durably freeze their V2 delivery request, and K15 adds an append-only recovery timeline around explicit delivery attempts without changing those frozen bytes. Outbound V2 transport remains disabled unless a dedicated V2 endpoint and protocol declaration are explicitly configured, and V2 is never sent through the frozen Core V1 consumer boundary.'
+          if old not in s:
+              raise SystemExit('status paragraph anchor not found')
+          s = s.replace(old, new, 1)
+
+          link = '- [ReadyPackage V2 Delivery Protocol V1](docs/architecture/READY_PACKAGE_V2_DELIVERY_V1.md)\n'
+          link_addition = link + '- [ReadyPackage V2 Delivery Audit Timeline V1](docs/architecture/READY_PACKAGE_V2_DELIVERY_AUDIT_V1.md)\n'
+          if link not in s:
+              raise SystemExit('documentation anchor not found')
+          s = s.replace(link, link_addition, 1)
+
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          git commit -m 'docs(r1-k15): publish V2 delivery audit status'
+          git push origin HEAD:r1-k15-v2-delivery-audit-timeline
