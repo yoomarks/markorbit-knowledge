@@ -62,13 +62,15 @@ The repository now contains:
 - controlled READY-Staging Markdown projection primitive for local Obsidian Vault files with traversal and symlink protections;
 - persistent Workspace-scoped Vault Binding V1 with portable relative-root policy, optimistic revisions and explicit ACTIVE/DISABLED state;
 - durable explicit Vault Export V1 with PENDING-before-write evidence, frozen destination identity, post-write reconciliation, projection receipts and no silent overwrite of different content;
-- Vault admin controls for binding, filesystem-root readiness, explicit single-document export and recent export history without exposing the deployment absolute path;
+- explicit read-only Vault Inspection V1 that classifies Markdown as UNCHANGED, IMPORT_CANDIDATE, CONFLICT or MISSING with bounded hash/frontmatter/Wiki Link evidence and no filesystem mutation;
+- reviewed Vault Import Intent V1 that freezes operator-approved IMPORT_CANDIDATE evidence as immutable PENDING_EXECUTION authorization without reading Vault bytes or mutating Staging;
+- Vault admin controls for binding, filesystem-root readiness, explicit export, read-only inspection and reviewed import intent without exposing the deployment absolute path;
 - real execution evidence timeline in the Runs administration UI;
 - versioned migrations, optimistic concurrency and secret exclusion;
 - fixture-only previews for modules that have not reached production runtime implementation;
 - architecture boundaries, compatibility policy and Node 22/24 CI.
 
-Production web acquisition now exists for bounded HTML/Markdown collection. An operator can explicitly export one verified READY Staging document through its ACTIVE Workspace Vault binding with durable crash-recovery evidence. Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, retry creation, Vault import/readback/two-way synchronization, automatic conflict merge and MarkOrbit Core semantic logic are not implemented yet. No automatic Vault synchronization is authorized.
+Production web acquisition now exists for bounded HTML/Markdown collection. An operator can explicitly export one verified READY Staging document through its ACTIVE Workspace Vault binding with durable crash-recovery evidence, inspect bound Vault Markdown without mutation, and record a reviewed import intent for an observed untracked candidate. Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, actual Vault-to-Staging import execution, automatic conflict merge and two-way synchronization, and MarkOrbit Core semantic logic are not implemented yet. No automatic Vault synchronization is authorized.
 
 Lifecycle meanings are deliberately distinct:
 
@@ -196,6 +198,8 @@ pnpm check
 - [ConversionRun Ledger](docs/architecture/CONVERSION_RUN_LEDGER.md)
 - [Obsidian Vault Binding V1](docs/architecture/OBSIDIAN_VAULT_BINDING_V1.md)
 - [Obsidian Vault Export V1](docs/architecture/OBSIDIAN_VAULT_EXPORT_V1.md)
+- [Obsidian Vault Inspection V1](docs/architecture/OBSIDIAN_VAULT_INSPECTION_V1.md)
+- [Obsidian Vault Import Intent V1](docs/architecture/OBSIDIAN_VAULT_IMPORT_INTENT_V1.md)
 - [Persistence and Source Registry](docs/architecture/PERSISTENCE_AND_SOURCE_REGISTRY.md)
 - [Connector Registry](docs/architecture/CONNECTOR_REGISTRY.md)
 - [CollectionPlan Registry](docs/architecture/COLLECTION_PLAN_REGISTRY.md)
