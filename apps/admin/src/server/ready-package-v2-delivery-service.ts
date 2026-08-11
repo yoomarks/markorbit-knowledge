@@ -136,7 +136,10 @@ export class ReadyPackageV2DeliveryService {
   private diagnose(
     workspaceId: string,
     submission: ReadyPackageV2DeliverySubmission,
-  ): { diagnosis: ReadyPackageV2DeliveryDiagnosis; auditEvents: ReadyPackageV2DeliveryAuditEvent[] } {
+  ): {
+    diagnosis: ReadyPackageV2DeliveryDiagnosis;
+    auditEvents: ReadyPackageV2DeliveryAuditEvent[];
+  } {
     const auditEvents = this.dependencies.deliveries.listAuditEvents(
       workspaceId,
       submission.submissionId,

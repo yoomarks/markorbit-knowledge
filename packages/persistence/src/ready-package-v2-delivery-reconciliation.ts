@@ -89,15 +89,17 @@ function inconsistent(
 
 function sameResultEvidence(
   event: ReadyPackageV2DeliveryAuditEvent,
-  result: ReadyPackageV2DeliverySubmission["transportResult"] | ReadyPackageV2DeliverySubmission["result"],
+  result:
+    | ReadyPackageV2DeliverySubmission["transportResult"]
+    | ReadyPackageV2DeliverySubmission["result"],
 ): boolean {
   return Boolean(
     result &&
-      result.deliveryId === event.submissionId &&
-      result.readyPackageId === event.readyPackageId &&
-      result.requestSha256 === event.requestSha256 &&
-      result.status === event.resultStatus &&
-      result.recordedAt === event.recordedAt,
+    result.deliveryId === event.submissionId &&
+    result.readyPackageId === event.readyPackageId &&
+    result.requestSha256 === event.requestSha256 &&
+    result.status === event.resultStatus &&
+    result.recordedAt === event.recordedAt,
   );
 }
 
@@ -337,11 +339,7 @@ export function diagnoseReadyPackageV2Delivery(
     );
   }
   if (auditEvents.filter((event) => event.type === "PREPARED").length !== 1) {
-    issue(
-      issues,
-      "AUDIT_PREPARED_CARDINALITY_INVALID",
-      "Exactly one PREPARED event is required",
-    );
+    issue(issues, "AUDIT_PREPARED_CARDINALITY_INVALID", "Exactly one PREPARED event is required");
   }
 
   if (submission.transportAttempts !== transportAttemptCount) {
@@ -385,7 +383,10 @@ export function diagnoseReadyPackageV2Delivery(
   }
 
   if (finalized) {
-    if (submission.state !== "RESULT_RECORDED" || !sameResultEvidence(finalized, submission.result)) {
+    if (
+      submission.state !== "RESULT_RECORDED" ||
+      !sameResultEvidence(finalized, submission.result)
+    ) {
       issue(
         issues,
         "SUBMISSION_FINALIZATION_MISMATCH",

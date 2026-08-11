@@ -126,7 +126,8 @@ function actionLabel(action: RecommendedAction): string {
   if (action === "RETRY_EXACT_FROZEN_REQUEST") return "仅重试完全相同的冻结请求";
   if (action === "FINALIZE_LOCALLY_NO_NETWORK") return "仅执行本地 Finalization，不再外发";
   if (action === "NONE_DELIVERED") return "无需操作";
-  if (action === "OPERATOR_REVIEW_CONSUMER_REJECTION") return "人工审查 Consumer 拒绝原因；不要自动重试";
+  if (action === "OPERATOR_REVIEW_CONSUMER_REJECTION")
+    return "人工审查 Consumer 拒绝原因；不要自动重试";
   return "阻断自动化并人工核验证据；不要修补或自动重试";
 }
 
@@ -274,7 +275,8 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
           <ShieldAlert className="mt-0.5 shrink-0" size={17} aria-hidden="true" />
           <p>
             V2 仍绝不会复用现有 V1 Core intake URL。诊断只读取冻结元数据与有限 audit evidence；不会
-            暴露 URL、密钥、idempotency key、Markdown 或 request body。证据不一致时所有外发操作均被阻断。
+            暴露 URL、密钥、idempotency key、Markdown 或 request
+            body。证据不一致时所有外发操作均被阻断。
           </p>
         </div>
       </div>
@@ -359,7 +361,8 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
                             建议动作：{actionLabel(diagnosis.recommendedAction)}
                           </p>
                           <p className="mt-1 text-[11px] text-slate-500">
-                            evidence: {diagnosis.evidence.auditEventCount} events · {diagnosis.evidence.transportAttemptCount} attempts
+                            evidence: {diagnosis.evidence.auditEventCount} events ·{" "}
+                            {diagnosis.evidence.transportAttemptCount} attempts
                             {diagnosis.evidence.consumerResultStatus
                               ? ` · consumer ${diagnosis.evidence.consumerResultStatus}`
                               : ""}
@@ -375,7 +378,10 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
                                   className="break-words font-mono text-[11px] leading-5 text-rose-800"
                                 >
                                   {diagnosticIssue.code}
-                                  {diagnosticIssue.sequence ? ` @ #${diagnosticIssue.sequence}` : ""}: {diagnosticIssue.message}
+                                  {diagnosticIssue.sequence
+                                    ? ` @ #${diagnosticIssue.sequence}`
+                                    : ""}
+                                  : {diagnosticIssue.message}
                                 </p>
                               ))}
                             </div>

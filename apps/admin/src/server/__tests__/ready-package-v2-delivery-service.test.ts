@@ -68,7 +68,9 @@ function auditEvent(
     sequence,
     type,
     requestSha256: REQUEST_SHA,
-    recordedAt: new Date(Date.parse("2026-08-11T16:30:00.000Z") + (sequence - 1) * 60_000).toISOString(),
+    recordedAt: new Date(
+      Date.parse("2026-08-11T16:30:00.000Z") + (sequence - 1) * 60_000,
+    ).toISOString(),
     ...overrides,
   };
 }
@@ -77,7 +79,10 @@ function preparedAudit(): ReadyPackageV2DeliveryAuditEvent {
   return auditEvent(1, "PREPARED");
 }
 
-function resultEvidence(recordedAt: string, status: "RECEIVED" | "ACCEPTED" | "REJECTED" = "RECEIVED") {
+function resultEvidence(
+  recordedAt: string,
+  status: "RECEIVED" | "ACCEPTED" | "REJECTED" = "RECEIVED",
+) {
   return {
     protocolVersion: "1.0" as const,
     objectType: "READY_PACKAGE_V2_DELIVERY_RESULT" as const,
@@ -103,7 +108,10 @@ function deliveryRepository(overrides: Record<string, unknown> = {}) {
   } as never;
 }
 
-function serviceWithDeliveries(deliveries: ReturnType<typeof deliveryRepository>, transportSubmit = vi.fn()) {
+function serviceWithDeliveries(
+  deliveries: ReturnType<typeof deliveryRepository>,
+  transportSubmit = vi.fn(),
+) {
   return new ReadyPackageV2DeliveryService({
     readyPackages: {} as never,
     canonical: {} as never,
@@ -292,7 +300,9 @@ describe("ReadyPackage V2 delivery service", () => {
       transportSubmit,
     );
 
-    await expect(service.submit(WORKSPACE, PACKAGE)).rejects.toThrowError(/evidence is inconsistent/u);
+    await expect(service.submit(WORKSPACE, PACKAGE)).rejects.toThrowError(
+      /evidence is inconsistent/u,
+    );
     expect(transportSubmit).not.toHaveBeenCalled();
   });
 
