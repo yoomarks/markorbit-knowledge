@@ -1,0 +1,44 @@
+name: Agent R1-K10 Format
+
+on:
+  push:
+    branches:
+      - r1-k10-vault-import-execution
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r1-k10-vault-import-execution
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Format K10 files
+        run: |
+          pnpm exec prettier --write \
+            apps/admin/src/components/vault/vault-import-execution-control.tsx \
+            apps/admin/src/server/__tests__/vault-import-execution-service.test.ts \
+            apps/admin/src/server/vault-import-execution-service.ts \
+            packages/persistence/src/vault-import-execution-registry.test.ts \
+            packages/persistence/src/vault-import-execution-registry.ts
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/admin/src/components/vault/vault-import-execution-control.tsx \
+            apps/admin/src/server/__tests__/vault-import-execution-service.test.ts \
+            apps/admin/src/server/vault-import-execution-service.ts \
+            packages/persistence/src/vault-import-execution-registry.test.ts \
+            packages/persistence/src/vault-import-execution-registry.ts
+          git commit -m "chore(r1-k10): format Vault import execution"
+          git push origin HEAD:r1-k10-vault-import-execution
