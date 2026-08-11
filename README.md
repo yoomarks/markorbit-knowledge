@@ -66,13 +66,14 @@ The repository now contains:
 - reviewed Vault Import Intent V1 that freezes operator-approved IMPORT_CANDIDATE evidence as immutable PENDING_EXECUTION authorization without reading Vault bytes or mutating Staging;
 - retry-safe explicit Vault Import Execution V1 that persists PENDING before the reviewed live-file read, revalidates frozen size/SHA-256, records dedicated Vault-origin Staging provenance as IMPORTED_UNVERIFIED and recovers across Staging/receipt/finalization crash windows;
 - dedicated Vault-origin Staging Verification V1 that verifies only the immutable K10 CAS copy, blocks spoofed `markorbit.*` provenance, persists immutable verification evidence and separately finalizes each imported document as VERIFIED or BLOCKED;
-- Vault admin controls for binding, filesystem-root readiness, explicit export, read-only inspection, reviewed import intent, explicit import execution and Vault-origin verification/finalization without exposing the deployment absolute path;
+- provenance-preserving Canonical Downstream Document V1 that promotes only K11 VERIFIED Vault-origin content while freezing the K08 inspection → K09 review → K10 execution → K11 verification/finalization chain without fabricating conversion provenance;
+- Vault admin controls for binding, filesystem-root readiness, explicit export, read-only inspection, reviewed import intent, explicit import execution, Vault-origin verification/finalization and explicit canonical downstream promotion without exposing the deployment absolute path;
 - real execution evidence timeline in the Runs administration UI;
 - versioned migrations, optimistic concurrency and secret exclusion;
 - fixture-only previews for modules that have not reached production runtime implementation;
 - architecture boundaries, compatibility policy and Node 22/24 CI.
 
-Production web acquisition now exists for bounded HTML/Markdown collection. An operator can explicitly export one verified READY Staging document through its ACTIVE Workspace Vault binding with durable crash-recovery evidence, inspect bound Vault Markdown without mutation, record a reviewed import intent for an observed untracked candidate, explicitly execute that exact reviewed candidate into dedicated `IMPORTED_UNVERIFIED` Vault-origin Staging after live size/SHA-256 revalidation, and then verify/finalize the immutable Staging CAS copy without rereading the Vault. Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, provenance-preserving promotion of VERIFIED Vault-origin content into existing READY/ReadyPackage workflows, automatic conflict merge and two-way synchronization, and MarkOrbit Core semantic logic are not implemented yet. No automatic Vault synchronization is authorized.
+Production web acquisition now exists for bounded HTML/Markdown collection. An operator can explicitly export one verified READY Staging document through its ACTIVE Workspace Vault binding with durable crash-recovery evidence, inspect bound Vault Markdown without mutation, record a reviewed import intent for an observed untracked candidate, explicitly execute that exact reviewed candidate into dedicated `IMPORTED_UNVERIFIED` Vault-origin Staging after live size/SHA-256 revalidation, verify/finalize the immutable Staging CAS copy without rereading the Vault, and explicitly promote a K11 VERIFIED document into a provenance-preserving Canonical Downstream Document. Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, Vault-origin ReadyPackage/Core delivery, automatic conflict merge and two-way synchronization, and MarkOrbit Core semantic logic are not implemented yet. ReadyPackage V1 and Content Export V1 remain conversion-origin contracts; K12 does not fabricate Source, RawArtifact, ConversionRun, Worker or Converter identities to force Vault-origin content through them. No automatic Vault synchronization is authorized.
 
 Lifecycle meanings are deliberately distinct:
 
@@ -204,6 +205,7 @@ pnpm check
 - [Obsidian Vault Import Intent V1](docs/architecture/OBSIDIAN_VAULT_IMPORT_INTENT_V1.md)
 - [Obsidian Vault Import Execution V1](docs/architecture/OBSIDIAN_VAULT_IMPORT_EXECUTION_V1.md)
 - [Obsidian Vault-origin Staging Verification V1](docs/architecture/OBSIDIAN_VAULT_ORIGIN_STAGING_VERIFICATION_V1.md)
+- [Canonical Downstream Document V1](docs/architecture/CANONICAL_DOWNSTREAM_DOCUMENT_V1.md)
 - [Persistence and Source Registry](docs/architecture/PERSISTENCE_AND_SOURCE_REGISTRY.md)
 - [Connector Registry](docs/architecture/CONNECTOR_REGISTRY.md)
 - [CollectionPlan Registry](docs/architecture/COLLECTION_PLAN_REGISTRY.md)
