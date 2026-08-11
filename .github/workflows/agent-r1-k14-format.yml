@@ -1,0 +1,42 @@
+name: Agent R1-K14 Format
+
+on:
+  push:
+    branches:
+      - r1-k14-ready-package-v2-delivery-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r1-k14-ready-package-v2-delivery-foundation
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format K14 files
+        run: |
+          pnpm exec prettier --write \
+            apps/admin/src/components/vault/ready-package-v2-delivery-control.tsx \
+            apps/admin/src/server/__tests__/ready-package-v2-delivery-http-transport.test.ts \
+            apps/admin/src/server/__tests__/ready-package-v2-delivery-service.test.ts \
+            apps/admin/src/server/ready-package-v2-delivery-http-transport.ts \
+            apps/admin/src/server/ready-package-v2-delivery-service.ts \
+            packages/persistence/src/ready-package-v2-delivery-submission.test.ts \
+            packages/persistence/src/ready-package-v2-delivery-submission.ts
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add --all
+          git diff --cached --quiet && exit 0
+          git commit -m 'chore(r1-k14): format V2 delivery foundation'
+          git push origin HEAD:r1-k14-ready-package-v2-delivery-foundation
