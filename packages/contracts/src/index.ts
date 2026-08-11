@@ -54,3 +54,4 @@ export * from "./core-intake-v1";
 export * from "./vault-binding-v1";
 export * from "./vault-export-v1";
 export * from "./vault-inspection-v1";
+export * from "./vault-import-intent-v1";
