@@ -1,5 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-import { HttpCoreContentTransport } from "../core-content-http-transport";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  coreContentTransportReadiness,
+  HttpCoreContentTransport,
+} from "../core-content-http-transport";
 
 const intakeUrl = "http://127.0.0.1:4101/internal/knowledge/ready-packages/intakes";
 const intakeId = "01900000-0000-7000-8000-000000000001";
@@ -14,7 +17,26 @@ function response(body: unknown, status = 200): Response {
   });
 }
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe("Core content HTTP transport", () => {
+  it("reports content readiness from destination and auth without requiring a workspace binding", () => {
+    vi.stubEnv("MARKORBIT_CORE_INTAKE_URL", intakeUrl);
+    vi.stubEnv("MARKORBIT_CORE_INTERNAL_SECRET", "secret");
+    expect(coreContentTransportReadiness()).toEqual({ configured: true, issueCode: null });
+  });
+
+  it("reports missing content auth without exposing the secret or destination", () => {
+    vi.stubEnv("MARKORBIT_CORE_INTAKE_URL", intakeUrl);
+    vi.stubEnv("MARKORBIT_CORE_INTERNAL_SECRET", "");
+    expect(coreContentTransportReadiness()).toEqual({
+      configured: false,
+      issueCode: "CORE_CONTENT_TRANSPORT_AUTH_NOT_CONFIGURED",
+    });
+  });
+
   it("posts the exact frozen JSON to the intake content endpoint with internal auth", async () => {
     const fetchImpl = vi.fn(async (url: URL | RequestInfo, init?: RequestInit) => {
       expect(String(url)).toBe(`${intakeUrl}/${intakeId}/content`);
