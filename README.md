@@ -53,6 +53,7 @@ The repository now contains:
 - USPTO trademark Golden Source bootstrap for a first controlled official-source collection path;
 - explicit reconciliation that fails started work when its lease expires;
 - immutable RawArtifact ingestion, SHA-256 verification and local content-addressed storage;
+- governed Workspace-scoped Manual Upload with bounded media/size policy, exact SHA-256 identity, targeted Job leases, idempotent replay, immutable RawArtifact provenance and Admin UI;
 - real RawArtifact provenance, ingestion evidence and controlled-download administration;
 - immutable semantic-versioned ConverterManifest administration;
 - persisted Conversion Profiles with exact-version and input/output compatibility enforcement;
@@ -76,7 +77,7 @@ The repository now contains:
 - fixture-only previews for modules that have not reached production runtime implementation;
 - architecture boundaries, compatibility policy and Node 22/24 CI.
 
-Production web acquisition now exists for bounded HTML/Markdown collection. An operator can explicitly export one verified READY Staging document through its ACTIVE Workspace Vault binding with durable crash-recovery evidence, inspect bound Vault Markdown without mutation, record a reviewed import intent for an observed untracked candidate, explicitly execute that exact reviewed candidate into dedicated `IMPORTED_UNVERIFIED` Vault-origin Staging after live size/SHA-256 revalidation, verify/finalize the immutable Staging CAS copy without rereading the Vault, explicitly promote a K11 VERIFIED document into a provenance-preserving Canonical Downstream Document, explicitly package that canonical record as ReadyPackage V2, and read a deterministic Content Export V2 after immutable CAS revalidation. Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, a verified/implemented Core ReadyPackage V2 receiver, automatic conflict merge and two-way synchronization, and MarkOrbit Core semantic logic are not implemented yet. ReadyPackage V1 and Content Export V1 remain conversion-origin contracts; ReadyPackage V2 and Content Export V2 preserve the explicit Vault provenance chain, K14 can durably freeze their V2 delivery request, and K15 adds an append-only recovery timeline around explicit delivery attempts without changing those frozen bytes. Outbound V2 transport remains disabled unless a dedicated V2 endpoint and protocol declaration are explicitly configured, and V2 is never sent through the frozen Core V1 consumer boundary. No automatic Vault synchronization is authorized.
+Production web acquisition and governed Workspace-scoped Manual Upload now exist for bounded acquisition. An operator can explicitly export one verified READY Staging document through its ACTIVE Workspace Vault binding with durable crash-recovery evidence, inspect bound Vault Markdown without mutation, record a reviewed import intent for an observed untracked candidate, explicitly execute that exact reviewed candidate into dedicated `IMPORTED_UNVERIFIED` Vault-origin Staging after live size/SHA-256 revalidation, verify/finalize the immutable Staging CAS copy without rereading the Vault, explicitly promote a K11 VERIFIED document into a provenance-preserving Canonical Downstream Document, explicitly package that canonical record as ReadyPackage V2, and read a deterministic Content Export V2 after immutable CAS revalidation. Local Folder ingestion, automatic scheduling, a verified/implemented Core ReadyPackage V2 receiver, automatic conflict merge and two-way synchronization, and MarkOrbit Core semantic logic are not implemented yet. ReadyPackage V1 and Content Export V1 remain conversion-origin contracts; ReadyPackage V2 and Content Export V2 preserve the explicit Vault provenance chain, K14 can durably freeze their V2 delivery request, and K15 adds an append-only recovery timeline around explicit delivery attempts without changing those frozen bytes. Outbound V2 transport remains disabled unless a dedicated V2 endpoint and protocol declaration are explicitly configured, and V2 is never sent through the frozen Core V1 consumer boundary. No automatic Vault synchronization is authorized.
 
 Lifecycle meanings are deliberately distinct:
 
@@ -198,6 +199,7 @@ pnpm check
 - [Execution Lifecycle Protocol v1](docs/architecture/EXECUTION_LIFECYCLE_PROTOCOL_V1.md)
 - [Controlled Worker execution](docs/architecture/WORKER_EXECUTION_PROTOCOL_V1.md)
 - [Artifact Ingestion Protocol v1](docs/architecture/ARTIFACT_INGESTION_PROTOCOL_V1.md)
+- [Manual Upload Ingestion V1](docs/architecture/MANUAL_UPLOAD_INGESTION_V1.md)
 - [Conversion Control v1](docs/architecture/CONVERSION_CONTROL_V1.md)
 - [Conversion Execution & Staging Output Protocol v1](docs/architecture/CONVERSION_EXECUTION_PROTOCOL_V1.md)
 - [Conversion Runtime Protocol v1](docs/architecture/CONVERSION_RUNTIME_PROTOCOL_V1.md)
