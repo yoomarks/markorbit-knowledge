@@ -1,16 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RefreshCw, Send, ShieldAlert, Snowflake } from "lucide-react";
+import { History, RefreshCw, Send, ShieldAlert, Snowflake } from "lucide-react";
 import type { ReadyPackageV2 } from "@markorbit/contracts";
 
 type DeliveryStage =
-  "NOT_PREPARED" | "PREPARED" | "OUTCOME_UNKNOWN" | "FINALIZATION_PENDING" | "DELIVERED";
+  | "NOT_PREPARED"
+  | "PREPARED"
+  | "OUTCOME_UNKNOWN"
+  | "FINALIZATION_PENDING"
+  | "DELIVERED";
 
 type ResultEvidence = {
   status: "RECEIVED" | "ACCEPTED" | "REJECTED";
   recordedAt: string;
   requestSha256: string;
+};
+
+type AuditEvent = {
+  workspaceId: string;
+  submissionId: string;
+  readyPackageId: string;
+  sequence: number;
+  type:
+    | "PREPARED"
+    | "TRANSPORT_ATTEMPT_STARTED"
+    | "TRANSPORT_OUTCOME_UNKNOWN"
+    | "TRANSPORT_RESULT_RECORDED"
+    | "FINALIZED";
+  requestSha256: string;
+  recordedAt: string;
+  attemptNumber?: number;
+  issueCode?: string;
+  httpStatus?: number;
+  resultStatus?: "RECEIVED" | "ACCEPTED" | "REJECTED";
 };
 
 type Submission = {
@@ -34,6 +57,7 @@ type OverviewItem = {
   readyPackage: ReadyPackageV2;
   stage: DeliveryStage;
   submission: Submission | null;
+  auditEvents: AuditEvent[];
   outboundTransport: { configured: boolean; issueCode: string | null };
 };
 
@@ -63,12 +87,45 @@ function shortHash(value: string): string {
   return `${value.slice(0, 10)}…${value.slice(-8)}`;
 }
 
-function stageLabel(stage: DeliveryStage): string {
+function stageLabel(stage: DeliveryStage, status?: ResultEvidence["status"]): string {
   if (stage === "NOT_PREPARED") return "未冻结";
   if (stage === "PREPARED") return "已冻结 · 未发送";
   if (stage === "OUTCOME_UNKNOWN") return "结果未知 · 可原样重试";
   if (stage === "FINALIZATION_PENDING") return "Transport 已落盘 · 待本地收敛";
-  return "Delivery 已记录";
+  return status ? `Delivery 已记录 · ${status}` : "Delivery 已记录";
+}
+
+function auditLabel(event: AuditEvent): string {
+  if (event.type === "PREPARED") return "冻结请求";
+  if (event.type === "TRANSPORT_ATTEMPT_STARTED") {
+    return `Transport attempt #${event.attemptNumber ?? "?"} 已开始`;
+  }
+  if (event.type === "TRANSPORT_OUTCOME_UNKNOWN") {
+    return `Attempt #${event.attemptNumber ?? "?"} 结果未知`;
+  }
+  if (event.type === "TRANSPORT_RESULT_RECORDED") {
+    return `Transport result 已落盘 · ${event.resultStatus ?? "—"}`;
+  }
+  return `本地 Finalization 完成 · ${event.resultStatus ?? "—"}`;
+}
+
+function auditDetail(event: AuditEvent): string | null {
+  if (event.type === "TRANSPORT_OUTCOME_UNKNOWN") {
+    return `${event.issueCode ?? "UNKNOWN"}${event.httpStatus ? ` · ${event.httpStatus}` : ""}`;
+  }
+  if (
+    event.attemptNumber !== undefined &&
+    (event.type === "TRANSPORT_RESULT_RECORDED" || event.type === "FINALIZED")
+  ) {
+    return `attempt #${event.attemptNumber}`;
+  }
+  return null;
+}
+
+function auditTimestamp(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("zh-CN", { hour12: false });
 }
 
 async function loadOverview(workspaceId: string): Promise<Overview> {
@@ -162,9 +219,8 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
             <h2 className="font-semibold">ReadyPackage V2 Delivery</h2>
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            K14 将 V2 delivery 分成冻结与提交两个显式动作。冻结时锁定 Core Workspace、完整 Content
-            Export V2、提交时间、request SHA-256 与 idempotency
-            identity；之后任何重试都只能发送同一份字节。
+            K15 在 K14 的冻结/提交恢复语义之上增加 append-only audit timeline。每次冻结、发送尝试、
+            unknown outcome、transport result 落盘与本地 finalization 都留下不可变、无敏感正文的恢复证据。
           </p>
         </div>
         <button
@@ -182,9 +238,9 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
         <div className="flex items-start gap-2">
           <ShieldAlert className="mt-0.5 shrink-0" size={17} aria-hidden="true" />
           <p>
-            V2 绝不会复用现有 V1 Core intake URL。只有独立的
-            `MARKORBIT_CORE_V2_DELIVERY_URL`、内部密钥和 `MARKORBIT_CORE_V2_PROTOCOL_VERSION=1.0`
-            同时明确配置时，提交按钮才允许产生网络请求。K14 不修改 Core。
+            V2 仍绝不会复用现有 V1 Core intake URL。Audit 只记录 sequence、时间、attempt、request
+            SHA、有限 issue code/status；不会记录 URL、密钥、idempotency key、Markdown、request body
+            或任意异常文本。K15 不修改 Core。
           </p>
         </div>
       </div>
@@ -227,23 +283,61 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
                     {item.readyPackage.id}
                   </p>
                   <p className="mt-1 text-xs font-medium text-slate-600">
-                    {stageLabel(item.stage)}
+                    {stageLabel(item.stage, submission?.result?.status)}
                   </p>
                   <p className="mt-1 font-mono text-[11px] text-slate-500">
                     package digest {shortHash(item.readyPackage.evidence.digest)}
                   </p>
                   {submission ? (
-                    <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                      <p className="break-all">delivery {submission.submissionId}</p>
-                      <p className="break-all">Core Workspace {submission.coreWorkspaceId}</p>
-                      <p>request {shortHash(submission.requestSha256)}</p>
-                      <p>content export {shortHash(submission.contentExportSha256)}</p>
-                      <p>transport attempts {submission.transportAttempts}</p>
-                      <p>
-                        result{" "}
-                        {submission.result?.status ?? submission.transportResult?.status ?? "—"}
-                      </p>
-                    </div>
+                    <>
+                      <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                        <p className="break-all">delivery {submission.submissionId}</p>
+                        <p className="break-all">Core Workspace {submission.coreWorkspaceId}</p>
+                        <p>request {shortHash(submission.requestSha256)}</p>
+                        <p>content export {shortHash(submission.contentExportSha256)}</p>
+                        <p>transport attempts {submission.transportAttempts}</p>
+                        <p>
+                          result{" "}
+                          {submission.result?.status ?? submission.transportResult?.status ?? "—"}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                          <History size={15} aria-hidden="true" />
+                          Delivery audit timeline
+                        </div>
+                        <div className="mt-3 space-y-2">
+                          {item.auditEvents.length ? (
+                            item.auditEvents.map((event) => {
+                              const detail = auditDetail(event);
+                              return (
+                                <div
+                                  key={`${event.submissionId}:${event.sequence}`}
+                                  className="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-white px-3 py-2 text-xs"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-slate-800">
+                                      #{event.sequence} · {auditLabel(event)}
+                                    </p>
+                                    {detail ? (
+                                      <p className="mt-0.5 break-all font-mono text-[11px] text-slate-500">
+                                        {detail}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  <time className="shrink-0 text-[11px] text-slate-500">
+                                    {auditTimestamp(event.recordedAt)}
+                                  </time>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="text-xs text-slate-500">尚无 audit event。</p>
+                          )}
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <p className="mt-3 text-xs text-slate-500">
                       当前 Core Workspace：{overview.currentCoreWorkspaceId ?? "未绑定"}
