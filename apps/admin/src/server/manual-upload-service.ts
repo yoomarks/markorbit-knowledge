@@ -2,8 +2,14 @@ import { createHash } from "node:crypto";
 import { basename, extname } from "node:path";
 import type { ArtifactKind, ExecutionActor, RawArtifact } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
-import { SqliteManualUploadRequestRepository, manualUploadRequestFingerprint } from "@markorbit/persistence/manual-uploads";
-import { ensureManualUploadProductionConnector, MANUAL_UPLOAD_PRODUCTION_CONNECTOR } from "./manual-upload-production-connector";
+import {
+  SqliteManualUploadRequestRepository,
+  manualUploadRequestFingerprint,
+} from "@markorbit/persistence/manual-uploads";
+import {
+  ensureManualUploadProductionConnector,
+  MANUAL_UPLOAD_PRODUCTION_CONNECTOR,
+} from "./manual-upload-production-connector";
 import {
   getCollectionPlanRepository,
   getConnectorRepository,
@@ -29,7 +35,10 @@ const ALLOWED_UPLOADS = {
   ".json": { mimeTypes: ["application/json", "text/json"], artifactKind: "JSON" },
 } as const satisfies Record<
   string,
-  { mimeTypes: readonly string[]; artifactKind: Extract<ArtifactKind, "MARKDOWN" | "TEXT" | "PDF" | "DOCX" | "CSV" | "JSON"> }
+  {
+    mimeTypes: readonly string[];
+    artifactKind: Extract<ArtifactKind, "MARKDOWN" | "TEXT" | "PDF" | "DOCX" | "CSV" | "JSON">;
+  }
 >;
 
 type AllowedArtifactKind = (typeof ALLOWED_UPLOADS)[keyof typeof ALLOWED_UPLOADS]["artifactKind"];
@@ -92,12 +101,14 @@ export function manualUploadPolicy(file: Pick<File, "name" | "type" | "size">): 
 
 function defaultManualSource(workspaceId: string) {
   const sources = getSourceRepository();
-  const existing = sources.list({ workspaceId, sourceType: "MANUAL_UPLOAD", limit: 100 }).items.find(
-    (source) =>
-      source.slug === "manual-uploads" &&
-      source.connector.connectorId === MANUAL_UPLOAD_PRODUCTION_CONNECTOR.connectorId &&
-      source.connector.version === MANUAL_UPLOAD_PRODUCTION_CONNECTOR.version,
-  );
+  const existing = sources
+    .list({ workspaceId, sourceType: "MANUAL_UPLOAD", limit: 100 })
+    .items.find(
+      (source) =>
+        source.slug === "manual-uploads" &&
+        source.connector.connectorId === MANUAL_UPLOAD_PRODUCTION_CONNECTOR.connectorId &&
+        source.connector.version === MANUAL_UPLOAD_PRODUCTION_CONNECTOR.version,
+    );
   if (existing) {
     if (existing.status !== "ACTIVE") {
       throw new RegistryConflictError(
@@ -127,9 +138,9 @@ function defaultManualSource(workspaceId: string) {
 
 function defaultManualPlan(sourceId: string, workspaceId: string) {
   const plans = getCollectionPlanRepository();
-  const existing = plans.listForSource(sourceId).find(
-    (record) => record.plan.extensions?.["x-markorbit-manual-upload-plan"] === true,
-  );
+  const existing = plans
+    .listForSource(sourceId)
+    .find((record) => record.plan.extensions?.["x-markorbit-manual-upload-plan"] === true);
   if (existing) {
     if (existing.plan.status !== "ACTIVE") {
       throw new RegistryConflictError(
@@ -169,7 +180,9 @@ async function oneChunk(bytes: Uint8Array): Promise<AsyncIterable<Uint8Array>> {
   })();
 }
 
-export async function ingestManualUpload(command: ManualUploadCommand): Promise<ManualUploadResult> {
+export async function ingestManualUpload(
+  command: ManualUploadCommand,
+): Promise<ManualUploadResult> {
   const workspaceId = clean(command.workspaceId, "workspaceId", 80);
   const idempotencyKey = clean(command.idempotencyKey, "idempotencyKey", 128);
   const actorId = clean(command.actor.actorId, "actor.actorId", 200);
@@ -221,7 +234,11 @@ export async function ingestManualUpload(command: ManualUploadCommand): Promise<
     actorId,
   });
 
-  if (prepared.record.status === "COMPLETED" && prepared.record.artifactId && prepared.record.runId) {
+  if (
+    prepared.record.status === "COMPLETED" &&
+    prepared.record.artifactId &&
+    prepared.record.runId
+  ) {
     const prior = getRawArtifactRepository().getArtifact(prepared.record.artifactId);
     if (!prior) {
       throw new RegistryConflictError(
@@ -246,7 +263,10 @@ export async function ingestManualUpload(command: ManualUploadCommand): Promise<
       idempotencyKey: `manual-upload-${prepared.record.requestId}`.slice(0, 128),
     });
     runId = dispatch.record.run.id;
-    prepared = { record: requests.bindRun(prepared.record.requestId, runId), replayed: prepared.replayed };
+    prepared = {
+      record: requests.bindRun(prepared.record.requestId, runId),
+      replayed: prepared.replayed,
+    };
   }
 
   const priorArtifact = getRawArtifactRepository().list({ runId, limit: 10 }).items[0];
@@ -308,7 +328,11 @@ export async function ingestManualUpload(command: ManualUploadCommand): Promise<
   }
 
   const executions = getWorkerExecutionRepository();
-  const executor = { executorId: "manual-upload-admin", version: "1.0.0", mode: "PRODUCTION" } as const;
+  const executor = {
+    executorId: "manual-upload-admin",
+    version: "1.0.0",
+    mode: "PRODUCTION",
+  } as const;
   executions.start(worker.view.worker.id, worker.credential, claimed.lease.id, claimed.leaseToken, {
     executor,
     idempotencyKey: `manual-upload-start-${prepared.record.requestId}`.slice(0, 128),
@@ -359,19 +383,29 @@ export async function ingestManualUpload(command: ManualUploadCommand): Promise<
     claimed.leaseToken,
     sessionResult.record.session.id,
   );
-  executions.complete(worker.view.worker.id, worker.credential, claimed.lease.id, claimed.leaseToken, {
-    idempotencyKey: `manual-upload-complete-${prepared.record.requestId}`.slice(0, 128),
-    receipt: {
-      executor,
-      outputKinds: [policy.artifactKind],
-      itemsObserved: 1,
-      bytesPrepared: bytes.byteLength,
-      metadataOnly: false,
-      artifactReceiptIds: [finalized.receipt.id],
-      summary: `Governed manual upload by ${command.actor.actorType}:${actorId}`,
+  executions.complete(
+    worker.view.worker.id,
+    worker.credential,
+    claimed.lease.id,
+    claimed.leaseToken,
+    {
+      idempotencyKey: `manual-upload-complete-${prepared.record.requestId}`.slice(0, 128),
+      receipt: {
+        executor,
+        outputKinds: [policy.artifactKind],
+        itemsObserved: 1,
+        bytesPrepared: bytes.byteLength,
+        metadataOnly: false,
+        artifactReceiptIds: [finalized.receipt.id],
+        summary: `Governed manual upload by ${command.actor.actorType}:${actorId}`,
+      },
     },
-  });
-  requests.complete(prepared.record.requestId, finalized.artifact.artifact.id, finalized.receipt.id);
+  );
+  requests.complete(
+    prepared.record.requestId,
+    finalized.artifact.artifact.id,
+    finalized.receipt.id,
+  );
   return {
     requestId: prepared.record.requestId,
     replayed: prepared.replayed || finalized.replayed,

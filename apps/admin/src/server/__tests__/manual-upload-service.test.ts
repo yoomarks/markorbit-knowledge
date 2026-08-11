@@ -22,20 +22,26 @@ afterEach(() => {
 
 describe("K-EXT-A manual upload", () => {
   it("accepts bounded supported files and rejects path/content-type abuse", () => {
-    expect(
-      manualUploadPolicy({ name: "brief.md", type: "text/markdown", size: 12 }),
-    ).toEqual({ originalName: "brief.md", mimeType: "text/markdown", artifactKind: "MARKDOWN" });
+    expect(manualUploadPolicy({ name: "brief.md", type: "text/markdown", size: 12 })).toEqual({
+      originalName: "brief.md",
+      mimeType: "text/markdown",
+      artifactKind: "MARKDOWN",
+    });
     expect(() =>
       manualUploadPolicy({ name: "../brief.md", type: "text/markdown", size: 12 }),
     ).toThrow(RegistryValidationError);
-    expect(() =>
-      manualUploadPolicy({ name: "brief.pdf", type: "text/plain", size: 12 }),
-    ).toThrow(RegistryValidationError);
+    expect(() => manualUploadPolicy({ name: "brief.pdf", type: "text/plain", size: 12 })).toThrow(
+      RegistryValidationError,
+    );
     expect(() =>
       manualUploadPolicy({ name: "brief.exe", type: "application/octet-stream", size: 12 }),
     ).toThrow(RegistryValidationError);
     expect(() =>
-      manualUploadPolicy({ name: "brief.md", type: "text/markdown", size: MANUAL_UPLOAD_MAX_BYTES + 1 }),
+      manualUploadPolicy({
+        name: "brief.md",
+        type: "text/markdown",
+        size: MANUAL_UPLOAD_MAX_BYTES + 1,
+      }),
     ).toThrow(RegistryValidationError);
   });
 

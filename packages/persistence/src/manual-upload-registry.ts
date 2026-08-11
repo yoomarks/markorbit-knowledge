@@ -1,11 +1,21 @@
 import { createHash, randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import { RegistryConflictError, RegistryError, RegistryValidationError, initializeRegistry } from "./index";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+  initializeRegistry,
+} from "./index";
 
 const MIGRATION_ID = "0017_manual_upload_requests";
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-export const MANUAL_UPLOAD_REQUEST_STATUSES = ["PREPARED", "RUN_BOUND", "COMPLETED", "FAILED"] as const;
+export const MANUAL_UPLOAD_REQUEST_STATUSES = [
+  "PREPARED",
+  "RUN_BOUND",
+  "COMPLETED",
+  "FAILED",
+] as const;
 export type ManualUploadRequestStatus = (typeof MANUAL_UPLOAD_REQUEST_STATUSES)[number];
 
 export type ManualUploadRequestRecord = {
@@ -113,7 +123,9 @@ function parseRecord(value: string): ManualUploadRequestRecord {
 
 export function ensureManualUploadRegistry(database: DatabaseSync): void {
   initializeRegistry(database);
-  const applied = database.prepare("SELECT id FROM schema_migrations WHERE id = ?").get(MIGRATION_ID);
+  const applied = database
+    .prepare("SELECT id FROM schema_migrations WHERE id = ?")
+    .get(MIGRATION_ID);
   if (applied) return;
   database.exec("BEGIN IMMEDIATE;");
   try {
@@ -236,7 +248,12 @@ export class SqliteManualUploadRequestRepository implements ManualUploadRequestR
         `Cannot bind a run while request is ${current.status}`,
       );
     }
-    return this.update({ ...current, runId, status: "RUN_BOUND", updatedAt: this.clock().toISOString() });
+    return this.update({
+      ...current,
+      runId,
+      status: "RUN_BOUND",
+      updatedAt: this.clock().toISOString(),
+    });
   }
 
   complete(requestId: string, artifactId: string, receiptId: string): ManualUploadRequestRecord {
