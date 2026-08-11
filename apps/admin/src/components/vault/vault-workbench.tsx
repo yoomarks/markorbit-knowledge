@@ -1,4 +1,5 @@
 import { CanonicalDownstreamPromotionControl } from "./canonical-downstream-promotion-control";
+import { ReadyPackageV2Control } from "./ready-package-v2-control";
 import { VaultBindingControl } from "./vault-binding-control";
 import { VaultExportControl } from "./vault-export-control";
 import { VaultImportExecutionControl } from "./vault-import-execution-control";
@@ -16,6 +17,7 @@ export function VaultWorkbench({ workspaceId }: { workspaceId: string }) {
       <VaultImportExecutionControl workspaceId={workspaceId} />
       <VaultOriginStagingVerificationControl workspaceId={workspaceId} />
       <CanonicalDownstreamPromotionControl workspaceId={workspaceId} />
+      <ReadyPackageV2Control workspaceId={workspaceId} />
     </div>
   );
 }
