@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import type { CoreIntakeResult } from "@markorbit/contracts";
 import {
@@ -23,6 +23,40 @@ export type ReadyPackageCoreIntakeSubmissionResultEvidence = {
   recordedAt: string;
 };
 
+export type ReadyPackageCoreContentResult = {
+  intakeId: string;
+  readyPackageId: string;
+  status: "ACCEPTED";
+  exportSha256: string;
+};
+
+export type ReadyPackageCoreContentResultEvidence = ReadyPackageCoreContentResult & {
+  recordedAt: string;
+};
+
+export type ReadyPackageCoreContentDelivery = {
+  state: "PENDING" | "RESULT_RECORDED";
+  coreIntakeId: string;
+  requestJson: string;
+  requestSha256: string;
+  transportResult?: ReadyPackageCoreContentResultEvidence;
+  result?: ReadyPackageCoreContentResultEvidence;
+  preparedAt: string;
+  updatedAt: string;
+};
+
+export type PrepareReadyPackageCoreContentDeliveryInput = {
+  coreIntakeId: string;
+  requestJson: string;
+  requestSha256: string;
+};
+
+export type PrepareReadyPackageCoreContentDeliveryResult = {
+  submission: ReadyPackageCoreIntakeSubmission;
+  delivery: ReadyPackageCoreContentDelivery;
+  replayed: boolean;
+};
+
 export type ReadyPackageCoreIntakeSubmission = {
   submissionId: string;
   workspaceId: string;
@@ -34,6 +68,7 @@ export type ReadyPackageCoreIntakeSubmission = {
   state: "PENDING" | "RESULT_RECORDED";
   transportResult?: ReadyPackageCoreIntakeSubmissionResultEvidence;
   result?: ReadyPackageCoreIntakeSubmissionResultEvidence;
+  contentDelivery?: ReadyPackageCoreContentDelivery;
   createdAt: string;
   updatedAt: string;
 };
@@ -65,6 +100,24 @@ export interface ReadyPackageCoreIntakeSubmissionRepository {
     result: CoreIntakeResult,
   ): ReadyPackageCoreIntakeSubmission;
   list(readyPackageId: string, workspaceId: string): ReadyPackageCoreIntakeSubmission[];
+}
+
+export interface ReadyPackageCoreContentDeliveryRepository extends ReadyPackageCoreIntakeSubmissionRepository {
+  prepareContentDelivery(
+    submissionId: string,
+    workspaceId: string,
+    input: PrepareReadyPackageCoreContentDeliveryInput,
+  ): PrepareReadyPackageCoreContentDeliveryResult;
+  recordContentTransportResult(
+    submissionId: string,
+    workspaceId: string,
+    result: ReadyPackageCoreContentResult,
+  ): ReadyPackageCoreIntakeSubmission;
+  recordContentResult(
+    submissionId: string,
+    workspaceId: string,
+    result: ReadyPackageCoreContentResult,
+  ): ReadyPackageCoreIntakeSubmission;
 }
 
 function submissionId(now = Date.now()): string {
@@ -119,6 +172,102 @@ function matchesResult(
   return evidence?.intakeId === result.intakeId && evidence.status === result.status;
 }
 
+function sha256(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function validateCoreContentResult(result: ReadyPackageCoreContentResult): void {
+  if (
+    !result ||
+    typeof result !== "object" ||
+    typeof result.intakeId !== "string" ||
+    !result.intakeId.trim() ||
+    typeof result.readyPackageId !== "string" ||
+    !result.readyPackageId.trim() ||
+    result.status !== "ACCEPTED" ||
+    !SHA256.test(result.exportSha256)
+  ) {
+    throw new RegistryValidationError("Core content result is invalid");
+  }
+}
+
+function validateCoreContentResultEvidence(
+  evidence: ReadyPackageCoreContentResultEvidence | undefined,
+  message: string,
+): asserts evidence is ReadyPackageCoreContentResultEvidence {
+  if (!evidence || Number.isNaN(Date.parse(evidence.recordedAt))) {
+    throw new RegistryValidationError(message);
+  }
+  validateCoreContentResult(evidence);
+}
+
+function matchesCoreContentResult(
+  evidence: ReadyPackageCoreContentResultEvidence | undefined,
+  result: ReadyPackageCoreContentResult,
+): boolean {
+  return (
+    evidence?.intakeId === result.intakeId &&
+    evidence.readyPackageId === result.readyPackageId &&
+    evidence.status === result.status &&
+    evidence.exportSha256 === result.exportSha256
+  );
+}
+
+function validateContentDelivery(
+  delivery: ReadyPackageCoreContentDelivery,
+  submission: ReadyPackageCoreIntakeSubmission,
+): void {
+  if (
+    (delivery.state !== "PENDING" && delivery.state !== "RESULT_RECORDED") ||
+    typeof delivery.coreIntakeId !== "string" ||
+    !delivery.coreIntakeId.trim() ||
+    typeof delivery.requestJson !== "string" ||
+    !delivery.requestJson.trim() ||
+    !SHA256.test(delivery.requestSha256) ||
+    sha256(delivery.requestJson) !== delivery.requestSha256 ||
+    Number.isNaN(Date.parse(delivery.preparedAt)) ||
+    Number.isNaN(Date.parse(delivery.updatedAt))
+  ) {
+    throw new RegistryValidationError("Persisted Core content delivery is invalid");
+  }
+  try {
+    JSON.parse(delivery.requestJson);
+  } catch {
+    throw new RegistryValidationError("Persisted Core content request JSON is invalid");
+  }
+  if (delivery.transportResult !== undefined) {
+    validateCoreContentResultEvidence(
+      delivery.transportResult,
+      "Persisted Core content transport result is invalid",
+    );
+    if (
+      delivery.transportResult.intakeId !== delivery.coreIntakeId ||
+      delivery.transportResult.readyPackageId !== submission.readyPackageId ||
+      delivery.transportResult.exportSha256 !== delivery.requestSha256
+    ) {
+      throw new RegistryValidationError(
+        "Persisted Core content transport result does not match its frozen request",
+      );
+    }
+  }
+  if (delivery.state === "RESULT_RECORDED") {
+    validateCoreContentResultEvidence(delivery.result, "Persisted Core content result is invalid");
+    if (
+      delivery.result.intakeId !== delivery.coreIntakeId ||
+      delivery.result.readyPackageId !== submission.readyPackageId ||
+      delivery.result.exportSha256 !== delivery.requestSha256 ||
+      (delivery.transportResult &&
+        !matchesCoreContentResult(delivery.transportResult, delivery.result))
+    ) {
+      throw new RegistryValidationError(
+        "Persisted Core content result does not match its frozen request",
+      );
+    }
+  } else if (delivery.result !== undefined) {
+    throw new RegistryValidationError("Pending Core content delivery cannot contain a result");
+  }
+}
+
 function parseSubmission(value: string): ReadyPackageCoreIntakeSubmission {
   const parsed = JSON.parse(value) as ReadyPackageCoreIntakeSubmission;
   if (
@@ -160,6 +309,9 @@ function parseSubmission(value: string): ReadyPackageCoreIntakeSubmission {
     }
   } else if (parsed.result !== undefined) {
     throw new RegistryValidationError("Pending Core intake submission cannot contain a result");
+  }
+  if (parsed.contentDelivery !== undefined) {
+    validateContentDelivery(parsed.contentDelivery, parsed);
   }
   return parsed;
 }
@@ -206,7 +358,7 @@ function ensureReadyPackageCoreIntakeSubmissionRegistry(database: DatabaseSync):
   }
 }
 
-export class SqliteReadyPackageCoreIntakeSubmissionRepository implements ReadyPackageCoreIntakeSubmissionRepository {
+export class SqliteReadyPackageCoreIntakeSubmissionRepository implements ReadyPackageCoreContentDeliveryRepository {
   constructor(
     private readonly database: DatabaseSync,
     private readonly clock: () => Date = () => new Date(),
@@ -407,6 +559,237 @@ export class SqliteReadyPackageCoreIntakeSubmissionRepository implements ReadyPa
           `UPDATE ready_package_core_intake_submissions
            SET state = 'RESULT_RECORDED', document_json = ?, updated_at = ?
            WHERE workspace_id = ? AND submission_id = ? AND state = 'PENDING'`,
+        )
+        .run(JSON.stringify(next), recordedAt, workspaceId, submissionIdValue);
+      this.database.exec("COMMIT;");
+      return next;
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
+  }
+
+  prepareContentDelivery(
+    submissionIdValue: string,
+    workspaceId: string,
+    input: PrepareReadyPackageCoreContentDeliveryInput,
+  ): PrepareReadyPackageCoreContentDeliveryResult {
+    if (!submissionIdValue?.trim()) throw new RegistryValidationError("submissionId is required");
+    if (!workspaceId?.trim()) throw new RegistryValidationError("workspaceId is required");
+    if (!input.coreIntakeId?.trim()) throw new RegistryValidationError("coreIntakeId is required");
+    if (!input.requestJson?.trim()) throw new RegistryValidationError("requestJson is required");
+    if (!SHA256.test(input.requestSha256) || sha256(input.requestJson) !== input.requestSha256) {
+      throw new RegistryValidationError("requestSha256 must match the frozen content request JSON");
+    }
+
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      const current = this.require(submissionIdValue, workspaceId);
+      if (current.state !== "RESULT_RECORDED" || !current.result) {
+        throw new RegistryConflictError(
+          "CORE_CONTENT_INTAKE_RESULT_NOT_RECORDED",
+          "Core intake must be durably finalized before content delivery can start",
+        );
+      }
+      if (current.result.status === "REJECTED") {
+        throw new RegistryConflictError(
+          "CORE_CONTENT_INTAKE_REJECTED",
+          "Rejected Core intake cannot receive ReadyPackage content",
+        );
+      }
+      if (current.result.intakeId !== input.coreIntakeId) {
+        throw new RegistryConflictError(
+          "CORE_CONTENT_INTAKE_ID_MISMATCH",
+          "Core content delivery must target the intake frozen on the submission",
+        );
+      }
+      if (current.contentDelivery) {
+        const delivery = current.contentDelivery;
+        if (
+          delivery.coreIntakeId !== input.coreIntakeId ||
+          delivery.requestSha256 !== input.requestSha256 ||
+          delivery.requestJson !== input.requestJson
+        ) {
+          throw new RegistryConflictError(
+            "CORE_CONTENT_PENDING_REQUEST_MISMATCH",
+            "Core content delivery is already frozen to another request",
+          );
+        }
+        this.database.exec("COMMIT;");
+        return { submission: current, delivery, replayed: true };
+      }
+
+      const preparedAt = this.clock().toISOString();
+      const delivery: ReadyPackageCoreContentDelivery = {
+        state: "PENDING",
+        coreIntakeId: input.coreIntakeId,
+        requestJson: input.requestJson,
+        requestSha256: input.requestSha256,
+        preparedAt,
+        updatedAt: preparedAt,
+      };
+      const next: ReadyPackageCoreIntakeSubmission = {
+        ...current,
+        contentDelivery: delivery,
+        updatedAt: preparedAt,
+      };
+      this.database
+        .prepare(
+          `UPDATE ready_package_core_intake_submissions
+           SET document_json = ?, updated_at = ?
+           WHERE workspace_id = ? AND submission_id = ?`,
+        )
+        .run(JSON.stringify(next), preparedAt, workspaceId, submissionIdValue);
+      this.database.exec("COMMIT;");
+      return { submission: next, delivery, replayed: false };
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
+  }
+
+  recordContentTransportResult(
+    submissionIdValue: string,
+    workspaceId: string,
+    result: ReadyPackageCoreContentResult,
+  ): ReadyPackageCoreIntakeSubmission {
+    if (!submissionIdValue?.trim()) throw new RegistryValidationError("submissionId is required");
+    if (!workspaceId?.trim()) throw new RegistryValidationError("workspaceId is required");
+    validateCoreContentResult(result);
+
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      const current = this.require(submissionIdValue, workspaceId);
+      const delivery = current.contentDelivery;
+      if (!delivery) {
+        throw new RegistryConflictError(
+          "CORE_CONTENT_DELIVERY_NOT_PREPARED",
+          "Core content delivery must be frozen before a transport result is recorded",
+        );
+      }
+      if (
+        result.intakeId !== delivery.coreIntakeId ||
+        result.readyPackageId !== current.readyPackageId ||
+        result.exportSha256 !== delivery.requestSha256
+      ) {
+        throw new RegistryConflictError(
+          "CORE_CONTENT_TRANSPORT_RESULT_MISMATCH",
+          "Core content transport result does not match the frozen content request",
+        );
+      }
+      if (delivery.state === "RESULT_RECORDED") {
+        if (!matchesCoreContentResult(delivery.result, result)) {
+          throw new RegistryConflictError(
+            "CORE_CONTENT_RESULT_CONFLICT",
+            "Core content delivery already recorded a different result",
+          );
+        }
+        this.database.exec("COMMIT;");
+        return current;
+      }
+      if (delivery.transportResult) {
+        if (!matchesCoreContentResult(delivery.transportResult, result)) {
+          throw new RegistryConflictError(
+            "CORE_CONTENT_TRANSPORT_RESULT_CONFLICT",
+            "Core content delivery already persisted a different transport result",
+          );
+        }
+        this.database.exec("COMMIT;");
+        return current;
+      }
+
+      const recordedAt = this.clock().toISOString();
+      const nextDelivery: ReadyPackageCoreContentDelivery = {
+        ...delivery,
+        transportResult: { ...result, recordedAt },
+        updatedAt: recordedAt,
+      };
+      const next: ReadyPackageCoreIntakeSubmission = {
+        ...current,
+        contentDelivery: nextDelivery,
+        updatedAt: recordedAt,
+      };
+      this.database
+        .prepare(
+          `UPDATE ready_package_core_intake_submissions
+           SET document_json = ?, updated_at = ?
+           WHERE workspace_id = ? AND submission_id = ?`,
+        )
+        .run(JSON.stringify(next), recordedAt, workspaceId, submissionIdValue);
+      this.database.exec("COMMIT;");
+      return next;
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
+  }
+
+  recordContentResult(
+    submissionIdValue: string,
+    workspaceId: string,
+    result: ReadyPackageCoreContentResult,
+  ): ReadyPackageCoreIntakeSubmission {
+    if (!submissionIdValue?.trim()) throw new RegistryValidationError("submissionId is required");
+    if (!workspaceId?.trim()) throw new RegistryValidationError("workspaceId is required");
+    validateCoreContentResult(result);
+
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      const current = this.require(submissionIdValue, workspaceId);
+      const delivery = current.contentDelivery;
+      if (!delivery) {
+        throw new RegistryConflictError(
+          "CORE_CONTENT_DELIVERY_NOT_PREPARED",
+          "Core content delivery must be frozen before it can be finalized",
+        );
+      }
+      if (
+        result.intakeId !== delivery.coreIntakeId ||
+        result.readyPackageId !== current.readyPackageId ||
+        result.exportSha256 !== delivery.requestSha256
+      ) {
+        throw new RegistryConflictError(
+          "CORE_CONTENT_RESULT_MISMATCH",
+          "Core content result does not match the frozen content request",
+        );
+      }
+      if (delivery.state === "RESULT_RECORDED") {
+        if (!matchesCoreContentResult(delivery.result, result)) {
+          throw new RegistryConflictError(
+            "CORE_CONTENT_RESULT_CONFLICT",
+            "Core content delivery already recorded a different result",
+          );
+        }
+        this.database.exec("COMMIT;");
+        return current;
+      }
+      if (
+        !delivery.transportResult ||
+        !matchesCoreContentResult(delivery.transportResult, result)
+      ) {
+        throw new RegistryConflictError(
+          "CORE_CONTENT_TRANSPORT_RESULT_REQUIRED",
+          "Core content transport result must be durably persisted before local finalization",
+        );
+      }
+
+      const recordedAt = this.clock().toISOString();
+      const nextDelivery: ReadyPackageCoreContentDelivery = {
+        ...delivery,
+        state: "RESULT_RECORDED",
+        result: { ...result, recordedAt },
+        updatedAt: recordedAt,
+      };
+      const next: ReadyPackageCoreIntakeSubmission = {
+        ...current,
+        contentDelivery: nextDelivery,
+        updatedAt: recordedAt,
+      };
+      this.database
+        .prepare(
+          `UPDATE ready_package_core_intake_submissions
+           SET document_json = ?, updated_at = ?
+           WHERE workspace_id = ? AND submission_id = ?`,
         )
         .run(JSON.stringify(next), recordedAt, workspaceId, submissionIdValue);
       this.database.exec("COMMIT;");

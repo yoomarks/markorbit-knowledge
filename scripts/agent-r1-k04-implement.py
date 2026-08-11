@@ -444,11 +444,10 @@ class_methods = '''  prepareContentDelivery(
 
 '''
 # Only replace the class method occurrence, which is the second exact occurrence after the interface.
-first = text.find(class_list_marker)
-second = text.find(class_list_marker, first + 1)
-if second == -1:
+position = text.find(class_list_marker)
+if position == -1:
     raise SystemExit("class list method marker not found")
-text = text[:second] + class_methods + text[second:]
+text = text[:position] + class_methods + text[position:]
 path.write_text(text)
 
 # 2) Core content HTTP transport: same internal secret, destination derived from the frozen intake endpoint.
