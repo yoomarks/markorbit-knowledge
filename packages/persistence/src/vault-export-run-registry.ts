@@ -22,7 +22,7 @@ import { normalizeVaultRelativeRoot } from "./vault-binding-registry";
 const MIGRATION_ID = "0023_vault_export_runs";
 const SHA256 = /^[a-f0-9]{64}$/u;
 const DEFAULT_LIMIT = 25;
-const MAX_LIMIT = 100;
+const MAX_LIMIT = 1000;
 
 export type PrepareVaultExportRunInput = {
   workspaceId: string;
