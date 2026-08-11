@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,7 +12,7 @@ import { SqliteVaultOriginStagingVerificationRepository } from "./vault-origin-s
 
 const roots: string[] = [];
 const CONTENT = new TextEncoder().encode("hello canonical");
-const CONTENT_SHA = "f826d7c38f4b5dc68a7e553238cc46a42b7e50647b4935a3ecfc5db218d7249d";
+const CONTENT_SHA = "7b01fabb7e70bed8db5ebaeafe2a2e269e127dfc2b22acccf330f86198f0a48d";
 const BINDING = {
   bindingId: "vlt_01K12TEST000000000000000001",
   revision: 7,
@@ -200,7 +201,7 @@ describe("canonical downstream Vault-origin promotion", () => {
 
   it("rejects a mismatched execution receipt instead of repairing provenance", () => {
     const fixture = makeFixture();
-    const execution = {
+    const execution: VaultImportExecutionV1 = {
       ...fixture.execution,
       result: { ...fixture.execution.result!, contentSha256: "b".repeat(64) },
     };
@@ -219,8 +220,7 @@ describe("canonical downstream Vault-origin promotion", () => {
 
   it("refuses BLOCKED finalization even when the underlying bytes are present", () => {
     const forged = new TextEncoder().encode("---\nmarkorbit.fake: forged\n---\nbody");
-    const crypto = require("node:crypto") as typeof import("node:crypto");
-    const forgedSha = crypto.createHash("sha256").update(forged).digest("hex");
+    const forgedSha = createHash("sha256").update(forged).digest("hex");
     const fixture = makeFixture(forged, forgedSha);
     expect(fixture.verification.outcome).toBe("FAIL");
     expect(fixture.finalization.state).toBe("BLOCKED");
