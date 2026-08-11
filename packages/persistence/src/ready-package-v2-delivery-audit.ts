@@ -55,13 +55,12 @@ function isTimestamp(value: string): boolean {
 }
 
 function assertOptionalShape(event: ReadyPackageV2DeliveryAuditEvent): void {
-  const hasAttempt = event.attemptNumber !== undefined;
   const hasIssue = event.issueCode !== undefined;
   const hasHttp = event.httpStatus !== undefined;
   const hasResult = event.resultStatus !== undefined;
 
   if (event.type === "PREPARED") {
-    if (hasAttempt || hasIssue || hasHttp || hasResult) {
+    if (event.attemptNumber !== undefined || hasIssue || hasHttp || hasResult) {
       throw new RegistryConflictError(
         "READY_PACKAGE_V2_DELIVERY_AUDIT_EVENT_INVALID",
         "PREPARED audit evidence cannot contain transport/result metadata",
@@ -70,7 +69,11 @@ function assertOptionalShape(event: ReadyPackageV2DeliveryAuditEvent): void {
     return;
   }
 
-  if (!hasAttempt || !Number.isSafeInteger(event.attemptNumber) || event.attemptNumber! <= 0) {
+  if (
+    event.attemptNumber === undefined ||
+    !Number.isSafeInteger(event.attemptNumber) ||
+    event.attemptNumber <= 0
+  ) {
     throw new RegistryConflictError(
       "READY_PACKAGE_V2_DELIVERY_AUDIT_EVENT_INVALID",
       "Transport/finalization audit evidence requires a positive attempt number",
@@ -79,12 +82,12 @@ function assertOptionalShape(event: ReadyPackageV2DeliveryAuditEvent): void {
 
   if (event.type === "TRANSPORT_OUTCOME_UNKNOWN") {
     if (
-      !hasIssue ||
-      !ISSUE_CODE.test(event.issueCode!) ||
-      !hasHttp ||
+      event.issueCode === undefined ||
+      !ISSUE_CODE.test(event.issueCode) ||
+      event.httpStatus === undefined ||
       !Number.isSafeInteger(event.httpStatus) ||
-      event.httpStatus! < 400 ||
-      event.httpStatus! > 599 ||
+      event.httpStatus < 400 ||
+      event.httpStatus > 599 ||
       hasResult
     ) {
       throw new RegistryConflictError(
@@ -112,7 +115,10 @@ function assertOptionalShape(event: ReadyPackageV2DeliveryAuditEvent): void {
     return;
   }
 
-  if (!hasResult || !["RECEIVED", "ACCEPTED", "REJECTED"].includes(event.resultStatus!)) {
+  if (
+    event.resultStatus === undefined ||
+    !["RECEIVED", "ACCEPTED", "REJECTED"].includes(event.resultStatus)
+  ) {
     throw new RegistryConflictError(
       "READY_PACKAGE_V2_DELIVERY_AUDIT_EVENT_INVALID",
       "Result/finalization audit evidence requires a protocol result status",
@@ -184,6 +190,13 @@ export function ensureReadyPackageV2DeliveryAuditRegistry(database: DatabaseSync
 
       CREATE INDEX IF NOT EXISTS idx_ready_package_v2_delivery_audit_submission
         ON ready_package_v2_delivery_audit_events(workspace_id, submission_id, sequence);
+
+      INSERT OR IGNORE INTO ready_package_v2_delivery_audit_events
+        (workspace_id, submission_id, ready_package_id, sequence, event_type,
+         request_sha256, recorded_at, attempt_number, issue_code, http_status, result_status)
+      SELECT workspace_id, submission_id, ready_package_id, 1, 'PREPARED',
+             request_sha256, created_at, NULL, NULL, NULL, NULL
+      FROM ready_package_v2_delivery_submissions;
     `);
     database
       .prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)")
