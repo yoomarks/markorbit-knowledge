@@ -24,6 +24,8 @@ K08 VaultInspectionRun
 
 The promotion gate requires all IDs, Binding evidence, root fingerprint, paths, byte size and SHA-256 values to agree across that chain.
 
+`READY` is strictly a Knowledge-owned downstream-readiness state. It does not imply ReadyPackage creation, Core intake, Core content acceptance or semantic understanding.
+
 ## Contract
 
 `CanonicalDownstreamDocumentV1` records:
