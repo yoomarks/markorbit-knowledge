@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  PRODUCTION_PDF_TEXT_MARKDOWN_CONVERTER,
   PRODUCTION_RICH_DOCUMENT_MARKDOWN_CONVERTER,
   ProductionLocalDocumentExtractionExecutor,
   SubprocessDocumentExtractionRunner,
@@ -200,6 +201,65 @@ describe("M3.5 local document extraction", () => {
       "output-ready",
       "staging-commit",
     ]);
+  });
+
+  it("binds the opt-in Poppler PDF text provider to PDF_TEXT mode", async () => {
+    const input = encoder.encode("%PDF-1.7 synthetic bytes");
+    const ctx = richContext(input);
+    const converter = PRODUCTION_PDF_TEXT_MARKDOWN_CONVERTER;
+    ctx.converter = converter;
+    ctx.lease.converter = converter;
+    ctx.documentMetadata.converterId = converter.converterId;
+    ctx.documentMetadata.converterVersion = converter.version;
+    ctx.documentMetadata.artifactKind = "PDF";
+    ctx.documentMetadata.originalName = "guide.pdf";
+    ctx.inputGrant.expectedMime = "application/pdf";
+
+    const runner: LocalDocumentExtractionRunner = {
+      async extract(request) {
+        expect(request.mode).toBe("PDF_TEXT");
+        expect(request.artifactKind).toBe("PDF");
+        return {
+          body: encoder.encode("# PDF text\n\nOfficial text layer.\n"),
+          extractionMethod: "PDFTOTEXT_TEXT_LAYER",
+          pageCount: 2,
+        };
+      },
+    };
+    const client: ProductionConversionRuntimeClient = {
+      async started() {},
+      async progress() {},
+      async outputReady() {},
+      async failed() {
+        throw new Error("unexpected failure");
+      },
+    };
+    const reader: ProductionRawArtifactReader = {
+      async read() {
+        return input;
+      },
+    };
+    const uploader: ProductionStagingUploader = {
+      async upload(_context, markdown) {
+        expect(new TextDecoder().decode(markdown)).toContain(
+          'converterId: "local-pdf-text-markdown"',
+        );
+        return {
+          stagingDocumentId: "std_01H00000000000000000000000",
+          stagingStatus: "READY",
+          verificationOutcome: "PASS",
+          finalizationDecision: "COMPLETED",
+        };
+      },
+    };
+
+    const result = await new ProductionLocalDocumentExtractionExecutor(runner).execute(
+      ctx,
+      reader,
+      uploader,
+      client,
+    );
+    expect(result?.commit.finalizationDecision).toBe("COMPLETED");
   });
 
   it("fails closed when extractor attempts to inject canonical frontmatter", async () => {

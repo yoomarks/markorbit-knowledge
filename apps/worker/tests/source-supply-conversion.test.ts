@@ -93,7 +93,7 @@ describe("US foundational automatic conversion preparation", () => {
       fetchImpl: control.fetchImpl,
     });
 
-    expect(result.manifestCount).toBe(4);
+    expect(result.manifestCount).toBe(5);
     expect(result.profileCount).toBe(1);
     expect(control.profiles).toHaveLength(1);
     expect(control.profiles[0]).toMatchObject({
@@ -118,7 +118,15 @@ describe("US foundational automatic conversion preparation", () => {
       fetchImpl: control.fetchImpl,
     });
 
+    expect(result.manifestCount).toBe(5);
     expect(result.profileCount).toBe(4);
+    expect(control.manifests).toContainEqual(
+      expect.objectContaining({
+        converterId: "local-pdf-text-markdown",
+        runtime: "LOCAL_PROCESS",
+        inputs: { artifactKinds: ["PDF"], mimePatterns: ["application/pdf"] },
+      }),
+    );
     const byConverter = new Map(
       control.profiles.map((profile) => [
         (profile.converter as Record<string, unknown>).converterId,

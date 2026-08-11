@@ -20,6 +20,11 @@ export const PRODUCTION_RICH_DOCUMENT_MARKDOWN_CONVERTER = {
   version: "1.0.0",
 } as const satisfies RuntimeConverterRef;
 
+export const PRODUCTION_PDF_TEXT_MARKDOWN_CONVERTER = {
+  converterId: "local-pdf-text-markdown",
+  version: "1.0.0",
+} as const satisfies RuntimeConverterRef;
+
 export const PRODUCTION_OCR_MARKDOWN_CONVERTER = {
   converterId: "local-ocr-markdown",
   version: "1.0.0",
@@ -36,12 +41,13 @@ export const LOCAL_DOCUMENT_EXTRACTION_LIMITS = {
 } as const;
 
 const RICH_KINDS = new Set<ArtifactKind>(["DOCX", "XLSX", "CSV", "JSON", "XML", "EMAIL", "TEXT"]);
+const PDF_TEXT_KINDS = new Set<ArtifactKind>(["PDF"]);
 const OCR_KINDS = new Set<ArtifactKind>(["PDF", "IMAGE"]);
 const SHA256 = /^[a-f0-9]{64}$/;
 const FAILURE_CODE = /^[A-Z0-9][A-Z0-9_]{1,99}$/;
 const PROTOCOL_VERSION = "1.0" as const;
 
-export type LocalDocumentExtractionMode = "RICH" | "OCR";
+export type LocalDocumentExtractionMode = "RICH" | "PDF_TEXT" | "OCR";
 
 export type LocalDocumentExtractionRequest = {
   artifactKind: ArtifactKind;
@@ -117,6 +123,8 @@ function safeEnvironment(): NodeJS.ProcessEnv {
     "TESSDATA_PREFIX",
     "MARKORBIT_TESSERACT_EXECUTABLE",
     "MARKORBIT_PDFTOPPM_EXECUTABLE",
+    "MARKORBIT_PDFTOTEXT_EXECUTABLE",
+    "MARKORBIT_PDFINFO_EXECUTABLE",
   ] as const;
   const env: NodeJS.ProcessEnv = { NODE_ENV: process.env.NODE_ENV };
   for (const key of allowed) {
@@ -224,6 +232,12 @@ function assertRequest(request: LocalDocumentExtractionRequest): void {
     throw new LocalDocumentExtractionError(
       "RICH_INPUT_UNSUPPORTED",
       `Artifact kind ${request.artifactKind} is not supported by rich extraction`,
+    );
+  }
+  if (request.mode === "PDF_TEXT" && !PDF_TEXT_KINDS.has(request.artifactKind)) {
+    throw new LocalDocumentExtractionError(
+      "PDF_TEXT_INPUT_UNSUPPORTED",
+      `Artifact kind ${request.artifactKind} is not supported by PDF text extraction`,
     );
   }
   if (request.mode === "OCR" && !OCR_KINDS.has(request.artifactKind)) {
@@ -482,6 +496,12 @@ function modeForConverter(converter: RuntimeConverterRef): LocalDocumentExtracti
     return "RICH";
   }
   if (
+    converter.converterId === PRODUCTION_PDF_TEXT_MARKDOWN_CONVERTER.converterId &&
+    converter.version === PRODUCTION_PDF_TEXT_MARKDOWN_CONVERTER.version
+  ) {
+    return "PDF_TEXT";
+  }
+  if (
     converter.converterId === PRODUCTION_OCR_MARKDOWN_CONVERTER.converterId &&
     converter.version === PRODUCTION_OCR_MARKDOWN_CONVERTER.version
   ) {
@@ -551,6 +571,12 @@ function assertExactBinding(
     throw new LocalDocumentExtractionError(
       "RICH_INPUT_UNSUPPORTED",
       `Artifact kind ${metadata.artifactKind} is not supported by the rich extractor`,
+    );
+  }
+  if (mode === "PDF_TEXT" && !PDF_TEXT_KINDS.has(metadata.artifactKind)) {
+    throw new LocalDocumentExtractionError(
+      "PDF_TEXT_INPUT_UNSUPPORTED",
+      `Artifact kind ${metadata.artifactKind} is not supported by the PDF text extractor`,
     );
   }
   if (mode === "OCR" && !OCR_KINDS.has(metadata.artifactKind)) {
@@ -633,7 +659,9 @@ export class ProductionLocalDocumentExtractionExecutor {
           message:
             mode === "OCR"
               ? "Running governed OCR extraction"
-              : "Running governed rich document extraction",
+              : mode === "PDF_TEXT"
+                ? "Running governed PDF text-layer extraction"
+                : "Running governed rich document extraction",
         },
         `${prefix}-extract`,
       );
