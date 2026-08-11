@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import { AdminShell } from "@/components/admin-shell";
 import { ArtifactList } from "@/components/artifacts/artifact-list";
+import { ManualUploadControl } from "@/components/artifacts/manual-upload-control";
 import { ConnectorList } from "@/components/connectors/connector-list";
 import { ConversionRunList } from "@/components/conversion-runs/conversion-run-list";
 import { ConverterControl } from "@/components/converters/converter-control";
@@ -137,7 +138,10 @@ function ArtifactsPage() {
         title="Raw Artifacts"
         description="高级控制面：查看经过流式校验、内容寻址存储并登记为不可变来源证据的 RawArtifact。"
       />
-      <ArtifactList />
+      <div className="space-y-6">
+        <ManualUploadControl workspaceId={DEFAULT_WORKSPACE.id} />
+        <ArtifactList />
+      </div>
     </>
   );
 }
