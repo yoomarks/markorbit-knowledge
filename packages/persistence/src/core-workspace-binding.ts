@@ -28,9 +28,10 @@ export function isCanonicalCoreWorkspaceId(value: string | null | undefined): va
 export function normalizeCanonicalCoreWorkspaceId(value: string): string {
   const normalized = value.trim().toLowerCase();
   if (!UUID.test(normalized)) {
-    throw new RegistryValidationError("coreWorkspaceId must be a canonical UUID", {
-      issueCode: "CORE_WORKSPACE_BINDING_INVALID",
-    });
+    throw new RegistryConflictError(
+      "CORE_WORKSPACE_BINDING_INVALID",
+      "coreWorkspaceId must be a canonical UUID",
+    );
   }
   return normalized;
 }
