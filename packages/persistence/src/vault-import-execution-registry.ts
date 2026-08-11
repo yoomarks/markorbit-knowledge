@@ -183,7 +183,14 @@ function parseDocument(value: string): VaultOriginStagingDocumentV1 {
     },
     binding.relativeRoot,
   );
-  return { ...parsed, binding, ...candidate };
+  return {
+    ...parsed,
+    binding,
+    vaultRelativePath: candidate.vaultRelativePath,
+    bindingRelativePath: candidate.bindingRelativePath,
+    contentHash: { algorithm: "SHA-256", value: candidate.observedSha256 },
+    sizeBytes: candidate.sizeBytes,
+  };
 }
 
 function parseExecution(value: string): VaultImportExecutionV1 {
@@ -390,6 +397,17 @@ export class SqliteVaultOriginStagingRepository implements VaultOriginStagingRep
       try {
         const raced = this.getByImportIntent(workspaceId, importIntentId);
         if (raced) {
+          if (
+            raced.inspectionRunId !== inspectionRunId ||
+            raced.vaultRelativePath !== candidate.vaultRelativePath ||
+            raced.contentHash.value !== contentHash ||
+            raced.sizeBytes !== input.content.byteLength
+          ) {
+            throw new RegistryConflictError(
+              "VAULT_ORIGIN_STAGING_IMPORT_INTENT_CONFLICT",
+              "Import intent was concurrently bound to different Vault-origin Staging evidence",
+            );
+          }
           this.database.exec("COMMIT;");
           return { document: raced, replayed: true, contentCreated: false };
         }
@@ -485,7 +503,7 @@ export class SqliteVaultOriginStagingRepository implements VaultOriginStagingRep
     try {
       return Boolean(
         this.database
-          .prepare("SELECT 1 FROM staging_content_objects WHERE sha256 = ?")
+          .prepare("SELECT 1 FROM staging_content_objects WHERE content_hash = ?")
           .get(contentHash),
       );
     } catch {
