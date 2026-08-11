@@ -24,8 +24,15 @@ type ManualUploadResponse = {
   };
 };
 
+type UploadIntent = {
+  fingerprint: string;
+  idempotencyKey: string;
+  storageKey: string;
+};
+
 const ACCEPTED_EXTENSIONS =
   ".md,.html,.htm,.pdf,.docx,.xlsx,.csv,.json,.xml,.eml,.txt,.png,.jpg,.jpeg,.webp,.tif,.tiff";
+const INTENT_STORAGE_PREFIX = "markorbit:manual-upload-intent:";
 
 const MIME_BY_EXTENSION: Record<string, string> = {
   md: "text/markdown",
@@ -84,12 +91,21 @@ function errorMessage(body: unknown, fallback: string): string {
   return typeof message === "string" && message.trim() ? message : fallback;
 }
 
+function uploadIntent(fingerprint: string): UploadIntent {
+  const storageKey = `${INTENT_STORAGE_PREFIX}${fingerprint}`;
+  const stored = sessionStorage.getItem(storageKey)?.trim();
+  const idempotencyKey = stored || `manual-ui:${crypto.randomUUID()}`;
+  if (!stored) sessionStorage.setItem(storageKey, idempotencyKey);
+  return { fingerprint, idempotencyKey, storageKey };
+}
+
 export function ManualUploadControl({ workspaceId }: { workspaceId: string }) {
   const [policy, setPolicy] = useState<ManualUploadPolicy | null>(null);
   const [policyError, setPolicyError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [result, setResult] = useState<ManualUploadResponse | null>(null);
+  const [activeIntent, setActiveIntent] = useState<UploadIntent | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -142,15 +158,19 @@ export function ManualUploadControl({ workspaceId }: { workspaceId: string }) {
     try {
       const contentBytes = await file.arrayBuffer();
       const contentSha256 = await sha256(contentBytes);
-      const intent = new TextEncoder().encode(
+      const fingerprintBytes = new TextEncoder().encode(
         `${workspaceId}\n${file.name}\n${mimeType}\n${file.size}\n${contentSha256}`,
       );
-      const idempotencyKey = `manual-ui:${await sha256(intent)}`;
+      const fingerprint = await sha256(fingerprintBytes);
+      const intent =
+        activeIntent?.fingerprint === fingerprint ? activeIntent : uploadIntent(fingerprint);
+      setActiveIntent(intent);
+
       const response = await fetch("/api/manual-uploads", {
         method: "POST",
         headers: {
           "content-type": mimeType,
-          "idempotency-key": idempotencyKey,
+          "idempotency-key": intent.idempotencyKey,
           "x-markorbit-workspace-id": workspaceId,
           "x-markorbit-filename": encodeURIComponent(file.name),
           "x-markorbit-content-size": String(file.size),
@@ -160,6 +180,9 @@ export function ManualUploadControl({ workspaceId }: { workspaceId: string }) {
       });
       const body = (await response.json()) as ManualUploadResponse | unknown;
       if (!response.ok) throw new Error(errorMessage(body, "Manual Upload failed"));
+
+      sessionStorage.removeItem(intent.storageKey);
+      setActiveIntent(null);
       setResult(body as ManualUploadResponse);
       form.reset();
     } catch (error) {
@@ -167,6 +190,13 @@ export function ManualUploadControl({ workspaceId }: { workspaceId: string }) {
     } finally {
       setUploading(false);
     }
+  }
+
+  function startNewIntent() {
+    if (activeIntent) sessionStorage.removeItem(activeIntent.storageKey);
+    setActiveIntent(null);
+    setUploadError(null);
+    setResult(null);
   }
 
   return (
@@ -194,6 +224,11 @@ export function ManualUploadControl({ workspaceId }: { workspaceId: string }) {
             type="file"
             accept={ACCEPTED_EXTENSIONS}
             disabled={uploading || !policy}
+            onChange={() => {
+              setActiveIntent(null);
+              setUploadError(null);
+              setResult(null);
+            }}
             className="block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium disabled:opacity-60"
           />
           <button
@@ -218,7 +253,19 @@ export function ManualUploadControl({ workspaceId }: { workspaceId: string }) {
       ) : null}
       {uploadError ? (
         <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-          {uploadError}
+          <p>{uploadError}</p>
+          {activeIntent ? (
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+              <span>直接再次上传会复用同一幂等意图进行核对。</span>
+              <button
+                type="button"
+                onClick={startNewIntent}
+                className="font-medium underline underline-offset-2"
+              >
+                确认旧 Run 已失败，改为新的上传意图
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
       {result ? (
