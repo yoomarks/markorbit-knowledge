@@ -16,8 +16,8 @@ import {
   RegistryValidationError,
   initializeRegistry,
 } from "./index";
-import { normalizeVaultRelativeRoot } from "./vault-binding-registry";
 import { normalizeObsidianTargetPath } from "./obsidian-vault-projection";
+import { normalizeVaultRelativeRoot } from "./vault-binding-registry";
 
 const MIGRATION_ID = "0023_vault_export_runs";
 const SHA256 = /^[a-f0-9]{64}$/u;
@@ -39,6 +39,7 @@ export type PrepareVaultExportRunResult = {
 export interface VaultExportRunRepository {
   prepare(input: PrepareVaultExportRunInput): PrepareVaultExportRunResult;
   getById(workspaceId: string, runId: string): VaultExportRunV1 | null;
+  getPendingByStaging(workspaceId: string, stagingDocumentId: string): VaultExportRunV1 | null;
   recordProjectionReceipt(
     workspaceId: string,
     runId: string,
@@ -176,10 +177,7 @@ function parseRun(value: string): VaultExportRunV1 {
       );
     }
     validateReceipt(run.result, run);
-    if (
-      !run.projectionReceipt ||
-      stable(run.result) !== stable(run.projectionReceipt)
-    ) {
+    if (!run.projectionReceipt || stable(run.result) !== stable(run.projectionReceipt)) {
       throw new RegistryConflictError(
         "VAULT_EXPORT_PERSISTED_STATE_INVALID",
         "Vault export result does not match the persisted projection receipt",
@@ -257,17 +255,8 @@ export class SqliteVaultExportRunRepository implements VaultExportRunRepository 
 
     this.database.exec("BEGIN IMMEDIATE;");
     try {
-      const pendingRow = this.database
-        .prepare(
-          `SELECT document_json FROM vault_export_runs
-           WHERE workspace_id = ? AND staging_document_id = ? AND state = 'PENDING'
-           ORDER BY prepared_at DESC, rowid DESC LIMIT 1`,
-        )
-        .get(input.workspaceId, input.staging.stagingDocumentId) as
-        | { document_json: string }
-        | undefined;
-      if (pendingRow) {
-        const pending = parseRun(pendingRow.document_json);
+      const pending = this.getPendingByStaging(input.workspaceId, input.staging.stagingDocumentId);
+      if (pending) {
         if (pending.idempotencyKey !== key) {
           throw new RegistryConflictError(
             "VAULT_EXPORT_PENDING_DESTINATION_CONFLICT",
@@ -344,6 +333,22 @@ export class SqliteVaultExportRunRepository implements VaultExportRunRepository 
     return row ? parseRun(row.document_json) : null;
   }
 
+  getPendingByStaging(
+    workspaceIdValue: string,
+    stagingDocumentIdValue: string,
+  ): VaultExportRunV1 | null {
+    const workspaceId = required(workspaceIdValue, "workspaceId");
+    const stagingDocumentId = required(stagingDocumentIdValue, "stagingDocumentId");
+    const row = this.database
+      .prepare(
+        `SELECT document_json FROM vault_export_runs
+         WHERE workspace_id = ? AND staging_document_id = ? AND state = 'PENDING'
+         ORDER BY prepared_at DESC, rowid DESC LIMIT 1`,
+      )
+      .get(workspaceId, stagingDocumentId) as { document_json: string } | undefined;
+    return row ? parseRun(row.document_json) : null;
+  }
+
   recordProjectionReceipt(
     workspaceId: string,
     runId: string,
@@ -374,18 +379,32 @@ export class SqliteVaultExportRunRepository implements VaultExportRunRepository 
       }
       return run;
     }
+    if (run.state !== "PENDING") {
+      throw new RegistryConflictError(
+        "VAULT_EXPORT_STATE_CONFLICT",
+        "Projection receipts may only be added to pending Vault exports",
+      );
+    }
     const recordedAt = this.clock().toISOString();
     const next: VaultExportRunV1 = {
       ...run,
       projectionReceipt: { ...receiptInput, recordedAt },
       updatedAt: recordedAt,
     };
-    this.database
+    const result = this.database
       .prepare(
         `UPDATE vault_export_runs SET document_json = ?, updated_at = ?
          WHERE workspace_id = ? AND run_id = ? AND state = 'PENDING'`,
       )
       .run(JSON.stringify(next), next.updatedAt, workspaceId, runId);
+    if (Number(result.changes) !== 1) {
+      const replay = this.getById(workspaceId, runId);
+      if (replay?.projectionReceipt) return replay;
+      throw new RegistryConflictError(
+        "VAULT_EXPORT_RECEIPT_RECORD_CONFLICT",
+        "Vault export changed before its projection receipt could be recorded",
+      );
+    }
     return next;
   }
 
