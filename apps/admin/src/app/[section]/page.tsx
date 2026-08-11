@@ -28,7 +28,7 @@ import { SourceIntelligenceReviewOwnership } from "@/components/sources/source-i
 import { SourceIntelligenceReviewQueue } from "@/components/sources/source-intelligence-review-queue";
 import { SourceIntelligenceWorkbench } from "@/components/sources/source-intelligence-workbench";
 import { SourceList } from "@/components/sources/source-list";
-import { VaultBindingControl } from "@/components/vault/vault-binding-control";
+import { VaultWorkbench } from "@/components/vault/vault-workbench";
 import { VaultExportControl } from "@/components/vault/vault-export-control";
 import { WorkerList } from "@/components/workers/worker-list";
 import { moduleOrder, type ModuleKey } from "@/lib/modules";
@@ -228,7 +228,7 @@ function VaultPage() {
         description="管理 Workspace Vault 绑定，并显式导出已验证 READY Staging。导出先持久化 PENDING 再执行文件系统写入，未知结果保持可核对重放，不自动覆盖不同内容。"
       />
       <div className="space-y-6">
-        <VaultBindingControl workspaceId={DEFAULT_WORKSPACE.id} />
+        <VaultWorkbench workspaceId={DEFAULT_WORKSPACE.id} />
         <VaultExportControl workspaceId={DEFAULT_WORKSPACE.id} />
       </div>
     </>
