@@ -1,5 +1,6 @@
 import { VaultBindingControl } from "./vault-binding-control";
 import { VaultExportControl } from "./vault-export-control";
+import { VaultImportIntentControl } from "./vault-import-intent-control";
 import { VaultInspectionControl } from "./vault-inspection-control";
 
 export function VaultWorkbench({ workspaceId }: { workspaceId: string }) {
@@ -8,6 +9,7 @@ export function VaultWorkbench({ workspaceId }: { workspaceId: string }) {
       <VaultBindingControl workspaceId={workspaceId} />
       <VaultExportControl workspaceId={workspaceId} />
       <VaultInspectionControl workspaceId={workspaceId} />
+      <VaultImportIntentControl workspaceId={workspaceId} />
     </div>
   );
 }
