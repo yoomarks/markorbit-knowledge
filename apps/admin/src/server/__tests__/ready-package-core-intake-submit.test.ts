@@ -14,6 +14,7 @@ import {
 } from "../ready-package-core-intake-submit";
 
 const WORKSPACE_ID = "wsp_01H00000000000000000000000";
+const CORE_WORKSPACE_ID = "123e4567-e89b-12d3-a456-426614174000";
 
 function createReadyPackage(
   database: DatabaseSync,
@@ -48,6 +49,7 @@ function submitInput(readyPackage: {
 }) {
   return {
     workspaceId: readyPackage.workspaceId,
+    coreWorkspaceId: CORE_WORKSPACE_ID,
     readyPackageId: readyPackage.id,
     expectedDigest: readyPackage.evidence.digest,
     submit: true as const,
@@ -95,7 +97,10 @@ describe("ReadyPackage Core intake submission", () => {
     expect(attempts[1]).toEqual(attempts[0]);
     expect(attempts[0]).toMatchObject({
       key: "core-intake:cis_retry",
-      request: { submittedAt: "2026-08-10T05:01:00.000Z" },
+      request: {
+        workspaceId: CORE_WORKSPACE_ID,
+        submittedAt: "2026-08-10T05:01:00.000Z",
+      },
     });
     expect(recovered.submissionReplayed).toBe(true);
     expect(recovered.transportResultReplayed).toBe(false);

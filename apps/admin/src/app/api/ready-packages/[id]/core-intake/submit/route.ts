@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { SqliteCoreWorkspaceBindingRepository } from "@markorbit/persistence/core-workspace-bindings";
 import { SqliteReadyPackageCoreIntakeSubmissionRepository } from "@markorbit/persistence/ready-package-core-intake-submissions";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { configuredCoreIntakeTransport } from "@/server/core-intake-http-transport";
@@ -22,11 +23,15 @@ export async function POST(request: Request, context: RouteContext) {
     if (body.submit !== true) throw new RegistryValidationError("submit=true is required");
 
     const { id } = await context.params;
+    const database = getRegistryDatabase();
     const readyPackages = getReadyPackageRepository();
-    const submissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(getRegistryDatabase());
+    const submissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(database);
+    const bindings = new SqliteCoreWorkspaceBindingRepository(database);
+    const binding = bindings.getByKnowledgeWorkspaceId(workspaceId);
     const result = await submitReadyPackageCoreIntake(
       {
         workspaceId,
+        coreWorkspaceId: binding?.coreWorkspaceId ?? null,
         readyPackageId: id,
         expectedDigest,
         submit: true,

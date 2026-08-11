@@ -26,10 +26,13 @@ export class CoreIntakeAdapter {
   }
 }
 
-export function createCoreIntakeRequestPreview(pkg: ReadyPackage): CoreIntakeRequestPreview {
+export function createCoreIntakeRequestPreview(
+  pkg: ReadyPackage,
+  coreWorkspaceId: string = pkg.workspaceId,
+): CoreIntakeRequestPreview {
   return {
     readyPackageId: pkg.id,
-    workspaceId: pkg.workspaceId,
+    workspaceId: coreWorkspaceId,
     digest: pkg.evidence.digest,
     evidence: {
       artifactIds: pkg.evidence.artifactIds,
@@ -38,9 +41,13 @@ export function createCoreIntakeRequestPreview(pkg: ReadyPackage): CoreIntakeReq
   };
 }
 
-export function createCoreIntakeRequest(pkg: ReadyPackage, submittedAt: string): CoreIntakeRequest {
+export function createCoreIntakeRequest(
+  pkg: ReadyPackage,
+  submittedAt: string,
+  coreWorkspaceId: string = pkg.workspaceId,
+): CoreIntakeRequest {
   return {
-    ...createCoreIntakeRequestPreview(pkg),
+    ...createCoreIntakeRequestPreview(pkg, coreWorkspaceId),
     submittedAt,
   };
 }
