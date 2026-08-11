@@ -70,22 +70,22 @@ These are **horizontal extensions over a finished backbone**, not evidence that 
 
 ### 1.3 Bottom-line classification
 
-| Area | Review verdict | Nature of remaining work |
-| --- | --- | --- |
-| System boundary / authority model | COMPLETE | Freeze; do not redesign |
-| Source/Connector/Plan/Run/Worker control plane | COMPLETE | Hardening only |
-| Production Web HTML/Markdown acquisition | COMPLETE | Provider hardening/expansion |
-| RawArtifact immutability / CAS / provenance | COMPLETE | Hardening only |
-| Conversion contracts / leases / ledger | COMPLETE as control plane | Real converter/provider breadth still substantive |
-| Obsidian Vault explicit workflow | COMPLETE for current explicit/manual safety model | UX/runbook hardening |
-| Canonical Downstream / ReadyPackage V2 | COMPLETE | Hardening only |
-| V2 delivery reliability/reconciliation | COMPLETE on Knowledge side | Blocked on real main-repo V2 consumer |
-| Manual Upload | NOT PRODUCTIONIZED | Substantive extension |
-| Local Folder Worker | NOT PRODUCTIONIZED | Substantive extension |
-| PDF/DOCX/etc. real conversion breadth | PARTIAL | Substantive extension |
-| Automatic scheduling/change watch | NOT IMPLEMENTED | Substantive extension |
-| Full Admin productization | PARTIAL | Mostly bounded product/ops work |
-| Main-repo ReadyPackage V2 consumer | NOT IMPLEMENTED | Cross-repo blocker |
+| Area                                           | Review verdict                                    | Nature of remaining work                          |
+| ---------------------------------------------- | ------------------------------------------------- | ------------------------------------------------- |
+| System boundary / authority model              | COMPLETE                                          | Freeze; do not redesign                           |
+| Source/Connector/Plan/Run/Worker control plane | COMPLETE                                          | Hardening only                                    |
+| Production Web HTML/Markdown acquisition       | COMPLETE                                          | Provider hardening/expansion                      |
+| RawArtifact immutability / CAS / provenance    | COMPLETE                                          | Hardening only                                    |
+| Conversion contracts / leases / ledger         | COMPLETE as control plane                         | Real converter/provider breadth still substantive |
+| Obsidian Vault explicit workflow               | COMPLETE for current explicit/manual safety model | UX/runbook hardening                              |
+| Canonical Downstream / ReadyPackage V2         | COMPLETE                                          | Hardening only                                    |
+| V2 delivery reliability/reconciliation         | COMPLETE on Knowledge side                        | Blocked on real main-repo V2 consumer             |
+| Manual Upload                                  | NOT PRODUCTIONIZED                                | Substantive extension                             |
+| Local Folder Worker                            | NOT PRODUCTIONIZED                                | Substantive extension                             |
+| PDF/DOCX/etc. real conversion breadth          | PARTIAL                                           | Substantive extension                             |
+| Automatic scheduling/change watch              | NOT IMPLEMENTED                                   | Substantive extension                             |
+| Full Admin productization                      | PARTIAL                                           | Mostly bounded product/ops work                   |
+| Main-repo ReadyPackage V2 consumer             | NOT IMPLEMENTED                                   | Cross-repo blocker                                |
 
 **Conclusion:** MarkOrbit Knowledge has completed its main structural construction. The next phase should be treated as **coverage completion + production hardening + cross-repo integration**, not another architecture phase.
 
@@ -263,15 +263,15 @@ Main must accept the exact `ReadyPackageV2DeliveryRequestV1` shape:
 {
   protocolVersion: "1.0";
   objectType: "READY_PACKAGE_V2_DELIVERY_REQUEST";
-  deliveryId: string;            // rvd_*
-  readyPackageId: string;        // rdp_*
-  knowledgeWorkspaceId: string;  // wsp_*
+  deliveryId: string; // rvd_*
+  readyPackageId: string; // rdp_*
+  knowledgeWorkspaceId: string; // wsp_*
   target: {
     service: "MARKORBIT_CORE";
-    workspaceId: string;          // canonical Core UUID
-  };
-  readyPackageDigest: string;    // sha256 hex
-  contentExportSha256: string;   // sha256 hex
+    workspaceId: string; // canonical Core UUID
+  }
+  readyPackageDigest: string; // sha256 hex
+  contentExportSha256: string; // sha256 hex
   contentExport: ReadyPackageContentExportV2;
   submittedAt: string;
 }
