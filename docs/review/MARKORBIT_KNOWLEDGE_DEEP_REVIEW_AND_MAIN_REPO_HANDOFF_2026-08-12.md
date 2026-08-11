@@ -12,6 +12,17 @@ This document is a review and cross-repository handoff. It is **not** authorizat
 - Main-repo owner must explicitly authorize/schedule the work described below.
 - Existing main-repo authority/roadmap remains authoritative. This handoff must not silently supersede M6 or any later owner-approved work package.
 
+### Execution priority — trunk first, branches later
+
+Apply the owner direction **“抓大放小，先修主干，后剪枝叶”** to all follow-up planning:
+
+1. first close the real cross-repository trunk: dedicated Core ReadyPackage V2 receiver → durable persistence/idempotency → exact recovery semantics → pinned Knowledge↔Core E2E;
+2. then complete only the horizontal Knowledge capabilities that materially expand MVP usefulness, without reopening the finished K01–K16 backbone;
+3. defer preview-page polish, wording, cosmetic Admin cleanup, documentation tidying, extra dashboards/metrics and other branch/leaf work until the trunk is proven;
+4. do not start a new architecture phase merely because small gaps remain.
+
+When priorities conflict, **trunk correctness and real end-to-end operability win over breadth and polish**.
+
 ---
 
 ## 1. Executive verdict
@@ -459,19 +470,31 @@ Core semantic understanding, distillation, recommendation, capability/value logi
 
 ## 6. Recommended sequencing
 
-### Knowledge repository
+### Global trunk-first order
 
-Knowledge can continue its own breadth completion independently in this order:
+Until the cross-repository V2 path is proven, treat the following as the priority stack:
 
-1. Manual Upload;
-2. Local Folder Worker;
-3. real attachment/file converter providers;
+1. **Main repo V2 consumer ingress + exact raw-request hashing**;
+2. **durable V2 ledger/idempotency + immutable Content Export V2 persistence**;
+3. **recovery/status semantics + pinned Knowledge↔Core E2E**;
+4. only after that, resume Knowledge breadth work that materially increases production usefulness;
+5. leave Admin polish, preview cleanup, wording, documentation tidying, extra observability and similar branch/leaf work to the final close-out phase.
+
+This is the practical interpretation of “trunk first”: a feature that adds another input format is lower priority than proving the existing authoritative package can cross the real repository boundary and recover safely.
+
+### Knowledge repository after the trunk is proven
+
+Resume substantive breadth in this order unless product evidence changes the need:
+
+1. Manual Upload + the minimum real converter support required to make it useful;
+2. attachment/PDF/DOCX converter breadth;
+3. Local Folder Worker;
 4. scheduler/change-watch;
 5. Admin/operations close-out.
 
 These should reuse the existing architecture and should not reopen K01–K16 contracts without a concrete failing invariant.
 
-### Main repository
+### Main repository V2 dependency order
 
 When the owner authorizes V2 consumer work:
 
