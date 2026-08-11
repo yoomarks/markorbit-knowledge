@@ -3,6 +3,7 @@ import {
   Crawl4AiSubprocessAcquirer,
   HttpControlledCollectionClient,
   HttpProductionConversionClient,
+  LocalFolderArtifactAcquirer,
   ProductionConversionWorkerRuntime,
 } from "@markorbit/worker-runtime";
 import { loadWorkerProcessConfig } from "./config";
@@ -28,10 +29,19 @@ async function main(): Promise<void> {
     config.workerId,
     config.workerCredential,
   );
-  const acquirer = new Crawl4AiSubprocessAcquirer({
-    requireEgressProxy: config.requireEgressProxy,
-    maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
-  });
+  const acquirer =
+    config.collectionProvider === "local-folder"
+      ? new LocalFolderArtifactAcquirer({
+          roots: config.localFolderRoots,
+          maxArtifactBytes: config.localFolderMaxArtifactBytes,
+          maxTotalBytes: config.localFolderMaxTotalBytes,
+          maxItems: config.localFolderMaxItems,
+          maxDepth: config.localFolderMaxDepth,
+        })
+      : new Crawl4AiSubprocessAcquirer({
+          requireEgressProxy: config.requireEgressProxy,
+          maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
+        });
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
@@ -78,7 +88,9 @@ async function main(): Promise<void> {
   log("worker.started", {
     workerId: config.workerId,
     runtimeVersion: config.runtimeVersion,
+    collectionProvider: config.collectionProvider,
     requireEgressProxy: config.requireEgressProxy,
+    localFolderRootIds: Object.keys(config.localFolderRoots),
     maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
     conversionEnabled: config.conversionEnabled,
   });
