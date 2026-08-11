@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import type { CoreIntakeResult } from "@markorbit/contracts";
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
 import { SqliteCoreWorkspaceBindingRepository } from "@markorbit/persistence/core-workspace-bindings";
-import { SqliteReadyPackageCoreIntakeSubmissionRepository } from "@markorbit/persistence/ready-package-core-intake-submissions";
+import {
+  SqliteReadyPackageCoreIntakeSubmissionRepository,
+  type ReadyPackageCoreIntakeSubmission,
+} from "@markorbit/persistence/ready-package-core-intake-submissions";
 import { createCoreIntakeRequestPreview } from "@markorbit/worker-runtime";
 import { apiError } from "@/server/api-errors";
 import { coreContentTransportReadiness } from "@/server/core-content-http-transport";
@@ -20,6 +23,26 @@ type PostBody = {
   acknowledge?: boolean;
   coreIntakeResult?: CoreIntakeResult;
 };
+
+function submissionStatusView(submission: ReadyPackageCoreIntakeSubmission) {
+  const { contentDelivery, ...submissionWithoutContentBody } = submission;
+  return {
+    ...submissionWithoutContentBody,
+    ...(contentDelivery
+      ? {
+          contentDelivery: {
+            state: contentDelivery.state,
+            coreIntakeId: contentDelivery.coreIntakeId,
+            requestSha256: contentDelivery.requestSha256,
+            transportResult: contentDelivery.transportResult,
+            result: contentDelivery.result,
+            preparedAt: contentDelivery.preparedAt,
+            updatedAt: contentDelivery.updatedAt,
+          },
+        }
+      : {}),
+  };
+}
 
 export async function GET(request: Request, context: RouteContext) {
   try {
@@ -93,8 +116,10 @@ export async function GET(request: Request, context: RouteContext) {
         : null,
       transportStatus,
       outboundTransport,
-      latestCoreIntakeSubmission,
-      coreIntakeSubmissions,
+      latestCoreIntakeSubmission: latestCoreIntakeSubmission
+        ? submissionStatusView(latestCoreIntakeSubmission)
+        : null,
+      coreIntakeSubmissions: coreIntakeSubmissions.map(submissionStatusView),
       latestCoreIntakeReceipt,
       coreIntakeReceipts,
       contentTransportStatus,
