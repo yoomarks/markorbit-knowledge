@@ -33,8 +33,7 @@ jobs:
           acquirer = Path('packages/worker-runtime/src/local-folder-acquirer.ts')
           text = acquirer.read_text()
 
-          anchor = '''export const LOCAL_FOLDER_CONNECTOR_VERSION = "1.0.0";
-          export const LOCAL_FOLDER_EXECUTOR'''
+          anchor = 'export const LOCAL_FOLDER_CONNECTOR_VERSION = "1.0.0";\nexport const LOCAL_FOLDER_EXECUTOR'
           replacement = '''export const LOCAL_FOLDER_CONNECTOR_VERSION = "1.0.0";
 
           export function localFolderConnectorId(rootId: string): string {
@@ -79,12 +78,8 @@ jobs:
               raise SystemExit('assertSupportedJob anchor not found')
           text = text.replace(old_signature, new_signature, 1)
 
-          old_acquire = '''  async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
-            assertSupportedJob(context, this.maxItems, this.maxDepth);
-            const config = sourceConfig(context);'''
-          new_acquire = '''  async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
-            const config = sourceConfig(context);
-            assertSupportedJob(context, config.rootId, this.maxItems, this.maxDepth);'''
+          old_acquire = '    assertSupportedJob(context, this.maxItems, this.maxDepth);\n    const config = sourceConfig(context);'
+          new_acquire = '    const config = sourceConfig(context);\n    assertSupportedJob(context, config.rootId, this.maxItems, this.maxDepth);'
           if old_acquire not in text:
               raise SystemExit('acquire anchor not found')
           text = text.replace(old_acquire, new_acquire, 1)
@@ -165,11 +160,11 @@ jobs:
           '''
           text = text[:start] + connector_block + text[end:]
 
-          text = text.replace(
-              'connectorId: LOCAL_FOLDER_CONNECTOR_ID,\n        version: LOCAL_FOLDER_CONNECTOR_VERSION,',
-              'connectorId: localFolderConnectorId(input.rootId),\n        version: LOCAL_FOLDER_CONNECTOR_VERSION,',
-              1,
-          )
+          old_source_connector = 'connectorId: LOCAL_FOLDER_CONNECTOR_ID,\n        version: LOCAL_FOLDER_CONNECTOR_VERSION,'
+          new_source_connector = 'connectorId: localFolderConnectorId(input.rootId),\n        version: LOCAL_FOLDER_CONNECTOR_VERSION,'
+          if old_source_connector not in text:
+              raise SystemExit('source connector anchor not found')
+          text = text.replace(old_source_connector, new_source_connector, 1)
 
           worker_start = text.index('async function ensureWorker(')
           worker_end = text.index('\nasync function dispatch(', worker_start)
@@ -227,18 +222,22 @@ jobs:
           '''
           text = text[:worker_start] + worker_block + text[worker_end:]
 
+          old_ensure = '  await ensureConnector(baseUrl);'
+          new_ensure = '  for (const allowedRootId of Object.keys(roots).sort()) {\n    await ensureConnector(baseUrl, allowedRootId);\n  }'
+          if old_ensure not in text:
+              raise SystemExit('ensureConnector call anchor not found')
+          text = text.replace(old_ensure, new_ensure, 1)
+
+          old_worker = '  const worker = await ensureWorker(baseUrl, rootId);'
+          if old_worker not in text:
+              raise SystemExit('ensureWorker call anchor not found')
+          text = text.replace(old_worker, '  const worker = await ensureWorker(baseUrl, Object.keys(roots));', 1)
+
+          old_output = 'connector: `${LOCAL_FOLDER_CONNECTOR_ID}@${LOCAL_FOLDER_CONNECTOR_VERSION}`,'
+          if old_output not in text:
+              raise SystemExit('output connector anchor not found')
           text = text.replace(
-              '  await ensureConnector(baseUrl);',
-              '  for (const allowedRootId of Object.keys(roots).sort()) {\n    await ensureConnector(baseUrl, allowedRootId);\n  }',
-              1,
-          )
-          text = text.replace(
-              '  const worker = await ensureWorker(baseUrl, rootId);',
-              '  const worker = await ensureWorker(baseUrl, Object.keys(roots));',
-              1,
-          )
-          text = text.replace(
-              'connector: `${LOCAL_FOLDER_CONNECTOR_ID}@${LOCAL_FOLDER_CONNECTOR_VERSION}`,',
+              old_output,
               'connector: `${localFolderConnectorId(rootId)}@${LOCAL_FOLDER_CONNECTOR_VERSION}`,',
               1,
           )
