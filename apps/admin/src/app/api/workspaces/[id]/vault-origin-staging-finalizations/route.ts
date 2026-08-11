@@ -1,0 +1,44 @@
+import { NextResponse } from "next/server";
+import { RegistryValidationError } from "@markorbit/persistence";
+import { apiError, readJson, requireRecord } from "@/server/api-errors";
+import { getConfiguredVaultOriginStagingVerificationService } from "@/server/vault-origin-staging-verification-service";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+function requestBody(value: unknown): { vaultStagingDocumentId: string; idempotencyKey: string } {
+  const body = requireRecord(value);
+  if (
+    Object.keys(body).some((key) => key !== "vaultStagingDocumentId" && key !== "idempotencyKey")
+  ) {
+    throw new RegistryValidationError("Vault-origin finalization request contains unknown fields");
+  }
+  if (typeof body.vaultStagingDocumentId !== "string") {
+    throw new RegistryValidationError("vaultStagingDocumentId is required");
+  }
+  if (typeof body.idempotencyKey !== "string") {
+    throw new RegistryValidationError("idempotencyKey is required");
+  }
+  return {
+    vaultStagingDocumentId: body.vaultStagingDocumentId,
+    idempotencyKey: body.idempotencyKey,
+  };
+}
+
+export async function POST(request: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const body = requestBody(await readJson(request));
+    return NextResponse.json(
+      getConfiguredVaultOriginStagingVerificationService().finalize(
+        id,
+        body.vaultStagingDocumentId,
+        body.idempotencyKey,
+      ),
+    );
+  } catch (error) {
+    return apiError(error);
+  }
+}
