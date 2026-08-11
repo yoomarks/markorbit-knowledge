@@ -1,3 +1,7 @@
+import { parseLocalFolderRoots, type LocalFolderRootMap } from "@markorbit/worker-runtime";
+
+export type WorkerCollectionProvider = "crawl4ai" | "local-folder";
+
 export type WorkerProcessConfig = {
   controlPlaneUrl: string;
   workerId: string;
@@ -8,7 +12,13 @@ export type WorkerProcessConfig = {
   maxCollectionRuntimeMs: number;
   errorBackoffMinMs: number;
   errorBackoffMaxMs: number;
+  collectionProvider: WorkerCollectionProvider;
   requireEgressProxy: boolean;
+  localFolderRoots: LocalFolderRootMap;
+  localFolderMaxArtifactBytes: number;
+  localFolderMaxTotalBytes: number;
+  localFolderMaxItems: number;
+  localFolderMaxDepth: number;
   conversionEnabled: boolean;
   workspaceId?: string;
   conversionCapabilityRevision: number;
@@ -53,10 +63,24 @@ function normalizedControlPlaneUrl(value: string): string {
   return url.toString().replace(/\/$/, "");
 }
 
+function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
+  const value = env.MARKORBIT_COLLECTION_PROVIDER?.trim().toLowerCase() || "crawl4ai";
+  if (value === "crawl4ai" || value === "local-folder") return value;
+  throw new Error("MARKORBIT_COLLECTION_PROVIDER must be crawl4ai or local-folder");
+}
+
 export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): WorkerProcessConfig {
+  const provider = collectionProvider(env);
   const requireEgressProxy = env.MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY?.trim() !== "0";
-  if (env.NODE_ENV === "production" && !requireEgressProxy) {
-    throw new Error("Production Worker cannot disable the Crawl4AI egress-proxy requirement");
+  if (env.NODE_ENV === "production" && provider === "crawl4ai" && !requireEgressProxy) {
+    throw new Error("Production Crawl4AI Worker cannot disable the egress-proxy requirement");
+  }
+
+  const localFolderRoots = parseLocalFolderRoots(env.MARKORBIT_LOCAL_FOLDER_ROOTS);
+  if (provider === "local-folder" && Object.keys(localFolderRoots).length === 0) {
+    throw new Error(
+      "MARKORBIT_LOCAL_FOLDER_ROOTS must define at least one allowed root for local-folder collection",
+    );
   }
 
   const errorBackoffMinMs = integer(
@@ -101,7 +125,25 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     ),
     errorBackoffMinMs,
     errorBackoffMaxMs,
+    collectionProvider: provider,
     requireEgressProxy,
+    localFolderRoots,
+    localFolderMaxArtifactBytes: integer(
+      env,
+      "MARKORBIT_LOCAL_FOLDER_MAX_ARTIFACT_BYTES",
+      25 * 1024 * 1024,
+      1,
+      512 * 1024 * 1024,
+    ),
+    localFolderMaxTotalBytes: integer(
+      env,
+      "MARKORBIT_LOCAL_FOLDER_MAX_TOTAL_BYTES",
+      100 * 1024 * 1024,
+      1,
+      1024 * 1024 * 1024,
+    ),
+    localFolderMaxItems: integer(env, "MARKORBIT_LOCAL_FOLDER_MAX_ITEMS", 500, 1, 5_000),
+    localFolderMaxDepth: integer(env, "MARKORBIT_LOCAL_FOLDER_MAX_DEPTH", 20, 0, 20),
     conversionEnabled,
     ...(workspaceId ? { workspaceId } : {}),
     conversionCapabilityRevision: integer(
