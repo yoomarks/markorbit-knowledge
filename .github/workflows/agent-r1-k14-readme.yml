@@ -1,0 +1,45 @@
+name: Agent R1-K14 README
+
+on:
+  push:
+    branches:
+      - r1-k14-ready-package-v2-delivery-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: r1-k14-ready-package-v2-delivery-foundation
+      - name: Update K14 capability status
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('README.md')
+          s = p.read_text()
+          anchor = '- provenance-aware ReadyPackage V2 and deterministic Content Export V2 that freeze the authoritative K12 canonical record, revalidate immutable Staging CAS bytes before export and keep Vault-origin provenance explicit without modifying conversion-only V1 contracts;\n'
+          addition = anchor + '- durable ReadyPackage V2 Delivery Protocol V1 foundation with explicit freeze-before-network preparation, exact-request/idempotency retry, transport-result-before-finalization recovery and a dedicated V2-only outbound capability gate that forbids reuse of the frozen Core V1 endpoint;\n'
+          if anchor not in s:
+              raise SystemExit('capability anchor not found')
+          s = s.replace(anchor, addition, 1)
+          old = 'Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, ReadyPackage V2 delivery to Core, automatic conflict merge and two-way synchronization, and MarkOrbit Core semantic logic are not implemented yet. ReadyPackage V1 and Content Export V1 remain conversion-origin contracts; ReadyPackage V2 and Content Export V2 preserve the explicit Vault provenance chain but are not sent through the frozen Core V1 consumer boundary.'
+          new = 'Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, a verified/implemented Core ReadyPackage V2 receiver, automatic conflict merge and two-way synchronization, and MarkOrbit Core semantic logic are not implemented yet. ReadyPackage V1 and Content Export V1 remain conversion-origin contracts; ReadyPackage V2 and Content Export V2 preserve the explicit Vault provenance chain and K14 can durably freeze their V2 delivery request, but outbound V2 transport remains disabled unless a dedicated V2 endpoint and protocol declaration are explicitly configured, and V2 is never sent through the frozen Core V1 consumer boundary.'
+          if old not in s:
+              raise SystemExit('status paragraph anchor not found')
+          s = s.replace(old, new, 1)
+          link = '- [ReadyPackage V2 and Content Export V2](docs/architecture/READY_PACKAGE_V2.md)\n'
+          link_addition = link + '- [ReadyPackage V2 Delivery Protocol V1](docs/architecture/READY_PACKAGE_V2_DELIVERY_V1.md)\n'
+          if link not in s:
+              raise SystemExit('documentation anchor not found')
+          p.write_text(s.replace(link, link_addition, 1))
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          git commit -m 'docs(r1-k14): publish V2 delivery foundation status'
+          git push origin HEAD:r1-k14-ready-package-v2-delivery-foundation
