@@ -39,10 +39,11 @@ jobs:
           PY
       - name: Generate R1-K04 implementation
         run: python scripts/agent-r1-k04-implement.py
-      - name: Repair generated multiline fixtures
+      - name: Repair generated fixtures and compatibility types
         run: |
           python - <<'PY'
           from pathlib import Path
+
           fixes = {
               'apps/admin/src/server/__tests__/ready-package-core-content-submit.test.ts':
                   'const MARKDOWN = "# Frozen content\\n\\nSecond-stage delivery.\\n";',
@@ -55,6 +56,94 @@ jobs:
               start = text.index('const MARKDOWN = ')
               end = text.index(';', start) + 1
               path.write_text(text[:start] + replacement + text[end:])
+
+          path = Path('packages/persistence/src/ready-package-core-intake-submission.ts')
+          text = path.read_text()
+          old = '''  recordResult(
+            submissionId: string,
+            workspaceId: string,
+            result: CoreIntakeResult,
+          ): ReadyPackageCoreIntakeSubmission;
+          prepareContentDelivery(
+            submissionId: string,
+            workspaceId: string,
+            input: PrepareReadyPackageCoreContentDeliveryInput,
+          ): PrepareReadyPackageCoreContentDeliveryResult;
+          recordContentTransportResult(
+            submissionId: string,
+            workspaceId: string,
+            result: ReadyPackageCoreContentResult,
+          ): ReadyPackageCoreIntakeSubmission;
+          recordContentResult(
+            submissionId: string,
+            workspaceId: string,
+            result: ReadyPackageCoreContentResult,
+          ): ReadyPackageCoreIntakeSubmission;
+          list(readyPackageId: string, workspaceId: string): ReadyPackageCoreIntakeSubmission[];
+          }'''
+          replacement = '''  recordResult(
+            submissionId: string,
+            workspaceId: string,
+            result: CoreIntakeResult,
+          ): ReadyPackageCoreIntakeSubmission;
+          list(readyPackageId: string, workspaceId: string): ReadyPackageCoreIntakeSubmission[];
+          }
+
+          export interface ReadyPackageCoreContentDeliveryRepository
+            extends ReadyPackageCoreIntakeSubmissionRepository {
+            prepareContentDelivery(
+              submissionId: string,
+              workspaceId: string,
+              input: PrepareReadyPackageCoreContentDeliveryInput,
+            ): PrepareReadyPackageCoreContentDeliveryResult;
+            recordContentTransportResult(
+              submissionId: string,
+              workspaceId: string,
+              result: ReadyPackageCoreContentResult,
+            ): ReadyPackageCoreIntakeSubmission;
+            recordContentResult(
+              submissionId: string,
+              workspaceId: string,
+              result: ReadyPackageCoreContentResult,
+            ): ReadyPackageCoreIntakeSubmission;
+          }'''
+          if old not in text:
+              raise SystemExit('generated repository interface block not found')
+          text = text.replace(old, replacement, 1)
+          text = text.replace(
+              'implements ReadyPackageCoreIntakeSubmissionRepository {',
+              'implements ReadyPackageCoreContentDeliveryRepository {',
+              1,
+          )
+          path.write_text(text)
+
+          path = Path('apps/admin/src/server/ready-package-core-content-submit.ts')
+          text = path.read_text()
+          text = text.replace(
+              '  ReadyPackageCoreContentResult,\n  ReadyPackageCoreIntakeSubmission,\n  ReadyPackageCoreIntakeSubmissionRepository,',
+              '  ReadyPackageCoreContentDeliveryRepository,\n  ReadyPackageCoreContentResult,\n  ReadyPackageCoreContentResultEvidence,\n  ReadyPackageCoreIntakeSubmission,',
+              1,
+          )
+          start = text.index('function resultFromEvidence(')
+          end = text.index('\n}\n\nfunction parseFrozenRequest', start) + 2
+          simple = '''function resultFromEvidence(
+            evidence: ReadyPackageCoreContentResultEvidence | undefined,
+          ): ReadyPackageCoreContentResult | null {
+            if (!evidence) return null;
+            return {
+              intakeId: evidence.intakeId,
+              readyPackageId: evidence.readyPackageId,
+              status: evidence.status,
+              exportSha256: evidence.exportSha256,
+            };
+          }'''
+          text = text[:start] + simple + text[end:]
+          text = text.replace(
+              'submissions: ReadyPackageCoreIntakeSubmissionRepository,',
+              'submissions: ReadyPackageCoreContentDeliveryRepository,',
+              1,
+          )
+          path.write_text(text)
           PY
       - name: Format generated changes
         run: pnpm exec prettier --write packages/persistence/src/ready-package-core-intake-submission.ts apps/admin/src/server/core-content-http-transport.ts apps/admin/src/server/ready-package-core-content-submit.ts apps/admin/src/server/__tests__/core-content-http-transport.test.ts apps/admin/src/server/__tests__/ready-package-core-content-submit.test.ts apps/admin/src/server/e2e/core-intake-real-core.e2e.ts 'apps/admin/src/app/api/ready-packages/[id]/core-content/submit/route.ts' .github/workflows/core-intake-e2e.yml
