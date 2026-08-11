@@ -18,7 +18,7 @@ const BINDING = {
 const CANDIDATE = {
   vaultRelativePath: "MarkOrbit/Review/incoming/new.md",
   bindingRelativePath: "incoming/new.md",
-  observedSha256: "f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2",
+  observedSha256: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
   sizeBytes: 5,
 } as const;
 const CONTENT = new TextEncoder().encode("hello");
