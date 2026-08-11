@@ -41,6 +41,7 @@
     "./ready-packages": "./src/ready-package-registry.ts",
     "./ready-packages-v2": "./src/ready-package-v2-registry.ts",
     "./ready-package-v2-deliveries": "./src/ready-package-v2-delivery-submission.ts",
+    "./ready-package-v2-delivery-reconciliation": "./src/ready-package-v2-delivery-reconciliation.ts",
     "./ready-package-core-intake-submissions": "./src/ready-package-core-intake-submission.ts",
     "./core-workspace-bindings": "./src/core-workspace-binding.ts",
     "./retrieval-index": "./src/retrieval-index.ts",

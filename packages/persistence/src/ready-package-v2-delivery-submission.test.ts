@@ -15,6 +15,7 @@ import {
 import { DEFAULT_WORKSPACE, initializeRegistry } from "./index";
 import { ensureCanonicalDownstreamDocumentRegistry } from "./canonical-downstream-document";
 import { SqliteReadyPackageV2RegistryRepository } from "./ready-package-v2-registry";
+import { diagnoseReadyPackageV2Delivery } from "./ready-package-v2-delivery-reconciliation";
 import { SqliteReadyPackageV2DeliverySubmissionRepository } from "./ready-package-v2-delivery-submission";
 
 const CONTENT_SHA = "a".repeat(64);
@@ -169,6 +170,48 @@ describe("ReadyPackage V2 delivery submission registry", () => {
     expect(first.submission.contentExportSha256).toMatch(/^[a-f0-9]{64}$/u);
     expect(first.submission.requestJson).toContain("READY_PACKAGE_V2_DELIVERY_REQUEST");
     expect(first.submission.requestJson).toContain(CORE_WORKSPACE);
+  });
+
+  it("reconstructs the same outcome-unknown diagnosis after repository reopen", () => {
+    const { db, readyPackage, contentExport } = setup();
+    let now = 0;
+    const times = [
+      "2026-08-11T16:30:00.000Z",
+      "2026-08-11T16:31:00.000Z",
+      "2026-08-11T16:32:00.000Z",
+    ];
+    const repository = new SqliteReadyPackageV2DeliverySubmissionRepository(
+      db,
+      () => new Date(times[now++] ?? times.at(-1)!),
+      () => "rvd_01K14TEST000000000000000001",
+    );
+    const prepared = repository.prepare({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      readyPackage,
+      coreWorkspaceId: CORE_WORKSPACE,
+      contentExport,
+    }).submission;
+    const attempted = repository.markTransportAttempt(DEFAULT_WORKSPACE.id, prepared.submissionId);
+    repository.recordTransportUncertainty(DEFAULT_WORKSPACE.id, attempted.submissionId, {
+      issueCode: "CORE_V2_DELIVERY_TIMEOUT",
+      httpStatus: 504,
+    });
+    const beforeRestart = diagnoseReadyPackageV2Delivery(
+      attempted,
+      repository.listAuditEvents(DEFAULT_WORKSPACE.id, attempted.submissionId, 200),
+    );
+
+    const reopened = new SqliteReadyPackageV2DeliverySubmissionRepository(db);
+    const persisted = reopened.getByReadyPackage(DEFAULT_WORKSPACE.id, readyPackage.id)!;
+    const afterRestart = diagnoseReadyPackageV2Delivery(
+      persisted,
+      reopened.listAuditEvents(DEFAULT_WORKSPACE.id, persisted.submissionId, 200),
+    );
+
+    expect(beforeRestart.state).toBe("OUTCOME_UNKNOWN_RETRY_EXACT_REQUEST");
+    expect(afterRestart).toEqual(beforeRestart);
+    expect(persisted.requestJson).toBe(attempted.requestJson);
+    expect(persisted.idempotencyKey).toBe(attempted.idempotencyKey);
   });
 
   it("persists attempt evidence before outcome and finalizes only from the durable transport result", () => {

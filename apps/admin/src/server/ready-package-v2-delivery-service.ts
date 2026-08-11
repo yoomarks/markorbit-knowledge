@@ -14,6 +14,11 @@ import {
   type CoreWorkspaceBindingRepository,
 } from "@markorbit/persistence/core-workspace-bindings";
 import {
+  diagnoseReadyPackageV2Delivery,
+  type ReadyPackageV2DeliveryDiagnosis,
+  type ReadyPackageV2DeliveryDiagnosisState,
+} from "@markorbit/persistence/ready-package-v2-delivery-reconciliation";
+import {
   SqliteReadyPackageV2DeliverySubmissionRepository,
   type ReadyPackageV2DeliveryAuditEvent,
   type ReadyPackageV2DeliverySubmission,
@@ -37,8 +42,7 @@ import {
 } from "./ready-package-v2-delivery-http-transport";
 import { getRegistryDatabase } from "./source-registry";
 
-export type ReadyPackageV2DeliveryStage =
-  "NOT_PREPARED" | "PREPARED" | "OUTCOME_UNKNOWN" | "FINALIZATION_PENDING" | "DELIVERED";
+export type ReadyPackageV2DeliveryStage = "NOT_PREPARED" | ReadyPackageV2DeliveryDiagnosisState;
 
 export type ReadyPackageV2DeliverySubmissionView = Omit<
   ReadyPackageV2DeliverySubmission,
@@ -48,6 +52,7 @@ export type ReadyPackageV2DeliverySubmissionView = Omit<
 export type ReadyPackageV2DeliveryOverviewItem = {
   readyPackage: ReadyPackageV2;
   stage: ReadyPackageV2DeliveryStage;
+  diagnosis: ReadyPackageV2DeliveryDiagnosis | null;
   submission: ReadyPackageV2DeliverySubmissionView | null;
   auditEvents: ReadyPackageV2DeliveryAuditEvent[];
   outboundTransport: ReadyPackageV2DeliveryTransportReadiness;
@@ -77,14 +82,6 @@ function required(value: string, field: string): string {
   const normalized = value?.trim();
   if (!normalized) throw new RegistryValidationError(`${field} is required`);
   return normalized;
-}
-
-function stage(submission: ReadyPackageV2DeliverySubmission | null): ReadyPackageV2DeliveryStage {
-  if (!submission) return "NOT_PREPARED";
-  if (submission.state === "RESULT_RECORDED") return "DELIVERED";
-  if (submission.transportResult) return "FINALIZATION_PENDING";
-  if (submission.transportAttempts > 0) return "OUTCOME_UNKNOWN";
-  return "PREPARED";
 }
 
 export function readyPackageV2DeliverySubmissionView(
@@ -125,8 +122,34 @@ function transportUncertainty(error: unknown): { issueCode: string; httpStatus: 
   return { issueCode: "CORE_V2_DELIVERY_TRANSPORT_EXCEPTION", httpStatus: 502 };
 }
 
+function evidenceInconsistent(diagnosis: ReadyPackageV2DeliveryDiagnosis): RegistryConflictError {
+  const issueCodes = diagnosis.issues.map((value) => value.code).join(", ") || "UNKNOWN";
+  return new RegistryConflictError(
+    "READY_PACKAGE_V2_DELIVERY_EVIDENCE_INCONSISTENT",
+    `ReadyPackage V2 delivery evidence is inconsistent (${issueCodes}); outbound automation is blocked`,
+  );
+}
+
 export class ReadyPackageV2DeliveryService {
   constructor(private readonly dependencies: ReadyPackageV2DeliveryServiceDependencies) {}
+
+  private diagnose(
+    workspaceId: string,
+    submission: ReadyPackageV2DeliverySubmission,
+  ): {
+    diagnosis: ReadyPackageV2DeliveryDiagnosis;
+    auditEvents: ReadyPackageV2DeliveryAuditEvent[];
+  } {
+    const auditEvents = this.dependencies.deliveries.listAuditEvents(
+      workspaceId,
+      submission.submissionId,
+      200,
+    );
+    return {
+      diagnosis: diagnoseReadyPackageV2Delivery(submission, auditEvents),
+      auditEvents,
+    };
+  }
 
   overview(workspaceIdValue: string): ReadyPackageV2DeliveryOverview {
     const workspaceId = required(workspaceIdValue, "workspaceId");
@@ -139,13 +162,23 @@ export class ReadyPackageV2DeliveryService {
     const items = this.dependencies.readyPackages.list(workspaceId, 100).map((readyPackage) => {
       const submission = submissions.get(readyPackage.id) ?? null;
       const targetWorkspaceId = submission?.coreWorkspaceId ?? binding?.coreWorkspaceId ?? null;
+      if (!submission) {
+        return {
+          readyPackage,
+          stage: "NOT_PREPARED" as const,
+          diagnosis: null,
+          submission: null,
+          auditEvents: [],
+          outboundTransport: readyPackageV2DeliveryTransportReadiness(targetWorkspaceId),
+        } satisfies ReadyPackageV2DeliveryOverviewItem;
+      }
+      const reconciled = this.diagnose(workspaceId, submission);
       return {
         readyPackage,
-        stage: stage(submission),
-        submission: submission ? readyPackageV2DeliverySubmissionView(submission) : null,
-        auditEvents: submission
-          ? this.dependencies.deliveries.listAuditEvents(workspaceId, submission.submissionId, 50)
-          : [],
+        stage: reconciled.diagnosis.state,
+        diagnosis: reconciled.diagnosis,
+        submission: readyPackageV2DeliverySubmissionView(submission),
+        auditEvents: reconciled.auditEvents.slice(-50),
         outboundTransport: readyPackageV2DeliveryTransportReadiness(targetWorkspaceId),
       } satisfies ReadyPackageV2DeliveryOverviewItem;
     });
@@ -159,7 +192,11 @@ export class ReadyPackageV2DeliveryService {
     const workspaceId = required(workspaceIdValue, "workspaceId");
     const readyPackageId = required(readyPackageIdValue, "readyPackageId");
     const existing = this.dependencies.deliveries.getByReadyPackage(workspaceId, readyPackageId);
-    if (existing) return { submission: existing, replayed: true, transportUsed: false };
+    if (existing) {
+      const { diagnosis } = this.diagnose(workspaceId, existing);
+      if (diagnosis.state === "EVIDENCE_INCONSISTENT") throw evidenceInconsistent(diagnosis);
+      return { submission: existing, replayed: true, transportUsed: false };
+    }
 
     const readyPackage = this.dependencies.readyPackages.getById(workspaceId, readyPackageId);
     if (!readyPackage) {
@@ -201,10 +238,20 @@ export class ReadyPackageV2DeliveryService {
         "Freeze the ReadyPackage V2 delivery request before submitting it",
       );
     }
-    if (submission.state === "RESULT_RECORDED") {
+
+    const { diagnosis } = this.diagnose(workspaceId, submission);
+    if (diagnosis.state === "EVIDENCE_INCONSISTENT") throw evidenceInconsistent(diagnosis);
+    if (diagnosis.state === "DELIVERED") {
       return { submission, replayed: true, transportUsed: false };
     }
-    if (submission.transportResult) {
+    if (diagnosis.state === "CONSUMER_REJECTED") {
+      throw new RegistryConflictError(
+        "READY_PACKAGE_V2_DELIVERY_CONSUMER_REJECTED",
+        "ReadyPackage V2 delivery was rejected by the consumer and requires operator review",
+      );
+    }
+    if (diagnosis.state === "LOCAL_FINALIZATION_REQUIRED") {
+      if (!submission.transportResult) throw evidenceInconsistent(diagnosis);
       submission = this.dependencies.deliveries.recordResult(
         workspaceId,
         submission.submissionId,
