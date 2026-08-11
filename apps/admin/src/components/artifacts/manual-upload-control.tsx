@@ -89,12 +89,15 @@ export function ManualUploadControl({ workspaceId }: { workspaceId: string }) {
     fetch("/api/manual-uploads", { signal: controller.signal })
       .then(async (response) => {
         const body = (await response.json()) as ManualUploadPolicy | unknown;
-        if (!response.ok) throw new Error(errorMessage(body, "Unable to load Manual Upload policy"));
+        if (!response.ok)
+          throw new Error(errorMessage(body, "Unable to load Manual Upload policy"));
         setPolicy(body as ManualUploadPolicy);
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setPolicyError(error instanceof Error ? error.message : "Unable to load Manual Upload policy");
+        setPolicyError(
+          error instanceof Error ? error.message : "Unable to load Manual Upload policy",
+        );
       });
     return () => controller.abort();
   }, []);
@@ -168,7 +171,8 @@ export function ManualUploadControl({ workspaceId }: { workspaceId: string }) {
             <h2 className="font-semibold text-slate-950">Manual Upload</h2>
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            文件会进入受控 Run / Job、流式校验与内容寻址存储，最终登记为不可变 RawArtifact；不会绕过现有来源证据链。
+            文件会进入受控 Run / Job、流式校验与内容寻址存储，最终登记为不可变
+            RawArtifact；不会绕过现有来源证据链。
           </p>
           <p className="mt-1 text-xs text-slate-500">
             {policy
@@ -219,7 +223,8 @@ export function ManualUploadControl({ workspaceId }: { workspaceId: string }) {
                 {result.replayed ? "已确认同一上传记录" : "上传已完成并登记为 RawArtifact"}
               </p>
               <p className="mt-1 text-xs text-emerald-800">
-                {result.artifact.originalName} · {result.artifact.status} · Auto conversion: {result.autoConversion.status}
+                {result.artifact.originalName} · {result.artifact.status} · Auto conversion:{" "}
+                {result.autoConversion.status}
               </p>
             </div>
           </div>

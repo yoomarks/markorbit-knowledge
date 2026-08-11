@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import type { ArtifactKind, RawArtifact } from "@markorbit/contracts";
-import { RegistryConflictError, RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+} from "@markorbit/persistence";
 import { claimSpecificJob } from "@markorbit/persistence/targeted-worker-claim";
 import { dispatchAutomaticConversionForArtifact } from "./raw-artifact-auto-conversion";
 import {
@@ -253,11 +257,13 @@ function ensureManualSource(workspaceId: string) {
 
 function ensureManualPlan(workspaceId: string, sourceId: string) {
   const plans = getCollectionPlanRepository();
-  const existing = plans.listForSource(sourceId).find(
-    ({ plan }) =>
-      plan.status === "ACTIVE" &&
-      plan.extensions?.["x-markorbit-system-plan"] === MANUAL_PLAN_MARKER,
-  );
+  const existing = plans
+    .listForSource(sourceId)
+    .find(
+      ({ plan }) =>
+        plan.status === "ACTIVE" &&
+        plan.extensions?.["x-markorbit-system-plan"] === MANUAL_PLAN_MARKER,
+    );
   if (existing) return existing.plan;
 
   return plans.create({
@@ -437,12 +443,7 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
       },
       credential,
     );
-    const claim = claimSpecificJob(
-      getRegistryDatabase(),
-      workerId,
-      credential,
-      targetJob.id,
-    );
+    const claim = claimSpecificJob(getRegistryDatabase(), workerId, credential, targetJob.id);
     if (!claim.job || !claim.lease || !claim.leaseToken || claim.job.runId !== run.id) {
       throw new RegistryConflictError(
         "MANUAL_UPLOAD_JOB_CLAIM_FAILED",
@@ -523,7 +524,14 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
   } catch (error) {
     if (sessionId && leaseId && leaseToken) {
       try {
-        artifacts.abort(workerId, credential, leaseId, leaseToken, sessionId, "Manual Upload failed");
+        artifacts.abort(
+          workerId,
+          credential,
+          leaseId,
+          leaseToken,
+          sessionId,
+          "Manual Upload failed",
+        );
       } catch {
         // Preserve the primary failure. The durable ingestion/session state remains inspectable.
       }

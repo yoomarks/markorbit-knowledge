@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
-import {
-  ingestManualUpload,
-  manualUploadMaxBytes,
-} from "@/server/manual-upload-ingestion";
+import { ingestManualUpload, manualUploadMaxBytes } from "@/server/manual-upload-ingestion";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

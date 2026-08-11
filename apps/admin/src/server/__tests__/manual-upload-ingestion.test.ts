@@ -3,7 +3,11 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DEFAULT_WORKSPACE, RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  DEFAULT_WORKSPACE,
+  RegistryConflictError,
+  RegistryValidationError,
+} from "@markorbit/persistence";
 import {
   artifactKindForManualUploadMime,
   ingestManualUpload,
@@ -55,9 +59,7 @@ describe("Manual Upload policy", () => {
 
   it("rejects path-like, control-character, and empty filenames", () => {
     expect(normalizeManualUploadFilename("evidence.pdf")).toBe("evidence.pdf");
-    expect(() => normalizeManualUploadFilename("../evidence.pdf")).toThrow(
-      RegistryValidationError,
-    );
+    expect(() => normalizeManualUploadFilename("../evidence.pdf")).toThrow(RegistryValidationError);
     expect(() => normalizeManualUploadFilename("folder\\evidence.pdf")).toThrow(
       RegistryValidationError,
     );
@@ -124,7 +126,8 @@ describe("governed Manual Upload ingestion", () => {
     expect(second.artifact.id).toBe(first.artifact.id);
     expect(second.runId).toBe(first.runId);
     expect(
-      getRawArtifactRepository().list({ workspaceId: DEFAULT_WORKSPACE.id, runId: first.runId }).total,
+      getRawArtifactRepository().list({ workspaceId: DEFAULT_WORKSPACE.id, runId: first.runId })
+        .total,
     ).toBe(1);
   });
 
