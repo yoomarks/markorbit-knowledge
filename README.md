@@ -61,13 +61,14 @@ The repository now contains:
 - durable ConversionRun ledger with controlled eligible Artifact / compatible Profile Manual Dispatch, immutable snapshots, idempotency and pending-only cancellation;
 - controlled READY-Staging Markdown projection primitive for local Obsidian Vault files with traversal and symlink protections;
 - persistent Workspace-scoped Vault Binding V1 with portable relative-root policy, optimistic revisions and explicit ACTIVE/DISABLED state;
-- Vault admin control and filesystem-root readiness that never exposes the deployment absolute path;
+- durable explicit Vault Export V1 with PENDING-before-write evidence, frozen destination identity, post-write reconciliation, projection receipts and no silent overwrite of different content;
+- Vault admin controls for binding, filesystem-root readiness, explicit single-document export and recent export history without exposing the deployment absolute path;
 - real execution evidence timeline in the Runs administration UI;
 - versioned migrations, optimistic concurrency and secret exclusion;
 - fixture-only previews for modules that have not reached production runtime implementation;
 - architecture boundaries, compatibility policy and Node 22/24 CI.
 
-Production web acquisition now exists for bounded HTML/Markdown collection. Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, retry creation, full Vault export/import/readback/conflict synchronization and MarkOrbit Core semantic logic are not implemented yet. A controlled local Vault projection primitive and Workspace binding foundation exist, but no automatic Vault synchronization is authorized.
+Production web acquisition now exists for bounded HTML/Markdown collection. An operator can explicitly export one verified READY Staging document through its ACTIVE Workspace Vault binding with durable crash-recovery evidence. Arbitrary PDF/attachment acquisition, converter execution, automatic scheduling, retry creation, Vault import/readback/two-way synchronization, automatic conflict merge and MarkOrbit Core semantic logic are not implemented yet. No automatic Vault synchronization is authorized.
 
 Lifecycle meanings are deliberately distinct:
 
@@ -194,6 +195,7 @@ pnpm check
 - [Conversion Runtime Protocol v1](docs/architecture/CONVERSION_RUNTIME_PROTOCOL_V1.md)
 - [ConversionRun Ledger](docs/architecture/CONVERSION_RUN_LEDGER.md)
 - [Obsidian Vault Binding V1](docs/architecture/OBSIDIAN_VAULT_BINDING_V1.md)
+- [Obsidian Vault Export V1](docs/architecture/OBSIDIAN_VAULT_EXPORT_V1.md)
 - [Persistence and Source Registry](docs/architecture/PERSISTENCE_AND_SOURCE_REGISTRY.md)
 - [Connector Registry](docs/architecture/CONNECTOR_REGISTRY.md)
 - [CollectionPlan Registry](docs/architecture/COLLECTION_PLAN_REGISTRY.md)

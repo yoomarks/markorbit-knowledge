@@ -29,6 +29,7 @@ import { SourceIntelligenceReviewQueue } from "@/components/sources/source-intel
 import { SourceIntelligenceWorkbench } from "@/components/sources/source-intelligence-workbench";
 import { SourceList } from "@/components/sources/source-list";
 import { VaultBindingControl } from "@/components/vault/vault-binding-control";
+import { VaultExportControl } from "@/components/vault/vault-export-control";
 import { WorkerList } from "@/components/workers/worker-list";
 import { moduleOrder, type ModuleKey } from "@/lib/modules";
 
@@ -224,9 +225,12 @@ function VaultPage() {
     <>
       <PageHeading
         title="Obsidian / Vault"
-        description="管理 Workspace 到本地 Vault 的持久化绑定与安全目录映射。R1-K06 只建立授权和路径边界，不自动执行 Export、Import 或冲突处理。"
+        description="管理 Workspace Vault 绑定，并显式导出已验证 READY Staging。导出先持久化 PENDING 再执行文件系统写入，未知结果保持可核对重放，不自动覆盖不同内容。"
       />
-      <VaultBindingControl workspaceId={DEFAULT_WORKSPACE.id} />
+      <div className="space-y-6">
+        <VaultBindingControl workspaceId={DEFAULT_WORKSPACE.id} />
+        <VaultExportControl workspaceId={DEFAULT_WORKSPACE.id} />
+      </div>
     </>
   );
 }

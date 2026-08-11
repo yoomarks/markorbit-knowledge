@@ -52,3 +52,4 @@ export type {
 export * from "./ready-package-content-export-v1";
 export * from "./core-intake-v1";
 export * from "./vault-binding-v1";
+export * from "./vault-export-v1";
