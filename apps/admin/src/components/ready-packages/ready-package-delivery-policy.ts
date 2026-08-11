@@ -8,6 +8,14 @@ export type TransportStatus =
   | "REJECTED"
   | "HANDED_OFF_WITHOUT_RECEIPT";
 
+export type ContentTransportStatus =
+  | "WAITING_FOR_INTAKE"
+  | "BLOCKED_REJECTED"
+  | "READY_TO_DELIVER"
+  | "CONTENT_PENDING_RESULT"
+  | "CONTENT_FINALIZATION_PENDING"
+  | "ACCEPTED";
+
 export function coreIntakeActionRequiresOutboundTransport(
   transportStatus: TransportStatus,
 ): boolean {
@@ -32,5 +40,26 @@ export function isCoreIntakeActionable(
 
   if (!stateActionable) return false;
   if (!coreIntakeActionRequiresOutboundTransport(transportStatus)) return true;
+  return outboundTransportConfigured;
+}
+
+export function coreContentActionRequiresOutboundTransport(
+  contentStatus: ContentTransportStatus,
+): boolean {
+  return contentStatus === "READY_TO_DELIVER" || contentStatus === "CONTENT_PENDING_RESULT";
+}
+
+export function isCoreContentActionable(
+  readyPackageStatus: ReadyPackage["status"],
+  contentStatus: ContentTransportStatus,
+  outboundTransportConfigured: boolean,
+): boolean {
+  if (readyPackageStatus !== "HANDED_OFF") return false;
+  const stateActionable =
+    contentStatus === "READY_TO_DELIVER" ||
+    contentStatus === "CONTENT_PENDING_RESULT" ||
+    contentStatus === "CONTENT_FINALIZATION_PENDING";
+  if (!stateActionable) return false;
+  if (!coreContentActionRequiresOutboundTransport(contentStatus)) return true;
   return outboundTransportConfigured;
 }
