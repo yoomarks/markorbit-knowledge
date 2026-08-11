@@ -13,6 +13,11 @@ export interface CoreContentTransport {
   ): Promise<ReadyPackageCoreContentResult>;
 }
 
+export type CoreContentTransportReadiness = {
+  configured: boolean;
+  issueCode: string | null;
+};
+
 function configuredIntakeUrl(): string {
   const raw = process.env.MARKORBIT_CORE_INTAKE_URL?.trim();
   if (!raw) {
@@ -60,6 +65,19 @@ function contentDestination(intakeUrl: string, intakeId: string): string {
   url.search = "";
   url.hash = "";
   return url.toString();
+}
+
+export function coreContentTransportReadiness(): CoreContentTransportReadiness {
+  try {
+    contentDestination(configuredIntakeUrl(), "readiness");
+    configuredInternalSecret();
+    return { configured: true, issueCode: null };
+  } catch (error) {
+    if (error instanceof CoreIntakeTransportError) {
+      return { configured: false, issueCode: error.code };
+    }
+    throw error;
+  }
 }
 
 function parseResult(value: unknown): ReadyPackageCoreContentResult {
