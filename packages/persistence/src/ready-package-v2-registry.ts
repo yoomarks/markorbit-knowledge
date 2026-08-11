@@ -119,7 +119,11 @@ function parseReadyPackage(value: string): ReadyPackageV2 {
 }
 
 function evidenceBase(document: ReturnType<CanonicalDownstreamDocumentRepository["getById"]>) {
-  if (!document) throw new RegistryError("CANONICAL_DOWNSTREAM_DOCUMENT_NOT_FOUND", "Missing canonical document");
+  if (!document)
+    throw new RegistryError(
+      "CANONICAL_DOWNSTREAM_DOCUMENT_NOT_FOUND",
+      "Missing canonical document",
+    );
   return {
     canonicalDocumentId: document.id,
     canonicalPromotedAt: document.promotedAt,
@@ -132,7 +136,9 @@ function evidenceBase(document: ReturnType<CanonicalDownstreamDocumentRepository
   };
 }
 
-function buildEvidence(document: NonNullable<ReturnType<CanonicalDownstreamDocumentRepository["getById"]>>): ReadyPackageV2Evidence {
+function buildEvidence(
+  document: NonNullable<ReturnType<CanonicalDownstreamDocumentRepository["getById"]>>,
+): ReadyPackageV2Evidence {
   const base = evidenceBase(document);
   return { ...base, digest: sha256(stable(base)) };
 }

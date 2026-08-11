@@ -31,7 +31,9 @@ function shortHash(value: string): string {
 }
 
 async function loadOverview(workspaceId: string): Promise<Overview> {
-  const response = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/ready-packages-v2`);
+  const response = await fetch(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/ready-packages-v2`,
+  );
   const body = (await response.json()) as Overview | ApiError;
   if (!response.ok) throw new Error(readError(body, "Unable to load ReadyPackage V2 state"));
   return body as Overview;
@@ -110,9 +112,9 @@ export function ReadyPackageV2Control({ workspaceId }: { workspaceId: string }) 
             <h2 className="font-semibold">ReadyPackage V2</h2>
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            将 K12 READY canonical document 显式封装为 provenance-aware ReadyPackage V2。V2
-            直接冻结 Vault import 的 inspection、review、execution、verification、finalization 与
-            content evidence，不构造假的 ConversionRun。
+            将 K12 READY canonical document 显式封装为 provenance-aware ReadyPackage V2。V2 直接冻结
+            Vault import 的 inspection、review、execution、verification、finalization 与 content
+            evidence，不构造假的 ConversionRun。
           </p>
         </div>
         <button

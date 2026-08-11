@@ -1,8 +1,7 @@
 import type { CanonicalDownstreamVaultImportOriginV1 } from "./canonical-downstream-document-v1";
 
 export const READY_PACKAGE_CONTENT_EXPORT_V2_VERSION = "2.0" as const;
-export const READY_PACKAGE_CONTENT_EXPORT_V2_OBJECT_TYPE =
-  "READY_PACKAGE_CONTENT_EXPORT" as const;
+export const READY_PACKAGE_CONTENT_EXPORT_V2_OBJECT_TYPE = "READY_PACKAGE_CONTENT_EXPORT" as const;
 
 export type ReadyPackageContentExportV2 = {
   contractVersion: typeof READY_PACKAGE_CONTENT_EXPORT_V2_VERSION;
@@ -103,7 +102,9 @@ function isVaultImportOrigin(value: unknown): value is CanonicalDownstreamVaultI
   );
 }
 
-export function isReadyPackageContentExportV2(value: unknown): value is ReadyPackageContentExportV2 {
+export function isReadyPackageContentExportV2(
+  value: unknown,
+): value is ReadyPackageContentExportV2 {
   if (
     !isRecord(value) ||
     !exactKeys(value, [

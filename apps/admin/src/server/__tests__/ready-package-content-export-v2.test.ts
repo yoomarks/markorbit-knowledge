@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import type {
-  CanonicalDownstreamDocumentV1,
-  ReadyPackageV2,
-} from "@markorbit/contracts";
+import type { CanonicalDownstreamDocumentV1, ReadyPackageV2 } from "@markorbit/contracts";
 import {
   buildReadyPackageContentExportV2,
   type ReadyPackageContentExportV2Repositories,

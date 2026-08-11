@@ -124,7 +124,10 @@ export function buildReadyPackageContentExportV2(
     workspaceId,
     canonical.origin.vaultStagingDocumentId,
   );
-  if (bytes.byteLength !== canonical.content.sizeBytes || sha256(bytes) !== canonical.content.sha256) {
+  if (
+    bytes.byteLength !== canonical.content.sizeBytes ||
+    sha256(bytes) !== canonical.content.sha256
+  ) {
     throw new RegistryConflictError(
       "READY_PACKAGE_V2_CONTENT_EXPORT_BYTES_MISMATCH",
       "Canonical Markdown bytes no longer match the frozen ReadyPackage V2 evidence",
