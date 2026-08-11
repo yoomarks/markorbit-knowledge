@@ -28,7 +28,7 @@ export class CoreIntakeAdapter {
 
 export function createCoreIntakeRequestPreview(
   pkg: ReadyPackage,
-  coreWorkspaceId: string,
+  coreWorkspaceId: string = pkg.workspaceId,
 ): CoreIntakeRequestPreview {
   return {
     readyPackageId: pkg.id,
