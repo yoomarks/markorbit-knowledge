@@ -1,0 +1,273 @@
+name: Agent K-EXT-B Root Binding
+
+on:
+  push:
+    branches:
+      - codex/k-ext-b-local-folder-worker
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/k-ext-b-local-folder-worker
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Bind connector identity to root alias
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          acquirer = Path('packages/worker-runtime/src/local-folder-acquirer.ts')
+          text = acquirer.read_text()
+
+          anchor = '''export const LOCAL_FOLDER_CONNECTOR_VERSION = "1.0.0";
+          export const LOCAL_FOLDER_EXECUTOR'''
+          replacement = '''export const LOCAL_FOLDER_CONNECTOR_VERSION = "1.0.0";
+
+          export function localFolderConnectorId(rootId: string): string {
+            if (!ROOT_ID_PATTERN.test(rootId)) {
+              throw new Error("Local Folder root id must be a lowercase slug");
+            }
+            return `${LOCAL_FOLDER_CONNECTOR_ID}-${rootId}`;
+          }
+
+          export const LOCAL_FOLDER_EXECUTOR'''
+          if anchor not in text:
+              raise SystemExit('connector identity anchor not found')
+          text = text.replace(anchor, replacement, 1)
+
+          old_signature = '''function assertSupportedJob(
+            context: ArtifactBackedExecutionContext,
+            workerMaxItems: number,
+            workerMaxDepth: number,
+          ): void {
+            if (context.job.connector.connectorId !== LOCAL_FOLDER_CONNECTOR_ID) {
+              throw new CollectionAcquisitionError(
+                "CONNECTOR_NOT_SUPPORTED",
+                `Local Folder acquirer cannot execute connector ${context.job.connector.connectorId}`,
+                false,
+              );
+            }'''
+          new_signature = '''function assertSupportedJob(
+            context: ArtifactBackedExecutionContext,
+            rootId: string,
+            workerMaxItems: number,
+            workerMaxDepth: number,
+          ): void {
+            const expectedConnectorId = localFolderConnectorId(rootId);
+            if (context.job.connector.connectorId !== expectedConnectorId) {
+              throw new CollectionAcquisitionError(
+                "CONNECTOR_NOT_SUPPORTED",
+                `Local Folder root ${rootId} requires connector ${expectedConnectorId}`,
+                false,
+              );
+            }'''
+          if old_signature not in text:
+              raise SystemExit('assertSupportedJob anchor not found')
+          text = text.replace(old_signature, new_signature, 1)
+
+          old_acquire = '''  async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
+            assertSupportedJob(context, this.maxItems, this.maxDepth);
+            const config = sourceConfig(context);'''
+          new_acquire = '''  async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
+            const config = sourceConfig(context);
+            assertSupportedJob(context, config.rootId, this.maxItems, this.maxDepth);'''
+          if old_acquire not in text:
+              raise SystemExit('acquire anchor not found')
+          text = text.replace(old_acquire, new_acquire, 1)
+          acquirer.write_text(text)
+
+          test = Path('packages/worker-runtime/tests/local-folder-acquirer.test.ts')
+          test_text = test.read_text().replace(
+              'connector: { connectorId: "local-folder", version: "1.0.0" },',
+              'connector: { connectorId: "local-folder-legal", version: "1.0.0" },',
+          )
+          test.write_text(test_text)
+          PY
+      - name: Rewrite bootstrap for root-scoped connector bindings
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/worker/src/bootstrap-local-folder.ts')
+          text = path.read_text()
+          text = text.replace(
+              '  LOCAL_FOLDER_CONNECTOR_VERSION,\n  normalizeLocalFolderRelativePath,',
+              '  LOCAL_FOLDER_CONNECTOR_VERSION,\n  localFolderConnectorId,\n  normalizeLocalFolderRelativePath,',
+              1,
+          )
+          text = text.replace(
+              'const WORKER_LABEL_PREFIX = "local-folder-root";',
+              'const WORKER_LABEL_PREFIX = "local-folder-roots";',
+              1,
+          )
+
+          start = text.index('async function ensureConnector(')
+          end = text.index('\nasync function ensureSource(', start)
+          connector_block = '''async function ensureConnector(baseUrl: string, rootId: string): Promise<void> {
+            const connectorId = localFolderConnectorId(rootId);
+            const existing = await requestJson(
+              baseUrl,
+              `/api/connectors/${connectorId}/${LOCAL_FOLDER_CONNECTOR_VERSION}`,
+              {},
+              [404],
+            );
+            if (existing.status !== 404) return;
+
+            await requestJson(
+              baseUrl,
+              "/api/connectors",
+              jsonPost({
+                connectorId,
+                displayName: `Local Folder Worker — ${rootId}`,
+                version: LOCAL_FOLDER_CONNECTOR_VERSION,
+                sourceTypes: ["LOCAL_FOLDER"],
+                runtime: "LOCAL_AGENT",
+                capabilities: ["COLLECT", "IMPORT"],
+                supportedJobTypes: ["LOCAL_FILE_SCAN"],
+                configurationSchema: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["rootId", "relativePath", "recursive", "includeHidden"],
+                  properties: {
+                    rootId: { type: "string", const: rootId },
+                    relativePath: { type: "string", maxLength: 1024 },
+                    recursive: { type: "boolean" },
+                    includeHidden: { type: "boolean" },
+                  },
+                },
+                secretSchema: { type: "object", properties: {}, additionalProperties: false },
+                outputArtifactKinds: [...OUTPUT_KINDS],
+                healthCheck: { mode: "WORKER_PROBE", timeoutSeconds: 30 },
+                status: "ACTIVE",
+                extensions: {
+                  "x-markorbit-production-provider": true,
+                  "x-markorbit-local-folder-root-id": rootId,
+                  "x-markorbit-root-policy": "worker-local-alias-only",
+                  "x-markorbit-symlink-policy": "fail-closed",
+                },
+              }),
+            );
+          }
+          '''
+          text = text[:start] + connector_block + text[end:]
+
+          text = text.replace(
+              'connectorId: LOCAL_FOLDER_CONNECTOR_ID,\n        version: LOCAL_FOLDER_CONNECTOR_VERSION,',
+              'connectorId: localFolderConnectorId(input.rootId),\n        version: LOCAL_FOLDER_CONNECTOR_VERSION,',
+              1,
+          )
+
+          worker_start = text.index('async function ensureWorker(')
+          worker_end = text.index('\nasync function dispatch(', worker_start)
+          worker_block = '''async function ensureWorker(
+            baseUrl: string,
+            rootIds: string[],
+          ): Promise<{ workerId: string; credential: string | null }> {
+            const normalizedRootIds = [...rootIds].sort();
+            const scopeHash = createHash("sha256")
+              .update(normalizedRootIds.join("\\0"))
+              .digest("hex")
+              .slice(0, 12);
+            const label = `${WORKER_LABEL_PREFIX}-${scopeHash}`;
+            const existing = await requestJson(
+              baseUrl,
+              `/api/workers?label=${encodeURIComponent(label)}&limit=100`,
+            );
+            for (const candidate of items(existing.body)) {
+              const worker = record(record(candidate)?.worker);
+              if (worker) return { workerId: identifier(worker.id, "worker.id"), credential: null };
+            }
+
+            const created = await requestJson(
+              baseUrl,
+              "/api/workers",
+              jsonPost({
+                displayName: `Local Folder Production Worker — ${normalizedRootIds.join(", ")}`,
+                desiredState: "ACTIVE",
+                runtime: { runtimeId: "local-folder-worker", version: "1.0.0" },
+                supportedJobTypes: ["LOCAL_FILE_SCAN"],
+                connectorBindings: normalizedRootIds.map((rootId) => ({
+                  connectorId: localFolderConnectorId(rootId),
+                  version: LOCAL_FOLDER_CONNECTOR_VERSION,
+                  capabilities: ["COLLECT", "IMPORT"],
+                })),
+                maxConcurrency: 1,
+                labels: [
+                  "production",
+                  "local-folder",
+                  label,
+                  ...normalizedRootIds.map((rootId) => `local-folder-root-${rootId}`),
+                ],
+                extensions: {
+                  "x-markorbit-root-ids": normalizedRootIds,
+                },
+              }),
+            );
+            const view = record(record(created.body)?.view);
+            const worker = record(view?.worker);
+            return {
+              workerId: identifier(worker?.id, "worker.id"),
+              credential: identifier(record(created.body)?.credential, "worker.credential"),
+            };
+          }
+          '''
+          text = text[:worker_start] + worker_block + text[worker_end:]
+
+          text = text.replace(
+              '  await ensureConnector(baseUrl);',
+              '  for (const allowedRootId of Object.keys(roots).sort()) {\n    await ensureConnector(baseUrl, allowedRootId);\n  }',
+              1,
+          )
+          text = text.replace(
+              '  const worker = await ensureWorker(baseUrl, rootId);',
+              '  const worker = await ensureWorker(baseUrl, Object.keys(roots));',
+              1,
+          )
+          text = text.replace(
+              'connector: `${LOCAL_FOLDER_CONNECTOR_ID}@${LOCAL_FOLDER_CONNECTOR_VERSION}`,',
+              'connector: `${localFolderConnectorId(rootId)}@${LOCAL_FOLDER_CONNECTOR_VERSION}`,',
+              1,
+          )
+          path.write_text(text)
+          PY
+      - name: Reconcile architecture doc
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/architecture/LOCAL_FOLDER_WORKER_INGESTION_V1.md')
+          text = path.read_text()
+          text = text.replace(
+              '- connector: `local-folder@1.0.0`;\n',
+              '- connector: `local-folder-<rootId>@1.0.0`, for example `local-folder-legal@1.0.0`;\n',
+              1,
+          )
+          marker = 'The existing Crawl4AI provider remains the default and is unchanged.\n'
+          addition = '''The root alias is part of connector identity so Worker compatibility is decided before Job claim. A Worker configured for `legal` binds `local-folder-legal`; it cannot claim a `local-folder-research` Job unless `research` is also in its local allowlist and Worker connector bindings. Absolute paths remain Worker-local and are not encoded in connector identity.\n\n'''
+          if addition not in text:
+              text = text.replace(marker, marker + '\n' + addition, 1)
+          path.write_text(text)
+          PY
+      - name: Format root-binding changes
+        run: pnpm exec prettier --write apps/worker/src/bootstrap-local-folder.ts packages/worker-runtime/src/local-folder-acquirer.ts packages/worker-runtime/tests/local-folder-acquirer.test.ts docs/architecture/LOCAL_FOLDER_WORKER_INGESTION_V1.md
+      - name: Commit root-binding changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/worker/src/bootstrap-local-folder.ts packages/worker-runtime/src/local-folder-acquirer.ts packages/worker-runtime/tests/local-folder-acquirer.test.ts docs/architecture/LOCAL_FOLDER_WORKER_INGESTION_V1.md
+          git commit -m "fix: bind Local Folder jobs to root-scoped connectors"
+          git push origin HEAD:codex/k-ext-b-local-folder-worker
