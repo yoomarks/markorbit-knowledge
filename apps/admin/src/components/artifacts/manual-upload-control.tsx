@@ -58,8 +58,15 @@ function hex(bytes: ArrayBuffer): string {
 }
 
 async function sha256(value: ArrayBuffer | Uint8Array): Promise<string> {
-  const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
-  return hex(await crypto.subtle.digest("SHA-256", bytes));
+  let buffer: ArrayBuffer;
+  if (value instanceof Uint8Array) {
+    const copy = new Uint8Array(value.byteLength);
+    copy.set(value);
+    buffer = copy.buffer;
+  } else {
+    buffer = value;
+  }
+  return hex(await crypto.subtle.digest("SHA-256", buffer));
 }
 
 function resolvedMimeType(file: File): string {
