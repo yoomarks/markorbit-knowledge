@@ -49,4 +49,5 @@ export type {
   ReadyPackageEvidence,
   ReadyPackage,
 } from "./ready-package-v1";
+export * from "./ready-package-content-export-v1";
 export * from "./core-intake-v1";
