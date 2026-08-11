@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { CoreIntakeResult } from "@markorbit/contracts";
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import { SqliteCoreWorkspaceBindingRepository } from "@markorbit/persistence/core-workspace-bindings";
 import { SqliteReadyPackageCoreIntakeSubmissionRepository } from "@markorbit/persistence/ready-package-core-intake-submissions";
 import { createCoreIntakeRequestPreview } from "@markorbit/worker-runtime";
 import { apiError } from "@/server/api-errors";
@@ -24,14 +25,19 @@ export async function GET(request: Request, context: RouteContext) {
     const workspaceId = new URL(request.url).searchParams.get("workspaceId")?.trim();
     if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
     const { id } = await context.params;
+    const database = getRegistryDatabase();
     const repository = getReadyPackageRepository();
     const readyPackage = repository.getById(id, workspaceId);
     if (!readyPackage)
       throw new RegistryError("READY_PACKAGE_NOT_FOUND", `ReadyPackage ${id} was not found`);
+    const binding = new SqliteCoreWorkspaceBindingRepository(database).getByKnowledgeWorkspaceId(
+      workspaceId,
+    );
     const coreIntakeReceipts = repository.listCoreIntakeReceipts(id, workspaceId);
-    const coreIntakeSubmissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(
-      getRegistryDatabase(),
-    ).list(id, workspaceId);
+    const coreIntakeSubmissions = new SqliteReadyPackageCoreIntakeSubmissionRepository(database).list(
+      id,
+      workspaceId,
+    );
     const latestCoreIntakeReceipt = coreIntakeReceipts[0] ?? null;
     const latestCoreIntakeSubmission = coreIntakeSubmissions[0] ?? null;
     const transportStatus =
@@ -48,9 +54,12 @@ export async function GET(request: Request, context: RouteContext) {
             : "NOT_SUBMITTED";
     return NextResponse.json({
       readyPackageStatus: readyPackage.status,
-      coreIntakeRequestPreview: createCoreIntakeRequestPreview(readyPackage),
+      coreWorkspaceBinding: binding,
+      coreIntakeRequestPreview: binding
+        ? createCoreIntakeRequestPreview(readyPackage, binding.coreWorkspaceId)
+        : null,
       transportStatus,
-      outboundTransport: coreIntakeTransportReadiness(),
+      outboundTransport: coreIntakeTransportReadiness(binding?.coreWorkspaceId ?? null),
       latestCoreIntakeSubmission,
       coreIntakeSubmissions,
       latestCoreIntakeReceipt,
@@ -66,7 +75,7 @@ export async function GET(request: Request, context: RouteContext) {
               : "Knowledge has persisted explicit Core intake receipt evidence for this ReadyPackage."
             : readyPackage.status === "HANDED_OFF"
               ? "This ReadyPackage predates persisted Core intake receipts; Knowledge does not invent historical receipt evidence."
-              : "Knowledge exposes a handoff preview but does not claim the ReadyPackage has been submitted to Core.",
+              : "Knowledge exposes a handoff preview only after a canonical Core workspace binding exists; it does not claim submission before receipt evidence exists.",
     });
   } catch (error) {
     return apiError(error);
