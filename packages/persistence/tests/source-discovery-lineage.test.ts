@@ -41,6 +41,7 @@ describe("source discovery lineage persistence", () => {
         rootSourceId: "src_01HYYYYYYYYYYYYYYYYYYYYYYY",
       },
     });
+    expect(discovery.listBatches(10)[0]?.batch.lineage?.generation).toBe(1);
 
     database.close();
   });
