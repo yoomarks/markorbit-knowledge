@@ -4,7 +4,7 @@ import { SqliteSourceDiscoveryRepository } from "../src/source-discovery";
 import { SqliteSourceRegistryV2Repository } from "../src/source-registry-v2-registry";
 
 describe("production discovery provenance", () => {
-  it("records one source-level manual seed provenance only after acceptance", () => {
+  it("records the candidate's actual structural discovery path only after acceptance", () => {
     const database = openRegistryDatabase(":memory:");
     const sources = new SqliteSourceRepository(database);
     const source = sources.create({
@@ -37,7 +37,7 @@ describe("production discovery provenance", () => {
     });
     discovery.completeBatch("disc_example", [
       {
-        candidateId: "cand_accept",
+        candidateId: "cand_link",
         locator: "https://example.com/trademarks",
         discoveredAt: "2026-08-12T15:01:00.000Z",
         status: "DISCOVERED",
@@ -45,9 +45,40 @@ describe("production discovery provenance", () => {
         discoveryMethod: "HTML_LINK",
       },
       {
+        candidateId: "cand_sitemap",
+        locator: "https://example.com/forms.pdf",
+        discoveredAt: "2026-08-12T15:02:00.000Z",
+        status: "DISCOVERED",
+        discoveredFrom: "https://example.com/sitemap.xml",
+        discoveryMethod: "SITEMAP",
+      },
+      {
+        candidateId: "cand_feed",
+        locator: "https://example.com/news/1",
+        discoveredAt: "2026-08-12T15:03:00.000Z",
+        status: "DISCOVERED",
+        discoveredFrom: "https://example.com/feed.xml",
+        discoveryMethod: "FEED",
+      },
+      {
+        candidateId: "cand_citation",
+        locator: "https://example.com/decision/2",
+        discoveredAt: "2026-08-12T15:04:00.000Z",
+        status: "DISCOVERED",
+        discoveredFrom: "https://example.com/decision/1",
+        discoveryMethod: "CITATION",
+      },
+      {
+        candidateId: "cand_manual",
+        locator: "https://example.com/manual-entry",
+        discoveredAt: "2026-08-12T15:05:00.000Z",
+        status: "DISCOVERED",
+        discoveryMethod: "MANUAL",
+      },
+      {
         candidateId: "cand_reject",
         locator: "https://example.com/privacy",
-        discoveredAt: "2026-08-12T15:01:01.000Z",
+        discoveredAt: "2026-08-12T15:06:00.000Z",
         status: "DISCOVERED",
         discoveredFrom: seed.locator,
         discoveryMethod: "HTML_LINK",
@@ -57,12 +88,22 @@ describe("production discovery provenance", () => {
     discovery.reviewCandidate("cand_reject", { decision: "REJECTED" });
     expect(registry.get(source.id)).toBeNull();
 
-    discovery.reviewCandidate("cand_accept", {
-      decision: "ACCEPTED",
-      acceptedSourceId: source.id,
-      collectionPlanId: "pln_example",
-    });
-    discovery.reviewCandidate("cand_accept", {
+    for (const candidateId of [
+      "cand_link",
+      "cand_sitemap",
+      "cand_feed",
+      "cand_citation",
+      "cand_manual",
+    ]) {
+      discovery.reviewCandidate(candidateId, {
+        decision: "ACCEPTED",
+        acceptedSourceId: source.id,
+        collectionPlanId: "pln_example",
+      });
+    }
+
+    // Re-reviewing the same accepted candidate must remain idempotent.
+    discovery.reviewCandidate("cand_link", {
       decision: "ACCEPTED",
       acceptedSourceId: source.id,
       collectionPlanId: "pln_example",
@@ -72,10 +113,33 @@ describe("production discovery provenance", () => {
       sourceId: source.id,
       discoveryProvenance: [
         {
-          origin: "MANUAL_SEED",
-          discoveredAt: "2026-08-12T15:00:00.000Z",
+          origin: "EXTERNAL_LINK",
+          discoveredAt: "2026-08-12T15:01:00.000Z",
           discoveredFromUrl: "https://example.com/start",
           evidenceUrl: "https://example.com/start",
+        },
+        {
+          origin: "SITEMAP",
+          discoveredAt: "2026-08-12T15:02:00.000Z",
+          discoveredFromUrl: "https://example.com/sitemap.xml",
+          evidenceUrl: "https://example.com/sitemap.xml",
+        },
+        {
+          origin: "RSS_FEED",
+          discoveredAt: "2026-08-12T15:03:00.000Z",
+          discoveredFromUrl: "https://example.com/feed.xml",
+          evidenceUrl: "https://example.com/feed.xml",
+        },
+        {
+          origin: "CITATION",
+          discoveredAt: "2026-08-12T15:04:00.000Z",
+          discoveredFromUrl: "https://example.com/decision/1",
+          evidenceUrl: "https://example.com/decision/1",
+        },
+        {
+          origin: "MANUAL_SEED",
+          discoveredAt: "2026-08-12T15:05:00.000Z",
+          evidenceUrl: "https://example.com/manual-entry",
         },
       ],
       relationships: [],
