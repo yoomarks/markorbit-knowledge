@@ -243,6 +243,30 @@ function discoveredFromEdge(
   };
 }
 
+function linksToEdge(
+  source: SourceDefinition,
+  profile: WebsiteSourceProfile,
+  parent: SourceGraphNode,
+  target: SourceGraphNode,
+): SourceGraphEdge {
+  return {
+    protocolVersion: SOURCE_GRAPH_PROTOCOL_VERSION,
+    objectType: "SOURCE_GRAPH_EDGE",
+    id: generateSourceGraphId("sge"),
+    workspaceId: source.workspaceId,
+    sourceId: source.id,
+    profileId: profile.id,
+    kind: "LINKS_TO",
+    subjectNodeId: parent.id,
+    objectNodeId: target.id,
+    reviewState: target.reviewState,
+    lifecycleState: "ACTIVE",
+    firstObservedAt: target.firstObservedAt,
+    lastObservedAt: target.lastObservedAt,
+    provenance: edgeProvenance(target),
+  };
+}
+
 export function writeDiscoveryBatchToSourceGraph(
   graph: SourceGraphRepository,
   source: SourceDefinition,
@@ -321,6 +345,60 @@ export function writeDiscoveryBatchToSourceGraph(
     },
     nodes,
     edges,
+  };
+  graph.ingestObservationBatch(observation);
+}
+
+/**
+ * Records a structurally observed cross-origin link inside the originating
+ * website graph. The external node is not a child of the source website and no
+ * CONTAINS edge is created; the only relationship is the literal hyperlink.
+ */
+export function writeExternalDiscoveryLinkToSourceGraph(
+  graph: SourceGraphRepository,
+  source: SourceDefinition,
+  profile: WebsiteSourceProfile,
+  discoveryBatch: SourceDiscoveryBatch,
+  candidate: SourceCandidate,
+): void {
+  if (websiteOrigin(candidate.locator) === profile.canonicalOrigin) {
+    throw new RegistryValidationError("External Source Graph link requires a cross-origin target");
+  }
+  const root = graph.getNode(profile.rootNodeId);
+  if (!root || root.kind !== "WEBSITE") {
+    throw new RegistryValidationError(
+      `WebsiteSourceProfile ${profile.id} has no valid WEBSITE root`,
+    );
+  }
+
+  const target = candidateToGraphNode(source, profile, discoveryBatch.batchId, candidate);
+  const parentLocator = candidate.discoveredFrom
+    ? canonicalCandidateUri(candidate.discoveredFrom)
+    : undefined;
+  const parent = parentLocator
+    ? isWebsiteRootUri(parentLocator, profile)
+      ? root
+      : (graph.findNodeByIdentity(profile.id, "CANONICAL_URI", parentLocator) ?? root)
+    : root;
+  const observation: SourceGraphObservationBatch = {
+    protocolVersion: SOURCE_GRAPH_PROTOCOL_VERSION,
+    objectType: "SOURCE_GRAPH_OBSERVATION_BATCH",
+    id: generateSourceGraphId("sgb"),
+    workspaceId: source.workspaceId,
+    sourceId: source.id,
+    profileId: profile.id,
+    idempotencyKey: `discovery-external:${discoveryBatch.batchId}:${candidate.candidateId}`,
+    observedAt: candidate.discoveredAt,
+    producer: {
+      kind: "DISCOVERY",
+      name: "MarkOrbit Knowledge Discovery",
+      version: "1.0.0",
+      ...(discoveryBatch.batchId.startsWith("disc_")
+        ? { discoveryBatchId: discoveryBatch.batchId }
+        : {}),
+    },
+    nodes: [target],
+    edges: [linksToEdge(source, profile, parent, target)],
   };
   graph.ingestObservationBatch(observation);
 }
