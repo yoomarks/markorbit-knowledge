@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import type { CoreDiscoveryProposalV1 } from "@markorbit/contracts";
-import {
-  CORE_DISCOVERY_PROPOSAL_VERSION,
-  CORE_DISCOVERY_PROPOSER,
-} from "@markorbit/contracts";
+import { CORE_DISCOVERY_PROPOSAL_VERSION, CORE_DISCOVERY_PROPOSER } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getCoreDiscoveryProposalService } from "@/server/core-discovery-proposal-service";
@@ -30,18 +27,13 @@ export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
     if (body.version !== CORE_DISCOVERY_PROPOSAL_VERSION) {
-      throw new RegistryValidationError(
-        `version must be ${CORE_DISCOVERY_PROPOSAL_VERSION}`,
-      );
+      throw new RegistryValidationError(`version must be ${CORE_DISCOVERY_PROPOSAL_VERSION}`);
     }
     if (body.proposedBy !== CORE_DISCOVERY_PROPOSER) {
       throw new RegistryValidationError(`proposedBy must be ${CORE_DISCOVERY_PROPOSER}`);
     }
 
-    const proposedFromSourceId = optionalString(
-      body.proposedFromSourceId,
-      "proposedFromSourceId",
-    );
+    const proposedFromSourceId = optionalString(body.proposedFromSourceId, "proposedFromSourceId");
     const evidenceUrl = optionalString(body.evidenceUrl, "evidenceUrl");
     const opaqueContextRef = optionalString(body.opaqueContextRef, "opaqueContextRef");
     const proposal: CoreDiscoveryProposalV1 = {
