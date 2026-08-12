@@ -1,0 +1,100 @@
+name: Knowledge v0.1 Main Release Verification Once
+
+on:
+  push:
+    branches:
+      - ops/v0-1-main-release-verification
+
+permissions:
+  contents: read
+
+env:
+  MARKORBIT_KNOWLEDGE_RELEASE_VERSION: "0.1.0"
+  VERIFIED_MAIN_SHA: "96ff34907c4ece78cb7a247c6b534c2d10031b11"
+
+jobs:
+  repository-release-gate:
+    name: Node ${{ matrix.node }} exact-main release gate
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.VERIFIED_MAIN_SHA }}
+      - name: Assert exact merged main SHA
+        run: test "$(git rev-parse HEAD)" = "${VERIFIED_MAIN_SHA}"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify release metadata and repository hygiene
+        run: pnpm release:preflight
+      - name: Prove quiesced SQLite + CAS backup/restore contract
+        run: pnpm release:backup-restore-drill
+      - name: Run complete repository gate
+        run: pnpm check
+
+  production-worker-gate:
+    name: Production Worker exact-main release gate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.VERIFIED_MAIN_SHA }}
+      - name: Assert exact merged main SHA
+        run: test "$(git rev-parse HEAD)" = "${VERIFIED_MAIN_SHA}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile production Python workers
+        run: python -m compileall -q workers/local_folder workers/email workers/document_extraction
+      - name: Test Local Folder Worker
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s workers/local_folder/tests -p 'test_*.py' -v
+      - name: Test Email Worker
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s workers/email/tests -p 'test_*.py' -v
+      - name: Test document extraction provider
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s workers/document_extraction/tests -p 'test_*.py' -v
+
+  release-evidence:
+    name: Emit exact-main candidate evidence
+    needs: [repository-release-gate, production-worker-gate]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Write exact-main release evidence
+        run: |
+          cat > knowledge-release-candidate-evidence.json <<EOF
+          {
+            "releaseVersion": "0.1.0",
+            "sourceCommit": "${VERIFIED_MAIN_SHA}",
+            "repository": "${GITHUB_REPOSITORY}",
+            "workflowRunId": "${GITHUB_RUN_ID}",
+            "workflowRunAttempt": "${GITHUB_RUN_ATTEMPT}",
+            "verificationMode": "EXACT_MERGED_MAIN_SHA",
+            "nodeSupport": [22, 24],
+            "repositoryGate": "PASSED",
+            "productionWorkerGate": "PASSED",
+            "backupRestoreDrill": "PASSED",
+            "liveExternalSourceSmoke": "MANUAL_NON_BLOCKING",
+            "readyPackageV2Activation": "EXPLICITLY_GATED",
+            "automaticTagOrDeploy": false
+          }
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-0.1.0-exact-main-evidence-${{ env.VERIFIED_MAIN_SHA }}
+          path: knowledge-release-candidate-evidence.json
+          if-no-files-found: error
+          retention-days: 90
