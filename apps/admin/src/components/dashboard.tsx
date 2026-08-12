@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Database, PackageCheck, ServerCog, Workflow } from "lucide-react";
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
+import { SqliteOperationsReadinessRepository } from "@markorbit/persistence/operations-readiness";
+import { getRegistryDatabase } from "@/server/source-registry";
 import { OperationsReadinessPanel } from "./operations/operations-readiness-panel";
 import { PageHeading } from "./page-heading";
 
@@ -34,6 +36,10 @@ const operationalAreas = [
 ] as const;
 
 export function DashboardPage() {
+  const snapshot = new SqliteOperationsReadinessRepository(getRegistryDatabase()).inspect(
+    DEFAULT_WORKSPACE.id,
+  );
+
   return (
     <>
       <PageHeading
@@ -41,7 +47,7 @@ export function DashboardPage() {
         description="Live operational readiness for the current Workspace, derived from durable Source, Worker, Run, Scheduler, Conversion, and ReadyPackage V2 evidence."
       />
 
-      <OperationsReadinessPanel workspaceId={DEFAULT_WORKSPACE.id} />
+      <OperationsReadinessPanel snapshot={snapshot} />
 
       <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {operationalAreas.map((item) => {
