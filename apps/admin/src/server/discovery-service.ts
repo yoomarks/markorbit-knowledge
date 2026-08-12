@@ -28,6 +28,7 @@ import {
   reviewCandidateGraphNode,
   websiteOrigin,
   writeDiscoveryBatchToSourceGraph,
+  writeExternalDiscoveryLinkToSourceGraph,
 } from "./discovery-source-graph";
 import {
   CRAWL4AI_PRODUCTION_CONNECTOR,
@@ -160,7 +161,7 @@ function normalizedDeniedPatterns(values: string[] | undefined): string[] {
     .slice(0, 50);
 }
 
-function websiteSourceSlug(locator: string, seedId: string): string {
+function websiteSourceSlug(locator: string, identity: string): string {
   const url = new URL(locator);
   const host = url.hostname
     .toLowerCase()
@@ -168,7 +169,7 @@ function websiteSourceSlug(locator: string, seedId: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 50);
-  const suffix = seedId
+  const suffix = identity
     .replace(/[^a-zA-Z0-9]/g, "")
     .slice(-8)
     .toLowerCase();
@@ -301,12 +302,17 @@ export class DiscoveryWorkflowService {
         `Discovery candidate ${candidateId} has no usable seed`,
       );
     }
-    const origin = websiteOrigin(seed.locator);
+
+    const seedOrigin = websiteOrigin(seed.locator);
     const candidateOrigin = websiteOrigin(current.candidate.locator);
-    const isExternalCandidate = candidateOrigin !== origin;
-    const existingProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
+    const isExternalCandidate = candidateOrigin !== seedOrigin;
+    const seedProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
       DEFAULT_WORKSPACE.id,
-      origin,
+      seedOrigin,
+    );
+    const targetProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
+      DEFAULT_WORKSPACE.id,
+      candidateOrigin,
     );
 
     if (input.decision === "REJECTED") {
@@ -316,24 +322,16 @@ export class DiscoveryWorkflowService {
           note: input.note,
           reviewer: input.reviewer,
         });
-        if (existingProfile && !isExternalCandidate) {
+        if (targetProfile) {
           reviewCandidateGraphNode(
             this.dependencies.graph,
-            existingProfile,
+            targetProfile,
             candidate.candidate,
             "REJECTED",
           );
         }
         return { candidate };
       });
-    }
-
-    if (isExternalCandidate) {
-      throw new RegistryConflictError(
-        "EXTERNAL_SOURCE_PROMOTION_NOT_READY",
-        `External candidate ${candidateId} must be promoted as its own website source`,
-        { seedOrigin: origin, candidateOrigin },
-      );
     }
 
     if (current.candidate.status === "ACCEPTED") {
@@ -347,9 +345,13 @@ export class DiscoveryWorkflowService {
     }
 
     return this.dependencies.transaction(() => {
+      const targetLocator = isExternalCandidate ? current.candidate.locator : seed.locator;
+      const targetObservedAt = isExternalCandidate
+        ? current.candidate.discoveredAt
+        : batchRecord.batch.createdAt;
       let source: SourceDefinition;
       let plan: CollectionPlan;
-      let profile = existingProfile;
+      let profile = targetProfile;
 
       if (profile) {
         const existingSource = this.dependencies.sources.getById(profile.sourceId);
@@ -373,8 +375,11 @@ export class DiscoveryWorkflowService {
       } else {
         const connector = ensureCrawl4AiProductionConnector(this.dependencies.connectors).manifest;
         const created = this.dependencies.sources.create({
-          name: websiteSourceName(seed.locator),
-          slug: websiteSourceSlug(seed.locator, seed.seedId),
+          name: websiteSourceName(targetLocator),
+          slug: websiteSourceSlug(
+            targetLocator,
+            isExternalCandidate ? current.candidate.candidateId : seed.seedId,
+          ),
           sourceType: "WEB",
           category: "OTHER",
           authorityLevel: "UNKNOWN",
@@ -385,12 +390,28 @@ export class DiscoveryWorkflowService {
             connectorId: connector.connectorId,
             version: connector.version,
           },
-          canonicalUri: origin,
-          entrypoints: [{ uri: seed.locator, label: "Discovery seed" }],
-          tags: ["discovery-accepted", "website-source"],
+          canonicalUri: candidateOrigin,
+          entrypoints: [
+            {
+              uri: targetLocator,
+              label: isExternalCandidate ? "Discovered external source" : "Discovery seed",
+            },
+          ],
+          tags: [
+            "discovery-accepted",
+            "website-source",
+            ...(isExternalCandidate ? ["external-source"] : []),
+          ],
           extensions: {
             "x-markorbit-discovery-seed-id": seed.seedId,
             "x-markorbit-discovery-batch-id": current.batchId,
+            ...(isExternalCandidate
+              ? {
+                  "x-markorbit-discovery-origin": "EXTERNAL_LINK",
+                  "x-markorbit-discovered-from-url":
+                    current.candidate.discoveredFrom ?? seed.locator,
+                }
+              : {}),
           },
         });
 
@@ -422,6 +443,7 @@ export class DiscoveryWorkflowService {
             "x-markorbit-created-from-discovery": true,
             "x-markorbit-discovery-seed-id": seed.seedId,
             "x-markorbit-production-connector": `${CRAWL4AI_PRODUCTION_CONNECTOR.connectorId}@${CRAWL4AI_PRODUCTION_CONNECTOR.version}`,
+            ...(isExternalCandidate ? { "x-markorbit-external-source": true } : {}),
           },
         });
 
@@ -434,9 +456,19 @@ export class DiscoveryWorkflowService {
         profile = ensureWebsiteSourceProfile(
           this.dependencies.graph,
           source,
-          seed.locator,
-          batchRecord.batch.createdAt,
+          targetLocator,
+          targetObservedAt,
           batchRecord.batch.batchId,
+        );
+      }
+
+      const seedSource = seedProfile
+        ? this.dependencies.sources.getById(seedProfile.sourceId)
+        : null;
+      if (seedProfile && !seedSource) {
+        throw new RegistryConflictError(
+          "DISCOVERY_GRAPH_SOURCE_MISSING",
+          `WebsiteSourceProfile ${seedProfile.id} points to missing source ${seedProfile.sourceId}`,
         );
       }
 
@@ -446,6 +478,9 @@ export class DiscoveryWorkflowService {
         reviewer: input.reviewer,
         acceptedSourceId: source.id,
         collectionPlanId: plan.id,
+        ...(isExternalCandidate && seedSource
+          ? { discoveredFromSourceId: seedSource.id }
+          : {}),
       });
 
       let graphNode = reviewCandidateGraphNode(
@@ -458,7 +493,7 @@ export class DiscoveryWorkflowService {
         const batchCandidates = this.dependencies.discovery
           .listCandidates({ batchId: current.batchId, limit: 500 })
           .items.map((item) => item.candidate)
-          .filter((item) => belongsToOrigin(item.locator, origin));
+          .filter((item) => belongsToOrigin(item.locator, candidateOrigin));
         writeDiscoveryBatchToSourceGraph(
           this.dependencies.graph,
           source,
@@ -477,6 +512,16 @@ export class DiscoveryWorkflowService {
         throw new RegistryConflictError(
           "DISCOVERY_GRAPH_NODE_MISSING",
           `Accepted candidate ${candidateId} could not be represented in Source Graph`,
+        );
+      }
+
+      if (isExternalCandidate && seedProfile && seedSource) {
+        writeExternalDiscoveryLinkToSourceGraph(
+          this.dependencies.graph,
+          seedSource,
+          seedProfile,
+          batchRecord.batch,
+          candidate.candidate,
         );
       }
 
