@@ -95,10 +95,7 @@ export class ExpandingWebsiteDiscoveryProvider implements SourceDiscoveryProvide
     );
     const requestedExternalBudget = Math.min(
       MAX_EXTERNAL_CANDIDATES,
-      boundedPositiveInteger(
-        constraints.maxExternalCandidates,
-        DEFAULT_MAX_EXTERNAL_CANDIDATES,
-      ),
+      boundedPositiveInteger(constraints.maxExternalCandidates, DEFAULT_MAX_EXTERNAL_CANDIDATES),
     );
     const externalCandidateBudget = Math.min(
       requestedExternalBudget,
@@ -142,10 +139,7 @@ export class ExpandingWebsiteDiscoveryProvider implements SourceDiscoveryProvide
         constraints: {
           ...constraints,
           maxDepth: 1,
-          maxCandidates: Math.max(
-            DEFAULT_EXTERNAL_SCAN_CANDIDATES,
-            externalCandidateBudget * 4,
-          ),
+          maxCandidates: Math.max(DEFAULT_EXTERNAL_SCAN_CANDIDATES, externalCandidateBudget * 4),
           maxFetches: EXTERNAL_FETCHES_PER_SEED,
           sameHostOnly: false,
           discoverSitemaps: false,
