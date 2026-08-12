@@ -1,0 +1,103 @@
+name: Knowledge v0.1 Release Candidate
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/release-candidate.yml"
+      - "package.json"
+      - "CHANGELOG.md"
+      - "scripts/release-preflight.mjs"
+      - "scripts/release-backup-restore-drill.mjs"
+      - "docs/release/**"
+      - "docs/operations/KNOWLEDGE_V0_1_BACKUP_RESTORE.md"
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Expected Knowledge release version"
+        required: true
+        default: "0.1.0"
+
+permissions:
+  contents: read
+
+jobs:
+  repository-release-gate:
+    name: Node ${{ matrix.node }} release gate
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    env:
+      MARKORBIT_KNOWLEDGE_RELEASE_VERSION: ${{ inputs.release_version || '0.1.0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify release metadata and repository hygiene
+        run: pnpm release:preflight
+      - name: Prove quiesced SQLite + CAS backup/restore contract
+        run: pnpm release:backup-restore-drill
+      - name: Run complete repository gate
+        run: pnpm check
+
+  production-worker-gate:
+    name: Production Worker release gate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile production Python workers
+        run: python -m compileall -q workers/local_folder workers/email workers/document_extraction
+      - name: Test Local Folder Worker
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s workers/local_folder/tests -p 'test_*.py' -v
+      - name: Test Email Worker
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s workers/email/tests -p 'test_*.py' -v
+      - name: Test document extraction provider
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s workers/document_extraction/tests -p 'test_*.py' -v
+
+  release-evidence:
+    name: Emit immutable candidate evidence
+    needs: [repository-release-gate, production-worker-gate]
+    runs-on: ubuntu-24.04
+    env:
+      RELEASE_VERSION: ${{ inputs.release_version || '0.1.0' }}
+    steps:
+      - name: Write release candidate evidence
+        run: |
+          cat > knowledge-release-candidate-evidence.json <<EOF
+          {
+            "releaseVersion": "${RELEASE_VERSION}",
+            "sourceCommit": "${GITHUB_SHA}",
+            "repository": "${GITHUB_REPOSITORY}",
+            "workflowRunId": "${GITHUB_RUN_ID}",
+            "workflowRunAttempt": "${GITHUB_RUN_ATTEMPT}",
+            "nodeSupport": [22, 24],
+            "repositoryGate": "PASSED",
+            "productionWorkerGate": "PASSED",
+            "backupRestoreDrill": "PASSED",
+            "liveExternalSourceSmoke": "MANUAL_NON_BLOCKING",
+            "readyPackageV2Activation": "EXPLICITLY_GATED",
+            "automaticTagOrDeploy": false
+          }
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-${{ env.RELEASE_VERSION }}-candidate-evidence-${{ github.sha }}
+          path: knowledge-release-candidate-evidence.json
+          if-no-files-found: error
+          retention-days: 90
