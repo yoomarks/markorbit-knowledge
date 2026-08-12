@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SourceCandidate, SourceDiscoveryBatch } from "@markorbit/contracts";
-import {
-  ExpandingWebsiteDiscoveryProvider,
-  type SourceDiscoveryProvider,
-} from "../src/index";
+import { ExpandingWebsiteDiscoveryProvider, type SourceDiscoveryProvider } from "../src/index";
 
 function candidate(
   candidateId: string,
