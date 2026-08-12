@@ -133,4 +133,103 @@ describe("DiscoveryWorkflowService", () => {
 
     database.close();
   });
+
+  it("keeps external candidates reviewable but blocks accidental promotion into the seed source", async () => {
+    const database = openRegistryDatabase(":memory:");
+    const sources = new SqliteSourceRepository(database);
+    const plans = new SqliteCollectionPlanRepository(database);
+    const connectors = new SqliteConnectorRepository(database);
+    const discovery = new SqliteSourceDiscoveryRepository(database);
+    const graph = new SqliteSourceGraphRepository(database);
+    const service = new DiscoveryWorkflowService({
+      discovery,
+      graph,
+      sources,
+      plans,
+      connectors,
+      provider: {
+        async discover(batch: SourceDiscoveryBatch) {
+          return [
+            {
+              candidateId: "cand_dddddddddddddddddddddddd",
+              locator: "https://outside.example/article",
+              discoveredAt: "2026-08-12T16:20:00.000Z",
+              status: "DISCOVERED" as const,
+              discoveredFrom: batch.seeds[0]?.locator,
+              discoveryMethod: "HTML_LINK" as const,
+              depth: 1,
+              metadata: {
+                kind: "PAGE",
+                externalToSeed: true,
+                discoveryScope: "EXTERNAL_ONE_HOP",
+                fetchEligibleInOriginatingRun: false,
+              },
+            },
+            {
+              candidateId: "cand_eeeeeeeeeeeeeeeeeeeeeeee",
+              locator: "https://peer.example/services",
+              discoveredAt: "2026-08-12T16:20:01.000Z",
+              status: "DISCOVERED" as const,
+              discoveredFrom: batch.seeds[0]?.locator,
+              discoveryMethod: "HTML_LINK" as const,
+              depth: 1,
+              metadata: {
+                kind: "PAGE",
+                externalToSeed: true,
+                discoveryScope: "EXTERNAL_ONE_HOP",
+                fetchEligibleInOriginatingRun: false,
+              },
+            },
+          ];
+        },
+      },
+      transaction(operation) {
+        database.exec("BEGIN IMMEDIATE;");
+        try {
+          const result = operation();
+          database.exec("COMMIT;");
+          return result;
+        } catch (error) {
+          database.exec("ROLLBACK;");
+          throw error;
+        }
+      },
+    });
+
+    const run = await service.start({
+      locator: "https://example.com/start-here",
+      discoverExternalLinks: true,
+      maxExternalCandidates: 10,
+    });
+    expect(run.candidates).toHaveLength(2);
+    expect(sources.list({ sourceType: "WEB", limit: 100 }).total).toBe(0);
+
+    const rejected = service.review("cand_dddddddddddddddddddddddd", {
+      decision: "REJECTED",
+      reviewer: "operator-test",
+    });
+    expect(rejected.candidate.candidate.status).toBe("REJECTED");
+
+    try {
+      service.review("cand_eeeeeeeeeeeeeeeeeeeeeeee", {
+        decision: "ACCEPTED",
+        reviewer: "operator-test",
+      });
+      throw new Error("Expected external source promotion to fail closed");
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: "EXTERNAL_SOURCE_PROMOTION_NOT_READY",
+        details: {
+          seedOrigin: "https://example.com/",
+          candidateOrigin: "https://peer.example/",
+        },
+      });
+    }
+
+    expect(sources.list({ sourceType: "WEB", limit: 100 }).total).toBe(0);
+    expect(service.overview().candidates.summary.REJECTED).toBe(1);
+    expect(service.overview().candidates.summary.DISCOVERED).toBe(1);
+
+    database.close();
+  });
 });
