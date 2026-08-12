@@ -36,6 +36,8 @@ const MAX_QUERY_VALUE_LENGTH = 2_048;
 const MAX_XML_DEPTH = 64;
 const MAX_XML_NODES = 25_000;
 const MAX_ATTRIBUTES_PER_NODE = 100;
+const MAX_XML_NAME_LENGTH = 256;
+const MAX_XML_ATTRIBUTE_VALUE_LENGTH = 64 * 1024;
 const MAX_TITLE_LENGTH = 4_096;
 const MAX_ID_LENGTH = 16_384;
 const MAX_LINK_LENGTH = 8_192;
@@ -436,6 +438,13 @@ function parseOpeningTag(raw: string): {
     );
   }
   const name = nameMatch[0];
+  if (name.length > MAX_XML_NAME_LENGTH) {
+    throw new CollectionAcquisitionError(
+      "RSS_XML_LIMIT_EXCEEDED",
+      `RSS XML element name exceeds the ${MAX_XML_NAME_LENGTH}-character bound`,
+      false,
+    );
+  }
   let offset = name.length;
   const attributes: Record<string, string> = {};
   let attributeCount = 0;
@@ -451,6 +460,13 @@ function parseOpeningTag(raw: string): {
       );
     }
     const attributeName = attributeMatch[0];
+    if (attributeName.length > MAX_XML_NAME_LENGTH) {
+      throw new CollectionAcquisitionError(
+        "RSS_XML_LIMIT_EXCEEDED",
+        `RSS XML attribute name exceeds the ${MAX_XML_NAME_LENGTH}-character bound`,
+        false,
+      );
+    }
     offset += attributeName.length;
     while (/\s/.test(input[offset] ?? "")) offset += 1;
     if (input[offset] !== "=") {
@@ -486,7 +502,15 @@ function parseOpeningTag(raw: string): {
         false,
       );
     }
-    attributes[attributeName] = decodeXmlEntities(input.slice(offset, end));
+    const rawAttributeValue = input.slice(offset, end);
+    if (rawAttributeValue.length > MAX_XML_ATTRIBUTE_VALUE_LENGTH) {
+      throw new CollectionAcquisitionError(
+        "RSS_XML_LIMIT_EXCEEDED",
+        `RSS XML attribute value exceeds the ${MAX_XML_ATTRIBUTE_VALUE_LENGTH}-character bound`,
+        false,
+      );
+    }
+    attributes[attributeName] = decodeXmlEntities(rawAttributeValue);
     attributeCount += 1;
     if (attributeCount > MAX_ATTRIBUTES_PER_NODE) {
       throw new CollectionAcquisitionError(
@@ -600,7 +624,11 @@ function parseXml(xml: string): XmlNode {
     const raw = xml.slice(opening + 1, end);
     if (raw.startsWith("/")) {
       const closingName = raw.slice(1).trim();
-      if (!/^[A-Za-z_][A-Za-z0-9_.:-]*$/.test(closingName) || stack.length <= 1) {
+      if (
+        closingName.length > MAX_XML_NAME_LENGTH ||
+        !/^[A-Za-z_][A-Za-z0-9_.:-]*$/.test(closingName) ||
+        stack.length <= 1
+      ) {
         throw new CollectionAcquisitionError(
           "RSS_XML_INVALID",
           "RSS XML contains an invalid closing tag",
@@ -705,10 +733,30 @@ function attribute(node: XmlNode, name: string): string | undefined {
   return undefined;
 }
 
+function boundedAttribute(
+  node: XmlNode,
+  name: string,
+  field: string,
+  max: number,
+): string | undefined {
+  const value = attribute(node, name)?.trim();
+  if (!value) return undefined;
+  if (value.length > max) {
+    throw new CollectionAcquisitionError(
+      "RSS_ENTRY_FIELD_TOO_LARGE",
+      `RSS entry ${field} exceeds the ${max}-character bound`,
+      false,
+    );
+  }
+  return value;
+}
+
 function parseCategories(nodes: XmlNode[], atom = false): string[] {
   const values: string[] = [];
   for (const node of nodes) {
-    const raw = atom ? attribute(node, "term") : nodeText(node);
+    const raw = atom
+      ? boundedAttribute(node, "term", "category", MAX_CATEGORY_LENGTH)
+      : nodeText(node);
     const value = raw?.trim();
     if (!value) continue;
     if (value.length > MAX_CATEGORY_LENGTH) {
@@ -733,10 +781,10 @@ function parseCategories(nodes: XmlNode[], atom = false): string[] {
 function atomLink(entry: XmlNode): string | undefined {
   const links = children(entry, "link");
   const preferred = links.find((node) => {
-    const rel = attribute(node, "rel")?.toLowerCase();
+    const rel = boundedAttribute(node, "rel", "link rel", 256)?.toLowerCase();
     return !rel || rel === "alternate";
   });
-  return preferred ? attribute(preferred, "href") : undefined;
+  return preferred ? boundedAttribute(preferred, "href", "link href", MAX_LINK_LENGTH) : undefined;
 }
 
 function parseRss(root: XmlNode): ParsedFeed {
@@ -796,8 +844,29 @@ function parseAtom(root: XmlNode): ParsedFeed {
 function parseFeed(xml: string): ParsedFeed {
   const root = parseXml(xml);
   const name = localName(root.name);
-  if (name === "rss") return parseRss(root);
-  if (name === "feed") return parseAtom(root);
+  if (name === "rss") {
+    if (root.attributes.version?.trim() !== "2.0") {
+      throw new CollectionAcquisitionError(
+        "RSS_FORMAT_UNSUPPORTED",
+        'RSS Connector V1 requires an RSS 2.0 root with version="2.0"',
+        false,
+      );
+    }
+    return parseRss(root);
+  }
+  if (name === "feed") {
+    const separator = root.name.indexOf(":");
+    const prefix = separator >= 0 ? root.name.slice(0, separator) : null;
+    const namespaceUri = prefix ? root.attributes[`xmlns:${prefix}`] : root.attributes.xmlns;
+    if (namespaceUri?.trim() !== "http://www.w3.org/2005/Atom") {
+      throw new CollectionAcquisitionError(
+        "RSS_FORMAT_UNSUPPORTED",
+        "RSS Connector V1 requires the Atom 1.0 namespace on the feed root",
+        false,
+      );
+    }
+    return parseAtom(root);
+  }
   if (name === "rdf") {
     throw new CollectionAcquisitionError(
       "RSS_FORMAT_UNSUPPORTED",

@@ -72,8 +72,8 @@ RSS V1 has no authenticated-feed support. Do not place credentials in the feed U
 
 Supported feed roots:
 
-- RSS 2.0 `<rss>`;
-- Atom 1.0 `<feed>`.
+- RSS 2.0 `<rss version="2.0">`;
+- Atom 1.0 `<feed>` using `http://www.w3.org/2005/Atom` as its root namespace (default or matching root prefix).
 
 RSS 1.0/RDF is explicitly outside V1.
 
@@ -83,7 +83,7 @@ Parser controls include:
 - DTD and entity declarations rejected;
 - unsupported XML declarations rejected;
 - only predefined XML entities and valid numeric character references accepted;
-- bounded XML nesting depth, node count, and attributes per node;
+- bounded XML nesting depth, node count, element/attribute names, attributes per node, and attribute values;
 - bounded title, identity, link, author, category, summary and content fields;
 - bounded per-entry envelope size and total generated entry bytes;
 - source-order preservation for mixed text/child-element content.

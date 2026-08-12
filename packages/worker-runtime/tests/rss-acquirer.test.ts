@@ -257,6 +257,36 @@ describe("RssArtifactAcquirer", () => {
     expect(serverError.retryable).toBe(true);
   });
 
+  it("requires RSS 2.0 version and the Atom 1.0 namespace", async () => {
+    const rssOne = `<rss version="1.0"><channel><title>x</title></channel></rss>`;
+    expect((await acquisitionError(acquirerFor(rssOne).acquire(context()))).code).toBe(
+      "RSS_FORMAT_UNSUPPORTED",
+    );
+
+    const atomWithoutNamespace = `<feed><title>x</title></feed>`;
+    expect(
+      (
+        await acquisitionError(
+          acquirerFor(atomWithoutNamespace, "application/atom+xml").acquire(context()),
+        )
+      ).code,
+    ).toBe("RSS_FORMAT_UNSUPPORTED");
+  });
+
+  it("enforces XML attribute and Atom link field bounds independently of the feed byte limit", async () => {
+    const oversizedAttribute = "x".repeat(64 * 1024 + 1);
+    const oversizedXml = `<rss version="2.0" data-big="${oversizedAttribute}"><channel><title>x</title></channel></rss>`;
+    expect((await acquisitionError(acquirerFor(oversizedXml).acquire(context()))).code).toBe(
+      "RSS_XML_LIMIT_EXCEEDED",
+    );
+
+    const oversizedHref = `https://example.test/${"x".repeat(8_192)}`;
+    const atom = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><title>x</title><entry><id>one</id><link rel="alternate" href="${oversizedHref}"/></entry></feed>`;
+    expect(
+      (await acquisitionError(acquirerFor(atom, "application/atom+xml").acquire(context()))).code,
+    ).toBe("RSS_ENTRY_FIELD_TOO_LARGE");
+  });
+
   it("rejects non-feed MIME types, DTD/entity declarations, unsupported RDF, and non-UTF8 declarations", async () => {
     expect(
       (await acquisitionError(acquirerFor(RSS_FEED, "text/html").acquire(context()))).code,
