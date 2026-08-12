@@ -6,6 +6,7 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "bootstrap:api": "tsx src/bootstrap-api.ts",
+    "bootstrap:rss": "tsx src/bootstrap-rss.ts",
     "bootstrap:local-folder": "tsx src/bootstrap-local-folder.ts",
     "bootstrap:uspto": "tsx src/bootstrap-uspto.ts",
     "bootstrap:uspto-conversion": "tsx src/bootstrap-uspto-conversion.ts",
