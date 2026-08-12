@@ -29,7 +29,6 @@ jobs:
       - name: Format permanent files
         run: >-
           pnpm exec prettier --write
-          .env.example
           README.md
           apps/worker/package.json
           apps/worker/src/bootstrap-github.ts
