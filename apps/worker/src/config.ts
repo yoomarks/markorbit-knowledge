@@ -4,7 +4,7 @@ import {
   type LocalFolderRootMap,
 } from "@markorbit/worker-runtime";
 
-export type WorkerCollectionProvider = "api" | "crawl4ai" | "local-folder" | "rss";
+export type WorkerCollectionProvider = "api" | "crawl4ai" | "github" | "local-folder" | "rss";
 
 export type WorkerProcessConfig = {
   controlPlaneUrl: string;
@@ -23,6 +23,11 @@ export type WorkerProcessConfig = {
   localFolderMaxTotalBytes: number;
   localFolderMaxItems: number;
   localFolderMaxDepth: number;
+  githubMaxFileBytes: number;
+  githubMaxTotalBytes: number;
+  githubMaxTreeEntries: number;
+  githubMaxItems: number;
+  githubMaxDepth: number;
   conversionEnabled: boolean;
   workspaceId?: string;
   conversionCapabilityRevision: number;
@@ -69,10 +74,18 @@ function normalizedControlPlaneUrl(value: string): string {
 
 function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
   const value = env.MARKORBIT_COLLECTION_PROVIDER?.trim().toLowerCase() || "crawl4ai";
-  if (value === "api" || value === "crawl4ai" || value === "local-folder" || value === "rss") {
+  if (
+    value === "api" ||
+    value === "crawl4ai" ||
+    value === "github" ||
+    value === "local-folder" ||
+    value === "rss"
+  ) {
     return value;
   }
-  throw new Error("MARKORBIT_COLLECTION_PROVIDER must be api, crawl4ai, local-folder, or rss");
+  throw new Error(
+    "MARKORBIT_COLLECTION_PROVIDER must be api, crawl4ai, github, local-folder, or rss",
+  );
 }
 
 export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): WorkerProcessConfig {
@@ -96,6 +109,33 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
       );
     }
   }
+
+  const githubMaxFileBytes = integer(
+    env,
+    "MARKORBIT_GITHUB_MAX_FILE_BYTES",
+    2 * 1024 * 1024,
+    1,
+    20 * 1024 * 1024,
+  );
+  const githubMaxTotalBytes = integer(
+    env,
+    "MARKORBIT_GITHUB_MAX_TOTAL_BYTES",
+    50 * 1024 * 1024,
+    1,
+    200 * 1024 * 1024,
+  );
+  if (githubMaxTotalBytes < githubMaxFileBytes) {
+    throw new Error("MARKORBIT_GITHUB_MAX_TOTAL_BYTES must be at least MARKORBIT_GITHUB_MAX_FILE_BYTES");
+  }
+  const githubMaxTreeEntries = integer(
+    env,
+    "MARKORBIT_GITHUB_MAX_TREE_ENTRIES",
+    20_000,
+    1,
+    100_000,
+  );
+  const githubMaxItems = integer(env, "MARKORBIT_GITHUB_MAX_ITEMS", 500, 1, 5_000);
+  const githubMaxDepth = integer(env, "MARKORBIT_GITHUB_MAX_DEPTH", 30, 0, 60);
 
   const errorBackoffMinMs = integer(
     env,
@@ -158,6 +198,11 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     ),
     localFolderMaxItems: integer(env, "MARKORBIT_LOCAL_FOLDER_MAX_ITEMS", 500, 1, 5_000),
     localFolderMaxDepth: integer(env, "MARKORBIT_LOCAL_FOLDER_MAX_DEPTH", 20, 0, 20),
+    githubMaxFileBytes,
+    githubMaxTotalBytes,
+    githubMaxTreeEntries,
+    githubMaxItems,
+    githubMaxDepth,
     conversionEnabled,
     ...(workspaceId ? { workspaceId } : {}),
     conversionCapabilityRevision: integer(
