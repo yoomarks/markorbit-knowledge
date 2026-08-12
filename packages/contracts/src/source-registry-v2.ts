@@ -17,8 +17,7 @@ export const SOURCE_DISCOVERY_ORIGINS = [
   "RELATED_SOURCE",
 ] as const;
 
-export type SourceDiscoveryOrigin =
-  (typeof SOURCE_DISCOVERY_ORIGINS)[number];
+export type SourceDiscoveryOrigin = (typeof SOURCE_DISCOVERY_ORIGINS)[number];
 
 export const SOURCE_RELATIONSHIP_TYPES = [
   "REFERENCES",
@@ -29,8 +28,7 @@ export const SOURCE_RELATIONSHIP_TYPES = [
   "SAME_ORGANIZATION",
 ] as const;
 
-export type SourceRelationshipType =
-  (typeof SOURCE_RELATIONSHIP_TYPES)[number];
+export type SourceRelationshipType = (typeof SOURCE_RELATIONSHIP_TYPES)[number];
 
 export interface SourceDiscoveryProvenance {
   origin: SourceDiscoveryOrigin;
