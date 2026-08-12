@@ -15,7 +15,7 @@ import type {
 } from "@markorbit/contracts";
 import {
   enrichDiscoveryCandidate,
-  HttpWebsiteDiscoveryProvider,
+  ExpandingWebsiteDiscoveryProvider,
   type SourceDiscoveryProvider,
 } from "@markorbit/worker-runtime";
 import {
@@ -51,6 +51,8 @@ const DEFAULT_CONSTRAINTS: Required<
     | "sameHostOnly"
     | "respectRobots"
     | "discoverSitemaps"
+    | "discoverExternalLinks"
+    | "maxExternalCandidates"
   >
 > = {
   maxDepth: 1,
@@ -59,6 +61,8 @@ const DEFAULT_CONSTRAINTS: Required<
   sameHostOnly: true,
   respectRobots: true,
   discoverSitemaps: true,
+  discoverExternalLinks: true,
+  maxExternalCandidates: 25,
 };
 
 export type StartDiscoveryInput = {
@@ -66,6 +70,8 @@ export type StartDiscoveryInput = {
   maxDepth?: number;
   maxCandidates?: number;
   maxFetches?: number;
+  discoverExternalLinks?: boolean;
+  maxExternalCandidates?: number;
   deniedUrlPatterns?: string[];
 };
 
@@ -173,6 +179,10 @@ function websiteSourceName(locator: string): string {
   return new URL(locator).hostname.slice(0, 120);
 }
 
+function belongsToOrigin(locator: string, origin: string): boolean {
+  return websiteOrigin(locator) === origin;
+}
+
 export class DiscoveryWorkflowService {
   constructor(private readonly dependencies: DiscoveryServiceDependencies) {}
 
@@ -213,6 +223,15 @@ export class DiscoveryWorkflowService {
         sameHostOnly: DEFAULT_CONSTRAINTS.sameHostOnly,
         respectRobots: DEFAULT_CONSTRAINTS.respectRobots,
         discoverSitemaps: DEFAULT_CONSTRAINTS.discoverSitemaps,
+        discoverExternalLinks:
+          input.discoverExternalLinks ?? DEFAULT_CONSTRAINTS.discoverExternalLinks,
+        maxExternalCandidates: boundedInteger(
+          input.maxExternalCandidates,
+          DEFAULT_CONSTRAINTS.maxExternalCandidates,
+          1,
+          100,
+          "maxExternalCandidates",
+        ),
         deniedUrlPatterns: normalizedDeniedPatterns(input.deniedUrlPatterns),
       },
     };
@@ -222,21 +241,25 @@ export class DiscoveryWorkflowService {
       const discovered = await this.dependencies.provider.discover(batch);
       const candidates = discovered.map(enrichDiscoveryCandidate);
       const completed = this.dependencies.discovery.completeBatch(batch.batchId, candidates);
+      const seedOrigin = websiteOrigin(seed.locator);
 
       const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
         DEFAULT_WORKSPACE.id,
-        websiteOrigin(seed.locator),
+        seedOrigin,
       );
       if (profile) {
         const source = this.dependencies.sources.getById(profile.sourceId);
         if (source) {
+          const graphCandidates = candidates.filter((candidate) =>
+            belongsToOrigin(candidate.locator, seedOrigin),
+          );
           this.dependencies.transaction(() => {
             writeDiscoveryBatchToSourceGraph(
               this.dependencies.graph,
               source,
               profile,
               completed.batch,
-              candidates,
+              graphCandidates,
             );
           });
         }
@@ -279,6 +302,8 @@ export class DiscoveryWorkflowService {
       );
     }
     const origin = websiteOrigin(seed.locator);
+    const candidateOrigin = websiteOrigin(current.candidate.locator);
+    const isExternalCandidate = candidateOrigin !== origin;
     const existingProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
       DEFAULT_WORKSPACE.id,
       origin,
@@ -291,7 +316,7 @@ export class DiscoveryWorkflowService {
           note: input.note,
           reviewer: input.reviewer,
         });
-        if (existingProfile) {
+        if (existingProfile && !isExternalCandidate) {
           reviewCandidateGraphNode(
             this.dependencies.graph,
             existingProfile,
@@ -301,6 +326,14 @@ export class DiscoveryWorkflowService {
         }
         return { candidate };
       });
+    }
+
+    if (isExternalCandidate) {
+      throw new RegistryConflictError(
+        "EXTERNAL_SOURCE_PROMOTION_NOT_READY",
+        `External candidate ${candidateId} must be promoted as its own website source`,
+        { seedOrigin: origin, candidateOrigin },
+      );
     }
 
     if (current.candidate.status === "ACCEPTED") {
@@ -424,7 +457,8 @@ export class DiscoveryWorkflowService {
       if (!graphNode) {
         const batchCandidates = this.dependencies.discovery
           .listCandidates({ batchId: current.batchId, limit: 500 })
-          .items.map((item) => item.candidate);
+          .items.map((item) => item.candidate)
+          .filter((item) => belongsToOrigin(item.locator, origin));
         writeDiscoveryBatchToSourceGraph(
           this.dependencies.graph,
           source,
@@ -461,7 +495,7 @@ export function getDiscoveryWorkflowService(): DiscoveryWorkflowService {
       sources: getSourceRepository(),
       plans: getCollectionPlanRepository(),
       connectors: getConnectorRepository(),
-      provider: new HttpWebsiteDiscoveryProvider(),
+      provider: new ExpandingWebsiteDiscoveryProvider(),
       transaction: withRegistryTransaction,
     });
   }
