@@ -1,0 +1,526 @@
+name: EUIPO Source Coverage Apply
+
+on:
+  push:
+    branches:
+      - codex/euipo-source-coverage-v1
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/euipo-source-coverage-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply EUIPO source coverage
+        shell: bash
+        run: |
+          cat > packages/persistence/src/euipo-source-coverage.ts <<'EOF'
+          import {
+            SOURCE_COVERAGE_PROTOCOL_VERSION,
+            type SourceCoverageCatalogState,
+            type SourceCoverageTarget,
+          } from "@markorbit/contracts";
+
+          const VERIFIED_AT = "2026-08-13T05:35:00+08:00";
+          const EUIPO = "European Union Intellectual Property Office";
+          const ROOT_EVIDENCE = "https://www.euipo.europa.eu/en/trade-marks";
+
+          function target(
+            input: Omit<
+              SourceCoverageTarget,
+              | "protocolVersion"
+              | "objectType"
+              | "jurisdiction"
+              | "authorityName"
+              | "authorityBasis"
+              | "sourceType"
+              | "category"
+              | "authorityLevel"
+              | "languages"
+              | "catalogState"
+              | "verificationEvidenceUri"
+              | "verifiedAt"
+            > & {
+              verificationEvidenceUri?: string;
+              catalogState?: SourceCoverageCatalogState;
+            },
+          ): SourceCoverageTarget {
+            return {
+              protocolVersion: SOURCE_COVERAGE_PROTOCOL_VERSION,
+              objectType: "SOURCE_COVERAGE_TARGET",
+              jurisdiction: "EU",
+              authorityName: EUIPO,
+              authorityBasis: "EXPLICIT_CURATED",
+              sourceType: "WEB",
+              category: "OFFICIAL_AUTHORITY",
+              authorityLevel: "PRIMARY_OFFICIAL",
+              languages: ["en"],
+              catalogState: input.catalogState ?? "ACTIVE",
+              verifiedAt: VERIFIED_AT,
+              ...input,
+              verificationEvidenceUri: input.verificationEvidenceUri ?? ROOT_EVIDENCE,
+            };
+          }
+
+          /**
+           * EUIPO public trademark-source baseline. These records express governed coverage intent
+           * only. They do not create Sources, CollectionPlans, schedules, or collection authority.
+           */
+          export const EUIPO_SOURCE_COVERAGE_TARGETS = [
+            target({
+              id: "eu-euipo-trademarks-root",
+              family: "PORTAL",
+              displayName: "EUIPO Trade Marks",
+              canonicalUri: "https://www.euipo.europa.eu/en/trade-marks",
+              entrypoints: [
+                { uri: "https://www.euipo.europa.eu/en/trade-marks", label: "Trade marks home" },
+              ],
+              coverageTier: "FOUNDATIONAL",
+              changeSensitivity: "HIGH",
+              acquisition: {
+                mode: "WEB_CRAWL",
+                renderJavascriptHint: false,
+                fetchAttachmentsHint: false,
+                expectedArtifactKinds: ["HTML", "MARKDOWN"],
+              },
+            }),
+            target({
+              id: "eu-euipo-how-to-apply",
+              family: "FILING",
+              displayName: "EUIPO How to Apply for a Trade Mark",
+              canonicalUri: "https://www.euipo.europa.eu/en/trade-marks/how-to-apply",
+              entrypoints: [
+                {
+                  uri: "https://www.euipo.europa.eu/en/trade-marks/how-to-apply",
+                  label: "How to apply",
+                },
+                {
+                  uri: "https://www.euipo.europa.eu/en/trade-marks/before-applying",
+                  label: "Before applying",
+                },
+              ],
+              coverageTier: "FOUNDATIONAL",
+              changeSensitivity: "HIGH",
+              acquisition: {
+                mode: "WEB_CRAWL",
+                renderJavascriptHint: false,
+                fetchAttachmentsHint: false,
+                expectedArtifactKinds: ["HTML", "MARKDOWN"],
+              },
+            }),
+            target({
+              id: "eu-euipo-esearch-plus",
+              family: "SEARCH",
+              displayName: "EUIPO eSearch Plus and IP Search",
+              canonicalUri: "https://euipo.europa.eu/eSearch/",
+              entrypoints: [
+                { uri: "https://euipo.europa.eu/eSearch/", label: "eSearch Plus" },
+                { uri: "https://www.euipo.europa.eu/en/search-ip", label: "Search IP guidance" },
+              ],
+              coverageTier: "FOUNDATIONAL",
+              changeSensitivity: "NORMAL",
+              acquisition: {
+                mode: "MIXED",
+                renderJavascriptHint: true,
+                fetchAttachmentsHint: false,
+                expectedArtifactKinds: ["HTML", "MARKDOWN", "JSON"],
+              },
+              verificationEvidenceUri: "https://www.euipo.europa.eu/en/search-ip",
+            }),
+            target({
+              id: "eu-euipo-trade-mark-guidelines",
+              family: "EXAMINATION_MANUAL",
+              displayName: "EUIPO Trade Mark Guidelines",
+              canonicalUri: "https://guidelines.euipo.europa.eu/",
+              entrypoints: [
+                { uri: "https://guidelines.euipo.europa.eu/", label: "EUIPO Guidelines" },
+              ],
+              coverageTier: "FOUNDATIONAL",
+              changeSensitivity: "HIGH",
+              acquisition: {
+                mode: "MIXED",
+                renderJavascriptHint: true,
+                fetchAttachmentsHint: false,
+                expectedArtifactKinds: ["HTML", "MARKDOWN"],
+              },
+              verificationEvidenceUri: "https://guidelines.euipo.europa.eu/",
+            }),
+            target({
+              id: "eu-euipo-tmclass",
+              family: "GOODS_SERVICES_ID",
+              displayName: "EUIPO TMclass Goods and Services",
+              canonicalUri: "https://euipo.europa.eu/ec2/?lang=en",
+              entrypoints: [
+                { uri: "https://euipo.europa.eu/ec2/?lang=en", label: "TMclass" },
+                {
+                  uri: "https://www.euipo.europa.eu/en/trade-marks/before-applying/goods-and-services",
+                  label: "Goods and services guidance",
+                },
+              ],
+              coverageTier: "FOUNDATIONAL",
+              changeSensitivity: "HIGH",
+              acquisition: {
+                mode: "MIXED",
+                renderJavascriptHint: true,
+                fetchAttachmentsHint: false,
+                expectedArtifactKinds: ["HTML", "JSON"],
+              },
+              verificationEvidenceUri:
+                "https://www.euipo.europa.eu/en/trade-marks/before-applying/goods-and-services",
+            }),
+            target({
+              id: "eu-euipo-fees",
+              family: "FEES",
+              displayName: "EUIPO Trade Mark Fees and Payments",
+              canonicalUri:
+                "https://www.euipo.europa.eu/en/trade-marks/before-applying/fees-payments",
+              entrypoints: [
+                {
+                  uri: "https://www.euipo.europa.eu/en/trade-marks/before-applying/fees-payments",
+                  label: "Fees and payments",
+                },
+                {
+                  uri: "https://www.euipo.europa.eu/en/help-centre/tm/faq-fees-and-their-payment",
+                  label: "Fees FAQ",
+                },
+              ],
+              coverageTier: "FOUNDATIONAL",
+              changeSensitivity: "HIGH",
+              acquisition: {
+                mode: "WEB_CRAWL",
+                renderJavascriptHint: false,
+                fetchAttachmentsHint: false,
+                expectedArtifactKinds: ["HTML", "MARKDOWN"],
+              },
+              verificationEvidenceUri:
+                "https://www.euipo.europa.eu/en/help-centre/tm/faq-fees-and-their-payment",
+            }),
+            target({
+              id: "eu-euipo-opposition",
+              family: "PROCEEDINGS",
+              displayName: "EUIPO Trade Mark Opposition",
+              canonicalUri: "https://www.euipo.europa.eu/en/trade-marks/after-applying/opposition",
+              entrypoints: [
+                {
+                  uri: "https://www.euipo.europa.eu/en/trade-marks/after-applying/opposition",
+                  label: "Opposition procedure",
+                },
+              ],
+              coverageTier: "FOUNDATIONAL",
+              changeSensitivity: "HIGH",
+              acquisition: {
+                mode: "WEB_CRAWL",
+                renderJavascriptHint: false,
+                fetchAttachmentsHint: true,
+                expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+              },
+            }),
+            target({
+              id: "eu-euipo-boards-of-appeal-decisions",
+              family: "APPEALS_AND_CASELAW",
+              displayName: "EUIPO Boards of Appeal Decisions",
+              canonicalUri:
+                "https://www.euipo.europa.eu/en/boards-of-appeal/publications/decisions",
+              entrypoints: [
+                {
+                  uri: "https://www.euipo.europa.eu/en/boards-of-appeal/publications/decisions",
+                  label: "Boards of Appeal decisions",
+                },
+                {
+                  uri: "https://www.euipo.europa.eu/en/law/recent-case-law",
+                  label: "Recent case law",
+                },
+                { uri: "https://www.euipo.europa.eu/en/search-ip", label: "eSearch case law access" },
+              ],
+              coverageTier: "FOUNDATIONAL",
+              changeSensitivity: "HIGH",
+              acquisition: {
+                mode: "MIXED",
+                renderJavascriptHint: true,
+                fetchAttachmentsHint: true,
+                expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+              },
+            }),
+            target({
+              id: "eu-euipo-law",
+              family: "LEGAL_TEXTS",
+              displayName: "EUIPO Trade Mark Law and Legal Texts",
+              canonicalUri: "https://www.euipo.europa.eu/en/law",
+              entrypoints: [{ uri: "https://www.euipo.europa.eu/en/law", label: "EUIPO law" }],
+              coverageTier: "FOUNDATIONAL",
+              changeSensitivity: "HIGH",
+              acquisition: {
+                mode: "MIXED",
+                renderJavascriptHint: false,
+                fetchAttachmentsHint: true,
+                expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+              },
+            }),
+            target({
+              id: "eu-euipo-manage-trade-mark",
+              family: "MAINTENANCE",
+              displayName: "EUIPO Manage a Trade Mark Application or Registration",
+              canonicalUri:
+                "https://www.euipo.europa.eu/en/trade-marks/after-applying/manage-my-application",
+              entrypoints: [
+                {
+                  uri: "https://www.euipo.europa.eu/en/trade-marks/after-applying/manage-my-application",
+                  label: "Manage my application",
+                },
+              ],
+              coverageTier: "FOUNDATIONAL",
+              changeSensitivity: "HIGH",
+              acquisition: {
+                mode: "WEB_CRAWL",
+                renderJavascriptHint: false,
+                fetchAttachmentsHint: true,
+                expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+              },
+            }),
+            target({
+              id: "eu-euipo-news",
+              family: "POLICY_NOTICES",
+              displayName: "EUIPO News and Trade Mark Updates",
+              canonicalUri: "https://www.euipo.europa.eu/en/news-and-events/news",
+              entrypoints: [
+                { uri: "https://www.euipo.europa.eu/en/news-and-events/news", label: "EUIPO news" },
+                { uri: "https://www.euipo.europa.eu/en/news-and-events", label: "News and events" },
+              ],
+              coverageTier: "CHANGE_SIGNAL",
+              changeSensitivity: "HIGH",
+              acquisition: {
+                mode: "WEB_CRAWL",
+                renderJavascriptHint: false,
+                fetchAttachmentsHint: false,
+                expectedArtifactKinds: ["HTML", "MARKDOWN"],
+              },
+            }),
+          ] satisfies readonly SourceCoverageTarget[];
+          EOF
+
+          python - <<'PY'
+          from pathlib import Path
+
+          contract = Path("packages/contracts/src/source-coverage-v1.ts")
+          text = contract.read_text()
+          needle = '  "TTAB_PROCEEDINGS",\n  "OFFICIAL_GAZETTE",'
+          replacement = (
+              '  "TTAB_PROCEEDINGS",\n'
+              '  "PROCEEDINGS",\n'
+              '  "APPEALS_AND_CASELAW",\n'
+              '  "LEGAL_TEXTS",\n'
+              '  "OFFICIAL_GAZETTE",'
+          )
+          if needle not in text:
+              raise SystemExit("source coverage family insertion point not found")
+          contract.write_text(text.replace(needle, replacement, 1))
+
+          catalog = Path("packages/persistence/src/source-coverage-catalog.ts")
+          text = catalog.read_text()
+          import_needle = 'import { WIPO_SOURCE_COVERAGE_TARGETS } from "./wipo-source-coverage";'
+          if import_needle not in text:
+              raise SystemExit("WIPO catalog import not found")
+          text = text.replace(
+              import_needle,
+              'import { EUIPO_SOURCE_COVERAGE_TARGETS } from "./euipo-source-coverage";\n' + import_needle,
+              1,
+          )
+          tail_needle = '''export { WIPO_SOURCE_COVERAGE_TARGETS };
+          export const SOURCE_COVERAGE_TARGETS = [
+            ...US_SOURCE_COVERAGE_TARGETS,
+            ...WIPO_SOURCE_COVERAGE_TARGETS,
+          ] satisfies readonly SourceCoverageTarget[];'''
+          tail_replacement = '''export { EUIPO_SOURCE_COVERAGE_TARGETS, WIPO_SOURCE_COVERAGE_TARGETS };
+          export const SOURCE_COVERAGE_TARGETS = [
+            ...US_SOURCE_COVERAGE_TARGETS,
+            ...WIPO_SOURCE_COVERAGE_TARGETS,
+            ...EUIPO_SOURCE_COVERAGE_TARGETS,
+          ] satisfies readonly SourceCoverageTarget[];'''
+          if tail_needle not in text:
+              raise SystemExit("source coverage catalog tail not found")
+          catalog.write_text(text.replace(tail_needle, tail_replacement, 1))
+          PY
+
+          cat > packages/persistence/tests/euipo-source-coverage.test.ts <<'EOF'
+          import { describe, expect, it } from "vitest";
+          import type { SourceDefinition } from "@markorbit/contracts";
+          import {
+            EUIPO_SOURCE_COVERAGE_TARGETS,
+            evaluateSourceCoverage,
+            getSourceCoverageTarget,
+            listSourceCoverageTargets,
+            summarizeSourceCoverage,
+          } from "../src/source-coverage-catalog";
+
+          describe("EUIPO source coverage catalog", () => {
+            it("ships a unique curated EUIPO trademark baseline", () => {
+              expect(EUIPO_SOURCE_COVERAGE_TARGETS).toHaveLength(11);
+              expect(new Set(EUIPO_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(11);
+              expect(new Set(EUIPO_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size).toBe(
+                11,
+              );
+
+              for (const item of EUIPO_SOURCE_COVERAGE_TARGETS) {
+                expect(item.jurisdiction).toBe("EU");
+                expect(item.authorityName).toBe("European Union Intellectual Property Office");
+                expect(item.authorityBasis).toBe("EXPLICIT_CURATED");
+                expect(item.authorityLevel).toBe("PRIMARY_OFFICIAL");
+                expect(item.canonicalUri.startsWith("https://")).toBe(true);
+                expect(item.entrypoints.length).toBeGreaterThan(0);
+                expect(item.acquisition.expectedArtifactKinds.length).toBeGreaterThan(0);
+              }
+            });
+
+            it("keeps EUIPO coverage intent separate from execution authorization", () => {
+              const serialized = JSON.stringify(EUIPO_SOURCE_COVERAGE_TARGETS);
+              expect(serialized).not.toContain('"schedule"');
+              expect(serialized).not.toContain('"authorized"');
+              expect(serialized).not.toContain('"collectionPlanId"');
+              expect(serialized).not.toContain('"scheduler"');
+            });
+
+            it("filters and summarizes EUIPO independently", () => {
+              const targets = listSourceCoverageTargets({ jurisdiction: "eu" });
+              expect(targets).toHaveLength(11);
+              expect(targets.every((item) => item.jurisdiction === "EU")).toBe(true);
+
+              const summary = summarizeSourceCoverage(targets);
+              expect(summary.total).toBe(11);
+              expect(summary.byTier).toEqual({ FOUNDATIONAL: 10, SUPPORTING: 0, CHANGE_SIGNAL: 1 });
+              expect(summary.byFamily.PROCEEDINGS).toBe(1);
+              expect(summary.byFamily.APPEALS_AND_CASELAW).toBe(1);
+              expect(summary.byFamily.LEGAL_TEXTS).toBe(1);
+            });
+
+            it("uses neutral global proceeding and legal source families", () => {
+              expect(getSourceCoverageTarget("eu-euipo-opposition")?.family).toBe("PROCEEDINGS");
+              expect(getSourceCoverageTarget("eu-euipo-boards-of-appeal-decisions")?.family).toBe(
+                "APPEALS_AND_CASELAW",
+              );
+              expect(getSourceCoverageTarget("eu-euipo-law")?.family).toBe("LEGAL_TEXTS");
+            });
+
+            it("exposes current EUIPO eSearch and case-law entrypoints", () => {
+              expect(getSourceCoverageTarget("eu-euipo-esearch-plus")?.canonicalUri).toBe(
+                "https://euipo.europa.eu/eSearch/",
+              );
+              expect(
+                getSourceCoverageTarget("eu-euipo-boards-of-appeal-decisions")?.entrypoints,
+              ).toContainEqual({
+                uri: "https://www.euipo.europa.eu/en/law/recent-case-law",
+                label: "Recent case law",
+              });
+            });
+
+            it("evaluates EUIPO registration using the shared URI-based registry contract", () => {
+              const source = {
+                id: "src_01ARZ3NDEKTSV4RRFFQ69G5FEU",
+                canonicalUri: "https://euipo.europa.eu/eSearch/",
+                entrypoints: [{ uri: "https://www.euipo.europa.eu/en/search-ip" }],
+              } as SourceDefinition;
+              const targets = listSourceCoverageTargets({ jurisdiction: "EU", family: "SEARCH" });
+              expect(evaluateSourceCoverage([source], targets)).toEqual([
+                {
+                  targetId: "eu-euipo-esearch-plus",
+                  state: "REGISTERED",
+                  sourceIds: ["src_01ARZ3NDEKTSV4RRFFQ69G5FEU"],
+                },
+              ]);
+            });
+          });
+          EOF
+
+          cat > docs/architecture/M20_EUIPO_SOURCE_COVERAGE_MAP.md <<'EOF'
+          # M20 — EUIPO Source Coverage Map
+
+          ## Purpose
+
+          M20 extends the existing Source Coverage V1 catalog from USPTO and WIPO to the European Union Intellectual Property Office (EUIPO). It uses the same version-controlled coverage object and the same registration-gap machinery; it does not create a parallel ingestion system.
+
+          ## Curated public source baseline
+
+          The EUIPO catalog covers 11 official public trademark surfaces:
+
+          - trade marks portal;
+          - application guidance;
+          - eSearch Plus and IP search;
+          - Trade Mark Guidelines;
+          - TMclass / goods and services guidance;
+          - fees and payment guidance;
+          - opposition procedure;
+          - Boards of Appeal decisions and recent case law;
+          - EUIPO law and legal texts;
+          - post-filing management / renewal surface;
+          - official news and change signals.
+
+          Ten targets are `FOUNDATIONAL`; EUIPO news is a `CHANGE_SIGNAL` target.
+
+          ## Global family vocabulary
+
+          The original Source Coverage V1 family vocabulary contains US-specific `TTAB_PROCEDURE` and `TTAB_PROCEEDINGS` values. M20 keeps those values unchanged for backward compatibility and additively introduces neutral families for global offices:
+
+          - `PROCEEDINGS`
+          - `APPEALS_AND_CASELAW`
+          - `LEGAL_TEXTS`
+
+          EUIPO opposition, Boards of Appeal/case-law, and legal-text targets use these neutral values. No existing US or WIPO target is renamed or reclassified.
+
+          ## Governance boundary
+
+          A `SourceCoverageTarget` is coverage intent, not a `SourceDefinition`, `CollectionPlan`, schedule, or run authorization.
+
+          M20 does not:
+
+          - create or activate Sources;
+          - create or activate Collection Plans;
+          - authorize a collection run;
+          - grant scheduler authority;
+          - infer legal rules, deadlines, case outcomes, or source quality;
+          - move legal or semantic analysis into Knowledge.
+
+          The catalog only records explicitly curated public acquisition surfaces and acquisition hints. Any later registration, collection, conversion, retrieval, or delivery uses the existing governed Knowledge pipeline and its explicit operator boundaries.
+
+          ## Compatibility
+
+          - Schema v1 / `SourceDefinition` is unchanged.
+          - Source Coverage protocol remains `1.0`.
+          - Existing USPTO and WIPO target ids and families are unchanged.
+          - Existing source-coverage APIs automatically expose EUIPO via the shared catalog.
+          - Registration-gap evaluation continues to use the shared canonical/entrypoint URI contract.
+          EOF
+
+          pnpm exec prettier --write \
+            packages/contracts/src/source-coverage-v1.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/euipo-source-coverage.ts \
+            packages/persistence/tests/euipo-source-coverage.test.ts \
+            docs/architecture/M20_EUIPO_SOURCE_COVERAGE_MAP.md
+
+          pnpm exec vitest run \
+            packages/persistence/tests/euipo-source-coverage.test.ts \
+            packages/persistence/tests/source-coverage-catalog.test.ts \
+            packages/persistence/tests/wipo-source-coverage.test.ts
+
+          rm .github/workflows/euipo-source-coverage-apply.yml
+          git config user.name "markorbit-bot"
+          git config user.email "markorbit-bot@users.noreply.github.com"
+          git add packages/contracts/src/source-coverage-v1.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/euipo-source-coverage.ts \
+            packages/persistence/tests/euipo-source-coverage.test.ts \
+            docs/architecture/M20_EUIPO_SOURCE_COVERAGE_MAP.md \
+            .github/workflows/euipo-source-coverage-apply.yml
+          git commit -m "feat: add EUIPO source coverage map"
+          git push origin HEAD:codex/euipo-source-coverage-v1
