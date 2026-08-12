@@ -72,13 +72,29 @@ function response(body: string, statusCode = 200, headers: Record<string, string
 }
 
 function acquirerFor(
-  entries: Array<{ path: string; content?: string; mode?: string; type?: string; sha?: string; size?: number }>,
-  options: { environment?: NodeJS.ProcessEnv; capture?: ApiTransportRequest[]; truncated?: boolean } = {},
+  entries: Array<{
+    path: string;
+    content?: string;
+    mode?: string;
+    type?: string;
+    sha?: string;
+    size?: number;
+  }>,
+  options: {
+    environment?: NodeJS.ProcessEnv;
+    capture?: ApiTransportRequest[];
+    truncated?: boolean;
+  } = {},
 ): GitHubArtifactAcquirer {
   const blobs = new Map<string, string>();
   const tree = entries.map((entry) => {
     if (entry.type === "commit") {
-      return { path: entry.path, mode: entry.mode ?? "160000", type: "commit", sha: entry.sha ?? "3".repeat(40) };
+      return {
+        path: entry.path,
+        mode: entry.mode ?? "160000",
+        type: "commit",
+        sha: entry.sha ?? "3".repeat(40),
+      };
     }
     const blob = entry.content === undefined ? null : blobBody(entry.content);
     const sha = entry.sha ?? blob?.sha ?? "4".repeat(40);
@@ -157,13 +173,22 @@ describe("GitHubArtifactAcquirer", () => {
     const second = new GitHubArtifactAcquirer({
       resolver: async () => [{ address: "140.82.112.6", family: 4 }],
       transport: async (request) => {
-        if (request.path.endsWith("/commits/main")) return response(commitBody(secondCommit, secondTree));
+        if (request.path.endsWith("/commits/main"))
+          return response(commitBody(secondCommit, secondTree));
         if (request.path.endsWith(`/git/trees/${secondTree}?recursive=1`)) {
           return response(
             JSON.stringify({
               sha: secondTree,
               truncated: false,
-              tree: [{ path: "docs/guide.md", mode: "100644", type: "blob", sha: secondBlob.sha, size: secondBlob.size }],
+              tree: [
+                {
+                  path: "docs/guide.md",
+                  mode: "100644",
+                  type: "blob",
+                  sha: secondBlob.sha,
+                  size: secondBlob.size,
+                },
+              ],
             }),
           );
         }
@@ -188,9 +213,57 @@ describe("GitHubArtifactAcquirer", () => {
     });
 
     const artifacts = await acquirer.acquire(context());
-    expect(capture.every((request) => request.headers.authorization === `Bearer ${secret}`)).toBe(true);
+    expect(capture.every((request) => request.headers.authorization === `Bearer ${secret}`)).toBe(
+      true,
+    );
     expect(JSON.stringify(artifacts)).not.toContain(secret);
     expect(JSON.stringify(artifacts)).not.toContain("MARKORBIT_GITHUB_TOKEN");
+  });
+
+  it("rejects an invalid Worker token before DNS or transport", async () => {
+    const resolver = vi.fn(async () => [{ address: "140.82.112.6", family: 4 as const }]);
+    const transport = vi.fn(async () => response("{}"));
+    const acquirer = new GitHubArtifactAcquirer({
+      environment: { MARKORBIT_GITHUB_TOKEN: "bad\nsecret" },
+      resolver,
+      transport,
+    });
+    const error = await acquisitionError(acquirer.acquire(context()));
+    expect(error.code).toBe("GITHUB_CREDENTIAL_INVALID");
+    expect(resolver).not.toHaveBeenCalled();
+    expect(transport).not.toHaveBeenCalled();
+  });
+
+  it("maps shared API transport failures into the GitHub error domain", async () => {
+    const acquirer = new GitHubArtifactAcquirer({
+      resolver: async () => [{ address: "140.82.112.6", family: 4 }],
+      transport: async () => {
+        throw new CollectionAcquisitionError("API_TIMEOUT", "shared timeout", true);
+      },
+    });
+    const error = await acquisitionError(acquirer.acquire(context()));
+    expect(error.code).toBe("GITHUB_TIMEOUT");
+    expect(error.retryable).toBe(true);
+    expect(error.message).not.toContain("API_");
+  });
+
+  it("fails immediately when immutable commit/tree evidence exceeds the aggregate bound", async () => {
+    const blob = blobBody("a");
+    const oversizedTree = treeBody([
+      { path: "docs/a.md", mode: "100644", type: "blob", sha: blob.sha, size: blob.size },
+    ]);
+    const acquirer = new GitHubArtifactAcquirer({
+      maxFileBytes: 32,
+      maxTotalBytes: 64,
+      resolver: async () => [{ address: "140.82.112.6", family: 4 }],
+      transport: async (request) => {
+        if (request.path.endsWith("/commits/main")) return response(commitBody());
+        if (request.path.includes("/git/trees/")) return response(oversizedTree);
+        throw new Error("blob request must not occur after metadata overflow");
+      },
+    });
+    const error = await acquisitionError(acquirer.acquire(context()));
+    expect(error.code).toBe("GITHUB_TOTAL_BYTES_EXCEEDED");
   });
 
   it("rejects mixed or private GitHub API DNS answers before transport", async () => {
@@ -216,16 +289,22 @@ describe("GitHubArtifactAcquirer", () => {
 
   it("rejects matched submodules and symbolic links", async () => {
     const submodule = acquirerFor([{ path: "docs/vendor", type: "commit" }]);
-    expect((await acquisitionError(submodule.acquire(context()))).code).toBe("GITHUB_SUBMODULE_UNSUPPORTED");
+    expect((await acquisitionError(submodule.acquire(context()))).code).toBe(
+      "GITHUB_SUBMODULE_UNSUPPORTED",
+    );
 
     const target = "guide.md";
     const symlink = acquirerFor([{ path: "docs/link.md", content: target, mode: "120000" }]);
-    expect((await acquisitionError(symlink.acquire(context()))).code).toBe("GITHUB_SYMLINK_UNSUPPORTED");
+    expect((await acquisitionError(symlink.acquire(context()))).code).toBe(
+      "GITHUB_SYMLINK_UNSUPPORTED",
+    );
   });
 
   it("verifies blob size and Git object hash against immutable tree evidence", async () => {
     const sizeMismatch = acquirerFor([{ path: "docs/a.md", content: "hello", size: 99 }]);
-    expect((await acquisitionError(sizeMismatch.acquire(context()))).code).toBe("GITHUB_BLOB_SIZE_MISMATCH");
+    expect((await acquisitionError(sizeMismatch.acquire(context()))).code).toBe(
+      "GITHUB_BLOB_SIZE_MISMATCH",
+    );
 
     const content = "hello";
     const wrongSha = "7".repeat(40);
@@ -234,13 +313,26 @@ describe("GitHubArtifactAcquirer", () => {
       transport: async (request) => {
         if (request.path.endsWith("/commits/main")) return response(commitBody());
         if (request.path.includes("/git/trees/")) {
-          return response(treeBody([{ path: "docs/a.md", mode: "100644", type: "blob", sha: wrongSha, size: content.length }]));
+          return response(
+            treeBody([
+              {
+                path: "docs/a.md",
+                mode: "100644",
+                type: "blob",
+                sha: wrongSha,
+                size: content.length,
+              },
+            ]),
+          );
         }
-        if (request.path.endsWith(`/git/blobs/${wrongSha}`)) return response(blobBody(content).body);
+        if (request.path.endsWith(`/git/blobs/${wrongSha}`))
+          return response(blobBody(content).body);
         throw new Error(`Unexpected request ${request.path}`);
       },
     });
-    expect((await acquisitionError(hashMismatch.acquire(context()))).code).toBe("GITHUB_BLOB_HASH_MISMATCH");
+    expect((await acquisitionError(hashMismatch.acquire(context()))).code).toBe(
+      "GITHUB_BLOB_HASH_MISMATCH",
+    );
   });
 
   it("rejects non-UTF8 or NUL-bearing matched text blobs", async () => {
@@ -251,7 +343,11 @@ describe("GitHubArtifactAcquirer", () => {
       transport: async (request) => {
         if (request.path.endsWith("/commits/main")) return response(commitBody());
         if (request.path.includes("/git/trees/")) {
-          return response(treeBody([{ path: "docs/a.txt", mode: "100644", type: "blob", sha: blob.sha, size: blob.size }]));
+          return response(
+            treeBody([
+              { path: "docs/a.txt", mode: "100644", type: "blob", sha: blob.sha, size: blob.size },
+            ]),
+          );
         }
         return response(blob.body);
       },
@@ -286,7 +382,10 @@ describe("GitHubArtifactAcquirer", () => {
   it("classifies GitHub rate-limit responses as retryable without exposing response bodies", async () => {
     const acquirer = new GitHubArtifactAcquirer({
       resolver: async () => [{ address: "140.82.112.6", family: 4 }],
-      transport: async () => response('{"message":"token secret should not surface"}', 403, { "x-ratelimit-remaining": "0" }),
+      transport: async () =>
+        response('{"message":"token secret should not surface"}', 403, {
+          "x-ratelimit-remaining": "0",
+        }),
     });
     const error = await acquisitionError(acquirer.acquire(context()));
     expect(error.code).toBe("GITHUB_AUTH_OR_RATE_LIMIT_REJECTED");
@@ -297,11 +396,19 @@ describe("GitHubArtifactAcquirer", () => {
   it("rejects invalid Source configuration and missing JSON evidence authorization", async () => {
     const acquirer = acquirerFor([{ path: "docs/a.md", content: "a" }]);
     expect(
-      (await acquisitionError(acquirer.acquire(context({ owner: "openai", repository: "example", ref: "../main", pathPrefix: "docs" })))).code,
+      (
+        await acquisitionError(
+          acquirer.acquire(
+            context({ owner: "openai", repository: "example", ref: "../main", pathPrefix: "docs" }),
+          ),
+        )
+      ).code,
     ).toBe("GITHUB_REF_INVALID");
 
     const noJson = context();
     noJson.job.planSnapshot.output.artifactKinds = ["MARKDOWN"];
-    expect((await acquisitionError(acquirer.acquire(noJson))).code).toBe("GITHUB_JSON_EVIDENCE_REQUIRED");
+    expect((await acquisitionError(acquirer.acquire(noJson))).code).toBe(
+      "GITHUB_JSON_EVIDENCE_REQUIRED",
+    );
   });
 });

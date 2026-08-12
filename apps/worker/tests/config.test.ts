@@ -219,9 +219,7 @@ describe("loadWorkerProcessConfig", () => {
       loadWorkerProcessConfig(env({ MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: "900000" })),
     ).toThrow(/MAX_COLLECTION_RUNTIME/);
     expect(() =>
-      loadWorkerProcessConfig(
-        env({ MARKORBIT_GITHUB_MAX_TREE_ENTRIES: "100001" }),
-      ),
+      loadWorkerProcessConfig(env({ MARKORBIT_GITHUB_MAX_TREE_ENTRIES: "100001" })),
     ).toThrow(/GITHUB_MAX_TREE_ENTRIES/);
     expect(() =>
       loadWorkerProcessConfig(

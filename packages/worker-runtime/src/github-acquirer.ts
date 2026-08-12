@@ -38,6 +38,7 @@ const MAX_TREE_ENTRIES = 100_000;
 const MAX_ITEMS = 5_000;
 const MAX_DEPTH = 60;
 const MAX_METADATA_RESPONSE_BYTES = 25 * 1024 * 1024;
+const MAX_BLOB_RESPONSE_BYTES = 32 * 1024 * 1024;
 const OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9._-]{1,100}$/;
 const TOKEN_CONTROL = /[\u0000-\u001f\u007f]/;
@@ -225,7 +226,12 @@ export function normalizeGitHubPathPrefix(value: unknown): string {
       false,
     );
   }
-  if (value.startsWith("/") || value.endsWith("/") || value.includes("\\") || value.includes("\u0000")) {
+  if (
+    value.startsWith("/") ||
+    value.endsWith("/") ||
+    value.includes("\\") ||
+    /[\u0000-\u001f\u007f]/.test(value)
+  ) {
     throw new CollectionAcquisitionError(
       "GITHUB_PATH_PREFIX_INVALID",
       "GitHub pathPrefix must be a portable relative path",
@@ -283,14 +289,15 @@ function fileType(path: string): { artifactKind: ArtifactKind; mimeType: string 
   return null;
 }
 
-function safeRepositoryPath(path: string): string {
+function safeRepositoryPath(path: unknown): string {
   if (
+    typeof path !== "string" ||
     !path ||
     path.length > 4_096 ||
     path.startsWith("/") ||
     path.endsWith("/") ||
     path.includes("\\") ||
-    path.includes("\u0000")
+    /[\u0000-\u001f\u007f]/.test(path)
   ) {
     throw new CollectionAcquisitionError(
       "GITHUB_TREE_PATH_INVALID",
@@ -391,16 +398,42 @@ function statusFailure(status: number, response: ApiTransportResponse): Collecti
   }
   const remaining = response.headers["x-ratelimit-remaining"];
   const rateLimited = (Array.isArray(remaining) ? remaining[0] : remaining) === "0";
-  const retryable = status === 408 || status === 425 || status === 429 || status >= 500 || (status === 403 && rateLimited);
+  const retryable =
+    status === 408 ||
+    status === 425 ||
+    status === 429 ||
+    status >= 500 ||
+    (status === 403 && rateLimited);
   return new CollectionAcquisitionError(
-    status === 401 || status === 403 ? "GITHUB_AUTH_OR_RATE_LIMIT_REJECTED" : "GITHUB_HTTP_STATUS_REJECTED",
+    status === 401 || status === 403
+      ? "GITHUB_AUTH_OR_RATE_LIMIT_REJECTED"
+      : "GITHUB_HTTP_STATUS_REJECTED",
     `GitHub API returned HTTP ${status}`,
     retryable,
   );
 }
 
 function normalizeTransportError(error: unknown): never {
-  if (error instanceof CollectionAcquisitionError) throw error;
+  if (error instanceof CollectionAcquisitionError) {
+    if (error.code === "API_TIMEOUT") {
+      throw new CollectionAcquisitionError("GITHUB_TIMEOUT", "GitHub API request timed out", true);
+    }
+    if (error.code === "API_RESPONSE_TOO_LARGE") {
+      throw new CollectionAcquisitionError(
+        "GITHUB_RESPONSE_TOO_LARGE",
+        "GitHub API response exceeded the governed response bound",
+        false,
+      );
+    }
+    if (error.code.startsWith("API_")) {
+      throw new CollectionAcquisitionError(
+        "GITHUB_TRANSPORT_FAILED",
+        "GitHub HTTPS transport failed",
+        error.retryable,
+      );
+    }
+    throw error;
+  }
   const code = record(error)?.code;
   const retryable = new Set([
     "ECONNRESET",
@@ -418,7 +451,10 @@ function normalizeTransportError(error: unknown): never {
   );
 }
 
-function parseJsonResponse(response: ApiTransportResponse, purpose: string): Record<string, unknown> {
+function parseJsonResponse(
+  response: ApiTransportResponse,
+  purpose: string,
+): Record<string, unknown> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(response.body));
@@ -444,7 +480,12 @@ function parseCommit(response: ApiTransportResponse): GitHubCommit {
   const root = parseJsonResponse(response, "commit");
   const commit = record(root.commit);
   const tree = record(commit?.tree);
-  if (typeof root.sha !== "string" || !SHA_PATTERN.test(root.sha) || typeof tree?.sha !== "string" || !SHA_PATTERN.test(tree.sha)) {
+  if (
+    typeof root.sha !== "string" ||
+    !SHA_PATTERN.test(root.sha) ||
+    typeof tree?.sha !== "string" ||
+    !SHA_PATTERN.test(tree.sha)
+  ) {
     throw new CollectionAcquisitionError(
       "GITHUB_COMMIT_INVALID",
       "GitHub commit response did not contain bounded commit and tree identities",
@@ -464,7 +505,11 @@ function parseTree(response: ApiTransportResponse, maxTreeEntries: number): GitH
     );
   }
   if (!Array.isArray(root.tree)) {
-    throw new CollectionAcquisitionError("GITHUB_TREE_INVALID", "GitHub tree response is missing tree entries", false);
+    throw new CollectionAcquisitionError(
+      "GITHUB_TREE_INVALID",
+      "GitHub tree response is missing tree entries",
+      false,
+    );
   }
   if (root.tree.length > maxTreeEntries) {
     throw new CollectionAcquisitionError(
@@ -477,10 +522,19 @@ function parseTree(response: ApiTransportResponse, maxTreeEntries: number): GitH
   const entries: GitHubTreeEntry[] = [];
   for (const rawEntry of root.tree) {
     const entry = record(rawEntry);
-    if (!entry) throw new CollectionAcquisitionError("GITHUB_TREE_INVALID", "GitHub tree entry is invalid", false);
+    if (!entry)
+      throw new CollectionAcquisitionError(
+        "GITHUB_TREE_INVALID",
+        "GitHub tree entry is invalid",
+        false,
+      );
     const path = safeRepositoryPath(entry.path as string);
     if (seen.has(path)) {
-      throw new CollectionAcquisitionError("GITHUB_TREE_INVALID", "GitHub tree contains duplicate paths", false);
+      throw new CollectionAcquisitionError(
+        "GITHUB_TREE_INVALID",
+        "GitHub tree contains duplicate paths",
+        false,
+      );
     }
     seen.add(path);
     if (
@@ -489,10 +543,21 @@ function parseTree(response: ApiTransportResponse, maxTreeEntries: number): GitH
       typeof entry.sha !== "string" ||
       !SHA_PATTERN.test(entry.sha)
     ) {
-      throw new CollectionAcquisitionError("GITHUB_TREE_INVALID", "GitHub tree entry metadata is invalid", false);
+      throw new CollectionAcquisitionError(
+        "GITHUB_TREE_INVALID",
+        "GitHub tree entry metadata is invalid",
+        false,
+      );
     }
-    if (entry.size !== undefined && (!Number.isSafeInteger(entry.size) || (entry.size as number) < 0)) {
-      throw new CollectionAcquisitionError("GITHUB_TREE_INVALID", "GitHub tree entry size is invalid", false);
+    if (
+      entry.size !== undefined &&
+      (!Number.isSafeInteger(entry.size) || (entry.size as number) < 0)
+    ) {
+      throw new CollectionAcquisitionError(
+        "GITHUB_TREE_INVALID",
+        "GitHub tree entry size is invalid",
+        false,
+      );
     }
     entries.push({
       path,
@@ -505,7 +570,11 @@ function parseTree(response: ApiTransportResponse, maxTreeEntries: number): GitH
   return entries;
 }
 
-function parseBlob(response: ApiTransportResponse, expected: GitHubTreeEntry, maxFileBytes: number): Uint8Array {
+function parseBlob(
+  response: ApiTransportResponse,
+  expected: GitHubTreeEntry,
+  maxFileBytes: number,
+): Uint8Array {
   const root = parseJsonResponse(response, "blob");
   if (root.encoding !== "base64" || typeof root.content !== "string") {
     throw new CollectionAcquisitionError(
@@ -516,11 +585,19 @@ function parseBlob(response: ApiTransportResponse, expected: GitHubTreeEntry, ma
   }
   const normalized = root.content.replace(/\s+/g, "");
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized) || normalized.length % 4 === 1) {
-    throw new CollectionAcquisitionError("GITHUB_BLOB_INVALID", "GitHub blob content is not valid base64", false);
+    throw new CollectionAcquisitionError(
+      "GITHUB_BLOB_INVALID",
+      "GitHub blob content is not valid base64",
+      false,
+    );
   }
   const content = Buffer.from(normalized, "base64");
   if (content.byteLength === 0) {
-    throw new CollectionAcquisitionError("GITHUB_EMPTY_FILE", "GitHub matched file is empty", false);
+    throw new CollectionAcquisitionError(
+      "GITHUB_EMPTY_FILE",
+      "GitHub matched file is empty",
+      false,
+    );
   }
   if (content.byteLength > maxFileBytes) {
     throw new CollectionAcquisitionError(
@@ -530,13 +607,21 @@ function parseBlob(response: ApiTransportResponse, expected: GitHubTreeEntry, ma
     );
   }
   if (expected.size !== undefined && expected.size !== content.byteLength) {
-    throw new CollectionAcquisitionError("GITHUB_BLOB_SIZE_MISMATCH", "GitHub blob size differs from tree evidence", true);
+    throw new CollectionAcquisitionError(
+      "GITHUB_BLOB_SIZE_MISMATCH",
+      "GitHub blob size differs from tree evidence",
+      true,
+    );
   }
   const algorithm = expected.sha.length === 64 ? "sha256" : "sha1";
   const header = Buffer.from(`blob ${content.byteLength}\0`, "utf8");
   const objectSha = createHash(algorithm).update(header).update(content).digest("hex");
   if (objectSha !== expected.sha) {
-    throw new CollectionAcquisitionError("GITHUB_BLOB_HASH_MISMATCH", "GitHub blob bytes do not match tree identity", true);
+    throw new CollectionAcquisitionError(
+      "GITHUB_BLOB_HASH_MISMATCH",
+      "GitHub blob bytes do not match tree identity",
+      true,
+    );
   }
   try {
     new TextDecoder("utf-8", { fatal: true }).decode(content);
@@ -624,17 +709,37 @@ export class GitHubArtifactAcquirer implements CollectionArtifactAcquirer {
     this.environment = options.environment ?? process.env;
     this.resolver = options.resolver ?? defaultApiResolver;
     this.transport = options.transport ?? defaultApiTransport;
-    this.maxFileBytes = positiveInteger(options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES, "maxFileBytes", MAX_FILE_BYTES);
-    this.maxTotalBytes = positiveInteger(options.maxTotalBytes ?? DEFAULT_MAX_TOTAL_BYTES, "maxTotalBytes", MAX_TOTAL_BYTES);
-    this.maxTreeEntries = positiveInteger(options.maxTreeEntries ?? DEFAULT_MAX_TREE_ENTRIES, "maxTreeEntries", MAX_TREE_ENTRIES);
+    this.maxFileBytes = positiveInteger(
+      options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES,
+      "maxFileBytes",
+      MAX_FILE_BYTES,
+    );
+    this.maxTotalBytes = positiveInteger(
+      options.maxTotalBytes ?? DEFAULT_MAX_TOTAL_BYTES,
+      "maxTotalBytes",
+      MAX_TOTAL_BYTES,
+    );
+    if (this.maxTotalBytes < this.maxFileBytes) {
+      throw new Error("maxTotalBytes must be at least maxFileBytes");
+    }
+    this.maxTreeEntries = positiveInteger(
+      options.maxTreeEntries ?? DEFAULT_MAX_TREE_ENTRIES,
+      "maxTreeEntries",
+      MAX_TREE_ENTRIES,
+    );
     this.maxItems = positiveInteger(options.maxItems ?? DEFAULT_MAX_ITEMS, "maxItems", MAX_ITEMS);
-    this.maxDepth = nonNegativeInteger(options.maxDepth ?? DEFAULT_MAX_DEPTH, "maxDepth", MAX_DEPTH);
+    this.maxDepth = nonNegativeInteger(
+      options.maxDepth ?? DEFAULT_MAX_DEPTH,
+      "maxDepth",
+      MAX_DEPTH,
+    );
   }
 
   private async request(
     resolved: ApiResolvedAddress,
     path: string,
     maxResponseBytes: number,
+    headers: Record<string, string>,
   ): Promise<ApiTransportResponse> {
     let response: ApiTransportResponse;
     try {
@@ -646,7 +751,7 @@ export class GitHubArtifactAcquirer implements CollectionArtifactAcquirer {
         servername: GITHUB_API_HOST,
         path,
         hostHeader: GITHUB_API_HOST,
-        headers: requestHeaders(this.environment),
+        headers,
         timeoutMs: 30_000,
         maxResponseBytes,
       });
@@ -662,13 +767,17 @@ export class GitHubArtifactAcquirer implements CollectionArtifactAcquirer {
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
     assertSupportedJob(context, this.maxItems, this.maxDepth);
     const config = sourceConfig(context);
+    const headers = requestHeaders(this.environment);
     let resolved: ApiResolvedAddress[];
     try {
       resolved = await this.resolver(GITHUB_API_HOST);
     } catch (error) {
       return normalizeTransportError(error);
     }
-    if (resolved.length === 0 || resolved.some((item) => !isPublicNetworkAddress(item.address, item.family))) {
+    if (
+      resolved.length === 0 ||
+      resolved.some((item) => !isPublicNetworkAddress(item.address, item.family))
+    ) {
       throw new CollectionAcquisitionError(
         "GITHUB_NETWORK_TARGET_REJECTED",
         "GitHub API resolution did not produce an exclusively public address set",
@@ -683,14 +792,24 @@ export class GitHubArtifactAcquirer implements CollectionArtifactAcquirer {
       selected,
       `/repos/${owner}/${repository}/commits/${ref}`,
       MAX_METADATA_RESPONSE_BYTES,
+      headers,
     );
     const commit = parseCommit(commitResponse);
     const treeResponse = await this.request(
       selected,
       `/repos/${owner}/${repository}/git/trees/${commit.treeSha}?recursive=1`,
       MAX_METADATA_RESPONSE_BYTES,
+      headers,
     );
     const tree = parseTree(treeResponse, this.maxTreeEntries);
+    const metadataBytes = commitResponse.body.byteLength + treeResponse.body.byteLength;
+    if (metadataBytes > this.maxTotalBytes) {
+      throw new CollectionAcquisitionError(
+        "GITHUB_TOTAL_BYTES_EXCEEDED",
+        `GitHub commit/tree evidence exceeds the ${this.maxTotalBytes}-byte Worker aggregate limit`,
+        false,
+      );
+    }
     const authorizedKinds = new Set(context.job.planSnapshot.output.artifactKinds);
     const candidates: Candidate[] = [];
 
@@ -698,7 +817,14 @@ export class GitHubArtifactAcquirer implements CollectionArtifactAcquirer {
       const relative = underPrefix(entry.path, config.pathPrefix);
       if (relative === null || relative === "") continue;
       if (depthOf(relative) > context.job.planSnapshot.policy.maxDepth) continue;
-      if (!matchesPatterns(relative, context.job.planSnapshot.policy.includePatterns, context.job.planSnapshot.policy.excludePatterns)) continue;
+      if (
+        !matchesPatterns(
+          relative,
+          context.job.planSnapshot.policy.includePatterns,
+          context.job.planSnapshot.policy.excludePatterns,
+        )
+      )
+        continue;
       if (entry.type === "commit" || entry.mode === "160000") {
         throw new CollectionAcquisitionError(
           "GITHUB_SUBMODULE_UNSUPPORTED",
@@ -764,12 +890,16 @@ export class GitHubArtifactAcquirer implements CollectionArtifactAcquirer {
       },
     ];
 
-    let totalBytes = commitResponse.body.byteLength + treeResponse.body.byteLength;
+    let totalBytes = metadataBytes;
     for (const candidate of candidates.sort((left, right) => left.path.localeCompare(right.path))) {
       const response = await this.request(
         selected,
         `/repos/${owner}/${repository}/git/blobs/${candidate.sha}`,
-        Math.min(MAX_METADATA_RESPONSE_BYTES, Math.max(256 * 1024, this.maxFileBytes * 2)),
+        Math.min(
+          MAX_BLOB_RESPONSE_BYTES,
+          Math.max(256 * 1024, Math.ceil((this.maxFileBytes * 4) / 3) + 256 * 1024),
+        ),
+        headers,
       );
       const content = parseBlob(response, candidate, this.maxFileBytes);
       totalBytes += content.byteLength;

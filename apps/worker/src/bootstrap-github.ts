@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
-import { GITHUB_CONNECTOR_ID, GITHUB_CONNECTOR_VERSION, normalizeGitHubPathPrefix } from "@markorbit/worker-runtime";
+import {
+  GITHUB_CONNECTOR_ID,
+  GITHUB_CONNECTOR_VERSION,
+  normalizeGitHubPathPrefix,
+} from "@markorbit/worker-runtime";
 
 const OUTPUT_KINDS = ["JSON", "MARKDOWN", "HTML", "XML", "CSV", "TEXT"] as const;
 
@@ -81,7 +85,12 @@ function patterns(key: string): string[] {
     throw new Error(`${key} must be a JSON array with at most 100 entries`);
   }
   return parsed.map((value) => {
-    if (typeof value !== "string" || value.length === 0 || value.length > 1024 || /[\u0000\r\n]/.test(value)) {
+    if (
+      typeof value !== "string" ||
+      value.length === 0 ||
+      value.length > 1024 ||
+      /[\u0000\r\n]/.test(value)
+    ) {
       throw new Error(`${key} contains an invalid pattern`);
     }
     return value;
@@ -129,12 +138,24 @@ function sourceIdentity(input: {
   pathPrefix: string;
 }): string {
   return createHash("sha256")
-    .update(JSON.stringify([input.owner.toLowerCase(), input.repository.toLowerCase(), input.ref, input.pathPrefix]))
+    .update(
+      JSON.stringify([
+        input.owner.toLowerCase(),
+        input.repository.toLowerCase(),
+        input.ref,
+        input.pathPrefix,
+      ]),
+    )
     .digest("hex")
     .slice(0, 16);
 }
 
-function sourceSlug(input: { owner: string; repository: string; ref: string; pathPrefix: string }): string {
+function sourceSlug(input: {
+  owner: string;
+  repository: string;
+  ref: string;
+  pathPrefix: string;
+}): string {
   const base = `${input.owner}-${input.repository}`
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -143,7 +164,12 @@ function sourceSlug(input: { owner: string; repository: string; ref: string; pat
   return `github-${base}-${sourceIdentity(input)}`;
 }
 
-function logicalUri(input: { owner: string; repository: string; ref: string; pathPrefix: string }): string {
+function logicalUri(input: {
+  owner: string;
+  repository: string;
+  ref: string;
+  pathPrefix: string;
+}): string {
   const prefix = input.pathPrefix
     ? `/path/${input.pathPrefix.split("/").map(encodeURIComponent).join("/")}`
     : "";
@@ -209,7 +235,10 @@ async function ensureSource(
   },
 ): Promise<string> {
   const slug = sourceSlug(input);
-  const existing = await requestJson(baseUrl, `/api/sources?q=${encodeURIComponent(slug)}&limit=100`);
+  const existing = await requestJson(
+    baseUrl,
+    `/api/sources?q=${encodeURIComponent(slug)}&limit=100`,
+  );
   for (const candidate of items(existing.body)) {
     const source = record(candidate);
     if (source?.slug === slug) return identifier(source.id, "source.id");
@@ -254,7 +283,12 @@ async function ensurePlan(
   baseUrl: string,
   sourceId: string,
   sourceName: string,
-  input: { includePatterns: string[]; excludePatterns: string[]; maxItems: number; maxDepth: number },
+  input: {
+    includePatterns: string[];
+    excludePatterns: string[];
+    maxItems: number;
+    maxDepth: number;
+  },
 ): Promise<string> {
   const existing = await requestJson(
     baseUrl,
@@ -300,9 +334,14 @@ async function ensurePlan(
   return identifier(plan?.id, "plan.id");
 }
 
-async function ensureWorker(baseUrl: string): Promise<{ workerId: string; credential: string | null }> {
+async function ensureWorker(
+  baseUrl: string,
+): Promise<{ workerId: string; credential: string | null }> {
   const label = "github-worker-v1";
-  const existing = await requestJson(baseUrl, `/api/workers?label=${encodeURIComponent(label)}&limit=100`);
+  const existing = await requestJson(
+    baseUrl,
+    `/api/workers?label=${encodeURIComponent(label)}&limit=100`,
+  );
   for (const candidate of items(existing.body)) {
     const worker = record(record(candidate)?.worker);
     if (worker) return { workerId: identifier(worker.id, "worker.id"), credential: null };
@@ -355,7 +394,9 @@ async function dispatch(baseUrl: string, planId: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
-  const baseUrl = normalizedBaseUrl(process.env.MARKORBIT_CONTROL_PLANE_URL?.trim() || "http://localhost:3000");
+  const baseUrl = normalizedBaseUrl(
+    process.env.MARKORBIT_CONTROL_PLANE_URL?.trim() || "http://localhost:3000",
+  );
   const input = {
     owner: owner(required("MARKORBIT_GITHUB_OWNER")),
     repository: repository(required("MARKORBIT_GITHUB_REPOSITORY")),
@@ -389,7 +430,8 @@ async function main(): Promise<void> {
         runId,
         workerEnvironment: {
           MARKORBIT_COLLECTION_PROVIDER: "github",
-          MARKORBIT_GITHUB_TOKEN: "<optional; inject only on the Worker for private repositories or higher rate limits>",
+          MARKORBIT_GITHUB_TOKEN:
+            "<optional; inject only on the Worker for private repositories or higher rate limits>",
         },
       },
       null,

@@ -125,7 +125,9 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     200 * 1024 * 1024,
   );
   if (githubMaxTotalBytes < githubMaxFileBytes) {
-    throw new Error("MARKORBIT_GITHUB_MAX_TOTAL_BYTES must be at least MARKORBIT_GITHUB_MAX_FILE_BYTES");
+    throw new Error(
+      "MARKORBIT_GITHUB_MAX_TOTAL_BYTES must be at least MARKORBIT_GITHUB_MAX_FILE_BYTES",
+    );
   }
   const githubMaxTreeEntries = integer(
     env,
