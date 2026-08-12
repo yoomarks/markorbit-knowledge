@@ -14,6 +14,14 @@ function optionalInteger(value: unknown, field: string): number | undefined {
   return value;
 }
 
+function optionalBoolean(value: unknown, field: string): boolean | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "boolean") {
+    throw new RegistryValidationError(`${field} must be a boolean`);
+  }
+  return value;
+}
+
 function optionalStringArray(value: unknown, field: string): string[] | undefined {
   if (value === undefined || value === null) return undefined;
   if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
@@ -42,6 +50,12 @@ export async function POST(request: Request) {
       maxDepth: optionalInteger(body.maxDepth, "maxDepth"),
       maxCandidates: optionalInteger(body.maxCandidates, "maxCandidates"),
       maxFetches: optionalInteger(body.maxFetches, "maxFetches"),
+      discoverExternalLinks: optionalBoolean(body.discoverExternalLinks, "discoverExternalLinks"),
+      maxExternalCandidates: optionalInteger(body.maxExternalCandidates, "maxExternalCandidates"),
+      maxExpansionGeneration: optionalInteger(
+        body.maxExpansionGeneration,
+        "maxExpansionGeneration",
+      ),
       deniedUrlPatterns: optionalStringArray(body.deniedUrlPatterns, "deniedUrlPatterns"),
     });
     return NextResponse.json(result, { status: 201 });
