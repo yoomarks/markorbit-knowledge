@@ -1,161 +1,153 @@
 # MarkOrbit Knowledge
 
-MarkOrbit Knowledge is the visual acquisition and knowledge-staging control plane for the MarkOrbit / Mo ecosystem.
+MarkOrbit Knowledge is the **Acquisition & Knowledge Staging Control Plane** for the MarkOrbit / Mo ecosystem.
 
-It manages data sources, collection intent, execution providers, raw artifacts, versions, conversion, Obsidian Vault synchronization and Ready Package delivery. It does **not** implement MarkOrbit Core information understanding, distillation, capabilities, value scoring or recommendations.
+It governs how source material enters the system, how acquisition/conversion work is authorized and executed, how immutable evidence is stored and versioned, how reviewed content moves through Obsidian/Vault staging, and how verified Ready Packages are prepared for MarkOrbit Core.
 
-## System boundary
+It does **not** implement MarkOrbit Core information understanding, entity resolution, distillation, capabilities, value scoring or recommendations.
 
 ```text
 Sources
   ↓
 MarkOrbit Knowledge
   ↓
-Mo Crawl / Connectors / Workers
+Connectors / Workers / Scheduler
   ↓
-Raw Artifact Store
+Raw Artifact CAS
   ↓
-Markdown + YAML
+Conversion + Staging
   ↓
-Obsidian Knowledge Staging
+Obsidian / Vault review boundary
+  ↓
+Canonical Downstream Document
   ↓
 Ready Package
   ↓
 MarkOrbit Core
 ```
 
-## Repository status
+## Release status
 
-The repository now contains:
+Repository package version: **0.1.0**.
 
-- pnpm workspace monorepo;
-- responsive Next.js administration shell;
-- locked Schema v1 JSON contracts and TypeScript guards;
-- separate Execution Contract v1 for CollectionRun and Job ledger objects;
-- separate Worker Protocol v1 for Worker, heartbeat and JobLease objects;
-- separate Execution Lifecycle Protocol v1 for authenticated progress and terminal reports;
-- SQLite-backed local/self-hosted Source, Connector, CollectionPlan, Execution and Worker Registries;
-- real SourceDefinition list, filters, create, edit, detail and archive UI;
-- immutable semantic-versioned ConnectorManifest administration;
-- exact SourceDefinition-to-Connector compatibility validation;
-- real CollectionPlan list, create, edit, lifecycle and source-default management;
-- plan compatibility checks for source, connector capabilities and output artifact kinds;
-- manual dispatch that transactionally creates one PENDING CollectionRun and Job;
-- Workspace-scoped idempotency and immutable plan/source/connector snapshots;
-- real execution-run list, detail and queued cancellation UI;
-- real Worker administration, one-time credentials, authenticated heartbeats and leases;
-- atomic compatible Job claims and deterministic lease recovery;
-- authenticated and lease-token-bound controlled execution transitions;
-- append-only execution attempts, events, receipts and structured failure evidence;
-- deterministic fixture Connector runtime with no external I/O;
-- production Crawl4AI 0.9.2 HTML/Markdown acquisition behind the governed Worker lease and RawArtifact evidence boundary;
-- deployable external Crawl4AI Worker process with lease renewal, heartbeat keepalive, bounded runtime and production egress-proxy enforcement;
-- USPTO trademark Golden Source bootstrap for a first controlled official-source collection path;
-- explicit reconciliation that fails started work when its lease expires;
-- immutable RawArtifact ingestion, SHA-256 verification and local content-addressed storage;
-- governed Workspace-scoped Manual Upload with bounded media/size policy, exact SHA-256 identity, targeted Job leases, idempotent replay, immutable RawArtifact provenance and Admin UI;
-- production Local Folder Worker ingestion with Worker-local root aliases, root-scoped connector scheduling, traversal/symlink fail-closed controls, stable snapshot digests, bounded scans and immutable RawArtifact/CAS reuse;
-- production attachment/document normalization for PDF, DOCX, XLSX, CSV, JSON, XML, EMAIL, TEXT and IMAGE with bounded OOXML/structured-input hardening, explicit Poppler PDF text-layer extraction and separate OCR provenance;
-- real RawArtifact provenance, ingestion evidence and controlled-download administration;
-- immutable semantic-versioned ConverterManifest administration;
-- persisted Conversion Profiles with exact-version and input/output compatibility enforcement;
-- locked Conversion Execution Protocol v1 for ConversionRuns, events and Staging output evidence;
-- locked Conversion Runtime Protocol v1 for Worker conversion capability, claims, exclusive leases, attempts, token-bound reports and input/output grants;
-- durable ConversionRun ledger with controlled eligible Artifact / compatible Profile Manual Dispatch, immutable snapshots, idempotency and pending-only cancellation;
-- controlled READY-Staging Markdown projection primitive for local Obsidian Vault files with traversal and symlink protections;
-- persistent Workspace-scoped Vault Binding V1 with portable relative-root policy, optimistic revisions and explicit ACTIVE/DISABLED state;
-- durable explicit Vault Export V1 with PENDING-before-write evidence, frozen destination identity, post-write reconciliation, projection receipts and no silent overwrite of different content;
-- explicit read-only Vault Inspection V1 that classifies Markdown as UNCHANGED, IMPORT_CANDIDATE, CONFLICT or MISSING with bounded hash/frontmatter/Wiki Link evidence and no filesystem mutation;
-- reviewed Vault Import Intent V1 that freezes operator-approved IMPORT_CANDIDATE evidence as immutable PENDING_EXECUTION authorization without reading Vault bytes or mutating Staging;
-- retry-safe explicit Vault Import Execution V1 that persists PENDING before the reviewed live-file read, revalidates frozen size/SHA-256, records dedicated Vault-origin Staging provenance as IMPORTED_UNVERIFIED and recovers across Staging/receipt/finalization crash windows;
-- dedicated Vault-origin Staging Verification V1 that verifies only the immutable K10 CAS copy, blocks spoofed `markorbit.*` provenance, persists immutable verification evidence and separately finalizes each imported document as VERIFIED or BLOCKED;
-- provenance-preserving Canonical Downstream Document V1 that promotes only K11 VERIFIED Vault-origin content while freezing the K08 inspection → K09 review → K10 execution → K11 verification/finalization chain without fabricating conversion provenance;
-- provenance-aware ReadyPackage V2 and deterministic Content Export V2 that freeze the authoritative K12 canonical record, revalidate immutable Staging CAS bytes before export and keep Vault-origin provenance explicit without modifying conversion-only V1 contracts;
-- durable ReadyPackage V2 Delivery Protocol V1 foundation with explicit freeze-before-network preparation, exact-request/idempotency retry, transport-result-before-finalization recovery and a dedicated V2-only outbound capability gate that forbids reuse of the frozen Core V1 endpoint;
-- append-only ReadyPackage V2 delivery audit timeline with migration 0031, atomic state/event persistence, bounded unknown-outcome evidence, K14 PREPARED backfill and Admin recovery history without exposing request bodies, Markdown, URLs, secrets or idempotency keys;
-- Vault admin controls for binding, filesystem-root readiness, explicit export, read-only inspection, reviewed import intent, explicit import execution, Vault-origin verification/finalization, canonical downstream promotion and explicit ReadyPackage V2 packaging/content export without exposing the deployment absolute path;
-- real execution evidence timeline in the Runs administration UI;
-- versioned migrations, optimistic concurrency and secret exclusion;
-- fixture-only previews for modules that have not reached production runtime implementation;
-- architecture boundaries, compatibility policy and Node 22/24 CI.
+The current v0.1 control-plane trunk is **freeze-ready** after the 2026-08-12 release-readiness closeout. K01-K16 and the K-EXT-A through K-EXT-E production/operations extensions form the completed architectural backbone for this release line.
 
-Production web acquisition, governed Workspace-scoped Manual Upload, and root-scoped Local Folder Worker ingestion now exist for bounded acquisition. An operator can explicitly export one verified READY Staging document through its ACTIVE Workspace Vault binding with durable crash-recovery evidence, inspect bound Vault Markdown without mutation, record a reviewed import intent for an observed untracked candidate, explicitly execute that exact reviewed candidate into dedicated `IMPORTED_UNVERIFIED` Vault-origin Staging after live size/SHA-256 revalidation, verify/finalize the immutable Staging CAS copy without rereading the Vault, explicitly promote a K11 VERIFIED document into a provenance-preserving Canonical Downstream Document, explicitly package that canonical record as ReadyPackage V2, and read a deterministic Content Export V2 after immutable CAS revalidation. Automatic scheduling, a verified/implemented Core ReadyPackage V2 receiver, automatic conflict merge and two-way synchronization, and MarkOrbit Core semantic logic are not implemented yet. ReadyPackage V1 and Content Export V1 remain conversion-origin contracts; ReadyPackage V2 and Content Export V2 preserve the explicit Vault provenance chain, K14 can durably freeze their V2 delivery request, and K15 adds an append-only recovery timeline around explicit delivery attempts without changing those frozen bytes. Outbound V2 transport remains disabled unless a dedicated V2 endpoint and protocol declaration are explicitly configured, and V2 is never sent through the frozen Core V1 consumer boundary. No automatic Vault synchronization is authorized.
+This does **not** mean every source/provider named in the original PRD v1.0 Draft is implemented. API, DATABASE, GITHUB and RSS connector breadth can be added later through the existing contracts without reopening the trunk architecture.
 
-Lifecycle meanings are deliberately distinct:
+The principal external activation dependency is the dedicated **MarkOrbit Core ReadyPackage V2 receiver**. Knowledge keeps V2 outbound transport gated unless a dedicated V2 endpoint/protocol is explicitly configured; the missing Core-side receiver therefore blocks V2 production activation, not the internal Knowledge v0.1 freeze. V2 must never fall back to the frozen V1 consumer.
+
+See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md) for the freeze decision, release gates, deferred breadth and post-freeze work order.
+
+## Implemented production backbone
+
+### Acquisition and execution
+
+- Workspace-scoped SourceDefinition, ConnectorManifest and CollectionPlan registries;
+- immutable semantic-versioned ConnectorManifest administration and exact compatibility checks;
+- CollectionRun / Job execution ledger with immutable source/plan/connector snapshots;
+- Worker registration, one-time credentials, heartbeats, capacity, atomic compatible claims and leases;
+- controlled execution lifecycle with append-only attempts/events/receipts and structured failure evidence;
+- deterministic lease expiry/reconciliation without silent terminal retry;
+- production Crawl4AI web acquisition with bounded runtime and production egress-proxy enforcement;
+- governed Workspace-scoped Manual Upload with bounded media/size policy, exact SHA-256 identity, idempotent replay and targeted Job claims;
+- production Local Folder Worker with Worker-local root aliases, traversal/symlink fail-closed controls, bounded scans and stable snapshot identity;
+- production read-only IMAP Email Worker ingestion with secret exclusion and replay/cursor boundaries;
+- durable automatic CollectionPlan scheduling for interval, cron and change-watch schedules;
+- claim-triggered scheduler materialization that reuses the existing execution ledger and `PAGE_UPDATE_CHECK` path instead of creating a second scheduler/diff system.
+
+### Raw artifacts and conversion
+
+- immutable RawArtifact ingestion with SHA-256 verification and local content-addressed storage;
+- controlled artifact retrieval and provenance/evidence administration;
+- immutable ConverterManifest versions and persisted Conversion Profiles;
+- ConversionRun ledger, conversion-worker capability/lease/runtime protocols and controlled transitions;
+- production document normalization/extraction for PDF, DOCX, XLSX, CSV, JSON, XML, EMAIL, TEXT and IMAGE inputs;
+- bounded OOXML/structured-input hardening, explicit PDF text-layer extraction and separate OCR provenance;
+- verified Staging output and controlled finalization.
+
+### Vault and downstream handoff
+
+- persistent Workspace-scoped Vault Binding with server-controlled absolute root and portable relative paths;
+- explicit Vault Export with PENDING-before-write evidence, frozen destination identity and crash recovery;
+- read-only Vault Inspection classifying `UNCHANGED`, `IMPORT_CANDIDATE`, `CONFLICT` and `MISSING`;
+- reviewed Vault Import Intent that freezes operator-approved evidence without reading live bytes;
+- explicit retry-safe Vault Import Execution into dedicated `IMPORTED_UNVERIFIED` Staging after live size/SHA-256 revalidation;
+- Vault-origin Staging Verification/Finalization against the immutable CAS copy, including spoofed provenance rejection;
+- provenance-preserving Canonical Downstream Document promotion;
+- ReadyPackage V1/V2 and deterministic Content Export V1/V2;
+- K14 durable ReadyPackage V2 freeze-before-network preparation with exact request/idempotency retry semantics;
+- K15 append-only ReadyPackage V2 delivery audit timeline;
+- K16 fail-closed delivery reconciliation with explicit diagnoses for safe submit, exact-request retry, local finalization, delivered, consumer-rejected and inconsistent evidence.
+
+### Product and operations
+
+- real Admin surfaces for Sources, Plans, Runs, Workers, Raw Artifacts, Conversion, Vault and Ready Packages;
+- governed Manual Upload Admin control;
+- real execution and delivery evidence timelines;
+- Workspace-scoped Operations Readiness derived from durable Source, Worker, Run, Scheduler, Conversion and ReadyPackage V2 evidence;
+- `READY`, `DEGRADED`, `BLOCKED` and non-health-degrading `ACTION` classifications with direct operator links;
+- Node 22 and Node 24 validation in CI;
+- dedicated production gates for Local Folder and Email Worker paths plus manually triggered live external-source smoke workflows.
+
+## Safety invariants
+
+The following are release-line invariants, not optional implementation details:
+
+- Schema v1 is locked; incompatible changes require an ADR, a new major schema directory and migration planning.
+- RawArtifact bytes, hashes, provenance and version chains are immutable.
+- Central services issue declarative tasks only; arbitrary remote Worker code execution is forbidden.
+- Worker and conversion leases remain authorization boundaries.
+- Credentials never belong in SourceDefinition, ConnectorManifest, RawArtifact, Vault content, logs or browser responses.
+- Terminal execution failure does not create an automatic retry behind the operator's back.
+- K14 frozen V2 request bytes are never regenerated during retry.
+- K15 delivery audit evidence remains append-only.
+- K16 reconciliation remains fail-closed.
+- ReadyPackage V2 never falls back to V1.
+- Knowledge never absorbs MarkOrbit Core semantic/business-intelligence responsibilities.
+
+## Scheduling model
+
+Automatic scheduling **is implemented** in v0.1.
+
+`INTERVAL`, five-field `CRON`, and `CHANGE_WATCH` plans have durable scheduler state. Before an authenticated Worker claim, the control plane materializes due schedule slots into the normal CollectionRun / Job ledger. Missed intervals are bounded to one catch-up materialization, restart/state lag replays the exact slot idempotently, paused plans do not dispatch, and invalid cron/timezone configuration fails closed without creating a Run.
+
+There is intentionally no separate always-on scheduler daemon in the v0.1 deployment model. See [Collection Scheduler V1](docs/architecture/COLLECTION_SCHEDULER_V1.md).
+
+## Persistence and backup boundary
+
+The current reference deployment is local/self-hosted:
+
+- SQLite control-plane state;
+- local RawArtifact content-addressed store;
+- local Staging content-addressed store;
+- optional server-controlled Obsidian/Vault filesystem root.
+
+Default paths under the repository root are:
 
 ```text
-PENDING    = durable work recorded
-LEASED     = compatible Worker reserved work
-RUNNING    = Worker reported execution start
-UPLOADING  = output summary is ready for the ingestion boundary
-VERIFYING  = output metadata is ready for control-plane verification
-COMPLETED  = verified terminal success
-FAILED     = terminal structured failure; no retry is created automatically
+.data/markorbit-knowledge.sqlite
+.data/artifacts
+.data/staging
 ```
 
-## Contracts
+They can be overridden with `MARKORBIT_KNOWLEDGE_DB_PATH`, `MARKORBIT_ARTIFACT_STORE_PATH` and `MARKORBIT_STAGING_STORE_PATH`.
 
-Canonical acquisition and staging schemas are published under [`schemas/v1`](schemas/v1/). TypeScript consumers use `@markorbit/contracts`.
+For v0.1 the supported backup contract is a **quiesced/cold coordinated snapshot** of the SQLite state and both CAS roots; Vault files are backed up separately when they are part of the recovery objective. Hot-copy/clustered failover guarantees are not claimed. See [Knowledge v0.1 Backup and Restore](docs/operations/KNOWLEDGE_V0_1_BACKUP_RESTORE.md).
 
-Schema v1 covers:
+## Deliberate non-goals / deferred breadth
 
-- Workspace;
-- ConnectorManifest;
-- CollectionPlan;
-- SourceDefinition;
-- RawArtifact.
+The following are not blockers for the v0.1 trunk freeze:
 
-Execution Contract v1 separately covers:
+- additional API, DATABASE, GITHUB and RSS production connector implementations;
+- automatic Vault conflict merge or general two-way synchronization;
+- a clustered persistence adapter or zero-downtime hot backup topology;
+- automatic ReadyPackage delivery retry;
+- MarkOrbit Core semantic logic;
+- Admin/UI polish that does not change the governed execution/evidence backbone.
 
-- CollectionRun;
-- Job;
-- execution trigger, actor and lifecycle vocabularies.
+New provider breadth should reuse the existing Source → Connector → CollectionPlan → Run/Job → Worker → RawArtifact contracts instead of introducing parallel ingestion systems.
 
-Worker Protocol v1 separately covers:
-
-- WorkerDefinition;
-- WorkerHeartbeat;
-- JobLease;
-- desired-state, health and lease vocabularies.
-
-Execution Lifecycle Protocol v1 separately covers:
-
-- execution start and progress reports;
-- upload-ready and verification-ready reports;
-- terminal completion and failure reports;
-- append-only JobExecutionEvent shape;
-- legal Job transition and single-Job CollectionRun derivation rules.
-
-Controlled Worker execution persistence separately covers:
-
-- durable execution attempts;
-- ordered lifecycle events;
-- idempotent transition requests;
-- metadata-only completion receipts;
-- structured failure and lease-loss reconciliation evidence.
-
-Artifact Ingestion Protocol v1 separately covers:
-
-- authenticated streaming ingestion sessions;
-- digest and byte-size verification;
-- immutable local content-addressed objects;
-- complete RawArtifact provenance and controlled retrieval.
-
-Conversion Control Protocol v1 separately covers:
-
-- immutable Converter Manifest versions;
-- persisted Conversion Profiles;
-- exact Converter/input/output compatibility;
-- conversion capability and intent without runtime execution.
-
-Conversion Execution Protocol v1 separately covers:
-
-- future ConversionRun identity and immutable snapshots;
-- append-only ConversionExecutionEvent lifecycle evidence;
-- verified StagingDocumentDescriptor metadata;
-- strict terminal evidence and content-addressed output boundaries.
-
-## Start
+## Start locally
 
 ```bash
 corepack enable
@@ -164,17 +156,19 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-The local registries are created at `.data/markorbit-knowledge.sqlite`. Set `MARKORBIT_KNOWLEDGE_DB_PATH` to use another absolute path.
+The default Admin/control plane is `http://localhost:3000`.
+
+Use [.env.example](.env.example) for storage, Worker, Core intake, Vault, Local Folder and conversion configuration. Secrets must be injected at runtime and must not be committed.
 
 ## Production Crawl4AI Worker
 
-Bootstrap the first controlled USPTO trademark source, plan and Worker registration:
+Bootstrap the controlled USPTO reference source, plan and Worker registration:
 
 ```bash
 pnpm --filter @markorbit/worker bootstrap:uspto
 ```
 
-Add `-- --dispatch` to create the first authorized PENDING run. The command returns a newly created Worker credential once; store it as `MARKORBIT_WORKER_CREDENTIAL` in a secret manager.
+Add `-- --dispatch` to create the first authorized PENDING run. The bootstrap prints a newly created Worker credential once; store it in a secret manager.
 
 For local development only, direct egress can be enabled explicitly:
 
@@ -182,7 +176,7 @@ For local development only, direct egress can be enabled explicitly:
 MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY=0 pnpm --filter @markorbit/worker start
 ```
 
-Production Worker execution requires `MARKORBIT_CRAWL4AI_EGRESS_PROXY` and refuses to disable that boundary. See [Crawl4AI Worker deployment and USPTO Golden Source](docs/operations/CRAWL4AI_WORKER_DEPLOYMENT.md).
+Production Crawl4AI execution requires an egress proxy and refuses to disable that boundary. See [Crawl4AI Worker deployment and USPTO Golden Source](docs/operations/CRAWL4AI_WORKER_DEPLOYMENT.md).
 
 ## Validate
 
@@ -190,9 +184,19 @@ Production Worker execution requires `MARKORBIT_CRAWL4AI_EGRESS_PROXY` and refus
 pnpm check
 ```
 
-## Documentation
+Normal pull-request validation covers formatting, lint, typecheck, tests and build across supported Node versions. Dedicated workflows cover production Local Folder and Email Worker paths; live external authority workflows are intentionally manual so transient network/source conditions do not become ordinary PR failures.
 
-- [Product requirements](docs/product/MarkOrbit_Knowledge_PRD_v1.0.md)
+## Key documentation
+
+### Product and release
+
+- [Product requirements v1.0 Draft](docs/product/MarkOrbit_Knowledge_PRD_v1.0.md)
+- [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md)
+- [K-EXT-E Operations Readiness Runbook](docs/operations/K_EXT_E_OPERATIONS_READINESS_RUNBOOK.md)
+- [Knowledge v0.1 Backup and Restore](docs/operations/KNOWLEDGE_V0_1_BACKUP_RESTORE.md)
+
+### Architecture and contracts
+
 - [System boundaries](docs/architecture/SYSTEM_BOUNDARIES.md)
 - [System architecture v1](docs/architecture/SYSTEM_ARCHITECTURE_V1.md)
 - [Schema v1 guide](docs/architecture/SCHEMA_V1.md)
@@ -203,11 +207,11 @@ pnpm check
 - [Artifact Ingestion Protocol v1](docs/architecture/ARTIFACT_INGESTION_PROTOCOL_V1.md)
 - [Manual Upload Ingestion V1](docs/architecture/MANUAL_UPLOAD_INGESTION_V1.md)
 - [Local Folder Worker Ingestion V1](docs/architecture/LOCAL_FOLDER_WORKER_INGESTION_V1.md)
+- [Collection Scheduler V1](docs/architecture/COLLECTION_SCHEDULER_V1.md)
 - [Document Extraction Production Hardening V1](docs/architecture/DOCUMENT_EXTRACTION_PRODUCTION_HARDENING_V1.md)
 - [Conversion Control v1](docs/architecture/CONVERSION_CONTROL_V1.md)
-- [Conversion Execution & Staging Output Protocol v1](docs/architecture/CONVERSION_EXECUTION_PROTOCOL_V1.md)
+- [Conversion Execution Protocol v1](docs/architecture/CONVERSION_EXECUTION_PROTOCOL_V1.md)
 - [Conversion Runtime Protocol v1](docs/architecture/CONVERSION_RUNTIME_PROTOCOL_V1.md)
-- [ConversionRun Ledger](docs/architecture/CONVERSION_RUN_LEDGER.md)
 - [Obsidian Vault Binding V1](docs/architecture/OBSIDIAN_VAULT_BINDING_V1.md)
 - [Obsidian Vault Export V1](docs/architecture/OBSIDIAN_VAULT_EXPORT_V1.md)
 - [Obsidian Vault Inspection V1](docs/architecture/OBSIDIAN_VAULT_INSPECTION_V1.md)
@@ -218,13 +222,15 @@ pnpm check
 - [ReadyPackage V2 and Content Export V2](docs/architecture/READY_PACKAGE_V2.md)
 - [ReadyPackage V2 Delivery Protocol V1](docs/architecture/READY_PACKAGE_V2_DELIVERY_V1.md)
 - [ReadyPackage V2 Delivery Audit Timeline V1](docs/architecture/READY_PACKAGE_V2_DELIVERY_AUDIT_V1.md)
-- [Persistence and Source Registry](docs/architecture/PERSISTENCE_AND_SOURCE_REGISTRY.md)
-- [Connector Registry](docs/architecture/CONNECTOR_REGISTRY.md)
-- [CollectionPlan Registry](docs/architecture/COLLECTION_PLAN_REGISTRY.md)
-- [Execution Ledger](docs/architecture/EXECUTION_LEDGER.md)
-- [Worker Registry and leases](docs/architecture/WORKER_REGISTRY_AND_LEASES.md)
+- [ReadyPackage V2 Delivery Reconciliation V1](docs/architecture/READY_PACKAGE_V2_DELIVERY_RECONCILIATION_V1.md)
+
+### Operations
+
 - [Crawl4AI Worker deployment and USPTO Golden Source](docs/operations/CRAWL4AI_WORKER_DEPLOYMENT.md)
-- [Canonical schemas](schemas/v1/README.md)
+- [USPTO Staging / Ready Package Runbook](docs/operations/USPTO_STAGING_READY_PACKAGE_RUNBOOK.md)
+
+### Engineering decisions
+
 - [Runtime baseline decision](docs/decisions/ADR-0001-repository-and-runtime-baseline.md)
 - [Schema v1 decision](docs/decisions/ADR-0002-schema-v1-and-compatibility.md)
 - [SQLite reference adapter decision](docs/decisions/ADR-0003-sqlite-reference-persistence.md)
@@ -232,8 +238,9 @@ pnpm check
 - [Plan versus execution decision](docs/decisions/ADR-0005-separate-plan-intent-from-execution.md)
 - [Control-plane dispatch decision](docs/decisions/ADR-0006-control-plane-dispatch-and-immutable-snapshots.md)
 - [Lease versus Connector execution decision](docs/decisions/ADR-0007-separate-leases-from-connector-execution.md)
-- [Execution lifecycle contract decision](docs/decisions/ADR-0008-lock-execution-lifecycle-before-runtime.md)
+- [Execution lifecycle decision](docs/decisions/ADR-0008-lock-execution-lifecycle-before-runtime.md)
 - [Fixture runtime decision](docs/decisions/ADR-0009-fixture-runtime-before-real-connectors.md)
-- [Conversion execution contract decision](docs/decisions/ADR-0010-lock-conversion-execution-before-runtime.md)
-- [Conversion runtime authorization and leases decision](docs/decisions/ADR-0011-conversion-runtime-authorization-and-leases.md)
-- [Contributing](CONTRIBUTING.md)
+- [Conversion execution decision](docs/decisions/ADR-0010-lock-conversion-execution-before-runtime.md)
+- [Conversion runtime authorization/leases decision](docs/decisions/ADR-0011-conversion-runtime-authorization-and-leases.md)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for repository engineering rules.
