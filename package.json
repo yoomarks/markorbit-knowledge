@@ -14,6 +14,7 @@
     "test": "pnpm -r test",
     "test:e2e:core-intake": "pnpm --filter @markorbit/admin exec vitest run --config vitest.e2e.config.ts",
     "calibrate:source-intelligence": "node scripts/source-intelligence-calibration.mjs",
+    "worker:bootstrap:api": "pnpm --filter @markorbit/worker exec tsx src/bootstrap-api.ts",
     "release:preflight": "node scripts/release-preflight.mjs",
     "release:backup-restore-drill": "node scripts/release-backup-restore-drill.mjs",
     "format": "prettier --write .",
