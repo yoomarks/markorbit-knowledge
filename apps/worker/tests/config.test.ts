@@ -74,6 +74,19 @@ describe("loadWorkerProcessConfig", () => {
     );
   });
 
+  it("enables the RSS provider without unrelated endpoint or local-folder configuration", () => {
+    const config = loadWorkerProcessConfig(
+      env({
+        NODE_ENV: "production",
+        MARKORBIT_COLLECTION_PROVIDER: "rss",
+        MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0",
+      }),
+    );
+    expect(config.collectionProvider).toBe("rss");
+    expect(config.localFolderRoots).toEqual({});
+    expect(config).not.toHaveProperty("apiEndpointBindings");
+  });
+
   it("enables production conversion only with an explicit Workspace", () => {
     const config = loadWorkerProcessConfig(
       env({
@@ -133,6 +146,16 @@ describe("loadWorkerProcessConfig", () => {
         }),
       ).collectionProvider,
     ).toBe("api");
+
+    expect(
+      loadWorkerProcessConfig(
+        env({
+          NODE_ENV: "production",
+          MARKORBIT_COLLECTION_PROVIDER: "rss",
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0",
+        }),
+      ).collectionProvider,
+    ).toBe("rss");
   });
 
   it("rejects missing credentials, unknown providers, and unsafe timing limits", () => {
