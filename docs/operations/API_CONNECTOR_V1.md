@@ -81,13 +81,13 @@ export MARKORBIT_API_RESOURCE_PATH=/v1/items
 export MARKORBIT_API_QUERY_JSON='{"page":"1"}'
 export MARKORBIT_API_SOURCE_NAME='Example API'
 
-pnpm worker:bootstrap:api
+pnpm --filter @markorbit/worker bootstrap:api
 ```
 
 Add `-- --dispatch` to create one manual CollectionRun after bootstrap:
 
 ```bash
-pnpm worker:bootstrap:api -- --dispatch
+pnpm --filter @markorbit/worker bootstrap:api -- --dispatch
 ```
 
 The bootstrap output may return a newly issued Worker credential. Store it securely and start the Worker with:
