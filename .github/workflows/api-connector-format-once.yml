@@ -1,0 +1,56 @@
+name: API Connector Format Once
+
+on:
+  push:
+    branches:
+      - codex/connector-api-v1
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/connector-api-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format API Connector files
+        run: >-
+          pnpm exec prettier --write
+          packages/worker-runtime/src/api-acquirer.ts
+          packages/worker-runtime/tests/api-acquirer.test.ts
+          packages/worker-runtime/src/index.ts
+          apps/worker/src/config.ts
+          apps/worker/src/main.ts
+          apps/worker/src/bootstrap-api.ts
+          apps/worker/tests/config.test.ts
+          docs/operations/API_CONNECTOR_V1.md
+          package.json
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/worker-runtime/src/api-acquirer.ts \
+            packages/worker-runtime/tests/api-acquirer.test.ts \
+            packages/worker-runtime/src/index.ts \
+            apps/worker/src/config.ts \
+            apps/worker/src/main.ts \
+            apps/worker/src/bootstrap-api.ts \
+            apps/worker/tests/config.test.ts \
+            docs/operations/API_CONNECTOR_V1.md \
+            package.json
+          git commit -m 'chore(api-connector): format implementation'
+          git push origin HEAD:codex/connector-api-v1
