@@ -54,7 +54,9 @@ function normalizedFeedUrl(raw: string): string {
     /(?:^|[-_.])(token|secret|password|passwd|credential|authorization|auth|api[-_.]?key|access[-_.]?key)(?:$|[-_.])/i;
   for (const [key, value] of url.searchParams) {
     if (sensitive.test(key) || /[\u0000-\u001f\u007f]/.test(key) || /[\u0000\r\n]/.test(value)) {
-      throw new Error("MARKORBIT_RSS_FEED_URL contains a credential-like or invalid query parameter");
+      throw new Error(
+        "MARKORBIT_RSS_FEED_URL contains a credential-like or invalid query parameter",
+      );
     }
   }
   return url.toString();
@@ -311,7 +313,8 @@ async function main(): Promise<void> {
     process.env.MARKORBIT_CONTROL_PLANE_URL?.trim() || "http://localhost:3000",
   );
   const feedUrl = normalizedFeedUrl(required("MARKORBIT_RSS_FEED_URL"));
-  const sourceName = process.env.MARKORBIT_RSS_SOURCE_NAME?.trim() || `RSS — ${new URL(feedUrl).hostname}`;
+  const sourceName =
+    process.env.MARKORBIT_RSS_SOURCE_NAME?.trim() || `RSS — ${new URL(feedUrl).hostname}`;
   const timeoutMs = integer("MARKORBIT_RSS_TIMEOUT_MS", 30_000, 1_000, 120_000);
   const maxResponseBytes = integer(
     "MARKORBIT_RSS_MAX_RESPONSE_BYTES",

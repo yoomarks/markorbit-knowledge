@@ -157,13 +157,19 @@ describe("RssArtifactAcquirer", () => {
 
   it("keeps canonical entry identity stable while changed entry bytes create versionable evidence", async () => {
     const before = await acquirerFor(RSS_FEED).acquire(context());
-    const after = await acquirerFor(RSS_FEED.replace("First &amp; important.", "First &amp; revised.")).acquire(
-      context(),
-    );
-    const beforeEntry = entryEnvelopes(before).find(({ envelope }) => envelope.stableEntryId === "guid:news-001")!;
-    const afterEntry = entryEnvelopes(after).find(({ envelope }) => envelope.stableEntryId === "guid:news-001")!;
+    const after = await acquirerFor(
+      RSS_FEED.replace("First &amp; important.", "First &amp; revised."),
+    ).acquire(context());
+    const beforeEntry = entryEnvelopes(before).find(
+      ({ envelope }) => envelope.stableEntryId === "guid:news-001",
+    )!;
+    const afterEntry = entryEnvelopes(after).find(
+      ({ envelope }) => envelope.stableEntryId === "guid:news-001",
+    )!;
     expect(afterEntry.artifact.canonicalUri).toBe(beforeEntry.artifact.canonicalUri);
-    expect(Buffer.from(afterEntry.artifact.content).equals(Buffer.from(beforeEntry.artifact.content))).toBe(false);
+    expect(
+      Buffer.from(afterEntry.artifact.content).equals(Buffer.from(beforeEntry.artifact.content)),
+    ).toBe(false);
   });
 
   it("uses deterministic fallback identity when id and link are absent", async () => {
@@ -172,7 +178,9 @@ describe("RssArtifactAcquirer", () => {
     const second = entryEnvelopes(await acquirerFor(feed).acquire(context()))[0]!;
     expect(first.envelope.stableEntryId).toMatch(/^fallback:[a-f0-9]{64}$/);
     expect(first.artifact.canonicalUri).toBe(second.artifact.canonicalUri);
-    expect(Buffer.from(first.artifact.content).equals(Buffer.from(second.artifact.content))).toBe(true);
+    expect(Buffer.from(first.artifact.content).equals(Buffer.from(second.artifact.content))).toBe(
+      true,
+    );
   });
 
   it("sorts entry artifacts by stable canonical URI so feed order does not change upload identity", async () => {
@@ -180,8 +188,12 @@ describe("RssArtifactAcquirer", () => {
       /(<item>[\s\S]*?<guid isPermaLink="false">news-002[\s\S]*?<\/item>)\s*(<item>[\s\S]*?<guid>news-001[\s\S]*?<\/item>)/,
       "$2$1",
     );
-    const left = (await acquirerFor(RSS_FEED).acquire(context())).slice(1).map((item) => item.canonicalUri);
-    const right = (await acquirerFor(reversed).acquire(context())).slice(1).map((item) => item.canonicalUri);
+    const left = (await acquirerFor(RSS_FEED).acquire(context()))
+      .slice(1)
+      .map((item) => item.canonicalUri);
+    const right = (await acquirerFor(reversed).acquire(context()))
+      .slice(1)
+      .map((item) => item.canonicalUri);
     expect(right).toEqual(left);
   });
 
@@ -215,7 +227,9 @@ describe("RssArtifactAcquirer", () => {
       ],
       transport,
     });
-    expect((await acquisitionError(mixed.acquire(context()))).code).toBe("RSS_NETWORK_TARGET_REJECTED");
+    expect((await acquisitionError(mixed.acquire(context()))).code).toBe(
+      "RSS_NETWORK_TARGET_REJECTED",
+    );
     expect(transport).not.toHaveBeenCalled();
   });
 
@@ -244,11 +258,13 @@ describe("RssArtifactAcquirer", () => {
   });
 
   it("rejects non-feed MIME types, DTD/entity declarations, unsupported RDF, and non-UTF8 declarations", async () => {
-    expect((await acquisitionError(acquirerFor(RSS_FEED, "text/html").acquire(context()))).code).toBe(
-      "RSS_CONTENT_TYPE_REJECTED",
-    );
+    expect(
+      (await acquisitionError(acquirerFor(RSS_FEED, "text/html").acquire(context()))).code,
+    ).toBe("RSS_CONTENT_TYPE_REJECTED");
     const dtd = `<!DOCTYPE rss [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><rss version="2.0"><channel><title>x</title></channel></rss>`;
-    expect((await acquisitionError(acquirerFor(dtd).acquire(context()))).code).toBe("RSS_XML_DTD_REJECTED");
+    expect((await acquisitionError(acquirerFor(dtd).acquire(context()))).code).toBe(
+      "RSS_XML_DTD_REJECTED",
+    );
     const rdf = `<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"></rdf:RDF>`;
     expect((await acquisitionError(acquirerFor(rdf).acquire(context()))).code).toBe(
       "RSS_FORMAT_UNSUPPORTED",

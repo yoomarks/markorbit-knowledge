@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { BlockList, isIP } from "node:net";
+import { isIP } from "node:net";
 import type { ExecutionExecutor } from "@markorbit/contracts";
 import {
   defaultApiResolver,
@@ -14,6 +14,7 @@ import {
   CollectionAcquisitionError,
   type CollectionArtifactAcquirer,
 } from "./artifact-backed-collection-executor";
+import { isPublicNetworkAddress, normalizedUrlHostname } from "./public-network-policy";
 
 export const RSS_CONNECTOR_ID = "rss-worker";
 export const RSS_CONNECTOR_VERSION = "1.0.0";
@@ -55,43 +56,6 @@ const RSS_MIME_TYPES = new Set([
   "text/xml",
 ]);
 
-const NON_PUBLIC_ADDRESSES = new BlockList();
-for (const [network, prefix] of [
-  ["0.0.0.0", 8],
-  ["10.0.0.0", 8],
-  ["100.64.0.0", 10],
-  ["127.0.0.0", 8],
-  ["169.254.0.0", 16],
-  ["172.16.0.0", 12],
-  ["192.0.0.0", 24],
-  ["192.0.2.0", 24],
-  ["192.88.99.0", 24],
-  ["192.168.0.0", 16],
-  ["198.18.0.0", 15],
-  ["198.51.100.0", 24],
-  ["203.0.113.0", 24],
-  ["224.0.0.0", 4],
-  ["240.0.0.0", 4],
-] as const) {
-  NON_PUBLIC_ADDRESSES.addSubnet(network, prefix, "ipv4");
-}
-for (const [network, prefix] of [
-  ["::", 128],
-  ["::1", 128],
-  ["64:ff9b::", 96],
-  ["64:ff9b:1::", 48],
-  ["100::", 64],
-  ["2001::", 32],
-  ["2001:2::", 48],
-  ["2001:db8::", 32],
-  ["2002::", 16],
-  ["fc00::", 7],
-  ["fe80::", 10],
-  ["ff00::", 8],
-] as const) {
-  NON_PUBLIC_ADDRESSES.addSubnet(network, prefix, "ipv6");
-}
-
 type RssSourceConfig = {
   feedUrl: string;
   timeoutMs: number;
@@ -104,6 +68,7 @@ type XmlNode = {
   attributes: Record<string, string>;
   children: XmlNode[];
   text: string[];
+  segments: Array<string | XmlNode>;
 };
 
 type ParsedFeed = {
@@ -173,20 +138,6 @@ function safeInteger(
   return value as number;
 }
 
-function normalizedEndpointHostname(url: URL): string {
-  const hostname = url.hostname;
-  return hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
-}
-
-function publicAddress(address: string, family: 4 | 6): boolean {
-  if (isIP(address) !== family) return false;
-  if (family === 4) return !NON_PUBLIC_ADDRESSES.check(address, "ipv4");
-  if (address.toLowerCase().startsWith("::ffff:")) return false;
-  const firstHextet = Number.parseInt(address.split(":", 1)[0] || "0", 16);
-  if (!Number.isFinite(firstHextet) || firstHextet < 0x2000 || firstHextet > 0x3fff) return false;
-  return !NON_PUBLIC_ADDRESSES.check(address, "ipv6");
-}
-
 function normalizeFeedUrl(value: unknown): string {
   if (typeof value !== "string" || value.length === 0 || value.length > MAX_FEED_URL_LENGTH) {
     throw new CollectionAcquisitionError(
@@ -199,7 +150,11 @@ function normalizeFeedUrl(value: unknown): string {
   try {
     url = new URL(value);
   } catch {
-    throw new CollectionAcquisitionError("RSS_FEED_URL_INVALID", "RSS feedUrl is not a valid URL", false);
+    throw new CollectionAcquisitionError(
+      "RSS_FEED_URL_INVALID",
+      "RSS feedUrl is not a valid URL",
+      false,
+    );
   }
   if (url.protocol !== "https:") {
     throw new CollectionAcquisitionError(
@@ -222,7 +177,7 @@ function normalizeFeedUrl(value: unknown): string {
       false,
     );
   }
-  const hostname = normalizedEndpointHostname(url).toLowerCase();
+  const hostname = normalizedUrlHostname(url).toLowerCase();
   if (hostname === "localhost" || hostname.endsWith(".localhost")) {
     throw new CollectionAcquisitionError(
       "RSS_NETWORK_TARGET_REJECTED",
@@ -292,7 +247,13 @@ function sourceConfig(context: ArtifactBackedExecutionContext): RssSourceConfig 
   }
   return {
     feedUrl: normalizeFeedUrl(config.feedUrl),
-    timeoutMs: safeInteger(config.timeoutMs, DEFAULT_TIMEOUT_MS, 1_000, MAX_TIMEOUT_MS, "timeoutMs"),
+    timeoutMs: safeInteger(
+      config.timeoutMs,
+      DEFAULT_TIMEOUT_MS,
+      1_000,
+      MAX_TIMEOUT_MS,
+      "timeoutMs",
+    ),
     maxResponseBytes: safeInteger(
       config.maxResponseBytes,
       DEFAULT_MAX_RESPONSE_BYTES,
@@ -335,9 +296,17 @@ function normalizeTransportError(error: unknown): never {
       throw new CollectionAcquisitionError("RSS_TIMEOUT", "RSS feed request timed out", true);
     }
     if (error.code === "API_RESPONSE_TOO_LARGE") {
-      throw new CollectionAcquisitionError("RSS_RESPONSE_TOO_LARGE", error.message.replace(/^API /, "RSS "), false);
+      throw new CollectionAcquisitionError(
+        "RSS_RESPONSE_TOO_LARGE",
+        error.message.replace(/^API /, "RSS "),
+        false,
+      );
     }
-    throw new CollectionAcquisitionError("RSS_TRANSPORT_FAILED", "RSS HTTPS transport failed", error.retryable);
+    throw new CollectionAcquisitionError(
+      "RSS_TRANSPORT_FAILED",
+      "RSS HTTPS transport failed",
+      error.retryable,
+    );
   }
   const code = record(error)?.code;
   const retryableCodes = new Set([
@@ -450,13 +419,21 @@ function tagEnd(xml: string, start: number): number {
   return -1;
 }
 
-function parseOpeningTag(raw: string): { name: string; attributes: Record<string, string>; selfClosing: boolean } {
+function parseOpeningTag(raw: string): {
+  name: string;
+  attributes: Record<string, string>;
+  selfClosing: boolean;
+} {
   let input = raw.trim();
   const selfClosing = input.endsWith("/");
   if (selfClosing) input = input.slice(0, -1).trimEnd();
   const nameMatch = /^[A-Za-z_][A-Za-z0-9_.:-]*/.exec(input);
   if (!nameMatch) {
-    throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML contains an invalid element name", false);
+    throw new CollectionAcquisitionError(
+      "RSS_XML_INVALID",
+      "RSS XML contains an invalid element name",
+      false,
+    );
   }
   const name = nameMatch[0];
   let offset = name.length;
@@ -467,27 +444,47 @@ function parseOpeningTag(raw: string): { name: string; attributes: Record<string
     if (offset >= input.length) break;
     const attributeMatch = /^[A-Za-z_][A-Za-z0-9_.:-]*/.exec(input.slice(offset));
     if (!attributeMatch) {
-      throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML contains an invalid attribute name", false);
+      throw new CollectionAcquisitionError(
+        "RSS_XML_INVALID",
+        "RSS XML contains an invalid attribute name",
+        false,
+      );
     }
     const attributeName = attributeMatch[0];
     offset += attributeName.length;
     while (/\s/.test(input[offset] ?? "")) offset += 1;
     if (input[offset] !== "=") {
-      throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML attribute is missing '='", false);
+      throw new CollectionAcquisitionError(
+        "RSS_XML_INVALID",
+        "RSS XML attribute is missing '='",
+        false,
+      );
     }
     offset += 1;
     while (/\s/.test(input[offset] ?? "")) offset += 1;
     const quote = input[offset];
     if (quote !== '"' && quote !== "'") {
-      throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML attribute must be quoted", false);
+      throw new CollectionAcquisitionError(
+        "RSS_XML_INVALID",
+        "RSS XML attribute must be quoted",
+        false,
+      );
     }
     offset += 1;
     const end = input.indexOf(quote, offset);
     if (end < 0) {
-      throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML attribute quote is unterminated", false);
+      throw new CollectionAcquisitionError(
+        "RSS_XML_INVALID",
+        "RSS XML attribute quote is unterminated",
+        false,
+      );
     }
     if (Object.prototype.hasOwnProperty.call(attributes, attributeName)) {
-      throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML contains a duplicate attribute", false);
+      throw new CollectionAcquisitionError(
+        "RSS_XML_INVALID",
+        "RSS XML contains a duplicate attribute",
+        false,
+      );
     }
     attributes[attributeName] = decodeXmlEntities(input.slice(offset, end));
     attributeCount += 1;
@@ -523,7 +520,13 @@ function parseXml(xml: string): XmlNode {
     }
   }
 
-  const documentRoot: XmlNode = { name: "#document", attributes: {}, children: [], text: [] };
+  const documentRoot: XmlNode = {
+    name: "#document",
+    attributes: {},
+    children: [],
+    text: [],
+    segments: [],
+  };
   const stack: XmlNode[] = [documentRoot];
   let nodeCount = 0;
   let cursor = 0;
@@ -531,31 +534,55 @@ function parseXml(xml: string): XmlNode {
     const opening = xml.indexOf("<", cursor);
     if (opening < 0) {
       const tail = xml.slice(cursor);
-      if (tail.trim()) stack[stack.length - 1]!.text.push(decodeXmlEntities(tail));
+      if (tail.trim()) {
+        const decoded = decodeXmlEntities(tail);
+        stack[stack.length - 1]!.text.push(decoded);
+        stack[stack.length - 1]!.segments.push(decoded);
+      }
       cursor = xml.length;
       break;
     }
     if (opening > cursor) {
       const text = xml.slice(cursor, opening);
-      if (text) stack[stack.length - 1]!.text.push(decodeXmlEntities(text));
+      if (text) {
+        const decoded = decodeXmlEntities(text);
+        stack[stack.length - 1]!.text.push(decoded);
+        stack[stack.length - 1]!.segments.push(decoded);
+      }
     }
     if (xml.startsWith("<!--", opening)) {
       const end = xml.indexOf("-->", opening + 4);
-      if (end < 0) throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML comment is unterminated", false);
+      if (end < 0)
+        throw new CollectionAcquisitionError(
+          "RSS_XML_INVALID",
+          "RSS XML comment is unterminated",
+          false,
+        );
       cursor = end + 3;
       continue;
     }
     if (xml.startsWith("<![CDATA[", opening)) {
       const end = xml.indexOf("]]>", opening + 9);
-      if (end < 0) throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML CDATA is unterminated", false);
-      stack[stack.length - 1]!.text.push(xml.slice(opening + 9, end));
+      if (end < 0)
+        throw new CollectionAcquisitionError(
+          "RSS_XML_INVALID",
+          "RSS XML CDATA is unterminated",
+          false,
+        );
+      const cdata = xml.slice(opening + 9, end);
+      stack[stack.length - 1]!.text.push(cdata);
+      stack[stack.length - 1]!.segments.push(cdata);
       cursor = end + 3;
       continue;
     }
     if (xml.startsWith("<?", opening)) {
       const end = xml.indexOf("?>", opening + 2);
       if (end < 0) {
-        throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML processing instruction is unterminated", false);
+        throw new CollectionAcquisitionError(
+          "RSS_XML_INVALID",
+          "RSS XML processing instruction is unterminated",
+          false,
+        );
       }
       cursor = end + 2;
       continue;
@@ -568,12 +595,17 @@ function parseXml(xml: string): XmlNode {
       );
     }
     const end = tagEnd(xml, opening + 1);
-    if (end < 0) throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML tag is unterminated", false);
+    if (end < 0)
+      throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML tag is unterminated", false);
     const raw = xml.slice(opening + 1, end);
     if (raw.startsWith("/")) {
       const closingName = raw.slice(1).trim();
       if (!/^[A-Za-z_][A-Za-z0-9_.:-]*$/.test(closingName) || stack.length <= 1) {
-        throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML contains an invalid closing tag", false);
+        throw new CollectionAcquisitionError(
+          "RSS_XML_INVALID",
+          "RSS XML contains an invalid closing tag",
+          false,
+        );
       }
       const current = stack.pop()!;
       if (current.name !== closingName) {
@@ -587,8 +619,15 @@ function parseXml(xml: string): XmlNode {
       continue;
     }
     const parsed = parseOpeningTag(raw);
-    const node: XmlNode = { name: parsed.name, attributes: parsed.attributes, children: [], text: [] };
+    const node: XmlNode = {
+      name: parsed.name,
+      attributes: parsed.attributes,
+      children: [],
+      text: [],
+      segments: [],
+    };
     stack[stack.length - 1]!.children.push(node);
+    stack[stack.length - 1]!.segments.push(node);
     nodeCount += 1;
     if (nodeCount > MAX_XML_NODES) {
       throw new CollectionAcquisitionError(
@@ -610,7 +649,11 @@ function parseXml(xml: string): XmlNode {
     cursor = end + 1;
   }
   if (stack.length !== 1) {
-    throw new CollectionAcquisitionError("RSS_XML_INVALID", "RSS XML contains unclosed elements", false);
+    throw new CollectionAcquisitionError(
+      "RSS_XML_INVALID",
+      "RSS XML contains unclosed elements",
+      false,
+    );
   }
   if (documentRoot.children.length !== 1) {
     throw new CollectionAcquisitionError(
@@ -635,8 +678,9 @@ function child(node: XmlNode, name: string): XmlNode | undefined {
 }
 
 function nodeText(node: XmlNode): string {
-  const parts = [...node.text];
-  for (const nested of node.children) parts.push(nodeText(nested));
+  const parts = node.segments.map((segment) =>
+    typeof segment === "string" ? segment : nodeText(segment),
+  );
   return parts.join(" ").replace(/\s+/g, " ").trim();
 }
 
@@ -698,7 +742,11 @@ function atomLink(entry: XmlNode): string | undefined {
 function parseRss(root: XmlNode): ParsedFeed {
   const channel = child(root, "channel");
   if (!channel) {
-    throw new CollectionAcquisitionError("RSS_FORMAT_INVALID", "RSS document is missing channel", false);
+    throw new CollectionAcquisitionError(
+      "RSS_FORMAT_INVALID",
+      "RSS document is missing channel",
+      false,
+    );
   }
   const entries = children(channel, "item").map((item) => ({
     id: boundedText(child(item, "guid"), "guid", MAX_ID_LENGTH),
@@ -730,8 +778,8 @@ function parseAtom(root: XmlNode): ParsedFeed {
       publishedText: boundedText(child(entry, "published"), "published", MAX_ID_LENGTH),
       updatedText: boundedText(child(entry, "updated"), "updated", MAX_ID_LENGTH),
       author: authorNode
-        ? boundedText(child(authorNode, "name"), "author", MAX_AUTHOR_LENGTH) ??
-          boundedText(authorNode, "author", MAX_AUTHOR_LENGTH)
+        ? (boundedText(child(authorNode, "name"), "author", MAX_AUTHOR_LENGTH) ??
+          boundedText(authorNode, "author", MAX_AUTHOR_LENGTH))
         : undefined,
       categories: parseCategories(children(entry, "category"), true),
       summary: boundedText(child(entry, "summary"), "summary", MAX_ENTRY_TEXT_LENGTH),
@@ -784,7 +832,11 @@ function normalizeEntryLink(value: string | undefined, feedUrl: string): string 
   }
 }
 
-function stableEntryId(entry: ParsedFeedEntry, canonicalLink: string | undefined, format: ParsedFeed["format"]): string {
+function stableEntryId(
+  entry: ParsedFeedEntry,
+  canonicalLink: string | undefined,
+  format: ParsedFeed["format"],
+): string {
   if (entry.id?.trim()) return `${format === "ATOM_1_0" ? "atom-id" : "guid"}:${entry.id.trim()}`;
   if (canonicalLink) return `link:${canonicalLink}`;
   const fallback = JSON.stringify([
@@ -833,7 +885,11 @@ function envelopeFor(
 
 function decodeFeedBody(body: Uint8Array): string {
   if (body.byteLength === 0) {
-    throw new CollectionAcquisitionError("RSS_EMPTY_RESPONSE", "RSS endpoint returned an empty feed", false);
+    throw new CollectionAcquisitionError(
+      "RSS_EMPTY_RESPONSE",
+      "RSS endpoint returned an empty feed",
+      false,
+    );
   }
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(body);
@@ -860,7 +916,7 @@ export class RssArtifactAcquirer implements CollectionArtifactAcquirer {
     assertSupportedJob(context);
     const config = sourceConfig(context);
     const endpoint = new URL(config.feedUrl);
-    const endpointHostname = normalizedEndpointHostname(endpoint);
+    const endpointHostname = normalizedUrlHostname(endpoint);
     let resolved;
     try {
       resolved = await this.resolver(endpointHostname);
@@ -869,7 +925,7 @@ export class RssArtifactAcquirer implements CollectionArtifactAcquirer {
     }
     if (
       resolved.length === 0 ||
-      resolved.some((item) => !publicAddress(item.address, item.family))
+      resolved.some((item) => !isPublicNetworkAddress(item.address, item.family))
     ) {
       throw new CollectionAcquisitionError(
         "RSS_NETWORK_TARGET_REJECTED",
