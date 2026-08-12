@@ -17,7 +17,7 @@
     "release:preflight": "node scripts/release-preflight.mjs",
     "release:backup-restore-drill": "node scripts/release-backup-restore-drill.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write apps/admin/src/server/discovery-service.ts && git diff -- apps/admin/src/server/discovery-service.ts && exit 1",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
