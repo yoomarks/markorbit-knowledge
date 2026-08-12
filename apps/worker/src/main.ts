@@ -1,4 +1,5 @@
 import {
+  ApiArtifactAcquirer,
   ControlledCollectionWorkerRuntime,
   Crawl4AiSubprocessAcquirer,
   HttpControlledCollectionClient,
@@ -38,10 +39,12 @@ async function main(): Promise<void> {
           maxItems: config.localFolderMaxItems,
           maxDepth: config.localFolderMaxDepth,
         })
-      : new Crawl4AiSubprocessAcquirer({
-          requireEgressProxy: config.requireEgressProxy,
-          maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
-        });
+      : config.collectionProvider === "api"
+        ? new ApiArtifactAcquirer()
+        : new Crawl4AiSubprocessAcquirer({
+            requireEgressProxy: config.requireEgressProxy,
+            maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
+          });
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
