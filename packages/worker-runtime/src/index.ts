@@ -54,6 +54,7 @@ export * from "./source-intelligence-policy-audit-query";
 export * from "./source-intelligence-historical-policy-resolution";
 export * from "./source-intelligence-historical-policy-comparison";
 export * from "./http-website-discovery-provider";
+export * from "./expanding-website-discovery-provider";
 export * from "./core-intake-adapter";
 export * from "./intake-pipeline-orchestrator";
 export * from "./ready-package-builder";

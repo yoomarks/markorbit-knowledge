@@ -13,8 +13,10 @@ export interface SourceDiscoverySeed {
  * Operator-controlled bounds for one discovery run.
  *
  * maxCandidates bounds what may enter the human review queue, while maxFetches
- * independently bounds network work. This distinction prevents a sitemap or a
- * highly connected site from turning source discovery into an unbounded crawl.
+ * independently bounds network work. External-link discovery is a one-hop
+ * structural expansion only: external URLs may enter the candidate queue when
+ * explicitly enabled, but they are never fetched as part of the originating
+ * website run. maxExternalCandidates independently caps that expansion.
  */
 export interface SourceDiscoveryConstraints {
   maxDepth?: number;
@@ -25,6 +27,8 @@ export interface SourceDiscoveryConstraints {
   deniedUrlPatterns?: string[];
   respectRobots?: boolean;
   discoverSitemaps?: boolean;
+  discoverExternalLinks?: boolean;
+  maxExternalCandidates?: number;
 }
 
 export interface SourceDiscoveryBatch {
