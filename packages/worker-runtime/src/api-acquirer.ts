@@ -407,6 +407,11 @@ function normalizeAuth(value: unknown): ApiAuthBinding {
   throw new Error("API binding auth kind must be NONE, BEARER, or HEADER");
 }
 
+function normalizedEndpointHostname(url: URL): string {
+  const hostname = url.hostname;
+  return hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
+}
+
 function normalizeBinding(bindingId: string, value: unknown): ApiEndpointBinding {
   if (!BINDING_ID_PATTERN.test(bindingId))
     throw new Error(`Invalid API endpoint binding id: ${bindingId}`);
@@ -430,8 +435,8 @@ function normalizeBinding(bindingId: string, value: unknown): ApiEndpointBinding
     );
   }
   if (
-    url.hostname.toLowerCase() === "localhost" ||
-    url.hostname.toLowerCase().endsWith(".localhost")
+    normalizedEndpointHostname(url).toLowerCase() === "localhost" ||
+    normalizedEndpointHostname(url).toLowerCase().endsWith(".localhost")
   ) {
     throw new Error(`API endpoint binding ${bindingId} cannot target localhost`);
   }
@@ -676,9 +681,10 @@ export class ApiArtifactAcquirer implements CollectionArtifactAcquirer {
     }
 
     const endpoint = new URL(binding.baseUrl);
+    const endpointHostname = normalizedEndpointHostname(endpoint);
     let resolved: ApiResolvedAddress[];
     try {
-      resolved = await this.resolver(endpoint.hostname);
+      resolved = await this.resolver(endpointHostname);
     } catch (error) {
       return normalizeTransportError(error);
     }
@@ -698,11 +704,11 @@ export class ApiArtifactAcquirer implements CollectionArtifactAcquirer {
     let response: ApiTransportResponse;
     try {
       response = await this.transport({
-        hostname: endpoint.hostname,
+        hostname: endpointHostname,
         resolvedAddress: selected.address,
         family: selected.family,
         port: endpoint.port ? Number(endpoint.port) : 443,
-        ...(isIP(endpoint.hostname) ? {} : { servername: endpoint.hostname }),
+        ...(isIP(endpointHostname) ? {} : { servername: endpointHostname }),
         path,
         hostHeader: endpoint.host,
         headers: requestHeaders(

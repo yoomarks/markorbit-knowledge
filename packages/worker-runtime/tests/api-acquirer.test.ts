@@ -192,6 +192,21 @@ describe("ApiArtifactAcquirer", () => {
     expect(transport).not.toHaveBeenCalled();
   });
 
+  it("rejects a private IPv6 literal before transport", async () => {
+    const transport = vi.fn(async () => response());
+    const acquirer = new ApiArtifactAcquirer({
+      environment: {
+        MARKORBIT_API_ENDPOINT_BINDINGS: JSON.stringify({
+          "public-api": { baseUrl: "https://[::1]", auth: { kind: "NONE" } },
+        }),
+      },
+      transport,
+    });
+    const error = await acquisitionError(acquirer.acquire(context()));
+    expect(error.code).toBe("API_NETWORK_TARGET_REJECTED");
+    expect(transport).not.toHaveBeenCalled();
+  });
+
   it("fails closed when DNS returns a mixed public/private answer set", async () => {
     const transport = vi.fn(async () => response());
     const acquirer = new ApiArtifactAcquirer({

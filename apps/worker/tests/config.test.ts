@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadWorkerProcessConfig } from "../src/config";
 
-const API_BINDINGS =
-  '{"public-api":{"baseUrl":"https://api.example.test","auth":{"kind":"NONE"}}}';
+const API_BINDINGS = '{"public-api":{"baseUrl":"https://api.example.test","auth":{"kind":"NONE"}}}';
 
 function env(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {

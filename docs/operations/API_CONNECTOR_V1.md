@@ -104,6 +104,12 @@ pnpm --filter @markorbit/worker start
 
 Do not copy endpoint credentials into Source `connectorConfig`, CollectionPlan extensions, shell history committed to the repository, or operator notes stored in Knowledge.
 
+### Worker binding scope
+
+V1 uses the shared connector identity `api-worker@1.0.0`. Every active Worker registered for that connector must therefore be provisioned with the complete `MARKORBIT_API_ENDPOINT_BINDINGS` set for the API Sources it is expected to service. A Worker that claims a Job whose binding is absent fails closed with `API_BINDING_UNAVAILABLE`; it never substitutes another origin or credential.
+
+For v1, prefer one governed API Worker pool with a consistent binding map. If future deployments require independently scoped API Worker pools, add an explicit routing/connector-scope design instead of weakening the fail-closed binding check.
+
 ## Source connectorConfig
 
 The durable configuration is intentionally locator-minimal:
