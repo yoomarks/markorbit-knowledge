@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { loadWorkerProcessConfig } from "../src/config";
 
+const API_BINDINGS = '{"public-api":{"baseUrl":"https://api.example.test","auth":{"kind":"NONE"}}}';
+
 function env(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {
     NODE_ENV: "test",
@@ -57,6 +59,21 @@ describe("loadWorkerProcessConfig", () => {
     ).toThrow(/absolute path/i);
   });
 
+  it("enables the API provider only with runtime endpoint bindings and does not persist them", () => {
+    const config = loadWorkerProcessConfig(
+      env({
+        MARKORBIT_COLLECTION_PROVIDER: "api",
+        MARKORBIT_API_ENDPOINT_BINDINGS: API_BINDINGS,
+      }),
+    );
+    expect(config.collectionProvider).toBe("api");
+    expect(config).not.toHaveProperty("apiEndpointBindings");
+
+    expect(() => loadWorkerProcessConfig(env({ MARKORBIT_COLLECTION_PROVIDER: "api" }))).toThrow(
+      /API_ENDPOINT_BINDINGS/,
+    );
+  });
+
   it("enables production conversion only with an explicit Workspace", () => {
     const config = loadWorkerProcessConfig(
       env({
@@ -76,7 +93,7 @@ describe("loadWorkerProcessConfig", () => {
     );
   });
 
-  it("allows direct Crawl4AI egress only outside production and does not impose it on local folders", () => {
+  it("allows direct Crawl4AI egress only outside production and does not impose it on other providers", () => {
     expect(
       loadWorkerProcessConfig(
         env({
@@ -105,6 +122,17 @@ describe("loadWorkerProcessConfig", () => {
         }),
       ).collectionProvider,
     ).toBe("local-folder");
+
+    expect(
+      loadWorkerProcessConfig(
+        env({
+          NODE_ENV: "production",
+          MARKORBIT_COLLECTION_PROVIDER: "api",
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0",
+          MARKORBIT_API_ENDPOINT_BINDINGS: API_BINDINGS,
+        }),
+      ).collectionProvider,
+    ).toBe("api");
   });
 
   it("rejects missing credentials, unknown providers, and unsafe timing limits", () => {
