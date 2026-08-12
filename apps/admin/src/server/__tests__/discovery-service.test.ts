@@ -5,6 +5,7 @@ import { SqliteCollectionPlanRepository } from "@markorbit/persistence/collectio
 import { SqliteConnectorRepository } from "@markorbit/persistence/connectors";
 import { SqliteSourceDiscoveryRepository } from "@markorbit/persistence/source-discovery";
 import { SqliteSourceGraphRepository } from "@markorbit/persistence/source-graph";
+import { SqliteSourceRegistryV2Repository } from "@markorbit/persistence/source-registry-v2";
 import { DiscoveryWorkflowService } from "../discovery-service";
 
 describe("DiscoveryWorkflowService", () => {
@@ -134,13 +135,15 @@ describe("DiscoveryWorkflowService", () => {
     database.close();
   });
 
-  it("keeps external candidates reviewable but blocks accidental promotion into the seed source", async () => {
+  it("promotes external candidates into their own source and preserves the source-to-source discovery path", async () => {
     const database = openRegistryDatabase(":memory:");
     const sources = new SqliteSourceRepository(database);
     const plans = new SqliteCollectionPlanRepository(database);
     const connectors = new SqliteConnectorRepository(database);
     const discovery = new SqliteSourceDiscoveryRepository(database);
     const graph = new SqliteSourceGraphRepository(database);
+    const registryV2 = new SqliteSourceRegistryV2Repository(database);
+    let discoveryRun = 0;
     const service = new DiscoveryWorkflowService({
       discovery,
       graph,
@@ -149,6 +152,21 @@ describe("DiscoveryWorkflowService", () => {
       connectors,
       provider: {
         async discover(batch: SourceDiscoveryBatch) {
+          discoveryRun += 1;
+          if (discoveryRun === 1) {
+            return [
+              {
+                candidateId: "cand_111111111111111111111111",
+                locator: "https://example.com/trademarks",
+                discoveredAt: "2026-08-12T16:10:00.000Z",
+                status: "DISCOVERED" as const,
+                discoveredFrom: batch.seeds[0]?.locator,
+                discoveryMethod: "HTML_LINK" as const,
+                depth: 1,
+                metadata: { kind: "PAGE" },
+              },
+            ];
+          }
           return [
             {
               candidateId: "cand_dddddddddddddddddddddddd",
@@ -180,6 +198,21 @@ describe("DiscoveryWorkflowService", () => {
                 fetchEligibleInOriginatingRun: false,
               },
             },
+            {
+              candidateId: "cand_ffffffffffffffffffffffff",
+              locator: "https://peer.example/blog",
+              discoveredAt: "2026-08-12T16:20:02.000Z",
+              status: "DISCOVERED" as const,
+              discoveredFrom: batch.seeds[0]?.locator,
+              discoveryMethod: "HTML_LINK" as const,
+              depth: 1,
+              metadata: {
+                kind: "PAGE",
+                externalToSeed: true,
+                discoveryScope: "EXTERNAL_ONE_HOP",
+                fetchEligibleInOriginatingRun: false,
+              },
+            },
           ];
         },
       },
@@ -196,13 +229,19 @@ describe("DiscoveryWorkflowService", () => {
       },
     });
 
-    const run = await service.start({
+    await service.start({ locator: "https://example.com/start-here" });
+    const acceptedSeed = service.review("cand_111111111111111111111111", {
+      decision: "ACCEPTED",
+      reviewer: "operator-test",
+    });
+    expect(acceptedSeed.source?.canonicalUri).toBe("https://example.com/");
+
+    const externalRun = await service.start({
       locator: "https://example.com/start-here",
       discoverExternalLinks: true,
       maxExternalCandidates: 10,
     });
-    expect(run.candidates).toHaveLength(2);
-    expect(sources.list({ sourceType: "WEB", limit: 100 }).total).toBe(0);
+    expect(externalRun.candidates).toHaveLength(3);
 
     const rejected = service.review("cand_dddddddddddddddddddddddd", {
       decision: "REJECTED",
@@ -210,25 +249,72 @@ describe("DiscoveryWorkflowService", () => {
     });
     expect(rejected.candidate.candidate.status).toBe("REJECTED");
 
-    try {
-      service.review("cand_eeeeeeeeeeeeeeeeeeeeeeee", {
-        decision: "ACCEPTED",
-        reviewer: "operator-test",
-      });
-      throw new Error("Expected external source promotion to fail closed");
-    } catch (error) {
-      expect(error).toMatchObject({
-        code: "EXTERNAL_SOURCE_PROMOTION_NOT_READY",
-        details: {
-          seedOrigin: "https://example.com/",
-          candidateOrigin: "https://peer.example/",
-        },
-      });
-    }
+    const firstExternal = service.review("cand_eeeeeeeeeeeeeeeeeeeeeeee", {
+      decision: "ACCEPTED",
+      reviewer: "operator-test",
+    });
+    expect(firstExternal.source?.canonicalUri).toBe("https://peer.example/");
+    expect(firstExternal.source?.entrypoints[0]?.uri).toBe("https://peer.example/services");
+    expect(firstExternal.source?.entrypoints[0]?.label).toBe("Discovered external source");
+    expect(firstExternal.source?.id).not.toBe(acceptedSeed.source?.id);
+    expect(firstExternal.plan?.status).toBe("PAUSED");
 
-    expect(sources.list({ sourceType: "WEB", limit: 100 }).total).toBe(0);
+    const secondExternal = service.review("cand_ffffffffffffffffffffffff", {
+      decision: "ACCEPTED",
+      reviewer: "operator-test",
+    });
+    expect(secondExternal.source?.id).toBe(firstExternal.source?.id);
+    expect(secondExternal.plan?.id).toBe(firstExternal.plan?.id);
+    expect(sources.list({ sourceType: "WEB", limit: 100 }).total).toBe(2);
+    expect(firstExternal.source ? plans.listForSource(firstExternal.source.id) : []).toHaveLength(
+      1,
+    );
+
+    const peerProfile = firstExternal.source
+      ? graph.getProfileBySourceId(firstExternal.source.id)
+      : null;
+    expect(peerProfile?.canonicalOrigin).toBe("https://peer.example/");
+    const peerSnapshot = firstExternal.source
+      ? graph.snapshotBySourceId(firstExternal.source.id)
+      : null;
+    expect(peerSnapshot?.summary.nodeKinds.WEBSITE).toBe(1);
+    expect(peerSnapshot?.summary.nodeKinds.PAGE).toBe(2);
+    expect(peerSnapshot?.edges.filter((edge) => edge.kind === "CONTAINS")).toHaveLength(2);
+
+    const seedProfile = acceptedSeed.source
+      ? graph.getProfileBySourceId(acceptedSeed.source.id)
+      : null;
+    const seedSnapshot = acceptedSeed.source
+      ? graph.snapshotBySourceId(acceptedSeed.source.id)
+      : null;
+    const outboundNode = seedProfile
+      ? graph.findNodeByIdentity(seedProfile.id, "CANONICAL_URI", "https://peer.example/services")
+      : null;
+    expect(outboundNode?.reviewState).toBe("RETAINED");
+    expect(
+      seedSnapshot?.edges.some(
+        (edge) => edge.kind === "LINKS_TO" && edge.objectNodeId === outboundNode?.id,
+      ),
+    ).toBe(true);
+    expect(
+      seedSnapshot?.edges.some(
+        (edge) => edge.kind === "CONTAINS" && edge.objectNodeId === outboundNode?.id,
+      ),
+    ).toBe(false);
+
+    const externalRegistry = firstExternal.source ? registryV2.get(firstExternal.source.id) : null;
+    expect(externalRegistry?.discoveryProvenance).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          origin: "EXTERNAL_LINK",
+          discoveredFromSourceId: acceptedSeed.source?.id,
+          discoveredFromUrl: "https://example.com/start-here",
+          evidenceUrl: "https://example.com/start-here",
+        }),
+      ]),
+    );
     expect(service.overview().candidates.summary.REJECTED).toBe(1);
-    expect(service.overview().candidates.summary.DISCOVERED).toBe(1);
+    expect(service.overview().candidates.summary.ACCEPTED).toBe(3);
 
     database.close();
   });
