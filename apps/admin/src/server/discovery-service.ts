@@ -240,7 +240,9 @@ export class DiscoveryWorkflowService {
     );
     const lineage = lineageForRoot(input);
     if (!Number.isInteger(lineage.generation) || lineage.generation < 0) {
-      throw new RegistryValidationError("Discovery lineage generation must be a non-negative integer");
+      throw new RegistryValidationError(
+        "Discovery lineage generation must be a non-negative integer",
+      );
     }
     if (lineage.generation > maxExpansionGeneration) {
       throw new RegistryConflictError(
@@ -373,7 +375,8 @@ export class DiscoveryWorkflowService {
     }
 
     const parentBatchId = extensionString(source, "x-markorbit-discovery-batch-id");
-    const rootSourceId = extensionString(source, "x-markorbit-discovery-root-source-id") ?? source.id;
+    const rootSourceId =
+      extensionString(source, "x-markorbit-discovery-root-source-id") ?? source.id;
     const result = await this.start({
       ...input,
       locator: sourceExpansionLocator(source),
@@ -480,7 +483,7 @@ export class DiscoveryWorkflowService {
       const rootSourceId =
         batchRecord.batch.lineage?.rootSourceId ??
         (seedSource
-          ? extensionString(seedSource, "x-markorbit-discovery-root-source-id") ?? seedSource.id
+          ? (extensionString(seedSource, "x-markorbit-discovery-root-source-id") ?? seedSource.id)
           : undefined);
 
       let source: SourceDefinition;
