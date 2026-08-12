@@ -1,21 +1,12 @@
 import { createHash } from "node:crypto";
-import type {
-  CoreDiscoveryProposalReceiptV1,
-  CoreDiscoveryProposalV1,
-} from "@markorbit/contracts";
-import {
-  CORE_DISCOVERY_PROPOSAL_VERSION,
-  CORE_DISCOVERY_PROPOSER,
-} from "@markorbit/contracts";
+import type { CoreDiscoveryProposalReceiptV1, CoreDiscoveryProposalV1 } from "@markorbit/contracts";
+import { CORE_DISCOVERY_PROPOSAL_VERSION, CORE_DISCOVERY_PROPOSER } from "@markorbit/contracts";
 import type {
   DiscoveryBatchRecord,
   SourceCandidateRecord,
   SourceDiscoveryRepository,
 } from "@markorbit/persistence/source-discovery";
-import {
-  RegistryConflictError,
-  RegistryValidationError,
-} from "@markorbit/persistence";
+import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import { getSourceDiscoveryRepository } from "./source-registry";
 
 export type CoreDiscoveryProposalSubmission = {
@@ -75,11 +66,7 @@ function normalizeProposalLocator(locator: string, field: string): string {
   const parameters = [...url.searchParams.entries()]
     .filter(([key]) => {
       const normalized = key.toLowerCase();
-      return !(
-        normalized.startsWith("utm_") ||
-        normalized === "gclid" ||
-        normalized === "fbclid"
-      );
+      return !(normalized.startsWith("utm_") || normalized === "gclid" || normalized === "fbclid");
     })
     .sort(([leftKey, leftValue], [rightKey, rightValue]) => {
       const keyOrder = leftKey.localeCompare(rightKey);
@@ -183,11 +170,7 @@ export class CoreDiscoveryProposalService {
     const evidenceUrl = input.evidenceUrl
       ? normalizeProposalLocator(input.evidenceUrl, "evidenceUrl")
       : undefined;
-    const opaqueContextRef = optionalBoundedString(
-      input.opaqueContextRef,
-      "opaqueContextRef",
-      512,
-    );
+    const opaqueContextRef = optionalBoundedString(input.opaqueContextRef, "opaqueContextRef", 512);
     const proposal: CoreDiscoveryProposalV1 = {
       version: CORE_DISCOVERY_PROPOSAL_VERSION,
       proposalId,
