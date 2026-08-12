@@ -133,8 +133,7 @@ export class SqliteSourceRegistryV2Repository implements SourceRegistryV2Reposit
         "SELECT source_id, parent_source_id FROM source_registry_v2_records WHERE source_id = ?",
       )
       .get(normalizedSourceId) as
-      | { source_id: string; parent_source_id: string | null }
-      | undefined;
+      { source_id: string; parent_source_id: string | null } | undefined;
     if (!record) return null;
 
     const provenance = this.database
