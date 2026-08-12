@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import type {
   CoreDiscoveryProposalReceiptV1,
   CoreDiscoveryProposalV1,
-  SourceCandidateRecord,
 } from "@markorbit/contracts";
 import {
   CORE_DISCOVERY_PROPOSAL_VERSION,
@@ -10,6 +9,7 @@ import {
 } from "@markorbit/contracts";
 import type {
   DiscoveryBatchRecord,
+  SourceCandidateRecord,
   SourceDiscoveryRepository,
 } from "@markorbit/persistence/source-discovery";
 import {
@@ -188,6 +188,16 @@ export class CoreDiscoveryProposalService {
       "opaqueContextRef",
       512,
     );
+    const proposal: CoreDiscoveryProposalV1 = {
+      version: CORE_DISCOVERY_PROPOSAL_VERSION,
+      proposalId,
+      proposedBy: CORE_DISCOVERY_PROPOSER,
+      proposedAt,
+      locator,
+      ...(proposedFromSourceId ? { proposedFromSourceId } : {}),
+      ...(evidenceUrl ? { evidenceUrl } : {}),
+      ...(opaqueContextRef ? { opaqueContextRef } : {}),
+    };
     const batchId = stableId("coreprop", proposalId);
     const existingBatch = this.dependencies.discovery.getBatch(batchId);
 
@@ -209,15 +219,7 @@ export class CoreDiscoveryProposalService {
         );
       }
       return {
-        proposal: {
-          ...input,
-          proposalId,
-          proposedAt,
-          locator,
-          ...(proposedFromSourceId ? { proposedFromSourceId } : {}),
-          ...(evidenceUrl ? { evidenceUrl } : {}),
-          ...(opaqueContextRef ? { opaqueContextRef } : {}),
-        },
+        proposal,
         batch: existingBatch,
         candidate: existingCandidate,
         receipt: receiptFor(proposalId, batchId, existingCandidate),
@@ -251,12 +253,11 @@ export class CoreDiscoveryProposalService {
     };
 
     this.dependencies.discovery.createBatch(batch);
-    const discoveredAt = proposedAt;
     this.dependencies.discovery.completeBatch(batchId, [
       {
         candidateId: candidateId(locator),
         locator,
-        discoveredAt,
+        discoveredAt: proposedAt,
         status: "DISCOVERED",
         ...(evidenceUrl ? { discoveredFrom: evidenceUrl } : {}),
         discoveryMethod: "CORE_PROPOSAL",
@@ -289,16 +290,6 @@ export class CoreDiscoveryProposalService {
       );
     }
 
-    const proposal: CoreDiscoveryProposalV1 = {
-      version: CORE_DISCOVERY_PROPOSAL_VERSION,
-      proposalId,
-      proposedBy: CORE_DISCOVERY_PROPOSER,
-      proposedAt,
-      locator,
-      ...(proposedFromSourceId ? { proposedFromSourceId } : {}),
-      ...(evidenceUrl ? { evidenceUrl } : {}),
-      ...(opaqueContextRef ? { opaqueContextRef } : {}),
-    };
     return {
       proposal,
       batch: completed,
