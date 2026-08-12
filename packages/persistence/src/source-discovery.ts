@@ -46,8 +46,10 @@ export type ReviewCandidateInput = BaseReviewCandidateInput & {
   discoveredFromSourceId?: string;
 };
 
-export interface SourceDiscoveryRepository
-  extends Omit<BaseSourceDiscoveryRepository, "reviewCandidate"> {
+export interface SourceDiscoveryRepository extends Omit<
+  BaseSourceDiscoveryRepository,
+  "reviewCandidate"
+> {
   reviewCandidate(candidateId: string, input: ReviewCandidateInput): SourceCandidateRecord;
 }
 
