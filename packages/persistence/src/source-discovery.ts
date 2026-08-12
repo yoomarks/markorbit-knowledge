@@ -50,7 +50,10 @@ export class SqliteSourceDiscoveryRepository extends BaseSqliteSourceDiscoveryRe
     this.sourceRegistryV2 = new SqliteSourceRegistryV2Repository(database, clock);
   }
 
-  override reviewCandidate(candidateId: string, input: ReviewCandidateInput): SourceCandidateRecord {
+  override reviewCandidate(
+    candidateId: string,
+    input: ReviewCandidateInput,
+  ): SourceCandidateRecord {
     const reviewed = super.reviewCandidate(candidateId, input);
     if (input.decision !== "ACCEPTED" || !reviewed.review?.acceptedSourceId) {
       return reviewed;
