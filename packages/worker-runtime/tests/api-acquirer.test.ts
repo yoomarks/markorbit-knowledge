@@ -29,9 +29,7 @@ function context(
   } as unknown as ArtifactBackedExecutionContext;
 }
 
-function environment(
-  auth: Record<string, unknown> = { kind: "NONE" },
-): NodeJS.ProcessEnv {
+function environment(auth: Record<string, unknown> = { kind: "NONE" }): NodeJS.ProcessEnv {
   return {
     MARKORBIT_API_ENDPOINT_BINDINGS: JSON.stringify({
       "public-api": {

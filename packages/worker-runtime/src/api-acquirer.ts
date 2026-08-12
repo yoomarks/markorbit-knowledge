@@ -337,7 +337,10 @@ function sourceConfig(context: ArtifactBackedExecutionContext): ApiSourceConfig 
       false,
     );
   }
-  if (typeof config.endpointBinding !== "string" || !BINDING_ID_PATTERN.test(config.endpointBinding)) {
+  if (
+    typeof config.endpointBinding !== "string" ||
+    !BINDING_ID_PATTERN.test(config.endpointBinding)
+  ) {
     throw new CollectionAcquisitionError(
       "API_BINDING_INVALID",
       "API endpointBinding must be a lowercase slug",
@@ -348,7 +351,13 @@ function sourceConfig(context: ArtifactBackedExecutionContext): ApiSourceConfig 
     endpointBinding: config.endpointBinding,
     resourcePath: normalizeResourcePath(config.resourcePath),
     query: normalizeQuery(config.query),
-    timeoutMs: safeInteger(config.timeoutMs, DEFAULT_TIMEOUT_MS, 1_000, MAX_TIMEOUT_MS, "timeoutMs"),
+    timeoutMs: safeInteger(
+      config.timeoutMs,
+      DEFAULT_TIMEOUT_MS,
+      1_000,
+      MAX_TIMEOUT_MS,
+      "timeoutMs",
+    ),
     maxResponseBytes: safeInteger(
       config.maxResponseBytes,
       DEFAULT_MAX_RESPONSE_BYTES,
@@ -372,7 +381,8 @@ function normalizeAuth(value: unknown): ApiAuthBinding {
   const auth = record(value);
   if (!auth || typeof auth.kind !== "string") throw new Error("API binding auth is invalid");
   if (auth.kind === "NONE") {
-    if (Object.keys(auth).some((key) => key !== "kind")) throw new Error("NONE auth has extra fields");
+    if (Object.keys(auth).some((key) => key !== "kind"))
+      throw new Error("NONE auth has extra fields");
     return { kind: "NONE" };
   }
   if (auth.kind === "BEARER") {
@@ -398,27 +408,39 @@ function normalizeAuth(value: unknown): ApiAuthBinding {
 }
 
 function normalizeBinding(bindingId: string, value: unknown): ApiEndpointBinding {
-  if (!BINDING_ID_PATTERN.test(bindingId)) throw new Error(`Invalid API endpoint binding id: ${bindingId}`);
+  if (!BINDING_ID_PATTERN.test(bindingId))
+    throw new Error(`Invalid API endpoint binding id: ${bindingId}`);
   const container = record(value);
   if (!container || Object.keys(container).some((key) => !["baseUrl", "auth"].includes(key))) {
     throw new Error(`API endpoint binding ${bindingId} must contain only baseUrl and auth`);
   }
-  if (typeof container.baseUrl !== "string") throw new Error(`API endpoint binding ${bindingId} needs baseUrl`);
+  if (typeof container.baseUrl !== "string")
+    throw new Error(`API endpoint binding ${bindingId} needs baseUrl`);
   const url = new URL(container.baseUrl);
-  if (url.protocol !== "https:") throw new Error(`API endpoint binding ${bindingId} must use HTTPS`);
+  if (url.protocol !== "https:")
+    throw new Error(`API endpoint binding ${bindingId} must use HTTPS`);
   if (url.username || url.password || url.search || url.hash) {
-    throw new Error(`API endpoint binding ${bindingId} baseUrl cannot contain userinfo, query, or fragment`);
+    throw new Error(
+      `API endpoint binding ${bindingId} baseUrl cannot contain userinfo, query, or fragment`,
+    );
   }
   if (url.pathname !== "/") {
-    throw new Error(`API endpoint binding ${bindingId} baseUrl must be an origin without a path prefix`);
+    throw new Error(
+      `API endpoint binding ${bindingId} baseUrl must be an origin without a path prefix`,
+    );
   }
-  if (url.hostname.toLowerCase() === "localhost" || url.hostname.toLowerCase().endsWith(".localhost")) {
+  if (
+    url.hostname.toLowerCase() === "localhost" ||
+    url.hostname.toLowerCase().endsWith(".localhost")
+  ) {
     throw new Error(`API endpoint binding ${bindingId} cannot target localhost`);
   }
   return { baseUrl: url.origin, auth: normalizeAuth(container.auth) };
 }
 
-export function parseApiEndpointBindings(raw: string | undefined): Record<string, ApiEndpointBinding> {
+export function parseApiEndpointBindings(
+  raw: string | undefined,
+): Record<string, ApiEndpointBinding> {
   if (!raw?.trim()) return {};
   let parsed: unknown;
   try {
@@ -514,7 +536,8 @@ function requestHeaders(
   accepted: string[] | null,
 ): Record<string, string> {
   const headers: Record<string, string> = {
-    accept: accepted?.join(", ") ??
+    accept:
+      accepted?.join(", ") ??
       "application/json, application/xml, text/xml, text/csv, application/csv, text/plain, text/markdown",
     "user-agent": "MarkOrbit-Knowledge-API-Worker/1.0",
   };
@@ -659,7 +682,10 @@ export class ApiArtifactAcquirer implements CollectionArtifactAcquirer {
     } catch (error) {
       return normalizeTransportError(error);
     }
-    if (resolved.length === 0 || resolved.some((item) => !publicAddress(item.address, item.family))) {
+    if (
+      resolved.length === 0 ||
+      resolved.some((item) => !publicAddress(item.address, item.family))
+    ) {
       throw new CollectionAcquisitionError(
         "API_NETWORK_TARGET_REJECTED",
         "API endpoint resolution did not produce an exclusively public address set",
@@ -692,7 +718,8 @@ export class ApiArtifactAcquirer implements CollectionArtifactAcquirer {
       return normalizeTransportError(error);
     }
 
-    if (response.statusCode < 200 || response.statusCode >= 300) throw statusFailure(response.statusCode);
+    if (response.statusCode < 200 || response.statusCode >= 300)
+      throw statusFailure(response.statusCode);
     if (response.body.byteLength > config.maxResponseBytes) {
       throw new CollectionAcquisitionError(
         "API_RESPONSE_TOO_LARGE",
@@ -748,6 +775,8 @@ export class ApiArtifactAcquirer implements CollectionArtifactAcquirer {
   }
 }
 
-export function createApiArtifactAcquirer(options: ApiArtifactAcquirerOptions = {}): ApiArtifactAcquirer {
+export function createApiArtifactAcquirer(
+  options: ApiArtifactAcquirerOptions = {},
+): ApiArtifactAcquirer {
   return new ApiArtifactAcquirer(options);
 }

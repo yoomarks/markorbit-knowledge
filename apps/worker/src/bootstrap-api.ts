@@ -89,7 +89,8 @@ function safeQuery(): Record<string, string> {
   }
   const container = record(parsed);
   if (!container) throw new Error("MARKORBIT_API_QUERY_JSON must be a JSON object");
-  if (Object.keys(container).length > 50) throw new Error("MARKORBIT_API_QUERY_JSON has too many entries");
+  if (Object.keys(container).length > 50)
+    throw new Error("MARKORBIT_API_QUERY_JSON has too many entries");
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(container)) {
     if (!key || key.length > 100 || SENSITIVE_QUERY_KEY.test(key)) {
@@ -115,7 +116,9 @@ function resourcePath(): string {
     value.includes("#") ||
     value.length > 2_048
   ) {
-    throw new Error("MARKORBIT_API_RESOURCE_PATH must be one bounded absolute path without query/fragment");
+    throw new Error(
+      "MARKORBIT_API_RESOURCE_PATH must be one bounded absolute path without query/fragment",
+    );
   }
   return value;
 }
@@ -297,7 +300,9 @@ async function ensurePlan(baseUrl: string, sourceId: string, sourceName: string)
   return identifier(plan?.id, "plan.id");
 }
 
-async function ensureWorker(baseUrl: string): Promise<{ workerId: string; credential: string | null }> {
+async function ensureWorker(
+  baseUrl: string,
+): Promise<{ workerId: string; credential: string | null }> {
   const label = "api-worker-v1";
   const existing = await requestJson(
     baseUrl,
