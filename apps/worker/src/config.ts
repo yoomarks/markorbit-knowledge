@@ -1,6 +1,6 @@
 import { parseLocalFolderRoots, type LocalFolderRootMap } from "@markorbit/worker-runtime";
 
-export type WorkerCollectionProvider = "crawl4ai" | "local-folder";
+export type WorkerCollectionProvider = "api" | "crawl4ai" | "local-folder";
 
 export type WorkerProcessConfig = {
   controlPlaneUrl: string;
@@ -65,8 +65,8 @@ function normalizedControlPlaneUrl(value: string): string {
 
 function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
   const value = env.MARKORBIT_COLLECTION_PROVIDER?.trim().toLowerCase() || "crawl4ai";
-  if (value === "crawl4ai" || value === "local-folder") return value;
-  throw new Error("MARKORBIT_COLLECTION_PROVIDER must be crawl4ai or local-folder");
+  if (value === "api" || value === "crawl4ai" || value === "local-folder") return value;
+  throw new Error("MARKORBIT_COLLECTION_PROVIDER must be api, crawl4ai, or local-folder");
 }
 
 export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): WorkerProcessConfig {
