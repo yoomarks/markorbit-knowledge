@@ -1,4 +1,8 @@
-import { parseLocalFolderRoots, type LocalFolderRootMap } from "@markorbit/worker-runtime";
+import {
+  parseApiEndpointBindings,
+  parseLocalFolderRoots,
+  type LocalFolderRootMap,
+} from "@markorbit/worker-runtime";
 
 export type WorkerCollectionProvider = "api" | "crawl4ai" | "local-folder";
 
@@ -81,6 +85,14 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     throw new Error(
       "MARKORBIT_LOCAL_FOLDER_ROOTS must define at least one allowed root for local-folder collection",
     );
+  }
+  if (provider === "api") {
+    const apiEndpointBindings = parseApiEndpointBindings(env.MARKORBIT_API_ENDPOINT_BINDINGS);
+    if (Object.keys(apiEndpointBindings).length === 0) {
+      throw new Error(
+        "MARKORBIT_API_ENDPOINT_BINDINGS must define at least one HTTPS endpoint binding for API collection",
+      );
+    }
   }
 
   const errorBackoffMinMs = integer(
