@@ -12,6 +12,7 @@ import type {
   CollectionPlan,
   SourceDefinition,
   SourceDiscoveryConstraints,
+  SourceDiscoveryLineage,
 } from "@markorbit/contracts";
 import {
   enrichDiscoveryCandidate,
@@ -21,6 +22,7 @@ import {
 import {
   DEFAULT_WORKSPACE,
   RegistryConflictError,
+  RegistryNotFoundError,
   RegistryValidationError,
 } from "@markorbit/persistence";
 import {
@@ -54,6 +56,7 @@ const DEFAULT_CONSTRAINTS: Required<
     | "discoverSitemaps"
     | "discoverExternalLinks"
     | "maxExternalCandidates"
+    | "maxExpansionGeneration"
   >
 > = {
   maxDepth: 1,
@@ -64,6 +67,7 @@ const DEFAULT_CONSTRAINTS: Required<
   discoverSitemaps: true,
   discoverExternalLinks: true,
   maxExternalCandidates: 25,
+  maxExpansionGeneration: 2,
 };
 
 export type StartDiscoveryInput = {
@@ -73,8 +77,12 @@ export type StartDiscoveryInput = {
   maxFetches?: number;
   discoverExternalLinks?: boolean;
   maxExternalCandidates?: number;
+  maxExpansionGeneration?: number;
   deniedUrlPatterns?: string[];
+  lineage?: SourceDiscoveryLineage;
 };
+
+export type ExpandSourceDiscoveryInput = Omit<StartDiscoveryInput, "locator" | "lineage">;
 
 export type ReviewDiscoveryCandidateInput = {
   decision: CandidateReviewDecision;
@@ -184,6 +192,32 @@ function belongsToOrigin(locator: string, origin: string): boolean {
   return websiteOrigin(locator) === origin;
 }
 
+function extensionString(source: SourceDefinition, key: string): string | undefined {
+  const value = source.extensions?.[key];
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function sourceDiscoveryGeneration(source: SourceDefinition): number {
+  const value = source.extensions?.["x-markorbit-discovery-generation"];
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0;
+}
+
+function sourceExpansionLocator(source: SourceDefinition): string {
+  const entrypoint = source.entrypoints[0]?.uri;
+  const locator = entrypoint ?? source.canonicalUri;
+  if (!locator) {
+    throw new RegistryConflictError(
+      "DISCOVERY_SOURCE_LOCATOR_MISSING",
+      `Source ${source.id} has no discovery entrypoint or canonical URI`,
+    );
+  }
+  return locator;
+}
+
+function lineageForRoot(input: StartDiscoveryInput): SourceDiscoveryLineage {
+  return input.lineage ?? { generation: 0 };
+}
+
 export class DiscoveryWorkflowService {
   constructor(private readonly dependencies: DiscoveryServiceDependencies) {}
 
@@ -197,9 +231,33 @@ export class DiscoveryWorkflowService {
 
   async start(input: StartDiscoveryInput) {
     const locator = normalizeSeedLocator(input.locator);
+    const maxExpansionGeneration = boundedInteger(
+      input.maxExpansionGeneration,
+      DEFAULT_CONSTRAINTS.maxExpansionGeneration,
+      0,
+      5,
+      "maxExpansionGeneration",
+    );
+    const lineage = lineageForRoot(input);
+    if (!Number.isInteger(lineage.generation) || lineage.generation < 0) {
+      throw new RegistryValidationError("Discovery lineage generation must be a non-negative integer");
+    }
+    if (lineage.generation > maxExpansionGeneration) {
+      throw new RegistryConflictError(
+        "DISCOVERY_EXPANSION_LIMIT_REACHED",
+        `Discovery generation ${lineage.generation} exceeds maximum ${maxExpansionGeneration}`,
+        { generation: lineage.generation, maxExpansionGeneration },
+      );
+    }
+
     const seed = this.dependencies.discovery.createSeed({
       locator,
-      metadata: { source: "admin-console" },
+      metadata: {
+        source: "admin-console",
+        discoveryGeneration: lineage.generation,
+        ...(lineage.parentSourceId ? { parentSourceId: lineage.parentSourceId } : {}),
+        ...(lineage.rootSourceId ? { rootSourceId: lineage.rootSourceId } : {}),
+      },
     });
     const batch = {
       batchId: `disc_${randomUUID().replaceAll("-", "")}`,
@@ -233,8 +291,10 @@ export class DiscoveryWorkflowService {
           100,
           "maxExternalCandidates",
         ),
+        maxExpansionGeneration,
         deniedUrlPatterns: normalizedDeniedPatterns(input.deniedUrlPatterns),
       },
+      lineage,
     };
 
     this.dependencies.discovery.createBatch(batch);
@@ -271,6 +331,61 @@ export class DiscoveryWorkflowService {
       this.dependencies.discovery.failBatch(batch.batchId, message);
       throw error;
     }
+  }
+
+  async expandSource(sourceId: string, input: ExpandSourceDiscoveryInput = {}) {
+    const source = this.dependencies.sources.getById(sourceId);
+    if (!source) throw new RegistryNotFoundError(sourceId);
+    if (source.sourceType !== "WEB") {
+      throw new RegistryConflictError(
+        "DISCOVERY_SOURCE_NOT_WEB",
+        `Source ${sourceId} is not a WEB source and cannot use website expansion`,
+      );
+    }
+    if (source.status !== "ACTIVE") {
+      throw new RegistryConflictError(
+        "DISCOVERY_SOURCE_NOT_ACTIVE",
+        `Source ${sourceId} must be ACTIVE before discovery expansion`,
+      );
+    }
+    const profile = this.dependencies.graph.getProfileBySourceId(sourceId);
+    if (!profile) {
+      throw new RegistryConflictError(
+        "DISCOVERY_SOURCE_PROFILE_MISSING",
+        `Source ${sourceId} has no WebsiteSourceProfile`,
+      );
+    }
+
+    const generation = sourceDiscoveryGeneration(source);
+    const maxExpansionGeneration = boundedInteger(
+      input.maxExpansionGeneration,
+      DEFAULT_CONSTRAINTS.maxExpansionGeneration,
+      0,
+      5,
+      "maxExpansionGeneration",
+    );
+    if (generation >= maxExpansionGeneration) {
+      throw new RegistryConflictError(
+        "DISCOVERY_EXPANSION_LIMIT_REACHED",
+        `Source ${sourceId} is generation ${generation}; maximum expansion generation is ${maxExpansionGeneration}`,
+        { sourceId, generation, maxExpansionGeneration },
+      );
+    }
+
+    const parentBatchId = extensionString(source, "x-markorbit-discovery-batch-id");
+    const rootSourceId = extensionString(source, "x-markorbit-discovery-root-source-id") ?? source.id;
+    const result = await this.start({
+      ...input,
+      locator: sourceExpansionLocator(source),
+      maxExpansionGeneration,
+      lineage: {
+        generation,
+        parentSourceId: source.id,
+        rootSourceId,
+        ...(parentBatchId ? { parentBatchId } : {}),
+      },
+    });
+    return { source, generation, maxExpansionGeneration, ...result };
   }
 
   review(
@@ -349,6 +464,25 @@ export class DiscoveryWorkflowService {
       const targetObservedAt = isExternalCandidate
         ? current.candidate.discoveredAt
         : batchRecord.batch.createdAt;
+      const seedSource = seedProfile
+        ? this.dependencies.sources.getById(seedProfile.sourceId)
+        : null;
+      if (seedProfile && !seedSource) {
+        throw new RegistryConflictError(
+          "DISCOVERY_GRAPH_SOURCE_MISSING",
+          `WebsiteSourceProfile ${seedProfile.id} points to missing source ${seedProfile.sourceId}`,
+        );
+      }
+      const seedGeneration =
+        batchRecord.batch.lineage?.generation ??
+        (seedSource ? sourceDiscoveryGeneration(seedSource) : 0);
+      const targetGeneration = isExternalCandidate ? seedGeneration + 1 : seedGeneration;
+      const rootSourceId =
+        batchRecord.batch.lineage?.rootSourceId ??
+        (seedSource
+          ? extensionString(seedSource, "x-markorbit-discovery-root-source-id") ?? seedSource.id
+          : undefined);
+
       let source: SourceDefinition;
       let plan: CollectionPlan;
       let profile = targetProfile;
@@ -405,6 +539,11 @@ export class DiscoveryWorkflowService {
           extensions: {
             "x-markorbit-discovery-seed-id": seed.seedId,
             "x-markorbit-discovery-batch-id": current.batchId,
+            "x-markorbit-discovery-generation": targetGeneration,
+            ...(rootSourceId ? { "x-markorbit-discovery-root-source-id": rootSourceId } : {}),
+            ...(isExternalCandidate && seedSource
+              ? { "x-markorbit-discovery-parent-source-id": seedSource.id }
+              : {}),
             ...(isExternalCandidate
               ? {
                   "x-markorbit-discovery-origin": "EXTERNAL_LINK",
@@ -442,6 +581,7 @@ export class DiscoveryWorkflowService {
           extensions: {
             "x-markorbit-created-from-discovery": true,
             "x-markorbit-discovery-seed-id": seed.seedId,
+            "x-markorbit-discovery-generation": targetGeneration,
             "x-markorbit-production-connector": `${CRAWL4AI_PRODUCTION_CONNECTOR.connectorId}@${CRAWL4AI_PRODUCTION_CONNECTOR.version}`,
             ...(isExternalCandidate ? { "x-markorbit-external-source": true } : {}),
           },
@@ -459,16 +599,6 @@ export class DiscoveryWorkflowService {
           targetLocator,
           targetObservedAt,
           batchRecord.batch.batchId,
-        );
-      }
-
-      const seedSource = seedProfile
-        ? this.dependencies.sources.getById(seedProfile.sourceId)
-        : null;
-      if (seedProfile && !seedSource) {
-        throw new RegistryConflictError(
-          "DISCOVERY_GRAPH_SOURCE_MISSING",
-          `WebsiteSourceProfile ${seedProfile.id} points to missing source ${seedProfile.sourceId}`,
         );
       }
 
