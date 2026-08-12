@@ -1,0 +1,47 @@
+name: K-EXT-E Format Once
+
+on:
+  push:
+    branches:
+      - codex/k-ext-e-product-ops-closeout
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/k-ext-e-product-ops-closeout
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format K-EXT-E files
+        run: >-
+          pnpm exec prettier --write
+          apps/admin/src/components/dashboard.tsx
+          apps/admin/src/components/operations/operations-readiness-panel.tsx
+          docs/operations/K_EXT_E_OPERATIONS_READINESS_RUNBOOK.md
+          packages/persistence/src/operations-readiness.ts
+      - name: Commit formatting if needed
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/admin/src/components/dashboard.tsx \
+            apps/admin/src/components/operations/operations-readiness-panel.tsx \
+            docs/operations/K_EXT_E_OPERATIONS_READINESS_RUNBOOK.md \
+            packages/persistence/src/operations-readiness.ts
+          git commit -m "chore: format K-EXT-E operations readiness"
+          git push origin HEAD:codex/k-ext-e-product-ops-closeout
