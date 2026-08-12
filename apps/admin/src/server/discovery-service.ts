@@ -478,9 +478,7 @@ export class DiscoveryWorkflowService {
         reviewer: input.reviewer,
         acceptedSourceId: source.id,
         collectionPlanId: plan.id,
-        ...(isExternalCandidate && seedSource
-          ? { discoveredFromSourceId: seedSource.id }
-          : {}),
+        ...(isExternalCandidate && seedSource ? { discoveredFromSourceId: seedSource.id } : {}),
       });
 
       let graphNode = reviewCandidateGraphNode(
