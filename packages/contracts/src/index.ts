@@ -21,6 +21,7 @@ export type {
   SourceDefinition as RegistrySourceDefinition,
   SourceCandidate as RegistrySourceCandidate,
 } from "./source-registry-v1";
+export * from "./source-registry-v2";
 export { COLLECTION_VERSION } from "./collection-v1";
 export type {
   CollectionTarget,
