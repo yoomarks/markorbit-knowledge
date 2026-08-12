@@ -1,45 +1,27 @@
 import type { SourceCandidate, SourceDiscoveryBatch } from "@markorbit/contracts";
-import { classifyDiscoveryCandidate } from "./discovery-candidate-intelligence";
 
 export type SourceDiscoveryProvider = {
   discover(input: SourceDiscoveryBatch): Promise<SourceCandidate[]>;
 };
 
-function candidateKind(candidate: SourceCandidate): "PAGE" | "DOCUMENT" | "FEED" | undefined {
-  const kind = candidate.metadata?.kind;
-  return kind === "PAGE" || kind === "DOCUMENT" || kind === "FEED" ? kind : undefined;
-}
-
-function robotsAllowed(candidate: SourceCandidate): boolean | undefined {
-  const value = candidate.metadata?.robotsAllowed;
-  return typeof value === "boolean" ? value : undefined;
-}
-
+/**
+ * @deprecated Discovery candidates must stay structural-only in Knowledge.
+ *
+ * Kept as an identity adapter for compatibility with callers that imported the
+ * previous helper. Semantic topic/relevance/priority inference belongs in Core
+ * and must not be added to Knowledge discovery candidates.
+ */
 export function enrichDiscoveryCandidate(candidate: SourceCandidate): SourceCandidate {
-  const intelligence = classifyDiscoveryCandidate({
-    locator: candidate.locator,
-    label: candidate.title,
-    method: candidate.discoveryMethod,
-    kind: candidateKind(candidate),
-    depth: candidate.depth,
-    robotsAllowed: robotsAllowed(candidate),
-  });
-
-  return {
-    ...candidate,
-    metadata: {
-      ...(candidate.metadata ?? {}),
-      ...intelligence,
-      intelligenceVersion: "deterministic-v1",
-    },
-  };
+  return candidate;
 }
 
 export class SourceDiscoveryRunner {
   constructor(private readonly provider: SourceDiscoveryProvider) {}
 
   async run(batch: SourceDiscoveryBatch): Promise<SourceCandidate[]> {
-    const candidates = await this.provider.discover(batch);
-    return candidates.map(enrichDiscoveryCandidate);
+    // Knowledge discovery is structural-only. The provider may report observed
+    // fetch/link/sitemap metadata, but semantic authority/content inference and
+    // candidate relevance scoring belong in Core.
+    return this.provider.discover(batch);
   }
 }
