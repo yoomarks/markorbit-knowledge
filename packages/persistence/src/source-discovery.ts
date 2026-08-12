@@ -12,11 +12,11 @@ import {
   type DiscoveryBatchStatus,
   type DiscoverySeedRecord,
   type DiscoverySeedStatus,
-  type ReviewCandidateInput,
+  type ReviewCandidateInput as BaseReviewCandidateInput,
   type SourceCandidateListFilters,
   type SourceCandidateListResult,
   type SourceCandidateRecord,
-  type SourceDiscoveryRepository,
+  type SourceDiscoveryRepository as BaseSourceDiscoveryRepository,
 } from "./source-discovery-registry";
 import {
   DiscoveryBatchNotFoundError,
@@ -31,13 +31,25 @@ export type {
   DiscoveryBatchStatus,
   DiscoverySeedRecord,
   DiscoverySeedStatus,
-  ReviewCandidateInput,
   SourceCandidateListFilters,
   SourceCandidateListResult,
   SourceCandidateRecord,
-  SourceDiscoveryRepository,
 };
 export { DiscoveryBatchNotFoundError, SourceCandidateNotFoundError };
+
+export type ReviewCandidateInput = BaseReviewCandidateInput & {
+  /**
+   * Optional structural source context for a discovered candidate.
+   * This links one registered source to another without assigning meaning,
+   * authority, relevance, topic or any other semantic interpretation.
+   */
+  discoveredFromSourceId?: string;
+};
+
+export interface SourceDiscoveryRepository
+  extends Omit<BaseSourceDiscoveryRepository, "reviewCandidate"> {
+  reviewCandidate(candidateId: string, input: ReviewCandidateInput): SourceCandidateRecord;
+}
 
 function discoveryOriginFor(method: SourceDiscoveryMethod | undefined): SourceDiscoveryOrigin {
   switch (method) {
@@ -71,7 +83,10 @@ function discoveryEvidenceUrl(candidate: SourceCandidateRecord["candidate"]): st
  * provenance when a candidate is explicitly accepted into an already-created
  * SourceDefinition.
  */
-export class SqliteSourceDiscoveryRepository extends BaseSqliteSourceDiscoveryRepository {
+export class SqliteSourceDiscoveryRepository
+  extends BaseSqliteSourceDiscoveryRepository
+  implements SourceDiscoveryRepository
+{
   private readonly sourceRegistryV2: SqliteSourceRegistryV2Repository;
 
   constructor(database: DatabaseSync, clock: () => Date = () => new Date()) {
@@ -92,6 +107,9 @@ export class SqliteSourceDiscoveryRepository extends BaseSqliteSourceDiscoveryRe
     const provenance: SourceDiscoveryProvenance = {
       origin: discoveryOriginFor(candidate.discoveryMethod),
       discoveredAt: candidate.discoveredAt,
+      ...(input.discoveredFromSourceId
+        ? { discoveredFromSourceId: input.discoveredFromSourceId }
+        : {}),
       ...(candidate.discoveredFrom ? { discoveredFromUrl: candidate.discoveredFrom } : {}),
       evidenceUrl: discoveryEvidenceUrl(candidate),
     };
