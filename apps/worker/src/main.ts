@@ -2,6 +2,7 @@ import {
   ApiArtifactAcquirer,
   ControlledCollectionWorkerRuntime,
   Crawl4AiSubprocessAcquirer,
+  GitHubArtifactAcquirer,
   HttpControlledCollectionClient,
   HttpProductionConversionClient,
   LocalFolderArtifactAcquirer,
@@ -44,10 +45,18 @@ async function main(): Promise<void> {
         ? new ApiArtifactAcquirer()
         : config.collectionProvider === "rss"
           ? new RssArtifactAcquirer()
-          : new Crawl4AiSubprocessAcquirer({
-              requireEgressProxy: config.requireEgressProxy,
-              maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
-            });
+          : config.collectionProvider === "github"
+            ? new GitHubArtifactAcquirer({
+                maxFileBytes: config.githubMaxFileBytes,
+                maxTotalBytes: config.githubMaxTotalBytes,
+                maxTreeEntries: config.githubMaxTreeEntries,
+                maxItems: config.githubMaxItems,
+                maxDepth: config.githubMaxDepth,
+              })
+            : new Crawl4AiSubprocessAcquirer({
+                requireEgressProxy: config.requireEgressProxy,
+                maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
+              });
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
