@@ -1,13 +1,7 @@
 export type SourceCandidateStatus = "DISCOVERED" | "REVIEWED" | "ACCEPTED" | "REJECTED";
 
 export type SourceDiscoveryMethod =
-  | "SEED"
-  | "HTML_LINK"
-  | "SITEMAP"
-  | "FEED"
-  | "CITATION"
-  | "MANUAL"
-  | "CORE_PROPOSAL";
+  "SEED" | "HTML_LINK" | "SITEMAP" | "FEED" | "CITATION" | "MANUAL" | "CORE_PROPOSAL";
 
 export interface SourceDiscoverySeed {
   seedId: string;
