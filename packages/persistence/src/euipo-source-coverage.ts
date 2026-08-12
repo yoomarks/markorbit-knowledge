@@ -55,9 +55,7 @@ export const EUIPO_SOURCE_COVERAGE_TARGETS = [
     family: "PORTAL",
     displayName: "EUIPO Trade Marks",
     canonicalUri: "https://www.euipo.europa.eu/en/trade-marks",
-    entrypoints: [
-      { uri: "https://www.euipo.europa.eu/en/trade-marks", label: "Trade marks home" },
-    ],
+    entrypoints: [{ uri: "https://www.euipo.europa.eu/en/trade-marks", label: "Trade marks home" }],
     coverageTier: "FOUNDATIONAL",
     changeSensitivity: "HIGH",
     acquisition: {
@@ -115,9 +113,7 @@ export const EUIPO_SOURCE_COVERAGE_TARGETS = [
     family: "EXAMINATION_MANUAL",
     displayName: "EUIPO Trade Mark Guidelines",
     canonicalUri: "https://guidelines.euipo.europa.eu/",
-    entrypoints: [
-      { uri: "https://guidelines.euipo.europa.eu/", label: "EUIPO Guidelines" },
-    ],
+    entrypoints: [{ uri: "https://guidelines.euipo.europa.eu/", label: "EUIPO Guidelines" }],
     coverageTier: "FOUNDATIONAL",
     changeSensitivity: "HIGH",
     acquisition: {
@@ -241,8 +237,7 @@ export const EUIPO_SOURCE_COVERAGE_TARGETS = [
     id: "eu-euipo-manage-trade-mark",
     family: "MAINTENANCE",
     displayName: "EUIPO Manage a Trade Mark Application or Registration",
-    canonicalUri:
-      "https://www.euipo.europa.eu/en/trade-marks/after-applying/manage-my-application",
+    canonicalUri: "https://www.euipo.europa.eu/en/trade-marks/after-applying/manage-my-application",
     entrypoints: [
       {
         uri: "https://www.euipo.europa.eu/en/trade-marks/after-applying/manage-my-application",

@@ -9,6 +9,7 @@ import {
   type SourceCoverageTier,
   type SourceDefinition,
 } from "@markorbit/contracts";
+import { EUIPO_SOURCE_COVERAGE_TARGETS } from "./euipo-source-coverage";
 import { WIPO_SOURCE_COVERAGE_TARGETS } from "./wipo-source-coverage";
 
 const VERIFIED_AT = "2026-08-09T08:55:00Z";
@@ -375,10 +376,11 @@ export const US_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
-export { WIPO_SOURCE_COVERAGE_TARGETS };
+export { EUIPO_SOURCE_COVERAGE_TARGETS, WIPO_SOURCE_COVERAGE_TARGETS };
 export const SOURCE_COVERAGE_TARGETS = [
   ...US_SOURCE_COVERAGE_TARGETS,
   ...WIPO_SOURCE_COVERAGE_TARGETS,
+  ...EUIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
 
 export type SourceCoverageFilters = {
