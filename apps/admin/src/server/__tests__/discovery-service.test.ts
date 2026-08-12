@@ -266,7 +266,9 @@ describe("DiscoveryWorkflowService", () => {
     expect(secondExternal.source?.id).toBe(firstExternal.source?.id);
     expect(secondExternal.plan?.id).toBe(firstExternal.plan?.id);
     expect(sources.list({ sourceType: "WEB", limit: 100 }).total).toBe(2);
-    expect(firstExternal.source ? plans.listForSource(firstExternal.source.id) : []).toHaveLength(1);
+    expect(firstExternal.source ? plans.listForSource(firstExternal.source.id) : []).toHaveLength(
+      1,
+    );
 
     const peerProfile = firstExternal.source
       ? graph.getProfileBySourceId(firstExternal.source.id)
@@ -279,8 +281,12 @@ describe("DiscoveryWorkflowService", () => {
     expect(peerSnapshot?.summary.nodeKinds.PAGE).toBe(2);
     expect(peerSnapshot?.edges.filter((edge) => edge.kind === "CONTAINS")).toHaveLength(2);
 
-    const seedProfile = acceptedSeed.source ? graph.getProfileBySourceId(acceptedSeed.source.id) : null;
-    const seedSnapshot = acceptedSeed.source ? graph.snapshotBySourceId(acceptedSeed.source.id) : null;
+    const seedProfile = acceptedSeed.source
+      ? graph.getProfileBySourceId(acceptedSeed.source.id)
+      : null;
+    const seedSnapshot = acceptedSeed.source
+      ? graph.snapshotBySourceId(acceptedSeed.source.id)
+      : null;
     const outboundNode = seedProfile
       ? graph.findNodeByIdentity(seedProfile.id, "CANONICAL_URI", "https://peer.example/services")
       : null;
