@@ -29,7 +29,7 @@ describe("DiscoveryWorkflowService expansion lineage", () => {
           if (!batch.lineage?.parentSourceId) {
             return [
               {
-                candidateId: "cand_root00000000000000000000",
+                candidateId: "cand_111111111111111111111111",
                 locator: "https://root.example/trademarks",
                 discoveredAt: "2026-08-12T17:10:00.000Z",
                 status: "DISCOVERED" as const,
@@ -43,7 +43,7 @@ describe("DiscoveryWorkflowService expansion lineage", () => {
           if (seed?.startsWith("https://root.example")) {
             return [
               {
-                candidateId: "cand_peer00000000000000000000",
+                candidateId: "cand_222222222222222222222222",
                 locator: "https://peer.example/services",
                 discoveredAt: "2026-08-12T17:20:00.000Z",
                 status: "DISCOVERED" as const,
@@ -62,7 +62,7 @@ describe("DiscoveryWorkflowService expansion lineage", () => {
           if (seed?.startsWith("https://peer.example")) {
             return [
               {
-                candidateId: "cand_third0000000000000000000",
+                candidateId: "cand_333333333333333333333333",
                 locator: "https://third.example/rules",
                 discoveredAt: "2026-08-12T17:30:00.000Z",
                 status: "DISCOVERED" as const,
@@ -99,7 +99,7 @@ describe("DiscoveryWorkflowService expansion lineage", () => {
       maxExpansionGeneration: 2,
     });
     expect(rootRun.batch.batch.lineage).toEqual({ generation: 0 });
-    const rootAccepted = service.review("cand_root00000000000000000000", {
+    const rootAccepted = service.review("cand_111111111111111111111111", {
       decision: "ACCEPTED",
       reviewer: "operator-test",
     });
@@ -119,7 +119,7 @@ describe("DiscoveryWorkflowService expansion lineage", () => {
     });
     expect(rootExpansion.batch.batch.constraints?.maxExpansionGeneration).toBe(2);
 
-    const peerAccepted = service.review("cand_peer00000000000000000000", {
+    const peerAccepted = service.review("cand_222222222222222222222222", {
       decision: "ACCEPTED",
       reviewer: "operator-test",
     });
@@ -142,7 +142,7 @@ describe("DiscoveryWorkflowService expansion lineage", () => {
       rootSourceId: rootAccepted.source?.id,
     });
 
-    const thirdAccepted = service.review("cand_third0000000000000000000", {
+    const thirdAccepted = service.review("cand_333333333333333333333333", {
       decision: "ACCEPTED",
       reviewer: "operator-test",
     });
