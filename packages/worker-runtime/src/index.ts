@@ -20,6 +20,7 @@ export * from "./crawl4ai-subprocess-acquirer";
 export * from "./api-acquirer";
 export * from "./public-network-policy";
 export * from "./rss-acquirer";
+export * from "./github-acquirer";
 export * from "./http-controlled-collection-client";
 export * from "./controlled-collection-worker-runtime";
 export * from "./local-folder-acquirer";
