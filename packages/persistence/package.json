@@ -14,6 +14,7 @@
     "./source-graph": "./src/source-graph-registry.ts",
     "./source-coverage": "./src/source-coverage-catalog.ts",
     "./source-supply-health": "./src/source-supply-health.ts",
+    "./operations-readiness": "./src/operations-readiness.ts",
     "./source-intelligence": "./src/source-intelligence-registry.ts",
     "./source-intelligence-reviews": "./src/source-intelligence-review-registry.ts",
     "./source-intelligence-review-ownership": "./src/source-intelligence-review-ownership-registry.ts",
