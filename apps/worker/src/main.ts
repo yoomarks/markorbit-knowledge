@@ -6,6 +6,7 @@ import {
   HttpProductionConversionClient,
   LocalFolderArtifactAcquirer,
   ProductionConversionWorkerRuntime,
+  RssArtifactAcquirer,
 } from "@markorbit/worker-runtime";
 import { loadWorkerProcessConfig } from "./config";
 
@@ -41,10 +42,12 @@ async function main(): Promise<void> {
         })
       : config.collectionProvider === "api"
         ? new ApiArtifactAcquirer()
-        : new Crawl4AiSubprocessAcquirer({
-            requireEgressProxy: config.requireEgressProxy,
-            maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
-          });
+        : config.collectionProvider === "rss"
+          ? new RssArtifactAcquirer()
+          : new Crawl4AiSubprocessAcquirer({
+              requireEgressProxy: config.requireEgressProxy,
+              maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
+            });
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
