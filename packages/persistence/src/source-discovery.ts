@@ -1,5 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { SourceDiscoveryProvenance } from "@markorbit/contracts";
+import type {
+  SourceDiscoveryMethod,
+  SourceDiscoveryOrigin,
+  SourceDiscoveryProvenance,
+} from "@markorbit/contracts";
 import {
   SqliteSourceDiscoveryRepository as BaseSqliteSourceDiscoveryRepository,
   type CandidateReviewDecision,
@@ -35,12 +39,37 @@ export type {
 };
 export { DiscoveryBatchNotFoundError, SourceCandidateNotFoundError };
 
+function discoveryOriginFor(method: SourceDiscoveryMethod | undefined): SourceDiscoveryOrigin {
+  switch (method) {
+    case "HTML_LINK":
+      return "EXTERNAL_LINK";
+    case "SITEMAP":
+      return "SITEMAP";
+    case "FEED":
+      return "RSS_FEED";
+    case "CITATION":
+      return "CITATION";
+    case "SEED":
+    case "MANUAL":
+    case undefined:
+      return "MANUAL_SEED";
+  }
+}
+
+function discoveryEvidenceUrl(candidate: SourceCandidateRecord["candidate"]): string {
+  if (candidate.discoveryMethod === "SEED" || candidate.discoveryMethod === "MANUAL") {
+    return candidate.locator;
+  }
+  return candidate.discoveredFrom ?? candidate.locator;
+}
+
 /**
  * Production discovery repository.
  *
  * The existing discovery review ledger remains authoritative for candidate
- * lifecycle. This adapter adds only source-level discovery provenance when a
- * candidate is explicitly accepted into an already-created SourceDefinition.
+ * lifecycle. This adapter adds only source-level structural discovery
+ * provenance when a candidate is explicitly accepted into an already-created
+ * SourceDefinition.
  */
 export class SqliteSourceDiscoveryRepository extends BaseSqliteSourceDiscoveryRepository {
   private readonly sourceRegistryV2: SqliteSourceRegistryV2Repository;
@@ -59,15 +88,12 @@ export class SqliteSourceDiscoveryRepository extends BaseSqliteSourceDiscoveryRe
       return reviewed;
     }
 
-    const batch = this.getBatch(reviewed.batchId);
-    const seed = batch?.batch.seeds[0];
-    if (!batch || !seed) return reviewed;
-
+    const candidate = reviewed.candidate;
     const provenance: SourceDiscoveryProvenance = {
-      origin: "MANUAL_SEED",
-      discoveredAt: batch.batch.createdAt,
-      discoveredFromUrl: seed.locator,
-      evidenceUrl: seed.locator,
+      origin: discoveryOriginFor(candidate.discoveryMethod),
+      discoveredAt: candidate.discoveredAt,
+      ...(candidate.discoveredFrom ? { discoveredFromUrl: candidate.discoveredFrom } : {}),
+      evidenceUrl: discoveryEvidenceUrl(candidate),
     };
     this.sourceRegistryV2.recordDiscovery(reviewed.review.acceptedSourceId, provenance);
     return reviewed;
