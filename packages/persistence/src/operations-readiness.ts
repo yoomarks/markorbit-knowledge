@@ -8,10 +8,7 @@ import {
   ensureReadyPackageV2DeliverySubmissionRegistry,
   SqliteReadyPackageV2DeliverySubmissionRepository,
 } from "./ready-package-v2-delivery-submission";
-import {
-  DEFAULT_HEARTBEAT_FRESHNESS_MS,
-  ensureWorkerRegistry,
-} from "./worker-registry";
+import { DEFAULT_HEARTBEAT_FRESHNESS_MS, ensureWorkerRegistry } from "./worker-registry";
 
 export const OPERATIONS_READINESS_STATES = ["READY", "DEGRADED", "BLOCKED"] as const;
 export type OperationsReadinessState = (typeof OPERATIONS_READINESS_STATES)[number];
@@ -228,7 +225,9 @@ function workerMetrics(
       metrics.error += 1;
       continue;
     }
-    const heartbeatMs = row.heartbeat_received_at ? Date.parse(row.heartbeat_received_at) : Number.NaN;
+    const heartbeatMs = row.heartbeat_received_at
+      ? Date.parse(row.heartbeat_received_at)
+      : Number.NaN;
     if (
       !Number.isFinite(heartbeatMs) ||
       observedAt.getTime() - heartbeatMs > DEFAULT_HEARTBEAT_FRESHNESS_MS
@@ -300,8 +299,7 @@ function collectionMetrics(
     failedRuns24h,
     jobsPending: jobCounts.PENDING ?? 0,
     jobsLeased: jobCounts.LEASED ?? 0,
-    jobsRunning:
-      (jobCounts.RUNNING ?? 0) + (jobCounts.UPLOADING ?? 0) + (jobCounts.VERIFYING ?? 0),
+    jobsRunning: (jobCounts.RUNNING ?? 0) + (jobCounts.UPLOADING ?? 0) + (jobCounts.VERIFYING ?? 0),
     jobsRetry: jobCounts.RETRY ?? 0,
     jobsFailed24h: failedJobs24h,
     jobsDeadLetter: jobCounts.DEAD_LETTER ?? 0,
@@ -404,10 +402,7 @@ function readyPackageMetrics(
   return { verified, withoutSubmission };
 }
 
-function deliveryMetrics(
-  database: DatabaseSync,
-  workspaceId: string,
-): OperationsDeliveryMetrics {
+function deliveryMetrics(database: DatabaseSync, workspaceId: string): OperationsDeliveryMetrics {
   const result: OperationsDeliveryMetrics = {
     total: 0,
     safeToSubmit: 0,
@@ -629,7 +624,8 @@ export function deriveOperationsReadinessIssues(
     ACTION: 2,
   };
   return issues.sort(
-    (left, right) => order[left.severity] - order[right.severity] || left.code.localeCompare(right.code),
+    (left, right) =>
+      order[left.severity] - order[right.severity] || left.code.localeCompare(right.code),
   );
 }
 

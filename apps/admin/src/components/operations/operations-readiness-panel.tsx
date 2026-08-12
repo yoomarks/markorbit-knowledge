@@ -159,11 +159,17 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
         {error ? <p className="mt-3 text-xs text-amber-700">Last refresh failed: {error}</p> : null}
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Live operations metrics">
+      <section
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"
+        aria-label="Live operations metrics"
+      >
         {metrics.map((metric) => {
           const Icon = metric.icon;
           return (
-            <article key={metric.label} className="rounded-2xl border border-slate-200 bg-white p-4">
+            <article
+              key={metric.label}
+              className="rounded-2xl border border-slate-200 bg-white p-4"
+            >
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-slate-600">{metric.label}</p>
                 <span className="grid size-9 place-items-center rounded-xl bg-slate-100 text-slate-600">
@@ -186,8 +192,8 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
             {scheduler.activeAutomaticPlans.toLocaleString()} automatic plans
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            {scheduler.initialized.toLocaleString()} initialized · {scheduler.errors.toLocaleString()} error ·{" "}
-            {scheduler.overdue.toLocaleString()} overdue
+            {scheduler.initialized.toLocaleString()} initialized ·{" "}
+            {scheduler.errors.toLocaleString()} error · {scheduler.overdue.toLocaleString()} overdue
           </p>
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -196,7 +202,8 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
             {conversion.completed.toLocaleString()} completed
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            {conversion.failed24h.toLocaleString()} failed in 24h · {conversion.stalled.toLocaleString()} stalled
+            {conversion.failed24h.toLocaleString()} failed in 24h ·{" "}
+            {conversion.stalled.toLocaleString()} stalled
           </p>
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -205,7 +212,8 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
             {delivery.delivered.toLocaleString()} delivered
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            {delivery.outcomeUnknown.toLocaleString()} unknown · {delivery.consumerRejected.toLocaleString()} rejected ·{" "}
+            {delivery.outcomeUnknown.toLocaleString()} unknown ·{" "}
+            {delivery.consumerRejected.toLocaleString()} rejected ·{" "}
             {delivery.evidenceInconsistent.toLocaleString()} inconsistent
           </p>
         </article>
@@ -215,17 +223,22 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="font-semibold text-slate-950">Needs attention</h2>
           <p className="mt-1 text-xs text-slate-500">
-            Only durable control-plane state is shown here. No credentials, frozen request bodies, or downstream response bodies are exposed.
+            Only durable control-plane state is shown here. No credentials, frozen request bodies,
+            or downstream response bodies are exposed.
           </p>
         </div>
         {snapshot.issues.length === 0 ? (
           <div className="flex items-center gap-3 px-5 py-6 text-sm text-emerald-800">
-            <CheckCircle2 size={18} aria-hidden="true" /> No blocking or degraded operational conditions detected.
+            <CheckCircle2 size={18} aria-hidden="true" /> No blocking or degraded operational
+            conditions detected.
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
             {snapshot.issues.map((item) => (
-              <div key={item.code} className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-start">
+              <div
+                key={item.code}
+                className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-start"
+              >
                 <span
                   className={`inline-flex w-fit items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${severityClasses(item.severity)}`}
                 >

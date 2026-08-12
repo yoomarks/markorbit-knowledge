@@ -7,13 +7,15 @@ import { PageHeading } from "./page-heading";
 const operationalAreas = [
   {
     title: "Sources",
-    detail: "Review active and error-state SourceDefinitions before relying on new collection output.",
+    detail:
+      "Review active and error-state SourceDefinitions before relying on new collection output.",
     href: "/sources",
     icon: Database,
   },
   {
     title: "Collection",
-    detail: "Inspect durable CollectionRun and Job state, including retry and dead-letter boundaries.",
+    detail:
+      "Inspect durable CollectionRun and Job state, including retry and dead-letter boundaries.",
     href: "/runs",
     icon: Workflow,
   },

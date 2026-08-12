@@ -36,36 +36,36 @@ BLOCKED requires explicit operator review.
 
 The readiness projection deliberately distinguishes current problems from historical evidence.
 
-| Signal | Window / threshold | Reason |
-| --- | --- | --- |
-| Collection failures | last 24 hours | old failures remain auditable but do not permanently degrade current health |
-| Conversion failures | last 24 hours | same principle as collection failures |
-| Conversion stall | non-terminal and unchanged for more than 30 minutes | surfaces likely runtime/lease/verification stalls without mutating them |
-| Scheduler overdue | next-due slot more than 5 minutes overdue | tolerates normal claim/tick timing while surfacing a materially late plan |
+| Signal                     | Window / threshold                                         | Reason                                                                                      |
+| -------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Collection failures        | last 24 hours                                              | old failures remain auditable but do not permanently degrade current health                 |
+| Conversion failures        | last 24 hours                                              | same principle as collection failures                                                       |
+| Conversion stall           | non-terminal and unchanged for more than 30 minutes        | surfaces likely runtime/lease/verification stalls without mutating them                     |
+| Scheduler overdue          | next-due slot more than 5 minutes overdue                  | tolerates normal claim/tick timing while surfacing a materially late plan                   |
 | Worker heartbeat freshness | existing Worker Protocol threshold (90 seconds by default) | readiness mirrors the Worker registry definition rather than inventing a second health rule |
 
 These thresholds are code constants in `packages/persistence/src/operations-readiness.ts` and should be changed intentionally with tests and release notes.
 
 ## Issue handling
 
-| Issue code | Severity | Operator path | Required behavior |
-| --- | --- | --- | --- |
-| `DELIVERY_EVIDENCE_INCONSISTENT` | BLOCKED | Packages | Stop. Review frozen request metadata and append-only audit evidence before any network action. |
-| `DEAD_LETTER_JOBS` | BLOCKED | Execution Runs | Inspect the failed job evidence. Any retry must use the existing controlled retry boundary. |
-| `COLLECTION_BACKLOG_NO_WORKER` | BLOCKED | Workers | Restore an ACTIVE Worker with a fresh healthy heartbeat or explicitly reconfigure capacity. |
-| `SOURCE_ERRORS` | DEGRADED | Sources | Inspect affected SourceDefinitions before relying on new acquisition output. |
-| `WORKER_ERRORS` | DEGRADED | Workers | Inspect Worker diagnostics; restore healthy runtime state before new claims. |
-| `WORKERS_OFFLINE` | DEGRADED | Workers | Restart/reconnect the runtime or disable intentionally retired Workers. |
-| `RECENT_COLLECTION_FAILURES` | DEGRADED | Execution Runs | Inspect run/job evidence; do not invent an out-of-band retry. |
-| `RECENT_CONVERSION_FAILURES` | DEGRADED | Conversion Runs | Inspect ConversionRun failure evidence and converter/runtime diagnostics. |
-| `STALLED_CONVERSIONS` | DEGRADED | Conversion Runs | Check runtime/lease/verification evidence before intervention. |
-| `SCHEDULER_ERRORS` | DEGRADED | Collection Plans | Inspect durable scheduler error plus plan/connector configuration. |
-| `SCHEDULER_OVERDUE` | DEGRADED | Collection Plans | Verify Worker claim activity and scheduler state before manually dispatching anything. |
-| `DELIVERY_OUTCOME_UNKNOWN` | DEGRADED | Packages | Retry only the exact frozen V2 request through the existing K16 action. |
-| `DELIVERY_CONSUMER_REJECTED` | DEGRADED | Packages | Review rejection evidence; never silently rewrite or downgrade the request. |
-| `READY_PACKAGE_WITHOUT_SUBMISSION` | ACTION | Packages | Explicitly prepare the intended Core delivery. |
-| `DELIVERY_SAFE_TO_SUBMIT` | ACTION | Packages | Explicitly submit the already-frozen request. |
-| `DELIVERY_LOCAL_FINALIZATION_REQUIRED` | ACTION | Packages | Finalize locally only; no new network request. |
+| Issue code                             | Severity | Operator path    | Required behavior                                                                              |
+| -------------------------------------- | -------- | ---------------- | ---------------------------------------------------------------------------------------------- |
+| `DELIVERY_EVIDENCE_INCONSISTENT`       | BLOCKED  | Packages         | Stop. Review frozen request metadata and append-only audit evidence before any network action. |
+| `DEAD_LETTER_JOBS`                     | BLOCKED  | Execution Runs   | Inspect the failed job evidence. Any retry must use the existing controlled retry boundary.    |
+| `COLLECTION_BACKLOG_NO_WORKER`         | BLOCKED  | Workers          | Restore an ACTIVE Worker with a fresh healthy heartbeat or explicitly reconfigure capacity.    |
+| `SOURCE_ERRORS`                        | DEGRADED | Sources          | Inspect affected SourceDefinitions before relying on new acquisition output.                   |
+| `WORKER_ERRORS`                        | DEGRADED | Workers          | Inspect Worker diagnostics; restore healthy runtime state before new claims.                   |
+| `WORKERS_OFFLINE`                      | DEGRADED | Workers          | Restart/reconnect the runtime or disable intentionally retired Workers.                        |
+| `RECENT_COLLECTION_FAILURES`           | DEGRADED | Execution Runs   | Inspect run/job evidence; do not invent an out-of-band retry.                                  |
+| `RECENT_CONVERSION_FAILURES`           | DEGRADED | Conversion Runs  | Inspect ConversionRun failure evidence and converter/runtime diagnostics.                      |
+| `STALLED_CONVERSIONS`                  | DEGRADED | Conversion Runs  | Check runtime/lease/verification evidence before intervention.                                 |
+| `SCHEDULER_ERRORS`                     | DEGRADED | Collection Plans | Inspect durable scheduler error plus plan/connector configuration.                             |
+| `SCHEDULER_OVERDUE`                    | DEGRADED | Collection Plans | Verify Worker claim activity and scheduler state before manually dispatching anything.         |
+| `DELIVERY_OUTCOME_UNKNOWN`             | DEGRADED | Packages         | Retry only the exact frozen V2 request through the existing K16 action.                        |
+| `DELIVERY_CONSUMER_REJECTED`           | DEGRADED | Packages         | Review rejection evidence; never silently rewrite or downgrade the request.                    |
+| `READY_PACKAGE_WITHOUT_SUBMISSION`     | ACTION   | Packages         | Explicitly prepare the intended Core delivery.                                                 |
+| `DELIVERY_SAFE_TO_SUBMIT`              | ACTION   | Packages         | Explicitly submit the already-frozen request.                                                  |
+| `DELIVERY_LOCAL_FINALIZATION_REQUIRED` | ACTION   | Packages         | Finalize locally only; no new network request.                                                 |
 
 ## Frozen ReadyPackage V2 safety rules
 
