@@ -10,6 +10,21 @@ export interface SourceDiscoverySeed {
 }
 
 /**
+ * Structural lineage for a governed discovery batch.
+ *
+ * generation identifies the registered source generation being traversed:
+ * 0 is a root/manual seed source, 1 is a source discovered from generation 0,
+ * and so on. These fields describe acquisition lineage only; they do not imply
+ * semantic relatedness, authority, relevance or content meaning.
+ */
+export interface SourceDiscoveryLineage {
+  generation: number;
+  parentBatchId?: string;
+  parentSourceId?: string;
+  rootSourceId?: string;
+}
+
+/**
  * Operator-controlled bounds for one discovery run.
  *
  * maxCandidates bounds what may enter the human review queue, while maxFetches
@@ -17,6 +32,7 @@ export interface SourceDiscoverySeed {
  * structural expansion only: external URLs may enter the candidate queue when
  * explicitly enabled, but they are never fetched as part of the originating
  * website run. maxExternalCandidates independently caps that expansion.
+ * maxExpansionGeneration is the hard source-network generation ceiling.
  */
 export interface SourceDiscoveryConstraints {
   maxDepth?: number;
@@ -29,6 +45,7 @@ export interface SourceDiscoveryConstraints {
   discoverSitemaps?: boolean;
   discoverExternalLinks?: boolean;
   maxExternalCandidates?: number;
+  maxExpansionGeneration?: number;
 }
 
 export interface SourceDiscoveryBatch {
@@ -36,6 +53,7 @@ export interface SourceDiscoveryBatch {
   seeds: SourceDiscoverySeed[];
   createdAt: string;
   constraints?: SourceDiscoveryConstraints;
+  lineage?: SourceDiscoveryLineage;
 }
 
 export interface SourceCandidate {
