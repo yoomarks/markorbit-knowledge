@@ -6,6 +6,8 @@ import { getDiscoveryWorkflowService } from "@/server/discovery-service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type RouteContext = { params: Promise<{ id: string }> };
+
 function optionalInteger(value: unknown, field: string): number | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value !== "number" || !Number.isInteger(value)) {
@@ -30,23 +32,11 @@ function optionalStringArray(value: unknown, field: string): string[] | undefine
   return value;
 }
 
-export async function GET() {
+export async function POST(request: Request, context: RouteContext) {
   try {
-    return NextResponse.json(getDiscoveryWorkflowService().overview());
-  } catch (error) {
-    return apiError(error);
-  }
-}
-
-export async function POST(request: Request) {
-  try {
+    const { id } = await context.params;
     const body = requireRecord(await readJson(request));
-    if (typeof body.locator !== "string") {
-      throw new RegistryValidationError("locator is required");
-    }
-
-    const result = await getDiscoveryWorkflowService().start({
-      locator: body.locator,
+    const result = await getDiscoveryWorkflowService().expandSource(id, {
       maxDepth: optionalInteger(body.maxDepth, "maxDepth"),
       maxCandidates: optionalInteger(body.maxCandidates, "maxCandidates"),
       maxFetches: optionalInteger(body.maxFetches, "maxFetches"),
