@@ -15,6 +15,7 @@ export const SOURCE_DISCOVERY_ORIGINS = [
   "RSS_FEED",
   "CITATION",
   "RELATED_SOURCE",
+  "CORE_PROPOSAL",
 ] as const;
 
 export type SourceDiscoveryOrigin = (typeof SOURCE_DISCOVERY_ORIGINS)[number];

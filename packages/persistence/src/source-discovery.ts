@@ -63,6 +63,8 @@ function discoveryOriginFor(method: SourceDiscoveryMethod | undefined): SourceDi
       return "RSS_FEED";
     case "CITATION":
       return "CITATION";
+    case "CORE_PROPOSAL":
+      return "CORE_PROPOSAL";
     case "SEED":
     case "MANUAL":
     case undefined:
@@ -71,8 +73,12 @@ function discoveryOriginFor(method: SourceDiscoveryMethod | undefined): SourceDi
 }
 
 function discoveryEvidenceUrl(candidate: SourceCandidateRecord["candidate"]): string {
-  if (candidate.discoveryMethod === "SEED" || candidate.discoveryMethod === "MANUAL") {
-    return candidate.locator;
+  if (
+    candidate.discoveryMethod === "SEED" ||
+    candidate.discoveryMethod === "MANUAL" ||
+    candidate.discoveryMethod === "CORE_PROPOSAL"
+  ) {
+    return candidate.discoveredFrom ?? candidate.locator;
   }
   return candidate.discoveredFrom ?? candidate.locator;
 }
