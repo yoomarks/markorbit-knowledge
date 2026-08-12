@@ -24,6 +24,11 @@ describe("loadWorkerProcessConfig", () => {
     expect(config.collectionProvider).toBe("crawl4ai");
     expect(config.requireEgressProxy).toBe(true);
     expect(config.localFolderRoots).toEqual({});
+    expect(config.githubMaxFileBytes).toBe(2 * 1024 * 1024);
+    expect(config.githubMaxTotalBytes).toBe(50 * 1024 * 1024);
+    expect(config.githubMaxTreeEntries).toBe(20_000);
+    expect(config.githubMaxItems).toBe(500);
+    expect(config.githubMaxDepth).toBe(30);
     expect(config.conversionEnabled).toBe(false);
     expect(config.workspaceId).toBeUndefined();
   });
@@ -85,6 +90,38 @@ describe("loadWorkerProcessConfig", () => {
     expect(config.collectionProvider).toBe("rss");
     expect(config.localFolderRoots).toEqual({});
     expect(config).not.toHaveProperty("apiEndpointBindings");
+  });
+
+  it("enables a bounded GitHub provider without persisting its optional token", () => {
+    const config = loadWorkerProcessConfig(
+      env({
+        NODE_ENV: "production",
+        MARKORBIT_COLLECTION_PROVIDER: "github",
+        MARKORBIT_GITHUB_TOKEN: "github_pat_runtime_only",
+        MARKORBIT_GITHUB_MAX_FILE_BYTES: "4096",
+        MARKORBIT_GITHUB_MAX_TOTAL_BYTES: "16384",
+        MARKORBIT_GITHUB_MAX_TREE_ENTRIES: "1234",
+        MARKORBIT_GITHUB_MAX_ITEMS: "77",
+        MARKORBIT_GITHUB_MAX_DEPTH: "12",
+      }),
+    );
+    expect(config.collectionProvider).toBe("github");
+    expect(config.githubMaxFileBytes).toBe(4096);
+    expect(config.githubMaxTotalBytes).toBe(16384);
+    expect(config.githubMaxTreeEntries).toBe(1234);
+    expect(config.githubMaxItems).toBe(77);
+    expect(config.githubMaxDepth).toBe(12);
+    expect(config).not.toHaveProperty("githubToken");
+
+    expect(() =>
+      loadWorkerProcessConfig(
+        env({
+          MARKORBIT_COLLECTION_PROVIDER: "github",
+          MARKORBIT_GITHUB_MAX_FILE_BYTES: "8192",
+          MARKORBIT_GITHUB_MAX_TOTAL_BYTES: "4096",
+        }),
+      ),
+    ).toThrow(/MAX_TOTAL_BYTES/);
   });
 
   it("enables production conversion only with an explicit Workspace", () => {
@@ -156,6 +193,16 @@ describe("loadWorkerProcessConfig", () => {
         }),
       ).collectionProvider,
     ).toBe("rss");
+
+    expect(
+      loadWorkerProcessConfig(
+        env({
+          NODE_ENV: "production",
+          MARKORBIT_COLLECTION_PROVIDER: "github",
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0",
+        }),
+      ).collectionProvider,
+    ).toBe("github");
   });
 
   it("rejects missing credentials, unknown providers, and unsafe timing limits", () => {
@@ -171,6 +218,9 @@ describe("loadWorkerProcessConfig", () => {
     expect(() =>
       loadWorkerProcessConfig(env({ MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: "900000" })),
     ).toThrow(/MAX_COLLECTION_RUNTIME/);
+    expect(() =>
+      loadWorkerProcessConfig(env({ MARKORBIT_GITHUB_MAX_TREE_ENTRIES: "100001" })),
+    ).toThrow(/GITHUB_MAX_TREE_ENTRIES/);
     expect(() =>
       loadWorkerProcessConfig(
         env({
