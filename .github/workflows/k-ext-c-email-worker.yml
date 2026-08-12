@@ -1,0 +1,38 @@
+name: K-EXT-C Email Worker
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/k-ext-c-email-worker.yml"
+      - "workers/email/**"
+      - "apps/admin/src/server/email-production-connector.ts"
+      - "docs/tasks/K-EXT-C-EMAIL-WORKER-PRODUCTION-INGESTION.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  email-worker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Worker
+        run: python -m compileall -q workers/email
+      - name: Run Email Worker tests
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s workers/email/tests -p 'test_*.py' -v
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validate repository gates
+        run: pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
