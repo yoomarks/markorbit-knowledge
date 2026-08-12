@@ -32,7 +32,7 @@ Repository package version: **0.1.0**.
 
 The current v0.1 control-plane trunk is **freeze-ready** after the 2026-08-12 release-readiness closeout. K01-K16 and the K-EXT-A through K-EXT-E production/operations extensions form the completed architectural backbone for this release line.
 
-This does **not** mean every source/provider named in the original PRD v1.0 Draft is implemented. DATABASE and GITHUB connector breadth can be added later through the existing contracts without reopening the trunk architecture.
+This does **not** mean every source/provider named in the original PRD v1.0 Draft is implemented. DATABASE connector breadth can be added later through the existing contracts without reopening the trunk architecture.
 
 The principal external activation dependency is the dedicated **MarkOrbit Core ReadyPackage V2 receiver**. Knowledge keeps V2 outbound transport gated unless a dedicated V2 endpoint/protocol is explicitly configured; the missing Core-side receiver therefore blocks V2 production activation, not the internal Knowledge v0.1 freeze. V2 must never fall back to the frozen V1 consumer.
 
@@ -54,6 +54,7 @@ See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READI
 - production read-only IMAP Email Worker ingestion with secret exclusion and replay/cursor boundaries;
 - production governed HTTPS API Worker with runtime-only endpoint/auth bindings, DNS/IP SSRF fail-closed controls, pinned-IP TLS transport, bounded structured responses and safe logical provenance;
 - production governed RSS 2.0 / Atom 1.0 Worker with exact feed evidence, deterministic entry envelopes, stable RawArtifact version identity, shared public-network SSRF controls and bounded XML parsing;
+- production governed GitHub.com repository Worker with immutable commit/tree evidence, verified Git blob identity, stable per-file RawArtifact versioning, runtime-only optional PAT auth and bounded UTF-8 source ingestion;
 - durable automatic CollectionPlan scheduling for interval, cron and change-watch schedules;
 - claim-triggered scheduler materialization that reuses the existing execution ledger and `PAGE_UPDATE_CHECK` path instead of creating a second scheduler/diff system.
 
@@ -140,7 +141,7 @@ For v0.1 the supported backup contract is a **quiesced/cold coordinated snapshot
 
 The following are not blockers for the v0.1 trunk freeze:
 
-- additional DATABASE and GITHUB production connector implementations;
+- additional DATABASE production connector implementation;
 - automatic Vault conflict merge or general two-way synchronization;
 - a clustered persistence adapter or zero-downtime hot backup topology;
 - automatic ReadyPackage delivery retry;
@@ -160,7 +161,7 @@ pnpm dev
 
 The default Admin/control plane is `http://localhost:3000`.
 
-Use [.env.example](.env.example) for storage, Worker, Core intake, Vault, Local Folder, API, RSS and conversion configuration. Secrets must be injected at runtime and must not be committed.
+Use [.env.example](.env.example) for storage, Worker, Core intake, Vault, Local Folder, API, RSS, GitHub and conversion configuration. Secrets must be injected at runtime and must not be committed.
 
 ## Production Crawl4AI Worker
 
@@ -231,6 +232,7 @@ Normal pull-request validation covers formatting, lint, typecheck, tests and bui
 - [Crawl4AI Worker deployment and USPTO Golden Source](docs/operations/CRAWL4AI_WORKER_DEPLOYMENT.md)
 - [API Connector V1](docs/operations/API_CONNECTOR_V1.md)
 - [RSS Connector V1](docs/operations/RSS_CONNECTOR_V1.md)
+- [GitHub Connector V1](docs/operations/GITHUB_CONNECTOR_V1.md)
 - [USPTO Staging / Ready Package Runbook](docs/operations/USPTO_STAGING_READY_PACKAGE_RUNBOOK.md)
 
 ### Engineering decisions
