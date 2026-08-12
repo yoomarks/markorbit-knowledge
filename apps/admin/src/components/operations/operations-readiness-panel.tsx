@@ -41,9 +41,7 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchReadiness = useCallback(async () => {
     try {
       const response = await fetch(
         `/api/operations/readiness?workspaceId=${encodeURIComponent(workspaceId)}`,
@@ -51,6 +49,7 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
       );
       if (!response.ok) throw new Error(`Readiness request failed with HTTP ${response.status}`);
       setSnapshot((await response.json()) as OperationsReadinessSnapshot);
+      setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to load operations readiness");
     } finally {
@@ -58,9 +57,15 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
     }
   }, [workspaceId]);
 
+  const refresh = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    void fetchReadiness();
+  }, [fetchReadiness]);
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    void fetchReadiness();
+  }, [fetchReadiness]);
 
   const metrics = useMemo(() => {
     if (!snapshot) return [];
@@ -116,7 +121,7 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
         <p className="mt-2 text-sm text-rose-800">{error ?? "Unknown readiness error"}</p>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={refresh}
           className="mt-4 inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-900"
         >
           <RefreshCw size={15} aria-hidden="true" /> Retry
@@ -149,7 +154,7 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
           <button
             type="button"
             disabled={loading}
-            onClick={() => void load()}
+            onClick={refresh}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} aria-hidden="true" />
