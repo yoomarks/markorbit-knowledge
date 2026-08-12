@@ -32,29 +32,30 @@ describe("discovery candidate intelligence", () => {
     expect(result.reasonCodes).toContain("ROBOTS_BLOCKED");
   });
 
-  it("persists intelligence into candidate metadata without changing review state", () => {
-    const candidate = enrichDiscoveryCandidate({
+  it("keeps the legacy enrichment adapter structural-only", () => {
+    const input = {
       candidateId: "cand_test",
       locator: "https://example.test/forms/trademark-fees.pdf",
       discoveredAt: "2026-08-08T00:00:00Z",
-      status: "DISCOVERED",
-      discoveryMethod: "SITEMAP",
+      status: "DISCOVERED" as const,
+      discoveryMethod: "SITEMAP" as const,
       depth: 1,
       metadata: {
         kind: "DOCUMENT",
         robotsAllowed: true,
       },
-    });
+    };
+    const candidate = enrichDiscoveryCandidate(input);
 
+    expect(candidate).toBe(input);
     expect(candidate.status).toBe("DISCOVERED");
-    expect(candidate.metadata).toMatchObject({
+    expect(candidate.metadata).toEqual({
       kind: "DOCUMENT",
       robotsAllowed: true,
-      reviewPriority: "HIGH",
-      intelligenceVersion: "deterministic-v1",
     });
-    expect(candidate.metadata?.reasonCodes).toEqual(
-      expect.arrayContaining(["FEE_SIGNAL", "FORM_SIGNAL", "DOCUMENT_SIGNAL", "SITEMAP_SIGNAL"]),
-    );
+    expect(candidate.metadata).not.toHaveProperty("topic");
+    expect(candidate.metadata).not.toHaveProperty("relevanceScore");
+    expect(candidate.metadata).not.toHaveProperty("reviewPriority");
+    expect(candidate.metadata).not.toHaveProperty("intelligenceVersion");
   });
 });
