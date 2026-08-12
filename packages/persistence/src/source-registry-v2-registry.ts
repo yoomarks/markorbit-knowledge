@@ -129,7 +129,9 @@ export class SqliteSourceRegistryV2Repository implements SourceRegistryV2Reposit
   get(sourceId: string): SourceRegistryV2Record | null {
     const normalizedSourceId = requireSourceId(sourceId, "sourceId");
     const record = this.database
-      .prepare("SELECT source_id, parent_source_id FROM source_registry_v2_records WHERE source_id = ?")
+      .prepare(
+        "SELECT source_id, parent_source_id FROM source_registry_v2_records WHERE source_id = ?",
+      )
       .get(normalizedSourceId) as
       | { source_id: string; parent_source_id: string | null }
       | undefined;
@@ -169,7 +171,9 @@ export class SqliteSourceRegistryV2Repository implements SourceRegistryV2Reposit
       .map((row) => {
         const value = row as Record<string, unknown>;
         return {
-          relationshipType: String(value.relationship_type) as SourceRelationship["relationshipType"],
+          relationshipType: String(
+            value.relationship_type,
+          ) as SourceRelationship["relationshipType"],
           sourceId: String(value.source_id),
           relatedSourceId: String(value.related_source_id),
         } satisfies SourceRelationship;
@@ -199,7 +203,9 @@ export class SqliteSourceRegistryV2Repository implements SourceRegistryV2Reposit
     if (normalizedParent) this.requireRegisteredSource(normalizedParent);
 
     if (!SOURCE_DISCOVERY_ORIGINS.includes(provenance.origin)) {
-      throw new RegistryValidationError(`Unsupported source discovery origin: ${provenance.origin}`);
+      throw new RegistryValidationError(
+        `Unsupported source discovery origin: ${provenance.origin}`,
+      );
     }
     const normalizedProvenance: SourceDiscoveryProvenance = {
       origin: provenance.origin,
@@ -221,7 +227,11 @@ export class SqliteSourceRegistryV2Repository implements SourceRegistryV2Reposit
     const existing = this.database
       .prepare("SELECT parent_source_id FROM source_registry_v2_records WHERE source_id = ?")
       .get(normalizedSourceId) as { parent_source_id: string | null } | undefined;
-    if (existing?.parent_source_id && normalizedParent && existing.parent_source_id !== normalizedParent) {
+    if (
+      existing?.parent_source_id &&
+      normalizedParent &&
+      existing.parent_source_id !== normalizedParent
+    ) {
       throw new RegistryConflictError(
         "SOURCE_REGISTRY_V2_PARENT_CONFLICT",
         `Source ${normalizedSourceId} already has parent ${existing.parent_source_id}`,
