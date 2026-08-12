@@ -45,18 +45,12 @@ export { DiscoveryBatchNotFoundError, SourceCandidateNotFoundError };
 export class SqliteSourceDiscoveryRepository extends BaseSqliteSourceDiscoveryRepository {
   private readonly sourceRegistryV2: SqliteSourceRegistryV2Repository;
 
-  constructor(
-    database: DatabaseSync,
-    clock: () => Date = () => new Date(),
-  ) {
+  constructor(database: DatabaseSync, clock: () => Date = () => new Date()) {
     super(database, clock);
     this.sourceRegistryV2 = new SqliteSourceRegistryV2Repository(database, clock);
   }
 
-  override reviewCandidate(
-    candidateId: string,
-    input: ReviewCandidateInput,
-  ): SourceCandidateRecord {
+  override reviewCandidate(candidateId: string, input: ReviewCandidateInput): SourceCandidateRecord {
     const reviewed = super.reviewCandidate(candidateId, input);
     if (input.decision !== "ACCEPTED" || !reviewed.review?.acceptedSourceId) {
       return reviewed;
