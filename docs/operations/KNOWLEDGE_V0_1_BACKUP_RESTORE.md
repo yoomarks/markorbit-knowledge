@@ -8,12 +8,12 @@ It intentionally specifies a **quiesced/cold backup**. It does not claim online/
 
 A recoverable Knowledge snapshot consists of coordinated copies of the following state.
 
-| State | Default when not overridden | Configuration |
-| --- | --- | --- |
-| SQLite control-plane database | `.data/markorbit-knowledge.sqlite` | `MARKORBIT_KNOWLEDGE_DB_PATH` |
-| RawArtifact CAS | `.data/artifacts` | `MARKORBIT_ARTIFACT_STORE_PATH` |
-| Staging CAS | `.data/staging` | `MARKORBIT_STAGING_STORE_PATH` |
-| Obsidian / Vault files | deployment-specific | `MARKORBIT_OBSIDIAN_VAULT_ROOT` |
+| State                         | Default when not overridden        | Configuration                   |
+| ----------------------------- | ---------------------------------- | ------------------------------- |
+| SQLite control-plane database | `.data/markorbit-knowledge.sqlite` | `MARKORBIT_KNOWLEDGE_DB_PATH`   |
+| RawArtifact CAS               | `.data/artifacts`                  | `MARKORBIT_ARTIFACT_STORE_PATH` |
+| Staging CAS                   | `.data/staging`                    | `MARKORBIT_STAGING_STORE_PATH`  |
+| Obsidian / Vault files        | deployment-specific                | `MARKORBIT_OBSIDIAN_VAULT_ROOT` |
 
 The database contains registry, execution, Worker, conversion, scheduler, Vault evidence, ReadyPackage and delivery/reconciliation state. The CAS directories contain immutable bytes referenced by that metadata. A database-only backup is therefore not a complete Knowledge backup.
 
