@@ -129,7 +129,10 @@ export class ExpandingWebsiteDiscoveryProvider implements SourceDiscoveryProvide
     const fetchesPerSeed = Math.floor(externalFetchBudget / input.seeds.length);
 
     for (const seed of input.seeds) {
-      if (external.length >= externalCandidateBudget || fetchesPerSeed < EXTERNAL_FETCHES_PER_SEED) {
+      if (
+        external.length >= externalCandidateBudget ||
+        fetchesPerSeed < EXTERNAL_FETCHES_PER_SEED
+      ) {
         break;
       }
 
