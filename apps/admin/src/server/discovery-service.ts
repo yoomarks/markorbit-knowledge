@@ -192,7 +192,7 @@ function belongsToOrigin(locator: string, origin: string): boolean {
   return websiteOrigin(locator) === origin;
 }
 
-function extensionString(source: SourceDefinition, key: string): string | undefined {
+function extensionString(source: SourceDefinition, key: `x-${string}`): string | undefined {
   const value = source.extensions?.[key];
   return typeof value === "string" && value.trim() ? value : undefined;
 }
