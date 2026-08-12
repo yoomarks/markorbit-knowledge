@@ -104,11 +104,7 @@ export function OperationsReadinessPanel({ snapshot }: { snapshot: OperationsRea
             onClick={() => startRefresh(() => router.refresh())}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
           >
-            <RefreshCw
-              size={15}
-              className={refreshing ? "animate-spin" : ""}
-              aria-hidden="true"
-            />
+            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />
             Refresh
           </button>
         </div>
