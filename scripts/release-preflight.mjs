@@ -64,10 +64,9 @@ if (rootPackage.engines?.node !== ">=22 <25") {
   pass("Node support boundary remains >=22 <25");
 }
 
-const workspacePackages = [...new Set([
-  ...collectPackageJsons("apps"),
-  ...collectPackageJsons("packages"),
-])].sort();
+const workspacePackages = [
+  ...new Set([...collectPackageJsons("apps"), ...collectPackageJsons("packages")]),
+].sort();
 for (const path of workspacePackages) {
   const pkg = readJson(path);
   if (pkg.version !== expectedVersion) {
@@ -75,7 +74,9 @@ for (const path of workspacePackages) {
   }
 }
 if (!workspacePackages.length) fail("no workspace packages discovered");
-else if (!failures.some((item) => item.includes("does not match") && item.includes("package.json"))) {
+else if (
+  !failures.some((item) => item.includes("does not match") && item.includes("package.json"))
+) {
   pass(`${workspacePackages.length} workspace package versions match ${expectedVersion}`);
 }
 
@@ -92,9 +93,15 @@ for (const path of requiredFiles) requireFile(path);
 const textAssertions = [
   ["README.md", `Repository package version: **${expectedVersion}**`],
   ["README.md", "freeze-ready"],
-  ["docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md", `Release line: repository package version \`${expectedVersion}\``],
+  [
+    "docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md",
+    `Release line: repository package version \`${expectedVersion}\``,
+  ],
   ["CHANGELOG.md", `## [${expectedVersion}] - 2026-08-12`],
-  ["docs/release/KNOWLEDGE_V0_1_RELEASE_CLOSEOUT_2026-08-12.md", `Release version: \`${expectedVersion}\``],
+  [
+    "docs/release/KNOWLEDGE_V0_1_RELEASE_CLOSEOUT_2026-08-12.md",
+    `Release version: \`${expectedVersion}\``,
+  ],
 ];
 for (const [path, expected] of textAssertions) {
   if (!existsSync(join(root, path))) continue;
@@ -117,7 +124,9 @@ try {
     .split(/\r?\n/u)
     .filter(Boolean);
 } catch (error) {
-  fail(`unable to inspect tracked files: ${error instanceof Error ? error.message : String(error)}`);
+  fail(
+    `unable to inspect tracked files: ${error instanceof Error ? error.message : String(error)}`,
+  );
 }
 const forbiddenTracked = trackedFiles.filter(
   (path) =>
@@ -145,7 +154,9 @@ for (const entry of readdirSync(persistenceDirectory)) {
     migrationIds.set(id, locations);
   }
 }
-const duplicateMigrations = [...migrationIds.entries()].filter(([, locations]) => locations.length > 1);
+const duplicateMigrations = [...migrationIds.entries()].filter(
+  ([, locations]) => locations.length > 1,
+);
 if (duplicateMigrations.length) {
   for (const [id, locations] of duplicateMigrations) {
     fail(`duplicate migration id ${id}: ${locations.join(", ")}`);

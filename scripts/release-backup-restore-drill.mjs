@@ -57,9 +57,7 @@ try {
     throw new Error(`restored SQLite integrity_check failed: ${JSON.stringify(integrity)}`);
   }
   const row = restoredDatabase
-    .prepare(
-      "SELECT release_version, raw_sha256, staging_sha256 FROM release_probe WHERE id = ?",
-    )
+    .prepare("SELECT release_version, raw_sha256, staging_sha256 FROM release_probe WHERE id = ?")
     .get("cold-backup-drill");
   restoredDatabase.close();
 
@@ -75,7 +73,8 @@ try {
     join(restored, "staging", "sha256", "bb", `${stagingDigest}.md`),
   );
   if (sha256(restoredRaw) !== rawDigest) throw new Error("restored RawArtifact CAS hash mismatch");
-  if (sha256(restoredStaging) !== stagingDigest) throw new Error("restored Staging CAS hash mismatch");
+  if (sha256(restoredStaging) !== stagingDigest)
+    throw new Error("restored Staging CAS hash mismatch");
 
   console.log("Knowledge v0.1 cold backup/restore drill passed:");
   console.log("  ✓ SQLite closed before coordinated copy");
