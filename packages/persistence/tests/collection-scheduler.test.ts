@@ -249,9 +249,9 @@ describe("Collection scheduler runtime", () => {
     );
     const tick = secondScheduler.tick();
     expect(tick.dispatched).toBe(1);
-    expect(new SqliteExecutionLedgerRepository(secondDatabase).list({ planId: plan.plan.id }).total).toBe(
-      1,
-    );
+    expect(
+      new SqliteExecutionLedgerRepository(secondDatabase).list({ planId: plan.plan.id }).total,
+    ).toBe(1);
     expect(secondScheduler.getState(plan.plan.id).nextDueAt).toBe("2026-08-12T03:00:00.000Z");
     secondDatabase.close();
   });

@@ -39,8 +39,7 @@ export const COLLECTION_SCHEDULER_RUNTIME_STATES = [
   "SCHEDULED",
   "ERROR",
 ] as const;
-export type CollectionSchedulerRuntimeState =
-  (typeof COLLECTION_SCHEDULER_RUNTIME_STATES)[number];
+export type CollectionSchedulerRuntimeState = (typeof COLLECTION_SCHEDULER_RUNTIME_STATES)[number];
 
 export type CollectionScheduleState = {
   planId: string;
@@ -151,7 +150,10 @@ function scheduleFingerprint(schedule: CollectionSchedule): string {
 
 function parsePositiveSeconds(value: number, field: string): number {
   if (!Number.isSafeInteger(value) || value <= 0) {
-    throw schedulerConflict("SCHEDULER_INVALID_INTERVAL", `${field} must be a positive safe integer`);
+    throw schedulerConflict(
+      "SCHEDULER_INVALID_INTERVAL",
+      `${field} must be a positive safe integer`,
+    );
   }
   const milliseconds = value * 1_000;
   if (!Number.isSafeInteger(milliseconds)) {
@@ -271,7 +273,10 @@ function localParts(formatter: Intl.DateTimeFormat, date: Date) {
   const hour = hourValue === 24 ? 0 : hourValue;
   const minute = Number(parts.minute);
   if ([year, month, day, hour, minute].some((value) => !Number.isInteger(value))) {
-    throw schedulerConflict("SCHEDULER_TIMEZONE_FORMAT_ERROR", "Unable to resolve cron timezone parts");
+    throw schedulerConflict(
+      "SCHEDULER_TIMEZONE_FORMAT_ERROR",
+      "Unable to resolve cron timezone parts",
+    );
   }
   const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
   return { year, month, day, hour, minute, dayOfWeek };
@@ -317,7 +322,9 @@ export function nextScheduledAt(schedule: CollectionSchedule, after: Date): Date
     case "MANUAL":
       return null;
     case "INTERVAL":
-      return new Date(after.getTime() + parsePositiveSeconds(schedule.intervalSeconds, "intervalSeconds"));
+      return new Date(
+        after.getTime() + parsePositiveSeconds(schedule.intervalSeconds, "intervalSeconds"),
+      );
     case "CHANGE_WATCH":
       return new Date(
         after.getTime() + parsePositiveSeconds(schedule.pollIntervalSeconds, "pollIntervalSeconds"),
@@ -329,7 +336,8 @@ export function nextScheduledAt(schedule: CollectionSchedule, after: Date): Date
 
 function nextFutureScheduledAt(schedule: CollectionSchedule, slot: Date, now: Date): Date | null {
   if (schedule.mode === "MANUAL") return null;
-  if (schedule.mode === "CRON") return nextCronOccurrence(schedule.expression, schedule.timezone, now);
+  if (schedule.mode === "CRON")
+    return nextCronOccurrence(schedule.expression, schedule.timezone, now);
   const interval =
     schedule.mode === "INTERVAL"
       ? parsePositiveSeconds(schedule.intervalSeconds, "intervalSeconds")
@@ -369,7 +377,9 @@ function parseConnector(value: unknown): ConnectorManifest {
 function parseRun(value: unknown): CollectionRun {
   const parsed = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
   if (!isCollectionRun(parsed)) {
-    throw new RegistryValidationError("Persisted CollectionRun no longer satisfies Execution Contract v1");
+    throw new RegistryValidationError(
+      "Persisted CollectionRun no longer satisfies Execution Contract v1",
+    );
   }
   return parsed;
 }
@@ -405,8 +415,7 @@ function loadConnector(database: DatabaseSync, source: SourceDefinition): Connec
        WHERE connector_id = ? AND version = ?`,
     )
     .get(source.connector.connectorId, source.connector.version) as
-    | { document_json: string }
-    | undefined;
+    { document_json: string } | undefined;
   if (!row) {
     throw schedulerConflict(
       "SCHEDULER_CONNECTOR_NOT_FOUND",
@@ -435,10 +444,16 @@ function validateScheduledDispatch(
     throw schedulerConflict("SCHEDULER_PLAN_NOT_ACTIVE", "Only an active plan can be scheduled");
   }
   if (plan.schedule.mode === "MANUAL") {
-    throw schedulerConflict("SCHEDULER_MANUAL_PLAN", "Manual plans are not automatically scheduled");
+    throw schedulerConflict(
+      "SCHEDULER_MANUAL_PLAN",
+      "Manual plans are not automatically scheduled",
+    );
   }
   if (source.status !== "ACTIVE") {
-    throw schedulerConflict("SCHEDULER_SOURCE_NOT_ACTIVE", "Scheduled dispatch requires an active source");
+    throw schedulerConflict(
+      "SCHEDULER_SOURCE_NOT_ACTIVE",
+      "Scheduled dispatch requires an active source",
+    );
   }
   if (connector.status !== "ACTIVE") {
     throw schedulerConflict(
@@ -524,7 +539,10 @@ function errorFields(error: unknown): { code: string; message: string } {
   const code =
     error instanceof RegistryError
       ? error.code
-      : typeof error === "object" && error !== null && "code" in error && typeof error.code === "string"
+      : typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          typeof error.code === "string"
         ? error.code
         : "SCHEDULER_INTERNAL_ERROR";
   const rawMessage = error instanceof Error ? error.message : String(error);
@@ -549,7 +567,10 @@ function rowFromDatabase(value: Record<string, unknown>): PersistedScheduleState
   };
 }
 
-function publicState(plan: CollectionPlan, row: PersistedScheduleState | null): CollectionScheduleState {
+function publicState(
+  plan: CollectionPlan,
+  row: PersistedScheduleState | null,
+): CollectionScheduleState {
   const fingerprint = scheduleFingerprint(plan.schedule);
   if (plan.schedule.mode === "MANUAL") {
     return {
@@ -578,8 +599,7 @@ function publicState(plan: CollectionPlan, row: PersistedScheduleState | null): 
     workspaceId: plan.workspaceId,
     scheduleMode: plan.schedule.mode,
     scheduleFingerprint: row.scheduleFingerprint,
-    runtimeState:
-      plan.status !== "ACTIVE" ? "PAUSED" : row.lastErrorCode ? "ERROR" : "SCHEDULED",
+    runtimeState: plan.status !== "ACTIVE" ? "PAUSED" : row.lastErrorCode ? "ERROR" : "SCHEDULED",
     nextDueAt: row.nextDueAt,
     ...(row.lastSlotAt ? { lastSlotAt: row.lastSlotAt } : {}),
     ...(row.lastTriggeredAt ? { lastTriggeredAt: row.lastTriggeredAt } : {}),
@@ -656,7 +676,11 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
     return row ? rowFromDatabase(row) : null;
   }
 
-  private writeScheduleError(plan: CollectionPlan, now: Date, error: unknown): PersistedScheduleState {
+  private writeScheduleError(
+    plan: CollectionPlan,
+    now: Date,
+    error: unknown,
+  ): PersistedScheduleState {
     if (plan.schedule.mode === "MANUAL") {
       throw new RegistryValidationError("Manual plans do not have scheduler state");
     }
@@ -755,12 +779,7 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
     const connector = loadConnector(this.database, source);
     const jobType = validateScheduledDispatch(plan, source, connector);
     const idempotencyKey = scheduledSlotIdempotencyKey(plan.id, slot);
-    const replay = existingScheduledRun(
-      this.database,
-      plan.workspaceId,
-      plan.id,
-      idempotencyKey,
-    );
+    const replay = existingScheduledRun(this.database, plan.workspaceId, plan.id, idempotencyKey);
     if (replay) return replay;
 
     const timestamp = now.toISOString();
@@ -809,7 +828,9 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
       updatedAt: timestamp,
     };
     if (!isCollectionRun(run) || !isJob(job)) {
-      throw new RegistryValidationError("Scheduled dispatch does not satisfy Execution Contract v1");
+      throw new RegistryValidationError(
+        "Scheduled dispatch does not satisfy Execution Contract v1",
+      );
     }
 
     this.database.exec("BEGIN IMMEDIATE;");
@@ -888,7 +909,8 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
   ): PersistedScheduleState {
     const slot = new Date(expectedSlot);
     const next = nextFutureScheduledAt(plan.schedule, slot, now);
-    if (!next) throw new RegistryValidationError("Automatic schedule did not produce a future slot");
+    if (!next)
+      throw new RegistryValidationError("Automatic schedule did not produce a future slot");
     const timestamp = now.toISOString();
     const result = this.database
       .prepare(
@@ -911,7 +933,10 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
     if (Number(result.changes) === 0) {
       const current = this.stateRow(plan.id);
       if (!current) {
-        throw schedulerConflict("SCHEDULER_STATE_LOST", "Scheduler state disappeared during dispatch");
+        throw schedulerConflict(
+          "SCHEDULER_STATE_LOST",
+          "Scheduler state disappeared during dispatch",
+        );
       }
       return current;
     }

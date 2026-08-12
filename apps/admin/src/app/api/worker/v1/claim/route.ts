@@ -12,7 +12,8 @@ function schedulerFailure(error: unknown) {
     typeof error === "object" && error !== null && "code" in error && typeof error.code === "string"
       ? error.code
       : "SCHEDULER_TICK_FAILED";
-  const message = error instanceof Error ? error.message.slice(0, 500) : "Unknown scheduler tick failure";
+  const message =
+    error instanceof Error ? error.message.slice(0, 500) : "Unknown scheduler tick failure";
   return { code, message };
 }
 
