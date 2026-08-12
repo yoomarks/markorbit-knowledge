@@ -282,10 +282,14 @@ export class SqliteSourceRegistryV2Repository implements SourceRegistryV2Reposit
     this.requireRegisteredSource(sourceId);
     this.requireRegisteredSource(relatedSourceId);
 
-    const existing = this.get(sourceId);
-    if (!existing) {
-      throw new RegistryNotFoundError(sourceId);
-    }
+    const timestamp = this.clock().toISOString();
+    this.database
+      .prepare(
+        `INSERT OR IGNORE INTO source_registry_v2_records (
+           source_id, parent_source_id, created_at, updated_at
+         ) VALUES (?, NULL, ?, ?)`,
+      )
+      .run(sourceId, timestamp, timestamp);
 
     this.database
       .prepare(
@@ -296,7 +300,7 @@ export class SqliteSourceRegistryV2Repository implements SourceRegistryV2Reposit
       .run(sourceId, relationship.relationshipType, relatedSourceId);
     this.database
       .prepare("UPDATE source_registry_v2_records SET updated_at = ? WHERE source_id = ?")
-      .run(this.clock().toISOString(), sourceId);
+      .run(timestamp, sourceId);
 
     return this.get(sourceId)!;
   }
