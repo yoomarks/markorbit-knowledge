@@ -2,11 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE, SqliteSourceRepository, openRegistryDatabase } from "../src/index";
 import { SqliteSourceRegistryV2Repository } from "../src/source-registry-v2-registry";
 
-function createSource(
-  sources: SqliteSourceRepository,
-  slug: string,
-  uri: string,
-) {
+function createSource(sources: SqliteSourceRepository, slug: string, uri: string) {
   return sources.create({
     workspaceId: DEFAULT_WORKSPACE.id,
     name: slug,
@@ -86,7 +82,9 @@ describe("SqliteSourceRegistryV2Repository", () => {
     expect(() => registry.recordDiscovery(second.id, provenance, second.id)).toThrow(/own parent/i);
 
     registry.recordDiscovery(second.id, provenance, first.id);
-    expect(() => registry.recordDiscovery(second.id, provenance, third.id)).toThrow(/already has parent/i);
+    expect(() => registry.recordDiscovery(second.id, provenance, third.id)).toThrow(
+      /already has parent/i,
+    );
     expect(() =>
       registry.addRelationship({
         relationshipType: "REFERENCES",
