@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useTransition } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -36,39 +37,11 @@ function issueIcon(severity: OperationsIssueSeverity) {
   return <CircleX size={17} aria-hidden="true" />;
 }
 
-export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string }) {
-  const [snapshot, setSnapshot] = useState<OperationsReadinessSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchReadiness = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `/api/operations/readiness?workspaceId=${encodeURIComponent(workspaceId)}`,
-        { cache: "no-store" },
-      );
-      if (!response.ok) throw new Error(`Readiness request failed with HTTP ${response.status}`);
-      setSnapshot((await response.json()) as OperationsReadinessSnapshot);
-      setError(null);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to load operations readiness");
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId]);
-
-  const refresh = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    void fetchReadiness();
-  }, [fetchReadiness]);
-
-  useEffect(() => {
-    void fetchReadiness();
-  }, [fetchReadiness]);
+export function OperationsReadinessPanel({ snapshot }: { snapshot: OperationsReadinessSnapshot }) {
+  const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
 
   const metrics = useMemo(() => {
-    if (!snapshot) return [];
     const { sources, workers, collection, conversion, readyPackages, delivery } = snapshot.metrics;
     return [
       {
@@ -104,32 +77,6 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
     ] as const;
   }, [snapshot]);
 
-  if (loading && !snapshot) {
-    return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-        Loading live operations readiness…
-      </section>
-    );
-  }
-
-  if (!snapshot) {
-    return (
-      <section className="rounded-2xl border border-rose-200 bg-rose-50 p-6">
-        <div className="flex items-center gap-2 font-medium text-rose-900">
-          <CircleX size={18} aria-hidden="true" /> Operations readiness unavailable
-        </div>
-        <p className="mt-2 text-sm text-rose-800">{error ?? "Unknown readiness error"}</p>
-        <button
-          type="button"
-          onClick={refresh}
-          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-900"
-        >
-          <RefreshCw size={15} aria-hidden="true" /> Retry
-        </button>
-      </section>
-    );
-  }
-
   const { scheduler, conversion, delivery } = snapshot.metrics;
 
   return (
@@ -153,15 +100,18 @@ export function OperationsReadinessPanel({ workspaceId }: { workspaceId: string 
           </div>
           <button
             type="button"
-            disabled={loading}
-            onClick={refresh}
+            disabled={refreshing}
+            onClick={() => startRefresh(() => router.refresh())}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
           >
-            <RefreshCw size={15} className={loading ? "animate-spin" : ""} aria-hidden="true" />
+            <RefreshCw
+              size={15}
+              className={refreshing ? "animate-spin" : ""}
+              aria-hidden="true"
+            />
             Refresh
           </button>
         </div>
-        {error ? <p className="mt-3 text-xs text-amber-700">Last refresh failed: {error}</p> : null}
       </section>
 
       <section
