@@ -1,0 +1,146 @@
+name: API Connector Hardening Format Once
+
+on:
+  push:
+    branches:
+      - codex/connector-api-v1
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/connector-api-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply final hardening
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          api = Path('packages/worker-runtime/src/api-acquirer.ts')
+          text = api.read_text()
+          marker = 'function normalizeBinding(bindingId: string, value: unknown): ApiEndpointBinding {'
+          helper = '''function normalizedEndpointHostname(url: URL): string {
+            const hostname = url.hostname;
+            return hostname.startsWith("[") && hostname.endsWith("]")
+              ? hostname.slice(1, -1)
+              : hostname;
+          }
+
+          '''
+          if 'function normalizedEndpointHostname' not in text:
+            if marker not in text:
+              raise SystemExit('normalizeBinding marker missing')
+            text = text.replace(marker, helper + marker, 1)
+          text = text.replace(
+            'url.hostname.toLowerCase() === "localhost"',
+            'normalizedEndpointHostname(url).toLowerCase() === "localhost"',
+            1,
+          )
+          text = text.replace(
+            'url.hostname.toLowerCase().endsWith(".localhost")',
+            'normalizedEndpointHostname(url).toLowerCase().endsWith(".localhost")',
+            1,
+          )
+          endpoint = '    const endpoint = new URL(binding.baseUrl);\n'
+          if 'const endpointHostname = normalizedEndpointHostname(endpoint);' not in text:
+            if endpoint not in text:
+              raise SystemExit('endpoint marker missing')
+            text = text.replace(
+              endpoint,
+              endpoint + '    const endpointHostname = normalizedEndpointHostname(endpoint);\n',
+              1,
+            )
+          for old, new in [
+            ('this.resolver(endpoint.hostname)', 'this.resolver(endpointHostname)'),
+            ('hostname: endpoint.hostname', 'hostname: endpointHostname'),
+            ('isIP(endpoint.hostname)', 'isIP(endpointHostname)'),
+            ('servername: endpoint.hostname', 'servername: endpointHostname'),
+          ]:
+            if old not in text:
+              raise SystemExit(f'expected API expression missing: {old}')
+            text = text.replace(old, new, 1)
+          api.write_text(text)
+
+          tests = Path('packages/worker-runtime/tests/api-acquirer.test.ts')
+          text = tests.read_text()
+          if 'rejects a private IPv6 literal before transport' not in text:
+            anchor = '  it("fails closed when DNS returns a mixed public/private answer set", async () => {'
+            addition = '''  it("rejects a private IPv6 literal before transport", async () => {
+            const transport = vi.fn(async () => response());
+            const acquirer = new ApiArtifactAcquirer({
+              environment: {
+                MARKORBIT_API_ENDPOINT_BINDINGS: JSON.stringify({
+                  "public-api": { baseUrl: "https://[::1]", auth: { kind: "NONE" } },
+                }),
+              },
+              transport,
+            });
+            const error = await acquisitionError(acquirer.acquire(context()));
+            expect(error.code).toBe("API_NETWORK_TARGET_REJECTED");
+            expect(transport).not.toHaveBeenCalled();
+          });
+
+          '''
+            if anchor not in text:
+              raise SystemExit('test insertion anchor missing')
+            text = text.replace(anchor, addition + anchor, 1)
+          tests.write_text(text)
+
+          doc = Path('docs/operations/API_CONNECTOR_V1.md')
+          text = doc.read_text()
+          if '### Worker binding scope' not in text:
+            anchor = '## Source connectorConfig'
+            addition = '''### Worker binding scope
+
+          V1 uses the shared connector identity `api-worker@1.0.0`. Every active Worker registered for that connector must therefore be provisioned with the complete `MARKORBIT_API_ENDPOINT_BINDINGS` set for the API Sources it is expected to service. A Worker that claims a Job whose binding is absent fails closed with `API_BINDING_UNAVAILABLE`; it never substitutes another origin or credential.
+
+          For v1, prefer one governed API Worker pool with a consistent binding map. If future deployments require independently scoped API Worker pools, add an explicit routing/connector-scope design instead of weakening the fail-closed binding check.
+
+          '''
+            if anchor not in text:
+              raise SystemExit('doc insertion anchor missing')
+            text = text.replace(anchor, addition + anchor, 1)
+          doc.write_text(text)
+          PY
+      - name: Format parser-supported permanent files
+        run: >-
+          pnpm exec prettier --write
+          README.md
+          apps/worker/package.json
+          apps/worker/src/bootstrap-api.ts
+          apps/worker/src/config.ts
+          apps/worker/src/main.ts
+          apps/worker/tests/config.test.ts
+          docs/operations/API_CONNECTOR_V1.md
+          packages/worker-runtime/src/api-acquirer.ts
+          packages/worker-runtime/src/index.ts
+          packages/worker-runtime/tests/api-acquirer.test.ts
+      - name: Run focused API Connector checks
+        run: |
+          pnpm --filter @markorbit/worker-runtime test -- tests/api-acquirer.test.ts
+          pnpm --filter @markorbit/worker test -- tests/config.test.ts
+          pnpm --filter @markorbit/worker-runtime typecheck
+          pnpm --filter @markorbit/worker typecheck
+      - name: Commit final hardening
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add README.md apps/worker packages/worker-runtime/src/api-acquirer.ts packages/worker-runtime/src/index.ts packages/worker-runtime/tests/api-acquirer.test.ts docs/operations/API_CONNECTOR_V1.md
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'fix(api-connector): harden final network and worker boundaries'
+          git push origin HEAD:codex/connector-api-v1
