@@ -25,7 +25,18 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Apply final parser hardening
-        run: python .github/scripts/rss-final-parser-hardening.py
+        run: |
+          python .github/scripts/rss-final-parser-hardening.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/worker-runtime/src/rss-acquirer.ts')
+          text = path.read_text()
+          bad = '        "RSS Connector V1 requires an RSS 2.0 root with version="2.0"",'
+          good = "        'RSS Connector V1 requires an RSS 2.0 root with version=\"2.0\"',"
+          if bad not in text:
+              raise SystemExit('generated RSS version message anchor missing')
+          path.write_text(text.replace(bad, good, 1))
+          PY
       - name: Format permanent files
         run: >-
           pnpm exec prettier --write
