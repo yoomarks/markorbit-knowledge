@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
-import type { ArtifactKind, SourceDefinition } from "@markorbit/contracts";
-import { ARTIFACT_KINDS, DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import {
+  ARTIFACT_KINDS,
+  type ArtifactKind,
+  type SourceDefinition,
+} from "@markorbit/contracts";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
 import {
   getRawArtifactRepository,
@@ -61,7 +65,12 @@ export function GET(request: Request) {
     const staging = getStagingContentRepository();
     const sources = getSourceRepository();
     const artifacts = getRawArtifactRepository();
-    const documents = staging.listDocuments({ workspaceId, ...(sourceId ? { sourceId } : {}), limit: MAX_SCAN, offset: 0 });
+    const documents = staging.listDocuments({
+      workspaceId,
+      ...(sourceId ? { sourceId } : {}),
+      limit: MAX_SCAN,
+      offset: 0,
+    });
 
     const enriched = documents.items
       .map((record) => {
@@ -120,9 +129,17 @@ export function GET(request: Request) {
     const page = enriched.slice(offset, offset + limit);
     const sourceOptions = sources
       .list({ workspaceId, limit: 100 })
-      .items.map((source) => ({ id: source.id, name: source.name, jurisdictions: source.jurisdictions }));
-    const jurisdictions = [...new Set(sourceOptions.flatMap((source) => source.jurisdictions))].sort();
-    const kinds = [...new Set(enriched.map((item) => item.artifact?.artifactKind).filter(Boolean))].sort();
+      .items.map((source) => ({
+        id: source.id,
+        name: source.name,
+        jurisdictions: source.jurisdictions,
+      }));
+    const jurisdictions = [
+      ...new Set(sourceOptions.flatMap((source) => source.jurisdictions)),
+    ].sort();
+    const kinds = [
+      ...new Set(enriched.map((item) => item.artifact?.artifactKind).filter(Boolean)),
+    ].sort();
 
     return NextResponse.json({
       items: page,
