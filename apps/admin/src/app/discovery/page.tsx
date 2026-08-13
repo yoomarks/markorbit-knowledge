@@ -1,5 +1,5 @@
 import { AdminShell } from "@/components/admin-shell";
-import { DiscoveryIntakeUi } from "@/lib/admin-v2/discovery-intake-ui";
+import { DiscoveryIntakeUi } from "@/lib/admin-v2/discovery-intake-workbench";
 
 export default function DiscoveryPage() {
   return (
