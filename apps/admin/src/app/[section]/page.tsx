@@ -8,7 +8,7 @@ import { ConnectorList } from "@/components/connectors/connector-list";
 import { ConversionRunList } from "@/components/conversion-runs/conversion-run-list";
 import { ConverterControl } from "@/components/converters/converter-control";
 import { DashboardPage } from "@/components/dashboard";
-import { DiscoveryWorkspace } from "@/components/discovery/discovery-workspace";
+import { DiscoveryIntake } from "@/components/discovery/discovery-intake";
 import { FoundationalOperatorPanel } from "@/components/foundational/foundational-operator-panel";
 import { FoundationalRemediationConsole } from "@/components/foundational/foundational-remediation-console";
 import { ModulePreview } from "@/components/module-preview";
@@ -29,6 +29,7 @@ import { SourceIntelligenceReviewOwnership } from "@/components/sources/source-i
 import { SourceIntelligenceReviewQueue } from "@/components/sources/source-intelligence-review-queue";
 import { SourceIntelligenceWorkbench } from "@/components/sources/source-intelligence-workbench";
 import { SourceList } from "@/components/sources/source-list";
+import { SourceReviewQueue } from "@/components/sources/source-review-queue";
 import { VaultWorkbench } from "@/components/vault/vault-workbench";
 import { VaultExportControl } from "@/components/vault/vault-export-control";
 import { WorkerList } from "@/components/workers/worker-list";
@@ -55,6 +56,7 @@ function SourcesPage() {
         }
       />
       <div className="space-y-6">
+        <SourceReviewQueue />
         <SourceFileImport workspaceId={DEFAULT_WORKSPACE.id} />
         <SourceList />
       </div>
@@ -249,7 +251,7 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
       {moduleKey === "dashboard" ? (
         <DashboardPage />
       ) : moduleKey === "discovery" ? (
-        <DiscoveryWorkspace />
+        <DiscoveryIntake />
       ) : moduleKey === "sources" ? (
         <SourcesPage />
       ) : moduleKey === "foundational" ? (
