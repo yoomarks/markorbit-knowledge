@@ -18,15 +18,9 @@ function candidateIds(value: unknown): string[] {
   });
 }
 
-export function GET(request: Request) {
+export function GET() {
   try {
-    const url = new URL(request.url);
-    const ids = url.searchParams.getAll("candidateId");
-    const service = getPageValueCapabilityService();
-    return NextResponse.json({
-      status: service.status(),
-      latest: ids.length > 0 ? service.latest(ids) : {},
-    });
+    return NextResponse.json({ status: getPageValueCapabilityService().status() });
   } catch (error) {
     return apiError(error);
   }
@@ -35,6 +29,14 @@ export function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
+    const service = getPageValueCapabilityService();
+    const ids = candidateIds(body.candidateIds);
+    if (body.action === "LATEST") {
+      return NextResponse.json({ status: service.status(), latest: service.latest(ids) });
+    }
+    if (body.action !== undefined && body.action !== "SCREEN") {
+      throw new RegistryValidationError("action must be SCREEN or LATEST");
+    }
     if (body.locale !== undefined && typeof body.locale !== "string") {
       throw new RegistryValidationError("locale must be a string");
     }
@@ -44,14 +46,14 @@ export async function POST(request: Request) {
     if (body.maxResults !== undefined && typeof body.maxResults !== "number") {
       throw new RegistryValidationError("maxResults must be a number");
     }
-    const result = await getPageValueCapabilityService().screen({
-      candidateIds: candidateIds(body.candidateIds),
+    const result = await service.screen({
+      candidateIds: ids,
       ...(typeof body.locale === "string" ? { locale: body.locale } : {}),
       ...(typeof body.objective === "string" ? { objective: body.objective } : {}),
       ...(typeof body.maxResults === "number" ? { maxResults: body.maxResults } : {}),
     });
     return NextResponse.json({
-      status: getPageValueCapabilityService().status(),
+      status: service.status(),
       response: result.response,
       latest: Object.fromEntries(result.records.map((record) => [record.candidateId, record])),
     });
