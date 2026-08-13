@@ -163,9 +163,7 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400">
-                      {zh ? "总体覆盖" : "Overall coverage"}
-                    </p>
+                    <p className="text-xs text-slate-400">{zh ? "总体覆盖" : "Overall coverage"}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${coverageTone(item.completenessPercent)}`}
@@ -180,9 +178,7 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400">
-                      {zh ? "基础资源" : "Foundational"}
-                    </p>
+                    <p className="text-xs text-slate-400">{zh ? "基础资源" : "Foundational"}</p>
                     <p className="mt-1 text-sm font-medium text-slate-800">
                       {item.foundational.total > 0
                         ? `${item.foundational.registered}/${item.foundational.total}`
@@ -208,7 +204,9 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
                       ) : (
                         <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
                           <CheckCircle2 size={16} />
-                          {zh ? "当前目录目标已全部覆盖" : "All current catalog targets are covered"}
+                          {zh
+                            ? "当前目录目标已全部覆盖"
+                            : "All current catalog targets are covered"}
                         </div>
                       )
                     ) : (
@@ -227,13 +225,7 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
                         className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600"
                       >
                         {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        {isExpanded
-                          ? zh
-                            ? "收起"
-                            : "Hide"
-                          : zh
-                            ? "查看完整度"
-                            : "View coverage"}
+                        {isExpanded ? (zh ? "收起" : "Hide") : zh ? "查看完整度" : "View coverage"}
                       </button>
                     ) : null}
                   </div>
@@ -250,7 +242,10 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
                           {item.targets
                             .filter((target) => target.state === "REGISTERED")
                             .map((target) => (
-                              <div key={target.id} className="rounded-lg bg-white px-3 py-2 text-xs">
+                              <div
+                                key={target.id}
+                                className="rounded-lg bg-white px-3 py-2 text-xs"
+                              >
                                 <p className="font-medium text-slate-800">{target.displayName}</p>
                                 <p className="mt-1 text-slate-500">
                                   {target.family} · {target.coverageTier}
@@ -306,7 +301,9 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
                           ))}
                           {missing.length === 0 ? (
                             <p className="text-xs text-emerald-700">
-                              {zh ? "没有缺失的 ACTIVE 目录目标。" : "No ACTIVE catalog target is missing."}
+                              {zh
+                                ? "没有缺失的 ACTIVE 目录目标。"
+                                : "No ACTIVE catalog target is missing."}
                             </p>
                           ) : null}
                         </div>
