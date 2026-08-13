@@ -86,8 +86,7 @@ export function DiscoveryIntake() {
 
   const inputs = useMemo(() => normalizedLocators(locators), [locators]);
   const pending =
-    (overview?.candidates.summary.DISCOVERED ?? 0) +
-    (overview?.candidates.summary.REVIEWED ?? 0);
+    (overview?.candidates.summary.DISCOVERED ?? 0) + (overview?.candidates.summary.REVIEWED ?? 0);
 
   async function start() {
     if (inputs.length === 0) return;
@@ -157,7 +156,8 @@ export function DiscoveryIntake() {
         <div className="flex items-start gap-3">
           <ShieldCheck size={18} className="mt-0.5 shrink-0" />
           <p>
-            Discovery 会遵守 robots.txt、读取 sitemap、限制抓取预算并记录发现路径。这里不会批准来源，也不会绕过 Sources 自动授权采集。
+            Discovery 会遵守 robots.txt、读取
+            sitemap、限制抓取预算并记录发现路径。这里不会批准来源，也不会绕过 Sources 自动授权采集。
           </p>
         </div>
       </div>

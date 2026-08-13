@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Check,
-  ExternalLink,
-  Loader2,
-  RefreshCw,
-  RotateCcw,
-  ShieldCheck,
-  X,
-} from "lucide-react";
+import { Check, ExternalLink, Loader2, RefreshCw, RotateCcw, ShieldCheck, X } from "lucide-react";
 
 type CandidateStatus = "DISCOVERED" | "REVIEWED" | "ACCEPTED" | "REJECTED";
 type ReviewTab = "PENDING" | "ACCEPTED" | "REJECTED";
@@ -76,10 +68,7 @@ function title(record: CandidateRecord): string {
   if (record.candidate.title?.trim()) return record.candidate.title.trim();
   try {
     const url = new URL(record.candidate.locator);
-    const part = decodeURIComponent(url.pathname)
-      .split("/")
-      .filter(Boolean)
-      .at(-1);
+    const part = decodeURIComponent(url.pathname).split("/").filter(Boolean).at(-1);
     return part?.replace(/[-_]+/g, " ") || url.hostname;
   } catch {
     return record.candidate.locator;
@@ -148,8 +137,7 @@ export function SourceReviewQueue() {
   }, [overview, tab]);
 
   const pendingCount =
-    (overview?.candidates.summary.DISCOVERED ?? 0) +
-    (overview?.candidates.summary.REVIEWED ?? 0);
+    (overview?.candidates.summary.DISCOVERED ?? 0) + (overview?.candidates.summary.REVIEWED ?? 0);
 
   function toggle(candidateId: string) {
     setSelected((current) => {
@@ -242,7 +230,8 @@ export function SourceReviewQueue() {
               <h2 className="font-semibold text-slate-950">来源审核</h2>
             </div>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-              Discovery 只负责发现。候选在这里统一审批；批准后系统会建立 Source、默认采集计划并启动首次采集，避免再进入 Plan / Run 页面补操作。
+              Discovery 只负责发现。候选在这里统一审批；批准后系统会建立
+              Source、默认采集计划并启动首次采集，避免再进入 Plan / Run 页面补操作。
             </p>
           </div>
           <button
