@@ -76,13 +76,7 @@ function enumLabel(value: string, zh: boolean): string {
   return translations[value] ?? humanize(value);
 }
 
-function StatusBadge({
-  status,
-  zh,
-}: {
-  status: SourceDefinition["status"];
-  zh: boolean;
-}) {
+function StatusBadge({ status, zh }: { status: SourceDefinition["status"]; zh: boolean }) {
   const classes: Record<SourceDefinition["status"], string> = {
     DRAFT: "bg-slate-100 text-slate-700",
     ACTIVE: "bg-emerald-50 text-emerald-700",
@@ -171,7 +165,9 @@ export function SourceList() {
     category: zh ? "分类" : "Category",
     authority: zh ? "权威等级" : "Authority",
     status: zh ? "状态" : "Status",
-    jurisdiction: zh ? "国家 / 地区代码，例如 US、EU、WIPO" : "Jurisdiction code, e.g. US, EU, WIPO",
+    jurisdiction: zh
+      ? "国家 / 地区代码，例如 US、EU、WIPO"
+      : "Jurisdiction code, e.g. US, EU, WIPO",
     newSource: zh ? "新建来源" : "New source",
     name: zh ? "名称" : "Name",
     typeCategory: zh ? "类型 / 分类" : "Type / category",
@@ -298,9 +294,7 @@ export function SourceList() {
                   </td>
                   <td className="px-5 py-4 text-slate-700">
                     <p>{enumLabel(source.sourceType, zh)}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {enumLabel(source.category, zh)}
-                    </p>
+                    <p className="mt-1 text-xs text-slate-500">{enumLabel(source.category, zh)}</p>
                   </td>
                   <td className="px-5 py-4 text-slate-700">
                     {source.jurisdictions.join(", ") || "—"}
