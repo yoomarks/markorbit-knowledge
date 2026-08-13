@@ -13,14 +13,20 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
-    const workspaceId = new URL(request.url).searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const workspaceId =
+      new URL(request.url).searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
     const staging = getStagingContentRepository();
     const record = staging.getDocument(id, workspaceId);
-    if (!record) throw new RegistryError("KNOWLEDGE_DOCUMENT_NOT_FOUND", `Knowledge document ${id} was not found`);
+    if (!record)
+      throw new RegistryError(
+        "KNOWLEDGE_DOCUMENT_NOT_FOUND",
+        `Knowledge document ${id} was not found`,
+      );
 
     const descriptor = record.descriptor;
     const source = getSourceRepository().getById(descriptor.sourceId);
-    const artifact = getRawArtifactRepository().getArtifact(descriptor.rawArtifactId)?.artifact ?? null;
+    const artifact =
+      getRawArtifactRepository().getArtifact(descriptor.rawArtifactId)?.artifact ?? null;
     const content = Buffer.from(staging.readContent(id, workspaceId)).toString("utf8");
 
     return NextResponse.json({

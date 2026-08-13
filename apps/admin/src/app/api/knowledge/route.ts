@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  ARTIFACT_KINDS,
-  type ArtifactKind,
-  type SourceDefinition,
-} from "@markorbit/contracts";
+import { ARTIFACT_KINDS, type ArtifactKind, type SourceDefinition } from "@markorbit/contracts";
 import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
 import {
@@ -127,13 +123,11 @@ export function GET(request: Request) {
       .sort((left, right) => Date.parse(right.generatedAt) - Date.parse(left.generatedAt));
 
     const page = enriched.slice(offset, offset + limit);
-    const sourceOptions = sources
-      .list({ workspaceId, limit: 100 })
-      .items.map((source) => ({
-        id: source.id,
-        name: source.name,
-        jurisdictions: source.jurisdictions,
-      }));
+    const sourceOptions = sources.list({ workspaceId, limit: 100 }).items.map((source) => ({
+      id: source.id,
+      name: source.name,
+      jurisdictions: source.jurisdictions,
+    }));
     const jurisdictions = [
       ...new Set(sourceOptions.flatMap((source) => source.jurisdictions)),
     ].sort();

@@ -98,7 +98,9 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const copy = {
-    search: zh ? "搜索标题、来源、文件名或来源网址" : "Search title, source, filename or source URL",
+    search: zh
+      ? "搜索标题、来源、文件名或来源网址"
+      : "Search title, source, filename or source URL",
     allSources: zh ? "全部来源" : "All sources",
     allJurisdictions: zh ? "全部国家 / 地区" : "All jurisdictions",
     allTypes: zh ? "全部资料类型" : "All content types",
@@ -333,16 +335,20 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
                       </p>
                       <p>
                         <span className="text-slate-400">{copy.acquired} · </span>
-                        {new Date(item.artifact?.capturedAt ?? item.generatedAt).toLocaleString(locale)}
+                        {new Date(item.artifact?.capturedAt ?? item.generatedAt).toLocaleString(
+                          locale,
+                        )}
                       </p>
                       <p>
-                        <span className="text-slate-400">{copy.version} · </span>
-                        v{item.artifact?.version ?? 1}
+                        <span className="text-slate-400">{copy.version} · </span>v
+                        {item.artifact?.version ?? 1}
                       </p>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(item.status)}`}>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(item.status)}`}
+                    >
                       {item.status}
                     </span>
                     <button
@@ -362,7 +368,10 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
             <BookOpen className="mx-auto text-slate-300" size={34} />
             <h2 className="mt-4 font-semibold text-slate-900">{copy.noData}</h2>
             <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">{copy.noDataHint}</p>
-            <Link href="/sources" className="mt-4 inline-flex text-sm font-semibold text-emerald-700">
+            <Link
+              href="/sources"
+              className="mt-4 inline-flex text-sm font-semibold text-emerald-700"
+            >
               {locale === "zh-CN" ? "前往来源管理 →" : "Go to Sources →"}
             </Link>
           </div>
@@ -409,7 +418,9 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
           <aside className="relative z-10 h-full w-full max-w-3xl overflow-y-auto bg-white shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-5 py-4 backdrop-blur">
               <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Knowledge</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                  Knowledge
+                </p>
                 <h2 className="mt-1 truncate font-semibold text-slate-950">
                   {detail?.title ?? (zh ? "正在读取…" : "Loading…")}
                 </h2>
@@ -439,7 +450,8 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
                     <p className="text-xs text-slate-400">{copy.source}</p>
                     <p className="mt-1 font-medium text-slate-900">{detail.source?.name ?? "—"}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      {detail.source?.jurisdictions.join(", ") || "—"} · {detail.source?.category ?? "—"}
+                      {detail.source?.jurisdictions.join(", ") || "—"} ·{" "}
+                      {detail.source?.category ?? "—"}
                     </p>
                     {detail.source ? (
                       <Link
@@ -456,7 +468,8 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
                       {detail.artifact?.originalName ?? "—"}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      {detail.artifact?.artifactKind ?? "—"} · {formatBytes(detail.artifact?.sizeBytes ?? 0)}
+                      {detail.artifact?.artifactKind ?? "—"} ·{" "}
+                      {formatBytes(detail.artifact?.sizeBytes ?? 0)}
                     </p>
                     {detail.artifact ? (
                       <a
@@ -499,7 +512,9 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
                 <section>
                   <div className="mb-2 flex items-center justify-between">
                     <h3 className="font-semibold text-slate-950">{copy.content}</h3>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(detail.status)}`}>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(detail.status)}`}
+                    >
                       {detail.status}
                     </span>
                   </div>
