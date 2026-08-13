@@ -23,7 +23,8 @@ const zhCN = {
   "shell.primaryFooterTitle": "知识运营",
   "shell.primaryFooterBody": "发现来源、管理来源、沉淀知识并交付资料包。",
   "shell.advancedFooterTitle": "高级控制面",
-  "shell.advancedFooterBody": "工程对象保留在高级控制面，日常运营无需理解 Registry、Worker 或 Run。",
+  "shell.advancedFooterBody":
+    "工程对象保留在高级控制面，日常运营无需理解 Registry、Worker 或 Run。",
   "module.dashboard": "概览",
   "module.discovery": "来源发现",
   "module.sources": "来源管理",
@@ -47,10 +48,12 @@ const zhCN = {
   "common.status": "状态",
   "common.updatedAt": "更新时间",
   "sources.title": "来源管理",
-  "sources.description": "统一管理所有来源。来源发现、人工网站、文件导入及其他采集入口最终都进入同一来源体系。",
+  "sources.description":
+    "统一管理所有来源。来源发现、人工网站、文件导入及其他采集入口最终都进入同一来源体系。",
   "sources.new": "新建网站 / API 来源",
   "discovery.title": "来源发现",
-  "discovery.description": "输入一个或一批网站。系统负责发现和整理候选，审批、启用和首次采集统一在来源管理中完成。",
+  "discovery.description":
+    "输入一个或一批网站。系统负责发现和整理候选，审批、启用和首次采集统一在来源管理中完成。",
   "knowledge.title": "知识库",
   "knowledge.description": "查看已经采集、转换并保留来源证据的知识资料。",
   "packages.title": "资料包",
@@ -70,9 +73,11 @@ const enUS: Record<keyof typeof zhCN, string> = {
   "shell.closeOverlay": "Close navigation overlay",
   "shell.notifications": "Notifications preview",
   "shell.primaryFooterTitle": "Knowledge Operations",
-  "shell.primaryFooterBody": "Discover sources, manage sources, build knowledge and deliver packages.",
+  "shell.primaryFooterBody":
+    "Discover sources, manage sources, build knowledge and deliver packages.",
   "shell.advancedFooterTitle": "Advanced Control Plane",
-  "shell.advancedFooterBody": "Engineering objects stay in Advanced; daily operators do not need to understand Registry, Worker or Run internals.",
+  "shell.advancedFooterBody":
+    "Engineering objects stay in Advanced; daily operators do not need to understand Registry, Worker or Run internals.",
   "module.dashboard": "Overview",
   "module.discovery": "Discovery",
   "module.sources": "Sources",
@@ -96,14 +101,18 @@ const enUS: Record<keyof typeof zhCN, string> = {
   "common.status": "Status",
   "common.updatedAt": "Updated",
   "sources.title": "Sources",
-  "sources.description": "Manage all sources in one place. Discovery, manual websites, file imports and other intake paths all converge on the same source system.",
+  "sources.description":
+    "Manage all sources in one place. Discovery, manual websites, file imports and other intake paths all converge on the same source system.",
   "sources.new": "New website / API source",
   "discovery.title": "Discovery",
-  "discovery.description": "Enter one or more websites. Discovery finds and organizes candidates; review, activation and initial collection happen in Sources.",
+  "discovery.description":
+    "Enter one or more websites. Discovery finds and organizes candidates; review, activation and initial collection happen in Sources.",
   "knowledge.title": "Knowledge",
-  "knowledge.description": "Browse acquired and converted knowledge assets with preserved provenance.",
+  "knowledge.description":
+    "Browse acquired and converted knowledge assets with preserved provenance.",
   "packages.title": "Packages",
-  "packages.description": "Inspect packages that are being prepared, validated and delivered to downstream systems.",
+  "packages.description":
+    "Inspect packages that are being prepared, validated and delivered to downstream systems.",
 };
 
 export type AdminMessageKey = keyof typeof zhCN;
