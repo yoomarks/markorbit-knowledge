@@ -1,9 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import type {
-  PageValueScreeningItemV1,
-  PageValueScreeningResponseV1,
-} from "@markorbit/contracts";
+import type { PageValueScreeningItemV1, PageValueScreeningResponseV1 } from "@markorbit/contracts";
 import { RegistryValidationError, initializeRegistry } from "./index";
 
 const MIGRATION_ID = "1030_page_value_capability_results";
@@ -153,9 +150,11 @@ export class SqlitePageValueCapabilityRepository {
          ORDER BY json_extract(item_json, '$.score') DESC, candidate_id ASC`,
       )
       .all(batch.recorded_at, ...unique) as Record<string, unknown>[];
-    return Object.fromEntries(rows.map((row) => {
-      const record = parse(row);
-      return [record.candidateId, record];
-    }));
+    return Object.fromEntries(
+      rows.map((row) => {
+        const record = parse(row);
+        return [record.candidateId, record];
+      }),
+    );
   }
 }

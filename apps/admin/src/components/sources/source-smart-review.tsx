@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Check,
-  ExternalLink,
-  Loader2,
-  RefreshCw,
-  RotateCcw,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { Check, ExternalLink, Loader2, RefreshCw, RotateCcw, Sparkles, X } from "lucide-react";
 
 type CandidateStatus = "DISCOVERED" | "REVIEWED" | "ACCEPTED" | "REJECTED";
 type ReviewTab = "PENDING" | "ACCEPTED" | "REJECTED";
@@ -327,7 +319,9 @@ export function SourceSmartReview() {
               </span>
             </div>
             <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-600">
-              Discovery 负责找页面；共享 Page Value Capability 负责跨行业通用的标题、摘要、页面类型、价值点与优先级判断；Knowledge 只保存结果并让人工审批。
+              Discovery 负责找页面；共享 Page Value Capability
+              负责跨行业通用的标题、摘要、页面类型、价值点与优先级判断；Knowledge
+              只保存结果并让人工审批。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -367,9 +361,7 @@ export function SourceSmartReview() {
                 setSelected(new Set());
               }}
               className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-                tab === value
-                  ? "bg-slate-950 text-white"
-                  : "border border-slate-200 text-slate-600"
+                tab === value ? "bg-slate-950 text-white" : "border border-slate-200 text-slate-600"
               }`}
             >
               {label}
@@ -515,7 +507,7 @@ export function SourceSmartReview() {
                         ) : null}
                         <p className="mt-2 text-[11px] text-slate-400">
                           {value.provider.providerId}
-                          {value.provider.model ? ` · ${value.provider.model}` : ""} · {" "}
+                          {value.provider.model ? ` · ${value.provider.model}` : ""} ·{" "}
                           {new Date(value.generatedAt).toLocaleString("zh-CN")}
                         </p>
                       </div>
