@@ -16,7 +16,7 @@ import { ModulePreview } from "@/components/module-preview";
 import { OverviewWorkbench } from "@/components/overview/overview-workbench";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
-import { ReadyPackageDeliveryWorkbench } from "@/components/ready-packages/ready-package-delivery-workbench";
+import { PackageBusinessWorkbench } from "@/components/ready-packages/package-business-workbench";
 import { RunList } from "@/components/runs/run-list";
 import { SourceFileImport } from "@/components/sources/source-file-import";
 import { SourceIntelligenceAssignmentHealth } from "@/components/sources/source-intelligence-assignment-health";
@@ -217,7 +217,7 @@ function ReadyPackagesPage() {
   return (
     <>
       <CorePageHeading page="packages" />
-      <ReadyPackageDeliveryWorkbench workspaceId={DEFAULT_WORKSPACE.id} />
+      <PackageBusinessWorkbench workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );
 }
