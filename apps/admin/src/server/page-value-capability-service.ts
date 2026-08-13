@@ -159,7 +159,7 @@ export class PageValueCapabilityService {
   }
 
   latest(candidateIds: string[]) {
-    return this.results.latestForCandidates(candidateIds);
+    return this.results.latestScreening(candidateIds);
   }
 
   async screen(input: {
