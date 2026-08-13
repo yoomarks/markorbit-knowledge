@@ -81,7 +81,8 @@ export function DiscoveryIntake() {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    const timer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(timer);
   }, [refresh]);
 
   const inputs = useMemo(() => normalizedLocators(locators), [locators]);
