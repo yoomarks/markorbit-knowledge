@@ -156,11 +156,7 @@ type AdminI18nContextValue = {
 const AdminI18nContext = createContext<AdminI18nContextValue | null>(null);
 
 export function AdminI18nProvider({ children }: { children: ReactNode }) {
-  const locale = useSyncExternalStore<AdminLocale>(
-    subscribeLocale,
-    getClientLocale,
-    () => "zh-CN",
-  );
+  const locale = useSyncExternalStore<AdminLocale>(subscribeLocale, getClientLocale, () => "zh-CN");
   const value = useMemo<AdminI18nContextValue>(() => {
     const dictionary = locale === "en-US" ? enUS : zhCN;
     return {
