@@ -136,7 +136,13 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
   }, [state]);
 
   const actions = useMemo(() => {
-    const items: Array<{ severity: "attention" | "normal" | "good"; title: string; detail: string; href: string; cta: string }> = [];
+    const items: Array<{
+      severity: "attention" | "normal" | "good";
+      title: string;
+      detail: string;
+      href: string;
+      cta: string;
+    }> = [];
     if (metrics.pending > 0) {
       items.push({
         severity: "attention",
@@ -151,7 +157,9 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
     if (metrics.sourceErrors > 0) {
       items.push({
         severity: "attention",
-        title: zh ? `${metrics.sourceErrors} 个来源状态异常` : `${metrics.sourceErrors} sources have errors`,
+        title: zh
+          ? `${metrics.sourceErrors} 个来源状态异常`
+          : `${metrics.sourceErrors} sources have errors`,
         detail: zh
           ? "优先检查来源状态与最近采集情况，必要时暂停或重新扫描。"
           : "Inspect source state and recent acquisition before pausing or rescanning.",
@@ -162,7 +170,9 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
     if (metrics.knowledgeBlocked > 0) {
       items.push({
         severity: "attention",
-        title: zh ? `${metrics.knowledgeBlocked} 份知识资料需要处理` : `${metrics.knowledgeBlocked} knowledge items need attention`,
+        title: zh
+          ? `${metrics.knowledgeBlocked} 份知识资料需要处理`
+          : `${metrics.knowledgeBlocked} knowledge items need attention`,
         detail: zh
           ? "这些资料已经进入转换链，但当前未达到可用状态。"
           : "These documents entered the conversion chain but are not yet ready.",
@@ -173,7 +183,9 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
     if (metrics.packagesReady > 0) {
       items.push({
         severity: "normal",
-        title: zh ? `${metrics.packagesReady} 个资料包可以交付` : `${metrics.packagesReady} packages are ready`,
+        title: zh
+          ? `${metrics.packagesReady} 个资料包可以交付`
+          : `${metrics.packagesReady} packages are ready`,
         detail: zh
           ? "资料包已完成验证，可以进入下游交付流程。"
           : "These packages passed validation and can proceed to downstream delivery.",
@@ -237,10 +249,22 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {[
           { label: zh ? "待审批来源" : "Pending review", value: metrics.pending, icon: Compass },
-          { label: zh ? "启用来源" : "Active sources", value: metrics.activeSources, icon: Database },
+          {
+            label: zh ? "启用来源" : "Active sources",
+            value: metrics.activeSources,
+            icon: Database,
+          },
           { label: zh ? "知识资料" : "Knowledge assets", value: metrics.knowledge, icon: BookOpen },
-          { label: zh ? "待交付资料包" : "Ready packages", value: metrics.packagesReady, icon: PackageCheck },
-          { label: zh ? "需关注" : "Needs attention", value: metrics.sourceErrors + metrics.knowledgeBlocked, icon: AlertCircle },
+          {
+            label: zh ? "待交付资料包" : "Ready packages",
+            value: metrics.packagesReady,
+            icon: PackageCheck,
+          },
+          {
+            label: zh ? "需关注" : "Needs attention",
+            value: metrics.sourceErrors + metrics.knowledgeBlocked,
+            icon: AlertCircle,
+          },
         ].map((item) => {
           const Icon = item.icon;
           return (
@@ -257,14 +281,21 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
 
       <section className="rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
-          <h2 className="font-semibold text-slate-950">{zh ? "现在需要处理" : "Needs attention"}</h2>
+          <h2 className="font-semibold text-slate-950">
+            {zh ? "现在需要处理" : "Needs attention"}
+          </h2>
           <p className="mt-1 text-sm text-slate-500">
-            {zh ? "按业务优先级整理，不要求你进入底层工程页面。" : "Business-priority actions without requiring engineering control-plane pages."}
+            {zh
+              ? "按业务优先级整理，不要求你进入底层工程页面。"
+              : "Business-priority actions without requiring engineering control-plane pages."}
           </p>
         </div>
         <div className="divide-y divide-slate-100">
           {actions.map((item) => (
-            <div key={`${item.href}-${item.title}`} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div
+              key={`${item.href}-${item.title}`}
+              className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+            >
               <div className="flex items-start gap-3">
                 <span
                   className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-full ${
@@ -275,7 +306,11 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                         : "bg-blue-50 text-blue-600"
                   }`}
                 >
-                  {item.severity === "good" ? <CheckCircle2 size={17} /> : <AlertCircle size={17} />}
+                  {item.severity === "good" ? (
+                    <CheckCircle2 size={17} />
+                  ) : (
+                    <AlertCircle size={17} />
+                  )}
                 </span>
                 <div>
                   <p className="font-medium text-slate-950">{item.title}</p>
@@ -297,8 +332,12 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
         <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-slate-950">{zh ? "最近知识资料" : "Recent knowledge"}</h2>
-              <p className="mt-1 text-sm text-slate-500">{zh ? "最近进入知识库的采集成果。" : "Recently acquired and converted material."}</p>
+              <h2 className="font-semibold text-slate-950">
+                {zh ? "最近知识资料" : "Recent knowledge"}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {zh ? "最近进入知识库的采集成果。" : "Recently acquired and converted material."}
+              </p>
             </div>
             <Link href="/knowledge" className="text-xs font-semibold text-emerald-700">
               {zh ? "全部资料" : "View all"} →
@@ -310,12 +349,15 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                 <div key={item.id} className="py-3 first:pt-0 last:pb-0">
                   <p className="truncate text-sm font-medium text-slate-900">{item.title}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {item.source?.name ?? "—"} · {item.source?.jurisdictions.join(", ") || "—"} · {new Date(item.generatedAt).toLocaleString(locale)}
+                    {item.source?.name ?? "—"} · {item.source?.jurisdictions.join(", ") || "—"} ·{" "}
+                    {new Date(item.generatedAt).toLocaleString(locale)}
                   </p>
                 </div>
               ))
             ) : (
-              <p className="py-6 text-sm text-slate-500">{zh ? "暂无知识资料。" : "No knowledge yet."}</p>
+              <p className="py-6 text-sm text-slate-500">
+                {zh ? "暂无知识资料。" : "No knowledge yet."}
+              </p>
             )}
           </div>
         </section>
@@ -323,8 +365,14 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
         <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-slate-950">{zh ? "交付进度" : "Delivery progress"}</h2>
-              <p className="mt-1 text-sm text-slate-500">{zh ? "资料从知识库进入下游的整体状态。" : "How prepared knowledge is moving downstream."}</p>
+              <h2 className="font-semibold text-slate-950">
+                {zh ? "交付进度" : "Delivery progress"}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {zh
+                  ? "资料从知识库进入下游的整体状态。"
+                  : "How prepared knowledge is moving downstream."}
+              </p>
             </div>
             <Link href="/packages" className="text-xs font-semibold text-emerald-700">
               {zh ? "查看资料包" : "View packages"} →
@@ -332,7 +380,10 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
           </div>
           <div className="mt-5 grid grid-cols-3 gap-3">
             {[
-              [state?.packages.filter((item) => item.status === "CREATED").length ?? 0, zh ? "准备中" : "Preparing"],
+              [
+                state?.packages.filter((item) => item.status === "CREATED").length ?? 0,
+                zh ? "准备中" : "Preparing",
+              ],
               [metrics.packagesReady, zh ? "可交付" : "Ready"],
               [metrics.packagesDelivered, zh ? "已交付" : "Delivered"],
             ].map(([value, label]) => (
