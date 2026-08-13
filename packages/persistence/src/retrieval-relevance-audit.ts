@@ -119,6 +119,32 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
   { id: "wo-madrid-forms-name", targetId: "wo-wipo-madrid-forms", query: "forms" },
   { id: "wo-madrid-fees-name", targetId: "wo-wipo-madrid-fees", query: "fees" },
   { id: "wo-madrid-gazette-name", targetId: "wo-wipo-madrid-gazette", query: "Gazette" },
+  {
+    id: "eu-trademarks-root-name",
+    targetId: "eu-euipo-trademarks-root",
+    query: "trade marks",
+  },
+  { id: "eu-how-to-apply-name", targetId: "eu-euipo-how-to-apply", query: "apply" },
+  { id: "eu-esearch-name", targetId: "eu-euipo-esearch-plus", query: "search" },
+  {
+    id: "eu-guidelines-name",
+    targetId: "eu-euipo-trade-mark-guidelines",
+    query: "guidelines",
+  },
+  { id: "eu-tmclass-name", targetId: "eu-euipo-tmclass", query: "goods services" },
+  { id: "eu-fees-name", targetId: "eu-euipo-fees", query: "fees" },
+  { id: "eu-opposition-name", targetId: "eu-euipo-opposition", query: "opposition" },
+  {
+    id: "eu-appeal-decisions-name",
+    targetId: "eu-euipo-boards-of-appeal-decisions",
+    query: "appeal decisions",
+  },
+  { id: "eu-law-name", targetId: "eu-euipo-law", query: "law" },
+  {
+    id: "eu-manage-trademark-name",
+    targetId: "eu-euipo-manage-trade-mark",
+    query: "manage application",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
