@@ -7,6 +7,7 @@ Status: product direction locked for implementation
 MarkOrbit Knowledge is the acquisition, preservation, provenance and delivery layer.
 
 Knowledge owns:
+
 - source discovery and source lifecycle orchestration;
 - acquisition/import execution;
 - immutable raw evidence;
@@ -45,6 +46,7 @@ Overview summarizes and routes work into that flow.
 Discovery is an intake/discovery surface, not the final review destination.
 
 Required direction:
+
 - single and batch source input;
 - URL/CSV/Excel batch import;
 - deterministic structural discovery (links, sitemap, RSS, redirects, etc.);
@@ -76,6 +78,7 @@ Sources must retain rejection decisions and support restoration/reassessment.
 Normal source approval must minimize operator steps.
 
 For an approved candidate, one business action should be able to complete:
+
 - SourceDefinition creation/update;
 - first assessment results;
 - default CollectionPlan creation;
@@ -101,6 +104,7 @@ Legacy Knowledge-specific semantic scoring must not expand into a product-specif
 Foundational readiness is not a primary business page.
 
 Its underlying checks remain useful but should be internalized as:
+
 - source/country completeness state;
 - progress;
 - warnings;
@@ -129,6 +133,7 @@ Underlying append-only audit and historical replay capabilities are preserved.
 A RawArtifact is an immutable piece of evidence acquired/imported from a Source.
 
 Manual file import must move to a Source-centered flow:
+
 - create a new source from the uploaded material; or
 - associate/import material through a governed source relationship where supported.
 
@@ -141,6 +146,7 @@ Advanced Raw Artifacts remains for provenance/debugging only.
 Knowledge should become the visible outcome of acquisition, not a Staging engineering page.
 
 Expected browsing/search dimensions include:
+
 - jurisdiction/country;
 - source;
 - document/content type;
@@ -155,6 +161,7 @@ Expected browsing/search dimensions include:
 Packages presents business delivery state rather than protocol terminology.
 
 Expected operator states include:
+
 - preparing;
 - ready;
 - pending delivery;
