@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import { AdminShell } from "@/components/admin-shell";
 import { ArtifactList } from "@/components/artifacts/artifact-list";
-import { ManualUploadControl } from "@/components/artifacts/manual-upload-control";
 import { ConnectorList } from "@/components/connectors/connector-list";
 import { ConversionRunList } from "@/components/conversion-runs/conversion-run-list";
 import { ConverterControl } from "@/components/converters/converter-control";
@@ -17,6 +16,7 @@ import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
 import { ReadyPackageDeliveryWorkbench } from "@/components/ready-packages/ready-package-delivery-workbench";
 import { RunList } from "@/components/runs/run-list";
+import { SourceFileImport } from "@/components/sources/source-file-import";
 import { SourceIntelligenceAssignmentHealth } from "@/components/sources/source-intelligence-assignment-health";
 import { SourceIntelligenceManualSla } from "@/components/sources/source-intelligence-manual-sla";
 import { SourceIntelligencePolicyAudit } from "@/components/sources/source-intelligence-policy-audit";
@@ -43,18 +43,21 @@ function SourcesPage() {
     <>
       <PageHeading
         title="Sources"
-        description="登记、分类和维护真实 SourceDefinition。vNext 将把 Discovery 接受的候选安全转换为来源与采集意图。"
+        description="统一管理所有来源。Discovery、人工网站、文件导入及其他采集入口最终都进入同一 Source Registry。"
         actions={
           <Link
             href="/sources/new"
             className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white"
           >
             <Plus size={17} aria-hidden="true" />
-            直接创建 Source
+            新建网站 / API 来源
           </Link>
         }
       />
-      <SourceList />
+      <div className="space-y-6">
+        <SourceFileImport workspaceId={DEFAULT_WORKSPACE.id} />
+        <SourceList />
+      </div>
     </>
   );
 }
@@ -136,12 +139,9 @@ function ArtifactsPage() {
     <>
       <PageHeading
         title="Raw Artifacts"
-        description="高级控制面：查看经过流式校验、内容寻址存储并登记为不可变来源证据的 RawArtifact。"
+        description="高级控制面：只读检查经过流式校验、内容寻址存储并登记为不可变来源证据的 RawArtifact。文件导入请从 Sources 完成。"
       />
-      <div className="space-y-6">
-        <ManualUploadControl workspaceId={DEFAULT_WORKSPACE.id} />
-        <ArtifactList />
-      </div>
+      <ArtifactList />
     </>
   );
 }

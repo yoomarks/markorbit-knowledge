@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ArtifactKind, RawArtifact } from "@markorbit/contracts";
+import type { ArtifactKind, RawArtifact, SourceDefinition } from "@markorbit/contracts";
 import {
   RegistryConflictError,
   RegistryError,
@@ -20,7 +20,7 @@ import {
 
 const MANUAL_CONNECTOR_ID = "builtin-manual-upload";
 const MANUAL_CONNECTOR_VERSION = "1.0.0";
-const MANUAL_SOURCE_TAG = "system-manual-upload";
+const MANUAL_SOURCE_TAG = "manual-file";
 const MANUAL_PLAN_MARKER = "manual-upload";
 const MANUAL_EXECUTOR = {
   executorId: "admin-manual-upload",
@@ -68,6 +68,11 @@ export type ManualUploadInput = {
   expectedSha256: string;
   idempotencyKey: string;
   chunks: AsyncIterable<Uint8Array>;
+  sourceId?: string;
+  sourceName?: string;
+  jurisdictions?: string[];
+  languages?: string[];
+  relatedSourceId?: string;
 };
 
 export type ManualUploadResult = {
@@ -75,6 +80,7 @@ export type ManualUploadResult = {
   replayed: boolean;
   runId: string;
   sourceId: string;
+  sourceName: string;
   autoConversion:
     | { status: "NOT_APPLICABLE" | "ALREADY_PROCESSED" | "ENQUEUED" | "REPLAYED" }
     | { status: "FAILED"; code: string };
@@ -136,6 +142,14 @@ export function normalizeManualUploadFilename(value: string): string {
   return name;
 }
 
+export function deriveManualSourceName(filename: string): string {
+  const normalized = normalizeManualUploadFilename(filename);
+  const dot = normalized.lastIndexOf(".");
+  const withoutExtension = dot > 0 ? normalized.slice(0, dot) : normalized;
+  const cleaned = withoutExtension.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  return cleaned || normalized;
+}
+
 export function artifactKindForManualUploadMime(value: string): ArtifactKind {
   const mimeType = value.trim().toLowerCase();
   const exact = EXACT_MIME_KIND.get(mimeType);
@@ -163,6 +177,12 @@ function normalizeExpectedSha256(value: string): string {
     throw new RegistryValidationError("Manual Upload requires a lowercase SHA-256 digest");
   }
   return sha256;
+}
+
+function normalizeList(values: string[] | undefined, upperCase = false): string[] {
+  return [...new Set((values ?? []).map((value) => value.trim()).filter(Boolean))].map((value) =>
+    upperCase ? value.toUpperCase() : value,
+  );
 }
 
 async function* boundedChunks(
@@ -209,67 +229,141 @@ function ensureManualConnector(): void {
   }
 }
 
-function ensureManualSource(workspaceId: string) {
+function validateRelatedSource(
+  workspaceId: string,
+  relatedSourceId: string | undefined,
+): string | null {
+  const id = relatedSourceId?.trim();
+  if (!id) return null;
+  const related = getSourceRepository().getById(id);
+  if (!related) {
+    throw new RegistryError("SOURCE_NOT_FOUND", `Related Source ${id} was not found`);
+  }
+  if (related.workspaceId !== workspaceId) {
+    throw new RegistryConflictError(
+      "MANUAL_UPLOAD_RELATED_SOURCE_WORKSPACE_MISMATCH",
+      "Related Source must belong to the same Workspace",
+    );
+  }
+  return related.id;
+}
+
+function validateExistingManualSource(workspaceId: string, sourceId: string): SourceDefinition {
+  const source = getSourceRepository().getById(sourceId);
+  if (!source) throw new RegistryError("SOURCE_NOT_FOUND", `Source ${sourceId} was not found`);
+  if (source.workspaceId !== workspaceId) {
+    throw new RegistryConflictError(
+      "MANUAL_UPLOAD_SOURCE_WORKSPACE_MISMATCH",
+      "Manual file Source must belong to the requested Workspace",
+    );
+  }
+  if (
+    source.sourceType !== "MANUAL_UPLOAD" ||
+    source.connector.connectorId !== MANUAL_CONNECTOR_ID ||
+    source.connector.version !== MANUAL_CONNECTOR_VERSION
+  ) {
+    throw new RegistryConflictError(
+      "MANUAL_UPLOAD_SOURCE_INCOMPATIBLE",
+      "Files can only be added directly to a MANUAL_UPLOAD Source bound to the Manual Upload connector",
+    );
+  }
+  if (source.status !== "ACTIVE") {
+    throw new RegistryConflictError(
+      "MANUAL_UPLOAD_SOURCE_INACTIVE",
+      "Files can only be added to an ACTIVE Manual Upload Source",
+    );
+  }
+  return source;
+}
+
+function ensureManualSource(
+  workspaceId: string,
+  idempotencyKey: string,
+  originalName: string,
+  input: Pick<
+    ManualUploadInput,
+    "sourceId" | "sourceName" | "jurisdictions" | "languages" | "relatedSourceId"
+  >,
+): SourceDefinition {
   ensureManualConnector();
+  if (input.sourceId?.trim()) {
+    return validateExistingManualSource(workspaceId, input.sourceId.trim());
+  }
+
   const sources = getSourceRepository();
+  const slug = `manual-${digest(`${workspaceId}:${idempotencyKey}`).slice(0, 24)}`;
   const existing = sources
-    .list({
-      workspaceId,
-      sourceType: "MANUAL_UPLOAD",
-      tag: MANUAL_SOURCE_TAG,
-      limit: 10,
-    })
-    .items.find((source) => source.status === "ACTIVE");
-  if (existing) return existing;
+    .list({ workspaceId, sourceType: "MANUAL_UPLOAD", q: slug, limit: 100 })
+    .items.find((source) => source.slug === slug);
+  if (existing) return validateExistingManualSource(workspaceId, existing.id);
+
+  const requestedName = input.sourceName?.trim();
+  const sourceName = requestedName || deriveManualSourceName(originalName);
+  if (!sourceName || sourceName.length > 300) {
+    throw new RegistryValidationError("Manual file Source name must contain 1 to 300 characters");
+  }
+  const relatedSourceId = validateRelatedSource(workspaceId, input.relatedSourceId);
+  const jurisdictions = normalizeList(input.jurisdictions, true);
+  const languages = normalizeList(input.languages);
+  const entrypoint = `manual-upload://${workspaceId}/${slug}`;
 
   try {
     return sources.create({
       workspaceId,
-      name: "Manual Uploads",
-      slug: "manual-uploads",
+      name: sourceName,
+      slug,
       sourceType: "MANUAL_UPLOAD",
       category: "USER_PROVIDED",
       authorityLevel: "UNKNOWN",
       status: "ACTIVE",
-      jurisdictions: [],
-      languages: [],
+      jurisdictions,
+      languages,
       connector: { connectorId: MANUAL_CONNECTOR_ID, version: MANUAL_CONNECTOR_VERSION },
       connectorConfig: {},
-      entrypoints: [{ uri: `manual-upload://${workspaceId}/`, label: "Admin Manual Upload" }],
-      tags: [MANUAL_SOURCE_TAG],
-      extensions: { "x-markorbit-system-source": "manual-upload" },
+      canonicalUri: entrypoint,
+      entrypoints: [{ uri: entrypoint, label: sourceName }],
+      tags: [MANUAL_SOURCE_TAG, "user-provided"],
+      extensions: {
+        "x-markorbit-ingress": "manual-file",
+        ...(relatedSourceId
+          ? {
+              "x-markorbit-related-source-id": relatedSourceId,
+              "x-markorbit-source-relationship": "RELATED_PUBLICATION",
+            }
+          : {}),
+      },
     });
   } catch (error) {
     if (error instanceof RegistryConflictError && error.code === "SOURCE_SLUG_CONFLICT") {
       const raced = sources
-        .list({
-          workspaceId,
-          sourceType: "MANUAL_UPLOAD",
-          tag: MANUAL_SOURCE_TAG,
-          limit: 10,
-        })
-        .items.find((source) => source.status === "ACTIVE");
-      if (raced) return raced;
+        .list({ workspaceId, sourceType: "MANUAL_UPLOAD", q: slug, limit: 100 })
+        .items.find((source) => source.slug === slug);
+      if (raced) return validateExistingManualSource(workspaceId, raced.id);
     }
     throw error;
   }
 }
 
-function ensureManualPlan(workspaceId: string, sourceId: string) {
+function ensureManualPlan(workspaceId: string, source: SourceDefinition) {
   const plans = getCollectionPlanRepository();
   const existing = plans
-    .listForSource(sourceId)
+    .listForSource(source.id)
     .find(
       ({ plan }) =>
         plan.status === "ACTIVE" &&
         plan.extensions?.["x-markorbit-system-plan"] === MANUAL_PLAN_MARKER,
     );
-  if (existing) return existing.plan;
+  if (existing) {
+    if (!source.defaultCollectionPlanId) {
+      plans.setSourceDefaultPlan(source.id, existing.plan.id, source.updatedAt);
+    }
+    return existing.plan;
+  }
 
-  return plans.create({
+  const plan = plans.create({
     workspaceId,
-    sourceId,
-    name: "Manual Upload Ingestion",
+    sourceId: source.id,
+    name: "Manual file import",
     status: "ACTIVE",
     schedule: { mode: "MANUAL" },
     priority: "NORMAL",
@@ -288,6 +382,10 @@ function ensureManualPlan(workspaceId: string, sourceId: string) {
     output: { artifactKinds: MANUAL_OUTPUT_KINDS },
     extensions: { "x-markorbit-system-plan": MANUAL_PLAN_MARKER },
   }).plan;
+  if (!source.defaultCollectionPlanId) {
+    plans.setSourceDefaultPlan(source.id, plan.id, source.updatedAt);
+  }
+  return plan;
 }
 
 function assertReplayMatches(
@@ -365,8 +463,8 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
   const expectedSha256 = normalizeExpectedSha256(input.expectedSha256);
   const maximumBytes = manualUploadMaxBytes();
 
-  const source = ensureManualSource(workspaceId);
-  const plan = ensureManualPlan(workspaceId, source.id);
+  const source = ensureManualSource(workspaceId, idempotencyKey, originalName, input);
+  const plan = ensureManualPlan(workspaceId, source);
   const runDispatch = getExecutionLedgerRepository().dispatchManual({
     planId: plan.id,
     requestedBy: { actorType: "LOCAL_ADMIN", actorId: "manual-upload" },
@@ -395,6 +493,7 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
         replayed: true,
         runId: run.id,
         sourceId: source.id,
+        sourceName: source.name,
         autoConversion: autoConversion(replayedArtifact.id, workspaceId),
       };
     }
@@ -470,7 +569,7 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
         originalName,
         expectedSizeBytes,
         expectedSha256,
-        sourceUri: `manual-upload://${workspaceId}/${encodeURIComponent(originalName)}?sha256=${expectedSha256}`,
+        sourceUri: `manual-upload://${workspaceId}/${source.id}/${encodeURIComponent(originalName)}?sha256=${expectedSha256}`,
       },
     });
     sessionId = session.record.session.id;
@@ -505,7 +604,7 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
         bytesPrepared: expectedSizeBytes,
         metadataOnly: false,
         artifactReceiptIds: [finalized.receipt.id],
-        summary: "Admin Manual Upload persisted as immutable RawArtifact",
+        summary: `Manual file imported through Source ${source.id}`,
       },
     });
 
@@ -519,6 +618,7 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
       replayed: false,
       runId: run.id,
       sourceId: source.id,
+      sourceName: source.name,
       autoConversion: autoConversion(finalized.artifact.artifact.id, workspaceId),
     };
   } catch (error) {
