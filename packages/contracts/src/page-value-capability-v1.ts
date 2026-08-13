@@ -23,6 +23,7 @@ export type PageValueScreeningRequestV1 = {
   capability: typeof PAGE_VALUE_CAPABILITY_ID;
   locale: string;
   objective: string;
+  maxResults: number;
   candidates: PageValueCandidateInput[];
 };
 
