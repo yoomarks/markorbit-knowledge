@@ -208,7 +208,8 @@ const enUS: Record<keyof typeof zhCN, string> = {
   intentHint: "Retrying will reuse the same idempotent intent for verification.",
   newIntent: "Start a new import intent",
   importSuccess: "The file source and its evidence were registered successfully.",
-  replayed: "This request matched an existing idempotent intent, so the prior result was reused safely.",
+  replayed:
+    "This request matched an existing idempotent intent, so the prior result was reused safely.",
   viewImportedSource: "View source",
   viewArtifact: "View raw evidence",
   errorPolicy: "Unable to load the file import policy",
