@@ -33,13 +33,22 @@ function requiredHeader(request: Request, name: string): string {
   return value;
 }
 
-function decodedFilename(request: Request): string {
-  const encoded = requiredHeader(request, "x-markorbit-filename");
+function optionalHeader(request: Request, name: string): string | undefined {
+  return request.headers.get(name)?.trim() || undefined;
+}
+
+function decodedHeader(request: Request, name: string, required = false): string | undefined {
+  const encoded = required ? requiredHeader(request, name) : optionalHeader(request, name);
+  if (!encoded) return undefined;
   try {
     return decodeURIComponent(encoded);
   } catch {
-    throw new RegistryValidationError("x-markorbit-filename must be URI encoded UTF-8");
+    throw new RegistryValidationError(`${name} must be URI encoded UTF-8`);
   }
+}
+
+function decodedFilename(request: Request): string {
+  return decodedHeader(request, "x-markorbit-filename", true)!;
 }
 
 function expectedSize(request: Request): number {
@@ -48,6 +57,15 @@ function expectedSize(request: Request): number {
     throw new RegistryValidationError("x-markorbit-content-size must be an integer byte count");
   }
   return Number(value);
+}
+
+function csvHeader(request: Request, name: string): string[] | undefined {
+  const value = decodedHeader(request, name);
+  if (!value) return undefined;
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 async function* requestChunks(request: Request, maxBytes: number): AsyncIterable<Uint8Array> {
@@ -92,6 +110,11 @@ export async function POST(request: Request) {
       expectedSizeBytes: expectedSize(request),
       expectedSha256: requiredHeader(request, "x-markorbit-content-sha256"),
       idempotencyKey: requiredHeader(request, "idempotency-key"),
+      sourceId: optionalHeader(request, "x-markorbit-source-id"),
+      sourceName: decodedHeader(request, "x-markorbit-source-name"),
+      jurisdictions: csvHeader(request, "x-markorbit-jurisdictions"),
+      languages: csvHeader(request, "x-markorbit-languages"),
+      relatedSourceId: optionalHeader(request, "x-markorbit-related-source-id"),
       chunks: requestChunks(request, maxBytes),
     });
     return NextResponse.json(result, { status: result.replayed ? 200 : 201 });
