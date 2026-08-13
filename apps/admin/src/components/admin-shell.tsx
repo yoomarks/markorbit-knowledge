@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Menu, Orbit, Search, X } from "lucide-react";
+import { Bell, ChevronDown, Menu, Orbit, Search, X } from "lucide-react";
 import { useState } from "react";
 import { modules, primaryModuleOrder, systemModuleOrder, type ModuleKey } from "@/lib/modules";
 
@@ -44,6 +44,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const systemActive = systemModuleOrder.some((key) => isModuleActive(pathname, key));
+  const [advancedOpen, setAdvancedOpen] = useState(systemActive);
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[264px_1fr]">
@@ -71,7 +72,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <nav className="max-h-[calc(100vh-9rem)] overflow-y-auto p-3">
+        <nav className="max-h-[calc(100vh-9rem)] overflow-y-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <p className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">
             Workbench
           </p>
@@ -84,26 +85,38 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="my-4 border-t border-white/10" />
-          <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-            System · Advanced
-          </p>
-          <div className="space-y-1">
-            <NavItems
-              keys={systemModuleOrder}
-              pathname={pathname}
-              onNavigate={() => setOpen(false)}
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((current) => !current)}
+            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600 transition-colors hover:bg-white/5 hover:text-slate-400"
+            aria-expanded={advancedOpen}
+          >
+            <span>System · Advanced</span>
+            <ChevronDown
+              size={15}
+              aria-hidden="true"
+              className={`transition-transform ${advancedOpen ? "rotate-180" : ""}`}
             />
-          </div>
+          </button>
+          {advancedOpen ? (
+            <div className="mt-1 space-y-1">
+              <NavItems
+                keys={systemModuleOrder}
+                pathname={pathname}
+                onNavigate={() => setOpen(false)}
+              />
+            </div>
+          ) : null}
         </nav>
 
         <div className="absolute inset-x-3 bottom-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-400">
           <p className="font-medium text-slate-200">
-            {systemActive ? "Advanced Control Plane" : "Knowledge vNext"}
+            {systemActive ? "Advanced Control Plane" : "Knowledge Operations"}
           </p>
           <p className="mt-1">
             {systemActive
-              ? "工程对象仍保留原有 Registry、Worker、Artifact、Conversion 和审计边界。"
-              : "默认工作台以 Seed、Discovery、Review、Source 和 Knowledge 为业务入口。"}
+              ? "工程对象保留在高级控制面，日常运营不需要理解底层 Registry、Worker 或 Run。"
+              : "发现来源、管理来源、沉淀知识并交付 Packages。"}
           </p>
         </div>
       </aside>
@@ -134,7 +147,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 sm:flex">
               <span className="size-2 rounded-full bg-emerald-500" />
-              {systemActive ? "Advanced" : "Operator Workbench"}
+              {systemActive ? "Advanced" : "Workbench"}
             </span>
             <button
               type="button"
