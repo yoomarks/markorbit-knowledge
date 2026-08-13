@@ -39,6 +39,8 @@ function ensureMigration(database: DatabaseSync): void {
 
       CREATE INDEX IF NOT EXISTS idx_page_value_results_candidate_time
         ON page_value_capability_results(candidate_id, generated_at DESC, recorded_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_page_value_results_batch_time
+        ON page_value_capability_results(recorded_at DESC);
     `);
     database
       .prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)")
@@ -59,6 +61,10 @@ function parse(row: Record<string, unknown>): PageValueCapabilityRecord {
     generatedAt: String(row.generated_at),
     recordedAt: String(row.recorded_at),
   };
+}
+
+function normalizedCandidateIds(candidateIds: string[]): string[] {
+  return [...new Set(candidateIds.map((value) => value.trim()).filter(Boolean))];
 }
 
 export class SqlitePageValueCapabilityRepository {
@@ -127,13 +133,29 @@ export class SqlitePageValueCapabilityRepository {
     return row ? parse(row) : null;
   }
 
-  latestForCandidates(candidateIds: string[]): Record<string, PageValueCapabilityRecord> {
-    const unique = [...new Set(candidateIds.map((value) => value.trim()).filter(Boolean))];
-    const output: Record<string, PageValueCapabilityRecord> = {};
-    for (const candidateId of unique) {
-      const record = this.latestForCandidate(candidateId);
-      if (record) output[candidateId] = record;
-    }
-    return output;
+  latestScreening(candidateIds: string[]): Record<string, PageValueCapabilityRecord> {
+    const unique = normalizedCandidateIds(candidateIds);
+    if (unique.length === 0) return {};
+    const placeholders = unique.map(() => "?").join(", ");
+    const batch = this.database
+      .prepare(
+        `SELECT MAX(recorded_at) AS recorded_at
+         FROM page_value_capability_results
+         WHERE candidate_id IN (${placeholders})`,
+      )
+      .get(...unique) as { recorded_at: string | null } | undefined;
+    if (!batch?.recorded_at) return {};
+
+    const rows = this.database
+      .prepare(
+        `SELECT * FROM page_value_capability_results
+         WHERE recorded_at = ? AND candidate_id IN (${placeholders})
+         ORDER BY json_extract(item_json, '$.score') DESC, candidate_id ASC`,
+      )
+      .all(batch.recorded_at, ...unique) as Record<string, unknown>[];
+    return Object.fromEntries(rows.map((row) => {
+      const record = parse(row);
+      return [record.candidateId, record];
+    }));
   }
 }
