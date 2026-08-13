@@ -6,6 +6,7 @@ import {
   SOURCE_TYPES,
   type AuthorityLevel,
   type SourceCategory,
+  type SourceDefinition,
   type SourceStatus,
   type SourceType,
 } from "@markorbit/contracts";
@@ -14,6 +15,7 @@ import {
   assertSourceFilterValue,
   type CreateSourceInput,
   type SourceListFilters,
+  type SourceListResult,
 } from "@markorbit/persistence";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getSourceRepository } from "@/server/source-registry";
@@ -38,6 +40,42 @@ function integerValue(value: string | null, field: string): number | undefined {
   const parsed = Number(value);
   if (!Number.isInteger(parsed)) throw new RegistryValidationError(`${field} must be an integer`);
   return parsed;
+}
+
+function isLegacySystemSource(source: SourceDefinition): boolean {
+  return source.sourceType === "MANUAL_UPLOAD" && source.slug === "manual-uploads";
+}
+
+function listWithoutLegacySystemSources(filters: SourceListFilters): SourceListResult {
+  const repository = getSourceRepository();
+  const requestedLimit = filters.limit ?? 25;
+  const requestedOffset = filters.offset ?? 0;
+  const baseFilters = { ...filters };
+  delete baseFilters.limit;
+  delete baseFilters.offset;
+
+  const items: SourceDefinition[] = [];
+  let scanOffset = 0;
+  while (true) {
+    const page = repository.list({ ...baseFilters, limit: 100, offset: scanOffset });
+    items.push(...page.items.filter((source) => !isLegacySystemSource(source)));
+    scanOffset += page.items.length;
+    if (page.items.length === 0 || scanOffset >= page.total) break;
+  }
+
+  const summary = Object.fromEntries(SOURCE_STATUSES.map((status) => [status, 0])) as Record<
+    SourceStatus,
+    number
+  >;
+  for (const source of items) summary[source.status] += 1;
+
+  return {
+    items: items.slice(requestedOffset, requestedOffset + requestedLimit),
+    total: items.length,
+    limit: requestedLimit,
+    offset: requestedOffset,
+    summary: { ...summary, total: items.length },
+  };
 }
 
 export async function GET(request: Request) {
@@ -65,7 +103,11 @@ export async function GET(request: Request) {
       offset: integerValue(url.searchParams.get("offset"), "offset"),
     };
     assertSourceFilterValue(filters);
-    return NextResponse.json(getSourceRepository().list(filters));
+    return NextResponse.json(
+      url.searchParams.get("hideLegacySystem") === "true"
+        ? listWithoutLegacySystemSources(filters)
+        : getSourceRepository().list(filters),
+    );
   } catch (error) {
     return apiError(error);
   }
