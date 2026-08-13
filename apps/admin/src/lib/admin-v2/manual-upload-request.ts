@@ -73,14 +73,20 @@ export async function uploadManualSource(input: {
     "x-markorbit-source-name": encodeURIComponent(input.sourceName.trim()),
   };
   if (input.jurisdictions.trim()) {
-    headers["x-markorbit-jurisdictions"] = encodeURIComponent(input.jurisdictions.trim().toUpperCase());
+    headers["x-markorbit-jurisdictions"] = encodeURIComponent(
+      input.jurisdictions.trim().toUpperCase(),
+    );
   }
   if (input.languages.trim()) {
     headers["x-markorbit-languages"] = encodeURIComponent(input.languages.trim());
   }
   if (input.relatedSourceId) headers["x-markorbit-related-source-id"] = input.relatedSourceId;
 
-  const response = await fetch("/api/manual-uploads", { method: "POST", headers, body: input.file });
+  const response = await fetch("/api/manual-uploads", {
+    method: "POST",
+    headers,
+    body: input.file,
+  });
   const body = (await response.json()) as ManualUploadResult | { error?: { message?: string } };
   if (!response.ok) {
     const message = "error" in body ? body.error?.message : undefined;
