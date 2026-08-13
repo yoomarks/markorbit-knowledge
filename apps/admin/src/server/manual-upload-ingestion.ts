@@ -229,7 +229,10 @@ function ensureManualConnector(): void {
   }
 }
 
-function validateRelatedSource(workspaceId: string, relatedSourceId: string | undefined): string | null {
+function validateRelatedSource(
+  workspaceId: string,
+  relatedSourceId: string | undefined,
+): string | null {
   const id = relatedSourceId?.trim();
   if (!id) return null;
   const related = getSourceRepository().getById(id);
@@ -277,7 +280,10 @@ function ensureManualSource(
   workspaceId: string,
   idempotencyKey: string,
   originalName: string,
-  input: Pick<ManualUploadInput, "sourceId" | "sourceName" | "jurisdictions" | "languages" | "relatedSourceId">,
+  input: Pick<
+    ManualUploadInput,
+    "sourceId" | "sourceName" | "jurisdictions" | "languages" | "relatedSourceId"
+  >,
 ): SourceDefinition {
   ensureManualConnector();
   if (input.sourceId?.trim()) {

@@ -141,7 +141,8 @@ export function SourceFileImport({ workspaceId }: { workspaceId: string }) {
         setPolicy(nextPolicy);
         setSources(
           sourceResult.items.filter(
-            (source) => !(source.sourceType === "MANUAL_UPLOAD" && source.slug === "manual-uploads"),
+            (source) =>
+              !(source.sourceType === "MANUAL_UPLOAD" && source.slug === "manual-uploads"),
           ),
         );
       })
@@ -264,8 +265,8 @@ export function SourceFileImport({ workspaceId }: { workspaceId: string }) {
         <div>
           <h2 className="font-semibold text-slate-950">导入文件来源</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-            每份文件会建立自己的 Source，并自动创建默认采集计划和不可变 RawArtifact
-            证据。Raw Artifacts 只保存证据，不再作为另一条来源创建路径。
+            每份文件会建立自己的 Source，并自动创建默认采集计划和不可变 RawArtifact 证据。Raw
+            Artifacts 只保存证据，不再作为另一条来源创建路径。
           </p>
           <p className="mt-1 text-xs text-slate-500">
             {policy
