@@ -8,12 +8,12 @@ import { ConnectorList } from "@/components/connectors/connector-list";
 import { ConversionRunList } from "@/components/conversion-runs/conversion-run-list";
 import { ConverterControl } from "@/components/converters/converter-control";
 import { CorePageHeading } from "@/components/core-page-heading";
-import { DashboardPage } from "@/components/dashboard";
 import { DiscoveryIntake } from "@/components/discovery/discovery-intake";
 import { FoundationalOperatorPanel } from "@/components/foundational/foundational-operator-panel";
 import { FoundationalRemediationConsole } from "@/components/foundational/foundational-remediation-console";
 import { KnowledgeBrowser } from "@/components/knowledge/knowledge-browser";
 import { ModulePreview } from "@/components/module-preview";
+import { OverviewWorkbench } from "@/components/overview/overview-workbench";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
 import { ReadyPackageDeliveryWorkbench } from "@/components/ready-packages/ready-package-delivery-workbench";
@@ -245,7 +245,7 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
   return (
     <AdminShell>
       {moduleKey === "dashboard" ? (
-        <DashboardPage />
+        <OverviewWorkbench workspaceId={DEFAULT_WORKSPACE.id} />
       ) : moduleKey === "discovery" ? (
         <DiscoveryIntake />
       ) : moduleKey === "sources" ? (
