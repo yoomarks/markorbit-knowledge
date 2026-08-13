@@ -11,6 +11,7 @@ import {
   type SourceDefinition,
 } from "@markorbit/contracts";
 import type { SourceListResult } from "@markorbit/persistence";
+import { useAdminI18n } from "@/lib/i18n";
 
 const PAGE_SIZE = 20;
 
@@ -32,7 +33,7 @@ const initialFilters: Filters = {
   jurisdiction: "",
 };
 
-function label(value: string): string {
+function humanize(value: string): string {
   return value
     .toLowerCase()
     .split("_")
@@ -40,7 +41,42 @@ function label(value: string): string {
     .join(" ");
 }
 
-function StatusBadge({ status }: { status: SourceDefinition["status"] }) {
+function enumLabel(value: string, zh: boolean): string {
+  if (!zh) return humanize(value);
+  const translations: Record<string, string> = {
+    WEB: "网站",
+    API: "API",
+    RSS: "RSS / 订阅",
+    EMAIL: "邮件",
+    MANUAL_UPLOAD: "人工文件",
+    LOCAL_FOLDER: "本地目录",
+    GITHUB: "GitHub",
+    OFFICIAL_AUTHORITY: "官方机构",
+    GOVERNMENT_PUBLICATION: "政府出版物",
+    INTERGOVERNMENTAL: "国际组织",
+    PUBLIC_REFERENCE: "公共参考资料",
+    PROFESSIONAL_ASSOCIATION: "专业协会",
+    LAW_FIRM: "律所 / 代理机构",
+    PROFESSIONAL: "专业人士",
+    MEDIA: "媒体",
+    OTHER: "其他",
+    USER_PROVIDED: "用户提供",
+    PRIMARY_OFFICIAL: "一级官方",
+    SECONDARY_OFFICIAL: "二级官方",
+    HIGH: "高",
+    MEDIUM: "中",
+    LOW: "低",
+    UNKNOWN: "未评估",
+    DRAFT: "草稿",
+    ACTIVE: "启用",
+    PAUSED: "暂停",
+    ERROR: "异常",
+    ARCHIVED: "归档",
+  };
+  return translations[value] ?? humanize(value);
+}
+
+function StatusBadge({ status, zh }: { status: SourceDefinition["status"]; zh: boolean }) {
   const classes: Record<SourceDefinition["status"], string> = {
     DRAFT: "bg-slate-100 text-slate-700",
     ACTIVE: "bg-emerald-50 text-emerald-700",
@@ -50,12 +86,14 @@ function StatusBadge({ status }: { status: SourceDefinition["status"] }) {
   };
   return (
     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${classes[status]}`}>
-      {status}
+      {enumLabel(status, zh)}
     </span>
   );
 }
 
 export function SourceList() {
+  const { locale } = useAdminI18n();
+  const zh = locale === "zh-CN";
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [offset, setOffset] = useState(0);
   const [result, setResult] = useState<SourceListResult | null>(null);
@@ -63,7 +101,11 @@ export function SourceList() {
   const [error, setError] = useState<string | null>(null);
 
   const query = useMemo(() => {
-    const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
+    const params = new URLSearchParams({
+      limit: String(PAGE_SIZE),
+      offset: String(offset),
+      hideLegacySystem: "true",
+    });
     for (const [key, value] of Object.entries(filters)) {
       if (value.trim()) params.set(key, value.trim());
     }
@@ -111,16 +153,44 @@ export function SourceList() {
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
   const totalPages = Math.max(1, Math.ceil((result?.total ?? 0) / PAGE_SIZE));
 
+  const copy = {
+    all: zh ? "全部" : "All",
+    active: zh ? "启用" : "Active",
+    draft: zh ? "草稿" : "Draft",
+    paused: zh ? "暂停" : "Paused",
+    error: zh ? "异常" : "Error",
+    archived: zh ? "归档" : "Archived",
+    search: zh ? "搜索名称、Slug 或网址" : "Search name, slug or URL",
+    type: zh ? "类型" : "Type",
+    category: zh ? "分类" : "Category",
+    authority: zh ? "权威等级" : "Authority",
+    status: zh ? "状态" : "Status",
+    jurisdiction: zh
+      ? "国家 / 地区代码，例如 US、EU、WIPO"
+      : "Jurisdiction code, e.g. US, EU, WIPO",
+    newSource: zh ? "新建来源" : "New source",
+    name: zh ? "名称" : "Name",
+    typeCategory: zh ? "类型 / 分类" : "Type / category",
+    countries: zh ? "国家地区" : "Jurisdictions",
+    connector: "Connector",
+    updated: zh ? "更新时间" : "Updated",
+    noMatch: zh ? "没有匹配的来源" : "No matching sources",
+    noMatchHint: zh ? "清除筛选条件，或添加新的真实来源。" : "Clear filters or add a new source.",
+    loading: zh ? "正在读取来源…" : "Loading sources…",
+    page: zh ? "页" : "Page",
+    records: zh ? "条" : "records",
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         {[
-          ["全部", summary?.total ?? 0],
-          ["启用", summary?.ACTIVE ?? 0],
-          ["草稿", summary?.DRAFT ?? 0],
-          ["暂停", summary?.PAUSED ?? 0],
-          ["异常", summary?.ERROR ?? 0],
-          ["归档", summary?.ARCHIVED ?? 0],
+          [copy.all, summary?.total ?? 0],
+          [copy.active, summary?.ACTIVE ?? 0],
+          [copy.draft, summary?.DRAFT ?? 0],
+          [copy.paused, summary?.PAUSED ?? 0],
+          [copy.error, summary?.ERROR ?? 0],
+          [copy.archived, summary?.ARCHIVED ?? 0],
         ].map(([title, count]) => (
           <div key={String(title)} className="rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-xs font-medium text-slate-500">{title}</p>
@@ -133,7 +203,7 @@ export function SourceList() {
         <div className="border-b border-slate-200 p-4 sm:p-5">
           <div className="grid gap-3 lg:grid-cols-6">
             <label className="relative lg:col-span-2">
-              <span className="sr-only">搜索数据源</span>
+              <span className="sr-only">{copy.search}</span>
               <Search
                 className="absolute left-3 top-3 text-slate-400"
                 size={17}
@@ -141,40 +211,44 @@ export function SourceList() {
               />
               <input
                 className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-3 text-sm"
-                placeholder="搜索名称、Slug 或 URL"
+                placeholder={copy.search}
                 value={filters.q}
                 onChange={(event) => updateFilter("q", event.target.value)}
               />
             </label>
             <FilterSelect
-              label="类型"
+              label={copy.type}
               value={filters.sourceType}
               values={SOURCE_TYPES}
+              zh={zh}
               onChange={(value) => updateFilter("sourceType", value)}
             />
             <FilterSelect
-              label="分类"
+              label={copy.category}
               value={filters.category}
               values={SOURCE_CATEGORIES}
+              zh={zh}
               onChange={(value) => updateFilter("category", value)}
             />
             <FilterSelect
-              label="权威等级"
+              label={copy.authority}
               value={filters.authorityLevel}
               values={AUTHORITY_LEVELS}
+              zh={zh}
               onChange={(value) => updateFilter("authorityLevel", value)}
             />
             <FilterSelect
-              label="状态"
+              label={copy.status}
               value={filters.status}
               values={SOURCE_STATUSES}
+              zh={zh}
               onChange={(value) => updateFilter("status", value)}
             />
           </div>
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <input
               className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:max-w-xs"
-              placeholder="国家或地区代码，例如 US、EU、WIPO"
+              placeholder={copy.jurisdiction}
               value={filters.jurisdiction}
               onChange={(event) => updateFilter("jurisdiction", event.target.value.toUpperCase())}
             />
@@ -183,7 +257,7 @@ export function SourceList() {
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white"
             >
               <Plus size={17} aria-hidden="true" />
-              新建数据源
+              {copy.newSource}
             </Link>
           </div>
         </div>
@@ -198,12 +272,12 @@ export function SourceList() {
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-5 py-3 font-medium">名称</th>
-                <th className="px-5 py-3 font-medium">类型 / 分类</th>
-                <th className="px-5 py-3 font-medium">国家地区</th>
-                <th className="px-5 py-3 font-medium">Connector</th>
-                <th className="px-5 py-3 font-medium">状态</th>
-                <th className="px-5 py-3 font-medium">更新时间</th>
+                <th className="px-5 py-3 font-medium">{copy.name}</th>
+                <th className="px-5 py-3 font-medium">{copy.typeCategory}</th>
+                <th className="px-5 py-3 font-medium">{copy.countries}</th>
+                <th className="px-5 py-3 font-medium">{copy.connector}</th>
+                <th className="px-5 py-3 font-medium">{copy.status}</th>
+                <th className="px-5 py-3 font-medium">{copy.updated}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -219,8 +293,8 @@ export function SourceList() {
                     <p className="mt-1 text-xs text-slate-500">{source.slug}</p>
                   </td>
                   <td className="px-5 py-4 text-slate-700">
-                    <p>{source.sourceType}</p>
-                    <p className="mt-1 text-xs text-slate-500">{label(source.category)}</p>
+                    <p>{enumLabel(source.sourceType, zh)}</p>
+                    <p className="mt-1 text-xs text-slate-500">{enumLabel(source.category, zh)}</p>
                   </td>
                   <td className="px-5 py-4 text-slate-700">
                     {source.jurisdictions.join(", ") || "—"}
@@ -230,10 +304,10 @@ export function SourceList() {
                     <p className="mt-1 text-xs text-slate-500">v{source.connector.version}</p>
                   </td>
                   <td className="px-5 py-4">
-                    <StatusBadge status={source.status} />
+                    <StatusBadge status={source.status} zh={zh} />
                   </td>
                   <td className="px-5 py-4 text-slate-500">
-                    {new Date(source.updatedAt).toLocaleString("zh-CN")}
+                    {new Date(source.updatedAt).toLocaleString(locale)}
                   </td>
                 </tr>
               ))}
@@ -244,29 +318,25 @@ export function SourceList() {
         {!loading && result?.items.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <Archive className="mx-auto text-slate-400" size={30} aria-hidden="true" />
-            <h2 className="mt-4 font-semibold text-slate-950">尚无匹配的数据源</h2>
-            <p className="mt-2 text-sm text-slate-500">
-              清除筛选条件，或创建第一个真实 SourceDefinition。
-            </p>
+            <h2 className="mt-4 font-semibold text-slate-950">{copy.noMatch}</h2>
+            <p className="mt-2 text-sm text-slate-500">{copy.noMatchHint}</p>
           </div>
         ) : null}
 
         {loading ? (
-          <div className="px-6 py-12 text-center text-sm text-slate-500">
-            正在读取 Source Registry…
-          </div>
+          <div className="px-6 py-12 text-center text-sm text-slate-500">{copy.loading}</div>
         ) : null}
 
         <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
           <p className="text-slate-500">
-            第 {currentPage} / {totalPages} 页 · 共 {result?.total ?? 0} 条
+            {copy.page} {currentPage} / {totalPages} · {result?.total ?? 0} {copy.records}
           </p>
           <div className="flex gap-2">
             <button
               className="rounded-lg border border-slate-300 p-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={offset === 0 || loading}
               onClick={() => changePage(Math.max(0, offset - PAGE_SIZE))}
-              aria-label="上一页"
+              aria-label="Previous page"
             >
               <ChevronLeft size={17} aria-hidden="true" />
             </button>
@@ -274,7 +344,7 @@ export function SourceList() {
               className="rounded-lg border border-slate-300 p-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={loading || offset + PAGE_SIZE >= (result?.total ?? 0)}
               onClick={() => changePage(offset + PAGE_SIZE)}
-              aria-label="下一页"
+              aria-label="Next page"
             >
               <ChevronRight size={17} aria-hidden="true" />
             </button>
@@ -286,28 +356,30 @@ export function SourceList() {
 }
 
 function FilterSelect({
-  label: selectLabel,
+  label,
   value,
   values,
+  zh,
   onChange,
 }: {
   label: string;
   value: string;
   values: readonly string[];
+  zh: boolean;
   onChange: (value: string) => void;
 }) {
   return (
     <label>
-      <span className="sr-only">{selectLabel}</span>
+      <span className="sr-only">{label}</span>
       <select
         className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
-        <option value="">全部{selectLabel}</option>
+        <option value="">{zh ? `全部${label}` : `All ${label.toLowerCase()}`}</option>
         {values.map((option) => (
           <option key={option} value={option}>
-            {label(option)}
+            {enumLabel(option, zh)}
           </option>
         ))}
       </select>

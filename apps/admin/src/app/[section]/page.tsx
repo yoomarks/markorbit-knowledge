@@ -18,6 +18,7 @@ import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
 import { PackageBusinessWorkbench } from "@/components/ready-packages/package-business-workbench";
 import { RunList } from "@/components/runs/run-list";
+import { SourceCountryCoverage } from "@/components/sources/source-country-coverage";
 import { SourceFileImport } from "@/components/sources/source-file-import";
 import { SourceIntelligenceAssignmentHealth } from "@/components/sources/source-intelligence-assignment-health";
 import { SourceIntelligenceManualSla } from "@/components/sources/source-intelligence-manual-sla";
@@ -47,6 +48,7 @@ function SourcesPage() {
       <CorePageHeading page="sources" sourceCreateAction />
       <div className="space-y-6">
         <SourceSmartReview />
+        <SourceCountryCoverage workspaceId={DEFAULT_WORKSPACE.id} />
         <SourceFileImport workspaceId={DEFAULT_WORKSPACE.id} />
         <SourceList />
       </div>
