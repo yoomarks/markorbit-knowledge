@@ -6,11 +6,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import {
   artifactKindForManualUploadMime,
+  deriveManualSourceName,
   ingestManualUpload,
   manualUploadMaxBytes,
   normalizeManualUploadFilename,
 } from "../manual-upload-ingestion";
 import {
+  getCollectionPlanRepository,
   getExecutionLedgerRepository,
   getRawArtifactRepository,
   getSourceRepository,
@@ -75,17 +77,25 @@ describe("Manual Upload policy", () => {
     expect(() => normalizeManualUploadFilename("  ")).toThrow(RegistryValidationError);
   });
 
+  it("derives a human source title instead of exposing the filename extension", () => {
+    expect(deriveManualSourceName("cn410zh_1-中国商标法.pdf")).toBe("cn410zh 1 中国商标法");
+    expect(deriveManualSourceName("Trademark Act.docx")).toBe("Trademark Act");
+  });
+
   it("keeps the Manual Upload byte limit independently bounded", () => {
     expect(manualUploadMaxBytes()).toBe(1024 * 1024);
   });
 });
 
 describe("governed Manual Upload ingestion", () => {
-  it("persists one immutable RawArtifact through the existing execution and CAS chain", async () => {
+  it("creates a real per-material Source, default plan and immutable RawArtifact", async () => {
     const body = Buffer.from("hello manual upload", "utf8");
     const result = await ingestManualUpload({
       workspaceId: DEFAULT_WORKSPACE.id,
       originalName: "evidence.txt",
+      sourceName: "Trademark Evidence Note",
+      jurisdictions: ["us"],
+      languages: ["en-US"],
       mimeType: "text/plain",
       expectedSizeBytes: body.byteLength,
       expectedSha256: sha256(body),
@@ -94,16 +104,24 @@ describe("governed Manual Upload ingestion", () => {
     });
 
     expect(result.replayed).toBe(false);
+    expect(result.sourceName).toBe("Trademark Evidence Note");
     expect(result.artifact.workspaceId).toBe(DEFAULT_WORKSPACE.id);
     expect(result.artifact.artifactKind).toBe("TEXT");
     expect(result.artifact.mimeType).toBe("text/plain");
     expect(result.artifact.originalName).toBe("evidence.txt");
     expect(result.artifact.binaryHash.value).toBe(sha256(body));
-    expect(result.artifact.provenance.sourceUri.startsWith("manual-upload://")).toBe(true);
+    expect(result.artifact.provenance.sourceUri).toContain(`/${result.sourceId}/`);
 
     const source = getSourceRepository().getById(result.sourceId);
+    expect(source?.name).toBe("Trademark Evidence Note");
     expect(source?.sourceType).toBe("MANUAL_UPLOAD");
     expect(source?.category).toBe("USER_PROVIDED");
+    expect(source?.jurisdictions).toEqual(["US"]);
+    expect(source?.languages).toEqual(["en-US"]);
+    expect(source?.slug).not.toBe("manual-uploads");
+    expect(source?.extensions?.["x-markorbit-ingress"]).toBe("manual-file");
+    expect(source?.defaultCollectionPlanId).toBeTruthy();
+    expect(getCollectionPlanRepository().listForSource(result.sourceId)).toHaveLength(1);
 
     const run = getExecutionLedgerRepository().getById(result.runId);
     expect(run?.run.status).toBe("COMPLETED");
@@ -115,7 +133,99 @@ describe("governed Manual Upload ingestion", () => {
     expect(readFileSync(stored.path, "utf8")).toBe(body.toString("utf8"));
   });
 
-  it("replays the same finalized upload without creating another artifact", async () => {
+  it("creates different Sources for independent uploaded materials", async () => {
+    const firstBody = Buffer.from("first source", "utf8");
+    const secondBody = Buffer.from("second source", "utf8");
+    const first = await ingestManualUpload({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      originalName: "first.txt",
+      mimeType: "text/plain",
+      expectedSizeBytes: firstBody.byteLength,
+      expectedSha256: sha256(firstBody),
+      idempotencyKey: "manual-source-one",
+      chunks: chunks(firstBody),
+    });
+    const second = await ingestManualUpload({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      originalName: "second.txt",
+      mimeType: "text/plain",
+      expectedSizeBytes: secondBody.byteLength,
+      expectedSha256: sha256(secondBody),
+      idempotencyKey: "manual-source-two",
+      chunks: chunks(secondBody),
+    });
+
+    expect(first.sourceId).not.toBe(second.sourceId);
+    expect(getSourceRepository().getById(first.sourceId)?.name).toBe("first");
+    expect(getSourceRepository().getById(second.sourceId)?.name).toBe("second");
+    expect(
+      getSourceRepository()
+        .list({ workspaceId: DEFAULT_WORKSPACE.id, sourceType: "MANUAL_UPLOAD", limit: 100 })
+        .items.some((source) => source.slug === "manual-uploads"),
+    ).toBe(false);
+  });
+
+  it("can add a later file revision to an existing compatible Manual Upload Source", async () => {
+    const firstBody = Buffer.from("revision one", "utf8");
+    const first = await ingestManualUpload({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      originalName: "law-v1.txt",
+      sourceName: "Trademark Law",
+      mimeType: "text/plain",
+      expectedSizeBytes: firstBody.byteLength,
+      expectedSha256: sha256(firstBody),
+      idempotencyKey: "manual-revision-one",
+      chunks: chunks(firstBody),
+    });
+    const secondBody = Buffer.from("revision two", "utf8");
+    const second = await ingestManualUpload({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      sourceId: first.sourceId,
+      originalName: "law-v2.txt",
+      mimeType: "text/plain",
+      expectedSizeBytes: secondBody.byteLength,
+      expectedSha256: sha256(secondBody),
+      idempotencyKey: "manual-revision-two",
+      chunks: chunks(secondBody),
+    });
+
+    expect(second.sourceId).toBe(first.sourceId);
+    expect(getCollectionPlanRepository().listForSource(first.sourceId)).toHaveLength(1);
+  });
+
+  it("stores an optional governed relationship to an existing Source", async () => {
+    const parent = getSourceRepository().create({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      name: "Official Office",
+      slug: "manual-related-official-office",
+      sourceType: "WEB",
+      category: "OFFICIAL_AUTHORITY",
+      authorityLevel: "PRIMARY_OFFICIAL",
+      status: "ACTIVE",
+      jurisdictions: ["CN"],
+      languages: ["zh-CN"],
+      connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
+      connectorConfig: {},
+      entrypoints: [{ uri: "https://example.invalid/office" }],
+      tags: [],
+    });
+    const body = Buffer.from("related publication", "utf8");
+    const result = await ingestManualUpload({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      originalName: "publication.txt",
+      relatedSourceId: parent.id,
+      mimeType: "text/plain",
+      expectedSizeBytes: body.byteLength,
+      expectedSha256: sha256(body),
+      idempotencyKey: "manual-related-publication",
+      chunks: chunks(body),
+    });
+    const source = getSourceRepository().getById(result.sourceId);
+    expect(source?.extensions?.["x-markorbit-related-source-id"]).toBe(parent.id);
+    expect(source?.extensions?.["x-markorbit-source-relationship"]).toBe("RELATED_PUBLICATION");
+  });
+
+  it("replays the same finalized upload without creating another Source or artifact", async () => {
     const body = Buffer.from("restart-safe evidence", "utf8");
     const input = {
       workspaceId: DEFAULT_WORKSPACE.id,
@@ -129,6 +239,7 @@ describe("governed Manual Upload ingestion", () => {
     const second = await ingestManualUpload({ ...input, chunks: chunks(body) });
 
     expect(second.replayed).toBe(true);
+    expect(second.sourceId).toBe(first.sourceId);
     expect(second.artifact.id).toBe(first.artifact.id);
     expect(second.runId).toBe(first.runId);
     expect(
@@ -214,7 +325,7 @@ describe("governed Manual Upload ingestion", () => {
     });
   });
 
-  it("keeps simultaneous uploads bound to their own governed Run and Job", async () => {
+  it("keeps simultaneous uploads bound to their own Source, Run and Job", async () => {
     const firstBody = Buffer.from("concurrent first", "utf8");
     const secondBody = Buffer.from("concurrent second", "utf8");
 
@@ -239,6 +350,7 @@ describe("governed Manual Upload ingestion", () => {
       }),
     ]);
 
+    expect(first.sourceId).not.toBe(second.sourceId);
     expect(first.runId).not.toBe(second.runId);
     expect(first.artifact.collectionRunId).toBe(first.runId);
     expect(second.artifact.collectionRunId).toBe(second.runId);
