@@ -12,6 +12,7 @@ import { DashboardPage } from "@/components/dashboard";
 import { DiscoveryIntake } from "@/components/discovery/discovery-intake";
 import { FoundationalOperatorPanel } from "@/components/foundational/foundational-operator-panel";
 import { FoundationalRemediationConsole } from "@/components/foundational/foundational-remediation-console";
+import { KnowledgeBrowser } from "@/components/knowledge/knowledge-browser";
 import { ModulePreview } from "@/components/module-preview";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
@@ -49,6 +50,15 @@ function SourcesPage() {
         <SourceFileImport workspaceId={DEFAULT_WORKSPACE.id} />
         <SourceList />
       </div>
+    </>
+  );
+}
+
+function KnowledgePage() {
+  return (
+    <>
+      <CorePageHeading page="knowledge" />
+      <KnowledgeBrowser workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );
 }
@@ -240,6 +250,8 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
         <DiscoveryIntake />
       ) : moduleKey === "sources" ? (
         <SourcesPage />
+      ) : moduleKey === "knowledge" ? (
+        <KnowledgePage />
       ) : moduleKey === "foundational" ? (
         <FoundationalReadinessPage />
       ) : moduleKey === "intelligence" ? (
