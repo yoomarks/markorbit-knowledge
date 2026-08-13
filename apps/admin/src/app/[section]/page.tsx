@@ -7,6 +7,7 @@ import { ArtifactList } from "@/components/artifacts/artifact-list";
 import { ConnectorList } from "@/components/connectors/connector-list";
 import { ConversionRunList } from "@/components/conversion-runs/conversion-run-list";
 import { ConverterControl } from "@/components/converters/converter-control";
+import { CorePageHeading } from "@/components/core-page-heading";
 import { DashboardPage } from "@/components/dashboard";
 import { DiscoveryIntake } from "@/components/discovery/discovery-intake";
 import { FoundationalOperatorPanel } from "@/components/foundational/foundational-operator-panel";
@@ -42,19 +43,7 @@ export function generateStaticParams() {
 function SourcesPage() {
   return (
     <>
-      <PageHeading
-        title="Sources"
-        description="统一管理所有来源。Discovery、人工网站、文件导入及其他采集入口最终都进入同一 Source Registry。"
-        actions={
-          <Link
-            href="/sources/new"
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white"
-          >
-            <Plus size={17} aria-hidden="true" />
-            新建网站 / API 来源
-          </Link>
-        }
-      />
+      <CorePageHeading page="sources" sourceCreateAction />
       <div className="space-y-6">
         <SourceSmartReview />
         <SourceFileImport workspaceId={DEFAULT_WORKSPACE.id} />
@@ -217,10 +206,7 @@ function ConvertersPage() {
 function ReadyPackagesPage() {
   return (
     <>
-      <PageHeading
-        title="Ready Packages"
-        description="查看已验证 ReadyPackage 的真实 Core intake 交付证据，并通过现有显式 submit/retry 边界处理未提交、结果未知或本地 finalization 待完成状态。"
-      />
+      <CorePageHeading page="packages" />
       <ReadyPackageDeliveryWorkbench workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronDown, Menu, Orbit, Search, X } from "lucide-react";
+import { Bell, ChevronDown, Languages, Menu, Orbit, Search, X } from "lucide-react";
 import { useState } from "react";
 import { modules, primaryModuleOrder, systemModuleOrder, type ModuleKey } from "@/lib/modules";
+import { useAdminI18n, type AdminMessageKey } from "@/lib/i18n";
 
 function isModuleActive(pathname: string, key: ModuleKey) {
   const href = `/${key}`;
@@ -20,11 +21,13 @@ function NavItems({
   pathname: string;
   onNavigate: () => void;
 }) {
+  const { t } = useAdminI18n();
   return keys.map((key) => {
     const item = modules[key];
     const Icon = item.icon;
     const href = `/${key}`;
     const active = isModuleActive(pathname, key);
+    const translationKey = `module.${key}` as AdminMessageKey;
 
     return (
       <Link
@@ -34,7 +37,7 @@ function NavItems({
         className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "bg-white/12 text-white" : "text-slate-400 hover:bg-white/7 hover:text-slate-100"}`}
       >
         <Icon size={18} aria-hidden="true" />
-        {item.label}
+        {t(translationKey)}
       </Link>
     );
   });
@@ -42,6 +45,7 @@ function NavItems({
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { locale, setLocale, t } = useAdminI18n();
   const [open, setOpen] = useState(false);
   const systemActive = systemModuleOrder.some((key) => isModuleActive(pathname, key));
   const [advancedOpen, setAdvancedOpen] = useState(systemActive);
@@ -50,7 +54,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen lg:grid lg:grid-cols-[264px_1fr]">
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-[264px] border-r border-slate-200 bg-slate-950 text-white transition-transform lg:static lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
-        aria-label="主导航"
+        aria-label={locale === "zh-CN" ? "主导航" : "Main navigation"}
       >
         <div className="flex h-16 items-center justify-between border-b border-white/10 px-5">
           <Link href="/dashboard" className="flex items-center gap-3 font-medium">
@@ -65,7 +69,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             className="rounded-lg p-2 text-slate-300 hover:bg-white/10 lg:hidden"
-            aria-label="关闭导航"
+            aria-label={t("shell.closeNav")}
             onClick={() => setOpen(false)}
           >
             <X size={19} />
@@ -74,7 +78,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         <nav className="max-h-[calc(100vh-9rem)] overflow-y-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <p className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-            Workbench
+            {t("shell.workbench")}
           </p>
           <div className="space-y-1">
             <NavItems
@@ -91,7 +95,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600 transition-colors hover:bg-white/5 hover:text-slate-400"
             aria-expanded={advancedOpen}
           >
-            <span>System · Advanced</span>
+            <span>{t("shell.advanced")}</span>
             <ChevronDown
               size={15}
               aria-hidden="true"
@@ -111,12 +115,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         <div className="absolute inset-x-3 bottom-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-400">
           <p className="font-medium text-slate-200">
-            {systemActive ? "Advanced Control Plane" : "Knowledge Operations"}
+            {systemActive ? t("shell.advancedFooterTitle") : t("shell.primaryFooterTitle")}
           </p>
           <p className="mt-1">
-            {systemActive
-              ? "工程对象保留在高级控制面，日常运营不需要理解底层 Registry、Worker 或 Run。"
-              : "发现来源、管理来源、沉淀知识并交付 Packages。"}
+            {systemActive ? t("shell.advancedFooterBody") : t("shell.primaryFooterBody")}
           </p>
         </div>
       </aside>
@@ -126,7 +128,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             className="rounded-lg border border-slate-200 p-2 text-slate-600 lg:hidden"
-            aria-label="打开导航"
+            aria-label={t("shell.openNav")}
             onClick={() => setOpen(true)}
           >
             <Menu size={19} />
@@ -138,21 +140,31 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               aria-hidden="true"
             />
             <input
-              aria-label="全局搜索预览"
+              aria-label={t("shell.search")}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-10 pr-3 text-sm"
-              placeholder="搜索来源、机构、专业人士、文档或案例（即将接入）"
+              placeholder={t("shell.search")}
               disabled
             />
           </div>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setLocale(locale === "zh-CN" ? "en-US" : "zh-CN")}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3"
+              aria-label={locale === "zh-CN" ? "Switch to English" : "切换到中文"}
+              title={locale === "zh-CN" ? "Switch to English" : "切换到中文"}
+            >
+              <Languages size={16} aria-hidden="true" />
+              <span>{locale === "zh-CN" ? t("language.en") : t("language.zh")}</span>
+            </button>
             <span className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 sm:flex">
               <span className="size-2 rounded-full bg-emerald-500" />
-              {systemActive ? "Advanced" : "Workbench"}
+              {systemActive ? t("shell.advancedBadge") : t("shell.workbenchBadge")}
             </span>
             <button
               type="button"
               className="rounded-xl border border-slate-200 p-2 text-slate-600"
-              aria-label="通知预览"
+              aria-label={t("shell.notifications")}
             >
               <Bell size={18} />
             </button>
@@ -168,7 +180,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <button
           type="button"
           className="fixed inset-0 z-30 bg-slate-950/55 lg:hidden"
-          aria-label="关闭导航遮罩"
+          aria-label={t("shell.closeOverlay")}
           onClick={() => setOpen(false)}
         />
       ) : null}
