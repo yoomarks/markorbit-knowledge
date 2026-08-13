@@ -12,6 +12,7 @@
     "./source-registry": "./src/source-registry.ts",
     "./source-registry-v2": "./src/source-registry-v2-registry.ts",
     "./source-discovery": "./src/source-discovery.ts",
+    "./page-value-capability": "./src/page-value-capability-registry.ts",
     "./source-graph": "./src/source-graph-registry.ts",
     "./source-coverage": "./src/source-coverage-catalog.ts",
     "./source-supply-health": "./src/source-supply-health.ts",
