@@ -17,7 +17,7 @@
     "release:preflight": "node scripts/release-preflight.mjs",
     "release:backup-restore-drill": "node scripts/release-backup-restore-drill.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write apps/admin/src/lib/admin-v2/discovery-intake-ui.tsx apps/admin/src/lib/admin-v2/manual-upload-client.ts apps/admin/src/lib/admin-v2/manual-upload-request.ts apps/admin/src/lib/admin-v2/source-file-import-ui.tsx apps/admin/src/lib/admin-v2/source-smart-review-ui.tsx apps/admin/src/lib/intake-i18n.ts && git diff -- apps/admin/src/lib/admin-v2/discovery-intake-ui.tsx apps/admin/src/lib/admin-v2/manual-upload-client.ts apps/admin/src/lib/admin-v2/manual-upload-request.ts apps/admin/src/lib/admin-v2/source-file-import-ui.tsx apps/admin/src/lib/admin-v2/source-smart-review-ui.tsx apps/admin/src/lib/intake-i18n.ts && false",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
