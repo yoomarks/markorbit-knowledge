@@ -29,7 +29,7 @@ export const modules = {
   },
   sources: {
     label: "Sources",
-    description: "用业务视角管理已接受的数据源、来源类型、国家和采集状态。",
+    description: "用业务视角统一管理候选、已接受来源、来源状态与采集意图。",
     icon: Database,
   },
   foundational: {
@@ -60,7 +60,7 @@ export const modules = {
   },
   packages: {
     label: "Packages",
-    description: "查看通过验证并准备交付 MarkOrbit Core 的 Ready Package。",
+    description: "查看通过验证并准备交付下游系统的 Ready Package。",
     icon: PackageCheck,
   },
   jobs: {
@@ -127,31 +127,28 @@ export const modules = {
 
 export type ModuleKey = keyof typeof modules;
 
+// Admin V2: keep the daily operator surface intentionally small. Engineering and
+// unfinished modules remain routable, but they do not compete with the five core tasks.
 export const primaryModuleOrder: ModuleKey[] = [
   "dashboard",
   "discovery",
   "sources",
-  "foundational",
-  "intelligence",
-  "people",
   "knowledge",
-  "collection",
   "packages",
 ];
 
+// Only real, currently connected control-plane pages are exposed in Advanced.
+// Placeholder-only modules (staging/errors/audit/settings) stay routable but hidden.
 export const systemModuleOrder: ModuleKey[] = [
   "jobs",
   "runs",
   "artifacts",
-  "staging",
   "workers",
   "connectors",
   "conversionRuns",
   "converters",
   "vault",
-  "errors",
-  "audit",
-  "settings",
 ];
 
-export const moduleOrder: ModuleKey[] = [...primaryModuleOrder, ...systemModuleOrder];
+// Static routing must still know about hidden/legacy pages so existing deep links do not break.
+export const moduleOrder: ModuleKey[] = Object.keys(modules) as ModuleKey[];
