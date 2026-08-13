@@ -296,7 +296,9 @@ export function PackageBusinessWorkbench({ workspaceId }: { workspaceId: string 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
-            <h2 className="font-semibold text-slate-950">{zh ? "资料包交付" : "Package delivery"}</h2>
+            <h2 className="font-semibold text-slate-950">
+              {zh ? "资料包交付" : "Package delivery"}
+            </h2>
             <p className="mt-1 text-sm text-slate-500">
               {zh
                 ? "正常操作只显示业务状态；底层交付协议仅在技术详情中保留。"
@@ -345,7 +347,9 @@ export function PackageBusinessWorkbench({ workspaceId }: { workspaceId: string 
                 <article key={item.readyPackage.id} className="px-5 py-5 sm:px-6">
                   <div className="grid gap-4 xl:grid-cols-[minmax(220px,1.4fr)_1fr_0.7fr_0.7fr_0.8fr_auto] xl:items-center">
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-950">{item.readyPackage.id}</p>
+                      <p className="truncate font-semibold text-slate-950">
+                        {item.readyPackage.id}
+                      </p>
                       <p className="mt-1 truncate text-xs text-slate-500">{item.sourceName}</p>
                     </div>
                     <div className="text-sm text-slate-700">
@@ -358,10 +362,14 @@ export function PackageBusinessWorkbench({ workspaceId }: { workspaceId: string 
                     </div>
                     <div className="text-sm text-slate-700">
                       <p className="text-xs text-slate-400">{copy.created}</p>
-                      <p className="mt-1 text-xs">{new Date(item.readyPackage.createdAt).toLocaleString(locale)}</p>
+                      <p className="mt-1 text-xs">
+                        {new Date(item.readyPackage.createdAt).toLocaleString(locale)}
+                      </p>
                     </div>
                     <div>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(state)}`}>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(state)}`}
+                      >
                         {label(state)}
                       </span>
                     </div>
@@ -409,7 +417,9 @@ export function PackageBusinessWorkbench({ workspaceId }: { workspaceId: string 
                   ) : state === "DELIVERED" ? (
                     <div className="mt-3 flex items-center gap-2 text-xs text-emerald-700">
                       <CheckCircle2 size={14} />
-                      {zh ? "下游已确认接收资料内容。" : "Downstream has confirmed receipt of package content."}
+                      {zh
+                        ? "下游已确认接收资料内容。"
+                        : "Downstream has confirmed receipt of package content."}
                     </div>
                   ) : null}
 
