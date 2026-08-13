@@ -81,7 +81,7 @@ function indexDocument(
 }
 
 describe("retrieval relevance smoke audit", () => {
-  it("configures an explicit deterministic probe for every active foundational US and WIPO target", () => {
+  it("configures an explicit deterministic probe for every active foundational target", () => {
     const targets = listSourceCoverageTargets({
       coverageTier: "FOUNDATIONAL",
       catalogState: "ACTIVE",
@@ -89,10 +89,15 @@ describe("retrieval relevance smoke audit", () => {
     const targetIds = new Set(
       FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES.map((probe) => probe.targetId),
     );
-    expect(targets).toHaveLength(19);
-    expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(19);
-    expect(new Set(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES.map((probe) => probe.id)).size).toBe(19);
+    expect(targets).toHaveLength(29);
+    expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(29);
+    expect(new Set(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES.map((probe) => probe.id)).size).toBe(29);
     expect(targets.every((target) => targetIds.has(target.id))).toBe(true);
+    expect(
+      listSourceCoverageTargets({ jurisdiction: "EU", coverageTier: "FOUNDATIONAL" }).every(
+        (target) => targetIds.has(target.id),
+      ),
+    ).toBe(true);
   });
 
   it("marks a target READY when its curated query retrieves the expected current source", () => {
