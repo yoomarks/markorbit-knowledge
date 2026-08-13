@@ -63,7 +63,10 @@ describe("source coverage catalog", () => {
       entrypoints: [{ uri: "https://tmep.uspto.gov/RDMS/TMEP/current" }],
     } as SourceDefinition;
 
-    const targets = listSourceCoverageTargets({ family: "EXAMINATION_MANUAL" });
+    const targets = listSourceCoverageTargets({
+      jurisdiction: "US",
+      family: "EXAMINATION_MANUAL",
+    });
     const status = evaluateSourceCoverage([source], targets);
     expect(status).toEqual([
       {
