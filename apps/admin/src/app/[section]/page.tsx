@@ -29,7 +29,7 @@ import { SourceIntelligenceReviewOwnership } from "@/components/sources/source-i
 import { SourceIntelligenceReviewQueue } from "@/components/sources/source-intelligence-review-queue";
 import { SourceIntelligenceWorkbench } from "@/components/sources/source-intelligence-workbench";
 import { SourceList } from "@/components/sources/source-list";
-import { SourceReviewQueue } from "@/components/sources/source-review-queue";
+import { SourceSmartReview } from "@/components/sources/source-smart-review";
 import { VaultWorkbench } from "@/components/vault/vault-workbench";
 import { VaultExportControl } from "@/components/vault/vault-export-control";
 import { WorkerList } from "@/components/workers/worker-list";
@@ -56,7 +56,7 @@ function SourcesPage() {
         }
       />
       <div className="space-y-6">
-        <SourceReviewQueue />
+        <SourceSmartReview />
         <SourceFileImport workspaceId={DEFAULT_WORKSPACE.id} />
         <SourceList />
       </div>
