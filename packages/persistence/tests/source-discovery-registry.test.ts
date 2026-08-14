@@ -40,14 +40,40 @@ describe("SqliteSourceDiscoveryRepository", () => {
     expect(repository.listCandidates().summary.DISCOVERED).toBe(1);
 
     now = "2026-08-08T01:02:00.000Z";
+    const rejectionNote = "reason:IRRELEVANT|not relevant to trademark knowledge";
     const rejected = repository.reviewCandidate("cand_test", {
       decision: "REJECTED",
       reviewer: "operator-1",
-      note: "not relevant",
+      note: rejectionNote,
     });
     expect(rejected.candidate.status).toBe("REJECTED");
     expect(rejected.review?.reviewer).toBe("operator-1");
+    expect(rejected.review?.note).toBe(rejectionNote);
     expect(repository.listCandidates().summary.REJECTED).toBe(1);
+
+    repository.createBatch({
+      batchId: "disc_rediscovered",
+      seeds: [{ seedId: seed.seedId, locator: seed.locator }],
+      createdAt: "2026-08-08T01:03:00.000Z",
+    });
+    now = "2026-08-08T01:04:00.000Z";
+    repository.completeBatch("disc_rediscovered", [
+      {
+        candidateId: "cand_test",
+        locator: "https://example.com/trademarks",
+        title: "Rediscovered title",
+        discoveredAt: "2026-08-08T01:03:30.000Z",
+        status: "DISCOVERED",
+        discoveredFrom: "https://example.com/",
+        discoveryMethod: "HTML_LINK",
+        depth: 1,
+      },
+    ]);
+
+    const remembered = repository.getCandidate("cand_test");
+    expect(remembered?.candidate.status).toBe("REJECTED");
+    expect(remembered?.review?.note).toBe(rejectionNote);
+    expect(remembered?.batchId).toBe("disc_rediscovered");
 
     expect(
       repository.reviewCandidate("cand_test", {
