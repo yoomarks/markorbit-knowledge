@@ -69,10 +69,7 @@ function KnowledgePage() {
 function FoundationalReadinessPage() {
   return (
     <>
-      <PageHeading
-        title="基础资料覆盖与健康 / Foundational Coverage & Health"
-        description="查看核心官方资料从来源登记、采集、转换、入库到检索的覆盖和健康状态。这里不承担来源审批，也不暴露底层工程执行细节。"
-      />
+      <CorePageHeading page="foundational" />
       <FoundationalHealthDashboard workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );
