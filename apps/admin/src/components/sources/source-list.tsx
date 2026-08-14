@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Archive, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { Archive, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import {
   AUTHORITY_LEVELS,
   SOURCE_CATEGORIES,
@@ -168,7 +168,6 @@ export function SourceList() {
     jurisdiction: zh
       ? "国家 / 地区代码，例如 US、EU、WIPO"
       : "Jurisdiction code, e.g. US, EU, WIPO",
-    newSource: zh ? "新建来源" : "New source",
     name: zh ? "名称" : "Name",
     typeCategory: zh ? "类型 / 分类" : "Type / category",
     countries: zh ? "国家地区" : "Jurisdictions",
@@ -245,20 +244,13 @@ export function SourceList() {
               onChange={(value) => updateFilter("status", value)}
             />
           </div>
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-3">
             <input
               className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:max-w-xs"
               placeholder={copy.jurisdiction}
               value={filters.jurisdiction}
               onChange={(event) => updateFilter("jurisdiction", event.target.value.toUpperCase())}
             />
-            <Link
-              href="/sources/new"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white"
-            >
-              <Plus size={17} aria-hidden="true" />
-              {copy.newSource}
-            </Link>
           </div>
         </div>
 
@@ -286,7 +278,7 @@ export function SourceList() {
                   <td className="px-5 py-4">
                     <Link
                       href={`/sources/${source.id}`}
-                      className="font-medium text-slate-950 hover:text-emerald-700"
+                      className="font-medium text-slate-950 hover:text-blue-700"
                     >
                       {source.name}
                     </Link>
