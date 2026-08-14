@@ -23,67 +23,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Wire incremental rescan observations
+        env:
+          PROVIDER_NEEDLE_B64: CiAgICAgICAgZm9yIChjb25zdCBocmVmIG9mIGV4dHJhY3RMaW5rcyhyZXN1bHQudGV4dCkpIHs=
+          PROVIDER_INSERT_B64: CiAgICAgICAgY29uc3Qgb2JzZXJ2ZWRDYW5kaWRhdGUgPSBjYW5kaWRhdGVzLmZpbmQoCiAgICAgICAgICAoY2FuZGlkYXRlKSA9PgogICAgICAgICAgICBjYW5kaWRhdGUubG9jYXRvciA9PT0gY3VycmVudC5sb2NhdG9yIHx8IGNhbmRpZGF0ZS5sb2NhdG9yID09PSByZXN1bHQubG9jYXRvciwKICAgICAgICApOwogICAgICAgIGlmIChvYnNlcnZlZENhbmRpZGF0ZSkgewogICAgICAgICAgY29uc3QgaHR0cEV0YWcgPSByZXN1bHQucmVzcG9uc2UuaGVhZGVycy5nZXQoImV0YWciKT8udHJpbSgpOwogICAgICAgICAgY29uc3QgaHR0cExhc3RNb2RpZmllZCA9IHJlc3VsdC5yZXNwb25zZS5oZWFkZXJzLmdldCgibGFzdC1tb2RpZmllZCIpPy50cmltKCk7CiAgICAgICAgICBvYnNlcnZlZENhbmRpZGF0ZS5tZXRhZGF0YSA9IHsKICAgICAgICAgICAgLi4ub2JzZXJ2ZWRDYW5kaWRhdGUubWV0YWRhdGEsCiAgICAgICAgICAgIG9ic2VydmVkQ29udGVudFNoYTI1NjogY3JlYXRlSGFzaCgic2hhMjU2IikudXBkYXRlKHJlc3VsdC50ZXh0KS5kaWdlc3QoImhleCIpLAogICAgICAgICAgICAuLi4oaHR0cEV0YWcgPyB7IGh0dHBFdGFnIH0gOiB7fSksCiAgICAgICAgICAgIC4uLihodHRwTGFzdE1vZGlmaWVkID8geyBodHRwTGFzdE1vZGlmaWVkIH0gOiB7fSksCiAgICAgICAgICAgIGh0dHBDb250ZW50VHlwZTogY29udGVudFR5cGUsCiAgICAgICAgICB9OwogICAgICAgIH0KCiAgICAgICAgZm9yIChjb25zdCBocmVmIG9mIGV4dHJhY3RMaW5rcyhyZXN1bHQudGV4dCkpIHs=
+          DETAIL_OLD_B64: ICAgICAgc2V0TWVzc2FnZSgKICAgICAgICB6aAogICAgICAgICAgPyAi6YeN5paw5omr5o+P5bey5a6M5oiQ44CC5paw5Y+R546w55qE5YCZ6YCJ6LWE5paZ5Lya6L+b5YWlIFNvdXJjZXMg55qE5b6F5a6h5om56Zif5YiX44CCIgogICAgICAgICAgOiAiUmVzY2FuIGNvbXBsZXRlZC4gTmV3bHkgZGlzY292ZXJlZCBjYW5kaWRhdGVzIHdpbGwgZW50ZXIgdGhlIFNvdXJjZXMgcmV2aWV3IHF1ZXVlLiIsCiAgICAgICk7
+          DETAIL_NEW_B64: ICAgICAgY29uc3QgcGF5bG9hZCA9IChhd2FpdCByZXNwb25zZS5qc29uKCkpIGFzIHsKICAgICAgICBvYnNlcnZhdGlvblN1bW1hcnk/OiB7CiAgICAgICAgICBuZXdDb3VudDogbnVtYmVyOwogICAgICAgICAga25vd25Db3VudDogbnVtYmVyOwogICAgICAgICAgY2hhbmdlZENvdW50OiBudW1iZXI7CiAgICAgICAgICByZWplY3RlZENoYW5nZWRDb3VudDogbnVtYmVyOwogICAgICAgIH07CiAgICAgIH07CiAgICAgIGNvbnN0IHN1bW1hcnkgPSBwYXlsb2FkLm9ic2VydmF0aW9uU3VtbWFyeTsKICAgICAgc2V0TWVzc2FnZSgKICAgICAgICBzdW1tYXJ5CiAgICAgICAgICA/IHpoCiAgICAgICAgICAgID8gYOmHjeaWsOaJq+aPj+WujOaIkO+8muaWsOWiniAke3N1bW1hcnkubmV3Q291bnR9IMK3IOW3suefpSAke3N1bW1hcnkua25vd25Db3VudH0gwrcg5a6i6KeC5Y+Y5YyWICR7c3VtbWFyeS5jaGFuZ2VkQ291bnR9IMK3IOW3sua3mOaxsOS9huWPkeeUn+WPmOWMliAke3N1bW1hcnkucmVqZWN0ZWRDaGFuZ2VkQ291bnR944CC5Y+Y5YyW5LuF5Luj6KGo6YeH6ZuG6K+B5o2u5oyH57q55LiN5ZCM77yM5LiN5Luj6KGo6YeN6KaB5oCn44CCYAogICAgICAgICAgICA6IGBSZXNjYW4gY29tcGxldGVkOiAke3N1bW1hcnkubmV3Q291bnR9IG5ldyDCtyAke3N1bW1hcnkua25vd25Db3VudH0ga25vd24gwrcgJHtzdW1tYXJ5LmNoYW5nZWRDb3VudH0gb2JqZWN0aXZlbHkgY2hhbmdlZCDCtyAke3N1bW1hcnkucmVqZWN0ZWRDaGFuZ2VkQ291bnR9IHJlamVjdGVkIGJ1dCBjaGFuZ2VkLiBBIGNoYW5nZWQgZmluZ2VycHJpbnQgZG9lcyBub3QgaW1wbHkgbWF0ZXJpYWxpdHkuYAogICAgICAgICAgOiB6aAogICAgICAgICAgICA/ICLph43mlrDmiavmj4/lt7LlrozmiJDjgILmlrDlj5HnjrDnmoTlgJnpgInotYTmlpnkvJrov5vlhaUgU291cmNlcyDnmoTlvoXlrqHmibnpmJ/liJfjgIIiCiAgICAgICAgICAgIDogIlJlc2NhbiBjb21wbGV0ZWQuIE5ld2x5IGRpc2NvdmVyZWQgY2FuZGlkYXRlcyB3aWxsIGVudGVyIHRoZSBTb3VyY2VzIHJldmlldyBxdWV1ZS4iLAogICAgICApOw==
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          provider = Path("packages/worker-runtime/src/http-website-discovery-provider.ts")
-          text = provider.read_text()
-          if "observedContentSha256" not in text:
-              needle = '''
-        for (const href of extractLinks(result.text)) {'''
-              insertion = '''
-        const observedCandidate = candidates.find(
-          (candidate) =>
-            candidate.locator === current.locator || candidate.locator === result.locator,
-        );
-        if (observedCandidate) {
-          const httpEtag = result.response.headers.get("etag")?.trim();
-          const httpLastModified = result.response.headers.get("last-modified")?.trim();
-          observedCandidate.metadata = {
-            ...observedCandidate.metadata,
-            observedContentSha256: createHash("sha256").update(result.text).digest("hex"),
-            ...(httpEtag ? { httpEtag } : {}),
-            ...(httpLastModified ? { httpLastModified } : {}),
-            httpContentType: contentType,
-          };
-        }
-
-        for (const href of extractLinks(result.text)) {'''
-              if needle not in text:
-                  raise SystemExit("provider insertion point not found")
-              provider.write_text(text.replace(needle, insertion, 1))
-
-          detail = Path("apps/admin/src/components/sources/source-detail-workbench.tsx")
-          text = detail.read_text()
-          if "rejected but changed" not in text:
-              old = '''      setMessage(
-        zh
-          ? "重新扫描已完成。新发现的候选资料会进入 Sources 的待审批队列。"
-          : "Rescan completed. Newly discovered candidates will enter the Sources review queue.",
-      );'''
-              new = '''      const payload = (await response.json()) as {
-        observationSummary?: {
-          newCount: number;
-          knownCount: number;
-          changedCount: number;
-          rejectedChangedCount: number;
-        };
-      };
-      const summary = payload.observationSummary;
-      setMessage(
-        summary
-          ? zh
-            ? `重新扫描完成：新增 ${summary.newCount} · 已知 ${summary.knownCount} · 客观变化 ${summary.changedCount} · 已淘汰但发生变化 ${summary.rejectedChangedCount}。变化仅代表采集证据指纹不同，不代表重要性。`
-            : `Rescan completed: ${summary.newCount} new · ${summary.knownCount} known · ${summary.changedCount} objectively changed · ${summary.rejectedChangedCount} rejected but changed. A changed fingerprint does not imply materiality.`
-          : zh
-            ? "重新扫描已完成。新发现的候选资料会进入 Sources 的待审批队列。"
-            : "Rescan completed. Newly discovered candidates will enter the Sources review queue.",
-      );'''
-              if old not in text:
-                  raise SystemExit("source detail replacement point not found")
-              detail.write_text(text.replace(old, new, 1))
-          PY
+          python -c 'import base64,os; from pathlib import Path; p=Path("packages/worker-runtime/src/http-website-discovery-provider.ts"); t=p.read_text(); old=base64.b64decode(os.environ["PROVIDER_NEEDLE_B64"]).decode(); new=base64.b64decode(os.environ["PROVIDER_INSERT_B64"]).decode(); p.write_text(t if "observedContentSha256" in t else t.replace(old,new,1)); p=Path("apps/admin/src/components/sources/source-detail-workbench.tsx"); t=p.read_text(); old=base64.b64decode(os.environ["DETAIL_OLD_B64"]).decode(); new=base64.b64decode(os.environ["DETAIL_NEW_B64"]).decode(); p.write_text(t if "rejected but changed" in t else t.replace(old,new,1))'
           pnpm exec prettier --write packages/worker-runtime/src/http-website-discovery-provider.ts apps/admin/src/components/sources/source-detail-workbench.tsx packages/persistence/src/source-candidate-observations.ts packages/persistence/src/source-discovery.ts apps/admin/src/components/sources/source-change-review.tsx apps/admin/src/server/change-significance-capability-service.ts apps/admin/src/app/api/discovery/changes/route.ts apps/admin/src/app/api/discovery/changes/[candidateId]/significance/route.ts packages/contracts/src/candidate-change-observation-v1.ts packages/contracts/src/change-significance-capability-v1.ts packages/contracts/tests/change-significance-capability-v1.test.ts packages/persistence/tests/source-candidate-observations.test.ts
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
