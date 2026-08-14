@@ -30,14 +30,18 @@ export const modules = {
     icon: Database,
   },
   foundational: {
-    label: "Foundational Readiness",
-    description:
-      "查看 US / WIPO FOUNDATIONAL 来源的供给、检索质量、相关性 smoke gate 与人工修复队列。",
+    label: "Foundational Health",
+    description: "查看各基础资料来源从登记、采集、转换、入库到检索的覆盖与健康状态。",
     icon: PackageCheck,
+  },
+  foundationalDiagnostics: {
+    label: "Foundational Diagnostics",
+    description: "高级：执行基础资料供给链路的受控诊断、修复与显式操作。",
+    icon: FileCog,
   },
   intelligence: {
     label: "Source Intelligence",
-    description: "比较来源的运营价值、证据基础与人工复查建议，不替代法律权威判断。",
+    description: "高级：检查来源智能策略、人工复查队列与历史策略解析。",
     icon: Compass,
   },
   people: {
@@ -128,11 +132,14 @@ export const primaryModuleOrder: ModuleKey[] = [
   "dashboard",
   "discovery",
   "sources",
+  "foundational",
   "knowledge",
   "packages",
 ];
 
 export const systemModuleOrder: ModuleKey[] = [
+  "foundationalDiagnostics",
+  "intelligence",
   "jobs",
   "runs",
   "artifacts",

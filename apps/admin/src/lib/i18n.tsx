@@ -54,6 +54,8 @@ const zhCN = {
   "discovery.title": "来源发现",
   "discovery.description":
     "输入一个或一批网站。系统负责发现和整理候选，审批、启用和首次采集统一在来源管理中完成。",
+  "foundational.description":
+    "查看核心官方资料从来源登记、采集、转换、入库到检索的覆盖和健康状态。这里不承担来源审批，也不暴露底层工程执行细节。",
   "knowledge.title": "知识库",
   "knowledge.description": "查看已经采集、转换并保留来源证据的知识资料。",
   "packages.title": "资料包",
@@ -107,6 +109,8 @@ const enUS: Record<keyof typeof zhCN, string> = {
   "discovery.title": "Discovery",
   "discovery.description":
     "Enter one or more websites. Discovery finds and organizes candidates; review, activation and initial collection happen in Sources.",
+  "foundational.description":
+    "Inspect coverage and operational health for core official materials from source registration through collection, conversion, indexing and retrieval. Source approval and engineering execution details stay outside this surface.",
   "knowledge.title": "Knowledge",
   "knowledge.description":
     "Browse acquired and converted knowledge assets with preserved provenance.",

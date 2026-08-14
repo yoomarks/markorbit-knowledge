@@ -192,7 +192,7 @@ export function DiscoveryIntakeUi() {
       <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
           <div className="flex items-start gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-slate-950 text-white">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-600/20">
               <Globe2 size={20} />
             </span>
             <div>
@@ -210,7 +210,7 @@ export function DiscoveryIntakeUi() {
                 onChange={(event) => setLocators(event.target.value)}
                 rows={6}
                 placeholder={"https://www.uspto.gov/\nhttps://www.wipo.int/"}
-                className="w-full resize-y rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm leading-6 text-slate-900 outline-none focus:border-slate-500"
+                className="w-full resize-y rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm leading-6 text-slate-900 outline-none focus:border-blue-500"
               />
             </div>
           </label>
@@ -252,7 +252,7 @@ export function DiscoveryIntakeUi() {
               type="button"
               onClick={() => void start()}
               disabled={running || inputs.length === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:bg-slate-300"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/15 transition hover:bg-blue-700 disabled:bg-slate-300 disabled:shadow-none"
             >
               {running ? <Loader2 size={16} className="animate-spin" /> : <Globe2 size={16} />}
               {running
@@ -291,7 +291,7 @@ export function DiscoveryIntakeUi() {
 
           <Link
             href="/sources"
-            className="mt-5 inline-flex w-full items-center justify-between rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800"
+            className="mt-5 inline-flex w-full items-center justify-between rounded-xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
           >
             <span>
               {pending > 0 ? t("reviewCandidates", { count: pending }) : t("reviewGeneric")}

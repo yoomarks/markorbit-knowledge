@@ -9,6 +9,7 @@ import { ConversionRunList } from "@/components/conversion-runs/conversion-run-l
 import { ConverterControl } from "@/components/converters/converter-control";
 import { CorePageHeading } from "@/components/core-page-heading";
 import { DiscoveryIntake } from "@/components/discovery/discovery-intake";
+import { FoundationalHealthDashboard } from "@/components/foundational/foundational-health-dashboard";
 import { FoundationalOperatorPanel } from "@/components/foundational/foundational-operator-panel";
 import { FoundationalRemediationConsole } from "@/components/foundational/foundational-remediation-console";
 import { KnowledgeBrowser } from "@/components/knowledge/knowledge-browser";
@@ -68,9 +69,18 @@ function KnowledgePage() {
 function FoundationalReadinessPage() {
   return (
     <>
+      <CorePageHeading page="foundational" />
+      <FoundationalHealthDashboard workspaceId={DEFAULT_WORKSPACE.id} />
+    </>
+  );
+}
+
+function FoundationalDiagnosticsPage() {
+  return (
+    <>
       <PageHeading
-        title="Foundational Readiness"
-        description="查看 US 与 WIPO ACTIVE + FOUNDATIONAL 数据供给从注册、采集、转换、索引到结构质量和检索 smoke relevance 的统一 readiness gate；COLLECT 阶段可通过 M23/M24 三段式受控流程创建审批意图、审批并显式派发单目标采集。"
+        title="基础资料技术诊断 / Foundational Diagnostics"
+        description="高级控制面：保留受控采集派发、转换恢复、验证后重建索引、检索质量修复、相关性冒烟验证与供给健康诊断。所有写操作继续遵守显式审批和可审计边界。"
       />
       <div className="space-y-6">
         <FoundationalOperatorPanel workspaceId={DEFAULT_WORKSPACE.id} />
@@ -84,8 +94,8 @@ function SourceIntelligencePage() {
   return (
     <>
       <PageHeading
-        title="Source Intelligence"
-        description="先用 D2.18 比较两个 D2.17 Historical Policy Resolution 端点并严格传播 RESOLVED/PARTIAL/UNKNOWN，再用 D2.17 单点重放与 D2.16 audit 查询追溯原因；所有结果都保持只读，不构成 rollback、apply 或自动执行授权。"
+        title="来源智能诊断 / Source Intelligence"
+        description="高级控制面：检查来源智能策略、人工复查队列、历史策略解析与审计结果。该区域用于运营诊断，不替代来源审批，也不构成自动执行授权。"
       />
       <div className="space-y-6">
         <SourceIntelligencePolicyComparison />
@@ -256,6 +266,8 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
         <KnowledgePage />
       ) : moduleKey === "foundational" ? (
         <FoundationalReadinessPage />
+      ) : moduleKey === "foundationalDiagnostics" ? (
+        <FoundationalDiagnosticsPage />
       ) : moduleKey === "intelligence" ? (
         <SourceIntelligencePage />
       ) : moduleKey === "jobs" ? (

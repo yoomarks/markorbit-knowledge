@@ -11,9 +11,14 @@ const plannedActions: Record<Exclude<ModuleKey, "dashboard">, string[]> = {
   ],
   sources: ["创建与分类数据源", "按国家、类型和状态筛选", "测试连接、预览采集和检查更新"],
   foundational: [
-    "查看 US / WIPO FOUNDATIONAL readiness gate",
-    "下钻 supply、quality 与 relevance smoke 状态",
-    "按 M20 队列查看只读人工修复建议",
+    "查看核心基础资料覆盖与健康",
+    "下钻来源登记、采集、转换、入库与检索状态",
+    "把工程修复操作留在 Advanced Diagnostics",
+  ],
+  foundationalDiagnostics: [
+    "执行受控基础资料供给诊断",
+    "处理采集、转换、索引与检索质量修复",
+    "保留显式审批、执行授权与完整审计轨迹",
   ],
   intelligence: [
     "比较 Source 的运营优先级与显式 Authority",
