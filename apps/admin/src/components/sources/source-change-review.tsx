@@ -115,7 +115,8 @@ export function SourceChangeReview() {
   }, [zh]);
 
   useEffect(() => {
-    void load();
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
   }, [load]);
 
   const visible = useMemo(() => items.slice(0, 12), [items]);
