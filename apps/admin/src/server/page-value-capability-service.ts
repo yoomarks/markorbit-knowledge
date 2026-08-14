@@ -9,10 +9,7 @@ import {
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
 import { SqlitePageValueCapabilityRepository } from "@markorbit/persistence/page-value-capability";
 import type { SourceCandidateRecord } from "@markorbit/persistence/source-discovery";
-import {
-  capabilityConnectionStatus,
-  invokeCapability,
-} from "./capability-client";
+import { capabilityConnectionStatus, invokeCapability } from "./capability-client";
 import { getRegistryDatabase, getSourceDiscoveryRepository } from "./source-registry";
 
 const DEFAULT_OBJECTIVE =
