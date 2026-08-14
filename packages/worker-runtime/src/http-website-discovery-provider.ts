@@ -415,6 +415,22 @@ export class HttpWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
           return;
         }
 
+        const observedCandidate = candidates.find(
+          (candidate) =>
+            candidate.locator === current.locator || candidate.locator === result.locator,
+        );
+        if (observedCandidate) {
+          const httpEtag = result.response.headers.get("etag")?.trim();
+          const httpLastModified = result.response.headers.get("last-modified")?.trim();
+          observedCandidate.metadata = {
+            ...observedCandidate.metadata,
+            observedContentSha256: createHash("sha256").update(result.text).digest("hex"),
+            ...(httpEtag ? { httpEtag } : {}),
+            ...(httpLastModified ? { httpLastModified } : {}),
+            httpContentType: contentType,
+          };
+        }
+
         for (const href of extractLinks(result.text)) {
           if (candidates.length >= maxCandidates) break;
           const discoveredUrl = normalizeUrl(href, result.locator);

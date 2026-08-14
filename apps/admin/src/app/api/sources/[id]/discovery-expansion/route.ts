@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getDiscoveryWorkflowService } from "@/server/discovery-service";
+import { getSourceDiscoveryRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,7 +49,10 @@ export async function POST(request: Request, context: RouteContext) {
       ),
       deniedUrlPatterns: optionalStringArray(body.deniedUrlPatterns, "deniedUrlPatterns"),
     });
-    return NextResponse.json(result, { status: 201 });
+    const observationSummary = getSourceDiscoveryRepository().candidateObservationSummary(
+      result.batch.batch.batchId,
+    );
+    return NextResponse.json({ ...result, observationSummary }, { status: 201 });
   } catch (error) {
     return apiError(error);
   }
