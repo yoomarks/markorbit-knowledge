@@ -138,7 +138,10 @@ export class SqliteSourceDiscoveryRepository
 
   override completeBatch(batchId: string, candidates: SourceCandidate[]): DiscoveryBatchRecord {
     const previous = new Map(
-      candidates.map((candidate) => [candidate.candidateId, this.getCandidate(candidate.candidateId)]),
+      candidates.map((candidate) => [
+        candidate.candidateId,
+        this.getCandidate(candidate.candidateId),
+      ]),
     );
     const completed = super.completeBatch(batchId, candidates);
     const observedAt = completed.completedAt;

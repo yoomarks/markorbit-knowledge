@@ -110,7 +110,9 @@ function parseObservation(row: Record<string, unknown>): CandidateChangeObservat
 
 function ensureMigration(database: DatabaseSync): void {
   initializeRegistry(database);
-  const applied = database.prepare("SELECT id FROM schema_migrations WHERE id = ?").get(MIGRATION_ID);
+  const applied = database
+    .prepare("SELECT id FROM schema_migrations WHERE id = ?")
+    .get(MIGRATION_ID);
   if (applied) return;
 
   database.exec("BEGIN IMMEDIATE;");
@@ -167,7 +169,9 @@ export class SqliteSourceCandidateObservationRepository {
 
   previous(observationId: string): CandidateChangeObservationV1 | null {
     const current = this.database
-      .prepare("SELECT previous_observation_id FROM source_candidate_observations WHERE observation_id = ?")
+      .prepare(
+        "SELECT previous_observation_id FROM source_candidate_observations WHERE observation_id = ?",
+      )
       .get(observationId) as { previous_observation_id?: string | null } | undefined;
     if (!current?.previous_observation_id) return null;
     const row = this.database
@@ -176,7 +180,9 @@ export class SqliteSourceCandidateObservationRepository {
     return row ? parseObservation(row) : null;
   }
 
-  list(input: { candidateId?: string; delta?: CandidateObservationDelta; limit?: number } = {}): CandidateChangeObservationV1[] {
+  list(
+    input: { candidateId?: string; delta?: CandidateObservationDelta; limit?: number } = {},
+  ): CandidateChangeObservationV1[] {
     const clauses: string[] = [];
     const values: string[] = [];
     if (input.candidateId) {

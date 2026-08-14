@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  CANDIDATE_OBSERVATION_DELTAS,
-  type CandidateObservationDelta,
-} from "@markorbit/contracts";
+import { CANDIDATE_OBSERVATION_DELTAS, type CandidateObservationDelta } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
 import { getSourceDiscoveryRepository } from "@/server/source-registry";

@@ -168,9 +168,7 @@ export function SourceChangeReview() {
           await requestMessage(response, zh ? "重新进入审批失败" : "Unable to reopen candidate"),
         );
       }
-      setItems((current) =>
-        current.filter((item) => item.observation.candidateId !== candidateId),
-      );
+      setItems((current) => current.filter((item) => item.observation.candidateId !== candidateId));
     } catch (reopenError) {
       setError(reopenError instanceof Error ? reopenError.message : "Unable to reopen candidate");
     } finally {
@@ -227,9 +225,14 @@ export function SourceChangeReview() {
           const id = item.observation.candidateId;
           const assessment = assessments[id];
           const title =
-            item.candidate?.candidate.title || item.observation.facts.title || item.observation.locator;
+            item.candidate?.candidate.title ||
+            item.observation.facts.title ||
+            item.observation.locator;
           return (
-            <article key={item.observation.observationId} className="rounded-xl border border-slate-200 p-4">
+            <article
+              key={item.observation.observationId}
+              className="rounded-xl border border-slate-200 p-4"
+            >
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-900">{title}</p>
@@ -297,7 +300,9 @@ export function SourceChangeReview() {
                     >
                       {assessment.level}
                     </span>
-                    <span className="text-xs font-semibold text-slate-800">{assessment.summary}</span>
+                    <span className="text-xs font-semibold text-slate-800">
+                      {assessment.summary}
+                    </span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-slate-600">{assessment.reason}</p>
                   <p className="mt-2 text-[11px] text-slate-500">

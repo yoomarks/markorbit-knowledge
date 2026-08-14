@@ -63,11 +63,7 @@ describe("source candidate rescan observations", () => {
     });
 
     now = "2026-08-15T02:01:00.000Z";
-    addBatch(
-      discovery,
-      "batch_second",
-      candidate({ discoveredAt: "2026-08-15T02:00:00.000Z" }),
-    );
+    addBatch(discovery, "batch_second", candidate({ discoveredAt: "2026-08-15T02:00:00.000Z" }));
 
     expect(discovery.getCandidate("cand_policy")?.candidate.status).toBe("REJECTED");
     expect(discovery.latestCandidateObservation("cand_policy")?.delta).toBe("KNOWN");
