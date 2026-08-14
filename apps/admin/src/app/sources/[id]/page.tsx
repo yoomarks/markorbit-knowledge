@@ -1,5 +1,6 @@
 import { AdminShell } from "@/components/admin-shell";
 import { SourceDetailWorkbench } from "@/components/sources/source-detail-workbench";
+import { SourceRelatedRecommendations } from "@/components/sources/source-related-recommendations";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +8,10 @@ export default async function SourceDetailPage({ params }: { params: Promise<{ i
   const { id } = await params;
   return (
     <AdminShell>
-      <SourceDetailWorkbench sourceId={id} />
+      <div className="space-y-5">
+        <SourceDetailWorkbench sourceId={id} />
+        <SourceRelatedRecommendations sourceId={id} />
+      </div>
     </AdminShell>
   );
 }

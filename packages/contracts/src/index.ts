@@ -31,6 +31,7 @@ export type {
 } from "./collection-v1";
 export * from "./source-discovery-v1";
 export * from "./page-value-capability-v1";
+export * from "./source-recommendation-capability-v1";
 export * from "./core-discovery-proposal-v1";
 export * from "./discovery-observation-v1";
 export * from "./source-graph-v1";
