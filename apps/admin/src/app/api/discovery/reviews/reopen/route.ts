@@ -6,6 +6,7 @@ import { getDiscoveryWorkflowService } from "@/server/discovery-service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Recovery is an explicit operator action. It never reopens accepted candidates.
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
