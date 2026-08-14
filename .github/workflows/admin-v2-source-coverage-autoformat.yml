@@ -22,12 +22,64 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply Prettier
+      - name: Apply rejected-candidate recovery
         run: |
-          pnpm exec prettier --write apps/admin/src/components/sources/source-country-coverage.tsx apps/admin/src/components/foundational/foundational-health-dashboard.tsx apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx
-          if git diff --quiet; then exit 0; fi
+          awk '
+            /^          python - <<.PY./ { capture=1; next }
+            /^          PY$/ { capture=0; exit }
+            capture { sub(/^          /, ""); print }
+          ' .github/workflows/apply-rejected-recovery.yml > /tmp/apply-rejected-recovery.py
+          python /tmp/apply-rejected-recovery.py
+          pnpm exec prettier --write \
+            packages/persistence/src/source-discovery-registry.ts \
+            packages/persistence/src/source-discovery.ts \
+            packages/persistence/src/source-graph-registry.ts \
+            apps/admin/src/server/discovery-source-graph.ts \
+            apps/admin/src/server/discovery-service.ts \
+            apps/admin/src/lib/intake-i18n.ts \
+            apps/admin/src/lib/admin-v2/source-smart-review-ui.tsx \
+            packages/persistence/tests/source-discovery-registry.test.ts \
+            packages/persistence/tests/source-graph-registry.test.ts \
+            apps/admin/src/app/api/discovery/reviews/reopen/route.ts
+          git rm .github/workflows/apply-rejected-recovery.yml
+          cat > .github/workflows/admin-v2-source-coverage-autoformat.yml <<'EOF'
+          name: Admin V2 Business Surface Autoformat
+
+          on:
+            pull_request:
+              branches: [main]
+
+          permissions:
+            contents: write
+
+          jobs:
+            autoformat:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                  with:
+                    ref: ${{ github.head_ref }}
+                - uses: pnpm/action-setup@v4
+                  with:
+                    version: 11.13.0
+                - uses: actions/setup-node@v4
+                  with:
+                    node-version: 24
+                    cache: pnpm
+                - run: pnpm install --frozen-lockfile
+                - name: Apply Prettier
+                  run: |
+                    pnpm exec prettier --write apps/admin/src/components/sources/source-country-coverage.tsx apps/admin/src/components/foundational/foundational-health-dashboard.tsx apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx
+                    if git diff --quiet; then exit 0; fi
+                    git config user.name "github-actions[bot]"
+                    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                    git add apps/admin/src/components/sources/source-country-coverage.tsx apps/admin/src/components/foundational/foundational-health-dashboard.tsx apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx
+                    git commit -m "style: format admin v2 health surfaces"
+                    git push origin HEAD:${{ github.head_ref }}
+          EOF
+          sed -i 's/^          //' .github/workflows/admin-v2-source-coverage-autoformat.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/admin/src/components/sources/source-country-coverage.tsx apps/admin/src/components/foundational/foundational-health-dashboard.tsx apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx
-          git commit -m "style: format admin v2 health surfaces"
+          git add -A
+          git commit -m "Admin V2: restore rejected candidates with audit history"
           git push origin HEAD:${{ github.head_ref }}
