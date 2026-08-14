@@ -395,23 +395,37 @@ export function FoundationalHealthDashboard({ workspaceId }: { workspaceId: stri
                     return (
                       <tr key={target.targetId} className="hover:bg-slate-50/70">
                         <td className="px-5 py-4">
-                          <p className="font-medium text-slate-900">{targetLabel(target.targetId)}</p>
+                          <p className="font-medium text-slate-900">
+                            {targetLabel(target.targetId)}
+                          </p>
                           <p className="mt-1 text-[11px] text-slate-400">{target.targetId}</p>
                         </td>
                         <td className="px-4 py-4">
-                          <StageIndicator state={registerState} label={stageLabel(registerState, copy)} />
+                          <StageIndicator
+                            state={registerState}
+                            label={stageLabel(registerState, copy)}
+                          />
                         </td>
                         <td className="px-4 py-4">
-                          <StageIndicator state={collectState} label={stageLabel(collectState, copy)} />
+                          <StageIndicator
+                            state={collectState}
+                            label={stageLabel(collectState, copy)}
+                          />
                         </td>
                         <td className="px-4 py-4">
-                          <StageIndicator state={convertState} label={stageLabel(convertState, copy)} />
+                          <StageIndicator
+                            state={convertState}
+                            label={stageLabel(convertState, copy)}
+                          />
                         </td>
                         <td className="px-4 py-4">
                           <StageIndicator state={indexState} label={stageLabel(indexState, copy)} />
                         </td>
                         <td className="px-4 py-4">
-                          <StageIndicator state={searchState} label={stageLabel(searchState, copy)} />
+                          <StageIndicator
+                            state={searchState}
+                            label={stageLabel(searchState, copy)}
+                          />
                         </td>
                         <td className="px-4 py-4">
                           <span
