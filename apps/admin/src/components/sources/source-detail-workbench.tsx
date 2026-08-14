@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Archive,
   ArrowLeft,
@@ -182,19 +182,18 @@ export function SourceDetailWorkbench({ sourceId }: { sourceId: string }) {
     return () => window.clearTimeout(timer);
   }, [refresh]);
 
-  const latestRun = useMemo(() => {
-    if (!state?.runs.length) return null;
-    return [...state.runs].sort(
-      (left, right) => Date.parse(right.run.createdAt) - Date.parse(left.run.createdAt),
-    )[0]!;
-  }, [state?.runs]);
+  const latestRun =
+    state && state.runs.length > 0
+      ? [...state.runs].sort(
+          (left, right) => Date.parse(right.run.createdAt) - Date.parse(left.run.createdAt),
+        )[0]!
+      : null;
 
-  const defaultPlan = useMemo(() => {
-    if (!state?.source.defaultCollectionPlanId) return null;
-    return (
-      state.plans.find((record) => record.plan.id === state.source.defaultCollectionPlanId) ?? null
-    );
-  }, [state?.plans, state?.source.defaultCollectionPlanId]);
+  const defaultPlan =
+    state?.source.defaultCollectionPlanId && state
+      ? (state.plans.find((record) => record.plan.id === state.source.defaultCollectionPlanId) ??
+        null)
+      : null;
 
   async function setStatus(status: SourceDefinition["status"]) {
     if (!state) return;
