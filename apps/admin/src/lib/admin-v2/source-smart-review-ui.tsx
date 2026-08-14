@@ -238,7 +238,10 @@ export function SourceSmartReviewUi() {
   }
 
   function toggleAll() {
-    if (records.length > 0 && records.every((record) => selected.has(record.candidate.candidateId))) {
+    if (
+      records.length > 0 &&
+      records.every((record) => selected.has(record.candidate.candidateId))
+    ) {
       setSelected(new Set());
     } else {
       setSelected(new Set(records.map((record) => record.candidate.candidateId)));
@@ -453,8 +456,14 @@ export function SourceSmartReviewUi() {
             {(
               [
                 ["PENDING", t("pendingTab", { count: pendingCount })],
-                ["ACCEPTED", t("acceptedTab", { count: overview?.candidates.summary.ACCEPTED ?? 0 })],
-                ["REJECTED", t("rejectedTab", { count: overview?.candidates.summary.REJECTED ?? 0 })],
+                [
+                  "ACCEPTED",
+                  t("acceptedTab", { count: overview?.candidates.summary.ACCEPTED ?? 0 }),
+                ],
+                [
+                  "REJECTED",
+                  t("rejectedTab", { count: overview?.candidates.summary.REJECTED ?? 0 }),
+                ],
               ] as Array<[ReviewTab, string]>
             ).map(([value, label]) => (
               <button
@@ -698,7 +707,10 @@ export function SourceSmartReviewUi() {
       </section>
 
       {rejectTarget.length > 0 ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4" role="presentation">
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4"
+          role="presentation"
+        >
           <section
             role="dialog"
             aria-modal="true"
