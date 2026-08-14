@@ -137,9 +137,24 @@ function validateResponse(value: unknown, maxResults: number): SourceRecommendat
       "Source recommendation capability returned more items than requested",
     );
   }
+  if (Number.isNaN(Date.parse(value.generatedAt))) {
+    throw new RegistryError(
+      "SOURCE_RECOMMENDATION_CAPABILITY_INVALID_TIMESTAMP",
+      "Source recommendation capability returned an invalid generatedAt timestamp",
+    );
+  }
+
   const seen = new Set<string>();
   for (const item of value.items) {
-    const normalized = normalizePublicUrl(item.url, "recommendation URL");
+    let normalized: string;
+    try {
+      normalized = normalizePublicUrl(item.url, "recommendation URL");
+    } catch {
+      throw new RegistryError(
+        "SOURCE_RECOMMENDATION_CAPABILITY_INVALID_URL",
+        `Source recommendation capability returned an unsafe URL: ${item.url}`,
+      );
+    }
     if (seen.has(normalized)) {
       throw new RegistryError(
         "SOURCE_RECOMMENDATION_CAPABILITY_DUPLICATE_URL",
@@ -148,7 +163,10 @@ function validateResponse(value: unknown, maxResults: number): SourceRecommendat
     }
     seen.add(normalized);
   }
-  return value;
+  return {
+    ...value,
+    generatedAt: new Date(value.generatedAt).toISOString(),
+  };
 }
 
 function allKnownUrls(): string[] {
@@ -252,32 +270,26 @@ export class SourceRecommendationCapabilityService {
 
     const sourceOrigin = origin(canonicalUrl);
     const known = new Set(knownUrls);
+    const knownOrigins = new Set(knownUrls.map(origin));
     const skipped: Array<{ url: string; reason: string }> = [];
     const candidates: SourceCandidate[] = [];
     for (const item of response.items) {
-      let locator: string;
-      try {
-        locator = normalizePublicUrl(item.url, "recommendation URL");
-      } catch (error) {
-        skipped.push({
-          url: item.url,
-          reason: error instanceof Error ? error.message : "Invalid recommendation URL",
-        });
-        continue;
-      }
+      const locator = normalizePublicUrl(item.url, "recommendation URL");
+      const locatorOrigin = origin(locator);
       if (item.priority === "SKIP") {
         skipped.push({ url: locator, reason: "Capability marked recommendation as SKIP" });
         continue;
       }
-      if (origin(locator) === sourceOrigin) {
+      if (locatorOrigin === sourceOrigin) {
         skipped.push({ url: locator, reason: "Recommendation resolves to the current source origin" });
         continue;
       }
-      if (known.has(locator)) {
-        skipped.push({ url: locator, reason: "URL already exists in Sources or the review queue" });
+      if (known.has(locator) || knownOrigins.has(locatorOrigin)) {
+        skipped.push({ url: locator, reason: "Source already exists or is already awaiting review" });
         continue;
       }
       known.add(locator);
+      knownOrigins.add(locatorOrigin);
       candidates.push({
         candidateId: stableId("cand", locator),
         locator,
