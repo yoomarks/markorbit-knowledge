@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import { AdminShell } from "@/components/admin-shell";
 import { ArtifactList } from "@/components/artifacts/artifact-list";
@@ -9,11 +9,9 @@ import { ConversionRunList } from "@/components/conversion-runs/conversion-run-l
 import { ConverterControl } from "@/components/converters/converter-control";
 import { CorePageHeading } from "@/components/core-page-heading";
 import { DiscoveryIntake } from "@/components/discovery/discovery-intake";
-import { FoundationalHealthDashboard } from "@/components/foundational/foundational-health-dashboard";
 import { FoundationalOperatorPanel } from "@/components/foundational/foundational-operator-panel";
 import { FoundationalRemediationConsole } from "@/components/foundational/foundational-remediation-console";
 import { KnowledgeBrowser } from "@/components/knowledge/knowledge-browser";
-import { ModulePreview } from "@/components/module-preview";
 import { OverviewWorkbench } from "@/components/overview/overview-workbench";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
@@ -39,6 +37,16 @@ import { VaultExportControl } from "@/components/vault/vault-export-control";
 import { WorkerList } from "@/components/workers/worker-list";
 import { moduleOrder, type ModuleKey } from "@/lib/modules";
 
+const legacyBusinessRedirects: Partial<Record<ModuleKey, string>> = {
+  foundational: "/sources",
+  people: "/sources",
+  collection: "/sources",
+  staging: "/knowledge",
+  errors: "/dashboard",
+  audit: "/dashboard",
+  settings: "/dashboard",
+};
+
 export function generateStaticParams() {
   return moduleOrder.map((section) => ({ section }));
 }
@@ -62,15 +70,6 @@ function KnowledgePage() {
     <>
       <CorePageHeading page="knowledge" />
       <KnowledgeBrowser workspaceId={DEFAULT_WORKSPACE.id} />
-    </>
-  );
-}
-
-function FoundationalReadinessPage() {
-  return (
-    <>
-      <CorePageHeading page="foundational" />
-      <FoundationalHealthDashboard workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );
 }
@@ -253,6 +252,8 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
   const { section } = await params;
   if (!moduleOrder.includes(section as ModuleKey)) notFound();
   const moduleKey = section as ModuleKey;
+  const legacyTarget = legacyBusinessRedirects[moduleKey];
+  if (legacyTarget) redirect(legacyTarget);
 
   return (
     <AdminShell>
@@ -264,8 +265,6 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
         <SourcesPage />
       ) : moduleKey === "knowledge" ? (
         <KnowledgePage />
-      ) : moduleKey === "foundational" ? (
-        <FoundationalReadinessPage />
       ) : moduleKey === "foundationalDiagnostics" ? (
         <FoundationalDiagnosticsPage />
       ) : moduleKey === "intelligence" ? (
@@ -288,9 +287,7 @@ export default async function SectionPage({ params }: { params: Promise<{ sectio
         <ReadyPackagesPage />
       ) : moduleKey === "vault" ? (
         <VaultPage />
-      ) : (
-        <ModulePreview moduleKey={moduleKey} />
-      )}
+      ) : null}
     </AdminShell>
   );
 }

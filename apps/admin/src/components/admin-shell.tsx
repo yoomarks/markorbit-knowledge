@@ -94,6 +94,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const systemActive = systemModuleOrder.some((key) => isModuleActive(pathname, key));
   const [advancedOpen, setAdvancedOpen] = useState(systemActive);
+  const zh = locale === "zh-CN";
 
   return (
     <div className="min-h-screen bg-[#f4f7fb] lg:grid lg:grid-cols-[238px_1fr]">
@@ -101,7 +102,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         className={`fixed inset-y-0 left-0 z-40 w-[238px] border-r border-slate-200 bg-white transition-transform lg:static lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
-        aria-label={locale === "zh-CN" ? "主导航" : "Main navigation"}
+        aria-label={zh ? "主导航" : "Main navigation"}
       >
         <div className="flex h-[72px] items-center justify-between border-b border-slate-200 px-4">
           <Link href="/dashboard" className="flex items-center gap-3">
@@ -127,7 +128,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         <nav className="max-h-[calc(100vh-126px)] overflow-y-auto px-2 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-            {locale === "zh-CN" ? "知识运营 · WORKBENCH" : "WORKBENCH · 知识运营"}
+            {zh ? "知识运营 · WORKBENCH" : "WORKBENCH · 知识运营"}
           </p>
           <div className="space-y-1">
             <NavItems
@@ -145,7 +146,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
             aria-expanded={advancedOpen}
           >
-            <span>{locale === "zh-CN" ? "高级 Advanced" : "Advanced 高级"}</span>
+            <span>{zh ? "高级 Advanced" : "Advanced 高级"}</span>
             <ChevronDown
               size={14}
               aria-hidden="true"
@@ -180,26 +181,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           >
             <Menu size={19} />
           </button>
-          <div className="relative hidden w-full max-w-[520px] sm:block">
-            <Search
-              className="absolute left-3.5 top-2.5 text-slate-400"
-              size={18}
-              aria-hidden="true"
-            />
-            <input
-              aria-label={t("shell.search")}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-14 text-sm text-slate-700 placeholder:text-slate-400"
-              placeholder={
-                locale === "zh-CN"
-                  ? "搜索知识、来源、文件… / Search knowledge, sources, files…"
-                  : "Search knowledge, sources, files… / 搜索知识、来源、文件…"
-              }
-              disabled
-            />
-            <span className="absolute right-3 top-2.5 rounded-md bg-slate-200/70 px-1.5 py-0.5 text-[11px] text-slate-400">
-              ⌘ K
-            </span>
+
+          <div className="hidden items-center gap-2 sm:flex">
+            <Link
+              href="/knowledge"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            >
+              <Search size={16} aria-hidden="true" />
+              <span>{zh ? "搜索知识" : "Search Knowledge"}</span>
+            </Link>
+            <Link
+              href="/dashboard"
+              className="hidden rounded-xl px-3 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 md:inline-flex"
+            >
+              {zh ? "查看运营提醒" : "View operational alerts"}
+            </Link>
           </div>
+
           <div className="ml-auto flex items-center gap-3">
             <div className="hidden items-center gap-2 text-xs sm:flex">
               <button
@@ -218,13 +216,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 EN
               </button>
             </div>
-            <button
-              type="button"
-              className="grid size-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-              aria-label={t("shell.notifications")}
+            <Link
+              href="/dashboard"
+              className="grid size-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              aria-label={zh ? "查看运营提醒" : "View operational alerts"}
+              title={zh ? "查看运营提醒" : "View operational alerts"}
             >
               <Bell size={17} />
-            </button>
+            </Link>
             <div className="hidden items-center gap-2 sm:flex">
               <div className="grid size-9 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
                 AD
