@@ -87,11 +87,17 @@ function targetLabel(targetId: string): string {
     .split(/[-_]/)
     .filter(Boolean);
   return tokens
-    .map((token) => acronyms[token.toLowerCase()] ?? `${token[0]?.toUpperCase() ?? ""}${token.slice(1)}`)
+    .map(
+      (token) =>
+        acronyms[token.toLowerCase()] ?? `${token[0]?.toUpperCase() ?? ""}${token.slice(1)}`,
+    )
     .join(" ");
 }
 
-function stageState(target: FoundationalReadinessTarget, stage: "REGISTER" | "COLLECT" | "CONVERT" | "INDEX"): StageState {
+function stageState(
+  target: FoundationalReadinessTarget,
+  stage: "REGISTER" | "COLLECT" | "CONVERT" | "INDEX",
+): StageState {
   const current = STAGE_RANK[target.stage];
   const required = STAGE_RANK[stage];
   if (current > required || target.stage === "READY") return "READY";
@@ -100,10 +106,7 @@ function stageState(target: FoundationalReadinessTarget, stage: "REGISTER" | "CO
 }
 
 function retrievalState(target: FoundationalReadinessTarget): StageState {
-  if (
-    target.retrievalQualityState === "READY" &&
-    target.retrievalRelevanceState === "READY"
-  ) {
+  if (target.retrievalQualityState === "READY" && target.retrievalRelevanceState === "READY") {
     return "READY";
   }
   if (
@@ -169,7 +172,9 @@ function statusTone(state: FoundationalReadinessTarget["healthState"]): string {
 export function FoundationalHealthDashboard({ workspaceId }: { workspaceId: string }) {
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
-  const [snapshots, setSnapshots] = useState<Partial<Record<Jurisdiction, FoundationalRemediationQueueSnapshot>>>({});
+  const [snapshots, setSnapshots] = useState<
+    Partial<Record<Jurisdiction, FoundationalRemediationQueueSnapshot>>
+  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -177,9 +182,13 @@ export function FoundationalHealthDashboard({ workspaceId }: { workspaceId: stri
     setLoading(true);
     try {
       const results = await Promise.all(
-        JURISDICTIONS.map(async ({ code }) => [code, await requestSnapshot(workspaceId, code)] as const),
+        JURISDICTIONS.map(
+          async ({ code }) => [code, await requestSnapshot(workspaceId, code)] as const,
+        ),
       );
-      setSnapshots(Object.fromEntries(results) as Record<Jurisdiction, FoundationalRemediationQueueSnapshot>);
+      setSnapshots(
+        Object.fromEntries(results) as Record<Jurisdiction, FoundationalRemediationQueueSnapshot>,
+      );
       setError(null);
     } catch (requestError) {
       setError(
@@ -293,7 +302,11 @@ export function FoundationalHealthDashboard({ workspaceId }: { workspaceId: stri
 
       {loading && Object.keys(snapshots).length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500">
-          <Loader2 className="mx-auto mb-3 animate-spin text-blue-600" size={22} aria-hidden="true" />
+          <Loader2
+            className="mx-auto mb-3 animate-spin text-blue-600"
+            size={22}
+            aria-hidden="true"
+          />
           {copy.loading}
         </div>
       ) : null}
@@ -305,7 +318,10 @@ export function FoundationalHealthDashboard({ workspaceId }: { workspaceId: stri
         const title = zh ? zhName : en;
         const subtitle = zh ? en : zhName;
         return (
-          <section key={code} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <section
+            key={code}
+            className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
+          >
             <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -318,7 +334,13 @@ export function FoundationalHealthDashboard({ workspaceId }: { workspaceId: stri
                         : "bg-amber-50 text-amber-700"
                     }`}
                   >
-                    {gate.state === "READY" ? (zh ? "全部正常" : "Healthy") : (zh ? "需要处理" : "Needs attention")}
+                    {gate.state === "READY"
+                      ? zh
+                        ? "全部正常"
+                        : "Healthy"
+                      : zh
+                        ? "需要处理"
+                        : "Needs attention"}
                   </span>
                 </div>
                 <div className="mt-3 flex items-center gap-3">
@@ -363,22 +385,69 @@ export function FoundationalHealthDashboard({ workspaceId }: { workspaceId: stri
                         <p className="mt-1 text-[11px] text-slate-400">{target.targetId}</p>
                       </td>
                       <td className="px-4 py-4">
-                        <StageIndicator state={stageState(target, "REGISTER")} label={stageState(target, "REGISTER") === "READY" ? copy.ready : stageState(target, "REGISTER") === "ATTENTION" ? copy.action : copy.pending} />
+                        <StageIndicator
+                          state={stageState(target, "REGISTER")}
+                          label={
+                            stageState(target, "REGISTER") === "READY"
+                              ? copy.ready
+                              : stageState(target, "REGISTER") === "ATTENTION"
+                                ? copy.action
+                                : copy.pending
+                          }
+                        />
                       </td>
                       <td className="px-4 py-4">
-                        <StageIndicator state={stageState(target, "COLLECT")} label={stageState(target, "COLLECT") === "READY" ? copy.ready : stageState(target, "COLLECT") === "ATTENTION" ? copy.action : copy.pending} />
+                        <StageIndicator
+                          state={stageState(target, "COLLECT")}
+                          label={
+                            stageState(target, "COLLECT") === "READY"
+                              ? copy.ready
+                              : stageState(target, "COLLECT") === "ATTENTION"
+                                ? copy.action
+                                : copy.pending
+                          }
+                        />
                       </td>
                       <td className="px-4 py-4">
-                        <StageIndicator state={stageState(target, "CONVERT")} label={stageState(target, "CONVERT") === "READY" ? copy.ready : stageState(target, "CONVERT") === "ATTENTION" ? copy.action : copy.pending} />
+                        <StageIndicator
+                          state={stageState(target, "CONVERT")}
+                          label={
+                            stageState(target, "CONVERT") === "READY"
+                              ? copy.ready
+                              : stageState(target, "CONVERT") === "ATTENTION"
+                                ? copy.action
+                                : copy.pending
+                          }
+                        />
                       </td>
                       <td className="px-4 py-4">
-                        <StageIndicator state={stageState(target, "INDEX")} label={stageState(target, "INDEX") === "READY" ? copy.ready : stageState(target, "INDEX") === "ATTENTION" ? copy.action : copy.pending} />
+                        <StageIndicator
+                          state={stageState(target, "INDEX")}
+                          label={
+                            stageState(target, "INDEX") === "READY"
+                              ? copy.ready
+                              : stageState(target, "INDEX") === "ATTENTION"
+                                ? copy.action
+                                : copy.pending
+                          }
+                        />
                       </td>
                       <td className="px-4 py-4">
-                        <StageIndicator state={retrievalState(target)} label={retrievalState(target) === "READY" ? copy.ready : retrievalState(target) === "ATTENTION" ? copy.action : copy.pending} />
+                        <StageIndicator
+                          state={retrievalState(target)}
+                          label={
+                            retrievalState(target) === "READY"
+                              ? copy.ready
+                              : retrievalState(target) === "ATTENTION"
+                                ? copy.action
+                                : copy.pending
+                          }
+                        />
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(target.healthState)}`}>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(target.healthState)}`}
+                        >
                           {statusLabel(target.healthState, zh)}
                         </span>
                       </td>
