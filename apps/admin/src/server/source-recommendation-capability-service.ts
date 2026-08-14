@@ -94,7 +94,10 @@ function normalizePublicUrl(value: string, field: string): string {
 }
 
 function sourceUrl(source: SourceDefinition): string {
-  const candidates = [source.canonicalUri, ...source.entrypoints.map((entrypoint) => entrypoint.uri)];
+  const candidates = [
+    source.canonicalUri,
+    ...source.entrypoints.map((entrypoint) => entrypoint.uri),
+  ];
   for (const candidate of candidates) {
     if (!candidate) continue;
     try {
@@ -281,11 +284,17 @@ export class SourceRecommendationCapabilityService {
         continue;
       }
       if (locatorOrigin === sourceOrigin) {
-        skipped.push({ url: locator, reason: "Recommendation resolves to the current source origin" });
+        skipped.push({
+          url: locator,
+          reason: "Recommendation resolves to the current source origin",
+        });
         continue;
       }
       if (known.has(locator) || knownOrigins.has(locatorOrigin)) {
-        skipped.push({ url: locator, reason: "Source already exists or is already awaiting review" });
+        skipped.push({
+          url: locator,
+          reason: "Source already exists or is already awaiting review",
+        });
         continue;
       }
       known.add(locator);

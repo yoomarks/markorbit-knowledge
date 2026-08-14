@@ -65,7 +65,8 @@ export function SourceRelatedRecommendations({ sourceId }: { sourceId: string })
     let cancelled = false;
     void fetch(`/api/sources/${sourceId}/recommendations`, { cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) throw new Error(await errorMessage(response, "Unable to load capability"));
+        if (!response.ok)
+          throw new Error(await errorMessage(response, "Unable to load capability"));
         return (await response.json()) as CapabilityStatus;
       })
       .then((payload) => {
@@ -217,13 +218,18 @@ export function SourceRelatedRecommendations({ sourceId }: { sourceId: string })
                   <span
                     className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ring-1 ring-inset ${priorityTone(priority)}`}
                   >
-                    {priority ?? "—"}{score !== undefined ? ` · ${score}` : ""}
+                    {priority ?? "—"}
+                    {score !== undefined ? ` · ${score}` : ""}
                   </span>
                 </div>
-                {summary ? <p className="mt-3 text-xs leading-5 text-slate-600">{summary}</p> : null}
+                {summary ? (
+                  <p className="mt-3 text-xs leading-5 text-slate-600">{summary}</p>
+                ) : null}
                 {reason ? (
                   <p className="mt-2 text-xs leading-5 text-slate-500">
-                    <span className="font-semibold text-slate-600">{zh ? "推荐原因：" : "Why: "}</span>
+                    <span className="font-semibold text-slate-600">
+                      {zh ? "推荐原因：" : "Why: "}
+                    </span>
                     {reason}
                   </p>
                 ) : null}
