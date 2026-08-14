@@ -1,4 +1,4 @@
-name: Admin V2 Surface Autoformat
+name: Admin V2 Business Surface Autoformat
 
 on:
   pull_request:
