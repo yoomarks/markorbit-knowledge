@@ -16,7 +16,7 @@ import {
 export const modules = {
   dashboard: {
     label: "Overview",
-    description: "查看发现、来源、待审核项目、采集与 Ready Package 的整体健康状态。",
+    description: "查看发现、来源、知识资产与交付状态，并处理需要关注的事项。",
     icon: Home,
   },
   discovery: {
@@ -26,12 +26,12 @@ export const modules = {
   },
   sources: {
     label: "Sources",
-    description: "用业务视角统一管理候选、已接受来源、来源状态与采集意图。",
+    description: "统一完成来源审批、启用、状态管理、重新扫描与国家资源覆盖检查。",
     icon: Database,
   },
   foundational: {
     label: "Foundational Health",
-    description: "查看各基础资料来源从登记、采集、转换、入库到检索的覆盖与健康状态。",
+    description: "兼容入口：基础资料健康已内化到 Sources 与 Overview，不再作为独立业务模块。",
     icon: PackageCheck,
   },
   foundationalDiagnostics: {
@@ -46,22 +46,22 @@ export const modules = {
   },
   people: {
     label: "People & Organizations",
-    description: "查看从来源中观察到的机构、专业人士及公开业务联系方式候选。",
+    description: "预留：人员与机构能力尚未形成独立业务工作台。",
     icon: Boxes,
   },
   knowledge: {
     label: "Knowledge",
-    description: "按文档、案例、公告、媒体和私有证据查看进入 Staging 的信息资产。",
+    description: "按国家、来源与资料类型浏览已采集的知识资产，并追溯原始证据和版本。",
     icon: BookOpen,
   },
   collection: {
     label: "Collection",
-    description: "从运营视角查看正在采集、计划采集和失败待处理的工作。",
+    description: "预留：常规采集状态已内化到 Sources 与 Overview。",
     icon: Workflow,
   },
   packages: {
     label: "Packages",
-    description: "查看通过验证并准备交付下游系统的 Ready Package。",
+    description: "查看已准备、待交付、已交付或需要处理的知识交付包。",
     icon: PackageCheck,
   },
   jobs: {
@@ -81,7 +81,7 @@ export const modules = {
   },
   staging: {
     label: "Staging",
-    description: "高级：检查转换后的 Markdown、YAML 与 Provenance。",
+    description: "兼容入口：普通用户通过 Knowledge 查看转换后的知识资产。",
     icon: BookOpen,
   },
   workers: {
@@ -111,17 +111,17 @@ export const modules = {
   },
   errors: {
     label: "Errors",
-    description: "集中处理 Connector、Worker、转换、存储和 Vault 错误。",
+    description: "预留：错误处理暂未形成独立工作台。",
     icon: Boxes,
   },
   audit: {
     label: "Audit",
-    description: "追踪关键操作、对象变化、Trace ID 与责任主体。",
+    description: "预留：审计能力通过高级诊断与历史记录逐步汇总。",
     icon: History,
   },
   settings: {
     label: "Settings",
-    description: "配置 Workspace、环境、策略和系统级默认值。",
+    description: "预留：设置能力尚未形成独立业务工作台。",
     icon: FileCog,
   },
 } as const;
@@ -132,7 +132,6 @@ export const primaryModuleOrder: ModuleKey[] = [
   "dashboard",
   "discovery",
   "sources",
-  "foundational",
   "knowledge",
   "packages",
 ];
