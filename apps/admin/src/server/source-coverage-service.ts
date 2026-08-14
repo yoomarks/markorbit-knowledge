@@ -49,7 +49,9 @@ function percentage(registered: number, total: number): number | null {
   return Math.round((registered / total) * 100);
 }
 
-export function getSourceCoverageSnapshot(workspaceId = DEFAULT_WORKSPACE.id): SourceCoverageSnapshot {
+export function getSourceCoverageSnapshot(
+  workspaceId = DEFAULT_WORKSPACE.id,
+): SourceCoverageSnapshot {
   const repository = getSourceRepository();
   const sources = repository.list({ workspaceId, limit: 100 }).items;
   const targets = listSourceCoverageTargets().filter((target) => target.catalogState !== "RETIRED");

@@ -86,7 +86,9 @@ export function SourceCountryAnalysis({ workspaceId }: { workspaceId: string }) 
       setCoverage(next);
       setJurisdiction((current) => {
         if (current && next.some((item) => item.jurisdiction === current)) return current;
-        return next.find((item) => item.missingCount > 0)?.jurisdiction ?? next[0]?.jurisdiction ?? "";
+        return (
+          next.find((item) => item.missingCount > 0)?.jurisdiction ?? next[0]?.jurisdiction ?? ""
+        );
       });
       if (capabilityResponse.ok) {
         setCapability((await capabilityResponse.json()) as CapabilityStatus);
@@ -272,7 +274,9 @@ export function SourceCountryAnalysis({ workspaceId }: { workspaceId: string }) 
                 </h3>
                 <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-600">
                   {analysis.strengths.length > 0 ? (
-                    analysis.strengths.map((item, index) => <li key={`${index}-${item}`}>• {item}</li>)
+                    analysis.strengths.map((item, index) => (
+                      <li key={`${index}-${item}`}>• {item}</li>
+                    ))
                   ) : (
                     <li>{zh ? "暂无明确优势。" : "No explicit strengths identified."}</li>
                   )}
