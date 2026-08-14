@@ -1,18 +1,15 @@
 import {
-  Activity,
   Archive,
+  BookOpen,
   Boxes,
   Cable,
-  FileCog,
-  CircleAlert,
+  Compass,
   Database,
+  FileCog,
   FileStack,
-  Gauge,
   History,
-  LibraryBig,
+  Home,
   PackageCheck,
-  ScrollText,
-  Settings,
   Workflow,
 } from "lucide-react";
 
@@ -20,12 +17,12 @@ export const modules = {
   dashboard: {
     label: "Overview",
     description: "查看发现、来源、待审核项目、采集与 Ready Package 的整体健康状态。",
-    icon: Gauge,
+    icon: Home,
   },
   discovery: {
     label: "Discovery",
     description: "从少量 Seed 出发，发现值得审核的页面、文档和相关来源。",
-    icon: Gauge,
+    icon: Compass,
   },
   sources: {
     label: "Sources",
@@ -41,7 +38,7 @@ export const modules = {
   intelligence: {
     label: "Source Intelligence",
     description: "比较来源的运营价值、证据基础与人工复查建议，不替代法律权威判断。",
-    icon: Activity,
+    icon: Compass,
   },
   people: {
     label: "People & Organizations",
@@ -51,7 +48,7 @@ export const modules = {
   knowledge: {
     label: "Knowledge",
     description: "按文档、案例、公告、媒体和私有证据查看进入 Staging 的信息资产。",
-    icon: LibraryBig,
+    icon: BookOpen,
   },
   collection: {
     label: "Collection",
@@ -81,7 +78,7 @@ export const modules = {
   staging: {
     label: "Staging",
     description: "高级：检查转换后的 Markdown、YAML 与 Provenance。",
-    icon: LibraryBig,
+    icon: BookOpen,
   },
   workers: {
     label: "Workers",
@@ -111,24 +108,22 @@ export const modules = {
   errors: {
     label: "Errors",
     description: "集中处理 Connector、Worker、转换、存储和 Vault 错误。",
-    icon: CircleAlert,
+    icon: Boxes,
   },
   audit: {
     label: "Audit",
     description: "追踪关键操作、对象变化、Trace ID 与责任主体。",
-    icon: ScrollText,
+    icon: History,
   },
   settings: {
     label: "Settings",
     description: "配置 Workspace、环境、策略和系统级默认值。",
-    icon: Settings,
+    icon: FileCog,
   },
 } as const;
 
 export type ModuleKey = keyof typeof modules;
 
-// Admin V2: keep the daily operator surface intentionally small. Engineering and
-// unfinished modules remain routable, but they do not compete with the five core tasks.
 export const primaryModuleOrder: ModuleKey[] = [
   "dashboard",
   "discovery",
@@ -137,8 +132,6 @@ export const primaryModuleOrder: ModuleKey[] = [
   "packages",
 ];
 
-// Only real, currently connected control-plane pages are exposed in Advanced.
-// Placeholder-only modules (staging/errors/audit/settings) stay routable but hidden.
 export const systemModuleOrder: ModuleKey[] = [
   "jobs",
   "runs",
@@ -150,5 +143,4 @@ export const systemModuleOrder: ModuleKey[] = [
   "vault",
 ];
 
-// Static routing must still know about hidden/legacy pages so existing deep links do not break.
 export const moduleOrder: ModuleKey[] = Object.keys(modules) as ModuleKey[];
