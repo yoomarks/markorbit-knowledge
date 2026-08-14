@@ -1,5 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
 import type {
+  CandidateChangeObservationV1,
+  CandidateObservationBatchSummaryV1,
+  CandidateObservationDelta,
+  SourceCandidate,
   SourceDiscoveryMethod,
   SourceDiscoveryOrigin,
   SourceDiscoveryProvenance,
@@ -25,6 +29,7 @@ import {
   DiscoveryBatchNotFoundError,
   SourceCandidateNotFoundError,
 } from "./source-discovery-registry";
+import { SqliteSourceCandidateObservationRepository } from "./source-candidate-observations";
 import { SqliteSourceRegistryV2Repository } from "./source-registry-v2-registry";
 
 export type {
@@ -54,9 +59,18 @@ export type ReviewCandidateInput = BaseReviewCandidateInput & {
 
 export interface SourceDiscoveryRepository extends Omit<
   BaseSourceDiscoveryRepository,
-  "reviewCandidate"
+  "completeBatch" | "reviewCandidate"
 > {
+  completeBatch(batchId: string, candidates: SourceCandidate[]): DiscoveryBatchRecord;
   reviewCandidate(candidateId: string, input: ReviewCandidateInput): SourceCandidateRecord;
+  latestCandidateObservation(candidateId: string): CandidateChangeObservationV1 | null;
+  previousCandidateObservation(observationId: string): CandidateChangeObservationV1 | null;
+  listCandidateObservations(input?: {
+    candidateId?: string;
+    delta?: CandidateObservationDelta;
+    limit?: number;
+  }): CandidateChangeObservationV1[];
+  candidateObservationSummary(batchId: string): CandidateObservationBatchSummaryV1;
 }
 
 function discoveryOriginFor(method: SourceDiscoveryMethod | undefined): SourceDiscoveryOrigin {
@@ -90,23 +104,74 @@ function relatedSourceParent(candidate: SourceCandidateRecord["candidate"]): str
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function statusAtObservation(
+  previous: SourceCandidateRecord | null,
+  candidate: SourceCandidate,
+): SourceCandidate["status"] {
+  if (previous?.candidate.status === "ACCEPTED" || previous?.candidate.status === "REJECTED") {
+    return previous.candidate.status;
+  }
+  return candidate.status;
+}
+
 /**
  * Production discovery repository.
  *
  * The existing discovery review ledger remains authoritative for candidate
- * lifecycle. This adapter adds only source-level structural discovery
- * provenance when a candidate is explicitly accepted into an already-created
- * SourceDefinition.
+ * lifecycle. This adapter adds objective rescan observations plus source-level
+ * structural discovery provenance. Observation fingerprints never alter the
+ * human review decision: rejected/accepted candidates remain terminal until an
+ * operator explicitly reopens or otherwise changes their lifecycle.
  */
 export class SqliteSourceDiscoveryRepository
   extends BaseSqliteSourceDiscoveryRepository
   implements SourceDiscoveryRepository
 {
   private readonly sourceRegistryV2: SqliteSourceRegistryV2Repository;
+  private readonly observations: SqliteSourceCandidateObservationRepository;
 
   constructor(database: DatabaseSync, clock: () => Date = () => new Date()) {
     super(database, clock);
     this.sourceRegistryV2 = new SqliteSourceRegistryV2Repository(database, clock);
+    this.observations = new SqliteSourceCandidateObservationRepository(database);
+  }
+
+  override completeBatch(batchId: string, candidates: SourceCandidate[]): DiscoveryBatchRecord {
+    const previous = new Map(
+      candidates.map((candidate) => [candidate.candidateId, this.getCandidate(candidate.candidateId)]),
+    );
+    const completed = super.completeBatch(batchId, candidates);
+    const observedAt = completed.completedAt;
+
+    for (const candidate of candidates) {
+      const previousRecord = previous.get(candidate.candidateId) ?? null;
+      this.observations.record({
+        batchId,
+        candidate,
+        ...(previousRecord ? { previousCandidate: previousRecord.candidate } : {}),
+        candidateStatusAtObservation: statusAtObservation(previousRecord, candidate),
+        ...(observedAt ? { observedAt } : {}),
+      });
+    }
+    return completed;
+  }
+
+  latestCandidateObservation(candidateId: string): CandidateChangeObservationV1 | null {
+    return this.observations.latest(candidateId);
+  }
+
+  previousCandidateObservation(observationId: string): CandidateChangeObservationV1 | null {
+    return this.observations.previous(observationId);
+  }
+
+  listCandidateObservations(
+    input: { candidateId?: string; delta?: CandidateObservationDelta; limit?: number } = {},
+  ): CandidateChangeObservationV1[] {
+    return this.observations.list(input);
+  }
+
+  candidateObservationSummary(batchId: string): CandidateObservationBatchSummaryV1 {
+    return this.observations.summary(batchId);
   }
 
   override reviewCandidate(
