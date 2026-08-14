@@ -13,9 +13,11 @@ export function SourcesRootActions({ workspaceId }: { workspaceId: string }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (pathname !== "/sources") return;
+    if (pathname !== "/sources") return undefined;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("import") === "1") setOpen(true);
+    if (params.get("import") !== "1") return undefined;
+    const timer = window.setTimeout(() => setOpen(true), 0);
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   if (pathname !== "/sources") return null;
