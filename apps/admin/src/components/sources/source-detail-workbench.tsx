@@ -135,11 +135,16 @@ export function SourceDetailWorkbench({ sourceId }: { sourceId: string }) {
       ]);
 
       if (!sourceResponse.ok) {
-        throw new Error(await readError(sourceResponse, zh ? "无法读取来源" : "Unable to load source"));
+        throw new Error(
+          await readError(sourceResponse, zh ? "无法读取来源" : "Unable to load source"),
+        );
       }
       if (!plansResponse.ok) {
         throw new Error(
-          await readError(plansResponse, zh ? "无法读取采集策略" : "Unable to load collection plans"),
+          await readError(
+            plansResponse,
+            zh ? "无法读取采集策略" : "Unable to load collection plans",
+          ),
         );
       }
       if (!runsResponse.ok) {
@@ -243,7 +248,9 @@ export function SourceDetailWorkbench({ sourceId }: { sourceId: string }) {
         body: JSON.stringify({ expectedUpdatedAt: state.source.updatedAt }),
       });
       if (!response.ok) {
-        throw new Error(await readError(response, zh ? "归档来源失败" : "Unable to archive source"));
+        throw new Error(
+          await readError(response, zh ? "归档来源失败" : "Unable to archive source"),
+        );
       }
       const body = (await response.json()) as SourcePayload;
       if (!body.source) throw new Error(zh ? "归档来源失败" : "Unable to archive source");
@@ -491,9 +498,15 @@ export function SourceDetailWorkbench({ sourceId }: { sourceId: string }) {
         <MetricCard
           icon={RefreshCw}
           label={zh ? "最近采集" : "Latest collection"}
-          value={latestRun ? sourceLabel(latestRun.run.status, zh) : zh ? "暂无记录" : "No runs yet"}
+          value={
+            latestRun ? sourceLabel(latestRun.run.status, zh) : zh ? "暂无记录" : "No runs yet"
+          }
           valueClass={latestRun ? runTone(latestRun.run.status) : undefined}
-          detail={latestRun ? formatDate(latestRun.run.createdAt, locale) : formatDate(source.updatedAt, locale)}
+          detail={
+            latestRun
+              ? formatDate(latestRun.run.createdAt, locale)
+              : formatDate(source.updatedAt, locale)
+          }
         />
       </div>
 
@@ -504,10 +517,19 @@ export function SourceDetailWorkbench({ sourceId }: { sourceId: string }) {
               {zh ? "来源信息" : "Source information"}
             </h2>
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Fact label={zh ? "来源类型" : "Source type"} value={sourceLabel(source.sourceType, zh)} />
-              <Fact label={zh ? "权威等级" : "Authority"} value={sourceLabel(source.authorityLevel, zh)} />
+              <Fact
+                label={zh ? "来源类型" : "Source type"}
+                value={sourceLabel(source.sourceType, zh)}
+              />
+              <Fact
+                label={zh ? "权威等级" : "Authority"}
+                value={sourceLabel(source.authorityLevel, zh)}
+              />
               <Fact label={zh ? "分类" : "Category"} value={sourceLabel(source.category, zh)} />
-              <Fact label={zh ? "更新时间" : "Updated"} value={formatDate(source.updatedAt, locale)} />
+              <Fact
+                label={zh ? "更新时间" : "Updated"}
+                value={formatDate(source.updatedAt, locale)}
+              />
             </dl>
           </div>
           <div>
@@ -521,12 +543,11 @@ export function SourceDetailWorkbench({ sourceId }: { sourceId: string }) {
               />
               <Fact
                 label={zh ? "最近状态" : "Latest status"}
-                value={latestRun ? sourceLabel(latestRun.run.status, zh) : zh ? "暂无执行" : "No run yet"}
+                value={
+                  latestRun ? sourceLabel(latestRun.run.status, zh) : zh ? "暂无执行" : "No run yet"
+                }
               />
-              <Fact
-                label={zh ? "已登记策略" : "Registered plans"}
-                value={String(plans.length)}
-              />
+              <Fact label={zh ? "已登记策略" : "Registered plans"} value={String(plans.length)} />
               <Fact
                 label={zh ? "最近 20 次采集" : "Recent collection runs"}
                 value={String(state.runs.length)}
@@ -589,7 +610,9 @@ function MetricCard({
         <Icon size={17} />
       </span>
       <p className="mt-4 text-xs font-medium text-slate-400">{label}</p>
-      <p className={`mt-1 truncate text-base font-semibold text-slate-900 ${valueClass ?? ""}`}>{value}</p>
+      <p className={`mt-1 truncate text-base font-semibold text-slate-900 ${valueClass ?? ""}`}>
+        {value}
+      </p>
       <p className="mt-1 truncate text-xs text-slate-500">{detail}</p>
     </section>
   );
