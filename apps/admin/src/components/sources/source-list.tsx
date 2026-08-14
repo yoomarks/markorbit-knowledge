@@ -171,13 +171,16 @@ export function SourceList() {
     name: zh ? "名称" : "Name",
     typeCategory: zh ? "类型 / 分类" : "Type / category",
     countries: zh ? "国家地区" : "Jurisdictions",
-    connector: "Connector",
+    sourceAuthority: zh ? "来源权威" : "Source authority",
+    languages: zh ? "语言" : "Languages",
     updated: zh ? "更新时间" : "Updated",
     noMatch: zh ? "没有匹配的来源" : "No matching sources",
     noMatchHint: zh ? "清除筛选条件，或添加新的真实来源。" : "Clear filters or add a new source.",
     loading: zh ? "正在读取来源…" : "Loading sources…",
     page: zh ? "页" : "Page",
     records: zh ? "条" : "records",
+    previous: zh ? "上一页" : "Previous page",
+    next: zh ? "下一页" : "Next page",
   };
 
   return (
@@ -267,7 +270,7 @@ export function SourceList() {
                 <th className="px-5 py-3 font-medium">{copy.name}</th>
                 <th className="px-5 py-3 font-medium">{copy.typeCategory}</th>
                 <th className="px-5 py-3 font-medium">{copy.countries}</th>
-                <th className="px-5 py-3 font-medium">{copy.connector}</th>
+                <th className="px-5 py-3 font-medium">{copy.sourceAuthority}</th>
                 <th className="px-5 py-3 font-medium">{copy.status}</th>
                 <th className="px-5 py-3 font-medium">{copy.updated}</th>
               </tr>
@@ -292,8 +295,10 @@ export function SourceList() {
                     {source.jurisdictions.join(", ") || "—"}
                   </td>
                   <td className="px-5 py-4 text-slate-700">
-                    <p>{source.connector.connectorId}</p>
-                    <p className="mt-1 text-xs text-slate-500">v{source.connector.version}</p>
+                    <p>{enumLabel(source.authorityLevel, zh)}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {copy.languages}: {source.languages.join(", ") || "—"}
+                    </p>
                   </td>
                   <td className="px-5 py-4">
                     <StatusBadge status={source.status} zh={zh} />
@@ -328,7 +333,7 @@ export function SourceList() {
               className="rounded-lg border border-slate-300 p-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={offset === 0 || loading}
               onClick={() => changePage(Math.max(0, offset - PAGE_SIZE))}
-              aria-label="Previous page"
+              aria-label={copy.previous}
             >
               <ChevronLeft size={17} aria-hidden="true" />
             </button>
@@ -336,7 +341,7 @@ export function SourceList() {
               className="rounded-lg border border-slate-300 p-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={loading || offset + PAGE_SIZE >= (result?.total ?? 0)}
               onClick={() => changePage(offset + PAGE_SIZE)}
-              aria-label="Next page"
+              aria-label={copy.next}
             >
               <ChevronRight size={17} aria-hidden="true" />
             </button>
