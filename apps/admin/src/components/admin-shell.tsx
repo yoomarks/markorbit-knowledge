@@ -69,13 +69,17 @@ function NavItems({
       >
         <span
           className={`grid size-8 shrink-0 place-items-center rounded-lg ${
-            active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
+            active
+              ? "bg-blue-600 text-white"
+              : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
           }`}
         >
           <Icon size={16} aria-hidden="true" />
         </span>
         <span className="min-w-0 truncate">
-          <span className={`font-medium ${active ? "text-blue-700" : "text-slate-800"}`}>{primary}</span>
+          <span className={`font-medium ${active ? "text-blue-700" : "text-slate-800"}`}>
+            {primary}
+          </span>
           <span className="ml-1.5 text-xs text-slate-400">{secondary}</span>
         </span>
       </Link>
@@ -104,7 +108,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <Orbit aria-hidden="true" size={23} />
             </span>
             <span>
-              <span className="block text-[15px] font-semibold leading-5 text-slate-950">MarkOrbit</span>
+              <span className="block text-[15px] font-semibold leading-5 text-slate-950">
+                MarkOrbit
+              </span>
               <span className="block text-[11px] text-slate-500">Knowledge Admin</span>
             </span>
           </Link>
@@ -174,7 +180,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <Menu size={19} />
           </button>
           <div className="relative hidden w-full max-w-[520px] sm:block">
-            <Search className="absolute left-3.5 top-2.5 text-slate-400" size={18} aria-hidden="true" />
+            <Search
+              className="absolute left-3.5 top-2.5 text-slate-400"
+              size={18}
+              aria-hidden="true"
+            />
             <input
               aria-label={t("shell.search")}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-14 text-sm text-slate-700 placeholder:text-slate-400"
@@ -185,7 +195,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               }
               disabled
             />
-            <span className="absolute right-3 top-2.5 rounded-md bg-slate-200/70 px-1.5 py-0.5 text-[11px] text-slate-400">⌘ K</span>
+            <span className="absolute right-3 top-2.5 rounded-md bg-slate-200/70 px-1.5 py-0.5 text-[11px] text-slate-400">
+              ⌘ K
+            </span>
           </div>
           <div className="ml-auto flex items-center gap-3">
             <div className="hidden items-center gap-2 text-xs sm:flex">
@@ -213,7 +225,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <Bell size={17} />
             </button>
             <div className="hidden items-center gap-2 sm:flex">
-              <div className="grid size-9 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">AD</div>
+              <div className="grid size-9 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
+                AD
+              </div>
               <span className="text-xs font-medium text-slate-600">Admin</span>
             </div>
           </div>
