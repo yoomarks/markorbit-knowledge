@@ -9,13 +9,13 @@ import {
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
 import { SqlitePageValueCapabilityRepository } from "@markorbit/persistence/page-value-capability";
 import type { SourceCandidateRecord } from "@markorbit/persistence/source-discovery";
+import { capabilityConnectionStatus, invokeCapability } from "./capability-client";
 import { getRegistryDatabase, getSourceDiscoveryRepository } from "./source-registry";
 
 const DEFAULT_OBJECTIVE =
   "Identify and rank the pages that are most useful as durable evidence or reference material for the current knowledge acquisition task. Explain the page title, concise summary, page type, and concrete value points. Do not make legal conclusions or claim authority that is not present in the supplied evidence.";
 const MAX_CANDIDATES = 500;
 const MAX_RESULTS = 100;
-const DEFAULT_TIMEOUT_MS = 45_000;
 
 export type PageValueCapabilityStatus = {
   capability: typeof PAGE_VALUE_CAPABILITY_ID;
@@ -63,29 +63,6 @@ function candidateInput(record: SourceCandidateRecord): PageValueCandidateInput 
     ...(record.candidate.title ? { title: record.candidate.title } : {}),
     structuralSignals,
   };
-}
-
-function endpoint(): string | null {
-  const base = process.env.MARKORBIT_CAPABILITY_BASE_URL?.trim();
-  if (!base) return null;
-  return `${base.replace(/\/$/, "")}/v1/capabilities/${PAGE_VALUE_CAPABILITY_ID}`;
-}
-
-function timeoutMs(): number {
-  const configured = process.env.MARKORBIT_CAPABILITY_TIMEOUT_MS?.trim();
-  if (!configured) return DEFAULT_TIMEOUT_MS;
-  const value = Number(configured);
-  if (!Number.isSafeInteger(value) || value < 1_000 || value > 180_000) {
-    throw new RegistryValidationError(
-      "MARKORBIT_CAPABILITY_TIMEOUT_MS must be an integer from 1000 to 180000",
-    );
-  }
-  return value;
-}
-
-function bearerHeaders(): Record<string, string> {
-  const token = process.env.MARKORBIT_CAPABILITY_API_KEY?.trim();
-  return token ? { authorization: `Bearer ${token}` } : {};
 }
 
 function normalizedCandidateIds(candidateIds: string[]): string[] {
@@ -148,11 +125,11 @@ export class PageValueCapabilityService {
   private readonly results = new SqlitePageValueCapabilityRepository(getRegistryDatabase());
 
   status(): PageValueCapabilityStatus {
-    const configuredEndpoint = endpoint();
+    const connection = capabilityConnectionStatus(PAGE_VALUE_CAPABILITY_ID);
     return {
       capability: PAGE_VALUE_CAPABILITY_ID,
-      configured: Boolean(configuredEndpoint),
-      ...(configuredEndpoint ? { endpoint: configuredEndpoint } : {}),
+      configured: connection.configured,
+      ...(connection.endpoint ? { endpoint: connection.endpoint } : {}),
       maxCandidates: MAX_CANDIDATES,
       maxResults: MAX_RESULTS,
     };
@@ -168,14 +145,6 @@ export class PageValueCapabilityService {
     objective?: string;
     maxResults?: number;
   }) {
-    const capabilityEndpoint = endpoint();
-    if (!capabilityEndpoint) {
-      throw new RegistryError(
-        "PAGE_VALUE_CAPABILITY_NOT_CONFIGURED",
-        "Shared page-value capability is not configured. Set MARKORBIT_CAPABILITY_BASE_URL to the reusable capability service.",
-      );
-    }
-
     const ids = normalizedCandidateIds(input.candidateIds);
     const candidates = ids.map((candidateId) => {
       const record = this.discovery.getCandidate(candidateId);
@@ -197,39 +166,12 @@ export class PageValueCapabilityService {
       candidates: candidates.map(candidateInput),
     };
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs());
-    let response: Response;
-    try {
-      response = await fetch(capabilityEndpoint, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json",
-          ...bearerHeaders(),
-        },
-        body: JSON.stringify(request),
-        signal: controller.signal,
-      });
-    } catch (error) {
-      throw new RegistryError(
-        "PAGE_VALUE_CAPABILITY_UNAVAILABLE",
-        error instanceof Error ? error.message : "Shared page-value capability is unavailable",
-      );
-    } finally {
-      clearTimeout(timer);
-    }
-
-    if (!response.ok) {
-      const text = (await response.text()).slice(0, 1000);
-      throw new RegistryError(
-        "PAGE_VALUE_CAPABILITY_HTTP_ERROR",
-        `Shared page-value capability returned HTTP ${response.status}${text ? `: ${text}` : ""}`,
-      );
-    }
-
-    const value = (await response.json()) as unknown;
-    const validated = validateResponse(value, new Set(ids), maxResults);
+    const validated = await invokeCapability({
+      capabilityId: PAGE_VALUE_CAPABILITY_ID,
+      request,
+      errorCodePrefix: "PAGE_VALUE_CAPABILITY",
+      validate: (value) => validateResponse(value, new Set(ids), maxResults),
+    });
     const records = this.results.record(validated);
     return { request, response: validated, records };
   }
