@@ -284,10 +284,23 @@ export function SourceDetailWorkbench({ sourceId }: { sourceId: string }) {
       if (!response.ok) {
         throw new Error(await readError(response, zh ? "重新扫描失败" : "Rescan failed"));
       }
+      const payload = (await response.json()) as {
+        observationSummary?: {
+          newCount: number;
+          knownCount: number;
+          changedCount: number;
+          rejectedChangedCount: number;
+        };
+      };
+      const summary = payload.observationSummary;
       setMessage(
-        zh
-          ? "重新扫描已完成。新发现的候选资料会进入 Sources 的待审批队列。"
-          : "Rescan completed. Newly discovered candidates will enter the Sources review queue.",
+        summary
+          ? zh
+            ? `重新扫描完成：新增 ${summary.newCount} · 已知 ${summary.knownCount} · 客观变化 ${summary.changedCount} · 已淘汰但发生变化 ${summary.rejectedChangedCount}。变化仅代表采集证据指纹不同，不代表重要性。`
+            : `Rescan completed: ${summary.newCount} new · ${summary.knownCount} known · ${summary.changedCount} objectively changed · ${summary.rejectedChangedCount} rejected but changed. A changed fingerprint does not imply materiality.`
+          : zh
+            ? "重新扫描已完成。新发现的候选资料会进入 Sources 的待审批队列。"
+            : "Rescan completed. Newly discovered candidates will enter the Sources review queue.",
       );
       await refresh();
     } catch (requestError) {
