@@ -84,6 +84,12 @@ function discoveryEvidenceUrl(candidate: SourceCandidateRecord["candidate"]): st
   return candidate.discoveredFrom ?? candidate.locator;
 }
 
+function relatedSourceParent(candidate: SourceCandidateRecord["candidate"]): string | undefined {
+  if (candidate.discoveryMethod !== "RELATED_SOURCE") return undefined;
+  const value = candidate.metadata?.recommendedFromSourceId;
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
 /**
  * Production discovery repository.
  *
@@ -113,16 +119,19 @@ export class SqliteSourceDiscoveryRepository
     }
 
     const candidate = reviewed.candidate;
+    const discoveredFromSourceId = input.discoveredFromSourceId ?? relatedSourceParent(candidate);
     const provenance: SourceDiscoveryProvenance = {
       origin: discoveryOriginFor(candidate.discoveryMethod),
       discoveredAt: candidate.discoveredAt,
-      ...(input.discoveredFromSourceId
-        ? { discoveredFromSourceId: input.discoveredFromSourceId }
-        : {}),
+      ...(discoveredFromSourceId ? { discoveredFromSourceId } : {}),
       ...(candidate.discoveredFrom ? { discoveredFromUrl: candidate.discoveredFrom } : {}),
       evidenceUrl: discoveryEvidenceUrl(candidate),
     };
-    this.sourceRegistryV2.recordDiscovery(reviewed.review.acceptedSourceId, provenance);
+    this.sourceRegistryV2.recordDiscovery(
+      reviewed.review.acceptedSourceId,
+      provenance,
+      discoveredFromSourceId,
+    );
     return reviewed;
   }
 }
