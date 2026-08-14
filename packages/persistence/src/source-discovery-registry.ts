@@ -14,6 +14,7 @@ import {
 } from "./index";
 
 const MIGRATION_ID = "1000_vnext_discovery_review_registry";
+const REVIEW_HISTORY_MIGRATION_ID = "1001_source_candidate_review_history";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
 
@@ -45,6 +46,25 @@ export type CandidateReview = {
   note?: string;
   acceptedSourceId?: string;
   collectionPlanId?: string;
+};
+
+export type CandidateReviewEventAction = "REVIEWED" | "REOPENED";
+
+export type CandidateReviewEvent = {
+  eventId: string;
+  candidateId: string;
+  action: CandidateReviewEventAction;
+  occurredAt: string;
+  decision?: CandidateReviewDecision;
+  reviewer?: string;
+  note?: string;
+  acceptedSourceId?: string;
+  collectionPlanId?: string;
+};
+
+export type ReopenCandidateInput = {
+  reviewer?: string;
+  note?: string;
 };
 
 export type SourceCandidateRecord = {
@@ -94,6 +114,8 @@ export interface SourceDiscoveryRepository {
   getCandidate(candidateId: string): SourceCandidateRecord | null;
   listCandidates(filters?: SourceCandidateListFilters): SourceCandidateListResult;
   reviewCandidate(candidateId: string, input: ReviewCandidateInput): SourceCandidateRecord;
+  reopenCandidate(candidateId: string, input?: ReopenCandidateInput): SourceCandidateRecord;
+  listReviewEvents(candidateId: string): CandidateReviewEvent[];
 }
 
 export class DiscoveryBatchNotFoundError extends RegistryError {
@@ -197,6 +219,21 @@ function parseCandidate(row: Record<string, unknown>): SourceCandidateRecord {
   };
 }
 
+function parseReviewEvent(row: Record<string, unknown>): CandidateReviewEvent {
+  const decision = row.decision ? (String(row.decision) as CandidateReviewDecision) : undefined;
+  return {
+    eventId: String(row.event_id),
+    candidateId: String(row.candidate_id),
+    action: String(row.action) as CandidateReviewEventAction,
+    occurredAt: String(row.occurred_at),
+    ...(decision ? { decision } : {}),
+    ...(row.reviewer ? { reviewer: String(row.reviewer) } : {}),
+    ...(row.note ? { note: String(row.note) } : {}),
+    ...(row.accepted_source_id ? { acceptedSourceId: String(row.accepted_source_id) } : {}),
+    ...(row.collection_plan_id ? { collectionPlanId: String(row.collection_plan_id) } : {}),
+  };
+}
+
 function ensureDiscoveryMigration(database: DatabaseSync): void {
   initializeRegistry(database);
   const applied = database
@@ -262,12 +299,48 @@ function ensureDiscoveryMigration(database: DatabaseSync): void {
   }
 }
 
+function ensureReviewHistoryMigration(database: DatabaseSync): void {
+  const applied = database
+    .prepare("SELECT id FROM schema_migrations WHERE id = ?")
+    .get(REVIEW_HISTORY_MIGRATION_ID);
+  if (applied) return;
+
+  database.exec("BEGIN IMMEDIATE;");
+  try {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS source_candidate_review_events (
+        event_id TEXT PRIMARY KEY,
+        candidate_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        decision TEXT,
+        occurred_at TEXT NOT NULL,
+        reviewer TEXT,
+        note TEXT,
+        accepted_source_id TEXT,
+        collection_plan_id TEXT,
+        FOREIGN KEY (candidate_id) REFERENCES source_candidates(candidate_id)
+      ) STRICT;
+
+      CREATE INDEX IF NOT EXISTS idx_source_candidate_review_events_candidate
+        ON source_candidate_review_events(candidate_id, occurred_at, event_id);
+    `);
+    database
+      .prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)")
+      .run(REVIEW_HISTORY_MIGRATION_ID, new Date().toISOString());
+    database.exec("COMMIT;");
+  } catch (error) {
+    database.exec("ROLLBACK;");
+    throw error;
+  }
+}
+
 export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepository {
   constructor(
     private readonly database: DatabaseSync,
     private readonly clock: () => Date = () => new Date(),
   ) {
     ensureDiscoveryMigration(database);
+    ensureReviewHistoryMigration(database);
   }
 
   createSeed(input: {
@@ -503,6 +576,71 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
     };
   }
 
+  listReviewEvents(candidateId: string): CandidateReviewEvent[] {
+    if (!this.getCandidate(candidateId)) throw new SourceCandidateNotFoundError(candidateId);
+    return this.database
+      .prepare(
+        `SELECT * FROM source_candidate_review_events
+         WHERE candidate_id = ? ORDER BY occurred_at, event_id`,
+      )
+      .all(candidateId)
+      .map((row) => parseReviewEvent(row as Record<string, unknown>));
+  }
+
+  reopenCandidate(candidateId: string, input: ReopenCandidateInput = {}): SourceCandidateRecord {
+    const current = this.getCandidate(candidateId);
+    if (!current) throw new SourceCandidateNotFoundError(candidateId);
+    if (current.candidate.status !== "REJECTED") {
+      throw new RegistryConflictError(
+        "SOURCE_CANDIDATE_REOPEN_CONFLICT",
+        `Candidate ${candidateId} is ${current.candidate.status}; only REJECTED candidates can be restored to pending review`,
+      );
+    }
+
+    const reopenedAt = this.clock().toISOString();
+    const reviewer = input.reviewer?.trim() || undefined;
+    const note = input.note?.trim() || undefined;
+    const nextCandidate: SourceCandidate = { ...current.candidate, status: "DISCOVERED" };
+
+    this.database.exec("SAVEPOINT source_candidate_reopen;");
+    try {
+      if (this.listReviewEvents(candidateId).length === 0 && current.review) {
+        this.appendReviewEvent({
+          candidateId,
+          action: "REVIEWED",
+          occurredAt: current.review.reviewedAt,
+          decision: current.review.decision,
+          reviewer: current.review.reviewer,
+          note: current.review.note,
+          acceptedSourceId: current.review.acceptedSourceId,
+          collectionPlanId: current.review.collectionPlanId,
+        });
+      }
+      this.appendReviewEvent({
+        candidateId,
+        action: "REOPENED",
+        occurredAt: reopenedAt,
+        reviewer,
+        note,
+      });
+      this.database
+        .prepare(
+          `UPDATE source_candidates SET
+             status = 'DISCOVERED', document_json = ?, review_decision = NULL, reviewed_at = NULL,
+             reviewer = NULL, review_note = NULL, accepted_source_id = NULL, collection_plan_id = NULL
+           WHERE candidate_id = ?`,
+        )
+        .run(JSON.stringify(nextCandidate), candidateId);
+      this.database.exec("RELEASE SAVEPOINT source_candidate_reopen;");
+    } catch (error) {
+      this.database.exec("ROLLBACK TO SAVEPOINT source_candidate_reopen;");
+      this.database.exec("RELEASE SAVEPOINT source_candidate_reopen;");
+      throw error;
+    }
+
+    return { ...current, candidate: nextCandidate, review: undefined };
+  }
+
   reviewCandidate(candidateId: string, input: ReviewCandidateInput): SourceCandidateRecord {
     const current = this.getCandidate(candidateId);
     if (!current) throw new SourceCandidateNotFoundError(candidateId);
@@ -526,24 +664,42 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
       ...current.candidate,
       status: input.decision,
     };
-    this.database
-      .prepare(
-        `UPDATE source_candidates SET
-           status = ?, document_json = ?, review_decision = ?, reviewed_at = ?, reviewer = ?,
-           review_note = ?, accepted_source_id = ?, collection_plan_id = ?
-         WHERE candidate_id = ?`,
-      )
-      .run(
-        input.decision,
-        JSON.stringify(nextCandidate),
-        input.decision,
-        reviewedAt,
-        input.reviewer?.trim() || null,
-        input.note?.trim() || null,
-        input.acceptedSourceId ?? null,
-        input.collectionPlanId ?? null,
+    this.database.exec("SAVEPOINT source_candidate_review;");
+    try {
+      this.database
+        .prepare(
+          `UPDATE source_candidates SET
+             status = ?, document_json = ?, review_decision = ?, reviewed_at = ?, reviewer = ?,
+             review_note = ?, accepted_source_id = ?, collection_plan_id = ?
+           WHERE candidate_id = ?`,
+        )
+        .run(
+          input.decision,
+          JSON.stringify(nextCandidate),
+          input.decision,
+          reviewedAt,
+          input.reviewer?.trim() || null,
+          input.note?.trim() || null,
+          input.acceptedSourceId ?? null,
+          input.collectionPlanId ?? null,
+          candidateId,
+        );
+      this.appendReviewEvent({
         candidateId,
-      );
+        action: "REVIEWED",
+        occurredAt: reviewedAt,
+        decision: input.decision,
+        reviewer: input.reviewer?.trim() || undefined,
+        note: input.note?.trim() || undefined,
+        acceptedSourceId: input.acceptedSourceId,
+        collectionPlanId: input.collectionPlanId,
+      });
+      this.database.exec("RELEASE SAVEPOINT source_candidate_review;");
+    } catch (error) {
+      this.database.exec("ROLLBACK TO SAVEPOINT source_candidate_review;");
+      this.database.exec("RELEASE SAVEPOINT source_candidate_review;");
+      throw error;
+    }
 
     return {
       ...current,
@@ -557,6 +713,48 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
         ...(input.collectionPlanId ? { collectionPlanId: input.collectionPlanId } : {}),
       },
     };
+  }
+
+  private appendReviewEvent(input: {
+    candidateId: string;
+    action: CandidateReviewEventAction;
+    occurredAt: string;
+    decision?: CandidateReviewDecision;
+    reviewer?: string;
+    note?: string;
+    acceptedSourceId?: string;
+    collectionPlanId?: string;
+  }): CandidateReviewEvent {
+    const event: CandidateReviewEvent = {
+      eventId: `rve_${randomUUID().replaceAll("-", "")}`,
+      candidateId: input.candidateId,
+      action: input.action,
+      occurredAt: input.occurredAt,
+      ...(input.decision ? { decision: input.decision } : {}),
+      ...(input.reviewer ? { reviewer: input.reviewer } : {}),
+      ...(input.note ? { note: input.note } : {}),
+      ...(input.acceptedSourceId ? { acceptedSourceId: input.acceptedSourceId } : {}),
+      ...(input.collectionPlanId ? { collectionPlanId: input.collectionPlanId } : {}),
+    };
+    this.database
+      .prepare(
+        `INSERT INTO source_candidate_review_events (
+           event_id, candidate_id, action, decision, occurred_at, reviewer, note,
+           accepted_source_id, collection_plan_id
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        event.eventId,
+        event.candidateId,
+        event.action,
+        event.decision ?? null,
+        event.occurredAt,
+        event.reviewer ?? null,
+        event.note ?? null,
+        event.acceptedSourceId ?? null,
+        event.collectionPlanId ?? null,
+      );
+    return event;
   }
 }
 

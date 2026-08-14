@@ -27,6 +27,7 @@ import {
 } from "@markorbit/persistence";
 import {
   ensureWebsiteSourceProfile,
+  reopenCandidateGraphNode,
   reviewCandidateGraphNode,
   websiteOrigin,
   writeDiscoveryBatchToSourceGraph,
@@ -94,6 +95,11 @@ export type ReviewDiscoveryCandidateResult = {
   candidate: SourceCandidateRecord;
   source?: SourceDefinition;
   plan?: CollectionPlan;
+};
+
+export type ReopenDiscoveryCandidateInput = {
+  note?: string;
+  reviewer?: string;
 };
 
 type DiscoveryServiceDependencies = {
@@ -389,6 +395,38 @@ export class DiscoveryWorkflowService {
       },
     });
     return { source, generation, maxExpansionGeneration, ...result };
+  }
+
+  reopen(
+    candidateId: string,
+    input: ReopenDiscoveryCandidateInput = {},
+  ): ReviewDiscoveryCandidateResult {
+    const current = this.dependencies.discovery.getCandidate(candidateId);
+    if (!current) {
+      return {
+        candidate: this.dependencies.discovery.reopenCandidate(candidateId, input),
+      };
+    }
+    if (current.candidate.status === "ACCEPTED") {
+      throw new RegistryConflictError(
+        "SOURCE_CANDIDATE_REOPEN_ACCEPTED",
+        `Accepted candidate ${candidateId} already owns a Source lifecycle and cannot be restored to pending review`,
+      );
+    }
+
+    const candidateOrigin = websiteOrigin(current.candidate.locator);
+    const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
+      DEFAULT_WORKSPACE.id,
+      candidateOrigin,
+    );
+
+    return this.dependencies.transaction(() => {
+      const candidate = this.dependencies.discovery.reopenCandidate(candidateId, input);
+      if (profile) {
+        reopenCandidateGraphNode(this.dependencies.graph, profile, candidate.candidate);
+      }
+      return { candidate };
+    });
   }
 
   review(

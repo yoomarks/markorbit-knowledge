@@ -237,6 +237,16 @@ describe("SqliteSourceGraphRepository", () => {
     expect(graph.getNode(PAGE_ID)?.reviewState).toBe("RETAINED");
   });
 
+  it("allows an explicit rejected node recovery without allowing retained nodes to reopen", () => {
+    const { graph } = repository();
+    graph.createProfile(profile(), root());
+    graph.ingestObservationBatch(batch());
+    graph.reviewNode(PAGE_ID, "REJECTED");
+    expect(graph.reopenNode(PAGE_ID).reviewState).toBe("OBSERVED");
+    graph.reviewNode(PAGE_ID, "RETAINED");
+    expect(() => graph.reopenNode(PAGE_ID)).toThrow(RegistryConflictError);
+  });
+
   it("rejects cross-source nodes and dangling or cross-profile edges", () => {
     const { graph } = repository();
     graph.createProfile(profile(), root());

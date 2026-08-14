@@ -66,6 +66,9 @@ const zhCN = {
   reject: "淘汰",
   viewSource: "查看 Source →",
   rescan: "重新扫描",
+  restorePending: "恢复到待审批",
+  restoreSuccess: "候选已恢复到待审批，历史淘汰记录仍然保留。",
+  restoreError: "恢复候选失败",
   rejectionReasonTitle: "记录淘汰原因",
   rejectionReasonDescription:
     "原因会作为来源审核记忆永久保存。相同候选再次被发现时不会重新打扰人工审核。",
@@ -194,6 +197,9 @@ const enUS: Record<keyof typeof zhCN, string> = {
   reject: "Reject",
   viewSource: "View Source →",
   rescan: "Rescan",
+  restorePending: "Restore to pending",
+  restoreSuccess: "Candidate restored to pending review; prior rejection history was retained.",
+  restoreError: "Unable to restore candidate",
   rejectionReasonTitle: "Record rejection reason",
   rejectionReasonDescription:
     "The reason becomes persistent source-review memory. Rediscovering the same candidate will not return it to the operator queue.",

@@ -157,6 +157,7 @@ export function SourceSmartReviewUi() {
   const [screening, setScreening] = useState(false);
   const [working, setWorking] = useState(false);
   const [rescanningId, setRescanningId] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<string[]>([]);
@@ -390,6 +391,32 @@ export function SourceSmartReviewUi() {
       setError(rescanError instanceof Error ? rescanError.message : t("rescanError"));
     } finally {
       setRescanningId(null);
+    }
+  }
+
+  async function restorePending(record: CandidateRecord) {
+    const candidateId = record.candidate.candidateId;
+    setRestoringId(candidateId);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/discovery/reviews/reopen", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          candidateId,
+          reviewer: "admin-console",
+          note: "restore:manual",
+        }),
+      });
+      if (!response.ok) throw new Error(await responseError(response));
+      setTab("PENDING");
+      setMessage(t("restoreSuccess"));
+      await refresh();
+    } catch (restoreError) {
+      setError(restoreError instanceof Error ? restoreError.message : t("restoreError"));
+    } finally {
+      setRestoringId(null);
     }
   }
 
@@ -682,19 +709,34 @@ export function SourceSmartReviewUi() {
                           </Link>
                         ) : null}
                         {tab === "REJECTED" ? (
-                          <button
-                            type="button"
-                            disabled={rescanningId === candidateId}
-                            onClick={() => void rescan(record)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 disabled:opacity-40"
-                          >
-                            {rescanningId === candidateId ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                              <RotateCcw size={14} />
-                            )}
-                            {t("rescan")}
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              disabled={Boolean(restoringId) || Boolean(rescanningId)}
+                              onClick={() => void restorePending(record)}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                            >
+                              {restoringId === candidateId ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <RotateCcw size={14} />
+                              )}
+                              {t("restorePending")}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={Boolean(restoringId) || Boolean(rescanningId)}
+                              onClick={() => void rescan(record)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 disabled:opacity-40"
+                            >
+                              {rescanningId === candidateId ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <RefreshCw size={14} />
+                              )}
+                              {t("rescan")}
+                            </button>
+                          </>
                         ) : null}
                       </div>
                     </div>
