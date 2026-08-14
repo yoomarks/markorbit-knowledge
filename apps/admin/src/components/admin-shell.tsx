@@ -2,10 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronDown, Languages, Menu, Orbit, Search, X } from "lucide-react";
+import { Bell, ChevronDown, Menu, Orbit, Search, X } from "lucide-react";
 import { useState } from "react";
 import { modules, primaryModuleOrder, systemModuleOrder, type ModuleKey } from "@/lib/modules";
-import { useAdminI18n, type AdminMessageKey } from "@/lib/i18n";
+import { useAdminI18n } from "@/lib/i18n";
+
+const bilingualLabels: Record<ModuleKey, { zh: string; en: string }> = {
+  dashboard: { zh: "总览", en: "Overview" },
+  discovery: { zh: "来源发现", en: "Discovery" },
+  sources: { zh: "来源管理", en: "Sources" },
+  foundational: { zh: "基础资料健康", en: "Foundational Health" },
+  intelligence: { zh: "来源智能", en: "Source Intelligence" },
+  people: { zh: "人员与机构", en: "People & Organizations" },
+  knowledge: { zh: "知识资产", en: "Knowledge" },
+  collection: { zh: "采集", en: "Collection" },
+  packages: { zh: "交付包", en: "Packages" },
+  jobs: { zh: "采集计划", en: "Collection Plans" },
+  runs: { zh: "执行记录", en: "Execution Runs" },
+  artifacts: { zh: "原始证据", en: "Raw Artifacts" },
+  staging: { zh: "暂存区", en: "Staging" },
+  workers: { zh: "执行节点", en: "Workers" },
+  connectors: { zh: "连接器", en: "Connectors" },
+  conversionRuns: { zh: "转换记录", en: "Conversion Runs" },
+  converters: { zh: "转换器", en: "Converters" },
+  vault: { zh: "资料库", en: "Vault" },
+  errors: { zh: "错误", en: "Errors" },
+  audit: { zh: "审计", en: "Audit" },
+  settings: { zh: "设置", en: "Settings" },
+};
 
 function isModuleActive(pathname: string, key: ModuleKey) {
   const href = `/${key}`;
@@ -15,29 +39,45 @@ function isModuleActive(pathname: string, key: ModuleKey) {
 function NavItems({
   keys,
   pathname,
+  locale,
   onNavigate,
 }: {
   keys: ModuleKey[];
   pathname: string;
+  locale: "zh-CN" | "en-US";
   onNavigate: () => void;
 }) {
-  const { t } = useAdminI18n();
   return keys.map((key) => {
     const item = modules[key];
     const Icon = item.icon;
     const href = `/${key}`;
     const active = isModuleActive(pathname, key);
-    const translationKey = `module.${key}` as AdminMessageKey;
+    const labels = bilingualLabels[key];
+    const primary = locale === "zh-CN" ? labels.zh : labels.en;
+    const secondary = locale === "zh-CN" ? labels.en : labels.zh;
 
     return (
       <Link
         key={key}
         href={href}
         onClick={onNavigate}
-        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "bg-white/12 text-white" : "text-slate-400 hover:bg-white/7 hover:text-slate-100"}`}
+        className={`group flex items-center gap-3 rounded-xl border-l-2 px-3 py-2.5 text-sm transition-all ${
+          active
+            ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm shadow-blue-100/60"
+            : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+        }`}
       >
-        <Icon size={18} aria-hidden="true" />
-        {t(translationKey)}
+        <span
+          className={`grid size-8 shrink-0 place-items-center rounded-lg ${
+            active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
+          }`}
+        >
+          <Icon size={16} aria-hidden="true" />
+        </span>
+        <span className="min-w-0 truncate">
+          <span className={`font-medium ${active ? "text-blue-700" : "text-slate-800"}`}>{primary}</span>
+          <span className="ml-1.5 text-xs text-slate-400">{secondary}</span>
+        </span>
       </Link>
     );
   });
@@ -51,53 +91,56 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [advancedOpen, setAdvancedOpen] = useState(systemActive);
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[264px_1fr]">
+    <div className="min-h-screen bg-[#f4f7fb] lg:grid lg:grid-cols-[238px_1fr]">
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[264px] border-r border-slate-200 bg-slate-950 text-white transition-transform lg:static lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed inset-y-0 left-0 z-40 w-[238px] border-r border-slate-200 bg-white transition-transform lg:static lg:translate-x-0 ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
         aria-label={locale === "zh-CN" ? "主导航" : "Main navigation"}
       >
-        <div className="flex h-16 items-center justify-between border-b border-white/10 px-5">
-          <Link href="/dashboard" className="flex items-center gap-3 font-medium">
-            <span className="grid size-9 place-items-center rounded-xl bg-emerald-500/15 text-emerald-300">
-              <Orbit aria-hidden="true" size={20} />
+        <div className="flex h-[72px] items-center justify-between border-b border-slate-200 px-4">
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+              <Orbit aria-hidden="true" size={23} />
             </span>
             <span>
-              <span className="block text-sm">MarkOrbit</span>
-              <span className="block text-xs font-normal text-slate-400">Knowledge</span>
+              <span className="block text-[15px] font-semibold leading-5 text-slate-950">MarkOrbit</span>
+              <span className="block text-[11px] text-slate-500">Knowledge Admin</span>
             </span>
           </Link>
           <button
             type="button"
-            className="rounded-lg p-2 text-slate-300 hover:bg-white/10 lg:hidden"
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
             aria-label={t("shell.closeNav")}
             onClick={() => setOpen(false)}
           >
-            <X size={19} />
+            <X size={18} />
           </button>
         </div>
 
-        <nav className="max-h-[calc(100vh-9rem)] overflow-y-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <p className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-            {t("shell.workbench")}
+        <nav className="max-h-[calc(100vh-126px)] overflow-y-auto px-2 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            {locale === "zh-CN" ? "知识运营 · WORKBENCH" : "WORKBENCH · 知识运营"}
           </p>
           <div className="space-y-1">
             <NavItems
               keys={primaryModuleOrder}
               pathname={pathname}
+              locale={locale}
               onNavigate={() => setOpen(false)}
             />
           </div>
 
-          <div className="my-4 border-t border-white/10" />
+          <div className="my-4 border-t border-slate-200" />
           <button
             type="button"
             onClick={() => setAdvancedOpen((current) => !current)}
-            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600 transition-colors hover:bg-white/5 hover:text-slate-400"
+            className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
             aria-expanded={advancedOpen}
           >
-            <span>{t("shell.advanced")}</span>
+            <span>{locale === "zh-CN" ? "高级 Advanced" : "Advanced 高级"}</span>
             <ChevronDown
-              size={15}
+              size={14}
               aria-hidden="true"
               className={`transition-transform ${advancedOpen ? "rotate-180" : ""}`}
             />
@@ -107,24 +150,21 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <NavItems
                 keys={systemModuleOrder}
                 pathname={pathname}
+                locale={locale}
                 onNavigate={() => setOpen(false)}
               />
             </div>
           ) : null}
         </nav>
 
-        <div className="absolute inset-x-3 bottom-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-400">
-          <p className="font-medium text-slate-200">
-            {systemActive ? t("shell.advancedFooterTitle") : t("shell.primaryFooterTitle")}
-          </p>
-          <p className="mt-1">
-            {systemActive ? t("shell.advancedFooterBody") : t("shell.primaryFooterBody")}
-          </p>
+        <div className="absolute inset-x-0 bottom-0 flex h-[54px] items-center border-t border-slate-200 bg-white px-4 text-[10px] text-slate-400">
+          <span className="mr-2 size-2 rounded-full bg-cyan-400 shadow-sm shadow-cyan-300" />
+          Keep Every Brand Knowledge in Orbit.
         </div>
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6">
           <button
             type="button"
             className="rounded-lg border border-slate-200 p-2 text-slate-600 lg:hidden"
@@ -133,53 +173,58 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           >
             <Menu size={19} />
           </button>
-          <div className="relative hidden max-w-md flex-1 sm:block">
-            <Search
-              className="absolute left-3 top-2.5 text-slate-400"
-              size={18}
-              aria-hidden="true"
-            />
+          <div className="relative hidden w-full max-w-[520px] sm:block">
+            <Search className="absolute left-3.5 top-2.5 text-slate-400" size={18} aria-hidden="true" />
             <input
               aria-label={t("shell.search")}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-10 pr-3 text-sm"
-              placeholder={t("shell.search")}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-14 text-sm text-slate-700 placeholder:text-slate-400"
+              placeholder={
+                locale === "zh-CN"
+                  ? "搜索知识、来源、文件… / Search knowledge, sources, files…"
+                  : "Search knowledge, sources, files… / 搜索知识、来源、文件…"
+              }
               disabled
             />
+            <span className="absolute right-3 top-2.5 rounded-md bg-slate-200/70 px-1.5 py-0.5 text-[11px] text-slate-400">⌘ K</span>
           </div>
-          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <div className="ml-auto flex items-center gap-3">
+            <div className="hidden items-center gap-2 text-xs sm:flex">
+              <button
+                type="button"
+                onClick={() => setLocale("zh-CN")}
+                className={`font-semibold ${locale === "zh-CN" ? "text-blue-600" : "text-slate-500 hover:text-slate-900"}`}
+              >
+                中文
+              </button>
+              <span className="text-slate-300">|</span>
+              <button
+                type="button"
+                onClick={() => setLocale("en-US")}
+                className={`font-semibold ${locale === "en-US" ? "text-blue-600" : "text-slate-500 hover:text-slate-900"}`}
+              >
+                EN
+              </button>
+            </div>
             <button
               type="button"
-              onClick={() => setLocale(locale === "zh-CN" ? "en-US" : "zh-CN")}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3"
-              aria-label={locale === "zh-CN" ? "Switch to English" : "切换到中文"}
-              title={locale === "zh-CN" ? "Switch to English" : "切换到中文"}
-            >
-              <Languages size={16} aria-hidden="true" />
-              <span>{locale === "zh-CN" ? t("language.en") : t("language.zh")}</span>
-            </button>
-            <span className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 sm:flex">
-              <span className="size-2 rounded-full bg-emerald-500" />
-              {systemActive ? t("shell.advancedBadge") : t("shell.workbenchBadge")}
-            </span>
-            <button
-              type="button"
-              className="rounded-xl border border-slate-200 p-2 text-slate-600"
+              className="grid size-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
               aria-label={t("shell.notifications")}
             >
-              <Bell size={18} />
+              <Bell size={17} />
             </button>
-            <div className="grid size-9 place-items-center rounded-xl bg-slate-900 text-xs font-medium text-white">
-              MK
+            <div className="hidden items-center gap-2 sm:flex">
+              <div className="grid size-9 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">AD</div>
+              <span className="text-xs font-medium text-slate-600">Admin</span>
             </div>
           </div>
         </header>
-        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="px-4 py-6 sm:px-6 lg:px-7">{children}</main>
       </div>
 
       {open ? (
         <button
           type="button"
-          className="fixed inset-0 z-30 bg-slate-950/55 lg:hidden"
+          className="fixed inset-0 z-30 bg-slate-950/35 lg:hidden"
           aria-label={t("shell.closeOverlay")}
           onClick={() => setOpen(false)}
         />
