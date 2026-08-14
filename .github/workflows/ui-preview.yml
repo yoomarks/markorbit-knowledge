@@ -52,8 +52,12 @@ jobs:
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)"
           test -n "$CHROME"
           "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/dashboard.png http://127.0.0.1:3000/dashboard
-          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/sources.png http://127.0.0.1:3000/sources
-          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=5000 --window-size=1440,1200 --screenshot=screenshots/foundational.png http://127.0.0.1:3000/foundational
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1100 --screenshot=screenshots/discovery.png http://127.0.0.1:3000/discovery
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1200 --screenshot=screenshots/sources.png http://127.0.0.1:3000/sources
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=5000 --window-size=1440,1300 --screenshot=screenshots/foundational.png http://127.0.0.1:3000/foundational
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1100 --screenshot=screenshots/knowledge.png http://127.0.0.1:3000/knowledge
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1100 --screenshot=screenshots/packages.png http://127.0.0.1:3000/packages
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=5000 --window-size=1440,1300 --screenshot=screenshots/foundational-diagnostics.png http://127.0.0.1:3000/foundationalDiagnostics
           "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/intelligence.png http://127.0.0.1:3000/intelligence
           "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/jobs.png http://127.0.0.1:3000/jobs
           "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3000 --window-size=1440,1000 --screenshot=screenshots/runs.png http://127.0.0.1:3000/runs
