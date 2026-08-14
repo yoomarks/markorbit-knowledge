@@ -5,11 +5,12 @@ import { Plus } from "lucide-react";
 import { PageHeading } from "./page-heading";
 import { useAdminI18n } from "@/lib/i18n";
 
-type CorePage = "sources" | "discovery" | "knowledge" | "packages";
+type CorePage = "sources" | "discovery" | "foundational" | "knowledge" | "packages";
 
 const labels: Record<CorePage, { zh: string; en: string }> = {
   sources: { zh: "来源管理", en: "Sources" },
   discovery: { zh: "来源发现", en: "Discovery" },
+  foundational: { zh: "基础资料覆盖与健康", en: "Foundational Coverage & Health" },
   knowledge: { zh: "知识资产", en: "Knowledge" },
   packages: { zh: "交付包", en: "Packages" },
 };
