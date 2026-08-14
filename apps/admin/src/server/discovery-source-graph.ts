@@ -403,6 +403,19 @@ export function writeExternalDiscoveryLinkToSourceGraph(
   graph.ingestObservationBatch(observation);
 }
 
+export function reopenCandidateGraphNode(
+  graph: SourceGraphRepository,
+  profile: WebsiteSourceProfile,
+  candidate: SourceCandidate,
+): SourceGraphNode | null {
+  const identityKey = isWebsiteRootUri(candidate.locator, profile)
+    ? profile.canonicalOrigin
+    : canonicalCandidateUri(candidate.locator);
+  const node = graph.findNodeByIdentity(profile.id, "CANONICAL_URI", identityKey);
+  if (!node) return null;
+  return graph.reopenNode(node.id);
+}
+
 export function reviewCandidateGraphNode(
   graph: SourceGraphRepository,
   profile: WebsiteSourceProfile,

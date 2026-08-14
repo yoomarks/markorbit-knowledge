@@ -66,6 +66,7 @@ export interface SourceGraphRepository {
   listEdges(profileId: string): SourceGraphEdge[];
   ingestObservationBatch(batch: SourceGraphObservationBatch): SourceGraphBatchIngestResult;
   reviewNode(nodeId: string, state: Exclude<SourceGraphReviewState, "OBSERVED">): SourceGraphNode;
+  reopenNode(nodeId: string): SourceGraphNode;
   snapshotBySourceId(sourceId: string): SourceGraphSnapshot | null;
 }
 
@@ -691,6 +692,30 @@ export class SqliteSourceGraphRepository implements SourceGraphRepository {
     if (!isSourceGraphNode(next)) {
       throw new RegistryValidationError(
         "Reviewed Source Graph node violates Source Graph Protocol v1",
+      );
+    }
+    this.updateNode(next);
+    return next;
+  }
+
+  reopenNode(nodeId: string): SourceGraphNode {
+    const current = this.getNode(nodeId);
+    if (!current) {
+      throw new RegistryConflictError(
+        "SOURCE_GRAPH_NODE_NOT_FOUND",
+        `Source Graph node ${nodeId} was not found`,
+      );
+    }
+    if (current.reviewState !== "REJECTED") {
+      throw new RegistryConflictError(
+        "SOURCE_GRAPH_NODE_REOPEN_CONFLICT",
+        `Source Graph node ${nodeId} is ${current.reviewState}; only REJECTED nodes can return to OBSERVED`,
+      );
+    }
+    const next: SourceGraphNode = { ...current, reviewState: "OBSERVED" };
+    if (!isSourceGraphNode(next)) {
+      throw new RegistryValidationError(
+        "Reopened Source Graph node violates Source Graph Protocol v1",
       );
     }
     this.updateNode(next);

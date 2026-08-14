@@ -74,6 +74,9 @@ describe("SqliteSourceDiscoveryRepository", () => {
     expect(remembered?.candidate.status).toBe("REJECTED");
     expect(remembered?.review?.note).toBe(rejectionNote);
     expect(remembered?.batchId).toBe("disc_rediscovered");
+    expect(repository.listReviewEvents("cand_test")).toMatchObject([
+      { action: "REVIEWED", decision: "REJECTED", note: rejectionNote },
+    ]);
 
     expect(
       repository.reviewCandidate("cand_test", {
@@ -81,6 +84,7 @@ describe("SqliteSourceDiscoveryRepository", () => {
         reviewer: "operator-1",
       }).candidate.status,
     ).toBe("REJECTED");
+    expect(repository.listReviewEvents("cand_test")).toHaveLength(1);
     expect(() =>
       repository.reviewCandidate("cand_test", {
         decision: "ACCEPTED",
@@ -89,6 +93,58 @@ describe("SqliteSourceDiscoveryRepository", () => {
       }),
     ).toThrow(/already REJECTED/);
 
+    now = "2026-08-08T01:05:00.000Z";
+    const reopened = repository.reopenCandidate("cand_test", {
+      reviewer: "operator-2",
+      note: "restore:manual",
+    });
+    expect(reopened.candidate.status).toBe("DISCOVERED");
+    expect(reopened.review).toBeUndefined();
+    expect(repository.listCandidates().summary.DISCOVERED).toBe(1);
+    expect(repository.listReviewEvents("cand_test")).toMatchObject([
+      { action: "REVIEWED", decision: "REJECTED", note: rejectionNote },
+      { action: "REOPENED", reviewer: "operator-2", note: "restore:manual" },
+    ]);
+
+    now = "2026-08-08T01:06:00.000Z";
+    repository.reviewCandidate("cand_test", {
+      decision: "REJECTED",
+      reviewer: "operator-3",
+      note: "reason:NOT_NEEDED",
+    });
+    expect(repository.listReviewEvents("cand_test")).toHaveLength(3);
+
+    database.close();
+  });
+
+  it("does not reopen an accepted candidate that already owns source lifecycle objects", () => {
+    const database = openRegistryDatabase(":memory:");
+    const repository = new SqliteSourceDiscoveryRepository(
+      database,
+      () => new Date("2026-08-08T02:00:00.000Z"),
+    );
+    const seed = repository.createSeed({ locator: "https://example.com/" });
+    repository.createBatch({
+      batchId: "disc_accepted",
+      seeds: [{ seedId: seed.seedId, locator: seed.locator }],
+      createdAt: "2026-08-08T01:59:00.000Z",
+    });
+    repository.completeBatch("disc_accepted", [
+      {
+        candidateId: "cand_accepted",
+        locator: "https://example.com/accepted",
+        discoveredAt: "2026-08-08T01:59:30.000Z",
+        status: "DISCOVERED",
+      },
+    ]);
+    repository.reviewCandidate("cand_accepted", {
+      decision: "ACCEPTED",
+      acceptedSourceId: "src_test",
+      collectionPlanId: "pln_test",
+    });
+
+    expect(() => repository.reopenCandidate("cand_accepted")).toThrow(/only REJECTED/);
+    expect(repository.listReviewEvents("cand_accepted")).toHaveLength(1);
     database.close();
   });
 });
