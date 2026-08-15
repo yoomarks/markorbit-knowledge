@@ -6,6 +6,7 @@ import {
   type SourceCategory,
 } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { websiteIdentity } from "./discovery-source-graph";
 import type { DiscoveryIntakeDefaults } from "./discovery-service";
 
 const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
@@ -176,14 +177,6 @@ function parseAuthority(value: string): { value?: AuthorityLevel; issue?: string
   return { issue: `Unknown authority level: ${cell}` };
 }
 
-function websiteIdentity(url: URL): string {
-  const hostname = url.hostname.toLowerCase();
-  const canonicalHostname =
-    hostname.startsWith("www.") && hostname.length > 4 ? hostname.slice(4) : hostname;
-  const port = url.port ? `:${url.port}` : "";
-  return `${url.protocol}//${canonicalHostname}${port}`;
-}
-
 function publicWebsite(locator: string): {
   locator?: string;
   origin?: string;
@@ -223,7 +216,7 @@ function publicWebsite(locator: string): {
     return {
       locator: url.toString(),
       origin: url.origin,
-      identity: websiteIdentity(url),
+      identity: websiteIdentity(url.toString()),
     };
   } catch {
     return { issue: `Invalid website URL: ${raw}` };
