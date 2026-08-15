@@ -179,9 +179,7 @@ function parseAuthority(value: string): { value?: AuthorityLevel; issue?: string
 function websiteIdentity(url: URL): string {
   const hostname = url.hostname.toLowerCase();
   const canonicalHostname =
-    hostname.startsWith("www.") && hostname.length > 4
-      ? hostname.slice(4)
-      : hostname;
+    hostname.startsWith("www.") && hostname.length > 4 ? hostname.slice(4) : hostname;
   const port = url.port ? `:${url.port}` : "";
   return `${url.protocol}//${canonicalHostname}${port}`;
 }
