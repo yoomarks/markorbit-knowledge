@@ -1,0 +1,213 @@
+name: Temporary Discovery Website Identity Patch
+
+on:
+  push:
+    branches: [codex/discovery-website-identity-v1]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/discovery-website-identity-v1
+      - name: Apply targeted identity patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}")
+              file.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "apps/admin/src/server/discovery-source-graph.ts",
+              '''export function websiteOrigin(locator: string): string {
+            const url = new URL(locator);
+            if (url.protocol !== "http:" && url.protocol !== "https:") {
+              throw new RegistryValidationError("Website Source Graph requires an http or https locator");
+            }
+            return `${url.origin}/`;
+          }
+          ''',
+              '''export function websiteOrigin(locator: string): string {
+            const url = new URL(locator);
+            if (url.protocol !== "http:" && url.protocol !== "https:") {
+              throw new RegistryValidationError("Website Source Graph requires an http or https locator");
+            }
+            return `${url.origin}/`;
+          }
+
+          export function websiteIdentity(locator: string): string {
+            const url = new URL(locator);
+            if (url.protocol !== "http:" && url.protocol !== "https:") {
+              throw new RegistryValidationError("Website identity requires an http or https locator");
+            }
+            const hostname = url.hostname.toLowerCase();
+            const canonicalHostname =
+              hostname.startsWith("www.") && hostname.length > 4 ? hostname.slice(4) : hostname;
+            const port = url.port ? `:${url.port}` : "";
+            return `${url.protocol}//${canonicalHostname}${port}`;
+          }
+          ''',
+          )
+
+          replace_once(
+              "apps/admin/src/app/api/discovery/batch/route.ts",
+              '''import {
+            getDiscoveryWorkflowService,
+            type DiscoveryIntakeDefaults,
+          } from "@/server/discovery-service";
+          ''',
+              '''import {
+            getDiscoveryWorkflowService,
+            type DiscoveryIntakeDefaults,
+          } from "@/server/discovery-service";
+          import { websiteIdentity } from "@/server/discovery-source-graph";
+          ''',
+          )
+          replace_once(
+              "apps/admin/src/app/api/discovery/batch/route.ts",
+              '''function normalizedOrigin(locator: string): string | null {
+            try {
+              const url = new URL(locator.trim());
+              if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+              return url.origin.toLowerCase();
+            } catch {
+              return null;
+            }
+          }
+          ''',
+              '''function normalizedWebsiteIdentity(locator: string): string | null {
+            try {
+              return websiteIdentity(locator.trim());
+            } catch {
+              return null;
+            }
+          }
+          ''',
+          )
+          path = Path("apps/admin/src/app/api/discovery/batch/route.ts")
+          text = path.read_text()
+          text = text.replace("const seenOrigins = new Set<string>();", "const seenWebsiteIdentities = new Set<string>();")
+          text = text.replace("const origin = normalizedOrigin(entry.locator);", "const identity = normalizedWebsiteIdentity(entry.locator);")
+          text = text.replace("if (origin && seenOrigins.has(origin))", "if (identity && seenWebsiteIdentities.has(identity))")
+          text = text.replace("if (origin) seenOrigins.add(origin);", "if (identity) seenWebsiteIdentities.add(identity);")
+          text = text.replace("uniqueOrigins: seenOrigins.size,", "uniqueOrigins: seenWebsiteIdentities.size,")
+          path.write_text(text)
+
+          replace_once(
+              "apps/admin/src/server/discovery-service.ts",
+              '''  reviewCandidateGraphNode,
+            websiteOrigin,
+            writeDiscoveryBatchToSourceGraph,
+          ''',
+              '''  reviewCandidateGraphNode,
+            websiteIdentity,
+            websiteOrigin,
+            writeDiscoveryBatchToSourceGraph,
+          ''',
+          )
+          replace_once(
+              "apps/admin/src/server/discovery-service.ts",
+              '''function sourceWebsiteOrigins(source: SourceDefinition): string[] {
+            const values = [
+              source.canonicalUri,
+              ...source.entrypoints.map((entrypoint) => entrypoint.uri),
+            ].filter((value): value is string => Boolean(value));
+            const origins: string[] = [];
+            for (const value of values) {
+              try {
+                origins.push(websiteOrigin(value));
+              } catch {
+                // Non-HTTP entrypoints cannot represent a website origin.
+              }
+            }
+            return [...new Set(origins)];
+          }
+          ''',
+              '''function sourceWebsiteIdentities(source: SourceDefinition): string[] {
+            const values = [
+              source.canonicalUri,
+              ...source.entrypoints.map((entrypoint) => entrypoint.uri),
+            ].filter((value): value is string => Boolean(value));
+            const identities: string[] = [];
+            for (const value of values) {
+              try {
+                identities.push(websiteIdentity(value));
+              } catch {
+                // Non-HTTP entrypoints cannot represent a website identity.
+              }
+            }
+            return [...new Set(identities)];
+          }
+          ''',
+          )
+          path = Path("apps/admin/src/server/discovery-service.ts")
+          text = path.read_text()
+          text = text.replace("const existingOrigins = new Map<string, string>();", "const existingIdentities = new Map<string, string>();")
+          text = text.replace("for (const origin of sourceWebsiteOrigins(source)) existingOrigins.set(origin, source.id);", "for (const identity of sourceWebsiteIdentities(source)) existingIdentities.set(identity, source.id);")
+          text = text.replace("const seenOrigins = new Set<string>();", "const seenIdentities = new Set<string>();")
+          text = text.replace("        origin = websiteOrigin(locator);\n", "        origin = websiteOrigin(locator);\n        identity = websiteIdentity(locator);\n", 1)
+          text = text.replace("      let origin: string;\n", "      let origin: string;\n      let identity: string;\n", 1)
+          text = text.replace("if (seenOrigins.has(origin))", "if (seenIdentities.has(identity))")
+          text = text.replace("seenOrigins.add(origin);", "seenIdentities.add(identity);")
+          text = text.replace("const existingSourceId = profile?.sourceId ?? existingOrigins.get(origin);", "const existingSourceId = profile?.sourceId ?? existingIdentities.get(identity);")
+          text = text.replace("uniqueOrigins: seenOrigins.size,", "uniqueOrigins: seenIdentities.size,")
+          path.write_text(text)
+
+          replace_once(
+              "apps/admin/src/server/discovery-import-parser.ts",
+              '''import { RegistryValidationError } from "@markorbit/persistence";
+          import type { DiscoveryIntakeDefaults } from "./discovery-service";
+          ''',
+              '''import { RegistryValidationError } from "@markorbit/persistence";
+          import { websiteIdentity } from "./discovery-source-graph";
+          import type { DiscoveryIntakeDefaults } from "./discovery-service";
+          ''',
+          )
+          replace_once(
+              "apps/admin/src/server/discovery-import-parser.ts",
+              '''function websiteIdentity(url: URL): string {
+            const hostname = url.hostname.toLowerCase();
+            const canonicalHostname =
+              hostname.startsWith("www.") && hostname.length > 4 ? hostname.slice(4) : hostname;
+            const port = url.port ? `:${url.port}` : "";
+            return `${url.protocol}//${canonicalHostname}${port}`;
+          }
+
+          ''',
+              "",
+          )
+          replace_once(
+              "apps/admin/src/server/discovery-import-parser.ts",
+              "      identity: websiteIdentity(url),\n",
+              "      identity: websiteIdentity(url.toString()),\n",
+          )
+
+          path = Path("apps/admin/src/server/__tests__/discovery-batch-intake.test.ts")
+          text = path.read_text()
+          text = text.replace('''        "https://example.com/start",
+            "https://example.com/another-path",
+          ''', '''        "https://example.com/start",
+            "https://www.example.com/another-path",
+          ''', 1)
+          text = text.replace('''      locators: ["https://example.com/new-entry"],
+          ''', '''      locators: ["https://www.example.com/new-entry"],
+          ''', 1)
+          path.write_text(text)
+          PY
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/admin/src/server/discovery-source-graph.ts apps/admin/src/app/api/discovery/batch/route.ts apps/admin/src/server/discovery-service.ts apps/admin/src/server/discovery-import-parser.ts apps/admin/src/server/__tests__/discovery-batch-intake.test.ts
+          git commit -m "fix(discovery): unify website identity across intake"
+          git push origin HEAD:codex/discovery-website-identity-v1
