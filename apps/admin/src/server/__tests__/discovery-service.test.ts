@@ -38,7 +38,7 @@ describe("DiscoveryWorkflowService", () => {
             },
             {
               candidateId: "cand_bbbbbbbbbbbbbbbbbbbbbbbb",
-              locator: "https://example.com/guides/fees.pdf",
+              locator: "https://www.example.com/guides/fees.pdf",
               title: "Fee guide",
               discoveredAt: "2026-08-08T01:00:01.000Z",
               status: "DISCOVERED" as const,
@@ -128,7 +128,11 @@ describe("DiscoveryWorkflowService", () => {
     expect(sources.list({ sourceType: "WEB", limit: 100 }).total).toBe(1);
     expect(first.source ? plans.listForSource(first.source.id) : []).toHaveLength(1);
     const documentNode = profile
-      ? graph.findNodeByIdentity(profile.id, "CANONICAL_URI", "https://example.com/guides/fees.pdf")
+      ? graph.findNodeByIdentity(
+          profile.id,
+          "CANONICAL_URI",
+          "https://www.example.com/guides/fees.pdf",
+        )
       : null;
     expect(documentNode?.reviewState).toBe("RETAINED");
 
@@ -200,7 +204,7 @@ describe("DiscoveryWorkflowService", () => {
             },
             {
               candidateId: "cand_ffffffffffffffffffffffff",
-              locator: "https://peer.example/blog",
+              locator: "https://www.peer.example/blog",
               discoveredAt: "2026-08-12T16:20:02.000Z",
               status: "DISCOVERED" as const,
               discoveredFrom: batch.seeds[0]?.locator,
