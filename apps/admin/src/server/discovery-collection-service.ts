@@ -19,7 +19,6 @@ import {
 
 export type AuthorizeDiscoveryCollectionInput = {
   requestedBy?: string;
-  idempotencyKey?: string;
 };
 
 type DiscoveryCollectionDependencies = {
@@ -103,6 +102,27 @@ export class DiscoveryCollectionService {
       );
     }
 
+    // Multiple accepted pages can resolve to the same Source/default plan. Treat the
+    // first collection as a Source/plan boundary, not a candidate boundary, so batch
+    // approval cannot fan out duplicate crawls of the same website. Existing history
+    // also means this Source has already crossed its initial collection boundary.
+    const existing = this.dependencies.runs.list({
+      sourceId,
+      planId,
+      limit: 1,
+      offset: 0,
+    }).items[0];
+    if (existing) {
+      return {
+        candidate,
+        source,
+        plan: planRecord.plan,
+        run: existing.run,
+        jobs: existing.jobs,
+        replayed: true,
+      };
+    }
+
     const actor: ExecutionActor = {
       actorType: "LOCAL_ADMIN",
       actorId: input.requestedBy?.trim() || "admin-console",
@@ -110,8 +130,7 @@ export class DiscoveryCollectionService {
     const dispatch = this.dependencies.runs.dispatchManual({
       planId,
       requestedBy: actor,
-      idempotencyKey:
-        input.idempotencyKey?.trim() || `discovery-authorize-${candidate.candidate.candidateId}`,
+      idempotencyKey: `discovery-initial-${planId}`.slice(0, 128),
     });
 
     return {
