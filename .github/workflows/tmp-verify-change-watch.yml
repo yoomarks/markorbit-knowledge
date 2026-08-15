@@ -1,0 +1,48 @@
+name: Temporary change watch verification
+
+on:
+  push:
+    branches:
+      - codex/change-watch-incremental-v1
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format changed files
+        run: >-
+          pnpm exec prettier --write
+          packages/persistence/src/raw-artifact-registry.ts
+          packages/persistence/tests/raw-artifact-content-identity.test.ts
+          packages/worker-runtime/src/artifact-backed-collection-executor.ts
+          packages/worker-runtime/src/http-controlled-collection-client.ts
+          packages/worker-runtime/tests/artifact-backed-change-watch.test.ts
+          apps/admin/src/app/api/worker/v1/artifacts/check/route.ts
+      - name: Focused tests
+        run: |
+          pnpm --filter @markorbit/persistence exec vitest run tests/raw-artifact-content-identity.test.ts
+          pnpm --filter @markorbit/worker-runtime exec vitest run tests/artifact-backed-change-watch.test.ts
+      - run: pnpm typecheck
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/persistence/src/raw-artifact-registry.ts packages/persistence/tests/raw-artifact-content-identity.test.ts packages/worker-runtime/src/artifact-backed-collection-executor.ts packages/worker-runtime/src/http-controlled-collection-client.ts packages/worker-runtime/tests/artifact-backed-change-watch.test.ts apps/admin/src/app/api/worker/v1/artifacts/check/route.ts
+          git commit -m "style: format incremental change-watch patch"
+          git push
