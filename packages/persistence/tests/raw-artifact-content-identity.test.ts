@@ -97,16 +97,10 @@ async function environment() {
     worker.credential,
   );
   const claim = workers.claim(worker.view.worker.id, worker.credential);
-  executions.start(
-    worker.view.worker.id,
-    worker.credential,
-    claim.lease!.id,
-    claim.leaseToken!,
-    {
-      executor: { executorId: "fixture", version: "1.0.0", mode: "FIXTURE" },
-      idempotencyKey: "start",
-    },
-  );
+  executions.start(worker.view.worker.id, worker.credential, claim.lease!.id, claim.leaseToken!, {
+    executor: { executorId: "fixture", version: "1.0.0", mode: "FIXTURE" },
+    idempotencyKey: "start",
+  });
   executions.markUploading(
     worker.view.worker.id,
     worker.credential,
