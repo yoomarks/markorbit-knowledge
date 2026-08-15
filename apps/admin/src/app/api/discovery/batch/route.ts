@@ -15,6 +15,11 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type ImportEntry = {
+  locator: string;
+  intake?: DiscoveryIntakeDefaults;
+};
+
 function optionalInteger(value: unknown, field: string): number | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value !== "number" || !Number.isInteger(value)) {
@@ -26,7 +31,7 @@ function optionalInteger(value: unknown, field: string): number | undefined {
 function optionalString(value: unknown, field: string): string | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value !== "string") throw new RegistryValidationError(`${field} must be a string`);
-  return value;
+  return value.trim() || undefined;
 }
 
 function optionalStringArray(value: unknown, field: string): string[] | undefined {
@@ -37,49 +42,164 @@ function optionalStringArray(value: unknown, field: string): string[] | undefine
   return value;
 }
 
-function optionalCategory(value: unknown): SourceCategory | undefined {
+function optionalCategory(value: unknown, field = "intake.category"): SourceCategory | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value !== "string" || !SOURCE_CATEGORIES.includes(value as SourceCategory)) {
-    throw new RegistryValidationError("intake.category is invalid");
+    throw new RegistryValidationError(`${field} is invalid`);
   }
   return value as SourceCategory;
 }
 
-function optionalAuthority(value: unknown): AuthorityLevel | undefined {
+function optionalAuthority(
+  value: unknown,
+  field = "intake.authorityLevel",
+): AuthorityLevel | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value !== "string" || !AUTHORITY_LEVELS.includes(value as AuthorityLevel)) {
-    throw new RegistryValidationError("intake.authorityLevel is invalid");
+    throw new RegistryValidationError(`${field} is invalid`);
   }
   return value as AuthorityLevel;
 }
 
-function intakeDefaults(value: unknown): DiscoveryIntakeDefaults | undefined {
+function intakeDefaults(value: unknown, prefix = "intake"): DiscoveryIntakeDefaults | undefined {
   if (value === undefined || value === null) return undefined;
   const record = requireRecord(value);
   return {
-    category: optionalCategory(record.category),
-    authorityLevel: optionalAuthority(record.authorityLevel),
-    jurisdictions: optionalStringArray(record.jurisdictions, "intake.jurisdictions"),
-    languages: optionalStringArray(record.languages, "intake.languages"),
-    note: optionalString(record.note, "intake.note"),
-    tags: optionalStringArray(record.tags, "intake.tags"),
+    category: optionalCategory(record.category, `${prefix}.category`),
+    authorityLevel: optionalAuthority(record.authorityLevel, `${prefix}.authorityLevel`),
+    jurisdictions: optionalStringArray(record.jurisdictions, `${prefix}.jurisdictions`),
+    languages: optionalStringArray(record.languages, `${prefix}.languages`),
+    note: optionalString(record.note, `${prefix}.note`),
+    tags: optionalStringArray(record.tags, `${prefix}.tags`),
   };
+}
+
+function importEntries(value: unknown): ImportEntry[] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value) || value.length === 0 || value.length > 100) {
+    throw new RegistryValidationError("entries must contain 1 to 100 rows");
+  }
+  return value.map((item, index) => {
+    const record = requireRecord(item);
+    if (typeof record.locator !== "string" || !record.locator.trim()) {
+      throw new RegistryValidationError(`entries[${index}].locator must be a non-empty string`);
+    }
+    return {
+      locator: record.locator.trim(),
+      intake: intakeDefaults(record.intake, `entries[${index}].intake`),
+    };
+  });
+}
+
+function normalizedOrigin(locator: string): string | null {
+  try {
+    const url = new URL(locator.trim());
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.origin.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function groupKey(intake: DiscoveryIntakeDefaults | undefined): string {
+  if (!intake) return "{}";
+  return JSON.stringify({
+    category: intake.category ?? null,
+    authorityLevel: intake.authorityLevel ?? null,
+    jurisdictions: intake.jurisdictions ?? [],
+    languages: intake.languages ?? [],
+    note: intake.note ?? null,
+    tags: intake.tags ?? [],
+  });
+}
+
+async function runPerRowImport(input: {
+  entries: ImportEntry[];
+  maxDepth?: number;
+  maxCandidates?: number;
+  maxFetches?: number;
+  deniedUrlPatterns?: string[];
+}) {
+  const groups = new Map<string, { intake?: DiscoveryIntakeDefaults; locators: string[] }>();
+  const seenOrigins = new Set<string>();
+  let skippedDuplicateInput = 0;
+
+  for (const entry of input.entries) {
+    const origin = normalizedOrigin(entry.locator);
+    if (origin && seenOrigins.has(origin)) {
+      skippedDuplicateInput += 1;
+      continue;
+    }
+    if (origin) seenOrigins.add(origin);
+    const key = groupKey(entry.intake);
+    const group = groups.get(key) ?? { intake: entry.intake, locators: [] };
+    group.locators.push(entry.locator);
+    groups.set(key, group);
+  }
+
+  const summary = {
+    submitted: input.entries.length,
+    uniqueOrigins: seenOrigins.size,
+    started: 0,
+    skippedDuplicateInput,
+    skippedExistingSource: 0,
+    failed: 0,
+    candidateCount: 0,
+  };
+  const items: unknown[] = [];
+  const service = getDiscoveryWorkflowService();
+
+  for (const group of groups.values()) {
+    const result = await service.startBatch({
+      locators: group.locators,
+      intake: group.intake,
+      ...(input.maxDepth !== undefined ? { maxDepth: input.maxDepth } : {}),
+      ...(input.maxCandidates !== undefined ? { maxCandidates: input.maxCandidates } : {}),
+      ...(input.maxFetches !== undefined ? { maxFetches: input.maxFetches } : {}),
+      ...(input.deniedUrlPatterns !== undefined
+        ? { deniedUrlPatterns: input.deniedUrlPatterns }
+        : {}),
+    });
+    summary.started += result.summary.started;
+    summary.skippedDuplicateInput += result.summary.skippedDuplicateInput;
+    summary.skippedExistingSource += result.summary.skippedExistingSource;
+    summary.failed += result.summary.failed;
+    summary.candidateCount += result.summary.candidateCount;
+    items.push(...result.items);
+  }
+  return { summary, items };
 }
 
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
+    const entries = importEntries(body.entries);
+    const maxDepth = optionalInteger(body.maxDepth, "maxDepth");
+    const maxCandidates = optionalInteger(body.maxCandidates, "maxCandidates");
+    const maxFetches = optionalInteger(body.maxFetches, "maxFetches");
+    const deniedUrlPatterns = optionalStringArray(body.deniedUrlPatterns, "deniedUrlPatterns");
+
+    if (entries) {
+      const result = await runPerRowImport({
+        entries,
+        ...(maxDepth !== undefined ? { maxDepth } : {}),
+        ...(maxCandidates !== undefined ? { maxCandidates } : {}),
+        ...(maxFetches !== undefined ? { maxFetches } : {}),
+        ...(deniedUrlPatterns !== undefined ? { deniedUrlPatterns } : {}),
+      });
+      return NextResponse.json(result, { status: 201 });
+    }
+
     if (!Array.isArray(body.locators) || !body.locators.every((item) => typeof item === "string")) {
       throw new RegistryValidationError("locators must be an array of strings");
     }
-
     const result = await getDiscoveryWorkflowService().startBatch({
       locators: body.locators,
-      maxDepth: optionalInteger(body.maxDepth, "maxDepth"),
-      maxCandidates: optionalInteger(body.maxCandidates, "maxCandidates"),
-      maxFetches: optionalInteger(body.maxFetches, "maxFetches"),
+      ...(maxDepth !== undefined ? { maxDepth } : {}),
+      ...(maxCandidates !== undefined ? { maxCandidates } : {}),
+      ...(maxFetches !== undefined ? { maxFetches } : {}),
       intake: intakeDefaults(body.intake),
-      deniedUrlPatterns: optionalStringArray(body.deniedUrlPatterns, "deniedUrlPatterns"),
+      ...(deniedUrlPatterns !== undefined ? { deniedUrlPatterns } : {}),
     });
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
