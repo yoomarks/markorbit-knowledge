@@ -9,7 +9,9 @@ import type {
 import type { SourceGraphRepository } from "@markorbit/persistence/source-graph";
 import type { SourceRepository } from "@markorbit/persistence";
 import type {
+  AuthorityLevel,
   CollectionPlan,
+  SourceCategory,
   SourceDefinition,
   SourceDiscoveryConstraints,
   SourceDiscoveryLineage,
@@ -71,6 +73,15 @@ const DEFAULT_CONSTRAINTS: Required<
   maxExpansionGeneration: 2,
 };
 
+export type DiscoveryIntakeDefaults = {
+  category?: SourceCategory;
+  authorityLevel?: AuthorityLevel;
+  jurisdictions?: string[];
+  languages?: string[];
+  note?: string;
+  tags?: string[];
+};
+
 export type StartDiscoveryInput = {
   locator: string;
   maxDepth?: number;
@@ -81,9 +92,17 @@ export type StartDiscoveryInput = {
   maxExpansionGeneration?: number;
   deniedUrlPatterns?: string[];
   lineage?: SourceDiscoveryLineage;
+  intake?: DiscoveryIntakeDefaults;
 };
 
-export type ExpandSourceDiscoveryInput = Omit<StartDiscoveryInput, "locator" | "lineage">;
+export type StartBatchDiscoveryInput = Omit<StartDiscoveryInput, "locator" | "lineage"> & {
+  locators: string[];
+};
+
+export type ExpandSourceDiscoveryInput = Omit<
+  StartDiscoveryInput,
+  "locator" | "lineage" | "intake"
+>;
 
 export type ReviewDiscoveryCandidateInput = {
   decision: CandidateReviewDecision;
@@ -175,6 +194,78 @@ function normalizedDeniedPatterns(values: string[] | undefined): string[] {
     .slice(0, 50);
 }
 
+function normalizedStringList(
+  values: string[] | undefined,
+  options: { uppercase?: boolean; limit: number },
+): string[] {
+  const normalized = (values ?? [])
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => (options.uppercase ? value.toUpperCase() : value));
+  return [...new Set(normalized)].slice(0, options.limit);
+}
+
+function normalizedIntakeDefaults(
+  input: DiscoveryIntakeDefaults | undefined,
+): DiscoveryIntakeDefaults | undefined {
+  if (!input) return undefined;
+  const jurisdictions = normalizedStringList(input.jurisdictions, { uppercase: true, limit: 20 });
+  const languages = normalizedStringList(input.languages, { limit: 20 });
+  const tags = normalizedStringList(input.tags, { limit: 30 });
+  const note = input.note?.trim().slice(0, 1_000);
+  const normalized: DiscoveryIntakeDefaults = {
+    ...(input.category ? { category: input.category } : {}),
+    ...(input.authorityLevel ? { authorityLevel: input.authorityLevel } : {}),
+    ...(jurisdictions.length > 0 ? { jurisdictions } : {}),
+    ...(languages.length > 0 ? { languages } : {}),
+    ...(note ? { note } : {}),
+    ...(tags.length > 0 ? { tags } : {}),
+  };
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function candidateIntakeDefaults(
+  candidate: SourceCandidateRecord["candidate"],
+): DiscoveryIntakeDefaults | undefined {
+  const value = candidate.metadata?.operatorIntakeDefaults;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  return normalizedIntakeDefaults({
+    ...(typeof record.category === "string" ? { category: record.category as SourceCategory } : {}),
+    ...(typeof record.authorityLevel === "string"
+      ? { authorityLevel: record.authorityLevel as AuthorityLevel }
+      : {}),
+    ...(Array.isArray(record.jurisdictions) &&
+    record.jurisdictions.every((item) => typeof item === "string")
+      ? { jurisdictions: record.jurisdictions as string[] }
+      : {}),
+    ...(Array.isArray(record.languages) &&
+    record.languages.every((item) => typeof item === "string")
+      ? { languages: record.languages as string[] }
+      : {}),
+    ...(typeof record.note === "string" ? { note: record.note } : {}),
+    ...(Array.isArray(record.tags) && record.tags.every((item) => typeof item === "string")
+      ? { tags: record.tags as string[] }
+      : {}),
+  });
+}
+
+function sourceWebsiteOrigins(source: SourceDefinition): string[] {
+  const values = [
+    source.canonicalUri,
+    ...source.entrypoints.map((entrypoint) => entrypoint.uri),
+  ].filter((value): value is string => Boolean(value));
+  const origins: string[] = [];
+  for (const value of values) {
+    try {
+      origins.push(websiteOrigin(value));
+    } catch {
+      // Non-HTTP entrypoints cannot represent a website origin.
+    }
+  }
+  return [...new Set(origins)];
+}
+
 function websiteSourceSlug(locator: string, identity: string): string {
   const url = new URL(locator);
   const host = url.hostname
@@ -237,6 +328,7 @@ export class DiscoveryWorkflowService {
 
   async start(input: StartDiscoveryInput) {
     const locator = normalizeSeedLocator(input.locator);
+    const intake = normalizedIntakeDefaults(input.intake);
     const maxExpansionGeneration = boundedInteger(
       input.maxExpansionGeneration,
       DEFAULT_CONSTRAINTS.maxExpansionGeneration,
@@ -265,6 +357,7 @@ export class DiscoveryWorkflowService {
         discoveryGeneration: lineage.generation,
         ...(lineage.parentSourceId ? { parentSourceId: lineage.parentSourceId } : {}),
         ...(lineage.rootSourceId ? { rootSourceId: lineage.rootSourceId } : {}),
+        ...(intake ? { operatorIntakeDefaults: intake } : {}),
       },
     });
     const batch = {
@@ -308,9 +401,19 @@ export class DiscoveryWorkflowService {
     this.dependencies.discovery.createBatch(batch);
     try {
       const discovered = await this.dependencies.provider.discover(batch);
-      const candidates = discovered.map(enrichDiscoveryCandidate);
-      const completed = this.dependencies.discovery.completeBatch(batch.batchId, candidates);
       const seedOrigin = websiteOrigin(seed.locator);
+      const candidates = discovered.map(enrichDiscoveryCandidate).map((candidate) =>
+        intake && belongsToOrigin(candidate.locator, seedOrigin)
+          ? {
+              ...candidate,
+              metadata: {
+                ...candidate.metadata,
+                operatorIntakeDefaults: intake,
+              },
+            }
+          : candidate,
+      );
+      const completed = this.dependencies.discovery.completeBatch(batch.batchId, candidates);
 
       const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
         DEFAULT_WORKSPACE.id,
@@ -339,6 +442,127 @@ export class DiscoveryWorkflowService {
       this.dependencies.discovery.failBatch(batch.batchId, message);
       throw error;
     }
+  }
+
+  async startBatch(input: StartBatchDiscoveryInput) {
+    if (
+      !Array.isArray(input.locators) ||
+      input.locators.length === 0 ||
+      input.locators.length > 100
+    ) {
+      throw new RegistryValidationError("Batch discovery requires 1 to 100 locators");
+    }
+
+    const existingOrigins = new Map<string, string>();
+    let sourceOffset = 0;
+    while (true) {
+      const page = this.dependencies.sources.list({
+        sourceType: "WEB",
+        limit: 100,
+        offset: sourceOffset,
+      });
+      for (const source of page.items) {
+        if (source.status === "ARCHIVED") continue;
+        for (const origin of sourceWebsiteOrigins(source)) existingOrigins.set(origin, source.id);
+      }
+      sourceOffset += page.items.length;
+      if (page.items.length === 0 || sourceOffset >= page.total) break;
+    }
+
+    const seenOrigins = new Set<string>();
+    const items: Array<{
+      input: string;
+      locator?: string;
+      origin?: string;
+      status: "STARTED" | "SKIPPED_DUPLICATE_INPUT" | "SKIPPED_EXISTING_SOURCE" | "FAILED";
+      sourceId?: string;
+      batchId?: string;
+      candidateCount?: number;
+      message?: string;
+    }> = [];
+    let started = 0;
+    let skippedDuplicateInput = 0;
+    let skippedExistingSource = 0;
+    let failed = 0;
+    let candidateCount = 0;
+    const { locators, ...defaults } = input;
+
+    for (const rawLocator of locators) {
+      let locator: string;
+      let origin: string;
+      try {
+        locator = normalizeSeedLocator(rawLocator);
+        origin = websiteOrigin(locator);
+      } catch (error) {
+        failed += 1;
+        items.push({
+          input: rawLocator,
+          status: "FAILED",
+          message: error instanceof Error ? error.message : "Invalid discovery seed",
+        });
+        continue;
+      }
+
+      if (seenOrigins.has(origin)) {
+        skippedDuplicateInput += 1;
+        items.push({ input: rawLocator, locator, origin, status: "SKIPPED_DUPLICATE_INPUT" });
+        continue;
+      }
+      seenOrigins.add(origin);
+
+      const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
+        DEFAULT_WORKSPACE.id,
+        origin,
+      );
+      const existingSourceId = profile?.sourceId ?? existingOrigins.get(origin);
+      if (existingSourceId) {
+        skippedExistingSource += 1;
+        items.push({
+          input: rawLocator,
+          locator,
+          origin,
+          status: "SKIPPED_EXISTING_SOURCE",
+          sourceId: existingSourceId,
+        });
+        continue;
+      }
+
+      try {
+        const result = await this.start({ ...defaults, locator });
+        started += 1;
+        candidateCount += result.candidates.length;
+        items.push({
+          input: rawLocator,
+          locator,
+          origin,
+          status: "STARTED",
+          batchId: result.batch.batch.batchId,
+          candidateCount: result.candidates.length,
+        });
+      } catch (error) {
+        failed += 1;
+        items.push({
+          input: rawLocator,
+          locator,
+          origin,
+          status: "FAILED",
+          message: error instanceof Error ? error.message : "Discovery failed",
+        });
+      }
+    }
+
+    return {
+      summary: {
+        submitted: locators.length,
+        uniqueOrigins: seenOrigins.size,
+        started,
+        skippedDuplicateInput,
+        skippedExistingSource,
+        failed,
+        candidateCount,
+      },
+      items,
+    };
   }
 
   async expandSource(sourceId: string, input: ExpandSourceDiscoveryInput = {}) {
@@ -524,6 +748,7 @@ export class DiscoveryWorkflowService {
           ? (extensionString(seedSource, "x-markorbit-discovery-root-source-id") ?? seedSource.id)
           : undefined);
 
+      const intake = isExternalCandidate ? undefined : candidateIntakeDefaults(current.candidate);
       let source: SourceDefinition;
       let plan: CollectionPlan;
       let profile = targetProfile;
@@ -556,11 +781,11 @@ export class DiscoveryWorkflowService {
             isExternalCandidate ? current.candidate.candidateId : seed.seedId,
           ),
           sourceType: "WEB",
-          category: "OTHER",
-          authorityLevel: "UNKNOWN",
+          category: intake?.category ?? "OTHER",
+          authorityLevel: intake?.authorityLevel ?? "UNKNOWN",
           status: "ACTIVE",
-          jurisdictions: ["GLOBAL"],
-          languages: ["und"],
+          jurisdictions: intake?.jurisdictions?.length ? intake.jurisdictions : ["GLOBAL"],
+          languages: intake?.languages?.length ? intake.languages : ["und"],
           connector: {
             connectorId: connector.connectorId,
             version: connector.version,
@@ -576,6 +801,7 @@ export class DiscoveryWorkflowService {
             "discovery-accepted",
             "website-source",
             ...(isExternalCandidate ? ["external-source"] : []),
+            ...(intake?.tags ?? []),
           ],
           extensions: {
             "x-markorbit-discovery-seed-id": seed.seedId,
@@ -592,6 +818,7 @@ export class DiscoveryWorkflowService {
                     current.candidate.discoveredFrom ?? seed.locator,
                 }
               : {}),
+            ...(intake?.note ? { "x-markorbit-intake-note": intake.note } : {}),
           },
         });
 
