@@ -100,7 +100,9 @@ export class SqliteSourceAssessmentRepository implements SourceAssessmentReposit
 
   get(id: string): SourceAssessmentRecord | null {
     const row = this.database
-      .prepare("SELECT document_json FROM source_assessment_capability_runs WHERE assessment_id = ?")
+      .prepare(
+        "SELECT document_json FROM source_assessment_capability_runs WHERE assessment_id = ?",
+      )
       .get(id) as { document_json: string } | undefined;
     return row ? this.parse(row.document_json) : null;
   }

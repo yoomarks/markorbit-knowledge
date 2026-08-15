@@ -147,8 +147,7 @@ export function SourceList() {
     fetch(`/api/sources?${query}`, { signal: controller.signal })
       .then(async (response) => {
         const body = (await response.json()) as
-          | SourceListPayload
-          | { error?: { message?: string } };
+          SourceListPayload | { error?: { message?: string } };
         if (!response.ok) {
           const message = "error" in body ? body.error?.message : undefined;
           throw new Error(message ?? "Unable to load sources");
@@ -340,7 +339,8 @@ export function SourceList() {
                           <span
                             className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${sourceValueTone(assessment.sourceValue.priority)}`}
                           >
-                            {sourceValueLabel(assessment.sourceValue.priority, zh)} · {assessment.sourceValue.score}
+                            {sourceValueLabel(assessment.sourceValue.priority, zh)} ·{" "}
+                            {assessment.sourceValue.score}
                           </span>
                           <p className="mt-1 text-[10px] text-slate-400">
                             {new Date(assessment.assessedAt).toLocaleDateString(locale)}
