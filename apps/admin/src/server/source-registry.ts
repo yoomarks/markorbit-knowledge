@@ -55,6 +55,10 @@ import {
   type RetrievalIndexRepository,
 } from "@markorbit/persistence/retrieval-index";
 import {
+  SqliteSourceAssessmentRepository,
+  type SourceAssessmentRepository,
+} from "@markorbit/persistence/source-assessment";
+import {
   SqliteSourceDiscoveryRepository,
   type SourceDiscoveryRepository,
 } from "@markorbit/persistence/source-discovery";
@@ -95,6 +99,7 @@ const globalRegistry = globalThis as typeof globalThis & {
     sources: SourceRepository;
     discovery: SourceDiscoveryRepository;
     graph: SourceGraphRepository;
+    sourceAssessments: SourceAssessmentRepository;
     intelligence: SourceIntelligenceRepository;
     intelligenceReviews: SourceIntelligenceObservationReviewRepository;
     connectors: ConnectorRepository;
@@ -164,6 +169,7 @@ function getRegistries() {
       sources: new SqliteSourceRepository(database),
       discovery: new SqliteSourceDiscoveryRepository(database),
       graph: new SqliteSourceGraphRepository(database),
+      sourceAssessments: new SqliteSourceAssessmentRepository(database),
       intelligence: new SqliteSourceIntelligenceRepository(database),
       intelligenceReviews: new SqliteSourceIntelligenceObservationReviewRepository(database),
       connectors: new SqliteConnectorRepository(database),
@@ -227,6 +233,10 @@ export function getSourceDiscoveryRepository(): SourceDiscoveryRepository {
 
 export function getSourceGraphRepository(): SourceGraphRepository {
   return getRegistries().graph;
+}
+
+export function getSourceAssessmentRepository(): SourceAssessmentRepository {
+  return getRegistries().sourceAssessments;
 }
 
 export function getSourceIntelligenceRepository(): SourceIntelligenceRepository {

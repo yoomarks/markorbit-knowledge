@@ -18,7 +18,7 @@ import {
   type SourceListResult,
 } from "@markorbit/persistence";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
-import { getSourceRepository } from "@/server/source-registry";
+import { getSourceAssessmentRepository, getSourceRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,6 +78,25 @@ function listWithoutLegacySystemSources(filters: SourceListFilters): SourceListR
   };
 }
 
+function withLatestAssessments(result: SourceListResult) {
+  const latest = getSourceAssessmentRepository().listLatestForSources(
+    result.items.map((source) => source.id),
+  );
+  return {
+    ...result,
+    assessments: Object.fromEntries(
+      latest.map((record) => [
+        record.sourceId,
+        {
+          assessmentId: record.id,
+          assessedAt: record.assessedAt,
+          sourceValue: record.response.sourceValue,
+        },
+      ]),
+    ),
+  };
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -103,11 +122,11 @@ export async function GET(request: Request) {
       offset: integerValue(url.searchParams.get("offset"), "offset"),
     };
     assertSourceFilterValue(filters);
-    return NextResponse.json(
+    const result =
       url.searchParams.get("hideLegacySystem") === "true"
         ? listWithoutLegacySystemSources(filters)
-        : getSourceRepository().list(filters),
-    );
+        : getSourceRepository().list(filters);
+    return NextResponse.json(withLatestAssessments(result));
   } catch (error) {
     return apiError(error);
   }
