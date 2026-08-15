@@ -27,36 +27,41 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+
           p = Path("apps/admin/src/server/discovery-service.ts")
-          s = p.read_text()
-          old = '''      const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
-                DEFAULT_WORKSPACE.id,
-                seedOrigin,
-              );'''
-          new = '''      const exactProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
-                DEFAULT_WORKSPACE.id,
-                seedOrigin,
-              );
-              const identitySource = exactProfile
-                ? null
-                : findWebsiteSourceByIdentity(this.dependencies.sources, seedIdentity);
-              const profile =
-                exactProfile ??
-                (identitySource
-                  ? this.dependencies.graph.getProfileBySourceId(identitySource.id)
-                  : null);'''
-          s = s.replace(old, new, 1)
-          old = '''          const graphCandidates = candidates.filter((candidate) =>
-                    belongsToOrigin(candidate.locator, seedOrigin),
-                  );'''
-          new = '''          const graphCandidates = candidates.filter(
-                    (candidate) => websiteIdentity(candidate.locator) === seedIdentity,
-                  );'''
-          s = s.replace(old, new, 1)
-          p.write_text(s)
+          lines = p.read_text().splitlines()
+
+          completed = next(i for i, line in enumerate(lines) if "const completed = this.dependencies.discovery.completeBatch" in line)
+          profile_start = next(i for i in range(completed + 1, len(lines)) if "const profile = this.dependencies.graph.getProfileByCanonicalOrigin(" in lines[i])
+          profile_end = next(i for i in range(profile_start + 1, len(lines)) if lines[i].strip() == ");")
+          indent = lines[profile_start][: len(lines[profile_start]) - len(lines[profile_start].lstrip())]
+          replacement = [
+              f"{indent}const exactProfile = this.dependencies.graph.getProfileByCanonicalOrigin(",
+              f"{indent}  DEFAULT_WORKSPACE.id,",
+              f"{indent}  seedOrigin,",
+              f"{indent});",
+              f"{indent}const identitySource = exactProfile",
+              f"{indent}  ? null",
+              f"{indent}  : findWebsiteSourceByIdentity(this.dependencies.sources, seedIdentity);",
+              f"{indent}const profile =",
+              f"{indent}  exactProfile ??",
+              f"{indent}  (identitySource",
+              f"{indent}    ? this.dependencies.graph.getProfileBySourceId(identitySource.id)",
+              f"{indent}    : null);",
+          ]
+          lines[profile_start:profile_end + 1] = replacement
+
+          graph_start = next(i for i in range(profile_start, len(lines)) if "const graphCandidates = candidates.filter" in lines[i])
+          graph_end = next(i for i in range(graph_start + 1, len(lines)) if lines[i].strip() == ");")
+          indent = lines[graph_start][: len(lines[graph_start]) - len(lines[graph_start].lstrip())]
+          lines[graph_start:graph_end + 1] = [
+              f"{indent}const graphCandidates = candidates.filter(",
+              f"{indent}  (candidate) => websiteIdentity(candidate.locator) === seedIdentity,",
+              f"{indent});",
+          ]
+          p.write_text("\n".join(lines) + "\n")
           PY
           pnpm exec prettier --write apps/admin/src/server/discovery-service.ts
-          ! grep -q "belongsToOrigin" apps/admin/src/server/discovery-service.ts
           git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
