@@ -10,7 +10,6 @@ import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
   getDiscoveryWorkflowService,
   type DiscoveryIntakeDefaults,
-  type StartBatchDiscoveryEntry,
 } from "@/server/discovery-service";
 
 export const runtime = "nodejs";
@@ -38,66 +37,44 @@ function optionalStringArray(value: unknown, field: string): string[] | undefine
   return value;
 }
 
-function optionalCategory(value: unknown, field = "intake.category"): SourceCategory | undefined {
+function optionalCategory(value: unknown): SourceCategory | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value !== "string" || !SOURCE_CATEGORIES.includes(value as SourceCategory)) {
-    throw new RegistryValidationError(`${field} is invalid`);
+    throw new RegistryValidationError("intake.category is invalid");
   }
   return value as SourceCategory;
 }
 
-function optionalAuthority(
-  value: unknown,
-  field = "intake.authorityLevel",
-): AuthorityLevel | undefined {
+function optionalAuthority(value: unknown): AuthorityLevel | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value !== "string" || !AUTHORITY_LEVELS.includes(value as AuthorityLevel)) {
-    throw new RegistryValidationError(`${field} is invalid`);
+    throw new RegistryValidationError("intake.authorityLevel is invalid");
   }
   return value as AuthorityLevel;
 }
 
-function intakeDefaults(value: unknown, prefix = "intake"): DiscoveryIntakeDefaults | undefined {
+function intakeDefaults(value: unknown): DiscoveryIntakeDefaults | undefined {
   if (value === undefined || value === null) return undefined;
   const record = requireRecord(value);
   return {
-    category: optionalCategory(record.category, `${prefix}.category`),
-    authorityLevel: optionalAuthority(record.authorityLevel, `${prefix}.authorityLevel`),
-    jurisdictions: optionalStringArray(record.jurisdictions, `${prefix}.jurisdictions`),
-    languages: optionalStringArray(record.languages, `${prefix}.languages`),
-    note: optionalString(record.note, `${prefix}.note`),
-    tags: optionalStringArray(record.tags, `${prefix}.tags`),
+    category: optionalCategory(record.category),
+    authorityLevel: optionalAuthority(record.authorityLevel),
+    jurisdictions: optionalStringArray(record.jurisdictions, "intake.jurisdictions"),
+    languages: optionalStringArray(record.languages, "intake.languages"),
+    note: optionalString(record.note, "intake.note"),
+    tags: optionalStringArray(record.tags, "intake.tags"),
   };
-}
-
-function batchEntries(value: unknown): StartBatchDiscoveryEntry[] | undefined {
-  if (value === undefined || value === null) return undefined;
-  if (!Array.isArray(value)) throw new RegistryValidationError("entries must be an array");
-  if (value.length > 100) throw new RegistryValidationError("entries must contain at most 100 rows");
-  return value.map((item, index) => {
-    const record = requireRecord(item);
-    if (typeof record.locator !== "string" || !record.locator.trim()) {
-      throw new RegistryValidationError(`entries[${index}].locator must be a non-empty string`);
-    }
-    return {
-      locator: record.locator,
-      intake: intakeDefaults(record.intake, `entries[${index}].intake`),
-    };
-  });
 }
 
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
-    const locators = optionalStringArray(body.locators, "locators");
-    const entries = batchEntries(body.entries);
-    if ((!locators || locators.length === 0) && (!entries || entries.length === 0)) {
-      throw new RegistryValidationError("locators or entries must contain at least one website");
+    if (!Array.isArray(body.locators) || !body.locators.every((item) => typeof item === "string")) {
+      throw new RegistryValidationError("locators must be an array of strings");
     }
 
     const result = await getDiscoveryWorkflowService().startBatch({
-      ...(locators ? { locators } : {}),
-      ...(entries ? { entries } : {}),
+      locators: body.locators,
       maxDepth: optionalInteger(body.maxDepth, "maxDepth"),
       maxCandidates: optionalInteger(body.maxCandidates, "maxCandidates"),
       maxFetches: optionalInteger(body.maxFetches, "maxFetches"),
