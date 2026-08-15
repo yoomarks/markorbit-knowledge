@@ -97,7 +97,6 @@ export async function POST(request: Request) {
 
         const dispatched = collection.authorizeAndDispatch(candidateId, {
           requestedBy: reviewer,
-          idempotencyKey: `source-review-${candidateId}`.slice(0, 128),
         });
         items.push({
           candidateId,
@@ -121,7 +120,11 @@ export async function POST(request: Request) {
           succeeded: ids.length - failed,
           failed,
           collectionStarted: items.filter(
-            (item) => item.status === "ACCEPTED" && "runId" in item && Boolean(item.runId),
+            (item) =>
+              item.status === "ACCEPTED" &&
+              "runId" in item &&
+              Boolean(item.runId) &&
+              item.replayed !== true,
           ).length,
         },
       },
