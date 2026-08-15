@@ -4,6 +4,13 @@ import {
   ARTIFACT_KINDS,
   COLLECTION_PLAN_STATUSES,
   COLLECTION_PRIORITIES,
+  CRAWL4AI_MAX_DEPTH,
+  CRAWL4AI_MAX_ITEMS,
+  CRAWL4AI_MAX_LOCALE_LENGTH,
+  CRAWL4AI_MAX_PATTERN_LENGTH,
+  CRAWL4AI_MAX_PATTERNS_PER_LIST,
+  CRAWL4AI_MAX_RATE_LIMIT_PER_MINUTE,
+  CRAWL4AI_MAX_TIMEOUT_SECONDS,
   SCHEMA_V1_VERSION,
   SCHEDULE_MODES,
   isCollectionPlan,
@@ -314,11 +321,78 @@ function assertCapability(
   }
 }
 
+function validateCrawl4AiPolicy(plan: CollectionPlan, connector: ConnectorManifest): void {
+  if (connector.connectorId !== "crawl4ai-web") return;
+  const violations: Array<{ field: string; actual: number; maximum: number }> = [];
+  const policy = plan.policy;
+  if (policy.maxDepth > CRAWL4AI_MAX_DEPTH) {
+    violations.push({ field: "maxDepth", actual: policy.maxDepth, maximum: CRAWL4AI_MAX_DEPTH });
+  }
+  if (policy.maxItems > CRAWL4AI_MAX_ITEMS) {
+    violations.push({ field: "maxItems", actual: policy.maxItems, maximum: CRAWL4AI_MAX_ITEMS });
+  }
+  if (policy.rateLimitPerMinute > CRAWL4AI_MAX_RATE_LIMIT_PER_MINUTE) {
+    violations.push({
+      field: "rateLimitPerMinute",
+      actual: policy.rateLimitPerMinute,
+      maximum: CRAWL4AI_MAX_RATE_LIMIT_PER_MINUTE,
+    });
+  }
+  if (policy.timeoutSeconds > CRAWL4AI_MAX_TIMEOUT_SECONDS) {
+    violations.push({
+      field: "timeoutSeconds",
+      actual: policy.timeoutSeconds,
+      maximum: CRAWL4AI_MAX_TIMEOUT_SECONDS,
+    });
+  }
+  if (policy.includePatterns.length > CRAWL4AI_MAX_PATTERNS_PER_LIST) {
+    violations.push({
+      field: "includePatterns.length",
+      actual: policy.includePatterns.length,
+      maximum: CRAWL4AI_MAX_PATTERNS_PER_LIST,
+    });
+  }
+  if (policy.excludePatterns.length > CRAWL4AI_MAX_PATTERNS_PER_LIST) {
+    violations.push({
+      field: "excludePatterns.length",
+      actual: policy.excludePatterns.length,
+      maximum: CRAWL4AI_MAX_PATTERNS_PER_LIST,
+    });
+  }
+  const longestPattern = Math.max(
+    0,
+    ...policy.includePatterns.map((pattern) => pattern.length),
+    ...policy.excludePatterns.map((pattern) => pattern.length),
+  );
+  if (longestPattern > CRAWL4AI_MAX_PATTERN_LENGTH) {
+    violations.push({
+      field: "pattern.length",
+      actual: longestPattern,
+      maximum: CRAWL4AI_MAX_PATTERN_LENGTH,
+    });
+  }
+  if (policy.locale && policy.locale.length > CRAWL4AI_MAX_LOCALE_LENGTH) {
+    violations.push({
+      field: "locale.length",
+      actual: policy.locale.length,
+      maximum: CRAWL4AI_MAX_LOCALE_LENGTH,
+    });
+  }
+  if (violations.length === 0) return;
+  throw new RegistryConflictError(
+    "COLLECTION_PLAN_CRAWL4AI_POLICY_MISMATCH",
+    "Collection plan exceeds the governed Crawl4AI runtime policy boundary",
+    { connectorId: connector.connectorId, violations },
+  );
+}
+
 function validateCompatibility(
   plan: CollectionPlan,
   source: SourceDefinition,
   connector: ConnectorManifest,
 ): void {
+  validateCrawl4AiPolicy(plan, connector);
+
   if (!connector.sourceTypes.includes(source.sourceType)) {
     throw new RegistryConflictError(
       "COLLECTION_PLAN_SOURCE_TYPE_MISMATCH",

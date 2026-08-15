@@ -31,6 +31,13 @@ from attachments import (
 
 PROTOCOL_VERSION = "1.0"
 MAX_START_URLS = 500
+MAX_DEPTH = 5
+MAX_ITEMS = 500
+MAX_RATE_LIMIT_PER_MINUTE = 600
+MAX_TIMEOUT_SECONDS = 300
+MAX_PATTERNS_PER_LIST = 100
+MAX_PATTERN_LENGTH = 500
+MAX_LOCALE_LENGTH = 64
 SUPPORTED_OUTPUT_KINDS = {"HTML", "MARKDOWN"} | set(SUPPORTED_ATTACHMENT_KINDS)
 
 
@@ -59,11 +66,11 @@ def _require_bool(value: Any, name: str) -> bool:
 
 
 def _require_patterns(value: Any, name: str) -> list[str]:
-    if not isinstance(value, list) or len(value) > 100:
-        raise SafetyError("INVALID_REQUEST", f"{name} must be a list with at most 100 items")
+    if not isinstance(value, list) or len(value) > MAX_PATTERNS_PER_LIST:
+        raise SafetyError("INVALID_REQUEST", f"{name} must be a list with at most {MAX_PATTERNS_PER_LIST} items")
     result: list[str] = []
     for item in value:
-        if not isinstance(item, str) or not item or len(item) > 500:
+        if not isinstance(item, str) or not item or len(item) > MAX_PATTERN_LENGTH:
             raise SafetyError("INVALID_REQUEST", f"{name} contains an invalid pattern")
         result.append(item)
     return result
@@ -97,22 +104,22 @@ def _parse_request(payload: Any) -> dict[str, Any]:
         raise SafetyError("UNSUPPORTED_OUTPUT_KIND", "Crawl4AI collector only emits HTML and MARKDOWN")
 
     locale = payload.get("locale")
-    if locale is not None and (not isinstance(locale, str) or len(locale) > 64):
+    if locale is not None and (not isinstance(locale, str) or len(locale) > MAX_LOCALE_LENGTH):
         raise SafetyError("INVALID_REQUEST", "locale is invalid")
 
     return {
         "output_directory": output_path,
         "start_urls": normalized_start_urls,
         "output_kinds": list(dict.fromkeys(output_kinds)),
-        "max_depth": _require_int(payload.get("maxDepth"), "maxDepth", 0, 5),
-        "max_items": _require_int(payload.get("maxItems"), "maxItems", 1, 500),
+        "max_depth": _require_int(payload.get("maxDepth"), "maxDepth", 0, MAX_DEPTH),
+        "max_items": _require_int(payload.get("maxItems"), "maxItems", 1, MAX_ITEMS),
         "render_javascript": _require_bool(payload.get("renderJavascript"), "renderJavascript"),
         "fetch_attachments": _require_bool(payload.get("fetchAttachments"), "fetchAttachments"),
         "respect_robots": _require_bool(payload.get("respectRobots"), "respectRobots"),
         "rate_limit_per_minute": _require_int(
-            payload.get("rateLimitPerMinute"), "rateLimitPerMinute", 1, 600
+            payload.get("rateLimitPerMinute"), "rateLimitPerMinute", 1, MAX_RATE_LIMIT_PER_MINUTE
         ),
-        "timeout_seconds": _require_int(payload.get("timeoutSeconds"), "timeoutSeconds", 1, 300),
+        "timeout_seconds": _require_int(payload.get("timeoutSeconds"), "timeoutSeconds", 1, MAX_TIMEOUT_SECONDS),
         "include_patterns": _require_patterns(payload.get("includePatterns"), "includePatterns"),
         "exclude_patterns": _require_patterns(payload.get("excludePatterns"), "excludePatterns"),
         "locale": locale,
