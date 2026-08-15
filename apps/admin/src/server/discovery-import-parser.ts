@@ -178,7 +178,8 @@ function parseAuthority(value: string): { value?: AuthorityLevel; issue?: string
 
 function websiteIdentity(url: URL): string {
   const hostname = url.hostname.toLowerCase();
-  const canonicalHostname = hostname.startsWith("www.") && hostname.length > 4 ? hostname.slice(4) : hostname;
+  const canonicalHostname =
+    hostname.startsWith("www.") && hostname.length > 4 ? hostname.slice(4) : hostname;
   const port = url.port ? `:${url.port}` : "";
   return `${url.protocol}//${canonicalHostname}${port}`;
 }
@@ -219,7 +220,11 @@ function publicWebsite(locator: string): {
     }
     url.hash = "";
     url.hostname = hostname;
-    return { locator: url.toString(), origin: url.origin, identity: websiteIdentity(url) };
+    return {
+      locator: url.toString(),
+      origin: url.origin,
+      identity: websiteIdentity(url),
+    };
   } catch {
     return { issue: `Invalid website URL: ${raw}` };
   }
