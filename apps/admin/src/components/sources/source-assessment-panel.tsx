@@ -74,9 +74,12 @@ function maturityLabel(stage: EvidenceMaturity["stage"], zh: boolean): string {
 
 function maturityDescription(stage: EvidenceMaturity["stage"], zh: boolean): string {
   if (!zh) {
-    if (stage === "CURRENT_TRACEABLE") return "Recent acquisition evidence is retained and traceable.";
-    if (stage === "TRACEABLE") return "Acquisition evidence is retained with provenance, but is outside the current window.";
-    if (stage === "CAPTURED") return "Raw material exists, but provenance linkage is not yet complete.";
+    if (stage === "CURRENT_TRACEABLE")
+      return "Recent acquisition evidence is retained and traceable.";
+    if (stage === "TRACEABLE")
+      return "Acquisition evidence is retained with provenance, but is outside the current window.";
+    if (stage === "CAPTURED")
+      return "Raw material exists, but provenance linkage is not yet complete.";
     return "No retained raw acquisition evidence is available yet.";
   }
   if (stage === "CURRENT_TRACEABLE") return "近期采集资料与原始证据链都已保留，可以追溯到来源。";
@@ -249,12 +252,17 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
 
           {sourceValue ? (
             <div className="mt-4">
-              <p className="text-sm font-semibold leading-6 text-slate-900">{sourceValue.summary}</p>
+              <p className="text-sm font-semibold leading-6 text-slate-900">
+                {sourceValue.summary}
+              </p>
               <p className="mt-2 text-xs leading-5 text-slate-600">{sourceValue.reason}</p>
               {sourceValue.valuePoints.length > 0 ? (
                 <div className="mt-3 space-y-2">
                   {sourceValue.valuePoints.slice(0, 5).map((point) => (
-                    <div key={point} className="flex items-start gap-2 text-xs leading-5 text-slate-700">
+                    <div
+                      key={point}
+                      className="flex items-start gap-2 text-xs leading-5 text-slate-700"
+                    >
                       <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-violet-600" />
                       <span>{point}</span>
                     </div>
@@ -310,18 +318,28 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
               </p>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <div className="rounded-xl bg-white px-3 py-2.5 text-center shadow-sm">
-                  <p className="text-lg font-semibold text-slate-900">{evidence.rawArtifactCount}</p>
-                  <p className="mt-0.5 text-[10px] text-slate-500">{zh ? "原始资料" : "Raw items"}</p>
+                  <p className="text-lg font-semibold text-slate-900">
+                    {evidence.rawArtifactCount}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    {zh ? "原始资料" : "Raw items"}
+                  </p>
                 </div>
                 <div className="rounded-xl bg-white px-3 py-2.5 text-center shadow-sm">
-                  <p className="text-lg font-semibold text-slate-900">{evidence.provenanceNodeCount}</p>
-                  <p className="mt-0.5 text-[10px] text-slate-500">{zh ? "可溯源节点" : "Provenance nodes"}</p>
+                  <p className="text-lg font-semibold text-slate-900">
+                    {evidence.provenanceNodeCount}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    {zh ? "可溯源节点" : "Provenance nodes"}
+                  </p>
                 </div>
                 <div className="rounded-xl bg-white px-3 py-2.5 text-center shadow-sm">
                   <p className="text-lg font-semibold text-slate-900">
                     {evidence.ageDays === undefined ? "—" : Math.round(evidence.ageDays)}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-slate-500">{zh ? "距最近采集/天" : "Days since capture"}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    {zh ? "距最近采集/天" : "Days since capture"}
+                  </p>
                 </div>
               </div>
               <p className="mt-3 text-[11px] leading-5 text-slate-500">
