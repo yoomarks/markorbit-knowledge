@@ -25,22 +25,11 @@ jobs:
       - name: Fix discovery category labels
         run: |
           python - <<'PY'
+          import re
           from pathlib import Path
           path = Path("apps/admin/src/lib/admin-v2/discovery-intake-workbench.tsx")
           text = path.read_text()
-          old = '''  const labels: Partial<Record<SourceCategory, string>> = {
-            OFFICIAL_AUTHORITY: "官方机构",
-            GOVERNMENT_PUBLICATION: "政府出版物",
-            INTERGOVERNMENTAL: "国际组织",
-            PUBLIC_REFERENCE: "公共参考资料",
-            PROFESSIONAL_ASSOCIATION: "专业协会",
-            LAW_FIRM: "律所 / 代理机构",
-            PROFESSIONAL: "专业人士",
-            MEDIA: "媒体",
-            USER_PROVIDED: "用户提供",
-            OTHER: "其他",
-          };'''
-          new = '''  const labels: Partial<Record<SourceCategory, string>> = {
+          replacement = '''const labels: Partial<Record<SourceCategory, string>> = {
             OFFICIAL_AUTHORITY: "官方机构",
             OFFICIAL_GUIDANCE: "官方指南",
             LAW_FIRM: "律所 / 代理机构",
@@ -51,9 +40,15 @@ jobs:
             USER_PROVIDED: "用户提供",
             OTHER: "其他",
           };'''
-          if old not in text:
-              raise SystemExit("category label anchor not found")
-          path.write_text(text.replace(old, new, 1))
+          updated, count = re.subn(
+              r'const labels: Partial<Record<SourceCategory, string>> = \{[\s\S]*?\n\s*\};',
+              replacement,
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f"expected one category label map, found {count}")
+          path.write_text(updated)
           PY
           pnpm exec prettier --write apps/admin/src/lib/admin-v2/discovery-intake-workbench.tsx
           if git diff --quiet; then exit 0; fi
