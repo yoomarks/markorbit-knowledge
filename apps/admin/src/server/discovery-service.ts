@@ -430,15 +430,21 @@ export class DiscoveryWorkflowService {
       );
       const completed = this.dependencies.discovery.completeBatch(batch.batchId, candidates);
 
-      const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
+      const exactProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
         DEFAULT_WORKSPACE.id,
         seedOrigin,
       );
+      const identitySource = exactProfile
+        ? null
+        : findWebsiteSourceByIdentity(this.dependencies.sources, seedIdentity);
+      const profile =
+        exactProfile ??
+        (identitySource ? this.dependencies.graph.getProfileBySourceId(identitySource.id) : null);
       if (profile) {
         const source = this.dependencies.sources.getById(profile.sourceId);
         if (source) {
-          const graphCandidates = candidates.filter((candidate) =>
-            belongsToOrigin(candidate.locator, seedOrigin),
+          const graphCandidates = candidates.filter(
+            (candidate) => websiteIdentity(candidate.locator) === seedIdentity,
           );
           this.dependencies.transaction(() => {
             writeDiscoveryBatchToSourceGraph(
