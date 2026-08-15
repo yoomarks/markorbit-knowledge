@@ -28,155 +28,77 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          service_path = Path("apps/admin/src/server/discovery-service.ts")
-          text = service_path.read_text()
+          path = Path("apps/admin/src/server/discovery-service.ts")
+          text = path.read_text()
 
-          marker = "\nfunction websiteSourceSlug(locator: string, identity: string): string {"
-          if marker not in text:
-              raise SystemExit("websiteSourceSlug marker missing")
-          helper = '''
+          old = "    const isExternalCandidate = candidateOrigin !== seedOrigin;"
+          new = '''    const seedIdentity = websiteIdentity(seed.locator);
+            const candidateIdentity = websiteIdentity(current.candidate.locator);
+            const isExternalCandidate = candidateIdentity !== seedIdentity;'''
+          if text.count(old) != 1:
+              raise SystemExit(f"external identity anchor count={text.count(old)}")
+          text = text.replace(old, new, 1)
 
-          function findWebsiteSourceByIdentity(
-            sources: SourceRepository,
-            identity: string,
-          ): SourceDefinition | null {
-            let offset = 0;
-            while (true) {
-              const page = sources.list({ sourceType: "WEB", limit: 100, offset });
-              for (const source of page.items) {
-                if (source.status === "ARCHIVED") continue;
-                if (sourceWebsiteIdentities(source).includes(identity)) return source;
-              }
-              offset += page.items.length;
-              if (page.items.length === 0 || offset >= page.total) return null;
-            }
-          }
-          '''
-          text = text.replace(marker, helper + marker, 1)
-
-          old_preamble = '''    const seedOrigin = websiteOrigin(seed.locator);
-            const candidateOrigin = websiteOrigin(current.candidate.locator);
-            const isExternalCandidate = candidateOrigin !== seedOrigin;
-            const seedProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
-              DEFAULT_WORKSPACE.id,
-              seedOrigin,
-            );
-            const targetProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
+          old = '''    const targetProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
               DEFAULT_WORKSPACE.id,
               candidateOrigin,
-            );
-          '''
-          new_preamble = '''    const seedOrigin = websiteOrigin(seed.locator);
-            const candidateOrigin = websiteOrigin(current.candidate.locator);
-            const seedIdentity = websiteIdentity(seed.locator);
-            const candidateIdentity = websiteIdentity(current.candidate.locator);
-            const isExternalCandidate = candidateIdentity !== seedIdentity;
-            const seedProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
-              DEFAULT_WORKSPACE.id,
-              seedOrigin,
-            );
-            const targetOrigin = isExternalCandidate ? candidateOrigin : seedOrigin;
+            );'''
+          new = '''    const targetOrigin = isExternalCandidate ? candidateOrigin : seedOrigin;
             const exactTargetProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
               DEFAULT_WORKSPACE.id,
               targetOrigin,
             );
-            const identitySource = findWebsiteSourceByIdentity(
-              this.dependencies.sources,
-              candidateIdentity,
-            );
+            let identitySource: SourceDefinition | null = null;
+            let sourceOffset = 0;
+            while (!identitySource) {
+              const page = this.dependencies.sources.list({
+                sourceType: "WEB",
+                limit: 100,
+                offset: sourceOffset,
+              });
+              identitySource =
+                page.items.find(
+                  (source) =>
+                    source.status !== "ARCHIVED" &&
+                    sourceWebsiteIdentities(source).includes(candidateIdentity),
+                ) ?? null;
+              sourceOffset += page.items.length;
+              if (identitySource || page.items.length === 0 || sourceOffset >= page.total) break;
+            }
             const identityProfile = identitySource
               ? this.dependencies.graph.getProfileBySourceId(identitySource.id)
               : null;
             const targetProfile =
-              exactTargetProfile ?? identityProfile ?? (!isExternalCandidate ? seedProfile : null);
-          '''
-          if old_preamble not in text:
-              raise SystemExit("review preamble missing")
-          text = text.replace(old_preamble, new_preamble, 1)
+              exactTargetProfile ?? identityProfile ?? (!isExternalCandidate ? seedProfile : null);'''
+          if text.count(old) != 1:
+              raise SystemExit(f"target profile anchor count={text.count(old)}")
+          text = text.replace(old, new, 1)
 
-          old_existing = '''      if (profile) {
-                const existingSource = this.dependencies.sources.getById(profile.sourceId);
-                if (!existingSource) {
-                  throw new RegistryConflictError(
-                    "DISCOVERY_GRAPH_SOURCE_MISSING",
-                    `WebsiteSourceProfile ${profile.id} points to missing source ${profile.sourceId}`,
-                  );
-                }
-                const planRecord = existingSource.defaultCollectionPlanId
-                  ? this.dependencies.plans.getById(existingSource.defaultCollectionPlanId)
-                  : null;
-                if (!planRecord) {
-                  throw new RegistryConflictError(
-                    "DISCOVERY_GRAPH_PLAN_MISSING",
-                    `Website source ${existingSource.id} has no default collection plan`,
-                  );
-                }
-                source = existingSource;
-                plan = planRecord.plan;
-              } else {
-          '''
-          new_existing = '''      const existingSource = profile
-                ? this.dependencies.sources.getById(profile.sourceId)
-                : identitySource;
-              if (profile && !existingSource) {
-                throw new RegistryConflictError(
-                  "DISCOVERY_GRAPH_SOURCE_MISSING",
-                  `WebsiteSourceProfile ${profile.id} points to missing source ${profile.sourceId}`,
-                );
-              }
+          old = "          canonicalUri: candidateOrigin,"
+          if text.count(old) != 1:
+              raise SystemExit(f"canonical origin anchor count={text.count(old)}")
+          text = text.replace(old, "          canonicalUri: targetOrigin,", 1)
 
-              if (existingSource) {
-                if (!profile) {
-                  profile = ensureWebsiteSourceProfile(
-                    this.dependencies.graph,
-                    existingSource,
-                    sourceExpansionLocator(existingSource),
-                    targetObservedAt,
-                    batchRecord.batch.batchId,
-                  );
-                }
-                const planRecord = existingSource.defaultCollectionPlanId
-                  ? this.dependencies.plans.getById(existingSource.defaultCollectionPlanId)
-                  : null;
-                if (!planRecord) {
-                  throw new RegistryConflictError(
-                    "DISCOVERY_GRAPH_PLAN_MISSING",
-                    `Website source ${existingSource.id} has no default collection plan`,
-                  );
-                }
-                source = existingSource;
-                plan = planRecord.plan;
-              } else {
-          '''
-          if old_existing not in text:
-              raise SystemExit("existing source branch missing")
-          text = text.replace(old_existing, new_existing, 1)
-
-          if "          canonicalUri: candidateOrigin," not in text:
-              raise SystemExit("canonicalUri candidate origin missing")
-          text = text.replace("          canonicalUri: candidateOrigin,", "          canonicalUri: targetOrigin,", 1)
-
-          old_filter = ".filter((item) => belongsToOrigin(item.locator, candidateOrigin));"
-          if old_filter not in text:
-              raise SystemExit("candidate origin filter missing")
+          old = ".filter((item) => belongsToOrigin(item.locator, candidateOrigin));"
+          if text.count(old) != 1:
+              raise SystemExit(f"candidate filter anchor count={text.count(old)}")
           text = text.replace(
-              old_filter,
+              old,
               ".filter((item) => websiteIdentity(item.locator) === candidateIdentity);",
               1,
           )
-          service_path.write_text(text)
+          path.write_text(text)
 
           test_path = Path("apps/admin/src/server/__tests__/discovery-service.test.ts")
           test = test_path.read_text()
-          if test.count("https://example.com/guides/fees.pdf") < 2:
-              raise SystemExit("expected guide URL fixtures missing")
-          test = test.replace(
-              "https://example.com/guides/fees.pdf",
-              "https://www.example.com/guides/fees.pdf",
-          )
-          if "https://peer.example/blog" not in test:
-              raise SystemExit("peer blog fixture missing")
-          test = test.replace("https://peer.example/blog", "https://www.peer.example/blog", 1)
+          guide = "https://example.com/guides/fees.pdf"
+          if test.count(guide) < 2:
+              raise SystemExit(f"guide fixture count={test.count(guide)}")
+          test = test.replace(guide, "https://www.example.com/guides/fees.pdf")
+          peer = "https://peer.example/blog"
+          if test.count(peer) != 1:
+              raise SystemExit(f"peer fixture count={test.count(peer)}")
+          test = test.replace(peer, "https://www.peer.example/blog", 1)
           test_path.write_text(test)
           PY
           pnpm exec prettier --write apps/admin/src/server/discovery-service.ts apps/admin/src/server/__tests__/discovery-service.test.ts
