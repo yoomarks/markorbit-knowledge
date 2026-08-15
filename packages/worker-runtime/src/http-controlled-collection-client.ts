@@ -16,6 +16,8 @@ import {
 import type {
   ArtifactBackedExecutionClient,
   ArtifactBackedExecutionContext,
+  ArtifactContentIdentityCheck,
+  ArtifactContentIdentityResult,
 } from "./artifact-backed-collection-executor";
 
 export type ControlledWorkerClaim = {
@@ -161,6 +163,40 @@ export class HttpControlledCollectionClient implements ArtifactBackedExecutionCl
       throw new Error("Worker start response does not contain a valid ExecutionAttempt");
     }
     return payload.attempt;
+  }
+
+  async checkArtifactContent(
+    context: ArtifactBackedExecutionContext,
+    input: ArtifactContentIdentityCheck,
+  ): Promise<ArtifactContentIdentityResult> {
+    const payload = record(
+      await this.jsonRequest(
+        "/api/worker/v1/artifacts/check",
+        {
+          workerId: this.workerId,
+          leaseId: context.lease.id,
+          artifactKind: input.artifactKind,
+          canonicalUri: input.canonicalUri,
+          sha256: input.sha256,
+        },
+        context.leaseToken,
+      ),
+    );
+    if (!payload || typeof payload.unchanged !== "boolean") {
+      throw new Error("Artifact identity response is invalid");
+    }
+    const latestArtifactId =
+      payload.latestArtifactId === null || typeof payload.latestArtifactId === "string"
+        ? payload.latestArtifactId
+        : undefined;
+    const latestSha256 =
+      payload.latestSha256 === null || typeof payload.latestSha256 === "string"
+        ? payload.latestSha256
+        : undefined;
+    if (latestArtifactId === undefined || latestSha256 === undefined) {
+      throw new Error("Artifact identity response is invalid");
+    }
+    return { unchanged: payload.unchanged, latestArtifactId, latestSha256 };
   }
 
   async uploading(context: ArtifactBackedExecutionContext, idempotencyKey: string): Promise<void> {
