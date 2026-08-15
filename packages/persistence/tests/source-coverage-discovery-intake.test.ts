@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { openRegistryDatabase, SqliteSourceRepository } from "../src/index";
+import { SqliteCollectionPlanRepository } from "../src/collection-plan-registry";
+import { SqliteExecutionLedgerRepository } from "../src/execution-ledger";
 import { SqliteSourceDiscoveryRepository } from "../src/source-discovery-registry";
 import { getSourceCoverageTarget } from "../src/source-coverage-catalog";
 import { queueSourceCoverageGapForDiscovery } from "../src/source-coverage-discovery-intake";
@@ -10,6 +12,8 @@ const targetId = "gb-ukipo-register-trademark";
 function environment() {
   const database = openRegistryDatabase(":memory:");
   const clock = () => new Date("2026-08-16T01:00:00Z");
+  new SqliteCollectionPlanRepository(database, clock);
+  new SqliteExecutionLedgerRepository(database, clock);
   return {
     database,
     sources: new SqliteSourceRepository(database, clock),
@@ -19,7 +23,7 @@ function environment() {
 }
 
 describe("Source Coverage → Discovery intake", () => {
-  it("queues one curated missing target without creating a Source or CollectionPlan", () => {
+  it("queues one curated missing target without creating a Source, plan, run or Job", () => {
     const env = environment();
     const beforeSources = env.sources.list({ workspaceId, limit: 100 }).total;
     const result = queueSourceCoverageGapForDiscovery(
