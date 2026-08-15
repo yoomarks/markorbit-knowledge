@@ -28,48 +28,13 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          def replace_once(path: str, old: str, new: str) -> None:
-              file = Path(path)
-              text = file.read_text()
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"{path}: expected one match, found {count}")
-              file.write_text(text.replace(old, new, 1))
+          service_path = Path("apps/admin/src/server/discovery-service.ts")
+          text = service_path.read_text()
 
-          service = "apps/admin/src/server/discovery-service.ts"
-          replace_once(
-              service,
-              '''function sourceWebsiteIdentities(source: SourceDefinition): string[] {
-            const values = [
-              source.canonicalUri,
-              ...source.entrypoints.map((entrypoint) => entrypoint.uri),
-            ].filter((value): value is string => Boolean(value));
-            const identities: string[] = [];
-            for (const value of values) {
-              try {
-                identities.push(websiteIdentity(value));
-              } catch {
-                // Non-HTTP entrypoints cannot represent a website identity.
-              }
-            }
-            return [...new Set(identities)];
-          }
-          ''',
-              '''function sourceWebsiteIdentities(source: SourceDefinition): string[] {
-            const values = [
-              source.canonicalUri,
-              ...source.entrypoints.map((entrypoint) => entrypoint.uri),
-            ].filter((value): value is string => Boolean(value));
-            const identities: string[] = [];
-            for (const value of values) {
-              try {
-                identities.push(websiteIdentity(value));
-              } catch {
-                // Non-HTTP entrypoints cannot represent a website identity.
-              }
-            }
-            return [...new Set(identities)];
-          }
+          marker = "\nfunction websiteSourceSlug(locator: string, identity: string): string {"
+          if marker not in text:
+              raise SystemExit("websiteSourceSlug marker missing")
+          helper = '''
 
           function findWebsiteSourceByIdentity(
             sources: SourceRepository,
@@ -86,12 +51,10 @@ jobs:
               if (page.items.length === 0 || offset >= page.total) return null;
             }
           }
-          ''',
-          )
+          '''
+          text = text.replace(marker, helper + marker, 1)
 
-          replace_once(
-              service,
-              '''    const seedOrigin = websiteOrigin(seed.locator);
+          old_preamble = '''    const seedOrigin = websiteOrigin(seed.locator);
             const candidateOrigin = websiteOrigin(current.candidate.locator);
             const isExternalCandidate = candidateOrigin !== seedOrigin;
             const seedProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
@@ -102,8 +65,8 @@ jobs:
               DEFAULT_WORKSPACE.id,
               candidateOrigin,
             );
-          ''',
-              '''    const seedOrigin = websiteOrigin(seed.locator);
+          '''
+          new_preamble = '''    const seedOrigin = websiteOrigin(seed.locator);
             const candidateOrigin = websiteOrigin(current.candidate.locator);
             const seedIdentity = websiteIdentity(seed.locator);
             const candidateIdentity = websiteIdentity(current.candidate.locator);
@@ -126,12 +89,12 @@ jobs:
               : null;
             const targetProfile =
               exactTargetProfile ?? identityProfile ?? (!isExternalCandidate ? seedProfile : null);
-          ''',
-          )
+          '''
+          if old_preamble not in text:
+              raise SystemExit("review preamble missing")
+          text = text.replace(old_preamble, new_preamble, 1)
 
-          replace_once(
-              service,
-              '''      if (profile) {
+          old_existing = '''      if (profile) {
                 const existingSource = this.dependencies.sources.getById(profile.sourceId);
                 if (!existingSource) {
                   throw new RegistryConflictError(
@@ -151,8 +114,8 @@ jobs:
                 source = existingSource;
                 plan = planRecord.plan;
               } else {
-          ''',
-              '''      const existingSource = profile
+          '''
+          new_existing = '''      const existingSource = profile
                 ? this.dependencies.sources.getById(profile.sourceId)
                 : identitySource;
               if (profile && !existingSource) {
@@ -184,37 +147,37 @@ jobs:
                 source = existingSource;
                 plan = planRecord.plan;
               } else {
-          ''',
-          )
+          '''
+          if old_existing not in text:
+              raise SystemExit("existing source branch missing")
+          text = text.replace(old_existing, new_existing, 1)
 
-          replace_once(service, '          canonicalUri: candidateOrigin,\n', '          canonicalUri: targetOrigin,\n')
+          if "          canonicalUri: candidateOrigin," not in text:
+              raise SystemExit("canonicalUri candidate origin missing")
+          text = text.replace("          canonicalUri: candidateOrigin,", "          canonicalUri: targetOrigin,", 1)
 
-          replace_once(
-              service,
-              '''          .items.map((item) => item.candidate)
-                  .filter((item) => belongsToOrigin(item.locator, candidateOrigin));
-          ''',
-              '''          .items.map((item) => item.candidate)
-                  .filter((item) => websiteIdentity(item.locator) === candidateIdentity);
-          ''',
+          old_filter = ".filter((item) => belongsToOrigin(item.locator, candidateOrigin));"
+          if old_filter not in text:
+              raise SystemExit("candidate origin filter missing")
+          text = text.replace(
+              old_filter,
+              ".filter((item) => websiteIdentity(item.locator) === candidateIdentity);",
+              1,
           )
+          service_path.write_text(text)
 
-          test = "apps/admin/src/server/__tests__/discovery-service.test.ts"
-          replace_once(
-              test,
-              '              locator: "https://example.com/guides/fees.pdf",\n',
-              '              locator: "https://www.example.com/guides/fees.pdf",\n',
+          test_path = Path("apps/admin/src/server/__tests__/discovery-service.test.ts")
+          test = test_path.read_text()
+          if test.count("https://example.com/guides/fees.pdf") < 2:
+              raise SystemExit("expected guide URL fixtures missing")
+          test = test.replace(
+              "https://example.com/guides/fees.pdf",
+              "https://www.example.com/guides/fees.pdf",
           )
-          replace_once(
-              test,
-              '      ? graph.findNodeByIdentity(profile.id, "CANONICAL_URI", "https://example.com/guides/fees.pdf")\n',
-              '      ? graph.findNodeByIdentity(profile.id, "CANONICAL_URI", "https://www.example.com/guides/fees.pdf")\n',
-          )
-          replace_once(
-              test,
-              '              locator: "https://peer.example/blog",\n',
-              '              locator: "https://www.peer.example/blog",\n',
-          )
+          if "https://peer.example/blog" not in test:
+              raise SystemExit("peer blog fixture missing")
+          test = test.replace("https://peer.example/blog", "https://www.peer.example/blog", 1)
+          test_path.write_text(test)
           PY
           pnpm exec prettier --write apps/admin/src/server/discovery-service.ts apps/admin/src/server/__tests__/discovery-service.test.ts
           git diff --check
