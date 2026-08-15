@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   SOURCE_ASSESSMENT_CAPABILITY_ID,
   SOURCE_ASSESSMENT_CAPABILITY_VERSION,
@@ -9,9 +10,11 @@ import {
 } from "@markorbit/contracts";
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
 import type { RawArtifactView } from "@markorbit/persistence/raw-artifacts";
+import type { SourceAssessmentRecord } from "@markorbit/persistence/source-assessment";
 import { capabilityConnectionStatus, invokeCapability } from "./capability-client";
 import {
   getRawArtifactRepository,
+  getSourceAssessmentRepository,
   getSourceGraphRepository,
   getSourceRepository,
 } from "./source-registry";
@@ -38,6 +41,7 @@ export type SourceAssessmentCapabilityStatus = {
 };
 
 export type SourceAssessmentRun = {
+  assessmentId: string;
   request: SourceAssessmentRequestV1;
   response: SourceAssessmentResponseV1;
   evidenceMaturity: EvidenceMaturitySnapshot;
@@ -183,6 +187,32 @@ function validateResponse(value: unknown): SourceAssessmentResponseV1 {
   };
 }
 
+function assessmentRecord(input: {
+  source: SourceDefinition;
+  request: SourceAssessmentRequestV1;
+  response: SourceAssessmentResponseV1;
+}): SourceAssessmentRecord {
+  const fingerprint = createHash("sha256")
+    .update(
+      JSON.stringify({
+        sourceId: input.source.id,
+        generatedAt: input.response.generatedAt,
+        provider: input.response.provider,
+        sourceValue: input.response.sourceValue,
+      }),
+    )
+    .digest("hex")
+    .slice(0, 24);
+  return {
+    id: `sar_${fingerprint}`,
+    workspaceId: input.source.workspaceId,
+    sourceId: input.source.id,
+    assessedAt: input.response.generatedAt,
+    request: input.request,
+    response: input.response,
+  };
+}
+
 export class SourceAssessmentCapabilityService {
   status(): SourceAssessmentCapabilityStatus {
     const connection = capabilityConnectionStatus(SOURCE_ASSESSMENT_CAPABILITY_ID);
@@ -197,6 +227,12 @@ export class SourceAssessmentCapabilityService {
     const source = getSourceRepository().getById(sourceId);
     if (!source) throw new RegistryError("SOURCE_NOT_FOUND", `Source ${sourceId} was not found`);
     return acquisitionFacts(source).evidenceMaturity;
+  }
+
+  latest(sourceId: string): SourceAssessmentRecord | null {
+    const source = getSourceRepository().getById(sourceId);
+    if (!source) throw new RegistryError("SOURCE_NOT_FOUND", `Source ${sourceId} was not found`);
+    return getSourceAssessmentRepository().latestForSource(sourceId);
   }
 
   async assess(input: {
@@ -222,7 +258,10 @@ export class SourceAssessmentCapabilityService {
       errorCodePrefix: "SOURCE_ASSESSMENT_CAPABILITY",
       validate: validateResponse,
     });
-    return { request, response, evidenceMaturity };
+    const saved = getSourceAssessmentRepository().save(
+      assessmentRecord({ source, request, response }),
+    );
+    return { assessmentId: saved.id, request, response: saved.response, evidenceMaturity };
   }
 }
 
