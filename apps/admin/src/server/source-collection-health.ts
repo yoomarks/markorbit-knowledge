@@ -9,17 +9,9 @@ import {
 import { RegistryValidationError } from "@markorbit/persistence";
 
 export type SourceCollectionHealthState =
-  | "NEVER_RUN"
-  | "COLLECTING"
-  | "HEALTHY"
-  | "RETRYING"
-  | "FAILING"
-  | "CANCELLED";
+  "NEVER_RUN" | "COLLECTING" | "HEALTHY" | "RETRYING" | "FAILING" | "CANCELLED";
 
-export type SourceCollectionAlertCode =
-  | "COLLECTION_OVERDUE"
-  | "FAILURE_STREAK"
-  | "SCHEDULER_ERROR";
+export type SourceCollectionAlertCode = "COLLECTION_OVERDUE" | "FAILURE_STREAK" | "SCHEDULER_ERROR";
 
 export type SourceCollectionAlert = {
   code: SourceCollectionAlertCode;
@@ -279,11 +271,7 @@ function enrichHealthWithOperations(
   }
 
   const activelyRecovering = health.state === "COLLECTING" || health.state === "RETRYING";
-  if (
-    staleSince &&
-    Date.parse(staleSince) < observedAt.getTime() &&
-    !activelyRecovering
-  ) {
+  if (staleSince && Date.parse(staleSince) < observedAt.getTime() && !activelyRecovering) {
     alerts.push({
       code: "COLLECTION_OVERDUE",
       severity: "WARNING",
