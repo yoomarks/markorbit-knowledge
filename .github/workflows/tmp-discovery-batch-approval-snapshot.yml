@@ -1,0 +1,35 @@
+name: Temporary Discovery batch approval snapshot verification
+
+on:
+  push:
+    branches:
+      - codex/discovery-batch-approval-snapshot-v1
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/tmp/patch_discovery_accepted_entrypoints.py
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write apps/admin/src/server/discovery-service.ts apps/admin/src/server/__tests__/discovery-service.test.ts apps/admin/src/server/discovery-review-batch-service.ts apps/admin/src/server/__tests__/discovery-review-batch-service.test.ts apps/admin/src/app/api/discovery/reviews/route.ts
+      - run: pnpm --filter @markorbit/admin exec vitest run src/server/__tests__/discovery-service.test.ts src/server/__tests__/discovery-review-batch-service.test.ts src/server/__tests__/discovery-collection-service.test.ts
+      - run: pnpm typecheck
+      - name: Commit integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/admin/src/server/discovery-service.ts apps/admin/src/server/__tests__/discovery-service.test.ts apps/admin/src/server/discovery-review-batch-service.ts apps/admin/src/server/__tests__/discovery-review-batch-service.test.ts apps/admin/src/app/api/discovery/reviews/route.ts
+          git commit -m "Discovery: snapshot batch approvals after Source convergence" || true
+          git push
