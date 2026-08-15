@@ -15,7 +15,7 @@ function sourceDocument(sourceId: string, planId: string, createdAt: string) {
     id: sourceId,
     workspaceId: WORKSPACE_ID,
     name: `Source ${sourceId}`,
-    slug: sourceId.toLowerCase(),
+    slug: `source-${sourceId.slice(-6).toLowerCase()}`,
     sourceType: "WEB",
     category: "OFFICIAL_AUTHORITY",
     authorityLevel: "PRIMARY_OFFICIAL",
