@@ -18,9 +18,18 @@ export async function GET(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const service = getSourceAssessmentCapabilityService();
+    const latest = service.latest(id);
     return NextResponse.json({
       ...service.status(),
       evidenceMaturity: service.snapshot(id),
+      latest: latest
+        ? {
+            assessmentId: latest.id,
+            assessedAt: latest.assessedAt,
+            provider: latest.response.provider,
+            sourceValue: latest.response.sourceValue,
+          }
+        : null,
     });
   } catch (error) {
     return apiError(error);
