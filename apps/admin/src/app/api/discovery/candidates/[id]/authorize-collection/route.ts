@@ -15,13 +15,9 @@ export async function POST(request: Request, context: RouteContext) {
     if (body.requestedBy !== undefined && typeof body.requestedBy !== "string") {
       throw new RegistryValidationError("requestedBy must be a string");
     }
-    if (body.idempotencyKey !== undefined && typeof body.idempotencyKey !== "string") {
-      throw new RegistryValidationError("idempotencyKey must be a string");
-    }
 
     const result = getDiscoveryCollectionService().authorizeAndDispatch(id, {
       requestedBy: typeof body.requestedBy === "string" ? body.requestedBy : "admin-console",
-      idempotencyKey: typeof body.idempotencyKey === "string" ? body.idempotencyKey : undefined,
     });
     return NextResponse.json(result, { status: result.replayed ? 200 : 201 });
   } catch (error) {
