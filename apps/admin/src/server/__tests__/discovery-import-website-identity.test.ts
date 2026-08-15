@@ -3,7 +3,10 @@ import { parseDiscoveryImport } from "../discovery-import-parser";
 
 function previewFor(urls: string[]) {
   const csv = ["url", ...urls].join("\n");
-  return parseDiscoveryImport({ fileName: "sources.csv", content: Buffer.from(csv) });
+  return parseDiscoveryImport({
+    fileName: "sources.csv",
+    content: Buffer.from(csv),
+  });
 }
 
 describe("Discovery import website identity", () => {
@@ -13,7 +16,10 @@ describe("Discovery import website identity", () => {
       "https://example.com/two",
     ]);
 
-    expect(preview.rows.map((row) => row.status)).toEqual(["VALID", "DUPLICATE"]);
+    expect(preview.rows.map((row) => row.status)).toEqual([
+      "VALID",
+      "DUPLICATE",
+    ]);
     expect(preview.rows.map((row) => row.origin)).toEqual([
       "https://www.example.com",
       "https://example.com",
