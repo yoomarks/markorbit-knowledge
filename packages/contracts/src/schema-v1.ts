@@ -10,6 +10,7 @@ import {
 } from "./vocabularies";
 
 export const SCHEMA_V1_VERSION = "1.0" as const;
+export const CRAWL4AI_MAX_START_URLS = 500;
 
 export const DATA_DOMAINS = ["PUBLIC", "ORGANIZATION", "WORKSPACE_PRIVATE", "USER_LOCAL"] as const;
 export type DataDomain = (typeof DATA_DOMAINS)[number];

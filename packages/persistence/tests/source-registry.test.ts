@@ -141,6 +141,53 @@ describe("SQLite Source Registry", () => {
     database.close();
   });
 
+  it("prevents Crawl4AI Sources from exceeding the governed start URL budget", () => {
+    const { database, repo } = repository();
+    const entrypoints = Array.from({ length: 500 }, (_, index) => ({
+      uri: `https://www.uspto.gov/trademarks/page-${index + 1}`,
+    }));
+    const created = repo.create(
+      sourceInput({
+        canonicalUri: entrypoints[0]!.uri,
+        entrypoints,
+      }),
+    );
+    expect(created.entrypoints).toHaveLength(500);
+
+    expect(() =>
+      repo.update(
+        created.id,
+        {
+          entrypoints: [
+            ...created.entrypoints,
+            { uri: "https://www.uspto.gov/trademarks/page-501" },
+          ],
+        },
+        created.updatedAt,
+      ),
+    ).toThrowError(
+      expect.objectContaining({
+        code: "CRAWL4AI_START_URL_BUDGET_EXCEEDED",
+      }),
+    );
+    expect(repo.getById(created.id)?.entrypoints).toHaveLength(500);
+
+    expect(() =>
+      repo.create(
+        sourceInput({
+          slug: "crawl4ai-too-many-entrypoints",
+          canonicalUri: entrypoints[0]!.uri,
+          entrypoints: [...entrypoints, { uri: "https://www.uspto.gov/trademarks/page-501" }],
+        }),
+      ),
+    ).toThrowError(
+      expect.objectContaining({
+        code: "CRAWL4AI_START_URL_BUDGET_EXCEEDED",
+      }),
+    );
+    database.close();
+  });
+
   it("rejects connector secret values", () => {
     const { database, repo } = repository();
     expect(() =>
