@@ -22,12 +22,43 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply Prettier
+      - name: Fix discovery category labels
         run: |
-          pnpm exec prettier --write apps/admin/src/components/sources/source-country-coverage.tsx apps/admin/src/components/foundational/foundational-health-dashboard.tsx apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("apps/admin/src/lib/admin-v2/discovery-intake-workbench.tsx")
+          text = path.read_text()
+          old = '''  const labels: Partial<Record<SourceCategory, string>> = {
+            OFFICIAL_AUTHORITY: "官方机构",
+            GOVERNMENT_PUBLICATION: "政府出版物",
+            INTERGOVERNMENTAL: "国际组织",
+            PUBLIC_REFERENCE: "公共参考资料",
+            PROFESSIONAL_ASSOCIATION: "专业协会",
+            LAW_FIRM: "律所 / 代理机构",
+            PROFESSIONAL: "专业人士",
+            MEDIA: "媒体",
+            USER_PROVIDED: "用户提供",
+            OTHER: "其他",
+          };'''
+          new = '''  const labels: Partial<Record<SourceCategory, string>> = {
+            OFFICIAL_AUTHORITY: "官方机构",
+            OFFICIAL_GUIDANCE: "官方指南",
+            LAW_FIRM: "律所 / 代理机构",
+            NEWS: "新闻",
+            RESEARCH: "研究资料",
+            TECHNICAL: "技术资料",
+            INTERNAL: "内部资料",
+            USER_PROVIDED: "用户提供",
+            OTHER: "其他",
+          };'''
+          if old not in text:
+              raise SystemExit("category label anchor not found")
+          path.write_text(text.replace(old, new, 1))
+          PY
+          pnpm exec prettier --write apps/admin/src/lib/admin-v2/discovery-intake-workbench.tsx
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/admin/src/components/sources/source-country-coverage.tsx apps/admin/src/components/foundational/foundational-health-dashboard.tsx apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx
-          git commit -m "style: format admin v2 health surfaces"
+          git add apps/admin/src/lib/admin-v2/discovery-intake-workbench.tsx
+          git commit -m "fix: use valid source category labels"
           git push origin HEAD:${{ github.head_ref }}
