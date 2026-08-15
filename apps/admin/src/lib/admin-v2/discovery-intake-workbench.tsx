@@ -64,13 +64,12 @@ function categoryLabel(value: SourceCategory, zh: boolean): string {
   }
   const labels: Partial<Record<SourceCategory, string>> = {
     OFFICIAL_AUTHORITY: "官方机构",
-    GOVERNMENT_PUBLICATION: "政府出版物",
-    INTERGOVERNMENTAL: "国际组织",
-    PUBLIC_REFERENCE: "公共参考资料",
-    PROFESSIONAL_ASSOCIATION: "专业协会",
+    OFFICIAL_GUIDANCE: "官方指南",
     LAW_FIRM: "律所 / 代理机构",
-    PROFESSIONAL: "专业人士",
-    MEDIA: "媒体",
+    NEWS: "新闻",
+    RESEARCH: "研究资料",
+    TECHNICAL: "技术资料",
+    INTERNAL: "内部资料",
     USER_PROVIDED: "用户提供",
     OTHER: "其他",
   };
