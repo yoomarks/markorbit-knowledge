@@ -87,12 +87,27 @@ function withLatestAssessments(result: SourceListResult) {
   const latest = getSourceAssessmentRepository().listLatestForSources(
     result.items.map((source) => source.id),
   );
+  const collectionHealth = listSourceCollectionHealth(
+    getRegistryDatabase(),
+    result.items.map((source) => source.id),
+  );
+  const healthValues = Object.values(collectionHealth);
   return {
     ...result,
-    collectionHealth: listSourceCollectionHealth(
-      getRegistryDatabase(),
-      result.items.map((source) => source.id),
-    ),
+    collectionHealth,
+    collectionAlertSummary: {
+      sourcesRequiringAttention: healthValues.filter((health) => health.attentionRequired).length,
+      totalAlerts: healthValues.reduce((sum, health) => sum + health.alerts.length, 0),
+      overdueCollections: healthValues.filter((health) =>
+        health.alerts.some((alert) => alert.code === "COLLECTION_OVERDUE"),
+      ).length,
+      failureStreaks: healthValues.filter((health) =>
+        health.alerts.some((alert) => alert.code === "FAILURE_STREAK"),
+      ).length,
+      schedulerErrors: healthValues.filter((health) =>
+        health.alerts.some((alert) => alert.code === "SCHEDULER_ERROR"),
+      ).length,
+    },
     assessments: Object.fromEntries(
       latest.map((record) => [
         record.sourceId,
