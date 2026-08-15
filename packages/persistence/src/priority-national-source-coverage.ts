@@ -276,7 +276,7 @@ export const UKIPO_SOURCE_COVERAGE_TARGETS = [
     canonicalUri: "https://www.gov.uk/check-trade-marks-journal",
     entrypoints: [
       { uri: "https://www.gov.uk/check-trade-marks-journal", label: "Journal guidance" },
-      { uri: "https://www.ipo.gov.uk/tmjournal", label: "Current journal" },
+      { uri: "https://www.ipo.gov.uk/t-tmj.htm", label: "Current journal" },
     ],
     mode: "MIXED",
     renderJavascriptHint: true,
