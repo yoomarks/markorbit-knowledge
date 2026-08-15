@@ -92,9 +92,9 @@ describe("Discovery batch approval → initial collection", () => {
     });
     expect(result.items[0]).toMatchObject({ status: "ACCEPTED", replayed: false });
     expect(result.items[1]).toMatchObject({ status: "ACCEPTED", replayed: false });
-    expect(
-      result.items[0] && "runId" in result.items[0] ? result.items[0].runId : undefined,
-    ).toBe(result.items[1] && "runId" in result.items[1] ? result.items[1].runId : undefined);
+    expect(result.items[0] && "runId" in result.items[0] ? result.items[0].runId : undefined).toBe(
+      result.items[1] && "runId" in result.items[1] ? result.items[1].runId : undefined,
+    );
 
     const sourceList = sources.list({ sourceType: "WEB", limit: 100 });
     expect(sourceList.total).toBe(1);
@@ -107,12 +107,16 @@ describe("Discovery batch approval → initial collection", () => {
     const runList = runs.list({ limit: 100 });
     expect(runList.total).toBe(1);
     expect(runList.items[0]?.jobs).toHaveLength(1);
-    expect(runList.items[0]?.run.sourceSnapshot.entrypoints.map((entrypoint) => entrypoint.uri)).toEqual([
+    expect(
+      runList.items[0]?.run.sourceSnapshot.entrypoints.map((entrypoint) => entrypoint.uri),
+    ).toEqual([
       "https://example.com/trademarks",
       "https://example.com/trademarks/fees",
       "https://example.com/trademarks/guidance",
     ]);
-    expect(runList.items[0]?.jobs[0]?.sourceSnapshot.entrypoints.map((entrypoint) => entrypoint.uri)).toEqual([
+    expect(
+      runList.items[0]?.jobs[0]?.sourceSnapshot.entrypoints.map((entrypoint) => entrypoint.uri),
+    ).toEqual([
       "https://example.com/trademarks",
       "https://example.com/trademarks/fees",
       "https://example.com/trademarks/guidance",
