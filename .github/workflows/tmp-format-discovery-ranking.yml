@@ -1,0 +1,36 @@
+name: Temporary discovery ranking format
+
+on:
+  push:
+    branches:
+      - codex/discovery-page-value-ranking-v1
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/discovery-page-value-ranking-v1
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format changed TypeScript
+        run: |
+          pnpm exec prettier --write \
+            apps/admin/src/server/discovery-page-value-ranker.ts \
+            apps/admin/src/server/discovery-service.ts \
+            apps/admin/src/server/__tests__/discovery-page-value-ranking.test.ts
+          rm .github/workflows/tmp-format-discovery-ranking.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/admin/src/server/discovery-page-value-ranker.ts apps/admin/src/server/discovery-service.ts apps/admin/src/server/__tests__/discovery-page-value-ranking.test.ts .github/workflows/tmp-format-discovery-ranking.yml
+          git commit -m "Format discovery page value ranking"
+          git push origin HEAD:codex/discovery-page-value-ranking-v1
