@@ -17,7 +17,10 @@ export async function POST(request: Request) {
           ? body.workspaceId.trim()
           : null;
     if (!workspaceId) throw new RegistryValidationError("workspaceId must be a non-empty string");
-    if (!Array.isArray(body.targetIds) || !body.targetIds.every((item) => typeof item === "string")) {
+    if (
+      !Array.isArray(body.targetIds) ||
+      !body.targetIds.every((item) => typeof item === "string")
+    ) {
       throw new RegistryValidationError("targetIds must be an array of strings");
     }
 

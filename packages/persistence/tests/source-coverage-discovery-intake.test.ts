@@ -173,7 +173,10 @@ describe("Source Coverage → Discovery intake", () => {
       state: "ALREADY_COVERED",
       sourceIds: [covered.id],
     });
-    expect(result.results[1]).toMatchObject({ targetId: existingId, state: "ALREADY_IN_DISCOVERY" });
+    expect(result.results[1]).toMatchObject({
+      targetId: existingId,
+      state: "ALREADY_IN_DISCOVERY",
+    });
     expect(result.results[2]).toMatchObject({ targetId: missingId, state: "QUEUED" });
     expect(env.discovery.listCandidates().total).toBe(2);
     expect(env.discovery.listBatches()).toHaveLength(2);

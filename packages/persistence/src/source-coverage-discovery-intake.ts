@@ -234,7 +234,9 @@ export function queueSourceCoverageGapsForDiscovery(
       "targetIds must contain at least one Source Coverage target",
     );
   }
-  const targetIds = [...new Set(input.targetIds.map((targetId) => targetId.trim()).filter(Boolean))];
+  const targetIds = [
+    ...new Set(input.targetIds.map((targetId) => targetId.trim()).filter(Boolean)),
+  ];
   if (targetIds.length === 0) {
     throw new RegistryError(
       "SOURCE_COVERAGE_TARGET_IDS_REQUIRED",
