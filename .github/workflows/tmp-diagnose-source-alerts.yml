@@ -1,0 +1,40 @@
+name: Temporary source alerts diagnosis
+
+on:
+  push:
+    branches:
+      - codex/source-staleness-alerts-v1
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run focused test
+        shell: bash
+        run: |
+          set +e
+          pnpm --filter @markorbit/admin exec vitest run src/server/__tests__/source-collection-health.test.ts > source-alert-test-output.txt 2>&1
+          code=$?
+          cat source-alert-test-output.txt
+          echo "$code" > source-alert-test-exit.txt
+          exit 0
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add source-alert-test-output.txt source-alert-test-exit.txt
+          git commit -m "chore: capture source alert test diagnostics"
+          git push
