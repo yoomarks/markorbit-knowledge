@@ -267,6 +267,23 @@ function sourceWebsiteIdentities(source: SourceDefinition): string[] {
   return [...new Set(identities)];
 }
 
+function findWebsiteSourceByIdentity(
+  sources: SourceRepository,
+  identity: string,
+): SourceDefinition | null {
+  let offset = 0;
+  while (true) {
+    const page = sources.list({ sourceType: "WEB", limit: 100, offset });
+    const source =
+      page.items.find(
+        (item) => item.status !== "ARCHIVED" && sourceWebsiteIdentities(item).includes(identity),
+      ) ?? null;
+    if (source) return source;
+    offset += page.items.length;
+    if (page.items.length === 0 || offset >= page.total) return null;
+  }
+}
+
 function websiteSourceSlug(locator: string, identity: string): string {
   const url = new URL(locator);
   const host = url.hostname
@@ -284,10 +301,6 @@ function websiteSourceSlug(locator: string, identity: string): string {
 
 function websiteSourceName(locator: string): string {
   return new URL(locator).hostname.slice(0, 120);
-}
-
-function belongsToOrigin(locator: string, origin: string): boolean {
-  return websiteOrigin(locator) === origin;
 }
 
 function extensionString(source: SourceDefinition, key: `x-${string}`): string | undefined {
@@ -403,8 +416,9 @@ export class DiscoveryWorkflowService {
     try {
       const discovered = await this.dependencies.provider.discover(batch);
       const seedOrigin = websiteOrigin(seed.locator);
+      const seedIdentity = websiteIdentity(seed.locator);
       const candidates = discovered.map(enrichDiscoveryCandidate).map((candidate) =>
-        intake && belongsToOrigin(candidate.locator, seedOrigin)
+        intake && websiteIdentity(candidate.locator) === seedIdentity
           ? {
               ...candidate,
               metadata: {
@@ -416,15 +430,21 @@ export class DiscoveryWorkflowService {
       );
       const completed = this.dependencies.discovery.completeBatch(batch.batchId, candidates);
 
-      const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
+      const exactProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
         DEFAULT_WORKSPACE.id,
         seedOrigin,
       );
+      const identitySource = exactProfile
+        ? null
+        : findWebsiteSourceByIdentity(this.dependencies.sources, seedIdentity);
+      const profile =
+        exactProfile ??
+        (identitySource ? this.dependencies.graph.getProfileBySourceId(identitySource.id) : null);
       if (profile) {
         const source = this.dependencies.sources.getById(profile.sourceId);
         if (source) {
-          const graphCandidates = candidates.filter((candidate) =>
-            belongsToOrigin(candidate.locator, seedOrigin),
+          const graphCandidates = candidates.filter(
+            (candidate) => websiteIdentity(candidate.locator) === seedIdentity,
           );
           this.dependencies.transaction(() => {
             writeDiscoveryBatchToSourceGraph(
@@ -701,23 +721,10 @@ export class DiscoveryWorkflowService {
       DEFAULT_WORKSPACE.id,
       targetOrigin,
     );
-    let identitySource: SourceDefinition | null = null;
-    let sourceOffset = 0;
-    while (!identitySource) {
-      const page = this.dependencies.sources.list({
-        sourceType: "WEB",
-        limit: 100,
-        offset: sourceOffset,
-      });
-      identitySource =
-        page.items.find(
-          (source) =>
-            source.status !== "ARCHIVED" &&
-            sourceWebsiteIdentities(source).includes(candidateIdentity),
-        ) ?? null;
-      sourceOffset += page.items.length;
-      if (identitySource || page.items.length === 0 || sourceOffset >= page.total) break;
-    }
+    const identitySource = findWebsiteSourceByIdentity(
+      this.dependencies.sources,
+      candidateIdentity,
+    );
     const identityProfile = identitySource
       ? this.dependencies.graph.getProfileBySourceId(identitySource.id)
       : null;

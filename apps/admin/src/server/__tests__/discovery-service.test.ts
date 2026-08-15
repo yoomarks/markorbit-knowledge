@@ -16,6 +16,7 @@ describe("DiscoveryWorkflowService", () => {
     const connectors = new SqliteConnectorRepository(database);
     const discovery = new SqliteSourceDiscoveryRepository(database);
     const graph = new SqliteSourceGraphRepository(database);
+    let discoveryRun = 0;
     const service = new DiscoveryWorkflowService({
       discovery,
       graph,
@@ -24,6 +25,22 @@ describe("DiscoveryWorkflowService", () => {
       connectors,
       provider: {
         async discover(batch: SourceDiscoveryBatch) {
+          discoveryRun += 1;
+          if (discoveryRun > 1) {
+            return [
+              {
+                candidateId: "cand_444444444444444444444444",
+                locator: "https://www.example.com/new-guidance",
+                title: "New guidance",
+                discoveredAt: "2026-08-08T02:00:00.000Z",
+                status: "DISCOVERED" as const,
+                discoveredFrom: batch.seeds[0]?.locator,
+                discoveryMethod: "HTML_LINK" as const,
+                depth: 1,
+                metadata: { kind: "PAGE" },
+              },
+            ];
+          }
           return [
             {
               candidateId: "cand_aaaaaaaaaaaaaaaaaaaaaaaa",
@@ -135,6 +152,35 @@ describe("DiscoveryWorkflowService", () => {
         )
       : null;
     expect(documentNode?.reviewState).toBe("RETAINED");
+
+    const repeat = await service.start({
+      locator: "https://www.example.com/refresh",
+      maxDepth: 1,
+      maxCandidates: 10,
+      intake: {
+        category: "OFFICIAL_GUIDANCE",
+        authorityLevel: "PRIMARY_OFFICIAL",
+        jurisdictions: ["US"],
+        languages: ["en"],
+        note: "Alias refresh",
+        tags: ["official"],
+      },
+    });
+    expect(repeat.candidates[0]?.metadata?.operatorIntakeDefaults).toMatchObject({
+      category: "OFFICIAL_GUIDANCE",
+      authorityLevel: "PRIMARY_OFFICIAL",
+      jurisdictions: ["US"],
+      languages: ["en"],
+    });
+    const refreshedNode = profile
+      ? graph.findNodeByIdentity(
+          profile.id,
+          "CANONICAL_URI",
+          "https://www.example.com/new-guidance",
+        )
+      : null;
+    expect(refreshedNode).not.toBeNull();
+    expect(sources.list({ sourceType: "WEB", limit: 100 }).total).toBe(1);
 
     database.close();
   });
