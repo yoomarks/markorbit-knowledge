@@ -10,6 +10,8 @@ import { RegistryConflictError, RegistryError } from "./index";
 import type { SourceCandidateRecord, SourceDiscoveryRepository } from "./source-discovery-registry";
 import { evaluateSourceCoverage, getSourceCoverageTarget } from "./source-coverage-catalog";
 
+const MAX_BATCH_TARGETS = 100;
+
 export type CoverageDiscoveryIntakeState = "QUEUED" | "ALREADY_IN_DISCOVERY" | "ALREADY_COVERED";
 
 export type CoverageDiscoveryIntakeResult = {
@@ -19,6 +21,13 @@ export type CoverageDiscoveryIntakeResult = {
   candidate?: SourceCandidateRecord;
   sourceIds?: string[];
   batchId?: string;
+};
+
+export type CoverageDiscoveryBatchIntakeResult = {
+  workspaceId: string;
+  requestedTargetIds: string[];
+  results: CoverageDiscoveryIntakeResult[];
+  summary: Record<CoverageDiscoveryIntakeState, number> & { total: number };
 };
 
 export type CoverageDiscoveryIntakeDependencies = {
@@ -76,19 +85,19 @@ function coverageProvenance(target: SourceCoverageTarget) {
   };
 }
 
-export function queueSourceCoverageGapForDiscovery(
-  input: { workspaceId: string; targetId: string },
-  dependencies: CoverageDiscoveryIntakeDependencies,
-): CoverageDiscoveryIntakeResult {
-  const workspaceId = input.workspaceId.trim();
-  const targetId = input.targetId.trim();
+function assertWorkspaceId(value: string): string {
+  const workspaceId = value.trim();
   if (!workspaceId) throw new RegistryError("WORKSPACE_ID_REQUIRED", "workspaceId is required");
-  const target = getSourceCoverageTarget(targetId);
+  return workspaceId;
+}
+
+function requireActiveTarget(targetId: string): SourceCoverageTarget {
+  const target = getSourceCoverageTarget(targetId.trim());
   if (!target) {
     throw new RegistryError(
       "SOURCE_COVERAGE_TARGET_NOT_FOUND",
-      `Source coverage target ${targetId} was not found`,
-      { targetId },
+      `Source coverage target ${targetId.trim()} was not found`,
+      { targetId: targetId.trim() },
     );
   }
   if (target.catalogState !== "ACTIVE") {
@@ -98,18 +107,27 @@ export function queueSourceCoverageGapForDiscovery(
       { targetId: target.id, catalogState: target.catalogState },
     );
   }
+  return target;
+}
 
-  const sources = listWorkspaceSources(dependencies.sources, workspaceId);
-  const registration = evaluateSourceCoverage(sources, [target])[0];
-  if (registration?.state === "REGISTERED") {
-    return {
-      workspaceId,
-      targetId: target.id,
-      state: "ALREADY_COVERED",
-      sourceIds: [...registration.sourceIds],
-    };
-  }
+function alreadyCovered(
+  workspaceId: string,
+  target: SourceCoverageTarget,
+  sourceIds: string[],
+): CoverageDiscoveryIntakeResult {
+  return {
+    workspaceId,
+    targetId: target.id,
+    state: "ALREADY_COVERED",
+    sourceIds: [...sourceIds],
+  };
+}
 
+function queueUnregisteredTarget(
+  workspaceId: string,
+  target: SourceCoverageTarget,
+  dependencies: CoverageDiscoveryIntakeDependencies,
+): CoverageDiscoveryIntakeResult {
   const existing = dependencies.discovery.getCandidateByLocator(target.canonicalUri);
   if (existing) {
     return {
@@ -188,5 +206,76 @@ export function queueSourceCoverageGapForDiscovery(
     state: "QUEUED",
     candidate: queued,
     batchId: batch.batchId,
+  };
+}
+
+export function queueSourceCoverageGapForDiscovery(
+  input: { workspaceId: string; targetId: string },
+  dependencies: CoverageDiscoveryIntakeDependencies,
+): CoverageDiscoveryIntakeResult {
+  const workspaceId = assertWorkspaceId(input.workspaceId);
+  const target = requireActiveTarget(input.targetId);
+  const sources = listWorkspaceSources(dependencies.sources, workspaceId);
+  const registration = evaluateSourceCoverage(sources, [target])[0];
+  if (registration?.state === "REGISTERED") {
+    return alreadyCovered(workspaceId, target, registration.sourceIds);
+  }
+  return queueUnregisteredTarget(workspaceId, target, dependencies);
+}
+
+export function queueSourceCoverageGapsForDiscovery(
+  input: { workspaceId: string; targetIds: string[] },
+  dependencies: CoverageDiscoveryIntakeDependencies,
+): CoverageDiscoveryBatchIntakeResult {
+  const workspaceId = assertWorkspaceId(input.workspaceId);
+  if (!Array.isArray(input.targetIds) || input.targetIds.length === 0) {
+    throw new RegistryError(
+      "SOURCE_COVERAGE_TARGET_IDS_REQUIRED",
+      "targetIds must contain at least one Source Coverage target",
+    );
+  }
+  const targetIds = [...new Set(input.targetIds.map((targetId) => targetId.trim()).filter(Boolean))];
+  if (targetIds.length === 0) {
+    throw new RegistryError(
+      "SOURCE_COVERAGE_TARGET_IDS_REQUIRED",
+      "targetIds must contain at least one Source Coverage target",
+    );
+  }
+  if (targetIds.length > MAX_BATCH_TARGETS) {
+    throw new RegistryError(
+      "SOURCE_COVERAGE_BATCH_LIMIT_EXCEEDED",
+      `Coverage Discovery intake is limited to ${MAX_BATCH_TARGETS} unique targets per request`,
+      { maxTargets: MAX_BATCH_TARGETS, requestedTargets: targetIds.length },
+    );
+  }
+
+  // Validate the complete request before mutating Discovery so a bad target cannot
+  // leave a partially queued batch behind.
+  const targets = targetIds.map(requireActiveTarget);
+  const sources = listWorkspaceSources(dependencies.sources, workspaceId);
+  const registrations = new Map(
+    evaluateSourceCoverage(sources, targets).map((registration) => [
+      registration.targetId,
+      registration,
+    ]),
+  );
+  const results = targets.map((target) => {
+    const registration = registrations.get(target.id);
+    return registration?.state === "REGISTERED"
+      ? alreadyCovered(workspaceId, target, registration.sourceIds)
+      : queueUnregisteredTarget(workspaceId, target, dependencies);
+  });
+
+  return {
+    workspaceId,
+    requestedTargetIds: targets.map((target) => target.id),
+    results,
+    summary: {
+      total: results.length,
+      QUEUED: results.filter((result) => result.state === "QUEUED").length,
+      ALREADY_IN_DISCOVERY: results.filter((result) => result.state === "ALREADY_IN_DISCOVERY")
+        .length,
+      ALREADY_COVERED: results.filter((result) => result.state === "ALREADY_COVERED").length,
+    },
   };
 }
