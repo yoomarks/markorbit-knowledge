@@ -8,13 +8,23 @@ export type CapabilityConnectionStatus = {
   endpoint?: string;
 };
 
-function timeoutMs(): number {
+function configuredTimeoutMs(): number {
   const configured = process.env.MARKORBIT_CAPABILITY_TIMEOUT_MS?.trim();
   if (!configured) return DEFAULT_TIMEOUT_MS;
   const value = Number(configured);
   if (!Number.isSafeInteger(value) || value < 1_000 || value > 180_000) {
     throw new RegistryValidationError(
       "MARKORBIT_CAPABILITY_TIMEOUT_MS must be an integer from 1000 to 180000",
+    );
+  }
+  return value;
+}
+
+function requestTimeoutMs(value: number | undefined): number {
+  if (value === undefined) return configuredTimeoutMs();
+  if (!Number.isSafeInteger(value) || value < 1_000 || value > 180_000) {
+    throw new RegistryValidationError(
+      "Capability timeoutMs must be an integer from 1000 to 180000",
     );
   }
   return value;
@@ -45,6 +55,7 @@ export async function invokeCapability<TRequest, TResponse>(input: {
   request: TRequest;
   validate: (value: unknown) => TResponse;
   errorCodePrefix: string;
+  timeoutMs?: number;
 }): Promise<TResponse> {
   const endpoint = capabilityEndpoint(input.capabilityId);
   if (!endpoint) {
@@ -55,7 +66,7 @@ export async function invokeCapability<TRequest, TResponse>(input: {
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs());
+  const timer = setTimeout(() => controller.abort(), requestTimeoutMs(input.timeoutMs));
   let response: Response;
   try {
     response = await fetch(endpoint, {
