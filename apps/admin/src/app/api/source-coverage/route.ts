@@ -7,7 +7,6 @@ import {
   type SourceCoverageCatalogState,
   type SourceCoverageFamily,
   type SourceCoverageTier,
-  type SourceDefinition,
 } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
 import {
@@ -16,6 +15,7 @@ import {
   summarizeSourceCoverage,
 } from "@markorbit/persistence/source-coverage";
 import { apiError } from "@/server/api-errors";
+import { listAllWorkspaceSources } from "@/server/source-pagination";
 import { getSourceRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
@@ -32,18 +32,6 @@ function enumFilter<T extends string>(
     throw new RegistryValidationError(`${name} query parameter is invalid`);
   }
   return normalized as T;
-}
-
-function listWorkspaceSources(workspaceId: string): SourceDefinition[] {
-  const repository = getSourceRepository();
-  const sources: SourceDefinition[] = [];
-  let offset = 0;
-  while (true) {
-    const page = repository.list({ workspaceId, limit: 100, offset });
-    sources.push(...page.items);
-    offset += page.items.length;
-    if (offset >= page.total || page.items.length === 0) return sources;
-  }
 }
 
 export async function GET(request: Request) {
@@ -80,7 +68,7 @@ export async function GET(request: Request) {
     };
 
     if (workspaceId) {
-      const sources = listWorkspaceSources(workspaceId);
+      const sources = listAllWorkspaceSources(getSourceRepository(), workspaceId);
       response.registration = evaluateSourceCoverage(sources, targets);
       response.workspaceId = workspaceId;
     }

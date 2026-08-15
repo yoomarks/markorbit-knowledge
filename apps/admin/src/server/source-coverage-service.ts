@@ -3,6 +3,7 @@ import {
   evaluateSourceCoverage,
   listSourceCoverageTargets,
 } from "@markorbit/persistence/source-coverage";
+import { listAllWorkspaceSources } from "./source-pagination";
 import { getSourceDiscoveryRepository, getSourceRepository } from "./source-registry";
 
 export type SourceCoverageTargetView = {
@@ -55,7 +56,7 @@ export function getSourceCoverageSnapshot(
 ): SourceCoverageSnapshot {
   const repository = getSourceRepository();
   const discovery = getSourceDiscoveryRepository();
-  const sources = repository.list({ workspaceId, limit: 100 }).items;
+  const sources = listAllWorkspaceSources(repository, workspaceId);
   const targets = listSourceCoverageTargets().filter((target) => target.catalogState !== "RETIRED");
   const jurisdictions = [
     ...new Set([
