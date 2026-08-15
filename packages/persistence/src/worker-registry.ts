@@ -282,6 +282,12 @@ function boundedConcurrency(value: number | undefined): number {
   return resolved;
 }
 
+type WebDomainLeaseState = {
+  active: number;
+  recent: number;
+  minRateLimit: number;
+};
+
 function webDomainKey(job: Job): string | null {
   if (job.sourceSnapshot.sourceType !== "WEB") return null;
   const locators = [
@@ -1031,11 +1037,12 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
         )
         .all(timestamp)
         .map((row) => parseJob((row as { document_json: string }).document_json));
+      const webDomainLeaseState = this.webDomainLeaseState(now);
       const job = candidates.find(
         (candidate) =>
           candidate.workspaceId === worker.workspaceId &&
           workerCanRun(worker, candidate) &&
-          this.webDomainQuotaAllows(candidate, now),
+          this.webDomainQuotaAllows(candidate, webDomainLeaseState),
       );
       if (!job) {
         this.database.exec("COMMIT;");
@@ -1104,10 +1111,7 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
     }
   }
 
-  private webDomainQuotaAllows(job: Job, now: Date): boolean {
-    const domain = webDomainKey(job);
-    if (!domain) return true;
-
+  private webDomainLeaseState(now: Date): Map<string, WebDomainLeaseState> {
     const windowStart = new Date(now.getTime() - 60_000).toISOString();
     const rows = this.database
       .prepare(
@@ -1121,22 +1125,39 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
       acquired_at: string;
       document_json: string;
     }>;
-
-    let active = 0;
-    let recent = 0;
-    let effectiveRateLimit = job.planSnapshot.policy.rateLimitPerMinute;
+    const state = new Map<string, WebDomainLeaseState>();
     for (const row of rows) {
       const leasedJob = parseJob(row.document_json);
-      if (webDomainKey(leasedJob) !== domain) continue;
-      effectiveRateLimit = Math.min(
-        effectiveRateLimit,
+      const domain = webDomainKey(leasedJob);
+      if (!domain) continue;
+      const current = state.get(domain) ?? {
+        active: 0,
+        recent: 0,
+        minRateLimit: Number.POSITIVE_INFINITY,
+      };
+      current.minRateLimit = Math.min(
+        current.minRateLimit,
         leasedJob.planSnapshot.policy.rateLimitPerMinute,
       );
-      if (row.status === "ACTIVE") active += 1;
-      if (row.acquired_at >= windowStart) recent += 1;
+      if (row.status === "ACTIVE") current.active += 1;
+      if (row.acquired_at >= windowStart) current.recent += 1;
+      state.set(domain, current);
     }
+    return state;
+  }
 
-    return active < this.maxConcurrentWebLeasesPerDomain && recent < effectiveRateLimit;
+  private webDomainQuotaAllows(job: Job, state: Map<string, WebDomainLeaseState>): boolean {
+    const domain = webDomainKey(job);
+    if (!domain) return true;
+    const current = state.get(domain);
+    if (!current) return true;
+    const effectiveRateLimit = Math.min(
+      job.planSnapshot.policy.rateLimitPerMinute,
+      current.minRateLimit,
+    );
+    return (
+      current.active < this.maxConcurrentWebLeasesPerDomain && current.recent < effectiveRateLimit
+    );
   }
 
   renewLease(workerId: string, credential: string, leaseId: string, leaseToken: string): JobLease {

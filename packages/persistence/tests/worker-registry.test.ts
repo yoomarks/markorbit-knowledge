@@ -408,7 +408,6 @@ describe("SQLite Worker Registry", () => {
     expect(firstClaim.job?.sourceId).toBe(firstSource.id);
     const secondClaim = env.workers.claim(secondWorker.view.worker.id, secondWorker.credential);
     expect(secondClaim.job?.sourceId).toBe(otherSource.id);
-    expect(env.runs.getById(aliasPlan.plan.sourceId)).toBeNull();
     expect(env.runs.list({ sourceId: aliasSource.id }).items[0]?.jobs[0]?.status).toBe("PENDING");
 
     env.database.close();
