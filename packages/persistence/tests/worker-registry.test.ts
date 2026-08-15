@@ -23,6 +23,7 @@ import {
   WorkerAuthorizationError,
   ensureWorkerRegistry,
   type CreateWorkerInput,
+  type WorkerProtocolOptions,
 } from "../src/worker-registry";
 
 const temporaryPaths: string[] = [];
@@ -100,7 +101,10 @@ function workerInput(overrides: Partial<CreateWorkerInput> = {}): CreateWorkerIn
   };
 }
 
-function environment(database = new DatabaseSync(":memory:")) {
+function environment(
+  database = new DatabaseSync(":memory:"),
+  workerOptions: WorkerProtocolOptions = {},
+) {
   let current = new Date("2026-07-16T02:00:00Z");
   let sourceTick = 0;
   let planTick = 0;
@@ -140,6 +144,7 @@ function environment(database = new DatabaseSync(":memory:")) {
       heartbeatClockSkewMs: 10_000,
       leaseDurationMs: 2_000,
       maxLeaseLifetimeMs: 10_000,
+      ...workerOptions,
     },
   );
   return { database, clock, advance, sources, plans, runs, workers };
@@ -363,6 +368,103 @@ describe("SQLite Worker Registry", () => {
         ).count,
       ),
     ).toBe(1);
+    env.database.close();
+  });
+
+  it("shares a durable web-domain concurrency gate across Workers and www aliases", () => {
+    const env = environment(new DatabaseSync(":memory:"), {
+      maxConcurrentWebLeasesPerDomain: 1,
+    });
+    const firstSource = env.sources.create(sourceInput());
+    const firstPlan = env.plans.create(planInput(firstSource.id, { name: "First USPTO plan" }));
+    env.runs.dispatchManual({ planId: firstPlan.plan.id });
+    const aliasSource = env.sources.create(
+      sourceInput({
+        name: "USPTO Patents",
+        slug: "uspto-patents",
+        canonicalUri: "https://uspto.gov/patents",
+        entrypoints: [{ uri: "https://uspto.gov/patents" }],
+      }),
+    );
+    const aliasPlan = env.plans.create(planInput(aliasSource.id, { name: "Alias USPTO plan" }));
+    env.runs.dispatchManual({ planId: aliasPlan.plan.id });
+    const otherSource = env.sources.create(
+      sourceInput({
+        name: "WIPO News",
+        slug: "wipo-news",
+        canonicalUri: "https://www.wipo.int/pressroom/en/",
+        entrypoints: [{ uri: "https://www.wipo.int/pressroom/en/" }],
+      }),
+    );
+    const otherPlan = env.plans.create(planInput(otherSource.id, { name: "WIPO plan" }));
+    env.runs.dispatchManual({ planId: otherPlan.plan.id });
+
+    const firstWorker = env.workers.create(workerInput({ displayName: "Worker A" }));
+    const secondWorker = env.workers.create(workerInput({ displayName: "Worker B" }));
+    heartbeat(env, firstWorker.view.worker.id, firstWorker.credential);
+    heartbeat(env, secondWorker.view.worker.id, secondWorker.credential);
+
+    const firstClaim = env.workers.claim(firstWorker.view.worker.id, firstWorker.credential);
+    expect(firstClaim.job?.sourceId).toBe(firstSource.id);
+    const secondClaim = env.workers.claim(secondWorker.view.worker.id, secondWorker.credential);
+    expect(secondClaim.job?.sourceId).toBe(otherSource.id);
+    expect(env.runs.getById(aliasPlan.plan.sourceId)).toBeNull();
+    expect(env.runs.list({ sourceId: aliasSource.id }).items[0]?.jobs[0]?.status).toBe("PENDING");
+
+    env.database.close();
+  });
+
+  it("enforces the strictest rolling per-minute web-domain rate limit across Workers", () => {
+    const env = environment(new DatabaseSync(":memory:"), {
+      maxConcurrentWebLeasesPerDomain: 10,
+    });
+    const locators = [
+      ["Rate A", "rate-a", "https://www.uspto.gov/a", 2],
+      ["Rate B", "rate-b", "https://uspto.gov/b", 2],
+      ["Rate C", "rate-c", "https://www.uspto.gov/c", 100],
+    ] as const;
+    for (const [name, slug, locator, rateLimitPerMinute] of locators) {
+      const source = env.sources.create(
+        sourceInput({
+          name,
+          slug,
+          canonicalUri: locator,
+          entrypoints: [{ uri: locator }],
+        }),
+      );
+      const plan = env.plans.create(
+        planInput(source.id, {
+          name: `${name} plan`,
+          policy: {
+            ...planInput(source.id).policy,
+            rateLimitPerMinute,
+          },
+        }),
+      );
+      env.runs.dispatchManual({ planId: plan.plan.id });
+    }
+
+    const workers = ["Worker A", "Worker B", "Worker C"].map((displayName) =>
+      env.workers.create(workerInput({ displayName })),
+    );
+    for (const worker of workers) {
+      heartbeat(env, worker.view.worker.id, worker.credential);
+    }
+
+    expect(
+      env.workers.claim(workers[0]!.view.worker.id, workers[0]!.credential).job,
+    ).not.toBeNull();
+    expect(
+      env.workers.claim(workers[1]!.view.worker.id, workers[1]!.credential).job,
+    ).not.toBeNull();
+    expect(env.workers.claim(workers[2]!.view.worker.id, workers[2]!.credential).job).toBeNull();
+
+    env.advance(60_001);
+    heartbeat(env, workers[2]!.view.worker.id, workers[2]!.credential);
+    expect(
+      env.workers.claim(workers[2]!.view.worker.id, workers[2]!.credential).job,
+    ).not.toBeNull();
+
     env.database.close();
   });
 

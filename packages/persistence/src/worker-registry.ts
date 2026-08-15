@@ -44,12 +44,14 @@ export const DEFAULT_HEARTBEAT_FRESHNESS_MS = 90_000;
 export const DEFAULT_HEARTBEAT_CLOCK_SKEW_MS = 300_000;
 export const DEFAULT_LEASE_DURATION_MS = 120_000;
 export const DEFAULT_MAX_LEASE_LIFETIME_MS = 900_000;
+export const DEFAULT_MAX_CONCURRENT_WEB_LEASES_PER_DOMAIN = 2;
 
 export type WorkerProtocolOptions = {
   heartbeatFreshnessMs?: number;
   heartbeatClockSkewMs?: number;
   leaseDurationMs?: number;
   maxLeaseLifetimeMs?: number;
+  maxConcurrentWebLeasesPerDomain?: number;
 };
 
 export type CreateWorkerInput = {
@@ -268,6 +270,36 @@ function boundedDuration(value: number | undefined, fallback: number, field: str
     throw new RegistryValidationError(`${field} must be between 1000 and 86400000 milliseconds`);
   }
   return resolved;
+}
+
+function boundedConcurrency(value: number | undefined): number {
+  const resolved = value ?? DEFAULT_MAX_CONCURRENT_WEB_LEASES_PER_DOMAIN;
+  if (!Number.isInteger(resolved) || resolved < 1 || resolved > 32) {
+    throw new RegistryValidationError(
+      "maxConcurrentWebLeasesPerDomain must be an integer from 1 to 32",
+    );
+  }
+  return resolved;
+}
+
+function webDomainKey(job: Job): string | null {
+  if (job.sourceSnapshot.sourceType !== "WEB") return null;
+  const locators = [
+    job.sourceSnapshot.canonicalUri,
+    ...job.sourceSnapshot.entrypoints.map((entrypoint) => entrypoint.uri),
+  ];
+  for (const locator of locators) {
+    if (!locator) continue;
+    try {
+      const url = new URL(locator);
+      if (url.protocol !== "http:" && url.protocol !== "https:") continue;
+      const hostname = url.hostname.toLowerCase();
+      return hostname.startsWith("www.") ? hostname.slice(4) : hostname;
+    } catch {
+      // A non-web locator must not block unrelated work.
+    }
+  }
+  return null;
 }
 
 function parseWorker(value: unknown): WorkerDefinition {
@@ -593,6 +625,7 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
   private readonly heartbeatClockSkewMs: number;
   private readonly leaseDurationMs: number;
   private readonly maxLeaseLifetimeMs: number;
+  private readonly maxConcurrentWebLeasesPerDomain: number;
 
   constructor(
     private readonly database: DatabaseSync,
@@ -622,6 +655,9 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
       options.maxLeaseLifetimeMs,
       DEFAULT_MAX_LEASE_LIFETIME_MS,
       "maxLeaseLifetimeMs",
+    );
+    this.maxConcurrentWebLeasesPerDomain = boundedConcurrency(
+      options.maxConcurrentWebLeasesPerDomain,
     );
     if (this.maxLeaseLifetimeMs < this.leaseDurationMs) {
       throw new RegistryValidationError(
@@ -997,7 +1033,9 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
         .map((row) => parseJob((row as { document_json: string }).document_json));
       const job = candidates.find(
         (candidate) =>
-          candidate.workspaceId === worker.workspaceId && workerCanRun(worker, candidate),
+          candidate.workspaceId === worker.workspaceId &&
+          workerCanRun(worker, candidate) &&
+          this.webDomainQuotaAllows(candidate, now),
       );
       if (!job) {
         this.database.exec("COMMIT;");
@@ -1064,6 +1102,41 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
       this.database.exec("ROLLBACK;");
       throw error;
     }
+  }
+
+  private webDomainQuotaAllows(job: Job, now: Date): boolean {
+    const domain = webDomainKey(job);
+    if (!domain) return true;
+
+    const windowStart = new Date(now.getTime() - 60_000).toISOString();
+    const rows = this.database
+      .prepare(
+        `SELECT l.status, l.acquired_at, j.document_json
+         FROM job_leases l
+         JOIN jobs j ON j.id = l.job_id
+         WHERE l.status = 'ACTIVE' OR l.acquired_at >= ?`,
+      )
+      .all(windowStart) as Array<{
+      status: JobLeaseStatus;
+      acquired_at: string;
+      document_json: string;
+    }>;
+
+    let active = 0;
+    let recent = 0;
+    let effectiveRateLimit = job.planSnapshot.policy.rateLimitPerMinute;
+    for (const row of rows) {
+      const leasedJob = parseJob(row.document_json);
+      if (webDomainKey(leasedJob) !== domain) continue;
+      effectiveRateLimit = Math.min(
+        effectiveRateLimit,
+        leasedJob.planSnapshot.policy.rateLimitPerMinute,
+      );
+      if (row.status === "ACTIVE") active += 1;
+      if (row.acquired_at >= windowStart) recent += 1;
+    }
+
+    return active < this.maxConcurrentWebLeasesPerDomain && recent < effectiveRateLimit;
   }
 
   renewLease(workerId: string, credential: string, leaseId: string, leaseToken: string): JobLease {
