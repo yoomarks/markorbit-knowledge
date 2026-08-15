@@ -26,7 +26,9 @@ function candidate(id: string, path: string): SourceCandidate {
   };
 }
 
-function response(items: Array<{ candidateId: string; score: number }>): PageValueScreeningResponseV1 {
+function response(
+  items: Array<{ candidateId: string; score: number }>,
+): PageValueScreeningResponseV1 {
   return {
     version: "1.0",
     capability: "page-value-screening",
@@ -145,10 +147,7 @@ describe("DiscoveryWorkflowService page value ranking", () => {
     expect(discovery.listCandidates({ limit: 100 }).total).toBe(2);
     expect(discovery.getCandidate("cand_low_1")).toBeNull();
     expect(recorded?.provider.executionId).toBe("exec-ranking-test");
-    expect(recorded?.items.map((item) => item.candidateId)).toEqual([
-      "cand_high_1",
-      "cand_high_2",
-    ]);
+    expect(recorded?.items.map((item) => item.candidateId)).toEqual(["cand_high_1", "cand_high_2"]);
     expect(result.candidates[0]?.metadata).toEqual({ kind: "PAGE" });
 
     database.close();

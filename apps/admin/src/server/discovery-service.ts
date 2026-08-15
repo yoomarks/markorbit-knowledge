@@ -423,7 +423,8 @@ export class DiscoveryWorkflowService {
 
     this.dependencies.discovery.createBatch(batch);
     try {
-      const reviewCandidateLimit = batch.constraints.maxCandidates ?? DEFAULT_CONSTRAINTS.maxCandidates;
+      const reviewCandidateLimit =
+        batch.constraints.maxCandidates ?? DEFAULT_CONSTRAINTS.maxCandidates;
       const providerBatch = {
         ...batch,
         constraints: {
@@ -447,8 +448,7 @@ export class DiscoveryWorkflowService {
       );
       let candidates = screenedCandidates.slice(0, reviewCandidateLimit);
       let rankingResponse:
-        | Awaited<ReturnType<DiscoveryPageValueRanker["rank"]>>["response"]
-        | undefined;
+        Awaited<ReturnType<DiscoveryPageValueRanker["rank"]>>["response"] | undefined;
       if (this.dependencies.pageValueRanker && screenedCandidates.length > 0) {
         try {
           const ranking = await this.dependencies.pageValueRanker.rank({
