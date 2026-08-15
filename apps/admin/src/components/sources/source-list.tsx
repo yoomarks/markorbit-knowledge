@@ -24,6 +24,21 @@ type Filters = {
   jurisdiction: string;
 };
 
+type SourceValueSummary = {
+  assessmentId: string;
+  assessedAt: string;
+  sourceValue: {
+    score: number;
+    priority: "VERY_HIGH" | "HIGH" | "MEDIUM" | "LOW";
+    confidence: "HIGH" | "MEDIUM" | "LOW";
+    summary: string;
+  };
+};
+
+type SourceListPayload = SourceListResult & {
+  assessments?: Record<string, SourceValueSummary>;
+};
+
 const initialFilters: Filters = {
   q: "",
   sourceType: "",
@@ -76,6 +91,21 @@ function enumLabel(value: string, zh: boolean): string {
   return translations[value] ?? humanize(value);
 }
 
+function sourceValueLabel(value: SourceValueSummary["sourceValue"]["priority"], zh: boolean) {
+  if (!zh) return value.replaceAll("_", " ");
+  if (value === "VERY_HIGH") return "极高";
+  if (value === "HIGH") return "高";
+  if (value === "MEDIUM") return "中";
+  return "一般";
+}
+
+function sourceValueTone(value: SourceValueSummary["sourceValue"]["priority"]): string {
+  if (value === "VERY_HIGH") return "bg-blue-600 text-white";
+  if (value === "HIGH") return "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200";
+  if (value === "MEDIUM") return "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200";
+  return "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200";
+}
+
 function StatusBadge({ status, zh }: { status: SourceDefinition["status"]; zh: boolean }) {
   const classes: Record<SourceDefinition["status"], string> = {
     DRAFT: "bg-slate-100 text-slate-700",
@@ -96,7 +126,7 @@ export function SourceList() {
   const zh = locale === "zh-CN";
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [offset, setOffset] = useState(0);
-  const [result, setResult] = useState<SourceListResult | null>(null);
+  const [result, setResult] = useState<SourceListPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,12 +146,14 @@ export function SourceList() {
     const controller = new AbortController();
     fetch(`/api/sources?${query}`, { signal: controller.signal })
       .then(async (response) => {
-        const body = (await response.json()) as SourceListResult | { error?: { message?: string } };
+        const body = (await response.json()) as
+          | SourceListPayload
+          | { error?: { message?: string } };
         if (!response.ok) {
           const message = "error" in body ? body.error?.message : undefined;
           throw new Error(message ?? "Unable to load sources");
         }
-        setResult(body as SourceListResult);
+        setResult(body as SourceListPayload);
       })
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
@@ -152,7 +184,6 @@ export function SourceList() {
   const summary = result?.summary;
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
   const totalPages = Math.max(1, Math.ceil((result?.total ?? 0) / PAGE_SIZE));
-
   const copy = {
     all: zh ? "全部" : "All",
     active: zh ? "启用" : "Active",
@@ -172,8 +203,10 @@ export function SourceList() {
     typeCategory: zh ? "类型 / 分类" : "Type / category",
     countries: zh ? "国家地区" : "Jurisdictions",
     sourceAuthority: zh ? "来源权威" : "Source authority",
+    sourceValue: zh ? "来源价值" : "Source value",
     languages: zh ? "语言" : "Languages",
     updated: zh ? "更新时间" : "Updated",
+    notAssessed: zh ? "未评估" : "Not assessed",
     noMatch: zh ? "没有匹配的来源" : "No matching sources",
     noMatchHint: zh ? "清除筛选条件，或添加新的真实来源。" : "Clear filters or add a new source.",
     loading: zh ? "正在读取来源…" : "Loading sources…",
@@ -206,11 +239,7 @@ export function SourceList() {
           <div className="grid gap-3 lg:grid-cols-6">
             <label className="relative lg:col-span-2">
               <span className="sr-only">{copy.search}</span>
-              <Search
-                className="absolute left-3 top-3 text-slate-400"
-                size={17}
-                aria-hidden="true"
-              />
+              <Search className="absolute left-3 top-3 text-slate-400" size={17} />
               <input
                 className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-3 text-sm"
                 placeholder={copy.search}
@@ -264,86 +293,112 @@ export function SourceList() {
         ) : null}
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-sm">
+          <table className="w-full min-w-[1080px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-5 py-3 font-medium">{copy.name}</th>
                 <th className="px-5 py-3 font-medium">{copy.typeCategory}</th>
                 <th className="px-5 py-3 font-medium">{copy.countries}</th>
                 <th className="px-5 py-3 font-medium">{copy.sourceAuthority}</th>
+                <th className="px-5 py-3 font-medium">{copy.sourceValue}</th>
                 <th className="px-5 py-3 font-medium">{copy.status}</th>
                 <th className="px-5 py-3 font-medium">{copy.updated}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {result?.items.map((source) => (
-                <tr key={source.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-4">
-                    <Link
-                      href={`/sources/${source.id}`}
-                      className="font-medium text-slate-950 hover:text-blue-700"
-                    >
-                      {source.name}
-                    </Link>
-                    <p className="mt-1 text-xs text-slate-500">{source.slug}</p>
-                  </td>
-                  <td className="px-5 py-4 text-slate-700">
-                    <p>{enumLabel(source.sourceType, zh)}</p>
-                    <p className="mt-1 text-xs text-slate-500">{enumLabel(source.category, zh)}</p>
-                  </td>
-                  <td className="px-5 py-4 text-slate-700">
-                    {source.jurisdictions.join(", ") || "—"}
-                  </td>
-                  <td className="px-5 py-4 text-slate-700">
-                    <p>{enumLabel(source.authorityLevel, zh)}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {copy.languages}: {source.languages.join(", ") || "—"}
-                    </p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge status={source.status} zh={zh} />
-                  </td>
-                  <td className="px-5 py-4 text-slate-500">
-                    {new Date(source.updatedAt).toLocaleString(locale)}
-                  </td>
-                </tr>
-              ))}
+              {result?.items.map((source) => {
+                const assessment = result.assessments?.[source.id];
+                return (
+                  <tr key={source.id} className="hover:bg-slate-50">
+                    <td className="px-5 py-4">
+                      <Link
+                        href={`/sources/${source.id}`}
+                        className="font-medium text-slate-950 hover:text-blue-700"
+                      >
+                        {source.name}
+                      </Link>
+                      <p className="mt-1 text-xs text-slate-500">{source.slug}</p>
+                    </td>
+                    <td className="px-5 py-4 text-slate-700">
+                      <p>{enumLabel(source.sourceType, zh)}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {enumLabel(source.category, zh)}
+                      </p>
+                    </td>
+                    <td className="px-5 py-4 text-slate-700">
+                      {source.jurisdictions.join(", ") || "—"}
+                    </td>
+                    <td className="px-5 py-4 text-slate-700">
+                      <p>{enumLabel(source.authorityLevel, zh)}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {copy.languages}: {source.languages.join(", ") || "—"}
+                      </p>
+                    </td>
+                    <td className="px-5 py-4">
+                      {assessment ? (
+                        <div title={assessment.sourceValue.summary}>
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${sourceValueTone(assessment.sourceValue.priority)}`}
+                          >
+                            {sourceValueLabel(assessment.sourceValue.priority, zh)} · {assessment.sourceValue.score}
+                          </span>
+                          <p className="mt-1 text-[10px] text-slate-400">
+                            {new Date(assessment.assessedAt).toLocaleDateString(locale)}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">{copy.notAssessed}</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      <StatusBadge status={source.status} zh={zh} />
+                    </td>
+                    <td className="px-5 py-4 text-slate-500">
+                      {new Date(source.updatedAt).toLocaleString(locale)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
         {!loading && result?.items.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <Archive className="mx-auto text-slate-400" size={30} aria-hidden="true" />
+            <Archive className="mx-auto text-slate-400" size={30} />
             <h2 className="mt-4 font-semibold text-slate-950">{copy.noMatch}</h2>
             <p className="mt-2 text-sm text-slate-500">{copy.noMatchHint}</p>
           </div>
         ) : null}
 
         {loading ? (
-          <div className="px-6 py-12 text-center text-sm text-slate-500">{copy.loading}</div>
+          <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-400">
+            {copy.loading}
+          </div>
         ) : null}
 
-        <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
-          <p className="text-slate-500">
+        <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <p className="text-xs text-slate-500">
             {copy.page} {currentPage} / {totalPages} · {result?.total ?? 0} {copy.records}
           </p>
           <div className="flex gap-2">
             <button
-              className="rounded-lg border border-slate-300 p-2 disabled:cursor-not-allowed disabled:opacity-40"
+              type="button"
+              aria-label={copy.previous}
               disabled={offset === 0 || loading}
               onClick={() => changePage(Math.max(0, offset - PAGE_SIZE))}
-              aria-label={copy.previous}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 disabled:opacity-40"
             >
-              <ChevronLeft size={17} aria-hidden="true" />
+              <ChevronLeft size={14} /> {copy.previous}
             </button>
             <button
-              className="rounded-lg border border-slate-300 p-2 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={loading || offset + PAGE_SIZE >= (result?.total ?? 0)}
-              onClick={() => changePage(offset + PAGE_SIZE)}
+              type="button"
               aria-label={copy.next}
+              disabled={offset + PAGE_SIZE >= (result?.total ?? 0) || loading}
+              onClick={() => changePage(offset + PAGE_SIZE)}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 disabled:opacity-40"
             >
-              <ChevronRight size={17} aria-hidden="true" />
+              {copy.next} <ChevronRight size={14} />
             </button>
           </div>
         </div>
@@ -369,14 +424,14 @@ function FilterSelect({
     <label>
       <span className="sr-only">{label}</span>
       <select
-        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
-        <option value="">{zh ? `全部${label}` : `All ${label.toLowerCase()}`}</option>
-        {values.map((option) => (
-          <option key={option} value={option}>
-            {enumLabel(option, zh)}
+        <option value="">{label}</option>
+        {values.map((item) => (
+          <option key={item} value={item}>
+            {enumLabel(item, zh)}
           </option>
         ))}
       </select>
