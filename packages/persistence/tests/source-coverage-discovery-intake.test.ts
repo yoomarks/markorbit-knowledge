@@ -56,11 +56,14 @@ describe("Source Coverage → Discovery intake", () => {
     });
     expect(env.discovery.listCandidates({ status: "DISCOVERED" }).total).toBe(1);
     expect(env.discovery.listBatches()).toHaveLength(1);
-    expect(env.discovery.listBatches()[0]).toMatchObject({ status: "COMPLETED", candidateCount: 1 });
+    expect(env.discovery.listBatches()[0]).toMatchObject({
+      status: "COMPLETED",
+      candidateCount: 1,
+    });
     expect(env.sources.list({ workspaceId, limit: 100 }).total).toBe(beforeSources);
-    expect(
-      env.database.prepare("SELECT COUNT(*) AS count FROM collection_plans").get(),
-    ).toEqual({ count: 0 });
+    expect(env.database.prepare("SELECT COUNT(*) AS count FROM collection_plans").get()).toEqual({
+      count: 0,
+    });
     expect(env.database.prepare("SELECT COUNT(*) AS count FROM collection_runs").get()).toEqual({
       count: 0,
     });

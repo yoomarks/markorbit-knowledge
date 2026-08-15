@@ -10,6 +10,7 @@ import {
   Globe2,
   Loader2,
   RefreshCw,
+  Send,
 } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
 
@@ -22,6 +23,7 @@ type CoverageTarget = {
   canonicalUri: string;
   state: "REGISTERED" | "UNREGISTERED";
   sources: Array<{ id: string; name: string; status: string }>;
+  discoveryCandidate?: { candidateId: string; status: string };
 };
 
 type CoverageItem = {
@@ -74,6 +76,7 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [queueingTargetId, setQueueingTargetId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -91,6 +94,36 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
       setLoading(false);
     }
   }, [workspaceId]);
+
+  const queueForDiscovery = useCallback(
+    async (targetId: string) => {
+      setQueueingTargetId(targetId);
+      try {
+        const response = await fetch(
+          `/api/source-coverage/${encodeURIComponent(targetId)}/discovery`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ workspaceId }),
+          },
+        );
+        if (!response.ok) throw new Error(await readError(response));
+        setError(null);
+        await refresh();
+      } catch (requestError) {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : zh
+              ? "无法送入 Discovery"
+              : "Unable to queue the coverage target",
+        );
+      } finally {
+        setQueueingTargetId(null);
+      }
+    },
+    [refresh, workspaceId, zh],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);
@@ -286,18 +319,46 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
                         </div>
                         <div className="mt-2 space-y-2">
                           {missing.map((target) => (
-                            <a
-                              key={target.id}
-                              href={target.canonicalUri}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="block rounded-lg bg-white px-3 py-2 text-xs hover:ring-1 hover:ring-slate-200"
-                            >
-                              <p className="font-medium text-slate-800">{target.displayName}</p>
-                              <p className="mt-1 text-slate-500">
-                                {target.family} · {target.coverageTier}
-                              </p>
-                            </a>
+                            <div key={target.id} className="rounded-lg bg-white px-3 py-2 text-xs">
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                  <a
+                                    href={target.canonicalUri}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="font-medium text-slate-800 hover:text-emerald-700 hover:underline"
+                                  >
+                                    {target.displayName}
+                                  </a>
+                                  <p className="mt-1 text-slate-500">
+                                    {target.family} · {target.coverageTier}
+                                  </p>
+                                </div>
+                                {target.discoveryCandidate ? (
+                                  <Link
+                                    href="/discovery"
+                                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 font-semibold text-emerald-700 hover:bg-emerald-100"
+                                  >
+                                    {zh ? "已在 Discovery" : "In Discovery"} ·{" "}
+                                    {target.discoveryCandidate.status}
+                                  </Link>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => void queueForDiscovery(target.id)}
+                                    disabled={queueingTargetId === target.id}
+                                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 px-2.5 py-1.5 font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {queueingTargetId === target.id ? (
+                                      <Loader2 size={13} className="animate-spin" />
+                                    ) : (
+                                      <Send size={13} />
+                                    )}
+                                    {zh ? "送入 Discovery" : "Send to Discovery"}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           ))}
                           {missing.length === 0 ? (
                             <p className="text-xs text-emerald-700">

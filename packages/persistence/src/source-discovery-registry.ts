@@ -113,6 +113,7 @@ export interface SourceDiscoveryRepository {
   getBatch(batchId: string): DiscoveryBatchRecord | null;
   listBatches(limit?: number): DiscoveryBatchRecord[];
   getCandidate(candidateId: string): SourceCandidateRecord | null;
+  getCandidateByLocator(locator: string): SourceCandidateRecord | null;
   listCandidates(filters?: SourceCandidateListFilters): SourceCandidateListResult;
   reviewCandidate(candidateId: string, input: ReviewCandidateInput): SourceCandidateRecord;
   reopenCandidate(candidateId: string, input?: ReopenCandidateInput): SourceCandidateRecord;
@@ -521,6 +522,14 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
     const row = this.database
       .prepare("SELECT * FROM source_candidates WHERE candidate_id = ?")
       .get(candidateId) as Record<string, unknown> | undefined;
+    return row ? parseCandidate(row) : null;
+  }
+
+  getCandidateByLocator(locator: string): SourceCandidateRecord | null {
+    const normalized = normalizeLocator(locator);
+    const row = this.database
+      .prepare("SELECT * FROM source_candidates WHERE locator = ?")
+      .get(normalized) as Record<string, unknown> | undefined;
     return row ? parseCandidate(row) : null;
   }
 

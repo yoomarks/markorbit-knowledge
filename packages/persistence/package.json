@@ -16,6 +16,7 @@
     "./source-assessment": "./src/source-assessment-registry.ts",
     "./source-graph": "./src/source-graph-registry.ts",
     "./source-coverage": "./src/source-coverage-catalog.ts",
+    "./source-coverage-discovery-intake": "./src/source-coverage-discovery-intake.ts",
     "./source-supply-health": "./src/source-supply-health.ts",
     "./operations-readiness": "./src/operations-readiness.ts",
     "./source-intelligence": "./src/source-intelligence-registry.ts",

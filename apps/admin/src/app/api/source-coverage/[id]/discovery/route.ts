@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import { queueSourceCoverageGapForDiscovery } from "@markorbit/persistence/source-coverage-discovery-intake";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
-import {
-  getSourceDiscoveryRepository,
-  getSourceRepository,
-} from "@/server/source-registry";
+import { getSourceDiscoveryRepository, getSourceRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -7,16 +7,10 @@ import type {
 } from "@markorbit/contracts";
 import type { SourceRepository } from "./index";
 import { RegistryConflictError, RegistryError } from "./index";
-import type {
-  SourceCandidateRecord,
-  SourceDiscoveryRepository,
-} from "./source-discovery-registry";
+import type { SourceCandidateRecord, SourceDiscoveryRepository } from "./source-discovery-registry";
 import { evaluateSourceCoverage, getSourceCoverageTarget } from "./source-coverage-catalog";
 
-export type CoverageDiscoveryIntakeState =
-  | "QUEUED"
-  | "ALREADY_IN_DISCOVERY"
-  | "ALREADY_COVERED";
+export type CoverageDiscoveryIntakeState = "QUEUED" | "ALREADY_IN_DISCOVERY" | "ALREADY_COVERED";
 
 export type CoverageDiscoveryIntakeResult = {
   workspaceId: string;
@@ -33,7 +27,10 @@ export type CoverageDiscoveryIntakeDependencies = {
   clock?: () => Date;
 };
 
-function listWorkspaceSources(repository: SourceRepository, workspaceId: string): SourceDefinition[] {
+function listWorkspaceSources(
+  repository: SourceRepository,
+  workspaceId: string,
+): SourceDefinition[] {
   const sources: SourceDefinition[] = [];
   let offset = 0;
   while (true) {
