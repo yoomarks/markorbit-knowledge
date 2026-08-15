@@ -28,6 +28,18 @@ export type AcquiredCollectionArtifact = {
   content: Uint8Array;
 };
 
+export type ArtifactContentIdentityCheck = {
+  artifactKind: ArtifactKind;
+  canonicalUri: string;
+  sha256: string;
+};
+
+export type ArtifactContentIdentityResult = {
+  unchanged: boolean;
+  latestArtifactId: string | null;
+  latestSha256: string | null;
+};
+
 export class CollectionAcquisitionError extends Error {
   constructor(
     public readonly code: string,
@@ -50,6 +62,10 @@ export interface ArtifactBackedExecutionClient {
     executor: ExecutionExecutor,
     idempotencyKey: string,
   ): Promise<ExecutionAttempt>;
+  checkArtifactContent?(
+    context: ArtifactBackedExecutionContext,
+    input: ArtifactContentIdentityCheck,
+  ): Promise<ArtifactContentIdentityResult>;
   uploading(context: ArtifactBackedExecutionContext, idempotencyKey: string): Promise<void>;
   createArtifactSession(
     context: ArtifactBackedExecutionContext,
@@ -110,6 +126,53 @@ function assertArtifactAllowed(job: Job, artifact: AcquiredCollectionArtifact): 
   }
 }
 
+function descriptorFor(artifact: AcquiredCollectionArtifact): ArtifactUploadDescriptor {
+  return {
+    artifactKind: artifact.artifactKind,
+    mimeType: artifact.mimeType,
+    originalName: artifact.originalName,
+    expectedSizeBytes: artifact.content.byteLength,
+    expectedSha256: digest(artifact.content),
+    sourceUri: artifact.sourceUri,
+    ...(artifact.canonicalUri ? { canonicalUri: artifact.canonicalUri } : {}),
+    ...(artifact.publishedAt ? { publishedAt: artifact.publishedAt } : {}),
+  };
+}
+
+async function selectChangedArtifacts(
+  context: ArtifactBackedExecutionContext,
+  acquired: AcquiredCollectionArtifact[],
+  client: ArtifactBackedExecutionClient,
+): Promise<{ changed: AcquiredCollectionArtifact[]; unchangedCount: number }> {
+  if (context.job.jobType !== "PAGE_UPDATE_CHECK" || !client.checkArtifactContent) {
+    return { changed: acquired, unchangedCount: 0 };
+  }
+
+  const changed: AcquiredCollectionArtifact[] = [];
+  let unchangedCount = 0;
+  for (const artifact of acquired) {
+    if (!artifact.canonicalUri) {
+      changed.push(artifact);
+      continue;
+    }
+    try {
+      const result = await client.checkArtifactContent(context, {
+        artifactKind: artifact.artifactKind,
+        canonicalUri: artifact.canonicalUri,
+        sha256: digest(artifact.content),
+      });
+      if (result.unchanged) unchangedCount += 1;
+      else changed.push(artifact);
+    } catch {
+      // Change detection is an optimization, never an evidence gate. If the
+      // control plane cannot compare identity, preserve the previous behavior
+      // and ingest the acquired bytes as a new immutable artifact version.
+      changed.push(artifact);
+    }
+  }
+  return { changed, unchangedCount };
+}
+
 /**
  * Executes an already-claimed Job behind the Worker lease boundary.
  *
@@ -147,22 +210,27 @@ export class ArtifactBackedCollectionExecutor {
         );
       }
       acquired.forEach((artifact) => assertArtifactAllowed(context.job, artifact));
+      const selection = await selectChangedArtifacts(context, acquired, this.client);
 
       await this.client.uploading(context, `${prefix}-uploading`);
+      if (selection.changed.length === 0) {
+        await this.client.verifying(context, `${prefix}-verifying`);
+        const receipt: ExecutionReceipt = {
+          executor: this.acquirer.executor,
+          outputKinds: [...new Set(acquired.map((artifact) => artifact.artifactKind))],
+          itemsObserved: acquired.length,
+          bytesPrepared: 0,
+          metadataOnly: true,
+          summary: `Change watch observed ${acquired.length} artifact(s); all content identities match the latest immutable RawArtifact versions.`,
+        };
+        await this.client.complete(context, receipt, `${prefix}-complete`);
+        return receipt;
+      }
+
       const receipts: ArtifactIngestionReceipt[] = [];
       let bytesPrepared = 0;
-
-      for (const [index, artifact] of acquired.entries()) {
-        const descriptor: ArtifactUploadDescriptor = {
-          artifactKind: artifact.artifactKind,
-          mimeType: artifact.mimeType,
-          originalName: artifact.originalName,
-          expectedSizeBytes: artifact.content.byteLength,
-          expectedSha256: digest(artifact.content),
-          sourceUri: artifact.sourceUri,
-          ...(artifact.canonicalUri ? { canonicalUri: artifact.canonicalUri } : {}),
-          ...(artifact.publishedAt ? { publishedAt: artifact.publishedAt } : {}),
-        };
+      for (const [index, artifact] of selection.changed.entries()) {
+        const descriptor = descriptorFor(artifact);
         const session = await this.client.createArtifactSession(
           context,
           descriptor,
@@ -176,12 +244,15 @@ export class ArtifactBackedCollectionExecutor {
       await this.client.verifying(context, `${prefix}-verifying`);
       const receipt: ExecutionReceipt = {
         executor: this.acquirer.executor,
-        outputKinds: [...new Set(acquired.map((artifact) => artifact.artifactKind))],
-        itemsObserved: acquired.length,
+        outputKinds: [...new Set(selection.changed.map((artifact) => artifact.artifactKind))],
+        itemsObserved: selection.changed.length,
         bytesPrepared,
         metadataOnly: false,
         artifactReceiptIds: receipts.map((item) => item.id),
-        summary: `Artifact-backed collection finalized ${receipts.length} immutable artifact receipt(s).`,
+        summary:
+          selection.unchangedCount > 0
+            ? `Artifact-backed change watch finalized ${receipts.length} changed immutable artifact receipt(s) and skipped ${selection.unchangedCount} unchanged artifact(s).`
+            : `Artifact-backed collection finalized ${receipts.length} immutable artifact receipt(s).`,
       };
       await this.client.complete(context, receipt, `${prefix}-complete`);
       return receipt;
