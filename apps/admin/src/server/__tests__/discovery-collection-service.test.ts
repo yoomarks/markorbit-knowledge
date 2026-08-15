@@ -103,9 +103,7 @@ describe("DiscoveryCollectionService", () => {
       actorType: "LOCAL_ADMIN",
       actorId: "operator-test",
     });
-    expect(authorized.run.trigger.idempotencyKey).toBe(
-      `discovery-initial-${planRecord.plan.id}`,
-    );
+    expect(authorized.run.trigger.idempotencyKey).toBe(`discovery-initial-${planRecord.plan.id}`);
     expect(authorized.jobs).toHaveLength(1);
     expect(authorized.jobs[0]?.status).toBe("PENDING");
     expect(authorized.replayed).toBe(false);
