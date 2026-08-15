@@ -14,11 +14,6 @@ type EvidenceMaturity = {
   currentWindowDays: number;
 };
 
-type CapabilityStatus = {
-  configured: boolean;
-  evidenceMaturity: EvidenceMaturity;
-};
-
 type SourceValue = {
   score: number;
   priority: "VERY_HIGH" | "HIGH" | "MEDIUM" | "LOW";
@@ -29,8 +24,22 @@ type SourceValue = {
   cautionPoints?: string[];
 };
 
+type CapabilityStatus = {
+  configured: boolean;
+  evidenceMaturity: EvidenceMaturity;
+  latest?: {
+    assessmentId: string;
+    assessedAt: string;
+    sourceValue: SourceValue;
+  } | null;
+};
+
 type AssessmentPayload = {
-  response?: { sourceValue: SourceValue };
+  assessmentId?: string;
+  response?: {
+    generatedAt: string;
+    sourceValue: SourceValue;
+  };
   evidenceMaturity?: EvidenceMaturity;
   error?: { message?: string };
 };
@@ -60,32 +69,31 @@ function priorityTone(value: SourceValue["priority"]): string {
 }
 
 function maturityLabel(stage: EvidenceMaturity["stage"], zh: boolean): string {
-  if (!zh) {
-    if (stage === "CURRENT_TRACEABLE") return "Current & traceable";
-    if (stage === "TRACEABLE") return "Traceable";
-    if (stage === "CAPTURED") return "Captured";
-    return "Unobserved";
-  }
-  if (stage === "CURRENT_TRACEABLE") return "当前可溯源";
-  if (stage === "TRACEABLE") return "可溯源";
-  if (stage === "CAPTURED") return "已采集";
-  return "尚未采集";
+  if (stage === "CURRENT_TRACEABLE") return zh ? "当前可溯源" : "Current & traceable";
+  if (stage === "TRACEABLE") return zh ? "可溯源" : "Traceable";
+  if (stage === "CAPTURED") return zh ? "已采集" : "Captured";
+  return zh ? "尚未采集" : "Unobserved";
 }
 
 function maturityDescription(stage: EvidenceMaturity["stage"], zh: boolean): string {
-  if (!zh) {
-    if (stage === "CURRENT_TRACEABLE")
-      return "Recent acquisition evidence is retained and traceable.";
-    if (stage === "TRACEABLE")
-      return "Acquisition evidence is retained with provenance, but is outside the current window.";
-    if (stage === "CAPTURED")
-      return "Raw material exists, but provenance linkage is not yet complete.";
-    return "No retained raw acquisition evidence is available yet.";
+  if (stage === "CURRENT_TRACEABLE") {
+    return zh
+      ? "近期采集资料与原始证据链都已保留，可以追溯到来源。"
+      : "Recent acquisition evidence is retained and traceable.";
   }
-  if (stage === "CURRENT_TRACEABLE") return "近期采集资料与原始证据链都已保留，可以追溯到来源。";
-  if (stage === "TRACEABLE") return "资料和来源证据链已保留，但最近一次采集已超出当前窗口。";
-  if (stage === "CAPTURED") return "已经保存原始资料，但来源证据链还没有完整建立。";
-  return "目前还没有保存该来源的原始采集证据。";
+  if (stage === "TRACEABLE") {
+    return zh
+      ? "资料和来源证据链已保留，但最近一次采集已超出当前窗口。"
+      : "Evidence is traceable, but the latest capture is outside the current window.";
+  }
+  if (stage === "CAPTURED") {
+    return zh
+      ? "已经保存原始资料，但来源证据链还没有完整建立。"
+      : "Raw material exists, but provenance linkage is not yet complete.";
+  }
+  return zh
+    ? "目前还没有保存该来源的原始采集证据。"
+    : "No retained raw acquisition evidence is available yet.";
 }
 
 export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
@@ -93,13 +101,17 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
   const zh = locale === "zh-CN";
   const [status, setStatus] = useState<CapabilityStatus | null>(null);
   const [sourceValue, setSourceValue] = useState<SourceValue | null>(null);
+  const [assessedAt, setAssessedAt] = useState<string | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [assessing, setAssessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    void fetch(`/api/sources/${sourceId}/assessment`, { cache: "no-store" })
+    const controller = new AbortController();
+    void fetch(`/api/sources/${sourceId}/assessment`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
       .then(async (response) => {
         if (!response.ok) {
           throw new Error(
@@ -112,22 +124,20 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
         return (await response.json()) as CapabilityStatus;
       })
       .then((payload) => {
-        if (!cancelled) {
-          setStatus(payload);
-          setError(null);
-        }
+        if (controller.signal.aborted) return;
+        setStatus(payload);
+        setSourceValue(payload.latest?.sourceValue ?? null);
+        setAssessedAt(payload.latest?.assessedAt ?? null);
+        setError(null);
       })
-      .catch((loadError) => {
-        if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Unable to load assessment");
-        }
+      .catch((loadError: unknown) => {
+        if (loadError instanceof DOMException && loadError.name === "AbortError") return;
+        setError(loadError instanceof Error ? loadError.message : "Unable to load assessment");
       })
       .finally(() => {
-        if (!cancelled) setLoadingStatus(false);
+        if (!controller.signal.aborted) setLoadingStatus(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [sourceId, zh]);
 
   async function assess() {
@@ -152,6 +162,7 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
         throw new Error(zh ? "共享能力没有返回有效评估" : "Capability returned no assessment");
       }
       setSourceValue(payload.response.sourceValue);
+      setAssessedAt(payload.response.generatedAt);
       if (payload.evidenceMaturity) {
         setStatus((current) =>
           current ? { ...current, evidenceMaturity: payload.evidenceMaturity! } : current,
@@ -186,8 +197,8 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
           </div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
             {zh
-              ? "来源价值由共享 Capability 辅助判断；证据成熟度只使用 Knowledge 已采集、可溯源和时间状态等客观事实。两者不会自动授权采集。"
-              : "Source value is advisory output from the shared Capability. Evidence maturity uses only objective acquisition and provenance facts held by Knowledge. Neither grants collection authority."}
+              ? "来源价值由共享 Capability 辅助判断并保留最近一次结果；证据成熟度只使用 Knowledge 的客观采集与溯源事实。"
+              : "Source value is advisory output from the shared Capability and the latest result is retained. Evidence maturity uses only objective Knowledge acquisition and provenance facts."}
           </p>
         </div>
         <button
@@ -214,8 +225,8 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
       {status?.configured === false ? (
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
           {zh
-            ? "共享 Capability 服务尚未配置，因此 Knowledge 不会在本地替代它做语义价值判断。证据状态仍可正常显示。"
-            : "The shared Capability service is not configured, so Knowledge will not substitute a local semantic value model. Evidence status remains available."}
+            ? "共享 Capability 尚未配置。Knowledge 不会在本地替代它做语义价值判断；历史评估和证据状态仍可读取。"
+            : "The shared Capability is not configured. Knowledge will not substitute a local semantic model; retained assessments and evidence status remain readable."}
         </div>
       ) : null}
 
@@ -237,7 +248,11 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
                   {zh ? "来源价值" : "Source value"}
                 </p>
                 <p className="text-[11px] text-slate-500">
-                  {zh ? "语义判断 · 来自共享能力" : "Semantic assessment · shared capability"}
+                  {assessedAt
+                    ? `${zh ? "最近评估" : "Last assessed"} · ${new Date(assessedAt).toLocaleString(locale)}`
+                    : zh
+                      ? "语义判断 · 来自共享能力"
+                      : "Semantic assessment · shared capability"}
                 </p>
               </div>
             </div>
@@ -269,17 +284,17 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
                   ))}
                 </div>
               ) : null}
-              <p className="mt-3 text-[11px] text-slate-500">
+              <p className="mt-3 text-[11px] leading-5 text-slate-500">
                 {zh
-                  ? `置信度：${sourceValue.confidence}。该结果用于排序和人工判断，不代表法律事实或专业质量认证。`
-                  : `Confidence: ${sourceValue.confidence}. This output supports prioritization and human review; it is not legal verification or professional certification.`}
+                  ? `置信度：${sourceValue.confidence}。保存的是共享能力的辅助判断，不代表法律事实、专业质量认证或采集授权。`
+                  : `Confidence: ${sourceValue.confidence}. The retained result is advisory and does not verify legal truth, professional quality, or collection authority.`}
               </p>
             </div>
           ) : (
             <p className="mt-4 text-xs leading-5 text-slate-500">
               {zh
-                ? "点击“评估来源价值”后，系统会把当前来源的公开信息和客观采集事实发送给共享 Capability。"
-                : "Run the assessment to send public source metadata and objective acquisition facts to the shared Capability."}
+                ? "尚无来源价值评估。运行后，最近一次共享 Capability 结果会被保留并显示在 Sources 列表。"
+                : "No source-value assessment is retained yet. The latest shared Capability result will be persisted and surfaced in the Sources list."}
             </p>
           )}
         </div>
@@ -317,40 +332,34 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
                 {maturityDescription(evidence.stage, zh)}
               </p>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                <div className="rounded-xl bg-white px-3 py-2.5 text-center shadow-sm">
-                  <p className="text-lg font-semibold text-slate-900">
-                    {evidence.rawArtifactCount}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-slate-500">
-                    {zh ? "原始资料" : "Raw items"}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-white px-3 py-2.5 text-center shadow-sm">
-                  <p className="text-lg font-semibold text-slate-900">
-                    {evidence.provenanceNodeCount}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-slate-500">
-                    {zh ? "可溯源节点" : "Provenance nodes"}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-white px-3 py-2.5 text-center shadow-sm">
-                  <p className="text-lg font-semibold text-slate-900">
-                    {evidence.ageDays === undefined ? "—" : Math.round(evidence.ageDays)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-slate-500">
-                    {zh ? "距最近采集/天" : "Days since capture"}
-                  </p>
-                </div>
+                <Metric value={evidence.rawArtifactCount} label={zh ? "原始资料" : "Raw items"} />
+                <Metric
+                  value={evidence.provenanceNodeCount}
+                  label={zh ? "可溯源节点" : "Provenance nodes"}
+                />
+                <Metric
+                  value={evidence.ageDays === undefined ? "—" : Math.round(evidence.ageDays)}
+                  label={zh ? "距最近采集/天" : "Days since capture"}
+                />
               </div>
               <p className="mt-3 text-[11px] leading-5 text-slate-500">
                 {zh
-                  ? `“当前”仅表示最近采集时间仍在 ${evidence.currentWindowDays} 天运行窗口内，不评价内容是否重要。`
-                  : `“Current” only means the latest capture is within the ${evidence.currentWindowDays}-day operating window; it does not judge content importance.`}
+                  ? `“当前”仅表示最近采集仍在 ${evidence.currentWindowDays} 天运行窗口内，不评价内容重要性。`
+                  : `“Current” only means the latest capture is within the ${evidence.currentWindowDays}-day operating window; it does not judge importance.`}
               </p>
             </div>
           ) : null}
         </div>
       </div>
     </section>
+  );
+}
+
+function Metric({ value, label }: { value: number | string; label: string }) {
+  return (
+    <div className="rounded-xl bg-white px-3 py-2.5 text-center shadow-sm">
+      <p className="text-lg font-semibold text-slate-900">{value}</p>
+      <p className="mt-0.5 text-[10px] text-slate-500">{label}</p>
+    </div>
   );
 }
