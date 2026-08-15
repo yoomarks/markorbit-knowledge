@@ -11,6 +11,7 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
+import { SOURCE_CATEGORIES, type SourceCategory } from "@markorbit/contracts";
 import { PageHeading } from "@/components/page-heading";
 import { useAdminI18n } from "@/lib/i18n";
 import { intakeT, type IntakeMessageKey, type IntakeMessageParams } from "@/lib/intake-i18n";
@@ -53,8 +54,31 @@ function normalizedLocators(value: string): string[] {
   return [...new Set(values)].slice(0, 100);
 }
 
+function categoryLabel(value: SourceCategory, zh: boolean): string {
+  if (!zh) {
+    return value
+      .toLowerCase()
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+  const labels: Partial<Record<SourceCategory, string>> = {
+    OFFICIAL_AUTHORITY: "官方机构",
+    OFFICIAL_GUIDANCE: "官方指南",
+    LAW_FIRM: "律所 / 代理机构",
+    NEWS: "新闻",
+    RESEARCH: "研究资料",
+    TECHNICAL: "技术资料",
+    INTERNAL: "内部资料",
+    USER_PROVIDED: "用户提供",
+    OTHER: "其他",
+  };
+  return labels[value] ?? value;
+}
+
 export function DiscoveryIntakeUi() {
   const { locale } = useAdminI18n();
+  const zh = locale === "zh-CN";
   const t = useCallback(
     (key: IntakeMessageKey, params?: IntakeMessageParams) => intakeT(locale, key, params),
     [locale],
@@ -63,6 +87,10 @@ export function DiscoveryIntakeUi() {
   const [locators, setLocators] = useState("https://www.uspto.gov/");
   const [maxDepth, setMaxDepth] = useState(1);
   const [maxCandidates, setMaxCandidates] = useState(100);
+  const [category, setCategory] = useState<SourceCategory>("OTHER");
+  const [jurisdictions, setJurisdictions] = useState("GLOBAL");
+  const [language, setLanguage] = useState("und");
+  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
@@ -98,53 +126,58 @@ export function DiscoveryIntakeUi() {
     setError(null);
     setMessage(null);
     setProgress({ completed: 0, total: inputs.length });
-    const failures: string[] = [];
-    let discovered = 0;
-
-    for (let index = 0; index < inputs.length; index += 1) {
-      const locator = inputs[index]!;
-      try {
-        const response = await fetch("/api/discovery", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            locator,
-            maxDepth,
-            maxCandidates,
-            deniedUrlPatterns: ["/login", "/signin", "/logout"],
-          }),
-        });
-        if (!response.ok) throw new Error(await readError(response));
-        const result = (await response.json()) as { candidates?: unknown[] };
-        discovered += result.candidates?.length ?? 0;
-      } catch (runError) {
-        failures.push(
-          `${locator}: ${runError instanceof Error ? runError.message : t("discoveryRunError")}`,
-        );
-      } finally {
-        setProgress({ completed: index + 1, total: inputs.length });
-      }
-    }
-
-    if (failures.length > 0) {
-      setError(
-        t("discoveryFailureSummary", {
-          completed: inputs.length - failures.length,
-          total: inputs.length,
-          failed: failures.length,
-          message: failures[0] ?? t("discoveryRunError"),
+    try {
+      const response = await fetch("/api/discovery/batch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          locators: inputs,
+          maxDepth,
+          maxCandidates,
+          deniedUrlPatterns: ["/login", "/signin", "/logout"],
+          intake: {
+            category,
+            jurisdictions: jurisdictions
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
+            languages: language
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
+            note,
+          },
         }),
-      );
-    } else {
+      });
+      if (!response.ok) throw new Error(await readError(response));
+      const result = (await response.json()) as {
+        summary: {
+          submitted: number;
+          uniqueOrigins: number;
+          started: number;
+          skippedDuplicateInput: number;
+          skippedExistingSource: number;
+          failed: number;
+          candidateCount: number;
+        };
+      };
+      setProgress({ completed: inputs.length, total: inputs.length });
       setMessage(
-        t("discoverySuccessSummary", {
-          sites: inputs.length,
-          candidates: discovered,
+        t("discoveryBatchSuccessSummary", {
+          submitted: result.summary.submitted,
+          started: result.summary.started,
+          duplicates: result.summary.skippedDuplicateInput,
+          existing: result.summary.skippedExistingSource,
+          failed: result.summary.failed,
+          candidates: result.summary.candidateCount,
         }),
       );
+      await refresh();
+    } catch (runError) {
+      setError(runError instanceof Error ? runError.message : t("discoveryRunError"));
+    } finally {
+      setRunning(false);
     }
-    await refresh();
-    setRunning(false);
   }
 
   function statusLabel(status: DiscoveryStatus): string {
@@ -214,6 +247,60 @@ export function DiscoveryIntakeUi() {
               />
             </div>
           </label>
+
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+            <div>
+              <p className="text-xs font-semibold text-slate-700">{t("intakeDefaultsTitle")}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                {t("intakeDefaultsDescription")}
+              </p>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <label className="text-xs font-medium text-slate-600">
+                {t("intakeCategory")}
+                <select
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value as SourceCategory)}
+                  className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                >
+                  {SOURCE_CATEGORIES.map((value) => (
+                    <option key={value} value={value}>
+                      {categoryLabel(value, zh)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs font-medium text-slate-600">
+                {t("jurisdictions")}
+                <input
+                  value={jurisdictions}
+                  onChange={(event) => setJurisdictions(event.target.value.toUpperCase())}
+                  placeholder={t("intakeJurisdictionPlaceholder")}
+                  className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                />
+              </label>
+              <label className="text-xs font-medium text-slate-600">
+                {t("language")}
+                <input
+                  value={language}
+                  onChange={(event) => setLanguage(event.target.value)}
+                  placeholder={t("intakeLanguagePlaceholder")}
+                  className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                />
+              </label>
+            </div>
+            <label className="mt-3 block text-xs font-medium text-slate-600">
+              {t("intakeNote")}
+              <input
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                maxLength={1000}
+                placeholder={t("intakeNotePlaceholder")}
+                className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+              />
+            </label>
+            <p className="mt-3 text-[11px] leading-5 text-slate-500">{t("originDedupHint")}</p>
+          </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="text-xs font-medium text-slate-600">

@@ -15,6 +15,18 @@ const zhCN = {
   addSitesTitle: "添加来源网站",
   addSitesDescription: "支持单个或批量输入；每行一个网址，单次最多 100 个网站。",
   websiteAddresses: "网站地址",
+  intakeDefaultsTitle: "批量来源默认信息",
+  intakeDefaultsDescription:
+    "这些信息会随候选进入来源审核；只有批准原始网站来源时才会写入 Source，外链发现的其他网站不会继承。",
+  intakeCategory: "来源分类",
+  intakeJurisdictionPlaceholder: "例如 US，多个用逗号分隔",
+  intakeLanguagePlaceholder: "例如 en，多个用逗号分隔",
+  intakeNote: "备注（可选）",
+  intakeNotePlaceholder: "例如：美国商标局官方资料入口",
+  originDedupHint:
+    "批量提交按网站 Origin 去重；已在 Sources 中存在的网站会自动跳过，不会重复创建来源。",
+  discoveryBatchSuccessSummary:
+    "已提交 {submitted} 个网址：启动 {started} 个网站，跳过 {duplicates} 个重复输入、{existing} 个已有来源，失败 {failed} 个，共发现 {candidates} 个候选。",
   discoveryDepth: "发现深度",
   depthHome: "仅主页",
   depthStandard: "标准 · 推荐",
@@ -145,6 +157,18 @@ const enUS: Record<keyof typeof zhCN, string> = {
   addSitesTitle: "Add source websites",
   addSitesDescription: "Paste one or more URLs, one per line, up to 100 websites per run.",
   websiteAddresses: "Website URLs",
+  intakeDefaultsTitle: "Batch source defaults",
+  intakeDefaultsDescription:
+    "These defaults travel with the review candidate and are written only when the original seeded website is approved. Externally discovered sites do not inherit them.",
+  intakeCategory: "Source category",
+  intakeJurisdictionPlaceholder: "Example: US; separate multiple values with commas",
+  intakeLanguagePlaceholder: "Example: en; separate multiple values with commas",
+  intakeNote: "Note (optional)",
+  intakeNotePlaceholder: "Example: official trademark office material entry point",
+  originDedupHint:
+    "Batch submission deduplicates by website origin. Websites already represented in Sources are skipped instead of creating duplicate sources.",
+  discoveryBatchSuccessSummary:
+    "Submitted {submitted} URLs: started {started} websites, skipped {duplicates} duplicate inputs and {existing} existing sources, {failed} failed, and found {candidates} candidates.",
   discoveryDepth: "Discovery depth",
   depthHome: "Homepage only",
   depthStandard: "Standard · Recommended",
