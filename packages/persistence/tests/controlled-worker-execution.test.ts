@@ -25,7 +25,10 @@ afterEach(() => {
   for (const path of temporaryPaths.splice(0)) rmSync(path, { force: true });
 });
 
-function createEnvironment(database = new DatabaseSync(":memory:")) {
+function createEnvironment(
+  database = new DatabaseSync(":memory:"),
+  retryPolicy = { maxAttempts: 3, backoffSeconds: 10 },
+) {
   let current = new Date("2026-07-16T08:00:00Z");
   const clock = () => new Date(current);
   const sources = new SqliteSourceRepository(database, clock);
@@ -79,7 +82,7 @@ function createEnvironment(database = new DatabaseSync(":memory:")) {
       respectRobots: true,
       rateLimitPerMinute: 10,
       timeoutSeconds: 30,
-      retry: { maxAttempts: 3, backoffSeconds: 10 },
+      retry: retryPolicy,
       locale: "en-US",
     },
     output: { artifactKinds: ["HTML", "MARKDOWN"] },
@@ -263,6 +266,75 @@ describe("controlled Worker execution", () => {
     expect(replay.replayed).toBe(true);
     expect(replay.attempt.failure?.occurredAt).toBe(first.attempt.failure?.occurredAt);
     expect(env.runs.getById(env.record.run.id)?.jobs).toHaveLength(1);
+    env.database.close();
+  });
+
+  it("schedules retryable failures with durable backoff before the next claim", () => {
+    const env = createEnvironment();
+    start(env);
+    const failed = env.executions.fail(
+      env.worker.view.worker.id,
+      env.worker.credential,
+      env.claim.lease!.id,
+      env.claim.leaseToken!,
+      {
+        idempotencyKey: "retryable-failure",
+        code: "UPSTREAM_TEMPORARY_FAILURE",
+        message: "The upstream source is temporarily unavailable.",
+        retryable: true,
+      },
+    );
+
+    expect(failed.attempt.status).toBe("FAILED");
+    const waiting = env.runs.getById(env.record.run.id);
+    expect(waiting?.run.status).toBe("PENDING");
+    expect(waiting?.jobs.map((job) => [job.attempt, job.status])).toEqual([
+      [1, "RETRY"],
+      [2, "PENDING"],
+    ]);
+    expect(waiting?.jobs[1]?.availableAt).toBe("2026-07-16T08:00:10.000Z");
+    expect(env.workers.listLeases({ status: "RELEASED" }).items[0]?.closeReason).toBe(
+      "EXECUTION_RETRY_SCHEDULED",
+    );
+
+    expect(env.workers.claim(env.worker.view.worker.id, env.worker.credential).job).toBeNull();
+    env.advance(9_999);
+    expect(env.workers.claim(env.worker.view.worker.id, env.worker.credential).job).toBeNull();
+    env.advance(1);
+    const retryClaim = env.workers.claim(env.worker.view.worker.id, env.worker.credential);
+    expect(retryClaim.job?.attempt).toBe(2);
+    expect(retryClaim.job?.status).toBe("LEASED");
+
+    env.database.close();
+  });
+
+  it("dead-letters retryable failures after maxAttempts instead of looping forever", () => {
+    const env = createEnvironment(new DatabaseSync(":memory:"), {
+      maxAttempts: 1,
+      backoffSeconds: 10,
+    });
+    start(env);
+    env.executions.fail(
+      env.worker.view.worker.id,
+      env.worker.credential,
+      env.claim.lease!.id,
+      env.claim.leaseToken!,
+      {
+        idempotencyKey: "retry-exhausted",
+        code: "UPSTREAM_TEMPORARY_FAILURE",
+        message: "The upstream source remains unavailable.",
+        retryable: true,
+      },
+    );
+
+    const exhausted = env.runs.getById(env.record.run.id);
+    expect(exhausted?.run.status).toBe("FAILED");
+    expect(exhausted?.jobs).toHaveLength(1);
+    expect(exhausted?.jobs[0]?.status).toBe("DEAD_LETTER");
+    expect(env.workers.listLeases({ status: "RELEASED" }).items[0]?.closeReason).toBe(
+      "EXECUTION_RETRY_EXHAUSTED",
+    );
+
     env.database.close();
   });
 

@@ -25,6 +25,7 @@ import {
   type JobStatus,
 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryError, RegistryValidationError } from "./index";
+import { generateJobId } from "./execution-ledger";
 import {
   SqliteWorkerRegistryRepository,
   ensureWorkerRegistry,
@@ -314,6 +315,7 @@ export class SqliteWorkerExecutionRepository implements WorkerExecutionRepositor
     private readonly clock: () => Date = () => new Date(),
     private readonly attemptIdFactory: () => string = () => generateExecutionAttemptId(),
     private readonly eventIdFactory: () => string = () => generateExecutionEventId(),
+    private readonly jobIdFactory: () => string = () => generateJobId(),
   ) {
     ensureWorkerExecutionRegistry(database);
     this.workers = new SqliteWorkerRegistryRepository(database, clock);
@@ -723,14 +725,24 @@ export class SqliteWorkerExecutionRepository implements WorkerExecutionRepositor
       );
       this.updateAttempt(nextAttempt);
       this.insertEvent(event);
-      this.updateJob(job, target, now);
-      this.updateRun(run, target, now);
-      this.closeLease(
-        lease,
-        "RELEASED",
-        completing ? "EXECUTION_COMPLETED" : "EXECUTION_FAILED",
-        now,
-      );
+      let leaseReason = completing ? "EXECUTION_COMPLETED" : "EXECUTION_FAILED";
+      if (completing) {
+        this.updateJob(job, "COMPLETED", now);
+        this.updateRun(run, "COMPLETED", now);
+      } else if (terminal.failure.retryable && job.attempt < job.maxAttempts) {
+        this.updateJob(job, "RETRY", now);
+        this.insertRetryJob(job, now);
+        this.updateRun(run, "PENDING", now);
+        leaseReason = "EXECUTION_RETRY_SCHEDULED";
+      } else if (terminal.failure.retryable) {
+        this.updateJob(job, "DEAD_LETTER", now);
+        this.updateRun(run, "FAILED", now);
+        leaseReason = "EXECUTION_RETRY_EXHAUSTED";
+      } else {
+        this.updateJob(job, "FAILED", now);
+        this.updateRun(run, "FAILED", now);
+      }
+      this.closeLease(lease, "RELEASED", leaseReason, now);
       const result: ExecutionTransitionResult = {
         attempt: nextAttempt,
         event,
@@ -1012,6 +1024,46 @@ export class SqliteWorkerExecutionRepository implements WorkerExecutionRepositor
         JSON.stringify(event),
         event.recordedAt,
       );
+  }
+
+  private insertRetryJob(job: Job, timestamp: string): Job {
+    const backoffMs = job.planSnapshot.policy.retry.backoffSeconds * 1_000;
+    const retryJob: Job = {
+      ...clone(job),
+      id: this.jobIdFactory(),
+      status: "PENDING",
+      attempt: job.attempt + 1,
+      availableAt: new Date(Date.parse(timestamp) + backoffMs).toISOString(),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    if (!isJob(retryJob)) {
+      throw new RegistryValidationError("Retry Job does not satisfy Execution Contract v1");
+    }
+    this.database
+      .prepare(
+        `INSERT INTO jobs (
+           id, run_id, workspace_id, source_id, plan_id, connector_id, connector_version,
+           job_type, status, attempt, available_at, document_json, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        retryJob.id,
+        retryJob.runId,
+        retryJob.workspaceId,
+        retryJob.sourceId,
+        retryJob.planId,
+        retryJob.connector.connectorId,
+        retryJob.connector.version,
+        retryJob.jobType,
+        retryJob.status,
+        retryJob.attempt,
+        retryJob.availableAt,
+        JSON.stringify(retryJob),
+        retryJob.createdAt,
+        retryJob.updatedAt,
+      );
+    return retryJob;
   }
 
   private updateJob(job: Job, status: JobStatus, timestamp: string): void {
