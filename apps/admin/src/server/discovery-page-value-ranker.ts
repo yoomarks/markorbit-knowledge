@@ -14,6 +14,7 @@ import { getRegistryDatabase } from "./source-registry";
 
 const DEFAULT_OBJECTIVE =
   "Identify and rank the pages that are most useful as durable evidence or reference material for the current knowledge acquisition task. Explain the page title, concise summary, page type, and concrete value points. Do not make legal conclusions or claim authority that is not present in the supplied evidence.";
+// Keep semantic screening bounded independently from the review-queue limit.
 const MAX_SCREEN_CANDIDATES = 500;
 const MAX_RANKED_RESULTS = 100;
 
