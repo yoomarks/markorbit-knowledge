@@ -1,0 +1,225 @@
+name: Temporary Discovery Review Identity Patch
+
+on:
+  push:
+    branches: [codex/discovery-review-website-identity-v1]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/discovery-review-website-identity-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply review identity hardening
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}")
+              file.write_text(text.replace(old, new, 1))
+
+          service = "apps/admin/src/server/discovery-service.ts"
+          replace_once(
+              service,
+              '''function sourceWebsiteIdentities(source: SourceDefinition): string[] {
+            const values = [
+              source.canonicalUri,
+              ...source.entrypoints.map((entrypoint) => entrypoint.uri),
+            ].filter((value): value is string => Boolean(value));
+            const identities: string[] = [];
+            for (const value of values) {
+              try {
+                identities.push(websiteIdentity(value));
+              } catch {
+                // Non-HTTP entrypoints cannot represent a website identity.
+              }
+            }
+            return [...new Set(identities)];
+          }
+          ''',
+              '''function sourceWebsiteIdentities(source: SourceDefinition): string[] {
+            const values = [
+              source.canonicalUri,
+              ...source.entrypoints.map((entrypoint) => entrypoint.uri),
+            ].filter((value): value is string => Boolean(value));
+            const identities: string[] = [];
+            for (const value of values) {
+              try {
+                identities.push(websiteIdentity(value));
+              } catch {
+                // Non-HTTP entrypoints cannot represent a website identity.
+              }
+            }
+            return [...new Set(identities)];
+          }
+
+          function findWebsiteSourceByIdentity(
+            sources: SourceRepository,
+            identity: string,
+          ): SourceDefinition | null {
+            let offset = 0;
+            while (true) {
+              const page = sources.list({ sourceType: "WEB", limit: 100, offset });
+              for (const source of page.items) {
+                if (source.status === "ARCHIVED") continue;
+                if (sourceWebsiteIdentities(source).includes(identity)) return source;
+              }
+              offset += page.items.length;
+              if (page.items.length === 0 || offset >= page.total) return null;
+            }
+          }
+          ''',
+          )
+
+          replace_once(
+              service,
+              '''    const seedOrigin = websiteOrigin(seed.locator);
+            const candidateOrigin = websiteOrigin(current.candidate.locator);
+            const isExternalCandidate = candidateOrigin !== seedOrigin;
+            const seedProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
+              DEFAULT_WORKSPACE.id,
+              seedOrigin,
+            );
+            const targetProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
+              DEFAULT_WORKSPACE.id,
+              candidateOrigin,
+            );
+          ''',
+              '''    const seedOrigin = websiteOrigin(seed.locator);
+            const candidateOrigin = websiteOrigin(current.candidate.locator);
+            const seedIdentity = websiteIdentity(seed.locator);
+            const candidateIdentity = websiteIdentity(current.candidate.locator);
+            const isExternalCandidate = candidateIdentity !== seedIdentity;
+            const seedProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
+              DEFAULT_WORKSPACE.id,
+              seedOrigin,
+            );
+            const targetOrigin = isExternalCandidate ? candidateOrigin : seedOrigin;
+            const exactTargetProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
+              DEFAULT_WORKSPACE.id,
+              targetOrigin,
+            );
+            const identitySource = findWebsiteSourceByIdentity(
+              this.dependencies.sources,
+              candidateIdentity,
+            );
+            const identityProfile = identitySource
+              ? this.dependencies.graph.getProfileBySourceId(identitySource.id)
+              : null;
+            const targetProfile =
+              exactTargetProfile ?? identityProfile ?? (!isExternalCandidate ? seedProfile : null);
+          ''',
+          )
+
+          replace_once(
+              service,
+              '''      if (profile) {
+                const existingSource = this.dependencies.sources.getById(profile.sourceId);
+                if (!existingSource) {
+                  throw new RegistryConflictError(
+                    "DISCOVERY_GRAPH_SOURCE_MISSING",
+                    `WebsiteSourceProfile ${profile.id} points to missing source ${profile.sourceId}`,
+                  );
+                }
+                const planRecord = existingSource.defaultCollectionPlanId
+                  ? this.dependencies.plans.getById(existingSource.defaultCollectionPlanId)
+                  : null;
+                if (!planRecord) {
+                  throw new RegistryConflictError(
+                    "DISCOVERY_GRAPH_PLAN_MISSING",
+                    `Website source ${existingSource.id} has no default collection plan`,
+                  );
+                }
+                source = existingSource;
+                plan = planRecord.plan;
+              } else {
+          ''',
+              '''      const existingSource = profile
+                ? this.dependencies.sources.getById(profile.sourceId)
+                : identitySource;
+              if (profile && !existingSource) {
+                throw new RegistryConflictError(
+                  "DISCOVERY_GRAPH_SOURCE_MISSING",
+                  `WebsiteSourceProfile ${profile.id} points to missing source ${profile.sourceId}`,
+                );
+              }
+
+              if (existingSource) {
+                if (!profile) {
+                  profile = ensureWebsiteSourceProfile(
+                    this.dependencies.graph,
+                    existingSource,
+                    sourceExpansionLocator(existingSource),
+                    targetObservedAt,
+                    batchRecord.batch.batchId,
+                  );
+                }
+                const planRecord = existingSource.defaultCollectionPlanId
+                  ? this.dependencies.plans.getById(existingSource.defaultCollectionPlanId)
+                  : null;
+                if (!planRecord) {
+                  throw new RegistryConflictError(
+                    "DISCOVERY_GRAPH_PLAN_MISSING",
+                    `Website source ${existingSource.id} has no default collection plan`,
+                  );
+                }
+                source = existingSource;
+                plan = planRecord.plan;
+              } else {
+          ''',
+          )
+
+          replace_once(service, '          canonicalUri: candidateOrigin,\n', '          canonicalUri: targetOrigin,\n')
+
+          replace_once(
+              service,
+              '''          .items.map((item) => item.candidate)
+                  .filter((item) => belongsToOrigin(item.locator, candidateOrigin));
+          ''',
+              '''          .items.map((item) => item.candidate)
+                  .filter((item) => websiteIdentity(item.locator) === candidateIdentity);
+          ''',
+          )
+
+          test = "apps/admin/src/server/__tests__/discovery-service.test.ts"
+          replace_once(
+              test,
+              '              locator: "https://example.com/guides/fees.pdf",\n',
+              '              locator: "https://www.example.com/guides/fees.pdf",\n',
+          )
+          replace_once(
+              test,
+              '      ? graph.findNodeByIdentity(profile.id, "CANONICAL_URI", "https://example.com/guides/fees.pdf")\n',
+              '      ? graph.findNodeByIdentity(profile.id, "CANONICAL_URI", "https://www.example.com/guides/fees.pdf")\n',
+          )
+          replace_once(
+              test,
+              '              locator: "https://peer.example/blog",\n',
+              '              locator: "https://www.peer.example/blog",\n',
+          )
+          PY
+          pnpm exec prettier --write apps/admin/src/server/discovery-service.ts apps/admin/src/server/__tests__/discovery-service.test.ts
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/admin/src/server/discovery-service.ts apps/admin/src/server/__tests__/discovery-service.test.ts
+          git commit -m "fix(discovery): reuse sources across website aliases"
+          git push origin HEAD:codex/discovery-review-website-identity-v1
