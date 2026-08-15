@@ -7,6 +7,7 @@ import { SqliteSourceDiscoveryRepository } from "@markorbit/persistence/source-d
 import { SqliteSourceGraphRepository } from "@markorbit/persistence/source-graph";
 import { DiscoveryWorkflowService } from "../discovery-service";
 
+// Batch intake defaults belong only to the operator-seeded website origin.
 function candidateIdFor(locator: string, suffix: string): string {
   const token = new URL(locator).hostname.includes("other") ? "b" : suffix;
   return `cand_${token.repeat(24)}`;
