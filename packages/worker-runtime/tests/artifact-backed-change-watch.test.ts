@@ -103,7 +103,7 @@ describe("ArtifactBackedCollectionExecutor change-watch incrementality", () => {
       bytesPrepared: 0,
       metadataOnly: true,
     });
-    expect(receipt?.artifactReceiptIds).toBeUndefined();
+    expect(receipt).not.toHaveProperty("artifactReceiptIds");
     expect(fixture.created).toEqual([]);
     expect(fixture.uploaded).toEqual([]);
     expect(fixture.finalized).toEqual([]);
