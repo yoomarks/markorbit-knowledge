@@ -120,7 +120,11 @@ export async function POST(request: Request) {
           succeeded: ids.length - failed,
           failed,
           collectionStarted: items.filter(
-            (item) => item.status === "ACCEPTED" && "runId" in item && Boolean(item.runId),
+            (item) =>
+              item.status === "ACCEPTED" &&
+              "runId" in item &&
+              Boolean(item.runId) &&
+              item.replayed !== true,
           ).length,
         },
       },
