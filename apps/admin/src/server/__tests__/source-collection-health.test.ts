@@ -198,11 +198,7 @@ describe("source collection health", () => {
         "2026-08-15T11:00:09.000Z",
       );
 
-      const health = listSourceCollectionHealth(database, [
-        "src_retry",
-        "src_failed",
-        "src_never",
-      ]);
+      const health = listSourceCollectionHealth(database, ["src_retry", "src_failed", "src_never"]);
 
       expect(health.src_retry).toMatchObject({
         state: "RETRYING",
