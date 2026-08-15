@@ -50,7 +50,17 @@ type ZipEntry = {
   localHeaderOffset: number;
 };
 
-const URL_HEADERS = ["url", "locator", "website", "websiteurl", "sourceurl", "source", "网址", "网站", "网站地址"];
+const URL_HEADERS = [
+  "url",
+  "locator",
+  "website",
+  "websiteurl",
+  "sourceurl",
+  "source",
+  "网址",
+  "网站",
+  "网站地址",
+];
 const CATEGORY_HEADERS = ["category", "sourcecategory", "type", "来源分类", "分类"];
 const AUTHORITY_HEADERS = ["authority", "authoritylevel", "sourceauthority", "权威等级", "权威"];
 const JURISDICTION_HEADERS = [
@@ -68,11 +78,16 @@ const NOTE_HEADERS = ["note", "notes", "remark", "remarks", "备注"];
 const TAG_HEADERS = ["tag", "tags", "标签"];
 
 function cleanCell(value: string): string {
-  return value.replace(/^\uFEFF/, "").trim().slice(0, MAX_CELL_LENGTH);
+  return value
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .slice(0, MAX_CELL_LENGTH);
 }
 
 function normalizedHeader(value: string): string {
-  return cleanCell(value).toLowerCase().replace(/[\s_\-/.]+/g, "");
+  return cleanCell(value)
+    .toLowerCase()
+    .replace(/[\s_\-/.]+/g, "");
 }
 
 function headerIndex(headers: string[], aliases: string[]): number {
@@ -130,7 +145,8 @@ function parseCategory(value: string): { value?: SourceCategory; issue?: string 
   const token = normalizedEnumToken(cell);
   const mapped = aliases[token] ?? aliases[cell];
   if (mapped && SOURCE_CATEGORIES.includes(mapped)) return { value: mapped };
-  if (SOURCE_CATEGORIES.includes(token as SourceCategory)) return { value: token as SourceCategory };
+  if (SOURCE_CATEGORIES.includes(token as SourceCategory))
+    return { value: token as SourceCategory };
   return { issue: `Unknown source category: ${cell}` };
 }
 
@@ -244,7 +260,10 @@ function parseDelimited(text: string, delimiter: string): string[][] {
   return rows;
 }
 
-function chooseDelimiter(text: string, fileName: string): { delimiter: string; format: "CSV" | "TSV" } {
+function chooseDelimiter(
+  text: string,
+  fileName: string,
+): { delimiter: string; format: "CSV" | "TSV" } {
   if (fileName.toLowerCase().endsWith(".tsv")) return { delimiter: "\t", format: "TSV" };
   const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
   const candidates = [",", "\t", ";"];
@@ -319,19 +338,27 @@ function readZipEntry(buffer: Buffer, entry: ZipEntry): Buffer {
   let content: Buffer;
   if (entry.compressionMethod === 0) content = Buffer.from(compressed);
   else if (entry.compressionMethod === 8) content = inflateRawSync(compressed);
-  else throw new RegistryValidationError(`Unsupported XLSX compression method: ${entry.compressionMethod}`);
+  else
+    throw new RegistryValidationError(
+      `Unsupported XLSX compression method: ${entry.compressionMethod}`,
+    );
   if (entry.uncompressedSize > 0 && content.length !== entry.uncompressedSize) {
     throw new RegistryValidationError("Invalid XLSX: ZIP entry size mismatch");
   }
   return content;
 }
 
-function firstWorksheetPath(entries: Map<string, ZipEntry>, buffer: Buffer): { path: string; sheetName?: string } {
+function firstWorksheetPath(
+  entries: Map<string, ZipEntry>,
+  buffer: Buffer,
+): { path: string; sheetName?: string } {
   const workbookEntry = entries.get("xl/workbook.xml");
   const relsEntry = entries.get("xl/_rels/workbook.xml.rels");
   if (workbookEntry && relsEntry) {
     const workbook = readZipEntry(buffer, workbookEntry).toString("utf8");
-    const sheet = /<sheet\b[^>]*name="([^"]*)"[^>]*(?:r:id|id)="([^"]+)"[^>]*\/?\s*>/i.exec(workbook);
+    const sheet = /<sheet\b[^>]*name="([^"]*)"[^>]*(?:r:id|id)="([^"]+)"[^>]*\/?\s*>/i.exec(
+      workbook,
+    );
     if (sheet) {
       const relationships = readZipEntry(buffer, relsEntry).toString("utf8");
       const relationPattern = /<Relationship\b([^>]*)\/?\s*>/gi;
@@ -416,7 +443,8 @@ function parseXlsx(buffer: Buffer): Table {
   const entries = zipDirectory(buffer);
   const worksheet = firstWorksheetPath(entries, buffer);
   const entry = entries.get(worksheet.path);
-  if (!entry) throw new RegistryValidationError(`Invalid XLSX: worksheet ${worksheet.path} not found`);
+  if (!entry)
+    throw new RegistryValidationError(`Invalid XLSX: worksheet ${worksheet.path} not found`);
   const strings = sharedStrings(entries, buffer);
   const xml = readZipEntry(buffer, entry).toString("utf8");
   return { format: "XLSX", sheetName: worksheet.sheetName, rows: worksheetRows(xml, strings) };

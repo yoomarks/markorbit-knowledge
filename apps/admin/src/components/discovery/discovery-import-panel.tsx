@@ -177,7 +177,8 @@ export function DiscoveryImportPanel() {
         selected: "Selected",
         import: "Import and start discovery",
         importing: "Starting discovery…",
-        limit: "Select at most 100 distinct website origins per run. Invalid and duplicate rows are never collected.",
+        limit:
+          "Select at most 100 distinct website origins per run. Invalid and duplicate rows are never collected.",
         reset: "Clear",
         selectFirst: "Select first 100 valid websites",
         success: "Batch import completed",
@@ -209,10 +210,7 @@ export function DiscoveryImportPanel() {
       const response = await fetch("/api/discovery/import-preview", { method: "POST", body: form });
       if (!response.ok) {
         throw new Error(
-          await responseMessage(
-            response,
-            zh ? "无法解析导入文件" : "Unable to parse import file",
-          ),
+          await responseMessage(response, zh ? "无法解析导入文件" : "Unable to parse import file"),
         );
       }
       const next = (await response.json()) as ImportPreview;
@@ -233,9 +231,7 @@ export function DiscoveryImportPanel() {
   function updateRow(rowNumber: number, update: Partial<ImportRow["intake"]>) {
     setRows((current) =>
       current.map((row) =>
-        row.rowNumber === rowNumber
-          ? { ...row, intake: { ...row.intake, ...update } }
-          : row,
+        row.rowNumber === rowNumber ? { ...row, intake: { ...row.intake, ...update } } : row,
       ),
     );
   }
@@ -394,7 +390,10 @@ export function DiscoveryImportPanel() {
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {rows.slice(0, 150).map((row) => (
-                  <tr key={row.rowNumber} className={row.status === "VALID" ? "" : "bg-slate-50/70"}>
+                  <tr
+                    key={row.rowNumber}
+                    className={row.status === "VALID" ? "" : "bg-slate-50/70"}
+                  >
                     <td className="px-3 py-3 align-top">
                       <input
                         type="checkbox"
@@ -418,7 +417,9 @@ export function DiscoveryImportPanel() {
                         value={row.intake.category ?? "OTHER"}
                         disabled={row.status !== "VALID"}
                         onChange={(event) =>
-                          updateRow(row.rowNumber, { category: event.target.value as SourceCategory })
+                          updateRow(row.rowNumber, {
+                            category: event.target.value as SourceCategory,
+                          })
                         }
                         className="w-40 rounded-lg border border-slate-200 bg-white px-2 py-2"
                       >
