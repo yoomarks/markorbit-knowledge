@@ -30,6 +30,7 @@ from attachments import (
 )
 
 PROTOCOL_VERSION = "1.0"
+MAX_START_URLS = 500
 SUPPORTED_OUTPUT_KINDS = {"HTML", "MARKDOWN"} | set(SUPPORTED_ATTACHMENT_KINDS)
 
 
@@ -82,8 +83,11 @@ def _parse_request(payload: Any) -> dict[str, Any]:
         raise SafetyError("INVALID_REQUEST", "outputDirectory must already exist")
 
     start_urls = payload.get("startUrls")
-    if not isinstance(start_urls, list) or not start_urls or len(start_urls) > 50:
-        raise SafetyError("INVALID_REQUEST", "startUrls must contain between 1 and 50 URLs")
+    if not isinstance(start_urls, list) or not start_urls or len(start_urls) > MAX_START_URLS:
+        raise SafetyError(
+            "INVALID_REQUEST",
+            f"startUrls must contain between 1 and {MAX_START_URLS} URLs",
+        )
     normalized_start_urls = [normalize_http_url(item) for item in start_urls]
 
     output_kinds = payload.get("outputKinds")
