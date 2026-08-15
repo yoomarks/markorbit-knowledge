@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,15 +24,6 @@ jobs:
 
           path = Path('apps/admin/src/server/discovery-service.ts')
           text = path.read_text()
-
-          old = '''import {
-  ensureWebsiteSourceProfile,
-  reopenCandidateGraphNode,'''
-          new = '''import {
-  ensureWebsiteSourceProfile,
-  reopenCandidateGraphNode,'''
-          if old not in text:
-              raise SystemExit('discovery source graph import anchor missing')
 
           anchor = '''} from "./discovery-source-graph";
           import {
