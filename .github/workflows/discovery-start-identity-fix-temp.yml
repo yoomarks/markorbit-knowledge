@@ -1,0 +1,65 @@
+name: Temporary Discovery Start Identity Fix
+
+on:
+  push:
+    branches: [codex/discovery-start-website-identity-v1]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/discovery-start-website-identity-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Finish start identity wiring
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("apps/admin/src/server/discovery-service.ts")
+          s = p.read_text()
+          old = '''      const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
+                DEFAULT_WORKSPACE.id,
+                seedOrigin,
+              );'''
+          new = '''      const exactProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
+                DEFAULT_WORKSPACE.id,
+                seedOrigin,
+              );
+              const identitySource = exactProfile
+                ? null
+                : findWebsiteSourceByIdentity(this.dependencies.sources, seedIdentity);
+              const profile =
+                exactProfile ??
+                (identitySource
+                  ? this.dependencies.graph.getProfileBySourceId(identitySource.id)
+                  : null);'''
+          s = s.replace(old, new, 1)
+          old = '''          const graphCandidates = candidates.filter((candidate) =>
+                    belongsToOrigin(candidate.locator, seedOrigin),
+                  );'''
+          new = '''          const graphCandidates = candidates.filter(
+                    (candidate) => websiteIdentity(candidate.locator) === seedIdentity,
+                  );'''
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+          pnpm exec prettier --write apps/admin/src/server/discovery-service.ts
+          ! grep -q "belongsToOrigin" apps/admin/src/server/discovery-service.ts
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/admin/src/server/discovery-service.ts
+          git commit -m "fix(discovery): resolve existing graphs by website identity"
+          git push origin HEAD:codex/discovery-start-website-identity-v1
