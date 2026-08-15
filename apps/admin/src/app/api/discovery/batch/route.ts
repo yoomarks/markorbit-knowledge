@@ -11,6 +11,7 @@ import {
   getDiscoveryWorkflowService,
   type DiscoveryIntakeDefaults,
 } from "@/server/discovery-service";
+import { websiteIdentity } from "@/server/discovery-source-graph";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,11 +92,9 @@ function importEntries(value: unknown): ImportEntry[] | undefined {
   });
 }
 
-function normalizedOrigin(locator: string): string | null {
+function normalizedWebsiteIdentity(locator: string): string | null {
   try {
-    const url = new URL(locator.trim());
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    return url.origin.toLowerCase();
+    return websiteIdentity(locator.trim());
   } catch {
     return null;
   }
@@ -121,16 +120,16 @@ async function runPerRowImport(input: {
   deniedUrlPatterns?: string[];
 }) {
   const groups = new Map<string, { intake?: DiscoveryIntakeDefaults; locators: string[] }>();
-  const seenOrigins = new Set<string>();
+  const seenWebsiteIdentities = new Set<string>();
   let skippedDuplicateInput = 0;
 
   for (const entry of input.entries) {
-    const origin = normalizedOrigin(entry.locator);
-    if (origin && seenOrigins.has(origin)) {
+    const identity = normalizedWebsiteIdentity(entry.locator);
+    if (identity && seenWebsiteIdentities.has(identity)) {
       skippedDuplicateInput += 1;
       continue;
     }
-    if (origin) seenOrigins.add(origin);
+    if (identity) seenWebsiteIdentities.add(identity);
     const key = groupKey(entry.intake);
     const group = groups.get(key) ?? { intake: entry.intake, locators: [] };
     group.locators.push(entry.locator);
@@ -139,7 +138,7 @@ async function runPerRowImport(input: {
 
   const summary = {
     submitted: input.entries.length,
-    uniqueOrigins: seenOrigins.size,
+    uniqueOrigins: seenWebsiteIdentities.size,
     started: 0,
     skippedDuplicateInput,
     skippedExistingSource: 0,

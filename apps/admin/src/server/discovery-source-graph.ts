@@ -23,6 +23,18 @@ export function websiteOrigin(locator: string): string {
   return `${url.origin}/`;
 }
 
+export function websiteIdentity(locator: string): string {
+  const url = new URL(locator);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new RegistryValidationError("Website identity requires an http or https locator");
+  }
+  const hostname = url.hostname.toLowerCase();
+  const canonicalHostname =
+    hostname.startsWith("www.") && hostname.length > 4 ? hostname.slice(4) : hostname;
+  const port = url.port ? `:${url.port}` : "";
+  return `${url.protocol}//${canonicalHostname}${port}`;
+}
+
 function canonicalCandidateUri(locator: string): string {
   const url = new URL(locator);
   url.hash = "";

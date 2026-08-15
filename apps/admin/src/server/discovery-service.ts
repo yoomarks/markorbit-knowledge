@@ -31,6 +31,7 @@ import {
   ensureWebsiteSourceProfile,
   reopenCandidateGraphNode,
   reviewCandidateGraphNode,
+  websiteIdentity,
   websiteOrigin,
   writeDiscoveryBatchToSourceGraph,
   writeExternalDiscoveryLinkToSourceGraph,
@@ -250,20 +251,20 @@ function candidateIntakeDefaults(
   });
 }
 
-function sourceWebsiteOrigins(source: SourceDefinition): string[] {
+function sourceWebsiteIdentities(source: SourceDefinition): string[] {
   const values = [
     source.canonicalUri,
     ...source.entrypoints.map((entrypoint) => entrypoint.uri),
   ].filter((value): value is string => Boolean(value));
-  const origins: string[] = [];
+  const identities: string[] = [];
   for (const value of values) {
     try {
-      origins.push(websiteOrigin(value));
+      identities.push(websiteIdentity(value));
     } catch {
-      // Non-HTTP entrypoints cannot represent a website origin.
+      // Non-HTTP entrypoints cannot represent a website identity.
     }
   }
-  return [...new Set(origins)];
+  return [...new Set(identities)];
 }
 
 function websiteSourceSlug(locator: string, identity: string): string {
@@ -453,7 +454,7 @@ export class DiscoveryWorkflowService {
       throw new RegistryValidationError("Batch discovery requires 1 to 100 locators");
     }
 
-    const existingOrigins = new Map<string, string>();
+    const existingIdentities = new Map<string, string>();
     let sourceOffset = 0;
     while (true) {
       const page = this.dependencies.sources.list({
@@ -463,13 +464,13 @@ export class DiscoveryWorkflowService {
       });
       for (const source of page.items) {
         if (source.status === "ARCHIVED") continue;
-        for (const origin of sourceWebsiteOrigins(source)) existingOrigins.set(origin, source.id);
+        for (const identity of sourceWebsiteIdentities(source)) existingIdentities.set(identity, source.id);
       }
       sourceOffset += page.items.length;
       if (page.items.length === 0 || sourceOffset >= page.total) break;
     }
 
-    const seenOrigins = new Set<string>();
+    const seenIdentities = new Set<string>();
     const items: Array<{
       input: string;
       locator?: string;
@@ -490,9 +491,11 @@ export class DiscoveryWorkflowService {
     for (const rawLocator of locators) {
       let locator: string;
       let origin: string;
+      let identity: string;
       try {
         locator = normalizeSeedLocator(rawLocator);
         origin = websiteOrigin(locator);
+        identity = websiteIdentity(locator);
       } catch (error) {
         failed += 1;
         items.push({
@@ -503,18 +506,18 @@ export class DiscoveryWorkflowService {
         continue;
       }
 
-      if (seenOrigins.has(origin)) {
+      if (seenIdentities.has(identity)) {
         skippedDuplicateInput += 1;
         items.push({ input: rawLocator, locator, origin, status: "SKIPPED_DUPLICATE_INPUT" });
         continue;
       }
-      seenOrigins.add(origin);
+      seenIdentities.add(identity);
 
       const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
         DEFAULT_WORKSPACE.id,
         origin,
       );
-      const existingSourceId = profile?.sourceId ?? existingOrigins.get(origin);
+      const existingSourceId = profile?.sourceId ?? existingIdentities.get(identity);
       if (existingSourceId) {
         skippedExistingSource += 1;
         items.push({
@@ -554,7 +557,7 @@ export class DiscoveryWorkflowService {
     return {
       summary: {
         submitted: locators.length,
-        uniqueOrigins: seenOrigins.size,
+        uniqueOrigins: seenIdentities.size,
         started,
         skippedDuplicateInput,
         skippedExistingSource,

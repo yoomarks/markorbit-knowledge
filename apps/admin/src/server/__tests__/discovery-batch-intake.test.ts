@@ -143,7 +143,7 @@ describe("DiscoveryWorkflowService batch intake", () => {
     expect(external.source?.extensions?.["x-markorbit-intake-note"]).toBeUndefined();
 
     const repeat = await service.startBatch({
-      locators: ["https://example.com/new-entry"],
+      locators: ["https://www.example.com/new-entry"],
       intake: { jurisdictions: ["CA"] },
     });
     expect(repeat.summary).toMatchObject({
