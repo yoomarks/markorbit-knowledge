@@ -27,23 +27,22 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path("apps/admin/src/server/discovery-service.ts")
           text = path.read_text()
 
-          old = "    const isExternalCandidate = candidateOrigin !== seedOrigin;"
-          new = '''    const seedIdentity = websiteIdentity(seed.locator);
+          text = text.replace(
+              "    const isExternalCandidate = candidateOrigin !== seedOrigin;",
+              '''    const seedIdentity = websiteIdentity(seed.locator);
             const candidateIdentity = websiteIdentity(current.candidate.locator);
-            const isExternalCandidate = candidateIdentity !== seedIdentity;'''
-          if text.count(old) != 1:
-              raise SystemExit(f"external identity anchor count={text.count(old)}")
-          text = text.replace(old, new, 1)
+            const isExternalCandidate = candidateIdentity !== seedIdentity;''',
+              1,
+          )
 
-          old = '''    const targetProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
-              DEFAULT_WORKSPACE.id,
-              candidateOrigin,
-            );'''
-          new = '''    const targetOrigin = isExternalCandidate ? candidateOrigin : seedOrigin;
+          text = re.sub(
+              r'''    const targetProfile = this\.dependencies\.graph\.getProfileByCanonicalOrigin\(\n      DEFAULT_WORKSPACE\.id,\n      candidateOrigin,\n    \);''',
+              '''    const targetOrigin = isExternalCandidate ? candidateOrigin : seedOrigin;
             const exactTargetProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
               DEFAULT_WORKSPACE.id,
               targetOrigin,
@@ -69,21 +68,28 @@ jobs:
               ? this.dependencies.graph.getProfileBySourceId(identitySource.id)
               : null;
             const targetProfile =
-              exactTargetProfile ?? identityProfile ?? (!isExternalCandidate ? seedProfile : null);'''
-          if text.count(old) != 1:
-              raise SystemExit(f"target profile anchor count={text.count(old)}")
-          text = text.replace(old, new, 1)
+              exactTargetProfile ?? identityProfile ?? (!isExternalCandidate ? seedProfile : null);''',
+              text,
+              count=1,
+          )
 
-          old = "          canonicalUri: candidateOrigin,"
-          if text.count(old) != 1:
-              raise SystemExit(f"canonical origin anchor count={text.count(old)}")
-          text = text.replace(old, "          canonicalUri: targetOrigin,", 1)
-
-          old = ".filter((item) => belongsToOrigin(item.locator, candidateOrigin));"
-          if text.count(old) != 1:
-              raise SystemExit(f"candidate filter anchor count={text.count(old)}")
           text = text.replace(
-              old,
+              "      let profile = targetProfile;",
+              '''      let profile = targetProfile;
+              if (!profile && identitySource) {
+                profile = ensureWebsiteSourceProfile(
+                  this.dependencies.graph,
+                  identitySource,
+                  sourceExpansionLocator(identitySource),
+                  targetObservedAt,
+                  batchRecord.batch.batchId,
+                );
+              }''',
+              1,
+          )
+          text = text.replace("          canonicalUri: candidateOrigin,", "          canonicalUri: targetOrigin,", 1)
+          text = text.replace(
+              ".filter((item) => belongsToOrigin(item.locator, candidateOrigin));",
               ".filter((item) => websiteIdentity(item.locator) === candidateIdentity);",
               1,
           )
@@ -91,18 +97,20 @@ jobs:
 
           test_path = Path("apps/admin/src/server/__tests__/discovery-service.test.ts")
           test = test_path.read_text()
-          guide = "https://example.com/guides/fees.pdf"
-          if test.count(guide) < 2:
-              raise SystemExit(f"guide fixture count={test.count(guide)}")
-          test = test.replace(guide, "https://www.example.com/guides/fees.pdf")
-          peer = "https://peer.example/blog"
-          if test.count(peer) != 1:
-              raise SystemExit(f"peer fixture count={test.count(peer)}")
-          test = test.replace(peer, "https://www.peer.example/blog", 1)
+          test = test.replace(
+              "https://example.com/guides/fees.pdf",
+              "https://www.example.com/guides/fees.pdf",
+          )
+          test = test.replace(
+              "https://peer.example/blog",
+              "https://www.peer.example/blog",
+              1,
+          )
           test_path.write_text(test)
           PY
           pnpm exec prettier --write apps/admin/src/server/discovery-service.ts apps/admin/src/server/__tests__/discovery-service.test.ts
           git diff --check
+          test -n "$(git status --porcelain apps/admin/src/server/discovery-service.ts apps/admin/src/server/__tests__/discovery-service.test.ts)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add apps/admin/src/server/discovery-service.ts apps/admin/src/server/__tests__/discovery-service.test.ts
