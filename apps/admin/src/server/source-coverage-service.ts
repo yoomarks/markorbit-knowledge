@@ -3,7 +3,7 @@ import {
   evaluateSourceCoverage,
   listSourceCoverageTargets,
 } from "@markorbit/persistence/source-coverage";
-import { getSourceRepository } from "./source-registry";
+import { getSourceDiscoveryRepository, getSourceRepository } from "./source-registry";
 
 export type SourceCoverageTargetView = {
   id: string;
@@ -14,6 +14,7 @@ export type SourceCoverageTargetView = {
   canonicalUri: string;
   state: "REGISTERED" | "UNREGISTERED";
   sources: Array<{ id: string; name: string; status: string }>;
+  discoveryCandidate?: { candidateId: string; status: string };
 };
 
 export type SourceCoverageItemView = {
@@ -53,6 +54,7 @@ export function getSourceCoverageSnapshot(
   workspaceId = DEFAULT_WORKSPACE.id,
 ): SourceCoverageSnapshot {
   const repository = getSourceRepository();
+  const discovery = getSourceDiscoveryRepository();
   const sources = repository.list({ workspaceId, limit: 100 }).items;
   const targets = listSourceCoverageTargets().filter((target) => target.catalogState !== "RETIRED");
   const jurisdictions = [
@@ -69,6 +71,10 @@ export function getSourceCoverageSnapshot(
     const targetById = new Map(jurisdictionTargets.map((target) => [target.id, target]));
     const targetItems = registrations.map((registration) => {
       const target = targetById.get(registration.targetId)!;
+      const discoveryCandidate =
+        registration.state === "UNREGISTERED"
+          ? discovery.getCandidateByLocator(target.canonicalUri)
+          : null;
       return {
         id: target.id,
         displayName: target.displayName,
@@ -81,6 +87,14 @@ export function getSourceCoverageSnapshot(
           .map((sourceId) => sourceById.get(sourceId))
           .filter(Boolean)
           .map((source) => ({ id: source!.id, name: source!.name, status: source!.status })),
+        ...(discoveryCandidate
+          ? {
+              discoveryCandidate: {
+                candidateId: discoveryCandidate.candidate.candidateId,
+                status: discoveryCandidate.candidate.status,
+              },
+            }
+          : {}),
       } satisfies SourceCoverageTargetView;
     });
     const activeTargets = targetItems.filter((target) => target.catalogState === "ACTIVE");
