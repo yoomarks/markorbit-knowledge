@@ -41,6 +41,8 @@ type DiscoveryOverview = {
   candidates: {
     items: CandidateRecord[];
     total: number;
+    limit: number;
+    offset: number;
     summary: Record<CandidateStatus, number> & { total: number };
   };
 };
@@ -87,6 +89,8 @@ type BatchReviewResponse = {
     collectionStarted: number;
   };
 };
+
+const PAGE_SIZE = 50;
 
 const rejectionReasons: Array<{ code: RejectionReason; labelKey: IntakeMessageKey }> = [
   { code: "IRRELEVANT", labelKey: "rejectionReasonIrrelevant" },
@@ -151,6 +155,7 @@ export function SourceSmartReviewUi() {
   const [capability, setCapability] = useState<CapabilityStatus | null>(null);
   const [valueResults, setValueResults] = useState<Record<string, PageValueRecord>>({});
   const [tab, setTab] = useState<ReviewTab>("PENDING");
+  const [pageOffset, setPageOffset] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [smartOnly, setSmartOnly] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -167,17 +172,30 @@ export function SourceSmartReviewUi() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/discovery", { cache: "no-store" });
+      const params = new URLSearchParams({
+        candidateLimit: String(PAGE_SIZE),
+        candidateOffset: String(pageOffset),
+      });
+      const statuses: CandidateStatus[] = tab === "PENDING" ? ["DISCOVERED", "REVIEWED"] : [tab];
+      for (const status of statuses) params.append("candidateStatus", status);
+      const response = await fetch(`/api/discovery?${params.toString()}`, { cache: "no-store" });
       if (!response.ok) throw new Error(await responseError(response));
       const next = (await response.json()) as DiscoveryOverview;
+      const lastOffset =
+        next.candidates.total > 0
+          ? Math.floor((next.candidates.total - 1) / PAGE_SIZE) * PAGE_SIZE
+          : 0;
+      if (pageOffset > lastOffset) {
+        setPageOffset(lastOffset);
+        return;
+      }
       setOverview(next);
       const pendingIds = next.candidates.items
         .filter(
           (record) =>
             record.candidate.status === "DISCOVERED" || record.candidate.status === "REVIEWED",
         )
-        .map((record) => record.candidate.candidateId)
-        .slice(0, 500);
+        .map((record) => record.candidate.candidateId);
       const capabilityResponse = await fetch("/api/capabilities/page-value", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -194,7 +212,7 @@ export function SourceSmartReviewUi() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [pageOffset, t, tab]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);
@@ -206,7 +224,11 @@ export function SourceSmartReviewUi() {
     (record) => record.candidate.status === "DISCOVERED" || record.candidate.status === "REVIEWED",
   );
   const smartCount = Object.keys(valueResults).length;
-  const pendingCount = pendingRecords.length;
+  const pendingCount =
+    (overview?.candidates.summary.DISCOVERED ?? 0) + (overview?.candidates.summary.REVIEWED ?? 0);
+  const pageTotal = overview?.candidates.total ?? 0;
+  const pageStart = pageTotal === 0 ? 0 : pageOffset + 1;
+  const pageEnd = Math.min(pageOffset + allRecords.length, pageTotal);
   let records = allRecords.filter((record) => {
     if (tab === "PENDING") {
       return record.candidate.status === "DISCOVERED" || record.candidate.status === "REVIEWED";
@@ -498,6 +520,7 @@ export function SourceSmartReviewUi() {
                 key={value}
                 onClick={() => {
                   setTab(value);
+                  setPageOffset(0);
                   setSelected(new Set());
                 }}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium ${
@@ -746,6 +769,34 @@ export function SourceSmartReviewUi() {
             })}
           </div>
         )}
+
+        {!loading && pageTotal > PAGE_SIZE ? (
+          <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <span>
+              {locale === "zh-CN"
+                ? `第 ${pageStart}-${pageEnd} 条，共 ${pageTotal} 条`
+                : `${pageStart}-${pageEnd} of ${pageTotal}`}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={pageOffset === 0 || loading || working}
+                onClick={() => setPageOffset((current) => Math.max(0, current - PAGE_SIZE))}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 disabled:opacity-40"
+              >
+                {locale === "zh-CN" ? "上一页" : "Previous"}
+              </button>
+              <button
+                type="button"
+                disabled={pageOffset + PAGE_SIZE >= pageTotal || loading || working}
+                onClick={() => setPageOffset((current) => current + PAGE_SIZE)}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 disabled:opacity-40"
+              >
+                {locale === "zh-CN" ? "下一页" : "Next"}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       {rejectTarget.length > 0 ? (

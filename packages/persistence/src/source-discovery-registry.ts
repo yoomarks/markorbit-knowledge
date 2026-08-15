@@ -77,6 +77,7 @@ export type SourceCandidateRecord = {
 
 export type SourceCandidateListFilters = {
   status?: SourceCandidateStatus;
+  statuses?: SourceCandidateStatus[];
   batchId?: string;
   q?: string;
   limit?: number;
@@ -532,6 +533,10 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
     if (filters.status) {
       clauses.push("status = ?");
       values.push(filters.status);
+    } else if (filters.statuses?.length) {
+      const statuses = [...new Set(filters.statuses)];
+      clauses.push(`status IN (${statuses.map(() => "?").join(", ")})`);
+      values.push(...statuses);
     }
     if (filters.batchId?.trim()) {
       clauses.push("last_batch_id = ?");
