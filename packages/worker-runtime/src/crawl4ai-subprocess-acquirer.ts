@@ -12,6 +12,7 @@ import {
 } from "./artifact-backed-collection-executor";
 
 const PROTOCOL_VERSION = "1.0" as const;
+export const CRAWL4AI_MAX_START_URLS = 500;
 const SUPPORTED_OUTPUT_KINDS = new Set<ArtifactKind>([
   "HTML",
   "MARKDOWN",
@@ -363,10 +364,18 @@ function assertSupportedJob(
       false,
     );
   }
-  if (startUrls(context).length === 0) {
+  const urls = startUrls(context);
+  if (urls.length === 0) {
     throw new CollectionAcquisitionError(
       "SOURCE_ENTRYPOINT_REQUIRED",
       "Crawl4AI production collection requires at least one Source entrypoint",
+      false,
+    );
+  }
+  if (urls.length > CRAWL4AI_MAX_START_URLS) {
+    throw new CollectionAcquisitionError(
+      "CRAWL_START_URL_BUDGET_EXCEEDED",
+      `Crawl4AI Source snapshot contains ${urls.length} unique start URLs; the governed limit is ${CRAWL4AI_MAX_START_URLS}`,
       false,
     );
   }
