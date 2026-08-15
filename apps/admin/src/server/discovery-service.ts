@@ -15,6 +15,7 @@ import type {
   SourceDefinition,
   SourceDiscoveryConstraints,
   SourceDiscoveryLineage,
+  SourceCandidateStatus,
 } from "@markorbit/contracts";
 import {
   enrichDiscoveryCandidate,
@@ -338,14 +339,28 @@ function discoveryScanBudget(reviewCandidateLimit: number): number {
   return Math.min(500, Math.max(reviewCandidateLimit, reviewCandidateLimit * 3));
 }
 
+export type DiscoveryOverviewInput = {
+  candidateStatuses?: SourceCandidateStatus[];
+  candidateLimit?: number;
+  candidateOffset?: number;
+  candidateQuery?: string;
+  candidateBatchId?: string;
+};
+
 export class DiscoveryWorkflowService {
   constructor(private readonly dependencies: DiscoveryServiceDependencies) {}
 
-  overview() {
+  overview(input: DiscoveryOverviewInput = {}) {
     return {
       seeds: this.dependencies.discovery.listSeeds(),
       batches: this.dependencies.discovery.listBatches(20),
-      candidates: this.dependencies.discovery.listCandidates({ limit: 100 }),
+      candidates: this.dependencies.discovery.listCandidates({
+        statuses: input.candidateStatuses,
+        limit: input.candidateLimit ?? 100,
+        offset: input.candidateOffset,
+        q: input.candidateQuery,
+        batchId: input.candidateBatchId,
+      }),
     };
   }
 

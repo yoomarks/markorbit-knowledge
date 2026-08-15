@@ -147,4 +147,69 @@ describe("SqliteSourceDiscoveryRepository", () => {
     expect(repository.listReviewEvents("cand_accepted")).toHaveLength(1);
     database.close();
   });
+  it("pages across multiple candidate statuses while preserving global summary", () => {
+    const database = openRegistryDatabase(":memory:");
+    const repository = new SqliteSourceDiscoveryRepository(
+      database,
+      () => new Date("2026-08-15T10:00:00.000Z"),
+    );
+    const seed = repository.createSeed({ locator: "https://example.com/" });
+    repository.createBatch({
+      batchId: "disc_paging",
+      seeds: [{ seedId: seed.seedId, locator: seed.locator }],
+      createdAt: "2026-08-15T09:59:00.000Z",
+    });
+    repository.completeBatch("disc_paging", [
+      {
+        candidateId: "cand_pending_a",
+        locator: "https://example.com/a",
+        discoveredAt: "2026-08-15T09:59:10.000Z",
+        status: "DISCOVERED",
+      },
+      {
+        candidateId: "cand_pending_b",
+        locator: "https://example.com/b",
+        discoveredAt: "2026-08-15T09:59:20.000Z",
+        status: "REVIEWED",
+      },
+      {
+        candidateId: "cand_rejected",
+        locator: "https://example.com/rejected",
+        discoveredAt: "2026-08-15T09:59:30.000Z",
+        status: "DISCOVERED",
+      },
+      {
+        candidateId: "cand_accepted",
+        locator: "https://example.com/accepted",
+        discoveredAt: "2026-08-15T09:59:40.000Z",
+        status: "DISCOVERED",
+      },
+    ]);
+    repository.reviewCandidate("cand_rejected", { decision: "REJECTED" });
+    repository.reviewCandidate("cand_accepted", {
+      decision: "ACCEPTED",
+      acceptedSourceId: "src_test",
+      collectionPlanId: "pln_test",
+    });
+
+    const page = repository.listCandidates({
+      statuses: ["DISCOVERED", "REVIEWED"],
+      limit: 1,
+      offset: 1,
+    });
+    expect(page.items).toHaveLength(1);
+    expect(["DISCOVERED", "REVIEWED"]).toContain(page.items[0]?.candidate.status);
+    expect(page.total).toBe(2);
+    expect(page.limit).toBe(1);
+    expect(page.offset).toBe(1);
+    expect(page.summary).toMatchObject({
+      DISCOVERED: 1,
+      REVIEWED: 1,
+      ACCEPTED: 1,
+      REJECTED: 1,
+      total: 4,
+    });
+
+    database.close();
+  });
 });
