@@ -59,8 +59,7 @@ function target(authority: Authority, input: TargetInput): SourceCoverageTarget 
       fetchAttachmentsHint: input.fetchAttachmentsHint ?? false,
       expectedArtifactKinds: input.expectedArtifactKinds ?? ["HTML", "MARKDOWN"],
     },
-    verificationEvidenceUri:
-      input.verificationEvidenceUri ?? authority.verificationEvidenceUri,
+    verificationEvidenceUri: input.verificationEvidenceUri ?? authority.verificationEvidenceUri,
     ...(input.notes ? { notes: input.notes } : {}),
   };
 }
@@ -234,7 +233,8 @@ export const UKIPO_SOURCE_COVERAGE_TARGETS = [
     family: "FILING",
     displayName: "UKIPO Trade Mark Application",
     canonicalUri: "https://www.gov.uk/how-to-register-a-trade-mark/start-your-application",
-    verificationEvidenceUri: "https://www.gov.uk/how-to-register-a-trade-mark/start-your-application",
+    verificationEvidenceUri:
+      "https://www.gov.uk/how-to-register-a-trade-mark/start-your-application",
   }),
   target(UKIPO, {
     id: "gb-ukipo-trademark-search",
@@ -322,7 +322,8 @@ export const IP_AUSTRALIA_SOURCE_COVERAGE_TARGETS = [
     family: "FILING",
     displayName: "IP Australia How to Apply for a Trade Mark",
     canonicalUri: "https://www.ipaustralia.gov.au/trade-marks/how-to-apply-for-a-trade-mark",
-    verificationEvidenceUri: "https://www.ipaustralia.gov.au/trade-marks/how-to-apply-for-a-trade-mark",
+    verificationEvidenceUri:
+      "https://www.ipaustralia.gov.au/trade-marks/how-to-apply-for-a-trade-mark",
   }),
   target(IP_AUSTRALIA, {
     id: "au-ipaustralia-trademark-manual",
