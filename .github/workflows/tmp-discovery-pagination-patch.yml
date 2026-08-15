@@ -1,0 +1,121 @@
+name: Temporary discovery pagination patch
+
+on:
+  push:
+    branches:
+      - codex/discovery-candidate-pagination-v1
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/discovery-candidate-pagination-v1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Apply pagination changes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}")
+              p.write_text(text.replace(old, new))
+
+          # Persistence: support multi-status candidate pages.
+          replace(
+              "packages/persistence/src/source-discovery-registry.ts",
+              '''export type SourceCandidateListFilters = {\n  status?: SourceCandidateStatus;\n  batchId?: string;\n''',
+              '''export type SourceCandidateListFilters = {\n  status?: SourceCandidateStatus;\n  statuses?: SourceCandidateStatus[];\n  batchId?: string;\n''',
+          )
+          replace(
+              "packages/persistence/src/source-discovery-registry.ts",
+              '''    if (filters.status) {\n      clauses.push("status = ?");\n      values.push(filters.status);\n    }\n    if (filters.batchId?.trim()) {\n''',
+              '''    if (filters.status) {\n      clauses.push("status = ?");\n      values.push(filters.status);\n    } else if (filters.statuses?.length) {\n      const statuses = [...new Set(filters.statuses)];\n      clauses.push(`status IN (${statuses.map(() => "?").join(", ")})`);\n      values.push(...statuses);\n    }\n    if (filters.batchId?.trim()) {\n''',
+          )
+
+          # Workflow overview: expose existing paging/filtering instead of hard-coding first 100.
+          replace(
+              "apps/admin/src/server/discovery-service.ts",
+              '''  SourceDiscoveryConstraints,\n  SourceDiscoveryLineage,\n} from "@markorbit/contracts";\n''',
+              '''  SourceDiscoveryConstraints,\n  SourceDiscoveryLineage,\n  SourceCandidateStatus,\n} from "@markorbit/contracts";\n''',
+          )
+          replace(
+              "apps/admin/src/server/discovery-service.ts",
+              '''export class DiscoveryWorkflowService {\n  constructor(private readonly dependencies: DiscoveryServiceDependencies) {}\n\n  overview() {\n    return {\n      seeds: this.dependencies.discovery.listSeeds(),\n      batches: this.dependencies.discovery.listBatches(20),\n      candidates: this.dependencies.discovery.listCandidates({ limit: 100 }),\n    };\n  }\n''',
+              '''export type DiscoveryOverviewInput = {\n  candidateStatuses?: SourceCandidateStatus[];\n  candidateLimit?: number;\n  candidateOffset?: number;\n  candidateQuery?: string;\n  candidateBatchId?: string;\n};\n\nexport class DiscoveryWorkflowService {\n  constructor(private readonly dependencies: DiscoveryServiceDependencies) {}\n\n  overview(input: DiscoveryOverviewInput = {}) {\n    return {\n      seeds: this.dependencies.discovery.listSeeds(),\n      batches: this.dependencies.discovery.listBatches(20),\n      candidates: this.dependencies.discovery.listCandidates({\n        statuses: input.candidateStatuses,\n        limit: input.candidateLimit ?? 100,\n        offset: input.candidateOffset,\n        q: input.candidateQuery,\n        batchId: input.candidateBatchId,\n      }),\n    };\n  }\n''',
+          )
+
+          # API: accept candidateStatus (repeatable/comma-separated), candidateLimit and candidateOffset.
+          route = Path("apps/admin/src/app/api/discovery/route.ts")
+          route.write_text('''import { NextResponse } from "next/server";\nimport type { SourceCandidateStatus } from "@markorbit/contracts";\nimport { RegistryValidationError } from "@markorbit/persistence";\nimport { apiError, readJson, requireRecord } from "@/server/api-errors";\nimport { getDiscoveryWorkflowService } from "@/server/discovery-service";\n\nexport const runtime = "nodejs";\nexport const dynamic = "force-dynamic";\n\nconst CANDIDATE_STATUSES = new Set<SourceCandidateStatus>([\n  "DISCOVERED",\n  "REVIEWED",\n  "ACCEPTED",\n  "REJECTED",\n]);\n\nfunction optionalInteger(value: unknown, field: string): number | undefined {\n  if (value === undefined || value === null || value === "") return undefined;\n  if (typeof value !== "number" || !Number.isInteger(value)) {\n    throw new RegistryValidationError(`${field} must be an integer`);\n  }\n  return value;\n}\n\nfunction optionalQueryInteger(value: string | null, field: string): number | undefined {\n  if (value === null || value === "") return undefined;\n  if (!/^-?\\d+$/.test(value)) {\n    throw new RegistryValidationError(`${field} must be an integer`);\n  }\n  return Number(value);\n}\n\nfunction queryCandidateStatuses(params: URLSearchParams): SourceCandidateStatus[] | undefined {\n  const values = params\n    .getAll("candidateStatus")\n    .flatMap((value) => value.split(","))\n    .map((value) => value.trim().toUpperCase())\n    .filter(Boolean);\n  if (values.length === 0) return undefined;\n  const unique = [...new Set(values)];\n  for (const value of unique) {\n    if (!CANDIDATE_STATUSES.has(value as SourceCandidateStatus)) {\n      throw new RegistryValidationError(`candidateStatus contains unsupported value ${value}`);\n    }\n  }\n  return unique as SourceCandidateStatus[];\n}\n\nfunction optionalBoolean(value: unknown, field: string): boolean | undefined {\n  if (value === undefined || value === null || value === "") return undefined;\n  if (typeof value !== "boolean") {\n    throw new RegistryValidationError(`${field} must be a boolean`);\n  }\n  return value;\n}\n\nfunction optionalStringArray(value: unknown, field: string): string[] | undefined {\n  if (value === undefined || value === null) return undefined;\n  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {\n    throw new RegistryValidationError(`${field} must be an array of strings`);\n  }\n  return value;\n}\n\nexport async function GET(request: Request) {\n  try {\n    const params = new URL(request.url).searchParams;\n    return NextResponse.json(\n      getDiscoveryWorkflowService().overview({\n        candidateStatuses: queryCandidateStatuses(params),\n        candidateLimit: optionalQueryInteger(params.get("candidateLimit"), "candidateLimit"),\n        candidateOffset: optionalQueryInteger(params.get("candidateOffset"), "candidateOffset"),\n        candidateQuery: params.get("candidateQuery")?.trim() || undefined,\n        candidateBatchId: params.get("candidateBatchId")?.trim() || undefined,\n      }),\n    );\n  } catch (error) {\n    return apiError(error);\n  }\n}\n\nexport async function POST(request: Request) {\n  try {\n    const body = requireRecord(await readJson(request));\n    if (typeof body.locator !== "string") {\n      throw new RegistryValidationError("locator is required");\n    }\n\n    const result = await getDiscoveryWorkflowService().start({\n      locator: body.locator,\n      maxDepth: optionalInteger(body.maxDepth, "maxDepth"),\n      maxCandidates: optionalInteger(body.maxCandidates, "maxCandidates"),\n      maxFetches: optionalInteger(body.maxFetches, "maxFetches"),\n      discoverExternalLinks: optionalBoolean(body.discoverExternalLinks, "discoverExternalLinks"),\n      maxExternalCandidates: optionalInteger(body.maxExternalCandidates, "maxExternalCandidates"),\n      maxExpansionGeneration: optionalInteger(\n        body.maxExpansionGeneration,\n        "maxExpansionGeneration",\n      ),\n      deniedUrlPatterns: optionalStringArray(body.deniedUrlPatterns, "deniedUrlPatterns"),\n    });\n    return NextResponse.json(result, { status: 201 });\n  } catch (error) {\n    return apiError(error);\n  }\n}\n''')
+
+          # Review UI: server-side status filtering + 50-item pages.
+          ui = Path("apps/admin/src/lib/admin-v2/source-smart-review-ui.tsx")
+          text = ui.read_text()
+          text = text.replace(
+              '''  candidates: {\n    items: CandidateRecord[];\n    total: number;\n    summary: Record<CandidateStatus, number> & { total: number };\n  };\n};\n''',
+              '''  candidates: {\n    items: CandidateRecord[];\n    total: number;\n    limit: number;\n    offset: number;\n    summary: Record<CandidateStatus, number> & { total: number };\n  };\n};\n''',
+          )
+          text = text.replace(
+              '''const rejectionReasons: Array<{ code: RejectionReason; labelKey: IntakeMessageKey }> = [\n''',
+              '''const PAGE_SIZE = 50;\n\nconst rejectionReasons: Array<{ code: RejectionReason; labelKey: IntakeMessageKey }> = [\n''',
+          )
+          text = text.replace(
+              '''  const [tab, setTab] = useState<ReviewTab>("PENDING");\n  const [selected, setSelected] = useState<Set<string>>(new Set());\n''',
+              '''  const [tab, setTab] = useState<ReviewTab>("PENDING");\n  const [pageOffset, setPageOffset] = useState(0);\n  const [selected, setSelected] = useState<Set<string>>(new Set());\n''',
+          )
+          old_refresh = '''  const refresh = useCallback(async () => {\n    setLoading(true);\n    try {\n      const response = await fetch("/api/discovery", { cache: "no-store" });\n      if (!response.ok) throw new Error(await responseError(response));\n      const next = (await response.json()) as DiscoveryOverview;\n      setOverview(next);\n      const pendingIds = next.candidates.items\n        .filter(\n          (record) =>\n            record.candidate.status === "DISCOVERED" || record.candidate.status === "REVIEWED",\n        )\n        .map((record) => record.candidate.candidateId)\n        .slice(0, 500);\n      const capabilityResponse = await fetch("/api/capabilities/page-value", {\n        method: "POST",\n        headers: { "content-type": "application/json" },\n        body: JSON.stringify({ action: "LATEST", candidateIds: pendingIds }),\n      });\n      if (!capabilityResponse.ok) throw new Error(await responseError(capabilityResponse));\n      const capabilityBody = (await capabilityResponse.json()) as CapabilityResponse;\n      setCapability(capabilityBody.status);\n      setValueResults(capabilityBody.latest ?? {});\n      setSelected(new Set());\n      setError(null);\n    } catch (refreshError) {\n      setError(refreshError instanceof Error ? refreshError.message : t("reviewReadError"));\n    } finally {\n      setLoading(false);\n    }\n  }, [t]);\n'''
+          new_refresh = '''  const refresh = useCallback(async () => {\n    setLoading(true);\n    try {\n      const params = new URLSearchParams({\n        candidateLimit: String(PAGE_SIZE),\n        candidateOffset: String(pageOffset),\n      });\n      const statuses: CandidateStatus[] =\n        tab === "PENDING" ? ["DISCOVERED", "REVIEWED"] : [tab];\n      for (const status of statuses) params.append("candidateStatus", status);\n      const response = await fetch(`/api/discovery?${params.toString()}`, { cache: "no-store" });\n      if (!response.ok) throw new Error(await responseError(response));\n      const next = (await response.json()) as DiscoveryOverview;\n      const lastOffset =\n        next.candidates.total > 0\n          ? Math.floor((next.candidates.total - 1) / PAGE_SIZE) * PAGE_SIZE\n          : 0;\n      if (pageOffset > lastOffset) {\n        setPageOffset(lastOffset);\n        return;\n      }\n      setOverview(next);\n      const pendingIds = next.candidates.items\n        .filter(\n          (record) =>\n            record.candidate.status === "DISCOVERED" || record.candidate.status === "REVIEWED",\n        )\n        .map((record) => record.candidate.candidateId);\n      const capabilityResponse = await fetch("/api/capabilities/page-value", {\n        method: "POST",\n        headers: { "content-type": "application/json" },\n        body: JSON.stringify({ action: "LATEST", candidateIds: pendingIds }),\n      });\n      if (!capabilityResponse.ok) throw new Error(await responseError(capabilityResponse));\n      const capabilityBody = (await capabilityResponse.json()) as CapabilityResponse;\n      setCapability(capabilityBody.status);\n      setValueResults(capabilityBody.latest ?? {});\n      setSelected(new Set());\n      setError(null);\n    } catch (refreshError) {\n      setError(refreshError instanceof Error ? refreshError.message : t("reviewReadError"));\n    } finally {\n      setLoading(false);\n    }\n  }, [pageOffset, t, tab]);\n'''
+          if text.count(old_refresh) != 1:
+              raise SystemExit("source-smart-review-ui.tsx: refresh block mismatch")
+          text = text.replace(old_refresh, new_refresh)
+          text = text.replace(
+              '''  const smartCount = Object.keys(valueResults).length;\n  const pendingCount = pendingRecords.length;\n''',
+              '''  const smartCount = Object.keys(valueResults).length;\n  const pendingCount =\n    (overview?.candidates.summary.DISCOVERED ?? 0) +\n    (overview?.candidates.summary.REVIEWED ?? 0);\n  const pageTotal = overview?.candidates.total ?? 0;\n  const pageStart = pageTotal === 0 ? 0 : pageOffset + 1;\n  const pageEnd = Math.min(pageOffset + allRecords.length, pageTotal);\n''',
+          )
+          text = text.replace(
+              '''                onClick={() => {\n                  setTab(value);\n                  setSelected(new Set());\n                }}\n''',
+              '''                onClick={() => {\n                  setTab(value);\n                  setPageOffset(0);\n                  setSelected(new Set());\n                }}\n''',
+          )
+          marker = '''        )}\n      </section>\n\n      {rejectTarget.length > 0 ? (\n'''
+          pagination = '''        )}\n\n        {!loading && pageTotal > PAGE_SIZE ? (\n          <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">\n            <span>\n              {locale === "zh-CN"\n                ? `第 ${pageStart}-${pageEnd} 条，共 ${pageTotal} 条`\n                : `${pageStart}-${pageEnd} of ${pageTotal}`}\n            </span>\n            <div className="flex gap-2">\n              <button\n                type="button"\n                disabled={pageOffset === 0 || loading || working}\n                onClick={() => setPageOffset((current) => Math.max(0, current - PAGE_SIZE))}\n                className="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 disabled:opacity-40"\n              >\n                {locale === "zh-CN" ? "上一页" : "Previous"}\n              </button>\n              <button\n                type="button"\n                disabled={pageOffset + PAGE_SIZE >= pageTotal || loading || working}\n                onClick={() => setPageOffset((current) => current + PAGE_SIZE)}\n                className="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 disabled:opacity-40"\n              >\n                {locale === "zh-CN" ? "下一页" : "Next"}\n              </button>\n            </div>\n          </div>\n        ) : null}\n      </section>\n\n      {rejectTarget.length > 0 ? (\n'''
+          if text.count(marker) != 1:
+              raise SystemExit(f"source-smart-review-ui.tsx: pagination marker found {text.count(marker)} times")
+          text = text.replace(marker, pagination)
+          ui.write_text(text)
+
+          # Persistence regression for combined pending statuses + offset paging.
+          test = Path("packages/persistence/tests/source-discovery-registry.test.ts")
+          text = test.read_text()
+          insert = '''\n  it("pages across multiple candidate statuses while preserving global summary", () => {\n    const database = openRegistryDatabase(":memory:");\n    const repository = new SqliteSourceDiscoveryRepository(\n      database,\n      () => new Date("2026-08-15T10:00:00.000Z"),\n    );\n    const seed = repository.createSeed({ locator: "https://example.com/" });\n    repository.createBatch({\n      batchId: "disc_paging",\n      seeds: [{ seedId: seed.seedId, locator: seed.locator }],\n      createdAt: "2026-08-15T09:59:00.000Z",\n    });\n    repository.completeBatch("disc_paging", [\n      {\n        candidateId: "cand_pending_a",\n        locator: "https://example.com/a",\n        discoveredAt: "2026-08-15T09:59:10.000Z",\n        status: "DISCOVERED",\n      },\n      {\n        candidateId: "cand_pending_b",\n        locator: "https://example.com/b",\n        discoveredAt: "2026-08-15T09:59:20.000Z",\n        status: "REVIEWED",\n      },\n      {\n        candidateId: "cand_rejected",\n        locator: "https://example.com/rejected",\n        discoveredAt: "2026-08-15T09:59:30.000Z",\n        status: "DISCOVERED",\n      },\n      {\n        candidateId: "cand_accepted",\n        locator: "https://example.com/accepted",\n        discoveredAt: "2026-08-15T09:59:40.000Z",\n        status: "DISCOVERED",\n      },\n    ]);\n    repository.reviewCandidate("cand_rejected", { decision: "REJECTED" });\n    repository.reviewCandidate("cand_accepted", {\n      decision: "ACCEPTED",\n      acceptedSourceId: "src_test",\n      collectionPlanId: "pln_test",\n    });\n\n    const page = repository.listCandidates({\n      statuses: ["DISCOVERED", "REVIEWED"],\n      limit: 1,\n      offset: 1,\n    });\n    expect(page.items).toHaveLength(1);\n    expect(["DISCOVERED", "REVIEWED"]).toContain(page.items[0]?.candidate.status);\n    expect(page.total).toBe(2);\n    expect(page.limit).toBe(1);\n    expect(page.offset).toBe(1);\n    expect(page.summary).toMatchObject({\n      DISCOVERED: 1,\n      REVIEWED: 1,\n      ACCEPTED: 1,\n      REJECTED: 1,\n      total: 4,\n    });\n\n    database.close();\n  });\n'''
+          closing = '\n});\n'
+          if not text.endswith(closing):
+              raise SystemExit("source-discovery-registry.test.ts: unexpected ending")
+          test.write_text(text[:-len(closing)] + insert + closing)
+      - name: Format changed files
+        run: pnpm exec prettier --write packages/persistence/src/source-discovery-registry.ts packages/persistence/tests/source-discovery-registry.test.ts apps/admin/src/server/discovery-service.ts apps/admin/src/app/api/discovery/route.ts apps/admin/src/lib/admin-v2/source-smart-review-ui.tsx
+      - name: Targeted checks
+        run: |
+          pnpm --filter @markorbit/persistence test -- source-discovery-registry.test.ts
+          pnpm --filter @markorbit/admin typecheck
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/persistence/src/source-discovery-registry.ts packages/persistence/tests/source-discovery-registry.test.ts apps/admin/src/server/discovery-service.ts apps/admin/src/app/api/discovery/route.ts apps/admin/src/lib/admin-v2/source-smart-review-ui.tsx
+          git commit -m "Discovery: paginate candidate review queue"
+          git push origin HEAD:codex/discovery-candidate-pagination-v1
