@@ -4,7 +4,14 @@ import { mkdtemp, readFile, realpath, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import {
+  CRAWL4AI_MAX_DEPTH,
+  CRAWL4AI_MAX_ITEMS,
+  CRAWL4AI_MAX_LOCALE_LENGTH,
+  CRAWL4AI_MAX_PATTERN_LENGTH,
+  CRAWL4AI_MAX_PATTERNS_PER_LIST,
+  CRAWL4AI_MAX_RATE_LIMIT_PER_MINUTE,
   CRAWL4AI_MAX_START_URLS,
+  CRAWL4AI_MAX_TIMEOUT_SECONDS,
   type ArtifactKind,
   type ExecutionExecutor,
 } from "@markorbit/contracts";
@@ -368,6 +375,24 @@ function assertSupportedJob(
       false,
     );
   }
+  const policy = job.planSnapshot.policy;
+  const invalidPolicy =
+    policy.maxDepth > CRAWL4AI_MAX_DEPTH ||
+    policy.maxItems > CRAWL4AI_MAX_ITEMS ||
+    policy.rateLimitPerMinute > CRAWL4AI_MAX_RATE_LIMIT_PER_MINUTE ||
+    policy.timeoutSeconds > CRAWL4AI_MAX_TIMEOUT_SECONDS ||
+    policy.includePatterns.length > CRAWL4AI_MAX_PATTERNS_PER_LIST ||
+    policy.excludePatterns.length > CRAWL4AI_MAX_PATTERNS_PER_LIST ||
+    policy.includePatterns.some((pattern) => pattern.length > CRAWL4AI_MAX_PATTERN_LENGTH) ||
+    policy.excludePatterns.some((pattern) => pattern.length > CRAWL4AI_MAX_PATTERN_LENGTH) ||
+    Boolean(policy.locale && policy.locale.length > CRAWL4AI_MAX_LOCALE_LENGTH);
+  if (invalidPolicy) {
+    throw new CollectionAcquisitionError(
+      "CRAWL4AI_POLICY_BUDGET_EXCEEDED",
+      "CollectionPlan exceeds the governed Crawl4AI subprocess policy boundary",
+      false,
+    );
+  }
   const urls = startUrls(context);
   if (urls.length === 0) {
     throw new CollectionAcquisitionError(
@@ -520,8 +545,8 @@ export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
       options.requireEgressProxy ?? process.env.MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY !== "0";
     this.maxArtifactBytes = options.maxArtifactBytes ?? 16 * 1024 * 1024;
     this.maxTotalBytes = options.maxTotalBytes ?? 64 * 1024 * 1024;
-    this.maxDepth = options.maxDepth ?? 5;
-    this.maxItems = options.maxItems ?? 500;
+    this.maxDepth = Math.min(options.maxDepth ?? CRAWL4AI_MAX_DEPTH, CRAWL4AI_MAX_DEPTH);
+    this.maxItems = Math.min(options.maxItems ?? CRAWL4AI_MAX_ITEMS, CRAWL4AI_MAX_ITEMS);
     this.maxProcessTimeoutMs = options.maxProcessTimeoutMs ?? 30 * 60 * 1000;
   }
 

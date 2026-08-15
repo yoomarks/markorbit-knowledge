@@ -57,11 +57,21 @@ describe("Crawl4AI CollectionPlan safety compatibility", () => {
       ["timeout", { timeoutSeconds: CRAWL4AI_MAX_TIMEOUT_SECONDS + 1 }],
       [
         "include-count",
-        { includePatterns: Array.from({ length: CRAWL4AI_MAX_PATTERNS_PER_LIST + 1 }, (_, i) => `/i/${i}`) },
+        {
+          includePatterns: Array.from(
+            { length: CRAWL4AI_MAX_PATTERNS_PER_LIST + 1 },
+            (_, i) => `/i/${i}`,
+          ),
+        },
       ],
       [
         "exclude-count",
-        { excludePatterns: Array.from({ length: CRAWL4AI_MAX_PATTERNS_PER_LIST + 1 }, (_, i) => `/e/${i}`) },
+        {
+          excludePatterns: Array.from(
+            { length: CRAWL4AI_MAX_PATTERNS_PER_LIST + 1 },
+            (_, i) => `/e/${i}`,
+          ),
+        },
       ],
       ["pattern-length", { includePatterns: [`/${"a".repeat(CRAWL4AI_MAX_PATTERN_LENGTH)}`] }],
       ["locale-length", { locale: oversizedLocale }],
@@ -116,7 +126,10 @@ describe("Crawl4AI CollectionPlan safety compatibility", () => {
         maxItems: CRAWL4AI_MAX_ITEMS,
         rateLimitPerMinute: CRAWL4AI_MAX_RATE_LIMIT_PER_MINUTE,
         timeoutSeconds: CRAWL4AI_MAX_TIMEOUT_SECONDS,
-        includePatterns: Array.from({ length: CRAWL4AI_MAX_PATTERNS_PER_LIST }, (_, i) => `/p/${i}`),
+        includePatterns: Array.from(
+          { length: CRAWL4AI_MAX_PATTERNS_PER_LIST },
+          (_, i) => `/p/${i}`,
+        ),
         excludePatterns: [`/${"x".repeat(CRAWL4AI_MAX_PATTERN_LENGTH - 1)}`],
       }),
       output: { artifactKinds: ["HTML"] },
