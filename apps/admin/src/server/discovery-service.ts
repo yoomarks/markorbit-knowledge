@@ -464,7 +464,8 @@ export class DiscoveryWorkflowService {
       });
       for (const source of page.items) {
         if (source.status === "ARCHIVED") continue;
-        for (const identity of sourceWebsiteIdentities(source)) existingIdentities.set(identity, source.id);
+        for (const identity of sourceWebsiteIdentities(source))
+          existingIdentities.set(identity, source.id);
       }
       sourceOffset += page.items.length;
       if (page.items.length === 0 || sourceOffset >= page.total) break;
