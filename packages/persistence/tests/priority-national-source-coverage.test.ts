@@ -54,9 +54,13 @@ describe("priority national trademark source coverage", () => {
       expect(targets.some((item) => item.family === "FEES")).toBe(true);
       expect(
         targets.some((item) =>
-          ["EXAMINATION_MANUAL", "LEGAL_TEXTS", "PROCEEDINGS", "GOODS_SERVICES_ID"].includes(
-            item.family,
-          ),
+          [
+            "EXAMINATION_MANUAL",
+            "LEGAL_TEXTS",
+            "PROCEEDINGS",
+            "GOODS_SERVICES_ID",
+            "OFFICIAL_GAZETTE",
+          ].includes(item.family),
         ),
       ).toBe(true);
     }
@@ -73,9 +77,11 @@ describe("priority national trademark source coverage", () => {
         (item) => item.authorityName === "Ministry of Intellectual Property (Republic of Korea)",
       ),
     ).toBe(true);
-    expect(KOREA_SOURCE_COVERAGE_TARGETS.every((item) => officialHost(item.canonicalUri, ["kipo.go.kr"]))).toBe(
-      true,
-    );
+    expect(
+      KOREA_SOURCE_COVERAGE_TARGETS.every((item) =>
+        officialHost(item.canonicalUri, ["kipo.go.kr"]),
+      ),
+    ).toBe(true);
   });
 
   it("integrates all priority jurisdictions into the version-controlled catalog", () => {
