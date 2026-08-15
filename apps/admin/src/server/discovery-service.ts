@@ -39,6 +39,7 @@ import {
 } from "./discovery-source-graph";
 import {
   SharedCapabilityDiscoveryPageValueRanker,
+  discoveryPageValueTimeoutMs,
   type DiscoveryPageValueRanker,
 } from "./discovery-page-value-ranker";
 import {
@@ -135,6 +136,7 @@ type DiscoveryServiceDependencies = {
   connectors: ConnectorRepository;
   provider: SourceDiscoveryProvider;
   pageValueRanker?: DiscoveryPageValueRanker;
+  pageValueTimeoutMs?: number;
   transaction: <T>(operation: () => T) => T;
 };
 
@@ -339,6 +341,23 @@ function discoveryScanBudget(reviewCandidateLimit: number): number {
   return Math.min(500, Math.max(reviewCandidateLimit, reviewCandidateLimit * 3));
 }
 
+async function withinDeadline<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Discovery page value ranking exceeded ${timeoutMs}ms`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export type DiscoveryOverviewInput = {
   candidateStatuses?: SourceCandidateStatus[];
   candidateLimit?: number;
@@ -466,10 +485,16 @@ export class DiscoveryWorkflowService {
         Awaited<ReturnType<DiscoveryPageValueRanker["rank"]>>["response"] | undefined;
       if (this.dependencies.pageValueRanker && screenedCandidates.length > 0) {
         try {
-          const ranking = await this.dependencies.pageValueRanker.rank({
-            candidates: screenedCandidates,
-            maxResults: reviewCandidateLimit,
-          });
+          const rankingTimeoutMs =
+            this.dependencies.pageValueTimeoutMs ?? discoveryPageValueTimeoutMs();
+          const ranking = await withinDeadline(
+            this.dependencies.pageValueRanker.rank({
+              candidates: screenedCandidates,
+              maxResults: reviewCandidateLimit,
+              timeoutMs: rankingTimeoutMs,
+            }),
+            rankingTimeoutMs,
+          );
           const byId = new Map(
             screenedCandidates.map((candidate) => [candidate.candidateId, candidate] as const),
           );

@@ -17,6 +17,19 @@ const DEFAULT_OBJECTIVE =
 // Keep semantic screening bounded independently from the review-queue limit.
 const MAX_SCREEN_CANDIDATES = 500;
 const MAX_RANKED_RESULTS = 100;
+const DEFAULT_DISCOVERY_PAGE_VALUE_TIMEOUT_MS = 8_000;
+
+export function discoveryPageValueTimeoutMs(): number {
+  const configured = process.env.MARKORBIT_DISCOVERY_PAGE_VALUE_TIMEOUT_MS?.trim();
+  if (!configured) return DEFAULT_DISCOVERY_PAGE_VALUE_TIMEOUT_MS;
+  const value = Number(configured);
+  if (!Number.isSafeInteger(value) || value < 1_000 || value > 30_000) {
+    throw new RegistryValidationError(
+      "MARKORBIT_DISCOVERY_PAGE_VALUE_TIMEOUT_MS must be an integer from 1000 to 30000",
+    );
+  }
+  return value;
+}
 
 export type DiscoveryPageValueRanking = {
   request: PageValueScreeningRequestV1;
@@ -29,6 +42,7 @@ export interface DiscoveryPageValueRanker {
     maxResults: number;
     locale?: string;
     objective?: string;
+    timeoutMs?: number;
   }): Promise<DiscoveryPageValueRanking>;
   record(response: PageValueScreeningResponseV1): void;
 }
@@ -139,6 +153,7 @@ export class SharedCapabilityDiscoveryPageValueRanker implements DiscoveryPageVa
     maxResults: number;
     locale?: string;
     objective?: string;
+    timeoutMs?: number;
   }): Promise<DiscoveryPageValueRanking> {
     const candidates = normalizedCandidates(input.candidates);
     const maxResults = normalizedMaxResults(input.maxResults, candidates.length);
@@ -154,6 +169,7 @@ export class SharedCapabilityDiscoveryPageValueRanker implements DiscoveryPageVa
       capabilityId: PAGE_VALUE_CAPABILITY_ID,
       request,
       errorCodePrefix: "PAGE_VALUE_CAPABILITY",
+      timeoutMs: input.timeoutMs,
       validate: (value) =>
         validateResponse(
           value,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
   PageValueScreeningResponseV1,
   SourceCandidate,
@@ -53,6 +53,7 @@ function response(
 function createService(input: {
   providerCandidates: SourceCandidate[];
   pageValueRanker: DiscoveryPageValueRanker;
+  pageValueTimeoutMs?: number;
   onProviderBatch?: (batch: SourceDiscoveryBatch) => void;
 }) {
   const database = openRegistryDatabase(":memory:");
@@ -70,6 +71,7 @@ function createService(input: {
       },
     },
     pageValueRanker: input.pageValueRanker,
+    pageValueTimeoutMs: input.pageValueTimeoutMs,
     transaction(operation) {
       database.exec("BEGIN IMMEDIATE;");
       try {
@@ -187,5 +189,51 @@ describe("DiscoveryWorkflowService page value ranking", () => {
     expect(recordCalled).toBe(false);
 
     database.close();
+  });
+  it("enforces a short ranking deadline and falls back when a ranker never settles", async () => {
+    vi.useFakeTimers();
+    try {
+      const candidates = [
+        candidate("cand_first", "first"),
+        candidate("cand_second", "second"),
+        candidate("cand_third", "third"),
+      ];
+      let receivedTimeout: number | undefined;
+      let recordCalled = false;
+      const pageValueRanker: DiscoveryPageValueRanker = {
+        rank(input) {
+          receivedTimeout = input.timeoutMs;
+          return new Promise(() => undefined);
+        },
+        record() {
+          recordCalled = true;
+        },
+      };
+      const { database, discovery, service } = createService({
+        providerCandidates: candidates,
+        pageValueRanker,
+        pageValueTimeoutMs: 50,
+      });
+
+      const pending = service.start({
+        locator: "https://example.com/",
+        maxCandidates: 2,
+        maxFetches: 10,
+      });
+      await vi.advanceTimersByTimeAsync(50);
+      const result = await pending;
+
+      expect(receivedTimeout).toBe(50);
+      expect(result.candidates.map((item) => item.candidateId)).toEqual([
+        "cand_first",
+        "cand_second",
+      ]);
+      expect(discovery.listCandidates({ limit: 100 }).total).toBe(2);
+      expect(recordCalled).toBe(false);
+
+      database.close();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
