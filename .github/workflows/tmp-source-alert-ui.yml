@@ -46,40 +46,40 @@ jobs:
           )
           replacement = '''type CollectionAlertCode = "COLLECTION_OVERDUE" | "FAILURE_STREAK" | "SCHEDULER_ERROR";
 
-          type CollectionHealthAlert = {
-            code: CollectionAlertCode;
-            severity: "WARNING" | "CRITICAL";
-            sinceAt: string | null;
-            message: string;
-          };
+type CollectionHealthAlert = {
+  code: CollectionAlertCode;
+  severity: "WARNING" | "CRITICAL";
+  sinceAt: string | null;
+  message: string;
+};
 
-          type CollectionHealthSummary = {
-            state: CollectionHealthState;
-            latestRunStatus: string | null;
-            latestRunAt: string | null;
-            latestSuccessAt: string | null;
-            lastFailureAt: string | null;
-            consecutiveFailures: number;
-            failedRuns: number;
-            expectedNextCollectionAt: string | null;
-            staleSince: string | null;
-            attentionRequired: boolean;
-            alerts: CollectionHealthAlert[];
-          };
+type CollectionHealthSummary = {
+  state: CollectionHealthState;
+  latestRunStatus: string | null;
+  latestRunAt: string | null;
+  latestSuccessAt: string | null;
+  lastFailureAt: string | null;
+  consecutiveFailures: number;
+  failedRuns: number;
+  expectedNextCollectionAt: string | null;
+  staleSince: string | null;
+  attentionRequired: boolean;
+  alerts: CollectionHealthAlert[];
+};
 
-          type CollectionAlertSummary = {
-            sourcesRequiringAttention: number;
-            totalAlerts: number;
-            overdueCollections: number;
-            failureStreaks: number;
-            schedulerErrors: number;
-          };
+type CollectionAlertSummary = {
+  sourcesRequiringAttention: number;
+  totalAlerts: number;
+  overdueCollections: number;
+  failureStreaks: number;
+  schedulerErrors: number;
+};
 
-          type SourceListPayload = SourceListResult & {
-            assessments?: Record<string, SourceValueSummary>;
-            collectionHealth?: Record<string, CollectionHealthSummary>;
-            collectionAlertSummary?: CollectionAlertSummary;
-          };'''
+type SourceListPayload = SourceListResult & {
+  assessments?: Record<string, SourceValueSummary>;
+  collectionHealth?: Record<string, CollectionHealthSummary>;
+  collectionAlertSummary?: CollectionAlertSummary;
+};'''
           text, count = pattern.subn(replacement, text, count=1)
           if count != 1:
               raise SystemExit(f"collection health type block match count: {count}")
@@ -155,18 +155,14 @@ jobs:
           ''' + section
           replace_once(section, banner)
 
-          old_health = '''                          {collectionHealth.state === "FAILING" ? (
-                            <p className="mt-1 text-[10px] text-rose-500">
-                              {zh
-                                ? `连续失败 ${collectionHealth.consecutiveFailures} 次`
-                                : `${collectionHealth.consecutiveFailures} consecutive failures`}
-                            </p>
-                          ) : collectionHealth.latestRunAt ? (
-                            <p className="mt-1 text-[10px] text-slate-400">
-                              {new Date(collectionHealth.latestRunAt).toLocaleString(locale)}
-                            </p>
-                          ) : null}'''
-          new_health = '''                          {collectionHealth.alerts?.length ? (
+          health_pattern = re.compile(
+              r'\{collectionHealth\.state === "FAILING" \? \(\s*'
+              r'<p className="mt-1 text-\[10px\] text-rose-500">.*?'
+              r'new Date\(collectionHealth\.latestRunAt\)\.toLocaleString\(locale\).*?'
+              r'\) : null\}',
+              re.S,
+          )
+          health_replacement = '''{collectionHealth.alerts?.length ? (
                             <div className="mt-1.5 flex max-w-[220px] flex-wrap gap-1">
                               {(collectionHealth.alerts ?? []).map((alert) => (
                                 <span
@@ -190,7 +186,9 @@ jobs:
                               {new Date(collectionHealth.latestRunAt).toLocaleString(locale)}
                             </p>
                           ) : null}'''
-          replace_once(old_health, new_health)
+          text, count = health_pattern.subn(health_replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f"collection health cell match count: {count}")
 
           path.write_text(text)
           PY
