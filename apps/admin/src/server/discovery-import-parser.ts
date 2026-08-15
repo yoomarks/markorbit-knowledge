@@ -176,7 +176,19 @@ function parseAuthority(value: string): { value?: AuthorityLevel; issue?: string
   return { issue: `Unknown authority level: ${cell}` };
 }
 
-function publicWebsite(locator: string): { locator?: string; origin?: string; issue?: string } {
+function websiteIdentity(url: URL): string {
+  const hostname = url.hostname.toLowerCase();
+  const canonicalHostname = hostname.startsWith("www.") && hostname.length > 4 ? hostname.slice(4) : hostname;
+  const port = url.port ? `:${url.port}` : "";
+  return `${url.protocol}//${canonicalHostname}${port}`;
+}
+
+function publicWebsite(locator: string): {
+  locator?: string;
+  origin?: string;
+  identity?: string;
+  issue?: string;
+} {
   const raw = cleanCell(locator);
   if (!raw) return { issue: "Website URL is required" };
   try {
@@ -207,7 +219,7 @@ function publicWebsite(locator: string): { locator?: string; origin?: string; is
     }
     url.hash = "";
     url.hostname = hostname;
-    return { locator: url.toString(), origin: url.origin };
+    return { locator: url.toString(), origin: url.origin, identity: websiteIdentity(url) };
   } catch {
     return { issue: `Invalid website URL: ${raw}` };
   }
@@ -483,7 +495,7 @@ function buildRows(tableRows: string[][]): { rows: DiscoveryImportRow[]; truncat
   const tagIndex = headerIndex(headers, TAG_HEADERS);
   const dataRows = meaningful.slice(1);
   const truncated = dataRows.length > MAX_IMPORT_ROWS;
-  const seenOrigins = new Set<string>();
+  const seenWebsiteIdentities = new Set<string>();
   const rows: DiscoveryImportRow[] = [];
 
   for (let index = 0; index < Math.min(dataRows.length, MAX_IMPORT_ROWS); index += 1) {
@@ -508,9 +520,9 @@ function buildRows(tableRows: string[][]): { rows: DiscoveryImportRow[]; truncat
     };
 
     let status: DiscoveryImportRowStatus = issues.length > 0 ? "INVALID" : "VALID";
-    if (status === "VALID" && website.origin) {
-      if (seenOrigins.has(website.origin)) status = "DUPLICATE";
-      else seenOrigins.add(website.origin);
+    if (status === "VALID" && website.identity) {
+      if (seenWebsiteIdentities.has(website.identity)) status = "DUPLICATE";
+      else seenWebsiteIdentities.add(website.identity);
     }
     rows.push({
       rowNumber: index + 2,
