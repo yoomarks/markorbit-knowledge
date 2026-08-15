@@ -93,6 +93,7 @@ function authorityLabel(value: AuthorityLevel, zh: boolean): string {
   const labels: Record<AuthorityLevel, string> = {
     PRIMARY_OFFICIAL: "一级官方",
     SECONDARY_OFFICIAL: "二级官方",
+    INTERNAL: "内部来源",
     PROFESSIONAL: "专业来源",
     INDUSTRY: "行业来源",
     COMMUNITY: "社区来源",
