@@ -3,7 +3,12 @@ import { createHash } from "node:crypto";
 import { mkdtemp, readFile, realpath, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
-import type { ArtifactKind, ExecutionExecutor } from "@markorbit/contracts";
+import {
+  CRAWL4AI_MAX_START_URLS,
+  type ArtifactKind,
+  type ExecutionExecutor,
+} from "@markorbit/contracts";
+export { CRAWL4AI_MAX_START_URLS } from "@markorbit/contracts";
 import {
   type AcquiredCollectionArtifact,
   type ArtifactBackedExecutionContext,
@@ -12,7 +17,6 @@ import {
 } from "./artifact-backed-collection-executor";
 
 const PROTOCOL_VERSION = "1.0" as const;
-export const CRAWL4AI_MAX_START_URLS = 500;
 const SUPPORTED_OUTPUT_KINDS = new Set<ArtifactKind>([
   "HTML",
   "MARKDOWN",

@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import {
   AUTHORITY_LEVELS,
+  CRAWL4AI_MAX_START_URLS,
   SCHEMA_V1_VERSION,
   SOURCE_CATEGORIES,
   SOURCE_STATUSES,
@@ -543,6 +544,25 @@ function validateConnectorBinding(
   return manifest;
 }
 
+function validateConnectorAcquisitionBoundary(source: SourceDefinition): void {
+  if (source.connector.connectorId !== "crawl4ai-web") return;
+  const uniqueStartUrls = new Set(
+    [source.canonicalUri, ...source.entrypoints.map((entrypoint) => entrypoint.uri)].filter(
+      (uri): uri is string => Boolean(uri),
+    ),
+  );
+  if (uniqueStartUrls.size <= CRAWL4AI_MAX_START_URLS) return;
+  throw new RegistryConflictError(
+    "CRAWL4AI_START_URL_BUDGET_EXCEEDED",
+    `Crawl4AI Source contains ${uniqueStartUrls.size} unique start URLs; the governed limit is ${CRAWL4AI_MAX_START_URLS}`,
+    {
+      connectorId: source.connector.connectorId,
+      uniqueStartUrls: uniqueStartUrls.size,
+      limit: CRAWL4AI_MAX_START_URLS,
+    },
+  );
+}
+
 export function openRegistryDatabase(path: string): DatabaseSync {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const database = new DatabaseSync(path, { timeout: 5000 });
@@ -634,6 +654,7 @@ export class SqliteSourceRepository implements SourceRepository {
   create(input: CreateSourceInput): SourceDefinition {
     const source = normalizeCreateInput(input, this.idFactory(), this.clock().toISOString());
     validateConnectorBinding(this.database, source, true);
+    validateConnectorAcquisitionBoundary(source);
     const row = sourceRow(source);
 
     try {
@@ -749,6 +770,7 @@ export class SqliteSourceRepository implements SourceRepository {
       current.connector.version !== next.connector.version;
     const activating = current.status !== "ACTIVE" && next.status === "ACTIVE";
     validateConnectorBinding(this.database, next, bindingChanged || activating);
+    validateConnectorAcquisitionBoundary(next);
     const row = sourceRow(next);
 
     try {
