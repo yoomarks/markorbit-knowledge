@@ -37,6 +37,10 @@ import {
   writeExternalDiscoveryLinkToSourceGraph,
 } from "./discovery-source-graph";
 import {
+  SharedCapabilityDiscoveryPageValueRanker,
+  type DiscoveryPageValueRanker,
+} from "./discovery-page-value-ranker";
+import {
   CRAWL4AI_PRODUCTION_CONNECTOR,
   ensureCrawl4AiProductionConnector,
 } from "./crawl4ai-production-connector";
@@ -129,6 +133,7 @@ type DiscoveryServiceDependencies = {
   plans: CollectionPlanRepository;
   connectors: ConnectorRepository;
   provider: SourceDiscoveryProvider;
+  pageValueRanker?: DiscoveryPageValueRanker;
   transaction: <T>(operation: () => T) => T;
 };
 
@@ -329,6 +334,10 @@ function lineageForRoot(input: StartDiscoveryInput): SourceDiscoveryLineage {
   return input.lineage ?? { generation: 0 };
 }
 
+function discoveryScanBudget(reviewCandidateLimit: number): number {
+  return Math.min(500, Math.max(reviewCandidateLimit, reviewCandidateLimit * 3));
+}
+
 export class DiscoveryWorkflowService {
   constructor(private readonly dependencies: DiscoveryServiceDependencies) {}
 
@@ -414,10 +423,19 @@ export class DiscoveryWorkflowService {
 
     this.dependencies.discovery.createBatch(batch);
     try {
-      const discovered = await this.dependencies.provider.discover(batch);
+      const reviewCandidateLimit =
+        batch.constraints.maxCandidates ?? DEFAULT_CONSTRAINTS.maxCandidates;
+      const providerBatch = {
+        ...batch,
+        constraints: {
+          ...batch.constraints,
+          maxCandidates: discoveryScanBudget(reviewCandidateLimit),
+        },
+      };
+      const discovered = await this.dependencies.provider.discover(providerBatch);
       const seedOrigin = websiteOrigin(seed.locator);
       const seedIdentity = websiteIdentity(seed.locator);
-      const candidates = discovered.map(enrichDiscoveryCandidate).map((candidate) =>
+      const screenedCandidates = discovered.map(enrichDiscoveryCandidate).map((candidate) =>
         intake && websiteIdentity(candidate.locator) === seedIdentity
           ? {
               ...candidate,
@@ -428,7 +446,44 @@ export class DiscoveryWorkflowService {
             }
           : candidate,
       );
+      let candidates = screenedCandidates.slice(0, reviewCandidateLimit);
+      let rankingResponse:
+        Awaited<ReturnType<DiscoveryPageValueRanker["rank"]>>["response"] | undefined;
+      if (this.dependencies.pageValueRanker && screenedCandidates.length > 0) {
+        try {
+          const ranking = await this.dependencies.pageValueRanker.rank({
+            candidates: screenedCandidates,
+            maxResults: reviewCandidateLimit,
+          });
+          const byId = new Map(
+            screenedCandidates.map((candidate) => [candidate.candidateId, candidate] as const),
+          );
+          const selected = ranking.response.items
+            .map((item) => byId.get(item.candidateId))
+            .filter((candidate) => candidate !== undefined);
+          const selectedIds = new Set(selected.map((candidate) => candidate.candidateId));
+          for (const candidate of screenedCandidates) {
+            if (selected.length >= reviewCandidateLimit) break;
+            if (selectedIds.has(candidate.candidateId)) continue;
+            selected.push(candidate);
+            selectedIds.add(candidate.candidateId);
+          }
+          candidates = selected.slice(0, reviewCandidateLimit);
+          const retainedIds = new Set(candidates.map((candidate) => candidate.candidateId));
+          rankingResponse = {
+            ...ranking.response,
+            items: ranking.response.items.filter((item) => retainedIds.has(item.candidateId)),
+          };
+        } catch {
+          // Shared semantic screening is an optimization boundary. Structural discovery
+          // must remain available when the capability is unconfigured, slow, or unavailable.
+          candidates = screenedCandidates.slice(0, reviewCandidateLimit);
+        }
+      }
       const completed = this.dependencies.discovery.completeBatch(batch.batchId, candidates);
+      if (rankingResponse?.items.length) {
+        this.dependencies.pageValueRanker?.record(rankingResponse);
+      }
 
       const exactProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
         DEFAULT_WORKSPACE.id,
@@ -982,6 +1037,7 @@ export function getDiscoveryWorkflowService(): DiscoveryWorkflowService {
       plans: getCollectionPlanRepository(),
       connectors: getConnectorRepository(),
       provider: new ExpandingWebsiteDiscoveryProvider(),
+      pageValueRanker: new SharedCapabilityDiscoveryPageValueRanker(),
       transaction: withRegistryTransaction,
     });
   }
