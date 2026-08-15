@@ -18,7 +18,12 @@ import {
   type SourceListResult,
 } from "@markorbit/persistence";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
-import { getSourceAssessmentRepository, getSourceRepository } from "@/server/source-registry";
+import { listSourceCollectionHealth } from "@/server/source-collection-health";
+import {
+  getRegistryDatabase,
+  getSourceAssessmentRepository,
+  getSourceRepository,
+} from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -84,6 +89,10 @@ function withLatestAssessments(result: SourceListResult) {
   );
   return {
     ...result,
+    collectionHealth: listSourceCollectionHealth(
+      getRegistryDatabase(),
+      result.items.map((source) => source.id),
+    ),
     assessments: Object.fromEntries(
       latest.map((record) => [
         record.sourceId,

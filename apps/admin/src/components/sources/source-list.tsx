@@ -35,8 +35,21 @@ type SourceValueSummary = {
   };
 };
 
+type CollectionHealthState =
+  "NEVER_RUN" | "COLLECTING" | "HEALTHY" | "RETRYING" | "FAILING" | "CANCELLED";
+
+type CollectionHealthSummary = {
+  state: CollectionHealthState;
+  latestRunStatus: string | null;
+  latestRunAt: string | null;
+  lastFailureAt: string | null;
+  consecutiveFailures: number;
+  failedRuns: number;
+};
+
 type SourceListPayload = SourceListResult & {
   assessments?: Record<string, SourceValueSummary>;
+  collectionHealth?: Record<string, CollectionHealthSummary>;
 };
 
 const initialFilters: Filters = {
@@ -104,6 +117,25 @@ function sourceValueTone(value: SourceValueSummary["sourceValue"]["priority"]): 
   if (value === "HIGH") return "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200";
   if (value === "MEDIUM") return "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200";
   return "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200";
+}
+
+function collectionHealthLabel(value: CollectionHealthState, zh: boolean): string {
+  const labels: Record<CollectionHealthState, [string, string]> = {
+    NEVER_RUN: ["未采集", "Never run"],
+    COLLECTING: ["采集中", "Collecting"],
+    HEALTHY: ["正常", "Healthy"],
+    RETRYING: ["重试中", "Retrying"],
+    FAILING: ["采集失败", "Failing"],
+    CANCELLED: ["已取消", "Cancelled"],
+  };
+  return labels[value][zh ? 0 : 1];
+}
+
+function collectionHealthTone(value: CollectionHealthState): string {
+  if (value === "HEALTHY") return "bg-emerald-50 text-emerald-700";
+  if (value === "RETRYING" || value === "COLLECTING") return "bg-amber-50 text-amber-800";
+  if (value === "FAILING") return "bg-rose-50 text-rose-700";
+  return "bg-slate-100 text-slate-600";
 }
 
 function StatusBadge({ status, zh }: { status: SourceDefinition["status"]; zh: boolean }) {
@@ -203,6 +235,8 @@ export function SourceList() {
     countries: zh ? "国家地区" : "Jurisdictions",
     sourceAuthority: zh ? "来源权威" : "Source authority",
     sourceValue: zh ? "来源价值" : "Source value",
+    collectionHealth: zh ? "采集健康" : "Collection health",
+    failureHistory: zh ? "近期失败" : "Recent failures",
     languages: zh ? "语言" : "Languages",
     updated: zh ? "更新时间" : "Updated",
     notAssessed: zh ? "未评估" : "Not assessed",
@@ -300,6 +334,7 @@ export function SourceList() {
                 <th className="px-5 py-3 font-medium">{copy.countries}</th>
                 <th className="px-5 py-3 font-medium">{copy.sourceAuthority}</th>
                 <th className="px-5 py-3 font-medium">{copy.sourceValue}</th>
+                <th className="px-5 py-3 font-medium">{copy.collectionHealth}</th>
                 <th className="px-5 py-3 font-medium">{copy.status}</th>
                 <th className="px-5 py-3 font-medium">{copy.updated}</th>
               </tr>
@@ -307,6 +342,7 @@ export function SourceList() {
             <tbody className="divide-y divide-slate-100">
               {result?.items.map((source) => {
                 const assessment = result.assessments?.[source.id];
+                const collectionHealth = result.collectionHealth?.[source.id];
                 return (
                   <tr key={source.id} className="hover:bg-slate-50">
                     <td className="px-5 py-4">
@@ -348,6 +384,36 @@ export function SourceList() {
                         </div>
                       ) : (
                         <span className="text-xs text-slate-400">{copy.notAssessed}</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      {collectionHealth ? (
+                        <div
+                          title={
+                            collectionHealth.lastFailureAt
+                              ? `${copy.failureHistory}: ${collectionHealth.failedRuns}`
+                              : undefined
+                          }
+                        >
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${collectionHealthTone(collectionHealth.state)}`}
+                          >
+                            {collectionHealthLabel(collectionHealth.state, zh)}
+                          </span>
+                          {collectionHealth.state === "FAILING" ? (
+                            <p className="mt-1 text-[10px] text-rose-500">
+                              {zh
+                                ? `连续失败 ${collectionHealth.consecutiveFailures} 次`
+                                : `${collectionHealth.consecutiveFailures} consecutive failures`}
+                            </p>
+                          ) : collectionHealth.latestRunAt ? (
+                            <p className="mt-1 text-[10px] text-slate-400">
+                              {new Date(collectionHealth.latestRunAt).toLocaleString(locale)}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
                       )}
                     </td>
                     <td className="px-5 py-4">
