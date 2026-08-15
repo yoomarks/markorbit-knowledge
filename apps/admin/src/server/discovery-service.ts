@@ -275,6 +275,28 @@ function sourceWebsiteIdentities(source: SourceDefinition): string[] {
   return [...new Set(identities)];
 }
 
+function ensureAcceptedDiscoveryEntrypoint(
+  sources: SourceRepository,
+  source: SourceDefinition,
+  locator: string,
+): SourceDefinition {
+  const uri = locator.trim();
+  if (source.entrypoints.some((entrypoint) => entrypoint.uri === uri)) return source;
+  return sources.update(
+    source.id,
+    {
+      entrypoints: [
+        ...source.entrypoints,
+        {
+          uri,
+          label: "Accepted discovery page",
+        },
+      ],
+    },
+    source.updatedAt,
+  );
+}
+
 function findWebsiteSourceByIdentity(
   sources: SourceRepository,
   identity: string,
@@ -1009,6 +1031,12 @@ export class DiscoveryWorkflowService {
           batchRecord.batch.batchId,
         );
       }
+
+      source = ensureAcceptedDiscoveryEntrypoint(
+        this.dependencies.sources,
+        source,
+        current.candidate.locator,
+      );
 
       const candidate = this.dependencies.discovery.reviewCandidate(candidateId, {
         decision: "ACCEPTED",

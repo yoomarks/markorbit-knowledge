@@ -110,7 +110,11 @@ describe("DiscoveryWorkflowService", () => {
     expect(first.source?.status).toBe("ACTIVE");
     expect(first.source?.authorityLevel).toBe("UNKNOWN");
     expect(first.source?.canonicalUri).toBe("https://example.com/");
-    expect(first.source?.entrypoints[0]?.uri).toBe("https://example.com/start-here");
+    expect(first.source?.entrypoints.map((entrypoint) => entrypoint.uri)).toEqual([
+      "https://example.com/start-here",
+      "https://example.com/trademarks",
+    ]);
+    expect(first.source?.entrypoints[1]?.label).toBe("Accepted discovery page");
     expect(first.source?.connector).toEqual({ connectorId: "crawl4ai-web", version: "1.2.0" });
     expect(first.plan?.status).toBe("PAUSED");
     expect(first.plan?.output.artifactKinds).toEqual(["HTML", "MARKDOWN"]);
@@ -142,6 +146,11 @@ describe("DiscoveryWorkflowService", () => {
     });
     expect(second.source?.id).toBe(first.source?.id);
     expect(second.plan?.id).toBe(first.plan?.id);
+    expect(second.source?.entrypoints.map((entrypoint) => entrypoint.uri)).toEqual([
+      "https://example.com/start-here",
+      "https://example.com/trademarks",
+      "https://www.example.com/guides/fees.pdf",
+    ]);
     expect(sources.list({ sourceType: "WEB", limit: 100 }).total).toBe(1);
     expect(first.source ? plans.listForSource(first.source.id) : []).toHaveLength(1);
     const documentNode = profile
@@ -315,6 +324,10 @@ describe("DiscoveryWorkflowService", () => {
     });
     expect(secondExternal.source?.id).toBe(firstExternal.source?.id);
     expect(secondExternal.plan?.id).toBe(firstExternal.plan?.id);
+    expect(secondExternal.source?.entrypoints.map((entrypoint) => entrypoint.uri)).toEqual([
+      "https://peer.example/services",
+      "https://www.peer.example/blog",
+    ]);
     expect(sources.list({ sourceType: "WEB", limit: 100 }).total).toBe(2);
     expect(firstExternal.source ? plans.listForSource(firstExternal.source.id) : []).toHaveLength(
       1,
