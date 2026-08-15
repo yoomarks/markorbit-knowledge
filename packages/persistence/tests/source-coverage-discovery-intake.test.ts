@@ -4,7 +4,10 @@ import { SqliteCollectionPlanRepository } from "../src/collection-plan-registry"
 import { SqliteExecutionLedgerRepository } from "../src/execution-ledger";
 import { SqliteSourceDiscoveryRepository } from "../src/source-discovery-registry";
 import { getSourceCoverageTarget } from "../src/source-coverage-catalog";
-import { queueSourceCoverageGapForDiscovery } from "../src/source-coverage-discovery-intake";
+import {
+  queueSourceCoverageGapForDiscovery,
+  queueSourceCoverageGapsForDiscovery,
+} from "../src/source-coverage-discovery-intake";
 
 const workspaceId = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const targetId = "gb-ukipo-register-trademark";
@@ -20,6 +23,35 @@ function environment() {
     discovery: new SqliteSourceDiscoveryRepository(database, clock),
     clock,
   };
+}
+
+function createCoveredSource(env: ReturnType<typeof environment>, coverageTargetId: string) {
+  const target = getSourceCoverageTarget(coverageTargetId)!;
+  return env.sources.create({
+    workspaceId,
+    name: `Covered ${coverageTargetId}`,
+    slug: `covered-${coverageTargetId}`,
+    sourceType: "WEB",
+    category: "OFFICIAL_AUTHORITY",
+    authorityLevel: "PRIMARY_OFFICIAL",
+    status: "ACTIVE",
+    jurisdictions: [target.jurisdiction],
+    languages: [...target.languages],
+    connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
+    connectorConfig: {},
+    canonicalUri: target.canonicalUri,
+    entrypoints: [{ uri: target.canonicalUri }],
+  });
+}
+
+function expectNoCollectionAuthority(env: ReturnType<typeof environment>) {
+  expect(env.database.prepare("SELECT COUNT(*) AS count FROM collection_plans").get()).toEqual({
+    count: 0,
+  });
+  expect(env.database.prepare("SELECT COUNT(*) AS count FROM collection_runs").get()).toEqual({
+    count: 0,
+  });
+  expect(env.database.prepare("SELECT COUNT(*) AS count FROM jobs").get()).toEqual({ count: 0 });
 }
 
 describe("Source Coverage → Discovery intake", () => {
@@ -61,13 +93,7 @@ describe("Source Coverage → Discovery intake", () => {
       candidateCount: 1,
     });
     expect(env.sources.list({ workspaceId, limit: 100 }).total).toBe(beforeSources);
-    expect(env.database.prepare("SELECT COUNT(*) AS count FROM collection_plans").get()).toEqual({
-      count: 0,
-    });
-    expect(env.database.prepare("SELECT COUNT(*) AS count FROM collection_runs").get()).toEqual({
-      count: 0,
-    });
-    expect(env.database.prepare("SELECT COUNT(*) AS count FROM jobs").get()).toEqual({ count: 0 });
+    expectNoCollectionAuthority(env);
     env.database.close();
   });
 
@@ -98,22 +124,7 @@ describe("Source Coverage → Discovery intake", () => {
 
   it("does not queue a target already covered by a registered Source", () => {
     const env = environment();
-    const target = getSourceCoverageTarget(targetId)!;
-    const source = env.sources.create({
-      workspaceId,
-      name: "UKIPO trade mark registration",
-      slug: "ukipo-trade-mark-registration",
-      sourceType: "WEB",
-      category: "OFFICIAL_AUTHORITY",
-      authorityLevel: "PRIMARY_OFFICIAL",
-      status: "ACTIVE",
-      jurisdictions: ["GB"],
-      languages: ["en-GB"],
-      connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
-      connectorConfig: {},
-      canonicalUri: target.canonicalUri,
-      entrypoints: [{ uri: target.canonicalUri }],
-    });
+    const source = createCoveredSource(env, targetId);
 
     const result = queueSourceCoverageGapForDiscovery(
       { workspaceId, targetId },
@@ -128,6 +139,64 @@ describe("Source Coverage → Discovery intake", () => {
     });
     expect(env.discovery.listBatches()).toHaveLength(0);
     expect(env.discovery.listCandidates().total).toBe(0);
+    env.database.close();
+  });
+
+  it("queues a bounded mixed batch with one Source scan and no collection authority", () => {
+    const env = environment();
+    const coveredId = "gb-ukipo-register-trademark";
+    const existingId = "gb-ukipo-trademark-search";
+    const missingId = "gb-ukipo-trademark-journal";
+    const covered = createCoveredSource(env, coveredId);
+    queueSourceCoverageGapForDiscovery(
+      { workspaceId, targetId: existingId },
+      { sources: env.sources, discovery: env.discovery, clock: env.clock },
+    );
+
+    const result = queueSourceCoverageGapsForDiscovery(
+      {
+        workspaceId,
+        targetIds: [coveredId, existingId, missingId, missingId],
+      },
+      { sources: env.sources, discovery: env.discovery, clock: env.clock },
+    );
+
+    expect(result.requestedTargetIds).toEqual([coveredId, existingId, missingId]);
+    expect(result.summary).toEqual({
+      total: 3,
+      QUEUED: 1,
+      ALREADY_IN_DISCOVERY: 1,
+      ALREADY_COVERED: 1,
+    });
+    expect(result.results[0]).toMatchObject({
+      targetId: coveredId,
+      state: "ALREADY_COVERED",
+      sourceIds: [covered.id],
+    });
+    expect(result.results[1]).toMatchObject({
+      targetId: existingId,
+      state: "ALREADY_IN_DISCOVERY",
+    });
+    expect(result.results[2]).toMatchObject({ targetId: missingId, state: "QUEUED" });
+    expect(env.discovery.listCandidates().total).toBe(2);
+    expect(env.discovery.listBatches()).toHaveLength(2);
+    expectNoCollectionAuthority(env);
+    env.database.close();
+  });
+
+  it("validates the complete batch before mutating Discovery", () => {
+    const env = environment();
+
+    expect(() =>
+      queueSourceCoverageGapsForDiscovery(
+        { workspaceId, targetIds: [targetId, "missing-coverage-target"] },
+        { sources: env.sources, discovery: env.discovery, clock: env.clock },
+      ),
+    ).toThrow(/was not found/);
+
+    expect(env.discovery.listCandidates().total).toBe(0);
+    expect(env.discovery.listBatches()).toHaveLength(0);
+    expectNoCollectionAuthority(env);
     env.database.close();
   });
 });

@@ -77,6 +77,7 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [queueingTargetId, setQueueingTargetId] = useState<string | null>(null);
+  const [queueingJurisdiction, setQueueingJurisdiction] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -120,6 +121,34 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
         );
       } finally {
         setQueueingTargetId(null);
+      }
+    },
+    [refresh, workspaceId, zh],
+  );
+
+  const queueMissingForDiscovery = useCallback(
+    async (targetIds: string[], jurisdiction: string) => {
+      if (targetIds.length === 0) return;
+      setQueueingJurisdiction(jurisdiction);
+      try {
+        const response = await fetch("/api/source-coverage/discovery", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ workspaceId, targetIds }),
+        });
+        if (!response.ok) throw new Error(await readError(response));
+        setError(null);
+        await refresh();
+      } catch (requestError) {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : zh
+              ? "无法批量送入 Discovery"
+              : "Unable to queue the coverage targets",
+        );
+      } finally {
+        setQueueingJurisdiction(null);
       }
     },
     [refresh, workspaceId, zh],
@@ -186,6 +215,7 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
             const missing = item.targets.filter(
               (target) => target.catalogState === "ACTIVE" && target.state === "UNREGISTERED",
             );
+            const unqueuedMissing = missing.filter((target) => !target.discoveryCandidate);
             return (
               <article key={item.jurisdiction} className="px-5 py-4 sm:px-6">
                 <div className="grid gap-3 xl:grid-cols-[0.6fr_0.8fr_0.8fr_1.5fr_auto] xl:items-center">
@@ -309,12 +339,36 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
                             {zh ? "缺失资源" : "Missing resources"}
                           </h3>
                           {missing.length > 0 ? (
-                            <Link
-                              href="/discovery"
-                              className="text-xs font-semibold text-emerald-700 hover:underline"
-                            >
-                              {zh ? "前往 Discovery 补充 →" : "Add via Discovery →"}
-                            </Link>
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              {unqueuedMissing.length > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void queueMissingForDiscovery(
+                                      unqueuedMissing.map((target) => target.id),
+                                      item.jurisdiction,
+                                    )
+                                  }
+                                  disabled={queueingJurisdiction === item.jurisdiction}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {queueingJurisdiction === item.jurisdiction ? (
+                                    <Loader2 size={13} className="animate-spin" />
+                                  ) : (
+                                    <Send size={13} />
+                                  )}
+                                  {zh
+                                    ? `全部送审 (${unqueuedMissing.length})`
+                                    : `Send all (${unqueuedMissing.length})`}
+                                </button>
+                              ) : null}
+                              <Link
+                                href="/discovery"
+                                className="text-xs font-semibold text-emerald-700 hover:underline"
+                              >
+                                {zh ? "前往 Discovery →" : "Open Discovery →"}
+                              </Link>
+                            </div>
                           ) : null}
                         </div>
                         <div className="mt-2 space-y-2">
