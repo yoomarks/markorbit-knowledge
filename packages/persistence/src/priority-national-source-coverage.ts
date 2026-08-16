@@ -1003,6 +1003,129 @@ export const IPONZ_NZ_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const OEPM_ES: Authority = {
+  jurisdiction: "ES",
+  authorityName: "Oficina Española de Patentes y Marcas",
+  languages: ["es-ES"],
+  verificationEvidenceUri: "https://www.oepm.es/es/marcas-y-nombres-comerciales",
+};
+
+export const OEPM_ES_SOURCE_COVERAGE_TARGETS = [
+  target(OEPM_ES, {
+    id: "es-oepm-trademarks",
+    family: "PORTAL",
+    displayName: "OEPM Marcas y nombres comerciales",
+    canonicalUri: "https://www.oepm.es/es/marcas-y-nombres-comerciales",
+  }),
+  target(OEPM_ES, {
+    id: "es-oepm-trademark-filing",
+    family: "FILING",
+    displayName: "OEPM Solicitud de marca",
+    canonicalUri:
+      "https://www.oepm.es/es/herramientas/Formularios/formularios-de-marcas-y-nombres-comerciales/marcas/solicitud-de-marca/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.oepm.es/es/herramientas/Formularios/formularios-de-marcas-y-nombres-comerciales/marcas/solicitud-de-marca/",
+  }),
+  target(OEPM_ES, {
+    id: "es-oepm-trademark-search",
+    family: "SEARCH",
+    displayName: "OEPM Buscador de marcas y nombres comerciales",
+    canonicalUri:
+      "https://www.oepm.es/es/herramientas/buscador-base-de-datos/buscador-marcas-y-nombres-comerciales/",
+    entrypoints: [
+      {
+        uri: "https://www.oepm.es/es/herramientas/buscador-base-de-datos/buscador-marcas-y-nombres-comerciales/",
+        label: "Search tools guidance",
+      },
+      {
+        uri: "https://consultas2.oepm.es/LocalizadorWeb/?no_link=1",
+        label: "Localizador de marcas con efectos en España",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.oepm.es/es/herramientas/buscador-base-de-datos/buscador-marcas-y-nombres-comerciales/",
+  }),
+  target(OEPM_ES, {
+    id: "es-oepm-trademark-fees",
+    family: "FEES",
+    displayName: "OEPM Tasas de marcas y nombres comerciales",
+    canonicalUri:
+      "https://www.oepm.es/es/tasas-y-precios-publicos/tasas-de-marcas-y-nombres-comerciales/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.oepm.es/es/tasas-y-precios-publicos/tasas-de-marcas-y-nombres-comerciales/",
+    notes:
+      "The official fees page publishes the current 2026 trade mark and trade name fee schedule.",
+  }),
+  target(OEPM_ES, {
+    id: "es-oepm-trademark-forms",
+    family: "FILING",
+    displayName: "OEPM Formularios de marcas y nombres comerciales",
+    canonicalUri:
+      "https://www.oepm.es/es/herramientas/Formularios/formularios-de-marcas-y-nombres-comerciales/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.oepm.es/es/herramientas/Formularios/formularios-de-marcas-y-nombres-comerciales/",
+  }),
+  target(OEPM_ES, {
+    id: "es-oepm-trademark-examination-directives",
+    family: "EXAMINATION_MANUAL",
+    displayName: "OEPM Directrices de examen",
+    canonicalUri: "https://www.oepm.es/es/herramientas/Manuales-y-guias/Directrices-de-examen/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.oepm.es/es/herramientas/Manuales-y-guias/Directrices-de-examen/",
+    notes:
+      "OEPM announced updated absolute- and relative-ground examination directives on 31 March 2026.",
+  }),
+  target(OEPM_ES, {
+    id: "es-oepm-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "OEPM Normativa de marcas y nombres comerciales",
+    canonicalUri:
+      "https://www.oepm.es/es/conoce-la-propiedad-industrial/normativa-y-jurisprudencia/normativa-marcas-y-nombres-comerciales/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.oepm.es/es/conoce-la-propiedad-industrial/normativa-y-jurisprudencia/normativa-marcas-y-nombres-comerciales/",
+  }),
+  target(OEPM_ES, {
+    id: "es-oepm-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "OEPM CLINMAR Nice Classification",
+    canonicalUri: "https://consultas2.oepm.es/clinmar/inicio",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.oepm.es/es/herramientas/buscador-base-de-datos/buscador-marcas-y-nombres-comerciales/",
+    notes:
+      "The current CLINMAR interface identifies Nice Classification 13th Edition 2026 and was updated in July 2026.",
+  }),
+  target(OEPM_ES, {
+    id: "es-oepm-bopi-marks",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "OEPM Boletín Oficial de la Propiedad Industrial - Marcas",
+    canonicalUri: "https://consultas2.oepm.es/bopiweb/descargaPublicaciones/",
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: false,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF", "XML"],
+    verificationEvidenceUri: "https://consultas2.oepm.es/bopiweb/descargaPublicaciones/",
+    notes:
+      "The official BOPI download service publishes Tome 1 for marks and other distinctive signs with PDF, XML and HTML downloads.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -1082,5 +1205,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...INPI_BR_SOURCE_COVERAGE_TARGETS,
   ...IMPI_MX_SOURCE_COVERAGE_TARGETS,
   ...IPONZ_NZ_SOURCE_COVERAGE_TARGETS,
+  ...OEPM_ES_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
