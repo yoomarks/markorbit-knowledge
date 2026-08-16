@@ -981,6 +981,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "hu-hipo-trademark-proceedings",
     query: "electronic trademark opposition cancellation revocation HIPO",
   },
+  {
+    id: "ro-trademarks-name",
+    targetId: "ro-osim-trademarks",
+    query: "OSIM trademark information Romania",
+  },
+  {
+    id: "ro-trademark-filing-name",
+    targetId: "ro-osim-trademark-filing",
+    query: "OSIM online trademark filing Romania",
+  },
+  {
+    id: "ro-trademark-search-name",
+    targetId: "ro-osim-trademark-search",
+    query: "OSIM national trademark online register Romania",
+  },
+  {
+    id: "ro-trademark-fees-name",
+    targetId: "ro-osim-trademark-fees",
+    query: "OSIM 2026 trademark fees Annex 4 Romania",
+  },
+  {
+    id: "ro-trademark-classification-name",
+    targetId: "ro-osim-trademark-classification",
+    query: "OSIM Nice classification TMclass goods services Romania",
+  },
+  {
+    id: "ro-trademark-law-name",
+    targetId: "ro-osim-trademark-law",
+    query: "Law 84 1998 trademarks geographical indications Romania OSIM",
+  },
+  {
+    id: "ro-trademark-proceedings-name",
+    targetId: "ro-osim-trademark-proceedings",
+    query: "OSIM trademark opposition cancellation appeal forms Romania",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
