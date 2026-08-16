@@ -1261,6 +1261,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ee-epa-trademark-proceedings",
     query: "Estonia trademark opposition Board of Appeal two months",
   },
+  {
+    id: "lv-trademarks-name",
+    targetId: "lv-lpo-trademarks",
+    query: "Latvian Patent Office trademark services",
+  },
+  {
+    id: "lv-trademark-filing-name",
+    targetId: "lv-lpo-trademark-filing",
+    query: "Latvia filing trademark application electronic Nice classes",
+  },
+  {
+    id: "lv-trademark-search-name",
+    targetId: "lv-lpo-trademark-search",
+    query: "Latvia Patent Office trademark database search",
+  },
+  {
+    id: "lv-trademark-fees-name",
+    targetId: "lv-lpo-trademark-fees",
+    query: "Latvia trademark fees 2026 filing additional class registration",
+  },
+  {
+    id: "lv-trademark-classification-name",
+    targetId: "lv-lpo-trademark-classification",
+    query: "Latvia Nice Classification 13 2026 goods services",
+  },
+  {
+    id: "lv-trademark-law-name",
+    targetId: "lv-lpo-trademark-law",
+    query: "Latvia Trade Mark Law Patent Office",
+  },
+  {
+    id: "lv-trademark-proceedings-name",
+    targetId: "lv-lpo-trademark-proceedings",
+    query: "Latvia trademark opposition appeal revocation invalidity Board of Appeal",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
