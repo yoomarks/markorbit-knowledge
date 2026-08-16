@@ -1086,6 +1086,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "hr-dziv-trademark-proceedings",
     query: "Croatia trademark opposition revocation invalidity forms DZIV",
   },
+  {
+    id: "si-trademarks-name",
+    targetId: "si-sipo-trademarks",
+    query: "Slovenia trademark protection SIPO URSIL",
+  },
+  {
+    id: "si-trademark-filing-name",
+    targetId: "si-sipo-trademark-filing",
+    query: "Slovenia registering trademark Nice application opposition SIPO",
+  },
+  {
+    id: "si-trademark-search-name",
+    targetId: "si-sipo-trademark-search",
+    query: "Slovenia SIPO marks database applications registered marks",
+  },
+  {
+    id: "si-trademark-fees-name",
+    targetId: "si-sipo-trademark-fees",
+    query: "Slovenian Intellectual Property Office fees charges trademarks",
+  },
+  {
+    id: "si-trademark-classification-name",
+    targetId: "si-sipo-trademark-classification",
+    query: "Slovenia Nice Classification 13 2026 goods services trademarks",
+  },
+  {
+    id: "si-trademark-law-name",
+    targetId: "si-sipo-trademark-law",
+    query: "Slovenia Industrial Property Act Trademark Rules PISRS",
+  },
+  {
+    id: "si-trademark-proceedings-name",
+    targetId: "si-sipo-trademark-proceedings",
+    query: "Slovenia trademark opposition revocation invalidity SIPO",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
