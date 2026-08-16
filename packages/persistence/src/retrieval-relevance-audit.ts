@@ -331,6 +331,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "in-ipindia-trademark-manual",
     query: "trademarks practice procedure manual",
   },
+  {
+    id: "fr-trademark-portal-name",
+    targetId: "fr-inpi-trademark-portal",
+    query: "dépôt marque",
+  },
+  {
+    id: "fr-trademark-filing-name",
+    targetId: "fr-inpi-trademark-filing",
+    query: "déposer marque",
+  },
+  {
+    id: "fr-trademark-search-name",
+    targetId: "fr-inpi-trademark-search",
+    query: "base marques",
+  },
+  {
+    id: "fr-trademark-fees-name",
+    targetId: "fr-inpi-trademark-fees",
+    query: "tarifs procédures",
+  },
+  {
+    id: "fr-trademark-goods-services-name",
+    targetId: "fr-inpi-trademark-goods-services",
+    query: "produits services marque",
+  },
+  {
+    id: "fr-trademark-directives-name",
+    targetId: "fr-inpi-trademark-directives",
+    query: "directives marques",
+  },
+  {
+    id: "fr-trademark-opposition-name",
+    targetId: "fr-inpi-trademark-opposition",
+    query: "opposition enregistrement marque",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
