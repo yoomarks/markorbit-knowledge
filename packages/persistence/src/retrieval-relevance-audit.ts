@@ -516,6 +516,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "es-oepm-trademark-classification",
     query: "CLINMAR clasificación Niza",
   },
+  {
+    id: "it-trademarks-name",
+    targetId: "it-uibm-trademarks",
+    query: "marchi UIBM",
+  },
+  {
+    id: "it-trademark-filing-name",
+    targetId: "it-uibm-trademark-filing",
+    query: "come effettuare deposito marchio",
+  },
+  {
+    id: "it-trademark-search-name",
+    targetId: "it-uibm-trademark-search",
+    query: "banca dati proprietà industriale marchi",
+  },
+  {
+    id: "it-trademark-fees-name",
+    targetId: "it-uibm-trademark-fees",
+    query: "tariffe marchi",
+  },
+  {
+    id: "it-trademark-forms-name",
+    targetId: "it-uibm-trademark-forms",
+    query: "marchi primo deposito modulistica",
+  },
+  {
+    id: "it-trademark-examination-opposition-name",
+    targetId: "it-uibm-trademark-examination-opposition",
+    query: "esame domanda opposizione marchio",
+  },
+  {
+    id: "it-industrial-property-code-name",
+    targetId: "it-uibm-industrial-property-code",
+    query: "codice proprietà industriale",
+  },
+  {
+    id: "it-trademark-nullity-revocation-name",
+    targetId: "it-uibm-trademark-nullity-revocation",
+    query: "decadenza nullità marchio",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",

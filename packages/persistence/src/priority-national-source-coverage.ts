@@ -1126,6 +1126,128 @@ export const OEPM_ES_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const UIBM_IT: Authority = {
+  jurisdiction: "IT",
+  authorityName: "Ufficio Italiano Brevetti e Marchi",
+  languages: ["it-IT"],
+  verificationEvidenceUri: "https://uibm.mise.gov.it/index.php/it/marchi",
+};
+
+export const UIBM_IT_SOURCE_COVERAGE_TARGETS = [
+  target(UIBM_IT, {
+    id: "it-uibm-trademarks",
+    family: "PORTAL",
+    displayName: "UIBM Marchi",
+    canonicalUri: "https://uibm.mise.gov.it/index.php/it/marchi",
+  }),
+  target(UIBM_IT, {
+    id: "it-uibm-trademark-filing",
+    family: "FILING",
+    displayName: "UIBM Come effettuare il deposito",
+    canonicalUri:
+      "https://uibm.mise.gov.it/index.php/it/marchi/registrare-in-italia/come-effettuare-il-deposito",
+    verificationEvidenceUri:
+      "https://uibm.mise.gov.it/index.php/it/marchi/registrare-in-italia/come-effettuare-il-deposito",
+  }),
+  target(UIBM_IT, {
+    id: "it-uibm-trademark-search",
+    family: "SEARCH",
+    displayName: "UIBM Banca Dati nazionale della Proprietà Industriale",
+    canonicalUri: "https://www.uibm.gov.it/bancadati/home/index/",
+    entrypoints: [
+      { uri: "https://www.uibm.gov.it/bancadati/home/index/", label: "National IP database" },
+      {
+        uri: "https://uibm.mise.gov.it/index.php/it/banche-dati/2035903-banca-dati-bibliografica",
+        label: "Database guidance",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.uibm.gov.it/bancadati/home/index/",
+  }),
+  target(UIBM_IT, {
+    id: "it-uibm-trademark-fees",
+    family: "FEES",
+    displayName: "UIBM Tariffe Marchi",
+    canonicalUri: "https://uibm.mise.gov.it/index.php/it/marchi/procedura-di-nullita/tariffe",
+    verificationEvidenceUri:
+      "https://uibm.mise.gov.it/index.php/it/marchi/procedura-di-nullita/tariffe",
+  }),
+  target(UIBM_IT, {
+    id: "it-uibm-trademark-forms",
+    family: "FILING",
+    displayName: "UIBM Marchi - primo deposito modulistica",
+    canonicalUri:
+      "https://uibm.mise.gov.it/index.php/it/deposito-titoli/modulistica-per-il-deposito-cartaceo/227-modulistica-deposito-cartaceo/2036653-marchi-primo-deposito-nuovo",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://uibm.mise.gov.it/index.php/it/deposito-titoli/modulistica-per-il-deposito-cartaceo/227-modulistica-deposito-cartaceo/2036653-marchi-primo-deposito-nuovo",
+  }),
+  target(UIBM_IT, {
+    id: "it-uibm-trademark-examination-opposition",
+    family: "EXAMINATION_MANUAL",
+    displayName: "UIBM Esame della domanda e procedura di opposizione",
+    canonicalUri:
+      "https://uibm.mise.gov.it/index.php/it/marchi/esame-della-domanda-e-procedura-di-opposizione",
+    verificationEvidenceUri:
+      "https://uibm.mise.gov.it/index.php/it/marchi/esame-della-domanda-e-procedura-di-opposizione",
+  }),
+  target(UIBM_IT, {
+    id: "it-uibm-industrial-property-code",
+    family: "LEGAL_TEXTS",
+    displayName: "UIBM Codice della Proprietà Industriale",
+    canonicalUri:
+      "https://uibm.mise.gov.it/index.php/it/normativa-pi/il-codice-della-proprieta-industriale",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://uibm.mise.gov.it/index.php/it/normativa-pi/il-codice-della-proprieta-industriale",
+  }),
+  target(UIBM_IT, {
+    id: "it-uibm-trademark-nullity-revocation",
+    family: "PROCEEDINGS",
+    displayName: "UIBM Procedura di decadenza e nullità dei marchi",
+    canonicalUri: "https://uibm.mise.gov.it/index.php/it/marchi/procedura-di-decadenza",
+    entrypoints: [
+      {
+        uri: "https://uibm.mise.gov.it/index.php/it/marchi/procedura-di-decadenza",
+        label: "Procedura di decadenza",
+      },
+      {
+        uri: "https://uibm.mise.gov.it/index.php/en/marchi/procedura-di-nullita",
+        label: "Procedura di nullità",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://uibm.mise.gov.it/index.php/it/al-via-la-procedura-per-l-accertamento-della-nullita-e-decadenza-dei-marchi",
+  }),
+  target(UIBM_IT, {
+    id: "it-uibm-trademark-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "UIBM Bollettino Marchi",
+    canonicalUri: "https://www.uibm.gov.it/bancadati/bollettini/index/",
+    entrypoints: [
+      {
+        uri: "https://uibm.mise.gov.it/index.php/it/marchi/bollettino-marchi",
+        label: "Bollettino Marchi guidance",
+      },
+      { uri: "https://www.uibm.gov.it/bancadati/bollettini/index/", label: "Current bulletins" },
+    ],
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: false,
+    fetchAttachmentsHint: false,
+    expectedArtifactKinds: ["HTML"],
+    verificationEvidenceUri: "https://uibm.mise.gov.it/index.php/it/marchi/bollettino-marchi",
+    notes:
+      "Since May 2021 the official trade mark bulletins are published through searchable web pages rather than PDF files.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -1206,5 +1328,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IMPI_MX_SOURCE_COVERAGE_TARGETS,
   ...IPONZ_NZ_SOURCE_COVERAGE_TARGETS,
   ...OEPM_ES_SOURCE_COVERAGE_TARGETS,
+  ...UIBM_IT_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
