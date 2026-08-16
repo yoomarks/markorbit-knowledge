@@ -1909,6 +1909,101 @@ export const PRH_FI_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const PATENTAMT_AT: Authority = {
+  jurisdiction: "AT",
+  authorityName: "Austrian Patent Office (Österreichisches Patentamt)",
+  languages: ["de-AT", "en"],
+  verificationEvidenceUri: "https://www.patentamt.at/en/apply-for-protection/protect-a-trademark",
+};
+
+export const PATENTAMT_AT_SOURCE_COVERAGE_TARGETS = [
+  target(PATENTAMT_AT, {
+    id: "at-patentamt-trademarks",
+    family: "PORTAL",
+    displayName: "Austrian Patent Office Trademark Protection",
+    canonicalUri: "https://www.patentamt.at/en/apply-for-protection/protect-a-trademark",
+  }),
+  target(PATENTAMT_AT, {
+    id: "at-patentamt-trademark-filing",
+    family: "FILING",
+    displayName: "Austrian Patent Office National Trademark",
+    canonicalUri:
+      "https://www.patentamt.at/en/apply-for-protection/protect-a-trademark/national-trademark",
+    verificationEvidenceUri:
+      "https://www.patentamt.at/en/apply-for-protection/protect-a-trademark/national-trademark",
+    notes:
+      "The national trademark page documents digital Online Filing, paper filing, examination, publication and post-refusal remedies.",
+  }),
+  target(PATENTAMT_AT, {
+    id: "at-patentamt-trademark-search",
+    family: "SEARCH",
+    displayName: "Austrian Patent Office see.ip Trademark Search",
+    canonicalUri: "https://seeip.patentamt.at/en/markesuche",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://seeip.patentamt.at/en/markesuche",
+    notes:
+      "see.ip is the Austrian Patent Office register search and exposes national, EU and international trademark records relevant to Austria.",
+  }),
+  target(PATENTAMT_AT, {
+    id: "at-patentamt-trademark-fees",
+    family: "FEES",
+    displayName: "Austrian Patent Office Trademark Application Fees",
+    canonicalUri: "https://www.patentamt.at/en/apply-for-protection/application-fees",
+    verificationEvidenceUri: "https://www.patentamt.at/en/apply-for-protection/application-fees",
+  }),
+  target(PATENTAMT_AT, {
+    id: "at-patentamt-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Austrian Patent Office Trademark Classification",
+    canonicalUri:
+      "https://www.patentamt.at/en/apply-for-protection/protect-a-trademark/national-trademark/trademark-classification",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.patentamt.at/en/apply-for-protection/protect-a-trademark/national-trademark/trademark-classification",
+    notes:
+      "The current classification page publishes Nice Classification NCL 13-2026 materials effective from 1 January 2026.",
+  }),
+  target(PATENTAMT_AT, {
+    id: "at-patentamt-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Austrian Patent Office Law and Legislation",
+    canonicalUri: "https://www.patentamt.at/en/about-us/law-legislation",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.patentamt.at/en/about-us/law-legislation",
+    notes:
+      "The official legal hub publishes current versions in force, including the Trademark Protection Act and Patent Office rules.",
+  }),
+  target(PATENTAMT_AT, {
+    id: "at-patentamt-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Austrian Patent Office Trademark Proceedings and Appeals",
+    canonicalUri:
+      "https://www.patentamt.at/en/manage-preserve-protection/trademarks/proceedings-appeals",
+    verificationEvidenceUri:
+      "https://www.patentamt.at/en/manage-preserve-protection/trademarks/proceedings-appeals",
+    notes:
+      "The official proceedings page covers opposition, cancellation before the Nullity Department and appeals, with current procedural fees and deadlines.",
+  }),
+  target(PATENTAMT_AT, {
+    id: "at-patentamt-trademark-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Austrian Trademark Gazette",
+    canonicalUri:
+      "https://www.patentamt.at/en/manage-preserve-protection/trademarks/trademark-gazette",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.patentamt.at/en/manage-preserve-protection/trademarks/trademark-gazette",
+    notes:
+      "The Austrian Trademark Gazette is published on the 20th of each month and currently provides 2026 issues including July 2026.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -1995,5 +2090,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...NIPO_NO_SOURCE_COVERAGE_TARGETS,
   ...DKPTO_DK_SOURCE_COVERAGE_TARGETS,
   ...PRH_FI_SOURCE_COVERAGE_TARGETS,
+  ...PATENTAMT_AT_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
