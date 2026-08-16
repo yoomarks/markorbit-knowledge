@@ -5782,6 +5782,141 @@ export const DPDT_BD_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const DOI_NP: Authority = {
+  jurisdiction: "NP",
+  authorityName: "Nepal Department of Industry (DOI)",
+  languages: ["ne-NP", "en"],
+  verificationEvidenceUri: "https://doind.gov.np/",
+};
+
+export const DOI_NP_SOURCE_COVERAGE_TARGETS = [
+  target(DOI_NP, {
+    id: "np-doi-industrial-property-portal",
+    family: "PORTAL",
+    displayName: "Nepal Department of Industry Industrial Property Portal",
+    canonicalUri: "https://doind.gov.np/",
+    entrypoints: [
+      { uri: "https://doind.gov.np/", label: "Department of Industry homepage" },
+      {
+        uri: "https://doind.gov.np/about-us",
+        label:
+          "Department mandate including trademark, design and patent registration and protection",
+      },
+    ],
+    verificationEvidenceUri: "https://doind.gov.np/about-us",
+    notes:
+      "Nepal's Department of Industry, under the Ministry of Industry, Commerce and Supplies, identifies industrial-property registration and protection for trademarks, designs and patents as part of its statutory work.",
+  }),
+  target(DOI_NP, {
+    id: "np-doi-trademark-filing",
+    family: "FILING",
+    displayName: "Nepal DOI Trademark Registration and Recordal Services",
+    canonicalUri: "https://doind.gov.np/industrial-property-section",
+    entrypoints: [
+      {
+        uri: "https://doind.gov.np/industrial-property-section",
+        label:
+          "Industrial Property Section trademark registration, renewal and recordal requirements",
+      },
+      {
+        uri: "https://doind.gov.np/citizen-charter-v2",
+        label: "Citizen charter for domestic and foreign trademark registration",
+      },
+    ],
+    verificationEvidenceUri: "https://doind.gov.np/industrial-property-section",
+    notes:
+      "The Industrial Property Section publishes documentary requirements for domestic and foreign trademark registration, trademark renewal, ownership transfer and detail amendments; the citizen charter independently records the domestic and foreign registration services.",
+  }),
+  target(DOI_NP, {
+    id: "np-doi-trademark-fees",
+    family: "FEES",
+    displayName: "Nepal DOI Trademark Fees and Citizen Charter",
+    canonicalUri: "https://doind.gov.np/citizen-charter-v2",
+    entrypoints: [
+      {
+        uri: "https://doind.gov.np/citizen-charter-v2",
+        label: "Current citizen charter with trademark application and registration fees",
+      },
+      {
+        uri: "https://doind.gov.np/citizen-charter",
+        label: "Department service and fee table",
+      },
+    ],
+    verificationEvidenceUri: "https://doind.gov.np/citizen-charter-v2",
+    notes:
+      "The Department's citizen charter publishes the required documents, responsible Industrial Property Section and official application/registration fee evidence for domestic and foreign trademarks. Amounts remain sourced evidence rather than frozen catalog truth.",
+  }),
+  target(DOI_NP, {
+    id: "np-doi-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Nepal Patent, Design and Trademark Act and Industrial Property Laws",
+    canonicalUri: "https://doind.gov.np/laws-and-regulations",
+    entrypoints: [
+      {
+        uri: "https://doind.gov.np/laws-and-regulations",
+        label: "Department laws and regulations archive",
+      },
+      {
+        uri: "https://doind.gov.np/detail/fab89350-6a8c-4230-ab46-549721b7fb47",
+        label: "Patent, Design and Trademark Act, 2022 (1965)",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://doind.gov.np/laws-and-regulations",
+    notes:
+      "The Department's primary legal archive publishes the Patent, Design and Trademark Act, 2022 (1965) among its operative industrial-property legal texts, with a dedicated downloadable Act record.",
+  }),
+  target(DOI_NP, {
+    id: "np-doi-trademark-guidelines",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Nepal DOI Trademark Guidelines",
+    canonicalUri: "https://doind.gov.np/detail/49f16d06-a782-4bd9-8639-7aa18535d5e8",
+    entrypoints: [
+      {
+        uri: "https://doind.gov.np/detail/49f16d06-a782-4bd9-8639-7aa18535d5e8",
+        label: "Official trademark guideline download",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://doind.gov.np/detail/49f16d06-a782-4bd9-8639-7aa18535d5e8",
+    notes:
+      "DOI publishes an official Trademark Guideline as a downloadable Department document and links related collective-mark guidance from the same guidance surface.",
+  }),
+  target(DOI_NP, {
+    id: "np-doi-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Nepal DOI Industrial Property Complaints and Proceedings Guidance",
+    canonicalUri: "https://doind.gov.np/faq",
+    entrypoints: [
+      {
+        uri: "https://doind.gov.np/faq",
+        label: "Official FAQ on patent, design and trademark complaint filing",
+      },
+      {
+        uri: "https://doind.gov.np/industrial-property-section",
+        label: "Industrial Property Section registration and recordal service context",
+      },
+    ],
+    verificationEvidenceUri: "https://doind.gov.np/faq",
+    notes:
+      "The Department FAQ states that complaints concerning patents, designs or trademarks are filed with DOI's Law and Decision Implementation Section, preserving an official procedural entrypoint without inferring unverified adjudication rules.",
+  }),
+  target(DOI_NP, {
+    id: "np-doi-industrial-property-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Nepal DOI Industrial Property Bulletin",
+    canonicalUri: "https://doind.gov.np/industrial-property-bulletin",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://doind.gov.np/industrial-property-bulletin",
+    notes:
+      "DOI continuously publishes numbered Industrial Property Bulletin issues with downloadable files; the current archive includes year 20 issues in 2083 B.S., making this a high-value publication and change-signal source.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -5895,5 +6030,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...MOCI_KW_SOURCE_COVERAGE_TARGETS,
   ...IPPD_JO_SOURCE_COVERAGE_TARGETS,
   ...DPDT_BD_SOURCE_COVERAGE_TARGETS,
+  ...DOI_NP_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

@@ -1681,6 +1681,36 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "bd-dpdt-trademark-proceedings",
     query: "Bangladesh DPDT trademark opposition TM-5 counterstatement TM-6 hearing TM-7",
   },
+  {
+    id: "np-industrial-property-portal-name",
+    targetId: "np-doi-industrial-property-portal",
+    query: "Nepal Department of Industry trademark design patent industrial property",
+  },
+  {
+    id: "np-trademark-filing-name",
+    targetId: "np-doi-trademark-filing",
+    query: "Nepal DOI domestic foreign trademark registration renewal transfer requirements",
+  },
+  {
+    id: "np-trademark-fees-name",
+    targetId: "np-doi-trademark-fees",
+    query: "Nepal DOI trademark application registration fees citizen charter",
+  },
+  {
+    id: "np-trademark-law-name",
+    targetId: "np-doi-trademark-law",
+    query: "Nepal Patent Design and Trademark Act 2022 1965 DOI",
+  },
+  {
+    id: "np-trademark-guidelines-name",
+    targetId: "np-doi-trademark-guidelines",
+    query: "Nepal DOI official trademark guideline collective mark guideline",
+  },
+  {
+    id: "np-trademark-proceedings-name",
+    targetId: "np-doi-trademark-proceedings",
+    query: "Nepal DOI trademark complaint Law Decision Implementation Section FAQ",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
