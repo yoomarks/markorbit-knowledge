@@ -2119,6 +2119,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ca-cipo-trademark-opposition",
     query: "opposition proceedings",
   },
+  {
+    id: "ma-ompic-trademark-portal-name",
+    targetId: "ma-ompic-trademark-portal",
+    query: "marque",
+  },
+  {
+    id: "ma-ompic-trademark-filing-name",
+    targetId: "ma-ompic-trademark-filing",
+    query: "déposer marque",
+  },
+  {
+    id: "ma-ompic-trademark-search-name",
+    targetId: "ma-ompic-trademark-search",
+    query: "recherche marques nationales",
+  },
+  {
+    id: "ma-ompic-trademark-forms-name",
+    targetId: "ma-ompic-trademark-forms",
+    query: "formulaire marque",
+  },
+  {
+    id: "ma-ompic-trademark-fees-name",
+    targetId: "ma-ompic-trademark-fees",
+    query: "tarifs",
+  },
+  {
+    id: "ma-ompic-nice-classification-name",
+    targetId: "ma-ompic-nice-classification",
+    query: "classification de Nice",
+  },
+  {
+    id: "ma-ompic-trademark-legal-texts-name",
+    targetId: "ma-ompic-trademark-legal-texts",
+    query: "loi propriété industrielle",
+  },
+  {
+    id: "ma-ompic-trademark-opposition-name",
+    targetId: "ma-ompic-trademark-opposition",
+    query: "opposition marque",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
