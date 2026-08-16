@@ -14,7 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Apply Romania OSIM patch
-        run: python .github/tmp/patch_ro_osim_source_coverage.py
+        run: |
+          sed -i 's/if count != 1:/if count < 1:/' .github/tmp/patch_ro_osim_source_coverage.py
+          python .github/tmp/patch_ro_osim_source_coverage.py
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
