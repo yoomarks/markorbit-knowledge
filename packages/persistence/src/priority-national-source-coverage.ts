@@ -6201,6 +6201,164 @@ export const IPOPHL_PH_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const DJKI_ID: Authority = {
+  jurisdiction: "ID",
+  authorityName:
+    "Directorate General of Intellectual Property (DJKI), Ministry of Law of Indonesia",
+  languages: ["id-ID"],
+  verificationEvidenceUri: "https://www.dgip.go.id/menu-utama/merek/pengenalan",
+};
+
+export const DJKI_ID_SOURCE_COVERAGE_TARGETS = [
+  target(DJKI_ID, {
+    id: "id-djki-trademarks",
+    family: "PORTAL",
+    displayName: "Indonesia DJKI Trademark Portal",
+    canonicalUri: "https://www.dgip.go.id/menu-utama/merek/pengenalan",
+    entrypoints: [
+      {
+        uri: "https://www.dgip.go.id/menu-utama/merek/pengenalan",
+        label: "Trademark overview and service navigation",
+      },
+      { uri: "https://www.dgip.go.id/", label: "DJKI official portal" },
+    ],
+    verificationEvidenceUri: "https://www.dgip.go.id/menu-utama/merek/pengenalan",
+    notes:
+      "DJKI's trademark portal provides the national trademark overview and links filing requirements, fees, classification and registration services.",
+  }),
+  target(DJKI_ID, {
+    id: "id-djki-trademark-filing",
+    family: "FILING",
+    displayName: "Indonesia DJKI Online Trademark Filing",
+    canonicalUri: "https://merek.dgip.go.id/",
+    entrypoints: [
+      {
+        uri: "https://merek.dgip.go.id/",
+        label: "Official online trademark account and filing system",
+      },
+      {
+        uri: "https://www.dgip.go.id/index.php/menu-utama/merek/syarat-prosedur",
+        label: "Official new-trademark filing requirements and workflow",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri: "https://www.dgip.go.id/index.php/menu-utama/merek/syarat-prosedur",
+    notes:
+      "DJKI's filing guidance directs applicants to the national online trademark system and documents the application, class selection, billing, attachment and receipt workflow.",
+  }),
+  target(DJKI_ID, {
+    id: "id-djki-trademark-search",
+    family: "SEARCH",
+    displayName: "Indonesia DJKI PDKI Trademark Search",
+    canonicalUri: "https://pdki-indonesia.dgip.go.id/",
+    entrypoints: [
+      {
+        uri: "https://pdki-indonesia.dgip.go.id/",
+        label: "Pangkalan Data Kekayaan Intelektual public search",
+      },
+      {
+        uri: "https://dgip.go.id/faq/daftar-faq/merek/Merek-Publikasi",
+        label: "Official guidance identifying PDKI for registered and pending trademark search",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://dgip.go.id/faq/daftar-faq/merek/Merek-Publikasi",
+    notes:
+      "DJKI identifies PDKI as the public database for searching registered trademarks and pending applications and for checking current trademark status.",
+  }),
+  target(DJKI_ID, {
+    id: "id-djki-trademark-fees",
+    family: "FEES",
+    displayName: "Indonesia DJKI Trademark Fees",
+    canonicalUri: "https://dgip.go.id/menu-utama/merek/biaya",
+    verificationEvidenceUri: "https://dgip.go.id/menu-utama/merek/biaya",
+    notes:
+      "DJKI publishes the current trademark PNBP schedule under PP No. 45 of 2024, including filing, renewal, opposition, appeal, recordal and written-classification services. Amounts remain sourced evidence rather than frozen catalog truth.",
+  }),
+  target(DJKI_ID, {
+    id: "id-djki-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Indonesia DJKI Trademark Classification System",
+    canonicalUri: "https://skm.dgip.go.id/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://skm.dgip.go.id/",
+    notes:
+      "DJKI's official Sistem Klasifikasi Merek provides searchable Nice Classification classes and goods/services descriptions for national trademark specifications.",
+  }),
+  target(DJKI_ID, {
+    id: "id-djki-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Indonesia DJKI Trademark Law and Registration Regulations",
+    canonicalUri:
+      "https://jdih.dgip.go.id/produk_hukum/view/id/24/t/undangundang%2Bnomor%2B20%2Btahun%2B2016%2Bt",
+    entrypoints: [
+      {
+        uri: "https://jdih.dgip.go.id/produk_hukum/view/id/24/t/undangundang%2Bnomor%2B20%2Btahun%2B2016%2Bt",
+        label: "Law No. 20 of 2016 on Trademarks and Geographical Indications",
+      },
+      {
+        uri: "https://jdih.dgip.go.id/produk_hukum/view/id/41/t/peraturan%2Bmenteri%2Bhukum%2Bdan%2Bham%2Bnomor%2B67%2B%20tahun%2B2016%2Btentang%2Bpendaftaran%2Bmerek",
+        label: "Ministerial Regulation No. 67 of 2016 on Trademark Registration",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://jdih.dgip.go.id/produk_hukum/view/id/24/t/undangundang%2Bnomor%2B20%2Btahun%2B2016%2Bt",
+    notes:
+      "DJKI's JDIH publishes the primary Trademark and Geographical Indications Law together with trademark-registration implementing regulations and related legal materials.",
+  }),
+  target(DJKI_ID, {
+    id: "id-djki-trademark-examination-guidance",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Indonesia DJKI Trademark Examination Technical Guidance",
+    canonicalUri: "https://www.dgip.go.id/menu-utama/merek/petunjuk-teknis",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.dgip.go.id/menu-utama/merek/petunjuk-teknis",
+    notes:
+      "DJKI publishes technical guidance for substantive trademark examination, Madrid examination and quality-management examination practice as official examiner-facing source material.",
+  }),
+  target(DJKI_ID, {
+    id: "id-djki-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Indonesia DJKI Trademark Opposition, Rebuttal and Appeal Procedures",
+    canonicalUri: "https://www.dgip.go.id/menu-utama/merek/formulir-dan-format-surat",
+    entrypoints: [
+      {
+        uri: "https://www.dgip.go.id/menu-utama/merek/formulir-dan-format-surat",
+        label: "Official objection, appeal, hearing and rebuttal forms",
+      },
+      {
+        uri: "https://dgip.go.id/menu-utama/merek/pasca-permohonan-merek",
+        label: "Post-application procedures including rebuttal and hearing routes",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.dgip.go.id/menu-utama/merek/formulir-dan-format-surat",
+    notes:
+      "DJKI's official trademark forms and post-application guidance expose objection, rebuttal, hearing and appeal procedural materials without inferring rules beyond the published sources.",
+  }),
+  target(DJKI_ID, {
+    id: "id-djki-trademark-official-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Indonesia DJKI Official Trademark Gazette",
+    canonicalUri: "https://dgip.go.id/berita-resmi/berita-resmi-merek",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://dgip.go.id/berita-resmi/berita-resmi-merek",
+    notes:
+      "DJKI publishes Berita Resmi Merek issues as the official trademark publication surface, making the archive a high-value publication and change-signal source.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -6317,5 +6475,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...DOI_NP_SOURCE_COVERAGE_TARGETS,
   ...MYIPO_MY_SOURCE_COVERAGE_TARGETS,
   ...IPOPHL_PH_SOURCE_COVERAGE_TARGETS,
+  ...DJKI_ID_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
