@@ -14,7 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Apply UAE MoET patch
-        run: python .github/tmp/patch_ae_moet_source_coverage.py
+        run: |
+          sed -i 's/^+] satisfies readonly SourceCoverageTarget\[\];$/] satisfies readonly SourceCoverageTarget[];/' .github/tmp/patch_ae_moet_source_coverage.py
+          python .github/tmp/patch_ae_moet_source_coverage.py
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
