@@ -1121,6 +1121,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "si-sipo-trademark-proceedings",
     query: "Slovenia trademark opposition revocation invalidity SIPO",
   },
+  {
+    id: "gr-trademarks-name",
+    targetId: "gr-obi-trademarks",
+    query: "Greece OBI National Trademark Register trademarks",
+  },
+  {
+    id: "gr-trademark-filing-name",
+    targetId: "gr-obi-trademark-filing",
+    query: "Greece OBI electronic trademark filing TAXIS Nice classes",
+  },
+  {
+    id: "gr-trademark-search-name",
+    targetId: "gr-obi-trademark-search",
+    query: "Greece OBI trademark availability check TMview national register",
+  },
+  {
+    id: "gr-trademark-fees-name",
+    targetId: "gr-obi-trademark-fees",
+    query: "Greece OBI trademark fees filing additional class opposition renewal",
+  },
+  {
+    id: "gr-trademark-classification-name",
+    targetId: "gr-obi-trademark-classification",
+    query: "Greece OBI Nice Classification 13 2026 TMclass",
+  },
+  {
+    id: "gr-trademark-law-name",
+    targetId: "gr-obi-trademark-law",
+    query: "Greece trademark Law 4679 2020 OBI legislation",
+  },
+  {
+    id: "gr-trademark-proceedings-name",
+    targetId: "gr-obi-trademark-proceedings",
+    query: "Greece OBI Administrative Committee trademarks opposition appeals 2026",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
