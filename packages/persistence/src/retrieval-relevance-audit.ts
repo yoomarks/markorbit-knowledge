@@ -556,6 +556,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "it-uibm-trademark-nullity-revocation",
     query: "decadenza nullità marchio",
   },
+  {
+    id: "ch-trademarks-name",
+    targetId: "ch-ipi-trademarks",
+    query: "Swiss trade marks",
+  },
+  {
+    id: "ch-trademark-filing-name",
+    targetId: "ch-ipi-trademark-filing",
+    query: "national trade mark applications",
+  },
+  {
+    id: "ch-trademark-search-name",
+    targetId: "ch-ipi-trademark-search",
+    query: "Swissreg trade mark database",
+  },
+  {
+    id: "ch-trademark-fees-name",
+    targetId: "ch-ipi-trademark-fees",
+    query: "trade mark costs fees",
+  },
+  {
+    id: "ch-trademark-guidelines-name",
+    targetId: "ch-ipi-trademark-guidelines",
+    query: "trade mark guidelines 2026",
+  },
+  {
+    id: "ch-trademark-classification-name",
+    targetId: "ch-ipi-trademark-classification",
+    query: "classification tool goods services",
+  },
+  {
+    id: "ch-trademark-law-name",
+    targetId: "ch-ipi-trademark-law",
+    query: "trade mark law legal framework",
+  },
+  {
+    id: "ch-trademark-proceedings-name",
+    targetId: "ch-ipi-trademark-proceedings",
+    query: "trade mark opposition cancellation non-use",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
