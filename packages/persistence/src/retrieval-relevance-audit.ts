@@ -1401,6 +1401,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "rs-zis-trademark-proceedings",
     query: "Serbia trademark opposition cancellation non-use forms instructions",
   },
+  {
+    id: "sa-trademarks-name",
+    targetId: "sa-saip-trademarks",
+    query: "Saudi Authority Intellectual Property trademark services",
+  },
+  {
+    id: "sa-trademark-filing-name",
+    targetId: "sa-saip-trademark-filing",
+    query: "SAIP Unified Intellectual Property Platform trademark registration filing",
+  },
+  {
+    id: "sa-trademark-search-name",
+    targetId: "sa-saip-trademark-search",
+    query: "SAIP search platform registered trademarks Saudi national database",
+  },
+  {
+    id: "sa-trademark-fees-name",
+    targetId: "sa-saip-trademark-fees",
+    query: "SAIP trademark registration application publication certificate fees SAR",
+  },
+  {
+    id: "sa-trademark-classification-name",
+    targetId: "sa-saip-trademark-classification",
+    query: "Saudi SAIP Nice Classification 45 classes goods services trademark",
+  },
+  {
+    id: "sa-trademark-law-name",
+    targetId: "sa-saip-trademark-law",
+    query: "Saudi SAIP trademark laws regulations intellectual property",
+  },
+  {
+    id: "sa-trademark-proceedings-name",
+    targetId: "sa-saip-trademark-proceedings",
+    query: "SAIP trademark appeal objection cancellation litigation paths",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
