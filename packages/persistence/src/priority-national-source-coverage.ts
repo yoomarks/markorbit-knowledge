@@ -2391,6 +2391,103 @@ export const UPRP_PL_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const UPV_CZ: Authority = {
+  jurisdiction: "CZ",
+  authorityName: "Industrial Property Office of the Czech Republic (ÚPV)",
+  languages: ["cs-CZ", "en"],
+  verificationEvidenceUri: "https://upv.gov.cz/en/ip-rights/trademarks",
+};
+
+export const UPV_CZ_SOURCE_COVERAGE_TARGETS = [
+  target(UPV_CZ, {
+    id: "cz-upv-trademarks",
+    family: "PORTAL",
+    displayName: "Czech Industrial Property Office Trademarks",
+    canonicalUri: "https://upv.gov.cz/en/ip-rights/trademarks",
+  }),
+  target(UPV_CZ, {
+    id: "cz-upv-trademark-filing",
+    family: "FILING",
+    displayName: "ÚPV National Trademark Application",
+    canonicalUri: "https://upv.gov.cz/en/ip-rights/trademarks/national-trademark-application",
+    verificationEvidenceUri:
+      "https://upv.gov.cz/en/ip-rights/trademarks/national-trademark-application",
+    notes:
+      "The national filing page specifies the required application contents, priority framework and Nice-classified goods/services list.",
+  }),
+  target(UPV_CZ, {
+    id: "cz-upv-trademark-search",
+    family: "SEARCH",
+    displayName: "ÚPV Trademark Databases",
+    canonicalUri:
+      "https://upv.gov.cz/en/information-sources/national-databases/trademark-databases",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON", "XML"],
+    verificationEvidenceUri:
+      "https://upv.gov.cz/en/information-sources/national-databases/trademark-databases",
+    notes:
+      "The official national trademark database covers ÚPV, WIPO designations for the Czech Republic/EU and EUIPO records and exposes national trademark XML data.",
+  }),
+  target(UPV_CZ, {
+    id: "cz-upv-trademark-fees",
+    family: "FEES",
+    displayName: "ÚPV Trademark Fees",
+    canonicalUri: "https://upv.gov.cz/en/ip-rights/fees",
+    verificationEvidenceUri: "https://upv.gov.cz/en/ip-rights/fees",
+  }),
+  target(UPV_CZ, {
+    id: "cz-upv-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "ÚPV Trademark Classification",
+    canonicalUri: "https://upv.gov.cz/informacni-zdroje/tridniky/tridnik-ochranne-znamky",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://upv.gov.cz/informacni-zdroje/tridniky/tridnik-ochranne-znamky",
+    notes:
+      "The current official classification page identifies Nice Classification 13th Edition, version 2026, and Vienna Classification 10th Edition 2026 as effective from 1 January 2026.",
+  }),
+  target(UPV_CZ, {
+    id: "cz-upv-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "ÚPV National Trademark Legislation",
+    canonicalUri: "https://upv.gov.cz/en/information-sources/legislation/national",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://upv.gov.cz/en/information-sources/legislation/national",
+    notes:
+      "The national legislation hub publishes Act No. 441/2003 Coll. on Trademarks, implementing Decree No. 97/2004 and related administrative-fee legislation.",
+  }),
+  target(UPV_CZ, {
+    id: "cz-upv-trademark-common-practices",
+    family: "EXAMINATION_MANUAL",
+    displayName: "ÚPV Common Trademark Practices",
+    canonicalUri:
+      "https://upv.gov.cz/en/ip-rights/trademarks/common-communications-on-the-practice-of-euipo-and-eu-member-states",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://upv.gov.cz/en/ip-rights/trademarks/common-communications-on-the-practice-of-euipo-and-eu-member-states",
+    notes:
+      "The official Common Communications page maintains converged EUIPO/member-state trademark examination practices and principles based on court decisions and office best practices.",
+  }),
+  target(UPV_CZ, {
+    id: "cz-upv-official-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "ÚPV Official Bulletin",
+    canonicalUri: "https://upv.gov.cz/en/information-sources/ipo-bulletin",
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://upv.gov.cz/en/information-sources/ipo-bulletin",
+    notes:
+      "The ÚPV Official Bulletin is a weekly digital-only publication containing published trademark applications and granted industrial-property rights.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -2481,5 +2578,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IPOI_IE_SOURCE_COVERAGE_TARGETS,
   ...INPI_PT_SOURCE_COVERAGE_TARGETS,
   ...UPRP_PL_SOURCE_COVERAGE_TARGETS,
+  ...UPV_CZ_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
