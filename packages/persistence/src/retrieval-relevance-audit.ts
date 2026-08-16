@@ -476,6 +476,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "nz-iponz-trademark-hearings",
     query: "trade mark hearings",
   },
+  {
+    id: "es-trademarks-name",
+    targetId: "es-oepm-trademarks",
+    query: "marcas nombres comerciales",
+  },
+  {
+    id: "es-trademark-filing-name",
+    targetId: "es-oepm-trademark-filing",
+    query: "solicitud marca",
+  },
+  {
+    id: "es-trademark-search-name",
+    targetId: "es-oepm-trademark-search",
+    query: "buscar marcas nombres comerciales",
+  },
+  {
+    id: "es-trademark-fees-name",
+    targetId: "es-oepm-trademark-fees",
+    query: "tasas marcas nombres comerciales",
+  },
+  {
+    id: "es-trademark-forms-name",
+    targetId: "es-oepm-trademark-forms",
+    query: "formularios marcas nombres comerciales",
+  },
+  {
+    id: "es-trademark-directives-name",
+    targetId: "es-oepm-trademark-examination-directives",
+    query: "directrices examen marcas",
+  },
+  {
+    id: "es-trademark-law-name",
+    targetId: "es-oepm-trademark-law",
+    query: "normativa marcas nombres comerciales",
+  },
+  {
+    id: "es-trademark-classification-name",
+    targetId: "es-oepm-trademark-classification",
+    query: "CLINMAR clasificación Niza",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
