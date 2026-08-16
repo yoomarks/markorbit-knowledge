@@ -3933,6 +3933,140 @@ export const EPA_EE_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const LPO_LV: Authority = {
+  jurisdiction: "LV",
+  authorityName: "Latvian Patent Office (Patentu valde)",
+  languages: ["lv-LV", "en"],
+  verificationEvidenceUri: "https://www.lrpv.gov.lv/en/trade-marks/services",
+};
+
+export const LPO_LV_SOURCE_COVERAGE_TARGETS = [
+  target(LPO_LV, {
+    id: "lv-lpo-trademarks",
+    family: "PORTAL",
+    displayName: "Latvian Patent Office Trade Mark Services",
+    canonicalUri: "https://www.lrpv.gov.lv/en/trade-marks/services",
+    verificationEvidenceUri: "https://www.lrpv.gov.lv/en/trade-marks/services",
+    notes:
+      "The current trademark services hub exposes filing, renewal, transfers, licensing, international registration, register extracts, opposition, appeal, revocation and invalidity services.",
+  }),
+  target(LPO_LV, {
+    id: "lv-lpo-trademark-filing",
+    family: "FILING",
+    displayName: "Latvian Patent Office Trademark Application",
+    canonicalUri: "https://www.lrpv.gov.lv/en/services/filing-trademark-application",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "JSON"],
+    verificationEvidenceUri: "https://www.lrpv.gov.lv/en/services/filing-trademark-application",
+    notes:
+      "The filing service, updated in April 2026, documents national electronic filing, Nice-class fees, examination, registration/publication, opposition timing and ten-year renewable protection.",
+  }),
+  target(LPO_LV, {
+    id: "lv-lpo-trademark-search",
+    family: "SEARCH",
+    displayName: "Latvian Patent Office Trade Mark Databases",
+    canonicalUri: "https://www.lrpv.gov.lv/en/trade-mark-databases-0",
+    entrypoints: [
+      {
+        uri: "https://www.lrpv.gov.lv/en/trade-mark-databases-0",
+        label: "Trademark database guidance",
+      },
+      {
+        uri: "https://www.lrpv.gov.lv/en/services/trademark-search",
+        label: "Patent Office trademark search service",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.lrpv.gov.lv/en/trade-mark-databases-0",
+    notes:
+      "The Patent Office provides access to the Latvian national trademark database and related search resources; the public database is maintained as an up-to-date information source while legally effective information is published through the register and Official Gazette.",
+  }),
+  target(LPO_LV, {
+    id: "lv-lpo-trademark-fees",
+    family: "FEES",
+    displayName: "Latvian Patent Office Trademark Fees",
+    canonicalUri: "https://www.lrpv.gov.lv/en/fees-legal-protection-trademarks",
+    verificationEvidenceUri: "https://www.lrpv.gov.lv/en/fees-legal-protection-trademarks",
+    notes:
+      "The official trademark fee table was updated on 20 April 2026 under the current 2026 price list and publishes filing, additional-class, registration, renewal and proceeding charges.",
+  }),
+  target(LPO_LV, {
+    id: "lv-lpo-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Latvian Patent Office Nice Classification 13-2026",
+    canonicalUri: "https://www.lrpv.gov.lv/lv/nicas-klasifikacijas-precu-un-pakalpojumu-saraksts",
+    entrypoints: [
+      {
+        uri: "https://www.lrpv.gov.lv/lv/nicas-klasifikacijas-precu-un-pakalpojumu-saraksts",
+        label: "Nice Classification class list",
+      },
+      {
+        uri: "https://www.lrpv.gov.lv/lv/Nicas-klasifikacija/klasu-virsraksti-un-skaidrojumi",
+        label: "Nice class headings and explanatory notes",
+      },
+      {
+        uri: "https://www.lrpv.gov.lv/en/services/filing-trademark-application",
+        label: "Current filing guidance using Nice classes",
+      },
+    ],
+    verificationEvidenceUri:
+      "https://www.lrpv.gov.lv/lv/nicas-klasifikacijas-precu-un-pakalpojumu-saraksts",
+    notes:
+      "The Patent Office's current class list identifies the 13th edition of the Nice Classification effective from 1 January 2026, and current filing guidance calculates application fees by Nice class.",
+  }),
+  target(LPO_LV, {
+    id: "lv-lpo-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Latvia Trade Mark Law",
+    canonicalUri: "https://www.lrpv.gov.lv/en/law-0",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.lrpv.gov.lv/en/law-0",
+    notes:
+      "The official Patent Office legal surface publishes Latvia's Trade Mark Law, including national filing requirements, fees, examination and registration procedure.",
+  }),
+  target(LPO_LV, {
+    id: "lv-lpo-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Latvia Industrial Property Board of Appeal Trademark Proceedings",
+    canonicalUri: "https://www.lrpv.gov.lv/en/board-of-appeal-services",
+    entrypoints: [
+      {
+        uri: "https://www.lrpv.gov.lv/en/board-of-appeal-services",
+        label: "Board of Appeal services",
+      },
+      {
+        uri: "https://www.lrpv.gov.lv/en/services/submission-notice-opposition-registration-object-industrial-property",
+        label: "Trademark opposition service",
+      },
+      {
+        uri: "https://www.lrpv.gov.lv/en/services/submission-notice-declaration-invalidity-trademark-registration",
+        label: "Trademark invalidity service",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri: "https://www.lrpv.gov.lv/en/board-of-appeal-services",
+    notes:
+      "The Industrial Property Board of Appeal handles trademark appeals, opposition, revocation and invalidity; opposition may be filed within three months from official publication and electronic submission is supported.",
+  }),
+  target(LPO_LV, {
+    id: "lv-lpo-official-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Latvian Patent Office Official Gazette",
+    canonicalUri: "https://www.lrpv.gov.lv/en/official-gazette",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.lrpv.gov.lv/en/official-gazette",
+    notes:
+      "The Patent Office publishes its industrial-property registers and changes through the electronic Official Gazette; the current official page lists 2026 issues and the July 2026 issue has been published.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -4034,5 +4168,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...CY_IP_SOURCE_COVERAGE_TARGETS,
   ...IPRD_MT_SOURCE_COVERAGE_TARGETS,
   ...EPA_EE_SOURCE_COVERAGE_TARGETS,
+  ...LPO_LV_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
