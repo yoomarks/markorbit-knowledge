@@ -7166,6 +7166,133 @@ export const SIC_CO_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const ISIPO_IS: Authority = {
+  jurisdiction: "IS",
+  authorityName: "Icelandic Intellectual Property Office (ISIPO)",
+  languages: ["is-IS", "en-US"],
+  verificationEvidenceUri: "https://www.hugverk.is/en/knowledge/on-ip/trademarks",
+};
+
+export const ISIPO_IS_SOURCE_COVERAGE_TARGETS = [
+  target(ISIPO_IS, {
+    id: "is-isipo-trademarks",
+    family: "PORTAL",
+    displayName: "Iceland ISIPO Trademark Portal",
+    canonicalUri: "https://www.hugverk.is/en/knowledge/on-ip/trademarks",
+    verificationEvidenceUri: "https://www.hugverk.is/en/knowledge/on-ip/trademarks",
+    notes:
+      "ISIPO's trademark portal explains Icelandic trademark protection and links filing, national search, goods/services, fees, Gazette publications, opposition, division and owner-maintenance guidance.",
+  }),
+  target(ISIPO_IS, {
+    id: "is-isipo-trademark-filing",
+    family: "FILING",
+    displayName: "Iceland ISIPO Online Trademark Filing",
+    canonicalUri: "https://www.hugverk.is/en/apply/apply-in-iceland/apply-for-a-trademark",
+    entrypoints: [
+      {
+        uri: "https://www.hugverk.is/en/apply/apply-in-iceland/apply-for-a-trademark",
+        label: "Authenticated online trademark application",
+      },
+      {
+        uri: "https://www.hugverk.is/en/apply/apply-in-iceland",
+        label: "Apply in Iceland service navigation",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri:
+      "https://www.hugverk.is/en/apply/apply-in-iceland/apply-for-a-trademark",
+    notes:
+      "ISIPO provides a dedicated online trademark application route; electronic submission requires login with an electronic certificate.",
+  }),
+  target(ISIPO_IS, {
+    id: "is-isipo-trademark-search",
+    family: "SEARCH",
+    displayName: "Iceland ISIPO Trademark Search",
+    canonicalUri: "https://www.hugverk.is/en/search/trademark",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.hugverk.is/en/search/trademark",
+    notes:
+      "ISIPO's public trademark search supports text or number queries with class, status and advanced filters and links individual register records with timelines and goods/services.",
+  }),
+  target(ISIPO_IS, {
+    id: "is-isipo-trademark-forms",
+    family: "STATUS_AND_DOCUMENTS",
+    displayName: "Iceland ISIPO Trademark Forms",
+    canonicalUri: "https://www.hugverk.is/en/apply/forms",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.hugverk.is/en/apply/forms",
+    notes:
+      "ISIPO publishes trademark, collective-mark, certification/quality-mark and renewal forms together with general power-of-attorney, assignment and data-access forms.",
+  }),
+  target(ISIPO_IS, {
+    id: "is-isipo-trademark-fees",
+    family: "FEES",
+    displayName: "Iceland ISIPO Trademark Fees",
+    canonicalUri: "https://www.hugverk.is/en/apply/fees-and-banking/trademarks",
+    verificationEvidenceUri: "https://www.hugverk.is/en/apply/fees-and-banking/trademarks",
+    notes:
+      "ISIPO publishes current trademark application, renewal, additional-class, change/division, opposition, administrative revocation, resumption and appeal fees under the applicable fee regulation. Amounts remain sourced evidence rather than frozen catalog truth.",
+  }),
+  target(ISIPO_IS, {
+    id: "is-isipo-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Iceland ISIPO Trademark Goods and Services Classification",
+    canonicalUri: "https://www.hugverk.is/en/knowledge/on-ip/trademarks/good-and-services",
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verificationEvidenceUri:
+      "https://www.hugverk.is/en/knowledge/on-ip/trademarks/good-and-services",
+    notes:
+      "ISIPO publishes the current 45 Nice classes and Iceland-specific guidance for preparing trademark goods/services; the office does not accept class-heading bold terms when they are considered too broad.",
+  }),
+  target(ISIPO_IS, {
+    id: "is-isipo-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Iceland ISIPO Trademark Act, Regulation and 2026 Classification Notice",
+    canonicalUri: "https://www.hugverk.is/en/knowledge/ip-law/trademarks",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.hugverk.is/en/knowledge/ip-law/trademarks",
+    notes:
+      "ISIPO's trademark-law page publishes Trademark Act No. 45/1997, Trademark Regulation No. 850/2020 and identifies Advertisement No. 1355/2025 as the current Nice-classification notice applying from 1 January 2026.",
+  }),
+  target(ISIPO_IS, {
+    id: "is-isipo-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Iceland ISIPO Trademark Opposition Proceedings",
+    canonicalUri: "https://www.hugverk.is/en/knowledge/on-ip/trademarks/opposition",
+    entrypoints: [
+      {
+        uri: "https://www.hugverk.is/en/knowledge/on-ip/trademarks/opposition",
+        label: "Opposition procedure, deadlines and appeal route",
+      },
+      {
+        uri: "https://www.hugverk.is/en/search/form/opposition-trademark",
+        label: "Official opposition submission route",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri: "https://www.hugverk.is/en/knowledge/on-ip/trademarks/opposition",
+    notes:
+      "ISIPO documents the two-month post-publication opposition period, filing requirements, evidence exchange, settlement postponements, rulings, transfer remedies and appeal deadlines, with filing linked from trademark records.",
+  }),
+  target(ISIPO_IS, {
+    id: "is-isipo-ip-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Iceland ISIPO Intellectual Property Gazette",
+    canonicalUri: "https://www.hugverk.is/en/newsroom/gazettes",
+    coverageTier: "CHANGE_SIGNAL",
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.hugverk.is/en/newsroom/gazettes",
+    notes:
+      "Hugverkatíðindi is ISIPO's official electronic Gazette. From January 2026 it is issued every Wednesday and includes trademark publications plus opposition and appeal notices, making it a high-value publication change signal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -7289,5 +7416,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...CIPC_ZA_SOURCE_COVERAGE_TARGETS,
   ...INAPI_CL_SOURCE_COVERAGE_TARGETS,
   ...SIC_CO_SOURCE_COVERAGE_TARGETS,
+  ...ISIPO_IS_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
