@@ -1331,6 +1331,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "lt-vpb-trademark-proceedings",
     query: "Lithuania trademark appeal opposition invalidity cancellation Appeals Division",
   },
+  {
+    id: "tr-trademarks-name",
+    targetId: "tr-turkpatent-trademarks",
+    query: "Türkiye trademark TÜRKPATENT application examination opposition",
+  },
+  {
+    id: "tr-trademark-filing-name",
+    targetId: "tr-turkpatent-trademark-filing",
+    query: "TÜRKPATENT EPATS trademark application",
+  },
+  {
+    id: "tr-trademark-search-name",
+    targetId: "tr-turkpatent-trademark-search",
+    query: "TÜRKPATENT trademark research file tracking classes bulletin",
+  },
+  {
+    id: "tr-trademark-fees-name",
+    targetId: "tr-turkpatent-trademark-fees",
+    query: "TÜRKPATENT 2026 trademark fees opposition cancellation",
+  },
+  {
+    id: "tr-trademark-classification-name",
+    targetId: "tr-turkpatent-trademark-classification",
+    query: "TÜRKPATENT Nice classification goods services MGS TMclass",
+  },
+  {
+    id: "tr-trademark-law-name",
+    targetId: "tr-turkpatent-trademark-law",
+    query: "6769 Industrial Property Code trademark regulation Türkiye",
+  },
+  {
+    id: "tr-trademark-proceedings-name",
+    targetId: "tr-turkpatent-trademark-proceedings",
+    query: "TÜRKPATENT trademark opposition appeal re-examination cancellation",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
