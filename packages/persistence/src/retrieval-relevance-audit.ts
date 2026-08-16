@@ -1226,6 +1226,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "mt-iprd-trademark-proceedings",
     query: "Malta trademark opposition 90 days online",
   },
+  {
+    id: "ee-trademarks-name",
+    targetId: "ee-epa-trademarks",
+    query: "Estonian Patent Office Patendiamet trademarks",
+  },
+  {
+    id: "ee-trademark-filing-name",
+    targetId: "ee-epa-trademark-filing",
+    query: "Estonia national trademark filing application Patent Office",
+  },
+  {
+    id: "ee-trademark-search-name",
+    targetId: "ee-epa-trademark-search",
+    query: "Estonian Patent Office trademark database daily updated",
+  },
+  {
+    id: "ee-trademark-fees-name",
+    targetId: "ee-epa-trademark-fees",
+    query: "Estonia trademark filing fees additional class renewal",
+  },
+  {
+    id: "ee-trademark-classification-name",
+    targetId: "ee-epa-trademark-classification",
+    query: "Estonia Nice Classification 13 2026 goods services",
+  },
+  {
+    id: "ee-trademark-law-name",
+    targetId: "ee-epa-trademark-law",
+    query: "Estonia Trade Marks Act Patent Office legal acts",
+  },
+  {
+    id: "ee-trademark-proceedings-name",
+    targetId: "ee-epa-trademark-proceedings",
+    query: "Estonia trademark opposition Board of Appeal two months",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
