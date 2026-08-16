@@ -1051,6 +1051,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "bg-bpo-trademark-proceedings",
     query: "Bulgaria trademark opposition appeal revocation invalidity BPO",
   },
+  {
+    id: "hr-trademarks-name",
+    targetId: "hr-dziv-trademarks",
+    query: "Croatia SIPO trademark registration process",
+  },
+  {
+    id: "hr-trademark-filing-name",
+    targetId: "hr-dziv-trademark-filing",
+    query: "Croatia SIPO e filing trademarks opposition revocation invalidity",
+  },
+  {
+    id: "hr-trademark-search-name",
+    targetId: "hr-dziv-trademark-search",
+    query: "Croatia trademark e register DZIV",
+  },
+  {
+    id: "hr-trademark-fees-name",
+    targetId: "hr-dziv-trademark-fees",
+    query: "Croatia SIPO trademark procedural fees costs",
+  },
+  {
+    id: "hr-trademark-classification-name",
+    targetId: "hr-dziv-trademark-classification",
+    query: "Croatia trademark Nice classification TMclass goods services",
+  },
+  {
+    id: "hr-trademark-law-name",
+    targetId: "hr-dziv-trademark-law",
+    query: "Croatia Trademark Act 14 2019 Trademark Regulations 38 2019",
+  },
+  {
+    id: "hr-trademark-proceedings-name",
+    targetId: "hr-dziv-trademark-proceedings",
+    query: "Croatia trademark opposition revocation invalidity forms DZIV",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",

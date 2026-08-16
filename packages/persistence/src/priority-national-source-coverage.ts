@@ -3003,6 +3003,155 @@ export const BPO_BG_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const DZIV_HR: Authority = {
+  jurisdiction: "HR",
+  authorityName: "State Intellectual Property Office of the Republic of Croatia (SIPO/DZIV)",
+  languages: ["hr-HR", "en"],
+  verificationEvidenceUri:
+    "https://www.dziv.hr/en/intellectual-property-protection/trademarks/the-registration-process/",
+};
+
+export const DZIV_HR_SOURCE_COVERAGE_TARGETS = [
+  target(DZIV_HR, {
+    id: "hr-dziv-trademarks",
+    family: "PORTAL",
+    displayName: "Croatia SIPO Trademark Registration Process",
+    canonicalUri:
+      "https://www.dziv.hr/en/intellectual-property-protection/trademarks/the-registration-process/",
+    verificationEvidenceUri:
+      "https://www.dziv.hr/en/intellectual-property-protection/trademarks/the-registration-process/",
+    notes:
+      "The current national registration hub explains Nice-class goods/services lists, filing requirements, applicable law, prior-right searches and the Croatian trademark registration route.",
+  }),
+  target(DZIV_HR, {
+    id: "hr-dziv-trademark-filing",
+    family: "FILING",
+    displayName: "Croatia SIPO e-Filing for Trademarks",
+    canonicalUri: "https://www.dziv.hr/en/e-services/e-filing/trademarks/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "JSON"],
+    verificationEvidenceUri: "https://www.dziv.hr/en/e-services/e-filing/trademarks/",
+    notes:
+      "The trademark e-filing service page, updated in March 2026, covers national applications and subsequent submissions including opposition, revocation and invalidity proceedings.",
+  }),
+  target(DZIV_HR, {
+    id: "hr-dziv-trademark-search",
+    family: "SEARCH",
+    displayName: "Croatia SIPO e-Register of Trademarks",
+    canonicalUri: "https://www.dziv.hr/en/e-services/e-registers/trademarks/",
+    entrypoints: [
+      {
+        uri: "https://www.dziv.hr/en/e-services/e-registers/trademarks/",
+        label: "National trademark e-register",
+      },
+      {
+        uri: "https://www.dziv.hr/en/e-services/e-registers/",
+        label: "SIPO e-registers directory",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.dziv.hr/en/e-services/e-registers/trademarks/",
+    notes:
+      "SIPO provides a public online trademark e-register for Croatian national trademark applications and registrations.",
+  }),
+  target(DZIV_HR, {
+    id: "hr-dziv-trademark-fees",
+    family: "FEES",
+    displayName: "Croatia SIPO Trademark Fees",
+    canonicalUri:
+      "https://www.dziv.hr/en/intellectual-property-protection/trademarks/the-registration-process/fees/",
+    entrypoints: [
+      {
+        uri: "https://www.dziv.hr/en/intellectual-property-protection/trademarks/the-registration-process/fees/",
+        label: "Trademark procedural costs",
+      },
+      {
+        uri: "https://www.dziv.hr/en/forms-and-publications/fees/",
+        label: "SIPO fees legal basis",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.dziv.hr/en/intellectual-property-protection/trademarks/the-registration-process/fees/",
+    notes:
+      "The official fee surface links the basic trademark procedural costs and the legislation governing administrative and professional-service charges.",
+  }),
+  target(DZIV_HR, {
+    id: "hr-dziv-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Croatia SIPO Nice Classification and TMclass Practice",
+    canonicalUri:
+      "https://www.dziv.hr/hr/prirucnik-za-ispitivanje-zigova/poglavlje-iii-klasifikacija/3-2-opca-pravila/",
+    entrypoints: [
+      {
+        uri: "https://www.dziv.hr/hr/prirucnik-za-ispitivanje-zigova/poglavlje-iii-klasifikacija/3-2-opca-pravila/",
+        label: "Trademark examination manual classification rules",
+      },
+      {
+        uri: "https://www.dziv.hr/en/intellectual-property-protection/trademarks/the-registration-process/",
+        label: "Current registration process requiring Nice Classification",
+      },
+    ],
+    verificationEvidenceUri:
+      "https://www.dziv.hr/hr/prirucnik-za-ispitivanje-zigova/poglavlje-iii-klasifikacija/3-2-opca-pravila/",
+    notes:
+      "SIPO requires goods/services to be classified under Nice and recommends the harmonised TMclass terminology, including through the integrated e-filing workflow; this practice surface avoids treating older static Nice-edition content as current truth.",
+  }),
+  target(DZIV_HR, {
+    id: "hr-dziv-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Croatia SIPO Trademark Legislation",
+    canonicalUri: "https://www.dziv.hr/en/ip-legislation/national-legislation/trademarks/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.dziv.hr/en/ip-legislation/national-legislation/trademarks/",
+    notes:
+      "The official national legislation page publishes the Trademark Act (OG 14/2019) and Trademark Regulations (OG 38/2019), together with former legislation for transitional proceedings.",
+  }),
+  target(DZIV_HR, {
+    id: "hr-dziv-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Croatia SIPO Trademark Opposition, Revocation and Invalidity Forms",
+    canonicalUri:
+      "https://www.dziv.hr/en/intellectual-property-protection/trademarks/the-registration-process/forms-and-publications/",
+    entrypoints: [
+      {
+        uri: "https://www.dziv.hr/en/intellectual-property-protection/trademarks/the-registration-process/forms-and-publications/",
+        label: "Trademark forms and proceedings publications",
+      },
+      {
+        uri: "https://www.dziv.hr/en/e-services/e-filing/trademarks/",
+        label: "Electronic two-party trademark proceedings",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF", "DOCX"],
+    verificationEvidenceUri:
+      "https://www.dziv.hr/en/intellectual-property-protection/trademarks/the-registration-process/forms-and-publications/",
+    notes:
+      "The current forms page, updated in March 2026, includes opposition, revocation and invalidity forms, while the e-filing service supports their electronic submission.",
+  }),
+  target(DZIV_HR, {
+    id: "hr-dziv-official-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Croatian Intellectual Property Gazette",
+    canonicalUri: "https://www.dziv.hr/en/the-croatian-intellectual-property-gazette/",
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.dziv.hr/en/the-croatian-intellectual-property-gazette/",
+    notes:
+      "The Croatian Intellectual Property Gazette is SIPO's official publication surface for requested and valid IP rights; trademark publication operates on a biweekly rhythm relevant to opposition timing.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -3098,5 +3247,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...HIPO_HU_SOURCE_COVERAGE_TARGETS,
   ...OSIM_RO_SOURCE_COVERAGE_TARGETS,
   ...BPO_BG_SOURCE_COVERAGE_TARGETS,
+  ...DZIV_HR_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
