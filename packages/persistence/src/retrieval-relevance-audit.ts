@@ -806,6 +806,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ie-ipoi-trademark-opposition",
     query: "trade mark opposition Ireland IPOI",
   },
+  {
+    id: "pt-trademarks-name",
+    targetId: "pt-inpi-trademarks",
+    query: "INPI marcas Portugal registar marca nacional",
+  },
+  {
+    id: "pt-trademark-filing-name",
+    targetId: "pt-inpi-trademark-filing",
+    query: "pedido online marcas logotipos Portugal",
+  },
+  {
+    id: "pt-trademark-search-name",
+    targetId: "pt-inpi-trademark-search",
+    query: "pesquisa online marcas INPI Portugal",
+  },
+  {
+    id: "pt-trademark-fees-name",
+    targetId: "pt-inpi-trademark-fees",
+    query: "tabela taxas propriedade industrial 2026 marcas",
+  },
+  {
+    id: "pt-trademark-classification-name",
+    targetId: "pt-inpi-trademark-classification",
+    query: "13 edição Classificação Nice produtos serviços marcas",
+  },
+  {
+    id: "pt-trademark-examination-name",
+    targetId: "pt-inpi-trademark-examination-guidelines",
+    query: "Guidelines Exame motivos absolutos relativos marcas",
+  },
+  {
+    id: "pt-trademark-law-name",
+    targetId: "pt-inpi-trademark-law",
+    query: "Código Propriedade Industrial marcas Portugal",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
