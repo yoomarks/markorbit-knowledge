@@ -7,6 +7,7 @@ on:
     paths:
       - .github/tmp/patch_bd_dpdt_source_coverage.py
       - .github/tmp/fix_bd_dpdt_count_assertions.py
+      - .github/tmp/fix_bd_dpdt_canonical.py
       - .github/workflows/tmp-bd-dpdt-source-coverage.yml
 
 permissions:
@@ -24,6 +25,7 @@ jobs:
         run: |
           python .github/tmp/patch_bd_dpdt_source_coverage.py
           python .github/tmp/fix_bd_dpdt_count_assertions.py
+          python .github/tmp/fix_bd_dpdt_canonical.py
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
