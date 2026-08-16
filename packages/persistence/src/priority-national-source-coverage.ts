@@ -7694,6 +7694,114 @@ export const KIPI_KE_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IPD_HK: Authority = {
+  jurisdiction: "HK",
+  authorityName: "Hong Kong Intellectual Property Department (IPD)",
+  languages: ["en", "zh"],
+  verificationEvidenceUri: "https://www.ipd.gov.hk/en/trade-marks/index.html",
+};
+
+export const IPD_HK_SOURCE_COVERAGE_TARGETS = [
+  target(IPD_HK, {
+    id: "hk-ipd-trademark-portal",
+    family: "PORTAL",
+    displayName: "Hong Kong IPD Trade Marks Portal",
+    canonicalUri: "https://www.ipd.gov.hk/en/trade-marks/index.html",
+    verificationEvidenceUri: "https://www.ipd.gov.hk/en/trade-marks/index.html",
+  }),
+  target(IPD_HK, {
+    id: "hk-ipd-trademark-filing",
+    family: "FILING",
+    displayName: "Hong Kong IPD E-Filing System",
+    canonicalUri: "https://efiling.ipd.gov.hk/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.ipd.gov.hk/en/online-services/e-filing/index.html",
+    notes:
+      "IPD's current electronic filing service supports trade mark applications and related electronic submissions.",
+  }),
+  target(IPD_HK, {
+    id: "hk-ipd-trademark-search",
+    family: "SEARCH",
+    displayName: "Hong Kong IPD Online Trade Mark Search",
+    canonicalUri: "https://esearch.ipd.gov.hk/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.ipd.gov.hk/en/online-services/online-search/index.html",
+  }),
+  target(IPD_HK, {
+    id: "hk-ipd-trademark-forms-fees",
+    family: "FEES",
+    displayName: "Hong Kong IPD Trade Mark Forms and Fees",
+    canonicalUri: "https://www.ipd.gov.hk/en/trade-marks/forms-and-fees/index.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.ipd.gov.hk/en/trade-marks/forms-and-fees/index.html",
+  }),
+  target(IPD_HK, {
+    id: "hk-ipd-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Hong Kong IPD Goods and Services Classification",
+    canonicalUri:
+      "https://www.ipd.gov.hk/en/trade-marks/apply-for-a-trade-mark/how-to-classify-my-goods-services/index.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.ipd.gov.hk/en/trade-marks/apply-for-a-trade-mark/how-to-classify-my-goods-services/index.html",
+    notes:
+      "IPD states that the 2026 version of the Nice Classification 13th edition applies in Hong Kong from 1 January 2026.",
+  }),
+  target(IPD_HK, {
+    id: "hk-ipd-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Hong Kong IPD Trade Mark Laws",
+    canonicalUri: "https://www.ipd.gov.hk/en/trade-marks/trade-marks-laws/index.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.ipd.gov.hk/en/trade-marks/trade-marks-laws/index.html",
+    notes:
+      "Official IPD legal index for the Trade Marks Ordinance (Cap. 559) and Trade Marks Rules (Cap. 559A).",
+  }),
+  target(IPD_HK, {
+    id: "hk-ipd-trademark-work-manual",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Hong Kong Trade Marks Registry Work Manual",
+    canonicalUri:
+      "https://www.ipd.gov.hk/en/trade-marks/trade-marks-registry-work-manual/index.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.ipd.gov.hk/en/trade-marks/trade-marks-registry-work-manual/index.html",
+    notes:
+      "Current Registry work manual containing examination and practice chapters, including classification and 2026 procedural updates.",
+  }),
+  target(IPD_HK, {
+    id: "hk-ipd-trademark-opposition",
+    family: "PROCEEDINGS",
+    displayName: "Hong Kong IPD Trade Mark Opposition",
+    canonicalUri:
+      "https://www.ipd.gov.hk/en/trade-marks/managing-your-trade-mark/opposition/index.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.ipd.gov.hk/en/trade-marks/managing-your-trade-mark/opposition/index.html",
+  }),
+  target(IPD_HK, {
+    id: "hk-ipd-trademark-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Hong Kong Intellectual Property Journal – Trade Marks",
+    canonicalUri: "https://www.ipd.gov.hk/en/hkipjournal/index.html?cat=1&section=trade",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.ipd.gov.hk/en/hkipjournal/index.html?cat=1&section=trade",
+    notes:
+      "The official Hong Kong IP Journal publishes trade mark notices regularly, normally weekly; retain it as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -7822,5 +7930,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...INPI_AR_SOURCE_COVERAGE_TARGETS,
   ...INDECOPI_PE_SOURCE_COVERAGE_TARGETS,
   ...KIPI_KE_SOURCE_COVERAGE_TARGETS,
+  ...IPD_HK_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
