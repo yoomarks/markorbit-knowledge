@@ -1436,6 +1436,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "sa-saip-trademark-proceedings",
     query: "SAIP trademark appeal objection cancellation litigation paths",
   },
+  {
+    id: "ae-trademarks-name",
+    targetId: "ae-moet-trademarks",
+    query: "UAE Ministry Economy Tourism trademark services registration renewal opposition",
+  },
+  {
+    id: "ae-trademark-filing-name",
+    targetId: "ae-moet-trademark-filing",
+    query: "UAE MoET register trademark application examination publication",
+  },
+  {
+    id: "ae-trademark-search-name",
+    targetId: "ae-moet-trademark-search",
+    query: "UAE MoET trademark inquiry search service",
+  },
+  {
+    id: "ae-trademark-fees-name",
+    targetId: "ae-moet-trademark-fees",
+    query: "UAE trademark examination publication registration renewal fees AED MoET",
+  },
+  {
+    id: "ae-trademark-classification-name",
+    targetId: "ae-moet-trademark-classification",
+    query: "UAE Ministry Economy Nice Classification trademark goods services",
+  },
+  {
+    id: "ae-trademark-law-name",
+    targetId: "ae-moet-trademark-law",
+    query: "UAE Federal Decree Law 36 2021 trademarks Cabinet Decision 57 2022",
+  },
+  {
+    id: "ae-trademark-proceedings-name",
+    targetId: "ae-moet-trademark-proceedings",
+    query: "UAE MoET trademark opposition objection response appeal procedure",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
