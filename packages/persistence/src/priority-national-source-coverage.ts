@@ -7597,6 +7597,103 @@ export const INDECOPI_PE_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const KIPI_KE: Authority = {
+  jurisdiction: "KE",
+  authorityName: "Kenya Industrial Property Institute (KIPI)",
+  languages: ["en"],
+  verificationEvidenceUri: "https://kipi.go.ke/trade-marks",
+};
+
+export const KIPI_KE_SOURCE_COVERAGE_TARGETS = [
+  target(KIPI_KE, {
+    id: "ke-kipi-trademark-portal",
+    family: "PORTAL",
+    displayName: "Kenya KIPI Trade Marks Portal and Procedure",
+    canonicalUri: "https://kipi.go.ke/trade-marks",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://kipi.go.ke/trade-marks",
+    notes:
+      "KIPI's current trademark procedure page explains registration requirements and states that marks are classified under the Nice Classification currently in the 13th edition. The page still links an older 12th-edition download, so that stale file is not cataloged as a current classification source.",
+  }),
+  target(KIPI_KE, {
+    id: "ke-kipi-trademark-filing",
+    family: "FILING",
+    displayName: "Kenya KIPI TM2 Trademark Application Form",
+    canonicalUri: "https://kipi.go.ke/node/438",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://kipi.go.ke/node/438",
+    notes:
+      "Official TM2 application form page, submitted by KIPI on 13 January 2026. KIPI's separate 2026 online-filing system currently covers patents, industrial designs and utility models rather than trademarks, so no trademark e-filing endpoint is inferred here.",
+  }),
+  target(KIPI_KE, {
+    id: "ke-kipi-trademark-search",
+    family: "SEARCH",
+    displayName: "Kenya KIPI TM27 Trademark Search and Preliminary Advice",
+    canonicalUri: "https://kipi.go.ke/node/283",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://kipi.go.ke/node/283",
+    notes:
+      "TM27 is KIPI's official application for a trademark search under rule 114 and for preliminary advice as to distinctiveness; no unsupported public live-search database is inferred.",
+  }),
+  target(KIPI_KE, {
+    id: "ke-kipi-trademark-forms",
+    family: "FILING",
+    displayName: "Kenya KIPI Patent and Trademark Forms",
+    canonicalUri: "https://www.kipi.go.ke/node/225",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.kipi.go.ke/node/225",
+    notes:
+      "Official forms catalogue including TM1, TM2, TM6 opposition, TM7 counter-statement, TM10 renewal and other trademark forms.",
+  }),
+  target(KIPI_KE, {
+    id: "ke-kipi-trademark-fees",
+    family: "FEES",
+    displayName: "Kenya KIPI Trade Marks Fees Schedule",
+    canonicalUri: "https://kipi.go.ke/fees-schedules",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://kipi.go.ke/fees-schedules",
+  }),
+  target(KIPI_KE, {
+    id: "ke-kipi-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Kenya KIPI Laws and Regulations",
+    canonicalUri: "https://www.kipi.go.ke/laws-and-regulations",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.kipi.go.ke/laws-and-regulations",
+    notes:
+      "Official KIPI legal index containing the Trademarks Act and related IP legislation and regulations.",
+  }),
+  target(KIPI_KE, {
+    id: "ke-kipi-trademark-rulings",
+    family: "PROCEEDINGS",
+    displayName: "Kenya KIPI Trade Mark Rulings",
+    canonicalUri: "https://www.kipi.go.ke/trade-mark-rulings",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.kipi.go.ke/trade-mark-rulings",
+    notes:
+      "Official KIPI rulings collection covering opposition, expungement and ex-parte trademark proceedings.",
+  }),
+  target(KIPI_KE, {
+    id: "ke-kipi-ip-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Kenya KIPI Industrial Property Journal",
+    canonicalUri: "https://www.kipi.go.ke/ip-journal",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.kipi.go.ke/ip-journal",
+    notes:
+      "KIPI publishes monthly Industrial Property Journals, with 2026 issues listed through June; retain the journal as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -7724,5 +7821,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...OMPIC_MA_SOURCE_COVERAGE_TARGETS,
   ...INPI_AR_SOURCE_COVERAGE_TARGETS,
   ...INDECOPI_PE_SOURCE_COVERAGE_TARGETS,
+  ...KIPI_KE_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

@@ -2239,6 +2239,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "pe-indecopi-trademark-renewal",
     query: "renovar registro marca",
   },
+  {
+    id: "ke-kipi-trademark-portal-name",
+    targetId: "ke-kipi-trademark-portal",
+    query: "trade marks Nice 13th edition",
+  },
+  {
+    id: "ke-kipi-trademark-filing-name",
+    targetId: "ke-kipi-trademark-filing",
+    query: "TM2 application registration mark",
+  },
+  {
+    id: "ke-kipi-trademark-search-name",
+    targetId: "ke-kipi-trademark-search",
+    query: "TM27 search preliminary advice distinctiveness",
+  },
+  {
+    id: "ke-kipi-trademark-forms-name",
+    targetId: "ke-kipi-trademark-forms",
+    query: "trademark forms TM6 TM10",
+  },
+  {
+    id: "ke-kipi-trademark-fees-name",
+    targetId: "ke-kipi-trademark-fees",
+    query: "trade marks fees schedule",
+  },
+  {
+    id: "ke-kipi-trademark-legal-texts-name",
+    targetId: "ke-kipi-trademark-legal-texts",
+    query: "Trademarks Act Kenya",
+  },
+  {
+    id: "ke-kipi-trademark-rulings-name",
+    targetId: "ke-kipi-trademark-rulings",
+    query: "trade mark rulings opposition expungement",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
