@@ -631,6 +631,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "se-prv-trademark-examination-opposition",
     query: "processing trademark applications opposition",
   },
+  {
+    id: "no-trademarks-name",
+    targetId: "no-nipo-trademarks",
+    query: "NIPO trademarks Norway",
+  },
+  {
+    id: "no-trademark-filing-name",
+    targetId: "no-nipo-trademark-filing",
+    query: "start trademark application",
+  },
+  {
+    id: "no-trademark-search-name",
+    targetId: "no-nipo-trademark-search",
+    query: "register search trademarks Norway",
+  },
+  {
+    id: "no-trademark-fees-name",
+    targetId: "no-nipo-trademark-fees",
+    query: "trademark fees price list",
+  },
+  {
+    id: "no-trademark-classification-name",
+    targetId: "no-nipo-trademark-classification",
+    query: "classification goods services product selector",
+  },
+  {
+    id: "no-trademark-law-name",
+    targetId: "no-nipo-trademark-law",
+    query: "Norwegian Trademarks Act regulations",
+  },
+  {
+    id: "no-trademark-proceedings-name",
+    targetId: "no-nipo-trademark-proceedings",
+    query: "trademark opposition administrative review",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",

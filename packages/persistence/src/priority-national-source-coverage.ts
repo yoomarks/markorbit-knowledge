@@ -1498,6 +1498,137 @@ export const PRV_SE_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const NIPO_NO: Authority = {
+  jurisdiction: "NO",
+  authorityName: "Norwegian Industrial Property Office (NIPO)",
+  languages: ["nb-NO", "nn-NO", "en"],
+  verificationEvidenceUri: "https://www.patentstyret.no/en/trademark",
+};
+
+export const NIPO_NO_SOURCE_COVERAGE_TARGETS = [
+  target(NIPO_NO, {
+    id: "no-nipo-trademarks",
+    family: "PORTAL",
+    displayName: "NIPO Trademarks",
+    canonicalUri: "https://www.patentstyret.no/en/trademark",
+  }),
+  target(NIPO_NO, {
+    id: "no-nipo-trademark-filing",
+    family: "FILING",
+    displayName: "NIPO Start a Trademark Application",
+    canonicalUri: "https://www.patentstyret.no/en/trademark/start-a-trademark-application",
+    verificationEvidenceUri:
+      "https://www.patentstyret.no/en/trademark/start-a-trademark-application",
+  }),
+  target(NIPO_NO, {
+    id: "no-nipo-trademark-search",
+    family: "SEARCH",
+    displayName: "NIPO Register Search",
+    canonicalUri: "https://search.patentstyret.no/advanced/",
+    entrypoints: [
+      {
+        uri: "https://www.patentstyret.no/en/services",
+        label: "NIPO services and register guidance",
+      },
+      { uri: "https://search.patentstyret.no/advanced/", label: "The Register" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.patentstyret.no/en/services",
+  }),
+  target(NIPO_NO, {
+    id: "no-nipo-trademark-fees",
+    family: "FEES",
+    displayName: "NIPO Trademark Fees",
+    canonicalUri:
+      "https://www.patentstyret.no/en/about-us/how-we-work/prices-trademark-patent-design",
+    verificationEvidenceUri:
+      "https://www.patentstyret.no/en/about-us/how-we-work/prices-trademark-patent-design",
+    notes: "The official fee schedule was last modified on 1 July 2026.",
+  }),
+  target(NIPO_NO, {
+    id: "no-nipo-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "NIPO Selection and Classification of Goods and Services",
+    canonicalUri:
+      "https://www.patentstyret.no/en/trademark/selection-and-classification-of-goods-and-services",
+    entrypoints: [
+      {
+        uri: "https://www.patentstyret.no/en/trademark/selection-and-classification-of-goods-and-services",
+        label: "Classification guidance",
+      },
+      {
+        uri: "https://services.patentstyret.no/tmclassification",
+        label: "Product selector",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "JSON"],
+    verificationEvidenceUri:
+      "https://www.patentstyret.no/en/trademark/selection-and-classification-of-goods-and-services",
+  }),
+  target(NIPO_NO, {
+    id: "no-nipo-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Norwegian Trademarks Act and Regulations",
+    canonicalUri: "https://www.patentstyret.no/en/trademark/trademarks-act",
+    entrypoints: [
+      {
+        uri: "https://www.patentstyret.no/en/trademark/trademarks-act",
+        label: "Trademarks Act",
+      },
+      {
+        uri: "https://www.patentstyret.no/en/trademark/regulations-to-the-norwegian-trademarks-act-norwegian-trademark-regulations",
+        label: "Trademark Regulations",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.patentstyret.no/en/trademark/trademarks-act",
+  }),
+  target(NIPO_NO, {
+    id: "no-nipo-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "NIPO Trademark Opposition and Administrative Review",
+    canonicalUri: "https://www.patentstyret.no/en/trademark/trademark-appeal-options",
+    entrypoints: [
+      {
+        uri: "https://www.patentstyret.no/en/trademark/trademark-appeal-options/opposition-in-a-trademark-case",
+        label: "Opposition",
+      },
+      {
+        uri: "https://www.patentstyret.no/en/trademark/trademark-appeal-options/administrative-review-in-a-trademark-case",
+        label: "Administrative review",
+      },
+    ],
+    verificationEvidenceUri: "https://www.patentstyret.no/en/trademark/trademark-appeal-options",
+  }),
+  target(NIPO_NO, {
+    id: "no-nipo-trademark-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Norwegian Trademark Gazette",
+    canonicalUri: "https://tidende.patentstyret.no/varemerke",
+    entrypoints: [
+      {
+        uri: "https://www.patentstyret.no/en/about-us/how-we-work/about-the-gazette",
+        label: "Gazette guidance",
+      },
+      { uri: "https://tidende.patentstyret.no/varemerke", label: "Digital Trademark Gazette" },
+    ],
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "JSON", "PDF", "IMAGE"],
+    verificationEvidenceUri:
+      "https://www.patentstyret.no/en/about-us/how-we-work/about-the-gazette",
+    notes:
+      "The digital Norwegian Gazette replaced PDF editions on 4 March 2024 and publishes the trademark gazette weekly every Monday.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -1581,5 +1712,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...UIBM_IT_SOURCE_COVERAGE_TARGETS,
   ...IPI_CH_SOURCE_COVERAGE_TARGETS,
   ...PRV_SE_SOURCE_COVERAGE_TARGETS,
+  ...NIPO_NO_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
