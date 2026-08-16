@@ -56,6 +56,7 @@ import {
   ISIPO_IS_SOURCE_COVERAGE_TARGETS,
   OMPIC_MA_SOURCE_COVERAGE_TARGETS,
   INPI_AR_SOURCE_COVERAGE_TARGETS,
+  INDECOPI_PE_SOURCE_COVERAGE_TARGETS,
   IPOS_SOURCE_COVERAGE_TARGETS,
   JPO_SOURCE_COVERAGE_TARGETS,
   KOREA_SOURCE_COVERAGE_TARGETS,
@@ -124,6 +125,7 @@ const authoritySets = [
   ["IS", ISIPO_IS_SOURCE_COVERAGE_TARGETS, ["hugverk.is"]],
   ["MA", OMPIC_MA_SOURCE_COVERAGE_TARGETS, ["ompic.ma", "directompic.ma"]],
   ["AR", INPI_AR_SOURCE_COVERAGE_TARGETS, ["argentina.gob.ar", "inpi.gob.ar"]],
+  ["PE", INDECOPI_PE_SOURCE_COVERAGE_TARGETS, ["gob.pe"]],
   ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],
 ] as const;
 
@@ -133,14 +135,14 @@ function officialHost(uri: string, suffixes: readonly string[]): boolean {
 }
 
 describe("priority national trademark source coverage", () => {
-  it("ships explicit, official, unique coverage for sixty priority national offices", () => {
-    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(478);
+  it("ships explicit, official, unique coverage for sixty-one priority national offices", () => {
+    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(487);
     expect(new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(
-      478,
+      487,
     );
     expect(
       new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size,
-    ).toBe(478);
+    ).toBe(487);
 
     for (const [jurisdiction, targets, officialSuffixes] of authoritySets) {
       expect(targets.length).toBeGreaterThanOrEqual(5);

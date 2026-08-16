@@ -7489,6 +7489,114 @@ export const INPI_AR_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const INDECOPI_PE: Authority = {
+  jurisdiction: "PE",
+  authorityName:
+    "Instituto Nacional de Defensa de la Competencia y de la Protección de la Propiedad Intelectual (INDECOPI)",
+  languages: ["es"],
+  verificationEvidenceUri: "https://www.gob.pe/institucion/indecopi/tema/registra-tu-marca",
+};
+
+export const INDECOPI_PE_SOURCE_COVERAGE_TARGETS = [
+  target(INDECOPI_PE, {
+    id: "pe-indecopi-trademark-portal",
+    family: "PORTAL",
+    displayName: "Peru INDECOPI Trademarks Portal",
+    canonicalUri: "https://www.gob.pe/institucion/indecopi/tema/registra-tu-marca",
+    verificationEvidenceUri: "https://www.gob.pe/institucion/indecopi/tema/registra-tu-marca",
+  }),
+  target(INDECOPI_PE, {
+    id: "pe-indecopi-trademark-filing",
+    family: "FILING",
+    displayName: "Peru INDECOPI Trademark Registration",
+    canonicalUri:
+      "https://www.gob.pe/institucion/indecopi/pages/333-registrar-la-marca-de-producto-o-servicio-de-tu-negocio-en-indecopi",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.gob.pe/institucion/indecopi/pages/333-registrar-la-marca-de-producto-o-servicio-de-tu-negocio-en-indecopi",
+    notes:
+      "Current public INDECOPI filing guidance links the Registro Virtual de Marcas and documents the online registration path, requirements, publication and examination stages.",
+  }),
+  target(INDECOPI_PE, {
+    id: "pe-indecopi-trademark-search",
+    family: "SEARCH",
+    displayName: "Peru INDECOPI Busca tu marca",
+    canonicalUri:
+      "https://www.gob.pe/institucion/indecopi/pages/16475-buscar-una-marca-o-servicio-registrado-busca-tu-marca",
+    verificationEvidenceUri:
+      "https://www.gob.pe/institucion/indecopi/pages/16475-buscar-una-marca-o-servicio-registrado-busca-tu-marca",
+    notes:
+      "Official public search entry point for checking identical or similar registered and pending signs by name, owner and phonetic criteria.",
+  }),
+  target(INDECOPI_PE, {
+    id: "pe-indecopi-tupa-2026",
+    family: "FEES",
+    displayName: "Peru INDECOPI TUPA Consolidated 2026",
+    canonicalUri:
+      "https://www.gob.pe/institucion/indecopi/normas-legales/8133230-000047-2026-pre-indecopi-consolidado",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.gob.pe/institucion/indecopi/normas-legales/8133230-000047-2026-pre-indecopi-consolidado",
+    notes:
+      "Official consolidated 2026 Texto Único de Procedimientos Administrativos, published 14 May 2026, for current INDECOPI procedures and administrative fees.",
+  }),
+  target(INDECOPI_PE, {
+    id: "pe-indecopi-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Peru INDECOPI Peruanized Goods and Services Search",
+    canonicalUri:
+      "https://www.gob.pe/institucion/indecopi/pages/15455-buscar-productos-y-servicios-para-registrar-tu-marca-buscador-peruanizado",
+    verificationEvidenceUri:
+      "https://www.gob.pe/institucion/indecopi/pages/15455-buscar-productos-y-servicios-para-registrar-tu-marca-buscador-peruanizado",
+  }),
+  target(INDECOPI_PE, {
+    id: "pe-indecopi-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Peru INDECOPI Industrial Property Decisions",
+    canonicalUri: "https://www.gob.pe/institucion/indecopi/normas-legales/tipos/131-decision",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.gob.pe/institucion/indecopi/normas-legales/tipos/131-decision",
+    notes:
+      "Official INDECOPI legal index includes Decision 486-CAN, the mandatory Andean Community Common Industrial Property Regime governing trademarks in Peru.",
+  }),
+  target(INDECOPI_PE, {
+    id: "pe-indecopi-trademark-opposition",
+    family: "PROCEEDINGS",
+    displayName: "Peru INDECOPI Trademark Opposition Procedure",
+    canonicalUri:
+      "https://www.gob.pe/10907-presentar-oposicion-al-registro-de-una-marca-de-signos-distintivos",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.gob.pe/10907-presentar-oposicion-al-registro-de-una-marca-de-signos-distintivos",
+  }),
+  target(INDECOPI_PE, {
+    id: "pe-indecopi-trademark-renewal",
+    family: "MAINTENANCE",
+    displayName: "Peru INDECOPI Trademark Renewal",
+    canonicalUri: "https://www.gob.pe/17064-renovar-el-registro-de-marca",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gob.pe/17064-renovar-el-registro-de-marca",
+  }),
+  target(INDECOPI_PE, {
+    id: "pe-indecopi-industrial-property-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Peru INDECOPI Electronic Industrial Property Gazette",
+    canonicalUri:
+      "https://www.gob.pe/15748-buscar-publicaciones-en-la-gaceta-electronica-de-propiedad-industrial",
+    coverageTier: "CHANGE_SIGNAL",
+    verificationEvidenceUri:
+      "https://www.gob.pe/15748-buscar-publicaciones-en-la-gaceta-electronica-de-propiedad-industrial",
+    notes:
+      "Official public entry point to the electronic industrial-property Gazette; retained as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -7615,5 +7723,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...ISIPO_IS_SOURCE_COVERAGE_TARGETS,
   ...OMPIC_MA_SOURCE_COVERAGE_TARGETS,
   ...INPI_AR_SOURCE_COVERAGE_TARGETS,
+  ...INDECOPI_PE_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
