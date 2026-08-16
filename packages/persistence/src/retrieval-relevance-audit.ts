@@ -1611,6 +1611,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "kw-moci-trademark-proceedings",
     query: "Kuwait MOCI trademark opposition grievance refusal hearing",
   },
+  {
+    id: "jo-trademarks-name",
+    targetId: "jo-ippd-trademarks",
+    query: "Jordan IPPD Ministry trademark services industrial property",
+  },
+  {
+    id: "jo-trademark-filing-name",
+    targetId: "jo-ippd-trademark-filing",
+    query: "Jordan trademark electronic filing IPPD e-service registration",
+  },
+  {
+    id: "jo-trademark-search-name",
+    targetId: "jo-ippd-trademark-search",
+    query: "Jordan official trademark search IP Publish mark owner",
+  },
+  {
+    id: "jo-trademark-fees-name",
+    targetId: "jo-ippd-trademark-fees",
+    query: "Jordan trademark filing publication registration renewal opposition fees",
+  },
+  {
+    id: "jo-trademark-classification-name",
+    targetId: "jo-ippd-trademark-classification",
+    query: "Jordan IPPD trademark goods services classification TMClass Nice",
+  },
+  {
+    id: "jo-trademark-law-name",
+    targetId: "jo-ippd-trademark-law",
+    query: "Jordan Trademark Law 33 1952 regulations amendments fees",
+  },
+  {
+    id: "jo-trademark-proceedings-name",
+    targetId: "jo-ippd-trademark-proceedings",
+    query: "Jordan trademark opposition cancellation appeal IPPD cases",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
