@@ -344,6 +344,67 @@ export const IP_AUSTRALIA_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IPOS: Authority = {
+  jurisdiction: "SG",
+  authorityName: "Intellectual Property Office of Singapore",
+  languages: ["en-SG"],
+  verificationEvidenceUri: "https://www.ipos.gov.sg/about-ip/trade-marks/introduction-trade-marks/",
+};
+
+export const IPOS_SOURCE_COVERAGE_TARGETS = [
+  target(IPOS, {
+    id: "sg-ipos-trademarks",
+    family: "PORTAL",
+    displayName: "IPOS Introduction to Trade Marks",
+    canonicalUri: "https://www.ipos.gov.sg/about-ip/trade-marks/introduction-trade-marks/",
+  }),
+  target(IPOS, {
+    id: "sg-ipos-trademark-registration",
+    family: "FILING",
+    displayName: "IPOS How to Register Trade Marks",
+    canonicalUri: "https://www.ipos.gov.sg/about-ip/trade-marks/how-to-register/",
+    verificationEvidenceUri: "https://www.ipos.gov.sg/about-ip/trade-marks/how-to-register/",
+  }),
+  target(IPOS, {
+    id: "sg-ipos-trademark-search",
+    family: "SEARCH",
+    displayName: "IPOS Digital Hub Trade Mark Search and Enquiry",
+    canonicalUri: "https://digitalhub.ipos.gov.sg/FAMN/eservice/IP4SG/MN_AdvancedSearch",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.ipos.gov.sg/about-ip/trade-marks/introduction-trade-marks/",
+  }),
+  target(IPOS, {
+    id: "sg-ipos-trademark-forms-fees",
+    family: "FEES",
+    displayName: "IPOS Trade Mark Forms and Fees",
+    canonicalUri: "https://www.ipos.gov.sg/about-ip/trade-marks/forms-and-fees/",
+    verificationEvidenceUri: "https://www.ipos.gov.sg/about-ip/trade-marks/forms-and-fees/",
+  }),
+  target(IPOS, {
+    id: "sg-ipos-trademark-guides-work-manual",
+    family: "EXAMINATION_MANUAL",
+    displayName: "IPOS Trade Marks Guides and Work Manual",
+    canonicalUri: "https://www.ipos.gov.sg/about-ip/trade-marks/tm-guides/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.ipos.gov.sg/about-ip/trade-marks/tm-guides/",
+  }),
+  target(IPOS, {
+    id: "sg-ipos-trademark-circulars-practice-directions",
+    family: "POLICY_NOTICES",
+    displayName: "IPOS Trade Mark Circulars and Practice Directions",
+    canonicalUri: "https://www.ipos.gov.sg/about-ip/trade-marks/circulars-and-practice-directions/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.ipos.gov.sg/about-ip/trade-marks/circulars-and-practice-directions/",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -416,5 +477,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...KOREA_SOURCE_COVERAGE_TARGETS,
   ...UKIPO_SOURCE_COVERAGE_TARGETS,
   ...IP_AUSTRALIA_SOURCE_COVERAGE_TARGETS,
+  ...IPOS_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

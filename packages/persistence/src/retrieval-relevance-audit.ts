@@ -253,6 +253,27 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "au-ipaustralia-goods-services-picklist",
     query: "classification search",
   },
+  { id: "sg-trademarks-name", targetId: "sg-ipos-trademarks", query: "trade marks" },
+  {
+    id: "sg-trademark-registration-name",
+    targetId: "sg-ipos-trademark-registration",
+    query: "register trade mark",
+  },
+  {
+    id: "sg-trademark-search-name",
+    targetId: "sg-ipos-trademark-search",
+    query: "similar mark search",
+  },
+  {
+    id: "sg-trademark-forms-fees-name",
+    targetId: "sg-ipos-trademark-forms-fees",
+    query: "forms fees",
+  },
+  {
+    id: "sg-trademark-work-manual-name",
+    targetId: "sg-ipos-trademark-guides-work-manual",
+    query: "work manual",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
