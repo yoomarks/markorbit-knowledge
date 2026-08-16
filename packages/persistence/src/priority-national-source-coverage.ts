@@ -694,6 +694,110 @@ export const INPI_FR_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const INPI_BR: Authority = {
+  jurisdiction: "BR",
+  authorityName: "Instituto Nacional da Propriedade Industrial (Brazil)",
+  languages: ["pt-BR"],
+  verificationEvidenceUri: "https://www.gov.br/inpi/pt-br/servicos/marcas",
+};
+
+export const INPI_BR_SOURCE_COVERAGE_TARGETS = [
+  target(INPI_BR, {
+    id: "br-inpi-trademarks",
+    family: "PORTAL",
+    displayName: "Brazil INPI Trademarks",
+    canonicalUri: "https://www.gov.br/inpi/pt-br/servicos/marcas",
+  }),
+  target(INPI_BR, {
+    id: "br-inpi-trademark-filing-guide",
+    family: "FILING",
+    displayName: "Brazil INPI Trademark Filing Guide",
+    canonicalUri: "https://www.gov.br/inpi/pt-br/servicos/marcas/guia-basico/guia-basico",
+    verificationEvidenceUri:
+      "https://www.gov.br/inpi/pt-br/servicos/marcas/guia-basico/guia-basico",
+  }),
+  target(INPI_BR, {
+    id: "br-inpi-trademark-search",
+    family: "SEARCH",
+    displayName: "Brazil INPI Trademark Search (pePI)",
+    canonicalUri: "https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_num_processo.jsp",
+    entrypoints: [
+      {
+        uri: "https://www.gov.br/inpi/pt-br/servicos/marcas/guia-basico/guia-basico",
+        label: "Trademark search guidance",
+      },
+      {
+        uri: "https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_num_processo.jsp",
+        label: "pePI trademark search",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML"],
+    verificationEvidenceUri: "https://busca.inpi.gov.br/pePI/",
+  }),
+  target(INPI_BR, {
+    id: "br-inpi-trademark-costs",
+    family: "FEES",
+    displayName: "Brazil INPI Trademark Costs and Payment",
+    canonicalUri: "https://www.gov.br/inpi/pt-br/servicos/marcas/custos",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gov.br/inpi/pt-br/servicos/marcas/custos",
+  }),
+  target(INPI_BR, {
+    id: "br-inpi-trademark-manual",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Brazil INPI Trademark Manual",
+    canonicalUri: "https://manualdemarcas.inpi.gov.br/projects/manual/wiki/Manual_de_Marcas",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://manualdemarcas.inpi.gov.br/projects/manual/wiki/Manual_de_Marcas",
+  }),
+  target(INPI_BR, {
+    id: "br-inpi-trademark-legislation",
+    family: "LEGAL_TEXTS",
+    displayName: "Brazil INPI Trademark Legislation",
+    canonicalUri: "https://www.gov.br/inpi/pt-br/servicos/marcas/legislacao",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gov.br/inpi/pt-br/servicos/marcas/legislacao",
+  }),
+  target(INPI_BR, {
+    id: "br-inpi-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Brazil INPI Trademark Classification",
+    canonicalUri: "https://www.gov.br/inpi/pt-br/servicos/marcas/classificacao-marcas",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gov.br/inpi/pt-br/servicos/marcas/classificacao-marcas",
+  }),
+  target(INPI_BR, {
+    id: "br-inpi-trademark-appeals-nullity",
+    family: "APPEALS_AND_CASELAW",
+    displayName: "Brazil INPI Trademark Appeals and Nullity",
+    canonicalUri: "https://www.gov.br/inpi/pt-br/servicos/recursos-e-nulidades",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gov.br/inpi/pt-br/servicos/recursos-e-nulidades",
+  }),
+  target(INPI_BR, {
+    id: "br-inpi-rpi-marks",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Brazil INPI Revista da Propriedade Industrial - Marcas",
+    canonicalUri: "https://revistas.inpi.gov.br/rpi/",
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: false,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF", "XML", "TEXT"],
+    verificationEvidenceUri: "https://revistas.inpi.gov.br/rpi/",
+    notes:
+      "The official RPI publishes the complete weekly industrial property journal and a dedicated Marcas section in downloadable formats.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -770,5 +874,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...DPMA_SOURCE_COVERAGE_TARGETS,
   ...IP_INDIA_SOURCE_COVERAGE_TARGETS,
   ...INPI_FR_SOURCE_COVERAGE_TARGETS,
+  ...INPI_BR_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
