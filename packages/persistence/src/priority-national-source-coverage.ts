@@ -4682,18 +4682,20 @@ export const MOET_AE_SOURCE_COVERAGE_TARGETS = [
     id: "ae-moet-trademark-classification",
     family: "GOODS_SERVICES_ID",
     displayName: "UAE MoET Nice Classification Practice",
-    canonicalUri: "https://www.moet.gov.ae/en/trademark-services",
+    canonicalUri:
+      "https://www.moet.gov.ae/en/search-results?_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_assetEntryId=200540&_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_mvcPath=%2Fview_content.jsp&_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_type=content&p_l_back_url=%2Fen%2Fsearch-results%3Fq%3D%26start%3D12&p_p_id=com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn&p_p_lifecycle=0&p_p_mode=view&p_p_state=maximized",
     entrypoints: [
       {
-        uri: "https://www.moet.gov.ae/en/trademark-services",
-        label: "Current trademark service surface",
+        uri: "https://www.moet.gov.ae/en/search-results?_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_assetEntryId=200540&_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_mvcPath=%2Fview_content.jsp&_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_type=content&p_l_back_url=%2Fen%2Fsearch-results%3Fq%3D%26start%3D12&p_p_id=com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn&p_p_lifecycle=0&p_p_mode=view&p_p_state=maximized",
+        label: "Official trademark FAQ explaining Nice Classification",
       },
       {
         uri: "https://www.moet.gov.ae/en/w/register-trademark%C2%A0",
         label: "Registration requirements for classified goods and services",
       },
     ],
-    verificationEvidenceUri: "https://www.moet.gov.ae/en/trademark-services",
+    verificationEvidenceUri:
+      "https://www.moet.gov.ae/en/search-results?_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_assetEntryId=200540&_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_mvcPath=%2Fview_content.jsp&_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_type=content&p_l_back_url=%2Fen%2Fsearch-results%3Fq%3D%26start%3D12&p_p_id=com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn&p_p_lifecycle=0&p_p_mode=view&p_p_state=maximized",
     notes:
       "MoET identifies the Nice Classification (NCL) as the classification system used for trademark goods and services. The catalog deliberately avoids freezing a specific Nice edition as permanent current truth.",
   }),
@@ -4735,11 +4737,11 @@ export const MOET_AE_SOURCE_COVERAGE_TARGETS = [
     id: "ae-moet-trademark-bulletin",
     family: "OFFICIAL_GAZETTE",
     displayName: "UAE MoET Trademark Bulletin",
-    canonicalUri: "https://www.moet.gov.ae/en/our-publications",
+    canonicalUri: "https://www.moet.gov.ae/en/publications1",
     coverageTier: "CHANGE_SIGNAL",
     fetchAttachmentsHint: true,
     expectedArtifactKinds: ["HTML", "PDF"],
-    verificationEvidenceUri: "https://www.moet.gov.ae/en/our-publications",
+    verificationEvidenceUri: "https://www.moet.gov.ae/en/publications1",
     notes:
       "The official publications surface continuously publishes numbered UAE Trademark Bulletin issues. Publication of an accepted mark starts the current 30-day objection period documented by MoET.",
   }),
