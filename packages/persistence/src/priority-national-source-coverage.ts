@@ -481,6 +481,101 @@ export const DPMA_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IP_INDIA: Authority = {
+  jurisdiction: "IN",
+  authorityName: "Office of the Controller General of Patents, Designs and Trade Marks",
+  languages: ["en-IN", "hi-IN"],
+  verificationEvidenceUri: "https://ipindia.gov.in/basics-of-trademarks",
+};
+
+export const IP_INDIA_SOURCE_COVERAGE_TARGETS = [
+  target(IP_INDIA, {
+    id: "in-ipindia-trademarks",
+    family: "PORTAL",
+    displayName: "IP India Basics of Trademarks",
+    canonicalUri: "https://ipindia.gov.in/basics-of-trademarks",
+  }),
+  target(IP_INDIA, {
+    id: "in-ipindia-trademark-filing-process",
+    family: "FILING",
+    displayName: "IP India Trade Mark Filing Process",
+    canonicalUri: "https://ipindia.gov.in/trade-marks-learn-filing-process-step-by-step",
+    verificationEvidenceUri: "https://ipindia.gov.in/trade-marks-learn-filing-process-step-by-step",
+  }),
+  target(IP_INDIA, {
+    id: "in-ipindia-trademark-search",
+    family: "SEARCH",
+    displayName: "IP India Search Existing Trademarks",
+    canonicalUri: "https://ipindia.gov.in/trade-marks-before-you-apply-search-existing-trademarks",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://ipindia.gov.in/trade-marks-before-you-apply-search-existing-trademarks",
+  }),
+  target(IP_INDIA, {
+    id: "in-ipindia-trademark-forms-fees",
+    family: "FEES",
+    displayName: "IP India Trade Mark Forms and Official Fees",
+    canonicalUri: "https://ipindia.gov.in/pages/trade-marks/learn/forms-and-official-fees",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://ipindia.gov.in/pages/trade-marks/learn/forms-and-official-fees",
+  }),
+  target(IP_INDIA, {
+    id: "in-ipindia-trademark-act",
+    family: "LEGAL_TEXTS",
+    displayName: "IP India Trade Marks Act",
+    canonicalUri: "https://ipindia.gov.in/trade-marks-resources-act",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://ipindia.gov.in/trade-marks-resources-act",
+  }),
+  target(IP_INDIA, {
+    id: "in-ipindia-trademark-rules",
+    family: "LEGAL_TEXTS",
+    displayName: "IP India Trade Marks Rules",
+    canonicalUri: "https://ipindia.gov.in/trade-marks-resources-rules",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://ipindia.gov.in/trade-marks-resources-rules",
+  }),
+  target(IP_INDIA, {
+    id: "in-ipindia-trademark-manual",
+    family: "EXAMINATION_MANUAL",
+    displayName: "IP India Trade Marks Practice and Procedure Manual",
+    canonicalUri: "https://ipindia.gov.in/trade-marks-resources-manual",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://ipindia.gov.in/trade-marks-resources-manual",
+    notes:
+      "As verified on 2026-08-16, the official page publishes draft Trade Marks Practice and Procedure manual materials.",
+  }),
+  target(IP_INDIA, {
+    id: "in-ipindia-trademark-guidelines",
+    family: "POLICY_NOTICES",
+    displayName: "IP India Trade Mark Guidelines and SOPs",
+    canonicalUri: "https://ipindia.gov.in/trade-marks-resources-guidelines",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://ipindia.gov.in/trade-marks-resources-guidelines",
+  }),
+  target(IP_INDIA, {
+    id: "in-ipindia-trademark-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "IP India Trade Marks Journal",
+    canonicalUri: "https://search.ipindia.gov.in/IPOJournal/Journal/Trademark",
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF", "IMAGE"],
+    verificationEvidenceUri: "https://search.ipindia.gov.in/IPOJournal/Journal/Trademark",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -555,5 +650,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IP_AUSTRALIA_SOURCE_COVERAGE_TARGETS,
   ...IPOS_SOURCE_COVERAGE_TARGETS,
   ...DPMA_SOURCE_COVERAGE_TARGETS,
+  ...IP_INDIA_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
