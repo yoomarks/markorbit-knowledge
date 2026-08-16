@@ -8030,6 +8030,126 @@ export const UANIPIO_UA_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const TIPO_TW: Authority = {
+  jurisdiction: "TW",
+  authorityName: "Taiwan Intellectual Property Office (TIPO), Ministry of Economic Affairs",
+  languages: ["zh", "en"],
+  verificationEvidenceUri: "https://www.tipo.gov.tw/en/tipo2/392.html",
+};
+
+export const TIPO_TW_SOURCE_COVERAGE_TARGETS = [
+  target(TIPO_TW, {
+    id: "tw-tipo-trademark-portal",
+    family: "PORTAL",
+    displayName: "Taiwan TIPO Trademarks Portal",
+    canonicalUri: "https://www.tipo.gov.tw/en/tipo2/392.html",
+    verificationEvidenceUri: "https://www.tipo.gov.tw/en/tipo2/392.html",
+  }),
+  target(TIPO_TW, {
+    id: "tw-tipo-trademark-filing",
+    family: "FILING",
+    displayName: "Taiwan TIPO New Trademark Online Application",
+    canonicalUri: "https://tiponet.tipo.gov.tw/S040WV1/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://tiponet.tipo.gov.tw/100_OUT_V1/onlineTeaching/electronicApplication.do",
+    notes:
+      "TIPO's current e-service provides the new trademark online application workflow, including application data, designated goods/services, signing and electronic submission.",
+  }),
+  target(TIPO_TW, {
+    id: "tw-tipo-trademark-search",
+    family: "SEARCH",
+    displayName: "Taiwan TIPO New Trademark Search System",
+    canonicalUri: "https://cloud.tipo.gov.tw/S282/S282WV1/?lang=en",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.tipo.gov.tw/en/tipo2/358.html",
+    notes:
+      "Current cloud-based trademark search system; the legacy search system was retired in 2025.",
+  }),
+  target(TIPO_TW, {
+    id: "tw-tipo-trademark-fees",
+    family: "FEES",
+    displayName: "Taiwan TIPO Trademark Fee Schedule",
+    canonicalUri: "https://www.tipo.gov.tw/tw/trademarks/589.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.tipo.gov.tw/tw/trademarks/589.html",
+    notes:
+      "Current published trademark fee list. TIPO published a draft amendment to Article 2 in June 2026, but the official regulatory index still identifies it as a proposed amendment rather than a replacement fee schedule.",
+  }),
+  target(TIPO_TW, {
+    id: "tw-tipo-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Taiwan TIPO Nice Classification 13-2026",
+    canonicalUri: "https://www.tipo.gov.tw/tw/trademarks/591-8491.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.tipo.gov.tw/tw/trademarks/591-8491.html",
+    notes:
+      "Official TIPO Nice Classification page listing the 13th Edition, Version 2026 and its bilingual goods/services materials.",
+  }),
+  target(TIPO_TW, {
+    id: "tw-tipo-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Taiwan TIPO Trademark Act and Regulations",
+    canonicalUri: "https://www.tipo.gov.tw/en/tipo2/376.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.tipo.gov.tw/en/tipo2/376.html",
+    notes:
+      "Official TIPO trademark laws and regulations index, including the Trademark Act and Enforcement Rules.",
+  }),
+  target(TIPO_TW, {
+    id: "tw-tipo-trademark-examination-guidelines",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Taiwan TIPO Trademark Procedural Examination Guidelines",
+    canonicalUri: "https://www.tipo.gov.tw/tw/trademarks/576-66027.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.tipo.gov.tw/tw/trademarks/576-66027.html",
+    notes:
+      "Current procedural examination guidelines, revised in November 2025 and effective from 1 December 2025.",
+  }),
+  target(TIPO_TW, {
+    id: "tw-tipo-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Taiwan TIPO Trademark Dispute Procedural Examination Guidelines",
+    canonicalUri: "https://www.tipo.gov.tw/tw/trademarks/576-17748.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.tipo.gov.tw/tw/trademarks/576-17748.html",
+    notes:
+      "Official procedural examination guidelines for trademark dispute matters, including opposition and invalidation-related procedure.",
+  }),
+  target(TIPO_TW, {
+    id: "tw-tipo-trademark-renewal",
+    family: "MAINTENANCE",
+    displayName: "Taiwan TIPO Trademark Renewal",
+    canonicalUri: "https://www.tipo.gov.tw/en/tipo2/392-2406.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verificationEvidenceUri: "https://www.tipo.gov.tw/en/tipo2/392-2406.html",
+    notes: "Official renewal procedure and current per-class renewal fee guidance.",
+  }),
+  target(TIPO_TW, {
+    id: "tw-tipo-trademark-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Taiwan TIPO Trademark Online Gazette",
+    canonicalUri: "https://tiponet.tipo.gov.tw/",
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON", "PDF"],
+    verificationEvidenceUri: "https://tiponet.tipo.gov.tw/",
+    notes:
+      "TIPO's current e-service portal exposes the Trademark Online Gazette under public information; retain the gazette as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -8161,5 +8281,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IPD_HK_SOURCE_COVERAGE_TARGETS,
   ...ILPO_IL_SOURCE_COVERAGE_TARGETS,
   ...UANIPIO_UA_SOURCE_COVERAGE_TARGETS,
+  ...TIPO_TW_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

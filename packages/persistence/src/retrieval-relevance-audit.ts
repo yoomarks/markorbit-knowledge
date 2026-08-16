@@ -2399,6 +2399,51 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ua-nipo-trademark-appeals",
     query: "Апеляційна палата торговельні марки заперечення",
   },
+  {
+    id: "tw-tipo-trademark-portal-name",
+    targetId: "tw-tipo-trademark-portal",
+    query: "TIPO trademarks Taiwan",
+  },
+  {
+    id: "tw-tipo-trademark-filing-name",
+    targetId: "tw-tipo-trademark-filing",
+    query: "新版商標線上申請 電子送件",
+  },
+  {
+    id: "tw-tipo-trademark-search-name",
+    targetId: "tw-tipo-trademark-search",
+    query: "new trademark search system",
+  },
+  {
+    id: "tw-tipo-trademark-fees-name",
+    targetId: "tw-tipo-trademark-fees",
+    query: "商標規費 註冊申請費 延展",
+  },
+  {
+    id: "tw-tipo-trademark-classification-name",
+    targetId: "tw-tipo-trademark-classification",
+    query: "尼斯第13-2026版 商品 服務",
+  },
+  {
+    id: "tw-tipo-trademark-legal-texts-name",
+    targetId: "tw-tipo-trademark-legal-texts",
+    query: "Trademark Act Enforcement Rules",
+  },
+  {
+    id: "tw-tipo-trademark-examination-guidelines-name",
+    targetId: "tw-tipo-trademark-examination-guidelines",
+    query: "商標註冊申請案件程序審查基準",
+  },
+  {
+    id: "tw-tipo-trademark-proceedings-name",
+    targetId: "tw-tipo-trademark-proceedings",
+    query: "商標爭議案件程序審查基準 異議 評定",
+  },
+  {
+    id: "tw-tipo-trademark-renewal-name",
+    targetId: "tw-tipo-trademark-renewal",
+    query: "trademark renewal term rights fee",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
