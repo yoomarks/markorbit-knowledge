@@ -1646,6 +1646,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "jo-ippd-trademark-proceedings",
     query: "Jordan trademark opposition cancellation appeal IPPD cases",
   },
+  {
+    id: "bd-trademarks-name",
+    targetId: "bd-dpdt-trademarks",
+    query: "Bangladesh DPDT trademark services filing Nice classification",
+  },
+  {
+    id: "bd-trademark-filing-name",
+    targetId: "bd-dpdt-trademark-filing",
+    query: "Bangladesh DPDT online trademark filing TM-1 WIPO efiling",
+  },
+  {
+    id: "bd-trademark-search-name",
+    targetId: "bd-dpdt-trademark-search",
+    query: "Bangladesh DPDT TM-4 trademark search request",
+  },
+  {
+    id: "bd-trademark-fees-name",
+    targetId: "bd-dpdt-trademark-fees",
+    query: "Bangladesh DPDT revised trademark fee schedule A-Challan",
+  },
+  {
+    id: "bd-trademark-classification-name",
+    targetId: "bd-dpdt-trademark-classification",
+    query: "Bangladesh DPDT Nice Classification trademark goods services",
+  },
+  {
+    id: "bd-trademark-law-name",
+    targetId: "bd-dpdt-trademark-law",
+    query: "Bangladesh Trademark Act 2009 amendment 2015 Trademark Rules 2015 DPDT",
+  },
+  {
+    id: "bd-trademark-proceedings-name",
+    targetId: "bd-dpdt-trademark-proceedings",
+    query: "Bangladesh DPDT trademark opposition TM-5 counterstatement TM-6 hearing TM-7",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
