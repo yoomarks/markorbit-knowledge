@@ -7389,6 +7389,106 @@ export const OMPIC_MA_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const INPI_AR: Authority = {
+  jurisdiction: "AR",
+  authorityName: "Instituto Nacional de la Propiedad Industrial (INPI Argentina)",
+  languages: ["es"],
+  verificationEvidenceUri: "https://www.argentina.gob.ar/inpi/marcas",
+};
+
+export const INPI_AR_SOURCE_COVERAGE_TARGETS = [
+  target(INPI_AR, {
+    id: "ar-inpi-trademark-portal",
+    family: "PORTAL",
+    displayName: "Argentina INPI Trademarks Portal",
+    canonicalUri: "https://www.argentina.gob.ar/inpi/marcas",
+    verificationEvidenceUri: "https://www.argentina.gob.ar/inpi/marcas",
+  }),
+  target(INPI_AR, {
+    id: "ar-inpi-trademark-filing",
+    family: "FILING",
+    displayName: "Argentina INPI Online New Trademark Filing",
+    canonicalUri: "https://portaltramites.inpi.gob.ar/Marcas/Nuevas",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "JSON", "IMAGE"],
+    verificationEvidenceUri: "https://www.argentina.gob.ar/inpi/marcas/registrar-una-marca",
+    notes:
+      "Official INPI transaction surface for electronically preparing, signing and paying a new trademark application.",
+  }),
+  target(INPI_AR, {
+    id: "ar-inpi-trademark-search",
+    family: "SEARCH",
+    displayName: "Argentina INPI Trademark Search",
+    canonicalUri: "https://portaltramites.inpi.gob.ar/marcasconsultas/busqueda",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.argentina.gob.ar/inpi/marcas/averigua-si-tu-marca-esta-registrada",
+  }),
+  target(INPI_AR, {
+    id: "ar-inpi-trademark-fees",
+    family: "FEES",
+    displayName: "Argentina INPI Current Fees",
+    canonicalUri: "https://www.argentina.gob.ar/inpi/aranceles-inpi",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.argentina.gob.ar/inpi/aranceles-inpi",
+    notes: "INPI states that the current fee schedule was updated effective 1 April 2026.",
+  }),
+  target(INPI_AR, {
+    id: "ar-inpi-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Argentina INPI Trademark Classification",
+    canonicalUri: "https://www.argentina.gob.ar/inpi/marcas/clasificacion-de-marcas",
+    verificationEvidenceUri: "https://www.argentina.gob.ar/inpi/marcas/clasificacion-de-marcas",
+  }),
+  target(INPI_AR, {
+    id: "ar-inpi-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Argentina INPI Trademark Legislation",
+    canonicalUri: "https://www.argentina.gob.ar/inpi/marcas/legislacion-de-marcas",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.argentina.gob.ar/inpi/marcas/legislacion-de-marcas",
+    notes: "Official INPI index for Trademark Law No. 22,362 and related trademark legislation.",
+  }),
+  target(INPI_AR, {
+    id: "ar-inpi-trademark-opposition",
+    family: "PROCEEDINGS",
+    displayName: "Argentina INPI Trademark Opposition Procedure",
+    canonicalUri: "https://www.argentina.gob.ar/servicio/oponerse-una-marca",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.argentina.gob.ar/servicio/oponerse-una-marca",
+  }),
+  target(INPI_AR, {
+    id: "ar-inpi-trademark-renewal",
+    family: "MAINTENANCE",
+    displayName: "Argentina INPI Trademark Renewal",
+    canonicalUri: "https://www.argentina.gob.ar/inpi/marcas/renovar-una-marca",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.argentina.gob.ar/inpi/marcas/renovar-una-marca",
+  }),
+  target(INPI_AR, {
+    id: "ar-inpi-trademark-bulletins",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Argentina INPI Trademark Bulletins",
+    canonicalUri: "https://portaltramites.inpi.gob.ar/Boletines?Tipo_Item=3",
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://portaltramites.inpi.gob.ar/Boletines?Tipo_Item=3",
+    notes:
+      "The official INPI trademark bulletin index is retained as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -7514,5 +7614,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...SIC_CO_SOURCE_COVERAGE_TARGETS,
   ...ISIPO_IS_SOURCE_COVERAGE_TARGETS,
   ...OMPIC_MA_SOURCE_COVERAGE_TARGETS,
+  ...INPI_AR_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

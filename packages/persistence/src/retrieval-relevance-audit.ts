@@ -2159,6 +2159,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ma-ompic-trademark-opposition",
     query: "opposition marque",
   },
+  {
+    id: "ar-inpi-trademark-portal-name",
+    targetId: "ar-inpi-trademark-portal",
+    query: "marcas",
+  },
+  {
+    id: "ar-inpi-trademark-filing-name",
+    targetId: "ar-inpi-trademark-filing",
+    query: "solicitud nueva marca",
+  },
+  {
+    id: "ar-inpi-trademark-search-name",
+    targetId: "ar-inpi-trademark-search",
+    query: "buscador de marcas",
+  },
+  {
+    id: "ar-inpi-trademark-fees-name",
+    targetId: "ar-inpi-trademark-fees",
+    query: "aranceles marcas",
+  },
+  {
+    id: "ar-inpi-trademark-classification-name",
+    targetId: "ar-inpi-trademark-classification",
+    query: "clasificación de marcas",
+  },
+  {
+    id: "ar-inpi-trademark-legal-texts-name",
+    targetId: "ar-inpi-trademark-legal-texts",
+    query: "ley de marcas",
+  },
+  {
+    id: "ar-inpi-trademark-opposition-name",
+    targetId: "ar-inpi-trademark-opposition",
+    query: "oponerse a una marca",
+  },
+  {
+    id: "ar-inpi-trademark-renewal-name",
+    targetId: "ar-inpi-trademark-renewal",
+    query: "renovar una marca",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
