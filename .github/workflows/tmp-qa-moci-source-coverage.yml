@@ -14,7 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Apply Qatar MOCI patch
-        run: python .github/tmp/patch_qa_moci_source_coverage.py
+        run: |
+          python .github/tmp/patch_qa_moci_source_coverage.py
+          python .github/tmp/extend_qa_moci_source_coverage.py
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
