@@ -7012,6 +7012,160 @@ export const INAPI_CL_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const SIC_CO: Authority = {
+  jurisdiction: "CO",
+  authorityName: "Superintendencia de Industria y Comercio (SIC), Colombia",
+  languages: ["es-CO"],
+  verificationEvidenceUri: "https://sedeelectronica.sic.gov.co/temas/propiedad-industrial/marcas",
+};
+
+export const SIC_CO_SOURCE_COVERAGE_TARGETS = [
+  target(SIC_CO, {
+    id: "co-sic-trademarks",
+    family: "PORTAL",
+    displayName: "Colombia SIC Trademark Portal",
+    canonicalUri: "https://sedeelectronica.sic.gov.co/temas/propiedad-industrial/marcas",
+    verificationEvidenceUri: "https://sedeelectronica.sic.gov.co/temas/propiedad-industrial/marcas",
+    notes:
+      "SIC's trademark portal consolidates national registration guidance, SIPI search and filing, Nice and goods/services tools, fees, trademark documentation and the Industrial Property Gazette.",
+  }),
+  target(SIC_CO, {
+    id: "co-sic-trademark-filing",
+    family: "FILING",
+    displayName: "Colombia SIC Online Trademark Registration",
+    canonicalUri:
+      "https://sedeelectronica.sic.gov.co/atencion-y-servicios-a-la-ciudadania/tramites/registro-de-marca-de-productos-y-servicios-y-lema-comercial",
+    entrypoints: [
+      {
+        uri: "https://sedeelectronica.sic.gov.co/atencion-y-servicios-a-la-ciudadania/tramites/registro-de-marca-de-productos-y-servicios-y-lema-comercial",
+        label: "Official online trademark registration transaction page",
+      },
+      {
+        uri: "https://sipi.sic.gov.co/sipi/Extra/Default.aspx",
+        label: "SIPI Virtual Industrial Property Office",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri:
+      "https://sedeelectronica.sic.gov.co/atencion-y-servicios-a-la-ciudadania/tramites/registro-de-marca-de-productos-y-servicios-y-lema-comercial",
+    notes:
+      "SIC identifies trademark registration as an online procedure and uses SIPI, its Virtual Industrial Property Office, for electronic filing and portfolio management.",
+  }),
+  target(SIC_CO, {
+    id: "co-sic-trademark-search",
+    family: "SEARCH",
+    displayName: "Colombia SIC SIPI Trademark Search",
+    canonicalUri: "https://sipi.sic.gov.co/sipi/Extra/Default.aspx",
+    entrypoints: [
+      {
+        uri: "https://sipi.sic.gov.co/sipi/Extra/Default.aspx",
+        label: "SIPI public industrial-property search",
+      },
+      {
+        uri: "https://sedeelectronica.sic.gov.co/temas/propiedad-industrial/marcas",
+        label: "SIC trademark page linking the national SIPI database",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://sedeelectronica.sic.gov.co/temas/propiedad-industrial/marcas",
+    notes:
+      "SIPI is SIC's current public industrial-property database for distinctive signs and exposes bibliographic data, status, publication, classes, parties, documents and administrative history for trademark records.",
+  }),
+  target(SIC_CO, {
+    id: "co-sic-trademark-fees",
+    family: "FEES",
+    displayName: "Colombia SIC 2026 Industrial Property Fees",
+    canonicalUri: "https://serviciospub.sic.gov.co/Sic/Tarifas/Tarifas.php",
+    mode: "MIXED",
+    expectedArtifactKinds: ["HTML"],
+    verificationEvidenceUri: "https://serviciospub.sic.gov.co/Sic/Tarifas/Tarifas.php",
+    notes:
+      "SIC's live tariff query publishes the 2026 industrial-property fee schedule, including online trademark filing, additional classes, opposition, notoriety, assignments, cancellation and other distinctive-sign transactions. Amounts remain sourced evidence rather than frozen catalog truth.",
+  }),
+  target(SIC_CO, {
+    id: "co-sic-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Colombia SIC Nice Classification Search",
+    canonicalUri:
+      "https://sedeelectronica.sic.gov.co/atencion-y-servicios-a-la-ciudadania/servicios/consulta-clasificacion-internacional-de-niza",
+    verificationEvidenceUri:
+      "https://sedeelectronica.sic.gov.co/atencion-y-servicios-a-la-ciudadania/servicios/consulta-clasificacion-internacional-de-niza",
+    notes:
+      "SIC provides an immediate online service for consulting the Nice Classification of goods and services used in Colombian distinctive-sign applications; its trademark portal also links MSG and harmonization tools.",
+  }),
+  target(SIC_CO, {
+    id: "co-sic-trademark-procedure-2026",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Colombia SIC Trademark Registration Procedure PI01-P01 v12",
+    canonicalUri: "https://sigi.sic.gov.co/SIGI/portal/document_tab.php?id_doc=645&version=12",
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://sigi.sic.gov.co/SIGI/portal/document_tab.php?id_doc=645&version=12",
+    notes:
+      "SIC's official PI01-P01 trademark registration procedure version 12 became effective 14 May 2026 and documents the workflow from filing through examination and the registrability decision, including Madrid-designated applications.",
+  }),
+  target(SIC_CO, {
+    id: "co-sic-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Colombia SIC Trademark Legal Framework",
+    canonicalUri: "https://sedeelectronica.sic.gov.co/transparencia/normativa/decision-486",
+    entrypoints: [
+      {
+        uri: "https://sedeelectronica.sic.gov.co/transparencia/normativa/decision-486",
+        label: "Andean Community Decision 486 industrial-property regime",
+      },
+      {
+        uri: "https://sedeelectronica.sic.gov.co/transparencia/normativa/busqueda-de-normas/entidad",
+        label: "SIC legal and regulatory search system",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://sedeelectronica.sic.gov.co/transparencia/normativa/decision-486",
+    notes:
+      "SIC publishes Andean Community Decision 486 as the common industrial-property regime and maintains a searchable legal library for Colombian implementing decrees, resolutions, Circular Única annexes and trademark-specific rules.",
+  }),
+  target(SIC_CO, {
+    id: "co-sic-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Colombia SIC Trademark Opposition and Cancellation Proceedings",
+    canonicalUri:
+      "https://sedeelectronica.sic.gov.co/atencion-y-servicios-a-la-ciudadania/tramites/cancelacion-de-un-registro-de-marca-lema-comercial-o-de-autorizacion-de-uso-de-denominacion-de-origen",
+    entrypoints: [
+      {
+        uri: "https://sedeelectronica.sic.gov.co/atencion-y-servicios-a-la-ciudadania/tramites/cancelacion-de-un-registro-de-marca-lema-comercial-o-de-autorizacion-de-uso-de-denominacion-de-origen",
+        label: "Online trademark cancellation procedure",
+      },
+      {
+        uri: "https://sedeelectronica.sic.gov.co/transparencia/normativa/busqueda-de-normas/entidad?combine=&field_clasificacion_target_id=183&field_fecha_publicacion_value=&page=153",
+        label: "Circular Única Annex 6.12 opposition filing materials",
+      },
+    ],
+    mode: "MIXED",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://sedeelectronica.sic.gov.co/atencion-y-servicios-a-la-ciudadania/tramites/cancelacion-de-un-registro-de-marca-lema-comercial-o-de-autorizacion-de-uso-de-denominacion-de-origen",
+    notes:
+      "SIC publishes online cancellation procedures for non-use, notoriety and genericization and its Circular Única legal materials include the distinctive-sign opposition and cancellation filing annexes.",
+  }),
+  target(SIC_CO, {
+    id: "co-sic-industrial-property-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Colombia SIC Industrial Property Gazette",
+    canonicalUri: "https://serviciospub2.sic.gov.co/Sic/ServiciosPI/GacetaPI/index.php",
+    coverageTier: "CHANGE_SIGNAL",
+    expectedArtifactKinds: ["HTML", "XLSX"],
+    verificationEvidenceUri: "https://serviciospub2.sic.gov.co/Sic/ServiciosPI/GacetaPI/index.php",
+    notes:
+      "SIC's official digital Industrial Property Gazette supports edition and filing-level queries, including trademark registration applications and downloadable indexes, and is retained as a publication change signal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -7134,5 +7288,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...DIP_TH_SOURCE_COVERAGE_TARGETS,
   ...CIPC_ZA_SOURCE_COVERAGE_TARGETS,
   ...INAPI_CL_SOURCE_COVERAGE_TARGETS,
+  ...SIC_CO_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
