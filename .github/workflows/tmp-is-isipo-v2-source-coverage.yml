@@ -1,0 +1,41 @@
+name: Temporary Iceland ISIPO v2 source coverage verification
+
+on:
+  push:
+    branches:
+      - codex/is-isipo-source-coverage-v2
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/is-isipo-source-coverage-v2
+      - name: Apply Iceland ISIPO v2 patches
+        run: |
+          python .github/tmp/patch_is_v2_priority_a.py
+          python .github/tmp/patch_is_v2_priority_b.py
+          python .github/tmp/patch_is_v2_retrieval.py
+          python .github/tmp/patch_is_v2_catalog_tests.py
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write packages/persistence/src/priority-national-source-coverage.ts packages/persistence/src/source-coverage-catalog.ts packages/persistence/tests/priority-national-source-coverage.test.ts packages/persistence/src/retrieval-relevance-audit.ts packages/persistence/tests/retrieval-relevance-audit.test.ts
+      - run: pnpm --filter @markorbit/persistence exec vitest run tests/priority-national-source-coverage.test.ts tests/source-coverage-catalog.test.ts tests/retrieval-relevance-audit.test.ts
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Commit integration
+        run: |
+          git config user.name "yoomarks"
+          git config user.email "lukeluccas6292643@gmail.com"
+          git add packages/persistence/src/priority-national-source-coverage.ts packages/persistence/src/source-coverage-catalog.ts packages/persistence/tests/priority-national-source-coverage.test.ts packages/persistence/src/retrieval-relevance-audit.ts packages/persistence/tests/retrieval-relevance-audit.test.ts
+          git diff --cached --quiet || git commit -m "Sources: add Iceland ISIPO trademark coverage"
+          git push origin HEAD:codex/is-isipo-source-coverage-v2
