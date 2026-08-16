@@ -2593,6 +2593,135 @@ export const INDPROP_SK_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const HIPO_HU: Authority = {
+  jurisdiction: "HU",
+  authorityName: "Hungarian Intellectual Property Office (HIPO)",
+  languages: ["hu-HU", "en"],
+  verificationEvidenceUri: "https://sztnh.gov.hu/en/services/trademark",
+};
+
+export const HIPO_HU_SOURCE_COVERAGE_TARGETS = [
+  target(HIPO_HU, {
+    id: "hu-hipo-trademarks",
+    family: "PORTAL",
+    displayName: "HIPO Trademark Protection",
+    canonicalUri: "https://sztnh.gov.hu/en/services/trademark",
+    verificationEvidenceUri: "https://sztnh.gov.hu/en/services/trademark",
+    notes: "The current HIPO trademark portal was last modified on 27 January 2026.",
+  }),
+  target(HIPO_HU, {
+    id: "hu-hipo-trademark-filing",
+    family: "FILING",
+    displayName: "HIPO National Trademark Application",
+    canonicalUri: "https://sztnh.gov.hu/en/services/trademark/national-application",
+    entrypoints: [
+      {
+        uri: "https://sztnh.gov.hu/en/services/trademark/national-application",
+        label: "National trademark registration procedure",
+      },
+      {
+        uri: "https://ugyintezes.sztnh.gov.hu/eBej2/step1",
+        label: "HIPO electronic filing system",
+      },
+    ],
+    verificationEvidenceUri: "https://sztnh.gov.hu/en/services/trademark/national-application",
+    notes:
+      "The national procedure covers filing-date requirements, examination, earlier-rights search, publication, three-month opposition, accelerated procedures, registration and renewal.",
+  }),
+  target(HIPO_HU, {
+    id: "hu-hipo-trademark-search",
+    family: "SEARCH",
+    displayName: "HIPO IP Databases and E-register",
+    canonicalUri: "https://sztnh.gov.hu/en/services/ip-databases",
+    entrypoints: [
+      { uri: "https://sztnh.gov.hu/en/services/ip-databases", label: "IP databases guidance" },
+      { uri: "https://epub.hpo.hu/e-kutatas/?lang=HU", label: "E-register search" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://sztnh.gov.hu/en/services/ip-databases",
+    notes:
+      "HIPO's official IP databases provide trademark register and Gazette search; the public page identifies E-register as the search surface for Hungarian industrial-property records.",
+  }),
+  target(HIPO_HU, {
+    id: "hu-hipo-trademark-fees",
+    family: "FEES",
+    displayName: "HIPO Trademark Schedule of Fees",
+    canonicalUri: "https://sztnh.gov.hu/sw/static/file/dijtablazat_vedjegy-en_20250413.pdf",
+    expectedArtifactKinds: ["PDF"],
+    verificationEvidenceUri:
+      "https://sztnh.gov.hu/sw/static/file/dijtablazat_vedjegy-en_20250413.pdf",
+    notes:
+      "The official trademark fee schedule is issued under Decree No. 19/2005 GKM and is in force from 13 April 2025; it covers filing, opposition, accelerated procedures, renewal, cancellation and revocation.",
+  }),
+  target(HIPO_HU, {
+    id: "hu-hipo-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "HIPO Nice Classification",
+    canonicalUri: "https://sztnh.gov.hu/en/services/trademark/classification/nice",
+    entrypoints: [
+      {
+        uri: "https://sztnh.gov.hu/en/services/trademark/classification/nice",
+        label: "Nice Classification guidance",
+      },
+      {
+        uri: "http://classifications.sztnh.gov.hu/nice/",
+        label: "Current Nice Classification browser",
+      },
+    ],
+    verificationEvidenceUri: "https://sztnh.gov.hu/en/services/trademark/classification/nice",
+    notes:
+      "HIPO identifies the 13th edition of the Nice Classification as the current edition, effective from 1 January 2026.",
+  }),
+  target(HIPO_HU, {
+    id: "hu-hipo-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "HIPO Trademark Legal Sources",
+    canonicalUri: "https://sztnh.gov.hu/en/legal-sources-of-intellectual-property",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://sztnh.gov.hu/en/legal-sources-of-intellectual-property",
+    notes:
+      "The official legal-sources hub publishes Act XI of 1997 on trademarks and geographical indications, the formal-requirements decree and the industrial-property fees decree.",
+  }),
+  target(HIPO_HU, {
+    id: "hu-hipo-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "HIPO Electronic Trademark Proceedings",
+    canonicalUri: "https://ugyintezes.sztnh.gov.hu/eBej2/step1",
+    entrypoints: [
+      {
+        uri: "https://ugyintezes.sztnh.gov.hu/eBej2/step1",
+        label: "Electronic trademark forms and proceedings",
+      },
+      {
+        uri: "https://sztnh.gov.hu/en/services/trademark/national-application",
+        label: "Opposition and procedure guidance",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://ugyintezes.sztnh.gov.hu/eBej2/step1",
+    notes:
+      "HIPO's electronic administration surface provides national trademark filing, accelerated-procedure, observation and opposition forms plus universal cancellation/revocation submissions.",
+  }),
+  target(HIPO_HU, {
+    id: "hu-hipo-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "HIPO Gazette of Patents and Trademarks",
+    canonicalUri: "https://sztnh.gov.hu/en/home/gazette",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://sztnh.gov.hu/en/home/gazette",
+    notes:
+      "The electronically signed Gazette continues in PDF; national and international trademark columns are published twice monthly, with 2026 issues available on the current official page.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -2685,5 +2814,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...UPRP_PL_SOURCE_COVERAGE_TARGETS,
   ...UPV_CZ_SOURCE_COVERAGE_TARGETS,
   ...INDPROP_SK_SOURCE_COVERAGE_TARGETS,
+  ...HIPO_HU_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
