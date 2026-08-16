@@ -3633,6 +3633,169 @@ export const CY_IP_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IPRD_MT: Authority = {
+  jurisdiction: "MT",
+  authorityName: "Industrial Property Registrations Directorate, Commerce Department",
+  languages: ["mt-MT", "en"],
+  verificationEvidenceUri:
+    "https://commerce.gov.mt/en/industrial-property-registrations-directorate/",
+};
+
+export const IPRD_MT_SOURCE_COVERAGE_TARGETS = [
+  target(IPRD_MT, {
+    id: "mt-iprd-trademarks",
+    family: "PORTAL",
+    displayName: "Malta Industrial Property Registrations Directorate - Trademarks",
+    canonicalUri:
+      "https://commerce.gov.mt/en/industrial-property-registrations-directorate/trademarks/",
+    verificationEvidenceUri:
+      "https://commerce.gov.mt/en/industrial-property-registrations-directorate/",
+    notes:
+      "The Industrial Property Registrations Directorate within Malta's Commerce Department is the national authority responsible for trademark registration, amendments, renewals, transfers and cancellations.",
+  }),
+  target(IPRD_MT, {
+    id: "mt-iprd-trademark-filing",
+    family: "FILING",
+    displayName: "Malta How to Apply for a Trademark",
+    canonicalUri:
+      "https://commerce.gov.mt/en/industrial-property-registrations-directorate/how-to-apply-for-a-trademark/",
+    entrypoints: [
+      {
+        uri: "https://commerce.gov.mt/en/industrial-property-registrations-directorate/how-to-apply-for-a-trademark/",
+        label: "Current filing guidance",
+      },
+      { uri: "https://ips.gov.mt/welcome/?lang=en", label: "Malta IP portal online filing" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "JSON"],
+    verificationEvidenceUri:
+      "https://commerce.gov.mt/en/industrial-property-registrations-directorate/how-to-apply-for-a-trademark/",
+    notes:
+      "The current filing page directs applicants to the online IP portal, recommends a national pre-application search and explains class selection and the application process.",
+  }),
+  target(IPRD_MT, {
+    id: "mt-iprd-trademark-search",
+    family: "SEARCH",
+    displayName: "Malta National Trademark Register",
+    canonicalUri: "https://ips.gov.mt/NR/",
+    entrypoints: [
+      { uri: "https://ips.gov.mt/NR/", label: "National Trademark Register" },
+      {
+        uri: "https://commerce.gov.mt/en/industrial-property-registrations-directorate/searching/",
+        label: "Official search guidance",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://commerce.gov.mt/en/industrial-property-registrations-directorate/searching/",
+    notes:
+      "The national register provides public searches by application number, mark name, legal status, Nice class, filing date, applicant and representative; current 2026 records expose publication and opposition-period data.",
+  }),
+  target(IPRD_MT, {
+    id: "mt-iprd-trademark-fees",
+    family: "FEES",
+    displayName: "Malta Trademark Fee Schedule",
+    canonicalUri:
+      "https://commerce.gov.mt/en/industrial-property-registrations-directorate/how-to-apply-for-a-trademark/schedule-of-fees-for-trademarks/",
+    entrypoints: [
+      {
+        uri: "https://commerce.gov.mt/en/industrial-property-registrations-directorate/how-to-apply-for-a-trademark/schedule-of-fees-for-trademarks/",
+        label: "Trademark fee schedule",
+      },
+      {
+        uri: "https://commerce.gov.mt/en/frequently-asked-questions-related-to-industrial-property-registrations-directorate/trademark/",
+        label: "Current trademark FAQ and filing fee",
+      },
+    ],
+    verificationEvidenceUri:
+      "https://commerce.gov.mt/en/frequently-asked-questions-related-to-industrial-property-registrations-directorate/trademark/",
+    notes:
+      "The current Commerce Department FAQ states a €115 fee for a new national trademark covering filing, registration and publication, while the official fee-schedule page remains the procedural fee reference.",
+  }),
+  target(IPRD_MT, {
+    id: "mt-iprd-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Malta Trademark Classification and TMClass Guidance",
+    canonicalUri:
+      "https://commerce.gov.mt/en/frequently-asked-questions-related-to-industrial-property-registrations-directorate/trademark/",
+    entrypoints: [
+      {
+        uri: "https://commerce.gov.mt/en/frequently-asked-questions-related-to-industrial-property-registrations-directorate/trademark/",
+        label: "Current trademark classification FAQ",
+      },
+      {
+        uri: "https://commerce.gov.mt/en/industrial-property-registrations-directorate/how-to-apply-for-a-trademark/",
+        label: "Current filing/class guidance",
+      },
+    ],
+    verificationEvidenceUri:
+      "https://commerce.gov.mt/en/frequently-asked-questions-related-to-industrial-property-registrations-directorate/trademark/",
+    notes:
+      "The current official FAQ uses the 45 Nice goods/services categories and recommends TMClass for accepted terminology. Older static 11th-edition attachments are deliberately not treated as current canonical classification truth.",
+  }),
+  target(IPRD_MT, {
+    id: "mt-iprd-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Malta Trademark Act and Trademark Rules",
+    canonicalUri:
+      "https://commerce.gov.mt/en/industrial-property-registrations-directorate/advice/",
+    entrypoints: [
+      {
+        uri: "https://commerce.gov.mt/en/industrial-property-registrations-directorate/advice/",
+        label: "Current trademark-law guidance",
+      },
+      {
+        uri: "https://commerce.gov.mt/en/industrial-property-registrations-directorate/trademarks-explained/",
+        label: "Trademark Act and Rules reference",
+      },
+    ],
+    verificationEvidenceUri:
+      "https://commerce.gov.mt/en/industrial-property-registrations-directorate/advice/",
+    notes:
+      "The current law is primarily the Trademark Act, Act XII of 2019, Chapter 597, with Trademark Rules S.L. 597.04; the official advice page was updated in April 2026.",
+  }),
+  target(IPRD_MT, {
+    id: "mt-iprd-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Malta Trademark Opposition Proceedings",
+    canonicalUri:
+      "https://commerce.gov.mt/en/service/applikazzjoni-biex-topponi-talba-ghal-trejdmark-gdida/",
+    entrypoints: [
+      {
+        uri: "https://commerce.gov.mt/en/service/applikazzjoni-biex-topponi-talba-ghal-trejdmark-gdida/",
+        label: "Application to oppose a new trademark",
+      },
+      { uri: "https://ips.gov.mt/welcome/?lang=en", label: "Online notice of opposition" },
+      {
+        uri: "https://commerce.gov.mt/en/intellectual-property/latest-publications/",
+        label: "90-day opposition timing guidance",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri:
+      "https://commerce.gov.mt/en/service/applikazzjoni-biex-topponi-talba-ghal-trejdmark-gdida/",
+    notes:
+      "A third party may oppose during the publication phase; the official online portal exposes a Notice of Opposition service and the current publication page confirms the 90-day period under S.L. 597.04.",
+  }),
+  target(IPRD_MT, {
+    id: "mt-iprd-ip-online-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Malta IP Online Journal",
+    canonicalUri: "https://commerce.gov.mt/en/intellectual-property/latest-publications/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://commerce.gov.mt/en/intellectual-property/latest-publications/",
+    notes:
+      "The IP Online Journal is issued weekly on the first working day of the week; the official current page links Publications 2026 and states that trademark publication starts the 90-day opposition period.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -3732,5 +3895,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...SIPO_SI_SOURCE_COVERAGE_TARGETS,
   ...OBI_GR_SOURCE_COVERAGE_TARGETS,
   ...CY_IP_SOURCE_COVERAGE_TARGETS,
+  ...IPRD_MT_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
