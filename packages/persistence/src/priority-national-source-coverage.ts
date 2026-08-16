@@ -7293,6 +7293,102 @@ export const ISIPO_IS_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const OMPIC_MA: Authority = {
+  jurisdiction: "MA",
+  authorityName: "Moroccan Office of Industrial and Commercial Property (OMPIC)",
+  languages: ["fr", "ar"],
+  verificationEvidenceUri: "https://www.ompic.ma/fr/content/depot-de-marque-au-maroc",
+};
+
+export const OMPIC_MA_SOURCE_COVERAGE_TARGETS = [
+  target(OMPIC_MA, {
+    id: "ma-ompic-trademark-portal",
+    family: "PORTAL",
+    displayName: "Morocco OMPIC Trademark Portal",
+    canonicalUri: "https://www.ompic.ma/fr/content/propos-de-la-marque",
+    verificationEvidenceUri: "https://www.ompic.ma/fr/content/propos-de-la-marque",
+  }),
+  target(OMPIC_MA, {
+    id: "ma-ompic-trademark-filing",
+    family: "FILING",
+    displayName: "Morocco DirectOMPIC Online Trademark Filing",
+    canonicalUri: "https://marque.directompic.ma/demarche/marque/depot/form",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.ompic.ma/fr/actualites/mise-en-service-dune-nouvelle-version-de-la-plateforme-directompic",
+    notes:
+      "DirectOMPIC is OMPIC's authenticated electronic filing surface for trademark applications and related online formalities.",
+  }),
+  target(OMPIC_MA, {
+    id: "ma-ompic-trademark-search",
+    family: "SEARCH",
+    displayName: "Morocco OMPIC National Trademark Search",
+    canonicalUri: "https://www.ompic.ma/fr/content/recherche-sur-les-marques-nationales",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.ompic.ma/fr/content/recherche-dans-les-bases-de-donees-ompic",
+  }),
+  target(OMPIC_MA, {
+    id: "ma-ompic-trademark-forms",
+    family: "FILING",
+    displayName: "Morocco OMPIC Trademark Forms",
+    canonicalUri: "https://www.ompic.ma/fr/content/formulaires",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.ompic.ma/fr/content/formulaires",
+  }),
+  target(OMPIC_MA, {
+    id: "ma-ompic-trademark-fees",
+    family: "FEES",
+    displayName: "Morocco OMPIC Fees",
+    canonicalUri: "https://www.ompic.ma/fr/content/nos-tarifs",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.ompic.ma/fr/content/nos-tarifs",
+  }),
+  target(OMPIC_MA, {
+    id: "ma-ompic-nice-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Morocco OMPIC Nice Classification",
+    canonicalUri: "https://www.ompic.ma/fr/content/classification-de-nice",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.ompic.ma/fr/content/classification-de-nice",
+  }),
+  target(OMPIC_MA, {
+    id: "ma-ompic-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Morocco OMPIC Industrial Property Laws and Regulations",
+    canonicalUri: "https://www.ompic.ma/fr/content/lois-et-reglementations",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.ompic.ma/fr/content/lois-et-reglementations",
+  }),
+  target(OMPIC_MA, {
+    id: "ma-ompic-trademark-opposition",
+    family: "PROCEEDINGS",
+    displayName: "Morocco OMPIC Trademark Opposition Procedure",
+    canonicalUri: "https://www.ompic.ma/fr/respect-droit/mecanismes-juridiques",
+    verificationEvidenceUri: "https://www.ompic.ma/fr/respect-droit/mecanismes-juridiques",
+  }),
+  target(OMPIC_MA, {
+    id: "ma-ompic-trademark-official-catalogue",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Morocco OMPIC Official Trademark Catalogue",
+    canonicalUri: "https://www.ompic.ma/fr/content/catalogue-officiel-des-marques",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.ompic.ma/fr/content/catalogue-officiel-des-marques",
+    notes:
+      "OMPIC publishes the official trademark catalogue twice monthly; retain it as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -7417,5 +7513,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...INAPI_CL_SOURCE_COVERAGE_TARGETS,
   ...SIC_CO_SOURCE_COVERAGE_TARGETS,
   ...ISIPO_IS_SOURCE_COVERAGE_TARGETS,
+  ...OMPIC_MA_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
