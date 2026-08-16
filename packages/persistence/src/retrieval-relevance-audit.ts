@@ -1156,6 +1156,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "gr-obi-trademark-proceedings",
     query: "Greece OBI Administrative Committee trademarks opposition appeals 2026",
   },
+  {
+    id: "cy-trademarks-name",
+    targetId: "cy-ip-trademarks",
+    query: "Cyprus national trademark registration Intellectual Property Section",
+  },
+  {
+    id: "cy-trademark-filing-name",
+    targetId: "cy-ip-trademark-filing",
+    query: "Cyprus FTM02 trademark application CY Login",
+  },
+  {
+    id: "cy-trademark-search-name",
+    targetId: "cy-ip-trademark-search",
+    query: "Cyprus Trademarks Register search",
+  },
+  {
+    id: "cy-trademark-fees-name",
+    targetId: "cy-ip-trademark-fees",
+    query: "Cyprus trademark forms fees opposition FTM14",
+  },
+  {
+    id: "cy-trademark-classification-name",
+    targetId: "cy-ip-trademark-classification",
+    query: "Cyprus trademark goods services classification FTM03",
+  },
+  {
+    id: "cy-trademark-law-name",
+    targetId: "cy-ip-trademark-law",
+    query: "Cyprus Trade Marks Law Regulations",
+  },
+  {
+    id: "cy-trademark-proceedings-name",
+    targetId: "cy-ip-trademark-proceedings",
+    query: "Cyprus trademark opposition revocation invalidity FTM14 FTM27",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
