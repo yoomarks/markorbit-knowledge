@@ -576,6 +576,124 @@ export const IP_INDIA_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const INPI_FR: Authority = {
+  jurisdiction: "FR",
+  authorityName: "Institut national de la propriété industrielle",
+  languages: ["fr-FR"],
+  verificationEvidenceUri:
+    "https://www.inpi.fr/realiser-demarches/propriete-intellectuelle/depot-de-marque",
+};
+
+export const INPI_FR_SOURCE_COVERAGE_TARGETS = [
+  target(INPI_FR, {
+    id: "fr-inpi-trademark-portal",
+    family: "PORTAL",
+    displayName: "INPI Dépôt de marque",
+    canonicalUri: "https://www.inpi.fr/realiser-demarches/propriete-intellectuelle/depot-de-marque",
+  }),
+  target(INPI_FR, {
+    id: "fr-inpi-trademark-filing",
+    family: "FILING",
+    displayName: "INPI Déposer sa marque",
+    canonicalUri:
+      "https://www.inpi.fr/realiser-demarches/propriete-intellectuelle/deposer-sa-marque",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.inpi.fr/realiser-demarches/propriete-intellectuelle/deposer-sa-marque",
+  }),
+  target(INPI_FR, {
+    id: "fr-inpi-trademark-search",
+    family: "SEARCH",
+    displayName: "INPI Recherche dans la base Marques",
+    canonicalUri:
+      "https://www.inpi.fr/ressources/propriete-intellectuelle/rechercher-une-marque-base-marques",
+    entrypoints: [
+      {
+        uri: "https://www.inpi.fr/ressources/propriete-intellectuelle/rechercher-une-marque-base-marques",
+        label: "Base Marques guidance",
+      },
+      {
+        uri: "https://data.inpi.fr/recherche_avancee/marques",
+        label: "DATA INPI advanced trade mark search",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.inpi.fr/ressources/propriete-intellectuelle/rechercher-une-marque-base-marques",
+  }),
+  target(INPI_FR, {
+    id: "fr-inpi-trademark-fees",
+    family: "FEES",
+    displayName: "INPI Tarifs des procédures et prestations",
+    canonicalUri:
+      "https://www.inpi.fr/ressources/propriete-intellectuelle/tarifs-procedures-et-prestations-de-linpi",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.inpi.fr/ressources/propriete-intellectuelle/tarifs-procedures-et-prestations-de-linpi",
+  }),
+  target(INPI_FR, {
+    id: "fr-inpi-trademark-goods-services",
+    family: "GOODS_SERVICES_ID",
+    displayName: "INPI Choix des produits et services pour une marque",
+    canonicalUri:
+      "https://www.inpi.fr/realiser-demarches/propriete-intellectuelle/choix-produits-et-services-pour-ma-marque",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.inpi.fr/realiser-demarches/propriete-intellectuelle/choix-produits-et-services-pour-ma-marque",
+  }),
+  target(INPI_FR, {
+    id: "fr-inpi-trademark-directives",
+    family: "EXAMINATION_MANUAL",
+    displayName: "INPI Directives marques",
+    canonicalUri: "https://www.inpi.fr/ressources/propriete-intellectuelle/directives",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.inpi.fr/ressources/propriete-intellectuelle/directives",
+    notes:
+      "The official directives page publishes current trade mark registration, international registration, renewal, invalidity/revocation and opposition directives.",
+  }),
+  target(INPI_FR, {
+    id: "fr-inpi-trademark-opposition",
+    family: "PROCEEDINGS",
+    displayName: "INPI Opposition à l'enregistrement d'une marque",
+    canonicalUri:
+      "https://www.inpi.fr/realiser-demarches/propriete-intellectuelle/sopposer-lenregistrement-dune-marque",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.inpi.fr/realiser-demarches/propriete-intellectuelle/sopposer-lenregistrement-dune-marque",
+  }),
+  target(INPI_FR, {
+    id: "fr-inpi-trademark-bopi",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "INPI Bulletin officiel de la propriété industrielle - Marques",
+    canonicalUri:
+      "https://www.inpi.fr/ressources/propriete-intellectuelle/bulletins-officiels-de-pi-bopi",
+    entrypoints: [
+      {
+        uri: "https://www.inpi.fr/ressources/propriete-intellectuelle/bulletins-officiels-de-pi-bopi",
+        label: "BOPI guidance",
+      },
+      {
+        uri: "https://data.inpi.fr/recherche_avancee/bopi/marques",
+        label: "DATA INPI BOPI Marques search",
+      },
+    ],
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF", "JSON"],
+    verificationEvidenceUri:
+      "https://www.inpi.fr/ressources/propriete-intellectuelle/bulletins-officiels-de-pi-bopi",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -651,5 +769,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IPOS_SOURCE_COVERAGE_TARGETS,
   ...DPMA_SOURCE_COVERAGE_TARGETS,
   ...IP_INDIA_SOURCE_COVERAGE_TARGETS,
+  ...INPI_FR_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
