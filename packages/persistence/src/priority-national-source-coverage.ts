@@ -905,6 +905,104 @@ export const IMPI_MX_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IPONZ_NZ: Authority = {
+  jurisdiction: "NZ",
+  authorityName: "Intellectual Property Office of New Zealand",
+  languages: ["en-NZ"],
+  verificationEvidenceUri: "https://www.iponz.govt.nz/get-ip/trade-marks/",
+};
+
+export const IPONZ_NZ_SOURCE_COVERAGE_TARGETS = [
+  target(IPONZ_NZ, {
+    id: "nz-iponz-trademarks",
+    family: "PORTAL",
+    displayName: "IPONZ Trade Marks",
+    canonicalUri: "https://www.iponz.govt.nz/get-ip/trade-marks/",
+  }),
+  target(IPONZ_NZ, {
+    id: "nz-iponz-trademark-filing",
+    family: "FILING",
+    displayName: "IPONZ Apply for a Trade Mark",
+    canonicalUri: "https://www.iponz.govt.nz/get-ip/trade-marks/apply/",
+    verificationEvidenceUri: "https://www.iponz.govt.nz/get-ip/trade-marks/apply/",
+  }),
+  target(IPONZ_NZ, {
+    id: "nz-iponz-trademark-search",
+    family: "SEARCH",
+    displayName: "IPONZ Search for Existing Trade Marks",
+    canonicalUri: "https://www.iponz.govt.nz/get-ip/trade-marks/search/",
+    entrypoints: [
+      {
+        uri: "https://www.iponz.govt.nz/get-ip/trade-marks/search/",
+        label: "Trade mark search guidance",
+      },
+      { uri: "https://app.iponz.govt.nz/app/TradeMarkCheck", label: "Trade Mark Check" },
+      {
+        uri: "https://app.iponz.govt.nz/app/Extra/Default.aspx?directAccess=true&fcoOp=EXTRA__Default&op=EXTRA_tm_qbe",
+        label: "Trade Mark Case Search",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON", "IMAGE"],
+    verificationEvidenceUri: "https://www.iponz.govt.nz/get-ip/trade-marks/search/",
+  }),
+  target(IPONZ_NZ, {
+    id: "nz-iponz-trademark-fees",
+    family: "FEES",
+    displayName: "IPONZ Trade Mark Fees",
+    canonicalUri: "https://www.iponz.govt.nz/get-ip/trade-marks/fees/",
+    verificationEvidenceUri: "https://www.iponz.govt.nz/get-ip/trade-marks/fees/",
+  }),
+  target(IPONZ_NZ, {
+    id: "nz-iponz-trademark-practice-guidelines",
+    family: "EXAMINATION_MANUAL",
+    displayName: "IPONZ Trade Mark Practice Guidelines",
+    canonicalUri: "https://www.iponz.govt.nz/get-ip/trade-marks/practice-guidelines/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.iponz.govt.nz/get-ip/trade-marks/practice-guidelines/",
+  }),
+  target(IPONZ_NZ, {
+    id: "nz-iponz-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "IPONZ Classification and Specification Guidelines",
+    canonicalUri:
+      "https://www.iponz.govt.nz/get-ip/trade-marks/practice-guidelines/current/classification-and-specification/",
+    verificationEvidenceUri:
+      "https://www.iponz.govt.nz/get-ip/trade-marks/practice-guidelines/current/classification-and-specification/",
+    notes:
+      "The current guideline states that New Zealand uses the 13th Edition of the Nice Classification, effective from 1 January 2026.",
+  }),
+  target(IPONZ_NZ, {
+    id: "nz-iponz-trademark-hearings",
+    family: "PROCEEDINGS",
+    displayName: "IPONZ Trade Mark Hearings",
+    canonicalUri: "https://www.iponz.govt.nz/get-ip/trade-marks/hearings/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.iponz.govt.nz/get-ip/trade-marks/hearings/",
+  }),
+  target(IPONZ_NZ, {
+    id: "nz-iponz-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "IPONZ The Journal",
+    canonicalUri: "https://www.iponz.govt.nz/about-iponz/the-journal/",
+    entrypoints: [
+      { uri: "https://www.iponz.govt.nz/about-iponz/the-journal/", label: "Journal guidance" },
+      {
+        uri: "https://app.iponz.govt.nz/app/Extra/Default.aspx?fcoOp=EXTRA__Default&op=EXTRA_Activity_qbe",
+        label: "Online Journal search",
+      },
+    ],
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.iponz.govt.nz/about-iponz/the-journal/",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -983,5 +1081,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...INPI_FR_SOURCE_COVERAGE_TARGETS,
   ...INPI_BR_SOURCE_COVERAGE_TARGETS,
   ...IMPI_MX_SOURCE_COVERAGE_TARGETS,
+  ...IPONZ_NZ_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

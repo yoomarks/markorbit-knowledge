@@ -441,6 +441,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "mx-impi-trademark-classification",
     query: "trademark classification ClasNiza",
   },
+  {
+    id: "nz-trademarks-name",
+    targetId: "nz-iponz-trademarks",
+    query: "trade marks",
+  },
+  {
+    id: "nz-trademark-filing-name",
+    targetId: "nz-iponz-trademark-filing",
+    query: "apply trade mark",
+  },
+  {
+    id: "nz-trademark-search-name",
+    targetId: "nz-iponz-trademark-search",
+    query: "search existing trade marks",
+  },
+  {
+    id: "nz-trademark-fees-name",
+    targetId: "nz-iponz-trademark-fees",
+    query: "trade mark fees",
+  },
+  {
+    id: "nz-trademark-practice-guidelines-name",
+    targetId: "nz-iponz-trademark-practice-guidelines",
+    query: "practice guidelines",
+  },
+  {
+    id: "nz-trademark-classification-name",
+    targetId: "nz-iponz-trademark-classification",
+    query: "classification specification",
+  },
+  {
+    id: "nz-trademark-hearings-name",
+    targetId: "nz-iponz-trademark-hearings",
+    query: "trade mark hearings",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
