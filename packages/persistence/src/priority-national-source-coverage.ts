@@ -1381,6 +1381,123 @@ export const IPI_CH_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const PRV_SE: Authority = {
+  jurisdiction: "SE",
+  authorityName: "Swedish Intellectual Property Office (PRV)",
+  languages: ["sv-SE", "en"],
+  verificationEvidenceUri: "https://www.prv.se/en/trademarks/",
+};
+
+export const PRV_SE_SOURCE_COVERAGE_TARGETS = [
+  target(PRV_SE, {
+    id: "se-prv-trademarks",
+    family: "PORTAL",
+    displayName: "PRV Trademarks",
+    canonicalUri: "https://www.prv.se/en/trademarks/",
+  }),
+  target(PRV_SE, {
+    id: "se-prv-trademark-filing",
+    family: "FILING",
+    displayName: "PRV Prepare for the Trademark Application",
+    canonicalUri: "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/",
+    entrypoints: [
+      {
+        uri: "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/",
+        label: "Application checklist and filing guidance",
+      },
+      {
+        uri: "https://www.prv.se/en/ip-professional/trademarks/trademark-online-services/",
+        label: "Trademark online services",
+      },
+    ],
+    verificationEvidenceUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/",
+  }),
+  target(PRV_SE, {
+    id: "se-prv-trademark-search",
+    family: "SEARCH",
+    displayName: "PRV Swedish Trademark Database",
+    canonicalUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/trademark-databases/",
+    entrypoints: [
+      {
+        uri: "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/trademark-databases/",
+        label: "Trademark database guidance",
+      },
+      { uri: "https://search.prv.se/", label: "Search PRV's Databases" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/trademark-databases/",
+    notes:
+      "PRV launched the new Search PRV's Databases interface on 26 January 2026 as the modernised access point for the Swedish Trademark Database.",
+  }),
+  target(PRV_SE, {
+    id: "se-prv-trademark-fees",
+    family: "FEES",
+    displayName: "PRV Trademark Fees",
+    canonicalUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/fees-and-payment/",
+    verificationEvidenceUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/fees-and-payment/",
+  }),
+  target(PRV_SE, {
+    id: "se-prv-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "PRV Goods and Services Classification Guidance",
+    canonicalUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/choose-the-right-goods-and-services-for-your-trademark/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/choose-the-right-goods-and-services-for-your-trademark/",
+  }),
+  target(PRV_SE, {
+    id: "se-prv-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "PRV Trademark Laws and Regulations",
+    canonicalUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/laws-and-regulations-concerning-trademarks/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/laws-and-regulations-concerning-trademarks/",
+  }),
+  target(PRV_SE, {
+    id: "se-prv-trademark-examination-opposition",
+    family: "PROCEEDINGS",
+    displayName: "PRV Trademark Application Processing and Opposition",
+    canonicalUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/processing-of-applications-of-trademarks/",
+    verificationEvidenceUri:
+      "https://www.prv.se/en/trademarks/prepare-for-the-trademark-application/processing-of-applications-of-trademarks/",
+  }),
+  target(PRV_SE, {
+    id: "se-prv-trademark-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Swedish Trademark Gazette",
+    canonicalUri:
+      "https://www.prv.se/en/trademarks/when-you-have-a-registered-trademark/monitor-your-trademark/swedish-trademark-gazette/",
+    entrypoints: [
+      {
+        uri: "https://www.prv.se/en/trademarks/when-you-have-a-registered-trademark/monitor-your-trademark/swedish-trademark-gazette/",
+        label: "Gazette guidance",
+      },
+      { uri: "https://search.prv.se/", label: "Daily trademark notices" },
+    ],
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.prv.se/en/trademarks/when-you-have-a-registered-trademark/monitor-your-trademark/swedish-trademark-gazette/",
+    notes:
+      "From 26 January 2026 the Swedish Trademark Gazette moved from daily/weekly PDF editions to online notices published daily through Search PRV's Databases.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -1463,5 +1580,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...OEPM_ES_SOURCE_COVERAGE_TARGETS,
   ...UIBM_IT_SOURCE_COVERAGE_TARGETS,
   ...IPI_CH_SOURCE_COVERAGE_TARGETS,
+  ...PRV_SE_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

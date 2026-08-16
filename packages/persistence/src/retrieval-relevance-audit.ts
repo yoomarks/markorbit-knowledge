@@ -596,6 +596,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ch-ipi-trademark-proceedings",
     query: "trade mark opposition cancellation non-use",
   },
+  {
+    id: "se-trademarks-name",
+    targetId: "se-prv-trademarks",
+    query: "PRV trademarks Sweden",
+  },
+  {
+    id: "se-trademark-filing-name",
+    targetId: "se-prv-trademark-filing",
+    query: "prepare trademark application",
+  },
+  {
+    id: "se-trademark-search-name",
+    targetId: "se-prv-trademark-search",
+    query: "Swedish trademark database",
+  },
+  {
+    id: "se-trademark-fees-name",
+    targetId: "se-prv-trademark-fees",
+    query: "trademark fees",
+  },
+  {
+    id: "se-trademark-classification-name",
+    targetId: "se-prv-trademark-classification",
+    query: "goods services trademark classes",
+  },
+  {
+    id: "se-trademark-law-name",
+    targetId: "se-prv-trademark-law",
+    query: "trademark laws regulations",
+  },
+  {
+    id: "se-trademark-examination-opposition-name",
+    targetId: "se-prv-trademark-examination-opposition",
+    query: "processing trademark applications opposition",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
