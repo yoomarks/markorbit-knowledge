@@ -4747,6 +4747,196 @@ export const MOET_AE_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const MOCI_QA: Authority = {
+  jurisdiction: "QA",
+  authorityName: "Qatar Ministry of Commerce and Industry (MOCI)",
+  languages: ["ar-QA", "en"],
+  verificationEvidenceUri:
+    "https://www.moci.gov.qa/en/our-services/investor/intellectual-property-rights/",
+};
+
+export const MOCI_QA_SOURCE_COVERAGE_TARGETS = [
+  target(MOCI_QA, {
+    id: "qa-moci-trademarks",
+    family: "PORTAL",
+    displayName: "Qatar MOCI Intellectual Property Rights - Trademarks",
+    canonicalUri: "https://www.moci.gov.qa/en/our-services/investor/intellectual-property-rights/",
+    verificationEvidenceUri:
+      "https://www.moci.gov.qa/en/our-services/investor/intellectual-property-rights/",
+    notes:
+      "The current MOCI intellectual-property hub identifies national trademark protection, Madrid protection and official trademark-database access; MOCI is Qatar's national trademark Office of origin under Madrid.",
+  }),
+  target(MOCI_QA, {
+    id: "qa-moci-trademark-filing",
+    family: "FILING",
+    displayName: "Qatar MOCI Trademark Registration Services",
+    canonicalUri:
+      "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9-1/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%B9%D9%84%D8%A7%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D8%AC%D8%A7%D8%B1%D9%8A%D8%A9/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri:
+      "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9-1/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%B9%D9%84%D8%A7%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D8%AC%D8%A7%D8%B1%D9%8A%D8%A9/",
+    notes:
+      "The current MOCI trademark-services surface documents electronic application, examination, publication for 60 days, final registration, ten-year protection and post-registration services.",
+  }),
+  target(MOCI_QA, {
+    id: "qa-moci-trademark-search",
+    family: "SEARCH",
+    displayName: "Qatar MOCI Trademark Database",
+    canonicalUri:
+      "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9-1/%D9%82%D8%A7%D8%B9%D8%AF%D8%A9-%D8%A8%D9%8A%D8%A7%D9%86%D8%A7%D8%AA-%D8%A7%D9%84%D8%B9%D9%84%D8%A7%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D8%AC%D8%A7%D8%B1%D9%8A%D8%A9/",
+    entrypoints: [
+      {
+        uri: "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9-1/%D9%82%D8%A7%D8%B9%D8%AF%D8%A9-%D8%A8%D9%8A%D8%A7%D9%86%D8%A7%D8%AA-%D8%A7%D9%84%D8%B9%D9%84%D8%A7%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D8%AC%D8%A7%D8%B1%D9%8A%D8%A9/",
+        label: "MOCI trademark database page",
+      },
+      { uri: "https://branddb.wipo.int/", label: "Global Brand Database used for QA self-search" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9-1/%D9%82%D8%A7%D8%B9%D8%AF%D8%A9-%D8%A8%D9%8A%D8%A7%D9%86%D8%A7%D8%AA-%D8%A7%D9%84%D8%B9%D9%84%D8%A7%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D8%AC%D8%A7%D8%B1%D9%8A%D8%A9/",
+    notes:
+      "MOCI's current database page routes users to the Global Brand Database; the trademark-services page instructs users to select office QA for free immediate searching of registered and published marks.",
+  }),
+  target(MOCI_QA, {
+    id: "qa-moci-trademark-fees",
+    family: "FEES",
+    displayName: "Qatar MOCI Trademark Service Fees",
+    canonicalUri:
+      "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9-1/%D8%A7%D9%84%D8%B1%D8%B3%D9%88%D9%85/",
+    entrypoints: [
+      {
+        uri: "https://www.moci.gov.qa/wp-content/uploads/2023/08/%D8%AC%D8%AF%D9%88%D9%84-%D8%B1%D8%B3%D9%88%D9%85-%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%B9%D9%84%D8%A7%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D8%AC%D8%A7%D8%B1%D9%8A%D8%A9.pdf",
+        label: "Official MOCI trademark fee table PDF",
+      },
+      {
+        uri: "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9-1/%D8%A7%D9%84%D8%B1%D8%B3%D9%88%D9%85/",
+        label: "Trademark fees",
+      },
+      {
+        uri: "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9-1/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%B9%D9%84%D8%A7%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D8%AC%D8%A7%D8%B1%D9%8A%D8%A9/",
+        label: "Current trademark service fee details",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9-1/%D8%A7%D9%84%D8%B1%D8%B3%D9%88%D9%85/",
+    notes:
+      "Current MOCI service guidance publishes core national registration fees of QAR 1,000 for filing, QAR 500 for publication and QAR 3,000 for final registration/certificate, alongside renewal, opposition and recordal charges.",
+  }),
+  target(MOCI_QA, {
+    id: "qa-moci-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Qatar MOCI Nice Goods and Services Classification",
+    canonicalUri:
+      "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D9%86%D9%85%D8%A7%D8%B0%D8%AC-%D8%A7%D9%84%D9%85%D8%B9%D8%A7%D9%85%D9%84%D8%A7%D8%AA/",
+    entrypoints: [
+      {
+        uri: "https://www.moci.gov.qa/wp-content/uploads/2026/03/%D8%AA%D8%B5%D9%86%D9%8A%D9%81-%D9%86%D9%8A%D8%B3-13-2026.pdf",
+        label: "Current MOCI Nice Classification 13-2026 PDF",
+      },
+      {
+        uri: "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D9%86%D9%85%D8%A7%D8%B0%D8%AC-%D8%A7%D9%84%D9%85%D8%B9%D8%A7%D9%85%D9%84%D8%A7%D8%AA/",
+        label: "MOCI transaction forms including Nice goods/services list",
+      },
+      {
+        uri: "https://www.moci.gov.qa/en/our-services/investor/intellectual-property-rights/protect-your-trademark-overseas-using-the-madrid-system/",
+        label: "Current MOCI goods/services and Madrid guidance",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF", "DOCX"],
+    verificationEvidenceUri:
+      "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D9%86%D9%85%D8%A7%D8%B0%D8%AC-%D8%A7%D9%84%D9%85%D8%B9%D8%A7%D9%85%D9%84%D8%A7%D8%AA/",
+    notes:
+      "MOCI's current transaction-forms surface publishes the goods-and-services list according to the Nice Classification; Madrid guidance preserves the national application's classified goods/services as the basic list.",
+  }),
+  target(MOCI_QA, {
+    id: "qa-moci-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Qatar MOCI Trademark Laws and Regulations",
+    canonicalUri:
+      "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D9%82%D9%88%D8%A7%D9%86%D9%8A%D9%86-%D9%88%D8%A3%D9%86%D8%B8%D9%85%D8%A9/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D9%82%D9%88%D8%A7%D9%86%D9%8A%D9%86-%D9%88%D8%A3%D9%86%D8%B8%D9%85%D8%A9/",
+    notes:
+      "The current MOCI legal surface lists Law No. 9 of 2002, GCC Trademark Law No. 7 of 2014, relevant implementing decisions and Ministerial Decision No. 60 of 2024 on MOCI service fees.",
+  }),
+  target(MOCI_QA, {
+    id: "qa-moci-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Qatar MOCI Trademark Opposition, Grievance and Recordal Forms",
+    canonicalUri: "https://www.moci.gov.qa/en/our-services/investor/forms/",
+    entrypoints: [
+      {
+        uri: "https://www.moci.gov.qa/en/our-services/investor/forms/",
+        label: "Trademark forms and instructions",
+      },
+      {
+        uri: "https://www.moci.gov.qa/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%86%D8%A7/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1/%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%AD%D9%82%D9%88%D9%82-%D8%A7%D9%84%D9%85%D9%84%D9%83%D9%8A%D8%A9-%D8%A7%D9%84%D9%81%D9%83%D8%B1%D9%8A%D8%A9-1/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%B9%D9%84%D8%A7%D9%85%D8%A7%D8%AA-%D8%A7%D9%84%D8%AA%D8%AC%D8%A7%D8%B1%D9%8A%D8%A9/",
+        label: "Opposition, grievance, cancellation and recordal procedures",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF", "DOCX"],
+    verificationEvidenceUri: "https://www.moci.gov.qa/en/our-services/investor/forms/",
+    notes:
+      "MOCI publishes trademark grievance, opposition, opposition-response, hearing, renewal, deletion, licensing and ownership-transfer forms; the current services page publishes the corresponding fees and procedural steps.",
+  }),
+  target(MOCI_QA, {
+    id: "qa-moci-industrial-property-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Qatar MOCI Industrial Property Gazette",
+    canonicalUri:
+      "https://www.moci.gov.qa/en/media-center/statistics-and-reports/industrial-property-gazette/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://www.moci.gov.qa/en/media-center/statistics-and-reports/industrial-property-gazette/",
+    notes:
+      "The national Industrial Property Gazette publishes trademark sections and current issues. It is distinct from MOCI's separate Madrid trademark Gazette and is the national publication surface tied to the 60-day publication/opposition period.",
+  }),
+  target(MOCI_QA, {
+    id: "qa-moci-madrid",
+    family: "FILING",
+    displayName: "Qatar MOCI Madrid System Filing Guidance",
+    canonicalUri:
+      "https://www.moci.gov.qa/en/our-services/investor/intellectual-property-rights/protect-your-trademark-overseas-using-the-madrid-system/",
+    coverageTier: "SUPPORTING",
+    entrypoints: [
+      {
+        uri: "https://www.moci.gov.qa/en/our-services/investor/intellectual-property-rights/protect-your-trademark-overseas-using-the-madrid-system/",
+        label: "MOCI Madrid System guidance",
+      },
+      { uri: "https://efiling.madrid.wipo.int/", label: "Madrid e-Filing" },
+    ],
+    verificationEvidenceUri:
+      "https://www.moci.gov.qa/en/our-services/investor/intellectual-property-rights/protect-your-trademark-overseas-using-the-madrid-system/",
+    notes:
+      "Qatar joined the Madrid System on 3 May 2024. MOCI publishes office-of-origin guidance and directs Qatar basic-mark holders to Madrid e-Filing.",
+  }),
+  target(MOCI_QA, {
+    id: "qa-moci-madrid-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Qatar MOCI Official Trademark Gazette - Madrid",
+    canonicalUri:
+      "https://www.moci.gov.qa/en/media-center/statistics-and-reports/official-trademark-gazette-madrid-no-md1/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://www.moci.gov.qa/en/media-center/statistics-and-reports/official-trademark-gazette-madrid-no-md1/",
+    notes:
+      "MOCI maintains a separate official Madrid trademark gazette with numbered publication batches for international marks affecting Qatar.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -4854,5 +5044,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...ZIS_RS_SOURCE_COVERAGE_TARGETS,
   ...SAIP_SA_SOURCE_COVERAGE_TARGETS,
   ...MOET_AE_SOURCE_COVERAGE_TARGETS,
+  ...MOCI_QA_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

@@ -1471,6 +1471,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ae-moet-trademark-proceedings",
     query: "UAE MoET trademark opposition objection response appeal procedure",
   },
+  {
+    id: "qa-trademarks-name",
+    targetId: "qa-moci-trademarks",
+    query: "Qatar MOCI intellectual property trademark protection",
+  },
+  {
+    id: "qa-trademark-filing-name",
+    targetId: "qa-moci-trademark-filing",
+    query: "Qatar MOCI trademark registration filing publication 60 days",
+  },
+  {
+    id: "qa-trademark-search-name",
+    targetId: "qa-moci-trademark-search",
+    query: "Qatar MOCI trademark database QA published registered marks",
+  },
+  {
+    id: "qa-trademark-fees-name",
+    targetId: "qa-moci-trademark-fees",
+    query: "Qatar MOCI trademark fees 1000 500 3000 QAR",
+  },
+  {
+    id: "qa-trademark-classification-name",
+    targetId: "qa-moci-trademark-classification",
+    query: "Qatar MOCI Nice classification goods services trademarks",
+  },
+  {
+    id: "qa-trademark-law-name",
+    targetId: "qa-moci-trademark-law",
+    query: "Qatar trademark Law 9 2002 GCC Law 7 2014 MOCI",
+  },
+  {
+    id: "qa-trademark-proceedings-name",
+    targetId: "qa-moci-trademark-proceedings",
+    query: "Qatar MOCI trademark opposition grievance hearing forms",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
