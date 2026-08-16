@@ -1331,6 +1331,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "lt-vpb-trademark-proceedings",
     query: "Lithuania trademark appeal opposition invalidity cancellation Appeals Division",
   },
+  {
+    id: "is-trademarks-name",
+    targetId: "is-isipo-trademarks",
+    query: "Icelandic Intellectual Property Office trademarks registration",
+  },
+  {
+    id: "is-trademark-filing-name",
+    targetId: "is-isipo-trademark-filing",
+    query: "Iceland apply trademark ISIPO electronic application",
+  },
+  {
+    id: "is-trademark-search-name",
+    targetId: "is-isipo-trademark-search",
+    query: "Iceland ISIPO trademark search classes status",
+  },
+  {
+    id: "is-trademark-fees-name",
+    targetId: "is-isipo-trademark-fees",
+    query: "Iceland trademark fees ISK application opposition revocation",
+  },
+  {
+    id: "is-trademark-classification-name",
+    targetId: "is-isipo-trademark-classification",
+    query: "Iceland trademark Nice classification 2026 Advertisement 1355 2025",
+  },
+  {
+    id: "is-trademark-law-name",
+    targetId: "is-isipo-trademark-law",
+    query: "Iceland Trademark Act 45 1997 Regulation 850 2020",
+  },
+  {
+    id: "is-trademark-proceedings-name",
+    targetId: "is-isipo-trademark-proceedings",
+    query: "Iceland trademark opposition cancellation invalidation Board of Appeal",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
