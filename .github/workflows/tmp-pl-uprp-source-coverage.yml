@@ -16,6 +16,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: python .github/tmp/patch_pl_uprp_source_coverage.py
+      - run: python .github/tmp/fix_pl_uprp_unique_canonical.py
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
