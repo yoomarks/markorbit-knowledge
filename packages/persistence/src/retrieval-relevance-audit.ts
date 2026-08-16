@@ -300,6 +300,37 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "de-dpma-trademark-forms",
     query: "trade mark applicants",
   },
+  { id: "in-trademarks-name", targetId: "in-ipindia-trademarks", query: "basics trademarks" },
+  {
+    id: "in-trademark-filing-name",
+    targetId: "in-ipindia-trademark-filing-process",
+    query: "filing process",
+  },
+  {
+    id: "in-trademark-search-name",
+    targetId: "in-ipindia-trademark-search",
+    query: "search existing trademarks",
+  },
+  {
+    id: "in-trademark-forms-fees-name",
+    targetId: "in-ipindia-trademark-forms-fees",
+    query: "forms official fees",
+  },
+  {
+    id: "in-trademark-act-name",
+    targetId: "in-ipindia-trademark-act",
+    query: "trade marks act",
+  },
+  {
+    id: "in-trademark-rules-name",
+    targetId: "in-ipindia-trademark-rules",
+    query: "trade marks rules",
+  },
+  {
+    id: "in-trademark-manual-name",
+    targetId: "in-ipindia-trademark-manual",
+    query: "trademarks practice procedure manual",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
