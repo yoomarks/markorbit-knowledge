@@ -6595,6 +6595,161 @@ export const NIPO_LK_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const DIP_TH: Authority = {
+  jurisdiction: "TH",
+  authorityName: "Department of Intellectual Property (DIP), Ministry of Commerce, Thailand",
+  languages: ["th-TH", "en-US"],
+  verificationEvidenceUri: "https://www.ipthailand.go.th/th/trademark.html",
+};
+
+export const DIP_TH_SOURCE_COVERAGE_TARGETS = [
+  target(DIP_TH, {
+    id: "th-dip-trademarks",
+    family: "PORTAL",
+    displayName: "Thailand DIP Trademark Portal",
+    canonicalUri: "https://www.ipthailand.go.th/th/trademark.html",
+    verificationEvidenceUri: "https://www.ipthailand.go.th/th/trademark.html",
+    notes:
+      "Thailand DIP's trademark portal links the national e-service, public search, procedures, forms, fees, goods/services resources, trademark law and examination guidance.",
+  }),
+  target(DIP_TH, {
+    id: "th-dip-trademark-filing",
+    family: "FILING",
+    displayName: "Thailand DIP Trademark e-Filing",
+    canonicalUri: "https://tm.ipthailand.go.th/",
+    entrypoints: [
+      {
+        uri: "https://tm.ipthailand.go.th/",
+        label: "Trademark electronic filing application",
+      },
+      {
+        uri: "https://sso.ipthailand.go.th/login?app_id=1701000004&redirect_url=https%3A%2F%2Ftm.ipthailand.go.th%2F",
+        label: "DIP single sign-on for trademark e-filing",
+      },
+      {
+        uri: "https://ipthailand.go.th/th/dip-news/item/announctm_efilingemail20231228-copy.html",
+        label: "Official e-filing rules and conditions",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri:
+      "https://sso.ipthailand.go.th/login?app_id=1701000004&redirect_url=https%3A%2F%2Ftm.ipthailand.go.th%2F",
+    notes:
+      "DIP operates a dedicated electronic trademark filing service behind its official SSO and publishes formal rules governing electronic trademark applications and related requests.",
+  }),
+  target(DIP_TH, {
+    id: "th-dip-trademark-search",
+    family: "SEARCH",
+    displayName: "Thailand DIP Public Trademark Search",
+    canonicalUri: "https://search.ipthailand.go.th/trademark",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://search.ipthailand.go.th/trademark",
+    notes:
+      "DIP's public intellectual-property search exposes trademark records and mark-specific search fields through the official search.ipthailand.go.th service.",
+  }),
+  target(DIP_TH, {
+    id: "th-dip-trademark-forms",
+    family: "STATUS_AND_DOCUMENTS",
+    displayName: "Thailand DIP Trademark Forms and Filing Guides",
+    canonicalUri: "https://www.ipthailand.go.th/th/trademark-007.html",
+    entrypoints: [
+      {
+        uri: "https://www.ipthailand.go.th/th/trademark-007.html",
+        label: "Trademark forms, examples and completion guides",
+      },
+      {
+        uri: "https://ipthailand.go.th/th/dip-law-2/item/anounce_tm20250116.html",
+        label: "2025 DIP notification prescribing trademark application and related forms",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.ipthailand.go.th/th/trademark-007.html",
+    notes:
+      "DIP publishes the official ก.01 application, ก.02 opposition and other trademark forms together with examples, PDF/DOC assets and the current form-prescription notice.",
+  }),
+  target(DIP_TH, {
+    id: "th-dip-trademark-fees",
+    family: "FEES",
+    displayName: "Thailand DIP Domestic Trademark Fees",
+    canonicalUri: "https://www.ipthailand.go.th/th/trademark-006.html",
+    verificationEvidenceUri: "https://www.ipthailand.go.th/th/trademark-006.html",
+    notes:
+      "DIP publishes the domestic trademark fee schedule for applications, oppositions, registrations, renewals and related requests. Amounts remain sourced evidence rather than frozen catalog truth.",
+  }),
+  target(DIP_TH, {
+    id: "th-dip-trademark-goods-services",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Thailand DIP Recommended Trademark Goods and Services",
+    canonicalUri: "https://catalog.ipthailand.go.th/th/dataset/dip_04010201",
+    entrypoints: [
+      {
+        uri: "https://catalog.ipthailand.go.th/th/dataset/dip_04010201",
+        label: "DIP Trademark Division recommended goods/services dataset",
+      },
+      {
+        uri: "https://tmsearch.ipthailand.go.th/",
+        label: "Trademark goods/services search linked by the official dataset",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON", "XLSX"],
+    verificationEvidenceUri: "https://catalog.ipthailand.go.th/th/dataset/dip_04010201",
+    notes:
+      "The DIP Trademark Division publishes a current recommended goods/services dataset and links the official trademark search surface used for Thailand specifications.",
+  }),
+  target(DIP_TH, {
+    id: "th-dip-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Thailand DIP Trademark Act and Regulations",
+    canonicalUri: "https://www.ipthailand.go.th/en/dip-law-2/category/law-001.html",
+    entrypoints: [
+      {
+        uri: "https://www.ipthailand.go.th/th/dip-law-2/item/trademark-act-b-e-2534-amended-by-trademark-act-no-2-b-e-2543-and-trademark-act-no-3-b-e-2559.html",
+        label: "Trademark Act B.E. 2534 as amended through No. 3 B.E. 2559",
+      },
+      {
+        uri: "https://www.ipthailand.go.th/th/dip-law-2/category/%E0%B8%81%E0%B8%8E%E0%B8%81%E0%B8%A3%E0%B8%B0%E0%B8%97%E0%B8%A3%E0%B8%A7%E0%B8%87-ministerial-regulations-2.html",
+        label: "Trademark-related ministerial regulations",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.ipthailand.go.th/en/dip-law-2/category/law-001.html",
+    notes:
+      "DIP's trademark-law library groups the Trademark Act, ministerial regulations, Ministry of Commerce notifications, DIP rules, Trademark Board materials and registrar notifications.",
+  }),
+  target(DIP_TH, {
+    id: "th-dip-trademark-examination-manual",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Thailand DIP Trademark Registration Examination Manual 2022",
+    canonicalUri: "https://www.ipthailand.go.th/th/revision.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.ipthailand.go.th/th/revision.html",
+    notes:
+      "DIP publishes its trademark registration examination manual (2565/2022 edition) as the dedicated national examination-practice source.",
+  }),
+  target(DIP_TH, {
+    id: "th-dip-trademark-policy-notices",
+    family: "POLICY_NOTICES",
+    displayName: "Thailand DIP Trademark Policy and Procedure Notifications",
+    canonicalUri:
+      "https://www.ipthailand.go.th/en/dip-law-2/category/%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B2%E0%B8%A8%E0%B8%81%E0%B8%A3%E0%B8%A1%E0%B8%97%E0%B8%A3%E0%B8%B1%E0%B8%9E%E0%B8%A2%E0%B9%8C%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%9B%E0%B8%B1%E0%B8%8D%E0%B8%8D%E0%B8%B2-notifications-of-dip-2.html",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://www.ipthailand.go.th/en/dip-law-2/category/%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B2%E0%B8%A8%E0%B8%81%E0%B8%A3%E0%B8%A1%E0%B8%97%E0%B8%A3%E0%B8%B1%E0%B8%9E%E0%B8%A2%E0%B9%8C%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%9B%E0%B8%B1%E0%B8%8D%E0%B8%8D%E0%B8%B2-notifications-of-dip-2.html",
+    notes:
+      "DIP continuously publishes operational notifications affecting trademark filing and registrar/Trademark Board communications, including 2026 notices; retain this surface as a policy change signal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -6714,5 +6869,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...DJKI_ID_SOURCE_COVERAGE_TARGETS,
   ...IPVN_VN_SOURCE_COVERAGE_TARGETS,
   ...NIPO_LK_SOURCE_COVERAGE_TARGETS,
+  ...DIP_TH_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
