@@ -1366,6 +1366,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "tr-turkpatent-trademark-proceedings",
     query: "TÜRKPATENT trademark opposition appeal re-examination cancellation",
   },
+  {
+    id: "rs-trademarks-name",
+    targetId: "rs-zis-trademarks",
+    query: "Serbia trademark Intellectual Property Office examination opposition",
+  },
+  {
+    id: "rs-trademark-filing-name",
+    targetId: "rs-zis-trademark-filing",
+    query: "Serbia IPO electronic trademark application eApplication",
+  },
+  {
+    id: "rs-trademark-search-name",
+    targetId: "rs-zis-trademark-search",
+    query: "Serbia E-register national trademarks search",
+  },
+  {
+    id: "rs-trademark-fees-name",
+    targetId: "rs-zis-trademark-fees",
+    query: "Serbia trademark application registration fees RSD",
+  },
+  {
+    id: "rs-trademark-classification-name",
+    targetId: "rs-zis-trademark-classification",
+    query: "Serbia Nice Classification 13 2026 trademarks",
+  },
+  {
+    id: "rs-trademark-law-name",
+    targetId: "rs-zis-trademark-law",
+    query: "Serbia Trademark Law 6 2020 methodology opposition regulation",
+  },
+  {
+    id: "rs-trademark-proceedings-name",
+    targetId: "rs-zis-trademark-proceedings",
+    query: "Serbia trademark opposition cancellation non-use forms instructions",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
