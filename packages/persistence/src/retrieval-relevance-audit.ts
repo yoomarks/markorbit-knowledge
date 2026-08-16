@@ -841,6 +841,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "pt-inpi-trademark-law",
     query: "Código Propriedade Industrial marcas Portugal",
   },
+  {
+    id: "pl-trademarks-name",
+    targetId: "pl-uprp-trademarks",
+    query: "znaki towarowe informacje podstawowe UPRP",
+  },
+  {
+    id: "pl-trademark-filing-name",
+    targetId: "pl-uprp-trademark-filing",
+    query: "procedura krajowa zgłoszenie znaku towarowego",
+  },
+  {
+    id: "pl-trademark-search-name",
+    targetId: "pl-uprp-trademark-search",
+    query: "e-Wyszukiwarka znaki towarowe UPRP",
+  },
+  {
+    id: "pl-trademark-fees-name",
+    targetId: "pl-uprp-trademark-fees",
+    query: "opłaty zgłoszeniowe znaki towarowe UPRP",
+  },
+  {
+    id: "pl-trademark-classification-name",
+    targetId: "pl-uprp-trademark-classification",
+    query: "Klasyfikacja nicejska towary usługi UPRP",
+  },
+  {
+    id: "pl-trademark-guidelines-name",
+    targetId: "pl-uprp-trademark-guidelines",
+    query: "wytyczne znaki towarowe Prezesa UPRP",
+  },
+  {
+    id: "pl-trademark-law-proceedings-name",
+    targetId: "pl-uprp-trademark-law-proceedings",
+    query: "Prawo własności przemysłowej procedura sprzeciwowa znak towarowy",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",

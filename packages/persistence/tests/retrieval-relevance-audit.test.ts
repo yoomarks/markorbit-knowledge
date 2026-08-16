@@ -89,10 +89,10 @@ describe("retrieval relevance smoke audit", () => {
     const targetIds = new Set(
       FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES.map((probe) => probe.targetId),
     );
-    expect(targets).toHaveLength(183);
-    expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(183);
+    expect(targets).toHaveLength(190);
+    expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(190);
     expect(new Set(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES.map((probe) => probe.id)).size).toBe(
-      183,
+      190,
     );
     expect(targets.every((target) => targetIds.has(target.id))).toBe(true);
     expect(
@@ -182,6 +182,11 @@ describe("retrieval relevance smoke audit", () => {
     ).toBe(true);
     expect(
       listSourceCoverageTargets({ jurisdiction: "PT", coverageTier: "FOUNDATIONAL" }).every(
+        (target) => targetIds.has(target.id),
+      ),
+    ).toBe(true);
+    expect(
+      listSourceCoverageTargets({ jurisdiction: "PL", coverageTier: "FOUNDATIONAL" }).every(
         (target) => targetIds.has(target.id),
       ),
     ).toBe(true);
