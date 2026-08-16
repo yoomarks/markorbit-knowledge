@@ -17,6 +17,7 @@ import {
   type CreateCollectionPlanInput,
 } from "../src/collection-plan-registry";
 import { SqliteExecutionLedgerRepository } from "../src/execution-ledger";
+import { claimSpecificJob } from "../src/targeted-worker-claim";
 import {
   SqliteWorkerRegistryRepository,
   WorkerAuthenticationError,
@@ -464,6 +465,153 @@ describe("SQLite Worker Registry", () => {
       env.workers.claim(workers[2]!.view.worker.id, workers[2]!.credential).job,
     ).not.toBeNull();
 
+    env.database.close();
+  });
+
+  it("applies the same domain governance to targeted exact-Job claims", () => {
+    const env = environment(new DatabaseSync(":memory:"), {
+      maxConcurrentWebLeasesPerDomain: 1,
+      leaseDurationMs: 4_000,
+    });
+    const sameDomainJobs = ["a", "b"].map((suffix) => {
+      const source = env.sources.create(
+        sourceInput({
+          name: `Same domain ${suffix}`,
+          slug: `same-domain-${suffix}`,
+          canonicalUri: `https://www.uspto.gov/${suffix}`,
+          entrypoints: [{ uri: `https://www.uspto.gov/${suffix}` }],
+        }),
+      );
+      const plan = env.plans.create(planInput(source.id, { name: `Same domain ${suffix} plan` }));
+      return env.runs.dispatchManual({ planId: plan.plan.id }).record.jobs[0]!;
+    });
+    const otherSource = env.sources.create(
+      sourceInput({
+        name: "Other domain",
+        slug: "other-domain",
+        canonicalUri: "https://www.euipo.europa.eu/news",
+        entrypoints: [{ uri: "https://www.euipo.europa.eu/news" }],
+      }),
+    );
+    const otherPlan = env.plans.create(planInput(otherSource.id, { name: "Other domain plan" }));
+    const otherJob = env.runs.dispatchManual({ planId: otherPlan.plan.id }).record.jobs[0]!;
+
+    const firstWorker = env.workers.create(workerInput({ displayName: "Target Worker A" }));
+    const secondWorker = env.workers.create(workerInput({ displayName: "Target Worker B" }));
+    heartbeat(env, firstWorker.view.worker.id, firstWorker.credential);
+    heartbeat(env, secondWorker.view.worker.id, secondWorker.credential);
+    const options = {
+      heartbeatFreshnessMs: 10_000,
+      heartbeatClockSkewMs: 10_000,
+      leaseDurationMs: 4_000,
+      maxLeaseLifetimeMs: 10_000,
+      maxConcurrentWebLeasesPerDomain: 1,
+    };
+
+    const first = claimSpecificJob(
+      env.database,
+      firstWorker.view.worker.id,
+      firstWorker.credential,
+      sameDomainJobs[0]!.id,
+      env.clock,
+      options,
+    );
+    expect(Date.parse(first.lease!.expiresAt) - Date.parse(first.lease!.acquiredAt)).toBe(4_000);
+    expect(() =>
+      claimSpecificJob(
+        env.database,
+        secondWorker.view.worker.id,
+        secondWorker.credential,
+        sameDomainJobs[1]!.id,
+        env.clock,
+        options,
+      ),
+    ).toThrowError(
+      expect.objectContaining({
+        code: "WEB_DOMAIN_CLAIM_QUOTA_EXCEEDED",
+      }),
+    );
+    const other = claimSpecificJob(
+      env.database,
+      secondWorker.view.worker.id,
+      secondWorker.credential,
+      otherJob.id,
+      env.clock,
+      options,
+    );
+    expect(other.job?.sourceId).toBe(otherSource.id);
+    env.database.close();
+  });
+
+  it("applies the strictest rolling domain rate limit to targeted claims", () => {
+    const env = environment(new DatabaseSync(":memory:"), {
+      maxConcurrentWebLeasesPerDomain: 10,
+      leaseDurationMs: 2_000,
+    });
+    const jobs = ["rate-target-a", "rate-target-b", "rate-target-c"].map((slug, index) => {
+      const source = env.sources.create(
+        sourceInput({
+          name: `Target rate ${index + 1}`,
+          slug,
+          canonicalUri: `https://www.uspto.gov/target-rate-${index + 1}`,
+          entrypoints: [{ uri: `https://www.uspto.gov/target-rate-${index + 1}` }],
+        }),
+      );
+      const plan = env.plans.create(
+        planInput(source.id, {
+          name: `Target rate ${index + 1} plan`,
+          policy: { ...planInput(source.id).policy, rateLimitPerMinute: 2 },
+        }),
+      );
+      return env.runs.dispatchManual({ planId: plan.plan.id }).record.jobs[0]!;
+    });
+    const workers = ["Rate Target A", "Rate Target B", "Rate Target C"].map((displayName) =>
+      env.workers.create(workerInput({ displayName })),
+    );
+    for (const worker of workers) heartbeat(env, worker.view.worker.id, worker.credential);
+    const options = {
+      heartbeatFreshnessMs: 10_000,
+      heartbeatClockSkewMs: 10_000,
+      leaseDurationMs: 2_000,
+      maxLeaseLifetimeMs: 10_000,
+      maxConcurrentWebLeasesPerDomain: 10,
+    };
+
+    for (const index of [0, 1]) {
+      expect(
+        claimSpecificJob(
+          env.database,
+          workers[index]!.view.worker.id,
+          workers[index]!.credential,
+          jobs[index]!.id,
+          env.clock,
+          options,
+        ).job,
+      ).not.toBeNull();
+    }
+    expect(() =>
+      claimSpecificJob(
+        env.database,
+        workers[2]!.view.worker.id,
+        workers[2]!.credential,
+        jobs[2]!.id,
+        env.clock,
+        options,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "WEB_DOMAIN_CLAIM_QUOTA_EXCEEDED" }));
+
+    env.advance(60_001);
+    heartbeat(env, workers[2]!.view.worker.id, workers[2]!.credential);
+    expect(
+      claimSpecificJob(
+        env.database,
+        workers[2]!.view.worker.id,
+        workers[2]!.credential,
+        jobs[2]!.id,
+        env.clock,
+        options,
+      ).job,
+    ).not.toBeNull();
     env.database.close();
   });
 
