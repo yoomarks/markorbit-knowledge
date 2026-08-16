@@ -1763,6 +1763,152 @@ export const DKPTO_DK_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const PRH_FI: Authority = {
+  jurisdiction: "FI",
+  authorityName: "Finnish Patent and Registration Office (PRH)",
+  languages: ["fi-FI", "sv-FI", "en"],
+  verificationEvidenceUri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks.html",
+};
+
+export const PRH_FI_SOURCE_COVERAGE_TARGETS = [
+  target(PRH_FI, {
+    id: "fi-prh-trademarks",
+    family: "PORTAL",
+    displayName: "PRH Trademarks",
+    canonicalUri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks.html",
+  }),
+  target(PRH_FI, {
+    id: "fi-prh-trademark-filing",
+    family: "FILING",
+    displayName: "PRH How to Apply for a Trademark",
+    canonicalUri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks/how_to_apply.html",
+    entrypoints: [
+      {
+        uri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks/how_to_apply.html",
+        label: "Trademark filing guidance",
+      },
+      { uri: "https://asiointi.prh.fi/", label: "PRH trademark application service" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "JSON"],
+    verificationEvidenceUri:
+      "https://www.prh.fi/en/intellectualpropertyrights/trademarks/how_to_apply.html",
+  }),
+  target(PRH_FI, {
+    id: "fi-prh-trademark-search",
+    family: "SEARCH",
+    displayName: "PRH Trademark Information Service",
+    canonicalUri: "https://tavaramerkkitietopalvelu.prh.fi/",
+    entrypoints: [
+      {
+        uri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks/general_information_about_trademarks/information_services/trademark_information_service.html",
+        label: "Trademark Information Service guidance",
+      },
+      { uri: "https://tavaramerkkitietopalvelu.prh.fi/", label: "Trademark Information Service" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.prh.fi/en/intellectualpropertyrights/trademarks/general_information_about_trademarks/information_services/trademark_information_service.html",
+    notes:
+      "The PRH service covers pending and valid Finnish national trademarks, Madrid registrations designating Finland, and related opposition/revocation information; search guidance was updated on 28 July 2026.",
+  }),
+  target(PRH_FI, {
+    id: "fi-prh-trademark-fees",
+    family: "FEES",
+    displayName: "PRH Trademark Application and Registration Fees",
+    canonicalUri:
+      "https://www.prh.fi/en/price-lists/trademark_fees/fees_for_trademark_applications.html",
+    verificationEvidenceUri:
+      "https://www.prh.fi/en/price-lists/trademark_fees/fees_for_trademark_applications.html",
+    notes:
+      "The official price list applies from 1 January 2026 and covers applications, renewals, oppositions, revocations and invalidations.",
+  }),
+  target(PRH_FI, {
+    id: "fi-prh-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "PRH Classification of Goods and Services",
+    canonicalUri:
+      "https://www.prh.fi/en/intellectualpropertyrights/trademarks/ennen_tavaramerkin_hakemista/classification_of_goods_and_services.html",
+    entrypoints: [
+      {
+        uri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks/ennen_tavaramerkin_hakemista/classification_of_goods_and_services.html",
+        label: "Classification guidance",
+      },
+      {
+        uri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks/ennen_tavaramerkin_hakemista/classification_of_goods_and_services/classification_principles_and_sources_of_information/luokkaotsikot_2020.html",
+        label: "Current NCL 13-2026 class headings",
+      },
+    ],
+    verificationEvidenceUri:
+      "https://www.prh.fi/en/intellectualpropertyrights/trademarks/ennen_tavaramerkin_hakemista/classification_of_goods_and_services/classification_principles_and_sources_of_information/luokkaotsikot_2020.html",
+    notes:
+      "PRH identifies NCL 13-2026 as the current Nice Classification effective from 1 January 2026.",
+  }),
+  target(PRH_FI, {
+    id: "fi-prh-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "PRH Trademark Legislation and Guidelines",
+    canonicalUri:
+      "https://www.prh.fi/en/intellectualpropertyrights/trademarks/general_information_about_trademarks/legislation.html",
+    entrypoints: [
+      {
+        uri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks/general_information_about_trademarks/legislation.html",
+        label: "Trademark legislation and common practices",
+      },
+      {
+        uri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks/general_information_about_trademarks/legislation/trademark_act.html",
+        label: "Trademarks Act 544/2019 English translation",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.prh.fi/en/intellectualpropertyrights/trademarks/general_information_about_trademarks/legislation.html",
+  }),
+  target(PRH_FI, {
+    id: "fi-prh-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "PRH Trademark Opposition, Revocation and Invalidation",
+    canonicalUri:
+      "https://www.prh.fi/en/intellectualpropertyrights/trademarks/trademark_disputes/opposition_against_a_trademark.html",
+    entrypoints: [
+      {
+        uri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks/trademark_disputes/opposition_against_a_trademark.html",
+        label: "Opposition procedure",
+      },
+      {
+        uri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks/trademark_disputes/revocation_and_invalidation_procedure.html",
+        label: "Revocation and invalidation procedure",
+      },
+    ],
+    verificationEvidenceUri:
+      "https://www.prh.fi/en/intellectualpropertyrights/trademarks/trademark_disputes/opposition_against_a_trademark.html",
+  }),
+  target(PRH_FI, {
+    id: "fi-prh-trademark-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "PRH Trademark Gazette",
+    canonicalUri: "https://teollisoikeuslehdet.prh.fi/en/trademarkgazette",
+    entrypoints: [
+      {
+        uri: "https://www.prh.fi/en/intellectualpropertyrights/trademarks/general_information_about_trademarks/information_services/the_trademark_gazette.html",
+        label: "Trademark Gazette guidance",
+      },
+      { uri: "https://teollisoikeuslehdet.prh.fi/en/trademarkgazette", label: "Trademark Gazette" },
+    ],
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://teollisoikeuslehdet.prh.fi/en/trademarkgazette",
+    notes:
+      "The online Trademark Gazette replaces the former twice-monthly PDF gazette and is updated daily with national marks, Madrid registrations valid in Finland and trademarks with a reputation.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -1848,5 +1994,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...PRV_SE_SOURCE_COVERAGE_TARGETS,
   ...NIPO_NO_SOURCE_COVERAGE_TARGETS,
   ...DKPTO_DK_SOURCE_COVERAGE_TARGETS,
+  ...PRH_FI_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
