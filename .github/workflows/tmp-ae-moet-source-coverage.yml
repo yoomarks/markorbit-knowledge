@@ -13,9 +13,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply UAE MoET patch
+      - name: Normalize and apply UAE MoET patch
         run: |
-          sed -i 's/^+] satisfies readonly SourceCoverageTarget\[\];$/] satisfies readonly SourceCoverageTarget[];/' .github/tmp/patch_ae_moet_source_coverage.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.github/tmp/patch_ae_moet_source_coverage.py')
+          s = p.read_text()
+          s = s.replace('+] satisfies readonly SourceCoverageTarget[];', '] satisfies readonly SourceCoverageTarget[];')
+          faq = 'https://www.moet.gov.ae/en/search-results?_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_assetEntryId=200540&_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_mvcPath=%2Fview_content.jsp&_com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn_type=content&p_l_back_url=%2Fen%2Fsearch-results%3Fq%3D%26start%3D12&p_p_id=com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_axqn&p_p_lifecycle=0&p_p_mode=view&p_p_state=maximized'
+          s = s.replace('https://www.moet.gov.ae/en/trademark-services', faq)
+          s = s.replace('Current trademark service surface', 'Official trademark FAQ explaining Nice Classification')
+          s = s.replace('https://www.moet.gov.ae/en/our-publications', 'https://www.moet.gov.ae/en/publications1')
+          p.write_text(s)
+          PY
           python .github/tmp/patch_ae_moet_source_coverage.py
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
