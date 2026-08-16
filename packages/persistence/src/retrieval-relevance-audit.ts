@@ -1296,6 +1296,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "lv-lpo-trademark-proceedings",
     query: "Latvia trademark opposition appeal revocation invalidity Board of Appeal",
   },
+  {
+    id: "lt-trademarks-name",
+    targetId: "lt-vpb-trademarks",
+    query: "Lithuania State Patent Bureau trademarks",
+  },
+  {
+    id: "lt-trademark-filing-name",
+    targetId: "lt-vpb-trademark-filing",
+    query: "Lithuania trademark registration electronic filing VPB",
+  },
+  {
+    id: "lt-trademark-search-name",
+    targetId: "lt-vpb-trademark-search",
+    query: "Lithuania VPB trademark databases search",
+  },
+  {
+    id: "lt-trademark-fees-name",
+    targetId: "lt-vpb-trademark-fees",
+    query: "Lithuania trademark fees filing opposition invalidation",
+  },
+  {
+    id: "lt-trademark-classification-name",
+    targetId: "lt-vpb-trademark-classification",
+    query: "Lithuania trademark Nice classification goods services TMclass",
+  },
+  {
+    id: "lt-trademark-law-name",
+    targetId: "lt-vpb-trademark-law",
+    query: "Lithuania Law on Trademarks registration rules",
+  },
+  {
+    id: "lt-trademark-proceedings-name",
+    targetId: "lt-vpb-trademark-proceedings",
+    query: "Lithuania trademark appeal opposition invalidity cancellation Appeals Division",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
