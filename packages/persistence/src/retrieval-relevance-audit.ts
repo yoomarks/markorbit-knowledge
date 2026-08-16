@@ -2359,6 +2359,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "il-ilpo-trademark-renewal",
     query: "trademark renewal",
   },
+  {
+    id: "ua-nipo-trademark-portal-name",
+    targetId: "ua-nipo-trademark-portal",
+    query: "торговельні марки NIPO Ukraine",
+  },
+  {
+    id: "ua-nipo-trademark-filing-name",
+    targetId: "ua-nipo-trademark-filing",
+    query: "електронне подання заявки знак для товарів послуг",
+  },
+  {
+    id: "ua-nipo-trademark-search-name",
+    targetId: "ua-nipo-trademark-search",
+    query: "пошук торговельна марка заявка реєстрація",
+  },
+  {
+    id: "ua-nipo-trademark-fees-name",
+    targetId: "ua-nipo-trademark-fees",
+    query: "збори державне мито торговельна марка",
+  },
+  {
+    id: "ua-nipo-trademark-classification-name",
+    targetId: "ua-nipo-trademark-classification",
+    query: "МКТП 13-2026 Nice Classification",
+  },
+  {
+    id: "ua-nipo-trademark-legal-texts-name",
+    targetId: "ua-nipo-trademark-legal-texts",
+    query: "Закон охорону прав на знаки товарів послуг",
+  },
+  {
+    id: "ua-nipo-trademark-examination-rules-name",
+    targetId: "ua-nipo-trademark-examination-rules",
+    query: "Правила подання заявки торговельну марку експертизи 19889",
+  },
+  {
+    id: "ua-nipo-trademark-appeals-name",
+    targetId: "ua-nipo-trademark-appeals",
+    query: "Апеляційна палата торговельні марки заперечення",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
