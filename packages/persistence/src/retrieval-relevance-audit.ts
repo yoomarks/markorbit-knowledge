@@ -2274,6 +2274,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ke-kipi-trademark-rulings",
     query: "trade mark rulings opposition expungement",
   },
+  {
+    id: "hk-ipd-trademark-portal-name",
+    targetId: "hk-ipd-trademark-portal",
+    query: "trade marks Hong Kong",
+  },
+  {
+    id: "hk-ipd-trademark-filing-name",
+    targetId: "hk-ipd-trademark-filing",
+    query: "trade mark e-filing",
+  },
+  {
+    id: "hk-ipd-trademark-search-name",
+    targetId: "hk-ipd-trademark-search",
+    query: "online trade mark search",
+  },
+  {
+    id: "hk-ipd-trademark-forms-fees-name",
+    targetId: "hk-ipd-trademark-forms-fees",
+    query: "trade marks forms fees T2",
+  },
+  {
+    id: "hk-ipd-trademark-classification-name",
+    targetId: "hk-ipd-trademark-classification",
+    query: "Nice Classification 13th edition 2026",
+  },
+  {
+    id: "hk-ipd-trademark-legal-texts-name",
+    targetId: "hk-ipd-trademark-legal-texts",
+    query: "Trade Marks Ordinance Cap 559 Rules 559A",
+  },
+  {
+    id: "hk-ipd-trademark-work-manual-name",
+    targetId: "hk-ipd-trademark-work-manual",
+    query: "Trade Marks Registry Work Manual",
+  },
+  {
+    id: "hk-ipd-trademark-opposition-name",
+    targetId: "hk-ipd-trademark-opposition",
+    query: "trade mark opposition",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
