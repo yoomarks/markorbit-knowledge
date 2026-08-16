@@ -366,6 +366,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "fr-inpi-trademark-opposition",
     query: "opposition enregistrement marque",
   },
+  {
+    id: "br-trademarks-name",
+    targetId: "br-inpi-trademarks",
+    query: "Brazil INPI trademarks",
+  },
+  {
+    id: "br-trademark-filing-name",
+    targetId: "br-inpi-trademark-filing-guide",
+    query: "trademark filing guide",
+  },
+  {
+    id: "br-trademark-search-name",
+    targetId: "br-inpi-trademark-search",
+    query: "trademark search",
+  },
+  {
+    id: "br-trademark-costs-name",
+    targetId: "br-inpi-trademark-costs",
+    query: "trademark costs payment",
+  },
+  {
+    id: "br-trademark-manual-name",
+    targetId: "br-inpi-trademark-manual",
+    query: "trademark manual",
+  },
+  {
+    id: "br-trademark-legislation-name",
+    targetId: "br-inpi-trademark-legislation",
+    query: "trademark legislation",
+  },
+  {
+    id: "br-trademark-classification-name",
+    targetId: "br-inpi-trademark-classification",
+    query: "trademark classification",
+  },
+  {
+    id: "br-trademark-appeals-name",
+    targetId: "br-inpi-trademark-appeals-nullity",
+    query: "trademark appeals nullity",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
