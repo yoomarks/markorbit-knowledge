@@ -26,6 +26,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prettier --write apps/admin/src/server/source-collection-health.ts apps/admin/src/server/__tests__/source-collection-health.test.ts apps/admin/src/app/api/sources/route.ts apps/admin/src/components/sources/source-list.tsx
       - run: pnpm --filter @markorbit/admin exec vitest run src/server/__tests__/source-collection-health.test.ts
+      - run: nl -ba apps/admin/src/app/api/sources/route.ts | sed -n '200,220p'
       - run: pnpm --filter @markorbit/admin typecheck
       - run: pnpm --filter @markorbit/admin build
       - name: Commit integration
