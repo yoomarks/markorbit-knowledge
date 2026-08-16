@@ -911,6 +911,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "cz-upv-trademark-common-practices",
     query: "Common Communications trademark practice EUIPO member states Czech",
   },
+  {
+    id: "sk-trademarks-name",
+    targetId: "sk-indprop-trademarks",
+    query: "Industrial Property Office Slovak Republic trade marks",
+  },
+  {
+    id: "sk-trademark-filing-name",
+    targetId: "sk-indprop-trademark-filing",
+    query: "file trade mark application Slovakia Fast Track",
+  },
+  {
+    id: "sk-trademark-search-name",
+    targetId: "sk-indprop-trademark-search",
+    query: "Webregister trademarks Slovakia daily",
+  },
+  {
+    id: "sk-trademark-fees-name",
+    targetId: "sk-indprop-trademark-fees",
+    query: "trade mark administrative fees Slovakia",
+  },
+  {
+    id: "sk-trademark-classification-name",
+    targetId: "sk-indprop-trademark-classification",
+    query: "NCL 13-2026 Nice Classification Slovakia",
+  },
+  {
+    id: "sk-trademark-law-name",
+    targetId: "sk-indprop-trademark-law",
+    query: "Act 506 2009 trademarks Decree 567 Slovakia",
+  },
+  {
+    id: "sk-trademark-proceedings-forms-name",
+    targetId: "sk-indprop-trademark-proceedings-forms",
+    query: "trademark opposition revocation invalidity forms Slovakia",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
