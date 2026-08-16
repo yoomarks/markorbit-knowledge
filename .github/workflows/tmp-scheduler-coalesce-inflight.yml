@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python .github/tmp/patch_scheduler_coalesce_inflight.py
+      - run: python .github/tmp/fix_scheduler_duplicate_parse_run.py
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
