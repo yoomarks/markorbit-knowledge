@@ -2199,6 +2199,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ar-inpi-trademark-renewal",
     query: "renovar una marca",
   },
+  {
+    id: "pe-indecopi-trademark-portal-name",
+    targetId: "pe-indecopi-trademark-portal",
+    query: "registra tu marca",
+  },
+  {
+    id: "pe-indecopi-trademark-filing-name",
+    targetId: "pe-indecopi-trademark-filing",
+    query: "registro virtual de marcas",
+  },
+  {
+    id: "pe-indecopi-trademark-search-name",
+    targetId: "pe-indecopi-trademark-search",
+    query: "busca tu marca",
+  },
+  {
+    id: "pe-indecopi-tupa-2026-name",
+    targetId: "pe-indecopi-tupa-2026",
+    query: "TUPA consolidado 2026",
+  },
+  {
+    id: "pe-indecopi-trademark-classification-name",
+    targetId: "pe-indecopi-trademark-classification",
+    query: "buscador peruanizado",
+  },
+  {
+    id: "pe-indecopi-trademark-legal-texts-name",
+    targetId: "pe-indecopi-trademark-legal-texts",
+    query: "Decisión 486 propiedad industrial",
+  },
+  {
+    id: "pe-indecopi-trademark-opposition-name",
+    targetId: "pe-indecopi-trademark-opposition",
+    query: "oposición registro marca",
+  },
+  {
+    id: "pe-indecopi-trademark-renewal-name",
+    targetId: "pe-indecopi-trademark-renewal",
+    query: "renovar registro marca",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
