@@ -330,4 +330,37 @@ describe("Collection scheduler runtime", () => {
     expect(state.lastError?.code).toBe("SCHEDULER_INVALID_CRON");
     database.close();
   });
+
+  it("rotates failed due plans so tick limits do not starve later work", () => {
+    const { database, sources, plans, scheduler, setNow } = repositories();
+    const planIds = Array.from({ length: 3 }, (_, index) => {
+      const uri = `https://example.com/source-${index}`;
+      const source = sources.create(
+        sourceInput({
+          name: `Source ${index}`,
+          slug: `source-${index}`,
+          canonicalUri: uri,
+          entrypoints: [{ uri }],
+        }),
+      );
+      return plans.create(planInput(source.id, { name: `Plan ${index}` })).plan.id;
+    });
+
+    scheduler.tick({ limit: 2 });
+    scheduler.tick({ limit: 2 });
+    setNow("2026-08-12T01:30:00.000Z");
+    database.prepare("DELETE FROM connector_manifests WHERE connector_id = ?").run("crawl4ai-web");
+
+    const first = scheduler.tick({ limit: 2 });
+    expect(first.errors).toBe(2);
+    expect(first.items.map((item) => item.planId)).not.toContain(planIds[2]);
+
+    const second = scheduler.tick({ limit: 2 });
+    expect(second.items.map((item) => item.planId)).toContain(planIds[2]);
+    expect(second.items.find((item) => item.planId === planIds[2])).toMatchObject({
+      outcome: "ERROR",
+      errorCode: "SCHEDULER_CONNECTOR_NOT_FOUND",
+    });
+    database.close();
+  });
 });

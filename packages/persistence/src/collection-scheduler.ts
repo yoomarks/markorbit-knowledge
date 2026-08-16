@@ -1031,12 +1031,16 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
          LEFT JOIN collection_schedule_states s ON s.plan_id = p.id
          WHERE p.status = 'ACTIVE' AND p.schedule_mode <> 'MANUAL'
          ORDER BY CASE WHEN s.plan_id IS NULL THEN 0 ELSE 1 END,
-                  CASE WHEN s.next_due_at IS NULL THEN 0 ELSE 1 END,
-                  s.next_due_at ASC,
+                  CASE
+                    WHEN s.last_error_at IS NOT NULL
+                      AND (s.next_due_at IS NULL OR s.next_due_at <= ?)
+                      THEN s.last_error_at
+                    ELSE COALESCE(s.next_due_at, '')
+                  END ASC,
                   p.id ASC
          LIMIT ?`,
       )
-      .all(limit) as Array<{ document_json: string }>;
+      .all(now.toISOString(), limit) as Array<{ document_json: string }>;
 
     const items: CollectionSchedulerTickItem[] = [];
     let dispatched = 0;
