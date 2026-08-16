@@ -6049,6 +6049,158 @@ export const MYIPO_MY_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IPOPHL_PH: Authority = {
+  jurisdiction: "PH",
+  authorityName: "Intellectual Property Office of the Philippines (IPOPHL)",
+  languages: ["en-PH", "fil-PH"],
+  verificationEvidenceUri: "https://www.ipophil.gov.ph/trademark/",
+};
+
+export const IPOPHL_PH_SOURCE_COVERAGE_TARGETS = [
+  target(IPOPHL_PH, {
+    id: "ph-ipophl-trademarks",
+    family: "PORTAL",
+    displayName: "Philippines IPOPHL Trademark Portal",
+    canonicalUri: "https://www.ipophil.gov.ph/trademark/",
+    entrypoints: [
+      { uri: "https://www.ipophil.gov.ph/trademark/", label: "Trademark services and quick links" },
+      { uri: "https://onlineservices.ipophil.gov.ph/", label: "IPOPHL online services gateway" },
+    ],
+    verificationEvidenceUri: "https://www.ipophil.gov.ph/trademark/",
+    notes:
+      "IPOPHL's trademark portal links national trademark search, online application, forms, fees, international filing, examination guidelines, publication and maintenance services.",
+  }),
+  target(IPOPHL_PH, {
+    id: "ph-ipophl-trademark-filing",
+    family: "FILING",
+    displayName: "Philippines IPOPHL Trademark Filing and eTMFile",
+    canonicalUri: "https://www.ipophil.gov.ph/trademark/filing/",
+    entrypoints: [
+      {
+        uri: "https://www.ipophil.gov.ph/trademark/filing/",
+        label: "Trademark filing workflow and online application entry",
+      },
+      {
+        uri: "https://onlineservices.ipophil.gov.ph/etmfile/faq.html",
+        label: "Official eTMFile system and filing FAQ",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri: "https://www.ipophil.gov.ph/trademark/filing/",
+    notes:
+      "IPOPHL publishes the trademark filing workflow and eTMFile electronic application route; its official eTMFile FAQ identifies the system as the Office's online trademark application and payment facility.",
+  }),
+  target(IPOPHL_PH, {
+    id: "ph-ipophl-trademark-search",
+    family: "SEARCH",
+    displayName: "Philippines IPOPHL Trademark Search",
+    canonicalUri: "https://onlineservices.ipophil.gov.ph/",
+    entrypoints: [
+      {
+        uri: "https://onlineservices.ipophil.gov.ph/",
+        label: "Official searchable trademark database gateway",
+      },
+      {
+        uri: "https://www.ipophil.gov.ph/help-and-support/trademark/",
+        label: "Trademark database status-search guidance",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.ipophil.gov.ph/help-and-support/trademark/",
+    notes:
+      "IPOPHL's online-services gateway exposes trademark search, while the official Trademark FAQ documents database searching by mark text, applicant/holder and application or registration number for status checks.",
+  }),
+  target(IPOPHL_PH, {
+    id: "ph-ipophl-trademark-fees",
+    family: "FEES",
+    displayName: "Philippines IPOPHL Trademark-Related Fees",
+    canonicalUri: "https://www.ipophil.gov.ph/services/schedule-of-fees/trademark-related-fees/",
+    verificationEvidenceUri:
+      "https://www.ipophil.gov.ph/services/schedule-of-fees/trademark-related-fees/",
+    notes:
+      "IPOPHL publishes the current trademark-related fee schedule covering filing, publication, registration, renewals, declarations of actual use/non-use, recordals and Madrid-related transactions. Amounts remain sourced evidence rather than frozen catalog truth.",
+  }),
+  target(IPOPHL_PH, {
+    id: "ph-ipophl-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Philippines IPOPHL Trademark Goods and Services Classification",
+    canonicalUri: "https://www.ipophil.gov.ph/how-to-apply-for-trademark-registration/",
+    entrypoints: [
+      {
+        uri: "https://www.ipophil.gov.ph/how-to-apply-for-trademark-registration/",
+        label: "Goods/services classification filing guidance",
+      },
+      {
+        uri: "https://www.ipophil.gov.ph/etm-file-trademark/",
+        label: "eTMFile classification tools and preliminary search guidance",
+      },
+    ],
+    verificationEvidenceUri: "https://www.ipophil.gov.ph/how-to-apply-for-trademark-registration/",
+    notes:
+      "IPOPHL's application guidance requires selection of goods/services classes and links Madrid Goods and Services Manager, WIPO Nice Classification and harmonized classification resources; eTMFile also links classification tools.",
+  }),
+  target(IPOPHL_PH, {
+    id: "ph-ipophl-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Philippines IPOPHL Trademark Laws and Regulations",
+    canonicalUri:
+      "https://www.ipophil.gov.ph/intellectual-property-code-implementing-rules-and-regulations/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.ipophil.gov.ph/intellectual-property-code-implementing-rules-and-regulations/",
+    notes:
+      "IPOPHL's primary legal-materials surface publishes the Intellectual Property Code and current implementing rules, including the 2023 trademark regulations replacing the revised 2017 regulations.",
+  }),
+  target(IPOPHL_PH, {
+    id: "ph-ipophl-trademark-examination-guidelines",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Philippines IPOPHL Trademark Examination Guidelines",
+    canonicalUri: "https://www.ipophil.gov.ph/trademark/examination-guidelines/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.ipophil.gov.ph/trademark/examination-guidelines/",
+    notes:
+      "IPOPHL publishes dedicated trademark examination guidelines from the Bureau of Trademarks as an official examination and practice source.",
+  }),
+  target(IPOPHL_PH, {
+    id: "ph-ipophl-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Philippines IPOPHL Trademark Opposition and Cancellation Proceedings",
+    canonicalUri: "https://www.ipophil.gov.ph/services/ip-adjudication/",
+    entrypoints: [
+      {
+        uri: "https://www.ipophil.gov.ph/services/ip-adjudication/",
+        label: "Bureau of Legal Affairs inter-partes jurisdiction and rules",
+      },
+      {
+        uri: "https://www.ipophil.gov.ph/help-and-support/ip-adjudication-mediation-faqs/",
+        label: "Online opposition/cancellation filing and hearing guidance",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.ipophil.gov.ph/services/ip-adjudication/",
+    notes:
+      "IPOPHL's Bureau of Legal Affairs hears trademark oppositions and cancellation cases and publishes the governing Inter Partes rules; the official FAQ preserves current online filing and hearing routes.",
+  }),
+  target(IPOPHL_PH, {
+    id: "ph-ipophl-trademark-egazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Philippines IPOPHL Trademark Electronic Gazette",
+    canonicalUri: "https://onlineservices.ipophil.gov.ph/tmgazette/EG_HOME.ASP",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://onlineservices.ipophil.gov.ph/tmgazette/EG_HOME.ASP",
+    notes:
+      "IPOPHL continuously publishes trademark e-Gazette publication dates and related publication rules, with frequent 2026 issues, making it a high-value publication and change-signal source.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -6164,5 +6316,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...DPDT_BD_SOURCE_COVERAGE_TARGETS,
   ...DOI_NP_SOURCE_COVERAGE_TARGETS,
   ...MYIPO_MY_SOURCE_COVERAGE_TARGETS,
+  ...IPOPHL_PH_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
