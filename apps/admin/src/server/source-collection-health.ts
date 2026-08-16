@@ -20,6 +20,16 @@ export type SourceCollectionAlert = {
   message: string;
 };
 
+export type SourceCollectionFailure = {
+  attemptId: string;
+  jobId: string;
+  jobAttempt: number;
+  code: string;
+  message: string;
+  retryable: boolean;
+  occurredAt: string;
+};
+
 export type SourceCollectionHealth = {
   state: SourceCollectionHealthState;
   latestRunStatus: CollectionRunStatus | null;
@@ -32,8 +42,20 @@ export type SourceCollectionHealth = {
   scheduleMode: ScheduleMode | null;
   expectedNextCollectionAt: string | null;
   staleSince: string | null;
+  latestFailure: SourceCollectionFailure | null;
   attentionRequired: boolean;
   alerts: SourceCollectionAlert[];
+};
+
+export type SourceCollectionHealthOverview = {
+  scopeSources: number;
+  sourcesRequiringAttention: number;
+  totalAlerts: number;
+  overdueCollections: number;
+  failureStreaks: number;
+  schedulerErrors: number;
+  failingSources: number;
+  retryingSources: number;
 };
 
 export type SourceCollectionHealthRow = {
@@ -69,6 +91,7 @@ function emptyHealth(): SourceCollectionHealth {
     scheduleMode: null,
     expectedNextCollectionAt: null,
     staleSince: null,
+    latestFailure: null,
     attentionRequired: false,
     alerts: [],
   };
@@ -110,6 +133,7 @@ export function summarizeSourceCollectionHealth(
     scheduleMode: null,
     expectedNextCollectionAt: null,
     staleSince: null,
+    latestFailure: null,
     attentionRequired: false,
     alerts: [],
   };
@@ -137,6 +161,67 @@ function intervalSeconds(plan: CollectionPlan): number | null {
   if (plan.schedule.mode === "INTERVAL") return plan.schedule.intervalSeconds;
   if (plan.schedule.mode === "CHANGE_WATCH") return plan.schedule.pollIntervalSeconds;
   return null;
+}
+
+function parseLatestFailure(value: string): SourceCollectionFailure | null {
+  try {
+    const attempt = JSON.parse(value) as Record<string, unknown>;
+    const failure = attempt.failure;
+    if (typeof failure !== "object" || failure === null || Array.isArray(failure)) return null;
+    const record = failure as Record<string, unknown>;
+    if (
+      typeof attempt.id !== "string" ||
+      typeof attempt.jobId !== "string" ||
+      typeof attempt.jobAttempt !== "number" ||
+      !Number.isInteger(attempt.jobAttempt) ||
+      typeof record.code !== "string" ||
+      typeof record.message !== "string" ||
+      typeof record.retryable !== "boolean" ||
+      typeof record.occurredAt !== "string"
+    ) {
+      return null;
+    }
+    return {
+      attemptId: attempt.id,
+      jobId: attempt.jobId,
+      jobAttempt: attempt.jobAttempt,
+      code: record.code,
+      message: record.message,
+      retryable: record.retryable,
+      occurredAt: record.occurredAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function loadLatestExecutionFailures(
+  database: DatabaseSync,
+  sourceIds: string[],
+): Map<string, SourceCollectionFailure> {
+  if (sourceIds.length === 0 || !tableExists(database, "execution_attempts")) return new Map();
+  const placeholders = sourceIds.map(() => "?").join(", ");
+  const rows = database
+    .prepare(
+      `WITH ranked AS (
+         SELECT j.source_id AS sourceId, a.document_json AS attemptJson,
+                ROW_NUMBER() OVER (
+                  PARTITION BY j.source_id
+                  ORDER BY COALESCE(a.completed_at, a.updated_at) DESC, a.id DESC
+                ) AS row_number
+         FROM execution_attempts a
+         JOIN jobs j ON j.id = a.job_id
+         WHERE j.source_id IN (${placeholders}) AND a.status = 'FAILED'
+       )
+       SELECT sourceId, attemptJson FROM ranked WHERE row_number = 1`,
+    )
+    .all(...(sourceIds as SQLInputValue[])) as Array<{ sourceId: string; attemptJson: string }>;
+  const failures = new Map<string, SourceCollectionFailure>();
+  for (const row of rows) {
+    const failure = parseLatestFailure(row.attemptJson);
+    if (failure) failures.set(row.sourceId, failure);
+  }
+  return failures;
 }
 
 function loadLatestSuccessfulRuns(
@@ -362,19 +447,71 @@ export function listSourceCollectionHealth(
   }
 
   const latestSuccessfulRuns = loadLatestSuccessfulRuns(database, ids);
+  const latestFailures = loadLatestExecutionFailures(database, ids);
   const planContexts = loadPlanContexts(database, ids);
   return Object.fromEntries(
     ids.map((id) => {
       const health = summarizeSourceCollectionHealth(grouped.get(id) ?? []);
       return [
         id,
-        enrichHealthWithOperations(
-          health,
-          planContexts.get(id),
-          latestSuccessfulRuns.get(id) ?? health.latestSuccessAt,
-          observedAt,
-        ),
+        {
+          ...enrichHealthWithOperations(
+            health,
+            planContexts.get(id),
+            latestSuccessfulRuns.get(id) ?? health.latestSuccessAt,
+            observedAt,
+          ),
+          latestFailure: latestFailures.get(id) ?? null,
+        },
       ];
     }),
   );
+}
+
+export function listSourceCollectionHealthBatched(
+  database: DatabaseSync,
+  sourceIds: string[],
+  historyLimit = HISTORY_LIMIT,
+  observedAt: Date = new Date(),
+): Record<string, SourceCollectionHealth> {
+  const ids = [...new Set(sourceIds.map((id) => id.trim()).filter(Boolean))];
+  const result: Record<string, SourceCollectionHealth> = {};
+  for (let offset = 0; offset < ids.length; offset += MAX_SOURCES) {
+    Object.assign(
+      result,
+      listSourceCollectionHealth(
+        database,
+        ids.slice(offset, offset + MAX_SOURCES),
+        historyLimit,
+        observedAt,
+      ),
+    );
+  }
+  return result;
+}
+
+export function sourceCollectionHealthRequiresAttention(health: SourceCollectionHealth): boolean {
+  return health.attentionRequired || health.state === "FAILING";
+}
+
+export function summarizeSourceCollectionHealthOverview(
+  healthBySource: Record<string, SourceCollectionHealth>,
+): SourceCollectionHealthOverview {
+  const values = Object.values(healthBySource);
+  return {
+    scopeSources: values.length,
+    sourcesRequiringAttention: values.filter(sourceCollectionHealthRequiresAttention).length,
+    totalAlerts: values.reduce((sum, health) => sum + health.alerts.length, 0),
+    overdueCollections: values.filter((health) =>
+      health.alerts.some((alert) => alert.code === "COLLECTION_OVERDUE"),
+    ).length,
+    failureStreaks: values.filter((health) =>
+      health.alerts.some((alert) => alert.code === "FAILURE_STREAK"),
+    ).length,
+    schedulerErrors: values.filter((health) =>
+      health.alerts.some((alert) => alert.code === "SCHEDULER_ERROR"),
+    ).length,
+    failingSources: values.filter((health) => health.state === "FAILING").length,
+    retryingSources: values.filter((health) => health.state === "RETRYING").length,
+  };
 }
