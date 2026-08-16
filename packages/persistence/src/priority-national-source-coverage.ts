@@ -2722,6 +2722,144 @@ export const HIPO_HU_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const OSIM_RO: Authority = {
+  jurisdiction: "RO",
+  authorityName: "State Office for Inventions and Trademarks (OSIM)",
+  languages: ["ro-RO", "en"],
+  verificationEvidenceUri: "https://www.osim.ro/en/basic-information-trademarks",
+};
+
+export const OSIM_RO_SOURCE_COVERAGE_TARGETS = [
+  target(OSIM_RO, {
+    id: "ro-osim-trademarks",
+    family: "PORTAL",
+    displayName: "OSIM Trademark Information",
+    canonicalUri: "https://www.osim.ro/en/basic-information-trademarks",
+    verificationEvidenceUri: "https://www.osim.ro/en/basic-information-trademarks",
+    notes:
+      "The current OSIM trademark hub links national legislation, fees, filing guides, Nice/TMclass classification resources and international trademark services.",
+  }),
+  target(OSIM_RO, {
+    id: "ro-osim-trademark-filing",
+    family: "FILING",
+    displayName: "OSIM Online Filing - Trademarks",
+    canonicalUri: "https://www.osim.ro/en/online-filing-trademarks",
+    entrypoints: [
+      {
+        uri: "https://www.osim.ro/en/online-filing-trademarks",
+        label: "Online filing - trademarks",
+      },
+      {
+        uri: "https://www.osim.ro/en/online-filing-trademarks/guides",
+        label: "Trademark registration guides",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri: "https://www.osim.ro/en/online-filing-trademarks",
+    notes:
+      "OSIM supports national trademark filing online and publishes current registration guidance covering filing, publication, examination and registration steps.",
+  }),
+  target(OSIM_RO, {
+    id: "ro-osim-trademark-search",
+    family: "SEARCH",
+    displayName: "OSIM National Trademark Online Register",
+    canonicalUri: "https://api.osim.ro:8443/tm-registry",
+    entrypoints: [
+      {
+        uri: "https://api.osim.ro:8443/tm-registry",
+        label: "National trademark online register",
+      },
+      {
+        uri: "https://www.osim.ro/en/basic-information-trademarks?id=29&view=category",
+        label: "OSIM trademark documentary-search guidance",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.osim.ro/en/basic-information-trademarks?id=29&view=category",
+    notes:
+      "OSIM identifies the national trademark register at api.osim.ro as its public database for Romanian trademark records.",
+  }),
+  target(OSIM_RO, {
+    id: "ro-osim-trademark-fees",
+    family: "FEES",
+    displayName: "OSIM 2026 Trademark Fees - Annex 4",
+    canonicalUri: "https://www.osim.ro/images/Taxe/2026/Taxe-PI-01.01.2026-Anexa-4-Marci-OSIM.pdf",
+    expectedArtifactKinds: ["PDF"],
+    verificationEvidenceUri:
+      "https://www.osim.ro/images/Taxe/2026/Taxe-PI-01.01.2026-Anexa-4-Marci-OSIM.pdf",
+    notes:
+      "The official Annex 4 publishes trademark and geographical-indication fees applicable from 1 January 2026.",
+  }),
+  target(OSIM_RO, {
+    id: "ro-osim-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "OSIM Trademark Classification Guidance",
+    canonicalUri: "https://www.osim.ro/en/online-filing-trademarks/guides",
+    entrypoints: [
+      {
+        uri: "https://www.osim.ro/en/online-filing-trademarks/guides",
+        label: "Registration guide and Nice classification guidance",
+      },
+      {
+        uri: "https://www.osim.ro/en/basic-information-trademarks",
+        label: "OSIM Nice Classification and TMclass links",
+      },
+    ],
+    verificationEvidenceUri: "https://www.osim.ro/en/online-filing-trademarks/guides",
+    notes:
+      "OSIM requires goods and services to be identified by Nice classes and points applicants to its Nice Classification and TMclass resources; the guide is kept on the current filing surface rather than freezing an older static classification PDF.",
+  }),
+  target(OSIM_RO, {
+    id: "ro-osim-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "OSIM Trademark Legislation",
+    canonicalUri: "https://osim.ro/en/legislation-trademarks",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://osim.ro/en/legislation-trademarks",
+    notes:
+      "The official legislation page publishes Law No. 84/1998 on Trademarks and Geographical Indications, the implementing regulations and the current 2026 fee annex.",
+  }),
+  target(OSIM_RO, {
+    id: "ro-osim-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "OSIM Trademark Proceedings and Forms",
+    canonicalUri: "https://osim.ro/en/forms-trademarks",
+    entrypoints: [
+      { uri: "https://osim.ro/en/forms-trademarks", label: "Trademark forms including opposition" },
+      {
+        uri: "https://osim.ro/en/board-of-cancellation-trademarks",
+        label: "Trademark cancellation board proceedings",
+      },
+      {
+        uri: "https://osim.ro/en/board-of-appeal-trademarks",
+        label: "Trademark appeal board proceedings",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF", "DOCX"],
+    verificationEvidenceUri: "https://osim.ro/en/forms-trademarks",
+    notes:
+      "OSIM publishes the opposition form and maintains current trademark appeal and cancellation-board proceeding surfaces.",
+  }),
+  target(OSIM_RO, {
+    id: "ro-osim-trademark-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "OSIM Official Industrial Property Bulletin - Trademarks",
+    canonicalUri: "https://osim.ro/en/trademarks-official-industrial-property-bulletin",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://osim.ro/en/trademarks-official-industrial-property-bulletin",
+    notes:
+      "The official BOPI Trademarks and Geographical Indications section publishes monthly 2026 issues and current trademark-application publication notices.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -2815,5 +2953,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...UPV_CZ_SOURCE_COVERAGE_TARGETS,
   ...INDPROP_SK_SOURCE_COVERAGE_TARGETS,
   ...HIPO_HU_SOURCE_COVERAGE_TARGETS,
+  ...OSIM_RO_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
