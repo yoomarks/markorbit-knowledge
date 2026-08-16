@@ -3319,6 +3319,167 @@ export const SIPO_SI_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const OBI_GR: Authority = {
+  jurisdiction: "GR",
+  authorityName: "Hellenic Industrial Property Organisation (OBI)",
+  languages: ["el-GR", "en"],
+  verificationEvidenceUri: "https://www.obi.gr/en/trademarks/",
+};
+
+export const OBI_GR_SOURCE_COVERAGE_TARGETS = [
+  target(OBI_GR, {
+    id: "gr-obi-trademarks",
+    family: "PORTAL",
+    displayName: "OBI Trade Marks",
+    canonicalUri: "https://www.obi.gr/en/trademarks/",
+    verificationEvidenceUri: "https://www.obi.gr/en/trademarks/",
+    notes:
+      "OBI is the sole competent authority for trademark registration in Greece and maintains the official National Trademark Register under Law 4796/2021 and Law 4679/2020.",
+  }),
+  target(OBI_GR, {
+    id: "gr-obi-trademark-filing",
+    family: "FILING",
+    displayName: "Greece OBI Electronic Trademark Filing",
+    canonicalUri:
+      "https://www.gov.gr/en/ipiresies/epikheirematike-drasterioteta/adeiodoteseis-kai-summorphose/elektronike-katathese-emporikou-sematos",
+    entrypoints: [
+      {
+        uri: "https://www.gov.gr/en/ipiresies/epikheirematike-drasterioteta/adeiodoteseis-kai-summorphose/elektronike-katathese-emporikou-sematos",
+        label: "Gov.gr trademark filing service",
+      },
+      {
+        uri: "https://www.obi.gr/en/trademarks/trade-mark-registration-procedure/ethnika-simata/online-trade-marks-filing/",
+        label: "OBI online filing guidance",
+      },
+      { uri: "https://tmfo.obi.gr/", label: "OBI trademark e-filing system" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "JSON"],
+    verificationEvidenceUri:
+      "https://www.obi.gr/en/trademarks/trade-mark-registration-procedure/ethnika-simata/online-trade-marks-filing/",
+    notes:
+      "Current OBI/gov.gr filing guidance requires TAXIS credentials, filing documents and a Nice-classified goods/services list; the National Administrative Procedures Register was updated in July 2026.",
+  }),
+  target(OBI_GR, {
+    id: "gr-obi-trademark-search",
+    family: "SEARCH",
+    displayName: "OBI Trademark Availability Check",
+    canonicalUri:
+      "https://www.obi.gr/en/trademarks/trade-mark-registration-procedure/trade-marks-availability-check/",
+    entrypoints: [
+      {
+        uri: "https://www.obi.gr/en/trademarks/trade-mark-registration-procedure/trade-marks-availability-check/",
+        label: "OBI official availability-check guidance",
+      },
+      {
+        uri: "https://www.obi.gr/en/trademarks/",
+        label: "National Trademark Register status guidance",
+      },
+    ],
+    verificationEvidenceUri:
+      "https://www.obi.gr/en/trademarks/trade-mark-registration-procedure/trade-marks-availability-check/",
+    notes:
+      "OBI recommends TMview for prior-mark availability searching but explicitly states that TMview is informational rather than the binding National Trademark Register; results should be verified against the official register maintained by OBI.",
+  }),
+  target(OBI_GR, {
+    id: "gr-obi-trademark-fees",
+    family: "FEES",
+    displayName: "OBI Trademark Fees",
+    canonicalUri: "https://www.obi.gr/teli/teli-emporikon-simaton/",
+    entrypoints: [
+      { uri: "https://www.obi.gr/en/trademarks/fees/", label: "English trademark fees guidance" },
+      {
+        uri: "https://www.obi.gr/teli/teli-emporikon-simaton/",
+        label: "Detailed trademark fee table",
+      },
+    ],
+    verificationEvidenceUri: "https://www.obi.gr/teli/teli-emporikon-simaton/",
+    notes:
+      "The current OBI fee table publishes electronic and paper filing, additional-class, renewal, assignment, licence, opposition/appeal and other trademark proceeding fees.",
+  }),
+  target(OBI_GR, {
+    id: "gr-obi-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "OBI Trademark Classification Classes",
+    canonicalUri: "https://www.obi.gr/emporika-simata/taxinomisi-simaton-klaseis/",
+    entrypoints: [
+      {
+        uri: "https://www.obi.gr/emporika-simata/taxinomisi-simaton-klaseis/",
+        label: "Current Greek trademark classification page",
+      },
+      {
+        uri: "https://www.obi.gr/en/trademarks/trade-marks-classification-classes/",
+        label: "English trademark class guidance",
+      },
+      {
+        uri: "https://www.obi.gr/en/trademarks/trade-mark-registration-procedure/ethnika-simata/online-trade-marks-filing/",
+        label: "TMclass and acceptable-term filing guidance",
+      },
+    ],
+    verificationEvidenceUri: "https://www.obi.gr/emporika-simata/taxinomisi-simaton-klaseis/",
+    notes:
+      "OBI's current classification page announces Nice Classification 13th Edition effective from 1 January 2026; its e-filing guidance recommends TMclass acceptable terminology and explains class-heading scope.",
+  }),
+  target(OBI_GR, {
+    id: "gr-obi-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "OBI Trademark Legislation",
+    canonicalUri: "https://www.obi.gr/en/trademarks/related-legislation-trademarks/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.obi.gr/en/trademarks/related-legislation-trademarks/",
+    notes:
+      "The official trademark legislation page publishes Law 4679/2020 and current OBI guidance spanning filing, registration, opposition and cancellation procedures.",
+  }),
+  target(OBI_GR, {
+    id: "gr-obi-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "OBI Administrative Committee of Trademarks Proceedings",
+    canonicalUri: "https://www.obi.gr/emporika-simata/dioikitiki-epitropi-simaton/",
+    entrypoints: [
+      {
+        uri: "https://www.obi.gr/emporika-simata/dioikitiki-epitropi-simaton/",
+        label: "Administrative Committee of Trademarks",
+      },
+      {
+        uri: "https://www.obi.gr/emporika-simata/dioikitiki-epitropi-simaton/ekthemata/",
+        label: "2026 committee hearing exhibits and schedules",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.obi.gr/emporika-simata/dioikitiki-epitropi-simaton/",
+    notes:
+      "The Administrative Committee handles trademark oppositions, appeals, interventions and applications under Law 4679/2020; the official site publishes 2026 hearing schedules and exhibits.",
+  }),
+  target(OBI_GR, {
+    id: "gr-obi-trademark-decisions",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Greece Official Trademark Registration Decisions",
+    canonicalUri:
+      "https://www.gov.gr/en/upourgeia/upourgeio-anaptuxes/organismos-biomekhanikes-idioktesias-obi/apophaseis-katokhuroses-emporikon-sematon",
+    entrypoints: [
+      {
+        uri: "https://www.gov.gr/en/upourgeia/upourgeio-anaptuxes/organismos-biomekhanikes-idioktesias-obi/apophaseis-katokhuroses-emporikon-sematon",
+        label: "Gov.gr trademark registration decisions service",
+      },
+      {
+        uri: "https://www.obi.gr/emporika-simata/dioikitiki-epitropi-simaton/ekthemata/",
+        label: "Current Administrative Committee hearing exhibits",
+      },
+    ],
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON", "PDF"],
+    verificationEvidenceUri:
+      "https://www.gov.gr/en/upourgeia/upourgeio-anaptuxes/organismos-biomekhanikes-idioktesias-obi/apophaseis-katokhuroses-emporikon-sematon",
+    notes:
+      "Gov.gr exposes a current OBI service for examiner and Administrative Committee trademark-registration decisions; together with current committee exhibits it provides a high-value official change signal for newly issued decisions and contested matters.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -3416,5 +3577,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...BPO_BG_SOURCE_COVERAGE_TARGETS,
   ...DZIV_HR_SOURCE_COVERAGE_TARGETS,
   ...SIPO_SI_SOURCE_COVERAGE_TARGETS,
+  ...OBI_GR_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
