@@ -946,6 +946,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "sk-indprop-trademark-proceedings-forms",
     query: "trademark opposition revocation invalidity forms Slovakia",
   },
+  {
+    id: "hu-trademarks-name",
+    targetId: "hu-hipo-trademarks",
+    query: "HIPO trademark protection Hungary",
+  },
+  {
+    id: "hu-trademark-filing-name",
+    targetId: "hu-hipo-trademark-filing",
+    query: "national trademark application Hungary opposition",
+  },
+  {
+    id: "hu-trademark-search-name",
+    targetId: "hu-hipo-trademark-search",
+    query: "HIPO IP databases E-register trademark",
+  },
+  {
+    id: "hu-trademark-fees-name",
+    targetId: "hu-hipo-trademark-fees",
+    query: "trademark schedule fees Hungary HUF",
+  },
+  {
+    id: "hu-trademark-classification-name",
+    targetId: "hu-hipo-trademark-classification",
+    query: "Nice Classification 13th edition 2026 Hungary",
+  },
+  {
+    id: "hu-trademark-law-name",
+    targetId: "hu-hipo-trademark-law",
+    query: "Act XI 1997 trademarks geographical indications Hungary",
+  },
+  {
+    id: "hu-trademark-proceedings-name",
+    targetId: "hu-hipo-trademark-proceedings",
+    query: "electronic trademark opposition cancellation revocation HIPO",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
