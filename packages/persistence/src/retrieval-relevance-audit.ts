@@ -666,6 +666,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "no-nipo-trademark-proceedings",
     query: "trademark opposition administrative review",
   },
+  {
+    id: "dk-trademarks-name",
+    targetId: "dk-dkpto-trademarks",
+    query: "DKPTO trademarks Denmark",
+  },
+  {
+    id: "dk-trademark-filing-name",
+    targetId: "dk-dkpto-trademark-filing",
+    query: "apply trademark eFiling Denmark",
+  },
+  {
+    id: "dk-trademark-search-name",
+    targetId: "dk-dkpto-trademark-search",
+    query: "PVSOnline trademark search",
+  },
+  {
+    id: "dk-trademark-fees-name",
+    targetId: "dk-dkpto-trademark-fees",
+    query: "trademark prices fees",
+  },
+  {
+    id: "dk-trademark-guidelines-name",
+    targetId: "dk-dkpto-trademark-guidelines",
+    query: "Varemærkehåndbogen trademark guidelines",
+  },
+  {
+    id: "dk-trademark-classification-name",
+    targetId: "dk-dkpto-trademark-classification",
+    query: "Nice classification varer tjenesteydelser",
+  },
+  {
+    id: "dk-trademark-law-name",
+    targetId: "dk-dkpto-trademark-law",
+    query: "trademark law Trade Marks Act Denmark",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
