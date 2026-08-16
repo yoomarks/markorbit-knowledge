@@ -4205,6 +4205,139 @@ export const VPB_LT_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const TURKPATENT_TR: Authority = {
+  jurisdiction: "TR",
+  authorityName: "Turkish Patent and Trademark Office (TÜRKPATENT)",
+  languages: ["tr-TR", "en"],
+  verificationEvidenceUri: "https://www.turkpatent.gov.tr/en/trademark",
+};
+
+export const TURKPATENT_TR_SOURCE_COVERAGE_TARGETS = [
+  target(TURKPATENT_TR, {
+    id: "tr-turkpatent-trademarks",
+    family: "PORTAL",
+    displayName: "TÜRKPATENT Trademark Information",
+    canonicalUri: "https://www.turkpatent.gov.tr/en/trademark",
+    verificationEvidenceUri: "https://www.turkpatent.gov.tr/en/trademark",
+    notes:
+      "The current official trademark hub explains direct and Madrid filing, examination, publication, opposition, appeals, registration and renewal under Industrial Property Code No. 6769.",
+  }),
+  target(TURKPATENT_TR, {
+    id: "tr-turkpatent-trademark-filing",
+    family: "FILING",
+    displayName: "TÜRKPATENT EPATS Trademark e-Filing",
+    canonicalUri: "https://epats.turkpatent.gov.tr/",
+    entrypoints: [
+      { uri: "https://epats.turkpatent.gov.tr/", label: "EPATS e-government filing system" },
+      {
+        uri: "https://www.turkpatent.gov.tr/en/trademark",
+        label: "Official trademark filing guidance",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.turkpatent.gov.tr/en/trademark",
+    notes:
+      "TÜRKPATENT accepts national trademark applications through its EPATS e-government service; applicants domiciled outside Türkiye must generally act through an authorized trademark attorney unless using Madrid.",
+  }),
+  target(TURKPATENT_TR, {
+    id: "tr-turkpatent-trademark-search",
+    family: "SEARCH",
+    displayName: "TÜRKPATENT Trademark Search and File Tracking",
+    canonicalUri: "https://www.turkpatent.gov.tr/arastirma-yap",
+    entrypoints: [
+      {
+        uri: "https://www.turkpatent.gov.tr/arastirma-yap",
+        label: "Trademark search and file tracking",
+      },
+      { uri: "https://www.turkpatent.gov.tr/en", label: "TÜRKPATENT search entrypoint" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.turkpatent.gov.tr/arastirma-yap",
+    notes:
+      "The official search surface supports trademark name, applicant, announcement bulletin, registration bulletin and class-based queries.",
+  }),
+  target(TURKPATENT_TR, {
+    id: "tr-turkpatent-trademark-fees",
+    family: "FEES",
+    displayName: "TÜRKPATENT 2026 Trademark Fees",
+    canonicalUri: "https://www.turkpatent.gov.tr/en/trademark-fees",
+    verificationEvidenceUri: "https://www.turkpatent.gov.tr/en/trademark-fees",
+    notes:
+      "The current official fee table publishes 2026 trademark filing, registration, opposition, renewal, recordal, cancellation-request and related charges in Turkish lira.",
+  }),
+  target(TURKPATENT_TR, {
+    id: "tr-turkpatent-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "TÜRKPATENT Nice Classification Guidance",
+    canonicalUri: "https://www.turkpatent.gov.tr/tr/marka-nice-siniflandirma",
+    entrypoints: [
+      {
+        uri: "https://www.turkpatent.gov.tr/tr/marka-nice-siniflandirma",
+        label: "Nice Classification guidance",
+      },
+      {
+        uri: "https://www.wipo.int/classifications/nice/",
+        label: "Latest WIPO Nice edition linked by TÜRKPATENT",
+      },
+    ],
+    verificationEvidenceUri: "https://www.turkpatent.gov.tr/tr/marka-nice-siniflandirma",
+    notes:
+      "TÜRKPATENT directs applicants to the latest WIPO Nice Classification and complementary MGS/TMclass tools instead of freezing a stale edition in the national canonical source.",
+  }),
+  target(TURKPATENT_TR, {
+    id: "tr-turkpatent-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "TÜRKPATENT Industrial Property Legislation",
+    canonicalUri: "https://www.turkpatent.gov.tr/tr/mevzuat",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.turkpatent.gov.tr/tr/mevzuat",
+    notes:
+      "The official legislation hub publishes Industrial Property Code No. 6769, its implementing regulation, trademark goods/services classification communiqué and the 2026 TÜRKPATENT fee tariff.",
+  }),
+  target(TURKPATENT_TR, {
+    id: "tr-turkpatent-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "TÜRKPATENT Trademark Opposition, Appeals and Cancellation Proceedings",
+    canonicalUri: "https://www.turkpatent.gov.tr/yeniden-inceleme-ve-degerlendirme",
+    entrypoints: [
+      {
+        uri: "https://www.turkpatent.gov.tr/yeniden-inceleme-ve-degerlendirme",
+        label: "Re-Examination and Evaluation Department",
+      },
+      {
+        uri: "https://www.turkpatent.gov.tr/en/trademark",
+        label: "Trademark opposition and appeal procedure",
+      },
+      {
+        uri: "https://www.turkpatent.gov.tr/en/trademark-fees",
+        label: "2026 opposition, appeal and cancellation fees",
+      },
+    ],
+    verificationEvidenceUri: "https://www.turkpatent.gov.tr/yeniden-inceleme-ve-degerlendirme",
+    notes:
+      "Trademark applications are open to opposition after bulletin publication, first-instance decisions may be appealed, and the Re-Examination and Evaluation Board issues the Office's final decisions; the 2026 fee schedule also includes administrative trademark cancellation requests.",
+  }),
+  target(TURKPATENT_TR, {
+    id: "tr-turkpatent-official-trademark-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "TÜRKPATENT Official Trademark Bulletin",
+    canonicalUri: "https://www.turkpatent.gov.tr/bultenler",
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.turkpatent.gov.tr/bultenler",
+    notes:
+      "The official bulletins surface continuously publishes Resmi Marka Bülteni issues; 2026 issues include No. 497 dated 27 July 2026. Publication triggers the trademark opposition window and records registrations.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -4308,5 +4441,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...EPA_EE_SOURCE_COVERAGE_TARGETS,
   ...LPO_LV_SOURCE_COVERAGE_TARGETS,
   ...VPB_LT_SOURCE_COVERAGE_TARGETS,
+  ...TURKPATENT_TR_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
