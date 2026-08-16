@@ -8261,6 +8261,112 @@ export const QAZPATENT_KZ_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const SAKPATENTI_GE: Authority = {
+  jurisdiction: "GE",
+  authorityName: "National Intellectual Property Center of Georgia (Sakpatenti)",
+  languages: ["ka", "en"],
+  verificationEvidenceUri: "https://www.sakpatenti.gov.ge/en/page/120/",
+};
+
+export const SAKPATENTI_GE_SOURCE_COVERAGE_TARGETS = [
+  target(SAKPATENTI_GE, {
+    id: "ge-sakpatenti-trademark-portal",
+    family: "PORTAL",
+    displayName: "Georgia Sakpatenti Trademarks Portal",
+    canonicalUri: "https://www.sakpatenti.gov.ge/en/page/120/",
+    verificationEvidenceUri: "https://www.sakpatenti.gov.ge/en/page/120/",
+    notes:
+      "Current Sakpatenti trademark hub linking national legislation, classifications, electronic application, fees, practice documents and search.",
+  }),
+  target(SAKPATENTI_GE, {
+    id: "ge-sakpatenti-trademark-filing",
+    family: "FILING",
+    displayName: "Georgia Sakpatenti Online Filing",
+    canonicalUri: "https://online.sakpatenti.gov.ge/ka/app/login/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.sakpatenti.gov.ge/en/page/111/",
+    notes:
+      "Sakpatenti's official online-filing page links directly to the authenticated national electronic application system.",
+  }),
+  target(SAKPATENTI_GE, {
+    id: "ge-sakpatenti-trademark-search",
+    family: "SEARCH",
+    displayName: "Georgia Sakpatenti Trademark Search",
+    canonicalUri: "https://www.sakpatenti.gov.ge/en/search_engine/search/3/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.sakpatenti.gov.ge/en/page/185/",
+    notes:
+      "Official Trademarks Protected in Georgia search with field, image and Nice-class search capabilities.",
+  }),
+  target(SAKPATENTI_GE, {
+    id: "ge-sakpatenti-trademark-fees",
+    family: "FEES",
+    displayName: "Georgia Sakpatenti Trademark Fees",
+    canonicalUri: "https://www.sakpatenti.gov.ge/en/page/14/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verificationEvidenceUri: "https://www.sakpatenti.gov.ge/en/page/14/",
+    notes:
+      "Current trademark fee schedule covering examination, publication, registration, renewal and other national and Madrid-related actions; electronic filing receives the published discount.",
+  }),
+  target(SAKPATENTI_GE, {
+    id: "ge-sakpatenti-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Georgia Sakpatenti Trademark Classifications",
+    canonicalUri: "https://www.sakpatenti.gov.ge/en/page/33/",
+    verificationEvidenceUri: "https://www.sakpatenti.gov.ge/en/page/33/",
+    notes:
+      "Official Sakpatenti classification page for the International (Nice) Classification of Goods and Services and Vienna Classification.",
+  }),
+  target(SAKPATENTI_GE, {
+    id: "ge-sakpatenti-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Georgia Trademark Law",
+    canonicalUri: "https://www.sakpatenti.gov.ge/en/page/12/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verificationEvidenceUri: "https://www.sakpatenti.gov.ge/en/page/120/",
+    notes:
+      "Official Sakpatenti publication of the Trademark Law of Georgia governing registration, examination, publication, appeal, renewal and enforcement.",
+  }),
+  target(SAKPATENTI_GE, {
+    id: "ge-sakpatenti-trademark-practice",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Georgia Sakpatenti Trademark Practice Documents",
+    canonicalUri: "https://www.sakpatenti.gov.ge/en/page/193/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.sakpatenti.gov.ge/en/page/193/",
+    notes:
+      "Official trademark practice papers covering distinctiveness, black-and-white marks and likelihood of confusion/relative grounds.",
+  }),
+  target(SAKPATENTI_GE, {
+    id: "ge-sakpatenti-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Georgia Sakpatenti Trademark Registration and Appeal Procedure",
+    canonicalUri: "https://www.sakpatenti.gov.ge/en/page/168/",
+    verificationEvidenceUri: "https://www.sakpatenti.gov.ge/en/page/168/",
+    notes:
+      "Official registration procedure describing formal and substantive examination, publication and the three-month appeal window before the Sakpatenti Chamber of Appeals.",
+  }),
+  target(SAKPATENTI_GE, {
+    id: "ge-sakpatenti-official-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Georgia Sakpatenti Official Bulletin of Industrial Property",
+    canonicalUri: "https://www.sakpatenti.gov.ge/en/publications/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.sakpatenti.gov.ge/en/publications/",
+    notes:
+      "Sakpatenti's official publications page lists the 2026 Industrial Property bulletins; retain the bulletin collection as a publication change signal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -8394,5 +8500,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...UANIPIO_UA_SOURCE_COVERAGE_TARGETS,
   ...TIPO_TW_SOURCE_COVERAGE_TARGETS,
   ...QAZPATENT_KZ_SOURCE_COVERAGE_TARGETS,
+  ...SAKPATENTI_GE_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

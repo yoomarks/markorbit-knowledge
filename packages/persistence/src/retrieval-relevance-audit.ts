@@ -2484,6 +2484,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "kz-qazpatent-trademark-renewal",
     query: "trademark extension renewal registration",
   },
+  {
+    id: "ge-sakpatenti-trademark-portal-name",
+    targetId: "ge-sakpatenti-trademark-portal",
+    query: "Sakpatenti trademarks Georgia",
+  },
+  {
+    id: "ge-sakpatenti-trademark-filing-name",
+    targetId: "ge-sakpatenti-trademark-filing",
+    query: "online trademark filing electronic application",
+  },
+  {
+    id: "ge-sakpatenti-trademark-search-name",
+    targetId: "ge-sakpatenti-trademark-search",
+    query: "trademarks protected in Georgia Nice classes image search",
+  },
+  {
+    id: "ge-sakpatenti-trademark-fees-name",
+    targetId: "ge-sakpatenti-trademark-fees",
+    query: "trademark fees examination publication registration renewal",
+  },
+  {
+    id: "ge-sakpatenti-trademark-classification-name",
+    targetId: "ge-sakpatenti-trademark-classification",
+    query: "Nice Classification goods services Vienna marks",
+  },
+  {
+    id: "ge-sakpatenti-trademark-legal-texts-name",
+    targetId: "ge-sakpatenti-trademark-legal-texts",
+    query: "Trademark Law of Georgia",
+  },
+  {
+    id: "ge-sakpatenti-trademark-practice-name",
+    targetId: "ge-sakpatenti-trademark-practice",
+    query: "trademark practice distinctiveness likelihood confusion CP3 CP5",
+  },
+  {
+    id: "ge-sakpatenti-trademark-proceedings-name",
+    targetId: "ge-sakpatenti-trademark-proceedings",
+    query: "trademark registration appeal Chamber of Appeals three months",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
