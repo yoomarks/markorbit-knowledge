@@ -1,0 +1,36 @@
+name: Temporary change-watch entrypoint polling verification
+
+on:
+  push:
+    branches:
+      - codex/change-watch-entrypoint-polling-v1
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/tmp/patch_change_watch_entrypoint_polling.py
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write packages/persistence/src/collection-plan-registry.ts packages/persistence/tests/change-watch-entrypoint-budget.test.ts packages/worker-runtime/src/crawl4ai-subprocess-acquirer.ts packages/worker-runtime/tests/crawl4ai-subprocess-acquirer.test.ts
+      - run: pnpm --filter @markorbit/persistence exec vitest run tests/change-watch-entrypoint-budget.test.ts tests/collection-plan-registry.test.ts tests/collection-scheduler.test.ts
+      - run: pnpm --filter @markorbit/worker-runtime exec vitest run tests/crawl4ai-subprocess-acquirer.test.ts tests/artifact-backed-collection-executor.test.ts
+      - run: pnpm typecheck
+      - name: Commit integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/persistence/src/collection-plan-registry.ts packages/persistence/tests/change-watch-entrypoint-budget.test.ts packages/worker-runtime/src/crawl4ai-subprocess-acquirer.ts packages/worker-runtime/tests/crawl4ai-subprocess-acquirer.test.ts
+          git commit -m "Collection: make change watch poll reviewed entrypoints" || true
+          git push
