@@ -1191,6 +1191,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "cy-ip-trademark-proceedings",
     query: "Cyprus trademark opposition revocation invalidity FTM14 FTM27",
   },
+  {
+    id: "mt-trademarks-name",
+    targetId: "mt-iprd-trademarks",
+    query: "Malta Industrial Property Registrations Directorate trademarks",
+  },
+  {
+    id: "mt-trademark-filing-name",
+    targetId: "mt-iprd-trademark-filing",
+    query: "Malta apply trademark online Commerce Department",
+  },
+  {
+    id: "mt-trademark-search-name",
+    targetId: "mt-iprd-trademark-search",
+    query: "Malta National Trademark Register ips",
+  },
+  {
+    id: "mt-trademark-fees-name",
+    targetId: "mt-iprd-trademark-fees",
+    query: "Malta trademark fee 115 schedule",
+  },
+  {
+    id: "mt-trademark-classification-name",
+    targetId: "mt-iprd-trademark-classification",
+    query: "Malta trademark Nice classes TMClass goods services",
+  },
+  {
+    id: "mt-trademark-law-name",
+    targetId: "mt-iprd-trademark-law",
+    query: "Malta Trademark Act Chapter 597 Trademark Rules 597.04",
+  },
+  {
+    id: "mt-trademark-proceedings-name",
+    targetId: "mt-iprd-trademark-proceedings",
+    query: "Malta trademark opposition 90 days online",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
