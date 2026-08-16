@@ -158,6 +158,7 @@ export interface WorkerRegistryRepository {
   verifyCredential(workerId: string, credential: string): WorkerDefinition;
   heartbeat(input: HeartbeatInput, credential: string): WorkerRuntimeView;
   claim(workerId: string, credential: string): ClaimResult;
+  claimSpecific(workerId: string, credential: string, jobId: string): ClaimResult;
   renewLease(workerId: string, credential: string, leaseId: string, leaseToken: string): JobLease;
   releaseLease(
     workerId: string,
@@ -1049,62 +1050,77 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
         return { job: null, lease: null, leaseToken: null };
       }
 
-      const leaseToken = generateLeaseToken();
-      const lease: JobLease = {
-        contractVersion: WORKER_PROTOCOL_VERSION,
-        objectType: "JOB_LEASE",
-        id: this.leaseIdFactory(),
-        workspaceId: job.workspaceId,
-        workerId: worker.id,
-        jobId: job.id,
-        runId: job.runId,
-        jobType: job.jobType,
-        connector: clone(job.connector),
-        status: "ACTIVE",
-        acquiredAt: timestamp,
-        expiresAt: new Date(now.getTime() + this.leaseDurationMs).toISOString(),
-        updatedAt: timestamp,
-      };
-      if (!isJobLease(lease)) {
-        throw new RegistryValidationError("Lease does not satisfy Worker Protocol v1");
-      }
-      const leasedJob = jobWithStatus(job, "LEASED", timestamp);
-      const leaseData = leaseRow(lease);
-      const jobUpdate = this.database
-        .prepare(
-          `UPDATE jobs SET status = ?, document_json = ?, updated_at = ?
-           WHERE id = ? AND status = 'PENDING'`,
-        )
-        .run(leasedJob.status, JSON.stringify(leasedJob), leasedJob.updatedAt, job.id);
-      if (Number(jobUpdate.changes) !== 1) {
-        throw new RegistryConflictError("JOB_CLAIM_CONFLICT", "Job was claimed by another Worker");
-      }
-      this.database
-        .prepare(
-          `INSERT INTO job_leases (
-             id, workspace_id, worker_id, job_id, run_id, connector_id,
-             connector_version, job_type, status, token_digest, document_json,
-             acquired_at, expires_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .run(
-          leaseData.id,
-          leaseData.workspaceId,
-          leaseData.workerId,
-          leaseData.jobId,
-          leaseData.runId,
-          leaseData.connectorId,
-          leaseData.connectorVersion,
-          leaseData.jobType,
-          leaseData.status,
-          digestHex(leaseToken),
-          leaseData.documentJson,
-          leaseData.acquiredAt,
-          leaseData.expiresAt,
-          leaseData.updatedAt,
-        );
+      const result = this.claimJobInTransaction(worker, job, now);
       this.database.exec("COMMIT;");
-      return { job: leasedJob, lease, leaseToken };
+      return result;
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
+  }
+
+  claimSpecific(workerId: string, credential: string, jobId: string): ClaimResult {
+    this.verifyCredential(workerId, credential);
+    const now = this.clock();
+    const timestamp = now.toISOString();
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      this.reapExpiredInTransaction(timestamp);
+      const worker = this.getWorker(workerId);
+      if (!worker) throw new WorkerNotFoundError(workerId);
+      if (worker.desiredState !== "ACTIVE") {
+        throw new WorkerAuthorizationError(
+          "WORKER_NOT_ACTIVE",
+          "Only an ACTIVE Worker may claim work",
+        );
+      }
+      const view = this.viewForWorker(worker);
+      if (view.effectiveStatus === "OFFLINE") {
+        throw new RegistryConflictError(
+          "WORKER_HEARTBEAT_STALE",
+          "A fresh heartbeat is required before claiming work",
+        );
+      }
+      if (view.effectiveStatus === "ERROR") {
+        throw new RegistryConflictError(
+          "WORKER_HEALTH_ERROR",
+          "A Worker reporting ERROR health cannot claim work",
+        );
+      }
+      if (view.activeLeaseCount >= worker.maxConcurrency) {
+        throw new RegistryConflictError("WORKER_AT_CAPACITY", "Worker has reached maxConcurrency");
+      }
+
+      const row = this.database
+        .prepare("SELECT document_json, available_at FROM jobs WHERE id = ?")
+        .get(jobId) as { document_json: string; available_at: string } | undefined;
+      if (!row) {
+        throw new RegistryConflictError("JOB_NOT_FOUND", `Target Job ${jobId} was not found`);
+      }
+      const job = parseJob(row.document_json);
+      if (job.status !== "PENDING" || Date.parse(row.available_at) > now.getTime()) {
+        throw new RegistryConflictError(
+          "JOB_NOT_CLAIMABLE",
+          "Target Job is not pending and available for claim",
+        );
+      }
+      if (job.workspaceId !== worker.workspaceId || !workerCanRun(worker, job)) {
+        throw new RegistryConflictError(
+          "WORKER_JOB_INCOMPATIBLE",
+          "Target Worker cannot execute the requested Job",
+        );
+      }
+      if (!this.webDomainQuotaAllows(job, this.webDomainLeaseState(now))) {
+        throw new RegistryConflictError(
+          "WEB_DOMAIN_CLAIM_QUOTA_EXCEEDED",
+          "Target Job is temporarily blocked by the governed web-domain concurrency or rolling rate limit",
+          { jobId: job.id, domain: webDomainKey(job) },
+        );
+      }
+
+      const result = this.claimJobInTransaction(worker, job, now);
+      this.database.exec("COMMIT;");
+      return result;
     } catch (error) {
       this.database.exec("ROLLBACK;");
       throw error;
@@ -1158,6 +1174,65 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
     return (
       current.active < this.maxConcurrentWebLeasesPerDomain && current.recent < effectiveRateLimit
     );
+  }
+
+  private claimJobInTransaction(worker: WorkerDefinition, job: Job, now: Date): ClaimResult {
+    const timestamp = now.toISOString();
+    const leaseToken = generateLeaseToken();
+    const lease: JobLease = {
+      contractVersion: WORKER_PROTOCOL_VERSION,
+      objectType: "JOB_LEASE",
+      id: this.leaseIdFactory(),
+      workspaceId: job.workspaceId,
+      workerId: worker.id,
+      jobId: job.id,
+      runId: job.runId,
+      jobType: job.jobType,
+      connector: clone(job.connector),
+      status: "ACTIVE",
+      acquiredAt: timestamp,
+      expiresAt: new Date(now.getTime() + this.leaseDurationMs).toISOString(),
+      updatedAt: timestamp,
+    };
+    if (!isJobLease(lease)) {
+      throw new RegistryValidationError("Lease does not satisfy Worker Protocol v1");
+    }
+    const leasedJob = jobWithStatus(job, "LEASED", timestamp);
+    const leaseData = leaseRow(lease);
+    const jobUpdate = this.database
+      .prepare(
+        `UPDATE jobs SET status = ?, document_json = ?, updated_at = ?
+         WHERE id = ? AND status = 'PENDING'`,
+      )
+      .run(leasedJob.status, JSON.stringify(leasedJob), leasedJob.updatedAt, job.id);
+    if (Number(jobUpdate.changes) !== 1) {
+      throw new RegistryConflictError("JOB_CLAIM_CONFLICT", "Job was claimed by another Worker");
+    }
+    this.database
+      .prepare(
+        `INSERT INTO job_leases (
+           id, workspace_id, worker_id, job_id, run_id, connector_id,
+           connector_version, job_type, status, token_digest, document_json,
+           acquired_at, expires_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        leaseData.id,
+        leaseData.workspaceId,
+        leaseData.workerId,
+        leaseData.jobId,
+        leaseData.runId,
+        leaseData.connectorId,
+        leaseData.connectorVersion,
+        leaseData.jobType,
+        leaseData.status,
+        digestHex(leaseToken),
+        leaseData.documentJson,
+        leaseData.acquiredAt,
+        leaseData.expiresAt,
+        leaseData.updatedAt,
+      );
+    return { job: leasedJob, lease, leaseToken };
   }
 
   renewLease(workerId: string, credential: string, leaseId: string, leaseToken: string): JobLease {

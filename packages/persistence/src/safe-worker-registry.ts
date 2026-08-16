@@ -98,6 +98,10 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
     return this.inner.claim(workerId, credential);
   }
 
+  claimSpecific(workerId: string, credential: string, jobId: string): ClaimResult {
+    return this.inner.claimSpecific(workerId, credential, jobId);
+  }
+
   renewLease(workerId: string, credential: string, leaseId: string, leaseToken: string): JobLease {
     try {
       return this.inner.renewLease(workerId, credential, leaseId, leaseToken);
