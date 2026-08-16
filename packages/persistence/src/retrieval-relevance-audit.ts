@@ -2444,6 +2444,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "tw-tipo-trademark-renewal",
     query: "trademark renewal term rights fee",
   },
+  {
+    id: "kz-qazpatent-trademark-portal-name",
+    targetId: "kz-qazpatent-trademark-portal",
+    query: "Qazpatent trademark Kazakhstan",
+  },
+  {
+    id: "kz-qazpatent-trademark-filing-name",
+    targetId: "kz-qazpatent-trademark-filing",
+    query: "electronic trademark application newcab",
+  },
+  {
+    id: "kz-qazpatent-trademark-search-name",
+    targetId: "kz-qazpatent-trademark-search",
+    query: "State Register of Trademarks search",
+  },
+  {
+    id: "kz-qazpatent-trademark-fees-name",
+    targetId: "kz-qazpatent-trademark-fees",
+    query: "trademark fee 2026 Nice class item",
+  },
+  {
+    id: "kz-qazpatent-trademark-classification-name",
+    targetId: "kz-qazpatent-trademark-classification",
+    query: "International Nice Classification goods services",
+  },
+  {
+    id: "kz-qazpatent-trademark-legal-texts-name",
+    targetId: "kz-qazpatent-trademark-legal-texts",
+    query: "Trademark Law examination rules State Register",
+  },
+  {
+    id: "kz-qazpatent-trademark-examination-name",
+    targetId: "kz-qazpatent-trademark-examination",
+    query: "trademark preliminary full examination stages",
+  },
+  {
+    id: "kz-qazpatent-trademark-renewal-name",
+    targetId: "kz-qazpatent-trademark-renewal",
+    query: "trademark extension renewal registration",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();

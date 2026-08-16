@@ -8150,6 +8150,117 @@ export const TIPO_TW_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const QAZPATENT_KZ: Authority = {
+  jurisdiction: "KZ",
+  authorityName: "National Institute of Intellectual Property (Qazpatent)",
+  languages: ["kk", "ru", "en"],
+  verificationEvidenceUri: "https://kazpatent.kz/en/ip-objects/trademark",
+};
+
+export const QAZPATENT_KZ_SOURCE_COVERAGE_TARGETS = [
+  target(QAZPATENT_KZ, {
+    id: "kz-qazpatent-trademark-portal",
+    family: "PORTAL",
+    displayName: "Kazakhstan Qazpatent Trademark Portal",
+    canonicalUri: "https://kazpatent.kz/en/ip-objects/trademark",
+    verificationEvidenceUri: "https://kazpatent.kz/en/ip-objects/trademark",
+    notes:
+      "Current Qazpatent trademark portal linking applicant, owner, filing, fee, classification, regulatory and maintenance resources. The site flags trademark-law amendments effective from 25 January 2026.",
+  }),
+  target(QAZPATENT_KZ, {
+    id: "kz-qazpatent-trademark-filing",
+    family: "FILING",
+    displayName: "Kazakhstan Qazpatent Trademark Electronic Filing",
+    canonicalUri: "https://newcab.kazpatent.kz/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://kazpatent.kz/en/ip-objects/trademark/applicants/gosudarstvennaya-usluga-registraciya-tovarnogo-znaka",
+    notes:
+      "Current Qazpatent public-service guidance directs applicants to the newcab.kazpatent.kz information system for electronic trademark submissions and payment.",
+  }),
+  target(QAZPATENT_KZ, {
+    id: "kz-qazpatent-trademark-search",
+    family: "SEARCH",
+    displayName: "Kazakhstan Qazpatent State Register Search",
+    canonicalUri: "https://gosreestr.kazpatent.kz/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://kazpatent.kz/en/ip-objects/trademark/general-information/what-trademark",
+    notes:
+      "Qazpatent maintains the State Register of Trademarks and identifies its official state-register system as the source for checking current registrations; the dynamic register may require browser rendering.",
+  }),
+  target(QAZPATENT_KZ, {
+    id: "kz-qazpatent-trademark-fees",
+    family: "FEES",
+    displayName: "Kazakhstan Qazpatent Trademark Fees",
+    canonicalUri: "https://kazpatent.kz/en/ip-objects/trademark/applicants/quny",
+    verificationEvidenceUri: "https://kazpatent.kz/en/ip-objects/trademark/applicants/quny",
+    notes:
+      "Current trademark fee table reflecting the Qazpatent prices effective from 1 January 2026, including per-class and per-item charges and renewal fees.",
+  }),
+  target(QAZPATENT_KZ, {
+    id: "kz-qazpatent-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Kazakhstan Qazpatent Nice Classification Guidance",
+    canonicalUri:
+      "https://kazpatent.kz/en/ip-objects/trademark/applicants/tauarlar-men-qyzmetterdin-halyqaralyq-zhiktemesi",
+    verificationEvidenceUri:
+      "https://kazpatent.kz/en/ip-objects/trademark/applicants/tauarlar-men-qyzmetterdin-halyqaralyq-zhiktemesi",
+    notes:
+      "Official Qazpatent trademark applicant page for the International (Nice) Classification of Goods and Services.",
+  }),
+  target(QAZPATENT_KZ, {
+    id: "kz-qazpatent-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Kazakhstan Qazpatent Trademark Regulatory Documents",
+    canonicalUri:
+      "https://kazpatent.kz/en/ip-objects/trademark/general-information/normativtik-quzhattar",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://kazpatent.kz/en/ip-objects/trademark/general-information/normativtik-quzhattar",
+    notes:
+      "Official Qazpatent legal index linking the Trademark Law, examination rules, State Register rules and related trademark regulations.",
+  }),
+  target(QAZPATENT_KZ, {
+    id: "kz-qazpatent-trademark-examination",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Kazakhstan Qazpatent Trademark Examination Stages",
+    canonicalUri: "https://kazpatent.kz/en/ip-objects/trademark/applicants/kezenderi",
+    verificationEvidenceUri: "https://kazpatent.kz/en/ip-objects/trademark/applicants/kezenderi",
+    notes:
+      "Official examination-stage guidance describing preliminary and full examination and the statutory examination framework for trademark applications.",
+  }),
+  target(QAZPATENT_KZ, {
+    id: "kz-qazpatent-trademark-renewal",
+    family: "MAINTENANCE",
+    displayName: "Kazakhstan Qazpatent Trademark Renewal",
+    canonicalUri:
+      "https://kazpatent.kz/en/ip-objects/trademark/owners/tauar-tanbasyn-tirkeudin-qoldanylu-merzimin-uzartu-tartibi",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://kazpatent.kz/en/ip-objects/trademark/owners/tauar-tanbasyn-tirkeudin-qoldanylu-merzimin-uzartu-tartibi",
+  }),
+  target(QAZPATENT_KZ, {
+    id: "kz-qazpatent-electronic-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Kazakhstan Qazpatent Electronic Bulletin – Industrial Property",
+    canonicalUri: "https://kazpatent.kz/en/electronic-bulletin",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://kazpatent.kz/en/ip-objects/trademark/general-information/what-trademark",
+    notes:
+      "Qazpatent identifies publication of the official electronic bulletin Industrial Property, including registered trademarks, as an institutional function; retain the bulletin index as a change signal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -8282,5 +8393,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...ILPO_IL_SOURCE_COVERAGE_TARGETS,
   ...UANIPIO_UA_SOURCE_COVERAGE_TARGETS,
   ...TIPO_TW_SOURCE_COVERAGE_TARGETS,
+  ...QAZPATENT_KZ_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
