@@ -61,7 +61,7 @@ export type CollectionScheduleState = {
 
 export type CollectionSchedulerTickItem = {
   planId: string;
-  outcome: "INITIALIZED" | "NOT_DUE" | "DISPATCHED" | "REPLAYED" | "ERROR";
+  outcome: "INITIALIZED" | "NOT_DUE" | "DISPATCHED" | "REPLAYED" | "COALESCED" | "ERROR";
   nextDueAt: string | null;
   runId?: string;
   errorCode?: string;
@@ -72,6 +72,7 @@ export type CollectionSchedulerTickResult = {
   examined: number;
   dispatched: number;
   replayed: number;
+  coalesced: number;
   errors: number;
   items: CollectionSchedulerTickItem[];
 };
@@ -106,6 +107,7 @@ type ScheduledDispatchResult = {
   run: CollectionRun;
   jobs: Job[];
   replayed: boolean;
+  coalesced: boolean;
 };
 
 type CronField = {
@@ -504,6 +506,22 @@ function jobsForRun(database: DatabaseSync, runId: string): Job[] {
     .map((row) => parseJob((row as { document_json: string }).document_json));
 }
 
+function inFlightRunForPlan(database: DatabaseSync, planId: string): CollectionRun | null {
+  const row = database
+    .prepare(
+      `SELECT document_json FROM collection_runs
+       WHERE plan_id = ? AND status IN ('PENDING', 'RUNNING')
+       ORDER BY requested_at DESC, id DESC
+       LIMIT 1`,
+    )
+    .get(planId) as { document_json: string } | undefined;
+  return row ? parseRun(row.document_json) : null;
+}
+
+function coalescedDispatch(run: CollectionRun): ScheduledDispatchResult {
+  return { run, jobs: [], replayed: false, coalesced: true };
+}
+
 function existingScheduledRun(
   database: DatabaseSync,
   workspaceId: string,
@@ -524,7 +542,7 @@ function existingScheduledRun(
       "Schedule slot idempotency key was already used for a different dispatch",
     );
   }
-  return { run, jobs: jobsForRun(database, run.id), replayed: true };
+  return { run, jobs: jobsForRun(database, run.id), replayed: true, coalesced: false };
 }
 
 export function scheduledSlotIdempotencyKey(planId: string, slot: Date): string {
@@ -781,6 +799,8 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
     const idempotencyKey = scheduledSlotIdempotencyKey(plan.id, slot);
     const replay = existingScheduledRun(this.database, plan.workspaceId, plan.id, idempotencyKey);
     if (replay) return replay;
+    const active = inFlightRunForPlan(this.database, plan.id);
+    if (active) return coalescedDispatch(active);
 
     const timestamp = now.toISOString();
     const run: CollectionRun = {
@@ -835,6 +855,21 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
 
     this.database.exec("BEGIN IMMEDIATE;");
     try {
+      const concurrentReplay = existingScheduledRun(
+        this.database,
+        plan.workspaceId,
+        plan.id,
+        idempotencyKey,
+      );
+      if (concurrentReplay) {
+        this.database.exec("COMMIT;");
+        return concurrentReplay;
+      }
+      const concurrentActive = inFlightRunForPlan(this.database, plan.id);
+      if (concurrentActive) {
+        this.database.exec("COMMIT;");
+        return coalescedDispatch(concurrentActive);
+      }
       this.database
         .prepare(
           `INSERT INTO collection_runs (
@@ -885,20 +920,60 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
           job.updatedAt,
         );
       this.database.exec("COMMIT;");
-      return { run, jobs: [job], replayed: false };
+      return { run, jobs: [job], replayed: false, coalesced: false };
     } catch (error) {
       this.database.exec("ROLLBACK;");
       if (error instanceof Error && error.message.includes("UNIQUE constraint")) {
-        const concurrentReplay = existingScheduledRun(
+        const raceReplay = existingScheduledRun(
           this.database,
           plan.workspaceId,
           plan.id,
           idempotencyKey,
         );
-        if (concurrentReplay) return concurrentReplay;
+        if (raceReplay) return raceReplay;
       }
       throw error;
     }
+  }
+
+  private advanceCoalescedState(
+    plan: CollectionPlan,
+    expectedSlot: string,
+    now: Date,
+  ): PersistedScheduleState {
+    const slot = new Date(expectedSlot);
+    const next = nextFutureScheduledAt(plan.schedule, slot, now);
+    if (!next) {
+      throw new RegistryValidationError("Automatic schedule did not produce a future slot");
+    }
+    const timestamp = now.toISOString();
+    const result = this.database
+      .prepare(
+        `UPDATE collection_schedule_states
+         SET next_due_at = ?, last_slot_at = ?,
+             last_error_code = NULL, last_error_message = NULL, last_error_at = NULL,
+             updated_at = ?
+         WHERE plan_id = ? AND schedule_fingerprint = ? AND next_due_at = ?`,
+      )
+      .run(
+        next.toISOString(),
+        expectedSlot,
+        timestamp,
+        plan.id,
+        scheduleFingerprint(plan.schedule),
+        expectedSlot,
+      );
+    if (Number(result.changes) === 0) {
+      const current = this.stateRow(plan.id);
+      if (!current) {
+        throw schedulerConflict(
+          "SCHEDULER_STATE_LOST",
+          "Scheduler state disappeared while coalescing an in-flight run",
+        );
+      }
+      return current;
+    }
+    return this.stateRow(plan.id)!;
   }
 
   private advanceState(
@@ -966,6 +1041,7 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
     const items: CollectionSchedulerTickItem[] = [];
     let dispatched = 0;
     let replayed = 0;
+    let coalesced = 0;
     let errors = 0;
     for (const row of rows) {
       const plan = parsePlan(row.document_json);
@@ -998,6 +1074,17 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
 
       try {
         const dispatch = this.dispatchScheduled(plan, new Date(state.nextDueAt), now);
+        if (dispatch.coalesced) {
+          const advanced = this.advanceCoalescedState(plan, state.nextDueAt, now);
+          coalesced += 1;
+          items.push({
+            planId: plan.id,
+            outcome: "COALESCED",
+            nextDueAt: advanced.nextDueAt,
+            runId: dispatch.run.id,
+          });
+          continue;
+        }
         const advanced = this.advanceState(plan, state.nextDueAt, dispatch.run, now);
         if (dispatch.replayed) replayed += 1;
         else dispatched += 1;
@@ -1024,6 +1111,7 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
       examined: rows.length,
       dispatched,
       replayed,
+      coalesced,
       errors,
       items,
     };
