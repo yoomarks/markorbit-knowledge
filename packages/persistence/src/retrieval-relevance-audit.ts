@@ -1576,6 +1576,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "bh-moic-trademark-proceedings",
     query: "Bahrain MOIC trademark opposition grievance procedure guidelines",
   },
+  {
+    id: "kw-trademarks-name",
+    targetId: "kw-moci-trademarks",
+    query: "Kuwait MOCI automated trademark registration services",
+  },
+  {
+    id: "kw-trademark-filing-name",
+    targetId: "kw-moci-trademark-filing",
+    query: "Kuwait MOCI trademark filing deposit local foreign registration",
+  },
+  {
+    id: "kw-trademark-search-name",
+    targetId: "kw-moci-trademark-search",
+    query: "Kuwait MOCI preliminary trademark examination search",
+  },
+  {
+    id: "kw-trademark-fees-name",
+    targetId: "kw-moci-trademark-fees",
+    query: "Kuwait trademark filing publication registration renewal fees KD",
+  },
+  {
+    id: "kw-trademark-renewal-name",
+    targetId: "kw-moci-trademark-renewal",
+    query: "Kuwait trademark renewal ten years six months MOCI",
+  },
+  {
+    id: "kw-trademark-law-name",
+    targetId: "kw-moci-trademark-law",
+    query: "Kuwait Law 13 2015 unified GCC Trademark Law implementing regulation",
+  },
+  {
+    id: "kw-trademark-proceedings-name",
+    targetId: "kw-moci-trademark-proceedings",
+    query: "Kuwait MOCI trademark opposition grievance refusal hearing",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
