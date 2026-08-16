@@ -1976,6 +1976,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "za-cipc-trademark-guidelines-practice-notes",
     query: "South Africa CIPC trade mark guidelines practice notes registrar",
   },
+  {
+    id: "cl-trademarks-name",
+    targetId: "cl-inapi-trademarks",
+    query: "Chile INAPI trademark portal registration search filing classification",
+  },
+  {
+    id: "cl-trademark-filing-name",
+    targetId: "cl-inapi-trademark-filing",
+    query: "Chile INAPI online trademark application filing payment",
+  },
+  {
+    id: "cl-trademark-search-name",
+    targetId: "cl-inapi-trademark-search",
+    query: "Chile INAPI trademark database search application registration owner class status",
+  },
+  {
+    id: "cl-trademark-fees-name",
+    targetId: "cl-inapi-trademark-fees",
+    query: "Chile INAPI trademark fees UTM filing registration renewal",
+  },
+  {
+    id: "cl-trademark-classification-name",
+    targetId: "cl-inapi-trademark-classification",
+    query: "Chile INAPI goods services classifier Nice NIZA accepted descriptions",
+  },
+  {
+    id: "cl-trademark-directives-2026-name",
+    targetId: "cl-inapi-trademark-directives-2026",
+    query: "Chile INAPI Trademark Directives 2026 examination registration opposition appeal",
+  },
+  {
+    id: "cl-trademark-law-name",
+    targetId: "cl-inapi-trademark-law",
+    query: "Chile INAPI industrial property law trademark legislation regulations",
+  },
+  {
+    id: "cl-trademark-proceedings-name",
+    targetId: "cl-inapi-trademark-proceedings",
+    query: "Chile INAPI trademark opposition proceedings nullity appeal online filing",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
