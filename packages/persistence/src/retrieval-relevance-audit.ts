@@ -736,6 +736,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "fi-prh-trademark-proceedings",
     query: "trademark opposition revocation invalidation",
   },
+  {
+    id: "at-trademarks-name",
+    targetId: "at-patentamt-trademarks",
+    query: "Austrian Patent Office trademark protection",
+  },
+  {
+    id: "at-trademark-filing-name",
+    targetId: "at-patentamt-trademark-filing",
+    query: "national trademark online filing Austria",
+  },
+  {
+    id: "at-trademark-search-name",
+    targetId: "at-patentamt-trademark-search",
+    query: "see.ip trademark search Austria",
+  },
+  {
+    id: "at-trademark-fees-name",
+    targetId: "at-patentamt-trademark-fees",
+    query: "trademark application fees Austria",
+  },
+  {
+    id: "at-trademark-classification-name",
+    targetId: "at-patentamt-trademark-classification",
+    query: "Nice Classification NCL 13-2026 trademark",
+  },
+  {
+    id: "at-trademark-law-name",
+    targetId: "at-patentamt-trademark-law",
+    query: "Trademark Protection Act law legislation Austria",
+  },
+  {
+    id: "at-trademark-proceedings-name",
+    targetId: "at-patentamt-trademark-proceedings",
+    query: "trademark opposition cancellation proceedings appeals Austria",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
