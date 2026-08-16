@@ -1541,6 +1541,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "om-mociip-trademark-proceedings",
     query: "Oman trademark opposition objection registrar rejection hearing",
   },
+  {
+    id: "bh-trademarks-name",
+    targetId: "bh-moic-trademarks",
+    query: "Bahrain MOIC Industrial Property trademark services",
+  },
+  {
+    id: "bh-trademark-filing-name",
+    targetId: "bh-moic-trademark-filing",
+    query: "Bahrain MOIC trademark electronic filing one class Nice",
+  },
+  {
+    id: "bh-trademark-search-name",
+    targetId: "bh-moic-trademark-search",
+    query: "Bahrain MOIC WIPO PUBLISH trademark search registered marks",
+  },
+  {
+    id: "bh-trademark-fees-name",
+    targetId: "bh-moic-trademark-fees",
+    query: "Bahrain MOIC trademark service fees examination registration",
+  },
+  {
+    id: "bh-trademark-classification-name",
+    targetId: "bh-moic-trademark-classification",
+    query: "Bahrain trademark classification goods services Nice MOIC",
+  },
+  {
+    id: "bh-trademark-law-name",
+    targetId: "bh-moic-trademark-law",
+    query: "Bahrain Law 6 2014 GCC Trademark Law 2021 amendment legal regulations",
+  },
+  {
+    id: "bh-trademark-proceedings-name",
+    targetId: "bh-moic-trademark-proceedings",
+    query: "Bahrain MOIC trademark opposition grievance procedure guidelines",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
