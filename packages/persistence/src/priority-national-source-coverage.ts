@@ -7802,6 +7802,123 @@ export const IPD_HK_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const ILPO_IL: Authority = {
+  jurisdiction: "IL",
+  authorityName: "Israel Patent Office (ILPO) – Trademarks Department",
+  languages: ["he", "en", "ar"],
+  verificationEvidenceUri: "https://www.gov.il/en/Departments/ilpo",
+};
+
+export const ILPO_IL_SOURCE_COVERAGE_TARGETS = [
+  target(ILPO_IL, {
+    id: "il-ilpo-trademark-portal",
+    family: "PORTAL",
+    displayName: "Israel Patent Office Portal – Trademarks",
+    canonicalUri: "https://www.gov.il/en/Departments/ilpo",
+    verificationEvidenceUri: "https://www.gov.il/en/Departments/ilpo",
+    notes:
+      "The Ministry of Justice ILPO landing page identifies the Trademarks Department and links current trademark online services and databases.",
+  }),
+  target(ILPO_IL, {
+    id: "il-ilpo-trademark-filing",
+    family: "FILING",
+    displayName: "Israel Trademark Registration Service",
+    canonicalUri: "https://www.gov.il/he/service/trademark_registration",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gov.il/he/service/trademark_registration",
+    notes:
+      "Official Ministry of Justice service for filing a national trademark application online, including application requirements and payment workflow.",
+  }),
+  target(ILPO_IL, {
+    id: "il-ilpo-trademark-search",
+    family: "SEARCH",
+    displayName: "Israel Trademarks Search Database",
+    canonicalUri: "https://trademarks.justice.gov.il/TradeMarkSearch/TradeMarkSearch?lang=en",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.gov.il/en/Departments/ilpo",
+  }),
+  target(ILPO_IL, {
+    id: "il-ilpo-trademark-search-fees",
+    family: "FEES",
+    displayName: "Israel Trademark Examiner Search Fee and Payment Guidance",
+    canonicalUri: "https://www.gov.il/he/service/search_israeli_trademarks_database",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gov.il/he/service/search_israeli_trademarks_database",
+    notes:
+      "Official paid examiner-search service under Rule 78A with current payment instructions; the separate public trademark database remains free for self-search.",
+  }),
+  target(ILPO_IL, {
+    id: "il-ilpo-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Israel Trademark Goods and Services Classification Guidance",
+    canonicalUri: "https://www.gov.il/he/pages/trademark-protection?chapterIndex=2",
+    verificationEvidenceUri: "https://www.gov.il/he/pages/trademark-protection?chapterIndex=2",
+    notes:
+      "Official ILPO guidance on classifying goods and services under the Nice Classification, including the 45-class structure and filing guidance.",
+  }),
+  target(ILPO_IL, {
+    id: "il-ilpo-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Israel Trade Marks Ordinance 1972",
+    canonicalUri:
+      "https://main.knesset.gov.il/activity/legislation/laws/pages/LawPrimary.aspx?lawitemid=2000955&st=lawlaws",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://main.knesset.gov.il/activity/legislation/laws/pages/LawPrimary.aspx?lawitemid=2000955&st=lawlaws",
+    notes:
+      "Official Knesset National Legislation Database record for the Trade Marks Ordinance [New Version], 1972, including amendment history and current validity.",
+  }),
+  target(ILPO_IL, {
+    id: "il-ilpo-registrar-circulars",
+    family: "POLICY_NOTICES",
+    displayName: "Israel Patent Office Registrar Circulars",
+    canonicalUri: "https://www.gov.il/he/departments/dynamiccollectors/registrar-publications",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.gov.il/he/departments/dynamiccollectors/registrar-publications",
+    notes:
+      "Living official collection of Registrar circulars, updated when circulars are issued, amended or cancelled; includes trademark practice instructions.",
+  }),
+  target(ILPO_IL, {
+    id: "il-ilpo-trademark-opposition",
+    family: "PROCEEDINGS",
+    displayName: "Israel Trademark Opposition Procedure",
+    canonicalUri: "https://www.gov.il/he/service/objection_to_obtained_trademark",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gov.il/he/service/objection_to_obtained_trademark",
+  }),
+  target(ILPO_IL, {
+    id: "il-ilpo-trademark-renewal",
+    family: "MAINTENANCE",
+    displayName: "Israel Trademark Renewal",
+    canonicalUri: "https://www.gov.il/he/service/trademark_renewal",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gov.il/he/service/trademark_renewal",
+  }),
+  target(ILPO_IL, {
+    id: "il-ilpo-trademark-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Israel Trade Marks Journal",
+    canonicalUri: "https://trademarks.justice.gov.il/TradeMarkSearch/TradeMarksJournal?lang=en",
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON", "PDF"],
+    verificationEvidenceUri:
+      "https://trademarks.justice.gov.il/TradeMarkSearch/TradeMarksJournal?lang=en",
+    notes:
+      "Official online Trade Marks Journal covering marks published for opposition, registrations, renewals, cancellations, register changes and proceedings; retained as a publication change signal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -7931,5 +8048,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...INDECOPI_PE_SOURCE_COVERAGE_TARGETS,
   ...KIPI_KE_SOURCE_COVERAGE_TARGETS,
   ...IPD_HK_SOURCE_COVERAGE_TARGETS,
+  ...ILPO_IL_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

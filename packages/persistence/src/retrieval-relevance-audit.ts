@@ -2314,6 +2314,51 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "hk-ipd-trademark-opposition",
     query: "trade mark opposition",
   },
+  {
+    id: "il-ilpo-trademark-portal-name",
+    targetId: "il-ilpo-trademark-portal",
+    query: "Israel Patent Office trademarks",
+  },
+  {
+    id: "il-ilpo-trademark-filing-name",
+    targetId: "il-ilpo-trademark-filing",
+    query: "trademark registration online application",
+  },
+  {
+    id: "il-ilpo-trademark-search-name",
+    targetId: "il-ilpo-trademark-search",
+    query: "trademarks search Israel",
+  },
+  {
+    id: "il-ilpo-trademark-search-fees-name",
+    targetId: "il-ilpo-trademark-search-fees",
+    query: "trademark search fee Rule 78A",
+  },
+  {
+    id: "il-ilpo-trademark-classification-name",
+    targetId: "il-ilpo-trademark-classification",
+    query: "Nice classification goods services 45 classes",
+  },
+  {
+    id: "il-ilpo-trademark-legal-texts-name",
+    targetId: "il-ilpo-trademark-legal-texts",
+    query: "Trade Marks Ordinance 1972",
+  },
+  {
+    id: "il-ilpo-registrar-circulars-name",
+    targetId: "il-ilpo-registrar-circulars",
+    query: "Registrar circulars trademarks",
+  },
+  {
+    id: "il-ilpo-trademark-opposition-name",
+    targetId: "il-ilpo-trademark-opposition",
+    query: "trademark opposition three months",
+  },
+  {
+    id: "il-ilpo-trademark-renewal-name",
+    targetId: "il-ilpo-trademark-renewal",
+    query: "trademark renewal",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
