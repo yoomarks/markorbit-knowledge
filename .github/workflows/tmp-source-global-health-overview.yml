@@ -1,0 +1,36 @@
+name: Temporary Source global health overview verification
+
+on:
+  push:
+    branches:
+      - codex/source-global-health-overview-v1
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/tmp/patch_source_global_health_overview.py
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write apps/admin/src/server/source-collection-health.ts apps/admin/src/server/__tests__/source-collection-health.test.ts apps/admin/src/app/api/sources/route.ts apps/admin/src/components/sources/source-list.tsx
+      - run: pnpm --filter @markorbit/admin exec vitest run src/server/__tests__/source-collection-health.test.ts
+      - run: pnpm --filter @markorbit/admin typecheck
+      - run: pnpm --filter @markorbit/admin build
+      - name: Commit integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/admin/src/server/source-collection-health.ts apps/admin/src/server/__tests__/source-collection-health.test.ts apps/admin/src/app/api/sources/route.ts apps/admin/src/components/sources/source-list.tsx
+          git commit -m "Sources: aggregate health across filtered scope" || true
+          git push
