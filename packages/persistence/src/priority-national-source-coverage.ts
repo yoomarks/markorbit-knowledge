@@ -4937,6 +4937,167 @@ export const MOCI_QA_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const MOCIIP_OM: Authority = {
+  jurisdiction: "OM",
+  authorityName: "Oman Ministry of Commerce, Industry and Investment Promotion (MoCIIP)",
+  languages: ["ar-OM", "en"],
+  verificationEvidenceUri: "https://gov.om/en/w/intellectual-property",
+};
+
+export const MOCIIP_OM_SOURCE_COVERAGE_TARGETS = [
+  target(MOCIIP_OM, {
+    id: "om-mociip-trademarks",
+    family: "PORTAL",
+    displayName: "Oman National Intellectual Property Office Trademark Services",
+    canonicalUri: "https://gov.om/en/w/intellectual-property",
+    entrypoints: [
+      {
+        uri: "https://gov.om/en/w/intellectual-property",
+        label: "Gov.om intellectual-property service catalog",
+      },
+      { uri: "https://tejarah.gov.om/en/service-directory", label: "MoCIIP service directory" },
+    ],
+    verificationEvidenceUri: "https://gov.om/en/w/intellectual-property",
+    notes:
+      "The current Gov.om intellectual-property category aggregates National Intellectual Property Office trademark filing, search, opposition, renewal, recordal and hearing services administered by MoCIIP.",
+  }),
+  target(MOCIIP_OM, {
+    id: "om-mociip-trademark-filing",
+    family: "FILING",
+    displayName: "Oman MoCIIP Apply for a Trademark",
+    canonicalUri: "https://gov.om/en/w/apply-for-a-trademark",
+    entrypoints: [
+      {
+        uri: "https://gov.om/en/w/apply-for-a-trademark",
+        label: "National trademark application service",
+      },
+      {
+        uri: "https://gov.om/en/w/register-collective-or-certification-trademarks-for-products-or-services-of-single-class",
+        label: "Collective and certification trademark filing",
+      },
+    ],
+    verificationEvidenceUri: "https://gov.om/en/w/apply-for-a-trademark",
+    notes:
+      "Gov.om's current national service enables filing a trademark for products or services of one class and identifies MoCIIP as the responsible authority; collective and certification marks have a separate official filing service.",
+  }),
+  target(MOCIIP_OM, {
+    id: "om-mociip-trademark-search",
+    family: "SEARCH",
+    displayName: "Oman MoCIIP Verify Trademark Availability",
+    canonicalUri: "https://gov.om/en/w/verify-trademark-availability",
+    verificationEvidenceUri: "https://gov.om/en/w/verify-trademark-availability",
+    notes:
+      "The official availability service accepts a trademark search request to determine whether the mark already exists before registration filing.",
+  }),
+  target(MOCIIP_OM, {
+    id: "om-mociip-trademark-fees",
+    family: "FEES",
+    displayName: "Oman MoCIIP Trademark Fees and Renewal Charges",
+    canonicalUri: "https://gov.om/en/w/pay-renewal-delay-fine",
+    entrypoints: [
+      {
+        uri: "https://gov.om/en/w/pay-renewal-delay-fine",
+        label: "Trademark renewal and late-renewal charges",
+      },
+      {
+        uri: "https://gov.om/en/w/request-to-record-the-transfer-of-trademark-ownership-in-the-register",
+        label: "Trademark transfer and publication fees",
+      },
+      {
+        uri: "https://gov.om/en/w/request-annotation-in-register-granting-right-to-use-a-trademark",
+        label: "Trademark licence annotation and publication fees",
+      },
+      {
+        uri: "https://gov.om/en/w/request-a-response-to-the-registrar-s-decision-for-acceptance-or-rejection",
+        label: "Registrar-decision response fee",
+      },
+    ],
+    verificationEvidenceUri: "https://gov.om/en/w/pay-renewal-delay-fine",
+    notes:
+      "Current Gov.om trademark services expose official transaction-specific fees, including renewal and late-renewal charges, transfer/publication fees, licence-annotation/publication fees and registrar-decision response fees. The catalog preserves live service pages rather than freezing amounts as permanent truth.",
+  }),
+  target(MOCIIP_OM, {
+    id: "om-mociip-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Oman MoCIIP Nice Trademark Classification Practice",
+    canonicalUri: "https://gov.om/en/w/apply-to-associate-your-trademark-with-another",
+    entrypoints: [
+      {
+        uri: "https://gov.om/en/w/apply-to-associate-your-trademark-with-another",
+        label: "Official Nice-class association service",
+      },
+      {
+        uri: "https://gov.om/en/w/apply-for-a-trademark",
+        label: "Single-class national trademark filing",
+      },
+    ],
+    verificationEvidenceUri: "https://gov.om/en/w/apply-to-associate-your-trademark-with-another",
+    notes:
+      "MoCIIP's current trademark-association service expressly identifies the Nice international classification, while the national filing service is organized around products or services of a single class.",
+  }),
+  target(MOCIIP_OM, {
+    id: "om-mociip-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Oman Trademark and Industrial Property Legislation",
+    canonicalUri: "https://mjla.gov.om/laws/ar/1/show/154",
+    entrypoints: [
+      {
+        uri: "https://mjla.gov.om/laws/ar/1/show/154",
+        label: "Royal Decree 33/2017 issuing the GCC Trademark Law",
+      },
+      {
+        uri: "https://www.mjla.gov.om/laws/1/show/95",
+        label: "Royal Decree 67/2008 issuing the Industrial Property Rights Law",
+      },
+      {
+        uri: "https://mjla.gov.om/laws/search",
+        label: "Ministry of Justice and Legal Affairs legislation search",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://mjla.gov.om/laws/ar/1/show/154",
+    notes:
+      "The Ministry of Justice and Legal Affairs publishes the GCC Trademark Law as issued in Oman by Royal Decree 33/2017 and the Industrial Property Rights Law issued by Royal Decree 67/2008, with downloadable legal texts and a live legislation search surface.",
+  }),
+  target(MOCIIP_OM, {
+    id: "om-mociip-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Oman MoCIIP Trademark Opposition and Registrar Review Procedures",
+    canonicalUri: "https://gov.om/en/w/object-to-the-registration-of-applications",
+    entrypoints: [
+      {
+        uri: "https://gov.om/en/w/object-to-the-registration-of-applications",
+        label: "Opposition to a published trademark application",
+      },
+      {
+        uri: "https://gov.om/en/w/reply-to-objection-to-registration-of-requests",
+        label: "Response to an opposition",
+      },
+      {
+        uri: "https://gov.om/en/w/request-a-response-to-the-registrar-s-decision-for-acceptance-or-rejection",
+        label: "Response to Registrar acceptance or rejection decision",
+      },
+      { uri: "https://gov.om/en/w/request-for-hearing", label: "Hearing request" },
+    ],
+    verificationEvidenceUri: "https://gov.om/en/w/object-to-the-registration-of-applications",
+    notes:
+      "Gov.om publishes separate National Intellectual Property Office services for opposing a trademark application published in the official gazette, replying to opposition, responding to Registrar decisions and requesting a hearing.",
+  }),
+  target(MOCIIP_OM, {
+    id: "om-mjla-official-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Oman Ministry of Justice and Legal Affairs Official Gazette",
+    canonicalUri: "https://mjla.gov.om/legislation/1",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://mjla.gov.om/legislation/1",
+    notes:
+      "The Ministry of Justice and Legal Affairs maintains the continuously updated Official Gazette library. MoCIIP trademark services explicitly tie published applications, transfers and licences to official-gazette publication, making this a high-value change-signal source.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -5045,5 +5206,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...SAIP_SA_SOURCE_COVERAGE_TARGETS,
   ...MOET_AE_SOURCE_COVERAGE_TARGETS,
   ...MOCI_QA_SOURCE_COVERAGE_TARGETS,
+  ...MOCIIP_OM_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

@@ -1506,6 +1506,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "qa-moci-trademark-proceedings",
     query: "Qatar MOCI trademark opposition grievance hearing forms",
   },
+  {
+    id: "om-trademarks-name",
+    targetId: "om-mociip-trademarks",
+    query: "Oman National Intellectual Property Office MoCIIP trademark services",
+  },
+  {
+    id: "om-trademark-filing-name",
+    targetId: "om-mociip-trademark-filing",
+    query: "Oman apply trademark MoCIIP national filing single class",
+  },
+  {
+    id: "om-trademark-search-name",
+    targetId: "om-mociip-trademark-search",
+    query: "Oman verify trademark availability search before registration",
+  },
+  {
+    id: "om-trademark-fees-name",
+    targetId: "om-mociip-trademark-fees",
+    query: "Oman trademark renewal transfer publication licence fees MoCIIP",
+  },
+  {
+    id: "om-trademark-classification-name",
+    targetId: "om-mociip-trademark-classification",
+    query: "Oman trademark Nice international classification single class",
+  },
+  {
+    id: "om-trademark-law-name",
+    targetId: "om-mociip-trademark-law",
+    query: "Oman Royal Decree 33 2017 GCC Trademark Law Industrial Property Rights 67 2008",
+  },
+  {
+    id: "om-trademark-proceedings-name",
+    targetId: "om-mociip-trademark-proceedings",
+    query: "Oman trademark opposition objection registrar rejection hearing",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
