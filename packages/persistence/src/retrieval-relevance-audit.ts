@@ -1711,6 +1711,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "np-doi-trademark-proceedings",
     query: "Nepal DOI trademark complaint Law Decision Implementation Section FAQ",
   },
+  {
+    id: "my-trademarks-name",
+    targetId: "my-myipo-trademarks",
+    query: "Malaysia MyIPO trademark public services filing search journal",
+  },
+  {
+    id: "my-trademark-filing-name",
+    targetId: "my-myipo-trademark-filing",
+    query: "Malaysia MyIPO applying trademark IP Online filing preliminary advice",
+  },
+  {
+    id: "my-trademark-search-name",
+    targetId: "my-myipo-trademark-search",
+    query: "Malaysia MyIPO official trademark search IP Online",
+  },
+  {
+    id: "my-trademark-fees-name",
+    targetId: "my-myipo-trademark-fees",
+    query: "Malaysia MyIPO trademark forms fees Trademarks Act 2019",
+  },
+  {
+    id: "my-trademark-classification-name",
+    targetId: "my-myipo-trademark-classification",
+    query: "Malaysia MyIPO goods services pre approved Nice classification",
+  },
+  {
+    id: "my-trademark-law-name",
+    targetId: "my-myipo-trademark-law",
+    query: "Malaysia Trademarks Act 2019 regulations MyIPO law",
+  },
+  {
+    id: "my-trademark-guidelines-2026-name",
+    targetId: "my-myipo-trademark-guidelines-2026",
+    query: "Malaysia MyIPO Guidelines Trademark 2019 VA1 2026",
+  },
+  {
+    id: "my-trademark-proceedings-name",
+    targetId: "my-myipo-trademark-proceedings",
+    query: "Malaysia MyIPO trademark opposition hearing appeal renewal proceedings",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
