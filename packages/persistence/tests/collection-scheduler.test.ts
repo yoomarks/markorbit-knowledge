@@ -199,6 +199,51 @@ describe("Collection scheduler runtime", () => {
     database.close();
   });
 
+  it("coalesces later schedule slots while the previous run is still in flight", () => {
+    const { database, sources, plans, scheduler, runs, setNow } = repositories();
+    const source = sources.create(sourceInput());
+    const plan = plans.create(planInput(source.id));
+    scheduler.tick();
+
+    setNow("2026-08-12T01:00:00.000Z");
+    const first = scheduler.tick();
+    expect(first.dispatched).toBe(1);
+    const firstRun = runs.list({ planId: plan.plan.id }).items[0]!.run;
+    expect(firstRun.status).toBe("PENDING");
+
+    setNow("2026-08-12T02:00:00.000Z");
+    const second = scheduler.tick();
+    expect(second.dispatched).toBe(0);
+    expect(second.coalesced).toBe(1);
+    expect(second.items[0]).toMatchObject({ outcome: "COALESCED", runId: firstRun.id });
+    expect(runs.list({ planId: plan.plan.id }).total).toBe(1);
+    expect(scheduler.getState(plan.plan.id).nextDueAt).toBe("2026-08-12T03:00:00.000Z");
+
+    setNow("2026-08-12T05:30:00.000Z");
+    const catchUp = scheduler.tick();
+    expect(catchUp.coalesced).toBe(1);
+    expect(runs.list({ planId: plan.plan.id }).total).toBe(1);
+    expect(scheduler.getState(plan.plan.id).nextDueAt).toBe("2026-08-12T06:00:00.000Z");
+    database.close();
+  });
+
+  it("coalesces a scheduled slot onto an in-flight manual run for the same plan", () => {
+    const { database, sources, plans, scheduler, runs, setNow } = repositories();
+    const source = sources.create(sourceInput());
+    const plan = plans.create(planInput(source.id));
+    scheduler.tick();
+    setNow("2026-08-12T00:30:00.000Z");
+    const manual = runs.dispatchManual({ planId: plan.plan.id }).record.run;
+
+    setNow("2026-08-12T01:00:00.000Z");
+    const tick = scheduler.tick();
+    expect(tick.coalesced).toBe(1);
+    expect(tick.items[0]).toMatchObject({ outcome: "COALESCED", runId: manual.id });
+    expect(runs.list({ planId: plan.plan.id }).total).toBe(1);
+    expect(scheduler.getState(plan.plan.id).nextDueAt).toBe("2026-08-12T02:00:00.000Z");
+    database.close();
+  });
+
   it("replays the exact schedule slot after restart-like state lag instead of duplicating runs", () => {
     const { database, sources, plans, scheduler, runs, setNow } = repositories();
     const source = sources.create(sourceInput());
@@ -222,6 +267,8 @@ describe("Collection scheduler runtime", () => {
     );
     const replay = restarted.tick();
     expect(replay.replayed).toBe(1);
+    expect(replay.coalesced).toBe(0);
+    expect(replay.items[0]?.outcome).toBe("REPLAYED");
     expect(runs.list({ planId: plan.plan.id }).total).toBe(1);
     expect(restarted.getState(plan.plan.id).nextDueAt).toBe("2026-08-12T02:00:00.000Z");
     database.close();
