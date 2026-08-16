@@ -18,7 +18,12 @@ import {
   type SourceListResult,
 } from "@markorbit/persistence";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
-import { listSourceCollectionHealth } from "@/server/source-collection-health";
+import {
+  listSourceCollectionHealth,
+  listSourceCollectionHealthBatched,
+  sourceCollectionHealthRequiresAttention,
+  summarizeSourceCollectionHealthOverview,
+} from "@/server/source-collection-health";
 import {
   getRegistryDatabase,
   getSourceAssessmentRepository,
@@ -51,7 +56,33 @@ function isLegacySystemSource(source: SourceDefinition): boolean {
   return source.sourceType === "MANUAL_UPLOAD" && source.slug === "manual-uploads";
 }
 
-function listWithoutLegacySystemSources(filters: SourceListFilters): SourceListResult {
+type SourceListContext = {
+  result: SourceListResult;
+  scopeSources: SourceDefinition[];
+};
+
+function listMatchingSources(
+  filters: SourceListFilters,
+  hideLegacySystem: boolean,
+): SourceDefinition[] {
+  const repository = getSourceRepository();
+  const baseFilters = { ...filters };
+  delete baseFilters.limit;
+  delete baseFilters.offset;
+  const items: SourceDefinition[] = [];
+  let scanOffset = 0;
+  while (true) {
+    const page = repository.list({ ...baseFilters, limit: 100, offset: scanOffset });
+    items.push(
+      ...page.items.filter((source) => !hideLegacySystem || !isLegacySystemSource(source)),
+    );
+    scanOffset += page.items.length;
+    if (page.items.length === 0 || scanOffset >= page.total) break;
+  }
+  return items;
+}
+
+function listWithoutLegacySystemSources(filters: SourceListFilters): SourceListContext {
   const repository = getSourceRepository();
   const requestedLimit = filters.limit ?? 25;
   const requestedOffset = filters.offset ?? 0;
@@ -75,15 +106,18 @@ function listWithoutLegacySystemSources(filters: SourceListFilters): SourceListR
   for (const source of items) summary[source.status] += 1;
 
   return {
-    items: items.slice(requestedOffset, requestedOffset + requestedLimit),
-    total: items.length,
-    limit: requestedLimit,
-    offset: requestedOffset,
-    summary: { ...summary, total: items.length },
+    result: {
+      items: items.slice(requestedOffset, requestedOffset + requestedLimit),
+      total: items.length,
+      limit: requestedLimit,
+      offset: requestedOffset,
+      summary: { ...summary, total: items.length },
+    },
+    scopeSources: items,
   };
 }
 
-function withLatestAssessments(result: SourceListResult) {
+function withLatestAssessments(result: SourceListResult, scopeSources: SourceDefinition[]) {
   const latest = getSourceAssessmentRepository().listLatestForSources(
     result.items.map((source) => source.id),
   );
@@ -91,23 +125,48 @@ function withLatestAssessments(result: SourceListResult) {
     getRegistryDatabase(),
     result.items.map((source) => source.id),
   );
-  const healthValues = Object.values(collectionHealth);
+  const scopeHealth = listSourceCollectionHealthBatched(
+    getRegistryDatabase(),
+    scopeSources.map((source) => source.id),
+  );
+  const collectionAlertSummary = summarizeSourceCollectionHealthOverview(scopeHealth);
+  const collectionAttentionSources = scopeSources
+    .map((source) => ({ source, health: scopeHealth[source.id] }))
+    .filter(
+      (record): record is { source: SourceDefinition; health: NonNullable<typeof record.health> } =>
+        Boolean(record.health && sourceCollectionHealthRequiresAttention(record.health)),
+    )
+    .sort((left, right) => {
+      const leftCritical = left.health.alerts.some((alert) => alert.severity === "CRITICAL")
+        ? 1
+        : 0;
+      const rightCritical = right.health.alerts.some((alert) => alert.severity === "CRITICAL")
+        ? 1
+        : 0;
+      if (leftCritical !== rightCritical) return rightCritical - leftCritical;
+      if (left.health.state !== right.health.state) {
+        if (left.health.state === "FAILING") return -1;
+        if (right.health.state === "FAILING") return 1;
+      }
+      return (
+        Date.parse(right.health.lastFailureAt ?? "1970-01-01T00:00:00Z") -
+        Date.parse(left.health.lastFailureAt ?? "1970-01-01T00:00:00Z")
+      );
+    })
+    .slice(0, 8)
+    .map(({ source, health }) => ({
+      sourceId: source.id,
+      sourceName: source.name,
+      state: health.state,
+      lastFailureAt: health.lastFailureAt,
+      latestFailure: health.latestFailure,
+      alerts: health.alerts,
+    }));
   return {
     ...result,
     collectionHealth,
-    collectionAlertSummary: {
-      sourcesRequiringAttention: healthValues.filter((health) => health.attentionRequired).length,
-      totalAlerts: healthValues.reduce((sum, health) => sum + health.alerts.length, 0),
-      overdueCollections: healthValues.filter((health) =>
-        health.alerts.some((alert) => alert.code === "COLLECTION_OVERDUE"),
-      ).length,
-      failureStreaks: healthValues.filter((health) =>
-        health.alerts.some((alert) => alert.code === "FAILURE_STREAK"),
-      ).length,
-      schedulerErrors: healthValues.filter((health) =>
-        health.alerts.some((alert) => alert.code === "SCHEDULER_ERROR"),
-      ).length,
-    },
+    collectionAlertSummary,
+    collectionAttentionSources,
     assessments: Object.fromEntries(
       latest.map((record) => [
         record.sourceId,
@@ -146,11 +205,14 @@ export async function GET(request: Request) {
       offset: integerValue(url.searchParams.get("offset"), "offset"),
     };
     assertSourceFilterValue(filters);
-    const result =
-      url.searchParams.get("hideLegacySystem") === "true"
-        ? listWithoutLegacySystemSources(filters)
-        : getSourceRepository().list(filters);
-    return NextResponse.json(withLatestAssessments(result));
+    const hideLegacySystem = url.searchParams.get("hideLegacySystem") === "true";
+    const context = hideLegacySystem
+      ? listWithoutLegacySystemSources(filters)
+      : {
+          result: getSourceRepository().list(filters),
+          scopeSources: listMatchingSources(filters, false),
+        };
+    return NextResponse.json(withLatestAssessments(context.result, context.scopeSources));
   } catch (error) {
     return apiError(error);
   }

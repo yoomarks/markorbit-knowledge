@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { ensureExecutionLedger } from "@markorbit/persistence/execution-ledger";
 import {
   listSourceCollectionHealth,
+  listSourceCollectionHealthBatched,
   summarizeSourceCollectionHealth,
+  summarizeSourceCollectionHealthOverview,
 } from "../source-collection-health";
 
 const WORKSPACE_ID = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
@@ -453,6 +455,132 @@ describe("source collection health", () => {
         expect.objectContaining({ code: "FAILURE_STREAK", severity: "WARNING" }),
       ]);
       expect(health.src_never?.state).toBe("NEVER_RUN");
+    } finally {
+      database.close();
+    }
+  });
+  it("aggregates operational health beyond the 100-source query boundary", () => {
+    const database = new DatabaseSync(":memory:");
+    try {
+      ensureExecutionLedger(database);
+      const sourceIds = Array.from({ length: 205 }, (_, index) => `src_scale_${index + 1}`);
+      const health = listSourceCollectionHealthBatched(
+        database,
+        sourceIds,
+        20,
+        new Date("2026-08-15T12:00:00.000Z"),
+      );
+      expect(Object.keys(health)).toHaveLength(205);
+      const overview = summarizeSourceCollectionHealthOverview(health);
+      expect(overview).toEqual({
+        scopeSources: 205,
+        sourcesRequiringAttention: 0,
+        totalAlerts: 0,
+        overdueCollections: 0,
+        failureStreaks: 0,
+        schedulerErrors: 0,
+        failingSources: 0,
+        retryingSources: 0,
+      });
+    } finally {
+      database.close();
+    }
+  });
+
+  it("exposes the latest persisted worker failure for operator diagnosis", () => {
+    const database = new DatabaseSync(":memory:");
+    try {
+      ensureExecutionLedger(database);
+      database.exec(`
+        CREATE TABLE execution_attempts (
+          id TEXT PRIMARY KEY,
+          job_id TEXT NOT NULL,
+          job_attempt INTEGER NOT NULL,
+          status TEXT NOT NULL,
+          document_json TEXT NOT NULL,
+          completed_at TEXT,
+          updated_at TEXT NOT NULL
+        ) STRICT;
+      `);
+      database.exec("PRAGMA foreign_keys = OFF;");
+      const sourceId = "src_failure_detail";
+      insertRun(database, {
+        id: "run_failure_detail",
+        sourceId,
+        planId: "pln_failure_detail",
+        status: "FAILED",
+        createdAt: "2026-08-15T12:00:00.000Z",
+        updatedAt: "2026-08-15T12:00:10.000Z",
+      });
+      database
+        .prepare(
+          `
+        INSERT INTO jobs (
+          id, run_id, workspace_id, source_id, plan_id, connector_id,
+          connector_version, job_type, status, attempt, available_at,
+          document_json, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+        )
+        .run(
+          "job_failure_detail",
+          "run_failure_detail",
+          WORKSPACE_ID,
+          sourceId,
+          "pln_failure_detail",
+          "crawl4ai-web",
+          "1.0.0",
+          "WEB_CRAWL",
+          "FAILED",
+          1,
+          "2026-08-15T12:00:00.000Z",
+          "{}",
+          "2026-08-15T12:00:00.000Z",
+          "2026-08-15T12:00:09.000Z",
+        );
+      database
+        .prepare(
+          `
+        INSERT INTO execution_attempts (
+          id, job_id, job_attempt, status, document_json, completed_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+        )
+        .run(
+          "exa_failure_detail",
+          "job_failure_detail",
+          1,
+          "FAILED",
+          JSON.stringify({
+            id: "exa_failure_detail",
+            jobId: "job_failure_detail",
+            jobAttempt: 1,
+            failure: {
+              code: "CRAWL4AI_TIMEOUT",
+              message: "Collector exceeded the governed timeout",
+              retryable: true,
+              occurredAt: "2026-08-15T12:00:08.000Z",
+            },
+          }),
+          "2026-08-15T12:00:08.000Z",
+          "2026-08-15T12:00:08.000Z",
+        );
+
+      const health = listSourceCollectionHealth(database, [sourceId])[sourceId]!;
+      expect(health.latestFailure).toEqual({
+        attemptId: "exa_failure_detail",
+        jobId: "job_failure_detail",
+        jobAttempt: 1,
+        code: "CRAWL4AI_TIMEOUT",
+        message: "Collector exceeded the governed timeout",
+        retryable: true,
+        occurredAt: "2026-08-15T12:00:08.000Z",
+      });
+      expect(summarizeSourceCollectionHealthOverview({ [sourceId]: health })).toMatchObject({
+        scopeSources: 1,
+        sourcesRequiringAttention: 1,
+        failingSources: 1,
+      });
     } finally {
       database.close();
     }
