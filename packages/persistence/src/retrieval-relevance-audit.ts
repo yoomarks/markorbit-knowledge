@@ -1016,6 +1016,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ro-osim-trademark-proceedings",
     query: "OSIM trademark opposition cancellation appeal forms Romania",
   },
+  {
+    id: "bg-trademarks-name",
+    targetId: "bg-bpo-trademarks",
+    query: "Bulgaria Patent Office trademark summary",
+  },
+  {
+    id: "bg-trademark-filing-name",
+    targetId: "bg-bpo-trademark-filing",
+    query: "Bulgaria national trademark registration filing opposition",
+  },
+  {
+    id: "bg-trademark-search-name",
+    targetId: "bg-bpo-trademark-search",
+    query: "Bulgaria State Register trademarks BPO",
+  },
+  {
+    id: "bg-trademark-fees-name",
+    targetId: "bg-bpo-trademark-fees",
+    query: "Bulgaria Patent Office tariff fees 2026 trademarks",
+  },
+  {
+    id: "bg-trademark-classification-name",
+    targetId: "bg-bpo-trademark-classification",
+    query: "Bulgaria trademark Nice classes goods services list",
+  },
+  {
+    id: "bg-trademark-law-name",
+    targetId: "bg-bpo-trademark-law",
+    query: "Bulgaria Trademarks Geographical Indications Act 2026",
+  },
+  {
+    id: "bg-trademark-proceedings-name",
+    targetId: "bg-bpo-trademark-proceedings",
+    query: "Bulgaria trademark opposition appeal revocation invalidity BPO",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",

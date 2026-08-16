@@ -2860,6 +2860,149 @@ export const OSIM_RO_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const BPO_BG: Authority = {
+  jurisdiction: "BG",
+  authorityName: "Patent Office of the Republic of Bulgaria (BPO)",
+  languages: ["bg-BG", "en"],
+  verificationEvidenceUri: "https://www.bpo.bg/en/obekti/marki/nay-vazhnoto-za-markata",
+};
+
+export const BPO_BG_SOURCE_COVERAGE_TARGETS = [
+  target(BPO_BG, {
+    id: "bg-bpo-trademarks",
+    family: "PORTAL",
+    displayName: "BPO Trademark Summary",
+    canonicalUri: "https://www.bpo.bg/en/obekti/marki/nay-vazhnoto-za-markata",
+    verificationEvidenceUri: "https://www.bpo.bg/en/obekti/marki/nay-vazhnoto-za-markata",
+    notes:
+      "The official trademark summary explains protectable signs, collective and certification marks, acquisition of rights and ten-year renewable protection.",
+  }),
+  target(BPO_BG, {
+    id: "bg-bpo-trademark-filing",
+    family: "FILING",
+    displayName: "BPO National Trademark Registration Procedure",
+    canonicalUri:
+      "https://www.bpo.bg/en/obekti/marki/vazmozhnost-za-registratsiya/registratsiya-po-natsionalen-red",
+    entrypoints: [
+      {
+        uri: "https://www.bpo.bg/en/obekti/marki/vazmozhnost-za-registratsiya/registratsiya-po-natsionalen-red",
+        label: "National trademark registration procedure",
+      },
+      {
+        uri: "https://portal.bpo.bg/bpo-portal/eservices/services-trademark/service-definition/tm-efiling",
+        label: "BPO electronic trademark filing",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "JSON"],
+    verificationEvidenceUri:
+      "https://www.bpo.bg/en/obekti/marki/vazmozhnost-za-registratsiya/registratsiya-po-natsionalen-red",
+    notes:
+      "The current national procedure covers electronic filing, filing-date requirements, absolute-ground examination, publication, three-month opposition and registration.",
+  }),
+  target(BPO_BG, {
+    id: "bg-bpo-trademark-search",
+    family: "SEARCH",
+    displayName: "BPO State Register of Trademarks",
+    canonicalUri: "https://portal.bpo.bg/bpo-registers/marks",
+    entrypoints: [
+      { uri: "https://www.bpo.bg/en/registri", label: "BPO state registers directory" },
+      { uri: "https://portal.bpo.bg/bpo-registers/marks", label: "State Register of Trademarks" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.bpo.bg/en/registri",
+    notes:
+      "BPO's official registers directory links the public State Register of Trademarks on portal.bpo.bg.",
+  }),
+  target(BPO_BG, {
+    id: "bg-bpo-trademark-fees",
+    family: "FEES",
+    displayName: "BPO 2026 Tariffs and Trademark Fees",
+    canonicalUri: "https://www.bpo.bg/en/tarifi",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.bpo.bg/en/tarifi",
+    notes:
+      "The official tariff surface publishes the Patent Office fee tariff and public-service price list in force from 1 January 2026, including trademark filing and proceeding fees.",
+  }),
+  target(BPO_BG, {
+    id: "bg-bpo-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "BPO Trademark Goods and Services Classification Guidance",
+    canonicalUri: "https://www.bpo.bg/en/chzv/chzv-natsionalna-marka",
+    entrypoints: [
+      {
+        uri: "https://www.bpo.bg/en/chzv/chzv-natsionalna-marka",
+        label: "Current national trademark guidance with Nice-class requirements",
+      },
+      {
+        uri: "https://www.bpo.bg/en/obekti/marki/klasifikatsii/nice-klasifikatsiya",
+        label: "BPO Nice Classification reference page",
+      },
+    ],
+    verificationEvidenceUri: "https://www.bpo.bg/en/chzv/chzv-natsionalna-marka",
+    notes:
+      "Current BPO national guidance requires applicants to choose Nice classes and provide the full goods/services list. The standalone BPO Nice page remains on a 2024 version, so it is retained only as a supplementary reference rather than the current canonical source.",
+  }),
+  target(BPO_BG, {
+    id: "bg-bpo-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "BPO Trademark Legislation",
+    canonicalUri: "https://www.bpo.bg/bg/obekti/marki/zakonodatelstvo",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.bpo.bg/bg/obekti/marki/zakonodatelstvo",
+    notes:
+      "The Bulgarian-language official legislation page publishes the Trademarks and Geographical Indications Act as amended in State Gazette No. 24 of 6 March 2026, together with application, opposition and dispute ordinances.",
+  }),
+  target(BPO_BG, {
+    id: "bg-bpo-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "BPO Trademark Opposition, Appeals, Revocation and Invalidity",
+    canonicalUri: "https://www.bpo.bg/en/obekti/sporove/sporove-protsedura",
+    entrypoints: [
+      {
+        uri: "https://www.bpo.bg/en/obekti/sporove/sporove-protsedura",
+        label: "Industrial-property dispute procedure",
+      },
+      {
+        uri: "https://www.bpo.bg/en/obekti/sporove/sporove-elektronni-uslugi",
+        label: "Electronic trademark appeal, revocation and invalidity services",
+      },
+      {
+        uri: "https://www.bpo.bg/bg/obekti/marki/marki-elektronni-uslugi/",
+        label: "Electronic trademark opposition service",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri: "https://www.bpo.bg/en/obekti/sporove/sporove-protsedura",
+    notes:
+      "BPO dispute panels hear opposition appeals and requests for invalidity, revocation and cancellation; official electronic services expose the corresponding trademark submissions.",
+  }),
+  target(BPO_BG, {
+    id: "bg-bpo-official-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "BPO Official Bulletin",
+    canonicalUri: "https://www.bpo.bg/en/publikacii/bulletin",
+    entrypoints: [
+      { uri: "https://www.bpo.bg/en/publikacii/bulletin", label: "Official Bulletin guidance" },
+      { uri: "https://portal.bpo.bg/bpo-journal/", label: "Electronic BPO Bulletin" },
+    ],
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "JSON", "PDF"],
+    verificationEvidenceUri: "https://www.bpo.bg/en/publikacii/bulletin",
+    notes:
+      "The official bulletin is electronic-only and issued twice monthly; it publishes trademark applications, registrations and State Register changes.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -2954,5 +3097,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...INDPROP_SK_SOURCE_COVERAGE_TARGETS,
   ...HIPO_HU_SOURCE_COVERAGE_TARGETS,
   ...OSIM_RO_SOURCE_COVERAGE_TARGETS,
+  ...BPO_BG_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
