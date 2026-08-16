@@ -17,8 +17,6 @@ jobs:
           fetch-depth: 0
       - run: python .github/tmp/patch_no_nipo_source_coverage.py
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 24
