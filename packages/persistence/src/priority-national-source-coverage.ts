@@ -2488,6 +2488,111 @@ export const UPV_CZ_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const INDPROP_SK: Authority = {
+  jurisdiction: "SK",
+  authorityName: "Industrial Property Office of the Slovak Republic",
+  languages: ["sk-SK", "en"],
+  verificationEvidenceUri: "https://www.indprop.gov.sk/en/trade-marks-and-designs/trade-marks",
+};
+
+export const INDPROP_SK_SOURCE_COVERAGE_TARGETS = [
+  target(INDPROP_SK, {
+    id: "sk-indprop-trademarks",
+    family: "PORTAL",
+    displayName: "Slovak Industrial Property Office Trade Marks",
+    canonicalUri: "https://www.indprop.gov.sk/en/trade-marks-and-designs/trade-marks",
+  }),
+  target(INDPROP_SK, {
+    id: "sk-indprop-trademark-filing",
+    family: "FILING",
+    displayName: "Slovak IPO File a Trade Mark Application",
+    canonicalUri:
+      "https://www.indprop.gov.sk/en/trade-marks-and-designs/trade-marks/filing-a-trade-mark-application/file-a-trade-mark-application",
+    verificationEvidenceUri:
+      "https://www.indprop.gov.sk/en/trade-marks-and-designs/trade-marks/filing-a-trade-mark-application/file-a-trade-mark-application",
+    notes:
+      "The official filing page covers electronic and paper applications, payment timing, examination/publication and Fast Track conditions.",
+  }),
+  target(INDPROP_SK, {
+    id: "sk-indprop-trademark-search",
+    family: "SEARCH",
+    displayName: "Slovak IPO Webregisters",
+    canonicalUri:
+      "https://www.indprop.gov.sk/en/databases-registries-and-classifications/databases-and-registries",
+    entrypoints: [
+      {
+        uri: "https://www.indprop.gov.sk/en/databases-registries-and-classifications/databases-and-registries",
+        label: "Databases and registries guidance",
+      },
+      { uri: "https://wbr.indprop.gov.sk", label: "Webregister direct access" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.indprop.gov.sk/en/databases-registries-and-classifications/databases-and-registries",
+    notes:
+      "The official Webregister contains trademark applications and registrations maintained by the Office and is updated daily.",
+  }),
+  target(INDPROP_SK, {
+    id: "sk-indprop-trademark-fees",
+    family: "FEES",
+    displayName: "Slovak IPO Trade Mark Fees",
+    canonicalUri: "https://www.indprop.gov.sk/en/trade-marks-and-designs/trade-marks/fees",
+    verificationEvidenceUri:
+      "https://www.indprop.gov.sk/en/trade-marks-and-designs/trade-marks/fees",
+    notes:
+      "The official fee page publishes current administrative fees for trademark filing and subsequent proceedings under Act No. 145/1995 Coll.",
+  }),
+  target(INDPROP_SK, {
+    id: "sk-indprop-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Slovak IPO Trademark Classification Systems",
+    canonicalUri:
+      "https://www.indprop.gov.sk/en/trade-marks-and-designs/trade-marks/classification-systems-trade-marks",
+    verificationEvidenceUri:
+      "https://www.indprop.gov.sk/en/trade-marks-and-designs/trade-marks/classification-systems-trade-marks",
+    notes:
+      "The current official page identifies NCL(13-2026) as the Nice Classification version in force from 1 January 2026 and links the ezts goods/services tool.",
+  }),
+  target(INDPROP_SK, {
+    id: "sk-indprop-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Slovak IPO Trademark Legislation",
+    canonicalUri:
+      "https://www.indprop.gov.sk/en/legislation/legislation-of-the-slovak-republic/basic-legal-provisions-in-force/trade-marks",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.indprop.gov.sk/en/legislation/legislation-of-the-slovak-republic/basic-legal-provisions-in-force/trade-marks",
+    notes:
+      "The official legislation page publishes Act No. 506/2009 Coll. on Trademarks and implementing Decree No. 567/2009 Coll., as amended.",
+  }),
+  target(INDPROP_SK, {
+    id: "sk-indprop-trademark-proceedings-forms",
+    family: "PROCEEDINGS",
+    displayName: "Slovak IPO Trademark Proceedings Forms",
+    canonicalUri: "https://www.indprop.gov.sk/en/documents-and-forms/trade-marks",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF", "DOCX"],
+    verificationEvidenceUri: "https://www.indprop.gov.sk/en/documents-and-forms/trade-marks",
+    notes:
+      "The official trademark forms surface includes opposition, revocation, invalidity, renewal, transfer, licence and international-trademark proceedings forms.",
+  }),
+  target(INDPROP_SK, {
+    id: "sk-indprop-official-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Slovak IPO Official Gazette",
+    canonicalUri: "https://indprop.gov.sk/en/products-and-services",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://indprop.gov.sk/en/products-and-services",
+    notes:
+      "The official Gazette includes trademarks and is published twice monthly; the official 2026 schedule lists issues through December and includes issue 15/2026 dated 12 August 2026.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -2579,5 +2684,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...INPI_PT_SOURCE_COVERAGE_TARGETS,
   ...UPRP_PL_SOURCE_COVERAGE_TARGETS,
   ...UPV_CZ_SOURCE_COVERAGE_TARGETS,
+  ...INDPROP_SK_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
