@@ -6,6 +6,7 @@ on:
       - codex/bd-dpdt-source-coverage-v1
     paths:
       - .github/tmp/patch_bd_dpdt_source_coverage.py
+      - .github/tmp/fix_bd_dpdt_count_assertions.py
       - .github/workflows/tmp-bd-dpdt-source-coverage.yml
 
 permissions:
@@ -20,7 +21,9 @@ jobs:
           ref: codex/bd-dpdt-source-coverage-v1
           fetch-depth: 0
       - name: Apply Bangladesh DPDT patch
-        run: python .github/tmp/patch_bd_dpdt_source_coverage.py
+        run: |
+          python .github/tmp/patch_bd_dpdt_source_coverage.py
+          python .github/tmp/fix_bd_dpdt_count_assertions.py
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
