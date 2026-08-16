@@ -2260,6 +2260,137 @@ export const INPI_PT_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const UPRP_PL: Authority = {
+  jurisdiction: "PL",
+  authorityName: "Patent Office of the Republic of Poland (UPRP)",
+  languages: ["pl-PL"],
+  verificationEvidenceUri:
+    "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/znaki-towarowe-informacje-podstawowe",
+};
+
+export const UPRP_PL_SOURCE_COVERAGE_TARGETS = [
+  target(UPRP_PL, {
+    id: "pl-uprp-trademarks",
+    family: "PORTAL",
+    displayName: "UPRP Trademark Information",
+    canonicalUri:
+      "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/znaki-towarowe-informacje-podstawowe",
+    verificationEvidenceUri:
+      "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/znaki-towarowe-informacje-podstawowe",
+  }),
+  target(UPRP_PL, {
+    id: "pl-uprp-trademark-filing",
+    family: "FILING",
+    displayName: "UPRP National Trademark Procedure",
+    canonicalUri: "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/procedura-krajowa-",
+    entrypoints: [
+      {
+        uri: "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/procedura-krajowa-",
+        label: "National trademark procedure",
+      },
+      {
+        uri: "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe-/znaki-towarowe-informacje-podstawowe/jaka-dokumentacje-nalezy-zlozyc",
+        label: "Trademark filing documentation",
+      },
+    ],
+    verificationEvidenceUri:
+      "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/procedura-krajowa-",
+    notes:
+      "The national procedure gives the filing sequence, prior-search tools, Nice-classified goods/services requirements, publication and opposition steps.",
+  }),
+  target(UPRP_PL, {
+    id: "pl-uprp-trademark-search",
+    family: "SEARCH",
+    displayName: "UPRP e-Wyszukiwarka",
+    canonicalUri: "https://uprp.gov.pl/pl/uslugi-online/e-wyszukiwarka",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://uprp.gov.pl/pl/uslugi-online/e-wyszukiwarka",
+    notes:
+      "e-Wyszukiwarka is UPRP's unified public search across industrial-property databases and BUP/WUP publications.",
+  }),
+  target(UPRP_PL, {
+    id: "pl-uprp-trademark-fees",
+    family: "FEES",
+    displayName: "UPRP Trademark Procedure Fees",
+    canonicalUri: "https://uprp.gov.pl/pl/przedmioty-ochrony/inne/oplaty-w-postepowaniu",
+    entrypoints: [
+      {
+        uri: "https://uprp.gov.pl/pl/przedmioty-ochrony/inne/oplaty-w-postepowaniu",
+        label: "Official procedure fee table",
+      },
+      {
+        uri: "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/procedura-krajowa2/oplaty-zgloszeniowe",
+        label: "National trademark filing fees",
+      },
+    ],
+    verificationEvidenceUri: "https://uprp.gov.pl/pl/przedmioty-ochrony/inne/oplaty-w-postepowaniu",
+  }),
+  target(UPRP_PL, {
+    id: "pl-uprp-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "UPRP Nice Classification",
+    canonicalUri: "https://uprp.gov.pl/pl/klasyfikacje",
+    entrypoints: [
+      { uri: "https://uprp.gov.pl/pl/klasyfikacje", label: "UPRP international classifications" },
+      {
+        uri: "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/procedura-krajowa-",
+        label: "Trademark procedure Nice classification guidance",
+      },
+    ],
+    verificationEvidenceUri: "https://uprp.gov.pl/pl/klasyfikacje",
+    notes:
+      "UPRP lists the International Classification of Goods and Services (Nice Classification); its national trademark procedure requires a Nice-classified goods/services list and recommends TMclass.",
+  }),
+  target(UPRP_PL, {
+    id: "pl-uprp-trademark-guidelines",
+    family: "EXAMINATION_MANUAL",
+    displayName: "UPRP President Trademark Guidelines",
+    canonicalUri:
+      "https://uprp.gov.pl/pl/przedmioty-ochrony/ogolne-wytyczne-prezesa-uprp/wytyczne-w-zakresie-znakow-towarowych",
+    verificationEvidenceUri:
+      "https://uprp.gov.pl/pl/przedmioty-ochrony/ogolne-wytyczne-prezesa-uprp/wytyczne-w-zakresie-znakow-towarowych",
+    notes:
+      "The President's trademark guidelines reflect current law and harmonize UPRP interpretation and examination practice.",
+  }),
+  target(UPRP_PL, {
+    id: "pl-uprp-trademark-law-proceedings",
+    family: "LEGAL_TEXTS",
+    displayName: "UPRP Trademark Law and Opposition Procedure",
+    canonicalUri:
+      "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/procedura-krajowa-/procedura-sprzeciwowa",
+    entrypoints: [
+      {
+        uri: "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/znaki-towarowe-informacje-podstawowe",
+        label: "Trademark legal acts",
+      },
+      {
+        uri: "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/procedura-krajowa-/procedura-sprzeciwowa",
+        label: "Trademark opposition procedure",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://uprp.gov.pl/pl/przedmioty-ochrony/znaki-towarowe/znaki-towarowe-informacje-podstawowe",
+    notes:
+      "The official trademark information page lists the Industrial Property Law and implementing trademark regulations; the national opposition procedure provides the three-month post-publication opposition framework.",
+  }),
+  target(UPRP_PL, {
+    id: "pl-uprp-trademark-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "UPRP Biuletyn Urzędu Patentowego - Trademarks",
+    canonicalUri: "https://uprp.gov.pl/pl/publikacje/biuletyn-i-wiadomo%C5%9Bci-uprp",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://uprp.gov.pl/pl/publikacje/biuletyn-i-wiadomo%C5%9Bci-uprp",
+    notes:
+      "UPRP publishes weekly 2026 trademark BUP issues; publication of trademark applications starts the statutory opposition period.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -2349,5 +2480,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...PATENTAMT_AT_SOURCE_COVERAGE_TARGETS,
   ...IPOI_IE_SOURCE_COVERAGE_TARGETS,
   ...INPI_PT_SOURCE_COVERAGE_TARGETS,
+  ...UPRP_PL_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
