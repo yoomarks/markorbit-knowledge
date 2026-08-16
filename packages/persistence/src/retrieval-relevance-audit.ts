@@ -406,6 +406,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "br-inpi-trademark-appeals-nullity",
     query: "trademark appeals nullity",
   },
+  {
+    id: "mx-trademarks-name",
+    targetId: "mx-impi-trademarks",
+    query: "Mexico IMPI trademarks",
+  },
+  {
+    id: "mx-trademark-filing-name",
+    targetId: "mx-impi-trademark-filing",
+    query: "trademark filing",
+  },
+  {
+    id: "mx-trademark-search-name",
+    targetId: "mx-impi-trademark-search",
+    query: "trademark search MARCia",
+  },
+  {
+    id: "mx-trademark-fees-name",
+    targetId: "mx-impi-trademark-fees",
+    query: "trademark fees",
+  },
+  {
+    id: "mx-trademark-forms-name",
+    targetId: "mx-impi-trademark-forms",
+    query: "trademark forms",
+  },
+  {
+    id: "mx-legal-framework-name",
+    targetId: "mx-impi-legal-framework",
+    query: "industrial property legal framework",
+  },
+  {
+    id: "mx-trademark-classification-name",
+    targetId: "mx-impi-trademark-classification",
+    query: "trademark classification ClasNiza",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
