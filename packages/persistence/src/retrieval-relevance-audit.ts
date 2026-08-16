@@ -1751,6 +1751,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "my-myipo-trademark-proceedings",
     query: "Malaysia MyIPO trademark opposition hearing appeal renewal proceedings",
   },
+  {
+    id: "ph-trademarks-name",
+    targetId: "ph-ipophl-trademarks",
+    query: "Philippines IPOPHL trademark services search filing publication maintenance",
+  },
+  {
+    id: "ph-trademark-filing-name",
+    targetId: "ph-ipophl-trademark-filing",
+    query: "Philippines IPOPHL eTMFile trademark online filing application",
+  },
+  {
+    id: "ph-trademark-search-name",
+    targetId: "ph-ipophl-trademark-search",
+    query: "Philippines IPOPHL trademark database search status application holder",
+  },
+  {
+    id: "ph-trademark-fees-name",
+    targetId: "ph-ipophl-trademark-fees",
+    query: "Philippines IPOPHL trademark fees filing renewal DAU publication",
+  },
+  {
+    id: "ph-trademark-classification-name",
+    targetId: "ph-ipophl-trademark-classification",
+    query: "Philippines IPOPHL Nice classification goods services eTMFile",
+  },
+  {
+    id: "ph-trademark-law-name",
+    targetId: "ph-ipophl-trademark-law",
+    query: "Philippines IP Code trademark regulations 2023 IPOPHL",
+  },
+  {
+    id: "ph-trademark-examination-guidelines-name",
+    targetId: "ph-ipophl-trademark-examination-guidelines",
+    query: "Philippines IPOPHL trademark examination guidelines Bureau Trademarks",
+  },
+  {
+    id: "ph-trademark-proceedings-name",
+    targetId: "ph-ipophl-trademark-proceedings",
+    query: "Philippines IPOPHL trademark opposition cancellation inter partes Bureau Legal Affairs",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
