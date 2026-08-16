@@ -798,6 +798,113 @@ export const INPI_BR_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IMPI_MX: Authority = {
+  jurisdiction: "MX",
+  authorityName: "Instituto Mexicano de la Propiedad Industrial",
+  languages: ["es-MX"],
+  verificationEvidenceUri: "https://www.gob.mx/impi/documentos/registro-de-marcas",
+};
+
+export const IMPI_MX_SOURCE_COVERAGE_TARGETS = [
+  target(IMPI_MX, {
+    id: "mx-impi-trademarks",
+    family: "PORTAL",
+    displayName: "Mexico IMPI Trademarks",
+    canonicalUri:
+      "https://www.gob.mx/impi/acciones-y-programas/servicios-que-ofrece-el-impi-marcas",
+    verificationEvidenceUri: "https://www.gob.mx/impi/documentos/registro-de-marcas",
+  }),
+  target(IMPI_MX, {
+    id: "mx-impi-trademark-filing",
+    family: "FILING",
+    displayName: "Mexico IMPI Trademark Filing",
+    canonicalUri: "https://www.gob.mx/impi/documentos/registro-de-marcas",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gob.mx/impi/documentos/registro-de-marcas",
+  }),
+  target(IMPI_MX, {
+    id: "mx-impi-trademark-search",
+    family: "SEARCH",
+    displayName: "Mexico IMPI Trademark Search MARCia",
+    canonicalUri: "https://marcia.impi.gob.mx/marcas/search/quick",
+    entrypoints: [
+      { uri: "https://marcia.impi.gob.mx/marcas/search/quick", label: "MARCia quick search" },
+      {
+        uri: "https://www.gob.mx/impi/documentos/registro-de-marcas",
+        label: "IMPI trademark guidance",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON", "IMAGE"],
+    verificationEvidenceUri: "https://www.gob.mx/impi/documentos/registro-de-marcas",
+  }),
+  target(IMPI_MX, {
+    id: "mx-impi-trademark-fees",
+    family: "FEES",
+    displayName: "Mexico IMPI Trademark Fees",
+    canonicalUri:
+      "https://www.gob.mx/impi/acciones-y-programas/servicios-que-ofrece-el-impi-tarifas-215115",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.gob.mx/impi/acciones-y-programas/servicios-que-ofrece-el-impi-tarifas-215115",
+  }),
+  target(IMPI_MX, {
+    id: "mx-impi-trademark-forms",
+    family: "FILING",
+    displayName: "Mexico IMPI Trademark Forms",
+    canonicalUri:
+      "https://www.gob.mx/impi/acciones-y-programas/servicios-que-ofrece-el-impi-formatos",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.gob.mx/impi/acciones-y-programas/servicios-que-ofrece-el-impi-formatos",
+  }),
+  target(IMPI_MX, {
+    id: "mx-impi-legal-framework",
+    family: "LEGAL_TEXTS",
+    displayName: "Mexico IMPI Industrial Property Legal Framework",
+    canonicalUri: "https://www.gob.mx/impi/documentos/marco-juridico-nacional-274326",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.gob.mx/impi/documentos/marco-juridico-nacional-274326",
+    notes:
+      "The official IMPI legal framework hub tracks current legislation and regulations; it states that the Diario Oficial de la Federación remains the legally authoritative publication.",
+  }),
+  target(IMPI_MX, {
+    id: "mx-impi-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Mexico IMPI Trademark Classification ClasNiza",
+    canonicalUri: "https://clasniza.impi.gob.mx/buscador",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://clasniza.impi.gob.mx/",
+  }),
+  target(IMPI_MX, {
+    id: "mx-impi-trademark-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Mexico IMPI Gaceta de la Propiedad Industrial",
+    canonicalUri: "https://siga.impi.gob.mx/inicio",
+    entrypoints: [
+      { uri: "https://siga.impi.gob.mx/inicio", label: "SIGA 2.0" },
+      {
+        uri: "https://www.gob.mx/impi/acciones-y-programas/gaceta-de-la-propiedad-industrial",
+        label: "Official Gaceta guidance",
+      },
+    ],
+    coverageTier: "CHANGE_SIGNAL",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://www.gob.mx/impi/acciones-y-programas/gaceta-de-la-propiedad-industrial",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -875,5 +982,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IP_INDIA_SOURCE_COVERAGE_TARGETS,
   ...INPI_FR_SOURCE_COVERAGE_TARGETS,
   ...INPI_BR_SOURCE_COVERAGE_TARGETS,
+  ...IMPI_MX_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
