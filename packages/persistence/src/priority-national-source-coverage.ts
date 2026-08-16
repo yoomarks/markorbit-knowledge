@@ -4610,6 +4610,141 @@ export const SAIP_SA_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const MOET_AE: Authority = {
+  jurisdiction: "AE",
+  authorityName: "Ministry of Economy & Tourism (MoET)",
+  languages: ["ar-AE", "en"],
+  verificationEvidenceUri: "https://www.moet.gov.ae/en/w/trademark-services-1",
+};
+
+export const MOET_AE_SOURCE_COVERAGE_TARGETS = [
+  target(MOET_AE, {
+    id: "ae-moet-trademarks",
+    family: "PORTAL",
+    displayName: "UAE MoET Trademark Services",
+    canonicalUri: "https://www.moet.gov.ae/en/w/trademark-services-1",
+    verificationEvidenceUri: "https://www.moet.gov.ae/en/w/trademark-services-1",
+    notes:
+      "The current Ministry of Economy & Tourism trademark-services hub is the official directory for UAE trademark registration, inquiry, renewal, recordals, opposition, cancellation and related procedures.",
+  }),
+  target(MOET_AE, {
+    id: "ae-moet-trademark-filing",
+    family: "FILING",
+    displayName: "UAE MoET Register Trademark",
+    canonicalUri: "https://www.moet.gov.ae/en/w/register-trademark%C2%A0",
+    entrypoints: [
+      {
+        uri: "https://www.moet.gov.ae/en/w/register-trademark%C2%A0",
+        label: "Current national trademark registration service",
+      },
+      {
+        uri: "https://www.moet.gov.ae/en/services",
+        label: "MoET eServices catalog and trademark service entry",
+      },
+    ],
+    verificationEvidenceUri: "https://www.moet.gov.ae/en/w/register-trademark%C2%A0",
+    notes:
+      "The current registration service documents filing requirements, examination, official-bulletin publication, a 30-day objection period and final registration; owners outside the UAE must file through a registration agent.",
+  }),
+  target(MOET_AE, {
+    id: "ae-moet-trademark-search",
+    family: "SEARCH",
+    displayName: "UAE MoET Trademark Inquiry",
+    canonicalUri: "https://www.moet.gov.ae/en/w/trademark-inquiry",
+    verificationEvidenceUri: "https://www.moet.gov.ae/en/w/trademark-inquiry",
+    notes:
+      "The official Trademark Inquiry service provides immediate Ministry search results for companies, establishments and individuals through the MoET website and smart app.",
+  }),
+  target(MOET_AE, {
+    id: "ae-moet-trademark-fees",
+    family: "FEES",
+    displayName: "UAE MoET Trademark Fees",
+    canonicalUri: "https://www.moet.gov.ae/en/w/pay-publishing-fees-for-trademark-registration",
+    entrypoints: [
+      {
+        uri: "https://www.moet.gov.ae/en/w/register-trademark%C2%A0",
+        label: "Examination, publication and final registration fees",
+      },
+      {
+        uri: "https://www.moet.gov.ae/en/w/pay-publishing-fees-for-trademark-registration",
+        label: "Publication fee and late-payment penalty",
+      },
+      {
+        uri: "https://www.moet.gov.ae/en/w/renew-registration-of-trademark",
+        label: "Trademark renewal and late-renewal fees",
+      },
+    ],
+    verificationEvidenceUri: "https://www.moet.gov.ae/en/w/register-trademark%C2%A0",
+    notes:
+      "Current MoET service pages publish the national examination, publication, registration, renewal and late-payment charges; fee evidence is kept on live service pages rather than frozen into the catalog as permanent legal truth.",
+  }),
+  target(MOET_AE, {
+    id: "ae-moet-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "UAE MoET Nice Classification Practice",
+    canonicalUri: "https://www.moet.gov.ae/en/trademark-services",
+    entrypoints: [
+      {
+        uri: "https://www.moet.gov.ae/en/trademark-services",
+        label: "Current trademark service surface",
+      },
+      {
+        uri: "https://www.moet.gov.ae/en/w/register-trademark%C2%A0",
+        label: "Registration requirements for classified goods and services",
+      },
+    ],
+    verificationEvidenceUri: "https://www.moet.gov.ae/en/trademark-services",
+    notes:
+      "MoET identifies the Nice Classification (NCL) as the classification system used for trademark goods and services. The catalog deliberately avoids freezing a specific Nice edition as permanent current truth.",
+  }),
+  target(MOET_AE, {
+    id: "ae-moet-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "UAE MoET Intellectual Property Legislations - Trademarks",
+    canonicalUri: "https://www.moet.gov.ae/en/intellectual-property-legislations",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.moet.gov.ae/en/intellectual-property-legislations",
+    notes:
+      "The official IP legislation hub publishes Federal Decree-Law No. 36 of 2021 on Trademarks, Cabinet Decision No. 57 of 2022 on its Executive Regulations and later Ministry fee/agent measures.",
+  }),
+  target(MOET_AE, {
+    id: "ae-moet-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "UAE MoET Trademark Opposition and Review Procedures",
+    canonicalUri: "https://www.moet.gov.ae/en/w/trademark-objection-request",
+    entrypoints: [
+      {
+        uri: "https://www.moet.gov.ae/en/w/trademark-objection-request",
+        label: "Trademark objection request",
+      },
+      {
+        uri: "https://www.moet.gov.ae/en/w/responding-to-an-objection-against-the-acceptance-of-trademark-registration",
+        label: "Response to trademark objection",
+      },
+      {
+        uri: "https://www.moet.gov.ae/en/w/register-trademark%C2%A0",
+        label: "Registration rejection appeal and publication-objection timeline",
+      },
+    ],
+    verificationEvidenceUri: "https://www.moet.gov.ae/en/w/trademark-objection-request",
+    notes:
+      "MoET publishes separate objection and objection-response procedures, while the current registration service records the 30-day objection window and the administrative appeal path after rejection.",
+  }),
+  target(MOET_AE, {
+    id: "ae-moet-trademark-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "UAE MoET Trademark Bulletin",
+    canonicalUri: "https://www.moet.gov.ae/en/our-publications",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.moet.gov.ae/en/our-publications",
+    notes:
+      "The official publications surface continuously publishes numbered UAE Trademark Bulletin issues. Publication of an accepted mark starts the current 30-day objection period documented by MoET.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -4716,5 +4851,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...TURKPATENT_TR_SOURCE_COVERAGE_TARGETS,
   ...ZIS_RS_SOURCE_COVERAGE_TARGETS,
   ...SAIP_SA_SOURCE_COVERAGE_TARGETS,
+  ...MOET_AE_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
