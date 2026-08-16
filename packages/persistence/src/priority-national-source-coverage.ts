@@ -405,6 +405,82 @@ export const IPOS_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const DPMA: Authority = {
+  jurisdiction: "DE",
+  authorityName: "German Patent and Trade Mark Office",
+  languages: ["de-DE", "en"],
+  verificationEvidenceUri: "https://www.dpma.de/english/trade_marks/",
+};
+
+export const DPMA_SOURCE_COVERAGE_TARGETS = [
+  target(DPMA, {
+    id: "de-dpma-trademarks",
+    family: "PORTAL",
+    displayName: "DPMA Trade Marks",
+    canonicalUri: "https://www.dpma.de/english/trade_marks/",
+  }),
+  target(DPMA, {
+    id: "de-dpma-trademark-filing",
+    family: "FILING",
+    displayName: "DPMA Required Data for Filing a Trade Mark Application",
+    canonicalUri:
+      "https://www.dpma.de/english/trade_marks/application/required_data_for_filing_an_application/index.html",
+    verificationEvidenceUri:
+      "https://www.dpma.de/english/trade_marks/application/required_data_for_filing_an_application/index.html",
+  }),
+  target(DPMA, {
+    id: "de-dpma-trademark-search",
+    family: "SEARCH",
+    displayName: "DPMA Trade Mark Search Guidance",
+    canonicalUri: "https://www.dpma.de/english/trade_marks/trade_mark_search/",
+    entrypoints: [
+      {
+        uri: "https://www.dpma.de/english/trade_marks/trade_mark_search/",
+        label: "Trade mark search guidance",
+      },
+      { uri: "https://www.dpma.de/english/search/dpmaregister/", label: "DPMAregister guidance" },
+    ],
+    verificationEvidenceUri: "https://www.dpma.de/english/search/dpmaregister/",
+  }),
+  target(DPMA, {
+    id: "de-dpma-trademark-fees",
+    family: "FEES",
+    displayName: "DPMA Trade Mark Fees",
+    canonicalUri: "https://www.dpma.de/english/services/fees/trademarks/index.html",
+    verificationEvidenceUri: "https://www.dpma.de/english/services/fees/trademarks/index.html",
+  }),
+  target(DPMA, {
+    id: "de-dpma-trademark-law-guidelines",
+    family: "LEGAL_TEXTS",
+    displayName: "DPMA Trade Mark Law and Guidelines",
+    canonicalUri: "https://www.dpma.de/english/our_office/law/index.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.dpma.de/english/our_office/law/index.html",
+    notes:
+      "The official law page links the Trade Mark Act and Ordinance plus German-language examination and opposition guidelines.",
+  }),
+  target(DPMA, {
+    id: "de-dpma-trademark-forms",
+    family: "FILING",
+    displayName: "DPMA Trade Mark Forms and Applicant Information",
+    canonicalUri: "https://www.dpma.de/english/services/forms/trade_marks/index.html",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.dpma.de/english/services/forms/trade_marks/index.html",
+  }),
+  target(DPMA, {
+    id: "de-dpma-important-notices",
+    family: "POLICY_NOTICES",
+    displayName: "DPMA Important Notices",
+    canonicalUri:
+      "https://www.dpma.de/english/our_office/publications/important_notices/index.html",
+    coverageTier: "CHANGE_SIGNAL",
+    verificationEvidenceUri:
+      "https://www.dpma.de/english/our_office/publications/important_notices/index.html",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -478,5 +554,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...UKIPO_SOURCE_COVERAGE_TARGETS,
   ...IP_AUSTRALIA_SOURCE_COVERAGE_TARGETS,
   ...IPOS_SOURCE_COVERAGE_TARGETS,
+  ...DPMA_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

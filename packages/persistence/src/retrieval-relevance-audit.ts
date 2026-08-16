@@ -274,6 +274,32 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "sg-ipos-trademark-guides-work-manual",
     query: "work manual",
   },
+  { id: "de-trademarks-name", targetId: "de-dpma-trademarks", query: "trade marks" },
+  {
+    id: "de-trademark-filing-name",
+    targetId: "de-dpma-trademark-filing",
+    query: "required data",
+  },
+  {
+    id: "de-trademark-search-name",
+    targetId: "de-dpma-trademark-search",
+    query: "trade mark searches",
+  },
+  {
+    id: "de-trademark-fees-name",
+    targetId: "de-dpma-trademark-fees",
+    query: "trade mark fees",
+  },
+  {
+    id: "de-trademark-law-name",
+    targetId: "de-dpma-trademark-law-guidelines",
+    query: "trade mark act",
+  },
+  {
+    id: "de-trademark-forms-name",
+    targetId: "de-dpma-trademark-forms",
+    query: "trade mark applicants",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
