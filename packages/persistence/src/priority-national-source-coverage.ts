@@ -6750,6 +6750,143 @@ export const DIP_TH_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const CIPC_ZA: Authority = {
+  jurisdiction: "ZA",
+  authorityName: "Companies and Intellectual Property Commission (CIPC), South Africa",
+  languages: ["en-ZA"],
+  verificationEvidenceUri: "https://www.cipc.co.za/?page_id=4118",
+};
+
+export const CIPC_ZA_SOURCE_COVERAGE_TARGETS = [
+  target(CIPC_ZA, {
+    id: "za-cipc-trademarks",
+    family: "PORTAL",
+    displayName: "South Africa CIPC Trade Mark Registration Portal",
+    canonicalUri: "https://www.cipc.co.za/?page_id=4118",
+    entrypoints: [
+      { uri: "https://www.cipc.co.za/?page_id=4118", label: "Register Trade Mark guidance" },
+      { uri: "https://iponline.cipc.co.za/", label: "CIPC Intellectual Property Online" },
+    ],
+    verificationEvidenceUri: "https://www.cipc.co.za/?page_id=4118",
+    notes:
+      "CIPC administers South Africa's Trade Marks Register and its registration page links the national search, application, classification, forms/fees, maintenance, practice guidance and legal resources.",
+  }),
+  target(CIPC_ZA, {
+    id: "za-cipc-trademark-filing",
+    family: "FILING",
+    displayName: "South Africa CIPC IPOnline Trade Mark Filing",
+    canonicalUri: "https://iponline.cipc.co.za/Trademarks/EFiling/NewMarkNotice.aspx",
+    entrypoints: [
+      {
+        uri: "https://iponline.cipc.co.za/Trademarks/EFiling/NewMarkNotice.aspx",
+        label: "IPOnline new trade mark filing",
+      },
+      {
+        uri: "https://iponline.cipc.co.za/Publications/Notices.aspx",
+        label: "CIPC IP e-filing notices and user documentation",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri: "https://iponline.cipc.co.za/",
+    notes:
+      "CIPC IPOnline exposes the dedicated Apply for Trade Mark transaction and manages authenticated IP e-filing through CIPC customer accounts.",
+  }),
+  target(CIPC_ZA, {
+    id: "za-cipc-trademark-search",
+    family: "SEARCH",
+    displayName: "South Africa CIPC Free Trade Mark Search",
+    canonicalUri: "https://iponline.cipc.co.za/Trademarks/Search/FreeTMSearchNotice.aspx",
+    entrypoints: [
+      {
+        uri: "https://iponline.cipc.co.za/Trademarks/Search/FreeTMSearchNotice.aspx",
+        label: "Free Trade Mark Search entry",
+      },
+      { uri: "https://iponline.cipc.co.za/", label: "IPOnline search navigation" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://iponline.cipc.co.za/",
+    notes:
+      "CIPC IPOnline provides a free cursory Trade Marks Register search and separate commercial search options; the free-search route is retained as the national public-search source.",
+  }),
+  target(CIPC_ZA, {
+    id: "za-cipc-trademark-fees",
+    family: "FEES",
+    displayName: "South Africa CIPC Trade Mark Forms and Fees",
+    canonicalUri: "https://www.cipc.co.za/?page_id=4074",
+    verificationEvidenceUri: "https://www.cipc.co.za/?page_id=4074",
+    notes:
+      "CIPC publishes the prescribed trade mark forms and fees covering registration, advertisement, renewal, restoration, assignments, registered users and other registrar requests. Amounts remain sourced evidence rather than frozen catalog truth.",
+  }),
+  target(CIPC_ZA, {
+    id: "za-cipc-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "South Africa CIPC Nice Classification 13-2026 Class Headings",
+    canonicalUri: "https://www.cipc.co.za/wp-content/uploads/2025/12/20260101-en-classheadings.pdf",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["PDF"],
+    verificationEvidenceUri: "https://www.cipc.co.za/?page_id=4118",
+    notes:
+      "CIPC publishes the South African class headings and explanatory notes for the Nice Classification, 13th Edition, Version 2026, from its trade mark registration guidance.",
+  }),
+  target(CIPC_ZA, {
+    id: "za-cipc-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "South Africa CIPC Trade Marks Act and Regulations",
+    canonicalUri: "https://iponline.cipc.co.za/Publications/Legislation.aspx",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://iponline.cipc.co.za/Publications/Legislation.aspx",
+    notes:
+      "CIPC IPOnline publishes the Trade Marks Act, 1993 (Act 194 of 1993) and the Trade Mark Regulations as the primary national legal framework for registration, register maintenance and disputes.",
+  }),
+  target(CIPC_ZA, {
+    id: "za-cipc-trademark-maintenance",
+    family: "MAINTENANCE",
+    displayName: "South Africa CIPC Trade Mark Maintenance and Extensions",
+    canonicalUri: "https://iponline.cipc.co.za/Trademarks/Maintenance/TMMaintenance.aspx",
+    entrypoints: [
+      {
+        uri: "https://iponline.cipc.co.za/Trademarks/Maintenance/TMMaintenance.aspx",
+        label: "IPOnline maintenance and document lodgement",
+      },
+      { uri: "https://www.cipc.co.za/?page_id=1539", label: "CIPC maintain a trade mark guidance" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://iponline.cipc.co.za/Trademarks/Maintenance/TMMaintenance.aspx",
+    notes:
+      "CIPC provides dedicated maintenance routes for priority documents, powers of attorney, extensions to prosecute or oppose, general document lodgement, renewals, restorations and amendments.",
+  }),
+  target(CIPC_ZA, {
+    id: "za-cipc-trademark-guidelines-practice-notes",
+    family: "POLICY_NOTICES",
+    displayName: "South Africa CIPC Trade Mark Guidelines and Practice Notes",
+    canonicalUri: "https://www.cipc.co.za/?page_id=4766",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.cipc.co.za/?page_id=4766",
+    notes:
+      "CIPC publishes trade mark guidelines and practice notes as official registrar-facing operational guidance supplementary to the Act and Regulations.",
+  }),
+  target(CIPC_ZA, {
+    id: "za-cipc-ip-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "South Africa CIPC Intellectual Property Journal",
+    canonicalUri: "https://iponline.cipc.co.za/Publications/JournalPublications.aspx",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.cipc.co.za/?page_id=4770",
+    notes:
+      "CIPC publishes the Intellectual Property Journal monthly; it includes trade mark acceptance and other advertised documents and is retained as a high-value publication change signal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -6870,5 +7007,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IPVN_VN_SOURCE_COVERAGE_TARGETS,
   ...NIPO_LK_SOURCE_COVERAGE_TARGETS,
   ...DIP_TH_SOURCE_COVERAGE_TARGETS,
+  ...CIPC_ZA_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

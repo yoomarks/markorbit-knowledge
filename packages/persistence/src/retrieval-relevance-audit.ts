@@ -1936,6 +1936,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "th-dip-trademark-examination-manual",
     query: "Thailand DIP trademark registration examination manual 2565 2022",
   },
+  {
+    id: "za-trademarks-name",
+    targetId: "za-cipc-trademarks",
+    query: "South Africa CIPC trade mark registration portal search filing classification",
+  },
+  {
+    id: "za-trademark-filing-name",
+    targetId: "za-cipc-trademark-filing",
+    query: "South Africa CIPC IPOnline trade mark electronic filing application",
+  },
+  {
+    id: "za-trademark-search-name",
+    targetId: "za-cipc-trademark-search",
+    query: "South Africa CIPC free trade mark register search IPOnline",
+  },
+  {
+    id: "za-trademark-fees-name",
+    targetId: "za-cipc-trademark-fees",
+    query: "South Africa CIPC trade mark forms fees TM1 TM2 renewal assignment",
+  },
+  {
+    id: "za-trademark-classification-name",
+    targetId: "za-cipc-trademark-classification",
+    query: "South Africa CIPC Nice Classification 13 2026 class headings explanatory notes",
+  },
+  {
+    id: "za-trademark-law-name",
+    targetId: "za-cipc-trademark-law",
+    query: "South Africa Trade Marks Act 194 1993 Trade Mark Regulations CIPC",
+  },
+  {
+    id: "za-trademark-maintenance-name",
+    targetId: "za-cipc-trademark-maintenance",
+    query: "South Africa CIPC trade mark maintenance renew restoration extension oppose prosecute",
+  },
+  {
+    id: "za-trademark-guidelines-practice-notes-name",
+    targetId: "za-cipc-trademark-guidelines-practice-notes",
+    query: "South Africa CIPC trade mark guidelines practice notes registrar",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
