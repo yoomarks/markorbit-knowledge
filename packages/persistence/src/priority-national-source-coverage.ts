@@ -8367,6 +8367,123 @@ export const SAKPATENTI_GE_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const AGEPI_MD: Authority = {
+  jurisdiction: "MD",
+  authorityName: "State Agency on Intellectual Property of the Republic of Moldova (AGEPI)",
+  languages: ["ro", "en", "ru"],
+  verificationEvidenceUri: "https://www.agepi.gov.md/en/content/trademarks",
+};
+
+export const AGEPI_MD_SOURCE_COVERAGE_TARGETS = [
+  target(AGEPI_MD, {
+    id: "md-agepi-trademark-portal",
+    family: "PORTAL",
+    displayName: "Moldova AGEPI Trademarks Portal",
+    canonicalUri: "https://www.agepi.gov.md/en/content/trademarks",
+    verificationEvidenceUri: "https://www.agepi.gov.md/en/content/trademarks",
+    notes:
+      "Current AGEPI trademark hub linking classification, national databases, legislation, online filing and forms.",
+  }),
+  target(AGEPI_MD, {
+    id: "md-agepi-trademark-filing",
+    family: "FILING",
+    displayName: "Moldova AGEPI Online Trademark Filing",
+    canonicalUri: "https://e-servicii.agepi.gov.md/ro/user/register",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://agepi.gov.md/en/trademarks/national-registration-and-renewal",
+    notes:
+      "AGEPI's current national-registration guidance directs applicants to the official electronic online-submission service; the authenticated service may require browser rendering.",
+  }),
+  target(AGEPI_MD, {
+    id: "md-agepi-trademark-search",
+    family: "SEARCH",
+    displayName: "Moldova AGEPI National Trademark Database",
+    canonicalUri: "https://www.db.agepi.md/marcireprezentanti/Search.aspx",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.agepi.gov.md/en/trademarks/presentation",
+    notes:
+      "Official AGEPI national trademark database for free searching of Moldovan applications and registrations; the live database carries a current 2026 update date.",
+  }),
+  target(AGEPI_MD, {
+    id: "md-agepi-trademark-fees",
+    family: "FEES",
+    displayName: "Moldova AGEPI Trademark Fees",
+    canonicalUri: "https://agepi.gov.md/en/node/8067",
+    verificationEvidenceUri: "https://agepi.gov.md/en/node/8067",
+    notes:
+      "Current legal-significance trademark fee schedule covering filing, substantive examination, registration, appeal and renewal, with the official fee calculator linked by AGEPI.",
+  }),
+  target(AGEPI_MD, {
+    id: "md-agepi-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Moldova AGEPI Nice Classification NCL(13-2026)",
+    canonicalUri: "https://www.agepi.gov.md/ro/trademarks/classifications",
+    verificationEvidenceUri: "https://www.agepi.gov.md/ro/trademarks/classifications",
+    notes:
+      "Official AGEPI classification page listing the 13th edition, 2026 version of the Nice Classification effective from 1 January 2026.",
+  }),
+  target(AGEPI_MD, {
+    id: "md-agepi-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Moldova AGEPI Trademark Legislation",
+    canonicalUri: "https://agepi.gov.md/en/legislatie/trademarks",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://agepi.gov.md/en/legislatie/trademarks",
+    notes:
+      "Official AGEPI trademark legislation index. It distinguishes the currently applicable Law No. 38-XVI/2008 from Law No. 25/2024, which is expressly scheduled to enter into force on 2 April 2027.",
+  }),
+  target(AGEPI_MD, {
+    id: "md-agepi-trademark-requirements",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Moldova AGEPI Trademark Application Requirements",
+    canonicalUri: "https://agepi.gov.md/en/trademarks/requirements",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://agepi.gov.md/en/trademarks/requirements",
+    notes:
+      "Current official application-material and representation requirements, including the goods/services list and Nice-class ordering requirements.",
+  }),
+  target(AGEPI_MD, {
+    id: "md-agepi-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Moldova AGEPI Trademark Opposition and Appeals",
+    canonicalUri: "https://www.agepi.gov.md/en/appeals-board",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://agepi.gov.md/en/trademarks/national-registration-and-renewal",
+    notes:
+      "AGEPI's national trademark procedure provides a three-month opposition period and appeal routes, while the Appeals Board is the official extrajudicial IP dispute body.",
+  }),
+  target(AGEPI_MD, {
+    id: "md-agepi-trademark-renewal",
+    family: "MAINTENANCE",
+    displayName: "Moldova AGEPI Trademark Renewal",
+    canonicalUri: "https://agepi.gov.md/en/trademarks/national-registration-and-renewal",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verificationEvidenceUri: "https://agepi.gov.md/en/trademarks/national-registration-and-renewal",
+    notes:
+      "Official national registration and renewal procedure: ten-year protection, renewal during the final six months or the six-month grace period, and publication of renewal in BOPI.",
+  }),
+  target(AGEPI_MD, {
+    id: "md-agepi-bopi",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Moldova AGEPI Official Bulletin of Industrial Property (BOPI)",
+    canonicalUri: "https://agepi.gov.md/en/bopi/1-2026",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://agepi.gov.md/en/bopi/1-2026",
+    notes:
+      "The official 2026 BOPI issue archive publishes trademark notices, legal-status changes and Appeals Board decisions; retain the bulletin as a publication change signal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -8501,5 +8618,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...TIPO_TW_SOURCE_COVERAGE_TARGETS,
   ...QAZPATENT_KZ_SOURCE_COVERAGE_TARGETS,
   ...SAKPATENTI_GE_SOURCE_COVERAGE_TARGETS,
+  ...AGEPI_MD_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

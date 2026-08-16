@@ -2524,6 +2524,51 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ge-sakpatenti-trademark-proceedings",
     query: "trademark registration appeal Chamber of Appeals three months",
   },
+  {
+    id: "md-agepi-trademark-portal-name",
+    targetId: "md-agepi-trademark-portal",
+    query: "AGEPI trademarks Moldova",
+  },
+  {
+    id: "md-agepi-trademark-filing-name",
+    targetId: "md-agepi-trademark-filing",
+    query: "online submission trademark application AGEPI",
+  },
+  {
+    id: "md-agepi-trademark-search-name",
+    targetId: "md-agepi-trademark-search",
+    query: "national trademark database Moldova marks",
+  },
+  {
+    id: "md-agepi-trademark-fees-name",
+    targetId: "md-agepi-trademark-fees",
+    query: "trademark filing examination registration renewal fees",
+  },
+  {
+    id: "md-agepi-trademark-classification-name",
+    targetId: "md-agepi-trademark-classification",
+    query: "NCL 13-2026 Nice Classification Moldova",
+  },
+  {
+    id: "md-agepi-trademark-legal-texts-name",
+    targetId: "md-agepi-trademark-legal-texts",
+    query: "Law 38 2008 Law 25 2024 trademarks",
+  },
+  {
+    id: "md-agepi-trademark-requirements-name",
+    targetId: "md-agepi-trademark-requirements",
+    query: "trademark application requirements goods services representative",
+  },
+  {
+    id: "md-agepi-trademark-proceedings-name",
+    targetId: "md-agepi-trademark-proceedings",
+    query: "trademark opposition Appeals Board AGEPI",
+  },
+  {
+    id: "md-agepi-trademark-renewal-name",
+    targetId: "md-agepi-trademark-renewal",
+    query: "trademark renewal ten years six month grace period",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
