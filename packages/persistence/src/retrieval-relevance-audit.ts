@@ -701,6 +701,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "dk-dkpto-trademark-law",
     query: "trademark law Trade Marks Act Denmark",
   },
+  {
+    id: "fi-trademarks-name",
+    targetId: "fi-prh-trademarks",
+    query: "PRH trademarks Finland",
+  },
+  {
+    id: "fi-trademark-filing-name",
+    targetId: "fi-prh-trademark-filing",
+    query: "apply trademark online Finland",
+  },
+  {
+    id: "fi-trademark-search-name",
+    targetId: "fi-prh-trademark-search",
+    query: "Trademark Information Service Finland",
+  },
+  {
+    id: "fi-trademark-fees-name",
+    targetId: "fi-prh-trademark-fees",
+    query: "trademark application registration fees 2026",
+  },
+  {
+    id: "fi-trademark-classification-name",
+    targetId: "fi-prh-trademark-classification",
+    query: "NCL 13-2026 classification goods services",
+  },
+  {
+    id: "fi-trademark-law-name",
+    targetId: "fi-prh-trademark-law",
+    query: "Trademarks Act legislation Finland",
+  },
+  {
+    id: "fi-trademark-proceedings-name",
+    targetId: "fi-prh-trademark-proceedings",
+    query: "trademark opposition revocation invalidation",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
