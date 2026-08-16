@@ -771,6 +771,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "at-patentamt-trademark-proceedings",
     query: "trademark opposition cancellation proceedings appeals Austria",
   },
+  {
+    id: "ie-trademarks-name",
+    targetId: "ie-ipoi-trademarks",
+    query: "IPOI trade marks Ireland",
+  },
+  {
+    id: "ie-trademark-filing-name",
+    targetId: "ie-ipoi-trademark-filing",
+    query: "apply for a trade mark Ireland",
+  },
+  {
+    id: "ie-trademark-search-name",
+    targetId: "ie-ipoi-trademark-search",
+    query: "Irish trademark search database",
+  },
+  {
+    id: "ie-trademark-fees-name",
+    targetId: "ie-ipoi-trademark-fees",
+    query: "statutory trade mark fees Ireland",
+  },
+  {
+    id: "ie-trademark-classification-name",
+    targetId: "ie-ipoi-trademark-classification",
+    query: "classifying goods services Nice Ireland",
+  },
+  {
+    id: "ie-trademark-law-name",
+    targetId: "ie-ipoi-trademark-law-practice",
+    query: "Trade Marks Act rules practice Ireland",
+  },
+  {
+    id: "ie-trademark-opposition-name",
+    targetId: "ie-ipoi-trademark-opposition",
+    query: "trade mark opposition Ireland IPOI",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
