@@ -5917,6 +5917,138 @@ export const DOI_NP_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const MYIPO_MY: Authority = {
+  jurisdiction: "MY",
+  authorityName: "Intellectual Property Corporation of Malaysia (MyIPO)",
+  languages: ["ms-MY", "en"],
+  verificationEvidenceUri: "https://www.myipo.gov.my/",
+};
+
+export const MYIPO_MY_SOURCE_COVERAGE_TARGETS = [
+  target(MYIPO_MY, {
+    id: "my-myipo-trademarks",
+    family: "PORTAL",
+    displayName: "Malaysia MyIPO Trademark Portal",
+    canonicalUri: "https://www.myipo.gov.my/public/",
+    entrypoints: [
+      { uri: "https://www.myipo.gov.my/", label: "MyIPO official portal" },
+      { uri: "https://www.myipo.gov.my/public/", label: "Public trademark services hub" },
+    ],
+    verificationEvidenceUri: "https://www.myipo.gov.my/",
+    notes:
+      "MyIPO's public portal exposes Malaysia's trademark filing, management, forms and fees, legislation, search and Trademark Journal services.",
+  }),
+  target(MYIPO_MY, {
+    id: "my-myipo-trademark-filing",
+    family: "FILING",
+    displayName: "Malaysia MyIPO Trademark Filing and Application Guidance",
+    canonicalUri: "https://www.myipo.gov.my/applying-for-a-trademark/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    verificationEvidenceUri: "https://www.myipo.gov.my/applying-for-a-trademark/",
+    notes:
+      "MyIPO publishes the national application workflow and links IP Online Search & Filing, including preliminary advice/search and trademark application filing.",
+  }),
+  target(MYIPO_MY, {
+    id: "my-myipo-trademark-search",
+    family: "SEARCH",
+    displayName: "Malaysia MyIPO Trademark Search",
+    canonicalUri: "https://www.myipo.gov.my/search-trademark/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.myipo.gov.my/search-trademark/",
+    notes:
+      "MyIPO maintains a dedicated national trademark-search gateway and directs users to IP Online while also linking WIPO and ASEAN search surfaces.",
+  }),
+  target(MYIPO_MY, {
+    id: "my-myipo-trademark-fees",
+    family: "FEES",
+    displayName: "Malaysia MyIPO Trademark Forms and Fees",
+    canonicalUri: "https://www.myipo.gov.my/trademark-forms-and-fees/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.myipo.gov.my/trademark-forms-and-fees/",
+    notes:
+      "MyIPO publishes current trademark forms and transaction-specific fee evidence under the Trademarks Act 2019 and Regulations; amounts remain sourced evidence rather than frozen catalog truth.",
+  }),
+  target(MYIPO_MY, {
+    id: "my-myipo-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Malaysia MyIPO Pre-Approved Goods and Services Classification",
+    canonicalUri: "https://onlineapps.myipo.gov.my/tmclass/search_class.php",
+    entrypoints: [
+      {
+        uri: "https://onlineapps.myipo.gov.my/tmclass/search_class.php",
+        label: "Pre-approved goods and services class search",
+      },
+      {
+        uri: "https://www.myipo.gov.my/applying-for-a-trademark/",
+        label: "Nice Classification guidance",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.myipo.gov.my/applying-for-a-trademark/",
+    notes:
+      "MyIPO provides a searchable pre-approved goods/services database and official Nice-classification guidance for trademark specifications.",
+  }),
+  target(MYIPO_MY, {
+    id: "my-myipo-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Malaysia MyIPO Trademark Act, Regulations and Legal Materials",
+    canonicalUri: "https://www.myipo.gov.my/trademark-act/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.myipo.gov.my/trademark-act/",
+    notes:
+      "MyIPO's primary legal-materials page publishes Act 815, Trademarks Regulations, orders, examination manual materials, practice directions and current guidelines.",
+  }),
+  target(MYIPO_MY, {
+    id: "my-myipo-trademark-guidelines-2026",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Malaysia MyIPO Guidelines of Trademark 2019 VA1-2026",
+    canonicalUri: "https://www.myipo.gov.my/guidelines-of-trademark-2019-va1-2026/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.myipo.gov.my/guidelines-of-trademark-2019-va1-2026/",
+    notes:
+      "MyIPO publishes Guidelines of Trademark 2019 (VA1-2026), varied on 30 January 2026 and effective from 1 February 2026, as current trademark practice guidance.",
+  }),
+  target(MYIPO_MY, {
+    id: "my-myipo-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Malaysia MyIPO Trademark Management and Proceedings",
+    canonicalUri: "https://www.myipo.gov.my/managing-your-trademark/",
+    entrypoints: [
+      {
+        uri: "https://www.myipo.gov.my/managing-your-trademark/",
+        label: "Renewal, restoration and trademark management",
+      },
+      {
+        uri: "https://www.myipo.gov.my/trademark-act/",
+        label: "Official hearing, appeal and opposition manual materials",
+      },
+    ],
+    verificationEvidenceUri: "https://www.myipo.gov.my/managing-your-trademark/",
+    notes:
+      "MyIPO's management surface covers renewal/restoration and related forms, while its official legal materials include examination-manual chapters for hearing, appeal and opposition proceedings.",
+  }),
+  target(MYIPO_MY, {
+    id: "my-myipo-trademark-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Malaysia MyIPO Trademark Journal",
+    canonicalUri: "https://www.myipo.gov.my/trademark-journal/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.myipo.gov.my/trademark-journal/",
+    notes:
+      "MyIPO continuously publishes numbered Trademark Journal issues, including weekly 2026 issues, making the journal a high-value publication and change-signal source.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -6031,5 +6163,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IPPD_JO_SOURCE_COVERAGE_TARGETS,
   ...DPDT_BD_SOURCE_COVERAGE_TARGETS,
   ...DOI_NP_SOURCE_COVERAGE_TARGETS,
+  ...MYIPO_MY_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
