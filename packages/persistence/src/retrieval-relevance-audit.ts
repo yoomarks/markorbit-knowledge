@@ -876,6 +876,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "pl-uprp-trademark-law-proceedings",
     query: "Prawo własności przemysłowej procedura sprzeciwowa znak towarowy",
   },
+  {
+    id: "cz-trademarks-name",
+    targetId: "cz-upv-trademarks",
+    query: "Industrial Property Office Czech trademarks",
+  },
+  {
+    id: "cz-trademark-filing-name",
+    targetId: "cz-upv-trademark-filing",
+    query: "national trademark application Czech",
+  },
+  {
+    id: "cz-trademark-search-name",
+    targetId: "cz-upv-trademark-search",
+    query: "trademark databases Czech ÚPV WIPO EUIPO",
+  },
+  {
+    id: "cz-trademark-fees-name",
+    targetId: "cz-upv-trademark-fees",
+    query: "trademark administrative fees Czech",
+  },
+  {
+    id: "cz-trademark-classification-name",
+    targetId: "cz-upv-trademark-classification",
+    query: "Nice Classification 13 2026 ochranné známky",
+  },
+  {
+    id: "cz-trademark-law-name",
+    targetId: "cz-upv-trademark-law",
+    query: "Act 441 2003 Trademarks Czech legislation",
+  },
+  {
+    id: "cz-trademark-common-practices-name",
+    targetId: "cz-upv-trademark-common-practices",
+    query: "Common Communications trademark practice EUIPO member states Czech",
+  },
   { id: "ca-trademarks-name", targetId: "ca-cipo-trademarks", query: "trademarks" },
   {
     id: "ca-trademarks-guide-name",
