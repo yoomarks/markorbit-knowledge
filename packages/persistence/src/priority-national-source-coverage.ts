@@ -2004,6 +2004,129 @@ export const PATENTAMT_AT_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IPOI_IE: Authority = {
+  jurisdiction: "IE",
+  authorityName: "Intellectual Property Office of Ireland (IPOI)",
+  languages: ["en-IE"],
+  verificationEvidenceUri: "https://www.ipoi.gov.ie/en/types-of-ip/trade-marks/",
+};
+
+export const IPOI_IE_SOURCE_COVERAGE_TARGETS = [
+  target(IPOI_IE, {
+    id: "ie-ipoi-trademarks",
+    family: "PORTAL",
+    displayName: "IPOI Trade Marks",
+    canonicalUri: "https://www.ipoi.gov.ie/en/types-of-ip/trade-marks/",
+  }),
+  target(IPOI_IE, {
+    id: "ie-ipoi-trademark-filing",
+    family: "FILING",
+    displayName: "IPOI Apply for a Trade Mark",
+    canonicalUri: "https://www.ipoi.gov.ie/en/manage-ip/apply/apply-for-a-trade-mark/",
+    verificationEvidenceUri: "https://www.ipoi.gov.ie/en/manage-ip/apply/apply-for-a-trade-mark/",
+  }),
+  target(IPOI_IE, {
+    id: "ie-ipoi-trademark-search",
+    family: "SEARCH",
+    displayName: "IPOI Trademark Search",
+    canonicalUri: "https://www.ipoi.gov.ie/en/ip-search-tools/trademark-search/",
+    entrypoints: [
+      {
+        uri: "https://www.ipoi.gov.ie/en/ip-search-tools/trademark-search/",
+        label: "Trademark search guidance",
+      },
+      {
+        uri: "https://www.ipoi.gov.ie/en/types-of-ip/trade-marks/using-the-trade-mark-search-tools/",
+        label: "Irish trademark search tools",
+      },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.ipoi.gov.ie/en/ip-search-tools/trademark-search/",
+    notes:
+      "The National Trade Mark Database covers Irish applications and Madrid registrations designating Ireland; IPOI also exposes quick and advanced register search tools.",
+  }),
+  target(IPOI_IE, {
+    id: "ie-ipoi-trademark-fees",
+    family: "FEES",
+    displayName: "IPOI Statutory Trade Mark Fees",
+    canonicalUri: "https://www.ipoi.gov.ie/en/types-of-ip/trade-marks/statutory-trade-mark-fees/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.ipoi.gov.ie/en/types-of-ip/trade-marks/statutory-trade-mark-fees/",
+  }),
+  target(IPOI_IE, {
+    id: "ie-ipoi-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "IPOI Classification of Goods and Services",
+    canonicalUri:
+      "https://www.ipoi.gov.ie/en/types-of-ip/trade-marks/understanding-trade-marks/classifying-your-goods-or-services/",
+    verificationEvidenceUri:
+      "https://www.ipoi.gov.ie/en/types-of-ip/trade-marks/understanding-trade-marks/classifying-your-goods-or-services/",
+  }),
+  target(IPOI_IE, {
+    id: "ie-ipoi-trademark-law-practice",
+    family: "LEGAL_TEXTS",
+    displayName: "IPOI Trade Mark Law and Practice",
+    canonicalUri:
+      "https://www.ipoi.gov.ie/en/law-practice/legislation/trade-marks/trade-marks-acts/",
+    entrypoints: [
+      {
+        uri: "https://www.ipoi.gov.ie/en/law-practice/legislation/trade-marks/trade-marks-acts/",
+        label: "Trade Marks Acts",
+      },
+      {
+        uri: "https://www.ipoi.gov.ie/en/law-practice/legislation/trade-marks/rules-regulations/",
+        label: "Trade mark rules and regulations",
+      },
+      {
+        uri: "https://www.ipoi.gov.ie/en/law-practice/legislation/trade-marks/trade-marks-practice-and-procedures/",
+        label: "Trade mark practice and procedures",
+      },
+    ],
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.ipoi.gov.ie/en/law-practice/legislation/trade-marks/trade-marks-acts/",
+  }),
+  target(IPOI_IE, {
+    id: "ie-ipoi-trademark-opposition",
+    family: "PROCEEDINGS",
+    displayName: "IPOI Trademark Opposition",
+    canonicalUri: "https://www.ipoi.gov.ie/en/types-of-ip/trade-marks/after-you-apply/opposition/",
+    verificationEvidenceUri:
+      "https://www.ipoi.gov.ie/en/types-of-ip/trade-marks/after-you-apply/opposition/",
+    notes:
+      "IPOI provides a three-month opposition period following publication of an accepted trademark in the Official Journal.",
+  }),
+  target(IPOI_IE, {
+    id: "ie-ipoi-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "IPOI Journal - Trade Marks Part II",
+    canonicalUri:
+      "https://www.ipoi.gov.ie/en/ip-search-tools/search-the-journal/download-journals/",
+    entrypoints: [
+      {
+        uri: "https://www.ipoi.gov.ie/en/ip-search-tools/search-the-journal/about-the-journal/",
+        label: "About the fortnightly Journal",
+      },
+      {
+        uri: "https://www.ipoi.gov.ie/en/ip-search-tools/search-the-journal/download-journals/",
+        label: "Download current and past Journals",
+      },
+    ],
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.ipoi.gov.ie/en/ip-search-tools/search-the-journal/download-journals/",
+    notes:
+      "IPOI publishes the Journal fortnightly; Part II covers trademark filings, oppositions, registrations, renewals, restorations and Madrid events. The download page lists Journal 2572 dated 15 July 2026.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -2091,5 +2214,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...DKPTO_DK_SOURCE_COVERAGE_TARGETS,
   ...PRH_FI_SOURCE_COVERAGE_TARGETS,
   ...PATENTAMT_AT_SOURCE_COVERAGE_TARGETS,
+  ...IPOI_IE_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
