@@ -408,6 +408,13 @@ function assertSupportedJob(
       false,
     );
   }
+  if (job.jobType === "PAGE_UPDATE_CHECK" && urls.length > job.planSnapshot.policy.maxItems) {
+    throw new CollectionAcquisitionError(
+      "CHANGE_WATCH_ENTRYPOINT_BUDGET_EXCEEDED",
+      `Change-watch Job maxItems ${job.planSnapshot.policy.maxItems} cannot cover all ${urls.length} governed start URLs`,
+      false,
+    );
+  }
 }
 
 function processTimeoutMs(context: ArtifactBackedExecutionContext, maximum: number): number {
@@ -569,7 +576,10 @@ export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
         outputDirectory,
         startUrls: startUrls(context),
         outputKinds,
-        maxDepth: policy.maxDepth,
+        // PAGE_UPDATE_CHECK is a bounded poll of reviewed Source entrypoints, not a
+        // recursive rediscovery crawl. Content identity comparison later in the
+        // artifact executor decides whether a new immutable version is necessary.
+        maxDepth: context.job.jobType === "PAGE_UPDATE_CHECK" ? 0 : policy.maxDepth,
         maxItems: policy.maxItems,
         renderJavascript: policy.renderJavascript,
         fetchAttachments: policy.fetchAttachments,

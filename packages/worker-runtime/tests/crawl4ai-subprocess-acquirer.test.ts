@@ -72,6 +72,75 @@ describe("Crawl4AiSubprocessAcquirer", () => {
     expect(artifacts).toHaveLength(1);
     expect(new TextDecoder().decode(artifacts[0]?.content)).toContain("official");
   });
+  it("polls only reviewed entrypoints for PAGE_UPDATE_CHECK instead of recursively crawling", async () => {
+    const ctx = context();
+    ctx.job.jobType = "PAGE_UPDATE_CHECK";
+    ctx.job.sourceSnapshot.entrypoints = [
+      { uri: "https://example.com/trademarks" },
+      { uri: "https://example.com/fees" },
+    ];
+    ctx.job.sourceSnapshot.canonicalUri = "https://example.com/trademarks";
+    ctx.job.planSnapshot.policy.maxDepth = 5;
+    ctx.job.planSnapshot.policy.maxItems = 2;
+    let seenDepth = -1;
+    let seenUrls: string[] = [];
+    const runner: Crawl4AiProcessRunner = {
+      async run(request) {
+        seenDepth = request.maxDepth;
+        seenUrls = request.startUrls;
+        const content = new TextEncoder().encode("<html>watch</html>");
+        const sha256 = createHash("sha256").update(content).digest("hex");
+        await writeFile(join(request.outputDirectory, "watch.html"), content);
+        return {
+          protocolVersion: "1.0",
+          ok: true,
+          pagesAttempted: 2,
+          totalBytes: content.byteLength,
+          artifacts: [
+            {
+              artifactKind: "HTML",
+              mimeType: "text/html",
+              originalName: "watch.html",
+              sourceUri: "https://example.com/trademarks",
+              canonicalUri: "https://example.com/trademarks",
+              fileName: "watch.html",
+              sizeBytes: content.byteLength,
+              sha256,
+            },
+          ],
+        };
+      },
+    };
+    const acquirer = new Crawl4AiSubprocessAcquirer({ runner, requireEgressProxy: false });
+    await acquirer.acquire(ctx);
+    expect(seenDepth).toBe(0);
+    expect(seenUrls).toEqual(["https://example.com/trademarks", "https://example.com/fees"]);
+  });
+
+  it("rejects legacy PAGE_UPDATE_CHECK snapshots whose maxItems cannot cover all entrypoints", async () => {
+    const ctx = context();
+    ctx.job.jobType = "PAGE_UPDATE_CHECK";
+    ctx.job.sourceSnapshot.entrypoints = [
+      { uri: "https://example.com/a" },
+      { uri: "https://example.com/b" },
+    ];
+    ctx.job.sourceSnapshot.canonicalUri = "https://example.com/a";
+    ctx.job.planSnapshot.policy.maxItems = 1;
+    let invoked = false;
+    const runner: Crawl4AiProcessRunner = {
+      async run() {
+        invoked = true;
+        throw new Error("runner must not be invoked");
+      },
+    };
+    const acquirer = new Crawl4AiSubprocessAcquirer({ runner, requireEgressProxy: false });
+    await expect(acquirer.acquire(ctx)).rejects.toMatchObject({
+      code: "CHANGE_WATCH_ENTRYPOINT_BUDGET_EXCEEDED",
+      retryable: false,
+    });
+    expect(invoked).toBe(false);
+  });
+
   it("passes explicit attachment authorization and verifies PDF bytes", async () => {
     const ctx = context();
     ctx.job.planSnapshot.policy.fetchAttachments = true;
