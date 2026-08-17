@@ -1,12 +1,12 @@
 import { DatabaseSync } from "node:sqlite";
 import { RegistryValidationError } from "./index";
-import {
-  SqliteSourceCompatibilityReprobeExecutionRepository,
-  type SourceCompatibilityReprobeExecution,
-  type SourceCompatibilityReprobeExecutionStatus,
+import type {
+  SourceCompatibilityReprobeExecution,
+  SourceCompatibilityReprobeExecutionStatus,
 } from "./source-compatibility-reprobe-execution";
 
 const MAX_LIMIT = 100;
+const TABLE_NAME = "source_compatibility_reprobe_executions";
 
 export type SourceCompatibilityReprobeExecutionListFilters = {
   workspaceId: string;
@@ -38,15 +38,25 @@ function normalizedStatus(
   return value;
 }
 
+function executionLedgerExists(database: DatabaseSync): boolean {
+  return Boolean(
+    database
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(TABLE_NAME),
+  );
+}
+
 export function listSourceCompatibilityReprobeExecutions(
   database: DatabaseSync,
   filters: SourceCompatibilityReprobeExecutionListFilters,
 ): SourceCompatibilityReprobeExecution[] {
   const workspaceId = filters.workspaceId.trim();
   if (!workspaceId) throw new RegistryValidationError("workspaceId is required");
+  const limit = normalizedLimit(filters.limit);
+  const status = normalizedStatus(filters.status);
 
-  // Initialize the governed execution ledger through its owning repository before querying it.
-  new SqliteSourceCompatibilityReprobeExecutionRepository(database);
+  // Read models must stay side-effect free. An uninitialized ledger is simply empty history.
+  if (!executionLedgerExists(database)) return [];
 
   const where = ["workspace_id = ?"];
   const values: Array<string | number> = [workspaceId];
@@ -60,12 +70,11 @@ export function listSourceCompatibilityReprobeExecutions(
     where.push("target_id = ?");
     values.push(targetId);
   }
-  const status = normalizedStatus(filters.status);
   if (status) {
     where.push("status = ?");
     values.push(status);
   }
-  values.push(normalizedLimit(filters.limit));
+  values.push(limit);
 
   const rows = database
     .prepare(
