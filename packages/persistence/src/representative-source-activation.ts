@@ -103,7 +103,7 @@ export type RepresentativeSourceActivationWave = {
 };
 
 export function getRepresentativeSourceActivationWave(): RepresentativeSourceActivationWave {
-  const jurisdictionSet = new Set(
+  const jurisdictionSet = new Set<string>(
     REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((item) => item.jurisdiction),
   );
   const targets = listSourceCoverageTargets({ catalogState: "ACTIVE" }).filter((target) =>
