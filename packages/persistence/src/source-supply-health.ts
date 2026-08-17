@@ -30,6 +30,8 @@ export const SOURCE_SUPPLY_MAX_AGE_HOURS: Record<SourceCoverageChangeSensitivity
   LOW: 720,
 };
 
+const SQL_CHUNK_SIZE = 400;
+
 export type SourceSupplyHealthFilters = {
   workspaceId: string;
   jurisdiction?: string;
@@ -51,21 +53,13 @@ export interface SourceSupplyHealthRepository {
   list(filters: SourceSupplyHealthFilters): SourceSupplyHealthListResult;
 }
 
-type CountRow = {
-  total: number;
-  latest_at: string | null;
-};
-
-type StagingCountRow = CountRow & {
-  ready_count: number;
-};
-
-type RetrievalCountRow = {
-  total: number;
-  current_count: number;
-  current_version: number | null;
-  current_chunk_count: number;
-  latest_indexed_at: string | null;
+type LatestRunSnapshot = { run: SourceSupplyLatestRun; createdAt: string; id: string };
+type NormalizationSnapshot = { health: SourceSupplyNormalizationHealth; latestId: string | null };
+type SupplySnapshot = {
+  runs: Map<string, LatestRunSnapshot>;
+  acquisition: Map<string, SourceSupplyAcquisitionHealth>;
+  normalization: Map<string, NormalizationSnapshot>;
+  retrieval: Map<string, SourceSupplyRetrievalHealth>;
 };
 
 function listWorkspaceSources(database: DatabaseSync, workspaceId: string): SourceDefinition[] {
@@ -80,141 +74,296 @@ function listWorkspaceSources(database: DatabaseSync, workspaceId: string): Sour
   }
 }
 
+function chunks(sourceIds: readonly string[]): string[][] {
+  const unique = [...new Set(sourceIds)];
+  const result: string[][] = [];
+  for (let offset = 0; offset < unique.length; offset += SQL_CHUNK_SIZE) {
+    result.push(unique.slice(offset, offset + SQL_CHUNK_SIZE));
+  }
+  return result;
+}
+
 function inClause(sourceIds: readonly string[]): { sql: string; values: SQLInputValue[] } {
-  if (sourceIds.length === 0) return { sql: "NULL", values: [] };
   return { sql: sourceIds.map(() => "?").join(","), values: [...sourceIds] };
 }
 
-function latestRun(
+function loadSnapshot(
   database: DatabaseSync,
   workspaceId: string,
-  sourceIds: string[],
-): SourceSupplyLatestRun {
-  if (sourceIds.length === 0) return null;
-  const sources = inClause(sourceIds);
-  const row = database
-    .prepare(
-      `SELECT id, status, requested_at, updated_at
-       FROM collection_runs
-       WHERE workspace_id = ? AND source_id IN (${sources.sql})
-       ORDER BY created_at DESC, id DESC
-       LIMIT 1`,
-    )
-    .get(workspaceId, ...sources.values) as
-    { id: string; status: string; requested_at: string; updated_at: string } | undefined;
-  if (!row) return null;
-  return {
-    runId: row.id,
-    status: row.status,
-    requestedAt: row.requested_at,
-    updatedAt: row.updated_at,
+  sourceIds: readonly string[],
+): SupplySnapshot {
+  const snapshot: SupplySnapshot = {
+    runs: new Map(),
+    acquisition: new Map(),
+    normalization: new Map(),
+    retrieval: new Map(),
   };
+
+  for (const sourceIdChunk of chunks(sourceIds)) {
+    const sourceClause = inClause(sourceIdChunk);
+
+    const runRows = database
+      .prepare(
+        `SELECT source_id, id, status, requested_at, updated_at, created_at
+         FROM (
+           SELECT source_id, id, status, requested_at, updated_at, created_at,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY source_id ORDER BY created_at DESC, id DESC
+                  ) AS row_number
+           FROM collection_runs
+           WHERE workspace_id = ? AND source_id IN (${sourceClause.sql})
+         )
+         WHERE row_number = 1`,
+      )
+      .all(workspaceId, ...sourceClause.values) as Array<{
+      source_id: string;
+      id: string;
+      status: string;
+      requested_at: string;
+      updated_at: string;
+      created_at: string;
+    }>;
+    for (const row of runRows) {
+      snapshot.runs.set(row.source_id, {
+        run: {
+          runId: row.id,
+          status: row.status,
+          requestedAt: row.requested_at,
+          updatedAt: row.updated_at,
+        },
+        createdAt: row.created_at,
+        id: row.id,
+      });
+    }
+
+    const artifactRows = database
+      .prepare(
+        `SELECT source_id,
+                COUNT(*) AS total,
+                MAX(created_at) AS latest_at,
+                GROUP_CONCAT(DISTINCT artifact_kind) AS artifact_kinds
+         FROM raw_artifacts
+         WHERE workspace_id = ?
+           AND source_id IN (${sourceClause.sql})
+           AND status = 'REGISTERED'
+         GROUP BY source_id`,
+      )
+      .all(workspaceId, ...sourceClause.values) as Array<{
+      source_id: string;
+      total: number;
+      latest_at: string | null;
+      artifact_kinds: string | null;
+    }>;
+    for (const row of artifactRows) {
+      const artifactKinds = (row.artifact_kinds ?? "")
+        .split(",")
+        .filter(Boolean)
+        .map((kind) => kind as ArtifactKind)
+        .sort();
+      snapshot.acquisition.set(row.source_id, {
+        artifactCount: Number(row.total),
+        artifactKinds,
+        latestArtifactAt: row.latest_at,
+      });
+    }
+
+    const stagingRows = database
+      .prepare(
+        `WITH ranked AS (
+           SELECT source_id, status, created_at, id,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY source_id ORDER BY created_at DESC, id DESC
+                  ) AS row_number
+           FROM staging_documents
+           WHERE workspace_id = ? AND source_id IN (${sourceClause.sql})
+         ), aggregated AS (
+           SELECT source_id,
+                  COUNT(*) AS total,
+                  COALESCE(SUM(CASE WHEN status = 'READY' THEN 1 ELSE 0 END), 0) AS ready_count,
+                  MAX(created_at) AS latest_at
+           FROM staging_documents
+           WHERE workspace_id = ? AND source_id IN (${sourceClause.sql})
+           GROUP BY source_id
+         )
+         SELECT aggregated.source_id, aggregated.total, aggregated.ready_count,
+                aggregated.latest_at, ranked.status AS latest_status, ranked.id AS latest_id
+         FROM aggregated
+         LEFT JOIN ranked
+           ON ranked.source_id = aggregated.source_id AND ranked.row_number = 1`,
+      )
+      .all(
+        workspaceId,
+        ...sourceClause.values,
+        workspaceId,
+        ...sourceClause.values,
+      ) as Array<{
+      source_id: string;
+      total: number;
+      ready_count: number;
+      latest_at: string | null;
+      latest_status: string | null;
+      latest_id: string | null;
+    }>;
+    for (const row of stagingRows) {
+      snapshot.normalization.set(row.source_id, {
+        health: {
+          stagingDocumentCount: Number(row.total),
+          readyDocumentCount: Number(row.ready_count),
+          latestDocumentAt: row.latest_at,
+          latestStatus: row.latest_status,
+        },
+        latestId: row.latest_id,
+      });
+    }
+
+    const retrievalRows = database
+      .prepare(
+        `SELECT source_id,
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN is_current = 1 THEN 1 ELSE 0 END), 0) AS current_count,
+                MAX(CASE WHEN is_current = 1 THEN artifact_version END) AS current_version,
+                COALESCE(SUM(CASE WHEN is_current = 1 THEN chunk_count ELSE 0 END), 0) AS current_chunk_count,
+                MAX(indexed_at) AS latest_indexed_at
+         FROM retrieval_documents
+         WHERE workspace_id = ? AND source_id IN (${sourceClause.sql})
+         GROUP BY source_id`,
+      )
+      .all(workspaceId, ...sourceClause.values) as Array<{
+      source_id: string;
+      total: number;
+      current_count: number;
+      current_version: number | null;
+      current_chunk_count: number;
+      latest_indexed_at: string | null;
+    }>;
+    for (const row of retrievalRows) {
+      snapshot.retrieval.set(row.source_id, {
+        indexedDocumentCount: Number(row.total),
+        currentDocumentCount: Number(row.current_count),
+        currentArtifactVersion: row.current_version === null ? null : Number(row.current_version),
+        currentChunkCount: Number(row.current_chunk_count),
+        latestIndexedAt: row.latest_indexed_at,
+      });
+    }
+  }
+
+  return snapshot;
+}
+
+function isLater(
+  candidateAt: string,
+  candidateId: string,
+  currentAt: string | null,
+  currentId: string | null,
+): boolean {
+  return (
+    currentAt === null ||
+    candidateAt > currentAt ||
+    (candidateAt === currentAt && candidateId > (currentId ?? ""))
+  );
+}
+
+function latestRun(sourceIds: readonly string[], snapshot: SupplySnapshot): SourceSupplyLatestRun {
+  let current: LatestRunSnapshot | null = null;
+  for (const sourceId of sourceIds) {
+    const candidate = snapshot.runs.get(sourceId);
+    if (
+      candidate &&
+      isLater(candidate.createdAt, candidate.id, current?.createdAt ?? null, current?.id ?? null)
+    ) {
+      current = candidate;
+    }
+  }
+  return current?.run ?? null;
 }
 
 function acquisitionHealth(
-  database: DatabaseSync,
-  workspaceId: string,
-  sourceIds: string[],
+  sourceIds: readonly string[],
+  snapshot: SupplySnapshot,
 ): SourceSupplyAcquisitionHealth {
-  if (sourceIds.length === 0) {
-    return { artifactCount: 0, artifactKinds: [], latestArtifactAt: null };
+  let artifactCount = 0;
+  let latestArtifactAt: string | null = null;
+  const artifactKinds = new Set<ArtifactKind>();
+  for (const sourceId of sourceIds) {
+    const current = snapshot.acquisition.get(sourceId);
+    if (!current) continue;
+    artifactCount += current.artifactCount;
+    current.artifactKinds.forEach((kind) => artifactKinds.add(kind));
+    if (
+      current.latestArtifactAt &&
+      (!latestArtifactAt || current.latestArtifactAt > latestArtifactAt)
+    ) {
+      latestArtifactAt = current.latestArtifactAt;
+    }
   }
-  const sources = inClause(sourceIds);
-  const row = database
-    .prepare(
-      `SELECT COUNT(*) AS total, MAX(created_at) AS latest_at
-       FROM raw_artifacts
-       WHERE workspace_id = ? AND source_id IN (${sources.sql}) AND status = 'REGISTERED'`,
-    )
-    .get(workspaceId, ...sources.values) as CountRow;
-  const kinds = database
-    .prepare(
-      `SELECT DISTINCT artifact_kind
-       FROM raw_artifacts
-       WHERE workspace_id = ? AND source_id IN (${sources.sql}) AND status = 'REGISTERED'
-       ORDER BY artifact_kind`,
-    )
-    .all(workspaceId, ...sources.values)
-    .map((item) => String((item as { artifact_kind: string }).artifact_kind) as ArtifactKind);
-  return {
-    artifactCount: Number(row.total),
-    artifactKinds: kinds,
-    latestArtifactAt: row.latest_at,
-  };
+  return { artifactCount, artifactKinds: [...artifactKinds].sort(), latestArtifactAt };
 }
 
 function normalizationHealth(
-  database: DatabaseSync,
-  workspaceId: string,
-  sourceIds: string[],
+  sourceIds: readonly string[],
+  snapshot: SupplySnapshot,
 ): SourceSupplyNormalizationHealth {
-  if (sourceIds.length === 0) {
-    return {
-      stagingDocumentCount: 0,
-      readyDocumentCount: 0,
-      latestDocumentAt: null,
-      latestStatus: null,
-    };
+  let stagingDocumentCount = 0;
+  let readyDocumentCount = 0;
+  let latestDocumentAt: string | null = null;
+  let latestStatus: string | null = null;
+  let latestId: string | null = null;
+  for (const sourceId of sourceIds) {
+    const current = snapshot.normalization.get(sourceId);
+    if (!current) continue;
+    stagingDocumentCount += current.health.stagingDocumentCount;
+    readyDocumentCount += current.health.readyDocumentCount;
+    if (
+      current.health.latestDocumentAt &&
+      isLater(
+        current.health.latestDocumentAt,
+        current.latestId ?? "",
+        latestDocumentAt,
+        latestId,
+      )
+    ) {
+      latestDocumentAt = current.health.latestDocumentAt;
+      latestStatus = current.health.latestStatus;
+      latestId = current.latestId;
+    }
   }
-  const sources = inClause(sourceIds);
-  const row = database
-    .prepare(
-      `SELECT COUNT(*) AS total,
-              COALESCE(SUM(CASE WHEN status = 'READY' THEN 1 ELSE 0 END), 0) AS ready_count,
-              MAX(created_at) AS latest_at
-       FROM staging_documents
-       WHERE workspace_id = ? AND source_id IN (${sources.sql})`,
-    )
-    .get(workspaceId, ...sources.values) as StagingCountRow;
-  const latest = database
-    .prepare(
-      `SELECT status
-       FROM staging_documents
-       WHERE workspace_id = ? AND source_id IN (${sources.sql})
-       ORDER BY created_at DESC, id DESC
-       LIMIT 1`,
-    )
-    .get(workspaceId, ...sources.values) as { status: string } | undefined;
-  return {
-    stagingDocumentCount: Number(row.total),
-    readyDocumentCount: Number(row.ready_count),
-    latestDocumentAt: row.latest_at,
-    latestStatus: latest?.status ?? null,
-  };
+  return { stagingDocumentCount, readyDocumentCount, latestDocumentAt, latestStatus };
 }
 
 function retrievalHealth(
-  database: DatabaseSync,
-  workspaceId: string,
-  sourceIds: string[],
+  sourceIds: readonly string[],
+  snapshot: SupplySnapshot,
 ): SourceSupplyRetrievalHealth {
-  if (sourceIds.length === 0) {
-    return {
-      indexedDocumentCount: 0,
-      currentDocumentCount: 0,
-      currentArtifactVersion: null,
-      currentChunkCount: 0,
-      latestIndexedAt: null,
-    };
+  let indexedDocumentCount = 0;
+  let currentDocumentCount = 0;
+  let currentArtifactVersion: number | null = null;
+  let currentChunkCount = 0;
+  let latestIndexedAt: string | null = null;
+  for (const sourceId of sourceIds) {
+    const current = snapshot.retrieval.get(sourceId);
+    if (!current) continue;
+    indexedDocumentCount += current.indexedDocumentCount;
+    currentDocumentCount += current.currentDocumentCount;
+    currentChunkCount += current.currentChunkCount;
+    if (
+      current.currentArtifactVersion !== null &&
+      (currentArtifactVersion === null || current.currentArtifactVersion > currentArtifactVersion)
+    ) {
+      currentArtifactVersion = current.currentArtifactVersion;
+    }
+    if (
+      current.latestIndexedAt &&
+      (!latestIndexedAt || current.latestIndexedAt > latestIndexedAt)
+    ) {
+      latestIndexedAt = current.latestIndexedAt;
+    }
   }
-  const sources = inClause(sourceIds);
-  const row = database
-    .prepare(
-      `SELECT COUNT(*) AS total,
-              COALESCE(SUM(CASE WHEN is_current = 1 THEN 1 ELSE 0 END), 0) AS current_count,
-              MAX(CASE WHEN is_current = 1 THEN artifact_version END) AS current_version,
-              COALESCE(SUM(CASE WHEN is_current = 1 THEN chunk_count ELSE 0 END), 0) AS current_chunk_count,
-              MAX(indexed_at) AS latest_indexed_at
-       FROM retrieval_documents
-       WHERE workspace_id = ? AND source_id IN (${sources.sql})`,
-    )
-    .get(workspaceId, ...sources.values) as RetrievalCountRow;
   return {
-    indexedDocumentCount: Number(row.total),
-    currentDocumentCount: Number(row.current_count),
-    currentArtifactVersion: row.current_version === null ? null : Number(row.current_version),
-    currentChunkCount: Number(row.current_chunk_count),
-    latestIndexedAt: row.latest_indexed_at,
+    indexedDocumentCount,
+    currentDocumentCount,
+    currentArtifactVersion,
+    currentChunkCount,
+    latestIndexedAt,
   };
 }
 
@@ -326,16 +475,20 @@ export class SqliteSourceSupplyHealthRepository implements SourceSupplyHealthRep
         registration,
       ]),
     );
+    const registeredSourceIds = [
+      ...new Set([...registrations.values()].flatMap((registration) => registration.sourceIds)),
+    ];
+    const snapshot = loadSnapshot(this.database, workspaceId, registeredSourceIds);
 
     const items = targets
       .map((target): SourceSupplyHealthRecord => {
         const registration = registrations.get(target.id);
         const sourceIds = registration?.sourceIds ?? [];
         const registered = sourceIds.length > 0;
-        const run = latestRun(this.database, workspaceId, sourceIds);
-        const acquisition = acquisitionHealth(this.database, workspaceId, sourceIds);
-        const normalization = normalizationHealth(this.database, workspaceId, sourceIds);
-        const retrieval = retrievalHealth(this.database, workspaceId, sourceIds);
+        const run = latestRun(sourceIds, snapshot);
+        const acquisition = acquisitionHealth(sourceIds, snapshot);
+        const normalization = normalizationHealth(sourceIds, snapshot);
+        const retrieval = retrievalHealth(sourceIds, snapshot);
         const freshness = deriveSourceSupplyFreshness(
           acquisition.latestArtifactAt,
           target.changeSensitivity,
