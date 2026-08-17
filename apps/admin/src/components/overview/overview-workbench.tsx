@@ -280,7 +280,15 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
             blocked: current.blocked + item.supply.blocked,
             stale: current.stale + item.supply.stale,
           }),
-          { targets: 0, registered: 0, activated: 0, healthy: 0, degraded: 0, blocked: 0, stale: 0 },
+          {
+            targets: 0,
+            registered: 0,
+            activated: 0,
+            healthy: 0,
+            degraded: 0,
+            blocked: 0,
+            stale: 0,
+          },
         ),
     [state],
   );
@@ -418,7 +426,9 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
     <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[11px] font-medium tracking-wide text-slate-400">MarkOrbit Knowledge</p>
+          <p className="text-[11px] font-medium tracking-wide text-slate-400">
+            MarkOrbit Knowledge
+          </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[28px]">
             {zh ? "知识运营中心 / Knowledge Operations" : "Knowledge Operations / 知识运营中心"}
           </h1>
@@ -462,7 +472,9 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                 </span>
               </div>
               <p className="mt-4 text-sm font-semibold text-slate-800">{item.label}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{item.value}</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+                {item.value}
+              </p>
               <p className="mt-1 text-xs text-slate-400">{item.hint}</p>
             </section>
           );
@@ -530,7 +542,10 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                 {zh ? "按健康供应比例从低到高。" : "Lowest healthy-supply ratio first."}
               </p>
             </div>
-            <Link href="/sources" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+            <Link
+              href="/sources"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+            >
               {zh ? "Sources →" : "Sources →"}
             </Link>
           </div>
@@ -550,7 +565,9 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                   />
                 </div>
                 <p className="mt-1.5 text-[11px] text-slate-500">
-                  {zh ? "激活" : "Activated"} {item.activatedTargetCount}/{item.targetCount} · {zh ? "降级" : "Degraded"} {item.supply.degraded} · {zh ? "阻塞" : "Blocked"} {item.supply.blocked}
+                  {zh ? "激活" : "Activated"} {item.activatedTargetCount}/{item.targetCount} ·{" "}
+                  {zh ? "降级" : "Degraded"} {item.supply.degraded} · {zh ? "阻塞" : "Blocked"}{" "}
+                  {item.supply.blocked}
                 </p>
               </div>
             ))}
@@ -574,10 +591,15 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                 </span>
               </h2>
               <p className="mt-1 text-xs text-slate-400">
-                {zh ? "人工批准仍是外部来源进入采集链路的授权边界。" : "Human approval remains the authorization boundary for external collection."}
+                {zh
+                  ? "人工批准仍是外部来源进入采集链路的授权边界。"
+                  : "Human approval remains the authorization boundary for external collection."}
               </p>
             </div>
-            <Link href="/sources" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+            <Link
+              href="/sources"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+            >
               {zh ? "查看全部" : "View all"}
             </Link>
           </div>
@@ -611,7 +633,11 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                         onClick={() => void review(id, "ACCEPTED")}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                       >
-                        {busy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                        {busy ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <Check size={13} />
+                        )}
                         {zh ? "批准" : "Approve"}
                       </button>
                       <button
@@ -643,7 +669,10 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                   {zh ? "最近知识资产" : "Recent knowledge"}
                 </h2>
               </div>
-              <Link href="/knowledge" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+              <Link
+                href="/knowledge"
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+              >
                 {zh ? "查看全部" : "View all"}
               </Link>
             </div>
@@ -676,7 +705,10 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                 {zh ? "就绪交付包" : "Ready packages"}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                {verifiedPackages} {zh ? "个已验证包等待后续交付动作" : "verified packages available for delivery actions"}
+                {verifiedPackages}{" "}
+                {zh
+                  ? "个已验证包等待后续交付动作"
+                  : "verified packages available for delivery actions"}
               </p>
             </div>
             <ArrowRight size={17} className="text-slate-300" />
