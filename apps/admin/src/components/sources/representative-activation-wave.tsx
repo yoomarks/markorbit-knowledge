@@ -1,15 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  CheckCircle2,
-  Globe2,
-  Loader2,
-  RefreshCw,
-  Rocket,
-  Send,
-  ShieldCheck,
-} from "lucide-react";
+import { CheckCircle2, Globe2, Loader2, RefreshCw, Rocket, Send, ShieldCheck } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
 
 type ActivationJurisdiction = {
@@ -138,7 +130,8 @@ export function RepresentativeActivationWave({ workspaceId }: { workspaceId: str
     );
   }
 
-  const complete = (preview?.healthyTargetCount ?? 0) === (preview?.targetCount ?? 0) &&
+  const complete =
+    (preview?.healthyTargetCount ?? 0) === (preview?.targetCount ?? 0) &&
     (preview?.targetCount ?? 0) > 0;
 
   return (
@@ -235,7 +228,9 @@ export function RepresentativeActivationWave({ workspaceId }: { workspaceId: str
                 <p className="text-xs font-medium text-slate-500">{card.label}</p>
                 <Icon size={16} className="text-slate-400" />
               </div>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{card.value}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                {card.value}
+              </p>
               <p className="mt-1 text-xs text-slate-500">{card.detail}</p>
             </div>
           );
@@ -253,7 +248,8 @@ export function RepresentativeActivationWave({ workspaceId }: { workspaceId: str
             </span>
           ) : (
             <span className="text-xs text-slate-500">
-              {preview?.queuedForReviewCount ?? 0} {zh ? "个目标等待人工审查" : "targets awaiting human review"}
+              {preview?.queuedForReviewCount ?? 0}{" "}
+              {zh ? "个目标等待人工审查" : "targets awaiting human review"}
             </span>
           )}
         </div>
@@ -283,7 +279,9 @@ export function RepresentativeActivationWave({ workspaceId }: { workspaceId: str
               </div>
               <p className="mt-2 text-xs leading-5 text-slate-500">{item.purpose}</p>
               <p className="mt-2 text-[11px] text-slate-500">
-                {zh ? "登记" : "Registered"} {item.registered} · {zh ? "激活" : "Activated"} {item.activated} · {zh ? "缺失" : "Missing"} {item.missing} · Discovery {item.queuedForReview}
+                {zh ? "登记" : "Registered"} {item.registered} · {zh ? "激活" : "Activated"}{" "}
+                {item.activated} · {zh ? "缺失" : "Missing"} {item.missing} · Discovery{" "}
+                {item.queuedForReview}
               </p>
             </div>
           ))}

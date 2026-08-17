@@ -6,12 +6,7 @@ export const REPRESENTATIVE_SOURCE_ACTIVATION_WAVE_VERSION =
   "REPRESENTATIVE_SOURCE_ACTIVATION_V1" as const;
 
 export type RepresentativeSourceActivationProfile =
-  | "CORE_MARKET"
-  | "DYNAMIC_PORTAL"
-  | "MULTILINGUAL"
-  | "MENA"
-  | "REGIONAL_EUIPO"
-  | "REGIONAL_OAPI";
+  "CORE_MARKET" | "DYNAMIC_PORTAL" | "MULTILINGUAL" | "MENA" | "REGIONAL_EUIPO" | "REGIONAL_OAPI";
 
 export type RepresentativeSourceActivationJurisdiction = {
   jurisdiction: string;

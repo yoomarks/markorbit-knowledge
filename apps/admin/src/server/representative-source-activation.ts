@@ -49,9 +49,7 @@ export function getRepresentativeActivationPreview(
 ): RepresentativeActivationPreview {
   const wave = getRepresentativeSourceActivationWave();
   const coverage = getSourceCoverageSnapshot(workspaceId);
-  const coverageByJurisdiction = new Map(
-    coverage.items.map((item) => [item.jurisdiction, item]),
-  );
+  const coverageByJurisdiction = new Map(coverage.items.map((item) => [item.jurisdiction, item]));
   const waveTargetIds = new Set(wave.targetIds);
   const missingTargetIds: string[] = [];
   let registeredTargetCount = 0;
