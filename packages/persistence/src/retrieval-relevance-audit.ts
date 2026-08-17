@@ -2824,6 +2824,31 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "rw-rdb-trademark-forms",
     query: "Rwanda trademark application search amendment non-use opposition forms",
   },
+  {
+    id: "gh-rgd-industrial-property-portal-name",
+    targetId: "gh-rgd-industrial-property-portal",
+    query: "Ghana Registrar General Department industrial property trademarks mandate",
+  },
+  {
+    id: "gh-rgd-trademark-fees-name",
+    targetId: "gh-rgd-trademark-fees",
+    query: "Ghana trademark search application examination publication opposition renewal fees",
+  },
+  {
+    id: "gh-rgd-trademark-regulations-name",
+    targetId: "gh-rgd-trademark-regulations",
+    query: "Ghana Trade Marks Regulations LI 667 application search opposition renewal forms",
+  },
+  {
+    id: "gh-rgd-trademarks-act-2004-name",
+    targetId: "gh-rgd-trademarks-act-2004",
+    query: "Ghana Trade Marks Act 2004 Act 664 registration examination opposition renewal",
+  },
+  {
+    id: "gh-rgd-trademarks-amendment-act-2014-name",
+    targetId: "gh-rgd-trademarks-amendment-act-2014",
+    query: "Ghana Trademarks Amendment Act 2014 Act 876 Madrid Protocol ten year renewal",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();

@@ -9189,6 +9189,62 @@ export const RDB_RW_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const RGD_GH: Authority = {
+  jurisdiction: "GH",
+  authorityName: "Ghana Registrar-General's Department – Industrial Property Registry",
+  languages: ["en"],
+  verificationEvidenceUri: "https://www.rgd.gov.gh/About-Us.html",
+};
+
+export const RGD_GH_SOURCE_COVERAGE_TARGETS = [
+  target(RGD_GH, {
+    id: "gh-rgd-industrial-property-portal",
+    family: "PORTAL",
+    displayName: "Ghana Registrar-General's Department Industrial Property Mandate",
+    canonicalUri: "https://www.rgd.gov.gh/About-Us.html",
+    verificationEvidenceUri: "https://www.rgd.gov.gh/About-Us.html",
+    notes:
+      "Official Registrar-General's Department mandate page confirming responsibility for industrial-property administration under Ghana's Ministry of Justice framework.",
+  }),
+  target(RGD_GH, {
+    id: "gh-rgd-trademark-fees",
+    family: "FEES",
+    displayName: "Ghana Trademark Registration Procedure and Fee Schedule",
+    canonicalUri: "https://rgd.gov.gh/Industrial%20Property.html",
+    verificationEvidenceUri: "https://rgd.gov.gh/Industrial%20Property.html",
+    notes:
+      "Current RGD trademark service page covering preliminary search, application, examination, publication/opposition, certification, ten-year renewal and the published trademark fee schedule.",
+  }),
+  target(RGD_GH, {
+    id: "gh-rgd-trademark-regulations",
+    family: "FILING",
+    displayName: "Ghana Trade Marks Regulations, 1970 (L.I. 667)",
+    canonicalUri: "https://www.wipo.int/edocs/lexdocs/laws/en/gh/gh027en.pdf",
+    expectedArtifactKinds: ["PDF"],
+    verificationEvidenceUri: "https://www.wipo.int/edocs/lexdocs/laws/en/gh/gh027en.pdf",
+    notes:
+      "Implementing trademark regulations directly linked by the RGD trademark service page; covers applications, Registrar searches, examination, opposition, renewal, assignments, register actions, fees and prescribed forms.",
+  }),
+  target(RGD_GH, {
+    id: "gh-rgd-trademarks-act-2004",
+    family: "LEGAL_TEXTS",
+    displayName: "Ghana Trade Marks Act, 2004 (Act 664)",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/9180",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/9180",
+    notes:
+      "Primary Ghana trademark statute covering registration, examination and opposition, rights, renewal, non-use removal, ownership changes, the Trade Mark Registry and legal proceedings; WIPO Lex flags the 2014 amendment separately.",
+  }),
+  target(RGD_GH, {
+    id: "gh-rgd-trademarks-amendment-act-2014",
+    family: "LEGAL_TEXTS",
+    displayName: "Ghana Trademarks (Amendment) Act, 2014 (Act 876)",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/17315",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/17315",
+    notes:
+      "Amends Act 664, including ten-year renewal alignment and Ghana's Madrid Protocol international-registration framework.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -9331,5 +9387,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...INNORPI_TN_SOURCE_COVERAGE_TARGETS,
   ...URSB_UG_SOURCE_COVERAGE_TARGETS,
   ...RDB_RW_SOURCE_COVERAGE_TARGETS,
+  ...RGD_GH_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
