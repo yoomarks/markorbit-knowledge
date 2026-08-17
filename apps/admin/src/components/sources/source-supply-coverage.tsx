@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, Database, Globe2, Loader2, RefreshCw, ShieldAlert } from "lucide-react";
+import {
+  Activity,
+  Database,
+  Globe2,
+  Loader2,
+  RefreshCw,
+  ShieldAlert,
+  Wrench,
+} from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
 
 type SupplyCoverageItem = {
@@ -14,6 +22,9 @@ type SupplyCoverageItem = {
     degraded: number;
     blocked: number;
     stale: number;
+    compatibilityObserved: number;
+    compatibilityDegraded: number;
+    compatibilityBlocked: number;
     healthyPercent: number | null;
   };
 };
@@ -25,6 +36,7 @@ type SupplyCoverageResponse = {
     fullyCoveredCount: number;
     fullyHealthyCount: number;
     supplyAttentionCount: number;
+    compatibilityAttentionCount: number;
   };
 };
 
@@ -88,8 +100,22 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
         degraded: current.degraded + item.supply.degraded,
         blocked: current.blocked + item.supply.blocked,
         stale: current.stale + item.supply.stale,
+        compatibilityObserved: current.compatibilityObserved + item.supply.compatibilityObserved,
+        compatibilityDegraded: current.compatibilityDegraded + item.supply.compatibilityDegraded,
+        compatibilityBlocked: current.compatibilityBlocked + item.supply.compatibilityBlocked,
       }),
-      { catalog: 0, registered: 0, activated: 0, healthy: 0, degraded: 0, blocked: 0, stale: 0 },
+      {
+        catalog: 0,
+        registered: 0,
+        activated: 0,
+        healthy: 0,
+        degraded: 0,
+        blocked: 0,
+        stale: 0,
+        compatibilityObserved: 0,
+        compatibilityDegraded: 0,
+        compatibilityBlocked: 0,
+      },
     );
   }, [result]);
 
@@ -98,6 +124,11 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
       (result?.items ?? [])
         .filter((item) => item.targetCount > 0 && item.supply.healthy < item.targetCount)
         .sort((left, right) => {
+          const leftCompatibility =
+            left.supply.compatibilityBlocked * 100 + left.supply.compatibilityDegraded * 10;
+          const rightCompatibility =
+            right.supply.compatibilityBlocked * 100 + right.supply.compatibilityDegraded * 10;
+          if (leftCompatibility !== rightCompatibility) return rightCompatibility - leftCompatibility;
           const leftPercent = left.supply.healthyPercent ?? -1;
           const rightPercent = right.supply.healthyPercent ?? -1;
           if (leftPercent !== rightPercent) return leftPercent - rightPercent;
@@ -128,8 +159,8 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
           </div>
           <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-600">
             {zh
-              ? "把目录覆盖、来源激活和真实供应健康分开衡量。Healthy 只有在来源已启用，并持续产生可追溯、已规范化且可检索的最新资料时才成立。"
-              : "Separate catalog coverage, source activation, and actual supply health. Healthy requires an enabled source with fresh, traceable, normalized, retrievable evidence."}
+              ? "把目录覆盖、来源激活、真实供应和外部兼容性分开衡量。兼容性 DEGRADED 表示官方机构仍可采集，但主交互入口需要适配；BLOCKED 表示主入口与权威基线均不可采集。"
+              : "Measure catalog coverage, activation, actual supply, and external compatibility separately. DEGRADED means the authority remains collectible but the primary interactive path needs adaptation; BLOCKED means both primary and authority baseline acquisition failed."}
           </p>
         </div>
         <button
@@ -149,7 +180,7 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
         </div>
       ) : null}
 
-      <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">
+      <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">
         {[
           {
             label: zh ? "目录目标" : "Catalog targets",
@@ -175,6 +206,12 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
             detail: percent(totals.healthy, totals.catalog),
             icon: ShieldAlert,
           },
+          {
+            label: zh ? "兼容性已观测" : "Compatibility observed",
+            value: totals.compatibilityObserved,
+            detail: `${totals.compatibilityDegraded + totals.compatibilityBlocked} ${zh ? "项需处理" : "need attention"}`,
+            icon: Wrench,
+          },
         ].map((card) => {
           const Icon = card.icon;
           return (
@@ -195,26 +232,34 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
       <div className="grid gap-5 border-t border-slate-200 p-5 sm:p-6 lg:grid-cols-[0.8fr_1.2fr]">
         <div>
           <h3 className="text-sm font-semibold text-slate-900">
-            {zh ? "供应缺口" : "Supply gaps"}
+            {zh ? "供应与兼容性缺口" : "Supply & compatibility gaps"}
           </h3>
-          <div className="mt-3 grid grid-cols-3 gap-3">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-xl bg-amber-50 p-3">
-              <p className="text-xs font-medium text-amber-700">{zh ? "降级" : "Degraded"}</p>
+              <p className="text-xs font-medium text-amber-700">{zh ? "供应降级" : "Supply degraded"}</p>
               <p className="mt-1 text-xl font-semibold text-amber-900">{totals.degraded}</p>
             </div>
             <div className="rounded-xl bg-rose-50 p-3">
-              <p className="text-xs font-medium text-rose-700">{zh ? "阻塞" : "Blocked"}</p>
+              <p className="text-xs font-medium text-rose-700">{zh ? "供应阻塞" : "Supply blocked"}</p>
               <p className="mt-1 text-xl font-semibold text-rose-900">{totals.blocked}</p>
             </div>
+            <div className="rounded-xl bg-blue-50 p-3">
+              <p className="text-xs font-medium text-blue-700">{zh ? "需适配" : "Adapter needed"}</p>
+              <p className="mt-1 text-xl font-semibold text-blue-900">
+                {totals.compatibilityDegraded}
+              </p>
+            </div>
             <div className="rounded-xl bg-slate-100 p-3">
-              <p className="text-xs font-medium text-slate-600">{zh ? "过期" : "Stale"}</p>
-              <p className="mt-1 text-xl font-semibold text-slate-900">{totals.stale}</p>
+              <p className="text-xs font-medium text-slate-600">{zh ? "外部阻断" : "External blocked"}</p>
+              <p className="mt-1 text-xl font-semibold text-slate-900">
+                {totals.compatibilityBlocked}
+              </p>
             </div>
           </div>
           <p className="mt-3 text-xs leading-5 text-slate-500">
             {zh
-              ? `${result?.summary.fullyHealthyCount ?? 0} 个国家/地区当前实现全量健康供应；${result?.summary.supplyAttentionCount ?? 0} 个仍需要激活或修复。`
-              : `${result?.summary.fullyHealthyCount ?? 0} jurisdictions are fully healthy; ${result?.summary.supplyAttentionCount ?? 0} still need activation or remediation.`}
+              ? `${result?.summary.fullyHealthyCount ?? 0} 个国家/地区当前实现全量健康供应；${result?.summary.compatibilityAttentionCount ?? 0} 个辖区存在已观测的外部兼容性问题。`
+              : `${result?.summary.fullyHealthyCount ?? 0} jurisdictions are fully healthy; ${result?.summary.compatibilityAttentionCount ?? 0} have observed external compatibility issues.`}
           </p>
         </div>
 
@@ -236,9 +281,15 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500">
                   {zh ? "激活" : "Activated"} {item.activatedTargetCount}/{item.targetCount} ·{" "}
-                  {zh ? "降级" : "Degraded"} {item.supply.degraded} · {zh ? "阻塞" : "Blocked"}{" "}
+                  {zh ? "供应降级" : "Supply degraded"} {item.supply.degraded} · {zh ? "阻塞" : "Blocked"}{" "}
                   {item.supply.blocked}
                 </p>
+                {item.supply.compatibilityDegraded + item.supply.compatibilityBlocked > 0 ? (
+                  <p className="mt-1 text-[11px] font-medium text-blue-700">
+                    {zh ? "兼容性：需适配" : "Compatibility: adapter"} {item.supply.compatibilityDegraded} ·{" "}
+                    {zh ? "外部阻断" : "blocked"} {item.supply.compatibilityBlocked}
+                  </p>
+                ) : null}
               </div>
             ))}
             {attention.length === 0 ? (
