@@ -71,7 +71,7 @@ const PRIORITY_TRADEMARK_JURISDICTION_SEEDS = [
   ["GB", "United Kingdom", "EUROPE", "P0", "CURATED", "NATIONAL"],
   ["FR", "France", "EUROPE", "P0", "CURATED", "NATIONAL"],
   ["BR", "Brazil", "LATIN_AMERICA_CARIBBEAN", "P0", "CURATED", "NATIONAL"],
-  ["RU", "Russian Federation", "EUROPE", "P0", "TARGET", "NATIONAL"],
+  ["RU", "Russian Federation", "EUROPE", "P0", "CURATED", "NATIONAL"],
   ["IT", "Italy", "EUROPE", "P0", "CURATED", "NATIONAL"],
   ["CA", "Canada", "NORTH_AMERICA", "P0", "CURATED", "NATIONAL"],
   ["AU", "Australia", "ASIA_PACIFIC", "P0", "CURATED", "NATIONAL"],

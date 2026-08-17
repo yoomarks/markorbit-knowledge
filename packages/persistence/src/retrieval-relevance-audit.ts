@@ -2877,6 +2877,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "eg-eipa-establishment-law-163",
     query: "Egypt Law 163 2023 Egyptian Intellectual Property Authority establishment",
   },
+  {
+    id: "ru-rospatent-trademark-portal-name",
+    targetId: "ru-rospatent-trademark-portal",
+    query: "Rospatent Federal Service Intellectual Property Russia trademark portal",
+  },
+  {
+    id: "ru-rospatent-trademark-filing-service-name",
+    targetId: "ru-rospatent-trademark-filing-service",
+    query: "Rospatent trademark registration state service electronic filing application",
+  },
+  {
+    id: "ru-rospatent-trademark-register-name",
+    targetId: "ru-rospatent-trademark-register",
+    query: "Russia open register trademarks service marks registration application owner expiry",
+  },
+  {
+    id: "ru-rospatent-trademark-fees-name",
+    targetId: "ru-rospatent-trademark-fees",
+    query: "Rospatent trademark fees filing examination registration fee table",
+  },
+  {
+    id: "ru-rospatent-trademark-filing-examination-rules-name",
+    targetId: "ru-rospatent-trademark-filing-examination-rules",
+    query: "Russia Order 482 trademark filing examination rules application documents",
+  },
+  {
+    id: "ru-rospatent-civil-code-trademarks-name",
+    targetId: "ru-rospatent-civil-code-trademarks",
+    query: "Russia Civil Code Part Four Chapter 76 trademarks service marks registration rights",
+  },
+  {
+    id: "ru-rospatent-trademark-appeals-name",
+    targetId: "ru-rospatent-trademark-appeals",
+    query: "Rospatent trademark appeal objections Patent Disputes Chamber administrative appeal",
+  },
+  {
+    id: "ru-rospatent-trademark-renewal-name",
+    targetId: "ru-rospatent-trademark-renewal",
+    query: "Rospatent trademark renewal ten years six month additional period fees",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
