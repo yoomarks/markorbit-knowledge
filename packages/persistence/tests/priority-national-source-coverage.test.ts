@@ -105,6 +105,13 @@ import {
   ISPI_SV_SOURCE_COVERAGE_TARGETS,
   JIPO_JM_SOURCE_COVERAGE_TARGETS,
   IPO_TT_SOURCE_COVERAGE_TARGETS,
+  OCPI_CU_SOURCE_COVERAGE_TARGETS,
+  BRELA_TZ_SOURCE_COVERAGE_TARGETS,
+  IAPI_AO_SOURCE_COVERAGE_TARGETS,
+  IPI_MZ_SOURCE_COVERAGE_TARGETS,
+  PACRA_ZM_SOURCE_COVERAGE_TARGETS,
+  CIPZ_ZW_SOURCE_COVERAGE_TARGETS,
+  DPI_CD_SOURCE_COVERAGE_TARGETS,
   IPOS_SOURCE_COVERAGE_TARGETS,
   JPO_SOURCE_COVERAGE_TARGETS,
   KOREA_SOURCE_COVERAGE_TARGETS,
@@ -234,6 +241,13 @@ const authoritySets = [
   ["SV", ISPI_SV_SOURCE_COVERAGE_TARGETS, ["cnr.gob.sv"]],
   ["JM", JIPO_JM_SOURCE_COVERAGE_TARGETS, ["jipo.gov.jm", "wipo.int"]],
   ["TT", IPO_TT_SOURCE_COVERAGE_TARGETS, ["ipo.gov.tt"]],
+  ["CU", OCPI_CU_SOURCE_COVERAGE_TARGETS, ["ocpi.cu", "wipo.int"]],
+  ["TZ", BRELA_TZ_SOURCE_COVERAGE_TARGETS, ["brela.go.tz"]],
+  ["AO", IAPI_AO_SOURCE_COVERAGE_TARGETS, ["iapi.gov.ao", "gue.gov.ao"]],
+  ["MZ", IPI_MZ_SOURCE_COVERAGE_TARGETS, ["ipi.gov.mz"]],
+  ["ZM", PACRA_ZM_SOURCE_COVERAGE_TARGETS, ["pacra.org.zm", "tmdn.org", "wipo.int"]],
+  ["ZW", CIPZ_ZW_SOURCE_COVERAGE_TARGETS, ["gov.zw", "cipz.gov.zw", "wipo.int"]],
+  ["CD", DPI_CD_SOURCE_COVERAGE_TARGETS, ["industrie.gouv.cd", "journalofficiel.cd", "wipo.int"]],
   ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],
 ] as const;
 
@@ -243,14 +257,14 @@ function officialHost(uri: string, suffixes: readonly string[]): boolean {
 }
 
 describe("priority national trademark source coverage", () => {
-  it("ships explicit, official, unique coverage for one hundred nine priority national offices", () => {
-    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(824);
+  it("ships explicit, official, unique coverage for one hundred sixteen priority national offices", () => {
+    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(866);
     expect(new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(
-      824,
+      866,
     );
     expect(
       new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size,
-    ).toBe(824);
+    ).toBe(866);
 
     for (const [jurisdiction, targets, officialSuffixes] of authoritySets) {
       expect(targets.length).toBeGreaterThanOrEqual(5);

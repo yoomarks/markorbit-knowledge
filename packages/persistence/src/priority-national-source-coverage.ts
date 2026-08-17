@@ -11525,6 +11525,436 @@ export const IPO_TT_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const OCPI_CU: Authority = {
+  jurisdiction: "CU",
+  authorityName: "Cuban Industrial Property Office (OCPI)",
+  languages: ["es"],
+  verificationEvidenceUri: "https://www.ocpi.cu/",
+};
+
+export const OCPI_CU_SOURCE_COVERAGE_TARGETS = [
+  target(OCPI_CU, {
+    id: "cu-ocpi-portal",
+    family: "PORTAL",
+    displayName: "Cuban Industrial Property Office Portal",
+    canonicalUri: "https://www.ocpi.cu/",
+    verificationEvidenceUri: "https://www.ocpi.cu/",
+  }),
+  target(OCPI_CU, {
+    id: "cu-ocpi-trademarks",
+    family: "FILING",
+    displayName: "OCPI Trademark Services",
+    canonicalUri: "https://www.ocpi.cu/marcas/",
+    verificationEvidenceUri: "https://www.ocpi.cu/",
+    notes:
+      "Official OCPI trademark service route retained as the national filing and registration entrypoint.",
+  }),
+  target(OCPI_CU, {
+    id: "cu-ocpi-trademark-search",
+    family: "SEARCH",
+    displayName: "OCPI Trademark Search Services",
+    canonicalUri: "https://www.ocpi.cu/smarcas/",
+    verificationEvidenceUri: "https://www.ocpi.cu/",
+    notes:
+      "Official OCPI trademark-search service route; the office site is crawler-light, so the OCPI root is retained as verification evidence.",
+  }),
+  target(OCPI_CU, {
+    id: "cu-ocpi-fees-2021",
+    family: "FEES",
+    displayName: "Cuba OCPI Tariffs – Resolution No. 112 of 2021",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/21650",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/21650",
+    notes: "Latest WIPO Lex tariff resolution specifically governing fees applied by OCPI.",
+  }),
+  target(OCPI_CU, {
+    id: "cu-trademark-decree-law-203",
+    family: "LEGAL_TEXTS",
+    displayName: "Cuba Decree-Law No. 203 on Trademarks and Other Distinctive Signs",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/897",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/897",
+  }),
+  target(OCPI_CU, {
+    id: "cu-trademark-regulation-63-2000",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Cuba Regulation of Decree-Law No. 203 – Resolution No. 63/2000",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/898",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/898",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const BRELA_TZ: Authority = {
+  jurisdiction: "TZ",
+  authorityName: "Business Registrations and Licensing Agency of Tanzania (BRELA)",
+  languages: ["sw", "en"],
+  verificationEvidenceUri: "https://www.brela.go.tz/",
+};
+
+export const BRELA_TZ_SOURCE_COVERAGE_TARGETS = [
+  target(BRELA_TZ, {
+    id: "tz-brela-portal",
+    family: "PORTAL",
+    displayName: "Tanzania BRELA Portal",
+    canonicalUri: "https://www.brela.go.tz/",
+    verificationEvidenceUri: "https://www.brela.go.tz/",
+  }),
+  target(BRELA_TZ, {
+    id: "tz-brela-trademark-filing",
+    family: "FILING",
+    displayName: "Tanzania Trade and Service Mark Registration Guidance",
+    canonicalUri: "https://www.brela.go.tz/index.php/services/business-licence",
+    verificationEvidenceUri: "https://www.brela.go.tz/index.php/services/business-licence",
+    notes:
+      "Current BRELA page describing trade/service mark filing criteria, documents, ORS steps and payment workflow despite its legacy URL slug.",
+  }),
+  target(BRELA_TZ, {
+    id: "tz-brela-ors-trademarks",
+    family: "SEARCH",
+    displayName: "Tanzania BRELA Online Registration System",
+    canonicalUri: "https://ors.brela.go.tz/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.brela.go.tz/index.php/services/business-licence",
+    notes:
+      "Official ORS entrypoint linked by BRELA for online trade/service mark operations and registry lookup workflow.",
+  }),
+  target(BRELA_TZ, {
+    id: "tz-brela-trademark-fees",
+    family: "FEES",
+    displayName: "Tanzania Trade and Service Marks Fees",
+    canonicalUri: "https://brela.go.tz/index.php/pages/trade-and-service-marks-fees",
+    verificationEvidenceUri: "https://brela.go.tz/index.php/pages/trade-and-service-marks-fees",
+  }),
+  target(BRELA_TZ, {
+    id: "tz-brela-trademark-act",
+    family: "LEGAL_TEXTS",
+    displayName: "Tanzania Trade and Service Marks Act",
+    canonicalUri: "https://www.brela.go.tz/documents/acts",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.brela.go.tz/documents/acts",
+    notes: "Current BRELA Acts collection includes the Trade and Service Marks Act.",
+  }),
+  target(BRELA_TZ, {
+    id: "tz-brela-trademark-forms",
+    family: "FILING",
+    displayName: "Tanzania Trade and Service Mark Forms",
+    canonicalUri: "https://www.brela.go.tz/documents/trade-marks",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.brela.go.tz/documents/trade-marks",
+    notes: "Official BRELA collection of trade/service mark application, fee and renewal forms.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const IAPI_AO: Authority = {
+  jurisdiction: "AO",
+  authorityName: "Angolan Institute of Industrial Property (IAPI)",
+  languages: ["pt"],
+  verificationEvidenceUri: "https://www.iapi.gov.ao/",
+};
+
+export const IAPI_AO_SOURCE_COVERAGE_TARGETS = [
+  target(IAPI_AO, {
+    id: "ao-iapi-portal",
+    family: "PORTAL",
+    displayName: "Angola IAPI Portal",
+    canonicalUri: "https://www.iapi.gov.ao/",
+    verificationEvidenceUri: "https://www.iapi.gov.ao/",
+  }),
+  target(IAPI_AO, {
+    id: "ao-iapi-trademark-filing",
+    family: "FILING",
+    displayName: "Angola IAPI Trademark Registration",
+    canonicalUri: "https://iapi.gov.ao/web/actos/68/marca-iapi",
+    verificationEvidenceUri: "https://iapi.gov.ao/web/actos/68/marca-iapi",
+  }),
+  target(IAPI_AO, {
+    id: "ao-iapi-prior-art-search",
+    family: "SEARCH",
+    displayName: "Angola IAPI Industrial Property Prior-Art Search",
+    canonicalUri: "https://iapi.gov.ao/web/actos/87/busca-de-anterioridade",
+    verificationEvidenceUri: "https://iapi.gov.ao/web/actos/87/busca-de-anterioridade",
+  }),
+  target(IAPI_AO, {
+    id: "ao-iapi-fee-table",
+    family: "FEES",
+    displayName: "Angola Industrial Property Fee Table – Presidential Decree No. 62/20",
+    canonicalUri: "https://iapi.gov.ao/web/documentos?page=2&type=Legisla%C3%A7%C3%A3o",
+    verificationEvidenceUri: "https://iapi.gov.ao/web/documentos?page=2&type=Legisla%C3%A7%C3%A3o",
+    notes:
+      "Current IAPI legislation collection exposes Presidential Decree No. 62/20 containing the industrial-property fee table.",
+  }),
+  target(IAPI_AO, {
+    id: "ao-industrial-property-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Angola Industrial Property Law No. 3/92",
+    canonicalUri: "https://iapi.gov.ao/web/documentos?type=Legisla%C3%A7%C3%A3o",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://iapi.gov.ao/web/documentos?type=Legisla%C3%A7%C3%A3o",
+  }),
+  target(IAPI_AO, {
+    id: "ao-gue-iapi-filing-requirements",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Angola GUE IAPI Marks and Patents Requirements",
+    canonicalUri: "https://gue.gov.ao/sigue2/marcas-e-patentes-iapi",
+    verificationEvidenceUri: "https://gue.gov.ao/sigue2/marcas-e-patentes-iapi",
+    notes:
+      "Official government one-stop service detailing IAPI filing documents, mark requirements, phases, forms and fee links.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const IPI_MZ: Authority = {
+  jurisdiction: "MZ",
+  authorityName: "Industrial Property Institute of Mozambique (IPI)",
+  languages: ["pt"],
+  verificationEvidenceUri: "https://www.ipi.gov.mz/",
+};
+
+export const IPI_MZ_SOURCE_COVERAGE_TARGETS = [
+  target(IPI_MZ, {
+    id: "mz-ipi-portal",
+    family: "PORTAL",
+    displayName: "Mozambique Industrial Property Institute Portal",
+    canonicalUri: "https://www.ipi.gov.mz/",
+    verificationEvidenceUri: "https://www.ipi.gov.mz/",
+  }),
+  target(IPI_MZ, {
+    id: "mz-ipi-trademark-forms",
+    family: "FILING",
+    displayName: "Mozambique IPI Industrial Property Forms",
+    canonicalUri: "https://ipi.gov.mz/minutas-e-formularios",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://ipi.gov.mz/minutas-e-formularios",
+    notes: "Official forms collection includes trademark registration and renewal forms.",
+  }),
+  target(IPI_MZ, {
+    id: "mz-ipi-search-request",
+    family: "SEARCH",
+    displayName: "Mozambique IPI Industrial Property Search Request",
+    canonicalUri:
+      "https://www.ipi.gov.mz/index.php/minutas-e-formularios/184-formulario-de-pedido-de-pesquisa",
+    verificationEvidenceUri:
+      "https://www.ipi.gov.mz/index.php/minutas-e-formularios/184-formulario-de-pedido-de-pesquisa",
+  }),
+  target(IPI_MZ, {
+    id: "mz-ipi-current-fees",
+    family: "FEES",
+    displayName: "Mozambique IPI Current Industrial Property Fees Notice",
+    canonicalUri: "https://ipi.gov.mz/homepage/377-aviso",
+    verificationEvidenceUri: "https://ipi.gov.mz/homepage/377-aviso",
+    notes:
+      "Official notice identifies Ministerial Diploma No. 154/2023 as the new industrial-property fee schedule effective February 2024.",
+  }),
+  target(IPI_MZ, {
+    id: "mz-industrial-property-code-47-2015",
+    family: "LEGAL_TEXTS",
+    displayName: "Mozambique Industrial Property Code – Decree No. 47/2015",
+    canonicalUri: "https://www.ipi.gov.mz/item/151/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.ipi.gov.mz/item/151/",
+  }),
+  target(IPI_MZ, {
+    id: "mz-ipi-rights-maintenance-guidance",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Mozambique IPI Industrial Property Rights Maintenance Guidance",
+    canonicalUri:
+      "https://ipi.gov.mz/homepage/320-mecanismos-de-manutencao-de-direitos-da-propriedade-industrial",
+    verificationEvidenceUri:
+      "https://ipi.gov.mz/homepage/320-mecanismos-de-manutencao-de-direitos-da-propriedade-industrial",
+    notes:
+      "Official IPI operational guidance for maintaining registered industrial-property rights; current fees remain sourced separately.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const PACRA_ZM: Authority = {
+  jurisdiction: "ZM",
+  authorityName: "Patents and Companies Registration Agency of Zambia (PACRA)",
+  languages: ["en"],
+  verificationEvidenceUri: "https://www.pacra.org.zm/",
+};
+
+export const PACRA_ZM_SOURCE_COVERAGE_TARGETS = [
+  target(PACRA_ZM, {
+    id: "zm-pacra-portal",
+    family: "PORTAL",
+    displayName: "Zambia PACRA Intellectual Property Portal",
+    canonicalUri: "https://www.pacra.org.zm/",
+    verificationEvidenceUri: "https://www.pacra.org.zm/",
+  }),
+  target(PACRA_ZM, {
+    id: "zm-pacra-ip-online",
+    family: "FILING",
+    displayName: "Zambia PACRA IP Online",
+    canonicalUri: "https://www.pacra.org.zm/ip-online",
+    verificationEvidenceUri: "https://www.pacra.org.zm/",
+    notes:
+      "Official trademark-filing quick link currently points to the PACRA IP Online surface, which is being migrated to a new platform.",
+  }),
+  target(PACRA_ZM, {
+    id: "zm-pacra-tmview-search",
+    family: "SEARCH",
+    displayName: "Zambia PACRA-Linked TMView Trademark Search",
+    canonicalUri: "https://www.tmdn.org/tmview/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.pacra.org.zm/",
+    notes:
+      "PACRA's current official homepage links TMView directly as its trademark-search resource.",
+  }),
+  target(PACRA_ZM, {
+    id: "zm-pacra-forms-fees",
+    family: "FEES",
+    displayName: "Zambia PACRA Forms and Fees",
+    canonicalUri: "https://www.pacra.org.zm/fees-and-forms",
+    verificationEvidenceUri: "https://www.pacra.org.zm/fees-and-forms",
+    notes: "Current PACRA forms-and-fees catalogue for online and walk-in services.",
+  }),
+  target(PACRA_ZM, {
+    id: "zm-trade-marks-act-2023",
+    family: "LEGAL_TEXTS",
+    displayName: "Zambia Trade Marks Act 2023",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/22407",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/22407",
+    notes: "Current Trade Marks Act, operational from 31 December 2025.",
+  }),
+  target(PACRA_ZM, {
+    id: "zm-pacra-nice-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Zambia PACRA Nice Classification",
+    canonicalUri: "https://www.pacra.org.zm/classifications",
+    verificationEvidenceUri: "https://www.pacra.org.zm/classifications",
+    notes: "Current PACRA classification resource includes the Nice Classification for trademarks.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const CIPZ_ZW: Authority = {
+  jurisdiction: "ZW",
+  authorityName: "Companies and Intellectual Property Office of Zimbabwe (CIPZ)",
+  languages: ["en"],
+  verificationEvidenceUri:
+    "https://opcbyometro.gov.zw/deeds-companies-and-intellectual-property-information/",
+};
+
+export const CIPZ_ZW_SOURCE_COVERAGE_TARGETS = [
+  target(CIPZ_ZW, {
+    id: "zw-cipz-government-portal",
+    family: "PORTAL",
+    displayName: "Zimbabwe Government CIPZ Information",
+    canonicalUri:
+      "https://opcbyometro.gov.zw/deeds-companies-and-intellectual-property-information/",
+    verificationEvidenceUri:
+      "https://opcbyometro.gov.zw/deeds-companies-and-intellectual-property-information/",
+    notes:
+      "Zimbabwe government page identifying the Companies and Intellectual Property Office and its official website.",
+  }),
+  target(CIPZ_ZW, {
+    id: "zw-cipz-filing-portal",
+    family: "FILING",
+    displayName: "Companies and Intellectual Property Office of Zimbabwe Portal",
+    canonicalUri: "https://www.cipz.gov.zw/",
+    verificationEvidenceUri:
+      "https://opcbyometro.gov.zw/deeds-companies-and-intellectual-property-information/",
+  }),
+  target(CIPZ_ZW, {
+    id: "zw-trade-marks-act-current",
+    family: "LEGAL_TEXTS",
+    displayName: "Zimbabwe Trade Marks Act Chapter 26:04",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/18709",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/18709",
+  }),
+  target(CIPZ_ZW, {
+    id: "zw-trade-mark-regulations-2005",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Zimbabwe Trade Mark Regulations 2005",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/8943",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/8943",
+    notes:
+      "WIPO Lex implementing regulations covering filing, examination, register operations, searches, forms and schedules.",
+  }),
+  target(CIPZ_ZW, {
+    id: "zw-trade-mark-regulations-fees",
+    family: "FEES",
+    displayName: "Zimbabwe Trade Mark Regulations Fee Schedule",
+    canonicalUri: "https://www.wipo.int/wipolex/en/text/215254",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/8943",
+    notes: "WIPO Lex text exposes the First Schedule of trademark fees in the regulations.",
+  }),
+  target(CIPZ_ZW, {
+    id: "zw-trademark-search-regulations",
+    family: "SEARCH",
+    displayName: "Zimbabwe Trade Mark Register Search Provisions",
+    canonicalUri: "https://wipolex-res.wipo.int/edocs/lexdocs/laws/en/zw/zw032en.html",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/8943",
+    notes:
+      "Official WIPO-hosted regulations text includes the national trademark-search provisions.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const DPI_CD: Authority = {
+  jurisdiction: "CD",
+  authorityName: "Direction de la Propriété Industrielle, Ministry of Industry of the DRC",
+  languages: ["fr"],
+  verificationEvidenceUri: "https://industrie.gouv.cd/",
+};
+
+export const DPI_CD_SOURCE_COVERAGE_TARGETS = [
+  target(DPI_CD, {
+    id: "cd-industry-ministry-portal",
+    family: "PORTAL",
+    displayName: "DRC Ministry of Industry Portal",
+    canonicalUri: "https://industrie.gouv.cd/",
+    verificationEvidenceUri: "https://industrie.gouv.cd/",
+  }),
+  target(DPI_CD, {
+    id: "cd-industrial-property-authority",
+    family: "FILING",
+    displayName: "DRC Ministry Industrial Property Mandate",
+    canonicalUri: "https://industrie.gouv.cd/le-ministere/mission-et-vision/",
+    verificationEvidenceUri: "https://industrie.gouv.cd/le-ministere/mission-et-vision/",
+    notes:
+      "Official Ministry mandate confirms responsibility for industrial property, including trademarks, and is retained as the national office entrypoint where no dedicated filing portal is publicly exposed.",
+  }),
+  target(DPI_CD, {
+    id: "cd-wipo-national-ip-office-profile",
+    family: "SEARCH",
+    displayName: "WIPO DRC National IP Office and Statistics Profile",
+    canonicalUri: "https://www.wipo.int/fr/web/country-profiles/CD",
+    verificationEvidenceUri: "https://www.wipo.int/fr/web/country-profiles/CD",
+    notes:
+      "WIPO country profile identifies the Direction de la propriété industrielle as the national IP office and exposes trademark statistics and office coordinates.",
+  }),
+  target(DPI_CD, {
+    id: "cd-official-journal-fee-order-search",
+    family: "FEES",
+    displayName: "DRC Official Journal Search for Industrial Property Fee Orders",
+    canonicalUri: "https://journalofficiel.cd/rech/5/1",
+    verificationEvidenceUri: "https://www.journalofficiel.cd/",
+    notes:
+      "Official Journal search surface retained to acquire current Ministry of Industry fee orders and their annexed industrial-property tariffs rather than copying rates into Knowledge.",
+  }),
+  target(DPI_CD, {
+    id: "cd-industrial-property-law-82-001",
+    family: "LEGAL_TEXTS",
+    displayName: "DRC Law No. 82-001 on Industrial Property",
+    canonicalUri: "https://www.wipo.int/wipolex/fr/legislation/details/7499",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/fr/legislation/details/7499",
+  }),
+  target(DPI_CD, {
+    id: "cd-industrial-property-law-filing-text",
+    family: "EXAMINATION_MANUAL",
+    displayName: "DRC Industrial Property Law – WIPO Full Text Filing Provisions",
+    canonicalUri: "https://wipolex-res.wipo.int/edocs/lexdocs/laws/en/cd/cd002en.html",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/fr/legislation/details/7499",
+    notes:
+      "Official WIPO-hosted full text contains trademark filing, registration, publication, renewal and payment requirements under Law No. 82-001.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -11700,5 +12130,12 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...ISPI_SV_SOURCE_COVERAGE_TARGETS,
   ...JIPO_JM_SOURCE_COVERAGE_TARGETS,
   ...IPO_TT_SOURCE_COVERAGE_TARGETS,
+  ...OCPI_CU_SOURCE_COVERAGE_TARGETS,
+  ...BRELA_TZ_SOURCE_COVERAGE_TARGETS,
+  ...IAPI_AO_SOURCE_COVERAGE_TARGETS,
+  ...IPI_MZ_SOURCE_COVERAGE_TARGETS,
+  ...PACRA_ZM_SOURCE_COVERAGE_TARGETS,
+  ...CIPZ_ZW_SOURCE_COVERAGE_TARGETS,
+  ...DPI_CD_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

@@ -32,8 +32,8 @@ describe("priority trademark jurisdictions", () => {
     const curated = listPriorityTrademarkJurisdictions({ coverageState: "CURATED" });
     const target = listPriorityTrademarkJurisdictions({ coverageState: "TARGET" });
 
-    expect(curated).toHaveLength(110);
-    expect(target).toHaveLength(10);
+    expect(curated).toHaveLength(117);
+    expect(target).toHaveLength(3);
     expect(curated.length + target.length).toBe(PRIORITY_TRADEMARK_JURISDICTION_LIMIT);
 
     for (const item of curated) {
