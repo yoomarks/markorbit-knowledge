@@ -3610,6 +3610,66 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "py-dinapi-trademark-examination-guidelines-2025",
     query: "Paraguay trademark examination guidelines Resolution 259 2025 DINAPI",
   },
+  {
+    id: "ve-sapi-portal-name",
+    targetId: "ve-sapi-portal",
+    query: "Venezuela SAPI intellectual property trademark portal",
+  },
+  {
+    id: "ve-sapi-webpi-online-filing-name",
+    targetId: "ve-sapi-webpi-online-filing",
+    query: "Venezuela SAPI WebPI online trademark filing",
+  },
+  {
+    id: "ve-sapi-trademark-search-procedure-name",
+    targetId: "ve-sapi-trademark-search-procedure",
+    query: "Venezuela SAPI automated trademark prior search WebPI procedure",
+  },
+  {
+    id: "ve-sapi-trademark-tariff-pdf-name",
+    targetId: "ve-sapi-trademark-tariff-pdf",
+    query: "Venezuela SAPI official trademark tariff fees PDF",
+  },
+  {
+    id: "ve-sapi-trademark-legal-framework-name",
+    targetId: "ve-sapi-trademark-legal-framework",
+    query: "Venezuela SAPI trademark industrial property legal framework",
+  },
+  {
+    id: "ve-industrial-property-law-wipolex-name",
+    targetId: "ve-industrial-property-law-wipolex",
+    query: "Venezuela Industrial Property Law trademarks WIPO Lex",
+  },
+  {
+    id: "et-eipa-portal-name",
+    targetId: "et-eipa-portal",
+    query: "Ethiopia EIPA intellectual property trademark portal",
+  },
+  {
+    id: "et-eipa-trademark-application-procedure-name",
+    targetId: "et-eipa-trademark-application-procedure",
+    query: "Ethiopia EIPA trademark application procedure local foreign applicants",
+  },
+  {
+    id: "et-eipa-trademark-search-name",
+    targetId: "et-eipa-trademark-search",
+    query: "Ethiopia EIPA registered trademark search records",
+  },
+  {
+    id: "et-eipa-trademark-fees-name",
+    targetId: "et-eipa-trademark-fees",
+    query: "Ethiopia EIPA trademark application registration renewal search fees",
+  },
+  {
+    id: "et-eipa-trademark-legislation-index-name",
+    targetId: "et-eipa-trademark-legislation-index",
+    query: "Ethiopia EIPA trademark proclamation 501 regulation 273 legislation",
+  },
+  {
+    id: "et-trademark-regulation-273-2012-name",
+    targetId: "et-trademark-regulation-273-2012",
+    query: "Ethiopia trademark registration protection regulation 273 2012",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();

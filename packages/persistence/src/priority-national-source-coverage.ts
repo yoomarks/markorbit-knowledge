@@ -11024,6 +11024,155 @@ export const DINAPI_PY_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const SAPI_VE: Authority = {
+  jurisdiction: "VE",
+  authorityName: "Autonomous Service of Intellectual Property of Venezuela (SAPI)",
+  languages: ["es"],
+  verificationEvidenceUri: "https://sapi.gob.ve/",
+};
+
+export const SAPI_VE_SOURCE_COVERAGE_TARGETS = [
+  target(SAPI_VE, {
+    id: "ve-sapi-portal",
+    family: "PORTAL",
+    displayName: "Venezuela SAPI Intellectual Property Portal",
+    canonicalUri: "https://sapi.gob.ve/",
+    verificationEvidenceUri: "https://sapi.gob.ve/",
+    notes:
+      "Current SAPI authority portal linking trademark services, the WebPI online system and the Industrial Property Bulletin.",
+  }),
+  target(SAPI_VE, {
+    id: "ve-sapi-webpi-online-filing",
+    family: "FILING",
+    displayName: "Venezuela SAPI WebPI Online Filing System",
+    canonicalUri: "https://webpi.sapi.gob.ve/index0.php",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://sapi.gob.ve/servicio-marcas/",
+    notes:
+      "Official SAPI WebPI system used for electronic industrial-property procedures, including trademark applications and related actions.",
+  }),
+  target(SAPI_VE, {
+    id: "ve-sapi-trademark-search-procedure",
+    family: "SEARCH",
+    displayName: "Venezuela SAPI Trademark Search and Registration Procedure",
+    canonicalUri: "https://sapi.gob.ve/servicio-marcas/",
+    verificationEvidenceUri: "https://sapi.gob.ve/servicio-marcas/",
+    notes:
+      "Current SAPI trademark-service guidance states that the prior-availability search is automated through WebPI and documents examination, publication, opposition and registration stages.",
+  }),
+  target(SAPI_VE, {
+    id: "ve-sapi-trademark-tariff-pdf",
+    family: "FEES",
+    displayName: "Venezuela SAPI Official Trademark Tariff",
+    canonicalUri:
+      "https://sapi.gob.ve/wp-content/uploads/2021/09/AVISO-OFICIAL-DIRECTOR-GENERAL-No-DG-14-2021-Actualizacion-de-las-Tasas-1.pdf",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["PDF"],
+    verificationEvidenceUri: "https://sapi.gob.ve/servicio-marcas/",
+    notes:
+      "Official tariff PDF still linked by SAPI's current trademark-service page. Knowledge retains the live authority source rather than copying numeric rates into metadata.",
+  }),
+  target(SAPI_VE, {
+    id: "ve-sapi-trademark-legal-framework",
+    family: "LEGAL_TEXTS",
+    displayName: "Venezuela SAPI Trademark Legal Framework",
+    canonicalUri: "https://sapi.gob.ve/marco-legal/",
+    verificationEvidenceUri: "https://sapi.gob.ve/marco-legal/",
+    notes:
+      "Current SAPI legal-framework index linking the Industrial Property Law and other instruments governing trademarks and industrial property.",
+  }),
+  target(SAPI_VE, {
+    id: "ve-industrial-property-law-wipolex",
+    family: "LEGAL_TEXTS",
+    displayName: "Venezuela Industrial Property Law – WIPO Lex",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/3985",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/3985",
+    notes:
+      "WIPO Lex full text of Venezuela's Industrial Property Law, including trademark registration, rights, cancellation and enforcement provisions.",
+  }),
+  target(SAPI_VE, {
+    id: "ve-sapi-industrial-property-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Venezuela SAPI Industrial Property Bulletin",
+    canonicalUri: "https://sapi.gob.ve/boletin-propiedad/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://sapi.gob.ve/boletin-propiedad/",
+    notes:
+      "Current official SAPI Industrial Property Bulletin index; retained as a change-signal publication source rather than foundational retrieval.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const EIPA_ET: Authority = {
+  jurisdiction: "ET",
+  authorityName: "Ethiopian Intellectual Property Authority (EIPA)",
+  languages: ["en", "am"],
+  verificationEvidenceUri: "https://eipa.gov.et/",
+};
+
+export const EIPA_ET_SOURCE_COVERAGE_TARGETS = [
+  target(EIPA_ET, {
+    id: "et-eipa-portal",
+    family: "PORTAL",
+    displayName: "Ethiopian Intellectual Property Authority Portal",
+    canonicalUri: "https://eipa.gov.et/",
+    verificationEvidenceUri: "https://eipa.gov.et/",
+    notes:
+      "Current EIPA authority portal describing trademark search, filing, formal and substantive examination, registration and appeal services.",
+  }),
+  target(EIPA_ET, {
+    id: "et-eipa-trademark-application-procedure",
+    family: "FILING",
+    displayName: "Ethiopia Trademark Application Procedure",
+    canonicalUri: "https://eipa.gov.et/application-procedure-2/",
+    verificationEvidenceUri: "https://eipa.gov.et/application-procedure-2/",
+    notes:
+      "Current EIPA application procedure for local and foreign trademark applicants, including representation and document requirements.",
+  }),
+  target(EIPA_ET, {
+    id: "et-eipa-trademark-search",
+    family: "SEARCH",
+    displayName: "Ethiopia EIPA Trademark Search Records",
+    canonicalUri: "https://ip.eipa.gov.et/index.php/trade-marks/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://ip.eipa.gov.et/index.php/trade-marks/",
+    notes:
+      "Official EIPA intellectual-property marketplace/search surface exposing registered trademark records.",
+  }),
+  target(EIPA_ET, {
+    id: "et-eipa-trademark-fees",
+    family: "FEES",
+    displayName: "Ethiopia EIPA Trademark Fees and Payments",
+    canonicalUri: "https://eipa.gov.et/tm-fees-and-payments/",
+    verificationEvidenceUri: "https://eipa.gov.et/tm-fees-and-payments/",
+    notes:
+      "Current EIPA trademark fee schedule covering application, registration, renewal, search and related services; live values remain at source.",
+  }),
+  target(EIPA_ET, {
+    id: "et-eipa-trademark-legislation-index",
+    family: "LEGAL_TEXTS",
+    displayName: "Ethiopia EIPA Trademark Proclamation and Regulation Index",
+    canonicalUri: "https://eipa.gov.et/proclamation-and-regulation/",
+    verificationEvidenceUri: "https://eipa.gov.et/proclamation-and-regulation/",
+    notes:
+      "Current EIPA legislation index identifying Trademark Proclamation No. 501/2006, Regulation No. 273/2012 and later trademark directives.",
+  }),
+  target(EIPA_ET, {
+    id: "et-trademark-regulation-273-2012",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Ethiopia Trademark Registration and Protection Regulation No. 273/2012",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/12890",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/12890",
+    notes:
+      "WIPO Lex implementing regulation covering trademark filing, examination, registration, publication, opposition, renewal and related procedures.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -11192,5 +11341,7 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...ONAPI_DO_SOURCE_COVERAGE_TARGETS,
   ...MOET_LB_SOURCE_COVERAGE_TARGETS,
   ...DINAPI_PY_SOURCE_COVERAGE_TARGETS,
+  ...SAPI_VE_SOURCE_COVERAGE_TARGETS,
+  ...EIPA_ET_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
