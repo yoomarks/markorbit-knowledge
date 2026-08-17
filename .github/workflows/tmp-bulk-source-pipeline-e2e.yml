@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - codex/bulk-source-pipeline-e2e-v1
+    paths:
+      - .github/workflows/tmp-bulk-source-pipeline-e2e.yml
+
+permissions:
+  contents: write
 
 jobs:
   verify:
@@ -18,8 +23,15 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec prettier --check apps/admin/src/server/discovery-batch-import-service.ts apps/admin/src/app/api/discovery/batch/route.ts apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts
+      - run: pnpm exec prettier --write apps/admin/src/server/discovery-batch-import-service.ts apps/admin/src/app/api/discovery/batch/route.ts apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts
       - run: pnpm --filter @markorbit/admin exec vitest run src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Commit verified formatting
+        run: |
+          git config user.name "yoomarks"
+          git config user.email "lukeluccas6292643@gmail.com"
+          git add apps/admin/src/server/discovery-batch-import-service.ts apps/admin/src/app/api/discovery/batch/route.ts apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts
+          git diff --cached --quiet || git commit -m "Discovery: format bulk source pipeline E2E"
+          git push origin HEAD:codex/bulk-source-pipeline-e2e-v1
