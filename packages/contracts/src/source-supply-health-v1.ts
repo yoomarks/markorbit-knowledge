@@ -1,4 +1,5 @@
 import type { ArtifactKind } from "./schema-v1";
+import type { SourceCompatibilityBaselineState } from "./source-compatibility-v1";
 import type {
   SourceCoverageCatalogState,
   SourceCoverageChangeSensitivity,
@@ -6,13 +7,21 @@ import type {
   SourceCoverageTier,
 } from "./source-coverage-v1";
 
-export const SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.0" as const;
+export const SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.1" as const;
 
 export const SOURCE_SUPPLY_HEALTH_STATES = ["READY", "DEGRADED", "BLOCKED"] as const;
 export type SourceSupplyHealthState = (typeof SOURCE_SUPPLY_HEALTH_STATES)[number];
 
 export const SOURCE_SUPPLY_FRESHNESS_STATES = ["FRESH", "STALE", "UNOBSERVED"] as const;
 export type SourceSupplyFreshnessState = (typeof SOURCE_SUPPLY_FRESHNESS_STATES)[number];
+
+export const SOURCE_SUPPLY_COMPATIBILITY_STATES = [
+  "PASS",
+  "DEGRADED",
+  "BLOCKED",
+  "UNOBSERVED",
+] as const;
+export type SourceSupplyCompatibilityState = (typeof SOURCE_SUPPLY_COMPATIBILITY_STATES)[number];
 
 export const SOURCE_SUPPLY_GAPS = [
   "SOURCE_UNREGISTERED",
@@ -21,6 +30,8 @@ export const SOURCE_SUPPLY_GAPS = [
   "STALE_ACQUISITION",
   "NO_NORMALIZED_DOCUMENT",
   "NO_RETRIEVAL_DOCUMENT",
+  "PRIMARY_PATH_DEGRADED",
+  "EXTERNAL_COMPATIBILITY_BLOCKED",
 ] as const;
 export type SourceSupplyGap = (typeof SOURCE_SUPPLY_GAPS)[number];
 
@@ -59,6 +70,17 @@ export type SourceSupplyFreshnessHealth = {
   maxAgeHours: number;
 };
 
+export type SourceSupplyCompatibilityHealth = {
+  state: SourceSupplyCompatibilityState;
+  observedAt: string | null;
+  primaryUri: string | null;
+  renderJavascript: boolean | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  baselineTargetId: string | null;
+  baselineState: SourceCompatibilityBaselineState | null;
+};
+
 export type SourceSupplyHealthRecord = {
   protocolVersion: typeof SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION;
   objectType: "SOURCE_SUPPLY_HEALTH";
@@ -78,6 +100,7 @@ export type SourceSupplyHealthRecord = {
   normalization: SourceSupplyNormalizationHealth;
   retrieval: SourceSupplyRetrievalHealth;
   freshness: SourceSupplyFreshnessHealth;
+  compatibility?: SourceSupplyCompatibilityHealth;
   gaps: SourceSupplyGap[];
   state: SourceSupplyHealthState;
   observedAt: string;
@@ -91,5 +114,6 @@ export type SourceSupplyHealthSummary = {
   normalizedAvailable: number;
   retrievalAvailable: number;
   byFreshness: Record<SourceSupplyFreshnessState, number>;
+  byCompatibility?: Record<SourceSupplyCompatibilityState, number>;
   gapCounts: Partial<Record<SourceSupplyGap, number>>;
 };

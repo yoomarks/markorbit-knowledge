@@ -16,6 +16,7 @@ export * from "./change-feed-v1";
 export * from "./source-coverage-v1";
 export * from "./global-reference-source-v1";
 export * from "./source-supply-health-v1";
+export * from "./source-compatibility-v1";
 export { SOURCE_REGISTRY_VERSION } from "./source-registry-v1";
 export type {
   SourceKind as RegistrySourceKind,
