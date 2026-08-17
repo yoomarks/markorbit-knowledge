@@ -3550,6 +3550,66 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "do-onapi-trademark-distinctiveness-manual",
     query: "DO ONAPI Trademark Types and Distinctiveness Manual",
   },
+  {
+    id: "lb-moet-intellectual-property-portal-name",
+    targetId: "lb-moet-intellectual-property-portal",
+    query: "Lebanon Ministry Economy intellectual property trademark portal",
+  },
+  {
+    id: "lb-moet-online-trademark-registration-name",
+    targetId: "lb-moet-online-trademark-registration",
+    query: "Lebanon Ministry online trademark registration electronic portal",
+  },
+  {
+    id: "lb-moet-trademark-search-guidance-name",
+    targetId: "lb-moet-trademark-search-guidance",
+    query: "Lebanon Ministry trademark search protection guidance",
+  },
+  {
+    id: "lb-moet-trademark-fees-pdf-name",
+    targetId: "lb-moet-trademark-fees-pdf",
+    query: "Lebanon Ministry trademark fees registration renewal PDF",
+  },
+  {
+    id: "lb-moet-intellectual-property-legislation-name",
+    targetId: "lb-moet-intellectual-property-legislation",
+    query: "Lebanon Ministry trademark intellectual property legislation 2385 LR",
+  },
+  {
+    id: "lb-moet-ip-applicant-guide-pdf-name",
+    targetId: "lb-moet-ip-applicant-guide-pdf",
+    query: "Lebanon trademark applicant guide filing publication certificate",
+  },
+  {
+    id: "py-dinapi-portal-name",
+    targetId: "py-dinapi-portal",
+    query: "Paraguay DINAPI trademark portal",
+  },
+  {
+    id: "py-dinapi-sfe-trademark-filing-name",
+    targetId: "py-dinapi-sfe-trademark-filing",
+    query: "Paraguay DINAPI SFE electronic trademark filing payment",
+  },
+  {
+    id: "py-dinapi-joaju-public-search-name",
+    targetId: "py-dinapi-joaju-public-search",
+    query: "Paraguay DINAPI Joaju public trademark search",
+  },
+  {
+    id: "py-dinapi-trademark-registration-fees-name",
+    targetId: "py-dinapi-trademark-registration-fees",
+    query: "Paraguay DINAPI trademark registration fees digital filing",
+  },
+  {
+    id: "py-dinapi-trademark-legal-framework-name",
+    targetId: "py-dinapi-trademark-legal-framework",
+    query: "Paraguay Law 1294 1998 trademark Decree 22365 DINAPI",
+  },
+  {
+    id: "py-dinapi-trademark-examination-guidelines-2025-name",
+    targetId: "py-dinapi-trademark-examination-guidelines-2025",
+    query: "Paraguay trademark examination guidelines Resolution 259 2025 DINAPI",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();

@@ -10856,6 +10856,174 @@ export const ONAPI_DO_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const MOET_LB: Authority = {
+  jurisdiction: "LB",
+  authorityName:
+    "Ministry of Economy and Trade of the Lebanese Republic – Intellectual Property Protection Office",
+  languages: ["ar", "en"],
+  verificationEvidenceUri:
+    "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/",
+};
+
+export const MOET_LB_SOURCE_COVERAGE_TARGETS = [
+  target(MOET_LB, {
+    id: "lb-moet-intellectual-property-portal",
+    family: "PORTAL",
+    displayName: "Lebanon Ministry of Economy Intellectual Property Portal",
+    canonicalUri: "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/",
+    verificationEvidenceUri:
+      "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/",
+    notes:
+      "Current Ministry intellectual-property authority surface linking legislation, trademarks, administrative services and statistics.",
+  }),
+  target(MOET_LB, {
+    id: "lb-moet-online-trademark-registration",
+    family: "FILING",
+    displayName: "Lebanon Online Trademark Registration Portal",
+    canonicalUri: "https://portal.economy.gov.lb/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/administrative-services/",
+    notes:
+      "Electronic Portal linked by the Ministry's current administrative-services page as the online trademark-registration service.",
+  }),
+  target(MOET_LB, {
+    id: "lb-moet-trademark-search-guidance",
+    family: "SEARCH",
+    displayName: "Lebanon Trademark Search and Protection Guidance",
+    canonicalUri:
+      "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/trademark/",
+    verificationEvidenceUri:
+      "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/trademark/",
+    notes:
+      "Current Ministry trademark page describing national protection and exposing the Ministry's trademark-search service entrypoint; retained as the stable official search guidance surface.",
+  }),
+  target(MOET_LB, {
+    id: "lb-moet-trademark-fees-pdf",
+    family: "FEES",
+    displayName: "Lebanon Ministry Trademark Fees",
+    canonicalUri: "https://www.economy.gov.lb/public/uploads/files/IPRService/6.pdf",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["PDF"],
+    verificationEvidenceUri:
+      "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/administrative-services/",
+    notes:
+      "Trademark fee PDF linked by the Ministry's current administrative-services page. Knowledge retains the live Ministry source rather than copying tariff amounts into metadata.",
+  }),
+  target(MOET_LB, {
+    id: "lb-moet-intellectual-property-legislation",
+    family: "LEGAL_TEXTS",
+    displayName: "Lebanon Intellectual Property Legislation Index",
+    canonicalUri:
+      "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/legislation/",
+    verificationEvidenceUri:
+      "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/legislation/",
+    notes:
+      "Current Ministry legislation index linking the 1924 trademark framework and subsequent fee and procedural instruments.",
+  }),
+  target(MOET_LB, {
+    id: "lb-moet-ip-applicant-guide-pdf",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Lebanon Intellectual Property Applicant Guide",
+    canonicalUri: "https://www.economy.gov.lb/public/uploads/files/IPRService/2.pdf",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["PDF"],
+    verificationEvidenceUri:
+      "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/administrative-services/",
+    notes:
+      "Ministry applicant guide setting out trademark registration steps and documentary requirements, including filing, payment, publication and certificate issuance.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const DINAPI_PY: Authority = {
+  jurisdiction: "PY",
+  authorityName: "National Directorate of Intellectual Property of Paraguay (DINAPI)",
+  languages: ["es"],
+  verificationEvidenceUri: "https://www.dinapi.gov.py/",
+};
+
+export const DINAPI_PY_SOURCE_COVERAGE_TARGETS = [
+  target(DINAPI_PY, {
+    id: "py-dinapi-portal",
+    family: "PORTAL",
+    displayName: "Paraguay DINAPI Portal",
+    canonicalUri: "https://www.dinapi.gov.py/",
+    verificationEvidenceUri: "https://www.dinapi.gov.py/",
+  }),
+  target(DINAPI_PY, {
+    id: "py-dinapi-sfe-trademark-filing",
+    family: "FILING",
+    displayName: "Paraguay SFE Digital Trademark Filing",
+    canonicalUri: "https://sfe.dinapi.gov.py/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/registro-de-marcas/",
+    notes:
+      "Official DINAPI electronic-forms platform for trademark registration and renewal, digital signature, electronic payment and digital submission.",
+  }),
+  target(DINAPI_PY, {
+    id: "py-dinapi-joaju-public-search",
+    family: "SEARCH",
+    displayName: "Paraguay Joaju Public Industrial Property Search",
+    canonicalUri: "https://joaju.dinapi.gov.py/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://sfe.dinapi.gov.py/",
+    notes:
+      "DINAPI public industrial-property consultation system for trademark and other registry searches; linked as Consultas from the current SFE platform.",
+  }),
+  target(DINAPI_PY, {
+    id: "py-dinapi-trademark-registration-fees",
+    family: "FEES",
+    displayName: "Paraguay Trademark Registration Procedure and Fees",
+    canonicalUri:
+      "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/registro-de-marcas/",
+    verificationEvidenceUri:
+      "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/registro-de-marcas/",
+    notes:
+      "Current DINAPI registration page describing digital filing, payment and trademark application fees; live amounts remain at source.",
+  }),
+  target(DINAPI_PY, {
+    id: "py-dinapi-trademark-legal-framework",
+    family: "LEGAL_TEXTS",
+    displayName: "Paraguay Trademark Legal Framework",
+    canonicalUri: "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/aprender/",
+    verificationEvidenceUri:
+      "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/aprender/",
+    notes:
+      "Current DINAPI trademark information page identifying Law No. 1294/1998 and Regulatory Decree No. 22365/1998 as the national trademark framework.",
+  }),
+  target(DINAPI_PY, {
+    id: "py-dinapi-trademark-examination-guidelines-2025",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Paraguay Trademark Examination Guidelines 2025",
+    canonicalUri: "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/directrices",
+    verificationEvidenceUri:
+      "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/directrices",
+    notes:
+      "Current DINAPI examination guidelines approved by Resolution No. 259/2025 to standardize trademark examination criteria.",
+  }),
+  target(DINAPI_PY, {
+    id: "py-dinapi-trademark-bulletins",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Paraguay DINAPI Trademark Bulletins",
+    canonicalUri:
+      "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/boletines-de-marcas/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF", "CSV", "XLSX"],
+    verificationEvidenceUri:
+      "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/boletines-de-marcas/",
+    notes:
+      "Current DINAPI bulletin index publishing 2026 trademark bulletins in machine-readable and document formats; retained as a change signal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -11022,5 +11190,7 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...RPI_CR_SOURCE_COVERAGE_TARGETS,
   ...DIGERPI_PA_SOURCE_COVERAGE_TARGETS,
   ...ONAPI_DO_SOURCE_COVERAGE_TARGETS,
+  ...MOET_LB_SOURCE_COVERAGE_TARGETS,
+  ...DINAPI_PY_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
