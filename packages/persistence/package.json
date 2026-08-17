@@ -21,6 +21,7 @@
     "./source-coverage-discovery-intake": "./src/source-coverage-discovery-intake.ts",
     "./representative-source-activation": "./src/representative-source-activation.ts",
     "./representative-source-live-canaries": "./src/representative-source-live-canaries.ts",
+    "./source-compatibility-observations": "./src/source-compatibility-observations.ts",
     "./source-supply-health": "./src/source-supply-health.ts",
     "./operations-readiness": "./src/operations-readiness.ts",
     "./source-intelligence": "./src/source-intelligence-registry.ts",
