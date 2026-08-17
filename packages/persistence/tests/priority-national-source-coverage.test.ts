@@ -85,6 +85,11 @@ import {
   IPR_BA_SOURCE_COVERAGE_TARGETS,
   SOIP_MK_SOURCE_COVERAGE_TARGETS,
   NCIP_BY_SOURCE_COVERAGE_TARGETS,
+  IPOM_MN_SOURCE_COVERAGE_TARGETS,
+  DIP_KH_SOURCE_COVERAGE_TARGETS,
+  DIP_LA_SOURCE_COVERAGE_TARGETS,
+  IPD_MM_SOURCE_COVERAGE_TARGETS,
+  BRUIPO_BN_SOURCE_COVERAGE_TARGETS,
   IPOS_SOURCE_COVERAGE_TARGETS,
   JPO_SOURCE_COVERAGE_TARGETS,
   KOREA_SOURCE_COVERAGE_TARGETS,
@@ -182,6 +187,11 @@ const authoritySets = [
   ["BA", IPR_BA_SOURCE_COVERAGE_TARGETS, ["ipr.gov.ba"]],
   ["MK", SOIP_MK_SOURCE_COVERAGE_TARGETS, ["ippo.gov.mk"]],
   ["BY", NCIP_BY_SOURCE_COVERAGE_TARGETS, ["ncip.by", "wipo.int"]],
+  ["MN", IPOM_MN_SOURCE_COVERAGE_TARGETS, ["ipom.gov.mn", "ipom.mn", "wipo.int"]],
+  ["KH", DIP_KH_SOURCE_COVERAGE_TARGETS, ["cambodiaip.gov.kh", "wipo.int"]],
+  ["LA", DIP_LA_SOURCE_COVERAGE_TARGETS, ["dip.gov.la", "wipo.int"]],
+  ["MM", IPD_MM_SOURCE_COVERAGE_TARGETS, ["ipd.gov.mm", "wipo.int"]],
+  ["BN", BRUIPO_BN_SOURCE_COVERAGE_TARGETS, ["bruipo.gov.bn", "wipo.int"]],
   ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],
 ] as const;
 
@@ -191,14 +201,14 @@ function officialHost(uri: string, suffixes: readonly string[]): boolean {
 }
 
 describe("priority national trademark source coverage", () => {
-  it("ships explicit, official, unique coverage for eighty-nine priority national offices", () => {
-    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(699);
+  it("ships explicit, official, unique coverage for ninety-four priority national offices", () => {
+    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(731);
     expect(new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(
-      699,
+      731,
     );
     expect(
       new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size,
-    ).toBe(699);
+    ).toBe(731);
 
     for (const [jurisdiction, targets, officialSuffixes] of authoritySets) {
       expect(targets.length).toBeGreaterThanOrEqual(5);

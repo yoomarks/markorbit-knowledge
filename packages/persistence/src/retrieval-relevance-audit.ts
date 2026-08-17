@@ -3220,6 +3220,156 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "by-ncip-trademark-registration-regulation-1719",
     query: "Belarus Resolution 1719 trademark registration regulation amended 2023",
   },
+  {
+    id: "mn-ipom-portal-name",
+    targetId: "mn-ipom-portal",
+    query: "Mongolia IPOM intellectual property trademark portal",
+  },
+  {
+    id: "mn-ipom-trademark-filing-guidance-name",
+    targetId: "mn-ipom-trademark-filing-guidance",
+    query: "Mongolia trademark filing application classes service fee IPOM",
+  },
+  {
+    id: "mn-ipom-trademark-database-name",
+    targetId: "mn-ipom-trademark-database",
+    query: "Mongolia national trademark database IPOM publish",
+  },
+  {
+    id: "mn-ipom-trademark-state-duty-name",
+    targetId: "mn-ipom-trademark-state-duty",
+    query: "Mongolia trademark certificate renewal state duty IPOM",
+  },
+  {
+    id: "mn-trademark-law-current-base-name",
+    targetId: "mn-trademark-law-current-base",
+    query: "Mongolia law trademarks geographical indications 2021 WIPO",
+  },
+  {
+    id: "mn-trademark-law-amendment-2024-name",
+    targetId: "mn-trademark-law-amendment-2024",
+    query: "Mongolia 2024 amendment trademark geographical indications law",
+  },
+  {
+    id: "kh-dip-portal-name",
+    targetId: "kh-dip-portal",
+    query: "Cambodia Department Intellectual Property trademark portal Ministry Commerce",
+  },
+  {
+    id: "kh-dip-trademark-efiling-name",
+    targetId: "kh-dip-trademark-efiling",
+    query: "Cambodia online trademark filing renewal post registration efiling",
+  },
+  {
+    id: "kh-dip-trademark-search-name",
+    targetId: "kh-dip-trademark-search",
+    query: "Cambodia national trademark search DIP",
+  },
+  {
+    id: "kh-dip-trademark-fee-notices-name",
+    targetId: "kh-dip-trademark-fee-notices",
+    query: "Cambodia trademark registration fees new fee policy notification",
+  },
+  {
+    id: "kh-trademark-law-name",
+    targetId: "kh-trademark-law",
+    query: "Cambodia law marks trade names unfair competition",
+  },
+  {
+    id: "kh-trademark-implementing-subdecree-name",
+    targetId: "kh-trademark-implementing-subdecree",
+    query: "Cambodia trademark implementing sub decree filing examination opposition",
+  },
+  {
+    id: "la-dip-portal-name",
+    targetId: "la-dip-portal",
+    query: "Lao PDR Department Intellectual Property trademark portal",
+  },
+  {
+    id: "la-dip-trademark-efiling-name",
+    targetId: "la-dip-trademark-efiling",
+    query: "Laos IP e filing trademark Department Intellectual Property",
+  },
+  {
+    id: "la-dip-ip-search-name",
+    targetId: "la-dip-ip-search",
+    query: "Lao PDR IP search trademarks DIP",
+  },
+  {
+    id: "la-dip-trademark-cost-guidance-name",
+    targetId: "la-dip-trademark-cost-guidance",
+    query: "Lao trademark registration cost 1.5 million kip eight months DIP",
+  },
+  {
+    id: "la-ip-law-2023-name",
+    targetId: "la-ip-law-2023",
+    query: "Lao PDR intellectual property law 50 NA 2023 trademarks",
+  },
+  {
+    id: "la-trademark-regulation-2023-name",
+    targetId: "la-trademark-regulation-2023",
+    query: "Lao trademark regulation 0436 MOIC 2023",
+  },
+  {
+    id: "mm-ipd-portal-name",
+    targetId: "mm-ipd-portal",
+    query: "Myanmar Intellectual Property Department trademark portal",
+  },
+  {
+    id: "mm-ipd-trademark-filing-process-name",
+    targetId: "mm-ipd-trademark-filing-process",
+    query: "Myanmar trademark filing examination publication opposition process IPD",
+  },
+  {
+    id: "mm-ipd-trademark-forms-name",
+    targetId: "mm-ipd-trademark-forms",
+    query: "Myanmar IPD trademark forms registry workflow",
+  },
+  {
+    id: "mm-ipd-trademark-efiling-epayment-name",
+    targetId: "mm-ipd-trademark-efiling-epayment",
+    query: "Myanmar IPD trademark online filing e payment",
+  },
+  {
+    id: "mm-trademark-law-2019-name",
+    targetId: "mm-trademark-law-2019",
+    query: "Myanmar Trademark Law 3 2019",
+  },
+  {
+    id: "mm-trademark-registration-rules-2023-name",
+    targetId: "mm-trademark-registration-rules-2023",
+    query: "Myanmar Trademark Registration Rules Notification 1 2023",
+  },
+  {
+    id: "bn-bruipo-portal-name",
+    targetId: "bn-bruipo-portal",
+    query: "Brunei Intellectual Property Office trademark portal",
+  },
+  {
+    id: "bn-bruipo-trademark-filing-name",
+    targetId: "bn-bruipo-trademark-filing",
+    query: "BruIPO trade mark application process",
+  },
+  {
+    id: "bn-bruipo-trademark-search-name",
+    targetId: "bn-bruipo-trademark-search",
+    query: "BruIPO trademark search Brunei",
+  },
+  {
+    id: "bn-bruipo-trademark-forms-fees-name",
+    targetId: "bn-bruipo-trademark-forms-fees",
+    query: "BruIPO trademark forms fees filing renewal opposition",
+  },
+  {
+    id: "bn-trade-marks-act-current-name",
+    targetId: "bn-trade-marks-act-current",
+    query: "Brunei Trade Marks Act Revised Edition 2022",
+  },
+  {
+    id: "bn-trade-marks-rules-name",
+    targetId: "bn-trade-marks-rules",
+    query: "Brunei Trade Marks Rules registration fees forms classification",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
