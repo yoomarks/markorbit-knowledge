@@ -2917,6 +2917,36 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ru-rospatent-trademark-renewal",
     query: "Rospatent trademark renewal ten years six month additional period fees",
   },
+  {
+    id: "uz-justice-intellectual-property-portal-name",
+    targetId: "uz-justice-intellectual-property-portal",
+    query: "Uzbekistan Ministry Justice intellectual property trademark portal",
+  },
+  {
+    id: "uz-justice-trademark-registration-service-name",
+    targetId: "uz-justice-trademark-registration-service",
+    query: "Uzbekistan trademark registration public service Ministry Justice filing examination",
+  },
+  {
+    id: "uz-justice-trademark-registration-request-name",
+    targetId: "uz-justice-trademark-registration-request",
+    query: "Uzbekistan trademark registration applicant service Ministry Justice",
+  },
+  {
+    id: "uz-justice-state-duty-rates-name",
+    targetId: "uz-justice-state-duty-rates",
+    query: "Uzbekistan state duty rates trademark registration fee Ministry Justice",
+  },
+  {
+    id: "uz-trademark-law-current-name",
+    targetId: "uz-trademark-law-current",
+    query: "Uzbekistan Law 267-II trademarks service marks appellations origin 2024",
+  },
+  {
+    id: "uz-trademark-filing-examination-rules-name",
+    targetId: "uz-trademark-filing-examination-rules",
+    query: "Uzbekistan trademark filing examination rules registration number 1988",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
