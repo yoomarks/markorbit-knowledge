@@ -200,6 +200,7 @@ async function observeProbe(
   outputDirectory: string,
   timeoutSeconds: number,
 ): Promise<ProbeObservation> {
+  await mkdir(outputDirectory, { recursive: true });
   const startedAt = Date.now();
   try {
     const { response, stderr, elapsedMs } = await runSubprocess(
@@ -303,7 +304,11 @@ async function observeCanary(
 ): Promise<CanaryObservation> {
   const outputDirectory = join(root, canary.jurisdiction.toLowerCase());
   await mkdir(outputDirectory, { recursive: true });
-  const primary = await observeProbe(primaryProbe(canary), join(outputDirectory, "primary"), timeoutSeconds);
+  const primary = await observeProbe(
+    primaryProbe(canary),
+    join(outputDirectory, "primary"),
+    timeoutSeconds,
+  );
   if (primary.state === "PASS") {
     return {
       jurisdiction: canary.jurisdiction,
