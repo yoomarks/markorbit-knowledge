@@ -1,0 +1,75 @@
+name: Temporary Run Venezuela Ethiopia Fixed
+
+on:
+  push:
+    branches:
+      - agent/priority-120-tranche-ve-et-v1
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-tranche-ve-et-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Execute corrected source patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/temp-priority-120-ve-et.yml').read_text()
+          start = workflow.index("          python - <<'PY'\n") + len("          python - <<'PY'\n")
+          end = workflow.index("\n          PY", start)
+          script = textwrap.dedent(workflow[start:end])
+          old = "    if new in text:\n        return\n    if old not in text:\n        raise SystemExit(f'expected anchor not found in {path}: {old[:180]!r}')"
+          new = "    if old not in text:\n        if new in text:\n            return\n        raise SystemExit(f'expected anchor not found in {path}: {old[:180]!r}')"
+          if old not in script:
+              raise SystemExit('replace_once guard block not found in source patch')
+          script = script.replace(old, new, 1)
+          exec(compile(script, 've-et-source-patch', 'exec'), {})
+          PY
+      - name: Format and verify
+        run: |
+          pnpm exec prettier --write \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts \
+            packages/persistence/tests/source-coverage-catalog-exports.test.ts
+          pnpm --filter @markorbit/persistence test -- \
+            tests/priority-national-source-coverage.test.ts \
+            tests/retrieval-relevance-audit.test.ts \
+            tests/priority-trademark-jurisdictions.test.ts \
+            tests/source-coverage-catalog-exports.test.ts
+          pnpm typecheck
+      - name: Commit production changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts \
+            packages/persistence/tests/source-coverage-catalog-exports.test.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "feat: add Venezuela Ethiopia trademark source coverage"
+          git push origin HEAD:agent/priority-120-tranche-ve-et-v1
