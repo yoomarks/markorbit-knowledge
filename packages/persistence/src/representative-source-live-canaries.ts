@@ -7,7 +7,14 @@ import {
 import { listSourceCoverageTargets } from "./source-coverage-catalog";
 
 export const REPRESENTATIVE_SOURCE_LIVE_CANARY_VERSION =
-  "REPRESENTATIVE_SOURCE_LIVE_CANARY_V1" as const;
+  "REPRESENTATIVE_SOURCE_LIVE_CANARY_V2" as const;
+
+export type RepresentativeSourceLiveCanaryBaseline = {
+  targetId: string;
+  family: string;
+  canonicalUri: string;
+  renderJavascript: boolean;
+};
 
 export type RepresentativeSourceLiveCanary = {
   version: typeof REPRESENTATIVE_SOURCE_LIVE_CANARY_VERSION;
@@ -20,6 +27,7 @@ export type RepresentativeSourceLiveCanary = {
   languages: string[];
   renderJavascript: boolean;
   expectedArtifactKinds: string[];
+  authorityBaseline?: RepresentativeSourceLiveCanaryBaseline;
 };
 
 const PROFILE_FAMILY_PREFERENCE: Record<RepresentativeSourceActivationProfile, string[]> = {
@@ -30,6 +38,8 @@ const PROFILE_FAMILY_PREFERENCE: Record<RepresentativeSourceActivationProfile, s
   REGIONAL_EUIPO: ["PORTAL", "FILING", "SEARCH"],
   REGIONAL_OAPI: ["PORTAL", "FILING", "SEARCH"],
 };
+
+const BASELINE_FAMILY_PREFERENCE = ["FILING", "PORTAL", "LEGAL_TEXTS", "FEES"];
 
 function targetRank(
   target: SourceCoverageTarget,
@@ -44,6 +54,13 @@ function targetRank(
       : 0;
   const htmlBonus = target.acquisition.expectedArtifactKinds.includes("HTML") ? -1 : 20;
   return familyRank + javascriptBonus + htmlBonus;
+}
+
+function baselineRank(target: SourceCoverageTarget): number {
+  const familyIndex = BASELINE_FAMILY_PREFERENCE.indexOf(target.family);
+  const familyRank = familyIndex < 0 ? 100 : familyIndex * 10;
+  const javascriptPenalty = target.acquisition.renderJavascriptHint ? 50 : 0;
+  return familyRank + javascriptPenalty;
 }
 
 function selectCanaryTarget(
@@ -73,6 +90,30 @@ function selectCanaryTarget(
   return selected;
 }
 
+function needsAuthorityBaseline(target: SourceCoverageTarget): boolean {
+  return target.family === "SEARCH" || target.acquisition.renderJavascriptHint;
+}
+
+function selectAuthorityBaseline(
+  primary: SourceCoverageTarget,
+  targets: readonly SourceCoverageTarget[],
+): SourceCoverageTarget | undefined {
+  if (!needsAuthorityBaseline(primary)) return undefined;
+  return targets
+    .filter(
+      (target) =>
+        target.id !== primary.id &&
+        target.jurisdiction === primary.jurisdiction &&
+        target.catalogState === "ACTIVE" &&
+        target.coverageTier === "FOUNDATIONAL" &&
+        target.sourceType === "WEB" &&
+        target.acquisition.expectedArtifactKinds.includes("HTML"),
+    )
+    .sort(
+      (left, right) => baselineRank(left) - baselineRank(right) || left.id.localeCompare(right.id),
+    )[0];
+}
+
 export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveCanary[] {
   const targets = listSourceCoverageTargets({
     coverageTier: "FOUNDATIONAL",
@@ -80,6 +121,7 @@ export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveC
   });
   const canaries = REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((jurisdiction) => {
     const target = selectCanaryTarget(jurisdiction.jurisdiction, jurisdiction.profile, targets);
+    const baseline = selectAuthorityBaseline(target, targets);
     return {
       version: REPRESENTATIVE_SOURCE_LIVE_CANARY_VERSION,
       jurisdiction: jurisdiction.jurisdiction,
@@ -91,6 +133,16 @@ export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveC
       languages: [...target.languages],
       renderJavascript: target.acquisition.renderJavascriptHint,
       expectedArtifactKinds: [...target.acquisition.expectedArtifactKinds],
+      ...(baseline
+        ? {
+            authorityBaseline: {
+              targetId: baseline.id,
+              family: baseline.family,
+              canonicalUri: baseline.canonicalUri,
+              renderJavascript: baseline.acquisition.renderJavascriptHint,
+            },
+          }
+        : {}),
     } satisfies RepresentativeSourceLiveCanary;
   });
 
