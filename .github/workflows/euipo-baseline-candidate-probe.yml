@@ -1,0 +1,72 @@
+name: EUIPO Baseline Candidate Probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/euipo-baseline-candidate-probe.yml
+      - apps/worker/src/verify-euipo-baseline-candidates.ts
+      - apps/worker/package.json
+      - packages/persistence/src/priority-national-source-coverage.ts
+      - packages/persistence/src/source-coverage-catalog.ts
+      - workers/crawl4ai/**
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: euipo-baseline-candidate-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      MARKORBIT_CRAWL4AI_PYTHON: python
+      MARKORBIT_LIVE_CANARY_TIMEOUT_SECONDS: "75"
+      MARKORBIT_PROBE_OUTPUT: ${{ github.workspace }}/artifacts/euipo-baseline-candidates
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure production Crawl4AI path
+        run: |
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install production Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+
+      - name: Probe official EUIPO baseline candidates
+        run: |
+          mkdir -p "$MARKORBIT_PROBE_OUTPUT"
+          pnpm --filter @markorbit/worker probe:euipo-baseline -- --output-dir="$MARKORBIT_PROBE_OUTPUT"
+
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: euipo-baseline-candidate-evidence
+          path: artifacts/euipo-baseline-candidates
+          if-no-files-found: warn
+          retention-days: 14
