@@ -54,13 +54,14 @@ describe("representative supply proof", () => {
   });
 
   it("verifies the full representative wave read-only", async () => {
-    const fetchImpl = vi.fn(async (request: string | URL | Request) => {
+    const fetchMock = vi.fn(async (request: string | URL | Request) => {
       const url = new URL(
         typeof request === "string" ? request : request instanceof URL ? request : request.url,
       );
       const targetId = url.searchParams.get("targetId") ?? "missing";
       return jsonResponse({ items: [healthyRecord(targetId)] });
-    }) as typeof fetch;
+    });
+    const fetchImpl = fetchMock as unknown as typeof fetch;
 
     const proof = await runRepresentativeSupplyProof({
       baseUrl: "http://127.0.0.1:3000/",
@@ -84,15 +85,15 @@ describe("representative supply proof", () => {
       "CI",
     ]);
     expect(proof.summary).toEqual({ proven: 12, incomplete: 0, failed: 0 });
-    expect(fetchImpl).toHaveBeenCalledTimes(12);
-    for (const call of fetchImpl.mock.calls) {
+    expect(fetchMock).toHaveBeenCalledTimes(12);
+    for (const call of fetchMock.mock.calls) {
       const init = call[1] as RequestInit | undefined;
       expect(init?.method).toBeUndefined();
     }
   });
 
   it("supports a jurisdiction subset and reports missing health as failed without mutation", async () => {
-    const fetchImpl = vi.fn(async () => jsonResponse({ items: [] })) as typeof fetch;
+    const fetchImpl = vi.fn(async () => jsonResponse({ items: [] })) as unknown as typeof fetch;
     const proof = await runRepresentativeSupplyProof({
       baseUrl: "https://knowledge.example.com/",
       workspaceId: "workspace-1",
@@ -107,7 +108,8 @@ describe("representative supply proof", () => {
   });
 
   it("rejects jurisdictions outside the representative wave before making requests", async () => {
-    const fetchImpl = vi.fn() as unknown as typeof fetch;
+    const fetchMock = vi.fn();
+    const fetchImpl = fetchMock as unknown as typeof fetch;
     await expect(
       runRepresentativeSupplyProof({
         baseUrl: "http://127.0.0.1:3000",
@@ -116,6 +118,6 @@ describe("representative supply proof", () => {
         fetchImpl,
       }),
     ).rejects.toThrow("Unsupported representative jurisdiction: FR");
-    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
