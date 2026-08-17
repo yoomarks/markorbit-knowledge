@@ -16,6 +16,7 @@
     "./source-assessment": "./src/source-assessment-registry.ts",
     "./source-graph": "./src/source-graph-registry.ts",
     "./source-coverage": "./src/source-coverage-catalog.ts",
+    "./global-reference-sources": "./src/global-reference-source-catalog.ts",
     "./priority-trademark-jurisdictions": "./src/priority-trademark-jurisdictions.ts",
     "./source-coverage-discovery-intake": "./src/source-coverage-discovery-intake.ts",
     "./source-supply-health": "./src/source-supply-health.ts",
