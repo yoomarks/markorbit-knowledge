@@ -16,6 +16,7 @@ import {
 import type { SourceCompatibilityReprobeExecution } from "@markorbit/persistence/source-compatibility-reprobe-executions";
 import type { FoundationalActionIntent } from "@markorbit/worker-runtime/foundational-action-intent";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
+import type { FoundationalAdvancedJurisdiction } from "./foundational-advanced-capabilities";
 import {
   compatibilityReprobeExecutionForIntent,
   compatibilityReprobeIntentIdempotencyKey,
@@ -25,7 +26,6 @@ import {
   listControlledCompatibilityReprobeActions,
 } from "./foundational-compatibility-reprobe-state";
 
-type Jurisdiction = "US" | "WO";
 type ActorField = "requester" | "reviewer" | "executor";
 type Actors = Record<ActorField, string>;
 type IntentListEnvelope = { items?: FoundationalActionIntent[] };
@@ -34,7 +34,7 @@ type ErrorEnvelope = { error?: { message?: string } };
 
 type Props = {
   workspaceId: string;
-  jurisdiction: Jurisdiction;
+  jurisdiction: FoundationalAdvancedJurisdiction;
   snapshot: FoundationalRemediationQueueSnapshot;
   onSnapshotRefresh: () => Promise<void>;
 };
@@ -60,7 +60,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-async function loadHistory(workspaceId: string, jurisdiction: Jurisdiction) {
+async function loadHistory(workspaceId: string, jurisdiction: FoundationalAdvancedJurisdiction) {
   const query = new URLSearchParams({ workspaceId, jurisdiction, limit: "50" });
   const [intentPayload, executionPayload] = await Promise.all([
     requestJson<IntentListEnvelope>(`/api/foundational/action-intents?${query.toString()}`),
@@ -140,9 +140,7 @@ export function FoundationalCompatibilityReprobeWorkbench({
       await refreshHistory();
     } catch (mutationError) {
       setError(
-        mutationError instanceof Error
-          ? mutationError.message
-          : "Compatibility re-probe operation failed",
+        mutationError instanceof Error ? mutationError.message : "Compatibility re-probe operation failed",
       );
     } finally {
       setBusy(null);
@@ -224,8 +222,8 @@ export function FoundationalCompatibilityReprobeWorkbench({
           </div>
           <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-600">
             仅处理过期 compatibility observation。页面可以创建、审批或取消 re-probe intent，并查看
-            STARTED / COMPLETED / FAILED receipt；真正的网络探针仍由受认证 Worker
-            执行。页面不会直接运行 canary、不会持有 Worker bearer，也不会创建 CollectionRun。
+            STARTED / COMPLETED / FAILED receipt；真正的网络探针仍由受认证 Worker 执行。页面不会直接运行
+            canary、不会持有 Worker bearer，也不会创建 CollectionRun。
           </p>
         </div>
         <button
@@ -272,19 +270,16 @@ export function FoundationalCompatibilityReprobeWorkbench({
 
         {loading ? (
           <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-            <RefreshCw className="animate-spin" size={16} aria-hidden="true" /> Loading
-            compatibility re-probe state…
+            <RefreshCw className="animate-spin" size={16} aria-hidden="true" /> Loading compatibility
+            re-probe state…
           </div>
         ) : actions.length === 0 ? (
           <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
             <CheckCircle2 className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
             <div>
-              <p className="text-sm font-semibold">
-                No stale compatibility re-probe is currently required.
-              </p>
+              <p className="text-sm font-semibold">No stale compatibility re-probe is currently required.</p>
               <p className="mt-1 text-xs leading-5 text-emerald-800">
-                Historical receipts remain visible below. Fresh BLOCKED / DEGRADED observations are
-                handled as current supply-health remediation, not stale re-probes.
+                Historical receipts remain visible below. Fresh BLOCKED / DEGRADED observations are handled as current supply-health remediation, not stale re-probes.
               </p>
             </div>
           </div>
@@ -378,13 +373,10 @@ export function FoundationalCompatibilityReprobeWorkbench({
                         <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-950">
                           <Terminal className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold">
-                              Run on an authenticated Worker host
-                            </p>
+                            <p className="text-sm font-semibold">Run on an authenticated Worker host</p>
                             <p className="mt-1 text-xs leading-5 text-blue-800">
-                              MARKORBIT_CONTROL_PLANE_URL、MARKORBIT_WORKER_ID 与
-                              MARKORBIT_WORKER_CREDENTIAL 必须仅存在于 Worker 环境。命令本身不包含
-                              credential。
+                              MARKORBIT_CONTROL_PLANE_URL、MARKORBIT_WORKER_ID 与 MARKORBIT_WORKER_CREDENTIAL
+                              必须仅存在于 Worker 环境。命令本身不包含 credential。
                             </p>
                             <code className="mt-3 block overflow-x-auto rounded-lg bg-slate-950 px-3 py-2.5 text-xs leading-5 text-slate-100">
                               {command}
@@ -413,8 +405,7 @@ export function FoundationalCompatibilityReprobeWorkbench({
                         <div>
                           <p className="text-sm font-semibold">Worker re-probe is STARTED</p>
                           <p className="mt-1 text-xs leading-5 text-blue-800">
-                            Worker {execution.workerId} · started {timeLabel(execution.startedAt)} ·
-                            receipt {execution.executionId}
+                            Worker {execution.workerId} · started {timeLabel(execution.startedAt)} · receipt {execution.executionId}
                           </p>
                         </div>
                       </div>
@@ -431,8 +422,7 @@ export function FoundationalCompatibilityReprobeWorkbench({
             <div>
               <h3 className="font-semibold text-slate-950">Recent re-probe receipts</h3>
               <p className="mt-1 text-xs text-slate-500">
-                Read-only audit history. A BLOCKED/DEGRADED observation can still be a COMPLETED
-                probe execution.
+                Read-only audit history. A BLOCKED/DEGRADED observation can still be a COMPLETED probe execution.
               </p>
             </div>
             <span className="text-xs text-slate-500">{executions.length} loaded</span>
