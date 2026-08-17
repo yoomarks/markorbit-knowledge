@@ -1,0 +1,53 @@
+name: Temporary Fix Benelux Workflow
+
+on:
+  push:
+    branches:
+      - agent/priority-120-benelux-nl-be-v1
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-benelux-nl-be-v1
+      - name: Fix source catalog anchors
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/temp-priority-120-benelux.yml')
+          text = path.read_text()
+          old = '''          replace_all_exact(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\\n  BOIP_NL_SOURCE_COVERAGE_TARGETS,\\n  BOIP_BE_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              2
+          )
+'''
+          new = '''          replace_once(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\\n  BOIP_NL_SOURCE_COVERAGE_TARGETS,\\n  BOIP_BE_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+          replace_once(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  EIPA_EG_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  EIPA_EG_SOURCE_COVERAGE_TARGETS,\\n  ROSPATENT_RU_SOURCE_COVERAGE_TARGETS,\\n  MOJ_UZ_SOURCE_COVERAGE_TARGETS,\\n  IPC_IR_SOURCE_COVERAGE_TARGETS,\\n  IPO_PK_SOURCE_COVERAGE_TARGETS,\\n  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\\n  BOIP_NL_SOURCE_COVERAGE_TARGETS,\\n  BOIP_BE_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+'''
+          if new in text:
+              raise SystemExit(0)
+          if old not in text:
+              raise SystemExit('Benelux source catalog anchor block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/temp-priority-120-benelux.yml
+          git commit -m "ci: correct Benelux source catalog anchors"
+          git push origin HEAD:agent/priority-120-benelux-nl-be-v1
