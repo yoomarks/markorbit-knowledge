@@ -97,8 +97,7 @@ export const GLOBAL_REFERENCE_FRESHNESS_POLICIES = [
   "ANNUAL",
   "LOW_FREQUENCY",
 ] as const;
-export type GlobalReferenceFreshnessPolicy =
-  (typeof GLOBAL_REFERENCE_FRESHNESS_POLICIES)[number];
+export type GlobalReferenceFreshnessPolicy = (typeof GLOBAL_REFERENCE_FRESHNESS_POLICIES)[number];
 
 export type GlobalReferenceAcquisitionHint = {
   mode: "WEB_CRAWL" | "DIRECT_DOCUMENT" | "API_OR_STRUCTURED" | "MIXED";

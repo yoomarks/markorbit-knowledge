@@ -116,7 +116,8 @@ export const GLOBAL_REFERENCE_SOURCES: readonly GlobalReferenceSourceDescriptor[
       expectedArtifactKinds: ["HTML", "MARKDOWN"],
     },
     tags: ["population", "secondary-statistics"],
-    notes: "Convenient secondary population view; population facts should be verified against UN WPP.",
+    notes:
+      "Convenient secondary population view; population facts should be verified against UN WPP.",
   }),
   descriptor({
     id: "international-property-rights-index-countries",
@@ -142,7 +143,8 @@ export const GLOBAL_REFERENCE_SOURCES: readonly GlobalReferenceSourceDescriptor[
       expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
     },
     tags: ["property-rights", "ip-protection-index"],
-    notes: "Treat as a property-rights/IP-protection signal, not as a general country competitiveness index.",
+    notes:
+      "Treat as a property-rights/IP-protection signal, not as a general country competitiveness index.",
   }),
   descriptor({
     id: "country-index-country-surveys",
@@ -199,7 +201,8 @@ export const GLOBAL_REFERENCE_SOURCES: readonly GlobalReferenceSourceDescriptor[
       expectedArtifactKinds: ["HTML", "MARKDOWN"],
     },
     tags: ["trademark-news", "change-signal", "professional-secondary"],
-    notes: "Use as a change detector; do not overwrite official jurisdiction facts without primary verification.",
+    notes:
+      "Use as a change detector; do not overwrite official jurisdiction facts without primary verification.",
   }),
   descriptor({
     id: "wipo-country-ip-profiles",
@@ -353,7 +356,8 @@ export const GLOBAL_REFERENCE_SOURCES: readonly GlobalReferenceSourceDescriptor[
       expectedArtifactKinds: ["HTML", "MARKDOWN"],
     },
     tags: ["competitor", "provider-pricing", "benchmark"],
-    notes: "Provider-stated service/pricing facts are usable for benchmarking; legal practice claims are not promoted as legal facts.",
+    notes:
+      "Provider-stated service/pricing facts are usable for benchmarking; legal practice claims are not promoted as legal facts.",
   }),
   descriptor({
     id: "simonianip-trademarks",
@@ -481,9 +485,9 @@ export function registerGlobalReferenceSources(
   let existing = 0;
 
   for (const source of GLOBAL_REFERENCE_SOURCES) {
-    const match = repository.list({ q: source.id, limit: 100 }).items.some(
-      (registered) => registered.slug === source.id,
-    );
+    const match = repository
+      .list({ q: source.id, limit: 100 })
+      .items.some((registered) => registered.slug === source.id);
 
     if (match) {
       existing += 1;

@@ -56,9 +56,7 @@ describe("global reference source catalog", () => {
   it("keeps WIPO legal and authority sources in the highest reference tier", () => {
     expect(getGlobalReferenceSource("wipo-country-ip-profiles")?.authorityTier).toBe("A_PLUS");
     expect(getGlobalReferenceSource("wipo-lex")?.authorityTier).toBe("A_PLUS");
-    expect(getGlobalReferenceSource("wipo-lex")?.factEligibility).toBe(
-      "AUTHORITATIVE_AGGREGATOR",
-    );
+    expect(getGlobalReferenceSource("wipo-lex")?.factEligibility).toBe("AUTHORITATIVE_AGGREGATOR");
     expect(getGlobalReferenceSource("wipo-ip-advantage")?.intendedUses).toContain("CASE_LIBRARY");
   });
 
