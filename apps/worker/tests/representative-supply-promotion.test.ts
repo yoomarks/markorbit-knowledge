@@ -71,14 +71,16 @@ describe("representative supply promotion", () => {
     ).toEqual(["SOURCE_UNREGISTERED", "SOURCE_ID_MISSING", "COMPATIBILITY_BLOCKED"]);
   });
 
-  it("plans the full representative wave without creating CollectionRuns", async () => {
+  it("plans the full representative wave without creating CollectionRuns or receipts", async () => {
     const dispatchTarget = vi.fn();
+    const recordReceipt = vi.fn();
     const run = await runRepresentativeSupplyPromotionWave({
       baseUrl: "http://127.0.0.1:3000/",
       workspaceId: "workspace-1",
       apply: false,
       fetchImpl: healthFetch({}),
       dispatchTarget,
+      recordReceipt,
     });
 
     expect(run.mode).toBe("PLAN");
@@ -98,6 +100,7 @@ describe("representative supply promotion", () => {
     ]);
     expect(run.summary).toEqual({ eligible: 12, blocked: 0, dispatched: 0, failed: 0 });
     expect(dispatchTarget).not.toHaveBeenCalled();
+    expect(recordReceipt).not.toHaveBeenCalled();
   });
 
   it("requires explicit jurisdiction selection before apply", async () => {
@@ -108,11 +111,12 @@ describe("representative supply promotion", () => {
         apply: true,
         fetchImpl: healthFetch({}),
         dispatchTarget: vi.fn(),
+        recordReceipt: vi.fn(),
       }),
     ).rejects.toThrow("--apply requires at least one explicit representative jurisdiction");
   });
 
-  it("dispatches exactly the explicitly selected representative target when eligible", async () => {
+  it("dispatches one selected target and persists its durable receipt", async () => {
     const dispatchTarget = vi.fn(
       async ({ targetId, jurisdiction }: { targetId: string; jurisdiction: string }) => ({
         targetId,
@@ -121,6 +125,7 @@ describe("representative supply promotion", () => {
         runId: `run-${jurisdiction}`,
       }),
     );
+    const recordReceipt = vi.fn(async () => "receipt-cn");
     const run = await runRepresentativeSupplyPromotionWave({
       baseUrl: "https://knowledge.example.com/",
       workspaceId: "workspace-1",
@@ -128,16 +133,25 @@ describe("representative supply promotion", () => {
       jurisdictions: ["CN"],
       fetchImpl: healthFetch({}),
       dispatchTarget,
+      recordReceipt,
     });
 
     expect(run.selectedJurisdictions).toEqual(["CN"]);
     expect(run.summary).toEqual({ eligible: 0, blocked: 0, dispatched: 1, failed: 0 });
-    expect(run.entries[0]).toMatchObject({ jurisdiction: "CN", state: "DISPATCHED" });
+    expect(run.entries[0]).toMatchObject({
+      jurisdiction: "CN",
+      state: "DISPATCHED",
+      receiptId: "receipt-cn",
+    });
     expect(dispatchTarget).toHaveBeenCalledTimes(1);
+    expect(recordReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ jurisdiction: "CN", collectionRunId: "run-CN" }),
+    );
   });
 
-  it("fails closed on stale compatibility and never dispatches", async () => {
+  it("does not call a blocked target's dispatch or receipt path", async () => {
     const dispatchTarget = vi.fn();
+    const recordReceipt = vi.fn();
     const run = await runRepresentativeSupplyPromotionWave({
       baseUrl: "http://127.0.0.1:3000",
       workspaceId: "workspace-1",
@@ -145,10 +159,40 @@ describe("representative supply promotion", () => {
       jurisdictions: ["JP"],
       fetchImpl: healthFetch({ freshness: "STALE" }),
       dispatchTarget,
+      recordReceipt,
     });
 
     expect(run.summary).toEqual({ eligible: 0, blocked: 1, dispatched: 0, failed: 0 });
     expect(run.entries[0]?.gate.blockers).toContain("COMPATIBILITY_STALE");
     expect(dispatchTarget).not.toHaveBeenCalled();
+    expect(recordReceipt).not.toHaveBeenCalled();
+  });
+
+  it("surfaces receipt persistence failure while preserving the dispatched run for retry", async () => {
+    const dispatchTarget = vi.fn(async () => ({
+      targetId: "cn-target",
+      sourceId: "source-cn",
+      planId: "plan-cn",
+      runId: "run-cn",
+    }));
+    const run = await runRepresentativeSupplyPromotionWave({
+      baseUrl: "http://127.0.0.1:3000",
+      workspaceId: "workspace-1",
+      apply: true,
+      jurisdictions: ["CN"],
+      fetchImpl: healthFetch({}),
+      dispatchTarget,
+      recordReceipt: vi.fn(async () => {
+        throw new Error("receipt unavailable");
+      }),
+    });
+
+    expect(run.summary.failed).toBe(1);
+    expect(run.entries[0]).toMatchObject({
+      state: "FAILED",
+      run: { runId: "run-cn" },
+      receiptId: null,
+      error: "receipt unavailable",
+    });
   });
 });

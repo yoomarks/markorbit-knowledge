@@ -38,6 +38,7 @@ export type RepresentativeSupplyPromotionEntry = {
   gate: RepresentativeSupplyPromotionGate;
   state: "ELIGIBLE" | "BLOCKED" | "DISPATCHED" | "FAILED";
   run: SupplyRun | null;
+  receiptId: string | null;
   error: string | null;
 };
 
@@ -66,6 +67,14 @@ type DispatchTarget = (input: {
   targetId: string;
 }) => Promise<SupplyRun>;
 
+type RecordReceipt = (input: {
+  baseUrl: string;
+  workspaceId: string;
+  jurisdiction: string;
+  targetId: string;
+  collectionRunId: string;
+}) => Promise<string>;
+
 export type RunRepresentativeSupplyPromotionOptions = {
   baseUrl: string;
   workspaceId: string;
@@ -73,6 +82,7 @@ export type RunRepresentativeSupplyPromotionOptions = {
   jurisdictions?: readonly string[];
   fetchImpl?: FetchLike;
   dispatchTarget?: DispatchTarget;
+  recordReceipt?: RecordReceipt;
 };
 
 function record(value: unknown): JsonRecord | null {
@@ -139,6 +149,26 @@ export function evaluateRepresentativeSupplyPromotionGate(input: {
   };
 }
 
+async function requestJson(
+  fetchImpl: FetchLike,
+  url: string,
+  init?: RequestInit,
+): Promise<unknown> {
+  const response = await fetchImpl(url, init);
+  let payload: unknown = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+  if (!response.ok) {
+    const error = record(record(payload)?.error);
+    const message = typeof error?.message === "string" ? error.message : `HTTP ${response.status}`;
+    throw new Error(message);
+  }
+  return payload;
+}
+
 async function loadGate(
   fetchImpl: FetchLike,
   baseUrl: string,
@@ -153,20 +183,11 @@ async function loadGate(
     coverageTier: "FOUNDATIONAL",
     catalogState: "ACTIVE",
   });
-  const response = await fetchImpl(`${baseUrl}/api/source-supply-health?${query.toString()}`, {
-    cache: "no-store",
-  });
-  let payload: unknown = null;
-  try {
-    payload = await response.json();
-  } catch {
-    payload = null;
-  }
-  if (!response.ok) {
-    const error = record(record(payload)?.error);
-    const message = typeof error?.message === "string" ? error.message : `HTTP ${response.status}`;
-    throw new Error(`source-supply-health: ${message}`);
-  }
+  const payload = await requestJson(
+    fetchImpl,
+    `${baseUrl}/api/source-supply-health?${query.toString()}`,
+    { cache: "no-store" },
+  );
   const items = array(record(payload)?.items)
     .map(record)
     .filter((item): item is JsonRecord => !!item);
@@ -209,6 +230,41 @@ async function dispatchRepresentativeTarget(input: {
   return run;
 }
 
+async function recordPromotionReceipt(
+  fetchImpl: FetchLike,
+  input: {
+    baseUrl: string;
+    workspaceId: string;
+    jurisdiction: string;
+    targetId: string;
+    collectionRunId: string;
+  },
+): Promise<string> {
+  const payload = await requestJson(
+    fetchImpl,
+    `${input.baseUrl}/api/source-supply-promotion-receipts`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "Idempotency-Key": `representative-supply:${input.collectionRunId}`,
+      },
+      body: JSON.stringify({
+        workspaceId: input.workspaceId,
+        jurisdiction: input.jurisdiction,
+        targetId: input.targetId,
+        collectionRunId: input.collectionRunId,
+        operatorActor: "operator:representative-supply-promotion",
+      }),
+    },
+  );
+  const receipt = record(record(payload)?.receipt);
+  if (!receipt || typeof receipt.id !== "string" || !receipt.id) {
+    throw new Error(`Supply promotion receipt for ${input.targetId} returned an invalid response`);
+  }
+  return receipt.id;
+}
+
 function selectCanaries(requested: readonly string[] | undefined, apply: boolean) {
   const canaries = getRepresentativeSourceLiveCanaries();
   const supported = new Set<string>(canaries.map((item) => item.jurisdiction));
@@ -232,6 +288,8 @@ export async function runRepresentativeSupplyPromotionWave(
   const baseUrl = normalizedBaseUrl(options.baseUrl);
   const fetchImpl = options.fetchImpl ?? fetch;
   const dispatchTarget = options.dispatchTarget ?? dispatchRepresentativeTarget;
+  const recordReceipt =
+    options.recordReceipt ?? ((input) => recordPromotionReceipt(fetchImpl, input));
   const selected = selectCanaries(options.jurisdictions, options.apply);
   const entries: RepresentativeSupplyPromotionEntry[] = [];
 
@@ -259,6 +317,7 @@ export async function runRepresentativeSupplyPromotionWave(
         }),
         state: "FAILED",
         run: null,
+        receiptId: null,
         error: error instanceof Error ? error.message : String(error),
       });
       continue;
@@ -272,17 +331,26 @@ export async function runRepresentativeSupplyPromotionWave(
         gate,
         state: gate.eligibility,
         run: null,
+        receiptId: null,
         error: null,
       });
       continue;
     }
 
+    let run: SupplyRun | null = null;
     try {
-      const run = await dispatchTarget({
+      run = await dispatchTarget({
         baseUrl,
         workspaceId: options.workspaceId,
         jurisdiction: canary.jurisdiction,
         targetId: canary.targetId,
+      });
+      const receiptId = await recordReceipt({
+        baseUrl,
+        workspaceId: options.workspaceId,
+        jurisdiction: canary.jurisdiction,
+        targetId: canary.targetId,
+        collectionRunId: run.runId,
       });
       entries.push({
         jurisdiction: canary.jurisdiction,
@@ -291,6 +359,7 @@ export async function runRepresentativeSupplyPromotionWave(
         gate,
         state: "DISPATCHED",
         run,
+        receiptId,
         error: null,
       });
     } catch (error) {
@@ -300,7 +369,8 @@ export async function runRepresentativeSupplyPromotionWave(
         targetId: canary.targetId,
         gate,
         state: "FAILED",
-        run: null,
+        run,
+        receiptId: null,
         error: error instanceof Error ? error.message : String(error),
       });
     }

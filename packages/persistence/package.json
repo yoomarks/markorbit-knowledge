@@ -27,6 +27,7 @@
     "./source-compatibility-reprobe-executions": "./src/source-compatibility-reprobe-execution.ts",
     "./source-compatibility-reprobe-execution-query": "./src/source-compatibility-reprobe-execution-query.ts",
     "./source-supply-health": "./src/source-supply-health.ts",
+    "./source-supply-promotion-receipts": "./src/source-supply-promotion-receipts.ts",
     "./operations-readiness": "./src/operations-readiness.ts",
     "./source-intelligence": "./src/source-intelligence-registry.ts",
     "./source-intelligence-reviews": "./src/source-intelligence-review-registry.ts",
