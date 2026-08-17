@@ -96,6 +96,8 @@ import {
   RPI_CR_SOURCE_COVERAGE_TARGETS,
   DIGERPI_PA_SOURCE_COVERAGE_TARGETS,
   ONAPI_DO_SOURCE_COVERAGE_TARGETS,
+  MOET_LB_SOURCE_COVERAGE_TARGETS,
+  DINAPI_PY_SOURCE_COVERAGE_TARGETS,
   IPOS_SOURCE_COVERAGE_TARGETS,
   JPO_SOURCE_COVERAGE_TARGETS,
   KOREA_SOURCE_COVERAGE_TARGETS,
@@ -212,6 +214,8 @@ const authoritySets = [
     ["mici.gob.pa", "digerpi.gob.pa", "panamadigital.gob.pa"],
   ],
   ["DO", ONAPI_DO_SOURCE_COVERAGE_TARGETS, ["onapi.gob.do", "wipo.int"]],
+  ["LB", MOET_LB_SOURCE_COVERAGE_TARGETS, ["economy.gov.lb"]],
+  ["PY", DINAPI_PY_SOURCE_COVERAGE_TARGETS, ["dinapi.gov.py"]],
   ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],
 ] as const;
 
@@ -221,14 +225,14 @@ function officialHost(uri: string, suffixes: readonly string[]): boolean {
 }
 
 describe("priority national trademark source coverage", () => {
-  it("ships explicit, official, unique coverage for one hundred priority national offices", () => {
-    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(767);
+  it("ships explicit, official, unique coverage for one hundred two priority national offices", () => {
+    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(780);
     expect(new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(
-      767,
+      780,
     );
     expect(
       new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size,
-    ).toBe(767);
+    ).toBe(780);
 
     for (const [jurisdiction, targets, officialSuffixes] of authoritySets) {
       expect(targets.length).toBeGreaterThanOrEqual(5);
