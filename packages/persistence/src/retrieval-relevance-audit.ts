@@ -2729,6 +2729,36 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "dz-inapi-trademark-maintenance",
     query: "renouvellement marque inscription cession changement adresse",
   },
+  {
+    id: "tn-innorpi-trademark-portal-name",
+    targetId: "tn-innorpi-trademark-portal",
+    query: "INNORPI Tunisie propriété industrielle marques",
+  },
+  {
+    id: "tn-innorpi-trademark-filing-name",
+    targetId: "tn-innorpi-trademark-filing",
+    query: "système digitalisé dépôt électronique demandes marques 2026",
+  },
+  {
+    id: "tn-innorpi-trademark-search-name",
+    targetId: "tn-innorpi-trademark-search",
+    query: "Tunisian IP Search System trademark simple brand advanced search",
+  },
+  {
+    id: "tn-innorpi-trademark-fees-name",
+    targetId: "tn-innorpi-trademark-fees",
+    query: "redevance dépôt marque renouvellement opposition recherche antériorité",
+  },
+  {
+    id: "tn-innorpi-trademark-legal-texts-name",
+    targetId: "tn-innorpi-trademark-legal-texts",
+    query: "Loi 2001-36 Décret gouvernemental 2015-303 marques",
+  },
+  {
+    id: "tn-innorpi-trademark-maintenance-name",
+    targetId: "tn-innorpi-trademark-maintenance",
+    query: "formulaire marque renouvellement levée déchéance inscription registre",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();

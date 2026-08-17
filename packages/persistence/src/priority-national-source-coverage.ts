@@ -8915,6 +8915,95 @@ export const INAPI_DZ_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const INNORPI_TN: Authority = {
+  jurisdiction: "TN",
+  authorityName: "Institut National de la Normalisation et de la Propriété Industrielle (INNORPI)",
+  languages: ["fr", "ar"],
+  verificationEvidenceUri: "https://www.innorpi.tn/fr/la-propriete-industrielle",
+};
+
+export const INNORPI_TN_SOURCE_COVERAGE_TARGETS = [
+  target(INNORPI_TN, {
+    id: "tn-innorpi-trademark-portal",
+    family: "PORTAL",
+    displayName: "INNORPI Tunisia Industrial Property Portal",
+    canonicalUri: "https://www.innorpi.tn/fr/la-propriete-industrielle",
+    verificationEvidenceUri: "https://www.innorpi.tn/fr/la-propriete-industrielle",
+    notes:
+      "Current official INNORPI industrial-property landing surface for trademarks and other national industrial-property rights.",
+  }),
+  target(INNORPI_TN, {
+    id: "tn-innorpi-trademark-filing",
+    family: "FILING",
+    displayName: "INNORPI Tunisia Digital Industrial Property Filing System",
+    canonicalUri:
+      "https://www.innorpi.tn/fr/actualites/lancement-officiel-du-systeme-digitalise-de-la-propriete-industrielle-en-tunisie",
+    verificationEvidenceUri:
+      "https://www.innorpi.tn/fr/actualites/lancement-officiel-du-systeme-digitalise-de-la-propriete-industrielle-en-tunisie",
+    notes:
+      "Official 24 June 2026 launch notice confirming that the new national digital industrial-property system supports electronic trademark applications and remote online procedures.",
+  }),
+  target(INNORPI_TN, {
+    id: "tn-innorpi-trademark-search",
+    family: "SEARCH",
+    displayName: "Tunisia National Trademark Search System",
+    canonicalUri: "https://ip-search.innorpi.tn/trademark",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://ip-search.innorpi.tn/trademark",
+    notes:
+      "Current INNORPI Tunisian IP Search System for trademarks with simple, brand and advanced search plus Nice-class analytics.",
+  }),
+  target(INNORPI_TN, {
+    id: "tn-innorpi-trademark-fees",
+    family: "FEES",
+    displayName: "INNORPI Tunisia Trademark Procedure and Fees",
+    canonicalUri:
+      "https://www.innorpi.tn/fr/la-protection-des-marques-de-fabrique-de-commerce-et-de-services",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://www.innorpi.tn/fr/la-protection-des-marques-de-fabrique-de-commerce-et-de-services",
+    notes:
+      "Official trademark guidance publishing current filing, additional-class, certificate, opposition, prior-search and renewal charges alongside filing and opposition requirements.",
+  }),
+  target(INNORPI_TN, {
+    id: "tn-innorpi-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Tunisia Trademark Laws and Decrees",
+    canonicalUri: "https://www.innorpi.tn/fr/loi-decrets",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.innorpi.tn/fr/loi-decrets",
+    notes:
+      "Official INNORPI legislation index publishing Law No. 2001-36, its 2007 amendment, the 2015 trademark registration/opposition decree and trademark-fee decrees.",
+  }),
+  target(INNORPI_TN, {
+    id: "tn-innorpi-trademark-maintenance",
+    family: "MAINTENANCE",
+    displayName: "INNORPI Tunisia Trademark Forms and Maintenance Documents",
+    canonicalUri: "https://www.innorpi.tn/fr/telechargement",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://www.innorpi.tn/fr/telechargement",
+    notes:
+      "Official download library for trademark forms and register-maintenance materials, including reinstatement and registration-document annexes; the trademark guidance also links the renewal form from INNORPI.",
+  }),
+  target(INNORPI_TN, {
+    id: "tn-innorpi-trademark-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "INNORPI Tunisia Official Industrial Property Gazette",
+    canonicalUri: "https://www.innorpi.tn/fr/officiel-de-la-propriete-industrielle",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.innorpi.tn/fr/officiel-de-la-propriete-industrielle",
+    notes:
+      "Official monthly industrial-property publication for Tunisian trademark, design and patent filings; retained as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -9054,5 +9143,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...COPAT_AZ_SOURCE_COVERAGE_TARGETS,
   ...IPO_NG_SOURCE_COVERAGE_TARGETS,
   ...INAPI_DZ_SOURCE_COVERAGE_TARGETS,
+  ...INNORPI_TN_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
