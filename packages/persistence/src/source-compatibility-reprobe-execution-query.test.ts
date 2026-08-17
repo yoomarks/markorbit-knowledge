@@ -51,6 +51,25 @@ function intent(targetId: string, idempotencyKey: string, now: string): Foundati
 }
 
 describe("source compatibility re-probe execution query", () => {
+  it("returns empty history without creating execution or intent ledgers", () => {
+    const db = database();
+    expect(listSourceCompatibilityReprobeExecutions(db, { workspaceId: "default" })).toEqual([]);
+    expect(
+      db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'source_compatibility_reprobe_executions'",
+        )
+        .get(),
+    ).toBeUndefined();
+    expect(
+      db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'foundational_action_intents'",
+        )
+        .get(),
+    ).toBeUndefined();
+  });
+
   it("lists newest receipts first and supports jurisdiction, target and status filters", () => {
     const db = database();
     let now = new Date("2026-08-18T00:00:00.000Z");
