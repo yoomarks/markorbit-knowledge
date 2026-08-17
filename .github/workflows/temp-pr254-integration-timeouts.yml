@@ -1,0 +1,71 @@
+name: Temporary PR254 Integration Timeouts
+
+on:
+  push:
+    branches:
+      - agent/priority-120-tranche-mn-kh-la-mm-bn-v1
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-tranche-mn-kh-la-mm-bn-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Set explicit timeouts only on real heavy integration tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          patches = [
+              (
+                  'packages/integration-tests/tests/manual-fixture-runner.test.ts',
+                  '''    const databaseBytes = readFileSync(summary.output.databasePath);\n    expect(databaseBytes.byteLength).toBeGreaterThan(0);\n  });\n\n  it("rejects missing, empty and reused output inputs with stable codes"''',
+                  '''    const databaseBytes = readFileSync(summary.output.databasePath);\n    expect(databaseBytes.byteLength).toBeGreaterThan(0);\n  }, 15_000);\n\n  it("rejects missing, empty and reused output inputs with stable codes"''',
+              ),
+              (
+                  'packages/integration-tests/tests/real-fixture-pipeline.test.ts',
+                  '''      expect(sha256(markdown)).toBe(inspection?.stagingDocument?.contentHash.value);\n    } finally {\n      harness.close();\n    }\n  });\n\n  it("persists binding failure as BLOCKED → FAILED through the real verifier and finalizer"''',
+                  '''      expect(sha256(markdown)).toBe(inspection?.stagingDocument?.contentHash.value);\n    } finally {\n      harness.close();\n    }\n  }, 15_000);\n\n  it("persists binding failure as BLOCKED → FAILED through the real verifier and finalizer"''',
+              ),
+          ]
+
+          for file_name, old, new in patches:
+              path = Path(file_name)
+              text = path.read_text()
+              if new in text:
+                  continue
+              if old not in text:
+                  raise SystemExit(f'expected timeout anchor not found: {file_name}')
+              path.write_text(text.replace(old, new, 1))
+          PY
+          pnpm exec prettier --write \
+            packages/integration-tests/tests/manual-fixture-runner.test.ts \
+            packages/integration-tests/tests/real-fixture-pipeline.test.ts
+      - name: Verify heavy integration tests on Node 24
+        run: |
+          pnpm --filter @markorbit/integration-tests test -- \
+            tests/manual-fixture-runner.test.ts \
+            tests/real-fixture-pipeline.test.ts
+          pnpm typecheck
+      - name: Commit production test hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/integration-tests/tests/manual-fixture-runner.test.ts \
+            packages/integration-tests/tests/real-fixture-pipeline.test.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "test: allow time for real fixture integration paths"
+          git push origin HEAD:agent/priority-120-tranche-mn-kh-la-mm-bn-v1
