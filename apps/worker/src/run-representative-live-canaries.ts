@@ -32,10 +32,15 @@ type CrawlFailure = {
 
 type CrawlResponse = CrawlSuccess | CrawlFailure;
 
-type CanaryObservation = {
-  jurisdiction: string;
-  displayName: string;
-  profile: string;
+type CanaryProbe = {
+  targetId: string;
+  family: string;
+  canonicalUri: string;
+  renderJavascript: boolean;
+  locale: string;
+};
+
+type ProbeObservation = {
   targetId: string;
   family: string;
   requestedUri: string;
@@ -50,6 +55,27 @@ type CanaryObservation = {
   errorCode?: string;
   errorMessage?: string;
   stderrTail?: string;
+};
+
+type CanaryObservation = {
+  jurisdiction: string;
+  displayName: string;
+  profile: string;
+  targetId: string;
+  family: string;
+  requestedUri: string;
+  renderJavascript: boolean;
+  elapsedMs: number;
+  state: "PASS" | "DEGRADED" | "BLOCKED";
+  pagesAttempted: number;
+  artifactCount: number;
+  artifactKinds: string[];
+  finalUris: string[];
+  totalBytes: number;
+  errorCode?: string;
+  errorMessage?: string;
+  stderrTail?: string;
+  authorityBaseline?: ProbeObservation;
 };
 
 function argument(name: string): string | undefined {
@@ -79,8 +105,9 @@ function selectedCanaries(): RepresentativeSourceLiveCanary[] {
   const canaries = getRepresentativeSourceLiveCanaries();
   if (!jurisdiction) return canaries;
   const selected = canaries.filter((canary) => canary.jurisdiction === jurisdiction);
-  if (selected.length === 0)
+  if (selected.length === 0) {
     throw new Error(`Unknown representative canary jurisdiction ${jurisdiction}`);
+  }
   return selected;
 }
 
@@ -95,25 +122,25 @@ function pythonExecutable(): string {
 }
 
 async function runSubprocess(
-  canary: RepresentativeSourceLiveCanary,
+  probe: CanaryProbe,
   outputDirectory: string,
   timeoutSeconds: number,
 ): Promise<{ response: CrawlResponse; stderr: string; elapsedMs: number }> {
   const request = {
     protocolVersion: "1.0",
     outputDirectory,
-    startUrls: [canary.canonicalUri],
+    startUrls: [probe.canonicalUri],
     outputKinds: ["HTML", "MARKDOWN"],
     maxDepth: 0,
     maxItems: 1,
-    renderJavascript: canary.renderJavascript,
+    renderJavascript: probe.renderJavascript,
     fetchAttachments: false,
     respectRobots: true,
     rateLimitPerMinute: 6,
     timeoutSeconds,
-    includePatterns: [canary.canonicalUri],
+    includePatterns: [probe.canonicalUri],
     excludePatterns: [],
-    locale: canary.languages[0] ?? "en",
+    locale: probe.locale,
     maxArtifactBytes: 16 * 1024 * 1024,
     maxTotalBytes: 32 * 1024 * 1024,
     requireEgressProxy: false,
@@ -168,30 +195,26 @@ function stderrTail(stderr: string): string | undefined {
   return normalized.slice(-1200);
 }
 
-async function observeCanary(
-  canary: RepresentativeSourceLiveCanary,
-  root: string,
+async function observeProbe(
+  probe: CanaryProbe,
+  outputDirectory: string,
   timeoutSeconds: number,
-): Promise<CanaryObservation> {
-  const outputDirectory = join(root, canary.jurisdiction.toLowerCase());
+): Promise<ProbeObservation> {
   await mkdir(outputDirectory, { recursive: true });
   const startedAt = Date.now();
   try {
     const { response, stderr, elapsedMs } = await runSubprocess(
-      canary,
+      probe,
       outputDirectory,
       timeoutSeconds,
     );
     const tail = stderrTail(stderr);
     if (!response.ok) {
       return {
-        jurisdiction: canary.jurisdiction,
-        displayName: canary.displayName,
-        profile: canary.profile,
-        targetId: canary.targetId,
-        family: canary.family,
-        requestedUri: canary.canonicalUri,
-        renderJavascript: canary.renderJavascript,
+        targetId: probe.targetId,
+        family: probe.family,
+        requestedUri: probe.canonicalUri,
+        renderJavascript: probe.renderJavascript,
         elapsedMs,
         state: "FAIL",
         pagesAttempted: 0,
@@ -217,13 +240,10 @@ async function observeCanary(
     );
     const passed = response.artifacts.length >= 2 && hasHtml && hasMarkdown && validHashes;
     return {
-      jurisdiction: canary.jurisdiction,
-      displayName: canary.displayName,
-      profile: canary.profile,
-      targetId: canary.targetId,
-      family: canary.family,
-      requestedUri: canary.canonicalUri,
-      renderJavascript: canary.renderJavascript,
+      targetId: probe.targetId,
+      family: probe.family,
+      requestedUri: probe.canonicalUri,
+      renderJavascript: probe.renderJavascript,
       elapsedMs,
       state: passed ? "PASS" : "FAIL",
       pagesAttempted: response.pagesAttempted,
@@ -242,13 +262,10 @@ async function observeCanary(
     };
   } catch (error) {
     return {
-      jurisdiction: canary.jurisdiction,
-      displayName: canary.displayName,
-      profile: canary.profile,
-      targetId: canary.targetId,
-      family: canary.family,
-      requestedUri: canary.canonicalUri,
-      renderJavascript: canary.renderJavascript,
+      targetId: probe.targetId,
+      family: probe.family,
+      requestedUri: probe.canonicalUri,
+      renderJavascript: probe.renderJavascript,
       elapsedMs: Date.now() - startedAt,
       state: "FAIL",
       pagesAttempted: 0,
@@ -262,30 +279,116 @@ async function observeCanary(
   }
 }
 
+function primaryProbe(canary: RepresentativeSourceLiveCanary): CanaryProbe {
+  return {
+    targetId: canary.targetId,
+    family: canary.family,
+    canonicalUri: canary.canonicalUri,
+    renderJavascript: canary.renderJavascript,
+    locale: canary.languages[0] ?? "en",
+  };
+}
+
+function baselineProbe(canary: RepresentativeSourceLiveCanary): CanaryProbe | undefined {
+  if (!canary.authorityBaseline) return undefined;
+  return {
+    ...canary.authorityBaseline,
+    locale: canary.languages[0] ?? "en",
+  };
+}
+
+async function observeCanary(
+  canary: RepresentativeSourceLiveCanary,
+  root: string,
+  timeoutSeconds: number,
+): Promise<CanaryObservation> {
+  const outputDirectory = join(root, canary.jurisdiction.toLowerCase());
+  await mkdir(outputDirectory, { recursive: true });
+  const primary = await observeProbe(
+    primaryProbe(canary),
+    join(outputDirectory, "primary"),
+    timeoutSeconds,
+  );
+  if (primary.state === "PASS") {
+    return {
+      jurisdiction: canary.jurisdiction,
+      displayName: canary.displayName,
+      profile: canary.profile,
+      ...primary,
+      state: "PASS",
+    };
+  }
+
+  const fallback = baselineProbe(canary);
+  if (!fallback) {
+    return {
+      jurisdiction: canary.jurisdiction,
+      displayName: canary.displayName,
+      profile: canary.profile,
+      ...primary,
+      state: "BLOCKED",
+    };
+  }
+
+  const authorityBaseline = await observeProbe(
+    fallback,
+    join(outputDirectory, "authority-baseline"),
+    timeoutSeconds,
+  );
+  if (authorityBaseline.state === "PASS") {
+    return {
+      jurisdiction: canary.jurisdiction,
+      displayName: canary.displayName,
+      profile: canary.profile,
+      ...primary,
+      state: "DEGRADED",
+      errorCode: "CANARY_ADAPTER_REQUIRED",
+      errorMessage: `Primary target ${canary.targetId} failed while authority baseline ${authorityBaseline.targetId} remained collectible. A source-specific adapter or acquisition strategy is required. Primary signal: ${primary.errorCode ?? "FAILED"}: ${primary.errorMessage ?? "unknown error"}`,
+      authorityBaseline,
+    };
+  }
+
+  return {
+    jurisdiction: canary.jurisdiction,
+    displayName: canary.displayName,
+    profile: canary.profile,
+    ...primary,
+    state: "BLOCKED",
+    errorCode: "CANARY_AUTHORITY_BASELINE_FAILED",
+    errorMessage: `Primary target ${canary.targetId} and authority baseline ${authorityBaseline.targetId} both failed. Primary signal: ${primary.errorCode ?? "FAILED"}; baseline signal: ${authorityBaseline.errorCode ?? "FAILED"}.`,
+    authorityBaseline,
+  };
+}
+
 function markdownReport(observations: CanaryObservation[]): string {
   const passed = observations.filter((item) => item.state === "PASS").length;
-  const failed = observations.length - passed;
+  const degraded = observations.filter((item) => item.state === "DEGRADED").length;
+  const blocked = observations.filter((item) => item.state === "BLOCKED").length;
   const lines = [
     "# MarkOrbit Representative Source Live Canary",
     "",
     `Observed: ${new Date().toISOString()}`,
-    `Result: ${passed}/${observations.length} PASS, ${failed} FAIL`,
+    `Result: ${passed}/${observations.length} PASS, ${degraded} DEGRADED, ${blocked} BLOCKED`,
     "",
-    "| Jurisdiction | Profile | Target | JS | State | Artifacts | Time | Signal |",
+    "| Jurisdiction | Profile | Primary target | JS | State | Artifacts | Time | Signal |",
     "|---|---|---|---:|---|---:|---:|---|",
   ];
   for (const item of observations) {
     const signal =
       item.state === "PASS"
         ? item.finalUris.join("<br>")
-        : `${item.errorCode ?? "FAILED"}: ${(item.errorMessage ?? "").replaceAll("|", "\\|")}`;
+        : item.state === "DEGRADED"
+          ? `ADAPTER_REQUIRED; baseline ${item.authorityBaseline?.targetId ?? "unknown"} PASS`
+          : `${item.errorCode ?? "BLOCKED"}: ${(item.errorMessage ?? "").replaceAll("|", "\\|")}`;
     lines.push(
       `| ${item.jurisdiction} | ${item.profile} | ${item.targetId} | ${item.renderJavascript ? "yes" : "no"} | ${item.state} | ${item.artifactCount} | ${(item.elapsedMs / 1000).toFixed(1)}s | ${signal} |`,
     );
   }
   lines.push(
     "",
-    "Failures are observations of the real external source boundary; they do not mutate Source Registry or start production collection.",
+    "DEGRADED means the authority remains collectible through a low-interaction official baseline while the primary interactive path needs a dedicated adapter. BLOCKED means both primary and baseline acquisition failed.",
+    "",
+    "Live observations do not mutate Source Registry or start production collection.",
     "",
   );
   return lines.join("\n");
@@ -309,7 +412,7 @@ async function main(): Promise<void> {
   const observations: CanaryObservation[] = [];
   for (const canary of selectedCanaries()) {
     process.stdout.write(
-      `${JSON.stringify({ event: "representative-live-canary.start", jurisdiction: canary.jurisdiction, targetId: canary.targetId, uri: canary.canonicalUri })}\n`,
+      `${JSON.stringify({ event: "representative-live-canary.start", jurisdiction: canary.jurisdiction, targetId: canary.targetId, uri: canary.canonicalUri, authorityBaseline: canary.authorityBaseline })}\n`,
     );
     const observation = await observeCanary(canary, outputRoot, timeoutSeconds);
     observations.push(observation);
@@ -318,13 +421,18 @@ async function main(): Promise<void> {
     );
   }
 
+  const passed = observations.filter((item) => item.state === "PASS").length;
+  const degraded = observations.filter((item) => item.state === "DEGRADED").length;
+  const blocked = observations.filter((item) => item.state === "BLOCKED").length;
   const summary = {
-    version: "REPRESENTATIVE_SOURCE_LIVE_CANARY_RESULT_V1",
+    version: "REPRESENTATIVE_SOURCE_LIVE_CANARY_RESULT_V2",
     observedAt: new Date().toISOString(),
     strict,
     total: observations.length,
-    passed: observations.filter((item) => item.state === "PASS").length,
-    failed: observations.filter((item) => item.state === "FAIL").length,
+    passed,
+    degraded,
+    blocked,
+    failed: degraded + blocked,
     observations,
   };
   const jsonPath = join(outputRoot, "summary.json");

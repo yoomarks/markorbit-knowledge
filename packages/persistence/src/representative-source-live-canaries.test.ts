@@ -32,18 +32,47 @@ describe("representative source live canaries", () => {
     expect(canaries.some((canary) => canary.renderJavascript)).toBe(true);
   });
 
+  it("adds a distinct low-interaction authority baseline to interactive primary canaries", () => {
+    const canaries = getRepresentativeSourceLiveCanaries();
+    const interactive = canaries.filter(
+      (canary) => canary.family === "SEARCH" || canary.renderJavascript,
+    );
+    expect(interactive.length).toBeGreaterThan(0);
+    for (const canary of interactive) {
+      expect(canary.authorityBaseline).toBeDefined();
+      expect(canary.authorityBaseline?.targetId).not.toBe(canary.targetId);
+      expect(canary.authorityBaseline?.canonicalUri).toMatch(/^https?:\/\//u);
+      expect(canary.authorityBaseline?.renderJavascript).toBe(false);
+    }
+  });
+
+  it("uses the stable CNIPA filing guide as the authority baseline for trademark search", () => {
+    const china = getRepresentativeSourceLiveCanaries().find(
+      (canary) => canary.jurisdiction === "CN",
+    );
+    expect(china?.targetId).toBe("cn-cnipa-trademark-search");
+    expect(china?.authorityBaseline).toEqual({
+      targetId: "cn-cnipa-trademark-filing-guide",
+      family: "FILING",
+      canonicalUri: "https://www.cnipa.gov.cn/art/2020/12/21/art_2488_155734.html",
+      renderJavascript: false,
+    });
+  });
+
   it("selects the same target matrix deterministically across repeated reads", () => {
     const first = getRepresentativeSourceLiveCanaries().map((canary) => ({
       jurisdiction: canary.jurisdiction,
       targetId: canary.targetId,
       canonicalUri: canary.canonicalUri,
       renderJavascript: canary.renderJavascript,
+      authorityBaseline: canary.authorityBaseline,
     }));
     const second = getRepresentativeSourceLiveCanaries().map((canary) => ({
       jurisdiction: canary.jurisdiction,
       targetId: canary.targetId,
       canonicalUri: canary.canonicalUri,
       renderJavascript: canary.renderJavascript,
+      authorityBaseline: canary.authorityBaseline,
     }));
     expect(second).toEqual(first);
   });
