@@ -1,0 +1,81 @@
+import type { SourceCompatibilityObservationInput } from "@markorbit/contracts";
+import { RegistryValidationError } from "./index";
+
+type JsonObject = Record<string, unknown>;
+
+function object(value: unknown, field: string): JsonObject {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new RegistryValidationError(`${field} must be an object`);
+  }
+  return value as JsonObject;
+}
+
+function text(value: unknown, field: string): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new RegistryValidationError(`${field} must be a non-empty string`);
+  }
+  return value.trim();
+}
+
+function optionalText(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+export function parseRepresentativeLiveCanarySummary(
+  input: unknown,
+): SourceCompatibilityObservationInput[] {
+  const summary = object(input, "summary");
+  if (summary.version !== "REPRESENTATIVE_SOURCE_LIVE_CANARY_RESULT_V2") {
+    throw new RegistryValidationError("unsupported live canary summary version");
+  }
+  const observedAt = text(summary.observedAt, "observedAt");
+  if (!Array.isArray(summary.observations)) {
+    throw new RegistryValidationError("observations must be an array");
+  }
+
+  return summary.observations.map((value, index) => {
+    const observation = object(value, `observations[${index}]`);
+    const state = text(observation.state, `observations[${index}].state`);
+    if (!(["PASS", "DEGRADED", "BLOCKED"] as const).includes(state as never)) {
+      throw new RegistryValidationError(`observations[${index}].state is invalid`);
+    }
+    const baseline = observation.authorityBaseline
+      ? object(observation.authorityBaseline, `observations[${index}].authorityBaseline`)
+      : undefined;
+    const baselineState = baseline ? optionalText(baseline.state) : undefined;
+    if (baselineState && baselineState !== "PASS" && baselineState !== "FAIL") {
+      throw new RegistryValidationError(`observations[${index}].authorityBaseline.state is invalid`);
+    }
+    return {
+      targetId: text(observation.targetId, `observations[${index}].targetId`),
+      jurisdiction: text(observation.jurisdiction, `observations[${index}].jurisdiction`),
+      state: state as "PASS" | "DEGRADED" | "BLOCKED",
+      observedAt,
+      primaryUri: text(observation.requestedUri, `observations[${index}].requestedUri`),
+      renderJavascript: Boolean(observation.renderJavascript),
+      ...(optionalText(observation.errorCode) ? { errorCode: optionalText(observation.errorCode) } : {}),
+      ...(optionalText(observation.errorMessage)
+        ? { errorMessage: optionalText(observation.errorMessage) }
+        : {}),
+      ...(baseline
+        ? {
+            baselineTargetId: text(
+              baseline.targetId,
+              `observations[${index}].authorityBaseline.targetId`,
+            ),
+            baselineState: baselineState as "PASS" | "FAIL",
+          }
+        : {}),
+      details: {
+        profile: observation.profile,
+        family: observation.family,
+        elapsedMs: observation.elapsedMs,
+        pagesAttempted: observation.pagesAttempted,
+        artifactCount: observation.artifactCount,
+        artifactKinds: observation.artifactKinds,
+        finalUris: observation.finalUris,
+        totalBytes: observation.totalBytes,
+      },
+    } satisfies SourceCompatibilityObservationInput;
+  });
+}
