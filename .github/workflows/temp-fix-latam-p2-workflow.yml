@@ -1,0 +1,45 @@
+name: Temporary Fix LATAM P2 Workflow
+
+on:
+  push:
+    branches:
+      - agent/priority-120-latam-p2-ec-uy-gt-cr-pa-do-v1
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-latam-p2-ec-uy-gt-cr-pa-do-v1
+      - name: Make retrieval jurisdiction patch formatting-safe
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/temp-priority-120-latam-p2-six.yml')
+          text = path.read_text()
+          old = '''          old_loop = '    for (const jurisdiction of ["IR", "PK", "IQ", "NL", "BE", "AL", "BA", "MK", "BY", "MN", "KH", "LA", "MM", "BN"] as const) {'
+          new_loop = '    for (const jurisdiction of ["IR", "PK", "IQ", "NL", "BE", "AL", "BA", "MK", "BY", "MN", "KH", "LA", "MM", "BN", "EC", "UY", "GT", "CR", "PA", "DO"] as const) {'
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', old_loop, new_loop)
+'''
+          new = '''          replace_once(
+              'packages/persistence/tests/retrieval-relevance-audit.test.ts',
+              '      "BN",\\n    ] as const) {',
+              '      "BN",\\n      "EC",\\n      "UY",\\n      "GT",\\n      "CR",\\n      "PA",\\n      "DO",\\n    ] as const) {'
+          )
+'''
+          if new in text:
+              raise SystemExit(0)
+          if old not in text:
+              raise SystemExit('LATAM P2 loop patch block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/temp-priority-120-latam-p2-six.yml
+          git commit -m "ci: make LATAM P2 jurisdiction patch formatting-safe"
+          git push origin HEAD:agent/priority-120-latam-p2-ec-uy-gt-cr-pa-do-v1
