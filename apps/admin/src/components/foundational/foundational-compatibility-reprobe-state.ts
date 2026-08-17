@@ -84,7 +84,10 @@ export function compatibilityReprobeIntentIdempotencyKey(input: {
 }): string {
   const observed = input.observedAt.replace(/[^0-9TZ]/g, "");
   const nonce = input.nonce.replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 36) || "manual";
-  return `compat-reprobe:${input.jurisdiction}:${input.targetId}:${observed}:${nonce}`.slice(0, 200);
+  return `compat-reprobe:${input.jurisdiction}:${input.targetId}:${observed}:${nonce}`.slice(
+    0,
+    200,
+  );
 }
 
 export function compatibilityReprobeExecutionIdempotencyKey(intentId: string): string {

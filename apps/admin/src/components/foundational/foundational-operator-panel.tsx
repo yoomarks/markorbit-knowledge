@@ -115,8 +115,8 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
               retry；INDEX 使用 M28 verified canonical reindex；QUALITY 使用 M29 的 M16 plan + M17
               explicit operator execution；RELEVANCE 使用 M30 只读 M18 deterministic audit；HEALTH
               仍以 M31 target-scoped supply-health diagnostics 为只读诊断，同时 stale compatibility
-              observation 可创建独立 re-probe approval intent 并交给受认证 Worker 执行。浏览器不会持有 Worker
-              bearer，也不会自动运行 canary、生成 probe 或调 ranking。
+              observation 可创建独立 re-probe approval intent 并交给受认证 Worker
+              执行。浏览器不会持有 Worker bearer，也不会自动运行 canary、生成 probe 或调 ranking。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

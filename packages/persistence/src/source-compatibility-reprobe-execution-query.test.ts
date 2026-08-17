@@ -20,7 +20,11 @@ afterEach(() => {
   while (databases.length > 0) databases.pop()?.close();
 });
 
-function intent(targetId: string, idempotencyKey: string, now: string): FoundationalActionIntentRecord {
+function intent(
+  targetId: string,
+  idempotencyKey: string,
+  now: string,
+): FoundationalActionIntentRecord {
   return {
     protocolVersion: "1.0",
     objectType: "FOUNDATIONAL_ACTION_INTENT",
@@ -77,7 +81,9 @@ describe("source compatibility re-probe execution query", () => {
     const intents = new SqliteFoundationalActionIntentRepository(db, clock);
     const executions = new SqliteSourceCompatibilityReprobeExecutionRepository(db, clock);
 
-    const usIntent = intents.create(intent("us-uspto-trademarks-root", "intent-us", now.toISOString()));
+    const usIntent = intents.create(
+      intent("us-uspto-trademarks-root", "intent-us", now.toISOString()),
+    );
     intents.approve(usIntent.intentId, "operator.approver");
     const usExecution = executions.start({
       intentId: usIntent.intentId,
@@ -87,7 +93,9 @@ describe("source compatibility re-probe execution query", () => {
     });
 
     now = new Date("2026-08-18T01:00:00.000Z");
-    const woIntent = intents.create(intent("wo-wipo-madrid-system", "intent-wo", now.toISOString()));
+    const woIntent = intents.create(
+      intent("wo-wipo-madrid-system", "intent-wo", now.toISOString()),
+    );
     intents.approve(woIntent.intentId, "operator.approver");
     const woExecution = executions.start({
       intentId: woIntent.intentId,
