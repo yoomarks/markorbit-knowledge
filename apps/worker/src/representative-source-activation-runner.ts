@@ -79,7 +79,9 @@ function selectJurisdictions(requested: readonly string[] | undefined) {
   if (!requested || requested.length === 0) {
     return [...REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS];
   }
-  const normalized = [...new Set(requested.map((value) => value.trim().toUpperCase()).filter(Boolean))];
+  const normalized = [
+    ...new Set(requested.map((value) => value.trim().toUpperCase()).filter(Boolean)),
+  ];
   const unknown = normalized.filter((value) => !byCode.has(value));
   if (unknown.length > 0) {
     throw new Error(`Unsupported representative jurisdiction: ${unknown.join(", ")}`);
@@ -193,7 +195,10 @@ export async function runRepresentativeSourceActivationWave(
       planned: entries.filter((entry) => entry.state === "PLANNED").length,
       completed: entries.filter((entry) => entry.state === "COMPLETED").length,
       failed: entries.filter((entry) => entry.state === "FAILED").length,
-      sourcesCreated: entries.reduce((total, entry) => total + (entry.result?.sourcesCreated ?? 0), 0),
+      sourcesCreated: entries.reduce(
+        (total, entry) => total + (entry.result?.sourcesCreated ?? 0),
+        0,
+      ),
       plansCreated: entries.reduce((total, entry) => total + (entry.result?.plansCreated ?? 0), 0),
       conversionProfilesCreated: entries.reduce(
         (total, entry) => total + (entry.result?.conversionProfilesCreated ?? 0),

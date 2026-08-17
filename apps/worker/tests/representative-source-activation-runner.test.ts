@@ -1,7 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { runRepresentativeSourceActivationWave } from "../src/representative-source-activation-runner";
 
-function result(overrides: Partial<Awaited<ReturnType<NonNullable<Parameters<typeof runRepresentativeSourceActivationWave>[0]["activateJurisdiction"]>>>> = {}) {
+function result(
+  overrides: Partial<
+    Awaited<
+      ReturnType<
+        NonNullable<
+          Parameters<typeof runRepresentativeSourceActivationWave>[0]["activateJurisdiction"]
+        >
+      >
+    >
+  > = {},
+) {
   return {
     targetCount: 5,
     registeredCount: 5,
