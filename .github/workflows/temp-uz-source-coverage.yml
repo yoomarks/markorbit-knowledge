@@ -65,12 +65,21 @@ jobs:
             }),
             target(MOJ_UZ, {
               id: "uz-justice-trademark-registration-request",
-              family: "MAINTENANCE",
+              family: "FILING",
               displayName: "Uzbekistan Trademark Registration Applicant Service",
               canonicalUri: "https://my.gov.uz/ru/service/291",
               verificationEvidenceUri: "https://my.gov.uz/ru/service/291",
               notes:
-                "Separate Ministry of Justice public-service route for submitting a trademark registration request in the applicant's name; retained as an operational service surface distinct from the full registration workflow page.",
+                "Separate Ministry of Justice public-service route for submitting a trademark registration request in the applicant's name; retained as an operational filing surface distinct from the full registration workflow page.",
+            }),
+            target(MOJ_UZ, {
+              id: "uz-justice-state-duty-rates",
+              family: "FEES",
+              displayName: "Uzbekistan State Duty Rates",
+              canonicalUri: "https://my.gov.uz/ru/static/tax-rates",
+              verificationEvidenceUri: "https://my.gov.uz/ru/static/tax-rates",
+              notes:
+                "Current Unified Public Services state-duty rates surface referenced alongside public services for legally significant actions, including the trademark-registration workflow; retained as the current government fee-reference surface rather than copying fee amounts into the catalog.",
             }),
             target(MOJ_UZ, {
               id: "uz-trademark-law-current",
@@ -121,6 +130,11 @@ jobs:
             query: "Uzbekistan trademark registration applicant service Ministry Justice",
           },
           {
+            id: "uz-justice-state-duty-rates-name",
+            targetId: "uz-justice-state-duty-rates",
+            query: "Uzbekistan state duty rates trademark registration fee Ministry Justice",
+          },
+          {
             id: "uz-trademark-law-current-name",
             targetId: "uz-trademark-law-current",
             query: "Uzbekistan Law 267-II trademarks service marks appellations origin 2024",
@@ -158,13 +172,13 @@ jobs:
               'ships explicit, official, unique coverage for seventy-nine priority national offices',
               'ships explicit, official, unique coverage for eighty priority national offices'
           )
-          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', 'toHaveLength(639)', 'toHaveLength(644)')
-          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '      639,\n    );', '      644,\n    );')
-          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '    ).toBe(639);', '    ).toBe(644);')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', 'toHaveLength(639)', 'toHaveLength(645)')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '      639,\n    );', '      645,\n    );')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '    ).toBe(639);', '    ).toBe(645);')
 
-          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(targets).toHaveLength(593);', 'expect(targets).toHaveLength(598);')
-          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(593);', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(598);')
-          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', '      593,\n    );', '      598,\n    );')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(targets).toHaveLength(593);', 'expect(targets).toHaveLength(599);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(593);', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(599);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', '      593,\n    );', '      599,\n    );')
           replace_once(
               'packages/persistence/tests/retrieval-relevance-audit.test.ts',
               '    expect(\n      listSourceCoverageTargets({ jurisdiction: "RU", coverageTier: "FOUNDATIONAL" }).every(\n        (target) => targetIds.has(target.id),\n      ),\n    ).toBe(true);\n  });',
