@@ -1,0 +1,320 @@
+name: Temporary Priority 120 Venezuela Ethiopia
+
+on:
+  push:
+    branches:
+      - agent/priority-120-tranche-ve-et-v1
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-tranche-ve-et-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply curated Venezuela and Ethiopia coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'expected anchor not found in {path}: {old[:180]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          block = '''const SAPI_VE: Authority = {
+            jurisdiction: "VE",
+            authorityName: "Autonomous Service of Intellectual Property of Venezuela (SAPI)",
+            languages: ["es"],
+            verificationEvidenceUri: "https://sapi.gob.ve/",
+          };
+
+          export const SAPI_VE_SOURCE_COVERAGE_TARGETS = [
+            target(SAPI_VE, {
+              id: "ve-sapi-portal",
+              family: "PORTAL",
+              displayName: "Venezuela SAPI Intellectual Property Portal",
+              canonicalUri: "https://sapi.gob.ve/",
+              verificationEvidenceUri: "https://sapi.gob.ve/",
+              notes:
+                "Current SAPI authority portal linking trademark services, the WebPI online system and the Industrial Property Bulletin.",
+            }),
+            target(SAPI_VE, {
+              id: "ve-sapi-webpi-online-filing",
+              family: "FILING",
+              displayName: "Venezuela SAPI WebPI Online Filing System",
+              canonicalUri: "https://webpi.sapi.gob.ve/index0.php",
+              mode: "MIXED",
+              renderJavascriptHint: true,
+              expectedArtifactKinds: ["HTML", "JSON"],
+              verificationEvidenceUri: "https://sapi.gob.ve/servicio-marcas/",
+              notes:
+                "Official SAPI WebPI system used for electronic industrial-property procedures, including trademark applications and related actions.",
+            }),
+            target(SAPI_VE, {
+              id: "ve-sapi-trademark-search-procedure",
+              family: "SEARCH",
+              displayName: "Venezuela SAPI Trademark Search and Registration Procedure",
+              canonicalUri: "https://sapi.gob.ve/servicio-marcas/",
+              verificationEvidenceUri: "https://sapi.gob.ve/servicio-marcas/",
+              notes:
+                "Current SAPI trademark-service guidance states that the prior-availability search is automated through WebPI and documents examination, publication, opposition and registration stages.",
+            }),
+            target(SAPI_VE, {
+              id: "ve-sapi-trademark-tariff-pdf",
+              family: "FEES",
+              displayName: "Venezuela SAPI Official Trademark Tariff",
+              canonicalUri:
+                "https://sapi.gob.ve/wp-content/uploads/2021/09/AVISO-OFICIAL-DIRECTOR-GENERAL-No-DG-14-2021-Actualizacion-de-las-Tasas-1.pdf",
+              fetchAttachmentsHint: true,
+              expectedArtifactKinds: ["PDF"],
+              verificationEvidenceUri: "https://sapi.gob.ve/servicio-marcas/",
+              notes:
+                "Official tariff PDF still linked by SAPI's current trademark-service page. Knowledge retains the live authority source rather than copying numeric rates into metadata.",
+            }),
+            target(SAPI_VE, {
+              id: "ve-sapi-trademark-legal-framework",
+              family: "LEGAL_TEXTS",
+              displayName: "Venezuela SAPI Trademark Legal Framework",
+              canonicalUri: "https://sapi.gob.ve/marco-legal/",
+              verificationEvidenceUri: "https://sapi.gob.ve/marco-legal/",
+              notes:
+                "Current SAPI legal-framework index linking the Industrial Property Law and other instruments governing trademarks and industrial property.",
+            }),
+            target(SAPI_VE, {
+              id: "ve-industrial-property-law-wipolex",
+              family: "LEGAL_TEXTS",
+              displayName: "Venezuela Industrial Property Law – WIPO Lex",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/3985",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/3985",
+              notes:
+                "WIPO Lex full text of Venezuela's Industrial Property Law, including trademark registration, rights, cancellation and enforcement provisions.",
+            }),
+            target(SAPI_VE, {
+              id: "ve-sapi-industrial-property-bulletin",
+              family: "OFFICIAL_GAZETTE",
+              displayName: "Venezuela SAPI Industrial Property Bulletin",
+              canonicalUri: "https://sapi.gob.ve/boletin-propiedad/",
+              coverageTier: "CHANGE_SIGNAL",
+              fetchAttachmentsHint: true,
+              expectedArtifactKinds: ["HTML", "PDF"],
+              verificationEvidenceUri: "https://sapi.gob.ve/boletin-propiedad/",
+              notes:
+                "Current official SAPI Industrial Property Bulletin index; retained as a change-signal publication source rather than foundational retrieval.",
+            }),
+          ] satisfies readonly SourceCoverageTarget[];
+
+          const EIPA_ET: Authority = {
+            jurisdiction: "ET",
+            authorityName: "Ethiopian Intellectual Property Authority (EIPA)",
+            languages: ["en", "am"],
+            verificationEvidenceUri: "https://eipa.gov.et/",
+          };
+
+          export const EIPA_ET_SOURCE_COVERAGE_TARGETS = [
+            target(EIPA_ET, {
+              id: "et-eipa-portal",
+              family: "PORTAL",
+              displayName: "Ethiopian Intellectual Property Authority Portal",
+              canonicalUri: "https://eipa.gov.et/",
+              verificationEvidenceUri: "https://eipa.gov.et/",
+              notes:
+                "Current EIPA authority portal describing trademark search, filing, formal and substantive examination, registration and appeal services.",
+            }),
+            target(EIPA_ET, {
+              id: "et-eipa-trademark-application-procedure",
+              family: "FILING",
+              displayName: "Ethiopia Trademark Application Procedure",
+              canonicalUri: "https://eipa.gov.et/application-procedure-2/",
+              verificationEvidenceUri: "https://eipa.gov.et/application-procedure-2/",
+              notes:
+                "Current EIPA application procedure for local and foreign trademark applicants, including representation and document requirements.",
+            }),
+            target(EIPA_ET, {
+              id: "et-eipa-trademark-search",
+              family: "SEARCH",
+              displayName: "Ethiopia EIPA Trademark Search Records",
+              canonicalUri: "https://ip.eipa.gov.et/index.php/trade-marks/",
+              mode: "MIXED",
+              renderJavascriptHint: true,
+              expectedArtifactKinds: ["HTML", "JSON"],
+              verificationEvidenceUri: "https://ip.eipa.gov.et/index.php/trade-marks/",
+              notes:
+                "Official EIPA intellectual-property marketplace/search surface exposing registered trademark records.",
+            }),
+            target(EIPA_ET, {
+              id: "et-eipa-trademark-fees",
+              family: "FEES",
+              displayName: "Ethiopia EIPA Trademark Fees and Payments",
+              canonicalUri: "https://eipa.gov.et/tm-fees-and-payments/",
+              verificationEvidenceUri: "https://eipa.gov.et/tm-fees-and-payments/",
+              notes:
+                "Current EIPA trademark fee schedule covering application, registration, renewal, search and related services; live values remain at source.",
+            }),
+            target(EIPA_ET, {
+              id: "et-eipa-trademark-legislation-index",
+              family: "LEGAL_TEXTS",
+              displayName: "Ethiopia EIPA Trademark Proclamation and Regulation Index",
+              canonicalUri: "https://eipa.gov.et/proclamation-and-regulation/",
+              verificationEvidenceUri: "https://eipa.gov.et/proclamation-and-regulation/",
+              notes:
+                "Current EIPA legislation index identifying Trademark Proclamation No. 501/2006, Regulation No. 273/2012 and later trademark directives.",
+            }),
+            target(EIPA_ET, {
+              id: "et-trademark-regulation-273-2012",
+              family: "EXAMINATION_MANUAL",
+              displayName: "Ethiopia Trademark Registration and Protection Regulation No. 273/2012",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/12890",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/12890",
+              notes:
+                "WIPO Lex implementing regulation covering trademark filing, examination, registration, publication, opposition, renewal and related procedures.",
+            }),
+          ] satisfies readonly SourceCoverageTarget[];
+
+          '''
+
+          replace_once(
+              'packages/persistence/src/priority-national-source-coverage.ts',
+              'const CIPO: Authority = {',
+              block + 'const CIPO: Authority = {'
+          )
+          replace_once(
+              'packages/persistence/src/priority-national-source-coverage.ts',
+              '  ...DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  ...CIPO_SOURCE_COVERAGE_TARGETS,',
+              '  ...DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  ...SAPI_VE_SOURCE_COVERAGE_TARGETS,\n  ...EIPA_ET_SOURCE_COVERAGE_TARGETS,\n  ...CIPO_SOURCE_COVERAGE_TARGETS,'
+          )
+
+          probe_rows = [
+              ("ve-sapi-portal", "Venezuela SAPI intellectual property trademark portal"),
+              ("ve-sapi-webpi-online-filing", "Venezuela SAPI WebPI online trademark filing"),
+              ("ve-sapi-trademark-search-procedure", "Venezuela SAPI automated trademark prior search WebPI procedure"),
+              ("ve-sapi-trademark-tariff-pdf", "Venezuela SAPI official trademark tariff fees PDF"),
+              ("ve-sapi-trademark-legal-framework", "Venezuela SAPI trademark industrial property legal framework"),
+              ("ve-industrial-property-law-wipolex", "Venezuela Industrial Property Law trademarks WIPO Lex"),
+              ("et-eipa-portal", "Ethiopia EIPA intellectual property trademark portal"),
+              ("et-eipa-trademark-application-procedure", "Ethiopia EIPA trademark application procedure local foreign applicants"),
+              ("et-eipa-trademark-search", "Ethiopia EIPA registered trademark search records"),
+              ("et-eipa-trademark-fees", "Ethiopia EIPA trademark application registration renewal search fees"),
+              ("et-eipa-trademark-legislation-index", "Ethiopia EIPA trademark proclamation 501 regulation 273 legislation"),
+              ("et-trademark-regulation-273-2012", "Ethiopia trademark registration protection regulation 273 2012"),
+          ]
+          probes = ''.join(
+              f'  {{\n    id: "{target_id}-name",\n    targetId: "{target_id}",\n    query: "{query}",\n  }},\n'
+              for target_id, query in probe_rows
+          )
+          replace_once(
+              'packages/persistence/src/retrieval-relevance-audit.ts',
+              '] satisfies readonly RetrievalRelevanceProbe[];',
+              probes + '] satisfies readonly RetrievalRelevanceProbe[];'
+          )
+
+          # Unified catalog import list.
+          replace_once(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  SAPI_VE_SOURCE_COVERAGE_TARGETS,\n  EIPA_ET_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+
+          # Public named-export list: this anchor exists only in the export block because
+          # the import block already contains post-BOIP country sets.
+          replace_once(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  BOIP_BE_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  BOIP_BE_SOURCE_COVERAGE_TARGETS,\n  DPPI_AL_SOURCE_COVERAGE_TARGETS,\n  IPR_BA_SOURCE_COVERAGE_TARGETS,\n  SOIP_MK_SOURCE_COVERAGE_TARGETS,\n  NCIP_BY_SOURCE_COVERAGE_TARGETS,\n  IPOM_MN_SOURCE_COVERAGE_TARGETS,\n  DIP_KH_SOURCE_COVERAGE_TARGETS,\n  DIP_LA_SOURCE_COVERAGE_TARGETS,\n  IPD_MM_SOURCE_COVERAGE_TARGETS,\n  BRUIPO_BN_SOURCE_COVERAGE_TARGETS,\n  SENADI_EC_SOURCE_COVERAGE_TARGETS,\n  DNPI_UY_SOURCE_COVERAGE_TARGETS,\n  RPI_GT_SOURCE_COVERAGE_TARGETS,\n  RPI_CR_SOURCE_COVERAGE_TARGETS,\n  DIGERPI_PA_SOURCE_COVERAGE_TARGETS,\n  ONAPI_DO_SOURCE_COVERAGE_TARGETS,\n  MOET_LB_SOURCE_COVERAGE_TARGETS,\n  DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  SAPI_VE_SOURCE_COVERAGE_TARGETS,\n  EIPA_ET_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              '  DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  SAPI_VE_SOURCE_COVERAGE_TARGETS,\n  EIPA_ET_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              '  ["PY", DINAPI_PY_SOURCE_COVERAGE_TARGETS, ["dinapi.gov.py"]],\n  ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],',
+              '  ["PY", DINAPI_PY_SOURCE_COVERAGE_TARGETS, ["dinapi.gov.py"]],\n  ["VE", SAPI_VE_SOURCE_COVERAGE_TARGETS, ["sapi.gob.ve", "wipo.int"]],\n  ["ET", EIPA_ET_SOURCE_COVERAGE_TARGETS, ["eipa.gov.et", "wipo.int"]],\n  ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],'
+          )
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              'ships explicit, official, unique coverage for one hundred two priority national offices',
+              'ships explicit, official, unique coverage for one hundred four priority national offices'
+          )
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', 'toHaveLength(780)', 'toHaveLength(793)')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '      780,\n    );', '      793,\n    );')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '    ).toBe(780);', '    ).toBe(793);')
+
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(targets).toHaveLength(731);', 'expect(targets).toHaveLength(743);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(731);', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(743);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', '      731,\n    );', '      743,\n    );')
+          replace_once(
+              'packages/persistence/tests/retrieval-relevance-audit.test.ts',
+              '      "PY",\n    ] as const) {',
+              '      "PY",\n      "VE",\n      "ET",\n    ] as const) {'
+          )
+
+          for jurisdiction, display, region in [
+              ('VE', 'Venezuela', 'LATIN_AMERICA_CARIBBEAN'),
+              ('ET', 'Ethiopia', 'SUB_SAHARAN_AFRICA'),
+          ]:
+              replace_once(
+                  'packages/persistence/src/priority-trademark-jurisdictions.ts',
+                  f'["{jurisdiction}", "{display}", "{region}", "P2", "TARGET", "NATIONAL"]',
+                  f'["{jurisdiction}", "{display}", "{region}", "P2", "CURATED", "NATIONAL"]'
+              )
+          replace_once('packages/persistence/tests/priority-trademark-jurisdictions.test.ts', 'expect(curated).toHaveLength(103);', 'expect(curated).toHaveLength(105);')
+          replace_once('packages/persistence/tests/priority-trademark-jurisdictions.test.ts', 'expect(target).toHaveLength(17);', 'expect(target).toHaveLength(15);')
+
+          # Add a regression test proving post-BOIP country constants are actually public
+          # named exports from the catalog module, not merely private imports into it.
+          export_test = Path('packages/persistence/tests/source-coverage-catalog-exports.test.ts')
+          export_test.write_text('''import { describe, expect, it } from "vitest";\nimport * as catalog from "../src/source-coverage-catalog";\n\nconst postBoipCountryExports = [\n  "DPPI_AL_SOURCE_COVERAGE_TARGETS",\n  "IPR_BA_SOURCE_COVERAGE_TARGETS",\n  "SOIP_MK_SOURCE_COVERAGE_TARGETS",\n  "NCIP_BY_SOURCE_COVERAGE_TARGETS",\n  "IPOM_MN_SOURCE_COVERAGE_TARGETS",\n  "DIP_KH_SOURCE_COVERAGE_TARGETS",\n  "DIP_LA_SOURCE_COVERAGE_TARGETS",\n  "IPD_MM_SOURCE_COVERAGE_TARGETS",\n  "BRUIPO_BN_SOURCE_COVERAGE_TARGETS",\n  "SENADI_EC_SOURCE_COVERAGE_TARGETS",\n  "DNPI_UY_SOURCE_COVERAGE_TARGETS",\n  "RPI_GT_SOURCE_COVERAGE_TARGETS",\n  "RPI_CR_SOURCE_COVERAGE_TARGETS",\n  "DIGERPI_PA_SOURCE_COVERAGE_TARGETS",\n  "ONAPI_DO_SOURCE_COVERAGE_TARGETS",\n  "MOET_LB_SOURCE_COVERAGE_TARGETS",\n  "DINAPI_PY_SOURCE_COVERAGE_TARGETS",\n  "SAPI_VE_SOURCE_COVERAGE_TARGETS",\n  "EIPA_ET_SOURCE_COVERAGE_TARGETS",\n] as const;\n\ndescribe("source coverage catalog named exports", () => {\n  it("publicly exports every post-BOIP curated country source set", () => {\n    for (const exportName of postBoipCountryExports) {\n      expect(exportName in catalog, exportName).toBe(true);\n      expect(Array.isArray((catalog as Record<string, unknown>)[exportName])).toBe(true);\n    }\n  });\n});\n''')
+          PY
+      - name: Format touched files
+        run: |
+          pnpm exec prettier --write \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts \
+            packages/persistence/tests/source-coverage-catalog-exports.test.ts
+      - name: Verify Venezuela Ethiopia tranche
+        run: |
+          pnpm --filter @markorbit/persistence test -- \
+            tests/priority-national-source-coverage.test.ts \
+            tests/retrieval-relevance-audit.test.ts \
+            tests/priority-trademark-jurisdictions.test.ts \
+            tests/source-coverage-catalog-exports.test.ts
+          pnpm typecheck
+      - name: Commit verified production changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts \
+            packages/persistence/tests/source-coverage-catalog-exports.test.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "feat: add Venezuela Ethiopia trademark source coverage"
+          git push origin HEAD:agent/priority-120-tranche-ve-et-v1
