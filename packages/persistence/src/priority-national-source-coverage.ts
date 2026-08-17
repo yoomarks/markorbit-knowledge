@@ -9313,6 +9313,109 @@ export const EIPA_EG_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const ROSPATENT_RU: Authority = {
+  jurisdiction: "RU",
+  authorityName: "Federal Service for Intellectual Property (Rospatent)",
+  languages: ["ru"],
+  verificationEvidenceUri: "https://rospatent.gov.ru/ru",
+};
+
+export const ROSPATENT_RU_SOURCE_COVERAGE_TARGETS = [
+  target(ROSPATENT_RU, {
+    id: "ru-rospatent-trademark-portal",
+    family: "PORTAL",
+    displayName: "Rospatent Intellectual Property Portal",
+    canonicalUri: "https://rospatent.gov.ru/ru",
+    verificationEvidenceUri: "https://rospatent.gov.ru/ru",
+    notes:
+      "Official Rospatent portal and service surface for the Russian Federation; retained as the authority entrypoint while trademark-specific acquisition uses the dedicated service, register and rules targets below.",
+  }),
+  target(ROSPATENT_RU, {
+    id: "ru-rospatent-trademark-filing-service",
+    family: "FILING",
+    displayName: "Rospatent Trademark Registration State Service",
+    canonicalUri:
+      "https://rospatent.gov.ru/ru/stateservices/gosudarstvennaya-registraciya-tovarnogo-znaka-znaka-obsluzhivaniya-kollektivnogo-znaka-i-vydacha-svidetelstv-na-tovarnyy-znak-znak-obsluzhivaniya-kollektivnyy-znak-ih-dublikatov",
+    verificationEvidenceUri:
+      "https://rospatent.gov.ru/ru/stateservices/gosudarstvennaya-registraciya-tovarnogo-znaka-znaka-obsluzhivaniya-kollektivnogo-znaka-i-vydacha-svidetelstv-na-tovarnyy-znak-znak-obsluzhivaniya-kollektivnyy-znak-ih-dublikatov",
+    notes:
+      "Current Rospatent state-service page covering trademark application submission, electronic filing routes, fee links and the registration workflow.",
+  }),
+  target(ROSPATENT_RU, {
+    id: "ru-rospatent-trademark-register",
+    family: "SEARCH",
+    displayName: "Russian Federation Open Trademark and Service Mark Register",
+    canonicalUri: "https://rospatent.gov.ru/opendata/7730176088-tz",
+    changeSensitivity: "HIGH",
+    verificationEvidenceUri: "https://rospatent.gov.ru/opendata/7730176088-tz",
+    notes:
+      "Official FIPS-owned open-data register for Russian trademarks and service marks. The dataset is updated monthly and exposes registration, application, priority, expiry and owner fields; the catalog targets the stable dataset passport rather than a dated CSV snapshot.",
+  }),
+  target(ROSPATENT_RU, {
+    id: "ru-rospatent-trademark-fees",
+    family: "FEES",
+    displayName: "Rospatent Trademark and Patent Fee Tables",
+    canonicalUri: "https://rospatent.gov.ru/ru/activities/dues/table",
+    verificationEvidenceUri: "https://rospatent.gov.ru/ru/activities/dues/table",
+    notes:
+      "Current official table of legally significant actions and fees, including trademark and service-mark filing, examination, registration and related actions.",
+  }),
+  target(ROSPATENT_RU, {
+    id: "ru-rospatent-trademark-filing-examination-rules",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Russia Trademark Filing and Examination Rules – Order No. 482",
+    canonicalUri:
+      "https://rospatent.gov.ru/ru/documents/482-prikaz-minekonomrazvitiya-rossii-ot-20-07-2015-482",
+    verificationEvidenceUri:
+      "https://rospatent.gov.ru/ru/documents/482-prikaz-minekonomrazvitiya-rossii-ot-20-07-2015-482",
+    notes:
+      "Official consolidated rules for preparing, filing and examining trademark, service-mark and collective-mark registration documents, including amendments through 20 September 2024.",
+  }),
+  target(ROSPATENT_RU, {
+    id: "ru-rospatent-civil-code-trademarks",
+    family: "LEGAL_TEXTS",
+    displayName: "Russian Civil Code Part Four – Trademark Provisions",
+    canonicalUri:
+      "https://rospatent.gov.ru/ru/documents/grazhdanskiy-kodeks-rossiyskoy-federacii-chast-chetvertaya",
+    verificationEvidenceUri:
+      "https://rospatent.gov.ru/ru/documents/grazhdanskiy-kodeks-rossiyskoy-federacii-chast-chetvertaya",
+    notes:
+      "Official Rospatent publication of Part Four of the Civil Code; Chapter 76 contains the core substantive trademark and service-mark provisions, including registrability, rights, challenges, publication and renewal.",
+  }),
+  target(ROSPATENT_RU, {
+    id: "ru-rospatent-trademark-appeals",
+    family: "PROCEEDINGS",
+    displayName: "Rospatent Administrative Appeal Procedure",
+    canonicalUri: "https://rospatent.gov.ru/ru/activities/appeal",
+    verificationEvidenceUri: "https://rospatent.gov.ru/ru/activities/appeal",
+    notes:
+      "Official administrative and judicial appeal guidance linking the Patent Disputes Chamber objection procedure for decisions affecting trademarks and other IP rights.",
+  }),
+  target(ROSPATENT_RU, {
+    id: "ru-rospatent-trademark-renewal",
+    family: "MAINTENANCE",
+    displayName: "Rospatent Trademark Renewal State Service",
+    canonicalUri:
+      "https://rospatent.gov.ru/ru/stateservices/prodlenie-sroka-deystviya-isklyuchitelnogo-prava-na-tovarnyy-znak",
+    verificationEvidenceUri:
+      "https://rospatent.gov.ru/ru/stateservices/prodlenie-sroka-deystviya-isklyuchitelnogo-prava-na-tovarnyy-znak",
+    notes:
+      "Current trademark-renewal service page covering the ten-year renewal term, filing window, six-month additional period, required documents and applicable fees.",
+  }),
+  target(ROSPATENT_RU, {
+    id: "ru-rospatent-trademark-official-publications",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Rospatent Trademark Official Publications and Bulletins",
+    canonicalUri: "https://rospatent.gov.ru/ru/sourses",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://rospatent.gov.ru/ru/sourses",
+    notes:
+      "Official Rospatent information-resources index linking FIPS official trademark bulletins, open registers and PDF official publications; retained as a change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -9457,5 +9560,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...RDB_RW_SOURCE_COVERAGE_TARGETS,
   ...RGD_GH_SOURCE_COVERAGE_TARGETS,
   ...EIPA_EG_SOURCE_COVERAGE_TARGETS,
+  ...ROSPATENT_RU_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
