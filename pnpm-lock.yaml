@@ -72,6 +72,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@markorbit/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
       '@markorbit/worker-runtime':
         specifier: workspace:*
         version: link:../../packages/worker-runtime

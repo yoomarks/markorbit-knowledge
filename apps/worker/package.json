@@ -12,6 +12,7 @@
     "bootstrap:uspto": "tsx src/bootstrap-uspto.ts",
     "bootstrap:uspto-conversion": "tsx src/bootstrap-uspto-conversion.ts",
     "bootstrap:coverage": "tsx src/bootstrap-source-coverage.ts",
+    "canary:representative": "tsx src/run-representative-live-canaries.ts",
     "operate:foundational": "tsx src/operate-foundational.ts",
     "operate:foundational:us": "tsx src/operate-us-foundational.ts",
     "verify:uspto": "tsx src/verify-uspto-golden-source.ts",
@@ -22,6 +23,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@markorbit/persistence": "workspace:*",
     "@markorbit/worker-runtime": "workspace:*",
     "tsx": "4.20.6"
   },
