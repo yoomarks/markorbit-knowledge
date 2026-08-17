@@ -11173,6 +11173,358 @@ export const EIPA_ET_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const SENAPI_BO: Authority = {
+  jurisdiction: "BO",
+  authorityName: "National Intellectual Property Service of Bolivia (SENAPI)",
+  languages: ["es"],
+  verificationEvidenceUri: "https://www.senapi.gob.bo/",
+};
+
+export const SENAPI_BO_SOURCE_COVERAGE_TARGETS = [
+  target(SENAPI_BO, {
+    id: "bo-senapi-portal",
+    family: "PORTAL",
+    displayName: "Bolivia SENAPI Portal",
+    canonicalUri: "https://www.senapi.gob.bo/",
+    verificationEvidenceUri: "https://www.senapi.gob.bo/",
+  }),
+  target(SENAPI_BO, {
+    id: "bo-senapi-distinctive-signs-filing",
+    family: "FILING",
+    displayName: "Bolivia Distinctive Signs and Trademark Filing",
+    canonicalUri: "https://www.senapi.gob.bo/signos-distintivos",
+    verificationEvidenceUri: "https://www.senapi.gob.bo/signos-distintivos",
+    notes:
+      "Current SENAPI distinctive-signs page publishes trademark application requirements, links the PI-100 filing system and describes ten-year registration and renewal.",
+  }),
+  target(SENAPI_BO, {
+    id: "bo-senapi-sipi-search",
+    family: "SEARCH",
+    displayName: "Bolivia SENAPI Intellectual Property Information System",
+    canonicalUri: "https://sipi.senapi.gob.bo/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.senapi.gob.bo/signos-distintivos",
+    notes:
+      "SENAPI's linked intellectual-property information system used for distinctive-sign filings, tracking and database operations.",
+  }),
+  target(SENAPI_BO, {
+    id: "bo-senapi-ip-fees",
+    family: "FEES",
+    displayName: "Bolivia SENAPI Intellectual Property Fees",
+    canonicalUri: "https://www.senapi.gob.bo/tasas-de-propiedad-intelectual",
+    verificationEvidenceUri: "https://www.senapi.gob.bo/tasas-de-propiedad-intelectual",
+    notes:
+      "Current SENAPI tariff page publishes prior-search, trademark application, grant, renewal and cancellation charges; live values remain at source.",
+  }),
+  target(SENAPI_BO, {
+    id: "bo-senapi-can-decision-486",
+    family: "LEGAL_TEXTS",
+    displayName: "Bolivia SENAPI – Andean Community Decision 486",
+    canonicalUri:
+      "https://www.senapi.gob.bo/normativas/normativa-supranacionales/decision-de-la-can-ndeg-486-regimen-comun-sobre-propiedad-industrial",
+    verificationEvidenceUri:
+      "https://www.senapi.gob.bo/normativas/normativa-supranacionales/decision-de-la-can-ndeg-486-regimen-comun-sobre-propiedad-industrial",
+    notes:
+      "Current SENAPI legal source for Andean Community Decision 486, including the common trademark regime applied in Bolivia.",
+  }),
+  target(SENAPI_BO, {
+    id: "bo-senapi-search-procedure-manual",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Bolivia SENAPI Prior Search Procedure Manual",
+    canonicalUri:
+      "https://www.senapi.gob.bo/normativas/resoluciones/manual-de-procedimiento-de-solicitud-de-busquedas",
+    verificationEvidenceUri:
+      "https://www.senapi.gob.bo/normativas/resoluciones/manual-de-procedimiento-de-solicitud-de-busquedas",
+    notes:
+      "Official SENAPI procedural manual for industrial-property prior-search requests, retained as a high-value procedural acquisition source.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const DIGEPIH_HN: Authority = {
+  jurisdiction: "HN",
+  authorityName: "Institute of Intellectual Property of Honduras (DIGEPIH)",
+  languages: ["es"],
+  verificationEvidenceUri:
+    "https://www.ip.gob.hn/direcciones/propiedad-intelectual/menu-propiedad-intelectual",
+};
+
+export const DIGEPIH_HN_SOURCE_COVERAGE_TARGETS = [
+  target(DIGEPIH_HN, {
+    id: "hn-digepih-ip-portal",
+    family: "PORTAL",
+    displayName: "Honduras Institute of Intellectual Property Portal",
+    canonicalUri:
+      "https://www.ip.gob.hn/direcciones/propiedad-intelectual/menu-propiedad-intelectual",
+    verificationEvidenceUri:
+      "https://www.ip.gob.hn/direcciones/propiedad-intelectual/menu-propiedad-intelectual",
+    notes:
+      "Current Institute of Intellectual Property surface identified by WIPO as Honduras's competent national IP administration.",
+  }),
+  target(DIGEPIH_HN, {
+    id: "hn-digepih-trademark-registration-service",
+    family: "FILING",
+    displayName: "Honduras Government Trademark Registration Service",
+    canonicalUri: "https://tramites.diger.gob.hn/api/LandingPage/DetalleTramite/368",
+    verificationEvidenceUri: "https://tramites.diger.gob.hn/api/LandingPage/DetalleTramite/368",
+    notes:
+      "Current national government procedure for trademark registration, including electronic filing through WIPO FILE and physical filing requirements.",
+  }),
+  target(DIGEPIH_HN, {
+    id: "hn-digepih-trademark-search-guidance",
+    family: "SEARCH",
+    displayName: "Honduras DIGEPIH Trademark Search and Registration Guidance",
+    canonicalUri:
+      "https://www.ip.gob.hn/direcciones/propiedad-intelectual/menu-propiedad-intelectual/marca",
+    verificationEvidenceUri:
+      "https://www.ip.gob.hn/direcciones/propiedad-intelectual/menu-propiedad-intelectual/marca",
+    notes:
+      "Official trademark-specific office surface retained for national mark-search and registration guidance.",
+  }),
+  target(DIGEPIH_HN, {
+    id: "hn-digepih-trademark-fee-transparency",
+    family: "FEES",
+    displayName: "Honduras Industrial Property Procedures and Fee Transparency",
+    canonicalUri: "https://portalunico.iaip.gob.hn/348/48/",
+    verificationEvidenceUri: "https://portalunico.iaip.gob.hn/348/48/",
+    notes:
+      "Government transparency collection for Institute of Intellectual Property procedures, including current trademark registration requirements and payment information.",
+  }),
+  target(DIGEPIH_HN, {
+    id: "hn-industrial-property-law-current",
+    family: "LEGAL_TEXTS",
+    displayName: "Honduras Industrial Property Law – Current WIPO Lex Version",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/21413",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/21413",
+    notes:
+      "Latest WIPO Lex consolidated Industrial Property Law, including the trademark chapters and amendments through Decree No. 16-2006.",
+  }),
+  target(DIGEPIH_HN, {
+    id: "hn-industrial-property-regulation-2010",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Honduras Industrial Property Regulation – Resolution C.D.-IP 003-2010",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/10472",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/10472",
+    notes:
+      "Latest WIPO Lex implementing regulation for Honduras industrial-property procedures, effective May 2011.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const ISPI_SV: Authority = {
+  jurisdiction: "SV",
+  authorityName:
+    "Salvadoran Institute of Intellectual Property (ISPI), National Registration Center",
+  languages: ["es"],
+  verificationEvidenceUri:
+    "https://www.cnr.gob.sv/servicios/instituto-salvadoreno-de-la-propiedad-intelectual/",
+};
+
+export const ISPI_SV_SOURCE_COVERAGE_TARGETS = [
+  target(ISPI_SV, {
+    id: "sv-ispi-portal",
+    family: "PORTAL",
+    displayName: "El Salvador ISPI Intellectual Property Portal",
+    canonicalUri:
+      "https://www.cnr.gob.sv/servicios/instituto-salvadoreno-de-la-propiedad-intelectual/",
+    verificationEvidenceUri:
+      "https://www.cnr.gob.sv/servicios/instituto-salvadoreno-de-la-propiedad-intelectual/",
+  }),
+  target(ISPI_SV, {
+    id: "sv-ispi-online-trademark-filing",
+    family: "FILING",
+    displayName: "El Salvador eCNR Online Trademark Services",
+    canonicalUri: "https://www.e.cnr.gob.sv/ServiciosOL/portada/ispi.htm",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.e.cnr.gob.sv/ServiciosOL/portada/ispi.htm",
+    notes:
+      "Current eCNR ISPI platform exposes online trademark filing, opposition, renewal, prior-search and post-registration services.",
+  }),
+  target(ISPI_SV, {
+    id: "sv-ispi-distinctive-signs-search",
+    family: "SEARCH",
+    displayName: "El Salvador Distinctive Signs Public Search",
+    canonicalUri: "https://www.e.cnr.gob.sv/ConsultaTramite3/signosConsulta.htm",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.e.cnr.gob.sv/ConsultaTramite3/signosConsulta.htm",
+    notes:
+      "Current CNR public search for distinctive signs in application or registered status, including registration and maintenance data.",
+  }),
+  target(ISPI_SV, {
+    id: "sv-ispi-trademark-service-fees",
+    family: "FEES",
+    displayName: "El Salvador ISPI Trademark Service Fees",
+    canonicalUri:
+      "https://www.cnr.gob.sv/servicios/detalle-de-servicios-del-instituto-salvadoreno-de-la-propiedad-intelectual/",
+    verificationEvidenceUri:
+      "https://www.cnr.gob.sv/servicios/detalle-de-servicios-del-instituto-salvadoreno-de-la-propiedad-intelectual/",
+    notes:
+      "Current ISPI service detail publishes trademark filing, bulletin publication and related charges; live values remain at source.",
+  }),
+  target(ISPI_SV, {
+    id: "sv-intellectual-property-law-2024",
+    family: "LEGAL_TEXTS",
+    displayName: "El Salvador Intellectual Property Law 2024",
+    canonicalUri: "https://www.cnr.gob.sv/download/ley-de-propiedad-intelectual/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.cnr.gob.sv/download/ley-de-propiedad-intelectual/",
+    notes:
+      "CNR publication of the new national Intellectual Property Law created in October 2024 and updated in April 2025, including the current trademark framework.",
+  }),
+  target(ISPI_SV, {
+    id: "sv-ispi-trademark-procedure-faq",
+    family: "EXAMINATION_MANUAL",
+    displayName: "El Salvador ISPI Trademark Procedure FAQ",
+    canonicalUri: "https://www.cnr.gob.sv/preguntas-frecuentes/",
+    verificationEvidenceUri: "https://www.cnr.gob.sv/preguntas-frecuentes/",
+    notes:
+      "Current CNR/ISPI procedural guidance covering filing requirements, searches, examination, publication, registration and the new Intellectual Property Law.",
+  }),
+  target(ISPI_SV, {
+    id: "sv-ispi-ip-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "El Salvador ISPI Intellectual Property Bulletin",
+    canonicalUri: "https://www.e.cnr.gob.sv/ServiciosPI/boletin/index.xhtml",
+    coverageTier: "CHANGE_SIGNAL",
+    expectedArtifactKinds: ["HTML"],
+    verificationEvidenceUri: "https://www.e.cnr.gob.sv/ServiciosPI/boletin/index.xhtml",
+    notes:
+      "Current electronic ISPI bulletin publishes 2026 distinctive-sign and patent notices; retained as a change-signal source.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const JIPO_JM: Authority = {
+  jurisdiction: "JM",
+  authorityName: "Jamaica Intellectual Property Office (JIPO)",
+  languages: ["en"],
+  verificationEvidenceUri: "https://www.jipo.gov.jm/",
+};
+
+export const JIPO_JM_SOURCE_COVERAGE_TARGETS = [
+  target(JIPO_JM, {
+    id: "jm-jipo-portal",
+    family: "PORTAL",
+    displayName: "Jamaica Intellectual Property Office Portal",
+    canonicalUri: "https://www.jipo.gov.jm/",
+    verificationEvidenceUri: "https://www.jipo.gov.jm/",
+  }),
+  target(JIPO_JM, {
+    id: "jm-jipo-trademark-forms",
+    family: "FILING",
+    displayName: "Jamaica JIPO Trademark Forms",
+    canonicalUri: "https://www.jipo.gov.jm/node/28",
+    verificationEvidenceUri: "https://www.jipo.gov.jm/node/28",
+    notes:
+      "Official JIPO forms collection for trademark applications and post-registration actions.",
+  }),
+  target(JIPO_JM, {
+    id: "jm-jipo-ejipo-search",
+    family: "SEARCH",
+    displayName: "Jamaica e-JIPO Trademark Search and Online Services",
+    canonicalUri: "https://online.jipo.gov.jm/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.jipo.gov.jm/",
+    notes:
+      "Current e-JIPO platform linked from JIPO for electronic trademark services and the office's newer online search environment.",
+  }),
+  target(JIPO_JM, {
+    id: "jm-jipo-trademark-fees-guidance",
+    family: "FEES",
+    displayName: "Jamaica JIPO Trademark Search, Filing and Registration Fees",
+    canonicalUri: "https://www.jipo.gov.jm/node/40",
+    verificationEvidenceUri: "https://www.jipo.gov.jm/node/40",
+    notes:
+      "Current JIPO trademark guidance publishing preliminary search, application and registration charges; live values remain at source.",
+  }),
+  target(JIPO_JM, {
+    id: "jm-trademark-act-current",
+    family: "LEGAL_TEXTS",
+    displayName: "Jamaica Trade Marks Act – Current WIPO Lex Consolidation",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/20261",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/20261",
+    notes:
+      "Latest WIPO Lex consolidated Trade Marks Act, 1999, incorporating amendments through the 2013 Act.",
+  }),
+  target(JIPO_JM, {
+    id: "jm-trademark-rules-current",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Jamaica Trade Marks Rules 2001 – Current WIPO Lex Version",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/20262",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/20262",
+    notes:
+      "Latest WIPO Lex implementing rules, republished in 2017 and incorporating applicable trademark-rule amendments.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const IPO_TT: Authority = {
+  jurisdiction: "TT",
+  authorityName: "Intellectual Property Office of Trinidad and Tobago",
+  languages: ["en"],
+  verificationEvidenceUri: "https://ipo.gov.tt/",
+};
+
+export const IPO_TT_SOURCE_COVERAGE_TARGETS = [
+  target(IPO_TT, {
+    id: "tt-ipo-portal",
+    family: "PORTAL",
+    displayName: "Trinidad and Tobago Intellectual Property Office Portal",
+    canonicalUri: "https://ipo.gov.tt/",
+    verificationEvidenceUri: "https://ipo.gov.tt/",
+  }),
+  target(IPO_TT, {
+    id: "tt-ipo-trademark-filing",
+    family: "FILING",
+    displayName: "Trinidad and Tobago Apply for a Trade Mark",
+    canonicalUri: "https://ipo.gov.tt/apply-for-a-trade-mark/",
+    verificationEvidenceUri: "https://ipo.gov.tt/apply-for-a-trade-mark/",
+    notes:
+      "Current IPO filing guidance covering applications, online services and trademark registration steps.",
+  }),
+  target(IPO_TT, {
+    id: "tt-ipo-trademark-search",
+    family: "SEARCH",
+    displayName: "Trinidad and Tobago Online Trademark Search Databases",
+    canonicalUri: "https://ipo.gov.tt/online-trademark-search-databases/",
+    verificationEvidenceUri: "https://ipo.gov.tt/online-trademark-search-databases/",
+    notes: "Current IPO page for national and relevant online trademark-search databases.",
+  }),
+  target(IPO_TT, {
+    id: "tt-ipo-trademark-payment",
+    family: "FEES",
+    displayName: "Trinidad and Tobago Trade Mark Payment Guidance",
+    canonicalUri: "https://ipo.gov.tt/pay-for-a-trade-mark/",
+    verificationEvidenceUri: "https://ipo.gov.tt/pay-for-a-trade-mark/",
+    notes:
+      "Current IPO payment guidance for trademark applications and related actions; live charges remain at source.",
+  }),
+  target(IPO_TT, {
+    id: "tt-trademark-act-2015-framework",
+    family: "LEGAL_TEXTS",
+    displayName: "Trinidad and Tobago Trade Marks Act No. 8 of 2015 Framework",
+    canonicalUri:
+      "https://ipo.gov.tt/repealing-of-trade-marks-act-chap-8281-and-proclamation-of-trade-marks-act-no-8-of-2015-with-accompanying-regulations/",
+    verificationEvidenceUri:
+      "https://ipo.gov.tt/repealing-of-trade-marks-act-chap-8281-and-proclamation-of-trade-marks-act-no-8-of-2015-with-accompanying-regulations/",
+    notes:
+      "Official IPO notice documenting proclamation of the 2015 Trade Marks Act and accompanying regulations in place of the former Act.",
+  }),
+  target(IPO_TT, {
+    id: "tt-ipo-trademark-search-guidelines",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Trinidad and Tobago Trademark Search Guidelines",
+    canonicalUri: "https://ipo.gov.tt/guidelines-for-searching-for-a-trade-mark/",
+    verificationEvidenceUri: "https://ipo.gov.tt/guidelines-for-searching-for-a-trade-mark/",
+    notes: "Official IPO guidance for prior trademark searching and assessment before filing.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -11343,5 +11695,10 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...DINAPI_PY_SOURCE_COVERAGE_TARGETS,
   ...SAPI_VE_SOURCE_COVERAGE_TARGETS,
   ...EIPA_ET_SOURCE_COVERAGE_TARGETS,
+  ...SENAPI_BO_SOURCE_COVERAGE_TARGETS,
+  ...DIGEPIH_HN_SOURCE_COVERAGE_TARGETS,
+  ...ISPI_SV_SOURCE_COVERAGE_TARGETS,
+  ...JIPO_JM_SOURCE_COVERAGE_TARGETS,
+  ...IPO_TT_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
