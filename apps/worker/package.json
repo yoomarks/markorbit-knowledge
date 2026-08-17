@@ -13,6 +13,7 @@
     "bootstrap:uspto-conversion": "tsx src/bootstrap-uspto-conversion.ts",
     "bootstrap:coverage": "tsx src/bootstrap-source-coverage.ts",
     "canary:representative": "tsx src/run-representative-live-canaries.ts",
+    "canary:representative:recorded": "tsx src/run-recorded-representative-live-canaries.ts",
     "operate:foundational": "tsx src/operate-foundational.ts",
     "operate:foundational:us": "tsx src/operate-us-foundational.ts",
     "verify:uspto": "tsx src/verify-uspto-golden-source.ts",
