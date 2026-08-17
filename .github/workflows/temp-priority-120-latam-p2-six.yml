@@ -1,0 +1,260 @@
+name: Temporary Priority 120 LATAM P2 Six
+
+on:
+  push:
+    branches:
+      - agent/priority-120-latam-p2-ec-uy-gt-cr-pa-do-v1
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-latam-p2-ec-uy-gt-cr-pa-do-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply curated six-country coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'expected anchor not found in {path}: {old[:180]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          countries = [
+              {
+                  'const': 'SENADI_EC', 'export': 'SENADI_EC_SOURCE_COVERAGE_TARGETS',
+                  'jurisdiction': 'EC', 'authority': 'National Service of Intellectual Rights of Ecuador (SENADI)',
+                  'languages': '["es"]', 'evidence': 'https://www.derechosintelectuales.gob.ec/',
+                  'targets': [
+                      ('ec-senadi-portal','PORTAL','SENADI Intellectual Rights Portal','https://www.derechosintelectuales.gob.ec/','Official SENADI authority portal for intellectual rights and industrial property.'),
+                      ('ec-senadi-trademark-registration','FILING','Ecuador Trademark Registration Guidance','https://www.derechosintelectuales.gob.ec/como-registro-una-marca/','Current SENADI guidance covering pre-filing search, online application and registration/renewal workflow.'),
+                      ('ec-senadi-trademark-search-guidance','SEARCH','Ecuador Trademark Search and Industrial Property FAQ','https://www.derechosintelectuales.gob.ec/preguntas-frecuentes-propiedad-industrial/','Official SENADI FAQ covering phonetic trademark searches and online registration access.'),
+                      ('ec-senadi-trademark-fees-2026','FEES','SENADI 2026 Official Fees','https://www.derechosintelectuales.gob.ec/tasas2026/','Current SENADI 2026 fee landing page; live tariff values remain at source rather than being copied into Knowledge.'),
+                      ('ec-industrial-property-code','LEGAL_TEXTS','Ecuador Organic Code on the Social Economy of Knowledge, Creativity and Innovation','https://www.wipo.int/wipolex/en/legislation/details/16990','WIPO Lex principal Ecuadorian framework governing intellectual and industrial property, including trademarks.'),
+                      ('ec-senadi-distinctive-signs-procedure','EXAMINATION_MANUAL','SENADI Distinctive Signs Technical Procedure','https://www.derechosintelectuales.gob.ec/direccion-tecnica-de-signos-distintivos/','Current SENADI procedure covering searches, filing, formal examination, publication, opposition and registrability.'),
+                  ],
+              },
+              {
+                  'const': 'DNPI_UY', 'export': 'DNPI_UY_SOURCE_COVERAGE_TARGETS',
+                  'jurisdiction': 'UY', 'authority': 'National Directorate of Industrial Property of Uruguay (DNPI)',
+                  'languages': '["es"]', 'evidence': 'https://www.gub.uy/ministerio-industria-energia-mineria/institucional/estructura-del-organismo/direccion-nacional-propiedad-industrial-registro-software',
+                  'targets': [
+                      ('uy-dnpi-portal','PORTAL','Uruguay National Directorate of Industrial Property','https://www.gub.uy/ministerio-industria-energia-mineria/institucional/estructura-del-organismo/direccion-nacional-propiedad-industrial-registro-software','Official government authority page for DNPI and its trademark responsibilities.'),
+                      ('uy-dnpi-trademark-registration','FILING','Uruguay Trademark Registration Service','https://www.gub.uy/tramites/registro-marcas','Current government trademark registration procedure, online filing route, requirements and linked legal materials.'),
+                      ('uy-dnpi-public-trademark-database','SEARCH','Uruguay Public Trademark Database Availability','https://www.gub.uy/ministerio-industria-energia-mineria/institucional/normativa/resolucion-n-5024-disponibilidad-para-consulta-base-publica-marcas-patentes','Official DNPI resolution establishing continuous public access to the trademark/patent database with daily maintenance and updates.'),
+                      ('uy-dnpi-online-filing-payment','FEES','Uruguay Online IP Filing and Payment System','https://www.gub.uy/ministerio-industria-energia-mineria/tramites-y-servicios/servicios/sistema-presentacion-linea-recepcion-automatica-marcas-patentes','Current government filing/payment service linking updated trademark rates and electronic payment operations.'),
+                      ('uy-trademark-law-current','LEGAL_TEXTS','Uruguay Law No. 17.011 on Trademarks','https://www.wipo.int/wipolex/es/legislation/details/21440','WIPO Lex current consolidated trademark law amended through 2018.'),
+                      ('uy-dnpi-distinctive-signs-examination-guide','EXAMINATION_MANUAL','Uruguay 2024 Distinctive Signs Examination and Procedure Guide','https://www.gub.uy/ministerio-industria-energia-mineria/institucional/normativa/circular-n-16-fecha-29112024-guia-examen-procedimiento-signos-distintivos','Official DNPI Circular No. 16/2024 publishing the current examination/procedure guide for distinctive signs.'),
+                  ],
+              },
+              {
+                  'const': 'RPI_GT', 'export': 'RPI_GT_SOURCE_COVERAGE_TARGETS',
+                  'jurisdiction': 'GT', 'authority': 'Registry of Intellectual Property of Guatemala (RPI)',
+                  'languages': '["es"]', 'evidence': 'https://www.mineco.gob.gt/institucion/viceministerio-de-asuntos-registrales/registro-de-la-propiedad-intelectual',
+                  'targets': [
+                      ('gt-rpi-portal','PORTAL','Guatemala Registry of Intellectual Property','https://www.mineco.gob.gt/institucion/viceministerio-de-asuntos-registrales/registro-de-la-propiedad-intelectual','Official Ministry of Economy authority page for the Registry of Intellectual Property.'),
+                      ('gt-rpi-trademark-filing','FILING','Guatemala RPI Trademark Filing through VUFE','https://sistemaseguimiento.registromercantil.gob.gt/vufe/rpi/','Official government filing surface describing trademark requirements, process and registration-related charges.'),
+                      ('gt-rpi-trademark-search','SEARCH','Guatemala RPI Trademark Search','https://busquedas.rpi.gob.gt/','Official Registry of Intellectual Property trademark search service.'),
+                      ('gt-rpi-trademark-fees','FEES','Guatemala RPI Trademark Fees FAQ','https://boletin.rpi.gob.gt/portalrpi/sites/default/files/faq/faqmarcas.html','Official RPI trademark FAQ publishing search and registration charges; live values remain at source.'),
+                      ('gt-industrial-property-law','LEGAL_TEXTS','Guatemala Industrial Property Law Decree No. 57-2000','https://www.wipo.int/wipolex/en/text/585501','WIPO Lex full text of Guatemala’s Industrial Property Law governing trademarks and related rights.'),
+                      ('gt-rpi-trademark-guides','EXAMINATION_MANUAL','Guatemala RPI Trademark Guides and Flowcharts','https://econsulta.rpi.gob.gt/extras.html','Official RPI collection of trademark guides, flowcharts and operational materials for registration procedures.'),
+                  ],
+              },
+              {
+                  'const': 'RPI_CR', 'export': 'RPI_CR_SOURCE_COVERAGE_TARGETS',
+                  'jurisdiction': 'CR', 'authority': 'Registry of Industrial Property, National Registry of Costa Rica',
+                  'languages': '["es"]', 'evidence': 'https://servicios.rnpdigital.com/registro_propiedad_intelectual/',
+                  'targets': [
+                      ('cr-rpi-portal','PORTAL','Costa Rica Registry of Industrial Property Portal','https://servicios.rnpdigital.com/registro_propiedad_intelectual/','Official National Registry industrial-property service portal.'),
+                      ('cr-rpi-online-trademark-filing','FILING','Costa Rica Online Trademark Filing Guidance','https://www.rnpdigital.com/tramites_servicios/Preguntas%20Frecuentes.htm','Official National Registry FAQ identifies WIPO FILE as the online trademark filing route and documents registration procedures.'),
+                      ('cr-rpi-trademark-search','SEARCH','Costa Rica Trademark Search and Global Brand Database Links','https://rn2.rnpdigital.com/registro_propiedad_intelectual/propiedad_industrial_enlaces.htm','Official Registry page linking the distinctive-signs database integration used for public trademark searching.'),
+                      ('cr-rpi-trademark-fees','FEES','Costa Rica Industrial Property Trademark Fees','https://rn2.rnpdigital.com/tramites_servicios/tramitesregistros/propiedad%20intelectual/propiedad_industrial_aranceles.htm','Official National Registry tariff page for trademark applications, renewals and related actions.'),
+                      ('cr-trademark-law-7978','LEGAL_TEXTS','Costa Rica Law No. 7978 on Trademarks and Other Distinctive Signs','https://www.wipo.int/wipolex/en/legislation/details/9130','WIPO Lex principal Costa Rican trademark statute.'),
+                      ('cr-trademark-regulation-current','EXAMINATION_MANUAL','Costa Rica Trademark Regulation – Current through September 2024','https://www.wipo.int/wipolex/en/legislation/details/23322','Current WIPO Lex implementing regulation amended through 5 September 2024.'),
+                  ],
+              },
+              {
+                  'const': 'DIGERPI_PA', 'export': 'DIGERPI_PA_SOURCE_COVERAGE_TARGETS',
+                  'jurisdiction': 'PA', 'authority': 'General Directorate of Industrial Property of Panama (DIGERPI)',
+                  'languages': '["es"]', 'evidence': 'https://digerpi.mici.gob.pa/',
+                  'targets': [
+                      ('pa-digerpi-portal','PORTAL','Panama DIGERPI Portal','https://digerpi.mici.gob.pa/','Current Ministry of Commerce and Industries industrial-property portal with 2026 activity and trademark services.'),
+                      ('pa-digerpi-trademark-requirements','FILING','Panama Trademark Application Requirements','https://mici.gob.pa/requisitos-marcas/','Official MICI requirements for trademark applications.'),
+                      ('pa-digerpi-trademark-search','SEARCH','Panama DIGERPI Trademark Availability Search','https://consulta.digerpi.gob.pa/Marcas/Disponibles','Official DIGERPI trademark availability search service.'),
+                      ('pa-trademark-registration-fees','FEES','Panama Digital Trademark Registration Service and Fees','https://www.panamadigital.gob.pa/informaciontramite/solicitud-de-registro-de-marcas','Current Panama government service page publishing trademark registration procedure, costs and legal basis.'),
+                      ('pa-digerpi-current-legal-framework','LEGAL_TEXTS','Panama DIGERPI Current Trademark Legal Framework','https://mici.gob.pa/marco-legal-digerpi/','Current MICI legal framework identifies Law No. 35/1996 as amended by Law No. 61/2012 and the implementing Executive Decree No. 85/2017.'),
+                      ('pa-digerpi-current-legislation-index','EXAMINATION_MANUAL','Panama DIGERPI Current Industrial Property Legislation','https://mici.gob.pa/legislacion-vigente/','Official MICI current-legislation index linking the consolidated trademark law and Executive Decree No. 85/2017 implementing procedures.'),
+                  ],
+              },
+              {
+                  'const': 'ONAPI_DO', 'export': 'ONAPI_DO_SOURCE_COVERAGE_TARGETS',
+                  'jurisdiction': 'DO', 'authority': 'National Office of Industrial Property of the Dominican Republic (ONAPI)',
+                  'languages': '["es"]', 'evidence': 'https://onapi.gob.do/',
+                  'targets': [
+                      ('do-onapi-portal','PORTAL','Dominican Republic ONAPI Portal','https://onapi.gob.do/','Official ONAPI portal linking E-SERPI, search, rates, bulletins and trademark resources.'),
+                      ('do-onapi-trademark-forms','FILING','Dominican Republic ONAPI Trademark Forms','https://www.onapi.gob.do/forms','Official ONAPI forms surface for trademark filing, searches, renewals and related distinctive-sign actions.'),
+                      ('do-onapi-trademark-search','SEARCH','Dominican Republic ONAPI Trademark Search','https://onapi.gob.do/index.php/busqueda-de-signos-nombres-y-marcas','Official ONAPI search entrypoint for signs, names and trademarks.'),
+                      ('do-onapi-trademark-registration-fees','FEES','Dominican Republic Trademark Registration Service and Fees','https://onapi.gob.do/index.php/servicios-signos-distintivos/item/574-registro-de-marca-denominativa-2k23','Current ONAPI denominative-mark registration service publishing requirements, electronic channel and current cost.'),
+                      ('do-industrial-property-law-20-00','LEGAL_TEXTS','Dominican Republic Industrial Property Law No. 20-00','https://www.wipo.int/wipolex/en/legislation/details/1190','WIPO Lex principal industrial-property statute governing trademarks; WIPO notes subsequent amendments are not consolidated in this text.'),
+                      ('do-onapi-trademark-distinctiveness-manual','EXAMINATION_MANUAL','ONAPI Trademark Types and Distinctiveness Manual','https://www.onapi.gob.do/index.php/signos-distintivos/manual-de-tipos-de-marcas-y-distintividad','Current ONAPI examination-oriented manual for trademark types and distinctiveness.'),
+                  ],
+              },
+          ]
+
+          def render_country(c):
+              out = [
+                  f"const {c['const']}: Authority = {{",
+                  f"  jurisdiction: \"{c['jurisdiction']}\",",
+                  f"  authorityName: \"{c['authority']}\",",
+                  f"  languages: {c['languages']},",
+                  f"  verificationEvidenceUri: \"{c['evidence']}\",",
+                  "};",
+                  "",
+                  f"export const {c['export']} = [",
+              ]
+              for target_id, family, name, uri, notes in c['targets']:
+                  out += [
+                      f"  target({c['const']}, {{",
+                      f"    id: \"{target_id}\",",
+                      f"    family: \"{family}\",",
+                      f"    displayName: \"{name}\",",
+                      f"    canonicalUri: \"{uri}\",",
+                      f"    verificationEvidenceUri: \"{uri}\",",
+                      "    notes:",
+                      f"      \"{notes}\",",
+                      "  }),",
+                  ]
+              out += ["] satisfies readonly SourceCoverageTarget[];", ""]
+              return "\n".join(out)
+
+          block = "\n".join(render_country(c) for c in countries) + "\n"
+          replace_once(
+              'packages/persistence/src/priority-national-source-coverage.ts',
+              'const CIPO: Authority = {',
+              block + 'const CIPO: Authority = {'
+          )
+          spread_names = "\n".join(f"  ...{c['export']}," for c in countries)
+          replace_once(
+              'packages/persistence/src/priority-national-source-coverage.ts',
+              '  ...BRUIPO_BN_SOURCE_COVERAGE_TARGETS,\n  ...CIPO_SOURCE_COVERAGE_TARGETS,',
+              '  ...BRUIPO_BN_SOURCE_COVERAGE_TARGETS,\n' + spread_names + '\n  ...CIPO_SOURCE_COVERAGE_TARGETS,'
+          )
+
+          probe_rows = []
+          for c in countries:
+              for target_id, family, name, uri, notes in c['targets']:
+                  probe_rows.append((target_id, f"{c['jurisdiction']} {name}"))
+          probes = ''.join(
+              f'  {{\n    id: "{target_id}-name",\n    targetId: "{target_id}",\n    query: "{query}",\n  }},\n'
+              for target_id, query in probe_rows
+          )
+          replace_once(
+              'packages/persistence/src/retrieval-relevance-audit.ts',
+              '] satisfies readonly RetrievalRelevanceProbe[];',
+              probes + '] satisfies readonly RetrievalRelevanceProbe[];'
+          )
+
+          import_names = "\n".join(f"  {c['export']}," for c in countries)
+          anchor = '  BRUIPO_BN_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          addition = '  BRUIPO_BN_SOURCE_COVERAGE_TARGETS,\n' + import_names + '\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          replace_once('packages/persistence/src/source-coverage-catalog.ts', anchor, addition)
+          replace_once('packages/persistence/src/source-coverage-catalog.ts', anchor, addition)
+
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              '  BRUIPO_BN_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  BRUIPO_BN_SOURCE_COVERAGE_TARGETS,\n' + import_names + '\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+          authority_rows = '''  ["EC", SENADI_EC_SOURCE_COVERAGE_TARGETS, ["derechosintelectuales.gob.ec", "wipo.int"]],
+          ["UY", DNPI_UY_SOURCE_COVERAGE_TARGETS, ["gub.uy", "wipo.int"]],
+          ["GT", RPI_GT_SOURCE_COVERAGE_TARGETS, ["mineco.gob.gt", "registromercantil.gob.gt", "rpi.gob.gt", "wipo.int"]],
+          ["CR", RPI_CR_SOURCE_COVERAGE_TARGETS, ["rnpdigital.com", "wipo.int"]],
+          ["PA", DIGERPI_PA_SOURCE_COVERAGE_TARGETS, ["mici.gob.pa", "digerpi.gob.pa", "panamadigital.gob.pa"]],
+          ["DO", ONAPI_DO_SOURCE_COVERAGE_TARGETS, ["onapi.gob.do", "wipo.int"]],
+          '''
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              '  ["BN", BRUIPO_BN_SOURCE_COVERAGE_TARGETS, ["bruipo.gov.bn", "wipo.int"]],\n  ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],',
+              '  ["BN", BRUIPO_BN_SOURCE_COVERAGE_TARGETS, ["bruipo.gov.bn", "wipo.int"]],\n' + authority_rows + '  ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],'
+          )
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              'ships explicit, official, unique coverage for ninety-four priority national offices',
+              'ships explicit, official, unique coverage for one hundred priority national offices'
+          )
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', 'toHaveLength(731)', 'toHaveLength(767)')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '      731,\n    );', '      767,\n    );')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '    ).toBe(731);', '    ).toBe(767);')
+
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(targets).toHaveLength(683);', 'expect(targets).toHaveLength(719);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(683);', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(719);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', '      683,\n    );', '      719,\n    );')
+          old_loop = '    for (const jurisdiction of ["IR", "PK", "IQ", "NL", "BE", "AL", "BA", "MK", "BY", "MN", "KH", "LA", "MM", "BN"] as const) {'
+          new_loop = '    for (const jurisdiction of ["IR", "PK", "IQ", "NL", "BE", "AL", "BA", "MK", "BY", "MN", "KH", "LA", "MM", "BN", "EC", "UY", "GT", "CR", "PA", "DO"] as const) {'
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', old_loop, new_loop)
+
+          for jurisdiction, display in [
+              ('EC', 'Ecuador'),
+              ('UY', 'Uruguay'),
+              ('GT', 'Guatemala'),
+              ('CR', 'Costa Rica'),
+              ('PA', 'Panama'),
+              ('DO', 'Dominican Republic'),
+          ]:
+              replace_once(
+                  'packages/persistence/src/priority-trademark-jurisdictions.ts',
+                  f'["{jurisdiction}", "{display}", "LATIN_AMERICA_CARIBBEAN", "P2", "TARGET", "NATIONAL"]',
+                  f'["{jurisdiction}", "{display}", "LATIN_AMERICA_CARIBBEAN", "P2", "CURATED", "NATIONAL"]'
+              )
+          replace_once('packages/persistence/tests/priority-trademark-jurisdictions.test.ts', 'expect(curated).toHaveLength(95);', 'expect(curated).toHaveLength(101);')
+          replace_once('packages/persistence/tests/priority-trademark-jurisdictions.test.ts', 'expect(target).toHaveLength(25);', 'expect(target).toHaveLength(19);')
+          PY
+      - name: Format touched files
+        run: |
+          pnpm exec prettier --write \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts
+      - name: Verify six-country tranche
+        run: |
+          pnpm --filter @markorbit/persistence test -- \
+            tests/priority-national-source-coverage.test.ts \
+            tests/retrieval-relevance-audit.test.ts \
+            tests/priority-trademark-jurisdictions.test.ts
+          pnpm typecheck
+      - name: Commit verified production changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "feat: add six LATAM P2 trademark source sets"
+          git push origin HEAD:agent/priority-120-latam-p2-ec-uy-gt-cr-pa-do-v1
