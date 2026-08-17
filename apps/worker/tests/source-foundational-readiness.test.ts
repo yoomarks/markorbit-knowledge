@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CoverageTarget } from "../src/source-coverage-bootstrap";
 import { foundationalSupplyPlanName } from "../src/source-coverage-operations";
 import {
+  FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
   deriveFoundationalReadinessStage,
   evaluateFoundationalRetrievalQuality,
   evaluateFoundationalRetrievalRelevance,
@@ -202,7 +203,7 @@ describe("FOUNDATIONAL readiness gate", () => {
       targetIds.map((targetId) => relevance(targetId)),
     );
     expect(gate).toMatchObject({
-      protocolVersion: "1.2",
+      protocolVersion: FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
       jurisdiction: "US",
       state: "READY",
       totalCount: 11,
