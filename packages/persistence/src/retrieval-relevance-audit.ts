@@ -3321,9 +3321,9 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     query: "Myanmar trademark filing examination publication opposition process IPD",
   },
   {
-    id: "mm-ipd-trademark-forms-name",
-    targetId: "mm-ipd-trademark-forms",
-    query: "Myanmar IPD trademark forms registry workflow",
+    id: "mm-ipd-ip-search-name",
+    targetId: "mm-ipd-ip-search",
+    query: "Myanmar IPD intellectual property trademark search",
   },
   {
     id: "mm-ipd-trademark-efiling-epayment-name",

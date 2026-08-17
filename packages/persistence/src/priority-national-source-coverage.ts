@@ -10346,13 +10346,16 @@ export const IPD_MM_SOURCE_COVERAGE_TARGETS = [
       "Current IPD filing page covers filing date, formal/absolute-ground examination, publication and the 60-day opposition stage.",
   }),
   target(IPD_MM, {
-    id: "mm-ipd-trademark-forms",
+    id: "mm-ipd-ip-search",
     family: "SEARCH",
-    displayName: "Myanmar Trademark Forms and Registry Workflow Surface",
-    canonicalUri: "https://www.ipd.gov.mm/trademark/trademark-1/forms-for-trademark",
-    verificationEvidenceUri: "https://www.ipd.gov.mm/trademark/trademark-1/forms-for-trademark",
+    displayName: "Myanmar IPD Intellectual Property Search",
+    canonicalUri: "https://ipd.gov.mm/ip-search",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://ipd.gov.mm/",
     notes:
-      "Official IPD trademark forms surface retained as a structured operational lookup entrypoint while a dedicated public trademark-search endpoint is not reliably exposed to crawlers.",
+      "Official IP Search endpoint linked directly from the 2026 IPD homepage; retained as the national search gateway instead of treating a forms page as a search source.",
   }),
   target(IPD_MM, {
     id: "mm-ipd-trademark-efiling-epayment",
