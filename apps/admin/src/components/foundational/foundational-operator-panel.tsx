@@ -23,14 +23,26 @@ type ErrorEnvelope = {
   };
 };
 
+type JurisdictionScope = "FULL_OPERATOR" | "CONTROLLED_REPROBE" | "READ_ONLY";
+
 const JURISDICTIONS: ReadonlyArray<{
   code: FoundationalAdvancedJurisdiction;
   label: string;
-  scope: "FULL_OPERATOR" | "CONTROLLED_REPROBE";
+  scope: JurisdictionScope;
 }> = [
   { code: "US", label: "United States", scope: "FULL_OPERATOR" },
   { code: "WO", label: "WIPO", scope: "FULL_OPERATOR" },
   { code: "EU", label: "EUIPO", scope: "CONTROLLED_REPROBE" },
+  { code: "CN", label: "China", scope: "READ_ONLY" },
+  { code: "IN", label: "India", scope: "READ_ONLY" },
+  { code: "JP", label: "Japan", scope: "READ_ONLY" },
+  { code: "KR", label: "Korea", scope: "READ_ONLY" },
+  { code: "GB", label: "United Kingdom", scope: "READ_ONLY" },
+  { code: "CA", label: "Canada", scope: "READ_ONLY" },
+  { code: "AU", label: "Australia", scope: "READ_ONLY" },
+  { code: "BR", label: "Brazil", scope: "READ_ONLY" },
+  { code: "AE", label: "UAE", scope: "READ_ONLY" },
+  { code: "CI", label: "OAPI / Côte d’Ivoire", scope: "READ_ONLY" },
 ];
 
 function isSnapshot(value: unknown): value is FoundationalRemediationQueueSnapshot {
@@ -75,6 +87,8 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
     jurisdiction,
     "COMPATIBILITY_REPROBE",
   );
+  const currentScope =
+    JURISDICTIONS.find((candidate) => candidate.code === jurisdiction)?.scope ?? "READ_ONLY";
 
   async function refresh(): Promise<void> {
     setLoading(true);
@@ -134,9 +148,11 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
                 ) : (
                   <Eye size={13} aria-hidden="true" />
                 )}
-                {fullOperatorJurisdiction
+                {currentScope === "FULL_OPERATOR"
                   ? "Governed mutation surface"
-                  : "Diagnostics + controlled compatibility re-probe"}
+                  : currentScope === "CONTROLLED_REPROBE"
+                    ? "Diagnostics + controlled compatibility re-probe"
+                    : "Read-only representative diagnostics"}
               </span>
               <span
                 className={
@@ -146,28 +162,27 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
                 Workspace · {workspaceId}
               </span>
             </div>
-            {fullOperatorJurisdiction ? (
+            {currentScope === "FULL_OPERATOR" ? (
               <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-950/80">
-                COLLECT 使用 M25/M26 审批 + 显式派发；CONVERT 使用 M27 的既有 M11 operator
-                retry；INDEX 使用 M28 verified canonical reindex；QUALITY 使用 M29 的 M16 plan + M17
-                explicit operator execution；RELEVANCE 使用 M30 只读 M18 deterministic audit；HEALTH
-                仍以 M31 target-scoped supply-health diagnostics 为只读诊断，同时 stale
-                compatibility observation 可创建独立 re-probe approval intent 并交给受认证 Worker
-                执行。浏览器不会持有 Worker bearer，也不会自动运行 canary、生成 probe 或调 ranking。
+                US/WIPO 保持已验证的 governed operator：采集、恢复、重建索引、quality remediation
+                与 compatibility re-probe 均经过独立授权路径；浏览器不会持有 Worker bearer。
+              </p>
+            ) : currentScope === "CONTROLLED_REPROBE" ? (
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-950/80">
+                EUIPO 已通过独立 re-probe promotion proof，因此开放诊断与 controlled re-probe；其余内容写路径仍
+                fail-closed。当前健康状态仍由真实 observation 决定，不因 capability 晋级而改变。
               </p>
             ) : (
               <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-950/80">
-                EUIPO 的 compatibility re-probe 已通过真实 EU 专项 promotion proof：approved intent
-                → Worker canary → Observation → receipt COMPLETE，且没有创建
-                CollectionRun。当前因此只额外开放 controlled re-probe；采集、转换恢复、重建索引与
-                quality remediation 仍继续 fail-closed。 最新 proof 同时确认 EUIPO 当前入口是
-                BLOCKED，因此这里开放的是诊断/重探能力，不是健康声明。
+                该辖区已进入 representative live-canary 覆盖与 Foundational 诊断范围。当前只开放 readiness、
+                supply health 与 relevance 等只读视图；所有 mutation capability 继续 fail-closed，待专项 proof
+                后逐项晋级。
               </p>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div
-              className={`inline-flex rounded-xl border bg-white p-1 ${fullOperatorJurisdiction ? "border-amber-200" : "border-sky-200"}`}
+              className={`inline-flex max-w-full flex-wrap rounded-xl border bg-white p-1 ${fullOperatorJurisdiction ? "border-amber-200" : "border-sky-200"}`}
             >
               {JURISDICTIONS.map(({ code, label, scope }) => (
                 <button
@@ -177,12 +192,14 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
                   title={
                     scope === "FULL_OPERATOR"
                       ? "Full governed operator"
-                      : "Diagnostics plus controlled compatibility re-probe"
+                      : scope === "CONTROLLED_REPROBE"
+                        ? "Diagnostics plus controlled compatibility re-probe"
+                        : "Read-only representative diagnostics"
                   }
                   className={`rounded-lg px-3 py-2 text-sm font-medium transition ${jurisdiction === code ? (fullOperatorJurisdiction ? "bg-amber-100 text-amber-950 shadow-sm" : "bg-sky-100 text-sky-950 shadow-sm") : "text-slate-500 hover:text-slate-800"}`}
                 >
                   {label}
-                  {scope === "CONTROLLED_REPROBE" ? " · re-probe" : ""}
+                  {scope === "CONTROLLED_REPROBE" ? " · re-probe" : scope === "READ_ONLY" ? " · read" : ""}
                 </button>
               ))}
             </div>
