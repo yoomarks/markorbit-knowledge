@@ -31,4 +31,20 @@ describe("representative source live canaries", () => {
     const canaries = getRepresentativeSourceLiveCanaries();
     expect(canaries.some((canary) => canary.renderJavascript)).toBe(true);
   });
+
+  it("selects the same target matrix deterministically across repeated reads", () => {
+    const first = getRepresentativeSourceLiveCanaries().map((canary) => ({
+      jurisdiction: canary.jurisdiction,
+      targetId: canary.targetId,
+      canonicalUri: canary.canonicalUri,
+      renderJavascript: canary.renderJavascript,
+    }));
+    const second = getRepresentativeSourceLiveCanaries().map((canary) => ({
+      jurisdiction: canary.jurisdiction,
+      targetId: canary.targetId,
+      canonicalUri: canary.canonicalUri,
+      renderJavascript: canary.renderJavascript,
+    }));
+    expect(second).toEqual(first);
+  });
 });
