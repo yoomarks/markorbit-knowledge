@@ -58,9 +58,7 @@ function targetRank(
 
 function baselineRank(target: SourceCoverageTarget): number {
   const familyIndex = BASELINE_FAMILY_PREFERENCE.indexOf(target.family);
-  const familyRank = familyIndex < 0 ? 100 : familyIndex * 10;
-  const javascriptPenalty = target.acquisition.renderJavascriptHint ? 50 : 0;
-  return familyRank + javascriptPenalty;
+  return familyIndex < 0 ? 100 : familyIndex * 10;
 }
 
 function selectCanaryTarget(
@@ -107,6 +105,7 @@ function selectAuthorityBaseline(
         target.catalogState === "ACTIVE" &&
         target.coverageTier === "FOUNDATIONAL" &&
         target.sourceType === "WEB" &&
+        !target.acquisition.renderJavascriptHint &&
         target.acquisition.expectedArtifactKinds.includes("HTML"),
     )
     .sort(
@@ -122,6 +121,11 @@ export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveC
   const canaries = REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((jurisdiction) => {
     const target = selectCanaryTarget(jurisdiction.jurisdiction, jurisdiction.profile, targets);
     const baseline = selectAuthorityBaseline(target, targets);
+    if (needsAuthorityBaseline(target) && !baseline) {
+      throw new RegistryValidationError(
+        `Interactive live canary ${target.id} has no low-interaction authority baseline`,
+      );
+    }
     return {
       version: REPRESENTATIVE_SOURCE_LIVE_CANARY_VERSION,
       jurisdiction: jurisdiction.jurisdiction,
