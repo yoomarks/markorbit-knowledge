@@ -2569,6 +2569,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "md-agepi-trademark-renewal",
     query: "trademark renewal ten years six month grace period",
   },
+  {
+    id: "am-aipo-trademark-portal-name",
+    targetId: "am-aipo-trademark-portal",
+    query: "AIPO trademarks Armenia",
+  },
+  {
+    id: "am-aipo-trademark-filing-name",
+    targetId: "am-aipo-trademark-filing",
+    query: "trademark electronic filing application Armenia",
+  },
+  {
+    id: "am-aipo-trademark-search-name",
+    targetId: "am-aipo-trademark-search",
+    query: "national procedure trademark search Nice holder",
+  },
+  {
+    id: "am-aipo-trademark-fees-name",
+    targetId: "am-aipo-trademark-fees",
+    query: "trademark filing examination registration renewal fees AMD",
+  },
+  {
+    id: "am-aipo-trademark-classification-name",
+    targetId: "am-aipo-trademark-classification",
+    query: "Nice 13 2026 classification Armenia",
+  },
+  {
+    id: "am-aipo-trademark-legal-texts-name",
+    targetId: "am-aipo-trademark-legal-texts",
+    query: "Armenia Trademark Law application examination opposition renewal",
+  },
+  {
+    id: "am-aipo-trademark-proceedings-name",
+    targetId: "am-aipo-trademark-proceedings",
+    query: "Board of Appeal trademark decisions Armenia",
+  },
+  {
+    id: "am-aipo-trademark-renewal-name",
+    targetId: "am-aipo-trademark-renewal",
+    query: "trademark registration renewal form ten years six months",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
