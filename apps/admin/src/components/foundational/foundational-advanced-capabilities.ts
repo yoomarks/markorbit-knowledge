@@ -26,13 +26,15 @@ const FULL_CAPABILITIES: readonly FoundationalAdvancedCapability[] = [
   "RETRIEVAL_QUALITY_REMEDIATION",
 ];
 
-// EU FOUNDATIONAL readiness is already business-visible and the underlying read paths are generic,
-// but mutation/re-probe operator paths have not yet been promoted through an EU-specific live run.
-// Keep Advanced EU deliberately read-only until that proof exists.
+// EU diagnostics are generic and read-only. COMPATIBILITY_REPROBE is the only promoted mutation-like
+// operational capability: #278 proved the dedicated approval -> Worker canary -> Observation -> receipt
+// lifecycle against the real EUIPO path with zero CollectionRun records. All collection/content mutation
+// workflows remain withheld until each has its own EU-specific live proof.
 const EU_CAPABILITIES: readonly FoundationalAdvancedCapability[] = [
   "READINESS_DIAGNOSTICS",
   "RELEVANCE_AUDIT",
   "SUPPLY_HEALTH",
+  "COMPATIBILITY_REPROBE",
 ];
 
 export function foundationalAdvancedCapabilities(

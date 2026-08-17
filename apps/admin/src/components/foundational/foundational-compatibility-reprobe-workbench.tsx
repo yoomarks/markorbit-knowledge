@@ -16,6 +16,7 @@ import {
 import type { SourceCompatibilityReprobeExecution } from "@markorbit/persistence/source-compatibility-reprobe-executions";
 import type { FoundationalActionIntent } from "@markorbit/worker-runtime/foundational-action-intent";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
+import type { FoundationalAdvancedJurisdiction } from "./foundational-advanced-capabilities";
 import {
   compatibilityReprobeExecutionForIntent,
   compatibilityReprobeIntentIdempotencyKey,
@@ -25,7 +26,6 @@ import {
   listControlledCompatibilityReprobeActions,
 } from "./foundational-compatibility-reprobe-state";
 
-type Jurisdiction = "US" | "WO";
 type ActorField = "requester" | "reviewer" | "executor";
 type Actors = Record<ActorField, string>;
 type IntentListEnvelope = { items?: FoundationalActionIntent[] };
@@ -34,7 +34,7 @@ type ErrorEnvelope = { error?: { message?: string } };
 
 type Props = {
   workspaceId: string;
-  jurisdiction: Jurisdiction;
+  jurisdiction: FoundationalAdvancedJurisdiction;
   snapshot: FoundationalRemediationQueueSnapshot;
   onSnapshotRefresh: () => Promise<void>;
 };
@@ -60,7 +60,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-async function loadHistory(workspaceId: string, jurisdiction: Jurisdiction) {
+async function loadHistory(workspaceId: string, jurisdiction: FoundationalAdvancedJurisdiction) {
   const query = new URLSearchParams({ workspaceId, jurisdiction, limit: "50" });
   const [intentPayload, executionPayload] = await Promise.all([
     requestJson<IntentListEnvelope>(`/api/foundational/action-intents?${query.toString()}`),

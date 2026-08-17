@@ -5,6 +5,7 @@ import { AlertTriangle, Eye, RefreshCw, ShieldCheck } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 import {
   asFullOperatorJurisdiction,
+  hasFoundationalAdvancedCapability,
   type FoundationalAdvancedJurisdiction,
 } from "./foundational-advanced-capabilities";
 import { FoundationalCompatibilityReprobeWorkbench } from "./foundational-compatibility-reprobe-workbench";
@@ -25,11 +26,11 @@ type ErrorEnvelope = {
 const JURISDICTIONS: ReadonlyArray<{
   code: FoundationalAdvancedJurisdiction;
   label: string;
-  scope: "FULL_OPERATOR" | "READ_ONLY";
+  scope: "FULL_OPERATOR" | "CONTROLLED_REPROBE";
 }> = [
   { code: "US", label: "United States", scope: "FULL_OPERATOR" },
   { code: "WO", label: "WIPO", scope: "FULL_OPERATOR" },
-  { code: "EU", label: "EUIPO", scope: "READ_ONLY" },
+  { code: "EU", label: "EUIPO", scope: "CONTROLLED_REPROBE" },
 ];
 
 function isSnapshot(value: unknown): value is FoundationalRemediationQueueSnapshot {
@@ -70,6 +71,10 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fullOperatorJurisdiction = asFullOperatorJurisdiction(jurisdiction);
+  const compatibilityReprobeEnabled = hasFoundationalAdvancedCapability(
+    jurisdiction,
+    "COMPATIBILITY_REPROBE",
+  );
 
   async function refresh(): Promise<void> {
     setLoading(true);
@@ -131,7 +136,7 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
                 )}
                 {fullOperatorJurisdiction
                   ? "Governed mutation surface"
-                  : "Read-only diagnostic scope"}
+                  : "Diagnostics + controlled compatibility re-probe"}
               </span>
               <span
                 className={
@@ -152,10 +157,11 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
               </p>
             ) : (
               <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-950/80">
-                EUIPO 已进入 Foundational health，但 Advanced mutation path 尚未完成 EU 专项
-                live-run。 因此当前只开放 readiness、supply health 与 deterministic relevance
-                诊断；所有采集、恢复、重建索引、quality remediation 与 compatibility re-probe
-                执行入口继续 fail-closed。
+                EUIPO 的 compatibility re-probe 已通过真实 EU 专项 promotion proof：approved intent
+                → Worker canary → Observation → receipt COMPLETE，且没有创建
+                CollectionRun。当前因此只额外开放 controlled re-probe；采集、转换恢复、重建索引与
+                quality remediation 仍继续 fail-closed。 最新 proof 同时确认 EUIPO 当前入口是
+                BLOCKED，因此这里开放的是诊断/重探能力，不是健康声明。
               </p>
             )}
           </div>
@@ -169,12 +175,14 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
                   type="button"
                   onClick={() => chooseJurisdiction(code)}
                   title={
-                    scope === "FULL_OPERATOR" ? "Full governed operator" : "Read-only diagnostics"
+                    scope === "FULL_OPERATOR"
+                      ? "Full governed operator"
+                      : "Diagnostics plus controlled compatibility re-probe"
                   }
                   className={`rounded-lg px-3 py-2 text-sm font-medium transition ${jurisdiction === code ? (fullOperatorJurisdiction ? "bg-amber-100 text-amber-950 shadow-sm" : "bg-sky-100 text-sky-950 shadow-sm") : "text-slate-500 hover:text-slate-800"}`}
                 >
                   {label}
-                  {scope === "READ_ONLY" ? " · read-only" : ""}
+                  {scope === "CONTROLLED_REPROBE" ? " · re-probe" : ""}
                 </button>
               ))}
             </div>
@@ -250,7 +258,17 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
             />
           </div>
         ) : (
-          <FoundationalLimitedDiagnostics jurisdiction={jurisdiction} snapshot={snapshot} />
+          <div className="space-y-3">
+            <FoundationalLimitedDiagnostics jurisdiction={jurisdiction} snapshot={snapshot} />
+            {compatibilityReprobeEnabled ? (
+              <FoundationalCompatibilityReprobeWorkbench
+                workspaceId={workspaceId}
+                jurisdiction={jurisdiction}
+                snapshot={snapshot}
+                onSnapshotRefresh={refresh}
+              />
+            ) : null}
+          </div>
         )
       ) : null}
     </div>
