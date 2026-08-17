@@ -14,6 +14,7 @@ export * from "./canonical-markdown-v1";
 export * from "./retrieval-v1";
 export * from "./change-feed-v1";
 export * from "./source-coverage-v1";
+export * from "./global-reference-source-v1";
 export * from "./source-supply-health-v1";
 export { SOURCE_REGISTRY_VERSION } from "./source-registry-v1";
 export type {
