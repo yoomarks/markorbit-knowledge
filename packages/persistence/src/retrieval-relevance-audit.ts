@@ -2609,6 +2609,51 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "am-aipo-trademark-renewal",
     query: "trademark registration renewal form ten years six months",
   },
+  {
+    id: "az-copat-trademark-portal-name",
+    targetId: "az-copat-trademark-portal",
+    query: "Azerbaijan Intellectual Property Agency trademarks",
+  },
+  {
+    id: "az-copat-trademark-filing-name",
+    targetId: "az-copat-trademark-filing",
+    query: "əmtəə nişanının qeydiyyata alınması iddia sənədi ekspertiza",
+  },
+  {
+    id: "az-copat-trademark-search-name",
+    targetId: "az-copat-trademark-search",
+    query: "əmtəə nişanları reyestr Nitsa qeydiyyat nömrəsi",
+  },
+  {
+    id: "az-copat-trademark-fees-name",
+    targetId: "az-copat-trademark-fees",
+    query: "əmtəə nişanı ilkin ekspertiza ekspertiza xidmət haqları",
+  },
+  {
+    id: "az-copat-trademark-classification-name",
+    targetId: "az-copat-trademark-classification",
+    query: "ƏXBT Nitsa əmtəə xidmət beynəlxalq təsnifatı",
+  },
+  {
+    id: "az-copat-trademark-legal-texts-name",
+    targetId: "az-copat-trademark-legal-texts",
+    query: "Əmtəə nişanları coğrafi göstəricilər haqqında Qanun",
+  },
+  {
+    id: "az-copat-trademark-examination-rules-name",
+    targetId: "az-copat-trademark-examination-rules",
+    query: "əmtəə nişanlarının qeydə alınması iddia sənədinin verilməsi ekspertizası Qaydaları",
+  },
+  {
+    id: "az-copat-trademark-proceedings-name",
+    targetId: "az-copat-trademark-proceedings",
+    query: "Apellyasiya şurası əmtəə nişanı qərarları etiraz",
+  },
+  {
+    id: "az-copat-trademark-renewal-name",
+    targetId: "az-copat-trademark-renewal",
+    query: "əmtəə nişanı qeydiyyat müddətinin növbəti 10 il uzadılması",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
