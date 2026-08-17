@@ -9101,6 +9101,94 @@ export const URSB_UG_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const RDB_RW: Authority = {
+  jurisdiction: "RW",
+  authorityName:
+    "Rwanda Development Board – Office of the Registrar General, Intellectual Property Division",
+  languages: ["en", "rw", "fr"],
+  verificationEvidenceUri: "https://org.rdb.rw/intellectual-property-rights/",
+};
+
+export const RDB_RW_SOURCE_COVERAGE_TARGETS = [
+  target(RDB_RW, {
+    id: "rw-rdb-trademark-portal",
+    family: "PORTAL",
+    displayName: "Rwanda Office of the Registrar General – Intellectual Property Rights",
+    canonicalUri: "https://org.rdb.rw/intellectual-property-rights/",
+    verificationEvidenceUri: "https://org.rdb.rw/intellectual-property-rights/",
+    notes:
+      "Current RDB Office of the Registrar General intellectual-property portal covering marks and the national registration/protection framework.",
+  }),
+  target(RDB_RW, {
+    id: "rw-rdb-trademark-filing",
+    family: "FILING",
+    displayName: "Rwanda Register a Trade Mark Procedure",
+    canonicalUri: "https://businessprocedures.rdb.rw/procedure/31?l=en",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "JSON"],
+    verificationEvidenceUri: "https://businessprocedures.rdb.rw/procedure/31?l=en",
+    notes:
+      "Official RDB-managed eRegulations procedure covering trademark search, application, examination, publication, opposition, registration and renewal under the current administrative workflow.",
+  }),
+  target(RDB_RW, {
+    id: "rw-rdb-trademark-search",
+    family: "SEARCH",
+    displayName: "Rwanda Trademark Search Procedure",
+    canonicalUri:
+      "https://businessprocedures.rdb.rw/procedure/print/31/step/708?embed=true&includeSearch=false&l=en&showCertification=false&showRecourses=true",
+    verificationEvidenceUri:
+      "https://businessprocedures.rdb.rw/procedure/print/31/step/708?embed=true&includeSearch=false&l=en&showCertification=false&showRecourses=true",
+    notes:
+      "Official RDB trademark-search step detailing the request, required mark reproduction and Nice classes, current RWF 5,000 search fee and search-result notice.",
+  }),
+  target(RDB_RW, {
+    id: "rw-rdb-trademark-fees",
+    family: "FEES",
+    displayName: "Rwanda Intellectual Property Fee Tariffs",
+    canonicalUri: "https://org.rdb.rw/intellectual-property-rights/fee-tariffs/",
+    verificationEvidenceUri: "https://org.rdb.rw/intellectual-property-rights/fee-tariffs/",
+    notes:
+      "Current ORG fee tariff covering trademark opposition, amendments, renewal and late renewal, international classes, Madrid transmittal, duplicates and IP searches.",
+  }),
+  target(RDB_RW, {
+    id: "rw-rdb-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Rwanda Intellectual Property Legal Documents",
+    canonicalUri: "https://org.rdb.rw/legal-documents/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://org.rdb.rw/legal-documents/",
+    notes:
+      "Official ORG legal-document surface publishing the 2024 intellectual-property law, industrial-property requirements, ministerial orders and related IP policy materials.",
+  }),
+  target(RDB_RW, {
+    id: "rw-rdb-trademark-forms",
+    family: "FILING",
+    displayName: "Rwanda Trademark Application and Proceedings Forms",
+    canonicalUri: "https://org.rdb.rw/intellectual-property-rights/application-forms/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF", "DOCX"],
+    verificationEvidenceUri: "https://org.rdb.rw/intellectual-property-rights/application-forms/",
+    notes:
+      "Official ORG form library with trademark application, search, amendment, non-use removal and opposition forms.",
+  }),
+  target(RDB_RW, {
+    id: "rw-rdb-ip-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Rwanda Monthly Industrial Property Journal",
+    canonicalUri:
+      "https://org.rdb.rw/intellectual-property-rights/monthly-industrial-property-journal/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://org.rdb.rw/intellectual-property-rights/monthly-industrial-property-journal/",
+    notes:
+      "Official ORG industrial-property journal with 2026 issues published through July; retained as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -9242,5 +9330,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...INAPI_DZ_SOURCE_COVERAGE_TARGETS,
   ...INNORPI_TN_SOURCE_COVERAGE_TARGETS,
   ...URSB_UG_SOURCE_COVERAGE_TARGETS,
+  ...RDB_RW_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

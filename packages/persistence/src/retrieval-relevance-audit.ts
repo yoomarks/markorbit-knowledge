@@ -2794,6 +2794,36 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ug-ursb-trademark-maintenance",
     query: "Uganda trademark renewal restoration assignment change forms",
   },
+  {
+    id: "rw-rdb-trademark-portal-name",
+    targetId: "rw-rdb-trademark-portal",
+    query: "Rwanda Office Registrar General intellectual property trademark",
+  },
+  {
+    id: "rw-rdb-trademark-filing-name",
+    targetId: "rw-rdb-trademark-filing",
+    query: "Rwanda register a trade mark search application examination publication opposition",
+  },
+  {
+    id: "rw-rdb-trademark-search-name",
+    targetId: "rw-rdb-trademark-search",
+    query: "Rwanda request trademark search Nice classification search result notice",
+  },
+  {
+    id: "rw-rdb-trademark-fees-name",
+    targetId: "rw-rdb-trademark-fees",
+    query: "Rwanda trademark opposition renewal international classes search fees",
+  },
+  {
+    id: "rw-rdb-trademark-legal-texts-name",
+    targetId: "rw-rdb-trademark-legal-texts",
+    query: "Rwanda IP Law 055/2024 intellectual property legal documents",
+  },
+  {
+    id: "rw-rdb-trademark-forms-name",
+    targetId: "rw-rdb-trademark-forms",
+    query: "Rwanda trademark application search amendment non-use opposition forms",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
