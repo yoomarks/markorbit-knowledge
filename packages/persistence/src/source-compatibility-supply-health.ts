@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import type {
+  SourceCompatibilityObservation,
   SourceSupplyCompatibilityHealth,
   SourceSupplyCompatibilityState,
   SourceSupplyGap,
@@ -15,12 +16,7 @@ import {
 } from "./source-supply-health";
 
 function compatibilityHealth(
-  observation: ReturnType<SqliteSourceCompatibilityObservationRepository["latest"]> extends Map<
-    string,
-    infer Value
-  >
-    ? Value | undefined
-    : never,
+  observation: SourceCompatibilityObservation | undefined,
 ): SourceSupplyCompatibilityHealth {
   if (!observation) {
     return {
@@ -52,7 +48,7 @@ function compatibilityGap(state: SourceSupplyCompatibilityState): SourceSupplyGa
   return null;
 }
 
-function enrichRecord(
+export function applySourceCompatibilityHealth(
   item: SourceSupplyHealthRecord,
   compatibility: SourceSupplyCompatibilityHealth,
 ): SourceSupplyHealthRecord {
@@ -83,7 +79,7 @@ export class SqliteCompatibilityAwareSupplyHealthRepository implements SourceSup
     const base = this.base.list({ ...filters, state: undefined });
     const latest = this.compatibility.latest(base.items.map((item) => item.targetId));
     const items = base.items
-      .map((item) => enrichRecord(item, compatibilityHealth(latest.get(item.targetId))))
+      .map((item) => applySourceCompatibilityHealth(item, compatibilityHealth(latest.get(item.targetId))))
       .filter((item) => !filters.state || item.state === filters.state);
     const summary = summarizeSourceSupplyHealth(items);
     const byCompatibility: Record<SourceSupplyCompatibilityState, number> = {
