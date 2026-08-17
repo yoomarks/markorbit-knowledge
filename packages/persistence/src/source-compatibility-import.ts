@@ -3,6 +3,8 @@ import { RegistryValidationError } from "./index";
 
 type JsonObject = Record<string, unknown>;
 
+const COMPATIBILITY_STATES = new Set(["PASS", "DEGRADED", "BLOCKED"]);
+
 function object(value: unknown, field: string): JsonObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new RegistryValidationError(`${field} must be an object`);
@@ -36,7 +38,7 @@ export function parseRepresentativeLiveCanarySummary(
   return summary.observations.map((value, index) => {
     const observation = object(value, `observations[${index}]`);
     const state = text(observation.state, `observations[${index}].state`);
-    if (!(["PASS", "DEGRADED", "BLOCKED"] as const).includes(state as never)) {
+    if (!COMPATIBILITY_STATES.has(state)) {
       throw new RegistryValidationError(`observations[${index}].state is invalid`);
     }
     const baseline = observation.authorityBaseline
@@ -46,6 +48,8 @@ export function parseRepresentativeLiveCanarySummary(
     if (baselineState && baselineState !== "PASS" && baselineState !== "FAIL") {
       throw new RegistryValidationError(`observations[${index}].authorityBaseline.state is invalid`);
     }
+    const errorCode = optionalText(observation.errorCode);
+    const errorMessage = optionalText(observation.errorMessage);
     return {
       targetId: text(observation.targetId, `observations[${index}].targetId`),
       jurisdiction: text(observation.jurisdiction, `observations[${index}].jurisdiction`),
@@ -53,10 +57,8 @@ export function parseRepresentativeLiveCanarySummary(
       observedAt,
       primaryUri: text(observation.requestedUri, `observations[${index}].requestedUri`),
       renderJavascript: Boolean(observation.renderJavascript),
-      ...(optionalText(observation.errorCode) ? { errorCode: optionalText(observation.errorCode) } : {}),
-      ...(optionalText(observation.errorMessage)
-        ? { errorMessage: optionalText(observation.errorMessage) }
-        : {}),
+      ...(errorCode ? { errorCode } : {}),
+      ...(errorMessage ? { errorMessage } : {}),
       ...(baseline
         ? {
             baselineTargetId: text(
