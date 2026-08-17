@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
+import { SqliteSourceCompatibilityObservationRepository } from "@markorbit/persistence/source-compatibility-observations";
 import { buildFoundationalRemediationQueueSnapshot } from "../foundational-remediation-queue";
 
 const databases: DatabaseSync[] = [];
@@ -58,6 +59,41 @@ describe("foundational remediation queue snapshot", () => {
     expect(snapshot.remediationQueue.items.map((item) => item.targetId)).toEqual([
       "wo-wipo-madrid-system",
     ]);
+  });
+
+  it("carries compatibility freshness into foundational readiness without bypassing earlier gates", () => {
+    const db = database();
+    new SqliteSourceCompatibilityObservationRepository(db).record({
+      targetId: "cn-cnipa-trademark-search",
+      jurisdiction: "CN",
+      state: "BLOCKED",
+      observedAt: "2026-08-15T00:00:00.000Z",
+      primaryUri: "https://wcjs.sbj.cnipa.gov.cn/txnT01.do",
+      renderJavascript: true,
+      errorCode: "CANARY_AUTHORITY_BASELINE_FAILED",
+      baselineTargetId: "cn-cnipa-trademark-filing-guide",
+      baselineState: "FAIL",
+    });
+
+    const snapshot = buildFoundationalRemediationQueueSnapshot(
+      db,
+      {
+        workspaceId: DEFAULT_WORKSPACE.id,
+        jurisdiction: "CN",
+        targetId: "cn-cnipa-trademark-search",
+      },
+      () => new Date("2026-08-18T00:00:00.000Z"),
+    );
+
+    expect(snapshot.readiness.protocolVersion).toBe("1.3");
+    expect(snapshot.readiness.targets[0]).toMatchObject({
+      targetId: "cn-cnipa-trademark-search",
+      stage: "REGISTER",
+      compatibilityState: "BLOCKED",
+      compatibilityFreshness: "STALE",
+      compatibilityObservedAt: "2026-08-15T00:00:00.000Z",
+    });
+    expect(snapshot.remediationQueue.items[0]?.actions[0]?.code).toBe("REGISTER_SOURCE");
   });
 
   it("rejects unsupported target coverage and invalid topK", () => {
