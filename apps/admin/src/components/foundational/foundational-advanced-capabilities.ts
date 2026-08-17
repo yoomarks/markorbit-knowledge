@@ -1,4 +1,18 @@
-export const FOUNDATIONAL_ADVANCED_JURISDICTIONS = ["US", "WO", "EU"] as const;
+export const FOUNDATIONAL_ADVANCED_JURISDICTIONS = [
+  "US",
+  "WO",
+  "EU",
+  "CN",
+  "IN",
+  "JP",
+  "KR",
+  "GB",
+  "CA",
+  "AU",
+  "BR",
+  "AE",
+  "CI",
+] as const;
 export type FoundationalAdvancedJurisdiction = (typeof FOUNDATIONAL_ADVANCED_JURISDICTIONS)[number];
 
 export const FOUNDATIONAL_FULL_OPERATOR_JURISDICTIONS = ["US", "WO"] as const;
@@ -15,10 +29,14 @@ export type FoundationalAdvancedCapability =
   | "VERIFIED_CANONICAL_REINDEX"
   | "RETRIEVAL_QUALITY_REMEDIATION";
 
-const FULL_CAPABILITIES: readonly FoundationalAdvancedCapability[] = [
+const READ_ONLY_CAPABILITIES: readonly FoundationalAdvancedCapability[] = [
   "READINESS_DIAGNOSTICS",
   "RELEVANCE_AUDIT",
   "SUPPLY_HEALTH",
+];
+
+const FULL_CAPABILITIES: readonly FoundationalAdvancedCapability[] = [
+  ...READ_ONLY_CAPABILITIES,
   "COMPATIBILITY_REPROBE",
   "COLLECTION_OPERATOR",
   "CONVERSION_RECOVERY",
@@ -26,21 +44,19 @@ const FULL_CAPABILITIES: readonly FoundationalAdvancedCapability[] = [
   "RETRIEVAL_QUALITY_REMEDIATION",
 ];
 
-// EU diagnostics are generic and read-only. COMPATIBILITY_REPROBE is the only promoted mutation-like
-// operational capability: #278 proved the dedicated approval -> Worker canary -> Observation -> receipt
-// lifecycle against the real EUIPO path with zero CollectionRun records. All collection/content mutation
-// workflows remain withheld until each has its own EU-specific live proof.
+// EU compatibility re-probe is independently promoted by the live EU proof. Other content mutation
+// paths remain withheld until they earn their own jurisdiction-specific promotion evidence.
 const EU_CAPABILITIES: readonly FoundationalAdvancedCapability[] = [
-  "READINESS_DIAGNOSTICS",
-  "RELEVANCE_AUDIT",
-  "SUPPLY_HEALTH",
+  ...READ_ONLY_CAPABILITIES,
   "COMPATIBILITY_REPROBE",
 ];
 
 export function foundationalAdvancedCapabilities(
   jurisdiction: FoundationalAdvancedJurisdiction,
 ): readonly FoundationalAdvancedCapability[] {
-  return jurisdiction === "EU" ? EU_CAPABILITIES : FULL_CAPABILITIES;
+  if (jurisdiction === "US" || jurisdiction === "WO") return FULL_CAPABILITIES;
+  if (jurisdiction === "EU") return EU_CAPABILITIES;
+  return READ_ONLY_CAPABILITIES;
 }
 
 export function hasFoundationalAdvancedCapability(
