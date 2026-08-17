@@ -3670,6 +3670,156 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "et-trademark-regulation-273-2012",
     query: "Ethiopia trademark registration protection regulation 273 2012",
   },
+  {
+    id: "bo-senapi-portal-name",
+    targetId: "bo-senapi-portal",
+    query: "Bolivia SENAPI intellectual property trademark portal",
+  },
+  {
+    id: "bo-senapi-distinctive-signs-filing-name",
+    targetId: "bo-senapi-distinctive-signs-filing",
+    query: "Bolivia SENAPI trademark distinctive signs filing PI 100",
+  },
+  {
+    id: "bo-senapi-sipi-search-name",
+    targetId: "bo-senapi-sipi-search",
+    query: "Bolivia SENAPI SIPI trademark search information system",
+  },
+  {
+    id: "bo-senapi-ip-fees-name",
+    targetId: "bo-senapi-ip-fees",
+    query: "Bolivia SENAPI trademark prior search application renewal fees",
+  },
+  {
+    id: "bo-senapi-can-decision-486-name",
+    targetId: "bo-senapi-can-decision-486",
+    query: "Bolivia SENAPI Andean Decision 486 trademark law",
+  },
+  {
+    id: "bo-senapi-search-procedure-manual-name",
+    targetId: "bo-senapi-search-procedure-manual",
+    query: "Bolivia SENAPI prior search procedure manual",
+  },
+  {
+    id: "hn-digepih-ip-portal-name",
+    targetId: "hn-digepih-ip-portal",
+    query: "Honduras Institute Intellectual Property DIGEPIH portal",
+  },
+  {
+    id: "hn-digepih-trademark-registration-service-name",
+    targetId: "hn-digepih-trademark-registration-service",
+    query: "Honduras government trademark registration WIPO FILE",
+  },
+  {
+    id: "hn-digepih-trademark-search-guidance-name",
+    targetId: "hn-digepih-trademark-search-guidance",
+    query: "Honduras DIGEPIH trademark search registration guidance",
+  },
+  {
+    id: "hn-digepih-trademark-fee-transparency-name",
+    targetId: "hn-digepih-trademark-fee-transparency",
+    query: "Honduras intellectual property trademark fees transparency",
+  },
+  {
+    id: "hn-industrial-property-law-current-name",
+    targetId: "hn-industrial-property-law-current",
+    query: "Honduras Industrial Property Law trademarks current WIPO Lex",
+  },
+  {
+    id: "hn-industrial-property-regulation-2010-name",
+    targetId: "hn-industrial-property-regulation-2010",
+    query: "Honduras industrial property regulation 003 2010 trademark",
+  },
+  {
+    id: "sv-ispi-portal-name",
+    targetId: "sv-ispi-portal",
+    query: "El Salvador ISPI intellectual property trademark portal",
+  },
+  {
+    id: "sv-ispi-online-trademark-filing-name",
+    targetId: "sv-ispi-online-trademark-filing",
+    query: "El Salvador eCNR online trademark filing opposition renewal",
+  },
+  {
+    id: "sv-ispi-distinctive-signs-search-name",
+    targetId: "sv-ispi-distinctive-signs-search",
+    query: "El Salvador distinctive signs public trademark search",
+  },
+  {
+    id: "sv-ispi-trademark-service-fees-name",
+    targetId: "sv-ispi-trademark-service-fees",
+    query: "El Salvador ISPI trademark application publication registration fees",
+  },
+  {
+    id: "sv-intellectual-property-law-2024-name",
+    targetId: "sv-intellectual-property-law-2024",
+    query: "El Salvador Intellectual Property Law 2024 trademarks",
+  },
+  {
+    id: "sv-ispi-trademark-procedure-faq-name",
+    targetId: "sv-ispi-trademark-procedure-faq",
+    query: "El Salvador ISPI trademark filing examination publication procedure FAQ",
+  },
+  {
+    id: "jm-jipo-portal-name",
+    targetId: "jm-jipo-portal",
+    query: "Jamaica JIPO trademark portal",
+  },
+  {
+    id: "jm-jipo-trademark-forms-name",
+    targetId: "jm-jipo-trademark-forms",
+    query: "Jamaica JIPO trademark application forms",
+  },
+  {
+    id: "jm-jipo-ejipo-search-name",
+    targetId: "jm-jipo-ejipo-search",
+    query: "Jamaica e JIPO trademark search online services",
+  },
+  {
+    id: "jm-jipo-trademark-fees-guidance-name",
+    targetId: "jm-jipo-trademark-fees-guidance",
+    query: "Jamaica JIPO trademark search filing registration fees",
+  },
+  {
+    id: "jm-trademark-act-current-name",
+    targetId: "jm-trademark-act-current",
+    query: "Jamaica Trade Marks Act current WIPO Lex",
+  },
+  {
+    id: "jm-trademark-rules-current-name",
+    targetId: "jm-trademark-rules-current",
+    query: "Jamaica Trade Marks Rules current WIPO Lex",
+  },
+  {
+    id: "tt-ipo-portal-name",
+    targetId: "tt-ipo-portal",
+    query: "Trinidad Tobago Intellectual Property Office trademark portal",
+  },
+  {
+    id: "tt-ipo-trademark-filing-name",
+    targetId: "tt-ipo-trademark-filing",
+    query: "Trinidad Tobago apply trade mark filing",
+  },
+  {
+    id: "tt-ipo-trademark-search-name",
+    targetId: "tt-ipo-trademark-search",
+    query: "Trinidad Tobago online trademark search databases",
+  },
+  {
+    id: "tt-ipo-trademark-payment-name",
+    targetId: "tt-ipo-trademark-payment",
+    query: "Trinidad Tobago trademark payment fees",
+  },
+  {
+    id: "tt-trademark-act-2015-framework-name",
+    targetId: "tt-trademark-act-2015-framework",
+    query: "Trinidad Tobago Trade Marks Act 2015 regulations",
+  },
+  {
+    id: "tt-ipo-trademark-search-guidelines-name",
+    targetId: "tt-ipo-trademark-search-guidelines",
+    query: "Trinidad Tobago trademark search guidelines",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();

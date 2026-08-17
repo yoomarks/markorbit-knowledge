@@ -100,6 +100,11 @@ import {
   DINAPI_PY_SOURCE_COVERAGE_TARGETS,
   SAPI_VE_SOURCE_COVERAGE_TARGETS,
   EIPA_ET_SOURCE_COVERAGE_TARGETS,
+  SENAPI_BO_SOURCE_COVERAGE_TARGETS,
+  DIGEPIH_HN_SOURCE_COVERAGE_TARGETS,
+  ISPI_SV_SOURCE_COVERAGE_TARGETS,
+  JIPO_JM_SOURCE_COVERAGE_TARGETS,
+  IPO_TT_SOURCE_COVERAGE_TARGETS,
   IPOS_SOURCE_COVERAGE_TARGETS,
   JPO_SOURCE_COVERAGE_TARGETS,
   KOREA_SOURCE_COVERAGE_TARGETS,
@@ -220,6 +225,15 @@ const authoritySets = [
   ["PY", DINAPI_PY_SOURCE_COVERAGE_TARGETS, ["dinapi.gov.py"]],
   ["VE", SAPI_VE_SOURCE_COVERAGE_TARGETS, ["sapi.gob.ve", "wipo.int"]],
   ["ET", EIPA_ET_SOURCE_COVERAGE_TARGETS, ["eipa.gov.et", "wipo.int"]],
+  ["BO", SENAPI_BO_SOURCE_COVERAGE_TARGETS, ["senapi.gob.bo"]],
+  [
+    "HN",
+    DIGEPIH_HN_SOURCE_COVERAGE_TARGETS,
+    ["ip.gob.hn", "diger.gob.hn", "iaip.gob.hn", "wipo.int"],
+  ],
+  ["SV", ISPI_SV_SOURCE_COVERAGE_TARGETS, ["cnr.gob.sv"]],
+  ["JM", JIPO_JM_SOURCE_COVERAGE_TARGETS, ["jipo.gov.jm", "wipo.int"]],
+  ["TT", IPO_TT_SOURCE_COVERAGE_TARGETS, ["ipo.gov.tt"]],
   ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],
 ] as const;
 
@@ -229,14 +243,14 @@ function officialHost(uri: string, suffixes: readonly string[]): boolean {
 }
 
 describe("priority national trademark source coverage", () => {
-  it("ships explicit, official, unique coverage for one hundred four priority national offices", () => {
-    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(793);
+  it("ships explicit, official, unique coverage for one hundred nine priority national offices", () => {
+    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(824);
     expect(new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(
-      793,
+      824,
     );
     expect(
       new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size,
-    ).toBe(793);
+    ).toBe(824);
 
     for (const [jurisdiction, targets, officialSuffixes] of authoritySets) {
       expect(targets.length).toBeGreaterThanOrEqual(5);
