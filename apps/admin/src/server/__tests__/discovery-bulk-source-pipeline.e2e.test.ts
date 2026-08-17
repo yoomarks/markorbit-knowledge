@@ -13,6 +13,7 @@ import { SqliteSourceDiscoveryRepository } from "@markorbit/persistence/source-d
 import { SqliteSourceGraphRepository } from "@markorbit/persistence/source-graph";
 import { SqliteWorkerExecutionRepository } from "@markorbit/persistence/worker-execution";
 import { SqliteWorkerRegistryRepository } from "@markorbit/persistence/workers";
+import { CRAWL4AI_PRODUCTION_CONNECTOR } from "../crawl4ai-production-connector";
 import { runDiscoveryImportBatch } from "../discovery-batch-import-service";
 import { DiscoveryCollectionService } from "../discovery-collection-service";
 import { parseDiscoveryImport } from "../discovery-import-parser";
@@ -193,8 +194,8 @@ describe("Bulk Source Pipeline E2E", () => {
       supportedJobTypes: ["WEB_CRAWL"],
       connectorBindings: [
         {
-          connectorId: "crawl4ai-web",
-          version: "1.0.0",
+          connectorId: CRAWL4AI_PRODUCTION_CONNECTOR.connectorId,
+          version: CRAWL4AI_PRODUCTION_CONNECTOR.version,
           capabilities: ["COLLECT"],
         },
       ],
