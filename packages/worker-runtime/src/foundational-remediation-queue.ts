@@ -4,7 +4,7 @@ import type {
   FoundationalReadinessTarget,
 } from "./foundational-readiness";
 
-export const FOUNDATIONAL_REMEDIATION_QUEUE_PROTOCOL_VERSION = "1.0" as const;
+export const FOUNDATIONAL_REMEDIATION_QUEUE_PROTOCOL_VERSION = "1.1" as const;
 
 export type FoundationalRemediationActionCode =
   | "REGISTER_SOURCE"
@@ -18,6 +18,7 @@ export type FoundationalRemediationActionCode =
   | "REVIEW_SOURCE_FILTERED_RETRIEVAL"
   | "REVIEW_GLOBAL_RETRIEVAL_RANKING"
   | "REVIEW_RELEVANCE_AUDIT"
+  | "REPROBE_SOURCE_COMPATIBILITY"
   | "REVIEW_SUPPLY_HEALTH";
 
 export type FoundationalRemediationExecutionPath =
@@ -298,6 +299,17 @@ function actionsFor(
     case "RELEVANCE":
       return relevanceActions(target, workspaceId, jurisdiction);
     case "HEALTH":
+      if (target.compatibilityFreshness === "STALE") {
+        return [
+          action(
+            target,
+            "REPROBE_SOURCE_COMPATIBILITY",
+            "Re-run the curated representative compatibility canary for this target through the controlled Worker runtime and persist the fresh result only through the authenticated Worker compatibility intake. Do not execute the production write path from the browser and do not grant CI production credentials.",
+            "MANUAL_OPERATOR",
+            ["SOURCE_COMPATIBILITY_OBSERVATION_STALE"],
+          ),
+        ];
+      }
       return [
         action(
           target,
