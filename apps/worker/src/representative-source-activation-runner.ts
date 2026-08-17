@@ -73,8 +73,8 @@ function normalizedBaseUrl(raw: string): string {
 }
 
 function selectJurisdictions(requested: readonly string[] | undefined) {
-  const byCode = new Map(
-    REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((item) => [item.jurisdiction, item]),
+  const supportedCodes = new Set<string>(
+    REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((item) => item.jurisdiction),
   );
   if (!requested || requested.length === 0) {
     return [...REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS];
@@ -82,7 +82,7 @@ function selectJurisdictions(requested: readonly string[] | undefined) {
   const normalized = [
     ...new Set(requested.map((value) => value.trim().toUpperCase()).filter(Boolean)),
   ];
-  const unknown = normalized.filter((value) => !byCode.has(value));
+  const unknown = normalized.filter((value) => !supportedCodes.has(value));
   if (unknown.length > 0) {
     throw new Error(`Unsupported representative jurisdiction: ${unknown.join(", ")}`);
   }
