@@ -1,0 +1,65 @@
+name: EU Compatibility Reprobe Promotion
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/eu-compatibility-reprobe-promotion.yml
+      - apps/worker/src/verify-eu-compatibility-reprobe-promotion.ts
+      - apps/worker/src/run-representative-live-canaries.ts
+      - apps/worker/src/source-compatibility-reprobe-operator.ts
+      - packages/persistence/src/source-compatibility-import.ts
+      - packages/persistence/src/source-compatibility-observations.ts
+      - packages/persistence/src/source-compatibility-reprobe-execution.ts
+      - packages/persistence/src/representative-source-live-canaries.ts
+      - packages/persistence/src/representative-source-activation.ts
+      - packages/persistence/src/priority-national-source-coverage.ts
+      - workers/crawl4ai/**
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eu-compatibility-reprobe-promotion-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prove-eu-reprobe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      MARKORBIT_CRAWL4AI_PYTHON: python
+      MARKORBIT_LIVE_CANARY_TIMEOUT_SECONDS: "75"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure production Crawl4AI path
+        run: |
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install production Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+
+      - name: Prove EU compatibility re-probe lifecycle
+        run: pnpm --filter @markorbit/worker exec tsx src/verify-eu-compatibility-reprobe-promotion.ts
