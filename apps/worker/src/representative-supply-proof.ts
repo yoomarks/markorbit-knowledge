@@ -170,7 +170,8 @@ async function loadTargetHealth(
   const item = array(record(payload)?.items)
     .map(record)
     .find((candidate) => candidate?.targetId === targetId);
-  if (!item) throw new Error(`Source supply health did not return representative target ${targetId}`);
+  if (!item)
+    throw new Error(`Source supply health did not return representative target ${targetId}`);
   return item;
 }
 
