@@ -50,7 +50,9 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
             <h2 className="mt-3 font-semibold text-slate-950">Foundational diagnostics</h2>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">
               该辖区已进入 Foundational 健康观察范围，但尚未完成 Advanced 写操作的专项 live-run
-              证明。因此这里只暴露 readiness、供给健康与 deterministic relevance 诊断；不会显示采集派发、转换恢复、reindex、quality remediation 或 compatibility re-probe 执行入口。
+              证明。因此这里只暴露 readiness、供给健康与 deterministic relevance
+              诊断；不会显示采集派发、转换恢复、reindex、quality remediation 或 compatibility
+              re-probe 执行入口。
             </p>
           </div>
           <div className="text-xs text-slate-500 lg:text-right">
@@ -63,12 +65,16 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
       <div className="space-y-5 p-5">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Readiness</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Readiness
+            </p>
             <div className="mt-2 flex items-end justify-between gap-3">
               <strong className="text-2xl font-semibold text-slate-950">
                 {snapshot.readiness.readyPercent}%
               </strong>
-              <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${stateTone(snapshot.readiness.state)}`}>
+              <span
+                className={`rounded-full border px-2 py-1 text-xs font-semibold ${stateTone(snapshot.readiness.state)}`}
+              >
                 {snapshot.readiness.state}
               </span>
             </div>
@@ -90,7 +96,9 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
             <p className="mt-1 text-xs text-slate-500">Advisory only in this scope</p>
           </article>
           <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Capabilities</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Capabilities
+            </p>
             <strong className="mt-2 block text-2xl font-semibold text-slate-950">
               {capabilities.length}
             </strong>
@@ -103,7 +111,9 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
           <div>
             <p className="text-sm font-semibold">Mutation surfaces intentionally withheld</p>
             <p className="mt-1 text-xs leading-5 text-amber-900/80">
-              这里的限制是能力成熟度边界，不代表该辖区没有 Foundational coverage。只有在相应写路径完成专项 live-run、审计与回归后，才会提升到 full operator scope。
+              这里的限制是能力成熟度边界，不代表该辖区没有 Foundational
+              coverage。只有在相应写路径完成专项 live-run、审计与回归后，才会提升到 full operator
+              scope。
             </p>
           </div>
         </div>
@@ -126,12 +136,16 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
                 <tr key={target.targetId} className="align-top">
                   <td className="px-4 py-3 font-medium text-slate-900">{target.targetId}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full border px-2 py-1 font-semibold ${stateTone(target.stage === "READY" ? "READY" : target.healthState)}`}>
+                    <span
+                      className={`rounded-full border px-2 py-1 font-semibold ${stateTone(target.stage === "READY" ? "READY" : target.healthState)}`}
+                    >
                       {target.stage}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full border px-2 py-1 font-semibold ${stateTone(target.healthState)}`}>
+                    <span
+                      className={`rounded-full border px-2 py-1 font-semibold ${stateTone(target.healthState)}`}
+                    >
                       {target.healthState}
                     </span>
                   </td>
@@ -153,7 +167,10 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
           <ShieldCheck size={14} aria-hidden="true" className="text-emerald-600" />
           {capabilities.map((capability) => (
-            <span key={capability} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+            <span
+              key={capability}
+              className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1"
+            >
               {capability}
             </span>
           ))}

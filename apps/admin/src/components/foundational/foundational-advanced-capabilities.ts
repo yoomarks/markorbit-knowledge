@@ -1,6 +1,5 @@
 export const FOUNDATIONAL_ADVANCED_JURISDICTIONS = ["US", "WO", "EU"] as const;
-export type FoundationalAdvancedJurisdiction =
-  (typeof FOUNDATIONAL_ADVANCED_JURISDICTIONS)[number];
+export type FoundationalAdvancedJurisdiction = (typeof FOUNDATIONAL_ADVANCED_JURISDICTIONS)[number];
 
 export const FOUNDATIONAL_FULL_OPERATOR_JURISDICTIONS = ["US", "WO"] as const;
 export type FoundationalFullOperatorJurisdiction =

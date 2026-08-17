@@ -129,9 +129,15 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
                 ) : (
                   <Eye size={13} aria-hidden="true" />
                 )}
-                {fullOperatorJurisdiction ? "Governed mutation surface" : "Read-only diagnostic scope"}
+                {fullOperatorJurisdiction
+                  ? "Governed mutation surface"
+                  : "Read-only diagnostic scope"}
               </span>
-              <span className={fullOperatorJurisdiction ? "text-xs text-amber-900/70" : "text-xs text-sky-900/70"}>
+              <span
+                className={
+                  fullOperatorJurisdiction ? "text-xs text-amber-900/70" : "text-xs text-sky-900/70"
+                }
+              >
                 Workspace · {workspaceId}
               </span>
             </div>
@@ -140,14 +146,16 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
                 COLLECT 使用 M25/M26 审批 + 显式派发；CONVERT 使用 M27 的既有 M11 operator
                 retry；INDEX 使用 M28 verified canonical reindex；QUALITY 使用 M29 的 M16 plan + M17
                 explicit operator execution；RELEVANCE 使用 M30 只读 M18 deterministic audit；HEALTH
-                仍以 M31 target-scoped supply-health diagnostics 为只读诊断，同时 stale compatibility
-                observation 可创建独立 re-probe approval intent 并交给受认证 Worker
+                仍以 M31 target-scoped supply-health diagnostics 为只读诊断，同时 stale
+                compatibility observation 可创建独立 re-probe approval intent 并交给受认证 Worker
                 执行。浏览器不会持有 Worker bearer，也不会自动运行 canary、生成 probe 或调 ranking。
               </p>
             ) : (
               <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-950/80">
-                EUIPO 已进入 Foundational health，但 Advanced mutation path 尚未完成 EU 专项 live-run。
-                因此当前只开放 readiness、supply health 与 deterministic relevance 诊断；所有采集、恢复、重建索引、quality remediation 与 compatibility re-probe 执行入口继续 fail-closed。
+                EUIPO 已进入 Foundational health，但 Advanced mutation path 尚未完成 EU 专项
+                live-run。 因此当前只开放 readiness、supply health 与 deterministic relevance
+                诊断；所有采集、恢复、重建索引、quality remediation 与 compatibility re-probe
+                执行入口继续 fail-closed。
               </p>
             )}
           </div>
@@ -160,7 +168,9 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
                   key={code}
                   type="button"
                   onClick={() => chooseJurisdiction(code)}
-                  title={scope === "FULL_OPERATOR" ? "Full governed operator" : "Read-only diagnostics"}
+                  title={
+                    scope === "FULL_OPERATOR" ? "Full governed operator" : "Read-only diagnostics"
+                  }
                   className={`rounded-lg px-3 py-2 text-sm font-medium transition ${jurisdiction === code ? (fullOperatorJurisdiction ? "bg-amber-100 text-amber-950 shadow-sm" : "bg-sky-100 text-sky-950 shadow-sm") : "text-slate-500 hover:text-slate-800"}`}
                 >
                   {label}
