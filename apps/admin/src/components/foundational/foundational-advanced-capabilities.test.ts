@@ -17,15 +17,18 @@ describe("foundational Advanced jurisdiction capability gates", () => {
     }
   });
 
-  it("keeps EU fail-closed for mutation while exposing established diagnostics", () => {
+  it("promotes only EU compatibility re-probe while keeping content mutation paths fail-closed", () => {
     expect(asFullOperatorJurisdiction("EU")).toBeNull();
     expect(foundationalAdvancedCapabilities("EU")).toEqual([
       "READINESS_DIAGNOSTICS",
       "RELEVANCE_AUDIT",
       "SUPPLY_HEALTH",
+      "COMPATIBILITY_REPROBE",
     ]);
+    expect(hasFoundationalAdvancedCapability("EU", "COMPATIBILITY_REPROBE")).toBe(true);
     expect(hasFoundationalAdvancedCapability("EU", "COLLECTION_OPERATOR")).toBe(false);
-    expect(hasFoundationalAdvancedCapability("EU", "COMPATIBILITY_REPROBE")).toBe(false);
     expect(hasFoundationalAdvancedCapability("EU", "CONVERSION_RECOVERY")).toBe(false);
+    expect(hasFoundationalAdvancedCapability("EU", "VERIFIED_CANONICAL_REINDEX")).toBe(false);
+    expect(hasFoundationalAdvancedCapability("EU", "RETRIEVAL_QUALITY_REMEDIATION")).toBe(false);
   });
 });
