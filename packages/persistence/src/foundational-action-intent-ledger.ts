@@ -16,14 +16,7 @@ export type FoundationalActionIntentRecord = {
   jurisdiction: string;
   targetId: string;
   readinessStage:
-    | "REGISTER"
-    | "COLLECT"
-    | "INGEST"
-    | "CONVERT"
-    | "INDEX"
-    | "QUALITY"
-    | "RELEVANCE"
-    | "HEALTH";
+    "REGISTER" | "COLLECT" | "INGEST" | "CONVERT" | "INDEX" | "QUALITY" | "RELEVANCE" | "HEALTH";
   actionCode:
     | "REGISTER_SOURCE"
     | "DISPATCH_GOVERNED_COLLECTION"

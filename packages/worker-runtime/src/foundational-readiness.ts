@@ -51,18 +51,10 @@ export type FoundationalRetrievalRelevanceItem = {
 };
 
 export type FoundationalRetrievalQualityState =
-  | "READY"
-  | "DEGRADED"
-  | "BLOCKED"
-  | "MISSING"
-  | "NOT_APPLICABLE";
+  "READY" | "DEGRADED" | "BLOCKED" | "MISSING" | "NOT_APPLICABLE";
 
 export type FoundationalRetrievalRelevanceState =
-  | "READY"
-  | "DEGRADED"
-  | "BLOCKED"
-  | "MISSING"
-  | "NOT_APPLICABLE";
+  "READY" | "DEGRADED" | "BLOCKED" | "MISSING" | "NOT_APPLICABLE";
 
 export type FoundationalReadinessTarget = {
   targetId: string;

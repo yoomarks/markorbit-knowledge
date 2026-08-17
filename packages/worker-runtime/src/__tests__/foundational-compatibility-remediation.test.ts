@@ -16,7 +16,8 @@ function supply(
   return {
     targetId: TARGET_ID,
     sourceIds: [SOURCE_ID],
-    state: compatibilityFreshness === "FRESH" && compatibilityState === "BLOCKED" ? "BLOCKED" : "READY",
+    state:
+      compatibilityFreshness === "FRESH" && compatibilityState === "BLOCKED" ? "BLOCKED" : "READY",
     registrationState: "REGISTERED",
     latestRunStatus: "COMPLETED",
     artifactCount: 2,
