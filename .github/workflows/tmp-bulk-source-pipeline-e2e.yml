@@ -1,0 +1,25 @@
+name: Temporary Bulk Source Pipeline E2E verification
+
+on:
+  push:
+    branches:
+      - codex/bulk-source-pipeline-e2e-v1
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/bulk-source-pipeline-e2e-v1
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --check apps/admin/src/server/discovery-batch-import-service.ts apps/admin/src/app/api/discovery/batch/route.ts apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts
+      - run: pnpm --filter @markorbit/admin exec vitest run src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
