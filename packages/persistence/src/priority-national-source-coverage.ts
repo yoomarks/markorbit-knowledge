@@ -9480,6 +9480,206 @@ export const MOJ_UZ_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IPC_IR: Authority = {
+  jurisdiction: "IR",
+  authorityName: "Intellectual Property Center of the Islamic Republic of Iran",
+  languages: ["fa"],
+  verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/contact?code=ir",
+};
+
+export const IPC_IR_SOURCE_COVERAGE_TARGETS = [
+  target(IPC_IR, {
+    id: "ir-ipc-intellectual-property-portal",
+    family: "PORTAL",
+    displayName: "Iran Intellectual Property Center Portal",
+    canonicalUri: "http://iripo.ssaa.ir/",
+    verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/contact?code=ir",
+    notes:
+      "WIPO's current office directory identifies the Intellectual Property Center of the Islamic Republic of Iran as the competent IP office and this SSAA host as its official website.",
+  }),
+  target(IPC_IR, {
+    id: "ir-ipc-national-trademark-search",
+    family: "SEARCH",
+    displayName: "Iran National Trademark Collection in WIPO Global Brand Database",
+    canonicalUri: "https://branddb.wipo.int/en/IPO-IR/quicksearch/results?by=brandName",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/IR",
+    notes:
+      "WIPO's current Iran country profile exposes the Iranian national trademark collection through the Global Brand Database; retained as the stable country-scoped search entrypoint.",
+  }),
+  target(IPC_IR, {
+    id: "ir-ipc-trademark-filing-regulation",
+    family: "FILING",
+    displayName: "Iran Trademark Registration Executive Regulation",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/14359",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/23341",
+    notes:
+      "WIPO Lex lists IR026, the Executive Regulation of the Patent, Industrial Designs and Trademarks Registration Act, as implementing the 2024 industrial-property act. It provides the detailed trademark application and registration procedure.",
+  }),
+  target(IPC_IR, {
+    id: "ir-ipc-trademark-regulatory-fee-schedule",
+    family: "FEES",
+    displayName: "Iran Trademark Regulatory Fee Schedule",
+    canonicalUri: "https://www.wipo.int/wipolex/en/text/495383",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/14359",
+    notes:
+      "The implementing regulation includes the statutory fee appendix for trademark actions. Catalogued as the regulatory schedule source, not as a claim that every historic numeric amount equals the latest operational service charge.",
+  }),
+  target(IPC_IR, {
+    id: "ir-ipc-industrial-property-act-2024",
+    family: "LEGAL_TEXTS",
+    displayName: "Iran Act on the Protection of Industrial Property 2024",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/23341",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/23341",
+    notes:
+      "Current WIPO Lex main industrial-property law, adopted 12 June 2024, covering trademarks and repealing the 2008 registration act.",
+  }),
+  target(IPC_IR, {
+    id: "ir-ipc-trademark-examination-regulation-pdf",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Iran Trademark Filing and Examination Regulation – Full Text",
+    canonicalUri: "https://www.wipo.int/wipolex/edocs/lexdocs/laws/en/ir/ir026en.pdf",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["PDF"],
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/14359",
+    notes:
+      "Full regulation text covering trademark filing formalities, examination, publication, opposition, registration, renewal and related procedures.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const IPO_PK: Authority = {
+  jurisdiction: "PK",
+  authorityName: "Intellectual Property Organization of Pakistan – Trademarks Office",
+  languages: ["en"],
+  verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/PK",
+};
+
+export const IPO_PK_SOURCE_COVERAGE_TARGETS = [
+  target(IPO_PK, {
+    id: "pk-ipo-trademark-portal",
+    family: "PORTAL",
+    displayName: "IPO-Pakistan Trademark Office Portal",
+    canonicalUri: "http://www.ipo.gov.pk/",
+    verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/contact",
+    notes:
+      "WIPO's current office directory identifies IPO-Pakistan and its Trademarks Office as the competent national administration and ipo.gov.pk as the official website.",
+  }),
+  target(IPO_PK, {
+    id: "pk-ipo-national-trademark-search",
+    family: "SEARCH",
+    displayName: "Pakistan National Trademark Collection in WIPO Global Brand Database",
+    canonicalUri: "https://branddb.wipo.int/en/IPO-PK/quicksearch/results?by=brandName",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/PK",
+    notes:
+      "WIPO's current Pakistan country profile exposes participating national trademark data through the Global Brand Database; retained as a country-scoped search entrypoint.",
+  }),
+  target(IPO_PK, {
+    id: "pk-ipo-trademark-filing-rules",
+    family: "FILING",
+    displayName: "Pakistan Trade Marks Rules 2004 – Filing Procedure",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/3491",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/3491",
+    notes:
+      "Latest trademark implementing rules in WIPO Lex; covers classification, applications, advertisement, registration, renewal, restoration, assignment and proceedings.",
+  }),
+  target(IPO_PK, {
+    id: "pk-ipo-trademark-regulatory-fee-schedule",
+    family: "FEES",
+    displayName: "Pakistan Trade Marks Rules 2004 – First Schedule Fees",
+    canonicalUri: "https://www.wipo.int/wipolex/en/text/129354",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/3491",
+    notes:
+      "The First Schedule in the latest WIPO Lex rules contains statutory trademark fees. Catalogued as the regulatory schedule source rather than a guarantee that every historic figure equals the latest operational e-filing charge.",
+  }),
+  target(IPO_PK, {
+    id: "pk-ipo-trademarks-ordinance-2001",
+    family: "LEGAL_TEXTS",
+    displayName: "Pakistan Trade Marks Ordinance 2001",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/3479",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/3479",
+    notes:
+      "Latest WIPO Lex version of Pakistan's principal trademark statute, Trade Marks Ordinance 2001, including the relationship to the 2020 geographical-indications legislation.",
+  }),
+  target(IPO_PK, {
+    id: "pk-ipo-trademark-examination-rules-fulltext",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Pakistan Trade Marks Rules 2004 – Full Text",
+    canonicalUri: "https://wipolex-res.wipo.int/edocs/lexdocs/laws/en/pk/pk014en.html",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/3491",
+    notes:
+      "Full rules text retained as a separate acquisition target for detailed filing, examination, opposition, renewal, agent and form requirements.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const MOIM_IQ: Authority = {
+  jurisdiction: "IQ",
+  authorityName: "Iraq Ministry of Industry and Minerals – Trademark Registration Directorate",
+  languages: ["ar"],
+  verificationEvidenceUri: "https://ur.gov.iq/index/show-eservice/51439/10058/org",
+};
+
+export const MOIM_IQ_SOURCE_COVERAGE_TARGETS = [
+  target(MOIM_IQ, {
+    id: "iq-moim-industrial-property-platform",
+    family: "PORTAL",
+    displayName: "Iraq Ministry of Industry and Minerals Industrial Platform",
+    canonicalUri: "https://iip.industry.gov.iq/",
+    verificationEvidenceUri: "https://iip.industry.gov.iq/",
+    notes:
+      "Official Ministry of Industry and Minerals platform exposing the national trademark area and describing the registered-mark database.",
+  }),
+  target(MOIM_IQ, {
+    id: "iq-moim-trademark-database",
+    family: "SEARCH",
+    displayName: "Iraq Ministry of Industry Trademark Database",
+    canonicalUri: "https://iip.industry.gov.iq/trademarks",
+    verificationEvidenceUri: "https://iip.industry.gov.iq/",
+    notes:
+      "Official Ministry platform trademark database for registered marks, retained as the public national search surface.",
+  }),
+  target(MOIM_IQ, {
+    id: "iq-ur-trademark-examination-service",
+    family: "FILING",
+    displayName: "Iraq Electronic Trademark Examination Service",
+    canonicalUri: "https://ur.gov.iq/index/show-eservice/51440/10041/cat",
+    verificationEvidenceUri: "https://ur.gov.iq/index/show-eservice/51440/10041/cat",
+    notes:
+      "Current Iraqi Unified Electronic Portal service for trademark examination with electronic payment, including filing prerequisites and registrability conditions.",
+  }),
+  target(MOIM_IQ, {
+    id: "iq-ur-trademark-registration-fees",
+    family: "FEES",
+    displayName: "Iraq Electronic Trademark Registration Service and Fees",
+    canonicalUri: "https://ur.gov.iq/index/show-eservice/51439/10058/org",
+    verificationEvidenceUri: "https://ur.gov.iq/index/show-eservice/51439/10058/org",
+    notes:
+      "Current government service page for Iraqi and foreign trademark registration, including electronic payment, filing steps, timelines and the currently published registration charges.",
+  }),
+  target(MOIM_IQ, {
+    id: "iq-trademark-law-consolidated-2010",
+    family: "LEGAL_TEXTS",
+    displayName: "Iraq Trademark Law No. 21 of 1957 – Consolidated through 2010",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/21933",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/21933",
+    notes:
+      "Latest WIPO Lex consolidated trademark statute, incorporating amendments through Law No. 9 of 2010 and covering the national register, rights, filing, opposition and related actions.",
+  }),
+  target(MOIM_IQ, {
+    id: "iq-trademark-system-regulation-26",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Iraq System No. 26 of 1957 on Trademarks and Trade Names",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/10572",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/10572",
+    notes:
+      "Latest WIPO Lex implementing regulation for the Iraqi trademark law; retained for procedural requirements and the goods-classification table.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -9626,5 +9826,8 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...EIPA_EG_SOURCE_COVERAGE_TARGETS,
   ...ROSPATENT_RU_SOURCE_COVERAGE_TARGETS,
   ...MOJ_UZ_SOURCE_COVERAGE_TARGETS,
+  ...IPC_IR_SOURCE_COVERAGE_TARGETS,
+  ...IPO_PK_SOURCE_COVERAGE_TARGETS,
+  ...MOIM_IQ_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

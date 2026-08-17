@@ -2947,6 +2947,96 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "uz-trademark-filing-examination-rules",
     query: "Uzbekistan trademark filing examination rules registration number 1988",
   },
+  {
+    id: "ir-ipc-intellectual-property-portal-name",
+    targetId: "ir-ipc-intellectual-property-portal",
+    query: "Iran Intellectual Property Center national IP office trademark portal SSAA",
+  },
+  {
+    id: "ir-ipc-national-trademark-search-name",
+    targetId: "ir-ipc-national-trademark-search",
+    query: "Iran national trademark collection Global Brand Database",
+  },
+  {
+    id: "ir-ipc-trademark-filing-regulation-name",
+    targetId: "ir-ipc-trademark-filing-regulation",
+    query: "Iran trademark registration executive regulation filing application procedure",
+  },
+  {
+    id: "ir-ipc-trademark-regulatory-fee-schedule-name",
+    targetId: "ir-ipc-trademark-regulatory-fee-schedule",
+    query: "Iran trademark executive regulation statutory fee schedule registration renewal",
+  },
+  {
+    id: "ir-ipc-industrial-property-act-2024-name",
+    targetId: "ir-ipc-industrial-property-act-2024",
+    query: "Iran Act Protection Industrial Property 2024 trademarks trade names",
+  },
+  {
+    id: "ir-ipc-trademark-examination-regulation-pdf-name",
+    targetId: "ir-ipc-trademark-examination-regulation-pdf",
+    query: "Iran trademark filing examination opposition renewal executive regulation full text",
+  },
+  {
+    id: "pk-ipo-trademark-portal-name",
+    targetId: "pk-ipo-trademark-portal",
+    query: "IPO Pakistan Trademarks Office official portal",
+  },
+  {
+    id: "pk-ipo-national-trademark-search-name",
+    targetId: "pk-ipo-national-trademark-search",
+    query: "Pakistan national trademark collection Global Brand Database",
+  },
+  {
+    id: "pk-ipo-trademark-filing-rules-name",
+    targetId: "pk-ipo-trademark-filing-rules",
+    query: "Pakistan Trade Marks Rules 2004 filing application registration",
+  },
+  {
+    id: "pk-ipo-trademark-regulatory-fee-schedule-name",
+    targetId: "pk-ipo-trademark-regulatory-fee-schedule",
+    query: "Pakistan Trade Marks Rules First Schedule fees filing opposition renewal",
+  },
+  {
+    id: "pk-ipo-trademarks-ordinance-2001-name",
+    targetId: "pk-ipo-trademarks-ordinance-2001",
+    query: "Pakistan Trade Marks Ordinance 2001 trademark law",
+  },
+  {
+    id: "pk-ipo-trademark-examination-rules-fulltext-name",
+    targetId: "pk-ipo-trademark-examination-rules-fulltext",
+    query: "Pakistan Trade Marks Rules examination opposition renewal full text",
+  },
+  {
+    id: "iq-moim-industrial-property-platform-name",
+    targetId: "iq-moim-industrial-property-platform",
+    query: "Iraq Ministry Industry Minerals trademark platform",
+  },
+  {
+    id: "iq-moim-trademark-database-name",
+    targetId: "iq-moim-trademark-database",
+    query: "Iraq Ministry Industry registered trademark database search",
+  },
+  {
+    id: "iq-ur-trademark-examination-service-name",
+    targetId: "iq-ur-trademark-examination-service",
+    query: "Iraq Ur portal trademark examination electronic payment service",
+  },
+  {
+    id: "iq-ur-trademark-registration-fees-name",
+    targetId: "iq-ur-trademark-registration-fees",
+    query: "Iraq electronic trademark registration fees Ministry Industry Ur portal",
+  },
+  {
+    id: "iq-trademark-law-consolidated-2010-name",
+    targetId: "iq-trademark-law-consolidated-2010",
+    query: "Iraq Law 21 1957 trademarks trade names amended Law 9 2010 consolidated",
+  },
+  {
+    id: "iq-trademark-system-regulation-26-name",
+    targetId: "iq-trademark-system-regulation-26",
+    query: "Iraq System 26 1957 trademarks trade names implementing regulation",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
