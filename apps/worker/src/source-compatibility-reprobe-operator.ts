@@ -65,10 +65,7 @@ function parseExecution(value: unknown): SourceCompatibilityReprobeExecutionView
     workspaceId: requiredString(execution.workspaceId, "execution.workspaceId"),
     jurisdiction: requiredString(execution.jurisdiction, "execution.jurisdiction"),
     targetId: requiredString(execution.targetId, "execution.targetId"),
-    executedByActorId: requiredString(
-      execution.executedByActorId,
-      "execution.executedByActorId",
-    ),
+    executedByActorId: requiredString(execution.executedByActorId, "execution.executedByActorId"),
     workerId: requiredString(execution.workerId, "execution.workerId"),
     status,
     observationObservedAt:

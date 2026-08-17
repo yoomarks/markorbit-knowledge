@@ -101,7 +101,10 @@ export function startSourceCompatibilityReprobeExecution(
     clock,
   ).getByIntentId(intent.intentId);
   if (existing) {
-    return new SqliteSourceCompatibilityReprobeExecutionRepository(dependencies.database, clock).start({
+    return new SqliteSourceCompatibilityReprobeExecutionRepository(
+      dependencies.database,
+      clock,
+    ).start({
       intentId: intent.intentId,
       workerId,
       executedByActorId: required(input.executedByActorId, "executedByActorId"),
@@ -118,7 +121,10 @@ export function startSourceCompatibilityReprobeExecution(
     },
     clock,
   );
-  return new SqliteSourceCompatibilityReprobeExecutionRepository(dependencies.database, clock).start({
+  return new SqliteSourceCompatibilityReprobeExecutionRepository(
+    dependencies.database,
+    clock,
+  ).start({
     intentId: intent.intentId,
     workerId,
     executedByActorId: required(input.executedByActorId, "executedByActorId"),

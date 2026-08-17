@@ -63,7 +63,10 @@ export async function POST(request: Request) {
         },
         dependencies,
       );
-      return NextResponse.json({ version: SOURCE_COMPATIBILITY_REPROBE_WORKER_API_VERSION, execution });
+      return NextResponse.json({
+        version: SOURCE_COMPATIBILITY_REPROBE_WORKER_API_VERSION,
+        execution,
+      });
     }
 
     if (operation === "FAIL") {
@@ -77,7 +80,10 @@ export async function POST(request: Request) {
         },
         dependencies,
       );
-      return NextResponse.json({ version: SOURCE_COMPATIBILITY_REPROBE_WORKER_API_VERSION, execution });
+      return NextResponse.json({
+        version: SOURCE_COMPATIBILITY_REPROBE_WORKER_API_VERSION,
+        execution,
+      });
     }
 
     throw new RegistryValidationError("operation must be START, COMPLETE or FAIL");

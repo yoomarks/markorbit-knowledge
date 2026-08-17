@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import {
-  SOURCE_COMPATIBILITY_STATES,
-  type SourceCompatibilityState,
-} from "@markorbit/contracts";
+import { SOURCE_COMPATIBILITY_STATES, type SourceCompatibilityState } from "@markorbit/contracts";
 import { SqliteFoundationalActionIntentRepository } from "./foundational-action-intent-ledger";
 import { RegistryConflictError, RegistryValidationError } from "./index";
 import { ensureSourceCompatibilityObservationRegistry } from "./source-compatibility-observations";
@@ -78,9 +75,7 @@ export function sourceCompatibilityReprobeExecutionId(
   workspaceId: string,
   idempotencyKey: string,
 ): string {
-  const digest = createHash("sha256")
-    .update(`${workspaceId}\u0000${idempotencyKey}`)
-    .digest("hex");
+  const digest = createHash("sha256").update(`${workspaceId}\u0000${idempotencyKey}`).digest("hex");
   return `scrx_${digest.slice(0, 32)}`;
 }
 
@@ -91,9 +86,7 @@ function semanticFingerprint(input: {
   workerId: string;
   executedByActorId: string;
 }): string {
-  return createHash("sha256")
-    .update(JSON.stringify(input))
-    .digest("hex");
+  return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 
 function rowExecution(row: ExecutionRow, replayed = false): SourceCompatibilityReprobeExecution {
@@ -190,7 +183,10 @@ export class SqliteSourceCompatibilityReprobeExecutionRepository {
       .prepare("SELECT * FROM source_compatibility_reprobe_executions WHERE intent_id = ?")
       .get(intent.intentId) as unknown as ExecutionRow | undefined;
     if (byIntent) {
-      if (byIntent.semantic_fingerprint !== fingerprint || byIntent.idempotency_key !== idempotencyKey) {
+      if (
+        byIntent.semantic_fingerprint !== fingerprint ||
+        byIntent.idempotency_key !== idempotencyKey
+      ) {
         throw new RegistryConflictError(
           "SOURCE_COMPATIBILITY_REPROBE_INTENT_ALREADY_EXECUTED",
           "This compatibility re-probe intent is already bound to another execution",
@@ -315,8 +311,7 @@ export class SqliteSourceCompatibilityReprobeExecutionRepository {
           WHERE target_id = ? AND observed_at = ?`,
       )
       .get(execution.targetId, normalizedObservedAt) as
-      | { id: string; state: string; details_json: string }
-      | undefined;
+      { id: string; state: string; details_json: string } | undefined;
     if (!observation || observation.state !== input.state) {
       throw new RegistryConflictError(
         "SOURCE_COMPATIBILITY_REPROBE_OBSERVATION_MISSING",
