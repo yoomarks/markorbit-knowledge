@@ -3,7 +3,7 @@ import {
   evaluateSourceCoverage,
   listSourceCoverageTargets,
 } from "@markorbit/persistence/source-coverage";
-import { SqliteSourceSupplyHealthRepository } from "@markorbit/persistence/source-supply-health";
+import { SqliteCompatibilityAwareSupplyHealthRepository } from "@markorbit/persistence/source-compatibility-supply-health";
 import { listAllWorkspaceSources } from "./source-pagination";
 import {
   getRegistryDatabase,
@@ -14,6 +14,9 @@ import {
 export type SourceCoverageSupplyView = {
   state: "READY" | "DEGRADED" | "BLOCKED";
   freshness: "FRESH" | "STALE" | "UNOBSERVED";
+  compatibility: "PASS" | "DEGRADED" | "BLOCKED" | "UNOBSERVED";
+  compatibilityObservedAt: string | null;
+  compatibilityErrorCode: string | null;
   gaps: string[];
   acquisitionObserved: boolean;
   normalizedAvailable: boolean;
@@ -51,6 +54,9 @@ export type SourceCoverageItemView = {
     degraded: number;
     blocked: number;
     stale: number;
+    compatibilityObserved: number;
+    compatibilityDegraded: number;
+    compatibilityBlocked: number;
     healthyPercent: number | null;
   };
   missingFamilies: string[];
@@ -68,6 +74,7 @@ export type SourceCoverageSnapshot = {
     attentionCount: number;
     fullyHealthyCount: number;
     supplyAttentionCount: number;
+    compatibilityAttentionCount: number;
   };
 };
 
@@ -83,7 +90,7 @@ export function getSourceCoverageSnapshot(
   const discovery = getSourceDiscoveryRepository();
   const sources = listAllWorkspaceSources(repository, workspaceId);
   const targets = listSourceCoverageTargets().filter((target) => target.catalogState !== "RETIRED");
-  const supplyHealth = new SqliteSourceSupplyHealthRepository(getRegistryDatabase()).list({
+  const supplyHealth = new SqliteCompatibilityAwareSupplyHealthRepository(getRegistryDatabase()).list({
     workspaceId,
   });
   const supplyByTargetId = new Map(supplyHealth.items.map((item) => [item.targetId, item]));
@@ -121,6 +128,9 @@ export function getSourceCoverageSnapshot(
         supply: {
           state: health?.state ?? "BLOCKED",
           freshness: health?.freshness.state ?? "UNOBSERVED",
+          compatibility: health?.compatibility?.state ?? "UNOBSERVED",
+          compatibilityObservedAt: health?.compatibility?.observedAt ?? null,
+          compatibilityErrorCode: health?.compatibility?.errorCode ?? null,
           gaps: [...(health?.gaps ?? ["SOURCE_UNREGISTERED"])],
           acquisitionObserved: (health?.acquisition.artifactCount ?? 0) > 0,
           normalizedAvailable: (health?.normalization.readyDocumentCount ?? 0) > 0,
@@ -157,6 +167,15 @@ export function getSourceCoverageSnapshot(
     const degraded = activeTargets.filter((target) => target.supply.state === "DEGRADED").length;
     const blocked = activeTargets.filter((target) => target.supply.state === "BLOCKED").length;
     const stale = activeTargets.filter((target) => target.supply.freshness === "STALE").length;
+    const compatibilityObserved = activeTargets.filter(
+      (target) => target.supply.compatibility !== "UNOBSERVED",
+    ).length;
+    const compatibilityDegraded = activeTargets.filter(
+      (target) => target.supply.compatibility === "DEGRADED",
+    ).length;
+    const compatibilityBlocked = activeTargets.filter(
+      (target) => target.supply.compatibility === "BLOCKED",
+    ).length;
 
     return {
       jurisdiction,
@@ -176,6 +195,9 @@ export function getSourceCoverageSnapshot(
         degraded,
         blocked,
         stale,
+        compatibilityObserved,
+        compatibilityDegraded,
+        compatibilityBlocked,
         healthyPercent: percentage(healthy, activeTargets.length),
       },
       missingFamilies: [...new Set(missing.map((target) => target.family))].sort(),
@@ -201,6 +223,9 @@ export function getSourceCoverageSnapshot(
       ).length,
       supplyAttentionCount: items.filter(
         (item) => item.targetCount > 0 && item.supply.healthy < item.targetCount,
+      ).length,
+      compatibilityAttentionCount: items.filter(
+        (item) => item.supply.compatibilityDegraded + item.supply.compatibilityBlocked > 0,
       ).length,
     },
   };
