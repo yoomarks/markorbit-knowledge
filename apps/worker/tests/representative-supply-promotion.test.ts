@@ -17,7 +17,9 @@ function healthFetch(input: {
   registered?: boolean;
 }) {
   return vi.fn(async (request: string | URL | Request) => {
-    const url = new URL(typeof request === "string" ? request : request instanceof URL ? request : request.url);
+    const url = new URL(
+      typeof request === "string" ? request : request instanceof URL ? request : request.url,
+    );
     const targetId = url.searchParams.get("targetId") ?? "missing-target";
     return jsonResponse({
       items: [
@@ -111,12 +113,14 @@ describe("representative supply promotion", () => {
   });
 
   it("dispatches exactly the explicitly selected representative target when eligible", async () => {
-    const dispatchTarget = vi.fn(async ({ targetId, jurisdiction }: { targetId: string; jurisdiction: string }) => ({
-      targetId,
-      sourceId: `source-${targetId}`,
-      planId: `plan-${targetId}`,
-      runId: `run-${jurisdiction}`,
-    }));
+    const dispatchTarget = vi.fn(
+      async ({ targetId, jurisdiction }: { targetId: string; jurisdiction: string }) => ({
+        targetId,
+        sourceId: `source-${targetId}`,
+        planId: `plan-${targetId}`,
+        runId: `run-${jurisdiction}`,
+      }),
+    );
     const run = await runRepresentativeSupplyPromotionWave({
       baseUrl: "https://knowledge.example.com/",
       workspaceId: "workspace-1",

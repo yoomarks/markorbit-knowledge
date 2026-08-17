@@ -167,10 +167,15 @@ async function loadGate(
     const message = typeof error?.message === "string" ? error.message : `HTTP ${response.status}`;
     throw new Error(`source-supply-health: ${message}`);
   }
-  const items = array(record(payload)?.items).map(record).filter((item): item is JsonRecord => !!item);
+  const items = array(record(payload)?.items)
+    .map(record)
+    .filter((item): item is JsonRecord => !!item);
   const item = items.find((candidate) => candidate.targetId === targetId);
-  if (!item) throw new Error(`Source supply health did not return representative target ${targetId}`);
-  const sourceIds = array(item.sourceIds).filter((value): value is string => typeof value === "string");
+  if (!item)
+    throw new Error(`Source supply health did not return representative target ${targetId}`);
+  const sourceIds = array(item.sourceIds).filter(
+    (value): value is string => typeof value === "string",
+  );
   return evaluateRepresentativeSupplyPromotionGate({
     targetId,
     jurisdiction,
@@ -197,7 +202,9 @@ async function dispatchRepresentativeTarget(input: {
   }
   const run = result.runs.find((candidate) => candidate.targetId === input.targetId);
   if (!run || result.runs.length !== 1) {
-    throw new Error(`${input.targetId} dispatch must create exactly one representative CollectionRun`);
+    throw new Error(
+      `${input.targetId} dispatch must create exactly one representative CollectionRun`,
+    );
   }
   return run;
 }
