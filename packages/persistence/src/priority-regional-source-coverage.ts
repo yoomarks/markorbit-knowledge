@@ -50,8 +50,7 @@ const OAPI_TARGET_BLUEPRINTS: readonly TargetBlueprint[] = [
     family: "SEARCH",
     displayName: "OAPI Trademark Prior-Art Search",
     canonicalUri: "https://oapi.int/proteger-la-pi/recherche-danteriorite/",
-    notes:
-      "Official OAPI identical/similarity search service for product and service trademarks.",
+    notes: "Official OAPI identical/similarity search service for product and service trademarks.",
   },
   {
     key: "trademark-fees",

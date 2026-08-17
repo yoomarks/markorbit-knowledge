@@ -23,9 +23,7 @@ function officialOapiHost(uri: string): boolean {
 describe("priority regional trademark source coverage", () => {
   it("models three OAPI jurisdictions with eighteen unique targets over six shared sources", () => {
     expect(PRIORITY_REGIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(18);
-    expect(new Set(PRIORITY_REGIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(
-      18,
-    );
+    expect(new Set(PRIORITY_REGIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(18);
     expect(
       new Set(PRIORITY_REGIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size,
     ).toBe(6);
@@ -85,9 +83,11 @@ describe("priority regional trademark source coverage", () => {
 
   it("integrates every regional jurisdiction into the version-controlled catalog", () => {
     for (const [jurisdiction, targets] of authoritySets) {
-      expect(listSourceCoverageTargets({ jurisdiction }).map((item) => item.id).sort()).toEqual(
-        targets.map((item) => item.id).sort(),
-      );
+      expect(
+        listSourceCoverageTargets({ jurisdiction })
+          .map((item) => item.id)
+          .sort(),
+      ).toEqual(targets.map((item) => item.id).sort());
     }
   });
 });

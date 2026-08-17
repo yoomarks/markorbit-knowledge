@@ -4030,6 +4030,96 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "cd-industrial-property-law-filing-text",
     query: "DRC industrial property law trademark filing registration",
   },
+  {
+    id: "ci-oapi-portal-name",
+    targetId: "ci-oapi-portal",
+    query: "OAPI regional intellectual property office 17 member states",
+  },
+  {
+    id: "ci-oapi-trademark-filing-name",
+    targetId: "ci-oapi-trademark-filing",
+    query: "OAPI trademark filing electronic application classes payment",
+  },
+  {
+    id: "ci-oapi-trademark-search-name",
+    targetId: "ci-oapi-trademark-search",
+    query: "OAPI trademark prior art identical similarity search",
+  },
+  {
+    id: "ci-oapi-trademark-fees-name",
+    targetId: "ci-oapi-trademark-fees",
+    query: "OAPI product service trademark fee regulations taxes",
+  },
+  {
+    id: "ci-oapi-bangui-agreement-name",
+    targetId: "ci-oapi-bangui-agreement",
+    query: "OAPI Bangui Agreement Annex III product service trademarks",
+  },
+  {
+    id: "ci-oapi-implementing-regulation-name",
+    targetId: "ci-oapi-implementing-regulation",
+    query: "OAPI implementing regulation Bangui Agreement 14 December 2015",
+  },
+  {
+    id: "cm-oapi-portal-name",
+    targetId: "cm-oapi-portal",
+    query: "OAPI regional intellectual property office 17 member states",
+  },
+  {
+    id: "cm-oapi-trademark-filing-name",
+    targetId: "cm-oapi-trademark-filing",
+    query: "OAPI trademark filing electronic application classes payment",
+  },
+  {
+    id: "cm-oapi-trademark-search-name",
+    targetId: "cm-oapi-trademark-search",
+    query: "OAPI trademark prior art identical similarity search",
+  },
+  {
+    id: "cm-oapi-trademark-fees-name",
+    targetId: "cm-oapi-trademark-fees",
+    query: "OAPI product service trademark fee regulations taxes",
+  },
+  {
+    id: "cm-oapi-bangui-agreement-name",
+    targetId: "cm-oapi-bangui-agreement",
+    query: "OAPI Bangui Agreement Annex III product service trademarks",
+  },
+  {
+    id: "cm-oapi-implementing-regulation-name",
+    targetId: "cm-oapi-implementing-regulation",
+    query: "OAPI implementing regulation Bangui Agreement 14 December 2015",
+  },
+  {
+    id: "sn-oapi-portal-name",
+    targetId: "sn-oapi-portal",
+    query: "OAPI regional intellectual property office 17 member states",
+  },
+  {
+    id: "sn-oapi-trademark-filing-name",
+    targetId: "sn-oapi-trademark-filing",
+    query: "OAPI trademark filing electronic application classes payment",
+  },
+  {
+    id: "sn-oapi-trademark-search-name",
+    targetId: "sn-oapi-trademark-search",
+    query: "OAPI trademark prior art identical similarity search",
+  },
+  {
+    id: "sn-oapi-trademark-fees-name",
+    targetId: "sn-oapi-trademark-fees",
+    query: "OAPI product service trademark fee regulations taxes",
+  },
+  {
+    id: "sn-oapi-bangui-agreement-name",
+    targetId: "sn-oapi-bangui-agreement",
+    query: "OAPI Bangui Agreement Annex III product service trademarks",
+  },
+  {
+    id: "sn-oapi-implementing-regulation-name",
+    targetId: "sn-oapi-implementing-regulation",
+    query: "OAPI implementing regulation Bangui Agreement 14 December 2015",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
