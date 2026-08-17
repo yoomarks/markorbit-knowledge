@@ -1,8 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, CheckCircle2, CircleDashed, ShieldAlert } from "lucide-react";
-import { useMemo } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  CircleDashed,
+  RefreshCw,
+  ShieldAlert,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdminI18n } from "@/lib/i18n";
 import {
   buildGlobalSupplyRadarRows,
@@ -12,7 +19,11 @@ import {
 } from "./global-supply-radar-state";
 
 type Props = {
-  items: readonly GlobalSupplyRadarCoverageItem[];
+  workspaceId: string;
+};
+
+type CoverageResponse = {
+  items?: GlobalSupplyRadarCoverageItem[];
 };
 
 const STATUS_RANK: Record<GlobalSupplyRadarStatus, number> = {
@@ -36,9 +47,42 @@ function StatusIcon({ status }: { status: GlobalSupplyRadarStatus }) {
   return <CircleDashed size={15} aria-hidden="true" />;
 }
 
-export function GlobalSupplyRadar({ items }: Props) {
+export function GlobalSupplyRadar({ workspaceId }: Props) {
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
+  const [items, setItems] = useState<GlobalSupplyRadarCoverageItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/sources/coverage?workspaceId=${encodeURIComponent(workspaceId)}`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = (await response.json()) as CoverageResponse;
+      setItems(Array.isArray(payload.items) ? payload.items : []);
+      setError(null);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : zh
+            ? "无法读取全球供应状态"
+            : "Unable to load global supply state",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [workspaceId, zh]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(timer);
+  }, [refresh]);
+
   const rows = useMemo(
     () =>
       buildGlobalSupplyRadarRows(items).sort(
@@ -61,13 +105,32 @@ export function GlobalSupplyRadar({ items }: Props) {
               : "Representative jurisdictions across Catalog → Activated → Healthy. Visibility does not grant write access; status comes from real supply-health data."}
           </p>
         </div>
-        <Link
-          href="/foundationalDiagnostics"
-          className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700"
-        >
-          {zh ? "打开 Advanced" : "Open Advanced"} <ArrowRight size={13} aria-hidden="true" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={loading ? "animate-spin" : ""} aria-hidden="true" />
+            {zh ? "刷新" : "Refresh"}
+          </button>
+          <Link
+            href="/foundationalDiagnostics"
+            className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700"
+          >
+            {zh ? "打开 Advanced" : "Open Advanced"} <ArrowRight size={13} aria-hidden="true" />
+          </Link>
+        </div>
       </div>
+
+      {error ? (
+        <div className="flex items-center gap-2 border-b border-rose-100 bg-rose-50 px-5 py-3 text-xs text-rose-700">
+          <ShieldAlert size={14} aria-hidden="true" />
+          {zh ? "雷达数据加载失败：" : "Radar load failed: "}
+          {error}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-2 border-b border-slate-100 px-5 py-3 text-[11px] font-semibold">
         <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">
