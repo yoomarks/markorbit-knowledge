@@ -60,7 +60,12 @@ function argument(name: string): string | undefined {
     ?.slice(prefix.length);
 }
 
-function boundedInteger(raw: string | undefined, fallback: number, min: number, max: number): number {
+function boundedInteger(
+  raw: string | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
   if (raw === undefined) return fallback;
   const value = Number(raw);
   if (!Number.isSafeInteger(value) || value < min || value > max) {
@@ -74,7 +79,8 @@ function selectedCanaries(): RepresentativeSourceLiveCanary[] {
   const canaries = getRepresentativeSourceLiveCanaries();
   if (!jurisdiction) return canaries;
   const selected = canaries.filter((canary) => canary.jurisdiction === jurisdiction);
-  if (selected.length === 0) throw new Error(`Unknown representative canary jurisdiction ${jurisdiction}`);
+  if (selected.length === 0)
+    throw new Error(`Unknown representative canary jurisdiction ${jurisdiction}`);
   return selected;
 }
 
@@ -130,10 +136,13 @@ async function runSubprocess(
   child.stdin.end(JSON.stringify(request));
 
   const exitCode = await new Promise<number | null>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      reject(new Error(`Crawl4AI canary timed out after ${timeoutSeconds + 30}s`));
-    }, (timeoutSeconds + 30) * 1000);
+    const timer = setTimeout(
+      () => {
+        child.kill("SIGKILL");
+        reject(new Error(`Crawl4AI canary timed out after ${timeoutSeconds + 30}s`));
+      },
+      (timeoutSeconds + 30) * 1000,
+    );
     child.once("error", (error) => {
       clearTimeout(timer);
       reject(error);
@@ -195,11 +204,17 @@ async function observeCanary(
         ...(tail ? { stderrTail: tail } : {}),
       };
     }
-    const artifactKinds = [...new Set(response.artifacts.map((artifact) => artifact.artifactKind))].sort();
-    const finalUris = [...new Set(response.artifacts.map((artifact) => artifact.canonicalUri))].sort();
+    const artifactKinds = [
+      ...new Set(response.artifacts.map((artifact) => artifact.artifactKind)),
+    ].sort();
+    const finalUris = [
+      ...new Set(response.artifacts.map((artifact) => artifact.canonicalUri)),
+    ].sort();
     const hasHtml = artifactKinds.includes("HTML");
     const hasMarkdown = artifactKinds.includes("MARKDOWN");
-    const validHashes = response.artifacts.every((artifact) => /^[a-f0-9]{64}$/u.test(artifact.sha256));
+    const validHashes = response.artifacts.every((artifact) =>
+      /^[a-f0-9]{64}$/u.test(artifact.sha256),
+    );
     const passed = response.artifacts.length >= 2 && hasHtml && hasMarkdown && validHashes;
     return {
       jurisdiction: canary.jurisdiction,
@@ -219,7 +234,8 @@ async function observeCanary(
       ...(!passed
         ? {
             errorCode: "CANARY_EVIDENCE_INCOMPLETE",
-            errorMessage: "Expected governed HTML + MARKDOWN artifacts with valid SHA-256 evidence.",
+            errorMessage:
+              "Expected governed HTML + MARKDOWN artifacts with valid SHA-256 evidence.",
           }
         : {}),
       ...(tail ? { stderrTail: tail } : {}),
@@ -282,7 +298,8 @@ async function main(): Promise<void> {
     15,
     180,
   );
-  const strict = process.argv.includes("--strict") || process.env.MARKORBIT_LIVE_CANARY_STRICT === "1";
+  const strict =
+    process.argv.includes("--strict") || process.env.MARKORBIT_LIVE_CANARY_STRICT === "1";
   const requestedOutput = argument("--output-dir") ?? process.env.MARKORBIT_LIVE_CANARY_OUTPUT_DIR;
   const outputRoot = requestedOutput
     ? requestedOutput
@@ -296,7 +313,9 @@ async function main(): Promise<void> {
     );
     const observation = await observeCanary(canary, outputRoot, timeoutSeconds);
     observations.push(observation);
-    process.stdout.write(`${JSON.stringify({ event: "representative-live-canary.result", ...observation })}\n`);
+    process.stdout.write(
+      `${JSON.stringify({ event: "representative-live-canary.result", ...observation })}\n`,
+    );
   }
 
   const summary = {
@@ -323,6 +342,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });

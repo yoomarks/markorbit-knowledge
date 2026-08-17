@@ -31,7 +31,10 @@ const PROFILE_FAMILY_PREFERENCE: Record<RepresentativeSourceActivationProfile, s
   REGIONAL_OAPI: ["PORTAL", "FILING", "SEARCH"],
 };
 
-function targetRank(target: SourceCoverageTarget, profile: RepresentativeSourceActivationProfile): number {
+function targetRank(
+  target: SourceCoverageTarget,
+  profile: RepresentativeSourceActivationProfile,
+): number {
   const familyIndex = PROFILE_FAMILY_PREFERENCE[profile].indexOf(target.family);
   const familyRank = familyIndex < 0 ? 100 : familyIndex * 10;
   const javascriptBonus =
