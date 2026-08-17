@@ -95,8 +95,7 @@ function collectionRunCount(database: DatabaseSync): number {
     .get();
   if (!table) return 0;
   const row = database.prepare("SELECT COUNT(*) AS count FROM collection_runs").get() as
-    | { count: number }
-    | undefined;
+    { count: number } | undefined;
   return Number(row?.count ?? 0);
 }
 
@@ -112,7 +111,9 @@ function assertCompleted(
     execution.observationState !== expected.state ||
     !execution.observationId
   ) {
-    throw new Error(`EU promotion proof did not complete with the expected observation: ${JSON.stringify(execution)}`);
+    throw new Error(
+      `EU promotion proof did not complete with the expected observation: ${JSON.stringify(execution)}`,
+    );
   }
 }
 
@@ -124,7 +125,9 @@ async function main(): Promise<void> {
 
   const outputRoot = await mkdtemp(join(tmpdir(), "markorbit-eu-compat-promotion-"));
   await runEuCanary(outputRoot);
-  const rawSummary = JSON.parse(await readFile(join(outputRoot, "summary.json"), "utf8")) as unknown;
+  const rawSummary = JSON.parse(
+    await readFile(join(outputRoot, "summary.json"), "utf8"),
+  ) as unknown;
   const filtered = filterRepresentativeCanarySummary(rawSummary, euCanary.targetId);
   const [observationInput] = parseRepresentativeLiveCanarySummary(filtered.summary);
   if (!observationInput || observationInput.jurisdiction !== "EU") {
@@ -173,7 +176,9 @@ async function main(): Promise<void> {
 
     const fakeCollectionRuns = collectionRunCount(database);
     if (fakeCollectionRuns !== 0) {
-      throw new Error(`EU compatibility promotion proof created ${fakeCollectionRuns} CollectionRun records`);
+      throw new Error(
+        `EU compatibility promotion proof created ${fakeCollectionRuns} CollectionRun records`,
+      );
     }
 
     process.stdout.write(
