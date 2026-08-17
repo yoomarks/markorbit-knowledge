@@ -34,9 +34,7 @@ function packageRoot(): string {
 
 async function runCanary(outputRoot: string): Promise<number> {
   const command = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-  const forwarded = process.argv
-    .slice(2)
-    .filter((value) => !value.startsWith("--output-dir="));
+  const forwarded = process.argv.slice(2).filter((value) => !value.startsWith("--output-dir="));
   const child = spawn(
     command,
     [

@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError, bearerCredential, readJson, requireRecord } from "@/server/api-errors";
-import {
-  getRegistryDatabase,
-  getWorkerRegistryRepository,
-} from "@/server/source-registry";
+import { getRegistryDatabase, getWorkerRegistryRepository } from "@/server/source-registry";
 import { recordSourceCompatibilityWorkerIntake } from "@/server/source-compatibility-worker-intake";
 
 export const runtime = "nodejs";
