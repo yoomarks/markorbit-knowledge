@@ -27,11 +27,13 @@ const FULL_CAPABILITIES: readonly FoundationalAdvancedCapability[] = [
   "RETRIEVAL_QUALITY_REMEDIATION",
 ];
 
+// EU FOUNDATIONAL readiness is already business-visible and the underlying read paths are generic,
+// but mutation/re-probe operator paths have not yet been promoted through an EU-specific live run.
+// Keep Advanced EU deliberately read-only until that proof exists.
 const EU_CAPABILITIES: readonly FoundationalAdvancedCapability[] = [
   "READINESS_DIAGNOSTICS",
   "RELEVANCE_AUDIT",
   "SUPPLY_HEALTH",
-  "COMPATIBILITY_REPROBE",
 ];
 
 export function foundationalAdvancedCapabilities(
