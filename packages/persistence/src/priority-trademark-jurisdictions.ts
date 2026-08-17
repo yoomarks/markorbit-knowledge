@@ -25,12 +25,10 @@ export const PRIORITY_TRADEMARK_BANDS = ["P0", "P1", "P2", "P3"] as const;
 export type PriorityTrademarkBand = (typeof PRIORITY_TRADEMARK_BANDS)[number];
 
 export const PRIORITY_TRADEMARK_COVERAGE_STATES = ["CURATED", "TARGET"] as const;
-export type PriorityTrademarkCoverageState =
-  (typeof PRIORITY_TRADEMARK_COVERAGE_STATES)[number];
+export type PriorityTrademarkCoverageState = (typeof PRIORITY_TRADEMARK_COVERAGE_STATES)[number];
 
 export const PRIORITY_TRADEMARK_AUTHORITY_MODELS = ["NATIONAL", "REGIONAL"] as const;
-export type PriorityTrademarkAuthorityModel =
-  (typeof PRIORITY_TRADEMARK_AUTHORITY_MODELS)[number];
+export type PriorityTrademarkAuthorityModel = (typeof PRIORITY_TRADEMARK_AUTHORITY_MODELS)[number];
 
 export type PriorityTrademarkJurisdiction = {
   rank: number;
