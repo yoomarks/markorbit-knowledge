@@ -9821,6 +9821,299 @@ export const BOIP_BE_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const DPPI_AL: Authority = {
+  jurisdiction: "AL",
+  authorityName: "General Directorate of Industrial Property of Albania (DPPI)",
+  languages: ["sq", "en"],
+  verificationEvidenceUri: "https://dppi.gov.al/en/",
+};
+
+export const DPPI_AL_SOURCE_COVERAGE_TARGETS = [
+  target(DPPI_AL, {
+    id: "al-dppi-industrial-property-portal",
+    family: "PORTAL",
+    displayName: "Albania DPPI Industrial Property Portal",
+    canonicalUri: "https://dppi.gov.al/en/",
+    verificationEvidenceUri: "https://dppi.gov.al/en/",
+  }),
+  target(DPPI_AL, {
+    id: "al-dppi-trademark-filing-guidance",
+    family: "FILING",
+    displayName: "Albania Trademark and Service Mark Filing Guidance",
+    canonicalUri: "https://dppi.gov.al/en/markat-tregtare-dhe-te-sherbimit/",
+    verificationEvidenceUri: "https://dppi.gov.al/en/markat-tregtare-dhe-te-sherbimit/",
+    notes:
+      "Official DPPI trademark guidance covering application documents, filing route and links to the applicable fee materials.",
+  }),
+  target(DPPI_AL, {
+    id: "al-dppi-industrial-property-register",
+    family: "SEARCH",
+    displayName: "Albania Public Industrial Property Register",
+    canonicalUri: "https://regjistriobjektevepi.dppi.gov.al/TreguesGjeo/TreguesGjeo",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://dppi.gov.al/en/markat-tregtare-dhe-te-sherbimit/",
+    notes:
+      "DPPI public registry surface used to search registered industrial-property objects, including trademarks.",
+  }),
+  target(DPPI_AL, {
+    id: "al-dppi-industrial-property-fees-decision-883",
+    family: "FEES",
+    displayName: "Albania Industrial Property Registration Fees – Decision No. 883",
+    canonicalUri:
+      "https://dppi.gov.al/en/vendim-nr-883-date-13-5-2009-per-miratimin-e-tarifave-per-regjistrimin-e-objekteve-te-pronesise-industriale/",
+    verificationEvidenceUri:
+      "https://dppi.gov.al/en/vendim-nr-883-date-13-5-2009-per-miratimin-e-tarifave-per-regjistrimin-e-objekteve-te-pronesise-industriale/",
+    notes:
+      "Official DPPI fee-decision surface retained as the authority tariff source; Knowledge does not copy numeric fees into metadata.",
+  }),
+  target(DPPI_AL, {
+    id: "al-dppi-current-national-ip-legislation",
+    family: "LEGAL_TEXTS",
+    displayName: "Albania Current National Industrial Property Legislation",
+    canonicalUri: "https://dppi.gov.al/en/legjislacioni-kombetar/",
+    verificationEvidenceUri: "https://dppi.gov.al/en/legjislacioni-kombetar/",
+    notes:
+      "DPPI's current national-legislation index, which lists Law No. 52/2025 on Trademarks as the current trademark-specific statute alongside implementing materials.",
+  }),
+  target(DPPI_AL, {
+    id: "al-dppi-trademark-regulation-decision-315",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Albania Trademark Regulation – Decision No. 315",
+    canonicalUri:
+      "https://dppi.gov.al/en/vendim-nr-315-date-31-5-2018-per-miratimin-e-rregullores-per-markat/",
+    verificationEvidenceUri:
+      "https://dppi.gov.al/en/vendim-nr-315-date-31-5-2018-per-miratimin-e-rregullores-per-markat/",
+    notes:
+      "Official DPPI trademark-regulation source still carried in the current national legislation collection; retained for procedural acquisition while post-2025 implementing updates are monitored separately.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const IPR_BA: Authority = {
+  jurisdiction: "BA",
+  authorityName: "Institute for Intellectual Property of Bosnia and Herzegovina",
+  languages: ["bs", "hr", "sr", "en"],
+  verificationEvidenceUri: "https://www.ipr.gov.ba/en",
+};
+
+export const IPR_BA_SOURCE_COVERAGE_TARGETS = [
+  target(IPR_BA, {
+    id: "ba-ipr-trademark-portal",
+    family: "PORTAL",
+    displayName: "Bosnia and Herzegovina Trademark Portal",
+    canonicalUri: "https://www.ipr.gov.ba/en/intellectual-property/trademark",
+    verificationEvidenceUri: "https://www.ipr.gov.ba/en/intellectual-property/trademark",
+  }),
+  target(IPR_BA, {
+    id: "ba-ipr-trademark-protection-procedure",
+    family: "FILING",
+    displayName: "Bosnia and Herzegovina Trademark Protection Procedure",
+    canonicalUri:
+      "https://www.ipr.gov.ba/en/intellectual-property/trademark/trademark-protection-procedure-in-bih",
+    verificationEvidenceUri:
+      "https://www.ipr.gov.ba/en/intellectual-property/trademark/trademark-protection-procedure-in-bih",
+    notes:
+      "Official Institute filing guidance covering application contents, filing channels, Nice classification and proof of fee payment.",
+  }),
+  target(IPR_BA, {
+    id: "ba-ipr-national-trademark-register",
+    family: "SEARCH",
+    displayName: "Bosnia and Herzegovina E-Register of National Trademarks",
+    canonicalUri: "https://www.ipr.gov.ba/en/e-usluge/e-register-of-national-trademarks",
+    entrypoints: [
+      {
+        uri: "https://www.ipr.gov.ba/en/e-usluge/e-register-of-national-trademarks",
+        label: "Register guidance",
+      },
+      { uri: "http://reg.ipr.gov.ba/", label: "National trademark register" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.ipr.gov.ba/en/e-usluge/e-register-of-national-trademarks",
+    notes:
+      "Official Institute page states that the national trademark register is updated daily and links the live registry application.",
+  }),
+  target(IPR_BA, {
+    id: "ba-ipr-trademark-fees-payments",
+    family: "FEES",
+    displayName: "Bosnia and Herzegovina IP Fees and Payment Notice",
+    canonicalUri:
+      "https://www.ipr.gov.ba/en/finance-and-accounting/fees-and-costs/notice-of-payments-to-the-institute",
+    verificationEvidenceUri:
+      "https://www.ipr.gov.ba/en/finance-and-accounting/fees-and-costs/notice-of-payments-to-the-institute",
+    notes:
+      "Official Institute payment/fees surface used for industrial-property procedures; live amounts remain at source rather than being duplicated in Knowledge.",
+  }),
+  target(IPR_BA, {
+    id: "ba-ipr-trademark-law-index",
+    family: "LEGAL_TEXTS",
+    displayName: "Bosnia and Herzegovina Trademark Law and Regulations Index",
+    canonicalUri: "https://www.ipr.gov.ba/en/legal-regulations/laws-and-regulations-in-bih",
+    verificationEvidenceUri:
+      "https://www.ipr.gov.ba/en/legal-regulations/laws-and-regulations-in-bih",
+    notes:
+      "Current Institute legal index publishing the Law on Trademarks and links to trademark bylaws in the official local languages.",
+  }),
+  target(IPR_BA, {
+    id: "ba-ipr-trademark-procedure-faq",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Bosnia and Herzegovina Trademark Procedure FAQ",
+    canonicalUri: "https://www.ipr.gov.ba/bs/intelektualno-vlasnistvo/zig/najcesca-pitanja-o-zigu",
+    verificationEvidenceUri:
+      "https://www.ipr.gov.ba/bs/intelektualno-vlasnistvo/zig/najcesca-pitanja-o-zigu",
+    notes:
+      "Detailed official procedural guidance covering competence, filing, formal examination, publication, registration, fees, representation and ten-year renewal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const SOIP_MK: Authority = {
+  jurisdiction: "MK",
+  authorityName: "State Office of Industrial Property of the Republic of North Macedonia",
+  languages: ["mk", "en"],
+  verificationEvidenceUri: "https://ippo.gov.mk/EN/Index_en.aspx",
+};
+
+export const SOIP_MK_SOURCE_COVERAGE_TARGETS = [
+  target(SOIP_MK, {
+    id: "mk-soip-industrial-property-portal",
+    family: "PORTAL",
+    displayName: "North Macedonia State Office of Industrial Property Portal",
+    canonicalUri: "https://ippo.gov.mk/EN/Index_en.aspx",
+    verificationEvidenceUri: "https://ippo.gov.mk/EN/Index_en.aspx",
+    notes:
+      "Current SOIP portal exposes national trademark databases, 2026 journals and online service entrypoints.",
+  }),
+  target(SOIP_MK, {
+    id: "mk-soip-trademark-application-requirements",
+    family: "FILING",
+    displayName: "North Macedonia Trademark Application Requirements",
+    canonicalUri: "https://www.ippo.gov.mk/en/TradeMarks.aspx?ln=EN&sid=30",
+    verificationEvidenceUri: "https://www.ippo.gov.mk/en/TradeMarks.aspx?ln=EN&sid=30",
+    notes:
+      "Official SOIP guidance listing the mandatory contents of a national trademark application and Nice-classified goods/services list.",
+  }),
+  target(SOIP_MK, {
+    id: "mk-soip-trademark-database",
+    family: "SEARCH",
+    displayName: "North Macedonia Online Trademark Database",
+    canonicalUri: "https://ippo.gov.mk/Search/TrademarkSearch.aspx",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://ippo.gov.mk/EN/Services.aspx",
+    notes:
+      "SOIP public national trademark database supporting searches by mark, application number, owner and other registry fields.",
+  }),
+  target(SOIP_MK, {
+    id: "mk-soip-trademark-filing-fees",
+    family: "FEES",
+    displayName: "North Macedonia Trademark Application Fee Instructions",
+    canonicalUri: "https://www.ippo.gov.mk/mk/TrgovskiMarki.aspx?ln=MK&sid=1265",
+    verificationEvidenceUri: "https://www.ippo.gov.mk/mk/TrgovskiMarki.aspx?ln=MK&sid=1265",
+    notes:
+      "Official SOIP trademark filing-payment instructions; live fee information remains sourced from the office page rather than copied into Knowledge.",
+  }),
+  target(SOIP_MK, {
+    id: "mk-soip-industrial-property-legislation",
+    family: "LEGAL_TEXTS",
+    displayName: "North Macedonia Industrial Property Legislation",
+    canonicalUri: "https://ippo.gov.mk/EN/Legislation.aspx",
+    verificationEvidenceUri: "https://ippo.gov.mk/EN/Legislation.aspx",
+    notes:
+      "Official SOIP legislation collection containing industrial-property law and the administrative-fee tariff materials applicable to trademarks.",
+  }),
+  target(SOIP_MK, {
+    id: "mk-soip-trademark-examination-procedure",
+    family: "EXAMINATION_MANUAL",
+    displayName: "North Macedonia Trademark Examination and Registration Procedure",
+    canonicalUri: "https://ippo.gov.mk/EN/TradeMarks.aspx?ln=EN&sid=225",
+    verificationEvidenceUri: "https://ippo.gov.mk/EN/TradeMarks.aspx?ln=EN&sid=225",
+    notes:
+      "Official SOIP procedure covering formal/substantive examination, publication, the three-month opposition period and registration.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const NCIP_BY: Authority = {
+  jurisdiction: "BY",
+  authorityName: "National Center of Intellectual Property of the Republic of Belarus (NCIP)",
+  languages: ["ru", "be"],
+  verificationEvidenceUri: "https://www.ncip.by/",
+};
+
+export const NCIP_BY_SOURCE_COVERAGE_TARGETS = [
+  target(NCIP_BY, {
+    id: "by-ncip-trademark-portal",
+    family: "PORTAL",
+    displayName: "Belarus NCIP Trademark Portal",
+    canonicalUri: "https://www.ncip.by/promyshlennaya-sobstvennost/obekty/tovarnye-znaki/",
+    verificationEvidenceUri: "https://www.ncip.by/",
+    notes:
+      "Current NCIP trademark hub linking national registration, database, well-known marks and methodological guidance.",
+  }),
+  target(NCIP_BY, {
+    id: "by-ncip-electronic-industrial-property-filing",
+    family: "FILING",
+    displayName: "Belarus Electronic Industrial Property Filing",
+    canonicalUri:
+      "https://www.ncip.by/o-centre/elektronnaya-podacha-zayavki-na-obekty-promyshlennoy-sobstvennosti/",
+    verificationEvidenceUri:
+      "https://www.ncip.by/o-centre/elektronnaya-podacha-zayavki-na-obekty-promyshlennoy-sobstvennosti/",
+    notes:
+      "NCIP's current 2026 filing guidance routes new electronic industrial-property applications through the E-Pasluga unified e-services portal and gives a dedicated trademark-filing contact.",
+  }),
+  target(NCIP_BY, {
+    id: "by-ncip-industrial-property-database",
+    family: "SEARCH",
+    displayName: "Belarus NCIP Industrial Property Database",
+    canonicalUri: "https://www.ncip.by/promyshlennaya-sobstvennost/bazy-dannyh/",
+    entrypoints: [
+      {
+        uri: "https://www.ncip.by/promyshlennaya-sobstvennost/bazy-dannyh/",
+        label: "Database guidance",
+      },
+      { uri: "https://search.ncip.by/", label: "NCIP registry search" },
+    ],
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.ncip.by/promyshlennaya-sobstvennost/bazy-dannyh/",
+    notes:
+      "NCIP states that this database is generated from Belarus state industrial-property registers and refreshed daily.",
+  }),
+  target(NCIP_BY, {
+    id: "by-ncip-patent-duty-calculator",
+    family: "FEES",
+    displayName: "Belarus NCIP Patent Duty Calculator",
+    canonicalUri: "https://search.ncip.by/calculator/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://www.ncip.by/",
+    notes:
+      "Official NCIP live patent-duty calculator linked from the NCIP homepage and used for legally significant industrial-property actions, including trademark procedures.",
+  }),
+  target(NCIP_BY, {
+    id: "by-ncip-current-trademark-legislation",
+    family: "LEGAL_TEXTS",
+    displayName: "Belarus Current Trademark and Industrial Property Legislation",
+    canonicalUri: "https://www.ncip.by/zakonodatelstvo/promyshlennaya-sobstvennost/",
+    verificationEvidenceUri: "https://www.ncip.by/zakonodatelstvo/promyshlennaya-sobstvennost/",
+    notes:
+      "Current NCIP legislation index linking the Trademark and Service Mark Law, patent-duty chapter of the Tax Code, registration regulation and appeal rules.",
+  }),
+  target(NCIP_BY, {
+    id: "by-ncip-trademark-registration-regulation-1719",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Belarus Trademark Registration Regulation No. 1719 – Current 2023 Version",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/22310",
+    verificationEvidenceUri: "https://www.ncip.by/zakonodatelstvo/promyshlennaya-sobstvennost/",
+    notes:
+      "Current consolidated registration regulation amended through Resolution No. 493 of 28 July 2023 and effective with the 2023 trademark-law changes.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -9972,5 +10265,9 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...MOIM_IQ_SOURCE_COVERAGE_TARGETS,
   ...BOIP_NL_SOURCE_COVERAGE_TARGETS,
   ...BOIP_BE_SOURCE_COVERAGE_TARGETS,
+  ...DPPI_AL_SOURCE_COVERAGE_TARGETS,
+  ...IPR_BA_SOURCE_COVERAGE_TARGETS,
+  ...SOIP_MK_SOURCE_COVERAGE_TARGETS,
+  ...NCIP_BY_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

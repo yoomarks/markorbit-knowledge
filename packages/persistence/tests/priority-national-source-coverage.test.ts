@@ -81,6 +81,10 @@ import {
   MOIM_IQ_SOURCE_COVERAGE_TARGETS,
   BOIP_NL_SOURCE_COVERAGE_TARGETS,
   BOIP_BE_SOURCE_COVERAGE_TARGETS,
+  DPPI_AL_SOURCE_COVERAGE_TARGETS,
+  IPR_BA_SOURCE_COVERAGE_TARGETS,
+  SOIP_MK_SOURCE_COVERAGE_TARGETS,
+  NCIP_BY_SOURCE_COVERAGE_TARGETS,
   IPOS_SOURCE_COVERAGE_TARGETS,
   JPO_SOURCE_COVERAGE_TARGETS,
   KOREA_SOURCE_COVERAGE_TARGETS,
@@ -174,6 +178,10 @@ const authoritySets = [
   ["IQ", MOIM_IQ_SOURCE_COVERAGE_TARGETS, ["industry.gov.iq", "ur.gov.iq", "wipo.int"]],
   ["NL", BOIP_NL_SOURCE_COVERAGE_TARGETS, ["boip.int", "wipo.int"]],
   ["BE", BOIP_BE_SOURCE_COVERAGE_TARGETS, ["boip.int", "wipo.int"]],
+  ["AL", DPPI_AL_SOURCE_COVERAGE_TARGETS, ["dppi.gov.al"]],
+  ["BA", IPR_BA_SOURCE_COVERAGE_TARGETS, ["ipr.gov.ba"]],
+  ["MK", SOIP_MK_SOURCE_COVERAGE_TARGETS, ["ippo.gov.mk"]],
+  ["BY", NCIP_BY_SOURCE_COVERAGE_TARGETS, ["ncip.by", "wipo.int"]],
   ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],
 ] as const;
 
@@ -183,14 +191,14 @@ function officialHost(uri: string, suffixes: readonly string[]): boolean {
 }
 
 describe("priority national trademark source coverage", () => {
-  it("ships explicit, official, unique coverage for eighty-five priority national offices", () => {
-    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(675);
+  it("ships explicit, official, unique coverage for eighty-nine priority national offices", () => {
+    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(699);
     expect(new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(
-      675,
+      699,
     );
     expect(
       new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size,
-    ).toBe(675);
+    ).toBe(699);
 
     for (const [jurisdiction, targets, officialSuffixes] of authoritySets) {
       expect(targets.length).toBeGreaterThanOrEqual(5);

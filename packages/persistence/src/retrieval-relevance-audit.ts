@@ -3099,6 +3099,127 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "be-benelux-convention-fulltext",
     query: "Benelux Convention intellectual property full text Belgium trademarks BOIP",
   },
+  {
+    id: "al-dppi-industrial-property-portal-name",
+    targetId: "al-dppi-industrial-property-portal",
+    query: "Albania DPPI industrial property trademark portal",
+  },
+  {
+    id: "al-dppi-trademark-filing-guidance-name",
+    targetId: "al-dppi-trademark-filing-guidance",
+    query: "Albania DPPI trademark service mark application filing documents",
+  },
+  {
+    id: "al-dppi-industrial-property-register-name",
+    targetId: "al-dppi-industrial-property-register",
+    query: "Albania DPPI public trademark industrial property register search",
+  },
+  {
+    id: "al-dppi-industrial-property-fees-decision-883-name",
+    targetId: "al-dppi-industrial-property-fees-decision-883",
+    query: "Albania Decision 883 industrial property trademark registration fees DPPI",
+  },
+  {
+    id: "al-dppi-current-national-ip-legislation-name",
+    targetId: "al-dppi-current-national-ip-legislation",
+    query: "Albania Law 52 2025 trademarks current national legislation DPPI",
+  },
+  {
+    id: "al-dppi-trademark-regulation-decision-315-name",
+    targetId: "al-dppi-trademark-regulation-decision-315",
+    query: "Albania Decision 315 2018 trademark regulation DPPI",
+  },
+  {
+    id: "ba-ipr-trademark-portal-name",
+    targetId: "ba-ipr-trademark-portal",
+    query: "Bosnia Herzegovina Institute Intellectual Property trademark portal",
+  },
+  {
+    id: "ba-ipr-trademark-protection-procedure-name",
+    targetId: "ba-ipr-trademark-protection-procedure",
+    query:
+      "Bosnia Herzegovina trademark protection procedure application filing Nice classification",
+  },
+  {
+    id: "ba-ipr-national-trademark-register-name",
+    targetId: "ba-ipr-national-trademark-register",
+    query: "Bosnia Herzegovina e-register national trademarks daily updated",
+  },
+  {
+    id: "ba-ipr-trademark-fees-payments-name",
+    targetId: "ba-ipr-trademark-fees-payments",
+    query: "Bosnia Herzegovina trademark fees costs payment Institute intellectual property",
+  },
+  {
+    id: "ba-ipr-trademark-law-index-name",
+    targetId: "ba-ipr-trademark-law-index",
+    query: "Bosnia Herzegovina Law on Trademarks regulations Institute",
+  },
+  {
+    id: "ba-ipr-trademark-procedure-faq-name",
+    targetId: "ba-ipr-trademark-procedure-faq",
+    query: "Bosnia trademark procedure formal examination publication registration renewal FAQ",
+  },
+  {
+    id: "mk-soip-industrial-property-portal-name",
+    targetId: "mk-soip-industrial-property-portal",
+    query: "North Macedonia State Office Industrial Property trademark portal",
+  },
+  {
+    id: "mk-soip-trademark-application-requirements-name",
+    targetId: "mk-soip-trademark-application-requirements",
+    query: "North Macedonia trademark application requirements goods services SOIP",
+  },
+  {
+    id: "mk-soip-trademark-database-name",
+    targetId: "mk-soip-trademark-database",
+    query: "North Macedonia SOIP online trademark database search",
+  },
+  {
+    id: "mk-soip-trademark-filing-fees-name",
+    targetId: "mk-soip-trademark-filing-fees",
+    query: "North Macedonia trademark application fees SOIP payment",
+  },
+  {
+    id: "mk-soip-industrial-property-legislation-name",
+    targetId: "mk-soip-industrial-property-legislation",
+    query: "North Macedonia industrial property law trademark legislation administrative fees SOIP",
+  },
+  {
+    id: "mk-soip-trademark-examination-procedure-name",
+    targetId: "mk-soip-trademark-examination-procedure",
+    query: "North Macedonia trademark examination publication opposition registration procedure",
+  },
+  {
+    id: "by-ncip-trademark-portal-name",
+    targetId: "by-ncip-trademark-portal",
+    query: "Belarus NCIP trademark service mark registration portal",
+  },
+  {
+    id: "by-ncip-electronic-industrial-property-filing-name",
+    targetId: "by-ncip-electronic-industrial-property-filing",
+    query: "Belarus NCIP electronic trademark application E Pasluga filing 2026",
+  },
+  {
+    id: "by-ncip-industrial-property-database-name",
+    targetId: "by-ncip-industrial-property-database",
+    query: "Belarus NCIP industrial property trademark database daily register search",
+  },
+  {
+    id: "by-ncip-patent-duty-calculator-name",
+    targetId: "by-ncip-patent-duty-calculator",
+    query: "Belarus NCIP patent duty calculator trademark fees",
+  },
+  {
+    id: "by-ncip-current-trademark-legislation-name",
+    targetId: "by-ncip-current-trademark-legislation",
+    query: "Belarus current trademark law patent duties NCIP legislation 2023",
+  },
+  {
+    id: "by-ncip-trademark-registration-regulation-1719-name",
+    targetId: "by-ncip-trademark-registration-regulation-1719",
+    query: "Belarus Resolution 1719 trademark registration regulation amended 2023",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
