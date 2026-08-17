@@ -8713,6 +8713,114 @@ export const COPAT_AZ_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IPO_NG: Authority = {
+  jurisdiction: "NG",
+  authorityName:
+    "Intellectual Property Office Nigeria – Trademark Registry, Federal Ministry of Industry, Trade and Investment",
+  languages: ["en"],
+  verificationEvidenceUri: "https://iponigeria.fmiti.gov.ng/",
+};
+
+export const IPO_NG_SOURCE_COVERAGE_TARGETS = [
+  target(IPO_NG, {
+    id: "ng-ipo-trademark-portal",
+    family: "PORTAL",
+    displayName: "IPO Nigeria Trademark Portal",
+    canonicalUri: "https://iponigeria.fmiti.gov.ng/",
+    verificationEvidenceUri: "https://iponigeria.fmiti.gov.ng/about/",
+    notes:
+      "Current official FMITI Commercial Law Department digital platform for Nigerian trademarks, patents and industrial designs, linking filing, search, publications and post-registration services.",
+  }),
+  target(IPO_NG, {
+    id: "ng-ipo-trademark-filing",
+    family: "FILING",
+    displayName: "IPO Nigeria Online Filing Portal",
+    canonicalUri: "https://portal.iponigeria.com/auth/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://iponigeria.fmiti.gov.ng/",
+    notes:
+      "Official transactional portal used to register IP rights, including new trademark applications, with authenticated filing and online payment workflows.",
+  }),
+  target(IPO_NG, {
+    id: "ng-ipo-trademark-search",
+    family: "SEARCH",
+    displayName: "IPO Nigeria Trademark File and Status Search",
+    canonicalUri: "https://portal.iponigeria.com/files/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://iponigeria.fmiti.gov.ng/",
+    notes:
+      "Official portal file search with advanced-search support and file ID, status, title, type and class fields; complements the availability-search workflow linked by IPO Nigeria.",
+  }),
+  target(IPO_NG, {
+    id: "ng-ipo-trademark-fees",
+    family: "FEES",
+    displayName: "IPO Nigeria Trademark Services and Fees",
+    canonicalUri: "https://iponigeria.fmiti.gov.ng/services-fees/",
+    verificationEvidenceUri: "https://iponigeria.fmiti.gov.ng/services-fees/",
+    notes:
+      "Current official services-and-fees table covering availability search, registration, certificate, renewal, late renewal, appeal, opposition, status reports, recordals and certified copies.",
+  }),
+  target(IPO_NG, {
+    id: "ng-ipo-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "IPO Nigeria Trademark Classification Guidance",
+    canonicalUri: "https://iponigeria.fmiti.gov.ng/faqs/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verificationEvidenceUri: "https://iponigeria.fmiti.gov.ng/faqs/",
+    notes:
+      "Official trademark FAQ states the Nigerian 45-class structure, with classes 1–34 for goods and 35–45 for services, and links the Office's trademark class guide.",
+  }),
+  target(IPO_NG, {
+    id: "ng-ipo-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Nigeria Trademarks Act and Regulations",
+    canonicalUri: "https://iponigeria.fmiti.gov.ng/resources/acts-regulations/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://iponigeria.fmiti.gov.ng/resources/acts-regulations/",
+    notes:
+      "Official IPO Nigeria legal-resources page publishing the Trademarks Act and related IP legislation governing registration and protection.",
+  }),
+  target(IPO_NG, {
+    id: "ng-ipo-trademark-opposition",
+    family: "PROCEEDINGS",
+    displayName: "IPO Nigeria Trademark Opposition",
+    canonicalUri: "https://portal.iponigeria.com/home/opposition/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://iponigeria.fmiti.gov.ng/",
+    notes:
+      "Official opposition workspace for published trademark applications, linked by the IPO Nigeria public portal and supported by the current services-and-fees table.",
+  }),
+  target(IPO_NG, {
+    id: "ng-ipo-trademark-maintenance",
+    family: "MAINTENANCE",
+    displayName: "IPO Nigeria Trademark Renewal and Post-registration Services",
+    canonicalUri: "https://iponigeria.fmiti.gov.ng/services/",
+    verificationEvidenceUri: "https://iponigeria.fmiti.gov.ng/services/",
+    notes:
+      "Official trademark services page covering renewals and post-registration recordals including registered user, merger, assignment and applicant name/address changes.",
+  }),
+  target(IPO_NG, {
+    id: "ng-ipo-trademark-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "IPO Nigeria Trademark Publication Journal",
+    canonicalUri: "https://iponigeria.fmiti.gov.ng/resources/trademark-journal/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://iponigeria.fmiti.gov.ng/resources/trademark-journal/",
+    notes:
+      "Official year-selectable Trademark Publication Journal surface; retained as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -8850,5 +8958,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...AGEPI_MD_SOURCE_COVERAGE_TARGETS,
   ...AIPO_AM_SOURCE_COVERAGE_TARGETS,
   ...COPAT_AZ_SOURCE_COVERAGE_TARGETS,
+  ...IPO_NG_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

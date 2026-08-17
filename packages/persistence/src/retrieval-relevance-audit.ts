@@ -2654,6 +2654,46 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "az-copat-trademark-renewal",
     query: "əmtəə nişanı qeydiyyat müddətinin növbəti 10 il uzadılması",
   },
+  {
+    id: "ng-ipo-trademark-portal-name",
+    targetId: "ng-ipo-trademark-portal",
+    query: "IPO Nigeria Trademark Registry Federal Ministry Industry Trade Investment",
+  },
+  {
+    id: "ng-ipo-trademark-filing-name",
+    targetId: "ng-ipo-trademark-filing",
+    query: "Nigeria online trademark application filing register IP rights",
+  },
+  {
+    id: "ng-ipo-trademark-search-name",
+    targetId: "ng-ipo-trademark-search",
+    query: "Nigeria trademark file status search class title file ID",
+  },
+  {
+    id: "ng-ipo-trademark-fees-name",
+    targetId: "ng-ipo-trademark-fees",
+    query: "Nigeria trademark availability search registration renewal opposition fees",
+  },
+  {
+    id: "ng-ipo-trademark-classification-name",
+    targetId: "ng-ipo-trademark-classification",
+    query: "Nigeria trademark 45 classes goods services classification",
+  },
+  {
+    id: "ng-ipo-trademark-legal-texts-name",
+    targetId: "ng-ipo-trademark-legal-texts",
+    query: "Nigeria Trademarks Act regulations official",
+  },
+  {
+    id: "ng-ipo-trademark-opposition-name",
+    targetId: "ng-ipo-trademark-opposition",
+    query: "Nigeria trademark opposition published application",
+  },
+  {
+    id: "ng-ipo-trademark-maintenance-name",
+    targetId: "ng-ipo-trademark-maintenance",
+    query: "Nigeria trademark renewal assignment recordal change applicant name address",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
