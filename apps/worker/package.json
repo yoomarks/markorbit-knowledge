@@ -14,6 +14,7 @@
     "bootstrap:coverage": "tsx src/bootstrap-source-coverage.ts",
     "canary:representative": "tsx src/run-representative-live-canaries.ts",
     "canary:representative:recorded": "tsx src/run-recorded-representative-live-canaries.ts",
+    "operate:compatibility-reprobe": "tsx src/operate-source-compatibility-reprobe.ts",
     "operate:foundational": "tsx src/operate-foundational.ts",
     "operate:foundational:us": "tsx src/operate-us-foundational.ts",
     "verify:uspto": "tsx src/verify-uspto-golden-source.ts",
