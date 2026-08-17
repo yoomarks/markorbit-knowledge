@@ -54,16 +54,14 @@ describe("representative supply proof", () => {
   });
 
   it("verifies the full representative wave read-only", async () => {
-    const fetchMock = vi.fn(
-      async (request: string | URL | Request, init?: RequestInit) => {
-        void init;
-        const url = new URL(
-          typeof request === "string" ? request : request instanceof URL ? request : request.url,
-        );
-        const targetId = url.searchParams.get("targetId") ?? "missing";
-        return jsonResponse({ items: [healthyRecord(targetId)] });
-      },
-    );
+    const fetchMock = vi.fn(async (request: string | URL | Request, init?: RequestInit) => {
+      void init;
+      const url = new URL(
+        typeof request === "string" ? request : request instanceof URL ? request : request.url,
+      );
+      const targetId = url.searchParams.get("targetId") ?? "missing";
+      return jsonResponse({ items: [healthyRecord(targetId)] });
+    });
     const fetchImpl = fetchMock as unknown as typeof fetch;
 
     const proof = await runRepresentativeSupplyProof({
