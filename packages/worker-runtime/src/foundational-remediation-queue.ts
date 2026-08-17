@@ -4,7 +4,7 @@ import type {
   FoundationalReadinessTarget,
 } from "./foundational-readiness";
 
-export const FOUNDATIONAL_REMEDIATION_QUEUE_PROTOCOL_VERSION = "1.0" as const;
+export const FOUNDATIONAL_REMEDIATION_QUEUE_PROTOCOL_VERSION = "1.1" as const;
 
 export type FoundationalRemediationActionCode =
   | "REGISTER_SOURCE"
@@ -18,6 +18,7 @@ export type FoundationalRemediationActionCode =
   | "REVIEW_SOURCE_FILTERED_RETRIEVAL"
   | "REVIEW_GLOBAL_RETRIEVAL_RANKING"
   | "REVIEW_RELEVANCE_AUDIT"
+  | "REPROBE_SOURCE_COMPATIBILITY"
   | "REVIEW_SUPPLY_HEALTH";
 
 export type FoundationalRemediationExecutionPath =
@@ -77,13 +78,14 @@ const STAGE_PRIORITY: Record<Exclude<FoundationalReadinessStage, "READY">, numbe
   HEALTH: 80,
 };
 
+const COMPATIBILITY_GAPS = [
+  "SOURCE_COMPATIBILITY_OBSERVATION_STALE",
+  "PRIMARY_PATH_DEGRADED",
+  "EXTERNAL_COMPATIBILITY_BLOCKED",
+] as const;
+
 function unique(values: readonly string[]): string[] {
   return [...new Set(values.filter(Boolean))];
-}
-
-function queryEndpoint(path: string, workspaceId: string, jurisdiction: string): string {
-  const query = new URLSearchParams({ workspaceId, jurisdiction });
-  return `${path}?${query.toString()}`;
 }
 
 function targetQueryEndpoint(
@@ -203,6 +205,56 @@ function relevanceActions(
   return actions;
 }
 
+function supplyHealthReviewAction(
+  target: FoundationalReadinessTarget,
+  workspaceId: string,
+  jurisdiction: string,
+  gaps: string[],
+): FoundationalRemediationAction {
+  return action(
+    target,
+    "REVIEW_SUPPLY_HEALTH",
+    "Inspect source supply health and resolve the reported operational gap without bypassing acquisition, normalization, indexing, quality, or relevance gates.",
+    "MANUAL_OPERATOR",
+    gaps,
+    `${targetQueryEndpoint(
+      "/api/source-supply-health",
+      workspaceId,
+      jurisdiction,
+      target.targetId,
+    )}&coverageTier=FOUNDATIONAL&catalogState=ACTIVE`,
+  );
+}
+
+function compatibilityHealthActions(
+  target: FoundationalReadinessTarget,
+  workspaceId: string,
+  jurisdiction: string,
+  gaps: string[],
+): FoundationalRemediationAction[] {
+  const compatibilityGaps = gaps.filter((gap) =>
+    COMPATIBILITY_GAPS.includes(gap as (typeof COMPATIBILITY_GAPS)[number]),
+  );
+  if (compatibilityGaps.length === 0) {
+    return [supplyHealthReviewAction(target, workspaceId, jurisdiction, gaps)];
+  }
+
+  const reprobe = action(
+    target,
+    "REPROBE_SOURCE_COMPATIBILITY",
+    `Run pnpm --filter @markorbit/worker canary:representative:recorded -- --jurisdiction=${jurisdiction} on an authenticated production worker, then review the persisted compatibility observation. Do not run this from the browser or a pull-request runner. This re-probe does not authorize collection and does not mutate Source lifecycle state.`,
+    "MANUAL_OPERATOR",
+    compatibilityGaps,
+  );
+  if (
+    compatibilityGaps.length === 1 &&
+    compatibilityGaps[0] === "SOURCE_COMPATIBILITY_OBSERVATION_STALE"
+  ) {
+    return [reprobe];
+  }
+  return [reprobe, supplyHealthReviewAction(target, workspaceId, jurisdiction, gaps)];
+}
+
 function actionsFor(
   target: FoundationalReadinessTarget,
   workspaceId: string,
@@ -298,21 +350,7 @@ function actionsFor(
     case "RELEVANCE":
       return relevanceActions(target, workspaceId, jurisdiction);
     case "HEALTH":
-      return [
-        action(
-          target,
-          "REVIEW_SUPPLY_HEALTH",
-          "Inspect source supply health and resolve the reported operational gap without bypassing acquisition, normalization, indexing, quality, or relevance gates.",
-          "MANUAL_OPERATOR",
-          gaps,
-          `${targetQueryEndpoint(
-            "/api/source-supply-health",
-            workspaceId,
-            jurisdiction,
-            target.targetId,
-          )}&coverageTier=FOUNDATIONAL&catalogState=ACTIVE`,
-        ),
-      ];
+      return compatibilityHealthActions(target, workspaceId, jurisdiction, gaps);
   }
 }
 
