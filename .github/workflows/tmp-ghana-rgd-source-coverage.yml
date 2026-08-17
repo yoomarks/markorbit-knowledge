@@ -4,15 +4,12 @@ on:
   push:
     branches:
       - codex/gh-rgd-source-coverage-v1
-    paths:
-      - .github/workflows/tmp-ghana-rgd-source-coverage.yml
 
 permissions:
   contents: write
 
 jobs:
   verify:
-    if: github.event.head_commit.message == 'ci: verify Ghana RGD source coverage'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
