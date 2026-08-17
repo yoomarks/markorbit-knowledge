@@ -42,6 +42,20 @@ export async function POST(_request: Request, context: { params: Promise<{ recei
         });
         return NextResponse.json({ receipt, replayed: false });
       }
+      if (
+        target.latestRun?.runId !== current.collectionRunId ||
+        target.latestRun.status !== "COMPLETE"
+      ) {
+        const observedRun = target.latestRun
+          ? `${target.latestRun.runId}:${target.latestRun.status}`
+          : "none";
+        const receipt = ledger.recordProof({
+          receiptId: current.id,
+          checkedAt,
+          error: `Dispatched CollectionRun ${current.collectionRunId} is not the latest COMPLETE run for ${current.targetId}; observed ${observedRun}`,
+        });
+        return NextResponse.json({ receipt, replayed: false });
+      }
       const receipt = ledger.recordProof({
         receiptId: current.id,
         checkedAt,
