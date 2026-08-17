@@ -39,7 +39,9 @@ function compatibilityHealth(
   }
   const observationMs = Date.parse(observation.observedAt);
   if (!Number.isFinite(observationMs)) {
-    throw new RegistryValidationError("Persisted source-compatibility observation timestamp is invalid");
+    throw new RegistryValidationError(
+      "Persisted source-compatibility observation timestamp is invalid",
+    );
   }
   const ageHours = Math.max(0, (observedAt.getTime() - observationMs) / 3_600_000);
   return {

@@ -65,8 +65,9 @@ function readySupply(): SourceSupplyHealthRecord {
 
 function compatibility(
   state: SourceSupplyCompatibilityHealth["state"],
-  freshness: SourceSupplyCompatibilityHealth["freshness"] =
-    state === "UNOBSERVED" ? "UNOBSERVED" : "FRESH",
+  freshness: SourceSupplyCompatibilityHealth["freshness"] = state === "UNOBSERVED"
+    ? "UNOBSERVED"
+    : "FRESH",
 ): SourceSupplyCompatibilityHealth {
   return {
     state,
