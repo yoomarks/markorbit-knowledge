@@ -159,14 +159,21 @@ export function GlobalSupplyRadar({ workspaceId }: Props) {
                   <span className="truncate text-xs text-slate-400">{zh ? row.zh : row.en}</span>
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  Catalog <strong className="font-semibold text-slate-700">{row.targetCount}</strong> ·{" "}
-                  Activated <strong className="font-semibold text-slate-700">{row.activatedTargetCount}</strong> ·{" "}
-                  Healthy <strong className="font-semibold text-slate-700">{row.healthyCount}</strong>
+                  Catalog{" "}
+                  <strong className="font-semibold text-slate-700">{row.targetCount}</strong> ·{" "}
+                  Activated{" "}
+                  <strong className="font-semibold text-slate-700">
+                    {row.activatedTargetCount}
+                  </strong>{" "}
+                  · Healthy{" "}
+                  <strong className="font-semibold text-slate-700">{row.healthyCount}</strong>
                 </p>
                 {row.degradedCount > 0 || row.blockedCount > 0 || row.staleCount > 0 ? (
                   <p className="mt-1 text-[11px] text-slate-400">
                     {row.blockedCount > 0 ? `Blocked ${row.blockedCount}` : null}
-                    {row.blockedCount > 0 && (row.degradedCount > 0 || row.staleCount > 0) ? " · " : null}
+                    {row.blockedCount > 0 && (row.degradedCount > 0 || row.staleCount > 0)
+                      ? " · "
+                      : null}
                     {row.degradedCount > 0 ? `Degraded ${row.degradedCount}` : null}
                     {row.degradedCount > 0 && row.staleCount > 0 ? " · " : null}
                     {row.staleCount > 0 ? `Stale ${row.staleCount}` : null}

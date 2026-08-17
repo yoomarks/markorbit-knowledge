@@ -31,13 +31,18 @@ describe("global supply radar state", () => {
     expect(deriveGlobalSupplyRadarStatus(item("US"))).toBe("READY");
     expect(
       deriveGlobalSupplyRadarStatus(
-        item("US", { activatedTargetCount: 3, supply: { healthy: 3, degraded: 0, blocked: 0, stale: 0, healthyPercent: 75 } }),
+        item("US", {
+          activatedTargetCount: 3,
+          supply: { healthy: 3, degraded: 0, blocked: 0, stale: 0, healthyPercent: 75 },
+        }),
       ),
     ).toBe("DEGRADED");
     expect(deriveGlobalSupplyRadarStatus(item("US", { registeredTargetCount: 3 }))).toBe("BLOCKED");
     expect(
       deriveGlobalSupplyRadarStatus(
-        item("US", { supply: { healthy: 3, degraded: 0, blocked: 1, stale: 0, healthyPercent: 75 } }),
+        item("US", {
+          supply: { healthy: 3, degraded: 0, blocked: 1, stale: 0, healthyPercent: 75 },
+        }),
       ),
     ).toBe("BLOCKED");
   });
@@ -51,7 +56,10 @@ describe("global supply radar state", () => {
   it("summarizes representative jurisdiction states without granting mutation capability", () => {
     const rows = buildGlobalSupplyRadarRows([
       item("CN"),
-      item("US", { activatedTargetCount: 3, supply: { healthy: 3, degraded: 1, blocked: 0, stale: 0, healthyPercent: 75 } }),
+      item("US", {
+        activatedTargetCount: 3,
+        supply: { healthy: 3, degraded: 1, blocked: 0, stale: 0, healthyPercent: 75 },
+      }),
       item("WO", { supply: { healthy: 3, degraded: 0, blocked: 1, stale: 0, healthyPercent: 75 } }),
     ]);
     expect(summarizeGlobalSupplyRadar(rows)).toEqual({
