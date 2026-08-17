@@ -27,18 +27,19 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+
           source = Path('packages/persistence/src/priority-national-source-coverage.ts')
           text = source.read_text()
-          old = '''  target(IPD_MM, {
-            id: "mm-ipd-trademark-forms",
-            family: "SEARCH",
-            displayName: "Myanmar Trademark Forms and Registry Workflow Surface",
-            canonicalUri: "https://www.ipd.gov.mm/trademark/trademark-1/forms-for-trademark",
-            verificationEvidenceUri: "https://www.ipd.gov.mm/trademark/trademark-1/forms-for-trademark",
-            notes:
-              "Official IPD trademark forms surface retained as a structured operational lookup entrypoint while a dedicated public trademark-search endpoint is not reliably exposed to crawlers.",
-          }),'''
-          new = '''  target(IPD_MM, {
+          marker = 'id: "mm-ipd-trademark-forms"'
+          marker_pos = text.find(marker)
+          if marker_pos < 0:
+              raise SystemExit('Myanmar placeholder search target not found')
+          start = text.rfind('  target(IPD_MM, {', 0, marker_pos)
+          end = text.find('  }),', marker_pos)
+          if start < 0 or end < 0:
+              raise SystemExit('Myanmar placeholder target boundaries not found')
+          end += len('  }),')
+          replacement = '''  target(IPD_MM, {
             id: "mm-ipd-ip-search",
             family: "SEARCH",
             displayName: "Myanmar IPD Intellectual Property Search",
@@ -49,20 +50,20 @@ jobs:
             verificationEvidenceUri: "https://ipd.gov.mm/",
             notes:
               "Official IP Search endpoint linked directly from the 2026 IPD homepage; retained as the national search gateway instead of treating a forms page as a search source.",
-          }),'''
-          if old not in text:
-              raise SystemExit('Myanmar placeholder search target not found')
-          source.write_text(text.replace(old, new, 1))
+          })'''
+          source.write_text(text[:start] + replacement + text[end:])
 
           probes = Path('packages/persistence/src/retrieval-relevance-audit.ts')
           ptext = probes.read_text()
-          ptext = ptext.replace('id: "mm-ipd-trademark-forms-name"', 'id: "mm-ipd-ip-search-name"', 1)
-          ptext = ptext.replace('targetId: "mm-ipd-trademark-forms"', 'targetId: "mm-ipd-ip-search"', 1)
-          ptext = ptext.replace(
-              'query: "Myanmar IPD trademark forms registry workflow"',
-              'query: "Myanmar IPD intellectual property trademark search"',
-              1,
-          )
+          replacements = {
+              'id: "mm-ipd-trademark-forms-name"': 'id: "mm-ipd-ip-search-name"',
+              'targetId: "mm-ipd-trademark-forms"': 'targetId: "mm-ipd-ip-search"',
+              'query: "Myanmar IPD trademark forms registry workflow"': 'query: "Myanmar IPD intellectual property trademark search"',
+          }
+          for old, new in replacements.items():
+              if old not in ptext:
+                  raise SystemExit(f'Myanmar relevance probe field not found: {old}')
+              ptext = ptext.replace(old, new, 1)
           probes.write_text(ptext)
           PY
           pnpm exec prettier --write \
