@@ -1,0 +1,40 @@
+name: Temporary PR248 Format
+
+on:
+  push:
+    branches:
+      - agent/priority-120-trademark-jurisdictions
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-trademark-jurisdictions
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format PR248 files
+        run: |
+          pnpm exec prettier --write \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts \
+            packages/persistence/package.json
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts \
+            packages/persistence/package.json
+          git commit -m "style: format priority trademark jurisdiction scope"
+          git push origin HEAD:agent/priority-120-trademark-jurisdictions
