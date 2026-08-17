@@ -3,8 +3,22 @@ import {
   evaluateSourceCoverage,
   listSourceCoverageTargets,
 } from "@markorbit/persistence/source-coverage";
+import { SqliteSourceSupplyHealthRepository } from "@markorbit/persistence/source-supply-health";
 import { listAllWorkspaceSources } from "./source-pagination";
-import { getSourceDiscoveryRepository, getSourceRepository } from "./source-registry";
+import {
+  getRegistryDatabase,
+  getSourceDiscoveryRepository,
+  getSourceRepository,
+} from "./source-registry";
+
+export type SourceCoverageSupplyView = {
+  state: "READY" | "DEGRADED" | "BLOCKED";
+  freshness: "FRESH" | "STALE" | "UNOBSERVED";
+  gaps: string[];
+  acquisitionObserved: boolean;
+  normalizedAvailable: boolean;
+  retrievalAvailable: boolean;
+};
 
 export type SourceCoverageTargetView = {
   id: string;
@@ -15,6 +29,7 @@ export type SourceCoverageTargetView = {
   canonicalUri: string;
   state: "REGISTERED" | "UNREGISTERED";
   sources: Array<{ id: string; name: string; status: string }>;
+  supply: SourceCoverageSupplyView;
   discoveryCandidate?: { candidateId: string; status: string };
 };
 
@@ -24,11 +39,19 @@ export type SourceCoverageItemView = {
   activeSourceCount: number;
   targetCount: number;
   registeredTargetCount: number;
+  activatedTargetCount: number;
   completenessPercent: number | null;
   foundational: {
     total: number;
     registered: number;
     completenessPercent: number | null;
+  };
+  supply: {
+    healthy: number;
+    degraded: number;
+    blocked: number;
+    stale: number;
+    healthyPercent: number | null;
   };
   missingFamilies: string[];
   missingCount: number;
@@ -43,6 +66,8 @@ export type SourceCoverageSnapshot = {
     curatedJurisdictionCount: number;
     fullyCoveredCount: number;
     attentionCount: number;
+    fullyHealthyCount: number;
+    supplyAttentionCount: number;
   };
 };
 
@@ -58,6 +83,10 @@ export function getSourceCoverageSnapshot(
   const discovery = getSourceDiscoveryRepository();
   const sources = listAllWorkspaceSources(repository, workspaceId);
   const targets = listSourceCoverageTargets().filter((target) => target.catalogState !== "RETIRED");
+  const supplyHealth = new SqliteSourceSupplyHealthRepository(getRegistryDatabase()).list({
+    workspaceId,
+  });
+  const supplyByTargetId = new Map(supplyHealth.items.map((item) => [item.targetId, item]));
   const jurisdictions = [
     ...new Set([
       ...targets.map((target) => target.jurisdiction),
@@ -72,6 +101,7 @@ export function getSourceCoverageSnapshot(
     const targetById = new Map(jurisdictionTargets.map((target) => [target.id, target]));
     const targetItems = registrations.map((registration) => {
       const target = targetById.get(registration.targetId)!;
+      const health = supplyByTargetId.get(target.id);
       const discoveryCandidate =
         registration.state === "UNREGISTERED"
           ? discovery.getCandidateByLocator(target.canonicalUri)
@@ -88,6 +118,14 @@ export function getSourceCoverageSnapshot(
           .map((sourceId) => sourceById.get(sourceId))
           .filter(Boolean)
           .map((source) => ({ id: source!.id, name: source!.name, status: source!.status })),
+        supply: {
+          state: health?.state ?? "BLOCKED",
+          freshness: health?.freshness.state ?? "UNOBSERVED",
+          gaps: [...(health?.gaps ?? ["SOURCE_UNREGISTERED"])],
+          acquisitionObserved: (health?.acquisition.artifactCount ?? 0) > 0,
+          normalizedAvailable: (health?.normalization.readyDocumentCount ?? 0) > 0,
+          retrievalAvailable: (health?.retrieval.currentDocumentCount ?? 0) > 0,
+        },
         ...(discoveryCandidate
           ? {
               discoveryCandidate: {
@@ -100,6 +138,9 @@ export function getSourceCoverageSnapshot(
     });
     const activeTargets = targetItems.filter((target) => target.catalogState === "ACTIVE");
     const registered = activeTargets.filter((target) => target.state === "REGISTERED").length;
+    const activated = activeTargets.filter((target) =>
+      target.sources.some((source) => source.status === "ACTIVE"),
+    ).length;
     const foundational = activeTargets.filter((target) => target.coverageTier === "FOUNDATIONAL");
     const foundationalRegistered = foundational.filter(
       (target) => target.state === "REGISTERED",
@@ -108,6 +149,14 @@ export function getSourceCoverageSnapshot(
       source.jurisdictions.includes(jurisdiction),
     );
     const missing = activeTargets.filter((target) => target.state === "UNREGISTERED");
+    const healthy = activeTargets.filter(
+      (target) =>
+        target.supply.state === "READY" &&
+        target.sources.some((source) => source.status === "ACTIVE"),
+    ).length;
+    const degraded = activeTargets.filter((target) => target.supply.state === "DEGRADED").length;
+    const blocked = activeTargets.filter((target) => target.supply.state === "BLOCKED").length;
+    const stale = activeTargets.filter((target) => target.supply.freshness === "STALE").length;
 
     return {
       jurisdiction,
@@ -115,11 +164,19 @@ export function getSourceCoverageSnapshot(
       activeSourceCount: jurisdictionSources.filter((source) => source.status === "ACTIVE").length,
       targetCount: activeTargets.length,
       registeredTargetCount: registered,
+      activatedTargetCount: activated,
       completenessPercent: percentage(registered, activeTargets.length),
       foundational: {
         total: foundational.length,
         registered: foundationalRegistered,
         completenessPercent: percentage(foundationalRegistered, foundational.length),
+      },
+      supply: {
+        healthy,
+        degraded,
+        blocked,
+        stale,
+        healthyPercent: percentage(healthy, activeTargets.length),
       },
       missingFamilies: [...new Set(missing.map((target) => target.family))].sort(),
       missingCount: missing.length,
@@ -138,6 +195,12 @@ export function getSourceCoverageSnapshot(
       ).length,
       attentionCount: items.filter(
         (item) => item.targetCount > 0 && item.registeredTargetCount < item.targetCount,
+      ).length,
+      fullyHealthyCount: items.filter(
+        (item) => item.targetCount > 0 && item.supply.healthy === item.targetCount,
+      ).length,
+      supplyAttentionCount: items.filter(
+        (item) => item.targetCount > 0 && item.supply.healthy < item.targetCount,
       ).length,
     },
   };
