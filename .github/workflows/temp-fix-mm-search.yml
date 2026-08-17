@@ -50,7 +50,7 @@ jobs:
             verificationEvidenceUri: "https://ipd.gov.mm/",
             notes:
               "Official IP Search endpoint linked directly from the 2026 IPD homepage; retained as the national search gateway instead of treating a forms page as a search source.",
-          })'''
+          }),'''
           source.write_text(text[:start] + replacement + text[end:])
 
           probes = Path('packages/persistence/src/retrieval-relevance-audit.ts')
