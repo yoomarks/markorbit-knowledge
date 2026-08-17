@@ -16,7 +16,14 @@ export type FoundationalActionIntentRecord = {
   jurisdiction: string;
   targetId: string;
   readinessStage:
-    "REGISTER" | "COLLECT" | "INGEST" | "CONVERT" | "INDEX" | "QUALITY" | "RELEVANCE" | "HEALTH";
+    | "REGISTER"
+    | "COLLECT"
+    | "INGEST"
+    | "CONVERT"
+    | "INDEX"
+    | "QUALITY"
+    | "RELEVANCE"
+    | "HEALTH";
   actionCode:
     | "REGISTER_SOURCE"
     | "DISPATCH_GOVERNED_COLLECTION"
@@ -29,6 +36,7 @@ export type FoundationalActionIntentRecord = {
     | "REVIEW_SOURCE_FILTERED_RETRIEVAL"
     | "REVIEW_GLOBAL_RETRIEVAL_RANKING"
     | "REVIEW_RELEVANCE_AUDIT"
+    | "REPROBE_SOURCE_COMPATIBILITY"
     | "REVIEW_SUPPLY_HEALTH";
   operatorInstruction: string;
   executionPath:
