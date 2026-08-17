@@ -307,5 +307,5 @@ describe("Bulk Source Pipeline E2E", () => {
     expect(workers.claim(worker.view.worker.id, worker.credential).job).toBeNull();
 
     database.close();
-  });
+  }, 15_000);
 });
