@@ -1,0 +1,435 @@
+name: Temporary Priority 120 Iran Pakistan Iraq
+
+on:
+  push:
+    branches:
+      - agent/priority-120-tranche-ir-pk-iq-v1
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-tranche-ir-pk-iq-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply curated Iran Pakistan Iraq coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'expected anchor not found in {path}: {old[:140]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          country_blocks = '''const IPC_IR: Authority = {
+            jurisdiction: "IR",
+            authorityName: "Intellectual Property Center of the Islamic Republic of Iran",
+            languages: ["fa"],
+            verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/contact?code=ir",
+          };
+
+          export const IPC_IR_SOURCE_COVERAGE_TARGETS = [
+            target(IPC_IR, {
+              id: "ir-ipc-intellectual-property-portal",
+              family: "PORTAL",
+              displayName: "Iran Intellectual Property Center Portal",
+              canonicalUri: "http://iripo.ssaa.ir/",
+              verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/contact?code=ir",
+              notes:
+                "WIPO's current office directory identifies the Intellectual Property Center of the Islamic Republic of Iran as the competent IP office and this SSAA host as its official website.",
+            }),
+            target(IPC_IR, {
+              id: "ir-ipc-national-trademark-search",
+              family: "SEARCH",
+              displayName: "Iran National Trademark Collection in WIPO Global Brand Database",
+              canonicalUri: "https://branddb.wipo.int/en/IPO-IR/quicksearch/results?by=brandName",
+              mode: "MIXED",
+              renderJavascriptHint: true,
+              expectedArtifactKinds: ["HTML", "JSON"],
+              verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/IR",
+              notes:
+                "WIPO's current Iran country profile exposes the Iranian national trademark collection through the Global Brand Database; retained as the stable country-scoped search entrypoint.",
+            }),
+            target(IPC_IR, {
+              id: "ir-ipc-trademark-filing-regulation",
+              family: "FILING",
+              displayName: "Iran Trademark Registration Executive Regulation",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/14359",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/23341",
+              notes:
+                "WIPO Lex lists IR026, the Executive Regulation of the Patent, Industrial Designs and Trademarks Registration Act, as implementing the 2024 industrial-property act. It provides the detailed trademark application and registration procedure.",
+            }),
+            target(IPC_IR, {
+              id: "ir-ipc-trademark-regulatory-fee-schedule",
+              family: "FEES",
+              displayName: "Iran Trademark Regulatory Fee Schedule",
+              canonicalUri: "https://www.wipo.int/wipolex/en/text/495383",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/14359",
+              notes:
+                "The implementing regulation includes the statutory fee appendix for trademark actions. Catalogued as the regulatory schedule source, not as a claim that every historic numeric amount equals the latest operational service charge.",
+            }),
+            target(IPC_IR, {
+              id: "ir-ipc-industrial-property-act-2024",
+              family: "LEGAL_TEXTS",
+              displayName: "Iran Act on the Protection of Industrial Property 2024",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/23341",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/23341",
+              notes:
+                "Current WIPO Lex main industrial-property law, adopted 12 June 2024, covering trademarks and repealing the 2008 registration act.",
+            }),
+            target(IPC_IR, {
+              id: "ir-ipc-trademark-examination-regulation-pdf",
+              family: "EXAMINATION_MANUAL",
+              displayName: "Iran Trademark Filing and Examination Regulation – Full Text",
+              canonicalUri: "https://www.wipo.int/wipolex/edocs/lexdocs/laws/en/ir/ir026en.pdf",
+              fetchAttachmentsHint: true,
+              expectedArtifactKinds: ["PDF"],
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/14359",
+              notes:
+                "Full regulation text covering trademark filing formalities, examination, publication, opposition, registration, renewal and related procedures.",
+            }),
+          ] satisfies readonly SourceCoverageTarget[];
+
+          const IPO_PK: Authority = {
+            jurisdiction: "PK",
+            authorityName: "Intellectual Property Organization of Pakistan – Trademarks Office",
+            languages: ["en"],
+            verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/PK",
+          };
+
+          export const IPO_PK_SOURCE_COVERAGE_TARGETS = [
+            target(IPO_PK, {
+              id: "pk-ipo-trademark-portal",
+              family: "PORTAL",
+              displayName: "IPO-Pakistan Trademark Office Portal",
+              canonicalUri: "http://www.ipo.gov.pk/",
+              verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/contact",
+              notes:
+                "WIPO's current office directory identifies IPO-Pakistan and its Trademarks Office as the competent national administration and ipo.gov.pk as the official website.",
+            }),
+            target(IPO_PK, {
+              id: "pk-ipo-national-trademark-search",
+              family: "SEARCH",
+              displayName: "Pakistan National Trademark Collection in WIPO Global Brand Database",
+              canonicalUri: "https://branddb.wipo.int/en/IPO-PK/quicksearch/results?by=brandName",
+              mode: "MIXED",
+              renderJavascriptHint: true,
+              expectedArtifactKinds: ["HTML", "JSON"],
+              verificationEvidenceUri: "https://www.wipo.int/en/web/country-profiles/PK",
+              notes:
+                "WIPO's current Pakistan country profile exposes participating national trademark data through the Global Brand Database; retained as a country-scoped search entrypoint.",
+            }),
+            target(IPO_PK, {
+              id: "pk-ipo-trademark-filing-rules",
+              family: "FILING",
+              displayName: "Pakistan Trade Marks Rules 2004 – Filing Procedure",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/3491",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/3491",
+              notes:
+                "Latest trademark implementing rules in WIPO Lex; covers classification, applications, advertisement, registration, renewal, restoration, assignment and proceedings.",
+            }),
+            target(IPO_PK, {
+              id: "pk-ipo-trademark-regulatory-fee-schedule",
+              family: "FEES",
+              displayName: "Pakistan Trade Marks Rules 2004 – First Schedule Fees",
+              canonicalUri: "https://www.wipo.int/wipolex/en/text/129354",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/3491",
+              notes:
+                "The First Schedule in the latest WIPO Lex rules contains statutory trademark fees. Catalogued as the regulatory schedule source rather than a guarantee that every historic figure equals the latest operational e-filing charge.",
+            }),
+            target(IPO_PK, {
+              id: "pk-ipo-trademarks-ordinance-2001",
+              family: "LEGAL_TEXTS",
+              displayName: "Pakistan Trade Marks Ordinance 2001",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/3479",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/3479",
+              notes:
+                "Latest WIPO Lex version of Pakistan's principal trademark statute, Trade Marks Ordinance 2001, including the relationship to the 2020 geographical-indications legislation.",
+            }),
+            target(IPO_PK, {
+              id: "pk-ipo-trademark-examination-rules-fulltext",
+              family: "EXAMINATION_MANUAL",
+              displayName: "Pakistan Trade Marks Rules 2004 – Full Text",
+              canonicalUri: "https://wipolex-res.wipo.int/edocs/lexdocs/laws/en/pk/pk014en.html",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/3491",
+              notes:
+                "Full rules text retained as a separate acquisition target for detailed filing, examination, opposition, renewal, agent and form requirements.",
+            }),
+          ] satisfies readonly SourceCoverageTarget[];
+
+          const MOIM_IQ: Authority = {
+            jurisdiction: "IQ",
+            authorityName: "Iraq Ministry of Industry and Minerals – Trademark Registration Directorate",
+            languages: ["ar"],
+            verificationEvidenceUri: "https://ur.gov.iq/index/show-eservice/51439/10058/org",
+          };
+
+          export const MOIM_IQ_SOURCE_COVERAGE_TARGETS = [
+            target(MOIM_IQ, {
+              id: "iq-moim-industrial-property-platform",
+              family: "PORTAL",
+              displayName: "Iraq Ministry of Industry and Minerals Industrial Platform",
+              canonicalUri: "https://iip.industry.gov.iq/",
+              verificationEvidenceUri: "https://iip.industry.gov.iq/",
+              notes:
+                "Official Ministry of Industry and Minerals platform exposing the national trademark area and describing the registered-mark database.",
+            }),
+            target(MOIM_IQ, {
+              id: "iq-moim-trademark-database",
+              family: "SEARCH",
+              displayName: "Iraq Ministry of Industry Trademark Database",
+              canonicalUri: "https://iip.industry.gov.iq/trademarks",
+              verificationEvidenceUri: "https://iip.industry.gov.iq/",
+              notes:
+                "Official Ministry platform trademark database for registered marks, retained as the public national search surface.",
+            }),
+            target(MOIM_IQ, {
+              id: "iq-ur-trademark-examination-service",
+              family: "FILING",
+              displayName: "Iraq Electronic Trademark Examination Service",
+              canonicalUri: "https://ur.gov.iq/index/show-eservice/51440/10041/cat",
+              verificationEvidenceUri: "https://ur.gov.iq/index/show-eservice/51440/10041/cat",
+              notes:
+                "Current Iraqi Unified Electronic Portal service for trademark examination with electronic payment, including filing prerequisites and registrability conditions.",
+            }),
+            target(MOIM_IQ, {
+              id: "iq-ur-trademark-registration-fees",
+              family: "FEES",
+              displayName: "Iraq Electronic Trademark Registration Service and Fees",
+              canonicalUri: "https://ur.gov.iq/index/show-eservice/51439/10058/org",
+              verificationEvidenceUri: "https://ur.gov.iq/index/show-eservice/51439/10058/org",
+              notes:
+                "Current government service page for Iraqi and foreign trademark registration, including electronic payment, filing steps, timelines and the currently published registration charges.",
+            }),
+            target(MOIM_IQ, {
+              id: "iq-trademark-law-consolidated-2010",
+              family: "LEGAL_TEXTS",
+              displayName: "Iraq Trademark Law No. 21 of 1957 – Consolidated through 2010",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/21933",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/21933",
+              notes:
+                "Latest WIPO Lex consolidated trademark statute, incorporating amendments through Law No. 9 of 2010 and covering the national register, rights, filing, opposition and related actions.",
+            }),
+            target(MOIM_IQ, {
+              id: "iq-trademark-system-regulation-26",
+              family: "EXAMINATION_MANUAL",
+              displayName: "Iraq System No. 26 of 1957 on Trademarks and Trade Names",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/10572",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/10572",
+              notes:
+                "Latest WIPO Lex implementing regulation for the Iraqi trademark law; retained for procedural requirements and the goods-classification table.",
+            }),
+          ] satisfies readonly SourceCoverageTarget[];
+
+          '''
+
+          replace_once(
+              'packages/persistence/src/priority-national-source-coverage.ts',
+              'const CIPO: Authority = {',
+              country_blocks + 'const CIPO: Authority = {'
+          )
+          replace_once(
+              'packages/persistence/src/priority-national-source-coverage.ts',
+              '  ...MOJ_UZ_SOURCE_COVERAGE_TARGETS,\n  ...CIPO_SOURCE_COVERAGE_TARGETS,',
+              '  ...MOJ_UZ_SOURCE_COVERAGE_TARGETS,\n  ...IPC_IR_SOURCE_COVERAGE_TARGETS,\n  ...IPO_PK_SOURCE_COVERAGE_TARGETS,\n  ...MOIM_IQ_SOURCE_COVERAGE_TARGETS,\n  ...CIPO_SOURCE_COVERAGE_TARGETS,'
+          )
+
+          probes = '''  {
+            id: "ir-ipc-intellectual-property-portal-name",
+            targetId: "ir-ipc-intellectual-property-portal",
+            query: "Iran Intellectual Property Center national IP office trademark portal SSAA",
+          },
+          {
+            id: "ir-ipc-national-trademark-search-name",
+            targetId: "ir-ipc-national-trademark-search",
+            query: "Iran national trademark collection Global Brand Database",
+          },
+          {
+            id: "ir-ipc-trademark-filing-regulation-name",
+            targetId: "ir-ipc-trademark-filing-regulation",
+            query: "Iran trademark registration executive regulation filing application procedure",
+          },
+          {
+            id: "ir-ipc-trademark-regulatory-fee-schedule-name",
+            targetId: "ir-ipc-trademark-regulatory-fee-schedule",
+            query: "Iran trademark executive regulation statutory fee schedule registration renewal",
+          },
+          {
+            id: "ir-ipc-industrial-property-act-2024-name",
+            targetId: "ir-ipc-industrial-property-act-2024",
+            query: "Iran Act Protection Industrial Property 2024 trademarks trade names",
+          },
+          {
+            id: "ir-ipc-trademark-examination-regulation-pdf-name",
+            targetId: "ir-ipc-trademark-examination-regulation-pdf",
+            query: "Iran trademark filing examination opposition renewal executive regulation full text",
+          },
+          {
+            id: "pk-ipo-trademark-portal-name",
+            targetId: "pk-ipo-trademark-portal",
+            query: "IPO Pakistan Trademarks Office official portal",
+          },
+          {
+            id: "pk-ipo-national-trademark-search-name",
+            targetId: "pk-ipo-national-trademark-search",
+            query: "Pakistan national trademark collection Global Brand Database",
+          },
+          {
+            id: "pk-ipo-trademark-filing-rules-name",
+            targetId: "pk-ipo-trademark-filing-rules",
+            query: "Pakistan Trade Marks Rules 2004 filing application registration",
+          },
+          {
+            id: "pk-ipo-trademark-regulatory-fee-schedule-name",
+            targetId: "pk-ipo-trademark-regulatory-fee-schedule",
+            query: "Pakistan Trade Marks Rules First Schedule fees filing opposition renewal",
+          },
+          {
+            id: "pk-ipo-trademarks-ordinance-2001-name",
+            targetId: "pk-ipo-trademarks-ordinance-2001",
+            query: "Pakistan Trade Marks Ordinance 2001 trademark law",
+          },
+          {
+            id: "pk-ipo-trademark-examination-rules-fulltext-name",
+            targetId: "pk-ipo-trademark-examination-rules-fulltext",
+            query: "Pakistan Trade Marks Rules examination opposition renewal full text",
+          },
+          {
+            id: "iq-moim-industrial-property-platform-name",
+            targetId: "iq-moim-industrial-property-platform",
+            query: "Iraq Ministry Industry Minerals trademark platform",
+          },
+          {
+            id: "iq-moim-trademark-database-name",
+            targetId: "iq-moim-trademark-database",
+            query: "Iraq Ministry Industry registered trademark database search",
+          },
+          {
+            id: "iq-ur-trademark-examination-service-name",
+            targetId: "iq-ur-trademark-examination-service",
+            query: "Iraq Ur portal trademark examination electronic payment service",
+          },
+          {
+            id: "iq-ur-trademark-registration-fees-name",
+            targetId: "iq-ur-trademark-registration-fees",
+            query: "Iraq electronic trademark registration fees Ministry Industry Ur portal",
+          },
+          {
+            id: "iq-trademark-law-consolidated-2010-name",
+            targetId: "iq-trademark-law-consolidated-2010",
+            query: "Iraq Law 21 1957 trademarks trade names amended Law 9 2010 consolidated",
+          },
+          {
+            id: "iq-trademark-system-regulation-26-name",
+            targetId: "iq-trademark-system-regulation-26",
+            query: "Iraq System 26 1957 trademarks trade names implementing regulation",
+          },
+          '''
+          replace_once(
+              'packages/persistence/src/retrieval-relevance-audit.ts',
+              '] satisfies readonly RetrievalRelevanceProbe[];',
+              probes + '] satisfies readonly RetrievalRelevanceProbe[];'
+          )
+
+          # Import the three new sets into the unified catalog.
+          replace_once(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  MOJ_UZ_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  MOJ_UZ_SOURCE_COVERAGE_TARGETS,\n  IPC_IR_SOURCE_COVERAGE_TARGETS,\n  IPO_PK_SOURCE_COVERAGE_TARGETS,\n  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+          # Repair direct named exports for RU/UZ and expose this tranche too.
+          replace_once(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  EIPA_EG_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  EIPA_EG_SOURCE_COVERAGE_TARGETS,\n  ROSPATENT_RU_SOURCE_COVERAGE_TARGETS,\n  MOJ_UZ_SOURCE_COVERAGE_TARGETS,\n  IPC_IR_SOURCE_COVERAGE_TARGETS,\n  IPO_PK_SOURCE_COVERAGE_TARGETS,\n  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              '  MOJ_UZ_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  MOJ_UZ_SOURCE_COVERAGE_TARGETS,\n  IPC_IR_SOURCE_COVERAGE_TARGETS,\n  IPO_PK_SOURCE_COVERAGE_TARGETS,\n  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              '  ["UZ", MOJ_UZ_SOURCE_COVERAGE_TARGETS, ["adliya.uz", "my.gov.uz", "wipo.int"]],\n  ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],',
+              '  ["UZ", MOJ_UZ_SOURCE_COVERAGE_TARGETS, ["adliya.uz", "my.gov.uz", "wipo.int"]],\n  ["IR", IPC_IR_SOURCE_COVERAGE_TARGETS, ["ssaa.ir", "wipo.int"]],\n  ["PK", IPO_PK_SOURCE_COVERAGE_TARGETS, ["ipo.gov.pk", "wipo.int"]],\n  ["IQ", MOIM_IQ_SOURCE_COVERAGE_TARGETS, ["industry.gov.iq", "ur.gov.iq", "wipo.int"]],\n  ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],'
+          )
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              'ships explicit, official, unique coverage for eighty priority national offices',
+              'ships explicit, official, unique coverage for eighty-three priority national offices'
+          )
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', 'toHaveLength(645)', 'toHaveLength(663)')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '      645,\n    );', '      663,\n    );')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '    ).toBe(645);', '    ).toBe(663);')
+
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(targets).toHaveLength(599);', 'expect(targets).toHaveLength(617);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(599);', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(617);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', '      599,\n    );', '      617,\n    );')
+          replace_once(
+              'packages/persistence/tests/retrieval-relevance-audit.test.ts',
+              '    expect(\n      listSourceCoverageTargets({ jurisdiction: "UZ", coverageTier: "FOUNDATIONAL" }).every(\n        (target) => targetIds.has(target.id),\n      ),\n    ).toBe(true);\n  });',
+              '    expect(\n      listSourceCoverageTargets({ jurisdiction: "UZ", coverageTier: "FOUNDATIONAL" }).every(\n        (target) => targetIds.has(target.id),\n      ),\n    ).toBe(true);\n    for (const jurisdiction of ["IR", "PK", "IQ"] as const) {\n      expect(\n        listSourceCoverageTargets({ jurisdiction, coverageTier: "FOUNDATIONAL" }).every((target) =>\n          targetIds.has(target.id),\n        ),\n      ).toBe(true);\n    }\n  });'
+          )
+
+          for jurisdiction, display, region, band in [
+              ('IR', 'Iran', 'MIDDLE_EAST_NORTH_AFRICA', 'P0'),
+              ('PK', 'Pakistan', 'ASIA_PACIFIC', 'P1'),
+              ('IQ', 'Iraq', 'MIDDLE_EAST_NORTH_AFRICA', 'P2'),
+          ]:
+              replace_once(
+                  'packages/persistence/src/priority-trademark-jurisdictions.ts',
+                  f'["{jurisdiction}", "{display}", "{region}", "{band}", "TARGET", "NATIONAL"]',
+                  f'["{jurisdiction}", "{display}", "{region}", "{band}", "CURATED", "NATIONAL"]'
+              )
+          replace_once('packages/persistence/tests/priority-trademark-jurisdictions.test.ts', 'expect(curated).toHaveLength(81);', 'expect(curated).toHaveLength(84);')
+          replace_once('packages/persistence/tests/priority-trademark-jurisdictions.test.ts', 'expect(target).toHaveLength(39);', 'expect(target).toHaveLength(36);')
+          PY
+      - name: Format touched files
+        run: |
+          pnpm exec prettier --write \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts
+      - name: Verify three-country tranche
+        run: |
+          pnpm --filter @markorbit/persistence test -- \
+            tests/priority-national-source-coverage.test.ts \
+            tests/retrieval-relevance-audit.test.ts \
+            tests/priority-trademark-jurisdictions.test.ts
+          pnpm typecheck
+      - name: Commit verified changes
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts
+          git commit -m "feat: add Iran Pakistan Iraq trademark source coverage"
+          git push origin HEAD:agent/priority-120-tranche-ir-pk-iq-v1
