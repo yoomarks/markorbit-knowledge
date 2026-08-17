@@ -28,7 +28,7 @@ type TargetBlueprint = {
   notes?: string;
 };
 
-const OAPI_TARGET_BLUEPRINTS = [
+const OAPI_TARGET_BLUEPRINTS: readonly TargetBlueprint[] = [
   {
     key: "portal",
     family: "PORTAL",
@@ -81,7 +81,7 @@ const OAPI_TARGET_BLUEPRINTS = [
     expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
     notes: "Official implementing regulation for the Bangui Agreement, Act of 14 December 2015.",
   },
-] as const satisfies readonly TargetBlueprint[];
+];
 
 function targetsFor(jurisdiction: OapiJurisdiction): SourceCoverageTarget[] {
   return OAPI_TARGET_BLUEPRINTS.map((input) => ({
