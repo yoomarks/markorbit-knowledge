@@ -9416,6 +9416,70 @@ export const ROSPATENT_RU_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const MOJ_UZ: Authority = {
+  jurisdiction: "UZ",
+  authorityName: "Ministry of Justice of the Republic of Uzbekistan – Intellectual Property",
+  languages: ["uz", "ru"],
+  verificationEvidenceUri: "https://im.adliya.uz/",
+};
+
+export const MOJ_UZ_SOURCE_COVERAGE_TARGETS = [
+  target(MOJ_UZ, {
+    id: "uz-justice-intellectual-property-portal",
+    family: "PORTAL",
+    displayName: "Uzbekistan Ministry of Justice Intellectual Property Portal",
+    canonicalUri: "https://im.adliya.uz/",
+    verificationEvidenceUri: "https://im.adliya.uz/",
+    notes:
+      "Official Ministry of Justice intellectual-property portal. WIPO's current Uzbekistan office profile identifies the Ministry of Justice as the competent industrial-property administration and this portal as its IP web surface.",
+  }),
+  target(MOJ_UZ, {
+    id: "uz-justice-trademark-registration-service",
+    family: "FILING",
+    displayName: "Uzbekistan Unified Public Services Trademark Registration",
+    canonicalUri: "https://my.gov.uz/ru/service/803",
+    verificationEvidenceUri: "https://my.gov.uz/ru/service/803",
+    notes:
+      "Current Unified Interactive Public Services Portal service for trademark registration. The service identifies the Ministry of Justice as provider and describes filing, examination by the Intellectual Property Center, registration, publication and fee-payment stages.",
+  }),
+  target(MOJ_UZ, {
+    id: "uz-justice-trademark-registration-request",
+    family: "FILING",
+    displayName: "Uzbekistan Trademark Registration Applicant Service",
+    canonicalUri: "https://my.gov.uz/ru/service/291",
+    verificationEvidenceUri: "https://my.gov.uz/ru/service/291",
+    notes:
+      "Separate Ministry of Justice public-service route for submitting a trademark registration request in the applicant's name; retained as an operational filing surface distinct from the full registration workflow page.",
+  }),
+  target(MOJ_UZ, {
+    id: "uz-justice-state-duty-rates",
+    family: "FEES",
+    displayName: "Uzbekistan State Duty Rates",
+    canonicalUri: "https://my.gov.uz/ru/static/tax-rates",
+    verificationEvidenceUri: "https://my.gov.uz/ru/static/tax-rates",
+    notes:
+      "Current Unified Public Services state-duty rates surface referenced alongside public services for legally significant actions, including the trademark-registration workflow; retained as the current government fee-reference surface rather than copying fee amounts into the catalog.",
+  }),
+  target(MOJ_UZ, {
+    id: "uz-trademark-law-current",
+    family: "LEGAL_TEXTS",
+    displayName: "Uzbekistan Law on Trademarks, Service Marks and Appellations of Origin",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/22560",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/22560",
+    notes:
+      "WIPO Lex current version of Law No. 267-II of 30 August 2001, amended through Law No. LRU-908 of 15 February 2024; covers trademark protection, registration, rights, use, transfer, cancellation and enforcement.",
+  }),
+  target(MOJ_UZ, {
+    id: "uz-trademark-filing-examination-rules",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Uzbekistan Trademark Filing and Examination Rules",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/17914",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/17914",
+    notes:
+      "WIPO Lex version of the Rules on Drafting, Filing and Examination of Applications for Registration of Trademarks and Service Marks, registered as No. 1988 and amended through 2017.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -9561,5 +9625,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...RGD_GH_SOURCE_COVERAGE_TARGETS,
   ...EIPA_EG_SOURCE_COVERAGE_TARGETS,
   ...ROSPATENT_RU_SOURCE_COVERAGE_TARGETS,
+  ...MOJ_UZ_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
