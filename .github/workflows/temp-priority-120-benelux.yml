@@ -1,0 +1,338 @@
+name: Temporary Priority 120 Benelux
+
+on:
+  push:
+    branches:
+      - agent/priority-120-benelux-nl-be-v1
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-benelux-nl-be-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply curated Netherlands and Belgium coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'expected anchor not found in {path}: {old[:140]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          def replace_all_exact(path, old, new, expected_count):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != expected_count:
+                  raise SystemExit(f'expected {expected_count} anchors in {path}, got {count}: {old[:140]!r}')
+              p.write_text(text.replace(old, new))
+
+          blocks = '''const BOIP_NL: Authority = {
+            jurisdiction: "NL",
+            authorityName: "Benelux Office for Intellectual Property (BOIP)",
+            languages: ["nl", "en"],
+            verificationEvidenceUri: "https://www.boip.int/en",
+          };
+
+          export const BOIP_NL_SOURCE_COVERAGE_TARGETS = [
+            target(BOIP_NL, {
+              id: "nl-boip-trademark-portal",
+              family: "PORTAL",
+              displayName: "BOIP Trademark Portal – Netherlands",
+              canonicalUri: "https://www.boip.int/en",
+              verificationEvidenceUri: "https://www.boip.int/en",
+              notes:
+                "BOIP is the common Benelux trademark authority for the Netherlands, Belgium and Luxembourg. This Netherlands target intentionally models the regional authority rather than inventing a separate national trademark office.",
+            }),
+            target(BOIP_NL, {
+              id: "nl-boip-trademark-procedure",
+              family: "FILING",
+              displayName: "BOIP Trademark Application and Registration Procedure",
+              canonicalUri: "https://www.boip.int/en/entrepreneurs/trademarks/procedure",
+              verificationEvidenceUri: "https://www.boip.int/en/entrepreneurs/trademarks/procedure",
+              notes:
+                "Official BOIP procedure covering filing receipt, formal and substantive examination, publication, opposition and registration for Benelux trademarks.",
+            }),
+            target(BOIP_NL, {
+              id: "nl-boip-trademark-register",
+              family: "SEARCH",
+              displayName: "BOIP Trademarks Register – Netherlands",
+              canonicalUri: "https://www.boip.int/en/trademarks-register",
+              mode: "MIXED",
+              renderJavascriptHint: true,
+              expectedArtifactKinds: ["HTML", "JSON"],
+              verificationEvidenceUri: "https://support.boip.int/hc/nl/articles/23546410785041-Wat-is-het-BOIP-Merkenregister",
+              notes:
+                "Official public Benelux trademark register containing applications and registrations valid in the Netherlands, Belgium and Luxembourg.",
+            }),
+            target(BOIP_NL, {
+              id: "nl-boip-trademark-fees",
+              family: "FEES",
+              displayName: "BOIP Trademark Registration Costs",
+              canonicalUri: "https://support.boip.int/hc/nl/articles/23546410404497-Wat-kost-een-merkregistratie",
+              verificationEvidenceUri: "https://support.boip.int/hc/nl/articles/23546410404497-Wat-kost-een-merkregistratie",
+              notes:
+                "Current BOIP support source for the Benelux trademark registration base tariff and class-dependent additional costs. The catalog retains the live source rather than copying numeric fees into metadata.",
+            }),
+            target(BOIP_NL, {
+              id: "nl-benelux-convention-approval-act",
+              family: "LEGAL_TEXTS",
+              displayName: "Netherlands Act Approving the Benelux Convention on Intellectual Property",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/22068",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/22068",
+              notes:
+                "Netherlands national approval act giving effect to the Benelux Convention on Intellectual Property for trademarks and designs.",
+            }),
+            target(BOIP_NL, {
+              id: "nl-benelux-convention-current",
+              family: "EXAMINATION_MANUAL",
+              displayName: "Benelux Convention on Intellectual Property – Current Consolidated Framework",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/20174",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/20174",
+              notes:
+                "Current WIPO Lex consolidated Benelux Convention framework governing trademarks and designs and establishing the Benelux Organization for Intellectual Property.",
+            }),
+          ] satisfies readonly SourceCoverageTarget[];
+
+          const BOIP_BE: Authority = {
+            jurisdiction: "BE",
+            authorityName: "Benelux Office for Intellectual Property (BOIP)",
+            languages: ["fr", "nl", "en"],
+            verificationEvidenceUri: "https://www.boip.int/fr",
+          };
+
+          export const BOIP_BE_SOURCE_COVERAGE_TARGETS = [
+            target(BOIP_BE, {
+              id: "be-boip-trademark-portal",
+              family: "PORTAL",
+              displayName: "BOIP Trademark Portal – Belgium",
+              canonicalUri: "https://www.boip.int/fr",
+              verificationEvidenceUri: "https://www.boip.int/fr",
+              notes:
+                "BOIP is the common Benelux trademark authority for Belgium, the Netherlands and Luxembourg. This Belgium target intentionally models that regional authority rather than inventing a national trademark office.",
+            }),
+            target(BOIP_BE, {
+              id: "be-boip-online-trademark-filing",
+              family: "FILING",
+              displayName: "BOIP Online Trademark Filing through My BOIP",
+              canonicalUri: "https://support.boip.int/hc/nl/articles/23546463100817-Hoe-werkt-het-online-aanvragen-van-een-merk-of-modelregistratie",
+              verificationEvidenceUri: "https://support.boip.int/hc/nl/articles/23546463100817-Hoe-werkt-het-online-aanvragen-van-een-merk-of-modelregistratie",
+              notes:
+                "Official BOIP guidance for the My BOIP online filing flow, including the five-step application process and direct electronic payment.",
+            }),
+            target(BOIP_BE, {
+              id: "be-boip-trademark-register",
+              family: "SEARCH",
+              displayName: "BOIP Trademarks Register – Belgium",
+              canonicalUri: "https://www.boip.int/fr/registre-des-marques",
+              mode: "MIXED",
+              renderJavascriptHint: true,
+              expectedArtifactKinds: ["HTML", "JSON"],
+              verificationEvidenceUri: "https://support.boip.int/hc/nl/articles/23546410785041-Wat-is-het-BOIP-Merkenregister",
+              notes:
+                "French BOIP entrypoint to the official public Benelux trademark register, which is the publication and search surface for marks covering Belgium.",
+            }),
+            target(BOIP_BE, {
+              id: "be-boip-trademark-fee-payment",
+              family: "FEES",
+              displayName: "BOIP Trademark Fee Payment Methods",
+              canonicalUri: "https://support.boip.int/hc/nl/articles/23546478823825-Hoe-kan-ik-betalen",
+              verificationEvidenceUri: "https://support.boip.int/hc/nl/articles/23546478823825-Hoe-kan-ik-betalen",
+              notes:
+                "Current BOIP fee-payment guidance for online trademark and design applications, including accepted electronic payment methods. Fee amounts remain sourced from BOIP's live tariff materials rather than duplicated in Knowledge.",
+            }),
+            target(BOIP_BE, {
+              id: "be-benelux-convention-approval-law",
+              family: "LEGAL_TEXTS",
+              displayName: "Belgium Law Approving the Benelux Convention on Intellectual Property",
+              canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/11671",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/11671",
+              notes:
+                "Belgian national approval law under which the 2005 Benelux Convention on Intellectual Property has full effect in Belgium.",
+            }),
+            target(BOIP_BE, {
+              id: "be-benelux-convention-fulltext",
+              family: "EXAMINATION_MANUAL",
+              displayName: "Benelux Convention on Intellectual Property – Full Text",
+              canonicalUri: "https://www.wipo.int/wipolex/en/text/578525",
+              verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/20174",
+              notes:
+                "Full WIPO Lex text of the common Benelux trademark framework, retained for detailed procedural and substantive acquisition alongside Belgium's national approval law.",
+            }),
+          ] satisfies readonly SourceCoverageTarget[];
+
+          '''
+
+          replace_once(
+              'packages/persistence/src/priority-national-source-coverage.ts',
+              'const CIPO: Authority = {',
+              blocks + 'const CIPO: Authority = {'
+          )
+          replace_once(
+              'packages/persistence/src/priority-national-source-coverage.ts',
+              '  ...MOIM_IQ_SOURCE_COVERAGE_TARGETS,\n  ...CIPO_SOURCE_COVERAGE_TARGETS,',
+              '  ...MOIM_IQ_SOURCE_COVERAGE_TARGETS,\n  ...BOIP_NL_SOURCE_COVERAGE_TARGETS,\n  ...BOIP_BE_SOURCE_COVERAGE_TARGETS,\n  ...CIPO_SOURCE_COVERAGE_TARGETS,'
+          )
+
+          probes = '''  {
+            id: "nl-boip-trademark-portal-name",
+            targetId: "nl-boip-trademark-portal",
+            query: "BOIP Benelux trademark authority Netherlands portal",
+          },
+          {
+            id: "nl-boip-trademark-procedure-name",
+            targetId: "nl-boip-trademark-procedure",
+            query: "BOIP trademark application registration procedure examination publication opposition Netherlands",
+          },
+          {
+            id: "nl-boip-trademark-register-name",
+            targetId: "nl-boip-trademark-register",
+            query: "BOIP public trademarks register Netherlands Benelux applications registrations",
+          },
+          {
+            id: "nl-boip-trademark-fees-name",
+            targetId: "nl-boip-trademark-fees",
+            query: "BOIP trademark registration costs fees Netherlands Benelux",
+          },
+          {
+            id: "nl-benelux-convention-approval-act-name",
+            targetId: "nl-benelux-convention-approval-act",
+            query: "Netherlands Act 10 May 2006 approval Benelux Convention intellectual property trademarks",
+          },
+          {
+            id: "nl-benelux-convention-current-name",
+            targetId: "nl-benelux-convention-current",
+            query: "Benelux Convention Intellectual Property trademarks designs current consolidated BOIP",
+          },
+          {
+            id: "be-boip-trademark-portal-name",
+            targetId: "be-boip-trademark-portal",
+            query: "BOIP Benelux trademark authority Belgium portal",
+          },
+          {
+            id: "be-boip-online-trademark-filing-name",
+            targetId: "be-boip-online-trademark-filing",
+            query: "BOIP My BOIP online trademark application filing Belgium five steps",
+          },
+          {
+            id: "be-boip-trademark-register-name",
+            targetId: "be-boip-trademark-register",
+            query: "BOIP registre marques Belgium Benelux public trademark register",
+          },
+          {
+            id: "be-boip-trademark-fee-payment-name",
+            targetId: "be-boip-trademark-fee-payment",
+            query: "BOIP trademark fee payment methods Belgium online application",
+          },
+          {
+            id: "be-benelux-convention-approval-law-name",
+            targetId: "be-benelux-convention-approval-law",
+            query: "Belgium law 22 March 2006 approval Benelux Convention intellectual property trademarks",
+          },
+          {
+            id: "be-benelux-convention-fulltext-name",
+            targetId: "be-benelux-convention-fulltext",
+            query: "Benelux Convention intellectual property full text Belgium trademarks BOIP",
+          },
+          '''
+          replace_once(
+              'packages/persistence/src/retrieval-relevance-audit.ts',
+              '] satisfies readonly RetrievalRelevanceProbe[];',
+              probes + '] satisfies readonly RetrievalRelevanceProbe[];'
+          )
+
+          replace_all_exact(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\n  BOIP_NL_SOURCE_COVERAGE_TARGETS,\n  BOIP_BE_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              2
+          )
+
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\n  BOIP_NL_SOURCE_COVERAGE_TARGETS,\n  BOIP_BE_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              '  ["IQ", MOIM_IQ_SOURCE_COVERAGE_TARGETS, ["industry.gov.iq", "ur.gov.iq", "wipo.int"]],\n  ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],',
+              '  ["IQ", MOIM_IQ_SOURCE_COVERAGE_TARGETS, ["industry.gov.iq", "ur.gov.iq", "wipo.int"]],\n  ["NL", BOIP_NL_SOURCE_COVERAGE_TARGETS, ["boip.int", "wipo.int"]],\n  ["BE", BOIP_BE_SOURCE_COVERAGE_TARGETS, ["boip.int", "wipo.int"]],\n  ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],'
+          )
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              'ships explicit, official, unique coverage for eighty-three priority national offices',
+              'ships explicit, official, unique coverage for eighty-five priority national offices'
+          )
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', 'toHaveLength(663)', 'toHaveLength(675)')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '      663,\n    );', '      675,\n    );')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '    ).toBe(663);', '    ).toBe(675);')
+
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(targets).toHaveLength(617);', 'expect(targets).toHaveLength(629);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(617);', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(629);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', '      617,\n    );', '      629,\n    );')
+          replace_once(
+              'packages/persistence/tests/retrieval-relevance-audit.test.ts',
+              '    for (const jurisdiction of ["IR", "PK", "IQ"] as const) {\n      expect(\n        listSourceCoverageTargets({ jurisdiction, coverageTier: "FOUNDATIONAL" }).every((target) =>\n          targetIds.has(target.id),\n        ),\n      ).toBe(true);\n    }\n  });',
+              '    for (const jurisdiction of ["IR", "PK", "IQ", "NL", "BE"] as const) {\n      expect(\n        listSourceCoverageTargets({ jurisdiction, coverageTier: "FOUNDATIONAL" }).every((target) =>\n          targetIds.has(target.id),\n        ),\n      ).toBe(true);\n    }\n  });'
+          )
+
+          for jurisdiction, display, band in [
+              ('NL', 'Netherlands', 'P0'),
+              ('BE', 'Belgium', 'P1'),
+          ]:
+              replace_once(
+                  'packages/persistence/src/priority-trademark-jurisdictions.ts',
+                  f'["{jurisdiction}", "{display}", "EUROPE", "{band}", "TARGET", "REGIONAL"]',
+                  f'["{jurisdiction}", "{display}", "EUROPE", "{band}", "CURATED", "REGIONAL"]'
+              )
+          replace_once('packages/persistence/tests/priority-trademark-jurisdictions.test.ts', 'expect(curated).toHaveLength(84);', 'expect(curated).toHaveLength(86);')
+          replace_once('packages/persistence/tests/priority-trademark-jurisdictions.test.ts', 'expect(target).toHaveLength(36);', 'expect(target).toHaveLength(34);')
+          PY
+      - name: Format touched files
+        run: |
+          pnpm exec prettier --write \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts
+      - name: Verify Benelux tranche
+        run: |
+          pnpm --filter @markorbit/persistence test -- \
+            tests/priority-national-source-coverage.test.ts \
+            tests/retrieval-relevance-audit.test.ts \
+            tests/priority-trademark-jurisdictions.test.ts
+          pnpm typecheck
+      - name: Commit verified changes
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts
+          git commit -m "feat: add Benelux Netherlands Belgium trademark coverage"
+          git push origin HEAD:agent/priority-120-benelux-nl-be-v1
