@@ -11,17 +11,15 @@ import { getRegistryDatabase } from "@/server/source-registry";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  _request: Request,
-  context: { params: Promise<{ receiptId: string }> },
-) {
+export async function POST(_request: Request, context: { params: Promise<{ receiptId: string }> }) {
   try {
     const { receiptId } = await context.params;
     if (!receiptId?.trim()) throw new RegistryValidationError("receiptId is required");
     const database = getRegistryDatabase();
     const ledger = new SqliteSourceSupplyPromotionReceiptLedger(database);
     const current = ledger.getById(receiptId.trim());
-    if (!current) throw new RegistryValidationError(`Supply promotion receipt ${receiptId} was not found`);
+    if (!current)
+      throw new RegistryValidationError(`Supply promotion receipt ${receiptId} was not found`);
     if (current.status === "PROVEN") {
       return NextResponse.json({ receipt: current, replayed: true });
     }

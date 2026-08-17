@@ -177,7 +177,9 @@ function rowToReceipt(row: Record<string, unknown>): SourceSupplyPromotionReceip
     idempotencyKey: String(row.idempotency_key),
     status: String(row.status) as SourceSupplyPromotionReceiptStatus,
     lastProofStatus: String(row.last_proof_status) as SourceSupplyPromotionProofStatus,
-    proofBlockers: JSON.parse(String(row.proof_blockers_json)) as SourceSupplyPromotionProofBlocker[],
+    proofBlockers: JSON.parse(
+      String(row.proof_blockers_json),
+    ) as SourceSupplyPromotionProofBlocker[],
     proofEvidence: row.proof_evidence_json
       ? (JSON.parse(String(row.proof_evidence_json)) as SourceSupplyPromotionProofEvidence)
       : null,
@@ -232,8 +234,7 @@ export class SqliteSourceSupplyPromotionReceiptLedger {
 
   getById(id: string): SourceSupplyPromotionReceipt | null {
     const row = this.database.prepare(`SELECT * FROM ${TABLE} WHERE id = ?`).get(id) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     return row ? rowToReceipt(row) : null;
   }
 

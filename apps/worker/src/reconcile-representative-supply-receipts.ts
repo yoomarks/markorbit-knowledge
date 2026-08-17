@@ -84,7 +84,8 @@ async function main(): Promise<void> {
   const canaries = getRepresentativeSourceLiveCanaries();
   const supported = new Set(canaries.map((item) => item.jurisdiction));
   const unknown = requested.filter((value) => !supported.has(value));
-  if (unknown.length > 0) throw new Error(`Unsupported representative jurisdiction: ${unknown.join(", ")}`);
+  if (unknown.length > 0)
+    throw new Error(`Unsupported representative jurisdiction: ${unknown.join(", ")}`);
   const allowed = requested.length > 0 ? new Set(requested) : supported;
 
   const query = new URLSearchParams({ workspaceId, status: "DISPATCHED", limit: "100" });
@@ -112,7 +113,8 @@ async function main(): Promise<void> {
         ),
       );
       const updated = parseReceipt(payload?.receipt);
-      if (!updated) throw new Error(`Receipt ${receipt.id} returned an invalid reconciliation response`);
+      if (!updated)
+        throw new Error(`Receipt ${receipt.id} returned an invalid reconciliation response`);
       results.push({
         receiptId: updated.id,
         jurisdiction: updated.jurisdiction,

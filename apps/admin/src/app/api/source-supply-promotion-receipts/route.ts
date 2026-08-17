@@ -31,7 +31,9 @@ function optionalLimit(value: string | null): number | undefined {
 
 function optionalStatus(value: string | null): SourceSupplyPromotionReceiptStatus | undefined {
   if (!value) return undefined;
-  if (!SOURCE_SUPPLY_PROMOTION_RECEIPT_STATUSES.includes(value as SourceSupplyPromotionReceiptStatus)) {
+  if (
+    !SOURCE_SUPPLY_PROMOTION_RECEIPT_STATUSES.includes(value as SourceSupplyPromotionReceiptStatus)
+  ) {
     throw new RegistryValidationError("Unknown source supply promotion receipt status");
   }
   return value as SourceSupplyPromotionReceiptStatus;
