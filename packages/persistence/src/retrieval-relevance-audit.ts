@@ -3820,6 +3820,216 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "tt-ipo-trademark-search-guidelines",
     query: "Trinidad Tobago trademark search guidelines",
   },
+  {
+    id: "cu-ocpi-portal-name",
+    targetId: "cu-ocpi-portal",
+    query: "Cuba OCPI industrial property office trademarks",
+  },
+  {
+    id: "cu-ocpi-trademarks-name",
+    targetId: "cu-ocpi-trademarks",
+    query: "Cuba OCPI trademark registration filing",
+  },
+  {
+    id: "cu-ocpi-trademark-search-name",
+    targetId: "cu-ocpi-trademark-search",
+    query: "Cuba OCPI trademark search service",
+  },
+  {
+    id: "cu-ocpi-fees-2021-name",
+    targetId: "cu-ocpi-fees-2021",
+    query: "Cuba OCPI Resolution 112 2021 tariffs fees",
+  },
+  {
+    id: "cu-trademark-decree-law-203-name",
+    targetId: "cu-trademark-decree-law-203",
+    query: "Cuba Decree Law 203 trademarks distinctive signs",
+  },
+  {
+    id: "cu-trademark-regulation-63-2000-name",
+    targetId: "cu-trademark-regulation-63-2000",
+    query: "Cuba Resolution 63 2000 trademark regulation",
+  },
+  {
+    id: "tz-brela-portal-name",
+    targetId: "tz-brela-portal",
+    query: "Tanzania BRELA trade service marks portal",
+  },
+  {
+    id: "tz-brela-trademark-filing-name",
+    targetId: "tz-brela-trademark-filing",
+    query: "Tanzania BRELA trade service mark registration filing",
+  },
+  {
+    id: "tz-brela-ors-trademarks-name",
+    targetId: "tz-brela-ors-trademarks",
+    query: "Tanzania BRELA ORS trademark online registry",
+  },
+  {
+    id: "tz-brela-trademark-fees-name",
+    targetId: "tz-brela-trademark-fees",
+    query: "Tanzania BRELA trade service marks fees",
+  },
+  {
+    id: "tz-brela-trademark-act-name",
+    targetId: "tz-brela-trademark-act",
+    query: "Tanzania Trade and Service Marks Act BRELA",
+  },
+  {
+    id: "tz-brela-trademark-forms-name",
+    targetId: "tz-brela-trademark-forms",
+    query: "Tanzania BRELA trade service mark forms TM SM",
+  },
+  {
+    id: "ao-iapi-portal-name",
+    targetId: "ao-iapi-portal",
+    query: "Angola IAPI industrial property portal",
+  },
+  {
+    id: "ao-iapi-trademark-filing-name",
+    targetId: "ao-iapi-trademark-filing",
+    query: "Angola IAPI trademark registration marca",
+  },
+  {
+    id: "ao-iapi-prior-art-search-name",
+    targetId: "ao-iapi-prior-art-search",
+    query: "Angola IAPI prior art trademark search",
+  },
+  {
+    id: "ao-iapi-fee-table-name",
+    targetId: "ao-iapi-fee-table",
+    query: "Angola IAPI Presidential Decree 62 20 industrial property fees",
+  },
+  {
+    id: "ao-industrial-property-law-name",
+    targetId: "ao-industrial-property-law",
+    query: "Angola Law 3 92 industrial property trademarks",
+  },
+  {
+    id: "ao-gue-iapi-filing-requirements-name",
+    targetId: "ao-gue-iapi-filing-requirements",
+    query: "Angola GUE IAPI marks patents requirements",
+  },
+  {
+    id: "mz-ipi-portal-name",
+    targetId: "mz-ipi-portal",
+    query: "Mozambique IPI industrial property portal",
+  },
+  {
+    id: "mz-ipi-trademark-forms-name",
+    targetId: "mz-ipi-trademark-forms",
+    query: "Mozambique IPI trademark registration forms",
+  },
+  {
+    id: "mz-ipi-search-request-name",
+    targetId: "mz-ipi-search-request",
+    query: "Mozambique IPI industrial property search request",
+  },
+  {
+    id: "mz-ipi-current-fees-name",
+    targetId: "mz-ipi-current-fees",
+    query: "Mozambique IPI Ministerial Diploma 154 2023 fees",
+  },
+  {
+    id: "mz-industrial-property-code-47-2015-name",
+    targetId: "mz-industrial-property-code-47-2015",
+    query: "Mozambique Industrial Property Code Decree 47 2015",
+  },
+  {
+    id: "mz-ipi-rights-maintenance-guidance-name",
+    targetId: "mz-ipi-rights-maintenance-guidance",
+    query: "Mozambique IPI industrial property rights maintenance",
+  },
+  {
+    id: "zm-pacra-portal-name",
+    targetId: "zm-pacra-portal",
+    query: "Zambia PACRA intellectual property trademarks",
+  },
+  {
+    id: "zm-pacra-ip-online-name",
+    targetId: "zm-pacra-ip-online",
+    query: "Zambia PACRA trademark filing IP Online",
+  },
+  {
+    id: "zm-pacra-tmview-search-name",
+    targetId: "zm-pacra-tmview-search",
+    query: "Zambia PACRA TMView trademark search",
+  },
+  {
+    id: "zm-pacra-forms-fees-name",
+    targetId: "zm-pacra-forms-fees",
+    query: "Zambia PACRA trademark forms fees",
+  },
+  {
+    id: "zm-trade-marks-act-2023-name",
+    targetId: "zm-trade-marks-act-2023",
+    query: "Zambia Trade Marks Act 2023",
+  },
+  {
+    id: "zm-pacra-nice-classification-name",
+    targetId: "zm-pacra-nice-classification",
+    query: "Zambia PACRA Nice trademark classification",
+  },
+  {
+    id: "zw-cipz-government-portal-name",
+    targetId: "zw-cipz-government-portal",
+    query: "Zimbabwe Companies Intellectual Property Office government",
+  },
+  {
+    id: "zw-cipz-filing-portal-name",
+    targetId: "zw-cipz-filing-portal",
+    query: "Zimbabwe CIPZ trademark filing portal",
+  },
+  {
+    id: "zw-trade-marks-act-current-name",
+    targetId: "zw-trade-marks-act-current",
+    query: "Zimbabwe Trade Marks Act Chapter 26 04",
+  },
+  {
+    id: "zw-trade-mark-regulations-2005-name",
+    targetId: "zw-trade-mark-regulations-2005",
+    query: "Zimbabwe Trade Mark Regulations 2005",
+  },
+  {
+    id: "zw-trade-mark-regulations-fees-name",
+    targetId: "zw-trade-mark-regulations-fees",
+    query: "Zimbabwe trademark regulations fee schedule",
+  },
+  {
+    id: "zw-trademark-search-regulations-name",
+    targetId: "zw-trademark-search-regulations",
+    query: "Zimbabwe trademark register search regulations",
+  },
+  {
+    id: "cd-industry-ministry-portal-name",
+    targetId: "cd-industry-ministry-portal",
+    query: "DRC Ministry Industry industrial property",
+  },
+  {
+    id: "cd-industrial-property-authority-name",
+    targetId: "cd-industrial-property-authority",
+    query: "DRC Direction propriété industrielle Ministry trademarks",
+  },
+  {
+    id: "cd-wipo-national-ip-office-profile-name",
+    targetId: "cd-wipo-national-ip-office-profile",
+    query: "DRC WIPO national IP office trademark profile",
+  },
+  {
+    id: "cd-official-journal-fee-order-search-name",
+    targetId: "cd-official-journal-fee-order-search",
+    query: "DRC official journal industrial property fee order",
+  },
+  {
+    id: "cd-industrial-property-law-82-001-name",
+    targetId: "cd-industrial-property-law-82-001",
+    query: "DRC Law 82 001 industrial property trademarks",
+  },
+  {
+    id: "cd-industrial-property-law-filing-text-name",
+    targetId: "cd-industrial-property-law-filing-text",
+    query: "DRC industrial property law trademark filing registration",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
