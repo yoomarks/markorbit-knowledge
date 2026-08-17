@@ -9680,6 +9680,147 @@ export const MOIM_IQ_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const BOIP_NL: Authority = {
+  jurisdiction: "NL",
+  authorityName: "Benelux Office for Intellectual Property (BOIP)",
+  languages: ["nl", "en"],
+  verificationEvidenceUri: "https://www.boip.int/en",
+};
+
+export const BOIP_NL_SOURCE_COVERAGE_TARGETS = [
+  target(BOIP_NL, {
+    id: "nl-boip-trademark-portal",
+    family: "PORTAL",
+    displayName: "BOIP Trademark Portal – Netherlands",
+    canonicalUri: "https://www.boip.int/en",
+    verificationEvidenceUri: "https://www.boip.int/en",
+    notes:
+      "BOIP is the common Benelux trademark authority for the Netherlands, Belgium and Luxembourg. This Netherlands target intentionally models the regional authority rather than inventing a separate national trademark office.",
+  }),
+  target(BOIP_NL, {
+    id: "nl-boip-trademark-procedure",
+    family: "FILING",
+    displayName: "BOIP Trademark Application and Registration Procedure",
+    canonicalUri: "https://www.boip.int/en/entrepreneurs/trademarks/procedure",
+    verificationEvidenceUri: "https://www.boip.int/en/entrepreneurs/trademarks/procedure",
+    notes:
+      "Official BOIP procedure covering filing receipt, formal and substantive examination, publication, opposition and registration for Benelux trademarks.",
+  }),
+  target(BOIP_NL, {
+    id: "nl-boip-trademark-register",
+    family: "SEARCH",
+    displayName: "BOIP Trademarks Register – Netherlands",
+    canonicalUri: "https://www.boip.int/en/trademarks-register",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://support.boip.int/hc/nl/articles/23546410785041-Wat-is-het-BOIP-Merkenregister",
+    notes:
+      "Official public Benelux trademark register containing applications and registrations valid in the Netherlands, Belgium and Luxembourg.",
+  }),
+  target(BOIP_NL, {
+    id: "nl-boip-trademark-fees",
+    family: "FEES",
+    displayName: "BOIP Trademark Registration Costs",
+    canonicalUri:
+      "https://support.boip.int/hc/nl/articles/23546410404497-Wat-kost-een-merkregistratie",
+    verificationEvidenceUri:
+      "https://support.boip.int/hc/nl/articles/23546410404497-Wat-kost-een-merkregistratie",
+    notes:
+      "Current BOIP support source for the Benelux trademark registration base tariff and class-dependent additional costs. The catalog retains the live source rather than copying numeric fees into metadata.",
+  }),
+  target(BOIP_NL, {
+    id: "nl-benelux-convention-approval-act",
+    family: "LEGAL_TEXTS",
+    displayName: "Netherlands Act Approving the Benelux Convention on Intellectual Property",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/22068",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/22068",
+    notes:
+      "Netherlands national approval act giving effect to the Benelux Convention on Intellectual Property for trademarks and designs.",
+  }),
+  target(BOIP_NL, {
+    id: "nl-benelux-convention-current",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Benelux Convention on Intellectual Property – Current Consolidated Framework",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/20174",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/20174",
+    notes:
+      "Current WIPO Lex consolidated Benelux Convention framework governing trademarks and designs and establishing the Benelux Organization for Intellectual Property.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const BOIP_BE: Authority = {
+  jurisdiction: "BE",
+  authorityName: "Benelux Office for Intellectual Property (BOIP)",
+  languages: ["fr", "nl", "en"],
+  verificationEvidenceUri: "https://www.boip.int/fr",
+};
+
+export const BOIP_BE_SOURCE_COVERAGE_TARGETS = [
+  target(BOIP_BE, {
+    id: "be-boip-trademark-portal",
+    family: "PORTAL",
+    displayName: "BOIP Trademark Portal – Belgium",
+    canonicalUri: "https://www.boip.int/fr",
+    verificationEvidenceUri: "https://www.boip.int/fr",
+    notes:
+      "BOIP is the common Benelux trademark authority for Belgium, the Netherlands and Luxembourg. This Belgium target intentionally models that regional authority rather than inventing a national trademark office.",
+  }),
+  target(BOIP_BE, {
+    id: "be-boip-online-trademark-filing",
+    family: "FILING",
+    displayName: "BOIP Online Trademark Filing through My BOIP",
+    canonicalUri:
+      "https://support.boip.int/hc/nl/articles/23546463100817-Hoe-werkt-het-online-aanvragen-van-een-merk-of-modelregistratie",
+    verificationEvidenceUri:
+      "https://support.boip.int/hc/nl/articles/23546463100817-Hoe-werkt-het-online-aanvragen-van-een-merk-of-modelregistratie",
+    notes:
+      "Official BOIP guidance for the My BOIP online filing flow, including the five-step application process and direct electronic payment.",
+  }),
+  target(BOIP_BE, {
+    id: "be-boip-trademark-register",
+    family: "SEARCH",
+    displayName: "BOIP Trademarks Register – Belgium",
+    canonicalUri: "https://www.boip.int/fr/registre-des-marques",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri:
+      "https://support.boip.int/hc/nl/articles/23546410785041-Wat-is-het-BOIP-Merkenregister",
+    notes:
+      "French BOIP entrypoint to the official public Benelux trademark register, which is the publication and search surface for marks covering Belgium.",
+  }),
+  target(BOIP_BE, {
+    id: "be-boip-trademark-fee-payment",
+    family: "FEES",
+    displayName: "BOIP Trademark Fee Payment Methods",
+    canonicalUri: "https://support.boip.int/hc/nl/articles/23546478823825-Hoe-kan-ik-betalen",
+    verificationEvidenceUri:
+      "https://support.boip.int/hc/nl/articles/23546478823825-Hoe-kan-ik-betalen",
+    notes:
+      "Current BOIP fee-payment guidance for online trademark and design applications, including accepted electronic payment methods. Fee amounts remain sourced from BOIP's live tariff materials rather than duplicated in Knowledge.",
+  }),
+  target(BOIP_BE, {
+    id: "be-benelux-convention-approval-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Belgium Law Approving the Benelux Convention on Intellectual Property",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/11671",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/11671",
+    notes:
+      "Belgian national approval law under which the 2005 Benelux Convention on Intellectual Property has full effect in Belgium.",
+  }),
+  target(BOIP_BE, {
+    id: "be-benelux-convention-fulltext",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Benelux Convention on Intellectual Property – Full Text",
+    canonicalUri: "https://www.wipo.int/wipolex/en/text/578525",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/20174",
+    notes:
+      "Full WIPO Lex text of the common Benelux trademark framework, retained for detailed procedural and substantive acquisition alongside Belgium's national approval law.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -9829,5 +9970,7 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IPC_IR_SOURCE_COVERAGE_TARGETS,
   ...IPO_PK_SOURCE_COVERAGE_TARGETS,
   ...MOIM_IQ_SOURCE_COVERAGE_TARGETS,
+  ...BOIP_NL_SOURCE_COVERAGE_TARGETS,
+  ...BOIP_BE_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
