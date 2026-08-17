@@ -10455,6 +10455,407 @@ export const BRUIPO_BN_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const SENADI_EC: Authority = {
+  jurisdiction: "EC",
+  authorityName: "National Service of Intellectual Rights of Ecuador (SENADI)",
+  languages: ["es"],
+  verificationEvidenceUri: "https://www.derechosintelectuales.gob.ec/",
+};
+
+export const SENADI_EC_SOURCE_COVERAGE_TARGETS = [
+  target(SENADI_EC, {
+    id: "ec-senadi-portal",
+    family: "PORTAL",
+    displayName: "SENADI Intellectual Rights Portal",
+    canonicalUri: "https://www.derechosintelectuales.gob.ec/",
+    verificationEvidenceUri: "https://www.derechosintelectuales.gob.ec/",
+    notes: "Official SENADI authority portal for intellectual rights and industrial property.",
+  }),
+  target(SENADI_EC, {
+    id: "ec-senadi-trademark-registration",
+    family: "FILING",
+    displayName: "Ecuador Trademark Registration Guidance",
+    canonicalUri: "https://www.derechosintelectuales.gob.ec/como-registro-una-marca/",
+    verificationEvidenceUri: "https://www.derechosintelectuales.gob.ec/como-registro-una-marca/",
+    notes:
+      "Current SENADI guidance covering pre-filing search, online application and registration/renewal workflow.",
+  }),
+  target(SENADI_EC, {
+    id: "ec-senadi-trademark-search-guidance",
+    family: "SEARCH",
+    displayName: "Ecuador Trademark Search and Industrial Property FAQ",
+    canonicalUri:
+      "https://www.derechosintelectuales.gob.ec/preguntas-frecuentes-propiedad-industrial/",
+    verificationEvidenceUri:
+      "https://www.derechosintelectuales.gob.ec/preguntas-frecuentes-propiedad-industrial/",
+    notes:
+      "Official SENADI FAQ covering phonetic trademark searches and online registration access.",
+  }),
+  target(SENADI_EC, {
+    id: "ec-senadi-trademark-fees-2026",
+    family: "FEES",
+    displayName: "SENADI 2026 Official Fees",
+    canonicalUri: "https://www.derechosintelectuales.gob.ec/tasas2026/",
+    verificationEvidenceUri: "https://www.derechosintelectuales.gob.ec/tasas2026/",
+    notes:
+      "Current SENADI 2026 fee landing page; live tariff values remain at source rather than being copied into Knowledge.",
+  }),
+  target(SENADI_EC, {
+    id: "ec-industrial-property-code",
+    family: "LEGAL_TEXTS",
+    displayName:
+      "Ecuador Organic Code on the Social Economy of Knowledge, Creativity and Innovation",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/16990",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/16990",
+    notes:
+      "WIPO Lex principal Ecuadorian framework governing intellectual and industrial property, including trademarks.",
+  }),
+  target(SENADI_EC, {
+    id: "ec-senadi-distinctive-signs-procedure",
+    family: "EXAMINATION_MANUAL",
+    displayName: "SENADI Distinctive Signs Technical Procedure",
+    canonicalUri:
+      "https://www.derechosintelectuales.gob.ec/direccion-tecnica-de-signos-distintivos/",
+    verificationEvidenceUri:
+      "https://www.derechosintelectuales.gob.ec/direccion-tecnica-de-signos-distintivos/",
+    notes:
+      "Current SENADI procedure covering searches, filing, formal examination, publication, opposition and registrability.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const DNPI_UY: Authority = {
+  jurisdiction: "UY",
+  authorityName: "National Directorate of Industrial Property of Uruguay (DNPI)",
+  languages: ["es"],
+  verificationEvidenceUri:
+    "https://www.gub.uy/ministerio-industria-energia-mineria/institucional/estructura-del-organismo/direccion-nacional-propiedad-industrial-registro-software",
+};
+
+export const DNPI_UY_SOURCE_COVERAGE_TARGETS = [
+  target(DNPI_UY, {
+    id: "uy-dnpi-portal",
+    family: "PORTAL",
+    displayName: "Uruguay National Directorate of Industrial Property",
+    canonicalUri:
+      "https://www.gub.uy/ministerio-industria-energia-mineria/institucional/estructura-del-organismo/direccion-nacional-propiedad-industrial-registro-software",
+    verificationEvidenceUri:
+      "https://www.gub.uy/ministerio-industria-energia-mineria/institucional/estructura-del-organismo/direccion-nacional-propiedad-industrial-registro-software",
+    notes: "Official government authority page for DNPI and its trademark responsibilities.",
+  }),
+  target(DNPI_UY, {
+    id: "uy-dnpi-trademark-registration",
+    family: "FILING",
+    displayName: "Uruguay Trademark Registration Service",
+    canonicalUri: "https://www.gub.uy/tramites/registro-marcas",
+    verificationEvidenceUri: "https://www.gub.uy/tramites/registro-marcas",
+    notes:
+      "Current government trademark registration procedure, online filing route, requirements and linked legal materials.",
+  }),
+  target(DNPI_UY, {
+    id: "uy-dnpi-public-trademark-database",
+    family: "SEARCH",
+    displayName: "Uruguay Public Trademark Database Availability",
+    canonicalUri:
+      "https://www.gub.uy/ministerio-industria-energia-mineria/institucional/normativa/resolucion-n-5024-disponibilidad-para-consulta-base-publica-marcas-patentes",
+    verificationEvidenceUri:
+      "https://www.gub.uy/ministerio-industria-energia-mineria/institucional/normativa/resolucion-n-5024-disponibilidad-para-consulta-base-publica-marcas-patentes",
+    notes:
+      "Official DNPI resolution establishing continuous public access to the trademark/patent database with daily maintenance and updates.",
+  }),
+  target(DNPI_UY, {
+    id: "uy-dnpi-online-filing-payment",
+    family: "FEES",
+    displayName: "Uruguay Online IP Filing and Payment System",
+    canonicalUri:
+      "https://www.gub.uy/ministerio-industria-energia-mineria/tramites-y-servicios/servicios/sistema-presentacion-linea-recepcion-automatica-marcas-patentes",
+    verificationEvidenceUri:
+      "https://www.gub.uy/ministerio-industria-energia-mineria/tramites-y-servicios/servicios/sistema-presentacion-linea-recepcion-automatica-marcas-patentes",
+    notes:
+      "Current government filing/payment service linking updated trademark rates and electronic payment operations.",
+  }),
+  target(DNPI_UY, {
+    id: "uy-trademark-law-current",
+    family: "LEGAL_TEXTS",
+    displayName: "Uruguay Law No. 17.011 on Trademarks",
+    canonicalUri: "https://www.wipo.int/wipolex/es/legislation/details/21440",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/es/legislation/details/21440",
+    notes: "WIPO Lex current consolidated trademark law amended through 2018.",
+  }),
+  target(DNPI_UY, {
+    id: "uy-dnpi-distinctive-signs-examination-guide",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Uruguay 2024 Distinctive Signs Examination and Procedure Guide",
+    canonicalUri:
+      "https://www.gub.uy/ministerio-industria-energia-mineria/institucional/normativa/circular-n-16-fecha-29112024-guia-examen-procedimiento-signos-distintivos",
+    verificationEvidenceUri:
+      "https://www.gub.uy/ministerio-industria-energia-mineria/institucional/normativa/circular-n-16-fecha-29112024-guia-examen-procedimiento-signos-distintivos",
+    notes:
+      "Official DNPI Circular No. 16/2024 publishing the current examination/procedure guide for distinctive signs.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const RPI_GT: Authority = {
+  jurisdiction: "GT",
+  authorityName: "Registry of Intellectual Property of Guatemala (RPI)",
+  languages: ["es"],
+  verificationEvidenceUri:
+    "https://www.mineco.gob.gt/institucion/viceministerio-de-asuntos-registrales/registro-de-la-propiedad-intelectual",
+};
+
+export const RPI_GT_SOURCE_COVERAGE_TARGETS = [
+  target(RPI_GT, {
+    id: "gt-rpi-portal",
+    family: "PORTAL",
+    displayName: "Guatemala Registry of Intellectual Property",
+    canonicalUri:
+      "https://www.mineco.gob.gt/institucion/viceministerio-de-asuntos-registrales/registro-de-la-propiedad-intelectual",
+    verificationEvidenceUri:
+      "https://www.mineco.gob.gt/institucion/viceministerio-de-asuntos-registrales/registro-de-la-propiedad-intelectual",
+    notes: "Official Ministry of Economy authority page for the Registry of Intellectual Property.",
+  }),
+  target(RPI_GT, {
+    id: "gt-rpi-trademark-filing",
+    family: "FILING",
+    displayName: "Guatemala RPI Trademark Filing through VUFE",
+    canonicalUri: "https://sistemaseguimiento.registromercantil.gob.gt/vufe/rpi/",
+    verificationEvidenceUri: "https://sistemaseguimiento.registromercantil.gob.gt/vufe/rpi/",
+    notes:
+      "Official government filing surface describing trademark requirements, process and registration-related charges.",
+  }),
+  target(RPI_GT, {
+    id: "gt-rpi-trademark-search",
+    family: "SEARCH",
+    displayName: "Guatemala RPI Trademark Search",
+    canonicalUri: "https://busquedas.rpi.gob.gt/",
+    verificationEvidenceUri: "https://busquedas.rpi.gob.gt/",
+    notes: "Official Registry of Intellectual Property trademark search service.",
+  }),
+  target(RPI_GT, {
+    id: "gt-rpi-trademark-fees",
+    family: "FEES",
+    displayName: "Guatemala RPI Trademark Fees FAQ",
+    canonicalUri: "https://boletin.rpi.gob.gt/portalrpi/sites/default/files/faq/faqmarcas.html",
+    verificationEvidenceUri:
+      "https://boletin.rpi.gob.gt/portalrpi/sites/default/files/faq/faqmarcas.html",
+    notes:
+      "Official RPI trademark FAQ publishing search and registration charges; live values remain at source.",
+  }),
+  target(RPI_GT, {
+    id: "gt-industrial-property-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Guatemala Industrial Property Law Decree No. 57-2000",
+    canonicalUri: "https://www.wipo.int/wipolex/en/text/585501",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/text/585501",
+    notes:
+      "WIPO Lex full text of Guatemala’s Industrial Property Law governing trademarks and related rights.",
+  }),
+  target(RPI_GT, {
+    id: "gt-rpi-trademark-guides",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Guatemala RPI Trademark Guides and Flowcharts",
+    canonicalUri: "https://econsulta.rpi.gob.gt/extras.html",
+    verificationEvidenceUri: "https://econsulta.rpi.gob.gt/extras.html",
+    notes:
+      "Official RPI collection of trademark guides, flowcharts and operational materials for registration procedures.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const RPI_CR: Authority = {
+  jurisdiction: "CR",
+  authorityName: "Registry of Industrial Property, National Registry of Costa Rica",
+  languages: ["es"],
+  verificationEvidenceUri: "https://servicios.rnpdigital.com/registro_propiedad_intelectual/",
+};
+
+export const RPI_CR_SOURCE_COVERAGE_TARGETS = [
+  target(RPI_CR, {
+    id: "cr-rpi-portal",
+    family: "PORTAL",
+    displayName: "Costa Rica Registry of Industrial Property Portal",
+    canonicalUri: "https://servicios.rnpdigital.com/registro_propiedad_intelectual/",
+    verificationEvidenceUri: "https://servicios.rnpdigital.com/registro_propiedad_intelectual/",
+    notes: "Official National Registry industrial-property service portal.",
+  }),
+  target(RPI_CR, {
+    id: "cr-rpi-online-trademark-filing",
+    family: "FILING",
+    displayName: "Costa Rica Online Trademark Filing Guidance",
+    canonicalUri: "https://www.rnpdigital.com/tramites_servicios/Preguntas%20Frecuentes.htm",
+    verificationEvidenceUri:
+      "https://www.rnpdigital.com/tramites_servicios/Preguntas%20Frecuentes.htm",
+    notes:
+      "Official National Registry FAQ identifies WIPO FILE as the online trademark filing route and documents registration procedures.",
+  }),
+  target(RPI_CR, {
+    id: "cr-rpi-trademark-search",
+    family: "SEARCH",
+    displayName: "Costa Rica Trademark Search and Global Brand Database Links",
+    canonicalUri:
+      "https://rn2.rnpdigital.com/registro_propiedad_intelectual/propiedad_industrial_enlaces.htm",
+    verificationEvidenceUri:
+      "https://rn2.rnpdigital.com/registro_propiedad_intelectual/propiedad_industrial_enlaces.htm",
+    notes:
+      "Official Registry page linking the distinctive-signs database integration used for public trademark searching.",
+  }),
+  target(RPI_CR, {
+    id: "cr-rpi-trademark-fees",
+    family: "FEES",
+    displayName: "Costa Rica Industrial Property Trademark Fees",
+    canonicalUri:
+      "https://rn2.rnpdigital.com/tramites_servicios/tramitesregistros/propiedad%20intelectual/propiedad_industrial_aranceles.htm",
+    verificationEvidenceUri:
+      "https://rn2.rnpdigital.com/tramites_servicios/tramitesregistros/propiedad%20intelectual/propiedad_industrial_aranceles.htm",
+    notes:
+      "Official National Registry tariff page for trademark applications, renewals and related actions.",
+  }),
+  target(RPI_CR, {
+    id: "cr-trademark-law-7978",
+    family: "LEGAL_TEXTS",
+    displayName: "Costa Rica Law No. 7978 on Trademarks and Other Distinctive Signs",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/9130",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/9130",
+    notes: "WIPO Lex principal Costa Rican trademark statute.",
+  }),
+  target(RPI_CR, {
+    id: "cr-trademark-regulation-current",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Costa Rica Trademark Regulation – Current through September 2024",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/23322",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/23322",
+    notes: "Current WIPO Lex implementing regulation amended through 5 September 2024.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const DIGERPI_PA: Authority = {
+  jurisdiction: "PA",
+  authorityName: "General Directorate of Industrial Property of Panama (DIGERPI)",
+  languages: ["es"],
+  verificationEvidenceUri: "https://digerpi.mici.gob.pa/",
+};
+
+export const DIGERPI_PA_SOURCE_COVERAGE_TARGETS = [
+  target(DIGERPI_PA, {
+    id: "pa-digerpi-portal",
+    family: "PORTAL",
+    displayName: "Panama DIGERPI Portal",
+    canonicalUri: "https://digerpi.mici.gob.pa/",
+    verificationEvidenceUri: "https://digerpi.mici.gob.pa/",
+    notes:
+      "Current Ministry of Commerce and Industries industrial-property portal with 2026 activity and trademark services.",
+  }),
+  target(DIGERPI_PA, {
+    id: "pa-digerpi-trademark-requirements",
+    family: "FILING",
+    displayName: "Panama Trademark Application Requirements",
+    canonicalUri: "https://mici.gob.pa/requisitos-marcas/",
+    verificationEvidenceUri: "https://mici.gob.pa/requisitos-marcas/",
+    notes: "Official MICI requirements for trademark applications.",
+  }),
+  target(DIGERPI_PA, {
+    id: "pa-digerpi-trademark-search",
+    family: "SEARCH",
+    displayName: "Panama DIGERPI Trademark Availability Search",
+    canonicalUri: "https://consulta.digerpi.gob.pa/Marcas/Disponibles",
+    verificationEvidenceUri: "https://consulta.digerpi.gob.pa/Marcas/Disponibles",
+    notes: "Official DIGERPI trademark availability search service.",
+  }),
+  target(DIGERPI_PA, {
+    id: "pa-trademark-registration-fees",
+    family: "FEES",
+    displayName: "Panama Digital Trademark Registration Service and Fees",
+    canonicalUri:
+      "https://www.panamadigital.gob.pa/informaciontramite/solicitud-de-registro-de-marcas",
+    verificationEvidenceUri:
+      "https://www.panamadigital.gob.pa/informaciontramite/solicitud-de-registro-de-marcas",
+    notes:
+      "Current Panama government service page publishing trademark registration procedure, costs and legal basis.",
+  }),
+  target(DIGERPI_PA, {
+    id: "pa-digerpi-current-legal-framework",
+    family: "LEGAL_TEXTS",
+    displayName: "Panama DIGERPI Current Trademark Legal Framework",
+    canonicalUri: "https://mici.gob.pa/marco-legal-digerpi/",
+    verificationEvidenceUri: "https://mici.gob.pa/marco-legal-digerpi/",
+    notes:
+      "Current MICI legal framework identifies Law No. 35/1996 as amended by Law No. 61/2012 and the implementing Executive Decree No. 85/2017.",
+  }),
+  target(DIGERPI_PA, {
+    id: "pa-digerpi-current-legislation-index",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Panama DIGERPI Current Industrial Property Legislation",
+    canonicalUri: "https://mici.gob.pa/legislacion-vigente/",
+    verificationEvidenceUri: "https://mici.gob.pa/legislacion-vigente/",
+    notes:
+      "Official MICI current-legislation index linking the consolidated trademark law and Executive Decree No. 85/2017 implementing procedures.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const ONAPI_DO: Authority = {
+  jurisdiction: "DO",
+  authorityName: "National Office of Industrial Property of the Dominican Republic (ONAPI)",
+  languages: ["es"],
+  verificationEvidenceUri: "https://onapi.gob.do/",
+};
+
+export const ONAPI_DO_SOURCE_COVERAGE_TARGETS = [
+  target(ONAPI_DO, {
+    id: "do-onapi-portal",
+    family: "PORTAL",
+    displayName: "Dominican Republic ONAPI Portal",
+    canonicalUri: "https://onapi.gob.do/",
+    verificationEvidenceUri: "https://onapi.gob.do/",
+    notes:
+      "Official ONAPI portal linking E-SERPI, search, rates, bulletins and trademark resources.",
+  }),
+  target(ONAPI_DO, {
+    id: "do-onapi-trademark-forms",
+    family: "FILING",
+    displayName: "Dominican Republic ONAPI Trademark Forms",
+    canonicalUri: "https://www.onapi.gob.do/forms",
+    verificationEvidenceUri: "https://www.onapi.gob.do/forms",
+    notes:
+      "Official ONAPI forms surface for trademark filing, searches, renewals and related distinctive-sign actions.",
+  }),
+  target(ONAPI_DO, {
+    id: "do-onapi-trademark-search",
+    family: "SEARCH",
+    displayName: "Dominican Republic ONAPI Trademark Search",
+    canonicalUri: "https://onapi.gob.do/index.php/busqueda-de-signos-nombres-y-marcas",
+    verificationEvidenceUri: "https://onapi.gob.do/index.php/busqueda-de-signos-nombres-y-marcas",
+    notes: "Official ONAPI search entrypoint for signs, names and trademarks.",
+  }),
+  target(ONAPI_DO, {
+    id: "do-onapi-trademark-registration-fees",
+    family: "FEES",
+    displayName: "Dominican Republic Trademark Registration Service and Fees",
+    canonicalUri:
+      "https://onapi.gob.do/index.php/servicios-signos-distintivos/item/574-registro-de-marca-denominativa-2k23",
+    verificationEvidenceUri:
+      "https://onapi.gob.do/index.php/servicios-signos-distintivos/item/574-registro-de-marca-denominativa-2k23",
+    notes:
+      "Current ONAPI denominative-mark registration service publishing requirements, electronic channel and current cost.",
+  }),
+  target(ONAPI_DO, {
+    id: "do-industrial-property-law-20-00",
+    family: "LEGAL_TEXTS",
+    displayName: "Dominican Republic Industrial Property Law No. 20-00",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/1190",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/1190",
+    notes:
+      "WIPO Lex principal industrial-property statute governing trademarks; WIPO notes subsequent amendments are not consolidated in this text.",
+  }),
+  target(ONAPI_DO, {
+    id: "do-onapi-trademark-distinctiveness-manual",
+    family: "EXAMINATION_MANUAL",
+    displayName: "ONAPI Trademark Types and Distinctiveness Manual",
+    canonicalUri:
+      "https://www.onapi.gob.do/index.php/signos-distintivos/manual-de-tipos-de-marcas-y-distintividad",
+    verificationEvidenceUri:
+      "https://www.onapi.gob.do/index.php/signos-distintivos/manual-de-tipos-de-marcas-y-distintividad",
+    notes: "Current ONAPI examination-oriented manual for trademark types and distinctiveness.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -10615,5 +11016,11 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...DIP_LA_SOURCE_COVERAGE_TARGETS,
   ...IPD_MM_SOURCE_COVERAGE_TARGETS,
   ...BRUIPO_BN_SOURCE_COVERAGE_TARGETS,
+  ...SENADI_EC_SOURCE_COVERAGE_TARGETS,
+  ...DNPI_UY_SOURCE_COVERAGE_TARGETS,
+  ...RPI_GT_SOURCE_COVERAGE_TARGETS,
+  ...RPI_CR_SOURCE_COVERAGE_TARGETS,
+  ...DIGERPI_PA_SOURCE_COVERAGE_TARGETS,
+  ...ONAPI_DO_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];

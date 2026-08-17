@@ -3370,6 +3370,186 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "bn-trade-marks-rules",
     query: "Brunei Trade Marks Rules registration fees forms classification",
   },
+  {
+    id: "ec-senadi-portal-name",
+    targetId: "ec-senadi-portal",
+    query: "EC SENADI Intellectual Rights Portal",
+  },
+  {
+    id: "ec-senadi-trademark-registration-name",
+    targetId: "ec-senadi-trademark-registration",
+    query: "EC Ecuador Trademark Registration Guidance",
+  },
+  {
+    id: "ec-senadi-trademark-search-guidance-name",
+    targetId: "ec-senadi-trademark-search-guidance",
+    query: "EC Ecuador Trademark Search and Industrial Property FAQ",
+  },
+  {
+    id: "ec-senadi-trademark-fees-2026-name",
+    targetId: "ec-senadi-trademark-fees-2026",
+    query: "EC SENADI 2026 Official Fees",
+  },
+  {
+    id: "ec-industrial-property-code-name",
+    targetId: "ec-industrial-property-code",
+    query: "EC Ecuador Organic Code on the Social Economy of Knowledge, Creativity and Innovation",
+  },
+  {
+    id: "ec-senadi-distinctive-signs-procedure-name",
+    targetId: "ec-senadi-distinctive-signs-procedure",
+    query: "EC SENADI Distinctive Signs Technical Procedure",
+  },
+  {
+    id: "uy-dnpi-portal-name",
+    targetId: "uy-dnpi-portal",
+    query: "UY Uruguay National Directorate of Industrial Property",
+  },
+  {
+    id: "uy-dnpi-trademark-registration-name",
+    targetId: "uy-dnpi-trademark-registration",
+    query: "UY Uruguay Trademark Registration Service",
+  },
+  {
+    id: "uy-dnpi-public-trademark-database-name",
+    targetId: "uy-dnpi-public-trademark-database",
+    query: "UY Uruguay Public Trademark Database Availability",
+  },
+  {
+    id: "uy-dnpi-online-filing-payment-name",
+    targetId: "uy-dnpi-online-filing-payment",
+    query: "UY Uruguay Online IP Filing and Payment System",
+  },
+  {
+    id: "uy-trademark-law-current-name",
+    targetId: "uy-trademark-law-current",
+    query: "UY Uruguay Law No. 17.011 on Trademarks",
+  },
+  {
+    id: "uy-dnpi-distinctive-signs-examination-guide-name",
+    targetId: "uy-dnpi-distinctive-signs-examination-guide",
+    query: "UY Uruguay 2024 Distinctive Signs Examination and Procedure Guide",
+  },
+  {
+    id: "gt-rpi-portal-name",
+    targetId: "gt-rpi-portal",
+    query: "GT Guatemala Registry of Intellectual Property",
+  },
+  {
+    id: "gt-rpi-trademark-filing-name",
+    targetId: "gt-rpi-trademark-filing",
+    query: "GT Guatemala RPI Trademark Filing through VUFE",
+  },
+  {
+    id: "gt-rpi-trademark-search-name",
+    targetId: "gt-rpi-trademark-search",
+    query: "GT Guatemala RPI Trademark Search",
+  },
+  {
+    id: "gt-rpi-trademark-fees-name",
+    targetId: "gt-rpi-trademark-fees",
+    query: "GT Guatemala RPI Trademark Fees FAQ",
+  },
+  {
+    id: "gt-industrial-property-law-name",
+    targetId: "gt-industrial-property-law",
+    query: "GT Guatemala Industrial Property Law Decree No. 57-2000",
+  },
+  {
+    id: "gt-rpi-trademark-guides-name",
+    targetId: "gt-rpi-trademark-guides",
+    query: "GT Guatemala RPI Trademark Guides and Flowcharts",
+  },
+  {
+    id: "cr-rpi-portal-name",
+    targetId: "cr-rpi-portal",
+    query: "CR Costa Rica Registry of Industrial Property Portal",
+  },
+  {
+    id: "cr-rpi-online-trademark-filing-name",
+    targetId: "cr-rpi-online-trademark-filing",
+    query: "CR Costa Rica Online Trademark Filing Guidance",
+  },
+  {
+    id: "cr-rpi-trademark-search-name",
+    targetId: "cr-rpi-trademark-search",
+    query: "CR Costa Rica Trademark Search and Global Brand Database Links",
+  },
+  {
+    id: "cr-rpi-trademark-fees-name",
+    targetId: "cr-rpi-trademark-fees",
+    query: "CR Costa Rica Industrial Property Trademark Fees",
+  },
+  {
+    id: "cr-trademark-law-7978-name",
+    targetId: "cr-trademark-law-7978",
+    query: "CR Costa Rica Law No. 7978 on Trademarks and Other Distinctive Signs",
+  },
+  {
+    id: "cr-trademark-regulation-current-name",
+    targetId: "cr-trademark-regulation-current",
+    query: "CR Costa Rica Trademark Regulation – Current through September 2024",
+  },
+  {
+    id: "pa-digerpi-portal-name",
+    targetId: "pa-digerpi-portal",
+    query: "PA Panama DIGERPI Portal",
+  },
+  {
+    id: "pa-digerpi-trademark-requirements-name",
+    targetId: "pa-digerpi-trademark-requirements",
+    query: "PA Panama Trademark Application Requirements",
+  },
+  {
+    id: "pa-digerpi-trademark-search-name",
+    targetId: "pa-digerpi-trademark-search",
+    query: "PA Panama DIGERPI Trademark Availability Search",
+  },
+  {
+    id: "pa-trademark-registration-fees-name",
+    targetId: "pa-trademark-registration-fees",
+    query: "PA Panama Digital Trademark Registration Service and Fees",
+  },
+  {
+    id: "pa-digerpi-current-legal-framework-name",
+    targetId: "pa-digerpi-current-legal-framework",
+    query: "PA Panama DIGERPI Current Trademark Legal Framework",
+  },
+  {
+    id: "pa-digerpi-current-legislation-index-name",
+    targetId: "pa-digerpi-current-legislation-index",
+    query: "PA Panama DIGERPI Current Industrial Property Legislation",
+  },
+  {
+    id: "do-onapi-portal-name",
+    targetId: "do-onapi-portal",
+    query: "DO Dominican Republic ONAPI Portal",
+  },
+  {
+    id: "do-onapi-trademark-forms-name",
+    targetId: "do-onapi-trademark-forms",
+    query: "DO Dominican Republic ONAPI Trademark Forms",
+  },
+  {
+    id: "do-onapi-trademark-search-name",
+    targetId: "do-onapi-trademark-search",
+    query: "DO Dominican Republic ONAPI Trademark Search",
+  },
+  {
+    id: "do-onapi-trademark-registration-fees-name",
+    targetId: "do-onapi-trademark-registration-fees",
+    query: "DO Dominican Republic Trademark Registration Service and Fees",
+  },
+  {
+    id: "do-industrial-property-law-20-00-name",
+    targetId: "do-industrial-property-law-20-00",
+    query: "DO Dominican Republic Industrial Property Law No. 20-00",
+  },
+  {
+    id: "do-onapi-trademark-distinctiveness-manual-name",
+    targetId: "do-onapi-trademark-distinctiveness-manual",
+    query: "DO ONAPI Trademark Types and Distinctiveness Manual",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();

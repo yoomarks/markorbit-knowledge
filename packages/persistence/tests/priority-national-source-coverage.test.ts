@@ -90,6 +90,12 @@ import {
   DIP_LA_SOURCE_COVERAGE_TARGETS,
   IPD_MM_SOURCE_COVERAGE_TARGETS,
   BRUIPO_BN_SOURCE_COVERAGE_TARGETS,
+  SENADI_EC_SOURCE_COVERAGE_TARGETS,
+  DNPI_UY_SOURCE_COVERAGE_TARGETS,
+  RPI_GT_SOURCE_COVERAGE_TARGETS,
+  RPI_CR_SOURCE_COVERAGE_TARGETS,
+  DIGERPI_PA_SOURCE_COVERAGE_TARGETS,
+  ONAPI_DO_SOURCE_COVERAGE_TARGETS,
   IPOS_SOURCE_COVERAGE_TARGETS,
   JPO_SOURCE_COVERAGE_TARGETS,
   KOREA_SOURCE_COVERAGE_TARGETS,
@@ -192,6 +198,20 @@ const authoritySets = [
   ["LA", DIP_LA_SOURCE_COVERAGE_TARGETS, ["dip.gov.la", "wipo.int"]],
   ["MM", IPD_MM_SOURCE_COVERAGE_TARGETS, ["ipd.gov.mm", "wipo.int"]],
   ["BN", BRUIPO_BN_SOURCE_COVERAGE_TARGETS, ["bruipo.gov.bn", "wipo.int"]],
+  ["EC", SENADI_EC_SOURCE_COVERAGE_TARGETS, ["derechosintelectuales.gob.ec", "wipo.int"]],
+  ["UY", DNPI_UY_SOURCE_COVERAGE_TARGETS, ["gub.uy", "wipo.int"]],
+  [
+    "GT",
+    RPI_GT_SOURCE_COVERAGE_TARGETS,
+    ["mineco.gob.gt", "registromercantil.gob.gt", "rpi.gob.gt", "wipo.int"],
+  ],
+  ["CR", RPI_CR_SOURCE_COVERAGE_TARGETS, ["rnpdigital.com", "wipo.int"]],
+  [
+    "PA",
+    DIGERPI_PA_SOURCE_COVERAGE_TARGETS,
+    ["mici.gob.pa", "digerpi.gob.pa", "panamadigital.gob.pa"],
+  ],
+  ["DO", ONAPI_DO_SOURCE_COVERAGE_TARGETS, ["onapi.gob.do", "wipo.int"]],
   ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],
 ] as const;
 
@@ -201,14 +221,14 @@ function officialHost(uri: string, suffixes: readonly string[]): boolean {
 }
 
 describe("priority national trademark source coverage", () => {
-  it("ships explicit, official, unique coverage for ninety-four priority national offices", () => {
-    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(731);
+  it("ships explicit, official, unique coverage for one hundred priority national offices", () => {
+    expect(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS).toHaveLength(767);
     expect(new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(
-      731,
+      767,
     );
     expect(
       new Set(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size,
-    ).toBe(731);
+    ).toBe(767);
 
     for (const [jurisdiction, targets, officialSuffixes] of authoritySets) {
       expect(targets.length).toBeGreaterThanOrEqual(5);
