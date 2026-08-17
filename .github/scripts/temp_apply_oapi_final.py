@@ -13,12 +13,7 @@ catalog = "packages/persistence/src/source-coverage-catalog.ts"
 replace_once(
     catalog,
     '} from "./priority-national-source-coverage";\nimport { WIPO_SOURCE_COVERAGE_TARGETS } from "./wipo-source-coverage";',
-    '} from "./priority-national-source-coverage";\nimport {\n  OAPI_CI_SOURCE_COVERAGE_TARGETS,\n  OAPI_CM_SOURCE_COVERAGE_TARGETS,\n  OAPI_SN_SOURCE_COVERAGE_TARGETS,\n  PRIORITY_REGIONAL_SOURCE_COVERAGE_TARGETS,\n} from "./priority-regional-source-coverage";\nimport { WIPO_SOURCE_COVERAGE_TARGETS } from "./wipo-source-coverage";',
-)
-replace_once(
-    catalog,
-    "  PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS,\n  UKIPO_SOURCE_COVERAGE_TARGETS,",
-    "  PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS,\n  OAPI_CI_SOURCE_COVERAGE_TARGETS,\n  OAPI_CM_SOURCE_COVERAGE_TARGETS,\n  OAPI_SN_SOURCE_COVERAGE_TARGETS,\n  PRIORITY_REGIONAL_SOURCE_COVERAGE_TARGETS,\n  UKIPO_SOURCE_COVERAGE_TARGETS,",
+    '} from "./priority-national-source-coverage";\nimport { PRIORITY_REGIONAL_SOURCE_COVERAGE_TARGETS } from "./priority-regional-source-coverage";\nimport { WIPO_SOURCE_COVERAGE_TARGETS } from "./wipo-source-coverage";',
 )
 replace_once(
     catalog,
