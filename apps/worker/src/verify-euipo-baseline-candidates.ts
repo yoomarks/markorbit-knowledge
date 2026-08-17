@@ -198,9 +198,15 @@ async function probe(candidate: Candidate, outputRoot: string): Promise<Candidat
     };
   }
 
-  const artifactKinds = [...new Set(response.artifacts.map((artifact) => artifact.artifactKind))].sort();
-  const finalUris = [...new Set(response.artifacts.map((artifact) => artifact.canonicalUri))].sort();
-  const validHashes = response.artifacts.every((artifact) => /^[a-f0-9]{64}$/u.test(artifact.sha256));
+  const artifactKinds = [
+    ...new Set(response.artifacts.map((artifact) => artifact.artifactKind)),
+  ].sort();
+  const finalUris = [
+    ...new Set(response.artifacts.map((artifact) => artifact.canonicalUri)),
+  ].sort();
+  const validHashes = response.artifacts.every((artifact) =>
+    /^[a-f0-9]{64}$/u.test(artifact.sha256),
+  );
   const passed =
     response.artifacts.length >= 2 &&
     artifactKinds.includes("HTML") &&
@@ -272,8 +278,14 @@ async function main(): Promise<void> {
       passing.find((result) => result.id === "guidelines-root")?.uri ?? passing[0]?.uri ?? null,
     results,
   };
-  await writeFile(join(outputRoot, "summary.json"), `${JSON.stringify(summary, null, 2)}\n`, "utf8");
-  process.stdout.write(`${JSON.stringify({ event: "euipo-baseline-candidate.summary", ...summary })}\n`);
+  await writeFile(
+    join(outputRoot, "summary.json"),
+    `${JSON.stringify(summary, null, 2)}\n`,
+    "utf8",
+  );
+  process.stdout.write(
+    `${JSON.stringify({ event: "euipo-baseline-candidate.summary", ...summary })}\n`,
+  );
 
   if (passing.length === 0) {
     throw new Error(
