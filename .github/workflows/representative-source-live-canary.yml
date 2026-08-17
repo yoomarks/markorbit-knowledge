@@ -31,7 +31,70 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  observe:
+  observe-pr:
+    if: github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        jurisdiction: [CN, US, IN, JP, KR, GB, CA, AU, BR, AE, NL, CI]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      MARKORBIT_CRAWL4AI_PYTHON: python
+      MARKORBIT_LIVE_CANARY_TIMEOUT_SECONDS: "75"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure canary paths
+        run: |
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+          echo "MARKORBIT_LIVE_CANARY_OUTPUT_DIR=$RUNNER_TEMP/representative-live-canary" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install production Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+
+      - name: Observe ${{ matrix.jurisdiction }} external source
+        shell: bash
+        run: |
+          pnpm --filter @markorbit/worker canary:representative -- \
+            "--output-dir=$MARKORBIT_LIVE_CANARY_OUTPUT_DIR" \
+            "--jurisdiction=${{ matrix.jurisdiction }}"
+          if [ -f "$MARKORBIT_LIVE_CANARY_OUTPUT_DIR/summary.md" ]; then
+            cat "$MARKORBIT_LIVE_CANARY_OUTPUT_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload sanitized canary observation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: representative-source-live-canary-${{ matrix.jurisdiction }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/representative-live-canary/summary.json
+            ${{ runner.temp }}/representative-live-canary/summary.md
+          if-no-files-found: warn
+          retention-days: 14
+
+  observe-manual:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -67,15 +130,15 @@ jobs:
           crawl4ai-setup
           crawl4ai-doctor
 
-      - name: Run representative external source canaries
+      - name: Run strict operator canaries
         shell: bash
         run: |
           set +e
           args=("--output-dir=$MARKORBIT_LIVE_CANARY_OUTPUT_DIR")
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.jurisdiction }}" ]; then
+          if [ -n "${{ inputs.jurisdiction }}" ]; then
             args+=("--jurisdiction=${{ inputs.jurisdiction }}")
           fi
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.strict }}" = "true" ]; then
+          if [ "${{ inputs.strict }}" = "true" ]; then
             args+=("--strict")
           fi
           pnpm --filter @markorbit/worker canary:representative -- "${args[@]}"
@@ -89,7 +152,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: representative-source-live-canary-${{ github.run_id }}
+          name: representative-source-live-canary-manual-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/representative-live-canary/summary.json
             ${{ runner.temp }}/representative-live-canary/summary.md
