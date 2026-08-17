@@ -21,13 +21,13 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --no-frozen-lockfile
-      - name: Apply Prettier and refresh lockfile
+      - run: pnpm install --frozen-lockfile
+      - name: Apply Prettier
         run: |
-          pnpm exec prettier --write apps/worker/src/run-representative-live-canaries.ts apps/worker/package.json packages/persistence/src/representative-source-live-canaries.ts packages/persistence/src/representative-source-live-canaries.test.ts packages/persistence/package.json .github/workflows/representative-source-live-canary.yml
+          pnpm exec prettier --write apps/admin/src/components/sources/source-country-coverage.tsx apps/admin/src/components/foundational/foundational-health-dashboard.tsx apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/worker/src/run-representative-live-canaries.ts apps/worker/package.json packages/persistence/src/representative-source-live-canaries.ts packages/persistence/src/representative-source-live-canaries.test.ts packages/persistence/package.json .github/workflows/representative-source-live-canary.yml pnpm-lock.yaml
-          git commit -m "style: format representative live canary"
+          git add apps/admin/src/components/sources/source-country-coverage.tsx apps/admin/src/components/foundational/foundational-health-dashboard.tsx apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx
+          git commit -m "style: format admin v2 health surfaces"
           git push origin HEAD:${{ github.head_ref }}
