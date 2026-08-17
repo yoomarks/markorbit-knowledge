@@ -2694,6 +2694,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "ng-ipo-trademark-maintenance",
     query: "Nigeria trademark renewal assignment recordal change applicant name address",
   },
+  {
+    id: "dz-inapi-trademark-portal-name",
+    targetId: "dz-inapi-trademark-portal",
+    query: "INAPI Algérie marque enregistrer protéger",
+  },
+  {
+    id: "dz-inapi-trademark-filing-name",
+    targetId: "dz-inapi-trademark-filing",
+    query: "dépôt marque nouveau dépôt formulaire quittance paiement",
+  },
+  {
+    id: "dz-inapi-trademark-search-name",
+    targetId: "dz-inapi-trademark-search",
+    query: "rechercher une marque base de données INAPI",
+  },
+  {
+    id: "dz-inapi-trademark-fees-name",
+    targetId: "dz-inapi-trademark-fees",
+    query: "taxes marques dépôt publication renouvellement recherche recours",
+  },
+  {
+    id: "dz-inapi-trademark-classification-name",
+    targetId: "dz-inapi-trademark-classification",
+    query: "classification de Nice produits services recherche antériorité",
+  },
+  {
+    id: "dz-inapi-trademark-legal-texts-name",
+    targetId: "dz-inapi-trademark-legal-texts",
+    query: "Ordonnance 03-06 marques Décret exécutif 05-277",
+  },
+  {
+    id: "dz-inapi-trademark-maintenance-name",
+    targetId: "dz-inapi-trademark-maintenance",
+    query: "renouvellement marque inscription cession changement adresse",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();

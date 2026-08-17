@@ -8821,6 +8821,100 @@ export const IPO_NG_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const INAPI_DZ: Authority = {
+  jurisdiction: "DZ",
+  authorityName: "Institut National Algérien de la Propriété Industrielle (INAPI)",
+  languages: ["fr", "ar", "en"],
+  verificationEvidenceUri: "https://inapi.dz/aboutMark",
+};
+
+export const INAPI_DZ_SOURCE_COVERAGE_TARGETS = [
+  target(INAPI_DZ, {
+    id: "dz-inapi-trademark-portal",
+    family: "PORTAL",
+    displayName: "INAPI Algeria Trademark Portal",
+    canonicalUri: "https://inapi.dz/aboutMark",
+    verificationEvidenceUri: "https://inapi.dz/aboutMark",
+    notes:
+      "Current official INAPI trademark overview linking filing, prior-art search, register inscriptions, fees, legislation, database access and BOPI publication surfaces.",
+  }),
+  target(INAPI_DZ, {
+    id: "dz-inapi-trademark-filing",
+    family: "FILING",
+    displayName: "INAPI Algeria Trademark Filing Procedure",
+    canonicalUri: "https://inapi.dz/markFilingInfo",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://inapi.dz/markFilingInfo",
+    notes:
+      "Official national trademark filing procedure describing the INAPI online account/new-deposit workflow, payment receipt, filing form and supporting documents.",
+  }),
+  target(INAPI_DZ, {
+    id: "dz-inapi-trademark-search",
+    family: "SEARCH",
+    displayName: "INAPI Algeria Trademark Search and Database",
+    canonicalUri: "https://inapi.dz/bdd",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "JSON"],
+    verificationEvidenceUri: "https://inapi.dz/bdd",
+    notes:
+      "Official INAPI searches-and-databases hub exposing the national trademark search surface alongside patent, design and emblem databases.",
+  }),
+  target(INAPI_DZ, {
+    id: "dz-inapi-trademark-fees",
+    family: "FEES",
+    displayName: "INAPI Algeria Trademark Fees",
+    canonicalUri: "https://inapi.dz/markTaxes",
+    verificationEvidenceUri: "https://inapi.dz/markTaxes",
+    notes:
+      "Official trademark and collective-mark tariff table covering filing/publication, per-class charges, renewal, late renewal, searches, recordals, appeals and other register actions.",
+  }),
+  target(INAPI_DZ, {
+    id: "dz-inapi-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "INAPI Algeria Nice Classification Guidance",
+    canonicalUri: "https://inapi.dz/aboutMarkSearch",
+    verificationEvidenceUri: "https://inapi.dz/aboutMarkSearch",
+    notes:
+      "Official prior-art-search guidance directing applicants to the Nice Classification goods/services list before filing or requesting an availability search.",
+  }),
+  target(INAPI_DZ, {
+    id: "dz-inapi-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Algeria Trademark Law and Implementing Decree",
+    canonicalUri: "https://inapi.dz/legal",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://inapi.dz/legal",
+    notes:
+      "Official INAPI legislation index publishing Ordinance No. 03-06 of 19 July 2003 on trademarks and Executive Decree No. 05-277 of 2 August 2005 on trademark filing and registration procedures.",
+  }),
+  target(INAPI_DZ, {
+    id: "dz-inapi-trademark-maintenance",
+    family: "MAINTENANCE",
+    displayName: "INAPI Algeria Trademark Renewal and Register Recordals",
+    canonicalUri: "https://inapi.dz/inscription_marque",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://inapi.dz/inscription_marque",
+    notes:
+      "Official register-inscription procedure covering renewal plus changes of address/name, assignments, corrections, withdrawals and supporting-document requirements.",
+  }),
+  target(INAPI_DZ, {
+    id: "dz-inapi-trademark-bopi",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "INAPI Algeria Trademark BOPI",
+    canonicalUri: "https://inapi.dz/getbopi?nature=Marque",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://inapi.dz/getbopi?nature=Marque",
+    notes:
+      "Official monthly trademark BOPI index with current 2026 issues; retained as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -8959,5 +9053,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...AIPO_AM_SOURCE_COVERAGE_TARGETS,
   ...COPAT_AZ_SOURCE_COVERAGE_TARGETS,
   ...IPO_NG_SOURCE_COVERAGE_TARGETS,
+  ...INAPI_DZ_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
