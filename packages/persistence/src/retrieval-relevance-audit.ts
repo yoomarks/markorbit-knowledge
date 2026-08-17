@@ -2759,6 +2759,41 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "tn-innorpi-trademark-maintenance",
     query: "formulaire marque renouvellement levée déchéance inscription registre",
   },
+  {
+    id: "ug-ursb-trademark-portal-name",
+    targetId: "ug-ursb-trademark-portal",
+    query: "Uganda IP Online Registration Portal trademarks",
+  },
+  {
+    id: "ug-ursb-trademark-filing-name",
+    targetId: "ug-ursb-trademark-filing",
+    query: "Uganda apply for trademark online registration",
+  },
+  {
+    id: "ug-ursb-trademark-search-name",
+    targetId: "ug-ursb-trademark-search",
+    query: "Uganda public trademark register search",
+  },
+  {
+    id: "ug-ursb-trademark-fees-name",
+    targetId: "ug-ursb-trademark-fees",
+    query: "Uganda trademark application search opposition renewal fees",
+  },
+  {
+    id: "ug-ursb-trademark-legal-texts-name",
+    targetId: "ug-ursb-trademark-legal-texts",
+    query: "Uganda Trademarks Act regulations URSB",
+  },
+  {
+    id: "ug-ursb-trademark-proceedings-name",
+    targetId: "ug-ursb-trademark-proceedings",
+    query: "Uganda trademark opposition cancellation Registrar rulings",
+  },
+  {
+    id: "ug-ursb-trademark-maintenance-name",
+    targetId: "ug-ursb-trademark-maintenance",
+    query: "Uganda trademark renewal restoration assignment change forms",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();

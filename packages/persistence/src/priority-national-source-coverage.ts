@@ -9004,6 +9004,103 @@ export const INNORPI_TN_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const URSB_UG: Authority = {
+  jurisdiction: "UG",
+  authorityName: "Uganda Registration Services Bureau (URSB) – Intellectual Property Registry",
+  languages: ["en"],
+  verificationEvidenceUri: "https://iponline.ursb.go.ug/",
+};
+
+export const URSB_UG_SOURCE_COVERAGE_TARGETS = [
+  target(URSB_UG, {
+    id: "ug-ursb-trademark-portal",
+    family: "PORTAL",
+    displayName: "Uganda IP Online Registration Portal",
+    canonicalUri: "https://iponline.ursb.go.ug/",
+    verificationEvidenceUri: "https://iponline.ursb.go.ug/",
+    notes:
+      "Current official URSB IP Online portal linking IP application, the national IP register, trademark publications, applicable fees and agent services.",
+  }),
+  target(URSB_UG, {
+    id: "ug-ursb-trademark-filing",
+    family: "FILING",
+    displayName: "Uganda IP Online Application Dashboard",
+    canonicalUri: "https://iponline.ursb.go.ug/sp-ui-userdashboard",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://iponline.ursb.go.ug/services.html",
+    notes:
+      "Official Apply for IP transaction surface used for trademark applications and related online trademark services; authentication is handled by the URSB identity service.",
+  }),
+  target(URSB_UG, {
+    id: "ug-ursb-trademark-search",
+    family: "SEARCH",
+    displayName: "Uganda Public Trademark Register Search",
+    canonicalUri: "https://ipsearch.ursb.go.ug/wopublish-search/public/trademarks",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://iponline.ursb.go.ug/",
+    notes:
+      "Official public trademark-register search linked by URSB's IP Online portal as View IP Register; the stable route avoids session identifiers and transient query parameters.",
+  }),
+  target(URSB_UG, {
+    id: "ug-ursb-trademark-fees",
+    family: "FEES",
+    displayName: "URSB Uganda Intellectual Property Fees",
+    canonicalUri: "https://ursb.go.ug/intellectual-property-fees/",
+    verificationEvidenceUri: "https://ursb.go.ug/intellectual-property-fees/",
+    notes:
+      "Current official fee table covering trademark filing, preliminary advice, search, certification, opposition, assignments, name changes and trademark renewal.",
+  }),
+  target(URSB_UG, {
+    id: "ug-ursb-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "URSB Uganda Intellectual Property Acts and Regulations",
+    canonicalUri: "https://ursb.go.ug/intellectual-property-acts-and-regulations/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://ursb.go.ug/intellectual-property-acts-and-regulations/",
+    notes:
+      "Official URSB legislation library for Uganda intellectual-property statutes and regulations, including the Trademarks Act and implementing rules.",
+  }),
+  target(URSB_UG, {
+    id: "ug-ursb-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "URSB Uganda Intellectual Property Rulings",
+    canonicalUri: "https://ursb.go.ug/intellectual-property-rulings/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://ursb.go.ug/intellectual-property-rulings/",
+    notes:
+      "Official Registrar rulings collection containing trademark opposition, cancellation, rectification and related adjudicative decisions.",
+  }),
+  target(URSB_UG, {
+    id: "ug-ursb-trademark-maintenance",
+    family: "MAINTENANCE",
+    displayName: "URSB Uganda Trademark Forms and Maintenance",
+    canonicalUri: "https://ursb.go.ug/intellectual-property-forms/",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://ursb.go.ug/intellectual-property-forms/",
+    notes:
+      "Official trademark form library covering renewal, late-renewal/restoration, assignments, registered users, name/address changes, rectification, alterations and extensions of time.",
+  }),
+  target(URSB_UG, {
+    id: "ug-ursb-trademark-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Uganda Gazette Trademark Publications",
+    canonicalUri: "https://uppc.go.ug/trademarks",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://iponline.ursb.go.ug/",
+    notes:
+      "URSB's official IP Online portal links the Uganda Printing and Publishing Corporation trademark-publications surface; retained as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -9144,5 +9241,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IPO_NG_SOURCE_COVERAGE_TARGETS,
   ...INAPI_DZ_SOURCE_COVERAGE_TARGETS,
   ...INNORPI_TN_SOURCE_COVERAGE_TARGETS,
+  ...URSB_UG_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
