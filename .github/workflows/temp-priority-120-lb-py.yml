@@ -1,0 +1,332 @@
+name: Temporary Priority 120 Lebanon Paraguay
+
+on:
+  push:
+    branches:
+      - agent/priority-120-tranche-lb-py-v1
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-tranche-lb-py-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply curated Lebanon and Paraguay coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'expected anchor not found in {path}: {old[:180]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          block = '''const MOET_LB: Authority = {
+            jurisdiction: "LB",
+            authorityName: "Ministry of Economy and Trade of the Lebanese Republic – Intellectual Property Protection Office",
+            languages: ["ar", "en"],
+            verificationEvidenceUri:
+              "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/",
+          };
+
+          export const MOET_LB_SOURCE_COVERAGE_TARGETS = [
+            target(MOET_LB, {
+              id: "lb-moet-intellectual-property-portal",
+              family: "PORTAL",
+              displayName: "Lebanon Ministry of Economy Intellectual Property Portal",
+              canonicalUri:
+                "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/",
+              verificationEvidenceUri:
+                "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/",
+              notes:
+                "Current Ministry intellectual-property authority surface linking legislation, trademarks, administrative services and statistics.",
+            }),
+            target(MOET_LB, {
+              id: "lb-moet-online-trademark-registration",
+              family: "FILING",
+              displayName: "Lebanon Online Trademark Registration Portal",
+              canonicalUri: "https://portal.economy.gov.lb/",
+              mode: "MIXED",
+              renderJavascriptHint: true,
+              expectedArtifactKinds: ["HTML", "JSON"],
+              verificationEvidenceUri:
+                "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/administrative-services/",
+              notes:
+                "Electronic Portal linked by the Ministry's current administrative-services page as the online trademark-registration service.",
+            }),
+            target(MOET_LB, {
+              id: "lb-moet-trademark-search-guidance",
+              family: "SEARCH",
+              displayName: "Lebanon Trademark Search and Protection Guidance",
+              canonicalUri:
+                "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/trademark/",
+              verificationEvidenceUri:
+                "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/trademark/",
+              notes:
+                "Current Ministry trademark page describing national protection and exposing the Ministry's trademark-search service entrypoint; retained as the stable official search guidance surface.",
+            }),
+            target(MOET_LB, {
+              id: "lb-moet-trademark-fees-pdf",
+              family: "FEES",
+              displayName: "Lebanon Ministry Trademark Fees",
+              canonicalUri: "https://www.economy.gov.lb/public/uploads/files/IPRService/6.pdf",
+              fetchAttachmentsHint: true,
+              expectedArtifactKinds: ["PDF"],
+              verificationEvidenceUri:
+                "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/administrative-services/",
+              notes:
+                "Trademark fee PDF linked by the Ministry's current administrative-services page. Knowledge retains the live Ministry source rather than copying tariff amounts into metadata.",
+            }),
+            target(MOET_LB, {
+              id: "lb-moet-intellectual-property-legislation",
+              family: "LEGAL_TEXTS",
+              displayName: "Lebanon Intellectual Property Legislation Index",
+              canonicalUri:
+                "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/legislation/",
+              verificationEvidenceUri:
+                "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/legislation/",
+              notes:
+                "Current Ministry legislation index linking the 1924 trademark framework and subsequent fee and procedural instruments.",
+            }),
+            target(MOET_LB, {
+              id: "lb-moet-ip-applicant-guide-pdf",
+              family: "EXAMINATION_MANUAL",
+              displayName: "Lebanon Intellectual Property Applicant Guide",
+              canonicalUri: "https://www.economy.gov.lb/public/uploads/files/IPRService/2.pdf",
+              fetchAttachmentsHint: true,
+              expectedArtifactKinds: ["PDF"],
+              verificationEvidenceUri:
+                "https://www.economy.gov.lb/en/what-we-provide/intellectual-property-right/administrative-services/",
+              notes:
+                "Ministry applicant guide setting out trademark registration steps and documentary requirements, including filing, payment, publication and certificate issuance.",
+            }),
+          ] satisfies readonly SourceCoverageTarget[];
+
+          const DINAPI_PY: Authority = {
+            jurisdiction: "PY",
+            authorityName: "National Directorate of Intellectual Property of Paraguay (DINAPI)",
+            languages: ["es"],
+            verificationEvidenceUri: "https://www.dinapi.gov.py/",
+          };
+
+          export const DINAPI_PY_SOURCE_COVERAGE_TARGETS = [
+            target(DINAPI_PY, {
+              id: "py-dinapi-portal",
+              family: "PORTAL",
+              displayName: "Paraguay DINAPI Portal",
+              canonicalUri: "https://www.dinapi.gov.py/",
+              verificationEvidenceUri: "https://www.dinapi.gov.py/",
+            }),
+            target(DINAPI_PY, {
+              id: "py-dinapi-sfe-trademark-filing",
+              family: "FILING",
+              displayName: "Paraguay SFE Digital Trademark Filing",
+              canonicalUri: "https://sfe.dinapi.gov.py/",
+              mode: "MIXED",
+              renderJavascriptHint: true,
+              expectedArtifactKinds: ["HTML", "JSON"],
+              verificationEvidenceUri:
+                "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/registro-de-marcas/",
+              notes:
+                "Official DINAPI electronic-forms platform for trademark registration and renewal, digital signature, electronic payment and digital submission.",
+            }),
+            target(DINAPI_PY, {
+              id: "py-dinapi-joaju-public-search",
+              family: "SEARCH",
+              displayName: "Paraguay Joaju Public Industrial Property Search",
+              canonicalUri: "https://joaju.dinapi.gov.py/",
+              mode: "MIXED",
+              renderJavascriptHint: true,
+              expectedArtifactKinds: ["HTML", "JSON"],
+              verificationEvidenceUri: "https://sfe.dinapi.gov.py/",
+              notes:
+                "DINAPI public industrial-property consultation system for trademark and other registry searches; linked as Consultas from the current SFE platform.",
+            }),
+            target(DINAPI_PY, {
+              id: "py-dinapi-trademark-registration-fees",
+              family: "FEES",
+              displayName: "Paraguay Trademark Registration Procedure and Fees",
+              canonicalUri:
+                "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/registro-de-marcas/",
+              verificationEvidenceUri:
+                "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/registro-de-marcas/",
+              notes:
+                "Current DINAPI registration page describing digital filing, payment and trademark application fees; live amounts remain at source.",
+            }),
+            target(DINAPI_PY, {
+              id: "py-dinapi-trademark-legal-framework",
+              family: "LEGAL_TEXTS",
+              displayName: "Paraguay Trademark Legal Framework",
+              canonicalUri:
+                "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/aprender/",
+              verificationEvidenceUri:
+                "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/aprender/",
+              notes:
+                "Current DINAPI trademark information page identifying Law No. 1294/1998 and Regulatory Decree No. 22365/1998 as the national trademark framework.",
+            }),
+            target(DINAPI_PY, {
+              id: "py-dinapi-trademark-examination-guidelines-2025",
+              family: "EXAMINATION_MANUAL",
+              displayName: "Paraguay Trademark Examination Guidelines 2025",
+              canonicalUri:
+                "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/directrices",
+              verificationEvidenceUri:
+                "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/directrices",
+              notes:
+                "Current DINAPI examination guidelines approved by Resolution No. 259/2025 to standardize trademark examination criteria.",
+            }),
+            target(DINAPI_PY, {
+              id: "py-dinapi-trademark-bulletins",
+              family: "OFFICIAL_GAZETTE",
+              displayName: "Paraguay DINAPI Trademark Bulletins",
+              canonicalUri:
+                "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/boletines-de-marcas/",
+              coverageTier: "CHANGE_SIGNAL",
+              fetchAttachmentsHint: true,
+              expectedArtifactKinds: ["HTML", "PDF", "CSV", "XLSX"],
+              verificationEvidenceUri:
+                "https://www.dinapi.gov.py/portal/v3/propiedad-industrial/marcas/boletines-de-marcas/",
+              notes:
+                "Current DINAPI bulletin index publishing 2026 trademark bulletins in machine-readable and document formats; retained as a change signal.",
+            }),
+          ] satisfies readonly SourceCoverageTarget[];
+
+          '''
+
+          replace_once(
+              'packages/persistence/src/priority-national-source-coverage.ts',
+              'const CIPO: Authority = {',
+              block + 'const CIPO: Authority = {'
+          )
+          replace_once(
+              'packages/persistence/src/priority-national-source-coverage.ts',
+              '  ...ONAPI_DO_SOURCE_COVERAGE_TARGETS,\n  ...CIPO_SOURCE_COVERAGE_TARGETS,',
+              '  ...ONAPI_DO_SOURCE_COVERAGE_TARGETS,\n  ...MOET_LB_SOURCE_COVERAGE_TARGETS,\n  ...DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  ...CIPO_SOURCE_COVERAGE_TARGETS,'
+          )
+
+          probe_rows = [
+              ("lb-moet-intellectual-property-portal", "Lebanon Ministry Economy intellectual property trademark portal"),
+              ("lb-moet-online-trademark-registration", "Lebanon Ministry online trademark registration electronic portal"),
+              ("lb-moet-trademark-search-guidance", "Lebanon Ministry trademark search protection guidance"),
+              ("lb-moet-trademark-fees-pdf", "Lebanon Ministry trademark fees registration renewal PDF"),
+              ("lb-moet-intellectual-property-legislation", "Lebanon Ministry trademark intellectual property legislation 2385 LR"),
+              ("lb-moet-ip-applicant-guide-pdf", "Lebanon trademark applicant guide filing publication certificate"),
+              ("py-dinapi-portal", "Paraguay DINAPI trademark portal"),
+              ("py-dinapi-sfe-trademark-filing", "Paraguay DINAPI SFE electronic trademark filing payment"),
+              ("py-dinapi-joaju-public-search", "Paraguay DINAPI Joaju public trademark search"),
+              ("py-dinapi-trademark-registration-fees", "Paraguay DINAPI trademark registration fees digital filing"),
+              ("py-dinapi-trademark-legal-framework", "Paraguay Law 1294 1998 trademark Decree 22365 DINAPI"),
+              ("py-dinapi-trademark-examination-guidelines-2025", "Paraguay trademark examination guidelines Resolution 259 2025 DINAPI"),
+          ]
+          probes = ''.join(
+              f'  {{\n    id: "{target_id}-name",\n    targetId: "{target_id}",\n    query: "{query}",\n  }},\n'
+              for target_id, query in probe_rows
+          )
+          replace_once(
+              'packages/persistence/src/retrieval-relevance-audit.ts',
+              '] satisfies readonly RetrievalRelevanceProbe[];',
+              probes + '] satisfies readonly RetrievalRelevanceProbe[];'
+          )
+
+          # Import into the unified catalog.
+          replace_once(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  ONAPI_DO_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  ONAPI_DO_SOURCE_COVERAGE_TARGETS,\n  MOET_LB_SOURCE_COVERAGE_TARGETS,\n  DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+
+          # Repair public named exports for all country sets merged after BOIP, and expose LB/PY.
+          replace_once(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  BOIP_BE_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  BOIP_BE_SOURCE_COVERAGE_TARGETS,\n  DPPI_AL_SOURCE_COVERAGE_TARGETS,\n  IPR_BA_SOURCE_COVERAGE_TARGETS,\n  SOIP_MK_SOURCE_COVERAGE_TARGETS,\n  NCIP_BY_SOURCE_COVERAGE_TARGETS,\n  IPOM_MN_SOURCE_COVERAGE_TARGETS,\n  DIP_KH_SOURCE_COVERAGE_TARGETS,\n  DIP_LA_SOURCE_COVERAGE_TARGETS,\n  IPD_MM_SOURCE_COVERAGE_TARGETS,\n  BRUIPO_BN_SOURCE_COVERAGE_TARGETS,\n  SENADI_EC_SOURCE_COVERAGE_TARGETS,\n  DNPI_UY_SOURCE_COVERAGE_TARGETS,\n  RPI_GT_SOURCE_COVERAGE_TARGETS,\n  RPI_CR_SOURCE_COVERAGE_TARGETS,\n  DIGERPI_PA_SOURCE_COVERAGE_TARGETS,\n  ONAPI_DO_SOURCE_COVERAGE_TARGETS,\n  MOET_LB_SOURCE_COVERAGE_TARGETS,\n  DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              '  ONAPI_DO_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  ONAPI_DO_SOURCE_COVERAGE_TARGETS,\n  MOET_LB_SOURCE_COVERAGE_TARGETS,\n  DINAPI_PY_SOURCE_COVERAGE_TARGETS,\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              '  ["DO", ONAPI_DO_SOURCE_COVERAGE_TARGETS, ["onapi.gob.do", "wipo.int"]],\n  ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],',
+              '  ["DO", ONAPI_DO_SOURCE_COVERAGE_TARGETS, ["onapi.gob.do", "wipo.int"]],\n  ["LB", MOET_LB_SOURCE_COVERAGE_TARGETS, ["economy.gov.lb"]],\n  ["PY", DINAPI_PY_SOURCE_COVERAGE_TARGETS, ["dinapi.gov.py"]],\n  ["CA", CIPO_SOURCE_COVERAGE_TARGETS, ["canada.ca"]],'
+          )
+          replace_once(
+              'packages/persistence/tests/priority-national-source-coverage.test.ts',
+              'ships explicit, official, unique coverage for one hundred priority national offices',
+              'ships explicit, official, unique coverage for one hundred two priority national offices'
+          )
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', 'toHaveLength(767)', 'toHaveLength(780)')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '      767,\n    );', '      780,\n    );')
+          replace_once('packages/persistence/tests/priority-national-source-coverage.test.ts', '    ).toBe(767);', '    ).toBe(780);')
+
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(targets).toHaveLength(719);', 'expect(targets).toHaveLength(731);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(719);', 'expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(731);')
+          replace_once('packages/persistence/tests/retrieval-relevance-audit.test.ts', '      719,\n    );', '      731,\n    );')
+          replace_once(
+              'packages/persistence/tests/retrieval-relevance-audit.test.ts',
+              '      "DO",\n    ] as const) {',
+              '      "DO",\n      "LB",\n      "PY",\n    ] as const) {'
+          )
+
+          for jurisdiction, display, region in [
+              ('LB', 'Lebanon', 'MIDDLE_EAST_NORTH_AFRICA'),
+              ('PY', 'Paraguay', 'LATIN_AMERICA_CARIBBEAN'),
+          ]:
+              replace_once(
+                  'packages/persistence/src/priority-trademark-jurisdictions.ts',
+                  f'["{jurisdiction}", "{display}", "{region}", "P3", "TARGET", "NATIONAL"]',
+                  f'["{jurisdiction}", "{display}", "{region}", "P3", "CURATED", "NATIONAL"]'
+              )
+          replace_once('packages/persistence/tests/priority-trademark-jurisdictions.test.ts', 'expect(curated).toHaveLength(101);', 'expect(curated).toHaveLength(103);')
+          replace_once('packages/persistence/tests/priority-trademark-jurisdictions.test.ts', 'expect(target).toHaveLength(19);', 'expect(target).toHaveLength(17);')
+          PY
+      - name: Format touched files
+        run: |
+          pnpm exec prettier --write \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts
+      - name: Verify Lebanon Paraguay tranche
+        run: |
+          pnpm --filter @markorbit/persistence test -- \
+            tests/priority-national-source-coverage.test.ts \
+            tests/retrieval-relevance-audit.test.ts \
+            tests/priority-trademark-jurisdictions.test.ts
+          pnpm typecheck
+      - name: Commit verified production changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "feat: add Lebanon Paraguay trademark source coverage"
+          git push origin HEAD:agent/priority-120-tranche-lb-py-v1
