@@ -15,7 +15,9 @@ export type SourceCoverageSupplyView = {
   state: "READY" | "DEGRADED" | "BLOCKED";
   freshness: "FRESH" | "STALE" | "UNOBSERVED";
   compatibility: "PASS" | "DEGRADED" | "BLOCKED" | "UNOBSERVED";
+  compatibilityFreshness: "FRESH" | "STALE" | "UNOBSERVED";
   compatibilityObservedAt: string | null;
+  compatibilityAgeHours: number | null;
   compatibilityErrorCode: string | null;
   gaps: string[];
   acquisitionObserved: boolean;
@@ -55,6 +57,8 @@ export type SourceCoverageItemView = {
     blocked: number;
     stale: number;
     compatibilityObserved: number;
+    compatibilityFresh: number;
+    compatibilityStale: number;
     compatibilityDegraded: number;
     compatibilityBlocked: number;
     healthyPercent: number | null;
@@ -75,6 +79,7 @@ export type SourceCoverageSnapshot = {
     fullyHealthyCount: number;
     supplyAttentionCount: number;
     compatibilityAttentionCount: number;
+    compatibilityStaleJurisdictionCount: number;
   };
 };
 
@@ -131,7 +136,9 @@ export function getSourceCoverageSnapshot(
           state: health?.state ?? "BLOCKED",
           freshness: health?.freshness.state ?? "UNOBSERVED",
           compatibility: health?.compatibility?.state ?? "UNOBSERVED",
+          compatibilityFreshness: health?.compatibility?.freshness ?? "UNOBSERVED",
           compatibilityObservedAt: health?.compatibility?.observedAt ?? null,
+          compatibilityAgeHours: health?.compatibility?.ageHours ?? null,
           compatibilityErrorCode: health?.compatibility?.errorCode ?? null,
           gaps: [...(health?.gaps ?? ["SOURCE_UNREGISTERED"])],
           acquisitionObserved: (health?.acquisition.artifactCount ?? 0) > 0,
@@ -172,11 +179,21 @@ export function getSourceCoverageSnapshot(
     const compatibilityObserved = activeTargets.filter(
       (target) => target.supply.compatibility !== "UNOBSERVED",
     ).length;
+    const compatibilityFresh = activeTargets.filter(
+      (target) => target.supply.compatibilityFreshness === "FRESH",
+    ).length;
+    const compatibilityStale = activeTargets.filter(
+      (target) => target.supply.compatibilityFreshness === "STALE",
+    ).length;
     const compatibilityDegraded = activeTargets.filter(
-      (target) => target.supply.compatibility === "DEGRADED",
+      (target) =>
+        target.supply.compatibilityFreshness === "FRESH" &&
+        target.supply.compatibility === "DEGRADED",
     ).length;
     const compatibilityBlocked = activeTargets.filter(
-      (target) => target.supply.compatibility === "BLOCKED",
+      (target) =>
+        target.supply.compatibilityFreshness === "FRESH" &&
+        target.supply.compatibility === "BLOCKED",
     ).length;
 
     return {
@@ -198,6 +215,8 @@ export function getSourceCoverageSnapshot(
         blocked,
         stale,
         compatibilityObserved,
+        compatibilityFresh,
+        compatibilityStale,
         compatibilityDegraded,
         compatibilityBlocked,
         healthyPercent: percentage(healthy, activeTargets.length),
@@ -228,6 +247,9 @@ export function getSourceCoverageSnapshot(
       ).length,
       compatibilityAttentionCount: items.filter(
         (item) => item.supply.compatibilityDegraded + item.supply.compatibilityBlocked > 0,
+      ).length,
+      compatibilityStaleJurisdictionCount: items.filter(
+        (item) => item.supply.compatibilityStale > 0,
       ).length,
     },
   };
