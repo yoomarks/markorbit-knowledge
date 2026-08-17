@@ -2849,6 +2849,34 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "gh-rgd-trademarks-amendment-act-2014",
     query: "Ghana Trademarks Amendment Act 2014 Act 876 Madrid Protocol ten year renewal",
   },
+  {
+    id: "eg-eipa-operational-ip-portal-name",
+    targetId: "eg-eipa-operational-ip-portal",
+    query: "Egyptian Intellectual Property Authority Egypt IP portal trademark gazette",
+  },
+  {
+    id: "eg-eipa-trademark-filing-regulations-name",
+    targetId: "eg-eipa-trademark-filing-regulations",
+    query:
+      "Egypt trademark regulations filing application classes priority examination opposition registration",
+  },
+  {
+    id: "eg-eipa-trademark-fee-schedule-name",
+    targetId: "eg-eipa-trademark-fee-schedule",
+    query:
+      "Egypt trademark fee schedule filing publication registration opposition renewal recordal",
+  },
+  {
+    id: "eg-eipa-ip-law-82-current-name",
+    targetId: "eg-eipa-ip-law-82-current",
+    query:
+      "Egypt Law 82 2002 intellectual property trademarks trade names geographical indications",
+  },
+  {
+    id: "eg-eipa-establishment-law-163-name",
+    targetId: "eg-eipa-establishment-law-163",
+    query: "Egypt Law 163 2023 Egyptian Intellectual Property Authority establishment",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
