@@ -1,0 +1,87 @@
+name: Temporary Run Benelux Fixed
+
+on:
+  push:
+    branches:
+      - agent/priority-120-benelux-nl-be-v1
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/priority-120-benelux-nl-be-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Execute corrected source patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/temp-priority-120-benelux.yml').read_text()
+          start = workflow.index("          python - <<'PY'\n") + len("          python - <<'PY'\n")
+          end = workflow.index("\n          PY", start)
+          script = textwrap.dedent(workflow[start:end])
+
+          old = '''replace_all_exact(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\\n  BOIP_NL_SOURCE_COVERAGE_TARGETS,\\n  BOIP_BE_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              2
+          )'''
+          new = '''replace_once(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\\n  BOIP_NL_SOURCE_COVERAGE_TARGETS,\\n  BOIP_BE_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )
+          replace_once(
+              'packages/persistence/src/source-coverage-catalog.ts',
+              '  EIPA_EG_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,',
+              '  EIPA_EG_SOURCE_COVERAGE_TARGETS,\\n  ROSPATENT_RU_SOURCE_COVERAGE_TARGETS,\\n  MOJ_UZ_SOURCE_COVERAGE_TARGETS,\\n  IPC_IR_SOURCE_COVERAGE_TARGETS,\\n  IPO_PK_SOURCE_COVERAGE_TARGETS,\\n  MOIM_IQ_SOURCE_COVERAGE_TARGETS,\\n  BOIP_NL_SOURCE_COVERAGE_TARGETS,\\n  BOIP_BE_SOURCE_COVERAGE_TARGETS,\\n  IPOS_SOURCE_COVERAGE_TARGETS,'
+          )'''
+          if old not in script:
+              raise SystemExit('catalog anchor block not found in extracted source patch')
+          script = script.replace(old, new, 1)
+          exec(compile(script, 'benelux-source-patch', 'exec'), {})
+          PY
+      - name: Format and verify
+        run: |
+          pnpm exec prettier --write \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts
+          pnpm --filter @markorbit/persistence test -- \
+            tests/priority-national-source-coverage.test.ts \
+            tests/retrieval-relevance-audit.test.ts \
+            tests/priority-trademark-jurisdictions.test.ts
+          pnpm typecheck
+      - name: Commit production changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/persistence/src/priority-national-source-coverage.ts \
+            packages/persistence/src/retrieval-relevance-audit.ts \
+            packages/persistence/src/source-coverage-catalog.ts \
+            packages/persistence/src/priority-trademark-jurisdictions.ts \
+            packages/persistence/tests/priority-national-source-coverage.test.ts \
+            packages/persistence/tests/retrieval-relevance-audit.test.ts \
+            packages/persistence/tests/priority-trademark-jurisdictions.test.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "feat: add Benelux Netherlands Belgium trademark coverage"
+          git push origin HEAD:agent/priority-120-benelux-nl-be-v1
