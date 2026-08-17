@@ -168,16 +168,16 @@ describe("Bulk Source Pipeline E2E", () => {
 
     const sourceList = sources.list({ sourceType: "WEB", limit: 100 });
     expect(sourceList.total).toBe(100);
-    expect(sourceList.items.filter((source) => source.category === "OFFICIAL_AUTHORITY")).toHaveLength(
-      50,
-    );
+    expect(
+      sourceList.items.filter((source) => source.category === "OFFICIAL_AUTHORITY"),
+    ).toHaveLength(50);
     expect(sourceList.items.filter((source) => source.category === "LAW_FIRM")).toHaveLength(50);
     expect(
       sourceList.items.filter((source) => source.authorityLevel === "PRIMARY_OFFICIAL"),
     ).toHaveLength(50);
-    expect(sourceList.items.filter((source) => source.authorityLevel === "PROFESSIONAL")).toHaveLength(
-      50,
-    );
+    expect(
+      sourceList.items.filter((source) => source.authorityLevel === "PROFESSIONAL"),
+    ).toHaveLength(50);
     expect(sourceList.items.every((source) => Boolean(source.defaultCollectionPlanId))).toBe(true);
 
     const dispatched = runs.list({ limit: 100 });
@@ -222,10 +222,16 @@ describe("Bulk Source Pipeline E2E", () => {
       const job = claim.job!;
       const lease = claim.lease!;
       const leaseToken = claim.leaseToken!;
-      const started = executions.start(worker.view.worker.id, worker.credential, lease.id, leaseToken, {
-        executor,
-        idempotencyKey: `start-${index}`,
-      });
+      const started = executions.start(
+        worker.view.worker.id,
+        worker.credential,
+        lease.id,
+        leaseToken,
+        {
+          executor,
+          idempotencyKey: `start-${index}`,
+        },
+      );
       executions.markUploading(worker.view.worker.id, worker.credential, lease.id, leaseToken, {
         idempotencyKey: `uploading-${index}`,
       });
