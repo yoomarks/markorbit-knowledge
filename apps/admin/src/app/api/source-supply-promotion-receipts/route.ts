@@ -44,18 +44,24 @@ export async function GET(request: Request) {
     const search = new URL(request.url).searchParams;
     const workspaceId = search.get("workspaceId")?.trim();
     if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
-    const ledger = new SqliteSourceSupplyPromotionReceiptLedger(getRegistryDatabase());
+    const database = getRegistryDatabase();
+    const ledgerExists = database
+      .prepare("SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get("source_supply_promotion_receipts");
+    const items = ledgerExists
+      ? new SqliteSourceSupplyPromotionReceiptLedger(database).list({
+          workspaceId,
+          jurisdiction: search.get("jurisdiction")?.trim() || undefined,
+          targetId: search.get("targetId")?.trim() || undefined,
+          status: optionalStatus(search.get("status")),
+          limit: optionalLimit(search.get("limit")),
+        })
+      : [];
     return NextResponse.json({
       version: SOURCE_SUPPLY_PROMOTION_RECEIPT_VERSION,
       objectType: "SOURCE_SUPPLY_PROMOTION_RECEIPT_LIST",
       workspaceId,
-      items: ledger.list({
-        workspaceId,
-        jurisdiction: search.get("jurisdiction")?.trim() || undefined,
-        targetId: search.get("targetId")?.trim() || undefined,
-        status: optionalStatus(search.get("status")),
-        limit: optionalLimit(search.get("limit")),
-      }),
+      items,
     });
   } catch (error) {
     return apiError(error);
