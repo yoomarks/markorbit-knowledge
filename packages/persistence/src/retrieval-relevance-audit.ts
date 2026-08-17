@@ -3037,6 +3037,68 @@ export const FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES = [
     targetId: "iq-trademark-system-regulation-26",
     query: "Iraq System 26 1957 trademarks trade names implementing regulation",
   },
+  {
+    id: "nl-boip-trademark-portal-name",
+    targetId: "nl-boip-trademark-portal",
+    query: "BOIP Benelux trademark authority Netherlands portal",
+  },
+  {
+    id: "nl-boip-trademark-procedure-name",
+    targetId: "nl-boip-trademark-procedure",
+    query:
+      "BOIP trademark application registration procedure examination publication opposition Netherlands",
+  },
+  {
+    id: "nl-boip-trademark-register-name",
+    targetId: "nl-boip-trademark-register",
+    query: "BOIP public trademarks register Netherlands Benelux applications registrations",
+  },
+  {
+    id: "nl-boip-trademark-fees-name",
+    targetId: "nl-boip-trademark-fees",
+    query: "BOIP trademark registration costs fees Netherlands Benelux",
+  },
+  {
+    id: "nl-benelux-convention-approval-act-name",
+    targetId: "nl-benelux-convention-approval-act",
+    query:
+      "Netherlands Act 10 May 2006 approval Benelux Convention intellectual property trademarks",
+  },
+  {
+    id: "nl-benelux-convention-current-name",
+    targetId: "nl-benelux-convention-current",
+    query: "Benelux Convention Intellectual Property trademarks designs current consolidated BOIP",
+  },
+  {
+    id: "be-boip-trademark-portal-name",
+    targetId: "be-boip-trademark-portal",
+    query: "BOIP Benelux trademark authority Belgium portal",
+  },
+  {
+    id: "be-boip-online-trademark-filing-name",
+    targetId: "be-boip-online-trademark-filing",
+    query: "BOIP My BOIP online trademark application filing Belgium five steps",
+  },
+  {
+    id: "be-boip-trademark-register-name",
+    targetId: "be-boip-trademark-register",
+    query: "BOIP registre marques Belgium Benelux public trademark register",
+  },
+  {
+    id: "be-boip-trademark-fee-payment-name",
+    targetId: "be-boip-trademark-fee-payment",
+    query: "BOIP trademark fee payment methods Belgium online application",
+  },
+  {
+    id: "be-benelux-convention-approval-law-name",
+    targetId: "be-benelux-convention-approval-law",
+    query: "Belgium law 22 March 2006 approval Benelux Convention intellectual property trademarks",
+  },
+  {
+    id: "be-benelux-convention-fulltext-name",
+    targetId: "be-benelux-convention-fulltext",
+    query: "Benelux Convention intellectual property full text Belgium trademarks BOIP",
+  },
 ] satisfies readonly RetrievalRelevanceProbe[];
 
 const PROBES_BY_TARGET = new Map<string, RetrievalRelevanceProbe[]>();
