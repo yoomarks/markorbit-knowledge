@@ -7,7 +7,7 @@ import type {
   SourceCoverageTier,
 } from "./source-coverage-v1";
 
-export const SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.1" as const;
+export const SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.2" as const;
 
 export const SOURCE_SUPPLY_HEALTH_STATES = ["READY", "DEGRADED", "BLOCKED"] as const;
 export type SourceSupplyHealthState = (typeof SOURCE_SUPPLY_HEALTH_STATES)[number];
@@ -22,6 +22,14 @@ export const SOURCE_SUPPLY_COMPATIBILITY_STATES = [
   "UNOBSERVED",
 ] as const;
 export type SourceSupplyCompatibilityState = (typeof SOURCE_SUPPLY_COMPATIBILITY_STATES)[number];
+
+export const SOURCE_SUPPLY_COMPATIBILITY_FRESHNESS_STATES = [
+  "FRESH",
+  "STALE",
+  "UNOBSERVED",
+] as const;
+export type SourceSupplyCompatibilityFreshnessState =
+  (typeof SOURCE_SUPPLY_COMPATIBILITY_FRESHNESS_STATES)[number];
 
 export const SOURCE_SUPPLY_GAPS = [
   "SOURCE_UNREGISTERED",
@@ -72,7 +80,10 @@ export type SourceSupplyFreshnessHealth = {
 
 export type SourceSupplyCompatibilityHealth = {
   state: SourceSupplyCompatibilityState;
+  freshness: SourceSupplyCompatibilityFreshnessState;
   observedAt: string | null;
+  ageHours: number | null;
+  maxAgeHours: number;
   primaryUri: string | null;
   renderJavascript: boolean | null;
   errorCode: string | null;
@@ -115,5 +126,6 @@ export type SourceSupplyHealthSummary = {
   retrievalAvailable: number;
   byFreshness: Record<SourceSupplyFreshnessState, number>;
   byCompatibility?: Record<SourceSupplyCompatibilityState, number>;
+  byCompatibilityFreshness?: Record<SourceSupplyCompatibilityFreshnessState, number>;
   gapCounts: Partial<Record<SourceSupplyGap, number>>;
 };

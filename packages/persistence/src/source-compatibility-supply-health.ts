@@ -6,6 +6,7 @@ import type {
   SourceSupplyGap,
   SourceSupplyHealthRecord,
 } from "@markorbit/contracts";
+import { RegistryValidationError } from "./index";
 import { SqliteSourceCompatibilityObservationRepository } from "./source-compatibility-observations";
 import {
   SqliteSourceSupplyHealthRepository,
@@ -15,13 +16,19 @@ import {
   type SourceSupplyHealthRepository,
 } from "./source-supply-health";
 
+export const SOURCE_COMPATIBILITY_MAX_AGE_HOURS = 48;
+
 function compatibilityHealth(
   observation: SourceCompatibilityObservation | undefined,
+  observedAt: Date,
 ): SourceSupplyCompatibilityHealth {
   if (!observation) {
     return {
       state: "UNOBSERVED",
+      freshness: "UNOBSERVED",
       observedAt: null,
+      ageHours: null,
+      maxAgeHours: SOURCE_COMPATIBILITY_MAX_AGE_HOURS,
       primaryUri: null,
       renderJavascript: null,
       errorCode: null,
@@ -30,9 +37,19 @@ function compatibilityHealth(
       baselineState: null,
     };
   }
+  const observationMs = Date.parse(observation.observedAt);
+  if (!Number.isFinite(observationMs)) {
+    throw new RegistryValidationError(
+      "Persisted source-compatibility observation timestamp is invalid",
+    );
+  }
+  const ageHours = Math.max(0, (observedAt.getTime() - observationMs) / 3_600_000);
   return {
     state: observation.state,
+    freshness: ageHours <= SOURCE_COMPATIBILITY_MAX_AGE_HOURS ? "FRESH" : "STALE",
     observedAt: observation.observedAt,
+    ageHours: Number(ageHours.toFixed(2)),
+    maxAgeHours: SOURCE_COMPATIBILITY_MAX_AGE_HOURS,
     primaryUri: observation.primaryUri,
     renderJavascript: observation.renderJavascript,
     errorCode: observation.errorCode ?? null,
@@ -52,12 +69,13 @@ export function applySourceCompatibilityHealth(
   item: SourceSupplyHealthRecord,
   compatibility: SourceSupplyCompatibilityHealth,
 ): SourceSupplyHealthRecord {
-  const gap = compatibilityGap(compatibility.state);
+  const actionable = compatibility.freshness === "FRESH";
+  const gap = actionable ? compatibilityGap(compatibility.state) : null;
   const gaps = gap && !item.gaps.includes(gap) ? [...item.gaps, gap] : [...item.gaps];
   const state =
-    compatibility.state === "BLOCKED"
+    actionable && compatibility.state === "BLOCKED"
       ? "BLOCKED"
-      : compatibility.state === "DEGRADED" && item.state === "READY"
+      : actionable && compatibility.state === "DEGRADED" && item.state === "READY"
         ? "DEGRADED"
         : item.state;
   return { ...item, compatibility, gaps, state };
@@ -67,17 +85,24 @@ export class SqliteCompatibilityAwareSupplyHealthRepository implements SourceSup
   private readonly base: SqliteSourceSupplyHealthRepository;
   private readonly compatibility: SqliteSourceCompatibilityObservationRepository;
 
-  constructor(database: DatabaseSync, clock: () => Date = () => new Date()) {
+  constructor(
+    database: DatabaseSync,
+    private readonly clock: () => Date = () => new Date(),
+  ) {
     this.base = new SqliteSourceSupplyHealthRepository(database, clock);
     this.compatibility = new SqliteSourceCompatibilityObservationRepository(database);
   }
 
   list(filters: SourceSupplyHealthFilters): SourceSupplyHealthListResult {
     const base = this.base.list({ ...filters, state: undefined });
+    const observedAt = this.clock();
     const latest = this.compatibility.latest(base.items.map((item) => item.targetId));
     const items = base.items
       .map((item) =>
-        applySourceCompatibilityHealth(item, compatibilityHealth(latest.get(item.targetId))),
+        applySourceCompatibilityHealth(
+          item,
+          compatibilityHealth(latest.get(item.targetId), observedAt),
+        ),
       )
       .filter((item) => !filters.state || item.state === filters.state);
     const summary = summarizeSourceSupplyHealth(items);
@@ -87,13 +112,19 @@ export class SqliteCompatibilityAwareSupplyHealthRepository implements SourceSup
       BLOCKED: 0,
       UNOBSERVED: 0,
     };
+    const byCompatibilityFreshness = {
+      FRESH: 0,
+      STALE: 0,
+      UNOBSERVED: 0,
+    };
     for (const item of items) {
       byCompatibility[item.compatibility?.state ?? "UNOBSERVED"] += 1;
+      byCompatibilityFreshness[item.compatibility?.freshness ?? "UNOBSERVED"] += 1;
     }
     return {
       ...base,
       items,
-      summary: { ...summary, byCompatibility },
+      summary: { ...summary, byCompatibility, byCompatibilityFreshness },
     };
   }
 }
