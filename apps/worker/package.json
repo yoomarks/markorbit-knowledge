@@ -13,6 +13,7 @@
     "bootstrap:uspto-conversion": "tsx src/bootstrap-uspto-conversion.ts",
     "bootstrap:coverage": "tsx src/bootstrap-source-coverage.ts",
     "activate:representative-coverage": "tsx src/activate-representative-source-wave.ts",
+    "promote:representative-supply": "tsx src/promote-representative-source-supply.ts",
     "verify:representative-supply": "tsx src/verify-representative-source-supply.ts",
     "canary:representative": "tsx src/run-representative-live-canaries.ts",
     "canary:representative:recorded": "tsx src/run-recorded-representative-live-canaries.ts",
