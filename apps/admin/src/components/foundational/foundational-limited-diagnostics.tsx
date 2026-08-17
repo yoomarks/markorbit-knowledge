@@ -58,7 +58,7 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
               relevance 诊断；
               {compatibilityReprobeEnabled
                 ? " compatibility re-probe 已通过专项 promotion proof，并在下方作为独立受控 Worker 操作提供。"
-                : " compatibility re-probe 仍未晋级。"}
+                : " compatibility re-probe 尚未晋级。"}
               采集派发、转换恢复、reindex 与 quality remediation 等内容写路径仍不会在此显示。
             </p>
           </div>
@@ -102,7 +102,9 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
             <strong className="mt-2 block text-2xl font-semibold text-slate-950">
               {snapshot.remediationQueue.actionableTargetCount}
             </strong>
-            <p className="mt-1 text-xs text-slate-500">Advisory except promoted re-probe path</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {compatibilityReprobeEnabled ? "Advisory except promoted re-probe path" : "Advisory only"}
+            </p>
           </article>
           <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -121,8 +123,8 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
             <p className="text-sm font-semibold">Unproven mutation surfaces remain withheld</p>
             <p className="mt-1 text-xs leading-5 text-amber-900/80">
               这里的限制是能力成熟度边界，不代表该辖区没有 Foundational coverage。只有完成专项
-              live-run、审计与回归的路径才会逐项晋级；一次 compatibility re-probe proof 不会自动解锁
-              collection、conversion、reindex 或 quality remediation。
+              live-run、审计与回归的路径才会逐项晋级；诊断可见性不会自动解锁 collection、conversion、
+              reindex 或 quality remediation。
             </p>
           </div>
         </div>
