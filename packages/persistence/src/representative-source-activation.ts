@@ -6,7 +6,12 @@ export const REPRESENTATIVE_SOURCE_ACTIVATION_WAVE_VERSION =
   "REPRESENTATIVE_SOURCE_ACTIVATION_V1" as const;
 
 export type RepresentativeSourceActivationProfile =
-  "CORE_MARKET" | "DYNAMIC_PORTAL" | "MULTILINGUAL" | "MENA" | "REGIONAL_EUIPO" | "REGIONAL_OAPI";
+  | "CORE_MARKET"
+  | "DYNAMIC_PORTAL"
+  | "MULTILINGUAL"
+  | "MENA"
+  | "REGIONAL_EUIPO"
+  | "REGIONAL_OAPI";
 
 export type RepresentativeSourceActivationJurisdiction = {
   jurisdiction: string;
@@ -77,10 +82,10 @@ export const REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS = [
     purpose: "MENA official portal and service-guidance acquisition behavior.",
   },
   {
-    jurisdiction: "NL",
-    displayName: "Netherlands / EUIPO regional path",
+    jurisdiction: "EU",
+    displayName: "European Union / EUIPO",
     profile: "REGIONAL_EUIPO",
-    purpose: "Regional EUIPO source reuse represented through a curated regional jurisdiction.",
+    purpose: "EUIPO regional portal, search, guideline and legal-source acquisition paths.",
   },
   {
     jurisdiction: "CI",
