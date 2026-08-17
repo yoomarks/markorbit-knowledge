@@ -3,10 +3,11 @@ import {
   buildFoundationalRemediationQueue,
   type FoundationalRemediationActionCode,
 } from "../src/foundational-remediation-queue";
-import type {
-  FoundationalReadinessGate,
-  FoundationalReadinessStage,
-  FoundationalReadinessTarget,
+import {
+  FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
+  type FoundationalReadinessGate,
+  type FoundationalReadinessStage,
+  type FoundationalReadinessTarget,
 } from "../src/source-foundational-readiness";
 
 function target(
@@ -50,7 +51,7 @@ function gate(targets: FoundationalReadinessTarget[]): FoundationalReadinessGate
   for (const item of targets) byStage[item.stage] += 1;
   const readyCount = targets.filter((item) => item.ready).length;
   return {
-    protocolVersion: "1.2",
+    protocolVersion: FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
     objectType: "FOUNDATIONAL_READINESS_GATE",
     jurisdiction: "US",
     state: readyCount === targets.length ? "READY" : "NOT_READY",

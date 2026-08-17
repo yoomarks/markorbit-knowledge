@@ -114,6 +114,7 @@ export function parseFoundationalSupplyHealth(payload: unknown): FoundationalSup
     const normalization = record(item?.normalization);
     const retrieval = record(item?.retrieval);
     const freshness = record(item?.freshness);
+    const compatibility = record(item?.compatibility);
     if (!item || !acquisition || !normalization || !retrieval || !freshness) {
       throw new Error(`Invalid source supply health item at index ${index}`);
     }
@@ -128,6 +129,44 @@ export function parseFoundationalSupplyHealth(payload: unknown): FoundationalSup
     if (registrationState !== "REGISTERED" && registrationState !== "UNREGISTERED") {
       throw new Error(`Invalid items[${index}].registrationState`);
     }
+
+    let compatibilityState: FoundationalSupplyHealthItem["compatibilityState"] = "UNOBSERVED";
+    let compatibilityFreshness: FoundationalSupplyHealthItem["compatibilityFreshness"] =
+      "UNOBSERVED";
+    let compatibilityObservedAt: string | null = null;
+    if (compatibility) {
+      const parsedCompatibilityState = requiredString(
+        compatibility.state,
+        `items[${index}].compatibility.state`,
+      );
+      if (
+        parsedCompatibilityState !== "PASS" &&
+        parsedCompatibilityState !== "DEGRADED" &&
+        parsedCompatibilityState !== "BLOCKED" &&
+        parsedCompatibilityState !== "UNOBSERVED"
+      ) {
+        throw new Error(`Invalid items[${index}].compatibility.state`);
+      }
+      compatibilityState = parsedCompatibilityState;
+
+      const parsedCompatibilityFreshness = requiredString(
+        compatibility.freshness,
+        `items[${index}].compatibility.freshness`,
+      );
+      if (
+        parsedCompatibilityFreshness !== "FRESH" &&
+        parsedCompatibilityFreshness !== "STALE" &&
+        parsedCompatibilityFreshness !== "UNOBSERVED"
+      ) {
+        throw new Error(`Invalid items[${index}].compatibility.freshness`);
+      }
+      compatibilityFreshness = parsedCompatibilityFreshness;
+      compatibilityObservedAt =
+        typeof compatibility.observedAt === "string" && compatibility.observedAt.trim()
+          ? compatibility.observedAt
+          : null;
+    }
+
     return {
       targetId: requiredString(item.targetId, `items[${index}].targetId`),
       sourceIds: array(item.sourceIds)
@@ -149,6 +188,9 @@ export function parseFoundationalSupplyHealth(payload: unknown): FoundationalSup
         `items[${index}].retrieval.currentDocumentCount`,
       ),
       freshnessState: requiredString(freshness.state, `items[${index}].freshness.state`),
+      compatibilityState,
+      compatibilityFreshness,
+      compatibilityObservedAt,
       gaps: array(item.gaps).map((gap) => String(gap)),
     };
   });

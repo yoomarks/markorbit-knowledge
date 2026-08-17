@@ -1,8 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { SqliteCompatibilityAwareSupplyHealthRepository } from "@markorbit/persistence/source-compatibility-supply-health";
 import { SqliteRetrievalQualityAuditRepository } from "@markorbit/persistence/retrieval-quality-audit";
 import { SqliteRetrievalRelevanceAuditRepository } from "@markorbit/persistence/retrieval-relevance-audit";
-import { SqliteSourceSupplyHealthRepository } from "@markorbit/persistence/source-supply-health";
 import {
   evaluateFoundationalReadiness,
   normalizeFoundationalJurisdiction,
@@ -46,7 +46,7 @@ export function buildFoundationalRemediationQueueSnapshot(
   clock: () => Date = () => new Date(),
 ): FoundationalRemediationQueueSnapshot {
   const normalized = normalizeFilters(filters);
-  const health = new SqliteSourceSupplyHealthRepository(database).list({
+  const health = new SqliteCompatibilityAwareSupplyHealthRepository(database, clock).list({
     workspaceId: normalized.workspaceId,
     jurisdiction: normalized.jurisdiction,
     coverageTier: "FOUNDATIONAL",
@@ -81,6 +81,9 @@ export function buildFoundationalRemediationQueueSnapshot(
     readyDocumentCount: item.normalization.readyDocumentCount,
     currentDocumentCount: item.retrieval.currentDocumentCount,
     freshnessState: item.freshness.state,
+    compatibilityState: item.compatibility?.state ?? "UNOBSERVED",
+    compatibilityFreshness: item.compatibility?.freshness ?? "UNOBSERVED",
+    compatibilityObservedAt: item.compatibility?.observedAt ?? null,
     gaps: [...item.gaps],
   }));
   const qualityItems: FoundationalRetrievalQualityItem[] = quality.items.map((item) => ({

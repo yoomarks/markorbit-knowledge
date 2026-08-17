@@ -29,6 +29,7 @@ export type FoundationalActionIntentRecord = {
     | "REVIEW_SOURCE_FILTERED_RETRIEVAL"
     | "REVIEW_GLOBAL_RETRIEVAL_RANKING"
     | "REVIEW_RELEVANCE_AUDIT"
+    | "REPROBE_SOURCE_COMPATIBILITY"
     | "REVIEW_SUPPLY_HEALTH";
   operatorInstruction: string;
   executionPath:

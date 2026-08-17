@@ -1,4 +1,9 @@
-export const FOUNDATIONAL_READINESS_PROTOCOL_VERSION = "1.2" as const;
+import type {
+  SourceSupplyCompatibilityFreshnessState,
+  SourceSupplyCompatibilityState,
+} from "@markorbit/contracts";
+
+export const FOUNDATIONAL_READINESS_PROTOCOL_VERSION = "1.3" as const;
 export const US_FOUNDATIONAL_READINESS_PROTOCOL_VERSION = FOUNDATIONAL_READINESS_PROTOCOL_VERSION;
 
 export const FOUNDATIONAL_READINESS_STAGES = [
@@ -25,6 +30,9 @@ export type FoundationalSupplyHealthItem = {
   readyDocumentCount: number;
   currentDocumentCount: number;
   freshnessState: string;
+  compatibilityState?: SourceSupplyCompatibilityState;
+  compatibilityFreshness?: SourceSupplyCompatibilityFreshnessState;
+  compatibilityObservedAt?: string | null;
   gaps: string[];
 };
 
@@ -55,6 +63,9 @@ export type FoundationalReadinessTarget = {
   healthState: FoundationalSupplyHealthItem["state"] | "MISSING";
   gaps: string[];
   reason: string | null;
+  compatibilityState?: SourceSupplyCompatibilityState;
+  compatibilityFreshness?: SourceSupplyCompatibilityFreshnessState;
+  compatibilityObservedAt?: string | null;
   retrievalQualityState: FoundationalRetrievalQualityState;
   retrievalAuditDocumentCount: number;
   retrievalAuditGaps: string[];
@@ -115,6 +126,17 @@ export function deriveFoundationalReadinessStage(
   }
   if (item.readyDocumentCount === 0 || gaps.has("NO_NORMALIZED_DOCUMENT")) return "CONVERT";
   if (item.currentDocumentCount === 0 || gaps.has("NO_RETRIEVAL_DOCUMENT")) return "INDEX";
+
+  const compatibilityFreshness = item.compatibilityFreshness ?? "UNOBSERVED";
+  const compatibilityState = item.compatibilityState ?? "UNOBSERVED";
+  if (compatibilityFreshness === "STALE") return "HEALTH";
+  if (
+    compatibilityFreshness === "FRESH" &&
+    (compatibilityState === "DEGRADED" || compatibilityState === "BLOCKED")
+  ) {
+    return "HEALTH";
+  }
+
   if (item.state === "READY" && item.gaps.length === 0) return "READY";
   return "HEALTH";
 }
@@ -134,8 +156,9 @@ export function evaluateFoundationalRetrievalQuality(
     return { state: "MISSING", documentCount: 0, gaps: ["RETRIEVAL_AUDIT_MISSING"] };
   }
   const gaps = [...new Set(current.flatMap((quality) => quality.gaps))].sort();
-  if (current.length !== item.currentDocumentCount)
+  if (current.length !== item.currentDocumentCount) {
     gaps.unshift("RETRIEVAL_AUDIT_COVERAGE_MISMATCH");
+  }
   if (
     current.some((quality) => quality.state === "BLOCKED") ||
     current.length !== item.currentDocumentCount
@@ -187,6 +210,9 @@ function supplyReasonFor(
 ): string | null {
   if (stage === "READY") return null;
   if (stage === "INGEST") return "COLLECTION_COMPLETED_WITHOUT_RAW_ARTIFACT";
+  if (stage === "HEALTH" && item.compatibilityFreshness === "STALE") {
+    return "SOURCE_COMPATIBILITY_OBSERVATION_STALE";
+  }
   if (item.gaps.length > 0) return item.gaps.join(",");
   return `SUPPLY_${item.state}`;
 }
@@ -215,8 +241,9 @@ export function evaluateFoundationalReadiness(
   }
   const healthMap = new Map<string, FoundationalSupplyHealthItem>();
   for (const item of healthItems) {
-    if (healthMap.has(item.targetId))
+    if (healthMap.has(item.targetId)) {
       throw new Error(`Duplicate supply health for ${item.targetId}`);
+    }
     healthMap.set(item.targetId, item);
   }
   const byStage = Object.fromEntries(
@@ -233,6 +260,9 @@ export function evaluateFoundationalReadiness(
         healthState: "MISSING",
         gaps: ["HEALTH_RECORD_MISSING"],
         reason: "HEALTH_RECORD_MISSING",
+        compatibilityState: "UNOBSERVED",
+        compatibilityFreshness: "UNOBSERVED",
+        compatibilityObservedAt: null,
         retrievalQualityState: "NOT_APPLICABLE",
         retrievalAuditDocumentCount: 0,
         retrievalAuditGaps: [],
@@ -260,6 +290,9 @@ export function evaluateFoundationalReadiness(
           : stage === "RELEVANCE"
             ? relevanceReasonFor(relevance)
             : supplyReasonFor(item, stage),
+      compatibilityState: item.compatibilityState ?? "UNOBSERVED",
+      compatibilityFreshness: item.compatibilityFreshness ?? "UNOBSERVED",
+      compatibilityObservedAt: item.compatibilityObservedAt ?? null,
       retrievalQualityState: quality.state,
       retrievalAuditDocumentCount: quality.documentCount,
       retrievalAuditGaps: quality.gaps,
