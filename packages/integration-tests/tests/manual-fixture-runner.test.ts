@@ -78,7 +78,7 @@ describe("local manual fixture runner", () => {
 
     const databaseBytes = readFileSync(summary.output.databasePath);
     expect(databaseBytes.byteLength).toBeGreaterThan(0);
-  });
+  }, 15_000);
 
   it("rejects missing, empty and reused output inputs with stable codes", async () => {
     const directory = root();

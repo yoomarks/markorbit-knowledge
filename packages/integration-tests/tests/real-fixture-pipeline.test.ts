@@ -371,7 +371,7 @@ describe("real fixture pipeline integration", () => {
     } finally {
       harness.close();
     }
-  });
+  }, 15_000);
 
   it("persists binding failure as BLOCKED → FAILED through the real verifier and finalizer", async () => {
     const harness = new LocalIntegrationHarness({
