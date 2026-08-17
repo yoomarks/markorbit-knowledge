@@ -164,19 +164,20 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
             </div>
             {currentScope === "FULL_OPERATOR" ? (
               <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-950/80">
-                US/WIPO 保持已验证的 governed operator：采集、恢复、重建索引、quality remediation
-                与 compatibility re-probe 均经过独立授权路径；浏览器不会持有 Worker bearer。
+                US/WIPO 保持已验证的 governed operator：采集、恢复、重建索引、quality remediation 与
+                compatibility re-probe 均经过独立授权路径；浏览器不会持有 Worker bearer。
               </p>
             ) : currentScope === "CONTROLLED_REPROBE" ? (
               <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-950/80">
-                EUIPO 已通过独立 re-probe promotion proof，因此开放诊断与 controlled re-probe；其余内容写路径仍
-                fail-closed。当前健康状态仍由真实 observation 决定，不因 capability 晋级而改变。
+                EUIPO 已通过独立 re-probe promotion proof，因此开放诊断与 controlled
+                re-probe；其余内容写路径仍 fail-closed。当前健康状态仍由真实 observation 决定，不因
+                capability 晋级而改变。
               </p>
             ) : (
               <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-950/80">
-                该辖区已进入 representative live-canary 覆盖与 Foundational 诊断范围。当前只开放 readiness、
-                supply health 与 relevance 等只读视图；所有 mutation capability 继续 fail-closed，待专项 proof
-                后逐项晋级。
+                该辖区已进入 representative live-canary 覆盖与 Foundational 诊断范围。当前只开放
+                readiness、 supply health 与 relevance 等只读视图；所有 mutation capability 继续
+                fail-closed，待专项 proof 后逐项晋级。
               </p>
             )}
           </div>
@@ -199,7 +200,11 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
                   className={`rounded-lg px-3 py-2 text-sm font-medium transition ${jurisdiction === code ? (fullOperatorJurisdiction ? "bg-amber-100 text-amber-950 shadow-sm" : "bg-sky-100 text-sky-950 shadow-sm") : "text-slate-500 hover:text-slate-800"}`}
                 >
                   {label}
-                  {scope === "CONTROLLED_REPROBE" ? " · re-probe" : scope === "READ_ONLY" ? " · read" : ""}
+                  {scope === "CONTROLLED_REPROBE"
+                    ? " · re-probe"
+                    : scope === "READ_ONLY"
+                      ? " · read"
+                      : ""}
                 </button>
               ))}
             </div>

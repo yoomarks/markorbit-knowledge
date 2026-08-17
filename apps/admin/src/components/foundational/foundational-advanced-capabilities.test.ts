@@ -33,7 +33,18 @@ describe("foundational Advanced jurisdiction capability gates", () => {
   });
 
   it("exposes the remaining representative live-canary jurisdictions as diagnostics only", () => {
-    for (const jurisdiction of ["CN", "IN", "JP", "KR", "GB", "CA", "AU", "BR", "AE", "CI"] as const) {
+    for (const jurisdiction of [
+      "CN",
+      "IN",
+      "JP",
+      "KR",
+      "GB",
+      "CA",
+      "AU",
+      "BR",
+      "AE",
+      "CI",
+    ] as const) {
       expect(asFullOperatorJurisdiction(jurisdiction)).toBeNull();
       expect(foundationalAdvancedCapabilities(jurisdiction)).toEqual([
         "READINESS_DIAGNOSTICS",
@@ -43,8 +54,12 @@ describe("foundational Advanced jurisdiction capability gates", () => {
       expect(hasFoundationalAdvancedCapability(jurisdiction, "COMPATIBILITY_REPROBE")).toBe(false);
       expect(hasFoundationalAdvancedCapability(jurisdiction, "COLLECTION_OPERATOR")).toBe(false);
       expect(hasFoundationalAdvancedCapability(jurisdiction, "CONVERSION_RECOVERY")).toBe(false);
-      expect(hasFoundationalAdvancedCapability(jurisdiction, "VERIFIED_CANONICAL_REINDEX")).toBe(false);
-      expect(hasFoundationalAdvancedCapability(jurisdiction, "RETRIEVAL_QUALITY_REMEDIATION")).toBe(false);
+      expect(hasFoundationalAdvancedCapability(jurisdiction, "VERIFIED_CANONICAL_REINDEX")).toBe(
+        false,
+      );
+      expect(hasFoundationalAdvancedCapability(jurisdiction, "RETRIEVAL_QUALITY_REMEDIATION")).toBe(
+        false,
+      );
     }
   });
 });
