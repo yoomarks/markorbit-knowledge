@@ -15,6 +15,8 @@ type SupplyCoverageItem = {
     blocked: number;
     stale: number;
     compatibilityObserved: number;
+    compatibilityFresh: number;
+    compatibilityStale: number;
     compatibilityDegraded: number;
     compatibilityBlocked: number;
     healthyPercent: number | null;
@@ -29,6 +31,7 @@ type SupplyCoverageResponse = {
     fullyHealthyCount: number;
     supplyAttentionCount: number;
     compatibilityAttentionCount: number;
+    compatibilityStaleJurisdictionCount: number;
   };
 };
 
@@ -93,6 +96,8 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
         blocked: current.blocked + item.supply.blocked,
         stale: current.stale + item.supply.stale,
         compatibilityObserved: current.compatibilityObserved + item.supply.compatibilityObserved,
+        compatibilityFresh: current.compatibilityFresh + item.supply.compatibilityFresh,
+        compatibilityStale: current.compatibilityStale + item.supply.compatibilityStale,
         compatibilityDegraded: current.compatibilityDegraded + item.supply.compatibilityDegraded,
         compatibilityBlocked: current.compatibilityBlocked + item.supply.compatibilityBlocked,
       }),
@@ -105,6 +110,8 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
         blocked: 0,
         stale: 0,
         compatibilityObserved: 0,
+        compatibilityFresh: 0,
+        compatibilityStale: 0,
         compatibilityDegraded: 0,
         compatibilityBlocked: 0,
       },
@@ -114,12 +121,20 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
   const attention = useMemo(
     () =>
       (result?.items ?? [])
-        .filter((item) => item.targetCount > 0 && item.supply.healthy < item.targetCount)
+        .filter(
+          (item) =>
+            item.targetCount > 0 &&
+            (item.supply.healthy < item.targetCount || item.supply.compatibilityStale > 0),
+        )
         .sort((left, right) => {
           const leftCompatibility =
-            left.supply.compatibilityBlocked * 100 + left.supply.compatibilityDegraded * 10;
+            left.supply.compatibilityBlocked * 100 +
+            left.supply.compatibilityDegraded * 10 +
+            left.supply.compatibilityStale;
           const rightCompatibility =
-            right.supply.compatibilityBlocked * 100 + right.supply.compatibilityDegraded * 10;
+            right.supply.compatibilityBlocked * 100 +
+            right.supply.compatibilityDegraded * 10 +
+            right.supply.compatibilityStale;
           if (leftCompatibility !== rightCompatibility)
             return rightCompatibility - leftCompatibility;
           const leftPercent = left.supply.healthyPercent ?? -1;
@@ -152,8 +167,8 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
           </div>
           <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-600">
             {zh
-              ? "把目录覆盖、来源激活、真实供应和外部兼容性分开衡量。兼容性 DEGRADED 表示官方机构仍可采集，但主交互入口需要适配；BLOCKED 表示主入口与权威基线均不可采集。"
-              : "Measure catalog coverage, activation, actual supply, and external compatibility separately. DEGRADED means the authority remains collectible but the primary interactive path needs adaptation; BLOCKED means both primary and authority baseline acquisition failed."}
+              ? "把目录覆盖、来源激活、真实供应和外部兼容性分开衡量。兼容性观测仅在 48 小时内作为当前运行状态；过期结果保留历史事实，但必须重新探测，不能继续把旧故障当成今天的阻断。"
+              : "Measure catalog coverage, activation, actual supply, and external compatibility separately. Compatibility observations are current for 48 hours; stale results remain historical evidence but no longer masquerade as today's outage."}
           </p>
         </div>
         <button
@@ -202,7 +217,7 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
           {
             label: zh ? "兼容性已观测" : "Compatibility observed",
             value: totals.compatibilityObserved,
-            detail: `${totals.compatibilityDegraded + totals.compatibilityBlocked} ${zh ? "项需处理" : "need attention"}`,
+            detail: `${totals.compatibilityFresh} ${zh ? "项新鲜" : "fresh"} · ${totals.compatibilityStale} ${zh ? "项过期" : "stale"}`,
             icon: Wrench,
           },
         ].map((card) => {
@@ -227,7 +242,7 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
           <h3 className="text-sm font-semibold text-slate-900">
             {zh ? "供应与兼容性缺口" : "Supply & compatibility gaps"}
           </h3>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <div className="rounded-xl bg-amber-50 p-3">
               <p className="text-xs font-medium text-amber-700">
                 {zh ? "供应降级" : "Supply degraded"}
@@ -256,11 +271,19 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
                 {totals.compatibilityBlocked}
               </p>
             </div>
+            <div className="rounded-xl bg-violet-50 p-3">
+              <p className="text-xs font-medium text-violet-700">
+                {zh ? "观测过期" : "Probe stale"}
+              </p>
+              <p className="mt-1 text-xl font-semibold text-violet-900">
+                {totals.compatibilityStale}
+              </p>
+            </div>
           </div>
           <p className="mt-3 text-xs leading-5 text-slate-500">
             {zh
-              ? `${result?.summary.fullyHealthyCount ?? 0} 个国家/地区当前实现全量健康供应；${result?.summary.compatibilityAttentionCount ?? 0} 个辖区存在已观测的外部兼容性问题。`
-              : `${result?.summary.fullyHealthyCount ?? 0} jurisdictions are fully healthy; ${result?.summary.compatibilityAttentionCount ?? 0} have observed external compatibility issues.`}
+              ? `${result?.summary.fullyHealthyCount ?? 0} 个国家/地区当前实现全量健康供应；${result?.summary.compatibilityAttentionCount ?? 0} 个辖区存在新鲜的外部兼容性问题；${result?.summary.compatibilityStaleJurisdictionCount ?? 0} 个辖区需要重新探测。`
+              : `${result?.summary.fullyHealthyCount ?? 0} jurisdictions are fully healthy; ${result?.summary.compatibilityAttentionCount ?? 0} have fresh external compatibility issues; ${result?.summary.compatibilityStaleJurisdictionCount ?? 0} need a new probe.`}
           </p>
         </div>
 
@@ -292,11 +315,19 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
                     {item.supply.compatibilityBlocked}
                   </p>
                 ) : null}
+                {item.supply.compatibilityStale > 0 ? (
+                  <p className="mt-1 text-[11px] font-medium text-violet-700">
+                    {zh ? "兼容性观测过期" : "Stale compatibility probes"}{" "}
+                    {item.supply.compatibilityStale}
+                  </p>
+                ) : null}
               </div>
             ))}
             {attention.length === 0 ? (
               <p className="text-sm text-emerald-700">
-                {zh ? "当前所有目录辖区均为健康供应。" : "All catalog jurisdictions are healthy."}
+                {zh
+                  ? "当前所有目录辖区均为健康供应，且没有过期兼容性观测。"
+                  : "All catalog jurisdictions are healthy with no stale compatibility observations."}
               </p>
             ) : null}
           </div>
