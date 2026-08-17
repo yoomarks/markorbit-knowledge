@@ -3,21 +3,20 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Activity,
+  AlertTriangle,
   ArrowRight,
   BookOpen,
   Check,
   Clock3,
-  Compass,
-  Database,
-  FileText,
   Globe2,
   Loader2,
   PackageCheck,
   RefreshCw,
-  UploadCloud,
+  ShieldAlert,
+  ShieldCheck,
   X,
 } from "lucide-react";
-import type { SourceListResult } from "@markorbit/persistence";
 import { useAdminI18n } from "@/lib/i18n";
 
 type CandidateRecord = {
@@ -42,11 +41,6 @@ type DiscoveryOverview = {
       total: number;
     };
   };
-  batches: Array<{
-    batch: { batchId: string; createdAt: string; seeds: Array<{ locator: string }> };
-    status: "RUNNING" | "COMPLETED" | "FAILED";
-    candidateCount: number;
-  }>;
 };
 
 type KnowledgeResponse = {
@@ -68,11 +62,69 @@ type ReadyPackage = {
   evidence: { sourceId?: string };
 };
 
+type OperationsIssue = {
+  code: string;
+  severity: "ACTION" | "DEGRADED" | "BLOCKED";
+  count: number;
+  message: string;
+  recommendedAction: string;
+  href: string;
+};
+
+type OperationsReadiness = {
+  observedAt: string;
+  state: "READY" | "DEGRADED" | "BLOCKED";
+  metrics: {
+    sources: { total: number; active: number; error: number };
+    workers: { total: number; online: number; busy: number; offline: number; error: number };
+    collection: { failedRuns24h: number; jobsFailed24h: number; jobsDeadLetter: number };
+    conversion: { failed24h: number; stalled: number };
+    scheduler: { errors: number; overdue: number };
+    readyPackages: { verified: number; withoutSubmission: number };
+  };
+  issues: OperationsIssue[];
+};
+
+type CoverageItem = {
+  jurisdiction: string;
+  targetCount: number;
+  registeredTargetCount: number;
+  activatedTargetCount: number;
+  supply: {
+    healthy: number;
+    degraded: number;
+    blocked: number;
+    stale: number;
+    healthyPercent: number | null;
+  };
+};
+
+type CoverageResponse = {
+  items: CoverageItem[];
+  summary: {
+    curatedJurisdictionCount: number;
+    fullyCoveredCount: number;
+    fullyHealthyCount: number;
+    supplyAttentionCount: number;
+  };
+};
+
 type DashboardState = {
   discovery: DiscoveryOverview;
-  sources: SourceListResult;
   knowledge: KnowledgeResponse;
   packages: ReadyPackage[];
+  operations: OperationsReadiness;
+  coverage: CoverageResponse;
+};
+
+type ActionItem = {
+  key: string;
+  severity: "ACTION" | "DEGRADED" | "BLOCKED";
+  count: number;
+  title: string;
+  message: string;
+  action: string;
+  href: string;
 };
 
 async function readError(response: Response): Promise<string> {
@@ -95,6 +147,22 @@ function candidateTitle(record: CandidateRecord): string {
   }
 }
 
+function severityRank(severity: ActionItem["severity"]): number {
+  return severity === "BLOCKED" ? 0 : severity === "DEGRADED" ? 1 : 2;
+}
+
+function severityTone(severity: ActionItem["severity"]): string {
+  if (severity === "BLOCKED") return "border-rose-200 bg-rose-50 text-rose-700";
+  if (severity === "DEGRADED") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-blue-200 bg-blue-50 text-blue-700";
+}
+
+function statusTone(state: OperationsReadiness["state"]): string {
+  if (state === "BLOCKED") return "bg-rose-50 text-rose-700";
+  if (state === "DEGRADED") return "bg-amber-50 text-amber-700";
+  return "bg-emerald-50 text-emerald-700";
+}
+
 export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
@@ -106,36 +174,43 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [discoveryResponse, sourcesResponse, knowledgeResponse, packagesResponse] =
-        await Promise.all([
-          fetch("/api/discovery", { cache: "no-store" }),
-          fetch(
-            `/api/sources?workspaceId=${encodeURIComponent(workspaceId)}&limit=8&hideLegacySystem=true`,
-            {
-              cache: "no-store",
-            },
-          ),
-          fetch(`/api/knowledge?workspaceId=${encodeURIComponent(workspaceId)}&limit=5`, {
-            cache: "no-store",
-          }),
-          fetch(`/api/ready-packages?workspaceId=${encodeURIComponent(workspaceId)}`, {
-            cache: "no-store",
-          }),
-        ]);
-      for (const response of [
+      const [
         discoveryResponse,
-        sourcesResponse,
         knowledgeResponse,
         packagesResponse,
+        operationsResponse,
+        coverageResponse,
+      ] = await Promise.all([
+        fetch("/api/discovery", { cache: "no-store" }),
+        fetch(`/api/knowledge?workspaceId=${encodeURIComponent(workspaceId)}&limit=5`, {
+          cache: "no-store",
+        }),
+        fetch(`/api/ready-packages?workspaceId=${encodeURIComponent(workspaceId)}`, {
+          cache: "no-store",
+        }),
+        fetch(`/api/operations/readiness?workspaceId=${encodeURIComponent(workspaceId)}`, {
+          cache: "no-store",
+        }),
+        fetch(`/api/sources/coverage?workspaceId=${encodeURIComponent(workspaceId)}`, {
+          cache: "no-store",
+        }),
+      ]);
+      for (const response of [
+        discoveryResponse,
+        knowledgeResponse,
+        packagesResponse,
+        operationsResponse,
+        coverageResponse,
       ]) {
         if (!response.ok) throw new Error(await readError(response));
       }
       const packagesBody = (await packagesResponse.json()) as { readyPackages: ReadyPackage[] };
       setState({
         discovery: (await discoveryResponse.json()) as DiscoveryOverview,
-        sources: (await sourcesResponse.json()) as SourceListResult,
         knowledge: (await knowledgeResponse.json()) as KnowledgeResponse,
         packages: packagesBody.readyPackages,
+        operations: (await operationsResponse.json()) as OperationsReadiness,
+        coverage: (await coverageResponse.json()) as CoverageResponse,
       });
       setError(null);
     } catch (requestError) {
@@ -173,17 +248,12 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
     }
   }
 
-  const metrics = useMemo(() => {
-    const pending =
+  const pendingReview = useMemo(
+    () =>
       (state?.discovery.candidates.summary.DISCOVERED ?? 0) +
-      (state?.discovery.candidates.summary.REVIEWED ?? 0);
-    return {
-      activeSources: state?.sources.summary.ACTIVE ?? 0,
-      pending,
-      knowledge: state?.knowledge.summary.total ?? 0,
-      packagesReady: state?.packages.filter((item) => item.status === "VERIFIED").length ?? 0,
-    };
-  }, [state]);
+      (state?.discovery.candidates.summary.REVIEWED ?? 0),
+    [state],
+  );
 
   const pendingCandidates = useMemo(
     () =>
@@ -196,6 +266,110 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
     [state],
   );
 
+  const supply = useMemo(
+    () =>
+      (state?.coverage.items ?? [])
+        .filter((item) => item.targetCount > 0)
+        .reduce(
+          (current, item) => ({
+            targets: current.targets + item.targetCount,
+            registered: current.registered + item.registeredTargetCount,
+            activated: current.activated + item.activatedTargetCount,
+            healthy: current.healthy + item.supply.healthy,
+            degraded: current.degraded + item.supply.degraded,
+            blocked: current.blocked + item.supply.blocked,
+            stale: current.stale + item.supply.stale,
+          }),
+          { targets: 0, registered: 0, activated: 0, healthy: 0, degraded: 0, blocked: 0, stale: 0 },
+        ),
+    [state],
+  );
+
+  const actionItems = useMemo(() => {
+    const items: ActionItem[] = [];
+    if (supply.blocked > 0) {
+      items.push({
+        key: "SUPPLY_BLOCKED",
+        severity: "BLOCKED",
+        count: supply.blocked,
+        title: zh ? "知识供应被阻塞" : "Knowledge supply blocked",
+        message: zh
+          ? "部分目录目标尚未形成可用供应，可能缺少来源、采集证据、规范化结果或检索文档。"
+          : "Some catalog targets do not yet have usable supply because source, acquisition, normalization, or retrieval evidence is missing.",
+        action: zh ? "打开 Sources 查看缺口" : "Open Sources to inspect gaps",
+        href: "/sources",
+      });
+    }
+    if (supply.degraded > 0) {
+      items.push({
+        key: "SUPPLY_DEGRADED",
+        severity: "DEGRADED",
+        count: supply.degraded,
+        title: zh ? "知识供应已降级" : "Knowledge supply degraded",
+        message: zh
+          ? "来源已经产生证据，但仍存在失败、过期、规范化或检索链路问题。"
+          : "Evidence exists, but failures, staleness, normalization, or retrieval gaps remain.",
+        action: zh ? "查看供应健康" : "Inspect supply health",
+        href: "/sources",
+      });
+    }
+    if (supply.stale > 0) {
+      items.push({
+        key: "SUPPLY_STALE",
+        severity: "DEGRADED",
+        count: supply.stale,
+        title: zh ? "来源资料已过期" : "Source evidence is stale",
+        message: zh
+          ? "部分来源超过其变化敏感度对应的最大资料年龄，需要重新采集或检查调度。"
+          : "Some sources exceed the maximum evidence age for their change sensitivity and need recollection or scheduler review.",
+        action: zh ? "检查 Sources 与采集计划" : "Review Sources and collection plans",
+        href: "/sources",
+      });
+    }
+    for (const issue of state?.operations.issues ?? []) {
+      items.push({
+        key: `OPS_${issue.code}`,
+        severity: issue.severity,
+        count: issue.count,
+        title: issue.code.replaceAll("_", " "),
+        message: issue.message,
+        action: issue.recommendedAction,
+        href: issue.href,
+      });
+    }
+    if (pendingReview > 0) {
+      items.push({
+        key: "DISCOVERY_REVIEW",
+        severity: "ACTION",
+        count: pendingReview,
+        title: zh ? "候选来源等待审批" : "Source candidates awaiting review",
+        message: zh
+          ? "Discovery 已发现新的候选来源，采集不会在人工批准前自动启动。"
+          : "Discovery found new candidates; collection will not start until explicit human approval.",
+        action: zh ? "审查候选来源" : "Review source candidates",
+        href: "/sources",
+      });
+    }
+    return items.sort(
+      (left, right) =>
+        severityRank(left.severity) - severityRank(right.severity) || right.count - left.count,
+    );
+  }, [pendingReview, state, supply, zh]);
+
+  const attentionJurisdictions = useMemo(
+    () =>
+      (state?.coverage.items ?? [])
+        .filter((item) => item.targetCount > 0 && item.supply.healthy < item.targetCount)
+        .sort((left, right) => {
+          const leftPercent = left.supply.healthyPercent ?? -1;
+          const rightPercent = right.supply.healthyPercent ?? -1;
+          if (leftPercent !== rightPercent) return leftPercent - rightPercent;
+          return left.jurisdiction.localeCompare(right.jurisdiction);
+        })
+        .slice(0, 6),
+    [state],
+  );
+
   if (loading && !state) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center text-sm text-slate-500 shadow-sm">
@@ -205,38 +379,38 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
     );
   }
 
+  const systemState = state?.operations.state ?? "READY";
+  const verifiedPackages = state?.packages.filter((item) => item.status === "VERIFIED").length ?? 0;
   const cards = [
     {
-      label: zh ? "活跃来源" : "Active Sources",
-      secondary: zh ? "Active Sources" : "活跃来源",
-      value: metrics.activeSources,
-      hint: zh ? "已启用 / enabled" : "enabled / 已启用",
-      icon: Database,
-      iconClass: "bg-blue-50 text-blue-600",
+      label: zh ? "系统运行状态" : "System readiness",
+      value: systemState,
+      hint: `${state?.operations.issues.length ?? 0} ${zh ? "类运行事项" : "operational issues"}`,
+      icon: systemState === "READY" ? ShieldCheck : ShieldAlert,
+      tone: statusTone(systemState),
     },
     {
-      label: zh ? "待审查" : "Pending Review",
-      secondary: zh ? "Pending Review" : "待审查",
-      value: metrics.pending,
-      hint: zh ? "需要关注 / needs attention" : "needs attention / 需要关注",
+      label: zh ? "健康知识供应" : "Healthy supply",
+      value: `${supply.healthy}/${supply.targets}`,
+      hint: `${supply.activated}/${supply.targets} ${zh ? "已激活" : "activated"}`,
+      icon: Activity,
+      tone: supply.blocked > 0 ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700",
+    },
+    {
+      label: zh ? "待处理事项" : "Needs attention",
+      value: actionItems.length,
+      hint: `${actionItems.filter((item) => item.severity === "BLOCKED").length} blocked · ${actionItems.filter((item) => item.severity === "DEGRADED").length} degraded`,
+      icon: AlertTriangle,
+      tone: actionItems.some((item) => item.severity === "BLOCKED")
+        ? "bg-rose-50 text-rose-700"
+        : "bg-amber-50 text-amber-700",
+    },
+    {
+      label: zh ? "待审查 / 待交付" : "Review / delivery",
+      value: `${pendingReview} / ${verifiedPackages}`,
+      hint: zh ? "候选来源 / 就绪交付包" : "source reviews / ready packages",
       icon: Clock3,
-      iconClass: "bg-amber-50 text-amber-600",
-    },
-    {
-      label: zh ? "知识资产" : "Knowledge Assets",
-      secondary: zh ? "Knowledge Assets" : "知识资产",
-      value: metrics.knowledge,
-      hint: zh ? "已沉淀 / acquired" : "acquired / 已沉淀",
-      icon: BookOpen,
-      iconClass: "bg-emerald-50 text-emerald-600",
-    },
-    {
-      label: zh ? "就绪交付包" : "Ready Packages",
-      secondary: zh ? "Ready Packages" : "就绪交付包",
-      value: metrics.packagesReady,
-      hint: zh ? "可交付 / ready to deliver" : "ready to deliver / 可交付",
-      icon: PackageCheck,
-      iconClass: "bg-violet-50 text-violet-600",
+      tone: "bg-blue-50 text-blue-700",
     },
   ];
 
@@ -244,16 +418,14 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
     <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[11px] font-medium tracking-wide text-slate-400">
-            MarkOrbit Knowledge
-          </p>
+          <p className="text-[11px] font-medium tracking-wide text-slate-400">MarkOrbit Knowledge</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[28px]">
             {zh ? "知识运营中心 / Knowledge Operations" : "Knowledge Operations / 知识运营中心"}
           </h1>
           <p className="mt-1.5 text-sm text-slate-500">
             {zh
-              ? "统一发现、管理与交付知识资产 / Discover, manage and deliver knowledge assets."
-              : "Discover, manage and deliver knowledge assets / 统一发现、管理与交付知识资产。"}
+              ? "先处理异常，再扩展供应。首页只突出今天需要行动的知识运营事项。"
+              : "Fix operational gaps before expanding supply. The overview prioritizes what needs action now."}
           </p>
         </div>
         <button
@@ -282,7 +454,7 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40"
             >
               <div className="flex items-start justify-between gap-3">
-                <span className={`grid size-10 place-items-center rounded-xl ${item.iconClass}`}>
+                <span className={`grid size-10 place-items-center rounded-xl ${item.tone}`}>
                   <Icon size={20} />
                 </span>
                 <span className="rounded-full bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-400">
@@ -290,102 +462,123 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                 </span>
               </div>
               <p className="mt-4 text-sm font-semibold text-slate-800">{item.label}</p>
-              <p className="mt-0.5 text-xs text-slate-400">{item.secondary}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
-                {item.value}
-              </p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{item.value}</p>
               <p className="mt-1 text-xs text-slate-400">{item.hint}</p>
             </section>
           );
         })}
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/30">
-        <h2 className="text-sm font-semibold text-slate-900">
-          {zh ? "知识运营流程 / Knowledge Pipeline" : "Knowledge Pipeline / 知识运营流程"}
-        </h2>
-        <div className="mt-5 grid gap-4 md:grid-cols-4">
-          {[
-            [
-              Compass,
-              zh ? "来源发现" : "Discovery",
-              zh ? "Discovery" : "来源发现",
-              zh ? "发现候选来源" : "Find candidates",
-              "/discovery",
-            ],
-            [
-              FileText,
-              zh ? "来源审查" : "Sources Review",
-              zh ? "Sources Review" : "来源审查",
-              zh ? "评估并批准来源" : "Review & approve",
-              "/sources",
-            ],
-            [
-              BookOpen,
-              zh ? "知识资产" : "Knowledge Assets",
-              zh ? "Knowledge Assets" : "知识资产",
-              zh ? "构建与管理知识" : "Build & manage",
-              "/knowledge",
-            ],
-            [
-              PackageCheck,
-              zh ? "交付包" : "Packages",
-              zh ? "Packages" : "交付包",
-              zh ? "打包并交付知识" : "Package & deliver",
-              "/packages",
-            ],
-          ].map(([Icon, title, secondary, detail, href], index) => {
-            const StepIcon = Icon as typeof Compass;
-            return (
+      <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/30">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                {zh ? "运营行动队列 / Operations Queue" : "Operations Queue / 运营行动队列"}
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">
+                {zh
+                  ? "按 Blocked → Degraded → Action 排序，直接进入真实处理入口。"
+                  : "Prioritized Blocked → Degraded → Action with direct remediation links."}
+              </p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+              {actionItems.length}
+            </span>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {actionItems.slice(0, 10).map((item) => (
               <Link
-                key={String(title)}
-                href={String(href)}
-                className="group relative flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-4 transition hover:border-blue-200 hover:bg-blue-50/50"
+                key={item.key}
+                href={item.href}
+                className="group flex flex-col gap-3 px-5 py-4 transition hover:bg-slate-50 sm:flex-row sm:items-start"
               >
-                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white">
-                  <StepIcon size={19} />
+                <span
+                  className={`inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${severityTone(item.severity)}`}
+                >
+                  {item.severity} · {item.count}
                 </span>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="grid size-4 place-items-center rounded-full bg-blue-600 text-[9px] font-bold text-white">
-                      {index + 1}
-                    </span>
-                    <p className="truncate text-sm font-semibold text-slate-900">{String(title)}</p>
-                  </div>
-                  <p className="mt-0.5 text-[11px] text-slate-400">{String(secondary)}</p>
-                  <p className="mt-1 text-xs text-slate-500">{String(detail)}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">{item.message}</p>
+                  <p className="mt-1.5 text-xs font-medium text-blue-600">{item.action}</p>
                 </div>
-                {index < 3 ? (
-                  <ArrowRight
-                    className="absolute -right-3 top-1/2 hidden -translate-y-1/2 text-slate-300 md:block"
-                    size={18}
-                  />
-                ) : null}
+                <ArrowRight
+                  size={16}
+                  className="mt-1 hidden shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-500 sm:block"
+                />
               </Link>
-            );
-          })}
-        </div>
-      </section>
+            ))}
+            {actionItems.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <ShieldCheck className="mx-auto text-emerald-600" size={24} />
+                <p className="mt-2 text-sm font-semibold text-emerald-700">
+                  {zh ? "当前没有需要处理的运营事项。" : "No operational action is required."}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/30">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                {zh ? "供应薄弱辖区" : "Supply attention"}
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">
+                {zh ? "按健康供应比例从低到高。" : "Lowest healthy-supply ratio first."}
+              </p>
+            </div>
+            <Link href="/sources" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+              {zh ? "Sources →" : "Sources →"}
+            </Link>
+          </div>
+          <div className="divide-y divide-slate-100 px-5">
+            {attentionJurisdictions.map((item) => (
+              <div key={item.jurisdiction} className="py-3.5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-slate-900">{item.jurisdiction}</span>
+                  <span className="text-xs font-semibold text-blue-700">
+                    {item.supply.healthy}/{item.targetCount}
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-blue-600"
+                    style={{ width: `${item.supply.healthyPercent ?? 0}%` }}
+                  />
+                </div>
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  {zh ? "激活" : "Activated"} {item.activatedTargetCount}/{item.targetCount} · {zh ? "降级" : "Degraded"} {item.supply.degraded} · {zh ? "阻塞" : "Blocked"} {item.supply.blocked}
+                </p>
+              </div>
+            ))}
+            {attentionJurisdictions.length === 0 ? (
+              <p className="py-8 text-center text-sm text-emerald-700">
+                {zh ? "所有目录辖区当前均为健康供应。" : "All catalog jurisdictions are healthy."}
+              </p>
+            ) : null}
+          </div>
+        </section>
+      </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/30">
           <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
-                {zh ? "待处理 To Review" : "To Review 待处理"}
+                {zh ? "待审查来源 / Source Review" : "Source Review / 待审查来源"}
                 <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] text-blue-600">
-                  {metrics.pending}
+                  {pendingReview}
                 </span>
               </h2>
               <p className="mt-1 text-xs text-slate-400">
-                {zh ? "来源发现后的审批入口。" : "Review candidates discovered by Discovery."}
+                {zh ? "人工批准仍是外部来源进入采集链路的授权边界。" : "Human approval remains the authorization boundary for external collection."}
               </p>
             </div>
-            <Link
-              href="/sources"
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-            >
-              {zh ? "查看全部 View All" : "View All 查看全部"}
+            <Link href="/sources" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+              {zh ? "查看全部" : "View all"}
             </Link>
           </div>
           <div className="divide-y divide-slate-100">
@@ -409,9 +602,6 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                         <p className="mt-1 truncate text-xs text-slate-400">
                           {record.candidate.locator}
                         </p>
-                        <span className="mt-2 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                          {zh ? "待审查 Review" : "Review 待审查"}
-                        </span>
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-2 pl-12 sm:pl-0">
@@ -421,12 +611,8 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                         onClick={() => void review(id, "ACCEPTED")}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                       >
-                        {busy ? (
-                          <Loader2 size={13} className="animate-spin" />
-                        ) : (
-                          <Check size={13} />
-                        )}
-                        {zh ? "批准 Approve" : "Approve 批准"}
+                        {busy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                        {zh ? "批准" : "Approve"}
                       </button>
                       <button
                         type="button"
@@ -434,7 +620,7 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
                         onClick={() => void review(id, "REJECTED")}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                       >
-                        <X size={13} /> {zh ? "淘汰 Reject" : "Reject 淘汰"}
+                        <X size={13} /> {zh ? "淘汰" : "Reject"}
                       </button>
                     </div>
                   </div>
@@ -451,80 +637,50 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
         <div className="space-y-5">
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/30">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <h2 className="text-sm font-semibold text-slate-900">
-                {zh ? "最近来源 / Recent Sources" : "Recent Sources / 最近来源"}
-              </h2>
-              <Link
-                href="/sources"
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-              >
-                {zh ? "查看全部 View All" : "View All 查看全部"}
+              <div className="flex items-center gap-2">
+                <BookOpen size={16} className="text-emerald-600" />
+                <h2 className="text-sm font-semibold text-slate-900">
+                  {zh ? "最近知识资产" : "Recent knowledge"}
+                </h2>
+              </div>
+              <Link href="/knowledge" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                {zh ? "查看全部" : "View all"}
               </Link>
             </div>
             <div className="divide-y divide-slate-100 px-5">
-              {(state?.sources.items ?? []).slice(0, 4).map((source) => (
-                <Link
-                  key={source.id}
-                  href={`/sources/${source.id}`}
-                  className="flex items-center gap-3 py-3.5"
-                >
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-600">
-                    <Globe2 size={15} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-800">{source.name}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-slate-400">
-                      {source.jurisdictions.join(", ") || source.slug}
-                    </p>
-                  </div>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${source.status === "ACTIVE" ? "bg-emerald-50 text-emerald-700" : source.status === "ERROR" ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-500"}`}
-                  >
-                    {source.status === "ACTIVE"
-                      ? zh
-                        ? "已启用 Enabled"
-                        : "Enabled 已启用"
-                      : source.status}
-                  </span>
+              {(state?.knowledge.items ?? []).slice(0, 4).map((item) => (
+                <Link key={item.id} href="/knowledge" className="block py-3.5">
+                  <p className="truncate text-sm font-medium text-slate-800">{item.title}</p>
+                  <p className="mt-1 truncate text-[11px] text-slate-400">
+                    {item.source?.jurisdictions.join(", ") || item.source?.name || item.status}
+                  </p>
                 </Link>
               ))}
-              {(state?.sources.items ?? []).length === 0 ? (
+              {(state?.knowledge.items ?? []).length === 0 ? (
                 <p className="py-8 text-center text-sm text-slate-400">
-                  {zh ? "暂无来源。" : "No sources yet."}
+                  {zh ? "暂无知识资产。" : "No knowledge assets yet."}
                 </p>
               ) : null}
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/30">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-600">
-                <UploadCloud size={19} />
-              </span>
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900">
-                  {zh ? "文件导入 / File Import" : "File Import / 文件导入"}
-                </h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  {zh
-                    ? "文件也统一作为 Source 进入来源管理。"
-                    : "Files enter the same unified Source lifecycle."}
-                </p>
-              </div>
+          <Link
+            href="/packages"
+            className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/30 transition hover:border-blue-200"
+          >
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-600">
+              <PackageCheck size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-900">
+                {zh ? "就绪交付包" : "Ready packages"}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {verifiedPackages} {zh ? "个已验证包等待后续交付动作" : "verified packages available for delivery actions"}
+              </p>
             </div>
-            <Link
-              href="/sources?import=1"
-              className="mt-4 flex min-h-28 flex-col items-center justify-center rounded-xl border border-dashed border-blue-200 bg-blue-50/40 px-4 py-5 text-center transition hover:bg-blue-50"
-            >
-              <UploadCloud className="text-blue-600" size={25} />
-              <p className="mt-2 text-sm font-medium text-slate-700">
-                {zh ? "选择文件或打开导入 / Choose Files" : "Choose Files / 选择文件"}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-400">
-                PDF · DOCX · XLSX · CSV · JSON · XML · MD · Images
-              </p>
-            </Link>
-          </section>
+            <ArrowRight size={17} className="text-slate-300" />
+          </Link>
         </div>
       </div>
     </div>
