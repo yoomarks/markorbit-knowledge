@@ -8589,6 +8589,130 @@ export const AIPO_AM_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const COPAT_AZ: Authority = {
+  jurisdiction: "AZ",
+  authorityName:
+    "Intellectual Property Agency of the Republic of Azerbaijan – Patent and Trademark Examination Center",
+  languages: ["az", "en", "ru"],
+  verificationEvidenceUri: "https://patent.copat.gov.az/mainpage",
+};
+
+export const COPAT_AZ_SOURCE_COVERAGE_TARGETS = [
+  target(COPAT_AZ, {
+    id: "az-copat-trademark-portal",
+    family: "PORTAL",
+    displayName: "Azerbaijan Patent and Trademark Examination Center – Trademarks",
+    canonicalUri: "https://patent.copat.gov.az/mainpage",
+    verificationEvidenceUri: "https://patent.copat.gov.az/mainpage",
+    notes:
+      "Current official Patent and Trademark Examination Center portal with live trademark procedure, classification, fees, legislation, appeal and publication surfaces.",
+  }),
+  target(COPAT_AZ, {
+    id: "az-copat-trademark-filing",
+    family: "FILING",
+    displayName: "Azerbaijan Trademark Filing and Examination Procedure",
+    canonicalUri: "https://patent.copat.gov.az/commodity-1",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://patent.copat.gov.az/commodity-1",
+    notes:
+      "Official trademark application procedure covering filing requirements, Nice-class goods/services, preliminary examination and substantive examination.",
+  }),
+  target(COPAT_AZ, {
+    id: "az-copat-trademark-search",
+    family: "SEARCH",
+    displayName: "Azerbaijan Industrial Property Trademark Register",
+    canonicalUri: "https://reyestr.copat.az/trademarks",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://reyestr.copat.az/trademarks",
+    notes:
+      "Official industrial-property register search for trademarks, including registration/application, date, Nice class, description and holder fields.",
+  }),
+  target(COPAT_AZ, {
+    id: "az-copat-trademark-fees",
+    family: "FEES",
+    displayName: "Azerbaijan Trademark Service Fees",
+    canonicalUri: "https://patent.copat.gov.az/files//21560273462512122188Xidmet%20haqlari_.pdf",
+    expectedArtifactKinds: ["PDF"],
+    verificationEvidenceUri:
+      "https://patent.copat.gov.az/legislation-decisions-of-the-cabinet-of-ministers-of-the-republic-of-azerbaijan",
+    notes:
+      "Official service-fee schedule covering trademark preliminary examination, examination, registration-related and renewal actions.",
+  }),
+  target(COPAT_AZ, {
+    id: "az-copat-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Azerbaijan Nice Classification Goods and Services",
+    canonicalUri: "https://patent.copat.gov.az/commodity-3",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF", "XLSX"],
+    verificationEvidenceUri: "https://patent.copat.gov.az/commodity-3",
+    notes:
+      "Official international classification page providing Azerbaijani goods/services material with Nice references and downloadable source files.",
+  }),
+  target(COPAT_AZ, {
+    id: "az-copat-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Azerbaijan Trademark and Geographical Indications Law",
+    canonicalUri: "https://patent.copat.gov.az/legislation-laws",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://patent.copat.gov.az/legislation-laws",
+    notes:
+      "Official legislation index containing the Law on Trademarks and Geographical Indications and related amendments and state-duty materials.",
+  }),
+  target(COPAT_AZ, {
+    id: "az-copat-trademark-examination-rules",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Azerbaijan Trademark Filing and Examination Rules",
+    canonicalUri:
+      "https://patent.copat.gov.az/legislation-decisions-of-the-cabinet-of-ministers-of-the-republic-of-azerbaijan",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://patent.copat.gov.az/legislation-decisions-of-the-cabinet-of-ministers-of-the-republic-of-azerbaijan",
+    notes:
+      "Official Cabinet-of-Ministers decision index covering trademark filing/examination rules, state-register rules, certificate forms, contract-registration rules, well-known marks and service fees.",
+  }),
+  target(COPAT_AZ, {
+    id: "az-copat-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Azerbaijan Appeal Board Decisions",
+    canonicalUri: "https://patent.copat.gov.az/decisions-of-the-appealsboard.php",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri:
+      "https://patent.copat.gov.az/legislation-decisions-of-the-cabinet-of-ministers-of-the-republic-of-azerbaijan",
+    notes:
+      "Official Appeal Board decisions and governing procedure for trademark refusals, registration challenges, invalidity/non-use and well-known-mark disputes.",
+  }),
+  target(COPAT_AZ, {
+    id: "az-copat-trademark-renewal",
+    family: "MAINTENANCE",
+    displayName: "Azerbaijan Trademark Renewal and Register Forms",
+    canonicalUri: "https://patent.copat.gov.az/commodity-2",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://patent.copat.gov.az/commodity-2",
+    notes:
+      "Official trademark forms include the application to extend registration for the next ten-year period plus owner/name/address and related register-change forms.",
+  }),
+  target(COPAT_AZ, {
+    id: "az-copat-trademark-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Azerbaijan Official Trademark and Geographical Indications Bulletin",
+    canonicalUri: "https://patent.copat.gov.az/publish-trademarks-and-geographical-indications",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://patent.copat.gov.az/year-trademarks-2026",
+    notes:
+      "Rolling official trademark and geographical-indications bulletin index; current 2026 issues are retained as a publication change signal rather than a foundational retrieval target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -8725,5 +8849,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...SAKPATENTI_GE_SOURCE_COVERAGE_TARGETS,
   ...AGEPI_MD_SOURCE_COVERAGE_TARGETS,
   ...AIPO_AM_SOURCE_COVERAGE_TARGETS,
+  ...COPAT_AZ_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
