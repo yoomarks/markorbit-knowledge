@@ -22,6 +22,7 @@
     "./representative-source-activation": "./src/representative-source-activation.ts",
     "./representative-source-live-canaries": "./src/representative-source-live-canaries.ts",
     "./source-compatibility-observations": "./src/source-compatibility-observations.ts",
+    "./source-compatibility-supply-health": "./src/source-compatibility-supply-health.ts",
     "./source-supply-health": "./src/source-supply-health.ts",
     "./operations-readiness": "./src/operations-readiness.ts",
     "./source-intelligence": "./src/source-intelligence-registry.ts",
