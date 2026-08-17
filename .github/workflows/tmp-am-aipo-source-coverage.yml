@@ -17,6 +17,8 @@ jobs:
           ref: codex/am-aipo-source-coverage-v1
       - name: Apply Armenia AIPO patch
         run: python .github/tmp/patch_am_aipo_source_coverage.py
+      - name: Normalize Armenia renewal artifact kinds
+        run: sed -i 's/\["HTML", "DOC", "PDF"\]/["HTML", "PDF"]/g' packages/persistence/src/priority-national-source-coverage.ts
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
