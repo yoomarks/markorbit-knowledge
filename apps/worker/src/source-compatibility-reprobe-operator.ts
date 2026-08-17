@@ -1,4 +1,4 @@
-import type { SourceCompatibilityState } from "@markorbit/contracts";
+export type SourceCompatibilityState = "PASS" | "DEGRADED" | "BLOCKED";
 
 export type SourceCompatibilityReprobeOperatorConfig = {
   controlPlaneUrl: string;
@@ -73,7 +73,7 @@ function parseExecution(value: unknown): SourceCompatibilityReprobeExecutionView
     status,
     observationObservedAt:
       typeof execution.observationObservedAt === "string" ? execution.observationObservedAt : null,
-    observationState,
+    observationState: observationState as SourceCompatibilityState | null,
     errorCode: typeof execution.errorCode === "string" ? execution.errorCode : null,
     errorMessage: typeof execution.errorMessage === "string" ? execution.errorMessage : null,
     replayed: execution.replayed,
