@@ -129,6 +129,7 @@ import {
   PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS,
   UKIPO_SOURCE_COVERAGE_TARGETS,
 } from "./priority-national-source-coverage";
+import { PRIORITY_REGIONAL_SOURCE_COVERAGE_TARGETS } from "./priority-regional-source-coverage";
 import { WIPO_SOURCE_COVERAGE_TARGETS } from "./wipo-source-coverage";
 
 const VERIFIED_AT = "2026-08-09T08:55:00Z";
@@ -621,6 +622,7 @@ export const SOURCE_COVERAGE_TARGETS = [
   ...WIPO_SOURCE_COVERAGE_TARGETS,
   ...EUIPO_SOURCE_COVERAGE_TARGETS,
   ...PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS,
+  ...PRIORITY_REGIONAL_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
 
 export type SourceCoverageFilters = {

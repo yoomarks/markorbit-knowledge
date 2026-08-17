@@ -89,10 +89,10 @@ describe("retrieval relevance smoke audit", () => {
     const targetIds = new Set(
       FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES.map((probe) => probe.targetId),
     );
-    expect(targets).toHaveLength(815);
-    expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(815);
+    expect(targets).toHaveLength(833);
+    expect(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES).toHaveLength(833);
     expect(new Set(FOUNDATIONAL_RETRIEVAL_RELEVANCE_PROBES.map((probe) => probe.id)).size).toBe(
-      815,
+      833,
     );
     expect(targets.every((target) => targetIds.has(target.id))).toBe(true);
     expect(

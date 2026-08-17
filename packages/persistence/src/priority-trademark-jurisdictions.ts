@@ -176,10 +176,10 @@ const PRIORITY_TRADEMARK_JURISDICTION_SEEDS = [
   ["MZ", "Mozambique", "SUB_SAHARAN_AFRICA", "P3", "CURATED", "NATIONAL"],
   ["ZM", "Zambia", "SUB_SAHARAN_AFRICA", "P3", "CURATED", "NATIONAL"],
   ["ZW", "Zimbabwe", "SUB_SAHARAN_AFRICA", "P3", "CURATED", "NATIONAL"],
-  ["CI", "Côte d'Ivoire", "SUB_SAHARAN_AFRICA", "P3", "TARGET", "REGIONAL"],
+  ["CI", "Côte d'Ivoire", "SUB_SAHARAN_AFRICA", "P3", "CURATED", "REGIONAL"],
   ["CD", "Democratic Republic of the Congo", "SUB_SAHARAN_AFRICA", "P3", "CURATED", "NATIONAL"],
-  ["CM", "Cameroon", "SUB_SAHARAN_AFRICA", "P3", "TARGET", "REGIONAL"],
-  ["SN", "Senegal", "SUB_SAHARAN_AFRICA", "P3", "TARGET", "REGIONAL"],
+  ["CM", "Cameroon", "SUB_SAHARAN_AFRICA", "P3", "CURATED", "REGIONAL"],
+  ["SN", "Senegal", "SUB_SAHARAN_AFRICA", "P3", "CURATED", "REGIONAL"],
   ["RW", "Rwanda", "SUB_SAHARAN_AFRICA", "P3", "CURATED", "NATIONAL"],
   ["UG", "Uganda", "SUB_SAHARAN_AFRICA", "P3", "CURATED", "NATIONAL"],
 ] as const satisfies readonly PriorityTrademarkJurisdictionSeed[];
