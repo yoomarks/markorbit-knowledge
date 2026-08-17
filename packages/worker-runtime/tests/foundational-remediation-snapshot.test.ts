@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { FoundationalReadinessGate } from "../src/foundational-readiness";
+import {
+  FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
+  type FoundationalReadinessGate,
+} from "../src/foundational-readiness";
 import { buildFoundationalRemediationQueue } from "../src/foundational-remediation-queue";
 import { assembleFoundationalRemediationQueueSnapshot } from "../src/foundational-remediation-snapshot";
 
 function readiness(jurisdiction = "US"): FoundationalReadinessGate {
   return {
-    protocolVersion: "1.2",
+    protocolVersion: FOUNDATIONAL_READINESS_PROTOCOL_VERSION,
     objectType: "FOUNDATIONAL_READINESS_GATE",
     jurisdiction,
     state: "NOT_READY",
