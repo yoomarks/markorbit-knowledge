@@ -1,8 +1,5 @@
 import type { ArtifactKind } from "./schema-v1";
-import type {
-  SourceCompatibilityBaselineState,
-  SourceCompatibilityState,
-} from "./source-compatibility-v1";
+import type { SourceCompatibilityBaselineState } from "./source-compatibility-v1";
 import type {
   SourceCoverageCatalogState,
   SourceCoverageChangeSensitivity,
@@ -104,7 +101,7 @@ export type SourceSupplyHealthRecord = {
   normalization: SourceSupplyNormalizationHealth;
   retrieval: SourceSupplyRetrievalHealth;
   freshness: SourceSupplyFreshnessHealth;
-  compatibility: SourceSupplyCompatibilityHealth;
+  compatibility?: SourceSupplyCompatibilityHealth;
   gaps: SourceSupplyGap[];
   state: SourceSupplyHealthState;
   observedAt: string;
@@ -118,8 +115,6 @@ export type SourceSupplyHealthSummary = {
   normalizedAvailable: number;
   retrievalAvailable: number;
   byFreshness: Record<SourceSupplyFreshnessState, number>;
-  byCompatibility: Record<SourceSupplyCompatibilityState, number>;
+  byCompatibility?: Record<SourceSupplyCompatibilityState, number>;
   gapCounts: Partial<Record<SourceSupplyGap, number>>;
 };
-
-export type { SourceCompatibilityState };
