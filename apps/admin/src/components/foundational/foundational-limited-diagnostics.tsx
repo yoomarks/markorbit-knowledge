@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Eye, ShieldCheck } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
 import {
   foundationalAdvancedCapabilities,
+  hasFoundationalAdvancedCapability,
   type FoundationalAdvancedJurisdiction,
 } from "./foundational-advanced-capabilities";
 
@@ -34,6 +35,10 @@ function timeLabel(value: string): string {
 
 export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props) {
   const capabilities = foundationalAdvancedCapabilities(jurisdiction);
+  const compatibilityReprobeEnabled = hasFoundationalAdvancedCapability(
+    jurisdiction,
+    "COMPATIBILITY_REPROBE",
+  );
   return (
     <section className="rounded-2xl border border-sky-200 bg-white">
       <div className="border-b border-sky-100 bg-sky-50/60 px-5 py-4">
@@ -41,7 +46,7 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-white px-2.5 py-1 text-xs font-semibold text-sky-800">
-                <Eye size={13} aria-hidden="true" /> Read-only Advanced scope
+                <Eye size={13} aria-hidden="true" /> Limited Advanced scope
               </span>
               <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
                 {jurisdiction}
@@ -49,15 +54,19 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
             </div>
             <h2 className="mt-3 font-semibold text-slate-950">Foundational diagnostics</h2>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">
-              该辖区已进入 Foundational 健康观察范围，但尚未完成 Advanced 写操作的专项 live-run
-              证明。因此这里只暴露 readiness、供给健康与 deterministic relevance
-              诊断；不会显示采集派发、转换恢复、reindex、quality remediation 或 compatibility
-              re-probe 执行入口。
+              该辖区已进入 Foundational 健康观察范围。当前暴露 readiness、供给健康与 deterministic
+              relevance 诊断；
+              {compatibilityReprobeEnabled
+                ? " compatibility re-probe 已通过专项 promotion proof，并在下方作为独立受控 Worker 操作提供。"
+                : " compatibility re-probe 仍未晋级。"}
+              采集派发、转换恢复、reindex 与 quality remediation 等内容写路径仍不会在此显示。
             </p>
           </div>
           <div className="text-xs text-slate-500 lg:text-right">
             <p>Observed · {timeLabel(snapshot.observedAt)}</p>
-            <p className="mt-1">Mutation authorization · NONE</p>
+            <p className="mt-1">
+              Mutation authorization · {compatibilityReprobeEnabled ? "REPROBE ONLY" : "NONE"}
+            </p>
           </div>
         </div>
       </div>
@@ -93,7 +102,7 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
             <strong className="mt-2 block text-2xl font-semibold text-slate-950">
               {snapshot.remediationQueue.actionableTargetCount}
             </strong>
-            <p className="mt-1 text-xs text-slate-500">Advisory only in this scope</p>
+            <p className="mt-1 text-xs text-slate-500">Advisory except promoted re-probe path</p>
           </article>
           <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -102,18 +111,18 @@ export function FoundationalLimitedDiagnostics({ jurisdiction, snapshot }: Props
             <strong className="mt-2 block text-2xl font-semibold text-slate-950">
               {capabilities.length}
             </strong>
-            <p className="mt-1 text-xs text-slate-500">Read-only capability set</p>
+            <p className="mt-1 text-xs text-slate-500">Explicit promoted capability set</p>
           </article>
         </div>
 
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
           <AlertTriangle className="mt-0.5 shrink-0" size={17} aria-hidden="true" />
           <div>
-            <p className="text-sm font-semibold">Mutation surfaces intentionally withheld</p>
+            <p className="text-sm font-semibold">Unproven mutation surfaces remain withheld</p>
             <p className="mt-1 text-xs leading-5 text-amber-900/80">
-              这里的限制是能力成熟度边界，不代表该辖区没有 Foundational
-              coverage。只有在相应写路径完成专项 live-run、审计与回归后，才会提升到 full operator
-              scope。
+              这里的限制是能力成熟度边界，不代表该辖区没有 Foundational coverage。只有完成专项
+              live-run、审计与回归的路径才会逐项晋级；一次 compatibility re-probe proof 不会自动解锁
+              collection、conversion、reindex 或 quality remediation。
             </p>
           </div>
         </div>
