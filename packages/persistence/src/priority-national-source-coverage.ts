@@ -10114,6 +10114,347 @@ export const NCIP_BY_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const IPOM_MN: Authority = {
+  jurisdiction: "MN",
+  authorityName: "Intellectual Property Office of Mongolia (IPOM)",
+  languages: ["mn", "en"],
+  verificationEvidenceUri: "https://www.ipom.gov.mn/mn.php",
+};
+
+export const IPOM_MN_SOURCE_COVERAGE_TARGETS = [
+  target(IPOM_MN, {
+    id: "mn-ipom-portal",
+    family: "PORTAL",
+    displayName: "Intellectual Property Office of Mongolia Portal",
+    canonicalUri: "https://www.ipom.gov.mn/mn.php",
+    verificationEvidenceUri: "https://www.ipom.gov.mn/mn.php",
+  }),
+  target(IPOM_MN, {
+    id: "mn-ipom-trademark-filing-guidance",
+    family: "FILING",
+    displayName: "Mongolia Trademark Application Guidance and Service Fees",
+    canonicalUri: "https://www.ipom.gov.mn/en.php/mn.php?page=59",
+    verificationEvidenceUri: "https://www.ipom.gov.mn/en.php/mn.php?page=59",
+    notes:
+      "Official IPOM filing guidance lists trademark application materials, class-dependent service fees and directs applicants to the national trademark database before filing.",
+  }),
+  target(IPOM_MN, {
+    id: "mn-ipom-trademark-database",
+    family: "SEARCH",
+    displayName: "Mongolia IPOM Trademark Database",
+    canonicalUri: "http://publish.ipom.mn/",
+    verificationEvidenceUri: "https://www.ipom.gov.mn/en.php/mn.php?page=59",
+    notes:
+      "National trademark information database linked directly by IPOM for pre-filing searches.",
+  }),
+  target(IPOM_MN, {
+    id: "mn-ipom-trademark-state-duty",
+    family: "FEES",
+    displayName: "Mongolia IPOM Trademark State Duty and Renewal Fees",
+    canonicalUri: "https://www.ipom.gov.mn/mn.php?page=52",
+    verificationEvidenceUri: "https://www.ipom.gov.mn/mn.php?page=52",
+    notes:
+      "Official IPOM state-duty source covering trademark certificate issuance and ten-year renewal fees; live amounts remain at source.",
+  }),
+  target(IPOM_MN, {
+    id: "mn-trademark-law-current-base",
+    family: "LEGAL_TEXTS",
+    displayName: "Mongolia Law on Trademarks and Geographical Indications",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/22461",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/22461",
+    notes:
+      "WIPO Lex consolidated base law amended through 6 May 2021; paired with the separately published January 2024 amendment target below.",
+  }),
+  target(IPOM_MN, {
+    id: "mn-trademark-law-amendment-2024",
+    family: "LEGAL_TEXTS",
+    displayName: "Mongolia 2024 Amendments to Trademark and GI Law",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/22464",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/22464",
+    notes:
+      "Separate WIPO Lex text for the 12 January 2024 amendments not yet consolidated into the 2021 base-law text.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const DIP_KH: Authority = {
+  jurisdiction: "KH",
+  authorityName: "Department of Intellectual Property, Ministry of Commerce of Cambodia",
+  languages: ["km", "en"],
+  verificationEvidenceUri: "https://www.cambodiaip.gov.kh/en/",
+};
+
+export const DIP_KH_SOURCE_COVERAGE_TARGETS = [
+  target(DIP_KH, {
+    id: "kh-dip-portal",
+    family: "PORTAL",
+    displayName: "Cambodia Department of Intellectual Property Portal",
+    canonicalUri: "https://www.cambodiaip.gov.kh/en/",
+    verificationEvidenceUri: "https://www.cambodiaip.gov.kh/en/",
+  }),
+  target(DIP_KH, {
+    id: "kh-dip-trademark-efiling",
+    family: "FILING",
+    displayName: "Cambodia Online Trademark Filing System",
+    canonicalUri: "https://efiling.cambodiaip.gov.kh/efiling/disclaimerDetails",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://efiling.cambodiaip.gov.kh/efiling/disclaimerDetails",
+    notes:
+      "Official Ministry of Commerce/WIPO-supported system requires trademark registration, renewal and post-registration actions to be filed through the automated platform.",
+  }),
+  target(DIP_KH, {
+    id: "kh-dip-trademark-search",
+    family: "SEARCH",
+    displayName: "Cambodia National Trademark Search",
+    canonicalUri: "https://dip.cambodiaip.gov.kh/SearchMark.aspx?lang=en",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://dip.cambodiaip.gov.kh/Default.aspx",
+  }),
+  target(DIP_KH, {
+    id: "kh-dip-trademark-fee-notices",
+    family: "FEES",
+    displayName: "Cambodia Trademark Fee and Filing Notifications",
+    canonicalUri: "https://www.cambodiaip.gov.kh/en/instruction-and-notification/",
+    verificationEvidenceUri: "https://www.cambodiaip.gov.kh/en/instruction-and-notification/",
+    notes:
+      "Official DIP notification index containing trademark registration fee notices, new fee policy, e-payment notices and application requirements.",
+  }),
+  target(DIP_KH, {
+    id: "kh-trademark-law",
+    family: "LEGAL_TEXTS",
+    displayName: "Cambodia Law Concerning Marks, Trade Names and Unfair Competition",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/5780",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/5780",
+  }),
+  target(DIP_KH, {
+    id: "kh-trademark-implementing-subdecree",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Cambodia Implementing Sub-Decree for Trademark Law",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/6376",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/6376",
+    notes:
+      "WIPO Lex implementing regulation for filing, examination, publication, opposition, registration and maintenance under the trademark law.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const DIP_LA: Authority = {
+  jurisdiction: "LA",
+  authorityName:
+    "Department of Intellectual Property, Ministry of Industry and Commerce of Lao PDR",
+  languages: ["lo", "en"],
+  verificationEvidenceUri: "https://dip.gov.la/en/",
+};
+
+export const DIP_LA_SOURCE_COVERAGE_TARGETS = [
+  target(DIP_LA, {
+    id: "la-dip-portal",
+    family: "PORTAL",
+    displayName: "Lao PDR Department of Intellectual Property Portal",
+    canonicalUri: "https://dip.gov.la/en/",
+    verificationEvidenceUri: "https://dip.gov.la/en/",
+  }),
+  target(DIP_LA, {
+    id: "la-dip-trademark-efiling",
+    family: "FILING",
+    displayName: "Laos IP e-Filing",
+    canonicalUri: "https://online.dip.gov.la/efiling/",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://dip.gov.la/en/",
+    notes:
+      "Official DIP/WIPO e-filing service linked by the Lao IP office for electronic trademark-related submissions.",
+  }),
+  target(DIP_LA, {
+    id: "la-dip-ip-search",
+    family: "SEARCH",
+    displayName: "Lao PDR IP Search",
+    canonicalUri:
+      "https://dip.gov.la/en/online-resources-and-services/%E0%BA%81%E0%BA%A7%E0%BA%94%E0%BA%84%E0%BA%BB%E0%BB%89%E0%BA%99-%E0%BA%AB%E0%BA%B2%E0%BA%82%E0%BB%8D%E0%BB%89%E0%BA%A1%E0%BA%B9%E0%BA%99%E0%BA%8A%E0%BA%B1%E0%BA%9A%E0%BA%AA%E0%BA%B4%E0%BA%99%E0%BA%97/",
+    verificationEvidenceUri:
+      "https://dip.gov.la/en/online-resources-and-services/%E0%BA%81%E0%BA%A7%E0%BA%94%E0%BA%84%E0%BA%BB%E0%BB%89%E0%BA%99-%E0%BA%AB%E0%BA%B2%E0%BA%82%E0%BB%8D%E0%BB%89%E0%BA%A1%E0%BA%B9%E0%BA%99%E0%BA%8A%E0%BA%B1%E0%BA%9A%E0%BA%AA%E0%BA%B4%E0%BA%99%E0%BA%97/",
+    notes: "Official DIP search gateway for Lao patents, industrial designs and trademarks.",
+  }),
+  target(DIP_LA, {
+    id: "la-dip-trademark-cost-guidance",
+    family: "FEES",
+    displayName: "Lao PDR Trademark Registration Cost and Procedure Guidance",
+    canonicalUri: "https://dip.gov.la/en/about-ip/trademark/",
+    verificationEvidenceUri: "https://dip.gov.la/en/about-ip/trademark/",
+    notes:
+      "Current DIP trademark page publishes approximate registration time and cost and links registration, renewal and opposition workflows.",
+  }),
+  target(DIP_LA, {
+    id: "la-ip-law-2023",
+    family: "LEGAL_TEXTS",
+    displayName: "Lao PDR Intellectual Property Law No. 50/NA (2023)",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/22624",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/22624",
+    notes:
+      "Current WIPO Lex IP law enacted 20 November 2023 and effective January 2024, including trademark protection.",
+  }),
+  target(DIP_LA, {
+    id: "la-trademark-regulation-2023",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Lao PDR Trademark Regulation No. 0436/MOIC (2023)",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/22049",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/22049",
+  }),
+  target(DIP_LA, {
+    id: "la-dip-trademark-official-gazette",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Lao PDR Official Gazette of Intellectual Property",
+    canonicalUri:
+      "https://dip.gov.la/en/%E0%BA%88%E0%BA%BB%E0%BA%94%E0%BB%9D%E0%BA%B2%E0%BA%8D%E0%BB%80%E0%BA%AB%E0%BA%94%E0%BA%97%E0%BA%B2%E0%BA%87%E0%BA%A5%E0%BA%B1%E0%BA%94%E0%BA%96%E0%BA%B0%E0%BA%81%E0%BA%B2%E0%BA%99%E0%BA%8A%E0%BA%B1/",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri:
+      "https://dip.gov.la/en/%E0%BA%88%E0%BA%BB%E0%BA%94%E0%BB%9D%E0%BA%B2%E0%BA%8D%E0%BB%80%E0%BA%AB%E0%BA%94%E0%BA%97%E0%BA%B2%E0%BA%87%E0%BA%A5%E0%BA%B1%E0%BA%94%E0%BA%96%E0%BA%B0%E0%BA%81%E0%BA%B2%E0%BA%99%E0%BA%8A%E0%BA%B1/",
+    notes:
+      "Current DIP gazette index publishes trademark applications and registration results and was updated in July 2026; retained as a change-signal target.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const IPD_MM: Authority = {
+  jurisdiction: "MM",
+  authorityName: "Intellectual Property Department, Ministry of Commerce of Myanmar",
+  languages: ["my", "en"],
+  verificationEvidenceUri: "https://ipd.gov.mm/",
+};
+
+export const IPD_MM_SOURCE_COVERAGE_TARGETS = [
+  target(IPD_MM, {
+    id: "mm-ipd-portal",
+    family: "PORTAL",
+    displayName: "Myanmar Intellectual Property Department Portal",
+    canonicalUri: "https://ipd.gov.mm/",
+    verificationEvidenceUri: "https://ipd.gov.mm/",
+  }),
+  target(IPD_MM, {
+    id: "mm-ipd-trademark-filing-process",
+    family: "FILING",
+    displayName: "Myanmar Trademark Filing and Examination Process",
+    canonicalUri:
+      "https://ipd.gov.mm/trademark/trademark-1/application-process-trademark/how-to-apply-online-counter-trademark",
+    verificationEvidenceUri:
+      "https://ipd.gov.mm/trademark/trademark-1/application-process-trademark/how-to-apply-online-counter-trademark",
+    notes:
+      "Current IPD filing page covers filing date, formal/absolute-ground examination, publication and the 60-day opposition stage.",
+  }),
+  target(IPD_MM, {
+    id: "mm-ipd-ip-search",
+    family: "SEARCH",
+    displayName: "Myanmar IPD Intellectual Property Search",
+    canonicalUri: "https://ipd.gov.mm/ip-search",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://ipd.gov.mm/",
+    notes:
+      "Official IP Search endpoint linked directly from the 2026 IPD homepage; retained as the national search gateway instead of treating a forms page as a search source.",
+  }),
+  target(IPD_MM, {
+    id: "mm-ipd-trademark-efiling-epayment",
+    family: "FEES",
+    displayName: "Myanmar IPD Online Filing and E-Payment System",
+    canonicalUri: "https://efiling.ipd.gov.mm/maintenance.html",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://efiling.ipd.gov.mm/maintenance.html",
+    notes:
+      "Official IPD online filing system states that new trademark applications can be submitted electronically with e-payment; retained as the live operational payment surface without copying fee amounts.",
+  }),
+  target(IPD_MM, {
+    id: "mm-trademark-law-2019",
+    family: "LEGAL_TEXTS",
+    displayName: "Myanmar Trademark Law No. 3/2019",
+    canonicalUri: "https://www.wipo.int/wipolex/en/text/589534",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/text/589534",
+  }),
+  target(IPD_MM, {
+    id: "mm-trademark-registration-rules-2023",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Myanmar Trademark Registration Rules – Notification No. 1/2023",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/21870",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/21870",
+    notes:
+      "Current WIPO Lex implementing rules effective 31 March 2023 under the 2019 Trademark Law.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
+const BRUIPO_BN: Authority = {
+  jurisdiction: "BN",
+  authorityName: "Brunei Intellectual Property Office (BruIPO)",
+  languages: ["en", "ms"],
+  verificationEvidenceUri: "https://www.bruipo.gov.bn/",
+};
+
+export const BRUIPO_BN_SOURCE_COVERAGE_TARGETS = [
+  target(BRUIPO_BN, {
+    id: "bn-bruipo-portal",
+    family: "PORTAL",
+    displayName: "Brunei Intellectual Property Office Portal",
+    canonicalUri: "https://www.bruipo.gov.bn/",
+    verificationEvidenceUri: "https://www.bruipo.gov.bn/",
+  }),
+  target(BRUIPO_BN, {
+    id: "bn-bruipo-trademark-filing",
+    family: "FILING",
+    displayName: "BruIPO Trade Mark Application Process",
+    canonicalUri: "https://www.bruipo.gov.bn/SitePages/trade-marks.aspx",
+    verificationEvidenceUri: "https://www.bruipo.gov.bn/SitePages/trade-marks.aspx",
+  }),
+  target(BRUIPO_BN, {
+    id: "bn-bruipo-trademark-search",
+    family: "SEARCH",
+    displayName: "BruIPO Trade Mark Search",
+    canonicalUri: "https://www.bruipo.gov.bn/SitePages/TmSearch.aspx",
+    verificationEvidenceUri: "https://www.bruipo.gov.bn/SitePages/TmSearch.aspx",
+  }),
+  target(BRUIPO_BN, {
+    id: "bn-bruipo-trademark-forms-fees",
+    family: "FEES",
+    displayName: "BruIPO Trademark Forms and Fees",
+    canonicalUri: "https://www.bruipo.gov.bn/SitePages/Trademark%20Forms.aspx",
+    verificationEvidenceUri: "https://www.bruipo.gov.bn/SitePages/Trademark%20Forms.aspx",
+    notes:
+      "Current BruIPO forms page publishes filing, opposition, renewal and other trademark fee entries; live values remain at source.",
+  }),
+  target(BRUIPO_BN, {
+    id: "bn-trade-marks-act-current",
+    family: "LEGAL_TEXTS",
+    displayName: "Brunei Trade Marks Act – Revised Edition 2022",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/23709",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/23709",
+  }),
+  target(BRUIPO_BN, {
+    id: "bn-trade-marks-rules",
+    family: "EXAMINATION_MANUAL",
+    displayName: "Brunei Trade Marks Rules",
+    canonicalUri: "https://www.wipo.int/wipolex/en/legislation/details/487",
+    verificationEvidenceUri: "https://www.wipo.int/wipolex/en/legislation/details/487",
+    notes:
+      "WIPO Lex implementing rules covering fees, forms, classifications, applications, examination and registration procedure.",
+  }),
+  target(BRUIPO_BN, {
+    id: "bn-bruipo-trademark-journal",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "BruIPO Trade Mark Journal",
+    canonicalUri: "https://www.bruipo.gov.bn/SitePages/journal.aspx",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://www.bruipo.gov.bn/SitePages/journal.aspx",
+    notes:
+      "Official BruIPO journal index includes current 2026 monthly trademark journals; retained as a change-signal source.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -10269,5 +10610,10 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...IPR_BA_SOURCE_COVERAGE_TARGETS,
   ...SOIP_MK_SOURCE_COVERAGE_TARGETS,
   ...NCIP_BY_SOURCE_COVERAGE_TARGETS,
+  ...IPOM_MN_SOURCE_COVERAGE_TARGETS,
+  ...DIP_KH_SOURCE_COVERAGE_TARGETS,
+  ...DIP_LA_SOURCE_COVERAGE_TARGETS,
+  ...IPD_MM_SOURCE_COVERAGE_TARGETS,
+  ...BRUIPO_BN_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
