@@ -8484,6 +8484,111 @@ export const AGEPI_MD_SOURCE_COVERAGE_TARGETS = [
   }),
 ] satisfies readonly SourceCoverageTarget[];
 
+const AIPO_AM: Authority = {
+  jurisdiction: "AM",
+  authorityName: "Intellectual Property Office of the Republic of Armenia (AIPO)",
+  languages: ["hy", "en", "ru"],
+  verificationEvidenceUri: "https://aipo.am/en/pages/show/trademarks",
+};
+
+export const AIPO_AM_SOURCE_COVERAGE_TARGETS = [
+  target(AIPO_AM, {
+    id: "am-aipo-trademark-portal",
+    family: "PORTAL",
+    displayName: "Armenia AIPO Trademarks Portal",
+    canonicalUri: "https://aipo.am/en/pages/show/trademarks",
+    verificationEvidenceUri: "https://aipo.am/en/pages/show/trademarks",
+    notes:
+      "Current AIPO trademark hub linking forms, fees, Nice classification, national and international search, legislation and published applications.",
+  }),
+  target(AIPO_AM, {
+    id: "am-aipo-trademark-filing",
+    family: "FILING",
+    displayName: "Armenia AIPO Trademark Filing Guidance",
+    canonicalUri: "https://aipo.am/en/pages/show/frequently-asked-questions",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://aipo.am/en/pages/show/frequently-asked-questions",
+    notes:
+      "AIPO's current trademark FAQ specifies filing by post, in person or electronically through the Office electronic filing system via aipo.am, and gives the filing/examination/registration fee sequence. A hidden session URL is deliberately not inferred.",
+  }),
+  target(AIPO_AM, {
+    id: "am-aipo-trademark-search",
+    family: "SEARCH",
+    displayName: "Armenia AIPO National Trademark Search",
+    canonicalUri: "https://aipo.am/en/national-procedure-reg",
+    mode: "MIXED",
+    renderJavascriptHint: true,
+    expectedArtifactKinds: ["HTML", "JSON"],
+    verificationEvidenceUri: "https://aipo.am/en/national-procedure-reg",
+    notes:
+      "Official national-procedure trademark register search with application, registration, mark, goods/services, Nice class and holder fields.",
+  }),
+  target(AIPO_AM, {
+    id: "am-aipo-trademark-fees",
+    family: "FEES",
+    displayName: "Armenia AIPO Trademark Fees and Payment",
+    canonicalUri: "https://aipo.am/en/pages/show/payment-method-2",
+    verificationEvidenceUri: "https://aipo.am/en/pages/show/payment-method-2",
+    notes:
+      "Official trademark-specific payment page covering state fees for filing, examination, registration, search and renewal actions.",
+  }),
+  target(AIPO_AM, {
+    id: "am-aipo-trademark-classification",
+    family: "GOODS_SERVICES_ID",
+    displayName: "Armenia AIPO Nice Classification 13-2026",
+    canonicalUri: "https://aipo.am/hy/pages/show/nice1",
+    verificationEvidenceUri: "https://aipo.am/hy/pages/show/nice1",
+    notes:
+      "Official AIPO Nice Classification page explicitly identifying the 13th edition, 2026 version and classes 1 through 45.",
+  }),
+  target(AIPO_AM, {
+    id: "am-aipo-trademark-legal-texts",
+    family: "LEGAL_TEXTS",
+    displayName: "Armenia Trademark Law",
+    canonicalUri: "https://aipo.am/en/pages/show/trademarklaw",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verificationEvidenceUri: "https://aipo.am/en/pages/show/trademarklaw",
+    notes:
+      "Official AIPO publication of the Republic of Armenia Trademark Law governing electronic filing, examination, publication, oppositions, registration and renewal.",
+  }),
+  target(AIPO_AM, {
+    id: "am-aipo-trademark-proceedings",
+    family: "PROCEEDINGS",
+    displayName: "Armenia AIPO Board of Appeal",
+    canonicalUri: "https://aipo.am/en/pages/show/board-of-appeal",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
+    verificationEvidenceUri: "https://aipo.am/en/pages/show/board-of-appeal",
+    notes:
+      "Official AIPO Board of Appeal hub covering trademark-related appeals, legal-protection disputes and published Board decisions, including 2026 decisions.",
+  }),
+  target(AIPO_AM, {
+    id: "am-aipo-trademark-renewal",
+    family: "MAINTENANCE",
+    displayName: "Armenia AIPO Trademark Renewal Forms",
+    canonicalUri: "https://aipo.am/hy/pages/show/forms-register",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://aipo.am/hy/pages/show/Frequently_asked_Questions_6",
+    notes:
+      "Official trademark register forms include the application to extend a trademark registration. AIPO guidance and the Trademark Law provide the ten-year renewal cycle and post-expiry six-month grace period.",
+  }),
+  target(AIPO_AM, {
+    id: "am-aipo-official-bulletin",
+    family: "OFFICIAL_GAZETTE",
+    displayName: "Armenia AIPO Industrial Property Official Bulletin",
+    canonicalUri: "https://aipo.am/en/pages/show/official-bulletin",
+    coverageTier: "CHANGE_SIGNAL",
+    fetchAttachmentsHint: true,
+    expectedArtifactKinds: ["HTML", "PDF"],
+    verificationEvidenceUri: "https://aipo.am/en/pages/show/trademark-applications",
+    notes:
+      "AIPO publishes the Industrial Property official bulletin and separate trademark-application publication issues throughout 2026; retain the official bulletin as a publication change signal.",
+  }),
+] satisfies readonly SourceCoverageTarget[];
+
 const CIPO: Authority = {
   jurisdiction: "CA",
   authorityName: "Canadian Intellectual Property Office",
@@ -8619,5 +8724,6 @@ export const PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS = [
   ...QAZPATENT_KZ_SOURCE_COVERAGE_TARGETS,
   ...SAKPATENTI_GE_SOURCE_COVERAGE_TARGETS,
   ...AGEPI_MD_SOURCE_COVERAGE_TARGETS,
+  ...AIPO_AM_SOURCE_COVERAGE_TARGETS,
   ...CIPO_SOURCE_COVERAGE_TARGETS,
 ] satisfies readonly SourceCoverageTarget[];
