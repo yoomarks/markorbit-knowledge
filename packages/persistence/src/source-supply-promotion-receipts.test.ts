@@ -8,8 +8,8 @@ import {
 
 function health(overrides: Partial<SourceSupplyHealthRecord> = {}): SourceSupplyHealthRecord {
   return {
-    protocolVersion: "SOURCE_SUPPLY_HEALTH_V1",
-    objectType: "SOURCE_SUPPLY_HEALTH_RECORD",
+    protocolVersion: "1.2",
+    objectType: "SOURCE_SUPPLY_HEALTH",
     workspaceId: "workspace-1",
     targetId: "cn-target",
     jurisdiction: "CN",
@@ -17,6 +17,8 @@ function health(overrides: Partial<SourceSupplyHealthRecord> = {}): SourceSupply
     coverageTier: "FOUNDATIONAL",
     catalogState: "ACTIVE",
     changeSensitivity: "HIGH",
+    displayName: "CN representative target",
+    canonicalUri: "https://example.com/",
     registrationState: "REGISTERED",
     sourceIds: ["source-1"],
     latestRun: {
@@ -45,7 +47,7 @@ function health(overrides: Partial<SourceSupplyHealthRecord> = {}): SourceSupply
     },
     freshness: {
       state: "FRESH",
-      latestEvidenceAt: "2026-08-18T00:04:00Z",
+      lastObservedAt: "2026-08-18T00:04:00Z",
       ageHours: 1,
       maxAgeHours: 48,
     },
