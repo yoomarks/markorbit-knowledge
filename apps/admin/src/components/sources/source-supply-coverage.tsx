@@ -183,7 +183,9 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
                 <p className="text-xs font-medium text-slate-500">{card.label}</p>
                 <Icon size={16} className="text-slate-400" />
               </div>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{card.value}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                {card.value}
+              </p>
               <p className="mt-1 text-xs text-slate-500">{card.detail}</p>
             </div>
           );
@@ -222,7 +224,10 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
           </h3>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {attention.map((item) => (
-              <div key={item.jurisdiction} className="rounded-xl border border-slate-200 px-3 py-2.5">
+              <div
+                key={item.jurisdiction}
+                className="rounded-xl border border-slate-200 px-3 py-2.5"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-slate-900">{item.jurisdiction}</span>
                   <span className="text-xs font-semibold text-blue-700">
@@ -230,7 +235,9 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500">
-                  {zh ? "激活" : "Activated"} {item.activatedTargetCount}/{item.targetCount} · {zh ? "降级" : "Degraded"} {item.supply.degraded} · {zh ? "阻塞" : "Blocked"} {item.supply.blocked}
+                  {zh ? "激活" : "Activated"} {item.activatedTargetCount}/{item.targetCount} ·{" "}
+                  {zh ? "降级" : "Degraded"} {item.supply.degraded} · {zh ? "阻塞" : "Blocked"}{" "}
+                  {item.supply.blocked}
                 </p>
               </div>
             ))}
