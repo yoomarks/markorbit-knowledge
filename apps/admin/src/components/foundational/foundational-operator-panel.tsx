@@ -140,9 +140,7 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
               </span>
               <span
                 className={
-                  fullOperatorJurisdiction
-                    ? "text-xs text-amber-900/70"
-                    : "text-xs text-sky-900/70"
+                  fullOperatorJurisdiction ? "text-xs text-amber-900/70" : "text-xs text-sky-900/70"
                 }
               >
                 Workspace · {workspaceId}
@@ -159,10 +157,11 @@ export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string
               </p>
             ) : (
               <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-950/80">
-                EUIPO 的 compatibility re-probe 已通过真实 EU 专项 promotion proof：approved intent →
-                Worker canary → Observation → receipt COMPLETE，且没有创建 CollectionRun。当前因此只额外开放
-                controlled re-probe；采集、转换恢复、重建索引与 quality remediation 仍继续 fail-closed。
-                最新 proof 同时确认 EUIPO 当前入口是 BLOCKED，因此这里开放的是诊断/重探能力，不是健康声明。
+                EUIPO 的 compatibility re-probe 已通过真实 EU 专项 promotion proof：approved intent
+                → Worker canary → Observation → receipt COMPLETE，且没有创建
+                CollectionRun。当前因此只额外开放 controlled re-probe；采集、转换恢复、重建索引与
+                quality remediation 仍继续 fail-closed。 最新 proof 同时确认 EUIPO 当前入口是
+                BLOCKED，因此这里开放的是诊断/重探能力，不是健康声明。
               </p>
             )}
           </div>
