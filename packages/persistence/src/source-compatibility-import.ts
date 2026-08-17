@@ -46,7 +46,9 @@ export function parseRepresentativeLiveCanarySummary(
       : undefined;
     const baselineState = baseline ? optionalText(baseline.state) : undefined;
     if (baselineState && baselineState !== "PASS" && baselineState !== "FAIL") {
-      throw new RegistryValidationError(`observations[${index}].authorityBaseline.state is invalid`);
+      throw new RegistryValidationError(
+        `observations[${index}].authorityBaseline.state is invalid`,
+      );
     }
     const errorCode = optionalText(observation.errorCode);
     const errorMessage = optionalText(observation.errorMessage);

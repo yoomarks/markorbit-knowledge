@@ -21,8 +21,7 @@ export const SOURCE_SUPPLY_COMPATIBILITY_STATES = [
   "BLOCKED",
   "UNOBSERVED",
 ] as const;
-export type SourceSupplyCompatibilityState =
-  (typeof SOURCE_SUPPLY_COMPATIBILITY_STATES)[number];
+export type SourceSupplyCompatibilityState = (typeof SOURCE_SUPPLY_COMPATIBILITY_STATES)[number];
 
 export const SOURCE_SUPPLY_GAPS = [
   "SOURCE_UNREGISTERED",

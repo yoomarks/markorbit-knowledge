@@ -1,15 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Activity,
-  Database,
-  Globe2,
-  Loader2,
-  RefreshCw,
-  ShieldAlert,
-  Wrench,
-} from "lucide-react";
+import { Activity, Database, Globe2, Loader2, RefreshCw, ShieldAlert, Wrench } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
 
 type SupplyCoverageItem = {
@@ -128,7 +120,8 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
             left.supply.compatibilityBlocked * 100 + left.supply.compatibilityDegraded * 10;
           const rightCompatibility =
             right.supply.compatibilityBlocked * 100 + right.supply.compatibilityDegraded * 10;
-          if (leftCompatibility !== rightCompatibility) return rightCompatibility - leftCompatibility;
+          if (leftCompatibility !== rightCompatibility)
+            return rightCompatibility - leftCompatibility;
           const leftPercent = left.supply.healthyPercent ?? -1;
           const rightPercent = right.supply.healthyPercent ?? -1;
           if (leftPercent !== rightPercent) return leftPercent - rightPercent;
@@ -236,21 +229,29 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
           </h3>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-xl bg-amber-50 p-3">
-              <p className="text-xs font-medium text-amber-700">{zh ? "供应降级" : "Supply degraded"}</p>
+              <p className="text-xs font-medium text-amber-700">
+                {zh ? "供应降级" : "Supply degraded"}
+              </p>
               <p className="mt-1 text-xl font-semibold text-amber-900">{totals.degraded}</p>
             </div>
             <div className="rounded-xl bg-rose-50 p-3">
-              <p className="text-xs font-medium text-rose-700">{zh ? "供应阻塞" : "Supply blocked"}</p>
+              <p className="text-xs font-medium text-rose-700">
+                {zh ? "供应阻塞" : "Supply blocked"}
+              </p>
               <p className="mt-1 text-xl font-semibold text-rose-900">{totals.blocked}</p>
             </div>
             <div className="rounded-xl bg-blue-50 p-3">
-              <p className="text-xs font-medium text-blue-700">{zh ? "需适配" : "Adapter needed"}</p>
+              <p className="text-xs font-medium text-blue-700">
+                {zh ? "需适配" : "Adapter needed"}
+              </p>
               <p className="mt-1 text-xl font-semibold text-blue-900">
                 {totals.compatibilityDegraded}
               </p>
             </div>
             <div className="rounded-xl bg-slate-100 p-3">
-              <p className="text-xs font-medium text-slate-600">{zh ? "外部阻断" : "External blocked"}</p>
+              <p className="text-xs font-medium text-slate-600">
+                {zh ? "外部阻断" : "External blocked"}
+              </p>
               <p className="mt-1 text-xl font-semibold text-slate-900">
                 {totals.compatibilityBlocked}
               </p>
@@ -281,13 +282,14 @@ export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500">
                   {zh ? "激活" : "Activated"} {item.activatedTargetCount}/{item.targetCount} ·{" "}
-                  {zh ? "供应降级" : "Supply degraded"} {item.supply.degraded} · {zh ? "阻塞" : "Blocked"}{" "}
-                  {item.supply.blocked}
+                  {zh ? "供应降级" : "Supply degraded"} {item.supply.degraded} ·{" "}
+                  {zh ? "阻塞" : "Blocked"} {item.supply.blocked}
                 </p>
                 {item.supply.compatibilityDegraded + item.supply.compatibilityBlocked > 0 ? (
                   <p className="mt-1 text-[11px] font-medium text-blue-700">
-                    {zh ? "兼容性：需适配" : "Compatibility: adapter"} {item.supply.compatibilityDegraded} ·{" "}
-                    {zh ? "外部阻断" : "blocked"} {item.supply.compatibilityBlocked}
+                    {zh ? "兼容性：需适配" : "Compatibility: adapter"}{" "}
+                    {item.supply.compatibilityDegraded} · {zh ? "外部阻断" : "blocked"}{" "}
+                    {item.supply.compatibilityBlocked}
                   </p>
                 ) : null}
               </div>

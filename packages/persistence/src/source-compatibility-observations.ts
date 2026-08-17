@@ -43,7 +43,9 @@ function requireText(value: string, field: string): string {
   return normalized;
 }
 
-function normalizeObservation(input: SourceCompatibilityObservationInput): SourceCompatibilityObservation {
+function normalizeObservation(
+  input: SourceCompatibilityObservationInput,
+): SourceCompatibilityObservation {
   const targetId = requireText(input.targetId, "targetId");
   const jurisdiction = requireText(input.jurisdiction, "jurisdiction");
   const primaryUri = requireText(input.primaryUri, "primaryUri");
@@ -90,9 +92,7 @@ function rowToObservation(row: Record<string, unknown>): SourceCompatibilityObse
     ...(row.error_code ? { errorCode: String(row.error_code) } : {}),
     ...(row.error_message ? { errorMessage: String(row.error_message) } : {}),
     ...(row.baseline_target_id ? { baselineTargetId: String(row.baseline_target_id) } : {}),
-    ...(row.baseline_state
-      ? { baselineState: String(row.baseline_state) as "PASS" | "FAIL" }
-      : {}),
+    ...(row.baseline_state ? { baselineState: String(row.baseline_state) as "PASS" | "FAIL" } : {}),
     ...(Object.keys(details).length > 0 ? { details } : {}),
   };
 }
@@ -138,7 +138,9 @@ export class SqliteSourceCompatibilityObservationRepository {
     return this.latest([observation.targetId]).get(observation.targetId) ?? observation;
   }
 
-  recordMany(inputs: readonly SourceCompatibilityObservationInput[]): SourceCompatibilityObservation[] {
+  recordMany(
+    inputs: readonly SourceCompatibilityObservationInput[],
+  ): SourceCompatibilityObservation[] {
     if (inputs.length === 0) return [];
     this.database.exec("BEGIN IMMEDIATE");
     try {

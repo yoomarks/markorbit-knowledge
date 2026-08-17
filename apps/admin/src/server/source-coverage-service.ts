@@ -90,7 +90,9 @@ export function getSourceCoverageSnapshot(
   const discovery = getSourceDiscoveryRepository();
   const sources = listAllWorkspaceSources(repository, workspaceId);
   const targets = listSourceCoverageTargets().filter((target) => target.catalogState !== "RETIRED");
-  const supplyHealth = new SqliteCompatibilityAwareSupplyHealthRepository(getRegistryDatabase()).list({
+  const supplyHealth = new SqliteCompatibilityAwareSupplyHealthRepository(
+    getRegistryDatabase(),
+  ).list({
     workspaceId,
   });
   const supplyByTargetId = new Map(supplyHealth.items.map((item) => [item.targetId, item]));

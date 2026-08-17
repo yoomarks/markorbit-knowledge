@@ -67,10 +67,7 @@ export class SqliteCompatibilityAwareSupplyHealthRepository implements SourceSup
   private readonly base: SqliteSourceSupplyHealthRepository;
   private readonly compatibility: SqliteSourceCompatibilityObservationRepository;
 
-  constructor(
-    database: DatabaseSync,
-    clock: () => Date = () => new Date(),
-  ) {
+  constructor(database: DatabaseSync, clock: () => Date = () => new Date()) {
     this.base = new SqliteSourceSupplyHealthRepository(database, clock);
     this.compatibility = new SqliteSourceCompatibilityObservationRepository(database);
   }
@@ -79,7 +76,9 @@ export class SqliteCompatibilityAwareSupplyHealthRepository implements SourceSup
     const base = this.base.list({ ...filters, state: undefined });
     const latest = this.compatibility.latest(base.items.map((item) => item.targetId));
     const items = base.items
-      .map((item) => applySourceCompatibilityHealth(item, compatibilityHealth(latest.get(item.targetId))))
+      .map((item) =>
+        applySourceCompatibilityHealth(item, compatibilityHealth(latest.get(item.targetId))),
+      )
       .filter((item) => !filters.state || item.state === filters.state);
     const summary = summarizeSourceSupplyHealth(items);
     const byCompatibility: Record<SourceSupplyCompatibilityState, number> = {
