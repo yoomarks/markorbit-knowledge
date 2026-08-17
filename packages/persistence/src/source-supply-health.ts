@@ -191,12 +191,7 @@ function loadSnapshot(
          LEFT JOIN ranked
            ON ranked.source_id = aggregated.source_id AND ranked.row_number = 1`,
       )
-      .all(
-        workspaceId,
-        ...sourceClause.values,
-        workspaceId,
-        ...sourceClause.values,
-      ) as Array<{
+      .all(workspaceId, ...sourceClause.values, workspaceId, ...sourceClause.values) as Array<{
       source_id: string;
       total: number;
       ready_count: number;
@@ -315,12 +310,7 @@ function normalizationHealth(
     readyDocumentCount += current.health.readyDocumentCount;
     if (
       current.health.latestDocumentAt &&
-      isLater(
-        current.health.latestDocumentAt,
-        current.latestId ?? "",
-        latestDocumentAt,
-        latestId,
-      )
+      isLater(current.health.latestDocumentAt, current.latestId ?? "", latestDocumentAt, latestId)
     ) {
       latestDocumentAt = current.health.latestDocumentAt;
       latestStatus = current.health.latestStatus;
