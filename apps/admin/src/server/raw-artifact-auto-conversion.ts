@@ -94,9 +94,9 @@ function profileCompatible(
   )?.manifest;
   return Boolean(
     manifest &&
-      manifest.status === "ACTIVE" &&
-      manifest.outputFormat === "MARKDOWN" &&
-      converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
+    manifest.status === "ACTIVE" &&
+    manifest.outputFormat === "MARKDOWN" &&
+    converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
   );
 }
 
@@ -164,11 +164,7 @@ export function dispatchAutomaticConversionForArtifactWithDependencies(
   }
 
   ensureM3CanonicalDocumentAutoProfiles(dependencies.converters, workspaceId);
-  const profile = compatibleAutomaticProfile(
-    workspaceId,
-    artifact,
-    dependencies.converters,
-  );
+  const profile = compatibleAutomaticProfile(workspaceId, artifact, dependencies.converters);
   if (!profile) {
     return { status: "NOT_APPLICABLE", reason: "NO_AUTO_PROFILE", artifactId };
   }
