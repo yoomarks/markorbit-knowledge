@@ -140,10 +140,8 @@ function descriptorFor(artifact: AcquiredCollectionArtifact): ArtifactUploadDesc
 }
 
 function isChangeWatch(context: ArtifactBackedExecutionContext): boolean {
-  return (
-    context.job.jobType === "PAGE_UPDATE_CHECK" ||
-    context.job.planSnapshot.schedule.mode === "CHANGE_WATCH"
-  );
+  const schedule = context.job.planSnapshot.schedule;
+  return context.job.jobType === "PAGE_UPDATE_CHECK" || schedule?.mode === "CHANGE_WATCH";
 }
 
 async function selectChangedArtifacts(
