@@ -167,7 +167,7 @@ describe("ArtifactBackedCollectionExecutor HTTP 304 completion", () => {
     const receipt = await new ArtifactBackedCollectionExecutor(acquirer, client).execute(context());
 
     expect(receipt).toMatchObject({
-      outputKinds: [],
+      outputKinds: ["JSON"],
       itemsObserved: 0,
       bytesPrepared: 0,
       metadataOnly: true,
