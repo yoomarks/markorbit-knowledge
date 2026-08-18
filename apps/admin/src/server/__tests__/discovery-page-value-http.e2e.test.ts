@@ -77,11 +77,13 @@ function capabilityResponse(
   };
 }
 
-async function startCapabilityServer(onRequest: (input: {
-  path: string;
-  authorization: string | undefined;
-  body: PageValueScreeningRequestV1;
-}) => PageValueScreeningResponseV1): Promise<string> {
+async function startCapabilityServer(
+  onRequest: (input: {
+    path: string;
+    authorization: string | undefined;
+    body: PageValueScreeningRequestV1;
+  }) => PageValueScreeningResponseV1,
+): Promise<string> {
   const server = createServer(async (request, response) => {
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
