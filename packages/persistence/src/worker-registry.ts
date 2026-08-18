@@ -158,6 +158,7 @@ export interface WorkerRegistryRepository {
   update(id: string, input: UpdateWorkerInput, expectedUpdatedAt: string): WorkerRuntimeView;
   rotateCredential(id: string): CredentialRotationResult;
   verifyCredential(workerId: string, credential: string): WorkerDefinition;
+  verifyLease(workerId: string, credential: string, leaseId: string, leaseToken: string): JobLease;
   heartbeat(input: HeartbeatInput, credential: string): WorkerRuntimeView;
   claim(workerId: string, credential: string): ClaimResult;
   claimSpecific(workerId: string, credential: string, jobId: string): ClaimResult;
@@ -267,181 +268,36 @@ function normalizeOffset(value: number | undefined): number {
   return value;
 }
 
-function boundedDuration(value: number | undefined, fallback: number, field: string): number {
-  const resolved = value ?? fallback;
-  if (!Number.isInteger(resolved) || resolved < 1_000 || resolved > 86_400_000) {
-    throw new RegistryValidationError(`${field} must be between 1000 and 86400000 milliseconds`);
-  }
-  return resolved;
-}
-
-function boundedConcurrency(value: number | undefined): number {
-  const resolved = value ?? DEFAULT_MAX_CONCURRENT_WEB_LEASES_PER_DOMAIN;
-  if (!Number.isInteger(resolved) || resolved < 1 || resolved > 32) {
-    throw new RegistryValidationError(
-      "maxConcurrentWebLeasesPerDomain must be an integer from 1 to 32",
-    );
-  }
-  return resolved;
-}
-
-type WebDomainLeaseState = {
-  active: number;
-  recent: number;
-  minRateLimit: number;
-};
-
-function webDomainKey(job: Job): string | null {
-  if (job.sourceSnapshot.sourceType !== "WEB") return null;
-  const locators = [
-    job.sourceSnapshot.canonicalUri,
-    ...job.sourceSnapshot.entrypoints.map((entrypoint) => entrypoint.uri),
-  ];
-  for (const locator of locators) {
-    if (!locator) continue;
-    try {
-      const url = new URL(locator);
-      if (url.protocol !== "http:" && url.protocol !== "https:") continue;
-      const hostname = url.hostname.toLowerCase();
-      return hostname.startsWith("www.") ? hostname.slice(4) : hostname;
-    } catch {
-      // A non-web locator must not block unrelated work.
-    }
-  }
-  return null;
-}
-
-function parseWorker(value: unknown): WorkerDefinition {
-  const parsed = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
+function parseWorker(value: string): WorkerDefinition {
+  const parsed = JSON.parse(value) as unknown;
   if (!isWorkerDefinition(parsed)) {
-    throw new RegistryValidationError(
-      "Persisted WorkerDefinition no longer satisfies Worker Protocol v1",
-    );
+    throw new RegistryValidationError("Persisted WorkerDefinition is invalid");
   }
   return parsed;
 }
 
-function parseHeartbeat(value: unknown): WorkerHeartbeat {
-  const parsed = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
+function parseHeartbeat(value: string): WorkerHeartbeat {
+  const parsed = JSON.parse(value) as unknown;
   if (!isWorkerHeartbeat(parsed)) {
-    throw new RegistryValidationError(
-      "Persisted WorkerHeartbeat no longer satisfies Worker Protocol v1",
-    );
+    throw new RegistryValidationError("Persisted WorkerHeartbeat is invalid");
   }
   return parsed;
 }
 
-function parseLease(value: unknown): JobLease {
-  const parsed = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
+function parseLease(value: string): JobLease {
+  const parsed = JSON.parse(value) as unknown;
   if (!isJobLease(parsed)) {
-    throw new RegistryValidationError("Persisted JobLease no longer satisfies Worker Protocol v1");
+    throw new RegistryValidationError("Persisted JobLease is invalid");
   }
   return parsed;
 }
 
-function parseJob(value: unknown): Job {
-  const parsed = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
+function parseJob(value: string): Job {
+  const parsed = JSON.parse(value) as unknown;
   if (!isJob(parsed)) {
-    throw new RegistryValidationError("Persisted Job no longer satisfies Execution Contract v1");
+    throw new RegistryValidationError("Persisted Job is invalid");
   }
   return parsed;
-}
-
-function connectorIdentity(binding: WorkerConnectorBinding): string {
-  return `${binding.connectorId}@${binding.version}`;
-}
-
-function normalizeWorkerInput(
-  input: CreateWorkerInput,
-  id: string,
-  timestamp: string,
-): WorkerDefinition {
-  const worker: WorkerDefinition = {
-    contractVersion: WORKER_PROTOCOL_VERSION,
-    objectType: "WORKER_DEFINITION",
-    id,
-    workspaceId: input.workspaceId ?? DEFAULT_WORKSPACE.id,
-    displayName: input.displayName.trim(),
-    desiredState: input.desiredState ?? "ACTIVE",
-    runtime: {
-      runtimeId: input.runtime.runtimeId.trim().toLowerCase(),
-      version: input.runtime.version.trim(),
-    },
-    supportedJobTypes: [...new Set(input.supportedJobTypes)],
-    connectorBindings: input.connectorBindings.map((binding) => ({
-      connectorId: binding.connectorId.trim().toLowerCase(),
-      version: binding.version.trim(),
-      capabilities: [...new Set(binding.capabilities)],
-    })),
-    maxConcurrency: input.maxConcurrency,
-    labels: [...new Set((input.labels ?? []).map((label) => label.trim()).filter(Boolean))],
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    ...(input.extensions ? { extensions: input.extensions } : {}),
-  };
-  if (!isWorkerDefinition(worker)) {
-    throw new RegistryValidationError("Worker input does not satisfy Worker Protocol v1");
-  }
-  return worker;
-}
-
-function applyWorkerUpdate(
-  current: WorkerDefinition,
-  input: UpdateWorkerInput,
-  timestamp: string,
-): WorkerDefinition {
-  const next = clone(current);
-  if (input.displayName !== undefined) next.displayName = input.displayName.trim();
-  if (input.desiredState !== undefined) next.desiredState = input.desiredState;
-  if (input.runtime !== undefined) {
-    next.runtime = {
-      runtimeId: input.runtime.runtimeId.trim().toLowerCase(),
-      version: input.runtime.version.trim(),
-    };
-  }
-  if (input.supportedJobTypes !== undefined) {
-    next.supportedJobTypes = [...new Set(input.supportedJobTypes)];
-  }
-  if (input.connectorBindings !== undefined) {
-    next.connectorBindings = input.connectorBindings.map((binding) => ({
-      connectorId: binding.connectorId.trim().toLowerCase(),
-      version: binding.version.trim(),
-      capabilities: [...new Set(binding.capabilities)],
-    }));
-  }
-  if (input.maxConcurrency !== undefined) next.maxConcurrency = input.maxConcurrency;
-  if (input.labels !== undefined) {
-    next.labels = [...new Set(input.labels.map((label) => label.trim()).filter(Boolean))];
-  }
-  if (input.extensions === null) delete next.extensions;
-  else if (input.extensions !== undefined) next.extensions = input.extensions;
-  next.updatedAt = timestamp;
-  if (!isWorkerDefinition(next)) {
-    throw new RegistryValidationError("Worker update does not satisfy Worker Protocol v1");
-  }
-  return next;
-}
-
-function requiredCapabilities(job: Job): ConnectorCapability[] {
-  const required = new Set<ConnectorCapability>(["COLLECT"]);
-  if (job.planSnapshot.policy.renderJavascript) required.add("RENDER_JAVASCRIPT");
-  if (job.planSnapshot.policy.fetchAttachments) required.add("FETCH_ATTACHMENTS");
-  if (job.planSnapshot.schedule.mode === "CHANGE_WATCH") {
-    if (job.connectorSnapshot.capabilities.includes("CHECK_UPDATE")) required.add("CHECK_UPDATE");
-    else required.add("WATCH");
-  }
-  return [...required];
-}
-
-function workerCanRun(worker: WorkerDefinition, job: Job): boolean {
-  if (!worker.supportedJobTypes.includes(job.jobType)) return false;
-  const binding = worker.connectorBindings.find(
-    (candidate) =>
-      candidate.connectorId === job.connector.connectorId &&
-      candidate.version === job.connector.version,
-  );
-  if (!binding) return false;
-  return requiredCapabilities(job).every((capability) => binding.capabilities.includes(capability));
 }
 
 function workerRow(worker: WorkerDefinition) {
@@ -480,153 +336,98 @@ function leaseRow(lease: JobLease) {
   };
 }
 
-function validateWorkerBindings(database: DatabaseSync, worker: WorkerDefinition): void {
-  const manifestJobTypes = new Set<JobType>();
-  for (const binding of worker.connectorBindings) {
-    const row = database
-      .prepare(
-        `SELECT status, job_types_json, capabilities_json
-         FROM connector_manifests WHERE connector_id = ? AND version = ?`,
-      )
-      .get(binding.connectorId, binding.version) as
-      { status: string; job_types_json: string; capabilities_json: string } | undefined;
-    if (!row) {
-      throw new RegistryConflictError(
-        "WORKER_CONNECTOR_NOT_FOUND",
-        `Connector ${connectorIdentity(binding)} is not registered`,
-      );
-    }
-    if (row.status === "DISABLED") {
-      throw new RegistryConflictError(
-        "WORKER_CONNECTOR_DISABLED",
-        `Connector ${connectorIdentity(binding)} is disabled`,
-      );
-    }
-    const manifestCapabilities = JSON.parse(row.capabilities_json) as ConnectorCapability[];
-    const unsupported = binding.capabilities.filter(
-      (capability) => !manifestCapabilities.includes(capability),
-    );
-    if (unsupported.length > 0) {
-      throw new RegistryConflictError(
-        "WORKER_CAPABILITY_MISMATCH",
-        `Worker declares capabilities not present in ${connectorIdentity(binding)}`,
-        { unsupported },
-      );
-    }
-    for (const jobType of JSON.parse(row.job_types_json) as JobType[]) {
-      manifestJobTypes.add(jobType);
-    }
-  }
-  const unsupportedJobTypes = worker.supportedJobTypes.filter(
-    (jobType) => !manifestJobTypes.has(jobType),
+function workerCanRun(worker: WorkerDefinition, job: Job): boolean {
+  if (!worker.supportedJobTypes.includes(job.jobType)) return false;
+  return worker.connectorBindings.some(
+    (binding) =>
+      binding.connectorId === job.connector.connectorId &&
+      binding.version === job.connector.version &&
+      binding.capabilities.includes("COLLECT" as ConnectorCapability),
   );
-  if (unsupportedJobTypes.length > 0) {
-    throw new RegistryConflictError(
-      "WORKER_JOB_TYPE_MISMATCH",
-      "Worker declares JobTypes unsupported by its exact Connector bindings",
-      { unsupportedJobTypes },
-    );
+}
+
+function webDomainKey(job: Job): string | null {
+  if (job.jobType !== "WEB_CRAWL" && job.jobType !== "PAGE_UPDATE_CHECK") return null;
+  try {
+    return new URL(job.sourceSnapshot.canonicalUri).hostname.toLowerCase();
+  } catch {
+    return null;
   }
 }
 
-function jobWithStatus(job: Job, status: "PENDING" | "LEASED", timestamp: string): Job {
-  const next = { ...clone(job), status, updatedAt: timestamp };
-  if (!isJob(next)) {
-    throw new RegistryValidationError("Job transition does not satisfy Execution Contract v1");
-  }
-  return next;
-}
+type WebDomainLeaseState = {
+  active: number;
+  recent: number;
+  minRateLimit: number;
+};
 
 export function ensureWorkerRegistry(database: DatabaseSync): void {
   ensureExecutionLedger(database);
-  const applied = database
-    .prepare("SELECT id FROM schema_migrations WHERE id = ?")
-    .get(MIGRATION_ID);
-  if (applied) return;
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS worker_definitions (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      desired_state TEXT NOT NULL,
+      runtime_id TEXT NOT NULL,
+      runtime_version TEXT NOT NULL,
+      job_types_json TEXT NOT NULL,
+      bindings_json TEXT NOT NULL,
+      labels_json TEXT NOT NULL,
+      max_concurrency INTEGER NOT NULL,
+      document_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    ) STRICT;
 
-  database.exec("BEGIN IMMEDIATE;");
-  try {
-    database.exec(`
-      CREATE TABLE IF NOT EXISTS worker_definitions (
-        id TEXT PRIMARY KEY,
-        workspace_id TEXT NOT NULL,
-        display_name TEXT NOT NULL,
-        desired_state TEXT NOT NULL,
-        runtime_id TEXT NOT NULL,
-        runtime_version TEXT NOT NULL,
-        job_types_json TEXT NOT NULL,
-        bindings_json TEXT NOT NULL,
-        labels_json TEXT NOT NULL,
-        max_concurrency INTEGER NOT NULL,
-        document_json TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY (workspace_id) REFERENCES workspaces(id)
-      ) STRICT;
+    CREATE TABLE IF NOT EXISTS worker_credentials (
+      worker_id TEXT PRIMARY KEY,
+      credential_digest TEXT NOT NULL,
+      rotated_at TEXT NOT NULL,
+      FOREIGN KEY(worker_id) REFERENCES worker_definitions(id) ON DELETE CASCADE
+    ) STRICT;
 
-      CREATE TABLE IF NOT EXISTS worker_credentials (
-        worker_id TEXT PRIMARY KEY,
-        credential_digest TEXT NOT NULL,
-        rotated_at TEXT NOT NULL,
-        FOREIGN KEY (worker_id) REFERENCES worker_definitions(id)
-      ) STRICT;
+    CREATE TABLE IF NOT EXISTS worker_heartbeats (
+      id TEXT PRIMARY KEY,
+      worker_id TEXT NOT NULL,
+      workspace_id TEXT NOT NULL,
+      health TEXT NOT NULL,
+      observed_at TEXT NOT NULL,
+      received_at TEXT NOT NULL,
+      document_json TEXT NOT NULL,
+      FOREIGN KEY(worker_id) REFERENCES worker_definitions(id) ON DELETE CASCADE
+    ) STRICT;
 
-      CREATE TABLE IF NOT EXISTS worker_heartbeats (
-        id TEXT PRIMARY KEY,
-        worker_id TEXT NOT NULL,
-        workspace_id TEXT NOT NULL,
-        health TEXT NOT NULL,
-        observed_at TEXT NOT NULL,
-        received_at TEXT NOT NULL,
-        document_json TEXT NOT NULL,
-        FOREIGN KEY (worker_id) REFERENCES worker_definitions(id)
-      ) STRICT;
+    CREATE TABLE IF NOT EXISTS job_leases (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      worker_id TEXT NOT NULL,
+      job_id TEXT NOT NULL,
+      run_id TEXT NOT NULL,
+      connector_id TEXT NOT NULL,
+      connector_version TEXT NOT NULL,
+      job_type TEXT NOT NULL,
+      status TEXT NOT NULL,
+      token_digest TEXT NOT NULL,
+      document_json TEXT NOT NULL,
+      acquired_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(worker_id) REFERENCES worker_definitions(id) ON DELETE CASCADE,
+      FOREIGN KEY(job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+      FOREIGN KEY(run_id) REFERENCES collection_runs(id) ON DELETE CASCADE
+    ) STRICT;
 
-      CREATE TABLE IF NOT EXISTS job_leases (
-        id TEXT PRIMARY KEY,
-        workspace_id TEXT NOT NULL,
-        worker_id TEXT NOT NULL,
-        job_id TEXT NOT NULL,
-        run_id TEXT NOT NULL,
-        connector_id TEXT NOT NULL,
-        connector_version TEXT NOT NULL,
-        job_type TEXT NOT NULL,
-        status TEXT NOT NULL,
-        token_digest TEXT NOT NULL,
-        document_json TEXT NOT NULL,
-        acquired_at TEXT NOT NULL,
-        expires_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY (worker_id) REFERENCES worker_definitions(id),
-        FOREIGN KEY (job_id) REFERENCES jobs(id),
-        FOREIGN KEY (run_id) REFERENCES collection_runs(id)
-      ) STRICT;
-
-      CREATE INDEX IF NOT EXISTS idx_workers_workspace_state
-        ON worker_definitions(workspace_id, desired_state, updated_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_workers_runtime
-        ON worker_definitions(runtime_id, runtime_version);
-      CREATE INDEX IF NOT EXISTS idx_heartbeats_worker_received
-        ON worker_heartbeats(worker_id, received_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_leases_worker_status
-        ON job_leases(worker_id, status, expires_at);
-      CREATE INDEX IF NOT EXISTS idx_leases_job_status
-        ON job_leases(job_id, status);
-      CREATE INDEX IF NOT EXISTS idx_leases_run_status
-        ON job_leases(run_id, status);
-      CREATE INDEX IF NOT EXISTS idx_leases_expiration
-        ON job_leases(status, expires_at);
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_lease_per_job
-        ON job_leases(job_id) WHERE status = 'ACTIVE';
-    `);
-    database
-      .prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)")
-      .run(MIGRATION_ID, new Date().toISOString());
-    database.exec("COMMIT;");
-  } catch (error) {
-    database.exec("ROLLBACK;");
-    throw error;
-  }
+    CREATE INDEX IF NOT EXISTS idx_worker_definitions_workspace ON worker_definitions(workspace_id);
+    CREATE INDEX IF NOT EXISTS idx_worker_heartbeats_worker_received
+      ON worker_heartbeats(worker_id, received_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_job_leases_worker_status
+      ON job_leases(worker_id, status, acquired_at);
+    CREATE INDEX IF NOT EXISTS idx_job_leases_job_status ON job_leases(job_id, status);
+  `);
+  database
+    .prepare("INSERT OR IGNORE INTO schema_migrations (id, applied_at) VALUES (?, ?)")
+    .run(MIGRATION_ID, new Date().toISOString());
 }
 
 export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository {
@@ -639,49 +440,44 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
   constructor(
     private readonly database: DatabaseSync,
     private readonly clock: () => Date = () => new Date(),
-    private readonly workerIdFactory: () => string = () => generateWorkerId(),
-    private readonly heartbeatIdFactory: () => string = () => generateHeartbeatId(),
-    private readonly leaseIdFactory: () => string = () => generateLeaseId(),
+    private readonly workerIdFactory: () => string = generateWorkerId,
+    private readonly heartbeatIdFactory: () => string = generateHeartbeatId,
+    private readonly leaseIdFactory: () => string = generateLeaseId,
     options: WorkerProtocolOptions = {},
   ) {
     ensureWorkerRegistry(database);
-    this.heartbeatFreshnessMs = boundedDuration(
-      options.heartbeatFreshnessMs,
-      DEFAULT_HEARTBEAT_FRESHNESS_MS,
-      "heartbeatFreshnessMs",
-    );
-    this.heartbeatClockSkewMs = boundedDuration(
-      options.heartbeatClockSkewMs,
-      DEFAULT_HEARTBEAT_CLOCK_SKEW_MS,
-      "heartbeatClockSkewMs",
-    );
-    this.leaseDurationMs = boundedDuration(
-      options.leaseDurationMs,
-      DEFAULT_LEASE_DURATION_MS,
-      "leaseDurationMs",
-    );
-    this.maxLeaseLifetimeMs = boundedDuration(
-      options.maxLeaseLifetimeMs,
-      DEFAULT_MAX_LEASE_LIFETIME_MS,
-      "maxLeaseLifetimeMs",
-    );
-    this.maxConcurrentWebLeasesPerDomain = boundedConcurrency(
-      options.maxConcurrentWebLeasesPerDomain,
-    );
-    if (this.maxLeaseLifetimeMs < this.leaseDurationMs) {
-      throw new RegistryValidationError(
-        "maxLeaseLifetimeMs must be greater than or equal to leaseDurationMs",
-      );
-    }
+    this.heartbeatFreshnessMs = options.heartbeatFreshnessMs ?? DEFAULT_HEARTBEAT_FRESHNESS_MS;
+    this.heartbeatClockSkewMs = options.heartbeatClockSkewMs ?? DEFAULT_HEARTBEAT_CLOCK_SKEW_MS;
+    this.leaseDurationMs = options.leaseDurationMs ?? DEFAULT_LEASE_DURATION_MS;
+    this.maxLeaseLifetimeMs = options.maxLeaseLifetimeMs ?? DEFAULT_MAX_LEASE_LIFETIME_MS;
+    this.maxConcurrentWebLeasesPerDomain =
+      options.maxConcurrentWebLeasesPerDomain ?? DEFAULT_MAX_CONCURRENT_WEB_LEASES_PER_DOMAIN;
   }
 
   create(input: CreateWorkerInput): WorkerCreationResult {
     const timestamp = this.clock().toISOString();
-    const worker = normalizeWorkerInput(input, this.workerIdFactory(), timestamp);
+    const worker: WorkerDefinition = {
+      contractVersion: WORKER_PROTOCOL_VERSION,
+      objectType: "WORKER_DEFINITION",
+      id: this.workerIdFactory(),
+      workspaceId: input.workspaceId ?? DEFAULT_WORKSPACE.id,
+      displayName: input.displayName.trim(),
+      desiredState: input.desiredState ?? "ACTIVE",
+      runtime: clone(input.runtime),
+      supportedJobTypes: [...new Set(input.supportedJobTypes)],
+      connectorBindings: clone(input.connectorBindings),
+      maxConcurrency: input.maxConcurrency,
+      labels: [...new Set(input.labels ?? [])],
+      ...(input.extensions ? { extensions: clone(input.extensions) } : {}),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    if (!isWorkerDefinition(worker)) {
+      throw new RegistryValidationError("Worker does not satisfy Worker Protocol v1");
+    }
     validateWorkerBindings(this.database, worker);
     const credential = generateCredential();
     const row = workerRow(worker);
-
     this.database.exec("BEGIN IMMEDIATE;");
     try {
       this.database
@@ -909,6 +705,15 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
       throw new WorkerAuthorizationError("WORKER_DISABLED", "Worker is disabled");
     }
     return worker;
+  }
+
+  verifyLease(workerId: string, credential: string, leaseId: string, leaseToken: string): JobLease {
+    this.verifyCredential(workerId, credential);
+    const lease = this.requireOwnedActiveLease(workerId, leaseId, leaseToken);
+    if (Date.parse(lease.expiresAt) <= this.clock().getTime()) {
+      throw new RegistryConflictError("LEASE_EXPIRED", "Lease has expired");
+    }
+    return lease;
   }
 
   heartbeat(input: HeartbeatInput, credential: string): WorkerRuntimeView {
