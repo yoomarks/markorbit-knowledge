@@ -42,9 +42,7 @@ function requireRadarPlan(value: unknown): RadarSourceIntakePlan {
     !Number.isInteger(summary.errors) ||
     summary.errors < 0
   ) {
-    throw new RegistryValidationError(
-      "Radar intake summary.errors must be a non-negative integer",
-    );
+    throw new RegistryValidationError("Radar intake summary.errors must be a non-negative integer");
   }
   return plan as unknown as RadarSourceIntakePlan;
 }

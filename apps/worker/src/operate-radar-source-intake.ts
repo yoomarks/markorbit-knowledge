@@ -68,7 +68,9 @@ async function main(): Promise<void> {
     throw new Error("--apply requires an explicit --workspace=<workspaceId>");
   }
   if (plan.summary.errors > 0) {
-    throw new Error(`Radar intake plan has ${plan.summary.errors} validation error(s); refusing apply`);
+    throw new Error(
+      `Radar intake plan has ${plan.summary.errors} validation error(s); refusing apply`,
+    );
   }
   const controlPlaneUrl =
     argument("--control-plane") ??
@@ -91,6 +93,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
