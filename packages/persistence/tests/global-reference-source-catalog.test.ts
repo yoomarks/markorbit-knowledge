@@ -8,7 +8,7 @@ import {
 
 describe("global reference source catalog", () => {
   it("keeps the curated cross-jurisdiction layer separate and deterministic", () => {
-    expect(GLOBAL_REFERENCE_SOURCES).toHaveLength(15);
+    expect(GLOBAL_REFERENCE_SOURCES).toHaveLength(18);
 
     const ids = new Set(GLOBAL_REFERENCE_SOURCES.map((source) => source.id));
     const urls = new Set(GLOBAL_REFERENCE_SOURCES.map((source) => source.canonicalUri));
@@ -51,6 +51,33 @@ describe("global reference source catalog", () => {
     expect(newsletter?.factEligibility).toBe("SUPPORTING_ONLY");
     expect(newsletter?.freshnessPolicy).toBe("BIWEEKLY");
     expect(newsletter?.verification.verifyAgainstJurisdictionOfficialSource).toBe(true);
+  });
+
+  it("keeps INTA public indexes rights-aware and secondary to official jurisdiction sources", () => {
+    const guides = getGlobalReferenceSource("inta-practice-guides");
+    const index = getGlobalReferenceSource("inta-resource-index");
+
+    expect(guides?.authorityTier).toBe("B_PLUS");
+    expect(guides?.sourceRole).toBe("TM_EXPERT_GUIDE");
+    expect(guides?.factEligibility).toBe("SUPPORTING_ONLY");
+    expect(guides?.contentReusePolicy).toBe("STRUCTURE_AND_TOPIC_ONLY");
+    expect(guides?.verification.verifyAgainstJurisdictionOfficialSource).toBe(true);
+    expect(guides?.notes).toContain("Do not crawl authenticated, member-only, trial-only, or paid");
+
+    expect(index?.intendedUses).toContain("CONTENT_IDEATION");
+    expect(index?.contentReusePolicy).toBe("STRUCTURE_AND_TOPIC_ONLY");
+    expect(index?.verification.verifyAgainstJurisdictionOfficialSource).toBe(true);
+  });
+
+  it("uses WTR as a rights-aware change signal rather than primary legal authority", () => {
+    const wtr = getGlobalReferenceSource("wtr-news");
+
+    expect(wtr?.sourceRole).toBe("TM_CHANGE_SIGNAL");
+    expect(wtr?.changeSignalEligible).toBe(true);
+    expect(wtr?.factEligibility).toBe("SUPPORTING_ONLY");
+    expect(wtr?.contentReusePolicy).toBe("STRUCTURE_AND_TOPIC_ONLY");
+    expect(wtr?.verification.verifyAgainstJurisdictionOfficialSource).toBe(true);
+    expect(wtr?.notes).toContain("do not automatically ingest paywalled article bodies");
   });
 
   it("keeps WIPO legal and authority sources in the highest reference tier", () => {
