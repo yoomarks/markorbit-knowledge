@@ -16,7 +16,9 @@ export function SourceChangeAlerts() {
         <div>
           <div className="flex items-center gap-2">
             <Activity size={18} className="text-blue-600" />
-            <h2 className="text-sm font-semibold text-slate-950">来源变化 / Source changes</h2>
+            <h2 className="text-sm font-semibold text-slate-950">
+              来源变化 / Source changes
+            </h2>
           </div>
           <p className="mt-1 text-xs text-slate-500">
             最近 24 小时已进入检索索引的客观内容变化；这里只展示版本与章节变化事实，不判断业务重要性。
@@ -43,7 +45,10 @@ export function SourceChangeAlerts() {
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-slate-950" title={alert.sourceName}>
+                <p
+                  className="truncate text-xs font-semibold text-slate-950"
+                  title={alert.sourceName}
+                >
                   {alert.sourceName}
                 </p>
                 <p className="mt-1 truncate text-[10px] text-slate-400" title={alert.sourceId}>
@@ -57,7 +62,9 @@ export function SourceChangeAlerts() {
 
             <div className="mt-3 flex gap-4">
               <div>
-                <p className="text-xl font-semibold text-slate-950">{alert.changedDocuments}</p>
+                <p className="text-xl font-semibold text-slate-950">
+                  {alert.changedDocuments}
+                </p>
                 <p className="text-[10px] text-slate-500">changed docs</p>
               </div>
               <div>
@@ -67,8 +74,8 @@ export function SourceChangeAlerts() {
             </div>
 
             <p className="mt-3 text-[11px] leading-5 text-slate-600">
-              最新版本：+{alert.latestSummary.addedSections} / −{alert.latestSummary.removedSections} / ≈
-              {alert.latestSummary.modifiedSections}
+              最新版本：+{alert.latestSummary.addedSections} / −{alert.latestSummary.removedSections} /
+              ≈{alert.latestSummary.modifiedSections}
             </p>
             <p className="mt-2 text-[10px] text-slate-400">
               {new Date(alert.latestObservedAt).toLocaleString("zh-CN")}
