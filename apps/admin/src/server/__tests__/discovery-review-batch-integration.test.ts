@@ -89,6 +89,7 @@ describe("Discovery batch approval → initial collection", () => {
       succeeded: 2,
       failed: 0,
       collectionStarted: 1,
+      collectionDeferred: 0,
     });
     expect(result.items[0]).toMatchObject({ status: "ACCEPTED", replayed: false });
     expect(result.items[1]).toMatchObject({ status: "ACCEPTED", replayed: false });
