@@ -1,15 +1,16 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import {
-  READY_PACKAGE_CONTENT_EXPORT_VERSION,
-  assertReadyPackageContentExportV1,
-  type ReadyPackageContentExportV1,
+  READY_PACKAGE_CONTENT_EXPORT_V1_1_VERSION,
+  assertReadyPackageContentExportV1_1,
+  type ReadyPackageContentExportV1_1,
   type ReadyPackageEvidence,
 } from "@markorbit/contracts";
 import {
   RegistryConflictError,
   RegistryError,
   RegistryValidationError,
+  type SourceRepository,
 } from "@markorbit/persistence";
 import type { RawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import type { ReadyPackageRegistryRepository } from "@markorbit/persistence/ready-packages";
@@ -17,8 +18,10 @@ import type { StagingContentRegistryRepository } from "@markorbit/persistence/st
 import {
   getRawArtifactRepository,
   getReadyPackageRepository,
+  getSourceRepository,
   getStagingContentRepository,
 } from "./source-registry";
+import { buildSourceGovernanceSnapshotV1 } from "./source-governance-snapshot";
 
 export type ReadyPackageContentExportInput = {
   workspaceId: string;
@@ -29,6 +32,7 @@ type ReadyPackageContentExportRepositories = {
   readyPackages: Pick<ReadyPackageRegistryRepository, "getById">;
   rawArtifacts: Pick<RawArtifactRepository, "getArtifact" | "contentPath">;
   staging: Pick<StagingContentRegistryRepository, "getDocument" | "readContent">;
+  sources: Pick<SourceRepository, "getById">;
 };
 
 type FrozenEvidence = Required<
@@ -135,7 +139,7 @@ function sameConverter(
 export async function buildReadyPackageContentExportV1(
   input: ReadyPackageContentExportInput,
   repositories: ReadyPackageContentExportRepositories,
-): Promise<ReadyPackageContentExportV1> {
+): Promise<ReadyPackageContentExportV1_1> {
   const workspaceId = input.workspaceId.trim();
   const readyPackageId = input.readyPackageId.trim();
   if (!workspaceId) throw new RegistryValidationError("workspaceId is required");
@@ -157,6 +161,16 @@ export async function buildReadyPackageContentExportV1(
 
   const evidence = requireFrozenEvidence(readyPackage.evidence);
   verifyReadyPackageDigest(evidence);
+  const source = repositories.sources.getById(evidence.sourceId);
+  if (!source) {
+    throw new RegistryConflictError(
+      "READY_PACKAGE_CONTENT_EXPORT_SOURCE_MISSING",
+      "Frozen ReadyPackage source is unavailable",
+      { sourceId: evidence.sourceId },
+    );
+  }
+  const sourceGovernance = buildSourceGovernanceSnapshotV1(source, workspaceId);
+
   const rawArtifactId = evidence.artifactIds[0];
   const rawArtifact = repositories.rawArtifacts.getArtifact(rawArtifactId);
   if (!rawArtifact || rawArtifact.artifact.workspaceId !== workspaceId) {
@@ -166,6 +180,7 @@ export async function buildReadyPackageContentExportV1(
     );
   }
   if (
+    rawArtifact.artifact.sourceId !== evidence.sourceId ||
     rawArtifact.artifact.binaryHash.value !== evidence.rawArtifactSha256 ||
     rawArtifact.contentObject.sha256 !== evidence.rawArtifactSha256
   ) {
@@ -243,8 +258,8 @@ export async function buildReadyPackageContentExportV1(
     );
   }
 
-  const exported: ReadyPackageContentExportV1 = {
-    contractVersion: READY_PACKAGE_CONTENT_EXPORT_VERSION,
+  const exported: ReadyPackageContentExportV1_1 = {
+    contractVersion: READY_PACKAGE_CONTENT_EXPORT_V1_1_VERSION,
     objectType: "READY_PACKAGE_CONTENT_EXPORT",
     readyPackageId: readyPackage.id,
     knowledgeWorkspaceId: readyPackage.workspaceId,
@@ -273,17 +288,19 @@ export async function buildReadyPackageContentExportV1(
       encoding: "utf-8",
       content,
     },
+    sourceGovernance,
   };
-  assertReadyPackageContentExportV1(exported);
+  assertReadyPackageContentExportV1_1(exported);
   return exported;
 }
 
 export function buildConfiguredReadyPackageContentExportV1(
   input: ReadyPackageContentExportInput,
-): Promise<ReadyPackageContentExportV1> {
+): Promise<ReadyPackageContentExportV1_1> {
   return buildReadyPackageContentExportV1(input, {
     readyPackages: getReadyPackageRepository(),
     rawArtifacts: getRawArtifactRepository(),
     staging: getStagingContentRepository(),
+    sources: getSourceRepository(),
   });
 }
