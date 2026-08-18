@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
 import { ingestManualUpload } from "@/server/manual-upload-service";
+import { handoffFinalizedRawArtifact } from "@/server/raw-artifact-finalize-handoff";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,7 +31,11 @@ export async function POST(request: Request) {
       idempotencyKey,
       file: value,
     });
-    return NextResponse.json(result, { status: result.replayed ? 200 : 201 });
+    const autoConversion = handoffFinalizedRawArtifact(result.artifact.id, workspaceId);
+    return NextResponse.json(
+      { ...result, autoConversion },
+      { status: result.replayed ? 200 : 201 },
+    );
   } catch (error) {
     return apiError(error);
   }
