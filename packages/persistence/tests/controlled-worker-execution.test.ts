@@ -9,6 +9,7 @@ import { SqliteCollectionPlanRepository } from "../src/collection-plan-registry"
 import { SqliteExecutionLedgerRepository } from "../src/execution-ledger";
 import {
   SqliteWorkerExecutionRepository,
+  computeExecutionRetryDelayMs,
   ensureWorkerExecutionRegistry,
 } from "../src/controlled-worker-execution";
 import { SqliteWorkerRegistryRepository } from "../src/safe-worker-registry";
@@ -269,7 +270,32 @@ describe("controlled Worker execution", () => {
     env.database.close();
   });
 
-  it("schedules retryable failures with durable backoff before the next claim", () => {
+  it("computes deterministic exponential retry delays with bounded jitter", () => {
+    const env = createEnvironment();
+    const firstJob = env.record.jobs[0]!;
+    const firstDelay = computeExecutionRetryDelayMs(firstJob);
+    const repeatedDelay = computeExecutionRetryDelayMs(firstJob);
+    const secondDelay = computeExecutionRetryDelayMs({
+      ...firstJob,
+      id: `${firstJob.id}-retry-2`,
+      attempt: 2,
+    });
+    const cappedDelay = computeExecutionRetryDelayMs({
+      ...firstJob,
+      id: `${firstJob.id}-retry-cap`,
+      attempt: 20,
+    });
+
+    expect(firstDelay).toBe(repeatedDelay);
+    expect(firstDelay).toBeGreaterThanOrEqual(10_000);
+    expect(firstDelay).toBeLessThanOrEqual(12_500);
+    expect(secondDelay).toBeGreaterThanOrEqual(20_000);
+    expect(secondDelay).toBeLessThanOrEqual(25_000);
+    expect(cappedDelay).toBe(30 * 60_000);
+    env.database.close();
+  });
+
+  it("schedules retryable failures with durable exponential backoff before the next claim", () => {
     const env = createEnvironment();
     start(env);
     const failed = env.executions.fail(
@@ -292,13 +318,17 @@ describe("controlled Worker execution", () => {
       [1, "RETRY"],
       [2, "PENDING"],
     ]);
-    expect(waiting?.jobs[1]?.availableAt).toBe("2026-07-16T08:00:10.000Z");
+    const retryAvailableAt = waiting?.jobs[1]?.availableAt;
+    expect(retryAvailableAt).toBeDefined();
+    const retryDelayMs = Date.parse(retryAvailableAt!) - Date.parse("2026-07-16T08:00:00.000Z");
+    expect(retryDelayMs).toBeGreaterThanOrEqual(10_000);
+    expect(retryDelayMs).toBeLessThanOrEqual(12_500);
     expect(env.workers.listLeases({ status: "RELEASED" }).items[0]?.closeReason).toBe(
       "EXECUTION_RETRY_SCHEDULED",
     );
 
     expect(env.workers.claim(env.worker.view.worker.id, env.worker.credential).job).toBeNull();
-    env.advance(9_999);
+    env.advance(retryDelayMs - 1);
     expect(env.workers.claim(env.worker.view.worker.id, env.worker.credential).job).toBeNull();
     env.advance(1);
     const retryClaim = env.workers.claim(env.worker.view.worker.id, env.worker.credential);
