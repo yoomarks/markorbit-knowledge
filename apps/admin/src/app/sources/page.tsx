@@ -13,6 +13,7 @@ export default function SourcesPage() {
     <AdminShell>
       <CorePageHeading page="sources" sourceCreateAction />
       <div className="space-y-6">
+        {/* Radar Source approval is intentionally separate from collection authorization. */}
         <RadarReviewEvidence />
         <SourceSmartReviewUi />
         <SourceSupplyCoverage workspaceId={DEFAULT_WORKSPACE.id} />
