@@ -1,0 +1,125 @@
+name: Apply conditional HTTP integration patch
+
+on:
+  push:
+    branches:
+      - agent/http-conditional-acquisition-v1
+    paths:
+      - .github/workflows/http-conditional-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/http-conditional-acquisition-v1
+          fetch-depth: 0
+
+      - name: Apply focused source edits
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"expected patch anchor missing in {path}")
+              p.write_text(text.replace(old, new, 1))
+
+          executor = "packages/worker-runtime/src/artifact-backed-collection-executor.ts"
+          replace_once(
+              executor,
+              '''export class CollectionAcquisitionError extends Error {\n  constructor(\n    public readonly code: string,\n    message: string,\n    public readonly retryable: boolean,\n  ) {\n    super(message);\n    this.name = "CollectionAcquisitionError";\n  }\n}\n''',
+              '''export class CollectionAcquisitionError extends Error {\n  constructor(\n    public readonly code: string,\n    message: string,\n    public readonly retryable: boolean,\n  ) {\n    super(message);\n    this.name = "CollectionAcquisitionError";\n  }\n}\n\nexport class CollectionNotModifiedError extends CollectionAcquisitionError {\n  constructor(\n    public readonly canonicalUri: string,\n    public readonly outputKinds: ArtifactKind[],\n  ) {\n    super("HTTP_NOT_MODIFIED", "Conditional HTTP request returned 304 Not Modified", false);\n    this.name = "CollectionNotModifiedError";\n  }\n}\n''',
+          )
+          replace_once(
+              executor,
+              '''      const acquired = await this.acquirer.acquire(context);\n      if (acquired.length === 0) {\n''',
+              '''      let acquired: AcquiredCollectionArtifact[];\n      try {\n        acquired = await this.acquirer.acquire(context);\n      } catch (error) {\n        if (!(error instanceof CollectionNotModifiedError)) throw error;\n        await this.client.uploading(context, `${prefix}-uploading`);\n        await this.client.verifying(context, `${prefix}-verifying`);\n        const receipt: ExecutionReceipt = {\n          executor: this.acquirer.executor,\n          outputKinds: [...new Set(error.outputKinds)],\n          itemsObserved: 0,\n          bytesPrepared: 0,\n          metadataOnly: true,\n          summary:\n            "Conditional HTTP request returned 304 Not Modified; no RawArtifact bytes were prepared.",\n        };\n        await this.client.complete(context, receipt, `${prefix}-complete`);\n        return receipt;\n      }\n      if (acquired.length === 0) {\n''',
+          )
+
+          rss = "packages/worker-runtime/src/rss-acquirer.ts"
+          replace_once(
+              rss,
+              '''  type ArtifactBackedExecutionContext,\n  CollectionAcquisitionError,\n  type CollectionArtifactAcquirer,\n''',
+              '''  type ArtifactBackedExecutionContext,\n  CollectionAcquisitionError,\n  CollectionNotModifiedError,\n  type CollectionArtifactAcquirer,\n''',
+          )
+          replace_once(
+              rss,
+              '''function normalizeTransportError(error: unknown): never {\n  if (error instanceof CollectionAcquisitionError) {\n''',
+              '''function normalizeTransportError(error: unknown): never {\n  if (error instanceof CollectionNotModifiedError) throw error;\n  if (error instanceof CollectionAcquisitionError) {\n''',
+          )
+
+          server = "apps/admin/src/server/http-validator-checkpoint.ts"
+          replace_once(
+              server,
+              '''  write(input: WriteHttpValidatorCheckpointInput): HttpValidatorCheckpoint {\n''',
+              '''  clear(input: HttpValidatorCheckpointAuth & { canonicalUri: string }): boolean {\n    const scope = this.sourceScopeForLease(input);\n    const canonicalUri = canonicalHttpUri(input.canonicalUri);\n    const result = this.database\n      .prepare(\n        `DELETE FROM http_validator_checkpoints\n         WHERE workspace_id = ? AND source_id = ? AND canonical_uri = ?`,\n      )\n      .run(scope.workspaceId, scope.sourceId, canonicalUri);\n    return Number(result.changes) > 0;\n  }\n\n  write(input: WriteHttpValidatorCheckpointInput): HttpValidatorCheckpoint {\n''',
+          )
+          replace_once(
+              server,
+              '''export function writeHttpValidatorCheckpoint(\n  input: WriteHttpValidatorCheckpointInput,\n): HttpValidatorCheckpoint {\n  return repository().write(input);\n}\n''',
+              '''export function writeHttpValidatorCheckpoint(\n  input: WriteHttpValidatorCheckpointInput,\n): HttpValidatorCheckpoint {\n  return repository().write(input);\n}\n\nexport function clearHttpValidatorCheckpoint(\n  input: HttpValidatorCheckpointAuth & { canonicalUri: string },\n): boolean {\n  return repository().clear(input);\n}\n''',
+          )
+
+          route = "apps/admin/src/app/api/worker/v1/http-validators/route.ts"
+          replace_once(
+              route,
+              '''import {\n  readHttpValidatorCheckpoint,\n  writeHttpValidatorCheckpoint,\n} from "@/server/http-validator-checkpoint";\n''',
+              '''import {\n  clearHttpValidatorCheckpoint,\n  readHttpValidatorCheckpoint,\n  writeHttpValidatorCheckpoint,\n} from "@/server/http-validator-checkpoint";\n''',
+          )
+          replace_once(
+              route,
+              '''    if (body.operation === "WRITE") {\n''',
+              '''    if (body.operation === "CLEAR") {\n      return NextResponse.json({ cleared: clearHttpValidatorCheckpoint(auth) });\n    }\n    if (body.operation === "WRITE") {\n''',
+          )
+          replace_once(
+              route,
+              '''    throw new RegistryValidationError("operation must be READ or WRITE");\n''',
+              '''    throw new RegistryValidationError("operation must be READ, WRITE or CLEAR");\n''',
+          )
+
+          main = "apps/worker/src/main.ts"
+          replace_once(
+              main,
+              '''import { loadWorkerProcessConfig } from "./config";\n''',
+              '''import { HttpConditionalTransportCoordinator } from "@markorbit/worker-runtime/http-conditional-transport";\nimport { HttpValidatorCheckpointClient } from "@markorbit/worker-runtime/http-validator-checkpoint-client";\nimport { loadWorkerProcessConfig } from "./config";\n''',
+          )
+          replace_once(
+              main,
+              '''  const acquirer =\n''',
+              '''  const httpValidators = new HttpValidatorCheckpointClient(\n    config.controlPlaneUrl,\n    config.workerId,\n    config.workerCredential,\n  );\n  const conditionalHttp = new HttpConditionalTransportCoordinator(httpValidators);\n  const acquirer =\n''',
+          )
+          replace_once(
+              main,
+              '''      : config.collectionProvider === "api"\n        ? new ApiArtifactAcquirer()\n        : config.collectionProvider === "rss"\n          ? new RssArtifactAcquirer()\n''',
+              '''      : config.collectionProvider === "api"\n        ? conditionalHttp.wrap(\n            new ApiArtifactAcquirer({ transport: conditionalHttp.transport }),\n          )\n        : config.collectionProvider === "rss"\n          ? conditionalHttp.wrap(\n              new RssArtifactAcquirer({ transport: conditionalHttp.transport }),\n            )\n''',
+          )
+
+          package_json = Path("packages/worker-runtime/package.json")
+          package = json.loads(package_json.read_text())
+          package["exports"]["./http-conditional-transport"] = "./src/http-conditional-transport.ts"
+          package["exports"]["./http-validator-checkpoint-client"] = "./src/http-validator-checkpoint-client.ts"
+          package_json.write_text(json.dumps(package, indent=2) + "\n")
+
+          Path(".github/workflows/http-conditional-patch.yml").unlink()
+          PY
+
+      - name: Format changed files
+        run: pnpm exec prettier --write packages/worker-runtime/src/artifact-backed-collection-executor.ts packages/worker-runtime/src/rss-acquirer.ts packages/worker-runtime/src/http-conditional-transport.ts packages/worker-runtime/src/http-validator-checkpoint-client.ts packages/worker-runtime/package.json apps/admin/src/server/http-validator-checkpoint.ts apps/admin/src/app/api/worker/v1/http-validators/route.ts apps/worker/src/main.ts
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "markorbit-ci"
+          git config user.email "ci@markorbit.invalid"
+          git add -A
+          git commit -m "feat(worker): use HTTP validators for conditional acquisition"
+          git push origin HEAD:agent/http-conditional-acquisition-v1
