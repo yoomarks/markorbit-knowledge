@@ -307,16 +307,17 @@ describe("Bulk Source Pipeline E2E", () => {
       expect(completed.attempt.status).toBe("COMPLETED");
       completedRunIds.add(job.runId);
 
+      const artifactId = finalized.artifact.artifact.id;
       const conversion = dispatchAutomaticConversionForArtifactWithDependencies(
         { database, artifacts, converters, conversionRuns, clock },
-        finalized.artifact.id,
+        artifactId,
         workspaceId,
       );
       expect(conversion.status).toBe("ENQUEUED");
       if (conversion.status === "ENQUEUED" || conversion.status === "REPLAYED") {
         conversionRunIds.add(conversion.conversionRunId);
         if (index === 0) {
-          firstArtifactId = finalized.artifact.id;
+          firstArtifactId = artifactId;
           firstConversionRunId = conversion.conversionRunId;
         }
       }
@@ -344,10 +345,10 @@ describe("Bulk Source Pipeline E2E", () => {
     const completedRuns = runs.list({ limit: 100 });
     expect(completedRuns.total).toBe(100);
     expect(completedRuns.items.every((record) => record.run.status === "COMPLETED")).toBe(true);
-    const queuedConversions = conversionRuns.list({ workspaceId, limit: 100 });
-    expect(queuedConversions.total).toBe(100);
-    expect(queuedConversions.items.every((run) => run.trigger === "AUTO_PROFILE")).toBe(true);
-    expect(queuedConversions.items.every((run) => run.status === "QUEUED")).toBe(true);
+    const pendingConversions = conversionRuns.list({ workspaceId, limit: 100 });
+    expect(pendingConversions.total).toBe(100);
+    expect(pendingConversions.items.every((run) => run.trigger === "AUTO_PROFILE")).toBe(true);
+    expect(pendingConversions.items.every((run) => run.status === "PENDING")).toBe(true);
     expect(workers.claim(worker.view.worker.id, worker.credential).job).toBeNull();
 
     database.close();
