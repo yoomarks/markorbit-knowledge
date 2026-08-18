@@ -185,7 +185,7 @@ describe("Radar Source Intake → Discovery", () => {
       itemType: "SOURCE_PROPOSAL",
       externalId: "radar-wipo-alerts",
       state: "QUEUED",
-      locator: "https://www.wipo.int/pressroom/en/",
+      locator: "https://www.wipo.int/newsletters/",
     });
     expect(result.results[0].candidate?.candidate).toMatchObject({
       status: "DISCOVERED",
@@ -210,6 +210,42 @@ describe("Radar Source Intake → Discovery", () => {
     });
     expect(env.discovery.listCandidates({ status: "DISCOVERED" }).total).toBe(2);
     expect(env.sources.list({ workspaceId, limit: 100 }).total).toBe(beforeSources);
+    expectNoCollectionAuthority(env);
+    env.database.close();
+  });
+
+  it("keeps distinct endpoints from the same organization as distinct Discovery candidates", () => {
+    const env = environment();
+    const alerts = sourceProposal();
+    const news = sourceProposal({
+      externalSourceId: "radar-wipo-news",
+      name: "WIPO News",
+      endpointKey: "wipo:news",
+      sourceType: "news",
+      subscriptionStatus: "html_watch",
+      confirmed: false,
+      newsletterUrl: undefined,
+      acquisitions: [
+        {
+          kind: "HTML_WATCH",
+          locator: "https://www.wipo.int/pressroom/en/",
+          verified: false,
+        },
+      ],
+      routingEvidence: [],
+    });
+
+    const result = queueRadarSourceIntakeForDiscovery(
+      { workspaceId, plan: plan({ sources: [alerts, news], candidates: [] }) },
+      dependencies(env),
+    );
+
+    expect(result.summary).toMatchObject({ total: 2, QUEUED: 2 });
+    expect(result.results.map((item) => item.locator)).toEqual([
+      "https://www.wipo.int/newsletters/",
+      "https://www.wipo.int/pressroom/en/",
+    ]);
+    expect(env.discovery.listCandidates().total).toBe(2);
     expectNoCollectionAuthority(env);
     env.database.close();
   });
@@ -299,12 +335,12 @@ describe("Radar Source Intake → Discovery", () => {
     env.database.close();
   });
 
-  it("does not queue a Radar locator that is already a registered Source", () => {
+  it("does not queue a Radar endpoint that is already a registered Source", () => {
     const env = environment();
     const registered = env.sources.create({
       workspaceId,
-      name: "WIPO Pressroom",
-      slug: "wipo-pressroom",
+      name: "WIPO Alerts",
+      slug: "wipo-alerts",
       sourceType: "WEB",
       category: "OFFICIAL_AUTHORITY",
       authorityLevel: "PRIMARY_OFFICIAL",
@@ -313,8 +349,8 @@ describe("Radar Source Intake → Discovery", () => {
       languages: ["en"],
       connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
       connectorConfig: {},
-      canonicalUri: "https://www.wipo.int/pressroom/en/",
-      entrypoints: [{ uri: "https://www.wipo.int/pressroom/en/" }],
+      canonicalUri: "https://www.wipo.int/newsletters/",
+      entrypoints: [{ uri: "https://www.wipo.int/newsletters/" }],
     });
 
     const result = queueRadarSourceIntakeForDiscovery(
