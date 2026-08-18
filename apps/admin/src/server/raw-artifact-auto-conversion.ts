@@ -6,6 +6,7 @@ import {
   type RawArtifact,
 } from "@markorbit/contracts";
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import { ensureM3CanonicalDocumentAutoProfiles } from "./m3-converter-bootstrap";
 import { authorizeRawArtifactForConversion } from "./raw-artifact-conversion-authorization";
 import {
   getConversionRunLedgerRepository,
@@ -141,6 +142,7 @@ export function dispatchAutomaticConversionForArtifact(
     };
   }
 
+  ensureM3CanonicalDocumentAutoProfiles(getConverterRegistryRepository(), workspaceId);
   const profile = compatibleAutomaticProfile(workspaceId, artifact);
   if (!profile) {
     return { status: "NOT_APPLICABLE", reason: "NO_AUTO_PROFILE", artifactId };
@@ -256,7 +258,7 @@ export function automaticConversionRecoveryCandidateIds(
                FROM active_auto_profiles p
                WHERE p.id = json_extract(
                  a.document_json,
-                 '$.extensions."x-conversion-profile-id"'
+                 '$.extensions.\"x-conversion-profile-id\"'
                )
                  AND (p.source_id IS NULL OR p.source_id = a.source_id)
                  AND EXISTS (
@@ -303,8 +305,9 @@ export function reconcileAutomaticConversions(
   options: AutomaticConversionReconciliationOptions = {},
 ): AutomaticConversionReconciliationResult {
   // Ensure all tables referenced by the recovery query have been initialized before selecting.
-  getConverterRegistryRepository();
+  const converters = getConverterRegistryRepository();
   getConversionRunLedgerRepository();
+  ensureM3CanonicalDocumentAutoProfiles(converters, workspaceId);
 
   const candidateIds = automaticConversionRecoveryCandidateIds(
     getRegistryDatabase(),
