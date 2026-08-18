@@ -5,6 +5,7 @@ import { RadarCollectionAuthorization } from "@/components/sources/radar-collect
 import { RadarReviewEvidence } from "@/components/sources/radar-review-evidence";
 import { RepresentativeActivationWave } from "@/components/sources/representative-activation-wave";
 import { SourceCountryCoverage } from "@/components/sources/source-country-coverage";
+import { SourceFailureRootCauses } from "@/components/sources/source-failure-root-causes";
 import { SourceList } from "@/components/sources/source-list";
 import { SourceSupplyCoverage } from "@/components/sources/source-supply-coverage";
 import { SourceSmartReviewUi } from "@/lib/admin-v2/source-smart-review-ui";
@@ -21,6 +22,7 @@ export default function SourcesPage() {
         <SourceSupplyCoverage workspaceId={DEFAULT_WORKSPACE.id} />
         <RepresentativeActivationWave workspaceId={DEFAULT_WORKSPACE.id} />
         <SourceCountryCoverage workspaceId={DEFAULT_WORKSPACE.id} />
+        <SourceFailureRootCauses />
         <SourceList />
       </div>
     </AdminShell>
