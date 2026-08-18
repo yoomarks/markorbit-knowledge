@@ -1,5 +1,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { ArtifactBackedExecutionContext, CollectionArtifactAcquirer } from "./artifact-backed-collection-executor";
+import type {
+  ArtifactBackedExecutionContext,
+  CollectionArtifactAcquirer,
+} from "./artifact-backed-collection-executor";
 import { CollectionNotModifiedSignal } from "./artifact-backed-collection-executor";
 import type { ApiTransport, ApiTransportRequest, ApiTransportResponse } from "./api-acquirer";
 
@@ -170,8 +173,7 @@ export class HttpValidatorControlPlaneClient implements HttpValidatorClient {
     if (!checkpoint) throw new Error("HTTP validator checkpoint is invalid");
     return {
       etag: typeof checkpoint.etag === "string" ? checkpoint.etag : null,
-      lastModified:
-        typeof checkpoint.lastModified === "string" ? checkpoint.lastModified : null,
+      lastModified: typeof checkpoint.lastModified === "string" ? checkpoint.lastModified : null,
     };
   }
 

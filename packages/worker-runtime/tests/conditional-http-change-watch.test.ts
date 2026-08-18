@@ -109,11 +109,10 @@ describe("conditional HTTP change watch", () => {
     await acquirer.acquire(context());
 
     expect(observed).toMatchObject({ statusCode: 200 });
-    expect(write).toHaveBeenCalledWith(
-      expect.anything(),
-      "https://example.com/feed?b=2&a=1",
-      { etag: '"v3"', lastModified: "Tue, 18 Aug 2026 10:00:00 GMT" },
-    );
+    expect(write).toHaveBeenCalledWith(expect.anything(), "https://example.com/feed?b=2&a=1", {
+      etag: '"v3"',
+      lastModified: "Tue, 18 Aug 2026 10:00:00 GMT",
+    });
   });
 
   it("does not consult validators for ordinary interval collection", async () => {
