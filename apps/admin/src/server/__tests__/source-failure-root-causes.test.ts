@@ -72,4 +72,23 @@ describe("source failure root causes", () => {
       "b.example",
     ]);
   });
+
+  it("prioritizes the widest incident clusters before applying the display limit", () => {
+    const summary = summarizeSourceFailureRootCauses(
+      [
+        failure({ sourceId: "src_single", code: "HTTP_429", canonicalUri: "https://rate.example" }),
+        failure({ sourceId: "src_bulk_1", canonicalUri: "https://bulk.example/news" }),
+        failure({ sourceId: "src_bulk_2", canonicalUri: "https://bulk.example/rules" }),
+        failure({ sourceId: "src_bulk_3", canonicalUri: "https://bulk.example/fees" }),
+      ],
+      1,
+    );
+
+    expect(summary.clusters).toHaveLength(1);
+    expect(summary.clusters[0]).toMatchObject({
+      code: "CRAWL4AI_TIMEOUT",
+      domain: "bulk.example",
+      sourceCount: 3,
+    });
+  });
 });
