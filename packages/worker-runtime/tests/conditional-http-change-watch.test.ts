@@ -11,7 +11,7 @@ import {
   createConditionalHttpChangeWatch,
   type HttpValidatorClient,
 } from "../src/conditional-http-change-watch";
-import type { ApiTransport } from "../src/api-acquirer";
+import type { ApiTransport, ApiTransportResponse } from "../src/api-acquirer";
 
 function context(mode: "CHANGE_WATCH" | "INTERVAL" = "CHANGE_WATCH") {
   return {
@@ -97,19 +97,18 @@ describe("conditional HTTP change watch", () => {
       body: new TextEncoder().encode('{"ok":true}'),
     }));
     const conditional = createConditionalHttpChangeWatch(base, validators);
-    const response = await new Promise<ReturnType<ApiTransport>>((resolve) => {
-      conditional
-        .wrap({
-          executor: { executorId: "fixture", version: "1.0.0", mode: "FIXTURE" },
-          async acquire() {
-            resolve(conditional.transport(request));
-            return [];
-          },
-        })
-        .acquire(context());
+    let observed: ApiTransportResponse | null = null;
+    const acquirer = conditional.wrap({
+      executor: { executorId: "fixture", version: "1.0.0", mode: "FIXTURE" },
+      async acquire() {
+        observed = await conditional.transport(request);
+        return [];
+      },
     });
 
-    await expect(response).resolves.toMatchObject({ statusCode: 200 });
+    await acquirer.acquire(context());
+
+    expect(observed).toMatchObject({ statusCode: 200 });
     expect(write).toHaveBeenCalledWith(
       expect.anything(),
       "https://example.com/feed?b=2&a=1",
