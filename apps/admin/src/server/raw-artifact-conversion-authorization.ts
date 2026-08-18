@@ -59,9 +59,9 @@ function profileCompatible(
   )?.manifest;
   return Boolean(
     manifest &&
-      manifest.status === "ACTIVE" &&
-      manifest.outputFormat === "MARKDOWN" &&
-      converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
+    manifest.status === "ACTIVE" &&
+    manifest.outputFormat === "MARKDOWN" &&
+    converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
   );
 }
 

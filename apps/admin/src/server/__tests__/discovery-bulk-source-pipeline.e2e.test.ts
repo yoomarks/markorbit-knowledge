@@ -337,9 +337,9 @@ describe("Bulk Source Pipeline E2E", () => {
     }
     expect(artifacts.list({ limit: 100 }).total).toBe(100);
     expect(
-      artifacts.list({ limit: 100 }).items.every(
-        (record) => record.artifact.status === "READY_FOR_CONVERSION",
-      ),
+      artifacts
+        .list({ limit: 100 })
+        .items.every((record) => record.artifact.status === "READY_FOR_CONVERSION"),
     ).toBe(true);
     const completedRuns = runs.list({ limit: 100 });
     expect(completedRuns.total).toBe(100);
