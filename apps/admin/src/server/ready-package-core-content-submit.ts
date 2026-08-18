@@ -1,8 +1,12 @@
 import { createHash } from "node:crypto";
 import {
-  assertReadyPackageContentExportV1,
+  assertReadyPackageContentExportV1_1,
+  isReadyPackageContentExportV1,
+  isReadyPackageContentExportV1_1,
   serializeReadyPackageContentExportV1,
+  serializeReadyPackageContentExportV1_1,
   type ReadyPackageContentExportV1,
+  type ReadyPackageContentExportV1_1,
 } from "@markorbit/contracts";
 import {
   RegistryConflictError,
@@ -20,6 +24,8 @@ import type { CoreContentTransport } from "./core-content-http-transport";
 
 const SHA256 = /^[a-f0-9]{64}$/u;
 
+type FrozenReadyPackageContentExport = ReadyPackageContentExportV1 | ReadyPackageContentExportV1_1;
+
 export type ReadyPackageCoreContentSubmitInput = {
   workspaceId: string;
   readyPackageId: string;
@@ -30,10 +36,16 @@ export type ReadyPackageCoreContentSubmitInput = {
 export type ReadyPackageContentExporter = (input: {
   workspaceId: string;
   readyPackageId: string;
-}) => Promise<ReadyPackageContentExportV1>;
+}) => Promise<ReadyPackageContentExportV1_1>;
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function serializeFrozenExport(value: FrozenReadyPackageContentExport): string {
+  return value.contractVersion === "1.1"
+    ? serializeReadyPackageContentExportV1_1(value)
+    : serializeReadyPackageContentExportV1(value);
 }
 
 function resultFromEvidence(
@@ -50,7 +62,7 @@ function resultFromEvidence(
 
 function parseFrozenRequest(
   submission: ReadyPackageCoreIntakeSubmission,
-): ReadyPackageContentExportV1 {
+): FrozenReadyPackageContentExport {
   const delivery = submission.contentDelivery;
   if (!delivery) {
     throw new RegistryConflictError(
@@ -73,18 +85,16 @@ function parseFrozenRequest(
       "Frozen Core content request is not valid JSON",
     );
   }
-  try {
-    assertReadyPackageContentExportV1(parsed);
-  } catch {
+  if (!isReadyPackageContentExportV1(parsed) && !isReadyPackageContentExportV1_1(parsed)) {
     throw new RegistryConflictError(
       "CORE_CONTENT_FROZEN_REQUEST_INVALID",
-      "Frozen Core content request no longer satisfies Content Export V1",
+      "Frozen Core content request no longer satisfies supported Content Export V1/V1.1",
     );
   }
-  if (serializeReadyPackageContentExportV1(parsed) !== delivery.requestJson) {
+  if (serializeFrozenExport(parsed) !== delivery.requestJson) {
     throw new RegistryConflictError(
       "CORE_CONTENT_FROZEN_REQUEST_NON_CANONICAL",
-      "Frozen Core content request is not the canonical V1 serialization",
+      "Frozen Core content request is not the canonical supported serialization",
     );
   }
   return parsed;
@@ -174,7 +184,7 @@ export async function submitReadyPackageCoreContent(
     };
   }
 
-  let frozenRequest: ReadyPackageContentExportV1;
+  let frozenRequest: FrozenReadyPackageContentExport;
   let requestJson: string;
   let requestSha256: string;
   let deliveryReplayed = false;
@@ -185,11 +195,12 @@ export async function submitReadyPackageCoreContent(
     requestSha256 = intakeSubmission.contentDelivery.requestSha256;
     deliveryReplayed = true;
   } else {
-    frozenRequest = await exportContent({
+    const governedExport = await exportContent({
       workspaceId: input.workspaceId,
       readyPackageId: input.readyPackageId,
     });
-    assertReadyPackageContentExportV1(frozenRequest);
+    assertReadyPackageContentExportV1_1(governedExport);
+    frozenRequest = governedExport;
     if (
       frozenRequest.readyPackageId !== input.readyPackageId ||
       frozenRequest.knowledgeWorkspaceId !== input.workspaceId ||
@@ -197,10 +208,10 @@ export async function submitReadyPackageCoreContent(
     ) {
       throw new RegistryConflictError(
         "CORE_CONTENT_EXPORT_SCOPE_MISMATCH",
-        "Content Export V1 does not match the ReadyPackage being delivered",
+        "Content Export V1.1 does not match the ReadyPackage being delivered",
       );
     }
-    requestJson = serializeReadyPackageContentExportV1(frozenRequest);
+    requestJson = serializeReadyPackageContentExportV1_1(frozenRequest);
     requestSha256 = sha256(requestJson);
     const prepared = submissions.prepareContentDelivery(
       intakeSubmission.submissionId,

@@ -2,10 +2,10 @@ import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import {
-  serializeReadyPackageContentExportV1,
+  serializeReadyPackageContentExportV1_1,
   type CoreIntakeRequest,
   type CoreIntakeResult,
-  type ReadyPackageContentExportV1,
+  type ReadyPackageContentExportV1_1,
 } from "@markorbit/contracts";
 import { initializeRegistry } from "@markorbit/persistence";
 import { SqliteReadyPackageCoreIntakeSubmissionRepository } from "@markorbit/persistence/ready-package-core-intake-submissions";
@@ -61,9 +61,9 @@ function createFixture() {
 
 function contentExport(
   readyPackage: ReturnType<typeof createFixture>["readyPackage"],
-): ReadyPackageContentExportV1 {
+): ReadyPackageContentExportV1_1 {
   return {
-    contractVersion: "1.0",
+    contractVersion: "1.1",
     objectType: "READY_PACKAGE_CONTENT_EXPORT",
     readyPackageId: readyPackage.id,
     knowledgeWorkspaceId: KNOWLEDGE_WORKSPACE_ID,
@@ -91,6 +91,11 @@ function contentExport(
       mediaType: "text/markdown",
       encoding: "utf-8",
       content: MARKDOWN,
+    },
+    sourceGovernance: {
+      snapshotVersion: "1.0",
+      kind: "STANDARD_SOURCE",
+      sourceId: readyPackage.evidence.sourceId!,
     },
   };
 }
@@ -187,7 +192,7 @@ describe.sequential("Knowledge -> real Core ReadyPackage intake and content", ()
       expect(pending.contentDelivery).toMatchObject({
         state: "PENDING",
         coreIntakeId: recoveredIntake.coreIntakeResult.intakeId,
-        requestJson: serializeReadyPackageContentExportV1(frozenExport),
+        requestJson: serializeReadyPackageContentExportV1_1(frozenExport),
       });
       const recoveredContent = await submitReadyPackageCoreContent(
         contentInput,

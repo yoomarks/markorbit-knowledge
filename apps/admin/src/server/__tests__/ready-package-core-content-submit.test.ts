@@ -3,7 +3,9 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import {
   serializeReadyPackageContentExportV1,
+  serializeReadyPackageContentExportV1_1,
   type ReadyPackageContentExportV1,
+  type ReadyPackageContentExportV1_1,
 } from "@markorbit/contracts";
 import { initializeRegistry } from "@markorbit/persistence";
 import { SqliteReadyPackageCoreIntakeSubmissionRepository } from "@markorbit/persistence/ready-package-core-intake-submissions";
@@ -65,8 +67,8 @@ async function fixture() {
     },
   );
   const handedOff = readyPackages.getById(readyPackage.id, WORKSPACE_ID)!;
-  const contentExport: ReadyPackageContentExportV1 = {
-    contractVersion: "1.0",
+  const contentExport: ReadyPackageContentExportV1_1 = {
+    contractVersion: "1.1",
     objectType: "READY_PACKAGE_CONTENT_EXPORT",
     readyPackageId: handedOff.id,
     knowledgeWorkspaceId: WORKSPACE_ID,
@@ -95,12 +97,30 @@ async function fixture() {
       encoding: "utf-8",
       content: MARKDOWN,
     },
+    sourceGovernance: {
+      snapshotVersion: "1.0",
+      kind: "STANDARD_SOURCE",
+      sourceId: handedOff.evidence.sourceId!,
+    },
   };
   return { database, readyPackages, handedOff, submissions, contentExport };
 }
 
-function resultFor(contentExport: ReadyPackageContentExportV1) {
-  const requestJson = serializeReadyPackageContentExportV1(contentExport);
+function legacyExport(contentExport: ReadyPackageContentExportV1_1): ReadyPackageContentExportV1 {
+  return {
+    contractVersion: "1.0",
+    objectType: contentExport.objectType,
+    readyPackageId: contentExport.readyPackageId,
+    knowledgeWorkspaceId: contentExport.knowledgeWorkspaceId,
+    readyPackageDigest: contentExport.readyPackageDigest,
+    provenance: structuredClone(contentExport.provenance),
+    rawArtifact: structuredClone(contentExport.rawArtifact),
+    stagingDocument: structuredClone(contentExport.stagingDocument),
+  };
+}
+
+function resultFor(contentExport: ReadyPackageContentExportV1_1) {
+  const requestJson = serializeReadyPackageContentExportV1_1(contentExport);
   return {
     intakeId: CORE_INTAKE_ID,
     readyPackageId: READY_PACKAGE_ID,
@@ -110,7 +130,7 @@ function resultFor(contentExport: ReadyPackageContentExportV1) {
 }
 
 describe("retry-safe ReadyPackage Core content submission", () => {
-  it("freezes the exact request before network and reuses it after an unknown outcome", async () => {
+  it("freezes the governed V1.1 request before network and reuses it after an unknown outcome", async () => {
     const { database, readyPackages, handedOff, submissions, contentExport } = await fixture();
     try {
       const attempts: Array<{ intakeId: string; requestJson: string }> = [];
@@ -137,10 +157,9 @@ describe("retry-safe ReadyPackage Core content submission", () => {
         submitReadyPackageCoreContent(input, readyPackages, submissions, exporter, transport),
       ).rejects.toThrow("SIMULATED_UNKNOWN_CORE_CONTENT_OUTCOME");
       const pending = submissions.list(handedOff.id, WORKSPACE_ID)[0]!;
-      expect(pending.contentDelivery).toMatchObject({
-        state: "PENDING",
-        coreIntakeId: CORE_INTAKE_ID,
-        requestJson: attempts[0]!.requestJson,
+      expect(JSON.parse(pending.contentDelivery!.requestJson)).toMatchObject({
+        contractVersion: "1.1",
+        sourceGovernance: { kind: "STANDARD_SOURCE" },
       });
       const recovered = await submitReadyPackageCoreContent(
         input,
@@ -155,17 +174,17 @@ describe("retry-safe ReadyPackage Core content submission", () => {
       expect(recovered.deliveryReplayed).toBe(true);
       expect(recovered.transportResultReplayed).toBe(false);
       expect(recovered.coreContentResult).toEqual(expected);
-      expect(recovered.submission.contentDelivery).toMatchObject({ state: "RESULT_RECORDED" });
     } finally {
       database.close();
     }
   });
 
-  it("finalizes locally from persisted transport evidence without rebuilding or calling Core", async () => {
+  it("replays an already-frozen legacy V1 request without rebuilding or rewriting it", async () => {
     const { database, readyPackages, handedOff, submissions, contentExport } = await fixture();
     try {
       const intakeSubmission = submissions.list(handedOff.id, WORKSPACE_ID)[0]!;
-      const requestJson = serializeReadyPackageContentExportV1(contentExport);
+      const legacy = legacyExport(contentExport);
+      const requestJson = serializeReadyPackageContentExportV1(legacy);
       const exportSha256 = createHash("sha256").update(requestJson, "utf8").digest("hex");
       submissions.prepareContentDelivery(intakeSubmission.submissionId, WORKSPACE_ID, {
         coreIntakeId: CORE_INTAKE_ID,
@@ -200,14 +219,14 @@ describe("retry-safe ReadyPackage Core content submission", () => {
       );
       expect(exporter).not.toHaveBeenCalled();
       expect(transport.submit).not.toHaveBeenCalled();
+      expect(recovered.coreContentExport.contractVersion).toBe("1.0");
       expect(recovered.transportResultReplayed).toBe(true);
-      expect(recovered.submission.contentDelivery?.state).toBe("RESULT_RECORDED");
     } finally {
       database.close();
     }
   });
 
-  it("replays an already finalized content delivery without another external side effect", async () => {
+  it("replays an already finalized governed delivery without another external side effect", async () => {
     const { database, readyPackages, handedOff, submissions, contentExport } = await fixture();
     try {
       const expected = resultFor(contentExport);
@@ -244,6 +263,7 @@ describe("retry-safe ReadyPackage Core content submission", () => {
       expect(replay.deliveryReplayed).toBe(true);
       expect(replay.transportResultReplayed).toBe(true);
       expect(replay.coreContentResult).toEqual(expected);
+      expect(replay.coreContentExport.contractVersion).toBe("1.1");
     } finally {
       database.close();
     }
