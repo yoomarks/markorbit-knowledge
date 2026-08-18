@@ -26,12 +26,14 @@ afterEach(async () => {
   if (previousApiKey === undefined) delete process.env.MARKORBIT_CAPABILITY_API_KEY;
   else process.env.MARKORBIT_CAPABILITY_API_KEY = previousApiKey;
   await Promise.all(
-    servers.splice(0).map(
-      (server) =>
-        new Promise<void>((resolve, reject) =>
-          server.close((error) => (error ? reject(error) : resolve())),
-        ),
-    ),
+    servers
+      .splice(0)
+      .map(
+        (server) =>
+          new Promise<void>((resolve, reject) =>
+            server.close((error) => (error ? reject(error) : resolve())),
+          ),
+      ),
   );
 });
 
