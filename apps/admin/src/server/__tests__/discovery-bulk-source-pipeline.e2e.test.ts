@@ -221,6 +221,8 @@ describe("Bulk Source Pipeline E2E", () => {
 
     const completedRunIds = new Set<string>();
     const conversionRunIds = new Set<string>();
+    let firstArtifactId: string | null = null;
+    let firstConversionRunId: string | null = null;
     for (let index = 0; index < 100; index += 1) {
       const claim = workers.claim(worker.view.worker.id, worker.credential);
       expect(claim.job).not.toBeNull();
@@ -313,11 +315,26 @@ describe("Bulk Source Pipeline E2E", () => {
       expect(conversion.status).toBe("ENQUEUED");
       if (conversion.status === "ENQUEUED" || conversion.status === "REPLAYED") {
         conversionRunIds.add(conversion.conversionRunId);
+        if (index === 0) {
+          firstArtifactId = finalized.artifact.id;
+          firstConversionRunId = conversion.conversionRunId;
+        }
       }
     }
 
     expect(completedRunIds.size).toBe(100);
     expect(conversionRunIds.size).toBe(100);
+    expect(firstArtifactId).not.toBeNull();
+    expect(firstConversionRunId).not.toBeNull();
+    const replay = dispatchAutomaticConversionForArtifactWithDependencies(
+      { database, artifacts, converters, conversionRuns, clock },
+      firstArtifactId!,
+      workspaceId,
+    );
+    expect(replay.status).toBe("REPLAYED");
+    if (replay.status === "REPLAYED") {
+      expect(replay.conversionRunId).toBe(firstConversionRunId);
+    }
     expect(artifacts.list({ limit: 100 }).total).toBe(100);
     expect(
       artifacts.list({ limit: 100 }).items.every(
