@@ -24,6 +24,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Apply Prettier
         run: |
+          # Keep business surfaces and shared ingestion-control helpers formatting-clean.
           pnpm exec prettier --write \
             apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
