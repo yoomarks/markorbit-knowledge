@@ -36,10 +36,7 @@ jobs:
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
             apps/admin/src/server/source-failure-root-causes.ts \
             apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
-            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts \
-            packages/worker-runtime/src/conditional-http-change-watch.ts \
-            packages/worker-runtime/src/index.ts \
-            packages/worker-runtime/tests/conditional-http-change-watch.test.ts
+            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -54,9 +51,6 @@ jobs:
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
             apps/admin/src/server/source-failure-root-causes.ts \
             apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
-            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts \
-            packages/worker-runtime/src/conditional-http-change-watch.ts \
-            packages/worker-runtime/src/index.ts \
-            packages/worker-runtime/tests/conditional-http-change-watch.test.ts
-          git commit -m "style: format conditional http change watch"
+            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
+          git commit -m "style: format admin v2 business surfaces"
           git push origin HEAD:${{ github.head_ref }}
