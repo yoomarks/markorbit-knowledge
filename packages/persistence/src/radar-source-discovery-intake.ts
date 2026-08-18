@@ -9,19 +9,12 @@ import type {
 } from "@markorbit/contracts";
 import type { SourceRepository } from "./index";
 import { RegistryError } from "./index";
-import type {
-  SourceCandidateRecord,
-  SourceDiscoveryRepository,
-} from "./source-discovery-registry";
+import type { SourceCandidateRecord, SourceDiscoveryRepository } from "./source-discovery-registry";
 
 const MAX_RADAR_INTAKE_ITEMS = 250;
 
 export type RadarDiscoveryIntakeState =
-  | "QUEUED"
-  | "ALREADY_IN_DISCOVERY"
-  | "ALREADY_COVERED"
-  | "SKIPPED_BLOCKED"
-  | "SKIPPED_NO_LOCATOR";
+  "QUEUED" | "ALREADY_IN_DISCOVERY" | "ALREADY_COVERED" | "SKIPPED_BLOCKED" | "SKIPPED_NO_LOCATOR";
 
 export type RadarDiscoveryIntakeResult = {
   workspaceId: string;
@@ -108,29 +101,13 @@ function sourceProposalLocator(source: RadarSourceProposal): string | undefined 
           source.newsUrl,
         ];
       case "rss":
-        return [
-          ...acquisitionLocators(source, ["RSS"]),
-          source.newsUrl,
-          source.homepageUrl,
-        ];
+        return [...acquisitionLocators(source, ["RSS"]), source.newsUrl, source.homepageUrl];
       case "sitemap":
-        return [
-          ...acquisitionLocators(source, ["SITEMAP"]),
-          source.homepageUrl,
-          source.newsUrl,
-        ];
+        return [...acquisitionLocators(source, ["SITEMAP"]), source.homepageUrl, source.newsUrl];
       case "api":
-        return [
-          ...acquisitionLocators(source, ["API"]),
-          source.homepageUrl,
-          source.newsUrl,
-        ];
+        return [...acquisitionLocators(source, ["API"]), source.homepageUrl, source.newsUrl];
       case "pdf":
-        return [
-          ...acquisitionLocators(source, ["PDF_WATCH"]),
-          source.newsUrl,
-          source.homepageUrl,
-        ];
+        return [...acquisitionLocators(source, ["PDF_WATCH"]), source.newsUrl, source.homepageUrl];
       default:
         return [
           source.newsUrl,
