@@ -49,7 +49,7 @@ async function* chunk(value: Uint8Array) {
 }
 
 function fixtureId(prefix: string, ordinal: number): string {
-  return `${prefix}_01ARZ3NDEKTSV4RRFFQ${String(ordinal).padStart(8, "0")}`;
+  return `${prefix}_01ARZ3NDEKTSV4RRFF${String(ordinal).padStart(8, "0")}`;
 }
 
 describe("Bulk conversion to Knowledge E2E", () => {
