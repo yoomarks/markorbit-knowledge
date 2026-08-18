@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { isExecutionReceipt, type ExecutionAttempt, type ExecutionReceipt } from "@markorbit/contracts";
+import {
+  isExecutionReceipt,
+  type ExecutionAttempt,
+  type ExecutionReceipt,
+} from "@markorbit/contracts";
 import {
   ArtifactBackedCollectionExecutor,
   CollectionNotModifiedSignal,
