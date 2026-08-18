@@ -27,6 +27,7 @@ export type ConversionAuthorizationResult = {
 
 export type ConversionAuthorizationOptions = {
   conversionProfileId?: string;
+  autoConvertOnly?: boolean;
 };
 
 function profileCompatible(workspaceId: string, artifact: RawArtifact, profile: ConversionProfile) {
@@ -54,6 +55,7 @@ function findProfile(
   workspaceId: string,
   artifact: RawArtifact,
   selectedProfileId?: string,
+  autoConvertOnly = false,
 ): ConversionProfile | null {
   const converters = getConverterRegistryRepository();
   const profiles = selectedProfileId
@@ -63,7 +65,11 @@ function findProfile(
     : converters.listProfiles({ workspaceId, status: "ACTIVE", limit: 100 }).items;
   return (
     profiles
-      .filter((profile) => profileCompatible(workspaceId, artifact, profile))
+      .filter(
+        (profile) =>
+          profileCompatible(workspaceId, artifact, profile) &&
+          (!autoConvertOnly || profile.autoConvert),
+      )
       .sort((left, right) => {
         const sourceScope = Number(Boolean(right.sourceId)) - Number(Boolean(left.sourceId));
         if (sourceScope !== 0) return sourceScope;
@@ -89,11 +95,20 @@ export function authorizeRawArtifactForConversion(
       "RawArtifact belongs to another Workspace",
     );
   }
-  const profile = findProfile(workspaceId, artifact, options.conversionProfileId);
+  const profile = findProfile(
+    workspaceId,
+    artifact,
+    options.conversionProfileId,
+    options.autoConvertOnly,
+  );
   if (!profile) {
     throw new RegistryConflictError(
-      "RAW_ARTIFACT_NO_ACTIVE_CONVERSION_PROFILE",
-      "RawArtifact has no compatible ACTIVE Conversion Profile",
+      options.autoConvertOnly
+        ? "RAW_ARTIFACT_NO_AUTO_CONVERSION_PROFILE"
+        : "RAW_ARTIFACT_NO_ACTIVE_CONVERSION_PROFILE",
+      options.autoConvertOnly
+        ? "RawArtifact has no compatible ACTIVE auto-conversion Profile"
+        : "RawArtifact has no compatible ACTIVE Conversion Profile",
     );
   }
   if (artifact.status === "READY_FOR_CONVERSION") {
