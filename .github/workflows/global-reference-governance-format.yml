@@ -1,0 +1,36 @@
+name: Format governance export files
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/global-reference-governance-export-v1
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write apps/admin/src/server/__tests__/ready-package-content-export.test.ts apps/admin/src/server/__tests__/ready-package-core-content-submit.test.ts apps/admin/src/server/ready-package-content-export.ts apps/admin/src/server/ready-package-core-content-submit.ts apps/admin/src/server/source-governance-snapshot.ts packages/contracts/src/index.ts packages/contracts/src/ready-package-content-export-v1-1.ts packages/contracts/tests/ready-package-content-export-v1-1.test.ts
+      - name: Commit and remove helper
+        shell: bash
+        run: |
+          rm .github/workflows/global-reference-governance-format.yml
+          git config user.name "markorbit-ci"
+          git config user.email "ci@markorbit.invalid"
+          git add -A
+          git commit -m "style: format governed content export"
+          git push origin HEAD:agent/global-reference-governance-export-v1
