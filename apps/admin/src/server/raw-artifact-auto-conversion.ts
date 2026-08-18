@@ -8,7 +8,6 @@ import {
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
 import type { ConversionRunLedgerRepository } from "@markorbit/persistence/conversion-runs";
 import type { ConverterRegistryRepository } from "@markorbit/persistence/converters";
-import type { RawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import { ensureM3CanonicalDocumentAutoProfiles } from "./m3-converter-bootstrap";
 import {
   authorizeRawArtifactForConversionWithDependencies,
@@ -94,9 +93,9 @@ function profileCompatible(
   )?.manifest;
   return Boolean(
     manifest &&
-    manifest.status === "ACTIVE" &&
-    manifest.outputFormat === "MARKDOWN" &&
-    converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
+      manifest.status === "ACTIVE" &&
+      manifest.outputFormat === "MARKDOWN" &&
+      converterAccepts(manifest, artifact.artifactKind, artifact.mimeType),
   );
 }
 
