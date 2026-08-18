@@ -1,11 +1,9 @@
 name: Apply conditional HTTP integration patch
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/http-conditional-acquisition-v1
-    paths:
-      - .github/workflows/http-conditional-patch.yml
+      - main
 
 permissions:
   contents: write
