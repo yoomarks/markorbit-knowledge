@@ -84,12 +84,15 @@ export function RadarCollectionAuthorization() {
       const overview = (await response.json()) as DiscoveryOverview;
       setItems(
         overview.candidates.items.filter(
-          (item) => Boolean(radarEvidence(item.candidate)) && Boolean(item.review?.collectionPlanId),
+          (item) =>
+            Boolean(radarEvidence(item.candidate)) && Boolean(item.review?.collectionPlanId),
         ),
       );
       setError(null);
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "Failed to load Radar sources");
+      setError(
+        refreshError instanceof Error ? refreshError.message : "Failed to load Radar sources",
+      );
     } finally {
       setLoading(false);
     }
@@ -128,7 +131,9 @@ export function RadarCollectionAuthorization() {
       );
     } catch (authorizeError) {
       setError(
-        authorizeError instanceof Error ? authorizeError.message : "Collection authorization failed",
+        authorizeError instanceof Error
+          ? authorizeError.message
+          : "Collection authorization failed",
       );
     } finally {
       setWorkingId(null);
