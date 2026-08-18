@@ -37,7 +37,9 @@ function tableExists(database: DatabaseSync, tableName: string): boolean {
   );
 }
 
-function failureFromAttempt(value: string): Pick<SourceFailureEvidence, "code" | "message" | "retryable" | "occurredAt"> | null {
+function failureFromAttempt(
+  value: string,
+): Pick<SourceFailureEvidence, "code" | "message" | "retryable" | "occurredAt"> | null {
   try {
     const attempt = JSON.parse(value) as FailureRecord;
     const failure = attempt.failure;
@@ -75,10 +77,7 @@ export function summarizeSourceFailureRootCauses(
   evidence: readonly SourceFailureEvidence[],
   limit = 8,
 ): SourceFailureRootCauseSummary {
-  const groups = new Map<
-    string,
-    SourceFailureRootCause & { sourceIdSet: Set<string> }
-  >();
+  const groups = new Map<string, SourceFailureRootCause & { sourceIdSet: Set<string> }>();
   const retryableSourceIds = new Set<string>();
   const terminalSourceIds = new Set<string>();
   const sourceIds = new Set<string>();
