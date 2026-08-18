@@ -1,3 +1,4 @@
+import { RegistryError } from "@markorbit/persistence";
 import type {
   ConverterRegistryRepository,
   CreateConversionProfileInput,
@@ -132,10 +133,27 @@ const CANONICAL_AUTO_PROFILE_SPECS = [
   },
 ] as const;
 
+function isRegistryConflict(error: unknown, code: string): boolean {
+  return error instanceof RegistryError && error.code === code;
+}
+
 export function ensureM3CanonicalDocumentConverters(registry: ConverterRegistryRepository): void {
   for (const manifest of M3_CONVERTERS) {
     if (registry.getManifest(manifest.converterId, manifest.version)) continue;
-    registry.createManifest(manifest);
+    try {
+      registry.createManifest(manifest);
+    } catch (error) {
+      // Multiple artifact finalizers can bootstrap the shared registry at the same time. If another
+      // writer won this exact manifest race, treat the durable row as success; unrelated conflicts
+      // still fail closed.
+      if (
+        isRegistryConflict(error, "CONVERTER_VERSION_EXISTS") &&
+        registry.getManifest(manifest.converterId, manifest.version)
+      ) {
+        continue;
+      }
+      throw error;
+    }
   }
 }
 
@@ -173,6 +191,16 @@ export function ensureM3CanonicalDocumentAutoProfiles(
       precedence: 0,
       autoConvert: true,
     };
-    registry.createProfile(profile);
+    try {
+      registry.createProfile(profile);
+    } catch (error) {
+      // The workspace/name uniqueness constraint is the cross-request serialization point. A
+      // concurrent winner is success only when the expected canonical profile is now observable.
+      const concurrentWinner = registry
+        .listProfiles({ workspaceId, q: spec.name, limit: 100 })
+        .items.find((candidate) => candidate.name === spec.name);
+      if (isRegistryConflict(error, "CONVERSION_PROFILE_CONFLICT") && concurrentWinner) continue;
+      throw error;
+    }
   }
 }
