@@ -150,7 +150,9 @@ export function RadarReviewEvidence() {
       setItems(overview.candidates.items.filter((item) => Boolean(evidenceFor(item.candidate))));
       setError(null);
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "Failed to read Radar review queue");
+      setError(
+        refreshError instanceof Error ? refreshError.message : "Failed to read Radar review queue",
+      );
     } finally {
       setLoading(false);
     }
@@ -302,15 +304,27 @@ export function RadarReviewEvidence() {
                           {zh ? "发现与溯源" : "Discovery provenance"}
                         </p>
                         <div className="mt-2 space-y-1 text-xs leading-5 text-slate-600">
-                          {radar.discoveredBy ? <p>{zh ? "发现者" : "Discovered by"}: {radar.discoveredBy}</p> : null}
-                          {radar.parentSource ? <p>{zh ? "父来源" : "Parent source"}: {radar.parentSource}</p> : null}
+                          {radar.discoveredBy ? (
+                            <p>
+                              {zh ? "发现者" : "Discovered by"}: {radar.discoveredBy}
+                            </p>
+                          ) : null}
+                          {radar.parentSource ? (
+                            <p>
+                              {zh ? "父来源" : "Parent source"}: {radar.parentSource}
+                            </p>
+                          ) : null}
                           {radar.discoveredFrom || candidate.discoveredFrom ? (
                             <p className="break-all">
-                              {zh ? "发现自" : "Discovered from"}: {radar.discoveredFrom ?? candidate.discoveredFrom}
+                              {zh ? "发现自" : "Discovered from"}:{" "}
+                              {radar.discoveredFrom ?? candidate.discoveredFrom}
                             </p>
                           ) : null}
                           {externalId ? <p>External ID: {externalId}</p> : null}
-                          <p>{zh ? "入队时间" : "Queued"}: {new Date(candidate.discoveredAt).toLocaleString(locale)}</p>
+                          <p>
+                            {zh ? "入队时间" : "Queued"}:{" "}
+                            {new Date(candidate.discoveredAt).toLocaleString(locale)}
+                          </p>
                         </div>
                       </div>
 
@@ -321,7 +335,10 @@ export function RadarReviewEvidence() {
                         {radar.acquisitions.length > 0 ? (
                           <div className="mt-2 space-y-2">
                             {radar.acquisitions.slice(0, 6).map((acquisition, index) => (
-                              <div key={`${acquisition.kind ?? "acq"}-${acquisition.locator ?? index}`} className="text-xs text-slate-600">
+                              <div
+                                key={`${acquisition.kind ?? "acq"}-${acquisition.locator ?? index}`}
+                                className="text-xs text-slate-600"
+                              >
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   {acquisition.kind ? (
                                     <span className="rounded bg-white px-1.5 py-0.5 font-semibold text-slate-700">
@@ -340,13 +357,17 @@ export function RadarReviewEvidence() {
                                     {acquisition.locator}
                                   </a>
                                 ) : null}
-                                {acquisition.notes ? <p className="mt-1 text-slate-500">{acquisition.notes}</p> : null}
+                                {acquisition.notes ? (
+                                  <p className="mt-1 text-slate-500">{acquisition.notes}</p>
+                                ) : null}
                               </div>
                             ))}
                           </div>
                         ) : (
                           <p className="mt-2 text-xs text-slate-500">
-                            {zh ? "未提供结构化采集入口；仍可根据主 URL 审核。" : "No structured acquisition endpoint was supplied; review the primary URL."}
+                            {zh
+                              ? "未提供结构化采集入口；仍可根据主 URL 审核。"
+                              : "No structured acquisition endpoint was supplied; review the primary URL."}
                           </p>
                         )}
                       </div>
@@ -354,8 +375,16 @@ export function RadarReviewEvidence() {
 
                     {radar.reason || radar.notes ? (
                       <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/70 px-3 py-2.5 text-xs leading-5 text-amber-900">
-                        {radar.reason ? <p><strong>{zh ? "推荐原因" : "Reason"}:</strong> {radar.reason}</p> : null}
-                        {radar.notes ? <p className={radar.reason ? "mt-1" : ""}><strong>{zh ? "备注" : "Notes"}:</strong> {radar.notes}</p> : null}
+                        {radar.reason ? (
+                          <p>
+                            <strong>{zh ? "推荐原因" : "Reason"}:</strong> {radar.reason}
+                          </p>
+                        ) : null}
+                        {radar.notes ? (
+                          <p className={radar.reason ? "mt-1" : ""}>
+                            <strong>{zh ? "备注" : "Notes"}:</strong> {radar.notes}
+                          </p>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
@@ -367,7 +396,11 @@ export function RadarReviewEvidence() {
                       onClick={() => void decide(candidate.candidateId, "ACCEPTED")}
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-40"
                     >
-                      {workingId === candidate.candidateId ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                      {workingId === candidate.candidateId ? (
+                        <Loader2 size={15} className="animate-spin" />
+                      ) : (
+                        <Check size={15} />
+                      )}
                       {zh ? "批准来源" : "Approve source"}
                     </button>
                     <button
