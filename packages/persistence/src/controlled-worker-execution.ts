@@ -35,6 +35,8 @@ import {
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const MIGRATION_ID = "0006_worker_execution";
 const ACTIVE_EXECUTION_STATES: ExecutionAttemptStatus[] = ["RUNNING", "UPLOADING", "VERIFYING"];
+const MAX_RETRY_BACKOFF_MS = 30 * 60_000;
+const RETRY_JITTER_RATIO = 0.25;
 
 export type StartExecutionInput = {
   executor: ExecutionExecutor;
@@ -165,6 +167,24 @@ function verifyDigest(value: string, expectedHex: string): boolean {
   const actual = digest(value);
   const expected = Buffer.from(expectedHex, "hex");
   return expected.length === actual.length && timingSafeEqual(actual, expected);
+}
+
+export function computeExecutionRetryDelayMs(
+  job: Pick<Job, "id" | "attempt" | "planSnapshot">,
+): number {
+  const baseMs = job.planSnapshot.policy.retry.backoffSeconds * 1_000;
+  const capMs = Math.max(baseMs, MAX_RETRY_BACKOFF_MS);
+  const exponent = Math.min(Math.max(job.attempt - 1, 0), 20);
+  const exponentialMs = Math.min(baseMs * 2 ** exponent, capMs);
+  const remainingBeforeCap = Math.max(capMs - exponentialMs, 0);
+  const jitterWindowMs = Math.min(
+    Math.floor(exponentialMs * RETRY_JITTER_RATIO),
+    remainingBeforeCap,
+  );
+  if (jitterWindowMs === 0) return exponentialMs;
+
+  const jitterSeed = digest(`${job.id}:${job.attempt}`).readUInt32BE(0) / 0xffffffff;
+  return exponentialMs + Math.floor(jitterSeed * (jitterWindowMs + 1));
 }
 
 function clone<T>(value: T): T {
@@ -1027,7 +1047,7 @@ export class SqliteWorkerExecutionRepository implements WorkerExecutionRepositor
   }
 
   private insertRetryJob(job: Job, timestamp: string): Job {
-    const backoffMs = job.planSnapshot.policy.retry.backoffSeconds * 1_000;
+    const backoffMs = computeExecutionRetryDelayMs(job);
     const retryJob: Job = {
       ...clone(job),
       id: this.jobIdFactory(),
