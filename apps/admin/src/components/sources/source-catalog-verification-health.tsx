@@ -21,8 +21,7 @@ function metricTone(kind: "fresh" | "stale" | "invalid"): string {
 
 export function SourceCatalogVerificationHealth() {
   const health = readSourceCatalogVerificationHealth();
-  const hasIntegrityDebt =
-    health.duplicateTargetCount > 0 || health.missingEvidenceTargetCount > 0;
+  const hasIntegrityDebt = health.duplicateTargetCount > 0 || health.missingEvidenceTargetCount > 0;
   const needsAttention = health.stale > 0 || health.invalid > 0 || hasIntegrityDebt;
 
   return (
@@ -41,8 +40,8 @@ export function SourceCatalogVerificationHealth() {
           </div>
           <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-600">
             这里衡量的是 Source Coverage Catalog 的证据核验新鲜度，不代表 Source
-            在线状态、采集兼容性或 Supply Health。当前维护策略：超过 {health.maxAgeDays} 天未重新核验即进入
-            stale 工作队列。
+            在线状态、采集兼容性或 Supply Health。当前维护策略：超过 {health.maxAgeDays}{" "}
+            天未重新核验即进入 stale 工作队列。
           </p>
         </div>
         <span
@@ -82,8 +81,9 @@ export function SourceCatalogVerificationHealth() {
             <div>
               <h3 className="text-sm font-semibold text-slate-900">Verification work queue</h3>
               <p className="mt-0.5 text-xs text-slate-500">
-                {health.staleJurisdictionCount} stale jurisdiction(s) · {health.invalidJurisdictionCount}{" "}
-                invalid jurisdiction(s). Invalid metadata is listed before oldest stale evidence.
+                {health.staleJurisdictionCount} stale jurisdiction(s) ·{" "}
+                {health.invalidJurisdictionCount} invalid jurisdiction(s). Invalid metadata is
+                listed before oldest stale evidence.
               </p>
             </div>
           </div>
