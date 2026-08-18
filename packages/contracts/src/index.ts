@@ -25,6 +25,7 @@ export type {
 } from "./source-registry-v1";
 export * from "./source-registry-v2";
 export * from "./source-seed-catalog-v1";
+export * from "./radar-source-intake-v1";
 export { COLLECTION_VERSION } from "./collection-v1";
 export type {
   CollectionTarget,
