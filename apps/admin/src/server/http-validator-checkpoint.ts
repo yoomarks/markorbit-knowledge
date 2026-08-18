@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
-import { getRegistryDatabase } from "@/server/source-registry";
+import { getRegistryDatabase } from "./source-registry";
 
 export type HttpValidatorCheckpoint = {
   workspaceId: string;
