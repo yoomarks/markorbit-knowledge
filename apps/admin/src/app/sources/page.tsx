@@ -14,7 +14,7 @@ export default function SourcesPage() {
     <AdminShell>
       <CorePageHeading page="sources" sourceCreateAction />
       <div className="space-y-6">
-        {/* Radar Source approval is intentionally separate from collection authorization. */}
+        {/* Radar Source approval and collection authorization remain separate operator decisions. */}
         <RadarReviewEvidence />
         <RadarCollectionAuthorization />
         <SourceSmartReviewUi />
