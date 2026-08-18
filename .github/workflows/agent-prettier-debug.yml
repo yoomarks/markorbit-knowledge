@@ -1,9 +1,7 @@
 name: Agent Prettier Debug
 
 on:
-  push:
-    branches:
-      - agent/discovery-page-value-http-e2e-v1
+  pull_request:
 
 jobs:
   prettier-diff:
