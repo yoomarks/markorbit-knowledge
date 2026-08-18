@@ -66,6 +66,18 @@ export type ProductionStagingCommitResult = {
   coreIntakeRequestPreview?: CoreIntakeRequestPreview;
 };
 
+export type ProductionStagingCommitDependencies = {
+  workers: ReturnType<typeof getWorkerRegistryRepository>;
+  conversionRuns: ReturnType<typeof getConversionRunLedgerRepository>;
+  artifacts: ReturnType<typeof getRawArtifactRepository>;
+  sources: ReturnType<typeof getSourceRepository>;
+  staging: ReturnType<typeof getStagingContentRepository>;
+  stagingVerification: ReturnType<typeof getStagingVerificationRepository>;
+  stagingFinalizer: ReturnType<typeof getVerifiedStagingFinalizer>;
+  readyPackages: ReturnType<typeof getReadyPackageRepository>;
+  retrieval: ReturnType<typeof getRetrievalIndexRepository>;
+};
+
 export type AutomaticConversionRecoveryStatus =
   | AutomaticConversionReconciliationResult
   | {
@@ -102,6 +114,146 @@ function assertCanonicalMarkdown(content: Uint8Array, expectedFrontmatter: strin
       "Canonical Markdown frontmatter does not match control-plane provenance",
     );
   }
+}
+
+function productionStagingCommitDependencies(): ProductionStagingCommitDependencies {
+  return {
+    workers: getWorkerRegistryRepository(),
+    conversionRuns: getConversionRunLedgerRepository(),
+    artifacts: getRawArtifactRepository(),
+    sources: getSourceRepository(),
+    staging: getStagingContentRepository(),
+    stagingVerification: getStagingVerificationRepository(),
+    stagingFinalizer: getVerifiedStagingFinalizer(),
+    readyPackages: getReadyPackageRepository(),
+    retrieval: getRetrievalIndexRepository(),
+  };
+}
+
+export function commitProductionStagingWithDependencies(
+  dependencies: ProductionStagingCommitDependencies,
+  input: ProductionStagingCommitInput,
+  credential: string,
+): ProductionStagingCommitResult {
+  if (!KEY.test(input.idempotencyKey)) {
+    throw new RegistryValidationError("Invalid production Staging commit idempotency key");
+  }
+  const worker = dependencies.workers.verifyCredential(input.workerId, credential);
+  if (worker.workspaceId !== input.workspaceId) {
+    throw new RegistryConflictError(
+      "STAGING_WORKER_WORKSPACE_MISMATCH",
+      "Worker credential belongs to another Workspace",
+    );
+  }
+
+  const run = dependencies.conversionRuns.getById(input.conversionRunId, input.workspaceId);
+  if (!run) {
+    throw new RegistryError(
+      "CONVERSION_RUN_NOT_FOUND",
+      `ConversionRun ${input.conversionRunId} was not found`,
+    );
+  }
+  const artifact = dependencies.artifacts.getArtifact(run.run.rawArtifactId);
+  if (!artifact) {
+    throw new RegistryError(
+      "RAW_ARTIFACT_NOT_FOUND",
+      `RawArtifact ${run.run.rawArtifactId} was not found`,
+    );
+  }
+  const source = dependencies.sources.getById(run.run.sourceId);
+  if (!source) {
+    throw new RegistryError("SOURCE_NOT_FOUND", `Source ${run.run.sourceId} was not found`);
+  }
+  const metadata = canonicalDocumentMetadata(run.run, artifact.artifact, source);
+  assertCanonicalMarkdown(input.content, canonicalMarkdownFrontmatter(metadata));
+
+  const staging = dependencies.staging.ingestGenerated({
+    workspaceId: input.workspaceId,
+    workerId: input.workerId,
+    conversionRunId: input.conversionRunId,
+    conversionAttemptId: input.conversionAttemptId,
+    uploadGrantId: input.uploadGrantId,
+    idempotencyKey: `${input.idempotencyKey}:ingest`,
+    title: source.name,
+    content: input.content,
+  });
+  const verification = dependencies.stagingVerification.verifyGenerated({
+    workspaceId: input.workspaceId,
+    stagingDocumentId: staging.record.descriptor.id,
+    idempotencyKey: `${input.idempotencyKey}:verify`,
+  });
+  const status = verification.record.descriptor.status;
+  if (status !== "READY" && status !== "BLOCKED") {
+    throw new RegistryConflictError(
+      "STAGING_VERIFICATION_STATUS_INVALID",
+      "Staging verification did not produce a terminal decision",
+    );
+  }
+  const finalization = dependencies.stagingFinalizer.finalize({
+    workspaceId: input.workspaceId,
+    stagingDocumentId: staging.record.descriptor.id,
+    idempotencyKey: `${input.idempotencyKey}:finalize`,
+  });
+
+  if (finalization.decision === "FAILED") {
+    return {
+      stagingDocumentId: staging.record.descriptor.id,
+      stagingStatus: status,
+      verificationOutcome: verification.evidence.outcome,
+      finalizationDecision: "FAILED",
+    };
+  }
+
+  const completedRun = dependencies.conversionRuns.getById(
+    input.conversionRunId,
+    input.workspaceId,
+  );
+  if (!completedRun || completedRun.run.status !== "COMPLETED") {
+    throw new RegistryConflictError(
+      "READY_PACKAGE_RUN_NOT_COMPLETED",
+      "ReadyPackage requires a completed ConversionRun",
+    );
+  }
+  const descriptor = verification.record.descriptor;
+  const outcome = verification.evidence.outcome;
+  if (outcome !== "PASS" && outcome !== "PASS_WITH_WARNINGS") {
+    throw new RegistryConflictError(
+      "READY_PACKAGE_VERIFICATION_NOT_PASSING",
+      "ReadyPackage requires passing Staging verification",
+    );
+  }
+  const packageResult = dependencies.readyPackages.createVerified({
+    workspaceId: input.workspaceId,
+    sourceId: completedRun.run.sourceId,
+    rawArtifactId: completedRun.run.rawArtifactId,
+    rawArtifactSha256: artifact.artifact.binaryHash.value,
+    capturedAt: artifact.artifact.capturedAt,
+    conversionRunId: completedRun.run.id,
+    converter: completedRun.run.converter,
+    stagingDocumentId: descriptor.id,
+    stagingSha256: descriptor.contentHash.value,
+    verificationId: verification.evidence.id,
+    verificationOutcome: outcome,
+    idempotencyKey: `${input.idempotencyKey}:ready-package`,
+  });
+  dependencies.retrieval.indexVerified({
+    metadata,
+    stagingDocumentId: descriptor.id,
+    readyPackageId: packageResult.readyPackage.id,
+    title: descriptor.title,
+    targetPath: descriptor.targetPath,
+    contentSha256: descriptor.contentHash.value,
+    canonicalMarkdown: input.content,
+  });
+  const coreIntakeRequestPreview = createCoreIntakeRequestPreview(packageResult.readyPackage);
+  return {
+    stagingDocumentId: descriptor.id,
+    stagingStatus: "READY",
+    verificationOutcome: outcome,
+    finalizationDecision: "COMPLETED",
+    readyPackageId: packageResult.readyPackage.id,
+    coreIntakeRequestPreview,
+  };
 }
 
 export class ProductionConversionWorkerService {
@@ -238,127 +390,10 @@ export class ProductionConversionWorkerService {
     input: ProductionStagingCommitInput,
     credential: string,
   ): ProductionStagingCommitResult {
-    if (!KEY.test(input.idempotencyKey)) {
-      throw new RegistryValidationError("Invalid production Staging commit idempotency key");
-    }
-    const worker = getWorkerRegistryRepository().verifyCredential(input.workerId, credential);
-    if (worker.workspaceId !== input.workspaceId) {
-      throw new RegistryConflictError(
-        "STAGING_WORKER_WORKSPACE_MISMATCH",
-        "Worker credential belongs to another Workspace",
-      );
-    }
-
-    const run = getConversionRunLedgerRepository().getById(
-      input.conversionRunId,
-      input.workspaceId,
+    return commitProductionStagingWithDependencies(
+      productionStagingCommitDependencies(),
+      input,
+      credential,
     );
-    if (!run) {
-      throw new RegistryError(
-        "CONVERSION_RUN_NOT_FOUND",
-        `ConversionRun ${input.conversionRunId} was not found`,
-      );
-    }
-    const artifact = getRawArtifactRepository().getArtifact(run.run.rawArtifactId);
-    if (!artifact) {
-      throw new RegistryError(
-        "RAW_ARTIFACT_NOT_FOUND",
-        `RawArtifact ${run.run.rawArtifactId} was not found`,
-      );
-    }
-    const source = getSourceRepository().getById(run.run.sourceId);
-    if (!source) {
-      throw new RegistryError("SOURCE_NOT_FOUND", `Source ${run.run.sourceId} was not found`);
-    }
-    const metadata = canonicalDocumentMetadata(run.run, artifact.artifact, source);
-    assertCanonicalMarkdown(input.content, canonicalMarkdownFrontmatter(metadata));
-
-    const staging = getStagingContentRepository().ingestGenerated({
-      workspaceId: input.workspaceId,
-      workerId: input.workerId,
-      conversionRunId: input.conversionRunId,
-      conversionAttemptId: input.conversionAttemptId,
-      uploadGrantId: input.uploadGrantId,
-      idempotencyKey: `${input.idempotencyKey}:ingest`,
-      title: source.name,
-      content: input.content,
-    });
-    const verification = getStagingVerificationRepository().verifyGenerated({
-      workspaceId: input.workspaceId,
-      stagingDocumentId: staging.record.descriptor.id,
-      idempotencyKey: `${input.idempotencyKey}:verify`,
-    });
-    const status = verification.record.descriptor.status;
-    if (status !== "READY" && status !== "BLOCKED") {
-      throw new RegistryConflictError(
-        "STAGING_VERIFICATION_STATUS_INVALID",
-        "Staging verification did not produce a terminal decision",
-      );
-    }
-    const finalization = getVerifiedStagingFinalizer().finalize({
-      workspaceId: input.workspaceId,
-      stagingDocumentId: staging.record.descriptor.id,
-      idempotencyKey: `${input.idempotencyKey}:finalize`,
-    });
-
-    if (finalization.decision === "FAILED") {
-      return {
-        stagingDocumentId: staging.record.descriptor.id,
-        stagingStatus: status,
-        verificationOutcome: verification.evidence.outcome,
-        finalizationDecision: "FAILED",
-      };
-    }
-
-    const completedRun = getConversionRunLedgerRepository().getById(
-      input.conversionRunId,
-      input.workspaceId,
-    );
-    if (!completedRun || completedRun.run.status !== "COMPLETED") {
-      throw new RegistryConflictError(
-        "READY_PACKAGE_RUN_NOT_COMPLETED",
-        "ReadyPackage requires a completed ConversionRun",
-      );
-    }
-    const descriptor = verification.record.descriptor;
-    const outcome = verification.evidence.outcome;
-    if (outcome !== "PASS" && outcome !== "PASS_WITH_WARNINGS") {
-      throw new RegistryConflictError(
-        "READY_PACKAGE_VERIFICATION_NOT_PASSING",
-        "ReadyPackage requires passing Staging verification",
-      );
-    }
-    const packageResult = getReadyPackageRepository().createVerified({
-      workspaceId: input.workspaceId,
-      sourceId: completedRun.run.sourceId,
-      rawArtifactId: completedRun.run.rawArtifactId,
-      rawArtifactSha256: artifact.artifact.binaryHash.value,
-      capturedAt: artifact.artifact.capturedAt,
-      conversionRunId: completedRun.run.id,
-      converter: completedRun.run.converter,
-      stagingDocumentId: descriptor.id,
-      stagingSha256: descriptor.contentHash.value,
-      verificationId: verification.evidence.id,
-      verificationOutcome: outcome,
-      idempotencyKey: `${input.idempotencyKey}:ready-package`,
-    });
-    getRetrievalIndexRepository().indexVerified({
-      metadata,
-      stagingDocumentId: descriptor.id,
-      readyPackageId: packageResult.readyPackage.id,
-      title: descriptor.title,
-      targetPath: descriptor.targetPath,
-      contentSha256: descriptor.contentHash.value,
-      canonicalMarkdown: input.content,
-    });
-    const coreIntakeRequestPreview = createCoreIntakeRequestPreview(packageResult.readyPackage);
-    return {
-      stagingDocumentId: descriptor.id,
-      stagingStatus: "READY",
-      verificationOutcome: outcome,
-      finalizationDecision: "COMPLETED",
-      readyPackageId: packageResult.readyPackage.id,
-      coreIntakeRequestPreview,
-    };
   }
 }
