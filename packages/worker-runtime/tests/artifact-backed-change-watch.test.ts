@@ -14,8 +14,9 @@ import {
 
 function context(
   jobType: "WEB_CRAWL" | "PAGE_UPDATE_CHECK" | "API_COLLECTION",
-  scheduleMode: "INTERVAL" | "CHANGE_WATCH" =
-    jobType === "PAGE_UPDATE_CHECK" ? "CHANGE_WATCH" : "INTERVAL",
+  scheduleMode: "INTERVAL" | "CHANGE_WATCH" = jobType === "PAGE_UPDATE_CHECK"
+    ? "CHANGE_WATCH"
+    : "INTERVAL",
 ): ArtifactBackedExecutionContext {
   return {
     workerId: "wrk_fixture",
