@@ -1,6 +1,7 @@
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import { AdminShell } from "@/components/admin-shell";
 import { CorePageHeading } from "@/components/core-page-heading";
+import { RadarReviewEvidence } from "@/components/sources/radar-review-evidence";
 import { RepresentativeActivationWave } from "@/components/sources/representative-activation-wave";
 import { SourceCountryCoverage } from "@/components/sources/source-country-coverage";
 import { SourceList } from "@/components/sources/source-list";
@@ -12,6 +13,8 @@ export default function SourcesPage() {
     <AdminShell>
       <CorePageHeading page="sources" sourceCreateAction />
       <div className="space-y-6">
+        {/* Radar Source approval is intentionally separate from collection authorization. */}
+        <RadarReviewEvidence />
         <SourceSmartReviewUi />
         <SourceSupplyCoverage workspaceId={DEFAULT_WORKSPACE.id} />
         <RepresentativeActivationWave workspaceId={DEFAULT_WORKSPACE.id} />
