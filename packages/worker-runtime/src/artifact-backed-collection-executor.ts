@@ -51,6 +51,16 @@ export class CollectionAcquisitionError extends Error {
   }
 }
 
+export class CollectionNotModifiedSignal extends CollectionAcquisitionError {
+  constructor(
+    public readonly canonicalUri: string,
+    message = "Remote representation is unchanged",
+  ) {
+    super("HTTP_NOT_MODIFIED", message, false);
+    this.name = "CollectionNotModifiedSignal";
+  }
+}
+
 export interface CollectionArtifactAcquirer {
   readonly executor: ExecutionExecutor;
   acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]>;
@@ -262,6 +272,20 @@ export class ArtifactBackedCollectionExecutor {
       await this.client.complete(context, receipt, `${prefix}-complete`);
       return receipt;
     } catch (error) {
+      if (started && error instanceof CollectionNotModifiedSignal) {
+        await this.client.uploading(context, `${prefix}-uploading`);
+        await this.client.verifying(context, `${prefix}-verifying`);
+        const receipt: ExecutionReceipt = {
+          executor: this.acquirer.executor,
+          outputKinds: [],
+          itemsObserved: 0,
+          bytesPrepared: 0,
+          metadataOnly: true,
+          summary: `HTTP change watch confirmed no modification for ${error.canonicalUri}; no response body or RawArtifact upload was required.`,
+        };
+        await this.client.complete(context, receipt, `${prefix}-complete`);
+        return receipt;
+      }
       if (started) {
         const failure = failureFrom(error);
         try {
