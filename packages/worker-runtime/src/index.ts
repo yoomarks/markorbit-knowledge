@@ -18,6 +18,7 @@ export * from "./artifact-ingestion-port";
 export * from "./artifact-backed-collection-executor";
 export * from "./crawl4ai-subprocess-acquirer";
 export * from "./api-acquirer";
+export * from "./conditional-http-change-watch";
 export * from "./public-network-policy";
 export * from "./rss-acquirer";
 export * from "./github-acquirer";
@@ -98,7 +99,10 @@ export const FIXTURE_EXECUTOR: ExecutionExecutor = {
   mode: "FIXTURE",
 };
 export type FixtureExecutionScenario =
-  "SUCCESS" | "FAIL_AFTER_START" | "FAIL_DURING_UPLOAD" | "FAIL_DURING_VERIFY";
+  | "SUCCESS"
+  | "FAIL_AFTER_START"
+  | "FAIL_DURING_UPLOAD"
+  | "FAIL_DURING_VERIFY";
 export type ClaimedExecutionContext = { workerId: string; job: Job; lease: JobLease };
 export interface WorkerExecutionClient {
   start(context: ClaimedExecutionContext, executor: ExecutionExecutor, key: string): Promise<void>;
