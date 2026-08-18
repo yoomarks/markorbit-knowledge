@@ -13,9 +13,7 @@ export function SourceFailureRootCauses() {
         <div>
           <div className="flex items-center gap-2">
             <AlertTriangle size={18} className="text-amber-600" />
-            <h2 className="text-sm font-semibold text-slate-950">
-              失败根因 / Failure root causes
-            </h2>
+            <h2 className="text-sm font-semibold text-slate-950">失败根因 / Failure root causes</h2>
           </div>
           <p className="mt-1 text-xs text-slate-500">
             按最新持久化 Worker 失败的错误码、域名与可重试性聚类，帮助判断批量故障还是单站故障。
@@ -51,9 +49,7 @@ export function SourceFailureRootCauses() {
               </div>
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  cluster.retryable
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-rose-100 text-rose-700"
+                  cluster.retryable ? "bg-amber-100 text-amber-800" : "bg-rose-100 text-rose-700"
                 }`}
               >
                 {cluster.retryable ? "Retryable" : "Terminal"}
