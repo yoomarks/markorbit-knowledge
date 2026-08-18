@@ -91,6 +91,15 @@ export function createConditionalHttpChangeWatch(
     });
 
     if (response.statusCode === 304 && conditional) {
+      try {
+        await validators.write(context, canonicalUri, {
+          etag: responseHeader(response, "etag") ?? etag,
+          lastModified: responseHeader(response, "last-modified") ?? lastModified,
+        });
+      } catch {
+        // The remote 304 is authoritative for this request. A checkpoint refresh
+        // failure must not turn a no-change observation into acquisition failure.
+      }
       throw new CollectionNotModifiedSignal(
         canonicalUri,
         "HTTP conditional request confirmed the remote representation is unchanged",
@@ -102,11 +111,11 @@ export function createConditionalHttpChangeWatch(
         etag: responseHeader(response, "etag"),
         lastModified: responseHeader(response, "last-modified"),
       };
-      if (next.etag || next.lastModified) {
+      if (next.etag || next.lastModified || checkpoint) {
         try {
           await validators.write(context, canonicalUri, next);
         } catch {
-          // Persisting validators is also an optimization. Preserve acquired evidence.
+          // Persisting or clearing validators is an optimization. Preserve acquired evidence.
         }
       }
     }
@@ -182,6 +191,10 @@ export class HttpValidatorControlPlaneClient implements HttpValidatorClient {
     canonicalUri: string,
     checkpoint: HttpValidatorCheckpoint,
   ): Promise<void> {
+    if (!checkpoint.etag && !checkpoint.lastModified) {
+      await this.request(context, { operation: "CLEAR", canonicalUri });
+      return;
+    }
     await this.request(context, {
       operation: "WRITE",
       canonicalUri,

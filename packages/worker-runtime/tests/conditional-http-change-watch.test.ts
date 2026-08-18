@@ -177,4 +177,33 @@ describe("ArtifactBackedCollectionExecutor HTTP 304 completion", () => {
     expect(fail).not.toHaveBeenCalled();
     expect(complete).toHaveBeenCalledTimes(1);
   });
+  it("clears a stale validator checkpoint when a successful response stops advertising validators", async () => {
+    const write = vi.fn(async () => {});
+    const validators: HttpValidatorClient = {
+      async read() {
+        return { etag: '"old"', lastModified: null };
+      },
+      write,
+    };
+    const base: ApiTransport = vi.fn(async () => ({
+      statusCode: 200,
+      headers: {},
+      body: new TextEncoder().encode('{"ok":true}'),
+    }));
+    const conditional = createConditionalHttpChangeWatch(base, validators);
+    const acquirer = conditional.wrap({
+      executor: { executorId: "fixture", version: "1.0.0", mode: "FIXTURE" },
+      async acquire() {
+        await conditional.transport(request);
+        return [];
+      },
+    });
+
+    await acquirer.acquire(context());
+
+    expect(write).toHaveBeenCalledWith(expect.anything(), "https://example.com/feed?b=2&a=1", {
+      etag: null,
+      lastModified: null,
+    });
+  });
 });

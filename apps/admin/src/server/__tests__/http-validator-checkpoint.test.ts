@@ -166,4 +166,25 @@ describe("HTTP validator checkpoints", () => {
       env.database.close();
     }
   });
+  it("clears a stale checkpoint under the same authenticated lease scope", () => {
+    const env = fixture();
+    try {
+      env.repository.write({
+        ...env.auth,
+        canonicalUri: "https://example.com/feed",
+        etag: '"old"',
+      });
+      expect(
+        env.repository.clear({ ...env.auth, canonicalUri: "https://example.com/feed#fragment" }),
+      ).toBe(true);
+      expect(
+        env.repository.read({ ...env.auth, canonicalUri: "https://example.com/feed" }),
+      ).toBeNull();
+      expect(env.repository.clear({ ...env.auth, canonicalUri: "https://example.com/feed" })).toBe(
+        false,
+      );
+    } finally {
+      env.database.close();
+    }
+  });
 });
