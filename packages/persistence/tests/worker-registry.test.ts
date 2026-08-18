@@ -342,7 +342,12 @@ describe("SQLite Worker Registry", () => {
     const env = environment();
     dispatchOne(env);
     const secondSource = env.sources.create(
-      sourceInput({ name: "Second source", slug: "second-source" }),
+      sourceInput({
+        name: "Second source",
+        slug: "second-source",
+        canonicalUri: "https://www.wipo.int/pressroom/en/",
+        entrypoints: [{ uri: "https://www.wipo.int/pressroom/en/" }],
+      }),
     );
     const secondPlan = env.plans.create(planInput(secondSource.id, { name: "Second plan" }));
     env.runs.dispatchManual({ planId: secondPlan.plan.id });
@@ -372,10 +377,8 @@ describe("SQLite Worker Registry", () => {
     env.database.close();
   });
 
-  it("shares a durable web-domain concurrency gate across Workers and www aliases", () => {
-    const env = environment(new DatabaseSync(":memory:"), {
-      maxConcurrentWebLeasesPerDomain: 1,
-    });
+  it("shares the default durable web-domain concurrency gate across Workers and www aliases", () => {
+    const env = environment();
     const firstSource = env.sources.create(sourceInput());
     const firstPlan = env.plans.create(planInput(firstSource.id, { name: "First USPTO plan" }));
     env.runs.dispatchManual({ planId: firstPlan.plan.id });

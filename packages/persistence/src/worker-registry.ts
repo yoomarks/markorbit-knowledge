@@ -44,7 +44,9 @@ export const DEFAULT_HEARTBEAT_FRESHNESS_MS = 90_000;
 export const DEFAULT_HEARTBEAT_CLOCK_SKEW_MS = 300_000;
 export const DEFAULT_LEASE_DURATION_MS = 120_000;
 export const DEFAULT_MAX_LEASE_LIFETIME_MS = 900_000;
-export const DEFAULT_MAX_CONCURRENT_WEB_LEASES_PER_DOMAIN = 2;
+// Crawl jobs enforce their own per-plan request rate. Serializing same-domain jobs by default
+// keeps aggregate upstream traffic within that plan-level safety budget across Workers.
+export const DEFAULT_MAX_CONCURRENT_WEB_LEASES_PER_DOMAIN = 1;
 
 export type WorkerProtocolOptions = {
   heartbeatFreshnessMs?: number;
