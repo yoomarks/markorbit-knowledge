@@ -25,7 +25,7 @@ jobs:
       - name: Apply Prettier
         run: |
           # Keep business surfaces and shared ingestion-control helpers formatting-clean,
-          # including the bulk collection-to-Knowledge P0 acceptance path.
+          # including production staging and the bulk collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
             apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
