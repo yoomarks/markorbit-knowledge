@@ -5,9 +5,12 @@ import {
   GitHubArtifactAcquirer,
   HttpControlledCollectionClient,
   HttpProductionConversionClient,
+  HttpValidatorControlPlaneClient,
   LocalFolderArtifactAcquirer,
   ProductionConversionWorkerRuntime,
   RssArtifactAcquirer,
+  createConditionalHttpChangeWatch,
+  defaultApiTransport,
 } from "@markorbit/worker-runtime";
 import { loadWorkerProcessConfig } from "./config";
 
@@ -32,6 +35,14 @@ async function main(): Promise<void> {
     config.workerId,
     config.workerCredential,
   );
+  const conditionalHttp = createConditionalHttpChangeWatch(
+    defaultApiTransport,
+    new HttpValidatorControlPlaneClient(
+      config.controlPlaneUrl,
+      config.workerId,
+      config.workerCredential,
+    ),
+  );
   const acquirer =
     config.collectionProvider === "local-folder"
       ? new LocalFolderArtifactAcquirer({
@@ -42,9 +53,9 @@ async function main(): Promise<void> {
           maxDepth: config.localFolderMaxDepth,
         })
       : config.collectionProvider === "api"
-        ? new ApiArtifactAcquirer()
+        ? conditionalHttp.wrap(new ApiArtifactAcquirer({ transport: conditionalHttp.transport }))
         : config.collectionProvider === "rss"
-          ? new RssArtifactAcquirer()
+          ? conditionalHttp.wrap(new RssArtifactAcquirer({ transport: conditionalHttp.transport }))
           : config.collectionProvider === "github"
             ? new GitHubArtifactAcquirer({
                 maxFileBytes: config.githubMaxFileBytes,
