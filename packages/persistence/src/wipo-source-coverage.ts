@@ -25,6 +25,7 @@ function target(
     | "verifiedAt"
   > & {
     verificationEvidenceUri?: string;
+    verifiedAt?: string;
     catalogState?: SourceCoverageCatalogState;
   },
 ): SourceCoverageTarget {
@@ -241,5 +242,32 @@ export const WIPO_SOURCE_COVERAGE_TARGETS = [
       fetchAttachmentsHint: false,
       expectedArtifactKinds: ["HTML", "MARKDOWN"],
     },
+  }),
+  target({
+    id: "wo-wipo-udrp-decisions",
+    family: "APPEALS_AND_CASELAW",
+    displayName: "WIPO Domain Name Decisions and Decision Search",
+    canonicalUri: "https://www.wipo.int/en/web/amc/domain-name-disputes/decisions",
+    entrypoints: [
+      {
+        uri: "https://www.wipo.int/en/web/amc/domain-name-disputes/decisions",
+        label: "WIPO Domain Name Decisions",
+      },
+      {
+        uri: "https://www.wipo.int/en/web/amc/domain-name-disputes/search/index",
+        label: "Search WIPO cases and panel decisions",
+      },
+    ],
+    coverageTier: "SUPPORTING",
+    changeSensitivity: "HIGH",
+    acquisition: {
+      mode: "MIXED",
+      renderJavascriptHint: true,
+      fetchAttachmentsHint: false,
+      expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    },
+    verificationEvidenceUri:
+      "https://www.wipo.int/en/web/amc/domain-name-disputes/decisions",
+    verifiedAt: "2026-08-19T02:14:00+08:00",
   }),
 ] satisfies readonly SourceCoverageTarget[];
