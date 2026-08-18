@@ -73,7 +73,8 @@
     "./foundational-action-executions": "./src/foundational-action-execution-ledger.ts",
     "./document-change-feed": "./src/document-change-feed.ts",
     "./local-pipeline-adapter": "./src/local-pipeline-adapter.ts",
-    "./conversion-pipeline-inspection": "./src/conversion-pipeline-inspection.ts"
+    "./conversion-pipeline-inspection": "./src/conversion-pipeline-inspection.ts",
+    "./source-coverage-verification-audit": "./src/source-coverage-verification-audit.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
