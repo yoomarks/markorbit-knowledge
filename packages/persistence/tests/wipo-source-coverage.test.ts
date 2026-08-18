@@ -10,9 +10,9 @@ import {
 
 describe("WIPO source coverage catalog", () => {
   it("ships a unique curated WIPO trademark baseline", () => {
-    expect(WIPO_SOURCE_COVERAGE_TARGETS).toHaveLength(10);
-    expect(new Set(WIPO_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(10);
-    expect(new Set(WIPO_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size).toBe(10);
+    expect(WIPO_SOURCE_COVERAGE_TARGETS).toHaveLength(11);
+    expect(new Set(WIPO_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(11);
+    expect(new Set(WIPO_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size).toBe(11);
 
     for (const item of WIPO_SOURCE_COVERAGE_TARGETS) {
       expect(item.jurisdiction).toBe("WO");
@@ -34,15 +34,16 @@ describe("WIPO source coverage catalog", () => {
 
   it("filters and summarizes WIPO independently from the US map", () => {
     const targets = listSourceCoverageTargets({ jurisdiction: "wo" });
-    expect(targets).toHaveLength(10);
+    expect(targets).toHaveLength(11);
     expect(targets.every((item) => item.jurisdiction === "WO")).toBe(true);
 
     const summary = summarizeSourceCoverage(targets);
-    expect(summary.total).toBe(10);
-    expect(summary.byTier).toEqual({ FOUNDATIONAL: 8, SUPPORTING: 1, CHANGE_SIGNAL: 1 });
+    expect(summary.total).toBe(11);
+    expect(summary.byTier).toEqual({ FOUNDATIONAL: 8, SUPPORTING: 2, CHANGE_SIGNAL: 1 });
     expect(summary.byFamily.STATUS_AND_DOCUMENTS).toBe(1);
     expect(summary.byFamily.OFFICIAL_GAZETTE).toBe(1);
     expect(summary.byFamily.POLICY_NOTICES).toBe(2);
+    expect(summary.byFamily.APPEALS_AND_CASELAW).toBe(1);
   });
 
   it("exposes current WIPO legal-text and Madrid Monitor targets", () => {
@@ -52,6 +53,21 @@ describe("WIPO source coverage catalog", () => {
     expect(getSourceCoverageTarget("wo-wipo-madrid-monitor")?.entrypoints).toContainEqual({
       uri: "https://www3.wipo.int/madrid/monitor/en/",
       label: "Legacy Madrid Monitor",
+    });
+  });
+
+  it("adds official WIPO UDRP decisions as supporting case-law coverage", () => {
+    const decisions = getSourceCoverageTarget("wo-wipo-udrp-decisions");
+
+    expect(decisions?.family).toBe("APPEALS_AND_CASELAW");
+    expect(decisions?.coverageTier).toBe("SUPPORTING");
+    expect(decisions?.changeSensitivity).toBe("HIGH");
+    expect(decisions?.canonicalUri).toBe(
+      "https://www.wipo.int/en/web/amc/domain-name-disputes/decisions",
+    );
+    expect(decisions?.entrypoints).toContainEqual({
+      uri: "https://www.wipo.int/en/web/amc/domain-name-disputes/search/index",
+      label: "Search WIPO cases and panel decisions",
     });
   });
 
