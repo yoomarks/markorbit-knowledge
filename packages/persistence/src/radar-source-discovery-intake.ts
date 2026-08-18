@@ -384,10 +384,15 @@ export function queueRadarSourceIntakeForDiscovery(
   dependencies: RadarDiscoveryIntakeDependencies,
 ): RadarDiscoveryBatchIntakeResult {
   const workspaceId = assertWorkspaceId(input.workspaceId);
-  if (input.plan.mode !== "PLAN" || input.plan.mutationPerformed) {
+  if (
+    input.plan.mode !== "PLAN" ||
+    input.plan.mutationPerformed ||
+    input.plan.activationAuthorized ||
+    input.plan.collectionAuthorized
+  ) {
     throw new RegistryError(
       "RADAR_INTAKE_PLAN_REQUIRED",
-      "Radar Discovery intake accepts only a zero-mutation PLAN document",
+      "Radar Discovery intake accepts only a zero-mutation, zero-authorization PLAN document",
     );
   }
   if (input.plan.summary.errors > 0) {
@@ -407,8 +412,6 @@ export function queueRadarSourceIntakeForDiscovery(
     );
   }
 
-  // Resolve every item before any persistence mutation. This keeps malformed or
-  // unsupported intake documents from leaving a partially queued Radar batch.
   const registeredByLocator = registeredSourceIdsByLocator(
     listWorkspaceSources(dependencies.sources, workspaceId),
   );
