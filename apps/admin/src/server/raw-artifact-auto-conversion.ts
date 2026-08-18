@@ -6,8 +6,13 @@ import {
   type RawArtifact,
 } from "@markorbit/contracts";
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import type { ConversionRunLedgerRepository } from "@markorbit/persistence/conversion-runs";
+import type { ConverterRegistryRepository } from "@markorbit/persistence/converters";
 import { ensureM3CanonicalDocumentAutoProfiles } from "./m3-converter-bootstrap";
-import { authorizeRawArtifactForConversion } from "./raw-artifact-conversion-authorization";
+import {
+  authorizeRawArtifactForConversionWithDependencies,
+  type ConversionAuthorizationDependencies,
+} from "./raw-artifact-conversion-authorization";
 import {
   getConversionRunLedgerRepository,
   getConverterRegistryRepository,
@@ -33,6 +38,10 @@ export type AutomaticConversionHandoffResult =
       conversionRunId: string;
     };
 
+export type AutomaticConversionDependencies = ConversionAuthorizationDependencies & {
+  conversionRuns: ConversionRunLedgerRepository;
+};
+
 export type AutomaticConversionReconciliationFailure = {
   artifactId: string;
   code: string;
@@ -54,10 +63,20 @@ export type AutomaticConversionReconciliationOptions = {
   limit?: number;
 };
 
+function productionDependencies(): AutomaticConversionDependencies {
+  return {
+    database: getRegistryDatabase(),
+    artifacts: getRawArtifactRepository(),
+    converters: getConverterRegistryRepository(),
+    conversionRuns: getConversionRunLedgerRepository(),
+  };
+}
+
 function profileCompatible(
   workspaceId: string,
   artifact: RawArtifact,
   profile: ConversionProfile,
+  converters: ConverterRegistryRepository,
 ): boolean {
   if (!profile.autoConvert) return false;
   if (profile.workspaceId !== workspaceId || profile.status !== "ACTIVE") return false;
@@ -68,7 +87,7 @@ function profileCompatible(
   ) {
     return false;
   }
-  const manifest = getConverterRegistryRepository().getManifest(
+  const manifest = converters.getManifest(
     profile.converter.converterId,
     profile.converter.version,
   )?.manifest;
@@ -83,9 +102,8 @@ function profileCompatible(
 function compatibleAutomaticProfile(
   workspaceId: string,
   artifact: RawArtifact,
+  converters: ConverterRegistryRepository,
 ): ConversionProfile | null {
-  const converters = getConverterRegistryRepository();
-
   // READY_FOR_CONVERSION is a sticky authorization boundary. Recovery must continue with the
   // profile that already authorized the immutable bytes rather than silently switching to a
   // newly higher-precedence profile.
@@ -93,7 +111,8 @@ function compatibleAutomaticProfile(
     const authorizedProfileId = artifact.extensions?.["x-conversion-profile-id"];
     if (typeof authorizedProfileId !== "string") return null;
     const authorizedProfile = converters.getProfile(authorizedProfileId);
-    return authorizedProfile && profileCompatible(workspaceId, artifact, authorizedProfile)
+    return authorizedProfile &&
+      profileCompatible(workspaceId, artifact, authorizedProfile, converters)
       ? authorizedProfile
       : null;
   }
@@ -101,7 +120,7 @@ function compatibleAutomaticProfile(
   return (
     converters
       .listProfiles({ workspaceId, status: "ACTIVE", limit: 100 })
-      .items.filter((profile) => profileCompatible(workspaceId, artifact, profile))
+      .items.filter((profile) => profileCompatible(workspaceId, artifact, profile, converters))
       .sort((left, right) => {
         const sourceScope = Number(Boolean(right.sourceId)) - Number(Boolean(left.sourceId));
         if (sourceScope !== 0) return sourceScope;
@@ -115,11 +134,12 @@ function automaticIdempotencyKey(artifactId: string, profileId: string): string 
   return `auto-profile:${artifactId}:${profileId}`;
 }
 
-export function dispatchAutomaticConversionForArtifact(
+export function dispatchAutomaticConversionForArtifactWithDependencies(
+  dependencies: AutomaticConversionDependencies,
   artifactId: string,
   workspaceId: string,
 ): AutomaticConversionHandoffResult {
-  const view = getRawArtifactRepository().getArtifact(artifactId);
+  const view = dependencies.artifacts.getArtifact(artifactId);
   if (!view) {
     throw new RegistryError("RAW_ARTIFACT_NOT_FOUND", `RawArtifact ${artifactId} was not found`);
   }
@@ -142,16 +162,19 @@ export function dispatchAutomaticConversionForArtifact(
     };
   }
 
-  ensureM3CanonicalDocumentAutoProfiles(getConverterRegistryRepository(), workspaceId);
-  const profile = compatibleAutomaticProfile(workspaceId, artifact);
+  ensureM3CanonicalDocumentAutoProfiles(dependencies.converters, workspaceId);
+  const profile = compatibleAutomaticProfile(workspaceId, artifact, dependencies.converters);
   if (!profile) {
     return { status: "NOT_APPLICABLE", reason: "NO_AUTO_PROFILE", artifactId };
   }
 
-  const authorization = authorizeRawArtifactForConversion(artifactId, workspaceId, {
-    conversionProfileId: profile.id,
-  });
-  const dispatch = getConversionRunLedgerRepository().dispatchManual({
+  const authorization = authorizeRawArtifactForConversionWithDependencies(
+    dependencies,
+    artifactId,
+    workspaceId,
+    { conversionProfileId: profile.id },
+  );
+  const dispatch = dependencies.conversionRuns.dispatchManual({
     workspaceId,
     rawArtifactId: artifactId,
     conversionProfileId: authorization.conversionProfileId,
@@ -169,6 +192,17 @@ export function dispatchAutomaticConversionForArtifact(
     conversionProfileId: profile.id,
     conversionRunId: dispatch.record.run.id,
   };
+}
+
+export function dispatchAutomaticConversionForArtifact(
+  artifactId: string,
+  workspaceId: string,
+): AutomaticConversionHandoffResult {
+  return dispatchAutomaticConversionForArtifactWithDependencies(
+    productionDependencies(),
+    artifactId,
+    workspaceId,
+  );
 }
 
 function normalizedRecoveryLimit(value: number | undefined): number {
@@ -304,13 +338,12 @@ export function reconcileAutomaticConversions(
   workspaceId: string,
   options: AutomaticConversionReconciliationOptions = {},
 ): AutomaticConversionReconciliationResult {
+  const dependencies = productionDependencies();
   // Ensure all tables referenced by the recovery query have been initialized before selecting.
-  const converters = getConverterRegistryRepository();
-  getConversionRunLedgerRepository();
-  ensureM3CanonicalDocumentAutoProfiles(converters, workspaceId);
+  ensureM3CanonicalDocumentAutoProfiles(dependencies.converters, workspaceId);
 
   const candidateIds = automaticConversionRecoveryCandidateIds(
-    getRegistryDatabase(),
+    dependencies.database,
     workspaceId,
     normalizedRecoveryLimit(options.limit),
   );
@@ -328,7 +361,11 @@ export function reconcileAutomaticConversions(
 
   for (const artifactId of candidateIds) {
     try {
-      const handoff = dispatchAutomaticConversionForArtifact(artifactId, workspaceId);
+      const handoff = dispatchAutomaticConversionForArtifactWithDependencies(
+        dependencies,
+        artifactId,
+        workspaceId,
+      );
       if (handoff.status === "ENQUEUED") result.enqueued += 1;
       else if (handoff.status === "REPLAYED") result.replayed += 1;
       else if (handoff.status === "ALREADY_PROCESSED") result.alreadyProcessed += 1;

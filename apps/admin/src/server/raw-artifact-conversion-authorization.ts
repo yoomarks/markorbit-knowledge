@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import type { DatabaseSync } from "node:sqlite";
 import {
   converterAccepts,
   isRawArtifact,
@@ -12,6 +13,8 @@ import {
   RegistryError,
   RegistryValidationError,
 } from "@markorbit/persistence";
+import type { ConverterRegistryRepository } from "@markorbit/persistence/converters";
+import type { RawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import {
   getConverterRegistryRepository,
   getRawArtifactRepository,
@@ -29,7 +32,19 @@ export type ConversionAuthorizationOptions = {
   conversionProfileId?: string;
 };
 
-function profileCompatible(workspaceId: string, artifact: RawArtifact, profile: ConversionProfile) {
+export type ConversionAuthorizationDependencies = {
+  database: DatabaseSync;
+  artifacts: RawArtifactRepository;
+  converters: ConverterRegistryRepository;
+  clock?: () => Date;
+};
+
+function profileCompatible(
+  workspaceId: string,
+  artifact: RawArtifact,
+  profile: ConversionProfile,
+  converters: ConverterRegistryRepository,
+) {
   if (profile.workspaceId !== workspaceId || profile.status !== "ACTIVE") return false;
   if (profile.sourceId && profile.sourceId !== artifact.sourceId) return false;
   if (!profile.input.artifactKinds.includes(artifact.artifactKind)) return false;
@@ -38,7 +53,7 @@ function profileCompatible(workspaceId: string, artifact: RawArtifact, profile: 
   ) {
     return false;
   }
-  const manifest = getConverterRegistryRepository().getManifest(
+  const manifest = converters.getManifest(
     profile.converter.converterId,
     profile.converter.version,
   )?.manifest;
@@ -53,9 +68,9 @@ function profileCompatible(workspaceId: string, artifact: RawArtifact, profile: 
 function findProfile(
   workspaceId: string,
   artifact: RawArtifact,
+  converters: ConverterRegistryRepository,
   selectedProfileId?: string,
 ): ConversionProfile | null {
-  const converters = getConverterRegistryRepository();
   const profiles = selectedProfileId
     ? [converters.getProfile(selectedProfileId)].filter(
         (profile): profile is ConversionProfile => profile !== null,
@@ -63,7 +78,7 @@ function findProfile(
     : converters.listProfiles({ workspaceId, status: "ACTIVE", limit: 100 }).items;
   return (
     profiles
-      .filter((profile) => profileCompatible(workspaceId, artifact, profile))
+      .filter((profile) => profileCompatible(workspaceId, artifact, profile, converters))
       .sort((left, right) => {
         const sourceScope = Number(Boolean(right.sourceId)) - Number(Boolean(left.sourceId));
         if (sourceScope !== 0) return sourceScope;
@@ -73,12 +88,13 @@ function findProfile(
   );
 }
 
-export function authorizeRawArtifactForConversion(
+export function authorizeRawArtifactForConversionWithDependencies(
+  dependencies: ConversionAuthorizationDependencies,
   artifactId: string,
   workspaceId: string,
   options: ConversionAuthorizationOptions = {},
 ): ConversionAuthorizationResult {
-  const artifacts = getRawArtifactRepository();
+  const { artifacts, converters, database } = dependencies;
   const view = artifacts.getArtifact(artifactId);
   if (!view)
     throw new RegistryError("RAW_ARTIFACT_NOT_FOUND", `RawArtifact ${artifactId} was not found`);
@@ -89,7 +105,7 @@ export function authorizeRawArtifactForConversion(
       "RawArtifact belongs to another Workspace",
     );
   }
-  const profile = findProfile(workspaceId, artifact, options.conversionProfileId);
+  const profile = findProfile(workspaceId, artifact, converters, options.conversionProfileId);
   if (!profile) {
     throw new RegistryConflictError(
       "RAW_ARTIFACT_NO_ACTIVE_CONVERSION_PROFILE",
@@ -138,7 +154,7 @@ export function authorizeRawArtifactForConversion(
     status: "READY_FOR_CONVERSION",
     extensions: {
       ...(artifact.extensions ?? {}),
-      "x-conversion-authorized-at": new Date().toISOString(),
+      "x-conversion-authorized-at": (dependencies.clock ?? (() => new Date()))().toISOString(),
       "x-conversion-authorization-basis": "immutable-bytes+active-profile",
       "x-conversion-profile-id": profile.id,
     },
@@ -146,7 +162,7 @@ export function authorizeRawArtifactForConversion(
   if (!isRawArtifact(next)) {
     throw new RegistryValidationError("Conversion authorization produced an invalid RawArtifact");
   }
-  const update = getRegistryDatabase()
+  const update = database
     .prepare(
       "UPDATE raw_artifacts SET status = ?, document_json = ? WHERE id = ? AND workspace_id = ? AND status = ?",
     )
@@ -163,4 +179,21 @@ export function authorizeRawArtifactForConversion(
     conversionProfileId: profile.id,
     replayed: false,
   };
+}
+
+export function authorizeRawArtifactForConversion(
+  artifactId: string,
+  workspaceId: string,
+  options: ConversionAuthorizationOptions = {},
+): ConversionAuthorizationResult {
+  return authorizeRawArtifactForConversionWithDependencies(
+    {
+      database: getRegistryDatabase(),
+      artifacts: getRawArtifactRepository(),
+      converters: getConverterRegistryRepository(),
+    },
+    artifactId,
+    workspaceId,
+    options,
+  );
 }

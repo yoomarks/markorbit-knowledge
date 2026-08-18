@@ -7,6 +7,8 @@ import type { ExecutionReceipt, SourceDiscoveryBatch } from "@markorbit/contract
 import { openRegistryDatabase, SqliteSourceRepository } from "@markorbit/persistence";
 import { SqliteCollectionPlanRepository } from "@markorbit/persistence/collection-plans";
 import { SqliteConnectorRepository } from "@markorbit/persistence/connectors";
+import { SqliteConversionRunLedgerRepository } from "@markorbit/persistence/conversion-runs";
+import { SqliteConverterRegistryRepository } from "@markorbit/persistence/converters";
 import { SqliteExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import { SqliteSourceDiscoveryRepository } from "@markorbit/persistence/source-discovery";
@@ -19,6 +21,7 @@ import { DiscoveryCollectionService } from "../discovery-collection-service";
 import { parseDiscoveryImport } from "../discovery-import-parser";
 import { reviewDiscoveryCandidatesBatch } from "../discovery-review-batch-service";
 import { DiscoveryWorkflowService } from "../discovery-service";
+import { dispatchAutomaticConversionForArtifactWithDependencies } from "../raw-artifact-auto-conversion";
 
 const temporaryPaths: string[] = [];
 
@@ -59,7 +62,7 @@ function csvFixture(): Uint8Array {
 }
 
 describe("Bulk Source Pipeline E2E", () => {
-  it("takes 100 spreadsheet websites through discovery, approval, first collection, and RawArtifact completion", async () => {
+  it("takes 100 spreadsheet websites through discovery, approval, first collection, and automatic conversion handoff", async () => {
     const preview = parseDiscoveryImport({
       fileName: "bulk-source-intake.csv",
       content: csvFixture(),
@@ -85,6 +88,8 @@ describe("Bulk Source Pipeline E2E", () => {
     const workers = new SqliteWorkerRegistryRepository(database, clock);
     const executions = new SqliteWorkerExecutionRepository(database, clock);
     const artifacts = new SqliteRawArtifactRepository(database, storageRoot, clock);
+    const converters = new SqliteConverterRegistryRepository(database, clock);
+    const conversionRuns = new SqliteConversionRunLedgerRepository(database, clock);
     const candidateIds: string[] = [];
 
     const workflow = new DiscoveryWorkflowService({
@@ -215,6 +220,9 @@ describe("Bulk Source Pipeline E2E", () => {
     );
 
     const completedRunIds = new Set<string>();
+    const conversionRunIds = new Set<string>();
+    let firstArtifactId: string | null = null;
+    let firstConversionRunId: string | null = null;
     for (let index = 0; index < 100; index += 1) {
       const claim = workers.claim(worker.view.worker.id, worker.credential);
       expect(claim.job).not.toBeNull();
@@ -298,13 +306,50 @@ describe("Bulk Source Pipeline E2E", () => {
       );
       expect(completed.attempt.status).toBe("COMPLETED");
       completedRunIds.add(job.runId);
+
+      const artifactId = finalized.artifact.artifact.id;
+      const conversion = dispatchAutomaticConversionForArtifactWithDependencies(
+        { database, artifacts, converters, conversionRuns, clock },
+        artifactId,
+        workspaceId,
+      );
+      expect(conversion.status).toBe("ENQUEUED");
+      if (conversion.status === "ENQUEUED" || conversion.status === "REPLAYED") {
+        conversionRunIds.add(conversion.conversionRunId);
+        if (index === 0) {
+          firstArtifactId = artifactId;
+          firstConversionRunId = conversion.conversionRunId;
+        }
+      }
     }
 
     expect(completedRunIds.size).toBe(100);
+    expect(conversionRunIds.size).toBe(100);
+    expect(firstArtifactId).not.toBeNull();
+    expect(firstConversionRunId).not.toBeNull();
+    // A finalize/recovery replay must converge on the original AUTO_PROFILE run, not enqueue #101.
+    const replay = dispatchAutomaticConversionForArtifactWithDependencies(
+      { database, artifacts, converters, conversionRuns, clock },
+      firstArtifactId!,
+      workspaceId,
+    );
+    expect(replay.status).toBe("REPLAYED");
+    if (replay.status === "REPLAYED") {
+      expect(replay.conversionRunId).toBe(firstConversionRunId);
+    }
     expect(artifacts.list({ limit: 100 }).total).toBe(100);
+    expect(
+      artifacts
+        .list({ limit: 100 })
+        .items.every((record) => record.artifact.status === "READY_FOR_CONVERSION"),
+    ).toBe(true);
     const completedRuns = runs.list({ limit: 100 });
     expect(completedRuns.total).toBe(100);
     expect(completedRuns.items.every((record) => record.run.status === "COMPLETED")).toBe(true);
+    const pendingConversions = conversionRuns.list({ workspaceId, limit: 100 });
+    expect(pendingConversions.total).toBe(100);
+    expect(pendingConversions.items.every((run) => run.trigger === "AUTO_PROFILE")).toBe(true);
+    expect(pendingConversions.items.every((run) => run.status === "PENDING")).toBe(true);
     expect(workers.claim(worker.view.worker.id, worker.credential).job).toBeNull();
 
     database.close();

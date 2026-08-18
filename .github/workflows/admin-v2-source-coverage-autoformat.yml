@@ -24,7 +24,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Apply Prettier
         run: |
-          # Keep business surfaces and shared ingestion-control helpers formatting-clean.
+          # Keep business surfaces and shared ingestion-control helpers formatting-clean,
+          # including the bulk collection-to-conversion P0 acceptance path.
           pnpm exec prettier --write \
             apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
@@ -34,7 +35,9 @@ jobs:
             apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
+            apps/admin/src/server/raw-artifact-conversion-authorization.ts \
             apps/admin/src/server/source-failure-root-causes.ts \
+            apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
             apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
             apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
           if git diff --quiet; then exit 0; fi
@@ -49,7 +52,9 @@ jobs:
             apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
+            apps/admin/src/server/raw-artifact-conversion-authorization.ts \
             apps/admin/src/server/source-failure-root-causes.ts \
+            apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
             apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
             apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
           git commit -m "style: format admin v2 business surfaces"
