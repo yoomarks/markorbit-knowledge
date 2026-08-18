@@ -320,8 +320,7 @@ describe("controlled Worker execution", () => {
     ]);
     const retryAvailableAt = waiting?.jobs[1]?.availableAt;
     expect(retryAvailableAt).toBeDefined();
-    const retryDelayMs =
-      Date.parse(retryAvailableAt!) - Date.parse("2026-07-16T08:00:00.000Z");
+    const retryDelayMs = Date.parse(retryAvailableAt!) - Date.parse("2026-07-16T08:00:00.000Z");
     expect(retryDelayMs).toBeGreaterThanOrEqual(10_000);
     expect(retryDelayMs).toBeLessThanOrEqual(12_500);
     expect(env.workers.listLeases({ status: "RELEASED" }).items[0]?.closeReason).toBe(
