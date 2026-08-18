@@ -327,6 +327,7 @@ describe("Bulk Source Pipeline E2E", () => {
     expect(conversionRunIds.size).toBe(100);
     expect(firstArtifactId).not.toBeNull();
     expect(firstConversionRunId).not.toBeNull();
+    // A finalize/recovery replay must converge on the original AUTO_PROFILE run, not enqueue #101.
     const replay = dispatchAutomaticConversionForArtifactWithDependencies(
       { database, artifacts, converters, conversionRuns, clock },
       firstArtifactId!,
