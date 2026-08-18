@@ -29,9 +29,7 @@ function environment() {
   };
 }
 
-function sourceProposal(
-  overrides: Partial<RadarSourceProposal> = {},
-): RadarSourceProposal {
+function sourceProposal(overrides: Partial<RadarSourceProposal> = {}): RadarSourceProposal {
   return {
     externalSourceId: "radar-wipo-alerts",
     name: "WIPO Alerts",
@@ -103,11 +101,13 @@ function candidateProposal(
   };
 }
 
-function plan(args: {
-  sources?: RadarSourceProposal[];
-  candidates?: RadarCandidateProposal[];
-  errors?: number;
-} = {}): RadarSourceIntakePlan {
+function plan(
+  args: {
+    sources?: RadarSourceProposal[];
+    candidates?: RadarCandidateProposal[];
+    errors?: number;
+  } = {},
+): RadarSourceIntakePlan {
   const sourceProposals = args.sources ?? [sourceProposal()];
   const candidateProposals = args.candidates ?? [candidateProposal()];
   return {

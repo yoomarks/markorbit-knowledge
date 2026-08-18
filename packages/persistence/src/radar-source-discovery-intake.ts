@@ -9,19 +9,12 @@ import type {
 } from "@markorbit/contracts";
 import type { SourceRepository } from "./index";
 import { RegistryError } from "./index";
-import type {
-  SourceCandidateRecord,
-  SourceDiscoveryRepository,
-} from "./source-discovery-registry";
+import type { SourceCandidateRecord, SourceDiscoveryRepository } from "./source-discovery-registry";
 
 const MAX_RADAR_INTAKE_ITEMS = 250;
 
 export type RadarDiscoveryIntakeState =
-  | "QUEUED"
-  | "ALREADY_IN_DISCOVERY"
-  | "ALREADY_COVERED"
-  | "SKIPPED_BLOCKED"
-  | "SKIPPED_NO_LOCATOR";
+  "QUEUED" | "ALREADY_IN_DISCOVERY" | "ALREADY_COVERED" | "SKIPPED_BLOCKED" | "SKIPPED_NO_LOCATOR";
 
 export type RadarDiscoveryIntakeResult = {
   workspaceId: string;
@@ -123,7 +116,10 @@ function listWorkspaceSources(
 function registeredSourceIdsByLocator(sources: SourceDefinition[]): Map<string, string[]> {
   const byLocator = new Map<string, string[]>();
   for (const source of sources) {
-    const locators = [source.canonicalUri, ...source.entrypoints.map((entrypoint) => entrypoint.uri)];
+    const locators = [
+      source.canonicalUri,
+      ...source.entrypoints.map((entrypoint) => entrypoint.uri),
+    ];
     for (const rawLocator of locators) {
       const locator = normalizeHttpLocator(rawLocator);
       if (!locator) continue;
