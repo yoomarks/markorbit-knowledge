@@ -277,7 +277,7 @@ export class ArtifactBackedCollectionExecutor {
         await this.client.verifying(context, `${prefix}-verifying`);
         const receipt: ExecutionReceipt = {
           executor: this.acquirer.executor,
-          outputKinds: [],
+          outputKinds: [...context.job.planSnapshot.output.artifactKinds],
           itemsObserved: 0,
           bytesPrepared: 0,
           metadataOnly: true,
