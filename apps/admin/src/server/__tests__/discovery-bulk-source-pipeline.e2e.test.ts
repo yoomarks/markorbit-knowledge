@@ -164,6 +164,7 @@ describe("Bulk Source Pipeline E2E", () => {
       succeeded: 100,
       failed: 0,
       collectionStarted: 100,
+      collectionDeferred: 0,
     });
 
     const sourceList = sources.list({ sourceType: "WEB", limit: 100 });

@@ -20,6 +20,7 @@ export type DiscoveryBatchReviewItem =
       planId?: string;
       runId?: string;
       replayed?: boolean;
+      collectionDeferred?: boolean;
     }
   | {
       candidateId: string;
@@ -34,6 +35,7 @@ export type DiscoveryBatchReviewResult = {
     succeeded: number;
     failed: number;
     collectionStarted: number;
+    collectionDeferred: number;
   };
 };
 
@@ -49,6 +51,14 @@ function failure(error: unknown) {
   };
 }
 
+function isRadarOnboardingCandidate(candidate: unknown): boolean {
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return false;
+  const candidateRecord = candidate as { candidate?: { metadata?: Record<string, unknown> } };
+  const radarIntake = candidateRecord.candidate?.metadata?.radarIntake;
+  if (!radarIntake || typeof radarIntake !== "object" || Array.isArray(radarIntake)) return false;
+  return (radarIntake as Record<string, unknown>).origin === "RADAR_CODEX_ONBOARDING";
+}
+
 export function reviewDiscoveryCandidatesBatch(
   input: DiscoveryBatchReviewInput,
   dependencies: Dependencies,
@@ -58,6 +68,7 @@ export function reviewDiscoveryCandidatesBatch(
     string,
     { representativeCandidateId: string; candidateIds: string[] }
   >();
+  let collectionDeferred = 0;
 
   // Phase 1: complete the entire review batch first. This lets every accepted page
   // converge into its Source/default plan before any immutable execution snapshot is taken.
@@ -79,12 +90,18 @@ export function reviewDiscoveryCandidatesBatch(
         );
       }
 
+      const radarOnboarding = isRadarOnboardingCandidate(reviewed.candidate);
       items.set(candidateId, {
         candidateId,
         status: "ACCEPTED",
         sourceId: reviewed.source.id,
         planId: reviewed.plan.id,
+        ...(radarOnboarding && input.startCollection ? { collectionDeferred: true } : {}),
       });
+      if (input.startCollection && radarOnboarding) {
+        collectionDeferred += 1;
+        continue;
+      }
       if (input.startCollection) {
         const groupKey = `${reviewed.source.id}\u0000${reviewed.plan.id}`;
         const group = collectionGroups.get(groupKey);
@@ -104,6 +121,8 @@ export function reviewDiscoveryCandidatesBatch(
 
   // Phase 2: authorize once per unique Source/default-plan boundary, after every
   // successful acceptance above has updated the Source acquisition configuration.
+  // Radar onboarding candidates are deliberately excluded: approving a Source proposal
+  // is not collection authorization. They require an explicit later supply action.
   const newlyStartedRuns = new Set<string>();
   for (const group of collectionGroups.values()) {
     try {
@@ -137,6 +156,7 @@ export function reviewDiscoveryCandidatesBatch(
       succeeded: input.candidateIds.length - failed,
       failed,
       collectionStarted: newlyStartedRuns.size,
+      collectionDeferred,
     },
   };
 }

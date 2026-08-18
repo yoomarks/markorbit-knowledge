@@ -62,6 +62,7 @@ describe("reviewDiscoveryCandidatesBatch", () => {
       succeeded: 2,
       failed: 0,
       collectionStarted: 1,
+      collectionDeferred: 0,
     });
   });
 
@@ -104,8 +105,62 @@ describe("reviewDiscoveryCandidatesBatch", () => {
 
     expect(dispatches).toEqual(["cand_a", "cand_c"]);
     expect(result.summary.collectionStarted).toBe(1);
+    expect(result.summary.collectionDeferred).toBe(0);
     expect(result.items[1]).toMatchObject({ runId: "run_new", replayed: false });
     expect(result.items[2]).toMatchObject({ runId: "run_prior", replayed: true });
+  });
+
+  it("accepts Radar onboarding into Sources but defers collection even when the client requests it", () => {
+    let dispatchCount = 0;
+    const result = reviewDiscoveryCandidatesBatch(
+      {
+        candidateIds: ["cand_radar"],
+        decision: "ACCEPTED",
+        reviewer: "admin-console",
+        startCollection: true,
+      },
+      {
+        workflow: {
+          review() {
+            return {
+              candidate: {
+                candidate: {
+                  metadata: {
+                    radarIntake: { origin: "RADAR_CODEX_ONBOARDING" },
+                  },
+                },
+              } as never,
+              source: { id: "src_radar" } as never,
+              plan: { id: "pln_radar" } as never,
+            };
+          },
+        },
+        collection: {
+          authorizeAndDispatch() {
+            dispatchCount += 1;
+            throw new Error("Radar approval must not authorize collection");
+          },
+        },
+      },
+    );
+
+    expect(dispatchCount).toBe(0);
+    expect(result.items).toEqual([
+      {
+        candidateId: "cand_radar",
+        status: "ACCEPTED",
+        sourceId: "src_radar",
+        planId: "pln_radar",
+        collectionDeferred: true,
+      },
+    ]);
+    expect(result.summary).toEqual({
+      requested: 1,
+      succeeded: 1,
+      failed: 0,
+      collectionStarted: 0,
+      collectionDeferred: 1,
+    });
   });
 
   it("never dispatches rejected reviews", () => {
@@ -135,5 +190,6 @@ describe("reviewDiscoveryCandidatesBatch", () => {
     expect(dispatchCount).toBe(0);
     expect(result.items.map((item) => item.status)).toEqual(["REJECTED", "REJECTED"]);
     expect(result.summary.collectionStarted).toBe(0);
+    expect(result.summary.collectionDeferred).toBe(0);
   });
 });
