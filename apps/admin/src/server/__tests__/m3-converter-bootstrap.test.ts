@@ -18,7 +18,10 @@ describe("M3 canonical converter bootstrap", () => {
     ensureM3CanonicalDocumentAutoProfiles(converters, DEFAULT_WORKSPACE.id);
     ensureM3CanonicalDocumentAutoProfiles(converters, DEFAULT_WORKSPACE.id);
 
-    const profiles = converters.listProfiles({ workspaceId: DEFAULT_WORKSPACE.id, limit: 100 }).items;
+    const profiles = converters.listProfiles({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      limit: 100,
+    }).items;
     expect(profiles).toHaveLength(4);
     expect(
       profiles.map((profile) => ({
@@ -60,9 +63,9 @@ describe("M3 canonical converter bootstrap", () => {
         }),
       ]),
     );
-    expect(profiles.some((profile) => profile.converter.converterId === "local-ocr-markdown")).toBe(
-      false,
-    );
+    expect(
+      profiles.some((profile) => profile.converter.converterId === "local-ocr-markdown"),
+    ).toBe(false);
   });
 
   it("leaves operator-created profiles unchanged", () => {
