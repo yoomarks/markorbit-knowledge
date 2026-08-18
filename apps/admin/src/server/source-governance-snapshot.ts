@@ -104,7 +104,11 @@ export function buildSourceGovernanceSnapshotV1(
   const intendedUses = stringArrayExtension(source, "x-markorbit-reference-intended-uses", {
     required: true,
   });
-  if (!intendedUses.every((item) => GLOBAL_REFERENCE_INTENDED_USES.includes(item as GlobalReferenceIntendedUse))) {
+  if (
+    !intendedUses.every((item) =>
+      GLOBAL_REFERENCE_INTENDED_USES.includes(item as GlobalReferenceIntendedUse),
+    )
+  ) {
     fail(source, "x-markorbit-reference-intended-uses");
   }
 

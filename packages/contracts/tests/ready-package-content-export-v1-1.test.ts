@@ -84,9 +84,9 @@ describe("ReadyPackage Content Export V1.1", () => {
     const second = fixture() as unknown as Record<string, unknown>;
     const secondGovernance = structuredClone(second.sourceGovernance) as Record<string, unknown>;
     secondGovernance.contentReusePolicy = "FULL_REPUBLICATION";
-    expect(
-      isReadyPackageContentExportV1_1({ ...second, sourceGovernance: secondGovernance }),
-    ).toBe(false);
+    expect(isReadyPackageContentExportV1_1({ ...second, sourceGovernance: secondGovernance })).toBe(
+      false,
+    );
   });
 
   it("accepts the minimal standard Source snapshot but never legalTruthVerified=true", () => {

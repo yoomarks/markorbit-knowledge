@@ -45,8 +45,7 @@ export type GlobalReferenceSourceGovernanceSnapshotV1 = {
 };
 
 export type SourceGovernanceSnapshotV1 =
-  | StandardSourceGovernanceSnapshotV1
-  | GlobalReferenceSourceGovernanceSnapshotV1;
+  StandardSourceGovernanceSnapshotV1 | GlobalReferenceSourceGovernanceSnapshotV1;
 
 export type ReadyPackageContentExportV1_1 = Omit<ReadyPackageContentExportV1, "contractVersion"> & {
   contractVersion: typeof READY_PACKAGE_CONTENT_EXPORT_V1_1_VERSION;
@@ -74,7 +73,8 @@ function uniqueStrings(value: string[]): boolean {
 }
 
 export function isSourceGovernanceSnapshotV1(value: unknown): value is SourceGovernanceSnapshotV1 {
-  if (!isRecord(value) || value.snapshotVersion !== SOURCE_GOVERNANCE_SNAPSHOT_VERSION) return false;
+  if (!isRecord(value) || value.snapshotVersion !== SOURCE_GOVERNANCE_SNAPSHOT_VERSION)
+    return false;
   if (value.kind === "STANDARD_SOURCE") {
     return (
       exactKeys(value, ["snapshotVersion", "kind", "sourceId"]) &&
@@ -175,7 +175,11 @@ export function isReadyPackageContentExportV1_1(
     return false;
   }
   try {
-    assertReadyPackageContentExportV1({ ...value, contractVersion: "1.0", sourceGovernance: undefined });
+    assertReadyPackageContentExportV1({
+      ...value,
+      contractVersion: "1.0",
+      sourceGovernance: undefined,
+    });
   } catch {
     const legacy = { ...value } as Record<string, unknown>;
     delete legacy.sourceGovernance;
@@ -198,7 +202,9 @@ export function assertReadyPackageContentExportV1_1(
   }
 }
 
-export function serializeReadyPackageContentExportV1_1(value: ReadyPackageContentExportV1_1): string {
+export function serializeReadyPackageContentExportV1_1(
+  value: ReadyPackageContentExportV1_1,
+): string {
   assertReadyPackageContentExportV1_1(value);
   const legacy = asLegacyV1(value);
   return JSON.stringify({
@@ -228,7 +234,9 @@ export function serializeReadyPackageContentExportV1_1(value: ReadyPackageConten
             factEligibility: value.sourceGovernance.factEligibility,
             verification: {
               policy: value.sourceGovernance.verification.policy,
-              verifyAgainstSourceIds: [...value.sourceGovernance.verification.verifyAgainstSourceIds],
+              verifyAgainstSourceIds: [
+                ...value.sourceGovernance.verification.verifyAgainstSourceIds,
+              ],
               verifyAgainstJurisdictionOfficialSource:
                 value.sourceGovernance.verification.verifyAgainstJurisdictionOfficialSource,
             },
