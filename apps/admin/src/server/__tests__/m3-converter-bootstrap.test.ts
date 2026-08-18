@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryConflictError } from "@markorbit/persistence";
 import { SqliteConverterRegistryRepository } from "@markorbit/persistence/converters";
 import {
   ensureM3CanonicalDocumentAutoProfiles,
@@ -65,6 +65,65 @@ describe("M3 canonical converter bootstrap", () => {
     );
     expect(profiles.some((profile) => profile.converter.converterId === "local-ocr-markdown")).toBe(
       false,
+    );
+  });
+
+  it("treats concurrent manifest and profile bootstrap winners as idempotent success", () => {
+    const converters = registry();
+    const createManifest = converters.createManifest.bind(converters);
+    const createProfile = converters.createProfile.bind(converters);
+    let manifestRaceInjected = false;
+    let profileRaceInjected = false;
+
+    converters.createManifest = (input) => {
+      if (!manifestRaceInjected && input.converterId === "builtin-markdown-staging") {
+        manifestRaceInjected = true;
+        createManifest(input);
+        throw new RegistryConflictError(
+          "CONVERTER_VERSION_EXISTS",
+          "Simulated concurrent manifest winner",
+        );
+      }
+      return createManifest(input);
+    };
+    converters.createProfile = (input) => {
+      if (!profileRaceInjected && input.name === "Canonical Markdown auto staging") {
+        profileRaceInjected = true;
+        createProfile(input);
+        throw new RegistryConflictError(
+          "CONVERSION_PROFILE_CONFLICT",
+          "Simulated concurrent profile winner",
+        );
+      }
+      return createProfile(input);
+    };
+
+    ensureM3CanonicalDocumentAutoProfiles(converters, DEFAULT_WORKSPACE.id);
+
+    expect(manifestRaceInjected).toBe(true);
+    expect(profileRaceInjected).toBe(true);
+    expect(converters.getManifest("builtin-markdown-staging", "1.0.0")).not.toBeNull();
+    expect(
+      converters.listProfiles({ workspaceId: DEFAULT_WORKSPACE.id, limit: 100 }).items,
+    ).toHaveLength(4);
+  });
+
+  it("does not swallow profile conflicts without a durable canonical winner", () => {
+    const converters = registry();
+    const createProfile = converters.createProfile.bind(converters);
+
+    converters.createProfile = (input) => {
+      if (input.name === "Canonical Markdown auto staging") {
+        throw new RegistryConflictError(
+          "CONVERSION_PROFILE_CONFLICT",
+          "Simulated unrelated profile conflict",
+        );
+      }
+      return createProfile(input);
+    };
+
+    expect(() => ensureM3CanonicalDocumentAutoProfiles(converters, DEFAULT_WORKSPACE.id)).toThrow(
+      RegistryConflictError,
     );
   });
 
