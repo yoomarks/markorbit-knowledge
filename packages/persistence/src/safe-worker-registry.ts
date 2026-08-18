@@ -90,6 +90,10 @@ export class SqliteWorkerRegistryRepository implements WorkerRegistryRepository 
     return this.inner.verifyCredential(workerId, credential);
   }
 
+  verifyLease(workerId: string, credential: string, leaseId: string, leaseToken: string): JobLease {
+    return this.inner.verifyLease(workerId, credential, leaseId, leaseToken);
+  }
+
   heartbeat(input: HeartbeatInput, credential: string): WorkerRuntimeView {
     return this.inner.heartbeat(input, credential);
   }
