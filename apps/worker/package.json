@@ -15,6 +15,7 @@
     "activate:representative-coverage": "tsx src/activate-representative-source-wave.ts",
     "promote:representative-supply": "tsx src/promote-representative-source-supply.ts",
     "verify:representative-supply": "tsx src/verify-representative-source-supply.ts",
+    "verify:radar-source-intake": "tsx src/verify-radar-source-intake.ts",
     "reconcile:representative-supply-receipts": "tsx src/reconcile-representative-supply-receipts.ts",
     "canary:representative": "tsx src/run-representative-live-canaries.ts",
     "canary:representative:recorded": "tsx src/run-recorded-representative-live-canaries.ts",
