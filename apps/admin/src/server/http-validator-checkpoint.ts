@@ -106,7 +106,9 @@ export class SqliteHttpValidatorCheckpointRepository {
     const workerId = auth.workerId.trim();
     const leaseId = auth.leaseId.trim();
     if (!workerId || !auth.credential || !leaseId || !auth.leaseToken) {
-      throw new RegistryValidationError("Worker credential and active lease authentication are required");
+      throw new RegistryValidationError(
+        "Worker credential and active lease authentication are required",
+      );
     }
     const row = this.database
       .prepare(
@@ -155,7 +157,10 @@ export class SqliteHttpValidatorCheckpointRepository {
       throw new RegistryConflictError("WORKER_DISABLED", "Worker is disabled");
     }
     if (row.leaseStatus !== "ACTIVE") {
-      throw new RegistryConflictError("LEASE_NOT_ACTIVE", "HTTP validator access requires an active lease");
+      throw new RegistryConflictError(
+        "LEASE_NOT_ACTIVE",
+        "HTTP validator access requires an active lease",
+      );
     }
     if (Date.parse(row.expiresAt) <= this.clock().getTime()) {
       throw new RegistryConflictError("LEASE_EXPIRED", "Lease has expired");
