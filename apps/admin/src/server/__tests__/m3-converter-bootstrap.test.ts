@@ -63,9 +63,9 @@ describe("M3 canonical converter bootstrap", () => {
         }),
       ]),
     );
-    expect(
-      profiles.some((profile) => profile.converter.converterId === "local-ocr-markdown"),
-    ).toBe(false);
+    expect(profiles.some((profile) => profile.converter.converterId === "local-ocr-markdown")).toBe(
+      false,
+    );
   });
 
   it("leaves operator-created profiles unchanged", () => {
