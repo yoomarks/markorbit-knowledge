@@ -208,6 +208,18 @@ export class SqliteHttpValidatorCheckpointRepository {
     };
   }
 
+  clear(input: HttpValidatorCheckpointAuth & { canonicalUri: string }): boolean {
+    const scope = this.sourceScopeForLease(input);
+    const canonicalUri = canonicalHttpUri(input.canonicalUri);
+    const result = this.database
+      .prepare(
+        `DELETE FROM http_validator_checkpoints
+         WHERE workspace_id = ? AND source_id = ? AND canonical_uri = ?`,
+      )
+      .run(scope.workspaceId, scope.sourceId, canonicalUri);
+    return Number(result.changes) > 0;
+  }
+
   write(input: WriteHttpValidatorCheckpointInput): HttpValidatorCheckpoint {
     const scope = this.sourceScopeForLease(input);
     const canonicalUri = canonicalHttpUri(input.canonicalUri);
@@ -264,4 +276,10 @@ export function writeHttpValidatorCheckpoint(
   input: WriteHttpValidatorCheckpointInput,
 ): HttpValidatorCheckpoint {
   return repository().write(input);
+}
+
+export function clearHttpValidatorCheckpoint(
+  input: HttpValidatorCheckpointAuth & { canonicalUri: string },
+): boolean {
+  return repository().clear(input);
 }

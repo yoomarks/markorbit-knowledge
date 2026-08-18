@@ -39,4 +39,27 @@ describe("HttpValidatorControlPlaneClient", () => {
       lastModified: "Tue, 18 Aug 2026 10:00:00 GMT",
     });
   });
+  it("uses authenticated CLEAR when both validators are absent", async () => {
+    const fetcher = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(JSON.parse(String(init?.body))).toEqual({
+        workerId: "wrk_fixture",
+        leaseId: "lse_fixture",
+        operation: "CLEAR",
+        canonicalUri: "https://example.com/feed",
+      });
+      return new Response(JSON.stringify({ cleared: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    const client = new HttpValidatorControlPlaneClient(
+      "https://control.example.test/",
+      "wrk_fixture",
+      "worker-secret",
+      fetcher as typeof fetch,
+    );
+
+    await client.write(context, "https://example.com/feed", { etag: null, lastModified: null });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
 });

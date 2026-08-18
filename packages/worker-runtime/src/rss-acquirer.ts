@@ -12,6 +12,7 @@ import {
   type AcquiredCollectionArtifact,
   type ArtifactBackedExecutionContext,
   CollectionAcquisitionError,
+  CollectionNotModifiedSignal,
   type CollectionArtifactAcquirer,
 } from "./artifact-backed-collection-executor";
 import { isPublicNetworkAddress, normalizedUrlHostname } from "./public-network-policy";
@@ -293,6 +294,7 @@ function responseContentType(response: ApiTransportResponse): string {
 }
 
 function normalizeTransportError(error: unknown): never {
+  if (error instanceof CollectionNotModifiedSignal) throw error;
   if (error instanceof CollectionAcquisitionError) {
     if (error.code === "API_TIMEOUT") {
       throw new CollectionAcquisitionError("RSS_TIMEOUT", "RSS feed request timed out", true);

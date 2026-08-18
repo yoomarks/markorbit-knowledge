@@ -8,6 +8,7 @@ import {
   requireRecord,
 } from "@/server/api-errors";
 import {
+  clearHttpValidatorCheckpoint,
   readHttpValidatorCheckpoint,
   writeHttpValidatorCheckpoint,
 } from "@/server/http-validator-checkpoint";
@@ -36,6 +37,9 @@ export async function POST(request: Request) {
     if (body.operation === "READ") {
       return NextResponse.json({ checkpoint: readHttpValidatorCheckpoint(auth) });
     }
+    if (body.operation === "CLEAR") {
+      return NextResponse.json({ cleared: clearHttpValidatorCheckpoint(auth) });
+    }
     if (body.operation === "WRITE") {
       if (body.etag !== undefined && body.etag !== null && typeof body.etag !== "string") {
         throw new RegistryValidationError("etag must be a string or null");
@@ -58,7 +62,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({ checkpoint });
     }
-    throw new RegistryValidationError("operation must be READ or WRITE");
+    throw new RegistryValidationError("operation must be READ, WRITE or CLEAR");
   } catch (error) {
     return apiError(error);
   }
