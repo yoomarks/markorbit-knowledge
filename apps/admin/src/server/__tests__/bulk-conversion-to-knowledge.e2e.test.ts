@@ -110,7 +110,7 @@ describe("Bulk conversion to Knowledge E2E", () => {
         renderJavascript: false,
         fetchAttachments: false,
         respectRobots: true,
-        rateLimitPerMinute: 60,
+        rateLimitPerMinute: 120,
         timeoutSeconds: 30,
         retry: { maxAttempts: 1, backoffSeconds: 1 },
       },
