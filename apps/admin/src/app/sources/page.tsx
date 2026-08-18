@@ -5,6 +5,7 @@ import { RadarCollectionAuthorization } from "@/components/sources/radar-collect
 import { RadarReviewEvidence } from "@/components/sources/radar-review-evidence";
 import { RepresentativeActivationWave } from "@/components/sources/representative-activation-wave";
 import { SourceChangeAlerts } from "@/components/sources/source-change-alerts";
+import { SourceChangeWatchEfficiency } from "@/components/sources/source-change-watch-efficiency";
 import { SourceCountryCoverage } from "@/components/sources/source-country-coverage";
 import { SourceFailureRootCauses } from "@/components/sources/source-failure-root-causes";
 import { SourceList } from "@/components/sources/source-list";
@@ -24,6 +25,7 @@ export default function SourcesPage() {
         <RepresentativeActivationWave workspaceId={DEFAULT_WORKSPACE.id} />
         <SourceCountryCoverage workspaceId={DEFAULT_WORKSPACE.id} />
         <SourceChangeAlerts />
+        <SourceChangeWatchEfficiency />
         <SourceFailureRootCauses />
         <SourceList />
       </div>
