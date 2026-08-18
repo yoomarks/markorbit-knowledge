@@ -53,9 +53,7 @@ function candidate(index: number): SourceCandidate {
   };
 }
 
-function capabilityResponse(
-  candidateIds: string[],
-): PageValueScreeningResponseV1 {
+function capabilityResponse(candidateIds: string[]): PageValueScreeningResponseV1 {
   return {
     version: "1.0",
     capability: "page-value-screening",
