@@ -56,12 +56,7 @@ function insertJob(
 ): void {
   db.prepare(
     "INSERT INTO jobs (id, workspace_id, source_id, document_json) VALUES (?, ?, ?, ?)",
-  ).run(
-    id,
-    "wsp_test",
-    sourceId,
-    JSON.stringify({ planSnapshot: { schedule: { mode } } }),
-  );
+  ).run(id, "wsp_test", sourceId, JSON.stringify({ planSnapshot: { schedule: { mode } } }));
 }
 
 function insertAttempt(
@@ -94,12 +89,7 @@ function insertAttempt(
   );
 }
 
-function insertValidator(
-  db: DatabaseSync,
-  sourceId: string,
-  uri: string,
-  updatedAt: string,
-): void {
+function insertValidator(db: DatabaseSync, sourceId: string, uri: string, updatedAt: string): void {
   db.prepare(
     `INSERT INTO http_validator_checkpoints
        (workspace_id, source_id, canonical_uri, etag, last_modified, observed_at, updated_at)

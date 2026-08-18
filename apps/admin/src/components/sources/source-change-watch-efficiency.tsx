@@ -21,8 +21,8 @@ export function SourceChangeWatchEfficiency() {
             </h2>
           </div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
-            最近 24 小时的客观执行结果。304 no-body 表示远端在正文下载前确认未变化；SHA
-            no-change 表示正文已获取，但内容身份与最新 RawArtifact 一致，因此未生成新版本。
+            最近 24 小时的客观执行结果。304 no-body 表示远端在正文下载前确认未变化；SHA no-change
+            表示正文已获取，但内容身份与最新 RawArtifact 一致，因此未生成新版本。
           </p>
         </div>
         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
@@ -32,7 +32,11 @@ export function SourceChangeWatchEfficiency() {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Metric label="Completed watches" value={summary.completedRuns} />
-        <Metric label="No-change" value={summary.metadataOnlyRuns} note={`${summary.noChangeRatePercent}%`} />
+        <Metric
+          label="No-change"
+          value={summary.metadataOnlyRuns}
+          note={`${summary.noChangeRatePercent}%`}
+        />
         <Metric label="304 no-body" value={summary.http304NoBodyRuns} />
         <Metric label="SHA no-change" value={summary.bodyComparedNoChangeRuns} />
         <Metric label="Produced artifacts" value={summary.artifactProducingRuns} />
