@@ -101,8 +101,10 @@ export function auditSourceCoverageVerification(
       continue;
     }
 
-    if (!oldest || verifiedAtMs < oldest.time) oldest = { time: verifiedAtMs, value: target.verifiedAt };
-    if (!latest || verifiedAtMs > latest.time) latest = { time: verifiedAtMs, value: target.verifiedAt };
+    if (!oldest || verifiedAtMs < oldest.time)
+      oldest = { time: verifiedAtMs, value: target.verifiedAt };
+    if (!latest || verifiedAtMs > latest.time)
+      latest = { time: verifiedAtMs, value: target.verifiedAt };
 
     if (observedAtMs - verifiedAtMs <= maximumAgeMs) {
       audit.fresh += 1;

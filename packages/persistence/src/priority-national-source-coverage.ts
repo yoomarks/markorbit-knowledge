@@ -1,68 +1,8 @@
+import type { SourceCoverageTarget } from "@markorbit/contracts";
 import {
-  SOURCE_COVERAGE_PROTOCOL_VERSION,
-  type SourceCoverageCatalogState,
-  type SourceCoverageChangeSensitivity,
-  type SourceCoverageFamily,
-  type SourceCoverageTarget,
-  type SourceCoverageTier,
-} from "@markorbit/contracts";
-
-const VERIFIED_AT = "2026-08-16T00:00:00Z";
-
-type Authority = {
-  jurisdiction: string;
-  authorityName: string;
-  languages: string[];
-  verificationEvidenceUri: string;
-};
-
-type TargetInput = {
-  id: string;
-  family: SourceCoverageFamily;
-  displayName: string;
-  canonicalUri: string;
-  entrypoints?: SourceCoverageTarget["entrypoints"];
-  coverageTier?: SourceCoverageTier;
-  catalogState?: SourceCoverageCatalogState;
-  changeSensitivity?: SourceCoverageChangeSensitivity;
-  mode?: SourceCoverageTarget["acquisition"]["mode"];
-  renderJavascriptHint?: boolean;
-  fetchAttachmentsHint?: boolean;
-  expectedArtifactKinds?: SourceCoverageTarget["acquisition"]["expectedArtifactKinds"];
-  verificationEvidenceUri?: string;
-  notes?: string;
-};
-
-function target(authority: Authority, input: TargetInput): SourceCoverageTarget {
-  return {
-    protocolVersion: SOURCE_COVERAGE_PROTOCOL_VERSION,
-    objectType: "SOURCE_COVERAGE_TARGET",
-    jurisdiction: authority.jurisdiction,
-    authorityName: authority.authorityName,
-    authorityBasis: "EXPLICIT_CURATED",
-    sourceType: "WEB",
-    category: "OFFICIAL_AUTHORITY",
-    authorityLevel: "PRIMARY_OFFICIAL",
-    languages: [...authority.languages],
-    catalogState: input.catalogState ?? "ACTIVE",
-    coverageTier: input.coverageTier ?? "FOUNDATIONAL",
-    changeSensitivity: input.changeSensitivity ?? "HIGH",
-    verifiedAt: VERIFIED_AT,
-    id: input.id,
-    family: input.family,
-    displayName: input.displayName,
-    canonicalUri: input.canonicalUri,
-    entrypoints: input.entrypoints ?? [{ uri: input.canonicalUri }],
-    acquisition: {
-      mode: input.mode ?? "WEB_CRAWL",
-      renderJavascriptHint: input.renderJavascriptHint ?? false,
-      fetchAttachmentsHint: input.fetchAttachmentsHint ?? false,
-      expectedArtifactKinds: input.expectedArtifactKinds ?? ["HTML", "MARKDOWN"],
-    },
-    verificationEvidenceUri: input.verificationEvidenceUri ?? authority.verificationEvidenceUri,
-    ...(input.notes ? { notes: input.notes } : {}),
-  };
-}
+  buildPriorityNationalSourceCoverageTarget as target,
+  type PriorityNationalCoverageAuthority as Authority,
+} from "./priority-national-source-coverage-builder";
 
 const CNIPA: Authority = {
   jurisdiction: "CN",
