@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseRadarCsv, planRadarSourceIntake, type RadarSourceIntakeFiles } from "../src/radar-source-intake";
+import {
+  parseRadarCsv,
+  planRadarSourceIntake,
+  type RadarSourceIntakeFiles,
+} from "../src/radar-source-intake";
 
 function completeFiles(sourceRows: string): RadarSourceIntakeFiles {
   return {

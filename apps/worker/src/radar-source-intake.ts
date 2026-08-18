@@ -412,7 +412,10 @@ function candidateDisposition(status: RadarCandidateStatus): RadarCandidatePropo
   return "CANDIDATE_ONLY";
 }
 
-function advisoryScores(row: ParsedCsvRow, issues: RadarIntakeIssue[]): RadarAdvisoryScores | undefined {
+function advisoryScores(
+  row: ParsedCsvRow,
+  issues: RadarIntakeIssue[],
+): RadarAdvisoryScores | undefined {
   const args = (field: string) => ({
     file: "source_registry.csv" as const,
     row: row.row,
@@ -612,7 +615,15 @@ export function planRadarSourceIntake(args: {
       file: "source_registry.csv",
       issues,
     }) as RadarSubscriptionStatus | undefined;
-    if (!externalSourceId || !name || !organizationName || !authorityType || !sourceType || !priority || !status) {
+    if (
+      !externalSourceId ||
+      !name ||
+      !organizationName ||
+      !authorityType ||
+      !sourceType ||
+      !priority ||
+      !status
+    ) {
       continue;
     }
     if (seenSources.has(externalSourceId)) {
@@ -691,8 +702,7 @@ export function planRadarSourceIntake(args: {
     let estimatedPriority: RadarSourcePriority | undefined;
     if (priorityRaw) {
       estimatedPriority = enumValue(RADAR_SOURCE_PRIORITIES, priorityRaw) as
-        | RadarSourcePriority
-        | undefined;
+        RadarSourcePriority | undefined;
       if (!estimatedPriority) {
         pushIssue(issues, {
           severity: "WARNING",
