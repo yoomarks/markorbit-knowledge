@@ -9,12 +9,19 @@ import type {
 } from "@markorbit/contracts";
 import type { SourceRepository } from "./index";
 import { RegistryError } from "./index";
-import type { SourceCandidateRecord, SourceDiscoveryRepository } from "./source-discovery-registry";
+import type {
+  SourceCandidateRecord,
+  SourceDiscoveryRepository,
+} from "./source-discovery-registry";
 
 const MAX_RADAR_INTAKE_ITEMS = 250;
 
 export type RadarDiscoveryIntakeState =
-  "QUEUED" | "ALREADY_IN_DISCOVERY" | "ALREADY_COVERED" | "SKIPPED_BLOCKED" | "SKIPPED_NO_LOCATOR";
+  | "QUEUED"
+  | "ALREADY_IN_DISCOVERY"
+  | "ALREADY_COVERED"
+  | "SKIPPED_BLOCKED"
+  | "SKIPPED_NO_LOCATOR";
 
 export type RadarDiscoveryIntakeResult = {
   workspaceId: string;
@@ -80,19 +87,61 @@ function normalizeHttpLocator(value: string | undefined): string | undefined {
   return url.toString();
 }
 
+function acquisitionLocators(
+  source: RadarSourceProposal,
+  kinds: RadarSourceProposal["acquisitions"][number]["kind"][],
+): string[] {
+  return source.acquisitions
+    .filter((acquisition) => kinds.includes(acquisition.kind))
+    .map((acquisition) => acquisition.locator);
+}
+
 function sourceProposalLocator(source: RadarSourceProposal): string | undefined {
-  const preferred = [
-    source.newsUrl,
-    ...source.acquisitions
-      .filter((acquisition) => acquisition.kind !== "EMAIL")
-      .map((acquisition) => acquisition.locator),
-    source.homepageUrl,
-    source.newsletterUrl,
-    ...source.acquisitions
-      .filter((acquisition) => acquisition.kind === "EMAIL")
-      .map((acquisition) => acquisition.locator),
-  ];
-  for (const locator of preferred) {
+  const endpointPreferred = (() => {
+    switch (source.sourceType) {
+      case "newsletter":
+      case "email_alert":
+        return [
+          source.newsletterUrl,
+          ...acquisitionLocators(source, ["EMAIL"]),
+          source.homepageUrl,
+          source.newsUrl,
+        ];
+      case "rss":
+        return [
+          ...acquisitionLocators(source, ["RSS"]),
+          source.newsUrl,
+          source.homepageUrl,
+        ];
+      case "sitemap":
+        return [
+          ...acquisitionLocators(source, ["SITEMAP"]),
+          source.homepageUrl,
+          source.newsUrl,
+        ];
+      case "api":
+        return [
+          ...acquisitionLocators(source, ["API"]),
+          source.homepageUrl,
+          source.newsUrl,
+        ];
+      case "pdf":
+        return [
+          ...acquisitionLocators(source, ["PDF_WATCH"]),
+          source.newsUrl,
+          source.homepageUrl,
+        ];
+      default:
+        return [
+          source.newsUrl,
+          ...acquisitionLocators(source, ["HTML_WATCH", "API", "PDF_WATCH", "RSS", "SITEMAP"]),
+          source.homepageUrl,
+          source.newsletterUrl,
+        ];
+    }
+  })();
+
+  for (const locator of endpointPreferred) {
     const normalized = normalizeHttpLocator(locator);
     if (normalized) return normalized;
   }
