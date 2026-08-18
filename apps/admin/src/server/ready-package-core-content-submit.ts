@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import {
-  assertReadyPackageContentExportV1,
   assertReadyPackageContentExportV1_1,
   isReadyPackageContentExportV1,
   isReadyPackageContentExportV1_1,
