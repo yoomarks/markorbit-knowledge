@@ -288,7 +288,9 @@ describe("Bulk conversion to Knowledge E2E", () => {
         expectedCurrentStatus: "PENDING",
         converter: run.converter,
       };
-      expect(transitions.submitStarted(startedReport, worker.credential).run.status).toBe("RUNNING");
+      expect(transitions.submitStarted(startedReport, worker.credential).run.status).toBe(
+        "RUNNING",
+      );
 
       const artifact = artifacts.getArtifact(run.rawArtifactId)!.artifact;
       const metadata = canonicalDocumentMetadata(run, artifact, source);
@@ -337,15 +339,21 @@ describe("Bulk conversion to Knowledge E2E", () => {
       }
     }
 
-    expect(conversionRuns.list({ workspaceId, limit: 100 }).items.every((run) => run.status === "COMPLETED")).toBe(true);
+    expect(
+      conversionRuns
+        .list({ workspaceId, limit: 100 })
+        .items.every((run) => run.status === "COMPLETED"),
+    ).toBe(true);
     const knowledge = staging.listDocuments({ workspaceId, limit: 100 });
     expect(knowledge.total).toBe(100);
     expect(knowledge.items.every((record) => record.descriptor.status === "READY")).toBe(true);
-    expect(new Set(knowledge.items.map((record) => record.descriptor.rawArtifactId)).size).toBe(100);
+    expect(new Set(knowledge.items.map((record) => record.descriptor.rawArtifactId)).size).toBe(
+      100,
+    );
     expect(readyPackages.list(workspaceId)).toHaveLength(100);
-    expect(
-      database.prepare("SELECT COUNT(*) AS total FROM retrieval_documents").get(),
-    ).toEqual({ total: 100 });
+    expect(database.prepare("SELECT COUNT(*) AS total FROM retrieval_documents").get()).toEqual({
+      total: 100,
+    });
 
     const replay = commitProductionStagingWithDependencies(
       dependencies,

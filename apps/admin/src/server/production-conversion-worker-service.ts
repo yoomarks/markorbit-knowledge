@@ -204,7 +204,10 @@ export function commitProductionStagingWithDependencies(
     };
   }
 
-  const completedRun = dependencies.conversionRuns.getById(input.conversionRunId, input.workspaceId);
+  const completedRun = dependencies.conversionRuns.getById(
+    input.conversionRunId,
+    input.workspaceId,
+  );
   if (!completedRun || completedRun.run.status !== "COMPLETED") {
     throw new RegistryConflictError(
       "READY_PACKAGE_RUN_NOT_COMPLETED",
