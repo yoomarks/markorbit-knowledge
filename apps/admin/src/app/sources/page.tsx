@@ -4,6 +4,7 @@ import { CorePageHeading } from "@/components/core-page-heading";
 import { RadarCollectionAuthorization } from "@/components/sources/radar-collection-authorization";
 import { RadarReviewEvidence } from "@/components/sources/radar-review-evidence";
 import { RepresentativeActivationWave } from "@/components/sources/representative-activation-wave";
+import { SourceChangeAlerts } from "@/components/sources/source-change-alerts";
 import { SourceCountryCoverage } from "@/components/sources/source-country-coverage";
 import { SourceFailureRootCauses } from "@/components/sources/source-failure-root-causes";
 import { SourceList } from "@/components/sources/source-list";
@@ -22,6 +23,7 @@ export default function SourcesPage() {
         <SourceSupplyCoverage workspaceId={DEFAULT_WORKSPACE.id} />
         <RepresentativeActivationWave workspaceId={DEFAULT_WORKSPACE.id} />
         <SourceCountryCoverage workspaceId={DEFAULT_WORKSPACE.id} />
+        <SourceChangeAlerts />
         <SourceFailureRootCauses />
         <SourceList />
       </div>
