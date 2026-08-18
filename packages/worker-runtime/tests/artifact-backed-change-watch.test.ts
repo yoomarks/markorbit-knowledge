@@ -12,14 +12,25 @@ import {
   type CollectionArtifactAcquirer,
 } from "../src/artifact-backed-collection-executor";
 
-function context(jobType: "WEB_CRAWL" | "PAGE_UPDATE_CHECK"): ArtifactBackedExecutionContext {
+function context(
+  jobType: "WEB_CRAWL" | "PAGE_UPDATE_CHECK" | "API_COLLECTION",
+  scheduleMode: "INTERVAL" | "CHANGE_WATCH" = jobType === "PAGE_UPDATE_CHECK"
+    ? "CHANGE_WATCH"
+    : "INTERVAL",
+): ArtifactBackedExecutionContext {
   return {
     workerId: "wrk_fixture",
     leaseToken: "lease-token",
     lease: { id: "lse_fixture" },
     job: {
       jobType,
-      planSnapshot: { output: { artifactKinds: ["HTML"] } },
+      planSnapshot: {
+        schedule:
+          scheduleMode === "CHANGE_WATCH"
+            ? { mode: "CHANGE_WATCH", pollIntervalSeconds: 300 }
+            : { mode: "INTERVAL", intervalSeconds: 3600 },
+        output: { artifactKinds: ["HTML"] },
+      },
     },
   } as unknown as ArtifactBackedExecutionContext;
 }
@@ -126,6 +137,20 @@ describe("ArtifactBackedCollectionExecutor change-watch incrementality", () => {
     expect(fixture.finalized).toEqual(["session-1"]);
   });
 
+  it("applies immutable content checks to non-web change-watch jobs", async () => {
+    const fixture = client({
+      unchangedUris: ["https://example.com/one", "https://example.com/two"],
+    });
+    const check = vi.spyOn(fixture.implementation, "checkArtifactContent");
+    const executor = new ArtifactBackedCollectionExecutor(acquirer(), fixture.implementation);
+
+    const receipt = await executor.execute(context("API_COLLECTION", "CHANGE_WATCH"));
+
+    expect(check).toHaveBeenCalledTimes(2);
+    expect(receipt).toMatchObject({ itemsObserved: 2, bytesPrepared: 0, metadataOnly: true });
+    expect(fixture.created).toEqual([]);
+  });
+
   it("fails open to immutable ingestion when identity comparison is unavailable", async () => {
     const fixture = client({ failChecks: true });
     const executor = new ArtifactBackedCollectionExecutor(acquirer(), fixture.implementation);
@@ -136,17 +161,19 @@ describe("ArtifactBackedCollectionExecutor change-watch incrementality", () => {
     expect(fixture.created).toEqual(["https://example.com/one", "https://example.com/two"]);
   });
 
-  it("does not invoke change detection for ordinary web crawls", async () => {
+  it("does not invoke change detection for ordinary collection schedules", async () => {
     const fixture = client({
       unchangedUris: ["https://example.com/one", "https://example.com/two"],
     });
     const check = vi.spyOn(fixture.implementation, "checkArtifactContent");
     const executor = new ArtifactBackedCollectionExecutor(acquirer(), fixture.implementation);
 
-    const receipt = await executor.execute(context("WEB_CRAWL"));
+    const webReceipt = await executor.execute(context("WEB_CRAWL"));
+    const apiReceipt = await executor.execute(context("API_COLLECTION", "INTERVAL"));
 
     expect(check).not.toHaveBeenCalled();
-    expect(receipt).toMatchObject({ itemsObserved: 2, metadataOnly: false });
-    expect(fixture.created).toHaveLength(2);
+    expect(webReceipt).toMatchObject({ itemsObserved: 2, metadataOnly: false });
+    expect(apiReceipt).toMatchObject({ itemsObserved: 2, metadataOnly: false });
+    expect(fixture.created).toHaveLength(4);
   });
 });

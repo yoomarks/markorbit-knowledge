@@ -139,12 +139,17 @@ function descriptorFor(artifact: AcquiredCollectionArtifact): ArtifactUploadDesc
   };
 }
 
+function isChangeWatch(context: ArtifactBackedExecutionContext): boolean {
+  const schedule = context.job.planSnapshot.schedule;
+  return context.job.jobType === "PAGE_UPDATE_CHECK" || schedule?.mode === "CHANGE_WATCH";
+}
+
 async function selectChangedArtifacts(
   context: ArtifactBackedExecutionContext,
   acquired: AcquiredCollectionArtifact[],
   client: ArtifactBackedExecutionClient,
 ): Promise<{ changed: AcquiredCollectionArtifact[]; unchangedCount: number }> {
-  if (context.job.jobType !== "PAGE_UPDATE_CHECK" || !client.checkArtifactContent) {
+  if (!isChangeWatch(context) || !client.checkArtifactContent) {
     return { changed: acquired, unchangedCount: 0 };
   }
 
