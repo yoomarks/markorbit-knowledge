@@ -146,7 +146,9 @@ function validateResponse(
 }
 
 export class SharedCapabilityDiscoveryPageValueRanker implements DiscoveryPageValueRanker {
-  private readonly results = new SqlitePageValueCapabilityRepository(getRegistryDatabase());
+  constructor(
+    private readonly results = new SqlitePageValueCapabilityRepository(getRegistryDatabase()),
+  ) {}
 
   async rank(input: {
     candidates: SourceCandidate[];
