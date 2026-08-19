@@ -83,9 +83,7 @@ function authorities(snapshot: SourceGraphSnapshot | null): SourceOperationalTop
 
 function hasTable(database: DatabaseSync, table: string): boolean {
   return Boolean(
-    database
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
-      .get(table),
+    database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(table),
   );
 }
 
@@ -148,15 +146,15 @@ export class SqliteSourceOperationalTopologyRepository {
     const explicitAuthorities = authorities(graph);
     const rawArtifactRegistryAvailable = hasTable(this.database, "raw_artifacts");
     const rawArtifacts = rawArtifactRegistryAvailable
-      ? (this.database
-          .prepare(
-            `SELECT document_json FROM raw_artifacts
+      ? (
+          this.database
+            .prepare(
+              `SELECT document_json FROM raw_artifacts
              WHERE workspace_id = ? AND source_id = ?
              ORDER BY created_at ASC, id ASC`,
-          )
-          .all(source.workspaceId, source.id) as Array<{ document_json: string }>).map((row) =>
-          parseArtifact(row.document_json, source.workspaceId, source.id),
-        )
+            )
+            .all(source.workspaceId, source.id) as Array<{ document_json: string }>
+        ).map((row) => parseArtifact(row.document_json, source.workspaceId, source.id))
       : [];
 
     const eligibleNodes = graph?.nodes.filter(eligibleGraphNode) ?? [];

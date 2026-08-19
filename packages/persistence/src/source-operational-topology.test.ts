@@ -1,11 +1,12 @@
 import { DatabaseSync } from "node:sqlite";
-import type { RawArtifact, SourceGraphNode, SourceGraphObservationBatch } from "@markorbit/contracts";
+import type {
+  RawArtifact,
+  SourceGraphNode,
+  SourceGraphObservationBatch,
+} from "@markorbit/contracts";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE, SqliteSourceRepository } from "./index";
-import {
-  generateSourceGraphId,
-  SqliteSourceGraphRepository,
-} from "./source-graph-registry";
+import { generateSourceGraphId, SqliteSourceGraphRepository } from "./source-graph-registry";
 import { SqliteSourceOperationalTopologyRepository } from "./source-operational-topology";
 import { SqliteSourceRegistryV2Repository } from "./source-registry-v2-registry";
 
@@ -212,13 +213,7 @@ describe("SqliteSourceOperationalTopologyRepository", () => {
     );
     const graphIds = createGraph(database, child.id, entrypoint, true);
     createRawArtifactsTable(database);
-    const matched = artifact(
-      "art_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-      child.id,
-      1,
-      entrypoint,
-      entrypoint,
-    );
+    const matched = artifact("art_01ARZ3NDEKTSV4RRFFQ69G5FAV", child.id, 1, entrypoint, entrypoint);
     const unmatched = artifact(
       "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
       child.id,
