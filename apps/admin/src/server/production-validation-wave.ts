@@ -6,18 +6,14 @@ import type { ProductionValidationManifest } from "@markorbit/persistence/produc
 const DEFAULT_MANIFEST_PATH = "config/production-validation-wave-1.json";
 
 function repositoryRoot(): string {
-  return (
-    process.env.MARKORBIT_REPOSITORY_ROOT ?? process.env.INIT_CWD ?? process.cwd()
-  );
+  return process.env.MARKORBIT_REPOSITORY_ROOT ?? process.env.INIT_CWD ?? process.cwd();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-export function parseProductionValidationManifest(
-  value: unknown,
-): ProductionValidationManifest {
+export function parseProductionValidationManifest(value: unknown): ProductionValidationManifest {
   if (!isRecord(value)) {
     throw new RegistryValidationError("Production validation manifest must be an object");
   }
