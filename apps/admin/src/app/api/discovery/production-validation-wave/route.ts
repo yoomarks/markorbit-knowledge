@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { queueProductionValidationWaveForDiscovery } from "@markorbit/persistence/production-validation-discovery-intake";
+import { inspectProductionValidationOnboarding } from "@markorbit/persistence/production-validation-onboarding-status";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { loadProductionValidationWave } from "@/server/production-validation-wave";
 import {
@@ -16,10 +17,18 @@ function workspaceId(value: unknown): string {
   return value.trim();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const manifest = loadProductionValidationWave();
-    return NextResponse.json({ manifest }, { status: 200 });
+    const url = new URL(request.url);
+    const onboarding = inspectProductionValidationOnboarding(
+      { workspaceId: workspaceId(url.searchParams.get("workspaceId")), manifest },
+      {
+        sources: getSourceRepository(),
+        discovery: getSourceDiscoveryRepository(),
+      },
+    );
+    return NextResponse.json({ manifest, onboarding }, { status: 200 });
   } catch (error) {
     return apiError(error);
   }
