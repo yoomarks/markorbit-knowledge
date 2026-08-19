@@ -1,0 +1,23 @@
+name: Prettier PR323 Probe
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Emit formatted source
+        run: pnpm exec prettier packages/persistence/src/production-validation-pipeline-status.ts | base64 -w0 && echo
+      - name: Emit formatted test
+        run: pnpm exec prettier packages/persistence/tests/production-validation-pipeline-status.test.ts | base64 -w0 && echo
