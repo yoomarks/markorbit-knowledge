@@ -93,7 +93,9 @@ export function inspectProductionValidationExecution(
   dependencies: ProductionValidationExecutionDependencies,
 ): ProductionValidationExecutionStatus {
   const workspaceId = input.workspaceId?.trim();
-  if (!workspaceId) throw new RegistryError("WORKSPACE_ID_REQUIRED", "workspaceId is required");
+  if (!workspaceId) {
+    throw new RegistryError("WORKSPACE_ID_REQUIRED", "workspaceId is required");
+  }
   const sources = listWorkspaceSources(dependencies.sources, workspaceId);
 
   const items = input.manifest.targets.map((target): ProductionValidationExecutionItem => {
@@ -112,7 +114,9 @@ export function inspectProductionValidationExecution(
     }
 
     const records = newestFirst(dependencies.runs.listForSource(source.id, 100));
-    const completedRunCount = records.filter((record) => record.run.status === "COMPLETED").length;
+    const completedRunCount = records.filter(
+      (record) => record.run.status === "COMPLETED",
+    ).length;
     const failedRunCount = records.filter((record) => record.run.status === "FAILED").length;
     const latest = records[0];
     if (!latest) {
@@ -152,7 +156,8 @@ export function inspectProductionValidationExecution(
     items,
     summary: {
       NOT_REGISTERED: items.filter((item) => item.state === "NOT_REGISTERED").length,
-      AWAITING_AUTHORIZATION: items.filter((item) => item.state === "AWAITING_AUTHORIZATION").length,
+      AWAITING_AUTHORIZATION: items.filter((item) => item.state === "AWAITING_AUTHORIZATION")
+        .length,
       RUN_OBSERVED: items.filter((item) => item.state === "RUN_OBSERVED").length,
       total: items.length,
       runsObserved: items.reduce((sum, item) => sum + item.runCount, 0),
