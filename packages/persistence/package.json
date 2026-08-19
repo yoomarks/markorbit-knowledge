@@ -15,6 +15,7 @@
     "./page-value-capability": "./src/page-value-capability-registry.ts",
     "./source-assessment": "./src/source-assessment-registry.ts",
     "./source-graph": "./src/source-graph-registry.ts",
+    "./source-operational-topology": "./src/source-operational-topology.ts",
     "./source-coverage": "./src/source-coverage-catalog.ts",
     "./global-reference-sources": "./src/global-reference-source-catalog.ts",
     "./priority-trademark-jurisdictions": "./src/priority-trademark-jurisdictions.ts",
