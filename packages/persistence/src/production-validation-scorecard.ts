@@ -1,7 +1,17 @@
+import type { SourceCompatibilityObservation } from "@markorbit/contracts";
 import type { ProductionValidationManifest } from "./production-validation-discovery-intake";
 import type { ProductionValidationExecutionStatus } from "./production-validation-execution-status";
 import type { ProductionValidationOnboardingStatus } from "./production-validation-onboarding-status";
 import type { ProductionValidationPipelineStatus } from "./production-validation-pipeline-status";
+
+export type ProductionValidationCompatibilityTelemetry = {
+  state: "PASS" | "DEGRADED" | "BLOCKED" | "UNOBSERVED";
+  observedAt: string | null;
+  primaryUri: string | null;
+  renderJavascriptObserved: boolean | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+};
 
 export type ProductionValidationUnknownTelemetry = {
   httpFailureCount: null;
@@ -33,6 +43,7 @@ export type ProductionValidationScorecardResult = {
   conversionRunCount: number;
   stagingDocumentCount: number;
   knowledgeVisible: boolean;
+  compatibility: ProductionValidationCompatibilityTelemetry;
   telemetry: ProductionValidationUnknownTelemetry;
 };
 
@@ -47,6 +58,10 @@ export type ProductionValidationScorecard = {
     collectionSucceeded: number;
     knowledgeVisible: number;
     secondRunObserved: number;
+    compatibilityObserved: number;
+    compatibilityPass: number;
+    compatibilityDegraded: number;
+    compatibilityBlocked: number;
     secondRunValidated: null;
     manualInterventionRequired: null;
     adapterRequired: null;
@@ -59,6 +74,7 @@ export type ProductionValidationScorecardInput = {
   onboarding: ProductionValidationOnboardingStatus;
   execution: ProductionValidationExecutionStatus;
   pipeline: ProductionValidationPipelineStatus;
+  compatibility?: ReadonlyMap<string, SourceCompatibilityObservation>;
 };
 
 function byTargetId<T extends { targetId: string }>(items: T[]): Map<string, T> {
@@ -80,6 +96,29 @@ function assertAligned(input: ProductionValidationScorecardInput): void {
   ) {
     throw new Error("Production validation scorecard inputs must use the same workspaceId");
   }
+}
+
+function compatibilityTelemetry(
+  observation: SourceCompatibilityObservation | undefined,
+): ProductionValidationCompatibilityTelemetry {
+  if (!observation) {
+    return {
+      state: "UNOBSERVED",
+      observedAt: null,
+      primaryUri: null,
+      renderJavascriptObserved: null,
+      errorCode: null,
+      errorMessage: null,
+    };
+  }
+  return {
+    state: observation.state,
+    observedAt: observation.observedAt,
+    primaryUri: observation.primaryUri,
+    renderJavascriptObserved: observation.renderJavascript,
+    errorCode: observation.errorCode ?? null,
+    errorMessage: observation.errorMessage ?? null,
+  };
 }
 
 export function buildProductionValidationScorecard(
@@ -119,6 +158,7 @@ export function buildProductionValidationScorecard(
       conversionRunCount: pipeline.conversionRunCount,
       stagingDocumentCount: pipeline.stagingDocumentCount,
       knowledgeVisible: pipeline.knowledgeVisible,
+      compatibility: compatibilityTelemetry(input.compatibility?.get(target.id)),
       telemetry: {
         httpFailureCount: null,
         wafDetected: null,
@@ -142,6 +182,13 @@ export function buildProductionValidationScorecard(
       collectionSucceeded: results.filter((result) => result.collectionSucceeded).length,
       knowledgeVisible: results.filter((result) => result.knowledgeVisible).length,
       secondRunObserved: results.filter((result) => result.secondRunObserved).length,
+      compatibilityObserved: results.filter((result) => result.compatibility.state !== "UNOBSERVED")
+        .length,
+      compatibilityPass: results.filter((result) => result.compatibility.state === "PASS").length,
+      compatibilityDegraded: results.filter((result) => result.compatibility.state === "DEGRADED")
+        .length,
+      compatibilityBlocked: results.filter((result) => result.compatibility.state === "BLOCKED")
+        .length,
       secondRunValidated: null,
       manualInterventionRequired: null,
       adapterRequired: null,
