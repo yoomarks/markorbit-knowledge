@@ -15,7 +15,8 @@ function parseArgs(argv) {
     const next = argv[index + 1];
     if (token === "--report" && next) options.report = next;
     else if (token === "--min-success" && next) options.minSuccess = Number(next);
-    else if (token === "--allow-zero-evidence-delta") options.requirePositiveEvidenceDelta = false;
+    else if (token === "--allow-zero-evidence-delta")
+      options.requirePositiveEvidenceDelta = false;
     else continue;
     if (token !== "--allow-zero-evidence-delta") index += 1;
   }
@@ -38,18 +39,47 @@ function validateBoundary(report, key) {
 }
 
 function validateSuccessfulResult(result, requirePositiveEvidenceDelta) {
-  assert(typeof result.key === "string" && result.key.length > 0, "Successful result is missing key");
+  assert(
+    typeof result.key === "string" && result.key.length > 0,
+    "Successful result is missing key",
+  );
   assert(result.connector === "crawl4ai-web@1.1.0", `${result.key}: connector drift`);
-  assert(result.collectionPolicy?.explicitlyAuthorized === true, `${result.key}: collection was not explicitly authorized`);
-  assert(result.collectionPolicy?.isolatedCalibrationOnly === true, `${result.key}: calibration isolation boundary missing`);
+  assert(
+    result.collectionPolicy?.explicitlyAuthorized === true,
+    `${result.key}: collection was not explicitly authorized`,
+  );
+  assert(
+    result.collectionPolicy?.isolatedCalibrationOnly === true,
+    `${result.key}: calibration isolation boundary missing`,
+  );
   assert(result.collectionPolicy?.maxDepth === 0, `${result.key}: maxDepth must remain 0`);
   assert(result.collectionPolicy?.maxItems === 1, `${result.key}: maxItems must remain 1`);
-  assert(result.collectionPolicy?.respectRobots === true, `${result.key}: robots boundary missing`);
-  assert(array(result.artifacts?.kinds).includes("HTML"), `${result.key}: HTML artifact missing`);
-  assert(array(result.artifacts?.kinds).includes("MARKDOWN"), `${result.key}: MARKDOWN artifact missing`);
-  assert((result.artifacts?.htmlExtractedIntoGraph ?? 0) > 0, `${result.key}: no HTML was extracted into source graph`);
-  assert((result.after?.evidence?.rawArtifactCount ?? 0) >= (result.before?.evidence?.rawArtifactCount ?? 0), `${result.key}: raw artifact count regressed`);
-  assert((result.after?.evidence?.graphNodeCount ?? 0) >= (result.before?.evidence?.graphNodeCount ?? 0), `${result.key}: graph node count regressed`);
+  assert(
+    result.collectionPolicy?.respectRobots === true,
+    `${result.key}: robots boundary missing`,
+  );
+  assert(
+    array(result.artifacts?.kinds).includes("HTML"),
+    `${result.key}: HTML artifact missing`,
+  );
+  assert(
+    array(result.artifacts?.kinds).includes("MARKDOWN"),
+    `${result.key}: MARKDOWN artifact missing`,
+  );
+  assert(
+    (result.artifacts?.htmlExtractedIntoGraph ?? 0) > 0,
+    `${result.key}: no HTML was extracted into source graph`,
+  );
+  assert(
+    (result.after?.evidence?.rawArtifactCount ?? 0) >=
+      (result.before?.evidence?.rawArtifactCount ?? 0),
+    `${result.key}: raw artifact count regressed`,
+  );
+  assert(
+    (result.after?.evidence?.graphNodeCount ?? 0) >=
+      (result.before?.evidence?.graphNodeCount ?? 0),
+    `${result.key}: graph node count regressed`,
+  );
 
   const evidenceDelta = result.delta?.rawArtifactCount ?? 0;
   const provenanceDelta = result.delta?.rawProvenanceNodeCount ?? 0;
@@ -86,7 +116,10 @@ async function main() {
     validateBoundary(report, key);
   }
   assert(report.boundaries?.collectionMaxDepth === 0, "collectionMaxDepth boundary drifted");
-  assert(report.boundaries?.collectionMaxItemsPerSource === 1, "collectionMaxItemsPerSource boundary drifted");
+  assert(
+    report.boundaries?.collectionMaxItemsPerSource === 1,
+    "collectionMaxItemsPerSource boundary drifted",
+  );
 
   const successful = array(report.results).filter((result) => result?.status === "SUCCESS");
   assert(
@@ -121,6 +154,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
