@@ -28,7 +28,11 @@ function assessment(
   return {
     protocolVersion: "2.0",
     objectType: "SOURCE_INTELLIGENCE_DUAL_AXIS_ASSESSMENT",
-    id: `si2_${sourceId.replace(/[^a-f0-9]/giu, "a").toLowerCase().padEnd(24, "a").slice(0, 24)}`,
+    id: `si2_${sourceId
+      .replace(/[^a-f0-9]/giu, "a")
+      .toLowerCase()
+      .padEnd(24, "a")
+      .slice(0, 24)}`,
     workspaceId,
     sourceId,
     assessedAt,
