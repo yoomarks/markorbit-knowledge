@@ -1,9 +1,12 @@
 name: Temporary Source Supply Topology Prettier
 
 on:
-  push:
-    branches:
-      - agent/source-supply-topology-intelligence-v1
+  pull_request:
+    branches: [main]
+    paths:
+      - packages/persistence/src/source-compatibility-supply-health.ts
+      - packages/persistence/src/source-operational-supply-health.test.ts
+      - .github/workflows/prettier-source-supply-topology-temp.yml
 
 permissions:
   contents: write
@@ -14,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/source-supply-topology-intelligence-v1
+          ref: ${{ github.head_ref }}
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
@@ -35,4 +38,4 @@ jobs:
             packages/persistence/src/source-compatibility-supply-health.ts \
             packages/persistence/src/source-operational-supply-health.test.ts
           git commit -m "style: format source supply topology"
-          git push origin HEAD:agent/source-supply-topology-intelligence-v1
+          git push origin HEAD:${{ github.head_ref }}
