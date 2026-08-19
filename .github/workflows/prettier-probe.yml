@@ -1,9 +1,9 @@
 name: Prettier Probe
 
 on:
-  push:
+  pull_request:
     branches:
-      - codex/d2-3-evidence-calibration-ops
+      - main
 
 permissions:
   contents: read
