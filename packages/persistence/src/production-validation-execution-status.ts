@@ -61,6 +61,21 @@ function listWorkspaceSources(
   }
 }
 
+function listSourceRuns(
+  repository: ExecutionLedgerRepository,
+  workspaceId: string,
+  sourceId: string,
+): ExecutionRunRecord[] {
+  const records: ExecutionRunRecord[] = [];
+  let offset = 0;
+  while (true) {
+    const page = repository.list({ workspaceId, sourceId, limit: 100, offset });
+    records.push(...page.items);
+    offset += page.items.length;
+    if (page.items.length === 0 || offset >= page.total) return records;
+  }
+}
+
 function findRegisteredSource(
   sources: SourceDefinition[],
   targetUri: string,
@@ -109,7 +124,7 @@ export function inspectProductionValidationExecution(
       };
     }
 
-    const records = newestFirst(dependencies.runs.listForSource(source.id, 100));
+    const records = newestFirst(listSourceRuns(dependencies.runs, workspaceId, source.id));
     const completedRunCount = records.filter((record) => record.run.status === "COMPLETED").length;
     const failedRunCount = records.filter((record) => record.run.status === "FAILED").length;
     const latest = records[0];
