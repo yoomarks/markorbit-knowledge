@@ -121,10 +121,7 @@ function dependencies(input: {
 
 describe("inspectProductionValidationPipeline", () => {
   it("keeps an unregistered target explicit", () => {
-    const result = inspectProductionValidationPipeline(
-      { workspaceId, manifest },
-      dependencies({}),
-    );
+    const result = inspectProductionValidationPipeline({ workspaceId, manifest }, dependencies({}));
 
     expect(result.items[0]?.state).toBe("NOT_REGISTERED");
     expect(result.summary.knowledgeVisibleTargets).toBe(0);
