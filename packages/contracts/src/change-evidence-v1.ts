@@ -1,4 +1,8 @@
-import type { DocumentChangeKind, DocumentChangeSummary, DocumentSectionChange } from "./change-feed-v1";
+import type {
+  DocumentChangeKind,
+  DocumentChangeSummary,
+  DocumentSectionChange,
+} from "./change-feed-v1";
 
 export const CHANGE_EVIDENCE_PROTOCOL_VERSION = "1.0" as const;
 

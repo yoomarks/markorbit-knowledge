@@ -6,7 +6,9 @@ import { SqliteDocumentChangeEvidenceRepository } from "./document-change-eviden
 import { SqliteDocumentChangeFeedRepository } from "./document-change-feed";
 import { SqliteRetrievalIndexRepository } from "./retrieval-index";
 
-const body = new TextEncoder().encode("---\ntest: true\n---\n# Rules\nThe filing rule is unchanged.\n");
+const body = new TextEncoder().encode(
+  "---\ntest: true\n---\n# Rules\nThe filing rule is unchanged.\n",
+);
 
 function sha256(value: Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");

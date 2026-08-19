@@ -75,8 +75,12 @@ function metadataValue(
   }
 }
 
-function valuesEqual(left: ChangeEvidenceMetadataValue, right: ChangeEvidenceMetadataValue): boolean {
-  if (Array.isArray(left) && Array.isArray(right)) return JSON.stringify(left) === JSON.stringify(right);
+function valuesEqual(
+  left: ChangeEvidenceMetadataValue,
+  right: ChangeEvidenceMetadataValue,
+): boolean {
+  if (Array.isArray(left) && Array.isArray(right))
+    return JSON.stringify(left) === JSON.stringify(right);
   return left === right;
 }
 

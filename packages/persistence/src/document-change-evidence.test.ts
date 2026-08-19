@@ -64,7 +64,10 @@ function indexVersion(
 describe("SqliteDocumentChangeEvidenceRepository", () => {
   it("derives provenance and objective dimensions from persisted document changes", () => {
     const database = new DatabaseSync(":memory:");
-    const index = new SqliteRetrievalIndexRepository(database, () => new Date("2026-08-19T00:00:00Z"));
+    const index = new SqliteRetrievalIndexRepository(
+      database,
+      () => new Date("2026-08-19T00:00:00Z"),
+    );
     const changes = new SqliteDocumentChangeFeedRepository(database);
 
     const first = indexVersion(
