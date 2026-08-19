@@ -33,7 +33,10 @@ async function readJson(path) {
 
 function validateManifest(manifest) {
   assert(manifest.manifestVersion === "1.0", "Unsupported manifestVersion");
-  assert(typeof manifest.waveId === "string" && manifest.waveId.length > 0, "waveId is required");
+  assert(
+    typeof manifest.waveId === "string" && manifest.waveId.length > 0,
+    "waveId is required",
+  );
   assert(
     manifest.governance?.collectionAuthorizationRequired === true,
     "Collection authorization boundary must remain explicit",
@@ -46,8 +49,14 @@ function validateManifest(manifest) {
     manifest.governance?.noAutomaticProductionScheduling === true,
     "Wave manifest must not authorize automatic production scheduling",
   );
-  assert(manifest.governance?.realObservationsOnly === true, "Production observations must be real");
-  assert(Array.isArray(manifest.targets) && manifest.targets.length >= 10, "Wave requires >= 10 targets");
+  assert(
+    manifest.governance?.realObservationsOnly === true,
+    "Production observations must be real",
+  );
+  assert(
+    Array.isArray(manifest.targets) && manifest.targets.length >= 10,
+    "Wave requires >= 10 targets",
+  );
 
   const ids = new Set();
   const uris = new Set();
@@ -63,7 +72,10 @@ function validateManifest(manifest) {
     uris.add(target.canonicalUri);
     assert(target.sourceClass === "OFFICIAL_AUTHORITY", `${target.id}: Wave 1 is official-only`);
     assert(PRIORITIES.has(target.priority), `${target.id}: unsupported priority`);
-    assert(VALIDATION_STATES.has(target.validationState), `${target.id}: unsupported validationState`);
+    assert(
+      VALIDATION_STATES.has(target.validationState),
+      `${target.id}: unsupported validationState`,
+    );
   }
   return ids;
 }
@@ -79,12 +91,31 @@ function validateReport(report, manifest, targetIds) {
     assert(!resultIds.has(result.targetId), `Duplicate report targetId: ${result.targetId}`);
     resultIds.add(result.targetId);
 
-    for (const key of ["discovery", "onboarding", "collection", "artifact", "conversion", "knowledge"]) {
-      assert(result[key] && typeof result[key].status === "string", `${result.targetId}: ${key}.status required`);
+    for (const key of [
+      "discovery",
+      "onboarding",
+      "collection",
+      "artifact",
+      "conversion",
+      "knowledge",
+    ]) {
+      assert(
+        result[key] && typeof result[key].status === "string",
+        `${result.targetId}: ${key}.status required`,
+      );
     }
-    assert(result.secondRun && typeof result.secondRun.status === "string", `${result.targetId}: secondRun.status required`);
-    assert(result.http && typeof result.http === "object", `${result.targetId}: http metrics required`);
-    assert(result.runtime && typeof result.runtime === "object", `${result.targetId}: runtime metrics required`);
+    assert(
+      result.secondRun && typeof result.secondRun.status === "string",
+      `${result.targetId}: secondRun.status required`,
+    );
+    assert(
+      result.http && typeof result.http === "object",
+      `${result.targetId}: http metrics required`,
+    );
+    assert(
+      result.runtime && typeof result.runtime === "object",
+      `${result.targetId}: runtime metrics required`,
+    );
     assert(
       typeof result.runtime.manualInterventionRequired === "boolean",
       `${result.targetId}: manualInterventionRequired must be boolean`,
@@ -120,6 +151,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
