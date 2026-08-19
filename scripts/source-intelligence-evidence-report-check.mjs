@@ -53,10 +53,7 @@ function validateSuccessfulResult(result, requirePositiveEvidenceDelta) {
   );
   assert(result.collectionPolicy?.maxDepth === 0, `${result.key}: maxDepth must remain 0`);
   assert(result.collectionPolicy?.maxItems === 1, `${result.key}: maxItems must remain 1`);
-  assert(
-    result.collectionPolicy?.respectRobots === true,
-    `${result.key}: robots boundary missing`,
-  );
+  assert(result.collectionPolicy?.respectRobots === true, `${result.key}: robots boundary missing`);
   assert(array(result.artifacts?.kinds).includes("HTML"), `${result.key}: HTML artifact missing`);
   assert(
     array(result.artifacts?.kinds).includes("MARKDOWN"),
