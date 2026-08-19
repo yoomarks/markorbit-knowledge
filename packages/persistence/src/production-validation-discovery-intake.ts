@@ -34,9 +34,7 @@ export type ProductionValidationManifest = {
 };
 
 export type ProductionValidationDiscoveryState =
-  | "QUEUED"
-  | "ALREADY_IN_DISCOVERY"
-  | "ALREADY_REGISTERED";
+  "QUEUED" | "ALREADY_IN_DISCOVERY" | "ALREADY_REGISTERED";
 
 export type ProductionValidationDiscoveryResult = {
   targetId: string;
@@ -135,7 +133,10 @@ export function validateProductionValidationManifest(value: unknown): Production
     if (!VALIDATION_STATES.includes(target.validationState as ProductionValidationState)) {
       throw new RegistryValidationError(`${id}.validationState is invalid`);
     }
-    const uri = canonicalUri(requiredString(target.canonicalUri, `${id}.canonicalUri`), `${id}.canonicalUri`);
+    const uri = canonicalUri(
+      requiredString(target.canonicalUri, `${id}.canonicalUri`),
+      `${id}.canonicalUri`,
+    );
     if (uris.has(uri)) throw new RegistryValidationError(`Duplicate canonicalUri: ${uri}`);
     uris.add(uri);
     return {

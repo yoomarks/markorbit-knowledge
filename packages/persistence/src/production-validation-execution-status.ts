@@ -5,9 +5,7 @@ import { RegistryError } from "./index";
 import type { ProductionValidationManifest } from "./production-validation-discovery-intake";
 
 export type ProductionValidationExecutionState =
-  | "NOT_REGISTERED"
-  | "AWAITING_AUTHORIZATION"
-  | "RUN_OBSERVED";
+  "NOT_REGISTERED" | "AWAITING_AUTHORIZATION" | "RUN_OBSERVED";
 
 export type ProductionValidationExecutionItem = {
   targetId: string;
