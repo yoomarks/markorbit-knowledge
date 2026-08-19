@@ -5,9 +5,11 @@ import { RegistryError, RegistryValidationError } from "./index";
 import type { SourceCandidateRecord, SourceDiscoveryRepository } from "./source-discovery-registry";
 
 const MAX_WAVE_TARGETS = 100;
+const PRIORITIES = ["P0", "P1", "P2"] as const;
+const VALIDATION_STATES = ["PENDING_REAL_RUN", "VALIDATED", "BLOCKED"] as const;
 
-export type ProductionValidationPriority = "P0" | "P1" | "P2";
-export type ProductionValidationState = "PENDING_REAL_RUN" | "VALIDATED" | "BLOCKED";
+export type ProductionValidationPriority = (typeof PRIORITIES)[number];
+export type ProductionValidationState = (typeof VALIDATION_STATES)[number];
 
 export type ProductionValidationManifestTarget = {
   id: string;
@@ -32,7 +34,9 @@ export type ProductionValidationManifest = {
 };
 
 export type ProductionValidationDiscoveryState =
-  "QUEUED" | "ALREADY_IN_DISCOVERY" | "ALREADY_REGISTERED";
+  | "QUEUED"
+  | "ALREADY_IN_DISCOVERY"
+  | "ALREADY_REGISTERED";
 
 export type ProductionValidationDiscoveryResult = {
   targetId: string;
@@ -75,20 +79,32 @@ function canonicalUri(value: string, field: string): string {
   return url.toString();
 }
 
-function validateManifest(
-  manifest: ProductionValidationManifest,
-): ProductionValidationManifestTarget[] {
+function record(value: unknown, field: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new RegistryValidationError(`${field} must be an object`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function requiredString(value: unknown, field: string): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new RegistryValidationError(`${field} is required`);
+  }
+  return value.trim();
+}
+
+export function validateProductionValidationManifest(value: unknown): ProductionValidationManifest {
+  const manifest = record(value, "Production validation manifest");
   if (manifest.manifestVersion !== "1.0") {
     throw new RegistryValidationError("Unsupported production validation manifestVersion");
   }
-  if (!manifest.waveId?.trim()) {
-    throw new RegistryValidationError("Production validation waveId is required");
-  }
+  const waveId = requiredString(manifest.waveId, "Production validation waveId");
+  const governance = record(manifest.governance, "Production validation governance");
   if (
-    manifest.governance?.collectionAuthorizationRequired !== true ||
-    manifest.governance?.discoveryDoesNotActivateSource !== true ||
-    manifest.governance?.noAutomaticProductionScheduling !== true ||
-    manifest.governance?.realObservationsOnly !== true
+    governance.collectionAuthorizationRequired !== true ||
+    governance.discoveryDoesNotActivateSource !== true ||
+    governance.noAutomaticProductionScheduling !== true ||
+    governance.realObservationsOnly !== true
   ) {
     throw new RegistryValidationError("Production validation governance boundaries are required");
   }
@@ -103,19 +119,47 @@ function validateManifest(
 
   const ids = new Set<string>();
   const uris = new Set<string>();
-  return manifest.targets.map((target, index) => {
-    const id = target.id?.trim();
-    if (!id) throw new RegistryValidationError(`targets[${index}].id is required`);
+  const targets = manifest.targets.map((value, index): ProductionValidationManifestTarget => {
+    const target = record(value, `targets[${index}]`);
+    const id = requiredString(target.id, `targets[${index}].id`);
     if (ids.has(id)) throw new RegistryValidationError(`Duplicate target id: ${id}`);
     ids.add(id);
+    const jurisdiction = requiredString(target.jurisdiction, `${id}.jurisdiction`);
+    const authority = requiredString(target.authority, `${id}.authority`);
     if (target.sourceClass !== "OFFICIAL_AUTHORITY") {
       throw new RegistryValidationError(`${id}: production validation Wave 1 is official-only`);
     }
-    const uri = canonicalUri(target.canonicalUri, `${id}.canonicalUri`);
+    if (!PRIORITIES.includes(target.priority as ProductionValidationPriority)) {
+      throw new RegistryValidationError(`${id}.priority is invalid`);
+    }
+    if (!VALIDATION_STATES.includes(target.validationState as ProductionValidationState)) {
+      throw new RegistryValidationError(`${id}.validationState is invalid`);
+    }
+    const uri = canonicalUri(requiredString(target.canonicalUri, `${id}.canonicalUri`), `${id}.canonicalUri`);
     if (uris.has(uri)) throw new RegistryValidationError(`Duplicate canonicalUri: ${uri}`);
     uris.add(uri);
-    return { ...target, id, canonicalUri: uri };
+    return {
+      id,
+      jurisdiction,
+      authority,
+      canonicalUri: uri,
+      sourceClass: "OFFICIAL_AUTHORITY",
+      priority: target.priority as ProductionValidationPriority,
+      validationState: target.validationState as ProductionValidationState,
+    };
   });
+
+  return {
+    manifestVersion: "1.0",
+    waveId,
+    governance: {
+      collectionAuthorizationRequired: true,
+      discoveryDoesNotActivateSource: true,
+      noAutomaticProductionScheduling: true,
+      realObservationsOnly: true,
+    },
+    targets,
+  };
 }
 
 function listWorkspaceSources(
@@ -177,7 +221,8 @@ export function queueProductionValidationWaveForDiscovery(
 ): ProductionValidationDiscoveryIntakeResult {
   const workspaceId = input.workspaceId?.trim();
   if (!workspaceId) throw new RegistryError("WORKSPACE_ID_REQUIRED", "workspaceId is required");
-  const targets = validateManifest(input.manifest);
+  const manifest = validateProductionValidationManifest(input.manifest);
+  const targets = manifest.targets;
   const sources = listWorkspaceSources(dependencies.sources, workspaceId);
   const results: ProductionValidationDiscoveryResult[] = [];
   const toQueue: ProductionValidationManifestTarget[] = [];
@@ -207,14 +252,14 @@ export function queueProductionValidationWaveForDiscovery(
     batchId = stableId(
       "disc",
       workspaceId,
-      input.manifest.waveId,
+      manifest.waveId,
       ...toQueue.map((target) => target.id).sort(),
     );
     const seeds = toQueue.map((target) =>
       dependencies.discovery.createSeed({
-        seedId: stableId("seed", workspaceId, input.manifest.waveId, target.id),
+        seedId: stableId("seed", workspaceId, manifest.waveId, target.id),
         locator: target.canonicalUri,
-        metadata: candidateMetadata(input.manifest, target),
+        metadata: candidateMetadata(manifest, target),
       }),
     );
     const batch: SourceDiscoveryBatch = {
@@ -239,15 +284,15 @@ export function queueProductionValidationWaveForDiscovery(
     };
     dependencies.discovery.createBatch(batch);
     const candidates: SourceCandidate[] = toQueue.map((target) => ({
-      candidateId: stableId("cand", workspaceId, input.manifest.waveId, target.id),
+      candidateId: stableId("cand", workspaceId, manifest.waveId, target.id),
       locator: target.canonicalUri,
       title: target.authority,
       discoveredAt: now,
       status: "DISCOVERED",
-      discoveredFrom: `production-validation:${input.manifest.waveId}`,
+      discoveredFrom: `production-validation:${manifest.waveId}`,
       discoveryMethod: "MANUAL",
       depth: 0,
-      metadata: candidateMetadata(input.manifest, target),
+      metadata: candidateMetadata(manifest, target),
     }));
     dependencies.discovery.completeBatch(batchId, candidates);
 
@@ -287,7 +332,7 @@ export function queueProductionValidationWaveForDiscovery(
   };
   return {
     workspaceId,
-    waveId: input.manifest.waveId,
+    waveId: manifest.waveId,
     ...(batchId ? { batchId } : {}),
     results: ordered,
     summary,
