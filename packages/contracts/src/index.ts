@@ -13,6 +13,7 @@ export * from "./conversion-runtime-v1";
 export * from "./canonical-markdown-v1";
 export * from "./retrieval-v1";
 export * from "./change-feed-v1";
+export * from "./change-evidence-v1";
 export * from "./source-coverage-v1";
 export * from "./global-reference-source-v1";
 export * from "./source-supply-health-v1";
