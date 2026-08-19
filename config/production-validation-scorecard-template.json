@@ -13,9 +13,10 @@
     "compatibilityPass": 0,
     "compatibilityDegraded": 0,
     "compatibilityBlocked": 0,
+    "failureObserved": 0,
+    "adapterRequiredObserved": 0,
     "secondRunValidated": null,
-    "manualInterventionRequired": null,
-    "adapterRequired": null
+    "manualInterventionRequired": null
   },
   "results": []
 }
