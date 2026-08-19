@@ -1,12 +1,5 @@
-import type {
-  CollectionRunStatus,
-  JobStatus,
-  SourceDefinition,
-} from "@markorbit/contracts";
-import type {
-  ExecutionLedgerRepository,
-  ExecutionRunRecord,
-} from "./execution-ledger";
+import type { CollectionRunStatus, JobStatus, SourceDefinition } from "@markorbit/contracts";
+import type { ExecutionLedgerRepository, ExecutionRunRecord } from "./execution-ledger";
 import type { SourceRepository } from "./index";
 import { RegistryError } from "./index";
 import type { ProductionValidationManifest } from "./production-validation-discovery-intake";
