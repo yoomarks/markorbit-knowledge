@@ -1,0 +1,39 @@
+name: Temporary Cancel Obsolete Canary Runs
+
+on:
+  pull_request:
+    branches:
+      - ops/canary-cleanup-base
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel-obsolete-runs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Cancel superseded representative canary runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          runs=(32269046697 32269466897 32270226691)
+          for run_id in "${runs[@]}"; do
+            response_file="$RUNNER_TEMP/cancel-$run_id.json"
+            status="$(curl --silent --show-error \
+              --output "$response_file" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/cancel")"
+            echo "run=$run_id cancel_http_status=$status"
+            if [[ "$status" != "202" && "$status" != "409" ]]; then
+              cat "$response_file"
+              exit 1
+            fi
+          done
