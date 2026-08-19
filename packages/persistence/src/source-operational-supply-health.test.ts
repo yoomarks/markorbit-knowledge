@@ -204,8 +204,9 @@ describe("operational topology supply health", () => {
   it("adds topology coverage without changing the existing supply state or gaps", () => {
     const database = openRegistryDatabase(":memory:");
     createCoverageSource(database);
-    const result = new SqliteOperationalSupplyHealthRepository(database, () =>
-      new Date("2026-08-19T12:00:00.000Z"),
+    const result = new SqliteOperationalSupplyHealthRepository(
+      database,
+      () => new Date("2026-08-19T12:00:00.000Z"),
     ).list({
       workspaceId: DEFAULT_WORKSPACE.id,
       targetId: "us-uspto-trademarks-root",

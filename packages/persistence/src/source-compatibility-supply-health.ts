@@ -167,10 +167,8 @@ export function projectSourceSupplyOperationalTopology(
       projectedSourceCount += 1;
       if (observation.coverage.sourceRegistryV2Observed) sourceRegistryV2ObservedSourceCount += 1;
       if (observation.coverage.sourceGraphObserved) sourceGraphObservedSourceCount += 1;
-      if (observation.coverage.explicitParentageObserved)
-        explicitParentageObservedSourceCount += 1;
-      if (observation.coverage.explicitAuthorityObserved)
-        explicitAuthorityObservedSourceCount += 1;
+      if (observation.coverage.explicitParentageObserved) explicitParentageObservedSourceCount += 1;
+      if (observation.coverage.explicitAuthorityObserved) explicitAuthorityObservedSourceCount += 1;
       entrypointCount += observation.entrypoints.length;
       graphMappedEntrypointCount += observation.entrypoints.filter(
         (entrypoint) => entrypoint.graphNodeId !== null,
@@ -217,10 +215,7 @@ export class SqliteOperationalSupplyHealthRepository implements SourceSupplyHeal
   private readonly base: SqliteCompatibilityAwareSupplyHealthRepository;
   private readonly topology: SqliteSourceOperationalTopologyRepository;
 
-  constructor(
-    database: DatabaseSync,
-    clock: () => Date = () => new Date(),
-  ) {
+  constructor(database: DatabaseSync, clock: () => Date = () => new Date()) {
     this.base = new SqliteCompatibilityAwareSupplyHealthRepository(database, clock);
     this.topology = new SqliteSourceOperationalTopologyRepository(database);
   }
