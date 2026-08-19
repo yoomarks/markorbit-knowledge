@@ -1,3 +1,4 @@
+import type { SourceCompatibilityObservation } from "@markorbit/contracts";
 import { describe, expect, it } from "vitest";
 import type { ProductionValidationManifest } from "./production-validation-discovery-intake";
 import type { ProductionValidationExecutionStatus } from "./production-validation-execution-status";
@@ -153,10 +154,29 @@ const pipeline: ProductionValidationPipelineStatus = {
   },
 };
 
+const compatibility = new Map<string, SourceCompatibilityObservation>([
+  [
+    "target-a",
+    {
+      protocolVersion: "1.0",
+      objectType: "SOURCE_COMPATIBILITY_OBSERVATION",
+      id: "observation-a",
+      targetId: "target-a",
+      jurisdiction: "US",
+      state: "DEGRADED",
+      observedAt: "2026-08-19T05:30:00.000Z",
+      primaryUri: "https://example.com/a",
+      renderJavascript: true,
+      errorCode: "PRIMARY_PATH_DEGRADED",
+      errorMessage: "Primary path required browser rendering",
+    } as SourceCompatibilityObservation,
+  ],
+]);
+
 describe("buildProductionValidationScorecard", () => {
-  it("aggregates only observed facts and leaves unsupported telemetry unknown", () => {
+  it("aggregates observed pipeline and compatibility facts without inventing telemetry", () => {
     const scorecard = buildProductionValidationScorecard(
-      { manifest, onboarding, execution, pipeline },
+      { manifest, onboarding, execution, pipeline, compatibility },
       () => new Date("2026-08-19T06:00:00.000Z"),
     );
 
@@ -166,6 +186,10 @@ describe("buildProductionValidationScorecard", () => {
       collectionSucceeded: 1,
       knowledgeVisible: 1,
       secondRunObserved: 1,
+      compatibilityObserved: 1,
+      compatibilityPass: 0,
+      compatibilityDegraded: 1,
+      compatibilityBlocked: 0,
       secondRunValidated: null,
       manualInterventionRequired: null,
       adapterRequired: null,
@@ -177,6 +201,13 @@ describe("buildProductionValidationScorecard", () => {
       secondRunObserved: true,
       artifactCount: 3,
       knowledgeVisible: true,
+      compatibility: {
+        state: "DEGRADED",
+        observedAt: "2026-08-19T05:30:00.000Z",
+        primaryUri: "https://example.com/a",
+        renderJavascriptObserved: true,
+        errorCode: "PRIMARY_PATH_DEGRADED",
+      },
       telemetry: {
         httpFailureCount: null,
         wafDetected: null,
@@ -187,6 +218,7 @@ describe("buildProductionValidationScorecard", () => {
         secondRunValidated: null,
       },
     });
+    expect(scorecard.results[1]?.compatibility.state).toBe("UNOBSERVED");
     expect(scorecard.generatedAt).toBe("2026-08-19T06:00:00.000Z");
   });
 
