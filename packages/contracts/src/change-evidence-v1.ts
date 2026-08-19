@@ -5,11 +5,29 @@ export const CHANGE_EVIDENCE_PROTOCOL_VERSION = "1.0" as const;
 export const OBJECTIVE_CHANGE_DIMENSIONS = [
   "DOCUMENT_CREATED",
   "CONTENT_CHANGED",
+  "METADATA_CHANGED",
+  "LINK_ADDED",
+  "LINK_REMOVED",
   "SECTION_ADDED",
   "SECTION_REMOVED",
   "SECTION_MODIFIED",
+  "STRUCTURE_CHANGED",
 ] as const;
 export type ObjectiveChangeDimension = (typeof OBJECTIVE_CHANGE_DIMENSIONS)[number];
+
+export const CHANGE_EVIDENCE_METADATA_FIELDS = [
+  "title",
+  "targetPath",
+  "canonicalUri",
+  "sourceUri",
+  "sourceName",
+  "sourceCategory",
+  "authorityLevel",
+  "jurisdictions",
+  "languages",
+  "publishedAt",
+] as const;
+export type ChangeEvidenceMetadataField = (typeof CHANGE_EVIDENCE_METADATA_FIELDS)[number];
 
 export type ChangeEvidenceDocumentRef = {
   artifactVersion: number;
@@ -19,6 +37,27 @@ export type ChangeEvidenceDocumentRef = {
   contentSha256: string;
   capturedAt: string;
   sourceUri: string;
+};
+
+export type ChangeEvidenceMetadataValue = string | string[] | null;
+
+export type ChangeEvidenceMetadataChange = {
+  field: ChangeEvidenceMetadataField;
+  before: ChangeEvidenceMetadataValue;
+  after: ChangeEvidenceMetadataValue;
+};
+
+export type ChangeEvidenceLinkDiff = {
+  added: string[];
+  removed: string[];
+};
+
+export type ChangeEvidenceCoverage = {
+  documentMetadata: true;
+  canonicalText: true;
+  canonicalLinks: true;
+  sectionStructure: true;
+  linkedAttachments: false;
 };
 
 export type DocumentChangeEvidence = {
@@ -38,6 +77,9 @@ export type DocumentChangeEvidence = {
   dimensions: ObjectiveChangeDimension[];
   summary: DocumentChangeSummary;
   sections: DocumentSectionChange[];
+  metadataChanges: ChangeEvidenceMetadataChange[];
+  links: ChangeEvidenceLinkDiff;
+  coverage: ChangeEvidenceCoverage;
 };
 
 export type DocumentChangeEvidenceFeedRequest = {
