@@ -147,7 +147,12 @@ describe("inspectProductionValidationPipeline", () => {
   it("projects persisted artifact, conversion and Knowledge-visible facts", () => {
     const result = inspectProductionValidationPipeline(
       { workspaceId, manifest },
-      dependencies({ registered: true, artifact: true, conversion: true, staging: true }),
+      dependencies({
+        registered: true,
+        artifact: true,
+        conversion: true,
+        staging: true,
+      }),
     );
 
     expect(result.items[0]).toMatchObject({
