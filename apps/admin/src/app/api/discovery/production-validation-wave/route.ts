@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import { queueProductionValidationWaveForDiscovery } from "@markorbit/persistence/production-validation-discovery-intake";
 import { inspectProductionValidationExecution } from "@markorbit/persistence/production-validation-execution-status";
 import { inspectProductionValidationOnboarding } from "@markorbit/persistence/production-validation-onboarding-status";
@@ -18,16 +19,25 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function workspaceId(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
-  return value.trim();
+function productionValidationWorkspaceId(value: unknown): string {
+  if (value === null || value === undefined || value === "") return DEFAULT_WORKSPACE.id;
+  if (typeof value !== "string" || !value.trim()) {
+    throw new RegistryValidationError("workspaceId must be a non-empty string");
+  }
+  const workspaceId = value.trim();
+  if (workspaceId !== DEFAULT_WORKSPACE.id) {
+    throw new RegistryValidationError(
+      `Production validation currently supports only workspace ${DEFAULT_WORKSPACE.id}`,
+    );
+  }
+  return workspaceId;
 }
 
 export async function GET(request: Request) {
   try {
     const manifest = loadProductionValidationWave();
     const url = new URL(request.url);
-    const resolvedWorkspaceId = workspaceId(url.searchParams.get("workspaceId"));
+    const resolvedWorkspaceId = productionValidationWorkspaceId(url.searchParams.get("workspaceId"));
     const sources = getSourceRepository();
     const onboarding = inspectProductionValidationOnboarding(
       { workspaceId: resolvedWorkspaceId, manifest },
@@ -62,9 +72,10 @@ export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
     const manifest = loadProductionValidationWave();
+    const resolvedWorkspaceId = productionValidationWorkspaceId(body.workspaceId);
     const result = withRegistryTransaction(() =>
       queueProductionValidationWaveForDiscovery(
-        { workspaceId: workspaceId(body.workspaceId), manifest },
+        { workspaceId: resolvedWorkspaceId, manifest },
         {
           sources: getSourceRepository(),
           discovery: getSourceDiscoveryRepository(),
