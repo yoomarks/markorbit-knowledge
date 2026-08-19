@@ -163,6 +163,64 @@ describe("reviewDiscoveryCandidatesBatch", () => {
     });
   });
 
+  it("accepts production validation candidates but requires separate collection authorization", () => {
+    let dispatchCount = 0;
+    const result = reviewDiscoveryCandidatesBatch(
+      {
+        candidateIds: ["cand_wave1"],
+        decision: "ACCEPTED",
+        reviewer: "admin-console",
+        startCollection: true,
+      },
+      {
+        workflow: {
+          review() {
+            return {
+              candidate: {
+                candidate: {
+                  metadata: {
+                    productionValidation: {
+                      waveId: "official-wave-1",
+                      targetId: "us-uspto-trademarks",
+                      collectionAuthorizationRequired: true,
+                      noAutomaticProductionScheduling: true,
+                    },
+                  },
+                },
+              } as never,
+              source: { id: "src_uspto" } as never,
+              plan: { id: "pln_uspto" } as never,
+            };
+          },
+        },
+        collection: {
+          authorizeAndDispatch() {
+            dispatchCount += 1;
+            throw new Error("Production validation review must not authorize collection");
+          },
+        },
+      },
+    );
+
+    expect(dispatchCount).toBe(0);
+    expect(result.items).toEqual([
+      {
+        candidateId: "cand_wave1",
+        status: "ACCEPTED",
+        sourceId: "src_uspto",
+        planId: "pln_uspto",
+        collectionDeferred: true,
+      },
+    ]);
+    expect(result.summary).toEqual({
+      requested: 1,
+      succeeded: 1,
+      failed: 0,
+      collectionStarted: 0,
+      collectionDeferred: 1,
+    });
+  });
+
   it("never dispatches rejected reviews", () => {
     let dispatchCount = 0;
     const result = reviewDiscoveryCandidatesBatch(
