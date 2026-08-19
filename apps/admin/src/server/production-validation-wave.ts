@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import {
   validateProductionValidationManifest,
   type ProductionValidationManifest,
@@ -10,6 +10,20 @@ const DEFAULT_MANIFEST_PATH = "config/production-validation-wave-1.json";
 
 function repositoryRoot(): string {
   return process.env.MARKORBIT_REPOSITORY_ROOT ?? process.env.INIT_CWD ?? process.cwd();
+}
+
+export function resolveProductionValidationWorkspaceId(value: unknown): string {
+  if (value === null || value === undefined || value === "") return DEFAULT_WORKSPACE.id;
+  if (typeof value !== "string" || !value.trim()) {
+    throw new RegistryValidationError("workspaceId must be a non-empty string");
+  }
+  const workspaceId = value.trim();
+  if (workspaceId !== DEFAULT_WORKSPACE.id) {
+    throw new RegistryValidationError(
+      `Production validation currently supports only workspace ${DEFAULT_WORKSPACE.id}`,
+    );
+  }
+  return workspaceId;
 }
 
 export function parseProductionValidationManifest(value: unknown): ProductionValidationManifest {
