@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { RegistryValidationError } from "@markorbit/persistence";
-import type { ProductionValidationManifest } from "@markorbit/persistence/production-validation-discovery-intake";
+import {
+  validateProductionValidationManifest,
+  type ProductionValidationManifest,
+} from "@markorbit/persistence/production-validation-discovery-intake";
 
 const DEFAULT_MANIFEST_PATH = "config/production-validation-wave-1.json";
 
@@ -9,22 +12,8 @@ function repositoryRoot(): string {
   return process.env.MARKORBIT_REPOSITORY_ROOT ?? process.env.INIT_CWD ?? process.cwd();
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
 export function parseProductionValidationManifest(value: unknown): ProductionValidationManifest {
-  if (!isRecord(value)) {
-    throw new RegistryValidationError("Production validation manifest must be an object");
-  }
-  const governance = value.governance;
-  const targets = value.targets;
-  if (!isRecord(governance) || !Array.isArray(targets)) {
-    throw new RegistryValidationError(
-      "Production validation manifest requires governance and targets",
-    );
-  }
-  return value as unknown as ProductionValidationManifest;
+  return validateProductionValidationManifest(value);
 }
 
 export function loadProductionValidationWave(
