@@ -16,6 +16,7 @@
     "calibrate:source-intelligence": "node scripts/source-intelligence-calibration.mjs",
     "calibrate:source-intelligence:evidence": "node scripts/source-intelligence-evidence-calibration.mjs",
     "check:source-intelligence:evidence-report": "node scripts/source-intelligence-evidence-report-check.mjs",
+    "check:production-validation:wave1": "node scripts/production-validation-wave-check.mjs",
     "release:preflight": "node scripts/release-preflight.mjs",
     "release:backup-restore-drill": "node scripts/release-backup-restore-drill.mjs",
     "format": "prettier --write .",
