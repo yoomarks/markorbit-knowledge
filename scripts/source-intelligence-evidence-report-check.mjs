@@ -15,8 +15,7 @@ function parseArgs(argv) {
     const next = argv[index + 1];
     if (token === "--report" && next) options.report = next;
     else if (token === "--min-success" && next) options.minSuccess = Number(next);
-    else if (token === "--allow-zero-evidence-delta")
-      options.requirePositiveEvidenceDelta = false;
+    else if (token === "--allow-zero-evidence-delta") options.requirePositiveEvidenceDelta = false;
     else continue;
     if (token !== "--allow-zero-evidence-delta") index += 1;
   }
@@ -58,10 +57,7 @@ function validateSuccessfulResult(result, requirePositiveEvidenceDelta) {
     result.collectionPolicy?.respectRobots === true,
     `${result.key}: robots boundary missing`,
   );
-  assert(
-    array(result.artifacts?.kinds).includes("HTML"),
-    `${result.key}: HTML artifact missing`,
-  );
+  assert(array(result.artifacts?.kinds).includes("HTML"), `${result.key}: HTML artifact missing`);
   assert(
     array(result.artifacts?.kinds).includes("MARKDOWN"),
     `${result.key}: MARKDOWN artifact missing`,
