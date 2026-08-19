@@ -42,12 +42,15 @@ describe("classifyProductionValidationFailure", () => {
     ["CANARY_EVIDENCE_INCOMPLETE", "EVIDENCE_INCOMPLETE", null],
     ["CANARY_RUNNER_FAILED", "RUNNER_FAILURE", null],
     ["CRAWL4AI_NETWORK_ERROR", "ACQUISITION_FAILURE", null],
-  ] as const)("classifies %s without guessing hidden causes", (errorCode, expectedClass, adapterRequired) => {
-    expect(classifyProductionValidationFailure(observation("BLOCKED", errorCode))).toMatchObject({
-      class: expectedClass,
-      observed: true,
-      sourceErrorCode: errorCode,
-      adapterRequired,
-    });
-  });
+  ] as const)(
+    "classifies %s without guessing hidden causes",
+    (errorCode, expectedClass, adapterRequired) => {
+      expect(classifyProductionValidationFailure(observation("BLOCKED", errorCode))).toMatchObject({
+        class: expectedClass,
+        observed: true,
+        sourceErrorCode: errorCode,
+        adapterRequired,
+      });
+    },
+  );
 });
