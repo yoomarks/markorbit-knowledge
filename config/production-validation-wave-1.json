@@ -1,0 +1,148 @@
+{
+  "manifestVersion": "1.0",
+  "waveId": "official-wave-1",
+  "purpose": "Production validation of data-driven onboarding and bounded collection across representative official trademark systems.",
+  "governance": {
+    "collectionAuthorizationRequired": true,
+    "discoveryDoesNotActivateSource": true,
+    "noAutomaticProductionScheduling": true,
+    "realObservationsOnly": true
+  },
+  "targets": [
+    {
+      "id": "wo-wipo-trademarks",
+      "jurisdiction": "WO",
+      "authority": "World Intellectual Property Organization",
+      "canonicalUri": "https://www.wipo.int/en/web/trademarks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P0",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "us-uspto-trademarks",
+      "jurisdiction": "US",
+      "authority": "United States Patent and Trademark Office",
+      "canonicalUri": "https://www.uspto.gov/trademarks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P0",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "eu-euipo-trade-marks",
+      "jurisdiction": "EU",
+      "authority": "European Union Intellectual Property Office",
+      "canonicalUri": "https://www.euipo.europa.eu/en/trade-marks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P0",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "cn-cnipa-trademarks",
+      "jurisdiction": "CN",
+      "authority": "China National Intellectual Property Administration",
+      "canonicalUri": "https://www.cnipa.gov.cn/col/col58/index.html",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P0",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "jp-jpo-trademarks",
+      "jurisdiction": "JP",
+      "authority": "Japan Patent Office",
+      "canonicalUri": "https://www.jpo.go.jp/e/system/trademark/index.html",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P0",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "kr-kipo-trademarks",
+      "jurisdiction": "KR",
+      "authority": "Korean Intellectual Property Office",
+      "canonicalUri": "https://www.kipo.go.kr/en/HtmlApp?c=93000",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P0",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "gb-ukipo-trade-marks",
+      "jurisdiction": "GB",
+      "authority": "UK Intellectual Property Office",
+      "canonicalUri": "https://www.gov.uk/topic/intellectual-property/trade-marks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P0",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "ca-cipo-trademarks",
+      "jurisdiction": "CA",
+      "authority": "Canadian Intellectual Property Office",
+      "canonicalUri": "https://ised-isde.canada.ca/site/canadian-intellectual-property-office/en/trademarks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P0",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "au-ip-australia-trade-marks",
+      "jurisdiction": "AU",
+      "authority": "IP Australia",
+      "canonicalUri": "https://www.ipaustralia.gov.au/trade-marks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P0",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "de-dpma-trade-marks",
+      "jurisdiction": "DE",
+      "authority": "German Patent and Trade Mark Office",
+      "canonicalUri": "https://www.dpma.de/english/trade_marks/index.html",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P1",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "fr-inpi-trademarks",
+      "jurisdiction": "FR",
+      "authority": "Institut national de la propriete industrielle",
+      "canonicalUri": "https://www.inpi.fr/en/trademarks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P1",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "bx-boip-trademarks",
+      "jurisdiction": "BX",
+      "authority": "Benelux Office for Intellectual Property",
+      "canonicalUri": "https://www.boip.int/en/trademarks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P1",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "sg-ipos-trade-marks",
+      "jurisdiction": "SG",
+      "authority": "Intellectual Property Office of Singapore",
+      "canonicalUri": "https://www.ipos.gov.sg/about-ip/trade-marks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P1",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "in-ipindia-trade-marks",
+      "jurisdiction": "IN",
+      "authority": "Office of the Controller General of Patents, Designs and Trade Marks",
+      "canonicalUri": "https://ipindia.gov.in/trademarks/trademarks.htm",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P1",
+      "validationState": "PENDING_REAL_RUN"
+    },
+    {
+      "id": "nz-iponz-trade-marks",
+      "jurisdiction": "NZ",
+      "authority": "Intellectual Property Office of New Zealand",
+      "canonicalUri": "https://www.iponz.govt.nz/about-ip/trade-marks/",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "priority": "P1",
+      "validationState": "PENDING_REAL_RUN"
+    }
+  ]
+}
