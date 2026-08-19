@@ -32,9 +32,7 @@ export type ProductionValidationManifest = {
 };
 
 export type ProductionValidationDiscoveryState =
-  | "QUEUED"
-  | "ALREADY_IN_DISCOVERY"
-  | "ALREADY_REGISTERED";
+  "QUEUED" | "ALREADY_IN_DISCOVERY" | "ALREADY_REGISTERED";
 
 export type ProductionValidationDiscoveryResult = {
   targetId: string;
@@ -77,7 +75,9 @@ function canonicalUri(value: string, field: string): string {
   return url.toString();
 }
 
-function validateManifest(manifest: ProductionValidationManifest): ProductionValidationManifestTarget[] {
+function validateManifest(
+  manifest: ProductionValidationManifest,
+): ProductionValidationManifestTarget[] {
   if (manifest.manifestVersion !== "1.0") {
     throw new RegistryValidationError("Unsupported production validation manifestVersion");
   }
@@ -118,7 +118,10 @@ function validateManifest(manifest: ProductionValidationManifest): ProductionVal
   });
 }
 
-function listWorkspaceSources(repository: SourceRepository, workspaceId: string): SourceDefinition[] {
+function listWorkspaceSources(
+  repository: SourceRepository,
+  workspaceId: string,
+): SourceDefinition[] {
   const sources: SourceDefinition[] = [];
   let offset = 0;
   while (true) {
@@ -134,9 +137,10 @@ function findRegisteredSource(
   target: ProductionValidationManifestTarget,
 ): SourceDefinition | undefined {
   return sources.find((source) => {
-    const uris = [source.canonicalUri, ...source.entrypoints.map((entrypoint) => entrypoint.uri)].filter(
-      (uri): uri is string => Boolean(uri),
-    );
+    const uris = [
+      source.canonicalUri,
+      ...source.entrypoints.map((entrypoint) => entrypoint.uri),
+    ].filter((uri): uri is string => Boolean(uri));
     return uris.some((uri) => {
       try {
         return canonicalUri(uri, "source URI") === target.canonicalUri;
@@ -276,7 +280,8 @@ export function queueProductionValidationWaveForDiscovery(
   });
   const summary = {
     QUEUED: ordered.filter((result) => result.state === "QUEUED").length,
-    ALREADY_IN_DISCOVERY: ordered.filter((result) => result.state === "ALREADY_IN_DISCOVERY").length,
+    ALREADY_IN_DISCOVERY: ordered.filter((result) => result.state === "ALREADY_IN_DISCOVERY")
+      .length,
     ALREADY_REGISTERED: ordered.filter((result) => result.state === "ALREADY_REGISTERED").length,
     total: ordered.length,
   };
