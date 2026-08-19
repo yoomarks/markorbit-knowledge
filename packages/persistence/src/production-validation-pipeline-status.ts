@@ -9,8 +9,11 @@ import type { ConversionRunLedgerRepository } from "./conversion-runs";
 import type { SourceRepository } from "./index";
 import { RegistryError } from "./index";
 import type { ProductionValidationManifest } from "./production-validation-discovery-intake";
-import type { RawArtifactRepository } from "./raw-artifact-registry";
-import type { StagingContentRegistryRepository } from "./staging-content-registry";
+import type { RawArtifactRepository, RawArtifactView } from "./raw-artifact-registry";
+import type {
+  StagingContentRegistryRepository,
+  StagingDocumentRecord,
+} from "./staging-content-registry";
 
 export type ProductionValidationPipelineState =
   | "NOT_REGISTERED"
@@ -89,6 +92,51 @@ function listWorkspaceSources(
   }
 }
 
+function listArtifacts(
+  repository: RawArtifactRepository,
+  workspaceId: string,
+  sourceId: string,
+): RawArtifactView[] {
+  const items: RawArtifactView[] = [];
+  let offset = 0;
+  while (true) {
+    const page = repository.list({ workspaceId, sourceId, limit: 100, offset });
+    items.push(...page.items);
+    offset += page.items.length;
+    if (page.items.length === 0 || offset >= page.total) return items;
+  }
+}
+
+function listConversionRuns(
+  repository: ConversionRunLedgerRepository,
+  workspaceId: string,
+  sourceId: string,
+) {
+  const items: ReturnType<ConversionRunLedgerRepository["list"]>["items"] = [];
+  let offset = 0;
+  while (true) {
+    const page = repository.list({ workspaceId, sourceId, limit: 100, offset });
+    items.push(...page.items);
+    offset += page.items.length;
+    if (page.items.length === 0 || offset >= page.total) return items;
+  }
+}
+
+function listStagingDocuments(
+  repository: StagingContentRegistryRepository,
+  workspaceId: string,
+  sourceId: string,
+): StagingDocumentRecord[] {
+  const items: StagingDocumentRecord[] = [];
+  let offset = 0;
+  while (true) {
+    const page = repository.listDocuments({ workspaceId, sourceId, limit: 100, offset });
+    items.push(...page.items);
+    offset += page.items.length;
+    if (page.items.length === 0 || offset >= page.total) return items;
+  }
+}
+
 function findRegisteredSource(
   sources: SourceDefinition[],
   targetUri: string,
@@ -137,51 +185,37 @@ export function inspectProductionValidationPipeline(
       };
     }
 
-    const artifacts = dependencies.artifacts.list({
-      workspaceId,
-      sourceId: source.id,
-      limit: 100,
-    });
-    const latestArtifact = artifacts.items[0]?.artifact;
-    const artifactBytes = artifacts.items.reduce((sum, item) => sum + item.artifact.sizeBytes, 0);
-    const readyForConversionArtifactCount = artifacts.items.filter(
+    const artifacts = listArtifacts(dependencies.artifacts, workspaceId, source.id);
+    const latestArtifact = artifacts[0]?.artifact;
+    const artifactBytes = artifacts.reduce((sum, item) => sum + item.artifact.sizeBytes, 0);
+    const readyForConversionArtifactCount = artifacts.filter(
       (item) => item.artifact.status === "READY_FOR_CONVERSION",
     ).length;
 
-    const conversionRuns = dependencies.conversionRuns.list({
-      workspaceId,
-      sourceId: source.id,
-      limit: 100,
-    });
-    const latestConversion = conversionRuns.items[0];
-    const completedConversionRunCount = conversionRuns.items.filter(
+    const conversionRuns = listConversionRuns(dependencies.conversionRuns, workspaceId, source.id);
+    const latestConversion = conversionRuns[0];
+    const completedConversionRunCount = conversionRuns.filter(
       (run) => run.status === "COMPLETED",
     ).length;
-    const failedConversionRunCount = conversionRuns.items.filter(
-      (run) => run.status === "FAILED",
-    ).length;
+    const failedConversionRunCount = conversionRuns.filter((run) => run.status === "FAILED").length;
 
-    const staging = dependencies.staging.listDocuments({
-      workspaceId,
-      sourceId: source.id,
-      limit: 100,
-    });
-    const latestStaging = staging.items[0];
-    const readyStagingDocumentCount = staging.items.filter(
+    const staging = listStagingDocuments(dependencies.staging, workspaceId, source.id);
+    const latestStaging = staging[0];
+    const readyStagingDocumentCount = staging.filter(
       (record) => record.descriptor.status === "READY",
     ).length;
-    const blockedStagingDocumentCount = staging.items.filter(
+    const blockedStagingDocumentCount = staging.filter(
       (record) => record.descriptor.status === "BLOCKED",
     ).length;
-    const knowledgeVisible = staging.items.some((record) =>
+    const knowledgeVisible = staging.some((record) =>
       ["GENERATED", "READY"].includes(record.descriptor.status),
     );
 
     const state: ProductionValidationPipelineState = knowledgeVisible
       ? "KNOWLEDGE_VISIBLE"
-      : conversionRuns.total > 0
+      : conversionRuns.length > 0
         ? "CONVERSION_OBSERVED"
-        : artifacts.total > 0
+        : artifacts.length > 0
           ? "ARTIFACT_OBSERVED"
           : "AWAITING_ARTIFACT";
 
@@ -191,7 +225,7 @@ export function inspectProductionValidationPipeline(
       authority: target.authority,
       state,
       sourceId: source.id,
-      artifactCount: artifacts.total,
+      artifactCount: artifacts.length,
       artifactBytes,
       readyForConversionArtifactCount,
       ...(latestArtifact
@@ -203,7 +237,7 @@ export function inspectProductionValidationPipeline(
             latestArtifactCreatedAt: latestArtifact.createdAt,
           }
         : {}),
-      conversionRunCount: conversionRuns.total,
+      conversionRunCount: conversionRuns.length,
       completedConversionRunCount,
       failedConversionRunCount,
       ...(latestConversion
@@ -212,7 +246,7 @@ export function inspectProductionValidationPipeline(
             latestConversionStatus: latestConversion.status,
           }
         : {}),
-      stagingDocumentCount: staging.total,
+      stagingDocumentCount: staging.length,
       readyStagingDocumentCount,
       blockedStagingDocumentCount,
       ...(latestStaging
