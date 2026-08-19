@@ -1,6 +1,10 @@
 import type { SourceCompatibilityObservation } from "@markorbit/contracts";
 import type { ProductionValidationManifest } from "./production-validation-discovery-intake";
 import type { ProductionValidationExecutionStatus } from "./production-validation-execution-status";
+import {
+  classifyProductionValidationFailure,
+  type ProductionValidationFailureClass,
+} from "./production-validation-failure-taxonomy";
 import type { ProductionValidationOnboardingStatus } from "./production-validation-onboarding-status";
 import type { ProductionValidationPipelineStatus } from "./production-validation-pipeline-status";
 
@@ -11,6 +15,9 @@ export type ProductionValidationCompatibilityTelemetry = {
   renderJavascriptObserved: boolean | null;
   errorCode: string | null;
   errorMessage: string | null;
+  failureClass: ProductionValidationFailureClass;
+  failureObserved: boolean;
+  adapterRequiredObserved: boolean | null;
 };
 
 export type ProductionValidationUnknownTelemetry = {
@@ -19,7 +26,6 @@ export type ProductionValidationUnknownTelemetry = {
   renderingRequired: null;
   retryCount: null;
   manualInterventionRequired: null;
-  adapterRequired: null;
   secondRunValidated: null;
 };
 
@@ -62,9 +68,10 @@ export type ProductionValidationScorecard = {
     compatibilityPass: number;
     compatibilityDegraded: number;
     compatibilityBlocked: number;
+    failureObserved: number;
+    adapterRequiredObserved: number;
     secondRunValidated: null;
     manualInterventionRequired: null;
-    adapterRequired: null;
   };
   results: ProductionValidationScorecardResult[];
 };
@@ -101,6 +108,7 @@ function assertAligned(input: ProductionValidationScorecardInput): void {
 function compatibilityTelemetry(
   observation: SourceCompatibilityObservation | undefined,
 ): ProductionValidationCompatibilityTelemetry {
+  const failure = classifyProductionValidationFailure(observation);
   if (!observation) {
     return {
       state: "UNOBSERVED",
@@ -109,6 +117,9 @@ function compatibilityTelemetry(
       renderJavascriptObserved: null,
       errorCode: null,
       errorMessage: null,
+      failureClass: failure.class,
+      failureObserved: failure.observed,
+      adapterRequiredObserved: failure.adapterRequired,
     };
   }
   return {
@@ -118,6 +129,9 @@ function compatibilityTelemetry(
     renderJavascriptObserved: observation.renderJavascript,
     errorCode: observation.errorCode ?? null,
     errorMessage: observation.errorMessage ?? null,
+    failureClass: failure.class,
+    failureObserved: failure.observed && failure.class !== "NONE",
+    adapterRequiredObserved: failure.adapterRequired,
   };
 }
 
@@ -165,7 +179,6 @@ export function buildProductionValidationScorecard(
         renderingRequired: null,
         retryCount: null,
         manualInterventionRequired: null,
-        adapterRequired: null,
         secondRunValidated: null,
       },
     };
@@ -189,9 +202,12 @@ export function buildProductionValidationScorecard(
         .length,
       compatibilityBlocked: results.filter((result) => result.compatibility.state === "BLOCKED")
         .length,
+      failureObserved: results.filter((result) => result.compatibility.failureObserved).length,
+      adapterRequiredObserved: results.filter(
+        (result) => result.compatibility.adapterRequiredObserved === true,
+      ).length,
       secondRunValidated: null,
       manualInterventionRequired: null,
-      adapterRequired: null,
     },
     results,
   };
