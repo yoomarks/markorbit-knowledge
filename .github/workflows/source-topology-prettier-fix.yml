@@ -1,0 +1,42 @@
+name: Source Topology Prettier Fix
+
+on:
+  push:
+    branches:
+      - agent/source-operational-topology-v1
+    paths:
+      - .github/workflows/source-topology-prettier-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/source-operational-topology-v1
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format topology files
+        run: >-
+          pnpm exec prettier --write
+          packages/persistence/src/source-operational-topology.ts
+          packages/persistence/src/source-operational-topology.test.ts
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/persistence/src/source-operational-topology.ts packages/persistence/src/source-operational-topology.test.ts
+          git commit -m "format source operational topology"
+          git push origin HEAD:agent/source-operational-topology-v1
