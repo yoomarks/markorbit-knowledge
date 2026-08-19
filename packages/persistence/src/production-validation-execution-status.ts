@@ -1,13 +1,18 @@
-import type { CollectionRunStatus, JobStatus, SourceDefinition } from "@markorbit/contracts";
-import type { ExecutionLedgerRepository, ExecutionRunRecord } from "./execution-ledger";
+import type {
+  CollectionRunStatus,
+  JobStatus,
+  SourceDefinition,
+} from "@markorbit/contracts";
+import type {
+  ExecutionLedgerRepository,
+  ExecutionRunRecord,
+} from "./execution-ledger";
 import type { SourceRepository } from "./index";
 import { RegistryError } from "./index";
 import type { ProductionValidationManifest } from "./production-validation-discovery-intake";
 
 export type ProductionValidationExecutionState =
-  | "NOT_REGISTERED"
-  | "AWAITING_AUTHORIZATION"
-  | "RUN_OBSERVED";
+  "NOT_REGISTERED" | "AWAITING_AUTHORIZATION" | "RUN_OBSERVED";
 
 export type ProductionValidationExecutionItem = {
   targetId: string;
@@ -93,9 +98,7 @@ export function inspectProductionValidationExecution(
   dependencies: ProductionValidationExecutionDependencies,
 ): ProductionValidationExecutionStatus {
   const workspaceId = input.workspaceId?.trim();
-  if (!workspaceId) {
-    throw new RegistryError("WORKSPACE_ID_REQUIRED", "workspaceId is required");
-  }
+  if (!workspaceId) throw new RegistryError("WORKSPACE_ID_REQUIRED", "workspaceId is required");
   const sources = listWorkspaceSources(dependencies.sources, workspaceId);
 
   const items = input.manifest.targets.map((target): ProductionValidationExecutionItem => {
@@ -114,9 +117,7 @@ export function inspectProductionValidationExecution(
     }
 
     const records = newestFirst(dependencies.runs.listForSource(source.id, 100));
-    const completedRunCount = records.filter(
-      (record) => record.run.status === "COMPLETED",
-    ).length;
+    const completedRunCount = records.filter((record) => record.run.status === "COMPLETED").length;
     const failedRunCount = records.filter((record) => record.run.status === "FAILED").length;
     const latest = records[0];
     if (!latest) {
