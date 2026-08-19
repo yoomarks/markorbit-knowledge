@@ -3,6 +3,7 @@ import { queueProductionValidationWaveForDiscovery } from "@markorbit/persistenc
 import { inspectProductionValidationExecution } from "@markorbit/persistence/production-validation-execution-status";
 import { inspectProductionValidationOnboarding } from "@markorbit/persistence/production-validation-onboarding-status";
 import { inspectProductionValidationPipeline } from "@markorbit/persistence/production-validation-pipeline-status";
+import { buildProductionValidationScorecard } from "@markorbit/persistence/production-validation-scorecard";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
   loadProductionValidationWave,
@@ -52,7 +53,16 @@ export async function GET(request: Request) {
         staging: getStagingContentRepository(),
       },
     );
-    return NextResponse.json({ manifest, onboarding, execution, pipeline }, { status: 200 });
+    const scorecard = buildProductionValidationScorecard({
+      manifest,
+      onboarding,
+      execution,
+      pipeline,
+    });
+    return NextResponse.json(
+      { manifest, onboarding, execution, pipeline, scorecard },
+      { status: 200 },
+    );
   } catch (error) {
     return apiError(error);
   }
