@@ -9,6 +9,10 @@
     "collectionSucceeded": 0,
     "knowledgeVisible": 0,
     "secondRunObserved": 0,
+    "compatibilityObserved": 0,
+    "compatibilityPass": 0,
+    "compatibilityDegraded": 0,
+    "compatibilityBlocked": 0,
     "secondRunValidated": null,
     "manualInterventionRequired": null,
     "adapterRequired": null

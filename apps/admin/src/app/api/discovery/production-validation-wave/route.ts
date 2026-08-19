@@ -4,6 +4,7 @@ import { inspectProductionValidationExecution } from "@markorbit/persistence/pro
 import { inspectProductionValidationOnboarding } from "@markorbit/persistence/production-validation-onboarding-status";
 import { inspectProductionValidationPipeline } from "@markorbit/persistence/production-validation-pipeline-status";
 import { buildProductionValidationScorecard } from "@markorbit/persistence/production-validation-scorecard";
+import { SqliteSourceCompatibilityObservationRepository } from "@markorbit/persistence/source-compatibility-observations";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
   loadProductionValidationWave,
@@ -13,6 +14,7 @@ import {
   getConversionRunLedgerRepository,
   getExecutionLedgerRepository,
   getRawArtifactRepository,
+  getRegistryDatabase,
   getSourceDiscoveryRepository,
   getSourceRepository,
   getStagingContentRepository,
@@ -53,11 +55,15 @@ export async function GET(request: Request) {
         staging: getStagingContentRepository(),
       },
     );
+    const compatibility = new SqliteSourceCompatibilityObservationRepository(
+      getRegistryDatabase(),
+    ).latest(manifest.targets.map((target) => target.id));
     const scorecard = buildProductionValidationScorecard({
       manifest,
       onboarding,
       execution,
       pipeline,
+      compatibility,
     });
     return NextResponse.json(
       { manifest, onboarding, execution, pipeline, scorecard },
