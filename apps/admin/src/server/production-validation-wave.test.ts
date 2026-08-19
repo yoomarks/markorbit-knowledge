@@ -32,12 +32,24 @@ describe("production validation wave loader", () => {
           noAutomaticProductionScheduling: true,
           realObservationsOnly: true,
         },
-        targets: [],
+        targets: [
+          {
+            id: "wo-wipo-trademarks",
+            jurisdiction: "WO",
+            authority: "World Intellectual Property Organization",
+            canonicalUri: "https://www.wipo.int/en/web/trademarks",
+            sourceClass: "OFFICIAL_AUTHORITY",
+            priority: "P0",
+            validationState: "PENDING_REAL_RUN",
+          },
+        ],
       }),
     );
     process.env.MARKORBIT_REPOSITORY_ROOT = root;
 
-    expect(loadProductionValidationWave().waveId).toBe("official-wave-test");
+    const loaded = loadProductionValidationWave();
+    expect(loaded.waveId).toBe("official-wave-test");
+    expect(loaded.targets).toHaveLength(1);
   });
 
   it("rejects non-object manifests before intake", () => {
