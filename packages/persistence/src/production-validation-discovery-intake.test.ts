@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { openRegistryDatabase, SqliteSourceRepository } from "./index";
-import { SqliteSourceDiscoveryRepository } from "./source-discovery-registry";
 import {
   queueProductionValidationWaveForDiscovery,
   type ProductionValidationManifest,
 } from "./production-validation-discovery-intake";
+import { SqliteSourceDiscoveryRepository } from "./source-discovery-registry";
 
 const databases: Array<ReturnType<typeof openRegistryDatabase>> = [];
 
@@ -110,14 +110,17 @@ describe("production validation discovery intake", () => {
 
   it("rejects manifests that weaken the collection authorization boundary", () => {
     const dependencies = setup();
-    const invalid = manifest() as ProductionValidationManifest & {
+    const invalid = structuredClone(manifest()) as unknown as {
       governance: { collectionAuthorizationRequired: boolean };
     };
     invalid.governance.collectionAuthorizationRequired = false;
 
     expect(() =>
       queueProductionValidationWaveForDiscovery(
-        { workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV", manifest: invalid },
+        {
+          workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          manifest: invalid as unknown as ProductionValidationManifest,
+        },
         dependencies,
       ),
     ).toThrow("Production validation governance boundaries are required");
