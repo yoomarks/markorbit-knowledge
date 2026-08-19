@@ -33,10 +33,7 @@ async function readJson(path) {
 
 function validateManifest(manifest) {
   assert(manifest.manifestVersion === "1.0", "Unsupported manifestVersion");
-  assert(
-    typeof manifest.waveId === "string" && manifest.waveId.length > 0,
-    "waveId is required",
-  );
+  assert(typeof manifest.waveId === "string" && manifest.waveId.length > 0, "waveId is required");
   assert(
     manifest.governance?.collectionAuthorizationRequired === true,
     "Collection authorization boundary must remain explicit",
