@@ -42,13 +42,29 @@ function sourceRepository(items: unknown[]) {
   } as never;
 }
 
+function executionRepository(items: unknown[]) {
+  return {
+    list(filters: { limit?: number; offset?: number }) {
+      const limit = filters.limit ?? 100;
+      const offset = filters.offset ?? 0;
+      return {
+        items: items.slice(offset, offset + limit),
+        total: items.length,
+        limit,
+        offset,
+        summary: {} as never,
+      };
+    },
+  } as never;
+}
+
 describe("production validation execution status", () => {
   it("distinguishes targets that have not reached the Source registry", () => {
     const status = inspectProductionValidationExecution(
       { workspaceId, manifest: manifest() },
       {
         sources: sourceRepository([]),
-        runs: { listForSource: () => [] } as never,
+        runs: executionRepository([]),
       },
     );
 
@@ -76,7 +92,7 @@ describe("production validation execution status", () => {
             entrypoints: [],
           },
         ]),
-        runs: { listForSource: () => [] } as never,
+        runs: executionRepository([]),
       },
     );
 
@@ -99,28 +115,24 @@ describe("production validation execution status", () => {
             entrypoints: [],
           },
         ]),
-        runs: {
-          listForSource() {
-            return [
-              {
-                run: {
-                  id: "run_old",
-                  status: "FAILED",
-                  requestedAt: "2026-08-19T03:00:00Z",
-                },
-                jobs: [{ status: "FAILED" }],
-              },
-              {
-                run: {
-                  id: "run_new",
-                  status: "COMPLETED",
-                  requestedAt: "2026-08-19T04:00:00Z",
-                },
-                jobs: [{ status: "SUCCEEDED" }],
-              },
-            ];
+        runs: executionRepository([
+          {
+            run: {
+              id: "run_old",
+              status: "FAILED",
+              requestedAt: "2026-08-19T03:00:00Z",
+            },
+            jobs: [{ status: "FAILED" }],
           },
-        } as never,
+          {
+            run: {
+              id: "run_new",
+              status: "COMPLETED",
+              requestedAt: "2026-08-19T04:00:00Z",
+            },
+            jobs: [{ status: "SUCCEEDED" }],
+          },
+        ]),
       },
     );
 
