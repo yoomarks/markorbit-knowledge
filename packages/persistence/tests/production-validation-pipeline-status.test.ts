@@ -141,7 +141,7 @@ describe("inspectProductionValidationPipeline", () => {
     });
   });
 
-  it("projects persisted artifact, conversion and Knowledge-visible facts", () => {
+  it("projects persisted artifact, conversion, and Knowledge-visible facts", () => {
     const result = inspectProductionValidationPipeline(
       { workspaceId, manifest },
       dependencies({
