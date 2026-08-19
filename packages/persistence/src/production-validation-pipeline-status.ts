@@ -75,7 +75,10 @@ function canonicalUri(value: string): string {
   return url.toString();
 }
 
-function listWorkspaceSources(repository: SourceRepository, workspaceId: string): SourceDefinition[] {
+function listWorkspaceSources(
+  repository: SourceRepository,
+  workspaceId: string,
+): SourceDefinition[] {
   const sources: SourceDefinition[] = [];
   let offset = 0;
   while (true) {
@@ -110,135 +113,173 @@ export function inspectProductionValidationPipeline(
   dependencies: ProductionValidationPipelineDependencies,
 ): ProductionValidationPipelineStatus {
   const workspaceId = input.workspaceId?.trim();
-  if (!workspaceId) throw new RegistryError("WORKSPACE_ID_REQUIRED", "workspaceId is required");
+  if (!workspaceId)
+    throw new RegistryError("WORKSPACE_ID_REQUIRED", "workspaceId is required");
   const sources = listWorkspaceSources(dependencies.sources, workspaceId);
 
-  const items = input.manifest.targets.map((target): ProductionValidationPipelineItem => {
-    const source = findRegisteredSource(sources, canonicalUri(target.canonicalUri));
-    if (!source) {
+  const items = input.manifest.targets.map(
+    (target): ProductionValidationPipelineItem => {
+      const source = findRegisteredSource(
+        sources,
+        canonicalUri(target.canonicalUri),
+      );
+      if (!source) {
+        return {
+          targetId: target.id,
+          jurisdiction: target.jurisdiction,
+          authority: target.authority,
+          state: "NOT_REGISTERED",
+          artifactCount: 0,
+          artifactBytes: 0,
+          readyForConversionArtifactCount: 0,
+          conversionRunCount: 0,
+          completedConversionRunCount: 0,
+          failedConversionRunCount: 0,
+          stagingDocumentCount: 0,
+          readyStagingDocumentCount: 0,
+          blockedStagingDocumentCount: 0,
+          knowledgeVisible: false,
+        };
+      }
+
+      const artifacts = dependencies.artifacts.list({
+        workspaceId,
+        sourceId: source.id,
+        limit: 100,
+      });
+      const latestArtifact = artifacts.items[0]?.artifact;
+      const artifactBytes = artifacts.items.reduce(
+        (sum, item) => sum + item.artifact.sizeBytes,
+        0,
+      );
+      const readyForConversionArtifactCount = artifacts.items.filter(
+        (item) => item.artifact.status === "READY_FOR_CONVERSION",
+      ).length;
+
+      const conversionRuns = dependencies.conversionRuns.list({
+        workspaceId,
+        sourceId: source.id,
+        limit: 100,
+      });
+      const latestConversion = conversionRuns.items[0];
+      const completedConversionRunCount = conversionRuns.items.filter(
+        (run) => run.status === "COMPLETED",
+      ).length;
+      const failedConversionRunCount = conversionRuns.items.filter(
+        (run) => run.status === "FAILED",
+      ).length;
+
+      const staging = dependencies.staging.listDocuments({
+        workspaceId,
+        sourceId: source.id,
+        limit: 100,
+      });
+      const latestStaging = staging.items[0];
+      const readyStagingDocumentCount = staging.items.filter(
+        (record) => record.descriptor.status === "READY",
+      ).length;
+      const blockedStagingDocumentCount = staging.items.filter(
+        (record) => record.descriptor.status === "BLOCKED",
+      ).length;
+      const knowledgeVisible = staging.items.some((record) =>
+        ["GENERATED", "READY"].includes(record.descriptor.status),
+      );
+
+      const state: ProductionValidationPipelineState = knowledgeVisible
+        ? "KNOWLEDGE_VISIBLE"
+        : conversionRuns.total > 0
+          ? "CONVERSION_OBSERVED"
+          : artifacts.total > 0
+            ? "ARTIFACT_OBSERVED"
+            : "AWAITING_ARTIFACT";
+
       return {
         targetId: target.id,
         jurisdiction: target.jurisdiction,
         authority: target.authority,
-        state: "NOT_REGISTERED",
-        artifactCount: 0,
-        artifactBytes: 0,
-        readyForConversionArtifactCount: 0,
-        conversionRunCount: 0,
-        completedConversionRunCount: 0,
-        failedConversionRunCount: 0,
-        stagingDocumentCount: 0,
-        readyStagingDocumentCount: 0,
-        blockedStagingDocumentCount: 0,
-        knowledgeVisible: false,
+        state,
+        sourceId: source.id,
+        artifactCount: artifacts.total,
+        artifactBytes,
+        readyForConversionArtifactCount,
+        ...(latestArtifact
+          ? {
+              latestArtifactId: latestArtifact.id,
+              latestArtifactStatus: latestArtifact.status,
+              latestArtifactKind: latestArtifact.artifactKind,
+              latestArtifactSizeBytes: latestArtifact.sizeBytes,
+              latestArtifactCreatedAt: latestArtifact.createdAt,
+            }
+          : {}),
+        conversionRunCount: conversionRuns.total,
+        completedConversionRunCount,
+        failedConversionRunCount,
+        ...(latestConversion
+          ? {
+              latestConversionRunId: latestConversion.id,
+              latestConversionStatus: latestConversion.status,
+            }
+          : {}),
+        stagingDocumentCount: staging.total,
+        readyStagingDocumentCount,
+        blockedStagingDocumentCount,
+        ...(latestStaging
+          ? {
+              latestStagingDocumentId: latestStaging.descriptor.id,
+              latestStagingStatus: latestStaging.descriptor.status,
+            }
+          : {}),
+        knowledgeVisible,
       };
-    }
-
-    const artifacts = dependencies.artifacts.list({ workspaceId, sourceId: source.id, limit: 100 });
-    const latestArtifact = artifacts.items[0]?.artifact;
-    const artifactBytes = artifacts.items.reduce((sum, item) => sum + item.artifact.sizeBytes, 0);
-    const readyForConversionArtifactCount = artifacts.items.filter(
-      (item) => item.artifact.status === "READY_FOR_CONVERSION",
-    ).length;
-
-    const conversionRuns = dependencies.conversionRuns.list({
-      workspaceId,
-      sourceId: source.id,
-      limit: 100,
-    });
-    const latestConversion = conversionRuns.items[0];
-    const completedConversionRunCount = conversionRuns.items.filter(
-      (run) => run.status === "COMPLETED",
-    ).length;
-    const failedConversionRunCount = conversionRuns.items.filter(
-      (run) => run.status === "FAILED",
-    ).length;
-
-    const staging = dependencies.staging.listDocuments({
-      workspaceId,
-      sourceId: source.id,
-      limit: 100,
-    });
-    const latestStaging = staging.items[0];
-    const readyStagingDocumentCount = staging.items.filter(
-      (record) => record.descriptor.status === "READY",
-    ).length;
-    const blockedStagingDocumentCount = staging.items.filter(
-      (record) => record.descriptor.status === "BLOCKED",
-    ).length;
-    const knowledgeVisible = staging.items.some((record) =>
-      ["GENERATED", "READY"].includes(record.descriptor.status),
-    );
-
-    const state: ProductionValidationPipelineState = knowledgeVisible
-      ? "KNOWLEDGE_VISIBLE"
-      : conversionRuns.total > 0
-        ? "CONVERSION_OBSERVED"
-        : artifacts.total > 0
-          ? "ARTIFACT_OBSERVED"
-          : "AWAITING_ARTIFACT";
-
-    return {
-      targetId: target.id,
-      jurisdiction: target.jurisdiction,
-      authority: target.authority,
-      state,
-      sourceId: source.id,
-      artifactCount: artifacts.total,
-      artifactBytes,
-      readyForConversionArtifactCount,
-      ...(latestArtifact
-        ? {
-            latestArtifactId: latestArtifact.id,
-            latestArtifactStatus: latestArtifact.status,
-            latestArtifactKind: latestArtifact.artifactKind,
-            latestArtifactSizeBytes: latestArtifact.sizeBytes,
-            latestArtifactCreatedAt: latestArtifact.createdAt,
-          }
-        : {}),
-      conversionRunCount: conversionRuns.total,
-      completedConversionRunCount,
-      failedConversionRunCount,
-      ...(latestConversion
-        ? {
-            latestConversionRunId: latestConversion.id,
-            latestConversionStatus: latestConversion.status,
-          }
-        : {}),
-      stagingDocumentCount: staging.total,
-      readyStagingDocumentCount,
-      blockedStagingDocumentCount,
-      ...(latestStaging
-        ? {
-            latestStagingDocumentId: latestStaging.descriptor.id,
-            latestStagingStatus: latestStaging.descriptor.status,
-          }
-        : {}),
-      knowledgeVisible,
-    };
-  });
+    },
+  );
 
   return {
     workspaceId,
     waveId: input.manifest.waveId,
     items,
     summary: {
-      NOT_REGISTERED: items.filter((item) => item.state === "NOT_REGISTERED").length,
-      AWAITING_ARTIFACT: items.filter((item) => item.state === "AWAITING_ARTIFACT").length,
-      ARTIFACT_OBSERVED: items.filter((item) => item.state === "ARTIFACT_OBSERVED").length,
-      CONVERSION_OBSERVED: items.filter((item) => item.state === "CONVERSION_OBSERVED").length,
-      KNOWLEDGE_VISIBLE: items.filter((item) => item.state === "KNOWLEDGE_VISIBLE").length,
+      NOT_REGISTERED: items.filter((item) => item.state === "NOT_REGISTERED")
+        .length,
+      AWAITING_ARTIFACT: items.filter(
+        (item) => item.state === "AWAITING_ARTIFACT",
+      ).length,
+      ARTIFACT_OBSERVED: items.filter(
+        (item) => item.state === "ARTIFACT_OBSERVED",
+      ).length,
+      CONVERSION_OBSERVED: items.filter(
+        (item) => item.state === "CONVERSION_OBSERVED",
+      ).length,
+      KNOWLEDGE_VISIBLE: items.filter(
+        (item) => item.state === "KNOWLEDGE_VISIBLE",
+      ).length,
       total: items.length,
-      artifactsObserved: items.reduce((sum, item) => sum + item.artifactCount, 0),
-      artifactBytes: items.reduce((sum, item) => sum + item.artifactBytes, 0),
-      conversionRunsObserved: items.reduce((sum, item) => sum + item.conversionRunCount, 0),
+      artifactsObserved: items.reduce(
+        (sum, item) => sum + item.artifactCount,
+        0,
+      ),
+      artifactBytes: items.reduce(
+        (sum, item) => sum + item.artifactBytes,
+        0,
+      ),
+      conversionRunsObserved: items.reduce(
+        (sum, item) => sum + item.conversionRunCount,
+        0,
+      ),
       completedConversionRuns: items.reduce(
         (sum, item) => sum + item.completedConversionRunCount,
         0,
       ),
-      failedConversionRuns: items.reduce((sum, item) => sum + item.failedConversionRunCount, 0),
-      stagingDocumentsObserved: items.reduce((sum, item) => sum + item.stagingDocumentCount, 0),
-      knowledgeVisibleTargets: items.filter((item) => item.knowledgeVisible).length,
+      failedConversionRuns: items.reduce(
+        (sum, item) => sum + item.failedConversionRunCount,
+        0,
+      ),
+      stagingDocumentsObserved: items.reduce(
+        (sum, item) => sum + item.stagingDocumentCount,
+        0,
+      ),
+      knowledgeVisibleTargets: items.filter((item) => item.knowledgeVisible)
+        .length,
     },
   };
 }
