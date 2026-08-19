@@ -69,8 +69,7 @@ function validateSuccessfulResult(result, requirePositiveEvidenceDelta) {
     `${result.key}: raw artifact count regressed`,
   );
   assert(
-    (result.after?.evidence?.graphNodeCount ?? 0) >=
-      (result.before?.evidence?.graphNodeCount ?? 0),
+    (result.after?.evidence?.graphNodeCount ?? 0) >= (result.before?.evidence?.graphNodeCount ?? 0),
     `${result.key}: graph node count regressed`,
   );
 
