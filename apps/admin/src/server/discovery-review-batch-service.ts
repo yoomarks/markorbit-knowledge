@@ -51,12 +51,36 @@ function failure(error: unknown) {
   };
 }
 
-function isRadarOnboardingCandidate(candidate: unknown): boolean {
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return false;
+function candidateMetadata(candidate: unknown): Record<string, unknown> | undefined {
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return undefined;
   const candidateRecord = candidate as { candidate?: { metadata?: Record<string, unknown> } };
-  const radarIntake = candidateRecord.candidate?.metadata?.radarIntake;
+  return candidateRecord.candidate?.metadata;
+}
+
+function isRadarOnboardingCandidate(candidate: unknown): boolean {
+  const radarIntake = candidateMetadata(candidate)?.radarIntake;
   if (!radarIntake || typeof radarIntake !== "object" || Array.isArray(radarIntake)) return false;
   return (radarIntake as Record<string, unknown>).origin === "RADAR_CODEX_ONBOARDING";
+}
+
+function isProductionValidationCandidate(candidate: unknown): boolean {
+  const productionValidation = candidateMetadata(candidate)?.productionValidation;
+  if (
+    !productionValidation ||
+    typeof productionValidation !== "object" ||
+    Array.isArray(productionValidation)
+  ) {
+    return false;
+  }
+  const boundary = productionValidation as Record<string, unknown>;
+  return (
+    boundary.collectionAuthorizationRequired === true &&
+    boundary.noAutomaticProductionScheduling === true
+  );
+}
+
+function requiresExplicitCollectionAuthorization(candidate: unknown): boolean {
+  return isRadarOnboardingCandidate(candidate) || isProductionValidationCandidate(candidate);
 }
 
 export function reviewDiscoveryCandidatesBatch(
@@ -90,15 +114,19 @@ export function reviewDiscoveryCandidatesBatch(
         );
       }
 
-      const radarOnboarding = isRadarOnboardingCandidate(reviewed.candidate);
+      const collectionAuthorizationDeferred = requiresExplicitCollectionAuthorization(
+        reviewed.candidate,
+      );
       items.set(candidateId, {
         candidateId,
         status: "ACCEPTED",
         sourceId: reviewed.source.id,
         planId: reviewed.plan.id,
-        ...(radarOnboarding && input.startCollection ? { collectionDeferred: true } : {}),
+        ...(collectionAuthorizationDeferred && input.startCollection
+          ? { collectionDeferred: true }
+          : {}),
       });
-      if (input.startCollection && radarOnboarding) {
+      if (input.startCollection && collectionAuthorizationDeferred) {
         collectionDeferred += 1;
         continue;
       }
@@ -121,7 +149,7 @@ export function reviewDiscoveryCandidatesBatch(
 
   // Phase 2: authorize once per unique Source/default-plan boundary, after every
   // successful acceptance above has updated the Source acquisition configuration.
-  // Radar onboarding candidates are deliberately excluded: approving a Source proposal
+  // Governance-bound candidates are deliberately excluded: approving a Source proposal
   // is not collection authorization. They require an explicit later supply action.
   const newlyStartedRuns = new Set<string>();
   for (const group of collectionGroups.values()) {
