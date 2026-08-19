@@ -10,7 +10,7 @@ import {
   type SourceSupplyHealthState,
 } from "@markorbit/contracts";
 import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
-import { SqliteCompatibilityAwareSupplyHealthRepository } from "@markorbit/persistence/source-compatibility-supply-health";
+import { SqliteOperationalSupplyHealthRepository } from "@markorbit/persistence/source-compatibility-supply-health";
 import { apiError } from "@/server/api-errors";
 import { getRegistryDatabase } from "@/server/source-registry";
 
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       "state",
     );
 
-    const repository = new SqliteCompatibilityAwareSupplyHealthRepository(getRegistryDatabase());
+    const repository = new SqliteOperationalSupplyHealthRepository(getRegistryDatabase());
     return NextResponse.json(
       repository.list({
         workspaceId,
