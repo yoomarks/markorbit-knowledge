@@ -1,15 +1,17 @@
 {
   "reportVersion": "1.0",
   "waveId": "official-wave-1",
+  "workspaceId": null,
   "generatedAt": null,
   "summary": {
     "targets": 0,
     "onboarded": 0,
     "collectionSucceeded": 0,
     "knowledgeVisible": 0,
-    "secondRunValidated": 0,
-    "manualInterventionRequired": 0,
-    "adapterRequired": 0
+    "secondRunObserved": 0,
+    "secondRunValidated": null,
+    "manualInterventionRequired": null,
+    "adapterRequired": null
   },
   "results": []
 }
