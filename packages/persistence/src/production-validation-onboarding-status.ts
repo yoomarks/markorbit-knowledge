@@ -4,10 +4,7 @@ import { RegistryError } from "./index";
 import type { ProductionValidationManifest } from "./production-validation-discovery-intake";
 import type { SourceDiscoveryRepository } from "./source-discovery-registry";
 
-export type ProductionValidationOnboardingState =
-  | "NOT_QUEUED"
-  | "IN_DISCOVERY"
-  | "REGISTERED";
+export type ProductionValidationOnboardingState = "NOT_QUEUED" | "IN_DISCOVERY" | "REGISTERED";
 
 export type ProductionValidationOnboardingItem = {
   targetId: string;
