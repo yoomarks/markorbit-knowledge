@@ -1,0 +1,24 @@
+name: Prettier Probe
+
+on:
+  push:
+    branches:
+      - codex/d2-3-evidence-calibration-ops
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier scripts/source-intelligence-evidence-report-check.mjs
