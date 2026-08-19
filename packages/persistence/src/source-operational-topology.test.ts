@@ -11,6 +11,7 @@ import { SqliteSourceOperationalTopologyRepository } from "./source-operational-
 import { SqliteSourceRegistryV2Repository } from "./source-registry-v2-registry";
 
 const observedAt = "2026-08-19T12:00:00.000Z";
+const logicalDocumentId = "doc_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 
 function createSource(
   sources: SqliteSourceRepository,
@@ -167,6 +168,7 @@ function artifact(
   version: number,
   sourceUri: string,
   canonicalUri?: string,
+  supersedesArtifactId?: string,
 ): RawArtifact {
   return {
     schemaVersion: "1.0",
@@ -174,8 +176,9 @@ function artifact(
     id,
     workspaceId: DEFAULT_WORKSPACE.id,
     sourceId,
-    logicalDocumentId: `rules-${sourceId}`,
+    logicalDocumentId,
     version,
+    ...(supersedesArtifactId ? { supersedesArtifactId } : {}),
     artifactKind: "HTML",
     mimeType: "text/html",
     originalName: `rules-${version}.html`,
@@ -219,6 +222,8 @@ describe("SqliteSourceOperationalTopologyRepository", () => {
       child.id,
       2,
       "https://office.example/fees.pdf",
+      undefined,
+      matched.id,
     );
     const insert = database.prepare(
       "INSERT INTO raw_artifacts (id, workspace_id, source_id, document_json, created_at) VALUES (?, ?, ?, ?, ?)",
