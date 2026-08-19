@@ -167,14 +167,14 @@ const compatibility = new Map<string, SourceCompatibilityObservation>([
       observedAt: "2026-08-19T05:30:00.000Z",
       primaryUri: "https://example.com/a",
       renderJavascript: true,
-      errorCode: "PRIMARY_PATH_DEGRADED",
-      errorMessage: "Primary path required browser rendering",
+      errorCode: "CANARY_ADAPTER_REQUIRED",
+      errorMessage: "Primary failed while official baseline remained collectible",
     } as SourceCompatibilityObservation,
   ],
 ]);
 
 describe("buildProductionValidationScorecard", () => {
-  it("aggregates observed pipeline and compatibility facts without inventing telemetry", () => {
+  it("aggregates observed pipeline, compatibility and failure facts without inventing telemetry", () => {
     const scorecard = buildProductionValidationScorecard(
       { manifest, onboarding, execution, pipeline, compatibility },
       () => new Date("2026-08-19T06:00:00.000Z"),
@@ -190,9 +190,10 @@ describe("buildProductionValidationScorecard", () => {
       compatibilityPass: 0,
       compatibilityDegraded: 1,
       compatibilityBlocked: 0,
+      failureObserved: 1,
+      adapterRequiredObserved: 1,
       secondRunValidated: null,
       manualInterventionRequired: null,
-      adapterRequired: null,
     });
     expect(scorecard.results[0]).toMatchObject({
       targetId: "target-a",
@@ -206,7 +207,10 @@ describe("buildProductionValidationScorecard", () => {
         observedAt: "2026-08-19T05:30:00.000Z",
         primaryUri: "https://example.com/a",
         renderJavascriptObserved: true,
-        errorCode: "PRIMARY_PATH_DEGRADED",
+        errorCode: "CANARY_ADAPTER_REQUIRED",
+        failureClass: "ADAPTER_REQUIRED",
+        failureObserved: true,
+        adapterRequiredObserved: true,
       },
       telemetry: {
         httpFailureCount: null,
@@ -214,11 +218,15 @@ describe("buildProductionValidationScorecard", () => {
         renderingRequired: null,
         retryCount: null,
         manualInterventionRequired: null,
-        adapterRequired: null,
         secondRunValidated: null,
       },
     });
-    expect(scorecard.results[1]?.compatibility.state).toBe("UNOBSERVED");
+    expect(scorecard.results[1]?.compatibility).toMatchObject({
+      state: "UNOBSERVED",
+      failureClass: "NONE",
+      failureObserved: false,
+      adapterRequiredObserved: null,
+    });
     expect(scorecard.generatedAt).toBe("2026-08-19T06:00:00.000Z");
   });
 

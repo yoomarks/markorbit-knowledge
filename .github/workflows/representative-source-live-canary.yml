@@ -27,9 +27,13 @@ on:
 permissions:
   contents: read
 
+# Each run gets an independent group. A job re-run shares the same run_id and therefore
+# cannot cancel sibling matrix jobs from the original attempt. New PR commits already
+# create a new run and should be allowed to finish so their external observations remain
+# auditable instead of being replaced by synthetic cancellation noise.
 concurrency:
-  group: representative-source-live-canary-${{ github.ref }}
-  cancel-in-progress: true
+  group: representative-source-live-canary-${{ github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   observe-pr:
