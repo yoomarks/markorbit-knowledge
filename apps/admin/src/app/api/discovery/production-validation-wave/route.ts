@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { queueProductionValidationWaveForDiscovery } from "@markorbit/persistence/production-validation-discovery-intake";
+import { inspectProductionValidationExecution } from "@markorbit/persistence/production-validation-execution-status";
 import { inspectProductionValidationOnboarding } from "@markorbit/persistence/production-validation-onboarding-status";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { loadProductionValidationWave } from "@/server/production-validation-wave";
 import {
+  getExecutionLedgerRepository,
   getSourceDiscoveryRepository,
   getSourceRepository,
   withRegistryTransaction,
@@ -21,14 +23,23 @@ export async function GET(request: Request) {
   try {
     const manifest = loadProductionValidationWave();
     const url = new URL(request.url);
+    const resolvedWorkspaceId = workspaceId(url.searchParams.get("workspaceId"));
+    const sources = getSourceRepository();
     const onboarding = inspectProductionValidationOnboarding(
-      { workspaceId: workspaceId(url.searchParams.get("workspaceId")), manifest },
+      { workspaceId: resolvedWorkspaceId, manifest },
       {
-        sources: getSourceRepository(),
+        sources,
         discovery: getSourceDiscoveryRepository(),
       },
     );
-    return NextResponse.json({ manifest, onboarding }, { status: 200 });
+    const execution = inspectProductionValidationExecution(
+      { workspaceId: resolvedWorkspaceId, manifest },
+      {
+        sources,
+        runs: getExecutionLedgerRepository(),
+      },
+    );
+    return NextResponse.json({ manifest, onboarding, execution }, { status: 200 });
   } catch (error) {
     return apiError(error);
   }
