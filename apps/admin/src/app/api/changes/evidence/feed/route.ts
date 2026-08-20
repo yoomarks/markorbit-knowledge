@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  RegistryValidationError,
-  SqliteDocumentChangeEvidenceRepository,
-} from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
+import { SqliteDocumentChangeEvidenceRepository } from "@markorbit/persistence/document-change-evidence";
 import { apiError } from "@/server/api-errors";
 import { getRegistryDatabase } from "@/server/source-registry";
 
