@@ -1,5 +1,8 @@
 import type { ArtifactKind } from "./schema-v1";
-import type { SourceCompatibilityBaselineState } from "./source-compatibility-v1";
+import type {
+  SourceCompatibilityBaselineState,
+  SourceCompatibilityState,
+} from "./source-compatibility-v1";
 import type {
   SourceCoverageCatalogState,
   SourceCoverageChangeSensitivity,
@@ -8,7 +11,7 @@ import type {
 } from "./source-coverage-v1";
 import type { EvidenceMaturityStage } from "./source-intelligence-v2";
 
-export const SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.4" as const;
+export const SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.5" as const;
 
 export const SOURCE_SUPPLY_HEALTH_STATES = ["READY", "DEGRADED", "BLOCKED"] as const;
 export type SourceSupplyHealthState = (typeof SOURCE_SUPPLY_HEALTH_STATES)[number];
@@ -31,6 +34,15 @@ export const SOURCE_SUPPLY_COMPATIBILITY_FRESHNESS_STATES = [
 ] as const;
 export type SourceSupplyCompatibilityFreshnessState =
   (typeof SOURCE_SUPPLY_COMPATIBILITY_FRESHNESS_STATES)[number];
+
+export const SOURCE_SUPPLY_COMPATIBILITY_REPROBE_STATES = [
+  "UNOBSERVED",
+  "STARTED",
+  "COMPLETED",
+  "FAILED",
+] as const;
+export type SourceSupplyCompatibilityReprobeState =
+  (typeof SOURCE_SUPPLY_COMPATIBILITY_REPROBE_STATES)[number];
 
 export const SOURCE_SUPPLY_TOPOLOGY_PROJECTION_STATES = [
   "UNREGISTERED",
@@ -97,6 +109,25 @@ export type SourceSupplyFreshnessHealth = {
   maxAgeHours: number;
 };
 
+/**
+ * Objective provenance for the compatibility observation currently projected
+ * into supply health. `commitSha` identifies the exact source revision under
+ * test; `workflowSha` identifies the GitHub Actions checkout revision. Neither
+ * field implies semantic meaning or collection authorization.
+ */
+export type SourceSupplyCompatibilityEvidenceProvenance = {
+  provider: string;
+  repository: string;
+  runId: string;
+  runAttempt: string;
+  commitSha: string;
+  workflowSha: string;
+  workflow: string;
+  eventName: string;
+  sourceRef: string | null;
+  serverUrl: string | null;
+};
+
 export type SourceSupplyCompatibilityHealth = {
   state: SourceSupplyCompatibilityState;
   freshness: SourceSupplyCompatibilityFreshnessState;
@@ -109,6 +140,25 @@ export type SourceSupplyCompatibilityHealth = {
   errorMessage: string | null;
   baselineTargetId: string | null;
   baselineState: SourceCompatibilityBaselineState | null;
+  evidenceProvenance?: SourceSupplyCompatibilityEvidenceProvenance | null;
+};
+
+/**
+ * Latest governed compatibility re-probe execution for a target. This is a
+ * read-only lifecycle projection and cannot alter supply state, gaps,
+ * collection authorization or scheduling.
+ */
+export type SourceSupplyCompatibilityReprobeHealth = {
+  state: SourceSupplyCompatibilityReprobeState;
+  executionId: string | null;
+  intentId: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  observationId: string | null;
+  observationObservedAt: string | null;
+  observationState: SourceCompatibilityState | null;
+  errorCode: string | null;
+  errorMessage: string | null;
 };
 
 /**
@@ -170,6 +220,7 @@ export type SourceSupplyHealthRecord = {
   retrieval: SourceSupplyRetrievalHealth;
   freshness: SourceSupplyFreshnessHealth;
   compatibility?: SourceSupplyCompatibilityHealth;
+  latestCompatibilityReprobe?: SourceSupplyCompatibilityReprobeHealth;
   operationalTopology?: SourceSupplyOperationalTopologyHealth;
   evidenceMaturity?: SourceSupplyEvidenceMaturityHealth;
   gaps: SourceSupplyGap[];
@@ -187,6 +238,8 @@ export type SourceSupplyHealthSummary = {
   byFreshness: Record<SourceSupplyFreshnessState, number>;
   byCompatibility?: Record<SourceSupplyCompatibilityState, number>;
   byCompatibilityFreshness?: Record<SourceSupplyCompatibilityFreshnessState, number>;
+  byCompatibilityReprobe?: Record<SourceSupplyCompatibilityReprobeState, number>;
+  compatibilityProvenanceObserved?: number;
   byTopologyProjection?: Record<SourceSupplyTopologyProjectionState, number>;
   topologySourceRegistryV2Observed?: number;
   topologySourceGraphObserved?: number;
