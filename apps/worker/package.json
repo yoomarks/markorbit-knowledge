@@ -22,6 +22,7 @@
     "canary:representative:recorded": "tsx src/run-recorded-representative-live-canaries.ts",
     "operate:compatibility-reprobe": "tsx src/operate-source-compatibility-reprobe.ts",
     "operate:foundational": "tsx src/operate-foundational.ts",
+    "operate:foundational:api": "tsx src/operate-foundational-api-remediation.ts",
     "operate:foundational:us": "tsx src/operate-us-foundational.ts",
     "verify:uspto": "tsx src/verify-uspto-golden-source.ts",
     "verify:uspto-pipeline": "tsx src/verify-uspto-full-pipeline.ts",
