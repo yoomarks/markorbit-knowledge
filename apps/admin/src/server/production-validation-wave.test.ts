@@ -41,6 +41,7 @@ describe("production validation wave loader", () => {
             sourceClass: "OFFICIAL_AUTHORITY",
             priority: "P0",
             validationState: "PENDING_REAL_RUN",
+            coverageTargetIds: ["wo-wipo-madrid-monitor"],
           },
         ],
       }),
@@ -50,6 +51,7 @@ describe("production validation wave loader", () => {
     const loaded = loadProductionValidationWave();
     expect(loaded.waveId).toBe("official-wave-test");
     expect(loaded.targets).toHaveLength(1);
+    expect(loaded.targets[0]?.coverageTargetIds).toEqual(["wo-wipo-madrid-monitor"]);
   });
 
   it("rejects non-object manifests before intake", () => {
