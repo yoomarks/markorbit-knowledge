@@ -21,10 +21,11 @@ function endpoint(controlPlaneUrl: string): string {
   return `${controlPlaneUrl.replace(/\/$/u, "")}/api/worker/v1/source-compatibility-observations`;
 }
 
-export async function recordRepresentativeLiveCanarySummary(
+async function recordSummary(
   config: SourceCompatibilityRecorderConfig,
   summary: unknown,
-  fetchImplementation: FetchLike = fetch,
+  reprobeExecutionId: string | undefined,
+  fetchImplementation: FetchLike,
 ): Promise<SourceCompatibilityRecorderResult> {
   const response = await fetchImplementation(endpoint(config.controlPlaneUrl), {
     method: "POST",
@@ -32,7 +33,11 @@ export async function recordRepresentativeLiveCanarySummary(
       authorization: `Bearer ${config.workerCredential}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ workerId: config.workerId, summary }),
+    body: JSON.stringify({
+      workerId: config.workerId,
+      summary,
+      ...(reprobeExecutionId ? { reprobeExecutionId } : {}),
+    }),
   });
 
   const text = await response.text();
@@ -52,4 +57,23 @@ export async function recordRepresentativeLiveCanarySummary(
     throw new Error("Source compatibility observation intake returned an invalid response");
   }
   return result;
+}
+
+export function recordRepresentativeLiveCanarySummary(
+  config: SourceCompatibilityRecorderConfig,
+  summary: unknown,
+  fetchImplementation: FetchLike = fetch,
+): Promise<SourceCompatibilityRecorderResult> {
+  return recordSummary(config, summary, undefined, fetchImplementation);
+}
+
+export function recordRepresentativeLiveCanarySummaryForReprobe(
+  config: SourceCompatibilityRecorderConfig,
+  summary: unknown,
+  reprobeExecutionId: string,
+  fetchImplementation: FetchLike = fetch,
+): Promise<SourceCompatibilityRecorderResult> {
+  const executionId = reprobeExecutionId.trim();
+  if (!executionId) throw new Error("reprobeExecutionId is required");
+  return recordSummary(config, summary, executionId, fetchImplementation);
 }
