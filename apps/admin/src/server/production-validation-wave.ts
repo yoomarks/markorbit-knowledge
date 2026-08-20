@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import {
-  validateProductionValidationManifest,
-  type ProductionValidationManifest,
-} from "@markorbit/persistence/production-validation-discovery-intake";
+  validateProductionValidationCoverageLinkedManifest,
+  type ProductionValidationCoverageLinkedManifest,
+} from "@markorbit/persistence/production-validation-coverage-links";
 
 const DEFAULT_MANIFEST_PATH = "config/production-validation-wave-1.json";
 
@@ -26,13 +26,15 @@ export function resolveProductionValidationWorkspaceId(value: unknown): string {
   return workspaceId;
 }
 
-export function parseProductionValidationManifest(value: unknown): ProductionValidationManifest {
-  return validateProductionValidationManifest(value);
+export function parseProductionValidationManifest(
+  value: unknown,
+): ProductionValidationCoverageLinkedManifest {
+  return validateProductionValidationCoverageLinkedManifest(value);
 }
 
 export function loadProductionValidationWave(
   path = process.env.MARKORBIT_PRODUCTION_VALIDATION_MANIFEST_PATH ?? DEFAULT_MANIFEST_PATH,
-): ProductionValidationManifest {
+): ProductionValidationCoverageLinkedManifest {
   const absolutePath = resolve(repositoryRoot(), path);
   let parsed: unknown;
   try {
