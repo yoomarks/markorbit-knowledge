@@ -32,17 +32,12 @@ describe("representative source live canaries", () => {
     expect(canaries.some((canary) => canary.renderJavascript)).toBe(true);
   });
 
-  it("adds a distinct low-interaction authority baseline to interactive primary canaries", () => {
+  it("adds a distinct low-interaction authority baseline to every primary canary", () => {
     const canaries = getRepresentativeSourceLiveCanaries();
-    const interactive = canaries.filter(
-      (canary) => canary.family === "SEARCH" || canary.renderJavascript,
-    );
-    expect(interactive.length).toBeGreaterThan(0);
-    for (const canary of interactive) {
-      expect(canary.authorityBaseline).toBeDefined();
-      expect(canary.authorityBaseline?.targetId).not.toBe(canary.targetId);
-      expect(canary.authorityBaseline?.canonicalUri).toMatch(/^https?:\/\//u);
-      expect(canary.authorityBaseline?.renderJavascript).toBe(false);
+    for (const canary of canaries) {
+      expect(canary.authorityBaseline.targetId).not.toBe(canary.targetId);
+      expect(canary.authorityBaseline.canonicalUri).toMatch(/^https?:\/\//u);
+      expect(canary.authorityBaseline.renderJavascript).toBe(false);
     }
   });
 
