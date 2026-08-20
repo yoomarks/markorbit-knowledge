@@ -71,9 +71,9 @@ export function projectSourceSupplyEvidenceMaturity(
 
 /**
  * Adds advisory evidence-maturity observations to the existing supply read
- * model. The function deliberately preserves state, gaps, compatibility and
- * topology exactly as supplied; Source Intelligence does not authorize or
- * schedule acquisition here.
+ * model. The function deliberately preserves the incoming protocol version,
+ * state, gaps, compatibility and topology exactly as supplied; Source
+ * Intelligence does not authorize or schedule acquisition here.
  */
 export function enrichSourceSupplyHealthWithEvidenceMaturity(
   result: SourceSupplyHealthListResult,
