@@ -222,10 +222,7 @@ function structuredRemediationTelemetry(
   if (value.collectionAuthorization !== "NONE" || value.automaticExecution !== false) {
     throw new Error("Production validation structured remediation must remain non-authorizing");
   }
-  if (
-    value.state !== "UNOBSERVED" &&
-    value.workerEndpointBindingState !== "EXTERNAL_UNVERIFIED"
-  ) {
+  if (value.state !== "UNOBSERVED" && value.workerEndpointBindingState !== "EXTERNAL_UNVERIFIED") {
     throw new Error("Observed structured remediation must keep Worker binding external-unverified");
   }
   if (value.state !== "UNOBSERVED" && value.requiredArtifactKinds.length === 0) {

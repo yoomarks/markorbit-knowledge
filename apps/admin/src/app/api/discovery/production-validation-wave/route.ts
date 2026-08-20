@@ -90,10 +90,7 @@ export async function GET(request: Request) {
     const compatibility = new SqliteSourceCompatibilityObservationRepository(
       getRegistryDatabase(),
     ).latest(manifest.targets.map((target) => target.id));
-    const structuredRemediation = structuredRemediationFacts(
-      resolvedWorkspaceId,
-      manifest.targets,
-    );
+    const structuredRemediation = structuredRemediationFacts(resolvedWorkspaceId, manifest.targets);
     const scorecard = buildProductionValidationScorecard({
       manifest,
       onboarding,
