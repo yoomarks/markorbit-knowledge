@@ -148,7 +148,9 @@ export function parseRepresentativeLiveCanarySummary(
                 artifactKinds: baseline.artifactKinds,
                 finalUris: baseline.finalUris,
                 totalBytes: baseline.totalBytes,
-                ...(baselineExpectedArtifactKinds ? { expectedArtifactKinds: baselineExpectedArtifactKinds } : {}),
+                ...(baselineExpectedArtifactKinds
+                  ? { expectedArtifactKinds: baselineExpectedArtifactKinds }
+                  : {}),
                 ...(baselineMissingExpectedArtifactKinds
                   ? { missingExpectedArtifactKinds: baselineMissingExpectedArtifactKinds }
                   : {}),
