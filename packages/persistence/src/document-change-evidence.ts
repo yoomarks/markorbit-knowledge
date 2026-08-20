@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import {
+  ARTIFACT_KINDS,
   CHANGE_EVIDENCE_METADATA_FIELDS,
   CHANGE_EVIDENCE_PROTOCOL_VERSION,
   OBJECTIVE_CHANGE_DIMENSIONS,
@@ -8,6 +9,7 @@ import {
   type ChangeEvidenceMetadataChange,
   type ChangeEvidenceMetadataField,
   type ChangeEvidenceMetadataValue,
+  type ChangeEvidenceRawArtifactRef,
   type DocumentChangeEvidence,
   type DocumentChangeEvidenceFeedRequest,
   type DocumentChangeEvidenceFeedResult,
@@ -22,6 +24,17 @@ import { SqliteRetrievalIndexRepository } from "./retrieval-index";
 
 const CURSOR = /^ce_(\d+)$/;
 const ABSOLUTE_LINK = /https?:\/\/[^\s<>"']+/gi;
+const SHA256 = /^[a-f0-9]{64}$/;
+const RAW_ARTIFACT_TABLE = "raw_artifacts";
+
+type RawArtifactEvidenceRow = {
+  workspace_id: string;
+  source_id: string;
+  content_digest: string;
+  artifact_kind: string;
+  mime_type: string;
+  document_json: string;
+};
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -40,6 +53,157 @@ function documentRef(document: RetrievalDocument): ChangeEvidenceDocumentRef {
     contentSha256: document.contentSha256,
     capturedAt: document.capturedAt,
     sourceUri: document.sourceUri,
+  };
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function rawArtifactTableExists(database: DatabaseSync): boolean {
+  return Boolean(
+    database
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(RAW_ARTIFACT_TABLE),
+  );
+}
+
+function requiredRawArtifactString(value: unknown, field: string, artifactId: string): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new RegistryConflictError(
+      "CHANGE_EVIDENCE_RAW_ARTIFACT_INVALID",
+      `RawArtifact ${artifactId} has invalid ${field}`,
+    );
+  }
+  return value;
+}
+
+function optionalRawArtifactString(
+  value: unknown,
+  field: string,
+  artifactId: string,
+): string | null {
+  if (value === undefined) return null;
+  return requiredRawArtifactString(value, field, artifactId);
+}
+
+function rawArtifactRef(
+  database: DatabaseSync,
+  document: RetrievalDocument,
+): ChangeEvidenceRawArtifactRef | null {
+  if (!rawArtifactTableExists(database)) return null;
+  const row = database
+    .prepare(
+      `SELECT workspace_id, source_id, content_digest, artifact_kind, mime_type, document_json
+         FROM raw_artifacts WHERE id = ?`,
+    )
+    .get(document.rawArtifactId) as unknown as RawArtifactEvidenceRow | undefined;
+  if (!row) return null;
+  if (row.workspace_id !== document.workspaceId || row.source_id !== document.sourceId) {
+    throw new RegistryConflictError(
+      "CHANGE_EVIDENCE_RAW_ARTIFACT_SCOPE_MISMATCH",
+      "RawArtifact does not match the indexed document workspace/source scope",
+      { rawArtifactId: document.rawArtifactId },
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(row.document_json) as unknown;
+  } catch {
+    throw new RegistryConflictError(
+      "CHANGE_EVIDENCE_RAW_ARTIFACT_INVALID",
+      `RawArtifact ${document.rawArtifactId} has invalid persisted JSON`,
+    );
+  }
+  const artifact = record(parsed);
+  const binaryHash = record(artifact?.binaryHash);
+  const contentHash = artifact?.contentHash === undefined ? null : record(artifact.contentHash);
+  const provenance = record(artifact?.provenance);
+  const artifactKind = requiredRawArtifactString(
+    artifact?.artifactKind,
+    "artifactKind",
+    document.rawArtifactId,
+  );
+  const mimeType = requiredRawArtifactString(
+    artifact?.mimeType,
+    "mimeType",
+    document.rawArtifactId,
+  );
+  const binarySha256 = requiredRawArtifactString(
+    binaryHash?.value,
+    "binaryHash.value",
+    document.rawArtifactId,
+  );
+  if (
+    artifact?.objectType !== "RAW_ARTIFACT" ||
+    artifact?.id !== document.rawArtifactId ||
+    artifact?.workspaceId !== document.workspaceId ||
+    artifact?.sourceId !== document.sourceId ||
+    !(ARTIFACT_KINDS as readonly string[]).includes(artifactKind) ||
+    artifactKind !== row.artifact_kind ||
+    mimeType !== row.mime_type ||
+    binaryHash?.algorithm !== "SHA-256" ||
+    !SHA256.test(binarySha256) ||
+    row.content_digest !== binarySha256
+  ) {
+    throw new RegistryConflictError(
+      "CHANGE_EVIDENCE_RAW_ARTIFACT_INVALID",
+      `RawArtifact ${document.rawArtifactId} does not match its indexed evidence row`,
+    );
+  }
+  if (
+    contentHash &&
+    (contentHash.algorithm !== "SHA-256" ||
+      typeof contentHash.value !== "string" ||
+      !SHA256.test(contentHash.value))
+  ) {
+    throw new RegistryConflictError(
+      "CHANGE_EVIDENCE_RAW_ARTIFACT_INVALID",
+      `RawArtifact ${document.rawArtifactId} has invalid contentHash evidence`,
+    );
+  }
+  if (!Number.isSafeInteger(artifact.sizeBytes) || Number(artifact.sizeBytes) <= 0) {
+    throw new RegistryConflictError(
+      "CHANGE_EVIDENCE_RAW_ARTIFACT_INVALID",
+      `RawArtifact ${document.rawArtifactId} has invalid sizeBytes`,
+    );
+  }
+
+  return {
+    artifactId: document.rawArtifactId,
+    artifactKind: artifactKind as ChangeEvidenceRawArtifactRef["artifactKind"],
+    mimeType,
+    originalName: requiredRawArtifactString(
+      artifact.originalName,
+      "originalName",
+      document.rawArtifactId,
+    ),
+    binarySha256,
+    contentSha256: contentHash ? String(contentHash.value) : null,
+    sizeBytes: Number(artifact.sizeBytes),
+    capturedAt: requiredRawArtifactString(
+      artifact.capturedAt,
+      "capturedAt",
+      document.rawArtifactId,
+    ),
+    publishedAt: optionalRawArtifactString(
+      artifact.publishedAt,
+      "publishedAt",
+      document.rawArtifactId,
+    ),
+    sourceUri: requiredRawArtifactString(
+      provenance?.sourceUri,
+      "provenance.sourceUri",
+      document.rawArtifactId,
+    ),
+    canonicalUri: optionalRawArtifactString(
+      artifact.canonicalUri,
+      "canonicalUri",
+      document.rawArtifactId,
+    ),
   };
 }
 
@@ -136,10 +300,12 @@ function dimensions(
   diff: DocumentVersionDiff,
   metadata: ChangeEvidenceMetadataChange[],
   linkChanges: { added: string[]; removed: string[] },
+  rawBinaryChanged: boolean,
 ): ObjectiveChangeDimension[] {
   const observed = new Set<ObjectiveChangeDimension>();
   if (event.changeKind === "CREATED") observed.add("DOCUMENT_CREATED");
   if (event.fromContentSha256 !== event.toContentSha256) observed.add("CONTENT_CHANGED");
+  if (rawBinaryChanged) observed.add("RAW_ARTIFACT_BINARY_CHANGED");
   if (metadata.length > 0) observed.add("METADATA_CHANGED");
   if (linkChanges.added.length > 0) observed.add("LINK_ADDED");
   if (linkChanges.removed.length > 0) observed.add("LINK_REMOVED");
@@ -163,7 +329,7 @@ export class SqliteDocumentChangeEvidenceRepository {
   private readonly changeFeed: SqliteDocumentChangeFeedRepository;
   private readonly retrieval: SqliteRetrievalIndexRepository;
 
-  constructor(database: DatabaseSync) {
+  constructor(private readonly database: DatabaseSync) {
     this.changeFeed = new SqliteDocumentChangeFeedRepository(database);
     this.retrieval = new SqliteRetrievalIndexRepository(database);
   }
@@ -223,6 +389,12 @@ export class SqliteDocumentChangeEvidenceRepository {
     }
     const metadata = metadataChanges(before, after);
     const linkChanges = linkDiff(diff);
+    const beforeRaw = before ? rawArtifactRef(this.database, before) : null;
+    const afterRaw = rawArtifactRef(this.database, after);
+    const rawArtifactBinaryCovered = afterRaw !== null && (before === null || beforeRaw !== null);
+    const rawBinaryChanged = Boolean(
+      beforeRaw && afterRaw && beforeRaw.binarySha256 !== afterRaw.binarySha256,
+    );
     return {
       protocolVersion: CHANGE_EVIDENCE_PROTOCOL_VERSION,
       objectType: "DOCUMENT_CHANGE_EVIDENCE",
@@ -237,7 +409,8 @@ export class SqliteDocumentChangeEvidenceRepository {
       observedAt: event.observedAt,
       before: before ? documentRef(before) : null,
       after: documentRef(after),
-      dimensions: dimensions(event, diff, metadata, linkChanges),
+      rawArtifacts: { before: beforeRaw, after: afterRaw },
+      dimensions: dimensions(event, diff, metadata, linkChanges, rawBinaryChanged),
       summary: diff.summary,
       sections: diff.sections,
       metadataChanges: metadata,
@@ -247,6 +420,7 @@ export class SqliteDocumentChangeEvidenceRepository {
         canonicalText: true,
         canonicalLinks: true,
         sectionStructure: true,
+        rawArtifactBinary: rawArtifactBinaryCovered,
         linkedAttachments: false,
       },
     };

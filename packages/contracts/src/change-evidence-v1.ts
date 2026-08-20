@@ -3,12 +3,14 @@ import type {
   DocumentChangeSummary,
   DocumentSectionChange,
 } from "./change-feed-v1";
+import type { ArtifactKind } from "./schema-v1";
 
-export const CHANGE_EVIDENCE_PROTOCOL_VERSION = "1.0" as const;
+export const CHANGE_EVIDENCE_PROTOCOL_VERSION = "1.1" as const;
 
 export const OBJECTIVE_CHANGE_DIMENSIONS = [
   "DOCUMENT_CREATED",
   "CONTENT_CHANGED",
+  "RAW_ARTIFACT_BINARY_CHANGED",
   "METADATA_CHANGED",
   "LINK_ADDED",
   "LINK_REMOVED",
@@ -43,6 +45,25 @@ export type ChangeEvidenceDocumentRef = {
   sourceUri: string;
 };
 
+export type ChangeEvidenceRawArtifactRef = {
+  artifactId: string;
+  artifactKind: ArtifactKind;
+  mimeType: string;
+  originalName: string;
+  binarySha256: string;
+  contentSha256: string | null;
+  sizeBytes: number;
+  capturedAt: string;
+  publishedAt: string | null;
+  sourceUri: string;
+  canonicalUri: string | null;
+};
+
+export type ChangeEvidenceRawArtifactDiff = {
+  before: ChangeEvidenceRawArtifactRef | null;
+  after: ChangeEvidenceRawArtifactRef | null;
+};
+
 export type ChangeEvidenceMetadataValue = string | string[] | null;
 
 export type ChangeEvidenceMetadataChange = {
@@ -61,6 +82,7 @@ export type ChangeEvidenceCoverage = {
   canonicalText: true;
   canonicalLinks: true;
   sectionStructure: true;
+  rawArtifactBinary: boolean;
   linkedAttachments: false;
 };
 
@@ -78,6 +100,7 @@ export type DocumentChangeEvidence = {
   observedAt: string;
   before: ChangeEvidenceDocumentRef | null;
   after: ChangeEvidenceDocumentRef;
+  rawArtifacts: ChangeEvidenceRawArtifactDiff;
   dimensions: ObjectiveChangeDimension[];
   summary: DocumentChangeSummary;
   sections: DocumentSectionChange[];
