@@ -167,19 +167,24 @@ const compatibility = new Map<string, SourceCompatibilityObservation>([
       observedAt: "2026-08-19T05:30:00.000Z",
       primaryUri: "https://example.com/a",
       renderJavascript: true,
-      errorCode: "CANARY_ADAPTER_REQUIRED",
-      errorMessage: "Primary failed while official baseline remained collectible",
+      errorCode: "CANARY_ARTIFACT_CONTRACT_INCOMPLETE",
+      errorMessage: "Primary page evidence did not satisfy the declared artifact contract",
+      details: {
+        expectedArtifactKinds: ["HTML", "JSON"],
+        missingExpectedArtifactKinds: ["JSON"],
+      },
     } as SourceCompatibilityObservation,
   ],
 ]);
 
 describe("buildProductionValidationScorecard", () => {
-  it("aggregates observed pipeline, compatibility and failure facts without inventing telemetry", () => {
+  it("aggregates pipeline, compatibility and artifact-contract facts without inventing telemetry", () => {
     const scorecard = buildProductionValidationScorecard(
       { manifest, onboarding, execution, pipeline, compatibility },
       () => new Date("2026-08-19T06:00:00.000Z"),
     );
 
+    expect(scorecard.reportVersion).toBe("1.1");
     expect(scorecard.summary).toEqual({
       targets: 2,
       onboarded: 1,
@@ -191,7 +196,9 @@ describe("buildProductionValidationScorecard", () => {
       compatibilityDegraded: 1,
       compatibilityBlocked: 0,
       failureObserved: 1,
-      adapterRequiredObserved: 1,
+      adapterRequiredObserved: 0,
+      artifactContractObserved: 1,
+      artifactContractGapObserved: 1,
       secondRunValidated: null,
       manualInterventionRequired: null,
     });
@@ -207,10 +214,14 @@ describe("buildProductionValidationScorecard", () => {
         observedAt: "2026-08-19T05:30:00.000Z",
         primaryUri: "https://example.com/a",
         renderJavascriptObserved: true,
-        errorCode: "CANARY_ADAPTER_REQUIRED",
-        failureClass: "ADAPTER_REQUIRED",
+        errorCode: "CANARY_ARTIFACT_CONTRACT_INCOMPLETE",
         failureObserved: true,
-        adapterRequiredObserved: true,
+        artifactContract: {
+          observed: true,
+          complete: false,
+          expectedArtifactKinds: ["HTML", "JSON"],
+          missingExpectedArtifactKinds: ["JSON"],
+        },
       },
       telemetry: {
         httpFailureCount: null,
@@ -226,6 +237,12 @@ describe("buildProductionValidationScorecard", () => {
       failureClass: "NONE",
       failureObserved: false,
       adapterRequiredObserved: null,
+      artifactContract: {
+        observed: false,
+        complete: null,
+        expectedArtifactKinds: [],
+        missingExpectedArtifactKinds: [],
+      },
     });
     expect(scorecard.generatedAt).toBe("2026-08-19T06:00:00.000Z");
   });
