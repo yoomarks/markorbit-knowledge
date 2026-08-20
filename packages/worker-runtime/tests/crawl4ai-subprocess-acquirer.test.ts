@@ -183,10 +183,7 @@ describe("Crawl4AiSubprocessAcquirer", () => {
     expect(authorized).toBe(true);
     expect(artifacts[0]).toMatchObject({
       artifactKind: "PDF",
-      parentCanonicalUris: [
-        "https://example.com/trademarks-a",
-        "https://example.com/trademarks-b",
-      ],
+      parentCanonicalUris: ["https://example.com/trademarks-a", "https://example.com/trademarks-b"],
     });
   });
 

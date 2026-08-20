@@ -73,9 +73,11 @@ function lineageAcquirer(): CollectionArtifactAcquirer {
   };
 }
 
-function client(options: {
-  unchangedParents?: Map<string, string | null>;
-} = {}): {
+function client(
+  options: {
+    unchangedParents?: Map<string, string | null>;
+  } = {},
+): {
   implementation: ArtifactBackedExecutionClient;
   descriptors: ArtifactUploadDescriptor[];
   failures: Array<{ code: string; message: string; retryable: boolean }>;
@@ -133,7 +135,10 @@ function client(options: {
 describe("attachment parent artifact lineage", () => {
   it("finalizes all parent pages before an attachment and binds every immutable parent id", async () => {
     const fixture = client();
-    const executor = new ArtifactBackedCollectionExecutor(lineageAcquirer(), fixture.implementation);
+    const executor = new ArtifactBackedCollectionExecutor(
+      lineageAcquirer(),
+      fixture.implementation,
+    );
 
     await executor.execute(context(false));
 
@@ -152,7 +157,10 @@ describe("attachment parent artifact lineage", () => {
         ["https://example.com/page-b", PAGE_B_ID],
       ]),
     });
-    const executor = new ArtifactBackedCollectionExecutor(lineageAcquirer(), fixture.implementation);
+    const executor = new ArtifactBackedCollectionExecutor(
+      lineageAcquirer(),
+      fixture.implementation,
+    );
 
     const receipt = await executor.execute(context(true));
 
@@ -171,7 +179,10 @@ describe("attachment parent artifact lineage", () => {
         ["https://example.com/page-b", null],
       ]),
     });
-    const executor = new ArtifactBackedCollectionExecutor(lineageAcquirer(), fixture.implementation);
+    const executor = new ArtifactBackedCollectionExecutor(
+      lineageAcquirer(),
+      fixture.implementation,
+    );
 
     await expect(executor.execute(context(true))).rejects.toMatchObject({
       code: "ATTACHMENT_PARENT_ARTIFACT_UNRESOLVED",
