@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION } from "@markorbit/contracts";
 import { parseRepresentativeLiveCanarySummary } from "@markorbit/persistence/source-compatibility-import";
 import { SqliteSourceCompatibilityObservationRepository } from "@markorbit/persistence/source-compatibility-observations";
 import {
@@ -23,6 +22,7 @@ const WORKER_ID = "worker.eu-compatibility-promotion";
 const REQUESTER = "promotion-proof.requester";
 const APPROVER = "promotion-proof.approver";
 const EXECUTOR = "promotion-proof.executor";
+const READINESS_PROTOCOL_VERSION = "1.5";
 
 function packageRoot(): string {
   return fileURLToPath(new URL("..", import.meta.url));
@@ -79,7 +79,7 @@ function approvedIntent(
     canceledByActorId: null,
     status: "PENDING_APPROVAL",
     idempotencyKey,
-    readinessProtocolVersion: SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION,
+    readinessProtocolVersion: READINESS_PROTOCOL_VERSION,
     queueProtocolVersion: "1.1",
     sourceSnapshotObservedAt: input.observedAt,
     createdAt: input.observedAt,
