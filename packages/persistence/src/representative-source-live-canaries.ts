@@ -14,6 +14,7 @@ export type RepresentativeSourceLiveCanaryBaseline = {
   family: string;
   canonicalUri: string;
   renderJavascript: boolean;
+  expectedArtifactKinds: string[];
 };
 
 export type RepresentativeSourceLiveCanary = {
@@ -137,6 +138,7 @@ export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveC
         family: baseline.family,
         canonicalUri: baseline.canonicalUri,
         renderJavascript: baseline.acquisition.renderJavascriptHint,
+        expectedArtifactKinds: [...baseline.acquisition.expectedArtifactKinds],
       },
     } satisfies RepresentativeSourceLiveCanary;
   });
