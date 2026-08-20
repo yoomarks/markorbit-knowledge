@@ -79,7 +79,7 @@ function environment() {
       timeoutSeconds: 30,
       retry: { maxAttempts: 1, backoffSeconds: 1 },
     },
-    output: { artifactKinds: ["HTML", "PDF"] },
+    output: { artifactKinds: ["HTML"] },
   });
   runs.dispatchManual({ planId: plan.plan.id });
 
@@ -169,22 +169,22 @@ async function ingest(
 }
 
 describe("raw artifact lineage inspection", () => {
-  it("persists and resolves immutable page-to-attachment provenance in both directions", async () => {
+  it("persists and resolves immutable parent-child provenance in both directions", async () => {
     const env = environment();
     const parent = await ingest(env, {
       key: "rules-page.html",
       artifactKind: "HTML",
       mimeType: "text/html",
       canonicalUri: "https://example.com/rules",
-      content: "<html><a href='/rules.pdf'>Rules PDF</a></html>",
+      content: "<html><a href='/linked-resource'>Linked resource</a></html>",
     });
     const parentId = parent.artifact.artifact.id;
     const child = await ingest(env, {
-      key: "rules.pdf",
-      artifactKind: "PDF",
-      mimeType: "application/pdf",
-      canonicalUri: "https://example.com/rules.pdf",
-      content: "%PDF-1.4 fixture",
+      key: "linked-resource.html",
+      artifactKind: "HTML",
+      mimeType: "text/html",
+      canonicalUri: "https://example.com/linked-resource",
+      content: "<html>linked child fixture</html>",
       parentArtifactIds: [parentId],
     });
     const childId = child.artifact.artifact.id;
@@ -219,11 +219,11 @@ describe("raw artifact lineage inspection", () => {
   it("fails closed when immutable parent provenance references a missing artifact", async () => {
     const env = environment();
     const child = await ingest(env, {
-      key: "orphan.pdf",
-      artifactKind: "PDF",
-      mimeType: "application/pdf",
-      canonicalUri: "https://example.com/orphan.pdf",
-      content: "%PDF-1.4 orphan",
+      key: "orphan.html",
+      artifactKind: "HTML",
+      mimeType: "text/html",
+      canonicalUri: "https://example.com/orphan",
+      content: "<html>orphan fixture</html>",
       parentArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAV"],
     });
 
