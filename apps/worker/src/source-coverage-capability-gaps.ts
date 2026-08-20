@@ -6,9 +6,7 @@ export type SupplyCapabilityGap = {
   expectedArtifactKinds: string[];
 };
 
-export function structuredSupplyCapabilityGap(
-  target: CoverageTarget,
-): SupplyCapabilityGap | null {
+export function structuredSupplyCapabilityGap(target: CoverageTarget): SupplyCapabilityGap | null {
   const missingStructuredKinds = target.acquisition.fetchAttachmentsHint
     ? []
     : target.acquisition.expectedArtifactKinds.filter((kind) => kind === "JSON");
