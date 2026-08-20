@@ -1,0 +1,35 @@
+name: Temporary Linked Attachment Evidence Prettier
+
+on:
+  push:
+    branches:
+      - agent/change-evidence-linked-attachments-v1
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/change-evidence-linked-attachments-v1
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format and remove temporary workflow
+        run: |
+          pnpm exec prettier --write packages/persistence/src/document-change-evidence.ts packages/persistence/src/document-change-evidence.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/prettier-linked-attachment-evidence.yml
+          git add packages/persistence/src/document-change-evidence.ts packages/persistence/src/document-change-evidence.test.ts
+          git commit -m "chore: format linked attachment evidence"
+          git push origin HEAD:agent/change-evidence-linked-attachments-v1
