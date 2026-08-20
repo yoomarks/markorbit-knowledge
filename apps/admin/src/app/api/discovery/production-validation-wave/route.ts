@@ -50,7 +50,9 @@ function aggregateStructuredRemediation(
     : items.some((item) => item.state === "UNPREPARED")
       ? "UNPREPARED"
       : "PREPARED_AWAITING_WORKER_BINDING";
-  const requiredArtifactKinds = [...new Set(items.flatMap((item) => item.requiredArtifactKinds))].sort();
+  const requiredArtifactKinds = [
+    ...new Set(items.flatMap((item) => item.requiredArtifactKinds)),
+  ].sort();
   const only = items.length === 1 ? items[0] : null;
   return {
     state,

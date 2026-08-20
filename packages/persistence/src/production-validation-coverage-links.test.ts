@@ -53,9 +53,7 @@ describe("validateProductionValidationCoverageLinkedManifest", () => {
       validateProductionValidationCoverageLinkedManifest(manifest(["missing-target"])),
     ).toThrow("unknown target");
     expect(() =>
-      validateProductionValidationCoverageLinkedManifest(
-        manifest(["eu-euipo-esearch-plus"], "US"),
-      ),
+      validateProductionValidationCoverageLinkedManifest(manifest(["eu-euipo-esearch-plus"], "US")),
     ).toThrow("belongs to EU");
     expect(() => validateProductionValidationCoverageLinkedManifest(manifest(null))).toThrow(
       "must be an array",
