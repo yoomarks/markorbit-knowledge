@@ -27,7 +27,7 @@ export type RepresentativeSourceLiveCanary = {
   languages: string[];
   renderJavascript: boolean;
   expectedArtifactKinds: string[];
-  authorityBaseline?: RepresentativeSourceLiveCanaryBaseline;
+  authorityBaseline: RepresentativeSourceLiveCanaryBaseline;
 };
 
 const PROFILE_FAMILY_PREFERENCE: Record<RepresentativeSourceActivationProfile, string[]> = {
@@ -88,15 +88,10 @@ function selectCanaryTarget(
   return selected;
 }
 
-function needsAuthorityBaseline(target: SourceCoverageTarget): boolean {
-  return target.family === "SEARCH" || target.acquisition.renderJavascriptHint;
-}
-
 function selectAuthorityBaseline(
   primary: SourceCoverageTarget,
   targets: readonly SourceCoverageTarget[],
 ): SourceCoverageTarget | undefined {
-  if (!needsAuthorityBaseline(primary)) return undefined;
   return targets
     .filter(
       (target) =>
@@ -121,9 +116,9 @@ export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveC
   const canaries = REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((jurisdiction) => {
     const target = selectCanaryTarget(jurisdiction.jurisdiction, jurisdiction.profile, targets);
     const baseline = selectAuthorityBaseline(target, targets);
-    if (needsAuthorityBaseline(target) && !baseline) {
+    if (!baseline) {
       throw new RegistryValidationError(
-        `Interactive live canary ${target.id} has no low-interaction authority baseline`,
+        `Live canary ${target.id} has no distinct low-interaction authority baseline`,
       );
     }
     return {
@@ -137,16 +132,12 @@ export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveC
       languages: [...target.languages],
       renderJavascript: target.acquisition.renderJavascriptHint,
       expectedArtifactKinds: [...target.acquisition.expectedArtifactKinds],
-      ...(baseline
-        ? {
-            authorityBaseline: {
-              targetId: baseline.id,
-              family: baseline.family,
-              canonicalUri: baseline.canonicalUri,
-              renderJavascript: baseline.acquisition.renderJavascriptHint,
-            },
-          }
-        : {}),
+      authorityBaseline: {
+        targetId: baseline.id,
+        family: baseline.family,
+        canonicalUri: baseline.canonicalUri,
+        renderJavascript: baseline.acquisition.renderJavascriptHint,
+      },
     } satisfies RepresentativeSourceLiveCanary;
   });
 
