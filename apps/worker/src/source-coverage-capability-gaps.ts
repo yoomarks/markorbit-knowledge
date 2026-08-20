@@ -12,11 +12,31 @@ const WEB_ATTACHMENT_ARTIFACT_KINDS = new Set([
   "IMAGE",
   "TEXT",
 ]);
+const API_ARTIFACT_KINDS = new Set(["JSON", "XML", "CSV", "TEXT"]);
+
+export type SupplyCapabilityRemediation = {
+  automaticExecution: false;
+  collectionAuthorization: "NONE";
+  apiBinding: {
+    connectorId: "api-worker";
+    connectorVersion: "1.0.0";
+    sourceType: "API";
+    jobType: "API_COLLECTION";
+    endpointBindingRequired: true;
+    artifactKinds: string[];
+  } | null;
+  webAttachments: {
+    fetchAttachmentsRequired: true;
+    artifactKinds: string[];
+  } | null;
+  unsupportedArtifactKinds: string[];
+};
 
 export type SupplyCapabilityGap = {
   targetId: string;
   code: "STRUCTURED_ENDPOINT_NOT_CAPTURED";
   expectedArtifactKinds: string[];
+  remediation: SupplyCapabilityRemediation;
 };
 
 export function webCapturableArtifactKinds(target: CoverageTarget): string[] {
@@ -25,6 +45,42 @@ export function webCapturableArtifactKinds(target: CoverageTarget): string[] {
     for (const kind of WEB_ATTACHMENT_ARTIFACT_KINDS) capturable.add(kind);
   }
   return [...capturable].sort();
+}
+
+export function supplyCapabilityRemediation(
+  missingArtifactKinds: readonly string[],
+): SupplyCapabilityRemediation {
+  const apiArtifactKinds = missingArtifactKinds.filter((kind) => API_ARTIFACT_KINDS.has(kind));
+  const attachmentArtifactKinds = missingArtifactKinds.filter(
+    (kind) => WEB_ATTACHMENT_ARTIFACT_KINDS.has(kind) && !API_ARTIFACT_KINDS.has(kind),
+  );
+  const unsupportedArtifactKinds = missingArtifactKinds.filter(
+    (kind) => !API_ARTIFACT_KINDS.has(kind) && !WEB_ATTACHMENT_ARTIFACT_KINDS.has(kind),
+  );
+
+  return {
+    automaticExecution: false,
+    collectionAuthorization: "NONE",
+    apiBinding:
+      apiArtifactKinds.length > 0
+        ? {
+            connectorId: "api-worker",
+            connectorVersion: "1.0.0",
+            sourceType: "API",
+            jobType: "API_COLLECTION",
+            endpointBindingRequired: true,
+            artifactKinds: apiArtifactKinds,
+          }
+        : null,
+    webAttachments:
+      attachmentArtifactKinds.length > 0
+        ? {
+            fetchAttachmentsRequired: true,
+            artifactKinds: attachmentArtifactKinds,
+          }
+        : null,
+    unsupportedArtifactKinds,
+  };
 }
 
 export function structuredSupplyCapabilityGap(target: CoverageTarget): SupplyCapabilityGap | null {
@@ -37,6 +93,7 @@ export function structuredSupplyCapabilityGap(target: CoverageTarget): SupplyCap
     targetId: target.id,
     code: "STRUCTURED_ENDPOINT_NOT_CAPTURED",
     expectedArtifactKinds: missingArtifactKinds,
+    remediation: supplyCapabilityRemediation(missingArtifactKinds),
   };
 }
 
