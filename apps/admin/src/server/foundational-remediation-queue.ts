@@ -1,5 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
-import { RegistryValidationError } from "@markorbit/persistence";
+import type { SourceCoverageTarget } from "@markorbit/contracts";
+import { RegistryValidationError, SqliteSourceRepository } from "@markorbit/persistence";
+import { SqliteCollectionPlanRepository } from "@markorbit/persistence/collection-plans";
+import { listSourceCoverageTargets } from "@markorbit/persistence/source-coverage";
 import { SqliteCompatibilityAwareSupplyHealthRepository } from "@markorbit/persistence/source-compatibility-supply-health";
 import { SqliteRetrievalQualityAuditRepository } from "@markorbit/persistence/retrieval-quality-audit";
 import { SqliteRetrievalRelevanceAuditRepository } from "@markorbit/persistence/retrieval-relevance-audit";
@@ -13,8 +16,24 @@ import {
 import { buildFoundationalRemediationQueue } from "@markorbit/worker-runtime/foundational-remediation-queue";
 import {
   assembleFoundationalRemediationQueueSnapshot,
+  type FoundationalApiRemediationItem,
+  type FoundationalApiRemediationStatus,
   type FoundationalRemediationQueueSnapshot,
 } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
+import { listAllWorkspaceSources } from "./source-pagination";
+
+const API_ARTIFACT_KINDS = new Set(["JSON", "XML", "CSV", "TEXT"]);
+const WEB_ATTACHMENT_ARTIFACT_KINDS = new Set([
+  "PDF",
+  "DOCX",
+  "XLSX",
+  "CSV",
+  "JSON",
+  "XML",
+  "EMAIL",
+  "IMAGE",
+  "TEXT",
+]);
 
 export type FoundationalRemediationQueueSnapshotFilters = {
   workspaceId: string;
@@ -38,6 +57,127 @@ function normalizeFilters(
     }
   }
   return { workspaceId, jurisdiction, targetId, topK: filters.topK };
+}
+
+function requiredApiArtifactKinds(target: SourceCoverageTarget): string[] {
+  const webCapturable = new Set(["HTML", "MARKDOWN"]);
+  if (target.acquisition.fetchAttachmentsHint) {
+    for (const kind of WEB_ATTACHMENT_ARTIFACT_KINDS) webCapturable.add(kind);
+  }
+  return target.acquisition.expectedArtifactKinds.filter(
+    (kind) => API_ARTIFACT_KINDS.has(kind) && !webCapturable.has(kind),
+  );
+}
+
+function sameStrings(left: readonly string[], right: readonly string[]): boolean {
+  const a = [...left].sort();
+  const b = [...right].sort();
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+function apiRemediationItem(
+  database: DatabaseSync,
+  workspaceId: string,
+  target: SourceCoverageTarget,
+  requiredArtifactKinds: string[],
+): FoundationalApiRemediationItem {
+  const sources = listAllWorkspaceSources(new SqliteSourceRepository(database), workspaceId).filter(
+    (source) =>
+      source.extensions?.["x-markorbit-source-coverage-remediation-target-id"] === target.id,
+  );
+  if (sources.length === 0) {
+    return {
+      targetId: target.id,
+      state: "UNPREPARED",
+      requiredArtifactKinds,
+      sourceId: null,
+      planId: null,
+      endpointBinding: null,
+      workerEndpointBindingState: "EXTERNAL_UNVERIFIED",
+      collectionAuthorization: "NONE",
+      automaticExecution: false,
+    };
+  }
+
+  if (sources.length !== 1) {
+    return {
+      targetId: target.id,
+      state: "INVALID",
+      requiredArtifactKinds,
+      sourceId: null,
+      planId: null,
+      endpointBinding: null,
+      workerEndpointBindingState: "EXTERNAL_UNVERIFIED",
+      collectionAuthorization: "NONE",
+      automaticExecution: false,
+    };
+  }
+
+  const source = sources[0];
+  const endpointBinding =
+    typeof source.connectorConfig.endpointBinding === "string"
+      ? source.connectorConfig.endpointBinding
+      : null;
+  const sourceValid =
+    source.sourceType === "API" &&
+    source.status === "ACTIVE" &&
+    source.connector.connectorId === "api-worker" &&
+    source.connector.version === "1.0.0" &&
+    endpointBinding !== null &&
+    source.extensions?.["x-markorbit-collection-authorization"] === false;
+
+  const plans = new SqliteCollectionPlanRepository(database)
+    .listForSource(source.id)
+    .filter(
+      (record) =>
+        record.plan.extensions?.["x-markorbit-source-coverage-remediation-target-id"] === target.id,
+    );
+  const plan = plans.length === 1 ? plans[0].plan : null;
+  const planValid =
+    plan !== null &&
+    plan.status === "ACTIVE" &&
+    plan.schedule.mode === "MANUAL" &&
+    sameStrings(plan.output.artifactKinds, requiredArtifactKinds) &&
+    plan.extensions?.["x-markorbit-collection-authorization"] === false;
+
+  return {
+    targetId: target.id,
+    state: sourceValid && planValid ? "PREPARED_AWAITING_WORKER_BINDING" : "INVALID",
+    requiredArtifactKinds,
+    sourceId: source.id,
+    planId: plan?.id ?? null,
+    endpointBinding,
+    workerEndpointBindingState: "EXTERNAL_UNVERIFIED",
+    collectionAuthorization: "NONE",
+    automaticExecution: false,
+  };
+}
+
+function apiRemediationStatus(
+  database: DatabaseSync,
+  filters: FoundationalRemediationQueueSnapshotFilters,
+  readinessTargetIds: ReadonlySet<string>,
+): FoundationalApiRemediationStatus {
+  const targets = listSourceCoverageTargets({
+    jurisdiction: filters.jurisdiction,
+    coverageTier: "FOUNDATIONAL",
+    catalogState: "ACTIVE",
+  }).filter(
+    (target) =>
+      readinessTargetIds.has(target.id) && (!filters.targetId || target.id === filters.targetId),
+  );
+  const items = targets
+    .map((target) => ({ target, requiredArtifactKinds: requiredApiArtifactKinds(target) }))
+    .filter((entry) => entry.requiredArtifactKinds.length > 0)
+    .map((entry) =>
+      apiRemediationItem(database, filters.workspaceId, entry.target, entry.requiredArtifactKinds),
+    );
+  return {
+    requiredCount: items.length,
+    preparedCount: items.filter((item) => item.state === "PREPARED_AWAITING_WORKER_BINDING").length,
+    invalidCount: items.filter((item) => item.state === "INVALID").length,
+    items,
+  };
 }
 
 export function buildFoundationalRemediationQueueSnapshot(
@@ -107,6 +247,11 @@ export function buildFoundationalRemediationQueueSnapshot(
     relevanceItems,
   );
   const remediationQueue = buildFoundationalRemediationQueue(readiness, normalized.workspaceId);
+  const apiRemediation = apiRemediationStatus(
+    database,
+    normalized,
+    new Set(readiness.targets.map((target) => target.targetId)),
+  );
 
   return assembleFoundationalRemediationQueueSnapshot({
     workspaceId: normalized.workspaceId,
@@ -115,5 +260,6 @@ export function buildFoundationalRemediationQueueSnapshot(
     observedAt: clock().toISOString(),
     readiness,
     remediationQueue,
+    apiRemediation,
   });
 }
