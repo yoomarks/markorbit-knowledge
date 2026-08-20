@@ -21,6 +21,7 @@ on:
       - .github/workflows/representative-source-live-canary.yml
       - apps/worker/src/run-representative-live-canaries.ts
       - apps/worker/package.json
+      - scripts/stamp-live-canary-provenance.mjs
       - packages/persistence/src/representative-source-activation.ts
       - packages/persistence/src/representative-source-live-canaries.ts
       - packages/persistence/src/representative-source-live-canaries.test.ts
@@ -84,6 +85,11 @@ jobs:
           if [ -f "$MARKORBIT_LIVE_CANARY_OUTPUT_DIR/summary.md" ]; then
             cat "$MARKORBIT_LIVE_CANARY_OUTPUT_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Stamp canary evidence provenance
+        run: |
+          node scripts/stamp-live-canary-provenance.mjs \
+            "--summary=$MARKORBIT_LIVE_CANARY_OUTPUT_DIR/summary.json"
 
       - name: Upload sanitized canary observations
         if: always()
@@ -150,6 +156,14 @@ jobs:
             cat "$MARKORBIT_LIVE_CANARY_OUTPUT_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
           fi
           exit "$status"
+
+      - name: Stamp canary evidence provenance
+        if: always()
+        run: |
+          if [ -f "$MARKORBIT_LIVE_CANARY_OUTPUT_DIR/summary.json" ]; then
+            node scripts/stamp-live-canary-provenance.mjs \
+              "--summary=$MARKORBIT_LIVE_CANARY_OUTPUT_DIR/summary.json"
+          fi
 
       - name: Upload sanitized canary observations
         if: always()
