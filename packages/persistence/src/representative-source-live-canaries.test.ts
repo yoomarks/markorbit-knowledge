@@ -38,6 +38,7 @@ describe("representative source live canaries", () => {
       expect(canary.authorityBaseline.targetId).not.toBe(canary.targetId);
       expect(canary.authorityBaseline.canonicalUri).toMatch(/^https?:\/\//u);
       expect(canary.authorityBaseline.renderJavascript).toBe(false);
+      expect(canary.authorityBaseline.expectedArtifactKinds).toContain("HTML");
     }
   });
 
@@ -46,11 +47,13 @@ describe("representative source live canaries", () => {
       (canary) => canary.jurisdiction === "CN",
     );
     expect(china?.targetId).toBe("cn-cnipa-trademark-search");
+    expect(china?.expectedArtifactKinds).toEqual(["HTML", "JSON"]);
     expect(china?.authorityBaseline).toEqual({
       targetId: "cn-cnipa-trademark-filing-guide",
       family: "FILING",
       canonicalUri: "https://www.cnipa.gov.cn/art/2020/12/21/art_2488_155734.html",
       renderJavascript: false,
+      expectedArtifactKinds: ["HTML", "MARKDOWN"],
     });
   });
 
@@ -60,6 +63,7 @@ describe("representative source live canaries", () => {
       targetId: canary.targetId,
       canonicalUri: canary.canonicalUri,
       renderJavascript: canary.renderJavascript,
+      expectedArtifactKinds: canary.expectedArtifactKinds,
       authorityBaseline: canary.authorityBaseline,
     }));
     const second = getRepresentativeSourceLiveCanaries().map((canary) => ({
@@ -67,6 +71,7 @@ describe("representative source live canaries", () => {
       targetId: canary.targetId,
       canonicalUri: canary.canonicalUri,
       renderJavascript: canary.renderJavascript,
+      expectedArtifactKinds: canary.expectedArtifactKinds,
       authorityBaseline: canary.authorityBaseline,
     }));
     expect(second).toEqual(first);
