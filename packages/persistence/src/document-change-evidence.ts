@@ -70,11 +70,7 @@ function rawArtifactTableExists(database: DatabaseSync): boolean {
   );
 }
 
-function requiredRawArtifactString(
-  value: unknown,
-  field: string,
-  artifactId: string,
-): string {
+function requiredRawArtifactString(value: unknown, field: string, artifactId: string): string {
   if (typeof value !== "string" || !value.trim()) {
     throw new RegistryConflictError(
       "CHANGE_EVIDENCE_RAW_ARTIFACT_INVALID",
@@ -131,7 +127,11 @@ function rawArtifactRef(
     "artifactKind",
     document.rawArtifactId,
   );
-  const mimeType = requiredRawArtifactString(artifact?.mimeType, "mimeType", document.rawArtifactId);
+  const mimeType = requiredRawArtifactString(
+    artifact?.mimeType,
+    "mimeType",
+    document.rawArtifactId,
+  );
   const binarySha256 = requiredRawArtifactString(
     binaryHash?.value,
     "binaryHash.value",
