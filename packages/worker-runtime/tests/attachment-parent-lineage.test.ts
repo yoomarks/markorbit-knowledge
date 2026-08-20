@@ -16,6 +16,8 @@ import {
 const PAGE_A_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const PAGE_B_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAW";
 const ATTACHMENT_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAX";
+const PAGE_A_OLD_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAY";
+const ATTACHMENT_OLD_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAZ";
 
 function context(changeWatch = false): ArtifactBackedExecutionContext {
   return {
@@ -75,7 +77,7 @@ function lineageAcquirer(): CollectionArtifactAcquirer {
 
 function client(
   options: {
-    unchangedParents?: Map<string, string | null>;
+    unchangedArtifacts?: Map<string, string | null>;
   } = {},
 ): {
   implementation: ArtifactBackedExecutionClient;
@@ -98,10 +100,10 @@ function client(
       return {} as ExecutionAttempt;
     },
     async checkArtifactContent(_context, input) {
-      if (options.unchangedParents?.has(input.canonicalUri)) {
+      if (options.unchangedArtifacts?.has(input.canonicalUri)) {
         return {
           unchanged: true,
-          latestArtifactId: options.unchangedParents.get(input.canonicalUri) ?? null,
+          latestArtifactId: options.unchangedArtifacts.get(input.canonicalUri) ?? null,
           latestSha256: "a".repeat(64),
         };
       }
@@ -152,7 +154,7 @@ describe("attachment parent artifact lineage", () => {
 
   it("reuses latest immutable parent ids when change-watch skips unchanged pages", async () => {
     const fixture = client({
-      unchangedParents: new Map([
+      unchangedArtifacts: new Map([
         ["https://example.com/page-a", PAGE_A_ID],
         ["https://example.com/page-b", PAGE_B_ID],
       ]),
@@ -172,9 +174,55 @@ describe("attachment parent artifact lineage", () => {
     });
   });
 
+  it("re-observes an unchanged attachment when a parent changes so lineage binds the new parent version", async () => {
+    const fixture = client({
+      unchangedArtifacts: new Map([
+        ["https://example.com/page-b", PAGE_B_ID],
+        ["https://example.com/rules.pdf", ATTACHMENT_OLD_ID],
+      ]),
+    });
+    const executor = new ArtifactBackedCollectionExecutor(
+      lineageAcquirer(),
+      fixture.implementation,
+    );
+
+    const receipt = await executor.execute(context(true));
+
+    expect(receipt).toMatchObject({ itemsObserved: 2, metadataOnly: false });
+    expect(receipt?.summary).toContain("1 unchanged child artifact(s) were re-observed");
+    expect(fixture.descriptors.map((descriptor) => descriptor.canonicalUri)).toEqual([
+      "https://example.com/page-a",
+      "https://example.com/rules.pdf",
+    ]);
+    expect(fixture.descriptors[1]).toMatchObject({
+      canonicalUri: "https://example.com/rules.pdf",
+      parentArtifactIds: [PAGE_A_ID, PAGE_B_ID],
+    });
+    expect(fixture.descriptors[1]?.parentArtifactIds).not.toContain(PAGE_A_OLD_ID);
+  });
+
+  it("keeps the metadata-only fast path when parent pages and attachment are all unchanged", async () => {
+    const fixture = client({
+      unchangedArtifacts: new Map([
+        ["https://example.com/page-a", PAGE_A_ID],
+        ["https://example.com/page-b", PAGE_B_ID],
+        ["https://example.com/rules.pdf", ATTACHMENT_OLD_ID],
+      ]),
+    });
+    const executor = new ArtifactBackedCollectionExecutor(
+      lineageAcquirer(),
+      fixture.implementation,
+    );
+
+    const receipt = await executor.execute(context(true));
+
+    expect(receipt).toMatchObject({ itemsObserved: 3, bytesPrepared: 0, metadataOnly: true });
+    expect(fixture.descriptors).toEqual([]);
+  });
+
   it("fails closed instead of dropping parent lineage when an immutable parent cannot be resolved", async () => {
     const fixture = client({
-      unchangedParents: new Map([
+      unchangedArtifacts: new Map([
         ["https://example.com/page-a", PAGE_A_ID],
         ["https://example.com/page-b", null],
       ]),
