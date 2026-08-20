@@ -47,6 +47,8 @@ jobs:
     env:
       MARKORBIT_CRAWL4AI_PYTHON: python
       MARKORBIT_LIVE_CANARY_TIMEOUT_SECONDS: "75"
+      MARKORBIT_LIVE_CANARY_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      MARKORBIT_LIVE_CANARY_SOURCE_REF: ${{ github.event.pull_request.head.ref }}
     steps:
       - uses: actions/checkout@v4
 
@@ -109,6 +111,8 @@ jobs:
     env:
       MARKORBIT_CRAWL4AI_PYTHON: python
       MARKORBIT_LIVE_CANARY_TIMEOUT_SECONDS: "75"
+      MARKORBIT_LIVE_CANARY_SOURCE_SHA: ${{ github.sha }}
+      MARKORBIT_LIVE_CANARY_SOURCE_REF: ${{ github.ref }}
     steps:
       - uses: actions/checkout@v4
 
