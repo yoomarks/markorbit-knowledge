@@ -26,9 +26,16 @@ async function main() {
     repository: required(process.env.GITHUB_REPOSITORY, "GITHUB_REPOSITORY"),
     runId: required(process.env.GITHUB_RUN_ID, "GITHUB_RUN_ID"),
     runAttempt: required(process.env.GITHUB_RUN_ATTEMPT, "GITHUB_RUN_ATTEMPT"),
-    commitSha: required(process.env.GITHUB_SHA, "GITHUB_SHA"),
+    commitSha: required(
+      process.env.MARKORBIT_LIVE_CANARY_SOURCE_SHA,
+      "MARKORBIT_LIVE_CANARY_SOURCE_SHA",
+    ),
+    workflowSha: required(process.env.GITHUB_SHA, "GITHUB_SHA"),
     workflow: required(process.env.GITHUB_WORKFLOW, "GITHUB_WORKFLOW"),
     eventName: required(process.env.GITHUB_EVENT_NAME, "GITHUB_EVENT_NAME"),
+    ...(process.env.MARKORBIT_LIVE_CANARY_SOURCE_REF?.trim()
+      ? { sourceRef: process.env.MARKORBIT_LIVE_CANARY_SOURCE_REF.trim() }
+      : {}),
     ...(process.env.GITHUB_SERVER_URL?.trim()
       ? { serverUrl: process.env.GITHUB_SERVER_URL.trim() }
       : {}),
