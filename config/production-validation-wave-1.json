@@ -164,7 +164,7 @@
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P1",
       "validationState": "PENDING_REAL_RUN",
-      "coverageTargetIds": []
+      "coverageTargetIds": ["nz-iponz-trademark-search"]
     }
   ]
 }
