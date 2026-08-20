@@ -132,7 +132,9 @@ function artifactContractTelemetry(
     };
   }
   const details =
-    observation.details && typeof observation.details === "object" && !Array.isArray(observation.details)
+    observation.details &&
+    typeof observation.details === "object" &&
+    !Array.isArray(observation.details)
       ? (observation.details as Record<string, unknown>)
       : null;
   const expectedArtifactKinds = stringArray(details?.expectedArtifactKinds);
