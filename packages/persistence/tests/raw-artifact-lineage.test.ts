@@ -73,7 +73,7 @@ function environment() {
       maxDepth: 1,
       maxItems: 10,
       renderJavascript: false,
-      fetchAttachments: true,
+      fetchAttachments: false,
       respectRobots: true,
       rateLimitPerMinute: 10,
       timeoutSeconds: 30,
