@@ -7,6 +7,7 @@ import {
   getRepresentativeSourceLiveCanaries,
   type RepresentativeSourceLiveCanary,
 } from "@markorbit/persistence/representative-source-live-canaries";
+import { assessRepresentativeCanaryArtifacts } from "./representative-live-canary-evidence";
 
 type CrawlSuccess = {
   protocolVersion: string;
@@ -38,6 +39,7 @@ type CanaryProbe = {
   canonicalUri: string;
   renderJavascript: boolean;
   locale: string;
+  expectedArtifactKinds: string[];
 };
 
 type ProbeObservation = {
@@ -45,6 +47,8 @@ type ProbeObservation = {
   family: string;
   requestedUri: string;
   renderJavascript: boolean;
+  expectedArtifactKinds: string[];
+  missingExpectedArtifactKinds: string[];
   elapsedMs: number;
   state: "PASS" | "FAIL";
   pagesAttempted: number;
@@ -65,6 +69,8 @@ type CanaryObservation = {
   family: string;
   requestedUri: string;
   renderJavascript: boolean;
+  expectedArtifactKinds: string[];
+  missingExpectedArtifactKinds: string[];
   elapsedMs: number;
   state: "PASS" | "DEGRADED" | "BLOCKED";
   pagesAttempted: number;
@@ -195,6 +201,16 @@ function stderrTail(stderr: string): string | undefined {
   return normalized.slice(-1200);
 }
 
+function emptyArtifactContract(probe: CanaryProbe): Pick<
+  ProbeObservation,
+  "expectedArtifactKinds" | "missingExpectedArtifactKinds"
+> {
+  return {
+    expectedArtifactKinds: [...probe.expectedArtifactKinds],
+    missingExpectedArtifactKinds: [...probe.expectedArtifactKinds].sort(),
+  };
+}
+
 async function observeProbe(
   probe: CanaryProbe,
   outputDirectory: string,
@@ -215,6 +231,7 @@ async function observeProbe(
         family: probe.family,
         requestedUri: probe.canonicalUri,
         renderJavascript: probe.renderJavascript,
+        ...emptyArtifactContract(probe),
         elapsedMs,
         state: "FAIL",
         pagesAttempted: 0,
@@ -233,17 +250,35 @@ async function observeProbe(
     const finalUris = [
       ...new Set(response.artifacts.map((artifact) => artifact.canonicalUri)),
     ].sort();
-    const hasHtml = artifactKinds.includes("HTML");
-    const hasMarkdown = artifactKinds.includes("MARKDOWN");
+    const artifactAssessment = assessRepresentativeCanaryArtifacts({
+      observedArtifactKinds: artifactKinds,
+      expectedArtifactKinds: probe.expectedArtifactKinds,
+    });
     const validHashes = response.artifacts.every((artifact) =>
       /^[a-f0-9]{64}$/u.test(artifact.sha256),
     );
-    const passed = response.artifacts.length >= 2 && hasHtml && hasMarkdown && validHashes;
+    const pageEvidenceValid =
+      response.artifacts.length >= 2 && artifactAssessment.pageEvidenceComplete && validHashes;
+    const passed = pageEvidenceValid && artifactAssessment.targetArtifactContractComplete;
+    const failure = !pageEvidenceValid
+      ? {
+          errorCode: "CANARY_EVIDENCE_INCOMPLETE",
+          errorMessage:
+            "Expected governed HTML + MARKDOWN artifacts with valid SHA-256 evidence.",
+        }
+      : !artifactAssessment.targetArtifactContractComplete
+        ? {
+            errorCode: "CANARY_ARTIFACT_CONTRACT_INCOMPLETE",
+            errorMessage: `Observed page evidence but did not produce expected artifact kinds: ${artifactAssessment.missingExpectedArtifactKinds.join(", ")}.`,
+          }
+        : undefined;
     return {
       targetId: probe.targetId,
       family: probe.family,
       requestedUri: probe.canonicalUri,
       renderJavascript: probe.renderJavascript,
+      expectedArtifactKinds: [...probe.expectedArtifactKinds],
+      missingExpectedArtifactKinds: artifactAssessment.missingExpectedArtifactKinds,
       elapsedMs,
       state: passed ? "PASS" : "FAIL",
       pagesAttempted: response.pagesAttempted,
@@ -251,13 +286,7 @@ async function observeProbe(
       artifactKinds,
       finalUris,
       totalBytes: response.totalBytes,
-      ...(!passed
-        ? {
-            errorCode: "CANARY_EVIDENCE_INCOMPLETE",
-            errorMessage:
-              "Expected governed HTML + MARKDOWN artifacts with valid SHA-256 evidence.",
-          }
-        : {}),
+      ...(failure ?? {}),
       ...(tail ? { stderrTail: tail } : {}),
     };
   } catch (error) {
@@ -266,6 +295,7 @@ async function observeProbe(
       family: probe.family,
       requestedUri: probe.canonicalUri,
       renderJavascript: probe.renderJavascript,
+      ...emptyArtifactContract(probe),
       elapsedMs: Date.now() - startedAt,
       state: "FAIL",
       pagesAttempted: 0,
@@ -286,14 +316,15 @@ function primaryProbe(canary: RepresentativeSourceLiveCanary): CanaryProbe {
     canonicalUri: canary.canonicalUri,
     renderJavascript: canary.renderJavascript,
     locale: canary.languages[0] ?? "en",
+    expectedArtifactKinds: [...canary.expectedArtifactKinds],
   };
 }
 
-function baselineProbe(canary: RepresentativeSourceLiveCanary): CanaryProbe | undefined {
-  if (!canary.authorityBaseline) return undefined;
+function baselineProbe(canary: RepresentativeSourceLiveCanary): CanaryProbe {
   return {
     ...canary.authorityBaseline,
     locale: canary.languages[0] ?? "en",
+    expectedArtifactKinds: [...canary.authorityBaseline.expectedArtifactKinds],
   };
 }
 
@@ -319,19 +350,8 @@ async function observeCanary(
     };
   }
 
-  const fallback = baselineProbe(canary);
-  if (!fallback) {
-    return {
-      jurisdiction: canary.jurisdiction,
-      displayName: canary.displayName,
-      profile: canary.profile,
-      ...primary,
-      state: "BLOCKED",
-    };
-  }
-
   const authorityBaseline = await observeProbe(
-    fallback,
+    baselineProbe(canary),
     join(outputDirectory, "authority-baseline"),
     timeoutSeconds,
   );
@@ -370,8 +390,8 @@ function markdownReport(observations: CanaryObservation[]): string {
     `Observed: ${new Date().toISOString()}`,
     `Result: ${passed}/${observations.length} PASS, ${degraded} DEGRADED, ${blocked} BLOCKED`,
     "",
-    "| Jurisdiction | Profile | Primary target | JS | State | Artifacts | Time | Signal |",
-    "|---|---|---|---:|---|---:|---:|---|",
+    "| Jurisdiction | Profile | Primary target | JS | State | Artifacts | Missing expected | Time | Signal |",
+    "|---|---|---|---:|---|---:|---|---:|---|",
   ];
   for (const item of observations) {
     const signal =
@@ -381,12 +401,12 @@ function markdownReport(observations: CanaryObservation[]): string {
           ? `ADAPTER_REQUIRED; baseline ${item.authorityBaseline?.targetId ?? "unknown"} PASS`
           : `${item.errorCode ?? "BLOCKED"}: ${(item.errorMessage ?? "").replaceAll("|", "\\|")}`;
     lines.push(
-      `| ${item.jurisdiction} | ${item.profile} | ${item.targetId} | ${item.renderJavascript ? "yes" : "no"} | ${item.state} | ${item.artifactCount} | ${(item.elapsedMs / 1000).toFixed(1)}s | ${signal} |`,
+      `| ${item.jurisdiction} | ${item.profile} | ${item.targetId} | ${item.renderJavascript ? "yes" : "no"} | ${item.state} | ${item.artifactCount} | ${item.missingExpectedArtifactKinds.join(", ") || "none"} | ${(item.elapsedMs / 1000).toFixed(1)}s | ${signal} |`,
     );
   }
   lines.push(
     "",
-    "DEGRADED means the authority remains collectible through a low-interaction official baseline while the primary interactive path needs a dedicated adapter. BLOCKED means both primary and baseline acquisition failed.",
+    "PASS means the primary path produced governed page evidence and satisfied its declared artifact contract. DEGRADED means the authority remains collectible through a low-interaction official baseline while the primary path needs a dedicated adapter or acquisition strategy. BLOCKED means both primary and baseline acquisition failed.",
     "",
     "Live observations do not mutate Source Registry or start production collection.",
     "",
@@ -412,7 +432,7 @@ async function main(): Promise<void> {
   const observations: CanaryObservation[] = [];
   for (const canary of selectedCanaries()) {
     process.stdout.write(
-      `${JSON.stringify({ event: "representative-live-canary.start", jurisdiction: canary.jurisdiction, targetId: canary.targetId, uri: canary.canonicalUri, authorityBaseline: canary.authorityBaseline })}\n`,
+      `${JSON.stringify({ event: "representative-live-canary.start", jurisdiction: canary.jurisdiction, targetId: canary.targetId, uri: canary.canonicalUri, expectedArtifactKinds: canary.expectedArtifactKinds, authorityBaseline: canary.authorityBaseline })}\n`,
     );
     const observation = await observeCanary(canary, outputRoot, timeoutSeconds);
     observations.push(observation);
