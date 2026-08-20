@@ -12,7 +12,15 @@ import {
 import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import { SqliteOperationalSupplyHealthRepository } from "@markorbit/persistence/source-compatibility-supply-health";
 import { apiError } from "@/server/api-errors";
-import { getRegistryDatabase } from "@/server/source-registry";
+import { SourceIntelligenceService } from "@/server/source-intelligence-service";
+import { enrichSourceSupplyHealthWithEvidenceMaturity } from "@/server/source-supply-evidence-maturity";
+import {
+  getRawArtifactRepository,
+  getRegistryDatabase,
+  getSourceGraphRepository,
+  getSourceIntelligenceRepository,
+  getSourceRepository,
+} from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +36,15 @@ function enumFilter<T extends string>(
     throw new RegistryValidationError(`${name} query parameter is invalid`);
   }
   return normalized as T;
+}
+
+function intelligenceService(): SourceIntelligenceService {
+  return new SourceIntelligenceService({
+    sources: getSourceRepository(),
+    graph: getSourceGraphRepository(),
+    artifacts: getRawArtifactRepository(),
+    intelligence: getSourceIntelligenceRepository(),
+  });
 }
 
 export async function GET(request: Request) {
@@ -58,16 +75,17 @@ export async function GET(request: Request) {
     );
 
     const repository = new SqliteOperationalSupplyHealthRepository(getRegistryDatabase());
+    const supply = repository.list({
+      workspaceId,
+      jurisdiction,
+      family,
+      coverageTier,
+      catalogState,
+      targetId,
+      state,
+    });
     return NextResponse.json(
-      repository.list({
-        workspaceId,
-        jurisdiction,
-        family,
-        coverageTier,
-        catalogState,
-        targetId,
-        state,
-      }),
+      enrichSourceSupplyHealthWithEvidenceMaturity(supply, intelligenceService()),
     );
   } catch (error) {
     return apiError(error);

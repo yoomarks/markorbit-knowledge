@@ -6,8 +6,9 @@ import type {
   SourceCoverageFamily,
   SourceCoverageTier,
 } from "./source-coverage-v1";
+import type { EvidenceMaturityStage } from "./source-intelligence-v2";
 
-export const SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.3" as const;
+export const SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.4" as const;
 
 export const SOURCE_SUPPLY_HEALTH_STATES = ["READY", "DEGRADED", "BLOCKED"] as const;
 export type SourceSupplyHealthState = (typeof SOURCE_SUPPLY_HEALTH_STATES)[number];
@@ -39,6 +40,15 @@ export const SOURCE_SUPPLY_TOPOLOGY_PROJECTION_STATES = [
 ] as const;
 export type SourceSupplyTopologyProjectionState =
   (typeof SOURCE_SUPPLY_TOPOLOGY_PROJECTION_STATES)[number];
+
+export const SOURCE_SUPPLY_INTELLIGENCE_COVERAGE_STATES = [
+  "UNREGISTERED",
+  "UNASSESSED",
+  "PARTIAL",
+  "COMPLETE",
+] as const;
+export type SourceSupplyIntelligenceCoverageState =
+  (typeof SOURCE_SUPPLY_INTELLIGENCE_COVERAGE_STATES)[number];
 
 export const SOURCE_SUPPLY_GAPS = [
   "SOURCE_UNREGISTERED",
@@ -125,6 +135,21 @@ export type SourceSupplyOperationalTopologyHealth = {
   familyRootSourceIds: string[];
 };
 
+/**
+ * Advisory observation coverage from the existing Source Intelligence V2
+ * projection. Only evidence-maturity stages are surfaced here. Source-value
+ * priority, semantic relevance and scheduling recommendations remain outside
+ * Source Supply Health. This projection cannot alter health state or gaps.
+ */
+export type SourceSupplyEvidenceMaturityHealth = {
+  coverageState: SourceSupplyIntelligenceCoverageState;
+  registeredSourceCount: number;
+  assessedSourceCount: number;
+  unassessedSourceIds: string[];
+  latestAssessedAt: string | null;
+  byStage: Record<EvidenceMaturityStage, number>;
+};
+
 export type SourceSupplyHealthRecord = {
   protocolVersion: typeof SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION;
   objectType: "SOURCE_SUPPLY_HEALTH";
@@ -146,6 +171,7 @@ export type SourceSupplyHealthRecord = {
   freshness: SourceSupplyFreshnessHealth;
   compatibility?: SourceSupplyCompatibilityHealth;
   operationalTopology?: SourceSupplyOperationalTopologyHealth;
+  evidenceMaturity?: SourceSupplyEvidenceMaturityHealth;
   gaps: SourceSupplyGap[];
   state: SourceSupplyHealthState;
   observedAt: string;
@@ -166,5 +192,6 @@ export type SourceSupplyHealthSummary = {
   topologySourceGraphObserved?: number;
   topologyExplicitParentageObserved?: number;
   topologyExplicitAuthorityObserved?: number;
+  byIntelligenceCoverage?: Record<SourceSupplyIntelligenceCoverageState, number>;
   gapCounts: Partial<Record<SourceSupplyGap, number>>;
 };
