@@ -30,16 +30,18 @@ function summary(evidenceContext: unknown) {
 }
 
 describe("live canary compatibility provenance", () => {
-  it("retains complete GitHub run provenance in observation details", () => {
+  it("retains source and workflow revisions in GitHub run provenance", () => {
     const [observation] = parseRepresentativeLiveCanarySummary(
       summary({
         provider: "GITHUB_ACTIONS",
         repository: "yoomarks/markorbit-knowledge",
-        runId: "32317279058",
+        runId: "32318087892",
         runAttempt: "1",
-        commitSha: "fd0cdd739c344d7a024e795968aa7267fa9f1f23",
+        commitSha: "6a72a92d9e57237c3266f05e75388258f728b830",
+        workflowSha: "5325b2d2a4eef2a239e4f72f6b88d3f630a8f31d",
         workflow: "Representative Source Live Canary",
         eventName: "pull_request",
+        sourceRef: "agent/live-canary-evidence-provenance-v1",
         serverUrl: "https://github.com",
       }),
     );
@@ -48,11 +50,13 @@ describe("live canary compatibility provenance", () => {
       evidenceContext: {
         provider: "GITHUB_ACTIONS",
         repository: "yoomarks/markorbit-knowledge",
-        runId: "32317279058",
+        runId: "32318087892",
         runAttempt: "1",
-        commitSha: "fd0cdd739c344d7a024e795968aa7267fa9f1f23",
+        commitSha: "6a72a92d9e57237c3266f05e75388258f728b830",
+        workflowSha: "5325b2d2a4eef2a239e4f72f6b88d3f630a8f31d",
         workflow: "Representative Source Live Canary",
         eventName: "pull_request",
+        sourceRef: "agent/live-canary-evidence-provenance-v1",
         serverUrl: "https://github.com",
       },
     });
@@ -64,7 +68,24 @@ describe("live canary compatibility provenance", () => {
         summary({
           provider: "GITHUB_ACTIONS",
           repository: "yoomarks/markorbit-knowledge",
-          runId: "32317279058",
+          runId: "32318087892",
+        }),
+      ),
+    ).toThrow(RegistryValidationError);
+  });
+
+  it("rejects malformed git revisions instead of preserving ambiguous provenance", () => {
+    expect(() =>
+      parseRepresentativeLiveCanarySummary(
+        summary({
+          provider: "GITHUB_ACTIONS",
+          repository: "yoomarks/markorbit-knowledge",
+          runId: "32318087892",
+          runAttempt: "1",
+          commitSha: "not-a-sha",
+          workflowSha: "5325b2d2a4eef2a239e4f72f6b88d3f630a8f31d",
+          workflow: "Representative Source Live Canary",
+          eventName: "pull_request",
         }),
       ),
     ).toThrow(RegistryValidationError);
