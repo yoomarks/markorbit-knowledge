@@ -45,12 +45,13 @@ export function validateProductionValidationCoverageLinkedManifest(
 ): ProductionValidationCoverageLinkedManifest {
   const base = validateProductionValidationManifest(value);
   const input = record(value, "Production validation manifest");
-  if (!Array.isArray(input.targets)) {
+  const rawTargets = input.targets;
+  if (!Array.isArray(rawTargets)) {
     throw new RegistryValidationError("Production validation targets are required");
   }
 
   const targets = base.targets.map((target, index): ProductionValidationCoverageLinkedTarget => {
-    const raw = record(input.targets?.[index], `targets[${index}]`);
+    const raw = record(rawTargets[index], `targets[${index}]`);
     const ids = coverageTargetIds(raw.coverageTargetIds, `${target.id}.coverageTargetIds`);
     for (const coverageTargetId of ids) {
       const coverage = getSourceCoverageTarget(coverageTargetId);
