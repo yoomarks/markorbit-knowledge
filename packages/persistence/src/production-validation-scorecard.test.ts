@@ -4,7 +4,10 @@ import type { ProductionValidationManifest } from "./production-validation-disco
 import type { ProductionValidationExecutionStatus } from "./production-validation-execution-status";
 import type { ProductionValidationOnboardingStatus } from "./production-validation-onboarding-status";
 import type { ProductionValidationPipelineStatus } from "./production-validation-pipeline-status";
-import { buildProductionValidationScorecard } from "./production-validation-scorecard";
+import {
+  buildProductionValidationScorecard,
+  type ProductionValidationStructuredRemediationTelemetry,
+} from "./production-validation-scorecard";
 
 const manifest: ProductionValidationManifest = {
   manifestVersion: "1.0",
@@ -177,14 +180,30 @@ const compatibility = new Map<string, SourceCompatibilityObservation>([
   ],
 ]);
 
+const structuredRemediation = new Map<string, ProductionValidationStructuredRemediationTelemetry>([
+  [
+    "target-a",
+    {
+      state: "PREPARED_AWAITING_WORKER_BINDING",
+      requiredArtifactKinds: ["JSON"],
+      sourceId: "source-api-a",
+      planId: "plan-api-a",
+      endpointBinding: "authority-a-api",
+      workerEndpointBindingState: "EXTERNAL_UNVERIFIED",
+      collectionAuthorization: "NONE",
+      automaticExecution: false,
+    },
+  ],
+]);
+
 describe("buildProductionValidationScorecard", () => {
-  it("aggregates pipeline, compatibility and artifact-contract facts without inventing telemetry", () => {
+  it("aggregates pipeline, compatibility, artifact-contract and remediation facts without inventing telemetry", () => {
     const scorecard = buildProductionValidationScorecard(
-      { manifest, onboarding, execution, pipeline, compatibility },
+      { manifest, onboarding, execution, pipeline, compatibility, structuredRemediation },
       () => new Date("2026-08-19T06:00:00.000Z"),
     );
 
-    expect(scorecard.reportVersion).toBe("1.1");
+    expect(scorecard.reportVersion).toBe("1.2");
     expect(scorecard.summary).toEqual({
       targets: 2,
       onboarded: 1,
@@ -199,6 +218,11 @@ describe("buildProductionValidationScorecard", () => {
       adapterRequiredObserved: 0,
       artifactContractObserved: 1,
       artifactContractGapObserved: 1,
+      structuredRemediationObserved: 1,
+      structuredRemediationRequired: 1,
+      structuredRemediationPrepared: 1,
+      structuredRemediationInvalid: 0,
+      structuredRemediationAwaitingWorkerBinding: 1,
       secondRunValidated: null,
       manualInterventionRequired: null,
     });
@@ -224,6 +248,16 @@ describe("buildProductionValidationScorecard", () => {
           missingExpectedArtifactKinds: ["JSON"],
         },
       },
+      structuredRemediation: {
+        state: "PREPARED_AWAITING_WORKER_BINDING",
+        requiredArtifactKinds: ["JSON"],
+        sourceId: "source-api-a",
+        planId: "plan-api-a",
+        endpointBinding: "authority-a-api",
+        workerEndpointBindingState: "EXTERNAL_UNVERIFIED",
+        collectionAuthorization: "NONE",
+        automaticExecution: false,
+      },
       telemetry: {
         httpFailureCount: null,
         wafDetected: null,
@@ -245,10 +279,38 @@ describe("buildProductionValidationScorecard", () => {
         missingExpectedArtifactKinds: [],
       },
     });
+    expect(scorecard.results[1]?.structuredRemediation).toEqual({
+      state: "UNOBSERVED",
+      requiredArtifactKinds: [],
+      sourceId: null,
+      planId: null,
+      endpointBinding: null,
+      workerEndpointBindingState: "UNOBSERVED",
+      collectionAuthorization: "NONE",
+      automaticExecution: false,
+    });
     expect(scorecard.generatedAt).toBe("2026-08-19T06:00:00.000Z");
   });
 
-  it("rejects mixed wave or workspace facts", () => {
+  it("rejects non-authorizing remediation invariants and mixed wave or workspace facts", () => {
+    expect(() =>
+      buildProductionValidationScorecard({
+        manifest,
+        onboarding,
+        execution,
+        pipeline,
+        structuredRemediation: new Map([
+          [
+            "target-a",
+            {
+              ...structuredRemediation.get("target-a")!,
+              workerEndpointBindingState: "UNOBSERVED" as const,
+            },
+          ],
+        ]),
+      }),
+    ).toThrow("external-unverified");
+
     expect(() =>
       buildProductionValidationScorecard({
         manifest,
