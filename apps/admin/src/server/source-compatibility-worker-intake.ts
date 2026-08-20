@@ -76,6 +76,23 @@ function bindReprobeExecution(
       },
     );
   }
+  if (
+    execution.status === "COMPLETED" &&
+    (execution.observationObservedAt !== observation.observedAt ||
+      execution.observationState !== observation.state)
+  ) {
+    throw new RegistryConflictError(
+      "SOURCE_COMPATIBILITY_REPROBE_ALREADY_COMPLETED",
+      "Completed compatibility re-probe executions only accept an exact observation replay",
+      {
+        executionId,
+        expectedObservedAt: execution.observationObservedAt,
+        actualObservedAt: observation.observedAt,
+        expectedState: execution.observationState,
+        actualState: observation.state,
+      },
+    );
+  }
   return execution.executionId;
 }
 
