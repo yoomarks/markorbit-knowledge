@@ -1,6 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import type { SourceSupplyHealthRecord } from "@markorbit/contracts";
+import {
+  SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION,
+  type SourceSupplyHealthRecord,
+} from "@markorbit/contracts";
 import {
   evaluateSourceSupplyPromotionProof,
   SqliteSourceSupplyPromotionReceiptLedger,
@@ -8,7 +11,7 @@ import {
 
 function health(overrides: Partial<SourceSupplyHealthRecord> = {}): SourceSupplyHealthRecord {
   return {
-    protocolVersion: "1.2",
+    protocolVersion: SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION,
     objectType: "SOURCE_SUPPLY_HEALTH",
     workspaceId: "workspace-1",
     targetId: "cn-target",

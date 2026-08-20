@@ -7,7 +7,7 @@ import type {
   SourceCoverageTier,
 } from "./source-coverage-v1";
 
-export const SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.2" as const;
+export const SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.3" as const;
 
 export const SOURCE_SUPPLY_HEALTH_STATES = ["READY", "DEGRADED", "BLOCKED"] as const;
 export type SourceSupplyHealthState = (typeof SOURCE_SUPPLY_HEALTH_STATES)[number];
@@ -30,6 +30,15 @@ export const SOURCE_SUPPLY_COMPATIBILITY_FRESHNESS_STATES = [
 ] as const;
 export type SourceSupplyCompatibilityFreshnessState =
   (typeof SOURCE_SUPPLY_COMPATIBILITY_FRESHNESS_STATES)[number];
+
+export const SOURCE_SUPPLY_TOPOLOGY_PROJECTION_STATES = [
+  "UNREGISTERED",
+  "COMPLETE",
+  "PARTIAL",
+  "FAILED",
+] as const;
+export type SourceSupplyTopologyProjectionState =
+  (typeof SOURCE_SUPPLY_TOPOLOGY_PROJECTION_STATES)[number];
 
 export const SOURCE_SUPPLY_GAPS = [
   "SOURCE_UNREGISTERED",
@@ -92,6 +101,30 @@ export type SourceSupplyCompatibilityHealth = {
   baselineState: SourceCompatibilityBaselineState | null;
 };
 
+/**
+ * Read-only operational coverage projected from the existing SourceRegistryV2,
+ * SourceGraph and RawArtifact evidence for the Sources registered to one
+ * coverage target. These counters describe what has been observed; they do not
+ * infer authority, source value, legal truth or collection authorization.
+ */
+export type SourceSupplyOperationalTopologyHealth = {
+  projectionState: SourceSupplyTopologyProjectionState;
+  registeredSourceCount: number;
+  projectedSourceCount: number;
+  unprojectableSourceIds: string[];
+  sourceRegistryV2ObservedSourceCount: number;
+  sourceGraphObservedSourceCount: number;
+  explicitParentageObservedSourceCount: number;
+  explicitAuthorityObservedSourceCount: number;
+  entrypointCount: number;
+  graphMappedEntrypointCount: number;
+  artifactLinkedEntrypointCount: number;
+  rawArtifactCount: number;
+  discoveryProvenanceCount: number;
+  relationshipCount: number;
+  familyRootSourceIds: string[];
+};
+
 export type SourceSupplyHealthRecord = {
   protocolVersion: typeof SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION;
   objectType: "SOURCE_SUPPLY_HEALTH";
@@ -112,6 +145,7 @@ export type SourceSupplyHealthRecord = {
   retrieval: SourceSupplyRetrievalHealth;
   freshness: SourceSupplyFreshnessHealth;
   compatibility?: SourceSupplyCompatibilityHealth;
+  operationalTopology?: SourceSupplyOperationalTopologyHealth;
   gaps: SourceSupplyGap[];
   state: SourceSupplyHealthState;
   observedAt: string;
@@ -127,5 +161,10 @@ export type SourceSupplyHealthSummary = {
   byFreshness: Record<SourceSupplyFreshnessState, number>;
   byCompatibility?: Record<SourceSupplyCompatibilityState, number>;
   byCompatibilityFreshness?: Record<SourceSupplyCompatibilityFreshnessState, number>;
+  byTopologyProjection?: Record<SourceSupplyTopologyProjectionState, number>;
+  topologySourceRegistryV2Observed?: number;
+  topologySourceGraphObserved?: number;
+  topologyExplicitParentageObserved?: number;
+  topologyExplicitAuthorityObserved?: number;
   gapCounts: Partial<Record<SourceSupplyGap, number>>;
 };
