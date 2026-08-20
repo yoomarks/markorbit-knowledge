@@ -17,6 +17,7 @@ export type SourceCompatibilityReprobeExecutionListFilters = {
 };
 
 type ExecutionRow = {
+  target_id?: string;
   document_json: string;
 };
 
@@ -87,4 +88,41 @@ export function listSourceCompatibilityReprobeExecutions(
     .all(...values) as unknown as ExecutionRow[];
 
   return rows.map((row) => JSON.parse(row.document_json) as SourceCompatibilityReprobeExecution);
+}
+
+/**
+ * Returns at most one latest execution for each requested target without
+ * initializing the ledger or imposing the history endpoint's 100-row limit.
+ */
+export function latestSourceCompatibilityReprobeExecutions(
+  database: DatabaseSync,
+  input: { workspaceId: string; targetIds: readonly string[] },
+): ReadonlyMap<string, SourceCompatibilityReprobeExecution> {
+  const workspaceId = input.workspaceId.trim();
+  if (!workspaceId) throw new RegistryValidationError("workspaceId is required");
+  const requested = new Set(input.targetIds.map((value) => value.trim()).filter(Boolean));
+  if (requested.size === 0 || !executionLedgerExists(database)) return new Map();
+
+  const rows = database
+    .prepare(
+      `SELECT target_id, document_json
+         FROM (
+           SELECT target_id, document_json,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY target_id
+                    ORDER BY updated_at DESC, id DESC
+                  ) AS row_number
+             FROM source_compatibility_reprobe_executions
+            WHERE workspace_id = ?
+         )
+        WHERE row_number = 1`,
+    )
+    .all(workspaceId) as unknown as Array<{ target_id: string; document_json: string }>;
+
+  const latest = new Map<string, SourceCompatibilityReprobeExecution>();
+  for (const row of rows) {
+    if (!requested.has(row.target_id)) continue;
+    latest.set(row.target_id, JSON.parse(row.document_json) as SourceCompatibilityReprobeExecution);
+  }
+  return latest;
 }
