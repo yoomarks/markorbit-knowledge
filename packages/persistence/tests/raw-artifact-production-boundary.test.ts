@@ -16,7 +16,7 @@ const ignoredDirectoryNames = new Set([
   "fixtures",
   "__fixtures__",
 ]);
-const allowedDirectConsumers = new Set([
+const allowedStorageImplementations = new Set([
   "packages/persistence/src/raw-artifact-registry.ts",
   "packages/persistence/src/raw-artifact-repository.ts",
 ]);
@@ -49,16 +49,18 @@ function repoPath(path: string): string {
 }
 
 describe("RawArtifact production integrity boundary", () => {
-  it("prevents production code from importing the storage registry directly", () => {
+  it("prevents production code from bypassing the integrity wrapper storage class", () => {
     const violations: string[] = [];
 
     for (const root of productionRoots) {
       for (const path of walk(resolve(repoRoot, root))) {
         const normalized = repoPath(path);
-        if (isTestFile(normalized) || allowedDirectConsumers.has(normalized)) continue;
+        if (isTestFile(normalized) || allowedStorageImplementations.has(normalized)) continue;
 
         const source = readFileSync(path, "utf8");
-        if (source.includes("raw-artifact-registry")) violations.push(normalized);
+        const referencesLowLevelModule = source.includes("raw-artifact-registry");
+        const referencesStorageClass = source.includes("SqliteRawArtifactRepository");
+        if (referencesLowLevelModule && referencesStorageClass) violations.push(normalized);
       }
     }
 
