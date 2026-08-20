@@ -5,7 +5,7 @@ import type {
 } from "./change-feed-v1";
 import type { ArtifactKind } from "./schema-v1";
 
-export const CHANGE_EVIDENCE_PROTOCOL_VERSION = "1.1" as const;
+export const CHANGE_EVIDENCE_PROTOCOL_VERSION = "1.2" as const;
 
 export const OBJECTIVE_CHANGE_DIMENSIONS = [
   "DOCUMENT_CREATED",
@@ -14,6 +14,9 @@ export const OBJECTIVE_CHANGE_DIMENSIONS = [
   "METADATA_CHANGED",
   "LINK_ADDED",
   "LINK_REMOVED",
+  "ATTACHMENT_ADDED",
+  "ATTACHMENT_REMOVED",
+  "ATTACHMENT_BINARY_CHANGED",
   "SECTION_ADDED",
   "SECTION_REMOVED",
   "SECTION_MODIFIED",
@@ -64,6 +67,24 @@ export type ChangeEvidenceRawArtifactDiff = {
   after: ChangeEvidenceRawArtifactRef | null;
 };
 
+export type ChangeEvidenceAttachmentRef = ChangeEvidenceRawArtifactRef & {
+  identityUri: string;
+};
+
+export type ChangeEvidenceAttachmentModification = {
+  identityUri: string;
+  before: ChangeEvidenceAttachmentRef;
+  after: ChangeEvidenceAttachmentRef;
+};
+
+export type ChangeEvidenceAttachmentDiff = {
+  before: ChangeEvidenceAttachmentRef[];
+  after: ChangeEvidenceAttachmentRef[];
+  added: ChangeEvidenceAttachmentRef[];
+  removed: ChangeEvidenceAttachmentRef[];
+  modified: ChangeEvidenceAttachmentModification[];
+};
+
 export type ChangeEvidenceMetadataValue = string | string[] | null;
 
 export type ChangeEvidenceMetadataChange = {
@@ -83,7 +104,7 @@ export type ChangeEvidenceCoverage = {
   canonicalLinks: true;
   sectionStructure: true;
   rawArtifactBinary: boolean;
-  linkedAttachments: false;
+  linkedAttachments: boolean;
 };
 
 export type DocumentChangeEvidence = {
@@ -101,6 +122,7 @@ export type DocumentChangeEvidence = {
   before: ChangeEvidenceDocumentRef | null;
   after: ChangeEvidenceDocumentRef;
   rawArtifacts: ChangeEvidenceRawArtifactDiff;
+  attachments: ChangeEvidenceAttachmentDiff;
   dimensions: ObjectiveChangeDimension[];
   summary: DocumentChangeSummary;
   sections: DocumentSectionChange[];
