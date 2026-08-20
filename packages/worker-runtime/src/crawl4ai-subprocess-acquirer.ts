@@ -66,6 +66,7 @@ export type Crawl4AiArtifactManifest = {
   sourceUri: string;
   canonicalUri?: string;
   publishedAt?: string;
+  parentCanonicalUris?: string[];
   fileName: string;
   sizeBytes: number;
   sha256: string;
@@ -441,6 +442,11 @@ function isManifest(value: unknown): value is Crawl4AiArtifactManifest {
     item.sourceUri.length > 0 &&
     (item.canonicalUri === undefined || typeof item.canonicalUri === "string") &&
     (item.publishedAt === undefined || typeof item.publishedAt === "string") &&
+    (item.parentCanonicalUris === undefined ||
+      (Array.isArray(item.parentCanonicalUris) &&
+        item.parentCanonicalUris.every(
+          (parent) => typeof parent === "string" && parent.length > 0,
+        ))) &&
     typeof item.fileName === "string" &&
     item.fileName.length > 0 &&
     typeof item.sizeBytes === "number" &&
@@ -449,6 +455,32 @@ function isManifest(value: unknown): value is Crawl4AiArtifactManifest {
     typeof item.sha256 === "string" &&
     SHA256_PATTERN.test(item.sha256)
   );
+}
+
+function normalizeParentCanonicalUris(values: string[] | undefined): string[] {
+  if (!values || values.length === 0) return [];
+  const normalized = new Set<string>();
+  for (const value of values) {
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new CollectionAcquisitionError(
+        "CRAWL4AI_PROTOCOL_INVALID",
+        "Crawl4AI attachment parentCanonicalUris contains an invalid absolute URL",
+        false,
+      );
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new CollectionAcquisitionError(
+        "CRAWL4AI_PROTOCOL_INVALID",
+        "Crawl4AI attachment parentCanonicalUris must use HTTP(S)",
+        false,
+      );
+    }
+    normalized.add(value);
+  }
+  return [...normalized].sort();
 }
 
 function sha256(content: Uint8Array): string {
@@ -512,6 +544,7 @@ async function readManifestArtifact(
       false,
     );
   }
+  const parentCanonicalUris = normalizeParentCanonicalUris(manifest.parentCanonicalUris);
 
   return {
     artifactKind: manifest.artifactKind,
@@ -520,6 +553,7 @@ async function readManifestArtifact(
     sourceUri: manifest.sourceUri,
     ...(manifest.canonicalUri ? { canonicalUri: manifest.canonicalUri } : {}),
     ...(manifest.publishedAt ? { publishedAt: manifest.publishedAt } : {}),
+    ...(parentCanonicalUris.length > 0 ? { parentCanonicalUris } : {}),
     content,
   };
 }

@@ -287,6 +287,38 @@ def _write_attachment_artifact(
     }, current_total_bytes + len(content))
 
 
+def _merge_parent_canonical_uris(manifest: dict[str, Any], parents: set[str]) -> None:
+    if not parents:
+        return
+    existing = manifest.get("parentCanonicalUris")
+    merged = set(existing) if isinstance(existing, list) else set()
+    merged.update(parents)
+    manifest["parentCanonicalUris"] = sorted(merged)
+
+
+def _record_attachment_parent(
+    attachment_url: str,
+    parent_canonical_url: str,
+    attachment_parents: dict[str, set[str]],
+    manifests_by_url: dict[str, dict[str, Any]],
+) -> None:
+    parents = attachment_parents.setdefault(attachment_url, set())
+    parents.add(parent_canonical_url)
+    manifest = manifests_by_url.get(attachment_url)
+    if manifest is not None:
+        _merge_parent_canonical_uris(manifest, parents)
+
+
+def _bind_attachment_manifest(
+    attachment_url: str,
+    manifest: dict[str, Any],
+    attachment_parents: dict[str, set[str]],
+    manifests_by_url: dict[str, dict[str, Any]],
+) -> None:
+    manifests_by_url[attachment_url] = manifest
+    _merge_parent_canonical_uris(manifest, attachment_parents.get(attachment_url, set()))
+
+
 async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
     proxy_config = _proxy_configuration(request["require_egress_proxy"])
     proxy_server = proxy_config["server"] if proxy_config else None
@@ -322,6 +354,9 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
     pages_attempted = 0
     attachments_attempted = 0
     attachment_hashes: set[str] = set()
+    attachment_parents: dict[str, set[str]] = {}
+    attachment_manifests_by_url: dict[str, dict[str, Any]] = {}
+    attachment_manifests_by_digest: dict[str, dict[str, Any]] = {}
     seen: set[str] = set()
     rate_gate = RateGate(request["rate_limit_per_minute"])
     last_error: SafetyError | None = None
@@ -376,12 +411,27 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
                             continue
                         digest = hashlib.sha256(attachment.content).hexdigest()
                         if digest in attachment_hashes:
+                            existing = attachment_manifests_by_digest.get(digest)
+                            if existing is not None:
+                                _bind_attachment_manifest(
+                                    current_url,
+                                    existing,
+                                    attachment_parents,
+                                    attachment_manifests_by_url,
+                                )
                             continue
                         attachment_hashes.add(digest)
                         manifest, total_bytes = _write_attachment_artifact(
                             request["output_directory"], len(artifacts) + 1, attachment,
                             request["max_artifact_bytes"], total_bytes, request["max_total_bytes"],
                         )
+                        _bind_attachment_manifest(
+                            current_url,
+                            manifest,
+                            attachment_parents,
+                            attachment_manifests_by_url,
+                        )
+                        attachment_manifests_by_digest[digest] = manifest
                         artifacts.append(manifest)
                         continue
 
@@ -455,6 +505,13 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
                                     request["exclude_patterns"],
                                 ):
                                     continue
+                                if attachment_kind_for_url(candidate) is not None:
+                                    _record_attachment_parent(
+                                        candidate,
+                                        final_url,
+                                        attachment_parents,
+                                        attachment_manifests_by_url,
+                                    )
                                 if candidate not in seen:
                                     queue.append((candidate, depth + 1))
 
