@@ -170,6 +170,10 @@ function addArtifactIdentity(
   identities.set(canonicalUri, values);
 }
 
+function isLineageChild(artifact: AcquiredCollectionArtifact): boolean {
+  return (artifact.parentCanonicalUris?.length ?? 0) > 0;
+}
+
 async function selectChangedArtifacts(
   context: ArtifactBackedExecutionContext,
   acquired: AcquiredCollectionArtifact[],
@@ -177,15 +181,21 @@ async function selectChangedArtifacts(
 ): Promise<{
   changed: AcquiredCollectionArtifact[];
   unchangedCount: number;
+  lineageRefreshCount: number;
   knownArtifactIdsByCanonicalUri: Map<string, Set<string>>;
 }> {
   const knownArtifactIdsByCanonicalUri = new Map<string, Set<string>>();
   if (!isChangeWatch(context) || !client.checkArtifactContent) {
-    return { changed: acquired, unchangedCount: 0, knownArtifactIdsByCanonicalUri };
+    return {
+      changed: acquired,
+      unchangedCount: 0,
+      lineageRefreshCount: 0,
+      knownArtifactIdsByCanonicalUri,
+    };
   }
 
   const changed: AcquiredCollectionArtifact[] = [];
-  let unchangedCount = 0;
+  const unchanged: AcquiredCollectionArtifact[] = [];
   for (const artifact of acquired) {
     if (!artifact.canonicalUri) {
       changed.push(artifact);
@@ -198,7 +208,7 @@ async function selectChangedArtifacts(
         sha256: digest(artifact.content),
       });
       if (result.unchanged) {
-        unchangedCount += 1;
+        unchanged.push(artifact);
         addArtifactIdentity(
           knownArtifactIdsByCanonicalUri,
           artifact.canonicalUri,
@@ -214,12 +224,41 @@ async function selectChangedArtifacts(
       changed.push(artifact);
     }
   }
-  return { changed, unchangedCount, knownArtifactIdsByCanonicalUri };
+
+  // Attachment lineage is version-specific evidence. If a parent page changes,
+  // an unchanged child attachment must still be re-observed so its new immutable
+  // RawArtifact version can point at the new parent RawArtifact identity. The CAS
+  // keeps the identical child bytes deduplicated; only provenance/version evidence
+  // is refreshed. Without this promotion, attachment diffs would falsely interpret
+  // unchanged attachments as removed from the new page version.
+  const changedParentCanonicalUris = new Set(
+    changed
+      .filter((artifact) => !isLineageChild(artifact))
+      .map((artifact) => artifact.canonicalUri)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const lineageRefresh: AcquiredCollectionArtifact[] = [];
+  const stillUnchanged: AcquiredCollectionArtifact[] = [];
+  for (const artifact of unchanged) {
+    const parentChanged = (artifact.parentCanonicalUris ?? []).some((parentUri) =>
+      changedParentCanonicalUris.has(parentUri),
+    );
+    if (parentChanged) lineageRefresh.push(artifact);
+    else stillUnchanged.push(artifact);
+  }
+  changed.push(...lineageRefresh);
+
+  return {
+    changed,
+    unchangedCount: stillUnchanged.length,
+    lineageRefreshCount: lineageRefresh.length,
+    knownArtifactIdsByCanonicalUri,
+  };
 }
 
 function orderedForLineage(artifacts: AcquiredCollectionArtifact[]): AcquiredCollectionArtifact[] {
-  const parents = artifacts.filter((artifact) => (artifact.parentCanonicalUris?.length ?? 0) === 0);
-  const children = artifacts.filter((artifact) => (artifact.parentCanonicalUris?.length ?? 0) > 0);
+  const parents = artifacts.filter((artifact) => !isLineageChild(artifact));
+  const children = artifacts.filter((artifact) => isLineageChild(artifact));
   return [...parents, ...children];
 }
 
@@ -329,6 +368,10 @@ export class ArtifactBackedCollectionExecutor {
       }
 
       await this.client.verifying(context, `${prefix}-verifying`);
+      const lineageSummary =
+        selection.lineageRefreshCount > 0
+          ? ` ${selection.lineageRefreshCount} unchanged child artifact(s) were re-observed to preserve attachment lineage to changed parent versions.`
+          : "";
       const receipt: ExecutionReceipt = {
         executor: this.acquirer.executor,
         outputKinds: [...new Set(selection.changed.map((artifact) => artifact.artifactKind))],
@@ -336,10 +379,9 @@ export class ArtifactBackedCollectionExecutor {
         bytesPrepared,
         metadataOnly: false,
         artifactReceiptIds: receipts.map((item) => item.id),
-        summary:
-          selection.unchangedCount > 0
-            ? `Artifact-backed change watch finalized ${receipts.length} changed immutable artifact receipt(s) and skipped ${selection.unchangedCount} unchanged artifact(s).`
-            : `Artifact-backed collection finalized ${receipts.length} immutable artifact receipt(s).`,
+        summary: isChangeWatch(context)
+          ? `Artifact-backed change watch finalized ${receipts.length} immutable artifact observation(s) and skipped ${selection.unchangedCount} unchanged artifact(s).${lineageSummary}`
+          : `Artifact-backed collection finalized ${receipts.length} immutable artifact receipt(s).`,
       };
       await this.client.complete(context, receipt, `${prefix}-complete`);
       return receipt;
