@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION } from "@markorbit/contracts";
 import { parseRepresentativeLiveCanarySummary } from "@markorbit/persistence/source-compatibility-import";
 import { SqliteSourceCompatibilityObservationRepository } from "@markorbit/persistence/source-compatibility-observations";
 import {
@@ -78,7 +79,7 @@ function approvedIntent(
     canceledByActorId: null,
     status: "PENDING_APPROVAL",
     idempotencyKey,
-    readinessProtocolVersion: "1.3",
+    readinessProtocolVersion: SOURCE_SUPPLY_HEALTH_PROTOCOL_VERSION,
     queueProtocolVersion: "1.1",
     sourceSnapshotObservedAt: input.observedAt,
     createdAt: input.observedAt,
@@ -159,6 +160,7 @@ async function main(): Promise<void> {
       details: {
         ...(observationInput.details ?? {}),
         recordedByWorkerId: WORKER_ID,
+        reprobeExecutionId: started.executionId,
         promotionProof: "EU_COMPATIBILITY_REPROBE_V1",
       },
     });
