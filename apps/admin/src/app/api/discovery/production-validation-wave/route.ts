@@ -3,9 +3,13 @@ import { queueProductionValidationWaveForDiscovery } from "@markorbit/persistenc
 import { inspectProductionValidationExecution } from "@markorbit/persistence/production-validation-execution-status";
 import { inspectProductionValidationOnboarding } from "@markorbit/persistence/production-validation-onboarding-status";
 import { inspectProductionValidationPipeline } from "@markorbit/persistence/production-validation-pipeline-status";
-import { buildProductionValidationScorecard } from "@markorbit/persistence/production-validation-scorecard";
+import {
+  buildProductionValidationScorecard,
+  type ProductionValidationStructuredRemediationTelemetry,
+} from "@markorbit/persistence/production-validation-scorecard";
 import { SqliteSourceCompatibilityObservationRepository } from "@markorbit/persistence/source-compatibility-observations";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
+import { buildFoundationalRemediationQueueSnapshot } from "@/server/foundational-remediation-queue";
 import {
   loadProductionValidationWave,
   resolveProductionValidationWorkspaceId,
@@ -23,6 +27,34 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function structuredRemediationFacts(
+  workspaceId: string,
+  targets: ReadonlyArray<{ id: string; jurisdiction: string }>,
+): Map<string, ProductionValidationStructuredRemediationTelemetry> {
+  const database = getRegistryDatabase();
+  const result = new Map<string, ProductionValidationStructuredRemediationTelemetry>();
+  for (const target of targets) {
+    const snapshot = buildFoundationalRemediationQueueSnapshot(database, {
+      workspaceId,
+      jurisdiction: target.jurisdiction,
+      targetId: target.id,
+    });
+    const item = snapshot.apiRemediation.items[0];
+    if (!item) continue;
+    result.set(target.id, {
+      state: item.state,
+      requiredArtifactKinds: [...item.requiredArtifactKinds],
+      sourceId: item.sourceId,
+      planId: item.planId,
+      endpointBinding: item.endpointBinding,
+      workerEndpointBindingState: item.workerEndpointBindingState,
+      collectionAuthorization: item.collectionAuthorization,
+      automaticExecution: item.automaticExecution,
+    });
+  }
+  return result;
+}
 
 export async function GET(request: Request) {
   try {
@@ -58,12 +90,14 @@ export async function GET(request: Request) {
     const compatibility = new SqliteSourceCompatibilityObservationRepository(
       getRegistryDatabase(),
     ).latest(manifest.targets.map((target) => target.id));
+    const structuredRemediation = structuredRemediationFacts(resolvedWorkspaceId, manifest.targets);
     const scorecard = buildProductionValidationScorecard({
       manifest,
       onboarding,
       execution,
       pipeline,
       compatibility,
+      structuredRemediation,
     });
     return NextResponse.json(
       { manifest, onboarding, execution, pipeline, scorecard },

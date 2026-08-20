@@ -28,6 +28,17 @@ export type ProductionValidationCompatibilityTelemetry = {
   artifactContract: ProductionValidationArtifactContractTelemetry;
 };
 
+export type ProductionValidationStructuredRemediationTelemetry = {
+  state: "UNOBSERVED" | "UNPREPARED" | "PREPARED_AWAITING_WORKER_BINDING" | "INVALID";
+  requiredArtifactKinds: string[];
+  sourceId: string | null;
+  planId: string | null;
+  endpointBinding: string | null;
+  workerEndpointBindingState: "UNOBSERVED" | "EXTERNAL_UNVERIFIED";
+  collectionAuthorization: "NONE";
+  automaticExecution: false;
+};
+
 export type ProductionValidationUnknownTelemetry = {
   httpFailureCount: null;
   wafDetected: null;
@@ -58,11 +69,12 @@ export type ProductionValidationScorecardResult = {
   stagingDocumentCount: number;
   knowledgeVisible: boolean;
   compatibility: ProductionValidationCompatibilityTelemetry;
+  structuredRemediation: ProductionValidationStructuredRemediationTelemetry;
   telemetry: ProductionValidationUnknownTelemetry;
 };
 
 export type ProductionValidationScorecard = {
-  reportVersion: "1.1";
+  reportVersion: "1.2";
   waveId: string;
   workspaceId: string;
   generatedAt: string;
@@ -80,6 +92,11 @@ export type ProductionValidationScorecard = {
     adapterRequiredObserved: number;
     artifactContractObserved: number;
     artifactContractGapObserved: number;
+    structuredRemediationObserved: number;
+    structuredRemediationRequired: number;
+    structuredRemediationPrepared: number;
+    structuredRemediationInvalid: number;
+    structuredRemediationAwaitingWorkerBinding: number;
     secondRunValidated: null;
     manualInterventionRequired: null;
   };
@@ -92,6 +109,7 @@ export type ProductionValidationScorecardInput = {
   execution: ProductionValidationExecutionStatus;
   pipeline: ProductionValidationPipelineStatus;
   compatibility?: ReadonlyMap<string, SourceCompatibilityObservation>;
+  structuredRemediation?: ReadonlyMap<string, ProductionValidationStructuredRemediationTelemetry>;
 };
 
 function byTargetId<T extends { targetId: string }>(items: T[]): Map<string, T> {
@@ -184,6 +202,38 @@ function compatibilityTelemetry(
   };
 }
 
+function unobservedStructuredRemediation(): ProductionValidationStructuredRemediationTelemetry {
+  return {
+    state: "UNOBSERVED",
+    requiredArtifactKinds: [],
+    sourceId: null,
+    planId: null,
+    endpointBinding: null,
+    workerEndpointBindingState: "UNOBSERVED",
+    collectionAuthorization: "NONE",
+    automaticExecution: false,
+  };
+}
+
+function structuredRemediationTelemetry(
+  value: ProductionValidationStructuredRemediationTelemetry | undefined,
+): ProductionValidationStructuredRemediationTelemetry {
+  if (!value) return unobservedStructuredRemediation();
+  if (value.collectionAuthorization !== "NONE" || value.automaticExecution !== false) {
+    throw new Error("Production validation structured remediation must remain non-authorizing");
+  }
+  if (value.state !== "UNOBSERVED" && value.workerEndpointBindingState !== "EXTERNAL_UNVERIFIED") {
+    throw new Error("Observed structured remediation must keep Worker binding external-unverified");
+  }
+  if (value.state !== "UNOBSERVED" && value.requiredArtifactKinds.length === 0) {
+    throw new Error("Observed structured remediation requires artifact kinds");
+  }
+  return {
+    ...value,
+    requiredArtifactKinds: [...value.requiredArtifactKinds],
+  };
+}
+
 export function buildProductionValidationScorecard(
   input: ProductionValidationScorecardInput,
   clock: () => Date = () => new Date(),
@@ -222,6 +272,9 @@ export function buildProductionValidationScorecard(
       stagingDocumentCount: pipeline.stagingDocumentCount,
       knowledgeVisible: pipeline.knowledgeVisible,
       compatibility: compatibilityTelemetry(input.compatibility?.get(target.id)),
+      structuredRemediation: structuredRemediationTelemetry(
+        input.structuredRemediation?.get(target.id),
+      ),
       telemetry: {
         httpFailureCount: null,
         wafDetected: null,
@@ -234,7 +287,7 @@ export function buildProductionValidationScorecard(
   });
 
   return {
-    reportVersion: "1.1",
+    reportVersion: "1.2",
     waveId: input.manifest.waveId,
     workspaceId: input.onboarding.workspaceId,
     generatedAt: clock().toISOString(),
@@ -260,6 +313,24 @@ export function buildProductionValidationScorecard(
       ).length,
       artifactContractGapObserved: results.filter(
         (result) => result.compatibility.artifactContract.complete === false,
+      ).length,
+      structuredRemediationObserved: results.filter(
+        (result) => result.structuredRemediation.state !== "UNOBSERVED",
+      ).length,
+      structuredRemediationRequired: results.filter(
+        (result) =>
+          result.structuredRemediation.state === "UNPREPARED" ||
+          result.structuredRemediation.state === "PREPARED_AWAITING_WORKER_BINDING" ||
+          result.structuredRemediation.state === "INVALID",
+      ).length,
+      structuredRemediationPrepared: results.filter(
+        (result) => result.structuredRemediation.state === "PREPARED_AWAITING_WORKER_BINDING",
+      ).length,
+      structuredRemediationInvalid: results.filter(
+        (result) => result.structuredRemediation.state === "INVALID",
+      ).length,
+      structuredRemediationAwaitingWorkerBinding: results.filter(
+        (result) => result.structuredRemediation.state === "PREPARED_AWAITING_WORKER_BINDING",
       ).length,
       secondRunValidated: null,
       manualInterventionRequired: null,
