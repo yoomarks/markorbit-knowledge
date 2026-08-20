@@ -141,11 +141,7 @@ describe("source compatibility re-probe reconciliation", () => {
 
   it("rejects wrong-worker reconciliation", () => {
     const fixture = startedExecution();
-    boundObservation(
-      fixture.database,
-      fixture.execution.executionId,
-      "2026-08-20T02:05:00.000Z",
-    );
+    boundObservation(fixture.database, fixture.execution.executionId, "2026-08-20T02:05:00.000Z");
     expect(() =>
       reconcileSourceCompatibilityReprobeExecution(fixture.database, {
         executionId: fixture.execution.executionId,
@@ -157,11 +153,7 @@ describe("source compatibility re-probe reconciliation", () => {
 
   it("fails closed when more than one observation is bound to one execution", () => {
     const fixture = startedExecution();
-    boundObservation(
-      fixture.database,
-      fixture.execution.executionId,
-      "2026-08-20T02:05:00.000Z",
-    );
+    boundObservation(fixture.database, fixture.execution.executionId, "2026-08-20T02:05:00.000Z");
     boundObservation(
       fixture.database,
       fixture.execution.executionId,

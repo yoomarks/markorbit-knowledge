@@ -17,10 +17,7 @@ export async function POST(request: Request) {
     if (!("summary" in body)) {
       throw new RegistryValidationError("summary is required");
     }
-    if (
-      body.reprobeExecutionId !== undefined &&
-      typeof body.reprobeExecutionId !== "string"
-    ) {
+    if (body.reprobeExecutionId !== undefined && typeof body.reprobeExecutionId !== "string") {
       throw new RegistryValidationError("reprobeExecutionId must be a string");
     }
 

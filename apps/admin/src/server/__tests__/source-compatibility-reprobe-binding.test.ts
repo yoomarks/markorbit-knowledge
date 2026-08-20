@@ -112,9 +112,9 @@ describe("compatibility worker re-probe observation binding", () => {
     );
 
     expect(result).toMatchObject({ recorded: 1, observedAt, states: { PASS: 1 } });
-    const observation = new SqliteSourceCompatibilityObservationRepository(database).latest([
-      targetId,
-    ]).get(targetId);
+    const observation = new SqliteSourceCompatibilityObservationRepository(database)
+      .latest([targetId])
+      .get(targetId);
     expect(observation?.details).toMatchObject({
       recordedByWorkerId: workerId,
       reprobeExecutionId: execution.executionId,
@@ -138,8 +138,7 @@ describe("compatibility worker re-probe observation binding", () => {
       expect.objectContaining({ code: "SOURCE_COMPATIBILITY_REPROBE_OBSERVATION_SCOPE_MISMATCH" }),
     );
     expect(
-      new SqliteSourceCompatibilityObservationRepository(database).latest(["eu-other-target"])
-        .size,
+      new SqliteSourceCompatibilityObservationRepository(database).latest(["eu-other-target"]).size,
     ).toBe(0);
     database.close();
   });
