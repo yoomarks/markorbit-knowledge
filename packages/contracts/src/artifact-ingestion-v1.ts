@@ -188,7 +188,8 @@ export function isArtifactUploadDescriptor(value: unknown): value is ArtifactUpl
       (Array.isArray(value.parentArtifactIds) &&
         value.parentArtifactIds.every(
           (id) => typeof id === "string" && ARTIFACT_ID_PATTERN.test(id),
-        )))
+        ) &&
+        new Set(value.parentArtifactIds).size === value.parentArtifactIds.length))
   );
 }
 

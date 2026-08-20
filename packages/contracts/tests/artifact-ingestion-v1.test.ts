@@ -83,6 +83,25 @@ describe("Artifact Ingestion Protocol v1", () => {
     expect(isArtifactIngestionEvent(event)).toBe(true);
   });
 
+  it("accepts unique parent artifact lineage hints", () => {
+    expect(
+      isArtifactUploadDescriptor({
+        ...descriptor,
+        parentArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAV", "art_01ARZ3NDEKTSV4RRFFQ69G5FAW"],
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects duplicate parent artifact lineage hints", () => {
+    const parentId = "art_01ARZ3NDEKTSV4RRFFQ69G5FAV";
+    expect(
+      isArtifactUploadDescriptor({
+        ...descriptor,
+        parentArtifactIds: [parentId, parentId],
+      }),
+    ).toBe(false);
+  });
+
   it("rejects unknown fields, embedded content and malformed identities", () => {
     expect(isArtifactUploadDescriptor({ ...descriptor, bytes: "base64" })).toBe(false);
     expect(isArtifactIngestionSession({ ...session, temporaryPath: "/tmp/file" })).toBe(false);
