@@ -106,13 +106,10 @@ function environment() {
     worker.credential,
   );
   const claim = workers.claim(worker.view.worker.id, worker.credential);
-  executions.start(
-    worker.view.worker.id,
-    worker.credential,
-    claim.lease!.id,
-    claim.leaseToken!,
-    { executor, idempotencyKey: "lineage-start" },
-  );
+  executions.start(worker.view.worker.id, worker.credential, claim.lease!.id, claim.leaseToken!, {
+    executor,
+    idempotencyKey: "lineage-start",
+  });
   executions.markUploading(
     worker.view.worker.id,
     worker.credential,
@@ -194,7 +191,10 @@ describe("raw artifact lineage inspection", () => {
 
     expect(child.artifact.artifact.provenance.parentArtifactIds).toEqual([parentId]);
 
-    const fromParent = inspectRawArtifactLineage(env.database, { workspaceId, artifactId: parentId });
+    const fromParent = inspectRawArtifactLineage(env.database, {
+      workspaceId,
+      artifactId: parentId,
+    });
     expect(fromParent.parents).toEqual([]);
     expect(fromParent.children.map((artifact) => artifact.id)).toEqual([childId]);
     expect(fromParent.integrity).toEqual({
