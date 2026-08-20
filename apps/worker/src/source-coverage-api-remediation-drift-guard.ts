@@ -92,18 +92,14 @@ function actualSourceContract(source: JsonRecord): JsonRecord {
     extensions: {
       "x-markorbit-source-coverage-remediation-target-id":
         extensions["x-markorbit-source-coverage-remediation-target-id"],
-      "x-markorbit-source-coverage-protocol":
-        extensions["x-markorbit-source-coverage-protocol"],
+      "x-markorbit-source-coverage-protocol": extensions["x-markorbit-source-coverage-protocol"],
       "x-markorbit-acquisition-mode": extensions["x-markorbit-acquisition-mode"],
       "x-markorbit-remediation-artifact-kinds":
         extensions["x-markorbit-remediation-artifact-kinds"],
-      "x-markorbit-endpoint-binding-required":
-        extensions["x-markorbit-endpoint-binding-required"],
-      "x-markorbit-network-locator-persisted":
-        extensions["x-markorbit-network-locator-persisted"],
+      "x-markorbit-endpoint-binding-required": extensions["x-markorbit-endpoint-binding-required"],
+      "x-markorbit-network-locator-persisted": extensions["x-markorbit-network-locator-persisted"],
       "x-markorbit-credential-persisted": extensions["x-markorbit-credential-persisted"],
-      "x-markorbit-collection-authorization":
-        extensions["x-markorbit-collection-authorization"],
+      "x-markorbit-collection-authorization": extensions["x-markorbit-collection-authorization"],
     },
   };
 }
@@ -127,8 +123,7 @@ function actualPlanContract(plan: JsonRecord): JsonRecord {
       "x-markorbit-source-coverage-remediation-target-id":
         extensions["x-markorbit-source-coverage-remediation-target-id"],
       "x-markorbit-purpose": extensions["x-markorbit-purpose"],
-      "x-markorbit-collection-authorization":
-        extensions["x-markorbit-collection-authorization"],
+      "x-markorbit-collection-authorization": extensions["x-markorbit-collection-authorization"],
     },
   };
 }

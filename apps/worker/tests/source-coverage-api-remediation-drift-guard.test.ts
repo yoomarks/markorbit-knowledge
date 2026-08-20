@@ -122,11 +122,7 @@ describe("foundational API remediation drift guard", () => {
         fetchImpl,
       }),
     ).rejects.toThrow("Plan configuration drift");
-    expect(requests).toEqual([
-      "GET /api/source-coverage",
-      "GET /api/sources",
-      "GET /api/plans",
-    ]);
+    expect(requests).toEqual(["GET /api/source-coverage", "GET /api/sources", "GET /api/plans"]);
     expect(requests.some((request) => request.startsWith("POST "))).toBe(false);
   });
 });
