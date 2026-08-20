@@ -57,6 +57,22 @@ describe("representative source live canaries", () => {
     });
   });
 
+  it("uses the structured IPONZ search path with a stable filing baseline", () => {
+    const newZealand = getRepresentativeSourceLiveCanaries().find(
+      (canary) => canary.jurisdiction === "NZ",
+    );
+    expect(newZealand?.targetId).toBe("nz-iponz-trademark-search");
+    expect(newZealand?.renderJavascript).toBe(true);
+    expect(newZealand?.expectedArtifactKinds).toEqual(["HTML", "JSON", "IMAGE"]);
+    expect(newZealand?.authorityBaseline).toEqual({
+      targetId: "nz-iponz-trademark-filing",
+      family: "FILING",
+      canonicalUri: "https://www.iponz.govt.nz/get-ip/trade-marks/apply/",
+      renderJavascript: false,
+      expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    });
+  });
+
   it("selects the same target matrix deterministically across repeated reads", () => {
     const first = getRepresentativeSourceLiveCanaries().map((canary) => ({
       jurisdiction: canary.jurisdiction,
