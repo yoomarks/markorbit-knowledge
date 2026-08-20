@@ -7,7 +7,9 @@ import {
   getRepresentativeSourceLiveCanaries,
   type RepresentativeSourceLiveCanary,
 } from "@markorbit/persistence/representative-source-live-canaries";
-import { assessRepresentativeCanaryArtifacts } from "./representative-live-canary-evidence";
+import {
+  assessRepresentativeCanaryArtifacts,
+} from "./representative-live-canary-evidence";
 
 type CrawlSuccess = {
   protocolVersion: string;
@@ -260,7 +262,8 @@ async function observeProbe(
       response.artifacts.length >= 2 &&
       artifactAssessment.pageEvidenceComplete &&
       validHashes;
-    const passed = pageEvidenceValid && artifactAssessment.targetArtifactContractComplete;
+    const passed =
+      pageEvidenceValid && artifactAssessment.targetArtifactContractComplete;
     const failure = !pageEvidenceValid
       ? {
           errorCode: "CANARY_EVIDENCE_INCOMPLETE",
@@ -325,9 +328,7 @@ function baselineProbe(canary: RepresentativeSourceLiveCanary): CanaryProbe {
   return {
     ...canary.authorityBaseline,
     locale: canary.languages[0] ?? "en",
-    expectedArtifactKinds: [
-      ...canary.authorityBaseline.expectedArtifactKinds,
-    ],
+    expectedArtifactKinds: [...canary.authorityBaseline.expectedArtifactKinds],
   };
 }
 
