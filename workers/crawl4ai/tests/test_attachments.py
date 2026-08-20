@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import acquire
 import attachments
 from attachments import attachment_kind_for_url, download_attachment
 from safety import SafetyError
@@ -32,6 +33,50 @@ class AttachmentTests(unittest.TestCase):
         attachments._validate_signature("DOCX", b"PK\x03\x04fixture")
         with self.assertRaises(SafetyError):
             attachments._validate_signature("PDF", b"no")
+
+    def test_parent_lineage_updates_manifest_after_attachment_was_already_bound(self):
+        attachment_url = "https://example.com/rules.pdf"
+        parents: dict[str, set[str]] = {}
+        manifests: dict[str, dict[str, object]] = {}
+        manifest: dict[str, object] = {"artifactKind": "PDF"}
+
+        acquire._record_attachment_parent(
+            attachment_url,
+            "https://example.com/page-a",
+            parents,
+            manifests,
+        )
+        acquire._bind_attachment_manifest(attachment_url, manifest, parents, manifests)
+        self.assertEqual(manifest["parentCanonicalUris"], ["https://example.com/page-a"])
+
+        acquire._record_attachment_parent(
+            attachment_url,
+            "https://example.com/page-b",
+            parents,
+            manifests,
+        )
+        self.assertEqual(
+            manifest["parentCanonicalUris"],
+            ["https://example.com/page-a", "https://example.com/page-b"],
+        )
+
+    def test_parent_lineage_merges_aliases_into_one_deduplicated_manifest(self):
+        parents: dict[str, set[str]] = {}
+        manifests: dict[str, dict[str, object]] = {}
+        manifest: dict[str, object] = {"artifactKind": "PDF"}
+        first = "https://example.com/download/rules.pdf"
+        alias = "https://example.com/files/rules.pdf"
+
+        acquire._record_attachment_parent(first, "https://example.com/z", parents, manifests)
+        acquire._bind_attachment_manifest(first, manifest, parents, manifests)
+        acquire._record_attachment_parent(alias, "https://example.com/a", parents, manifests)
+        acquire._bind_attachment_manifest(alias, manifest, parents, manifests)
+        acquire._record_attachment_parent(alias, "https://example.com/a", parents, manifests)
+
+        self.assertEqual(
+            manifest["parentCanonicalUris"],
+            ["https://example.com/a", "https://example.com/z"],
+        )
 
 
 class AttachmentAsyncTests(unittest.IsolatedAsyncioTestCase):
