@@ -7,9 +7,7 @@ import {
 } from "./foundational-action-intent-ledger";
 import { DEFAULT_WORKSPACE, openRegistryDatabase } from "./index";
 import { SqliteSourceCompatibilityObservationRepository } from "./source-compatibility-observations";
-import {
-  SqliteOperationalSupplyHealthRepository,
-} from "./source-compatibility-supply-health";
+import { SqliteOperationalSupplyHealthRepository } from "./source-compatibility-supply-health";
 import { SqliteSourceCompatibilityReprobeExecutionRepository } from "./source-compatibility-reprobe-execution";
 
 const targetId = "cn-cnipa-trademark-search";

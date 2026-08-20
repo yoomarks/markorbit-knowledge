@@ -122,10 +122,7 @@ export function latestSourceCompatibilityReprobeExecutions(
   const latest = new Map<string, SourceCompatibilityReprobeExecution>();
   for (const row of rows) {
     if (!requested.has(row.target_id)) continue;
-    latest.set(
-      row.target_id,
-      JSON.parse(row.document_json) as SourceCompatibilityReprobeExecution,
-    );
+    latest.set(row.target_id, JSON.parse(row.document_json) as SourceCompatibilityReprobeExecution);
   }
   return latest;
 }

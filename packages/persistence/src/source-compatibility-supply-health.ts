@@ -13,9 +13,7 @@ import type {
 } from "@markorbit/contracts";
 import { RegistryError, RegistryValidationError } from "./index";
 import { SqliteSourceCompatibilityObservationRepository } from "./source-compatibility-observations";
-import {
-  latestSourceCompatibilityReprobeExecutions,
-} from "./source-compatibility-reprobe-execution-query";
+import { latestSourceCompatibilityReprobeExecutions } from "./source-compatibility-reprobe-execution-query";
 import type { SourceCompatibilityReprobeExecution } from "./source-compatibility-reprobe-execution";
 import { SqliteSourceOperationalTopologyRepository } from "./source-operational-topology";
 import {
