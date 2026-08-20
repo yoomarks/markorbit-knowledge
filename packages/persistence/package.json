@@ -47,7 +47,7 @@
     "./workers": "./src/safe-worker-registry.ts",
     "./targeted-worker-claim": "./src/targeted-worker-claim.ts",
     "./worker-execution": "./src/controlled-worker-execution.ts",
-    "./raw-artifacts": "./src/raw-artifact-registry.ts",
+    "./raw-artifacts": "./src/raw-artifact-repository.ts",
     "./raw-artifact-lineage": "./src/raw-artifact-lineage.ts",
     "./manual-uploads": "./src/manual-upload-registry.ts",
     "./converters": "./src/converter-registry.ts",
