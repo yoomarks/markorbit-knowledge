@@ -3,6 +3,7 @@ import type { CoverageTarget } from "./source-coverage-bootstrap";
 import {
   assertFoundationalTargetDispatchable,
   foundationalSupplyCapabilityGaps,
+  supplyCapabilityRemediation,
   webCapturableArtifactKinds,
 } from "./source-coverage-capability-gaps";
 
@@ -37,7 +38,7 @@ function target(input: {
 }
 
 describe("foundational web artifact capability gaps", () => {
-  it("fails closed before dispatch when declared structured artifacts exceed page capability", () => {
+  it("classifies structured gaps into governed API remediation without authorizing collection", () => {
     const cnipa = target({
       id: "cn-cnipa-trademark-search",
       expectedArtifactKinds: ["HTML", "JSON", "XML"],
@@ -49,6 +50,20 @@ describe("foundational web artifact capability gaps", () => {
         targetId: "cn-cnipa-trademark-search",
         code: "STRUCTURED_ENDPOINT_NOT_CAPTURED",
         expectedArtifactKinds: ["JSON", "XML"],
+        remediation: {
+          automaticExecution: false,
+          collectionAuthorization: "NONE",
+          apiBinding: {
+            connectorId: "api-worker",
+            connectorVersion: "1.0.0",
+            sourceType: "API",
+            jobType: "API_COLLECTION",
+            endpointBindingRequired: true,
+            artifactKinds: ["JSON", "XML"],
+          },
+          webAttachments: null,
+          unsupportedArtifactKinds: [],
+        },
       },
     ]);
     expect(() => assertFoundationalTargetDispatchable(cnipa)).toThrow(
@@ -72,20 +87,28 @@ describe("foundational web artifact capability gaps", () => {
     expect(() => assertFoundationalTargetDispatchable(attachments)).not.toThrow();
   });
 
-  it("still rejects artifact kinds that neither page nor attachment runtime can emit", () => {
+  it("separates attachment enablement from unsupported connector capability review", () => {
+    expect(supplyCapabilityRemediation(["PDF", "DOCX", "PARQUET"])).toEqual({
+      automaticExecution: false,
+      collectionAuthorization: "NONE",
+      apiBinding: null,
+      webAttachments: {
+        fetchAttachmentsRequired: true,
+        artifactKinds: ["PDF", "DOCX"],
+      },
+      unsupportedArtifactKinds: ["PARQUET"],
+    });
+
     const unsupported = target({
       id: "example-unsupported-artifact",
       expectedArtifactKinds: ["HTML", "PARQUET"],
       fetchAttachmentsHint: true,
     });
-
-    expect(foundationalSupplyCapabilityGaps([unsupported])).toEqual([
-      {
-        targetId: "example-unsupported-artifact",
-        code: "STRUCTURED_ENDPOINT_NOT_CAPTURED",
-        expectedArtifactKinds: ["PARQUET"],
-      },
-    ]);
+    expect(foundationalSupplyCapabilityGaps([unsupported])[0]?.remediation).toMatchObject({
+      apiBinding: null,
+      webAttachments: null,
+      unsupportedArtifactKinds: ["PARQUET"],
+    });
     expect(() => assertFoundationalTargetDispatchable(unsupported)).toThrow(/PARQUET/u);
   });
 });

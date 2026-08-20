@@ -190,7 +190,7 @@ describe("US foundational source supply operations", () => {
     expect(result.collectionAuthorization).toBe("EXPLICIT_TARGET_MANUAL_RUNS_DISPATCHED");
   });
 
-  it("keeps dynamic JSON endpoints visible as a known supply gap instead of pretending they are captured", async () => {
+  it("keeps dynamic JSON endpoints visible with governed API remediation instead of pretending they are captured", async () => {
     const dynamic = target(
       "us-uspto-id-manual",
       "GOODS_SERVICES_ID",
@@ -244,6 +244,20 @@ describe("US foundational source supply operations", () => {
         targetId: dynamic.id,
         code: "STRUCTURED_ENDPOINT_NOT_CAPTURED",
         expectedArtifactKinds: ["JSON"],
+        remediation: {
+          automaticExecution: false,
+          collectionAuthorization: "NONE",
+          apiBinding: {
+            connectorId: "api-worker",
+            connectorVersion: "1.0.0",
+            sourceType: "API",
+            jobType: "API_COLLECTION",
+            endpointBindingRequired: true,
+            artifactKinds: ["JSON"],
+          },
+          webAttachments: null,
+          unsupportedArtifactKinds: [],
+        },
       },
     ]);
     expect(result.runs).toEqual([]);
