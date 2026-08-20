@@ -48,6 +48,7 @@ function indexVersion(
   title: string,
   body: string,
   overrides: Partial<CanonicalMarkdownMetadataV1> = {},
+  targetPath = `/knowledge/rules-${version}.md`,
 ) {
   const bytes = new TextEncoder().encode(`---\ntest: true\n---\n${body}\n`);
   return index.indexVerified({
@@ -55,10 +56,60 @@ function indexVersion(
     stagingDocumentId: `staging-${version}`,
     readyPackageId: `ready-${version}`,
     title,
-    targetPath: `/knowledge/rules-${version}.md`,
+    targetPath,
     contentSha256: sha256(bytes),
     canonicalMarkdown: bytes,
   });
+}
+
+function installRawArtifactEvidenceTable(database: DatabaseSync): void {
+  database.exec(`
+    CREATE TABLE raw_artifacts (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      content_digest TEXT NOT NULL,
+      artifact_kind TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      document_json TEXT NOT NULL
+    ) STRICT;
+  `);
+}
+
+function insertRawArtifact(
+  database: DatabaseSync,
+  input: { id: string; digest: string; sizeBytes: number; binaryHash?: string },
+): void {
+  const artifact = {
+    objectType: "RAW_ARTIFACT",
+    id: input.id,
+    workspaceId: "workspace-1",
+    sourceId: "source-1",
+    artifactKind: "PDF",
+    mimeType: "application/pdf",
+    originalName: `${input.id}.pdf`,
+    canonicalUri: "https://office.example/rules.pdf",
+    binaryHash: { algorithm: "SHA-256", value: input.binaryHash ?? input.digest },
+    contentHash: { algorithm: "SHA-256", value: input.binaryHash ?? input.digest },
+    sizeBytes: input.sizeBytes,
+    capturedAt: "2026-08-20T00:00:00.000Z",
+    provenance: { sourceUri: "https://office.example/rules.pdf" },
+  };
+  database
+    .prepare(
+      `INSERT INTO raw_artifacts
+       (id, workspace_id, source_id, content_digest, artifact_kind, mime_type, document_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      input.id,
+      "workspace-1",
+      "source-1",
+      input.digest,
+      "PDF",
+      "application/pdf",
+      JSON.stringify(artifact),
+    );
 }
 
 describe("SqliteDocumentChangeEvidenceRepository", () => {
@@ -105,7 +156,9 @@ describe("SqliteDocumentChangeEvidenceRepository", () => {
       stagingDocumentId: "staging-1",
       readyPackageId: "ready-1",
     });
+    expect(created.rawArtifacts).toEqual({ before: null, after: null });
     expect(created.dimensions).toContain("DOCUMENT_CREATED");
+    expect(created.coverage.rawArtifactBinary).toBe(false);
     expect(created.coverage.linkedAttachments).toBe(false);
 
     const updated = evidence.items[1]!;
@@ -124,6 +177,7 @@ describe("SqliteDocumentChangeEvidenceRepository", () => {
         "STRUCTURE_CHANGED",
       ]),
     );
+    expect(updated.dimensions).not.toContain("RAW_ARTIFACT_BINARY_CHANGED");
     expect(updated.metadataChanges).toEqual([
       { field: "title", before: "Trademark Rules", after: "Trademark Rules 2026" },
       {
@@ -144,6 +198,66 @@ describe("SqliteDocumentChangeEvidenceRepository", () => {
       changedSections: 3,
     });
     expect(updated.sections).toHaveLength(3);
+  });
+
+  it("detects raw binary replacement even when canonical content is unchanged", () => {
+    const database = new DatabaseSync(":memory:");
+    const index = new SqliteRetrievalIndexRepository(database);
+    const changes = new SqliteDocumentChangeFeedRepository(database);
+    const body = "# Rules\nCanonical text remains identical.";
+    const first = indexVersion(index, 1, "Rules", body, {}, "/knowledge/rules.md");
+    changes.recordIndexedVersion(first.document, first.chunks);
+    const second = indexVersion(index, 2, "Rules", body, {}, "/knowledge/rules.md");
+    const secondEvent = changes.recordIndexedVersion(second.document, second.chunks).event;
+    expect(secondEvent?.changeKind).toBe("UNCHANGED");
+    expect(secondEvent?.fromContentSha256).toBe(secondEvent?.toContentSha256);
+
+    installRawArtifactEvidenceTable(database);
+    insertRawArtifact(database, { id: "raw-1", digest: "1".repeat(64), sizeBytes: 1200 });
+    insertRawArtifact(database, { id: "raw-2", digest: "2".repeat(64), sizeBytes: 1400 });
+
+    const evidence = new SqliteDocumentChangeEvidenceRepository(database).feed({
+      workspaceId: "workspace-1",
+    });
+    const replacement = evidence.items[1]!;
+    expect(replacement.changeKind).toBe("UNCHANGED");
+    expect(replacement.dimensions).not.toContain("CONTENT_CHANGED");
+    expect(replacement.dimensions).toContain("RAW_ARTIFACT_BINARY_CHANGED");
+    expect(replacement.coverage).toMatchObject({
+      rawArtifactBinary: true,
+      linkedAttachments: false,
+    });
+    expect(replacement.rawArtifacts.before).toMatchObject({
+      artifactId: "raw-1",
+      artifactKind: "PDF",
+      binarySha256: "1".repeat(64),
+      sizeBytes: 1200,
+    });
+    expect(replacement.rawArtifacts.after).toMatchObject({
+      artifactId: "raw-2",
+      artifactKind: "PDF",
+      binarySha256: "2".repeat(64),
+      sizeBytes: 1400,
+    });
+  });
+
+  it("fails closed when persisted raw binary evidence disagrees with its digest row", () => {
+    const database = new DatabaseSync(":memory:");
+    const index = new SqliteRetrievalIndexRepository(database);
+    const changes = new SqliteDocumentChangeFeedRepository(database);
+    const first = indexVersion(index, 1, "Rules", "# Rules\nInitial rule.");
+    changes.recordIndexedVersion(first.document, first.chunks);
+    installRawArtifactEvidenceTable(database);
+    insertRawArtifact(database, {
+      id: "raw-1",
+      digest: "1".repeat(64),
+      binaryHash: "2".repeat(64),
+      sizeBytes: 1200,
+    });
+
+    expect(() =>
+      new SqliteDocumentChangeEvidenceRepository(database).feed({ workspaceId: "workspace-1" }),
+    ).toThrow("does not match its indexed evidence row");
   });
 
   it("supports evidence cursors and rejects malformed cursors", () => {
