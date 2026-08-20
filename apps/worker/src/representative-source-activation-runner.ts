@@ -20,6 +20,9 @@ export type RepresentativeActivationApplyResult = {
   conversionProfilesCreated: number;
   conversionProfilesReused: number;
   capabilityGapCount: number;
+  apiBindingRequirementCount: number;
+  webAttachmentRequirementCount: number;
+  unsupportedArtifactKindCount: number;
 };
 
 export type RepresentativeActivationEntry = {
@@ -47,6 +50,10 @@ export type RepresentativeActivationRun = {
     sourcesCreated: number;
     plansCreated: number;
     conversionProfilesCreated: number;
+    capabilityGapCount: number;
+    apiBindingRequirementCount: number;
+    webAttachmentRequirementCount: number;
+    unsupportedArtifactKindCount: number;
   };
 };
 
@@ -132,6 +139,16 @@ async function activateJurisdiction(input: {
     conversionProfilesReused: conversion.profiles.filter((profile) => profile.state === "REUSED")
       .length,
     capabilityGapCount: supply.capabilityGaps.length,
+    apiBindingRequirementCount: supply.capabilityGaps.filter(
+      (gap) => gap.remediation.apiBinding !== null,
+    ).length,
+    webAttachmentRequirementCount: supply.capabilityGaps.filter(
+      (gap) => gap.remediation.webAttachments !== null,
+    ).length,
+    unsupportedArtifactKindCount: supply.capabilityGaps.reduce(
+      (total, gap) => total + gap.remediation.unsupportedArtifactKinds.length,
+      0,
+    ),
   };
 }
 
@@ -202,6 +219,22 @@ export async function runRepresentativeSourceActivationWave(
       plansCreated: entries.reduce((total, entry) => total + (entry.result?.plansCreated ?? 0), 0),
       conversionProfilesCreated: entries.reduce(
         (total, entry) => total + (entry.result?.conversionProfilesCreated ?? 0),
+        0,
+      ),
+      capabilityGapCount: entries.reduce(
+        (total, entry) => total + (entry.result?.capabilityGapCount ?? 0),
+        0,
+      ),
+      apiBindingRequirementCount: entries.reduce(
+        (total, entry) => total + (entry.result?.apiBindingRequirementCount ?? 0),
+        0,
+      ),
+      webAttachmentRequirementCount: entries.reduce(
+        (total, entry) => total + (entry.result?.webAttachmentRequirementCount ?? 0),
+        0,
+      ),
+      unsupportedArtifactKindCount: entries.reduce(
+        (total, entry) => total + (entry.result?.unsupportedArtifactKindCount ?? 0),
         0,
       ),
     },

@@ -22,6 +22,9 @@ function result(
     conversionProfilesCreated: 5,
     conversionProfilesReused: 0,
     capabilityGapCount: 0,
+    apiBindingRequirementCount: 0,
+    webAttachmentRequirementCount: 0,
+    unsupportedArtifactKindCount: 0,
     ...overrides,
   };
 }
@@ -52,14 +55,30 @@ describe("representative source activation wave", () => {
       "EU",
       "CI",
     ]);
-    expect(run.summary).toMatchObject({ planned: 12, completed: 0, failed: 0 });
+    expect(run.summary).toMatchObject({
+      planned: 12,
+      completed: 0,
+      failed: 0,
+      capabilityGapCount: 0,
+      apiBindingRequirementCount: 0,
+      webAttachmentRequirementCount: 0,
+      unsupportedArtifactKindCount: 0,
+    });
     expect(activateJurisdiction).not.toHaveBeenCalled();
   });
 
-  it("applies selected jurisdictions, continues after a failure and never grants collection authorization", async () => {
+  it("applies selected jurisdictions, aggregates remediation debt and never grants collection authorization", async () => {
     const activateJurisdiction = vi.fn(async ({ jurisdiction }: { jurisdiction: string }) => {
       if (jurisdiction === "EU") throw new Error("EU activation failed");
-      return result({ sourcesCreated: 2, plansCreated: 3, conversionProfilesCreated: 4 });
+      return result({
+        sourcesCreated: 2,
+        plansCreated: 3,
+        conversionProfilesCreated: 4,
+        capabilityGapCount: 3,
+        apiBindingRequirementCount: 2,
+        webAttachmentRequirementCount: 1,
+        unsupportedArtifactKindCount: 1,
+      });
     });
 
     const run = await runRepresentativeSourceActivationWave({
@@ -84,6 +103,10 @@ describe("representative source activation wave", () => {
       sourcesCreated: 2,
       plansCreated: 3,
       conversionProfilesCreated: 4,
+      capabilityGapCount: 3,
+      apiBindingRequirementCount: 2,
+      webAttachmentRequirementCount: 1,
+      unsupportedArtifactKindCount: 1,
     });
     expect(activateJurisdiction).toHaveBeenCalledTimes(2);
   });
