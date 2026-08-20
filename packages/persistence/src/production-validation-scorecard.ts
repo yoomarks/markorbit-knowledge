@@ -8,6 +8,13 @@ import {
 import type { ProductionValidationOnboardingStatus } from "./production-validation-onboarding-status";
 import type { ProductionValidationPipelineStatus } from "./production-validation-pipeline-status";
 
+export type ProductionValidationArtifactContractTelemetry = {
+  observed: boolean;
+  complete: boolean | null;
+  expectedArtifactKinds: string[];
+  missingExpectedArtifactKinds: string[];
+};
+
 export type ProductionValidationCompatibilityTelemetry = {
   state: "PASS" | "DEGRADED" | "BLOCKED" | "UNOBSERVED";
   observedAt: string | null;
@@ -18,6 +25,7 @@ export type ProductionValidationCompatibilityTelemetry = {
   failureClass: ProductionValidationFailureClass;
   failureObserved: boolean;
   adapterRequiredObserved: boolean | null;
+  artifactContract: ProductionValidationArtifactContractTelemetry;
 };
 
 export type ProductionValidationUnknownTelemetry = {
@@ -54,7 +62,7 @@ export type ProductionValidationScorecardResult = {
 };
 
 export type ProductionValidationScorecard = {
-  reportVersion: "1.0";
+  reportVersion: "1.1";
   waveId: string;
   workspaceId: string;
   generatedAt: string;
@@ -70,6 +78,8 @@ export type ProductionValidationScorecard = {
     compatibilityBlocked: number;
     failureObserved: number;
     adapterRequiredObserved: number;
+    artifactContractObserved: number;
+    artifactContractGapObserved: number;
     secondRunValidated: null;
     manualInterventionRequired: null;
   };
@@ -105,10 +115,45 @@ function assertAligned(input: ProductionValidationScorecardInput): void {
   }
 }
 
+function stringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.length > 0);
+}
+
+function artifactContractTelemetry(
+  observation: SourceCompatibilityObservation | undefined,
+): ProductionValidationArtifactContractTelemetry {
+  if (!observation) {
+    return {
+      observed: false,
+      complete: null,
+      expectedArtifactKinds: [],
+      missingExpectedArtifactKinds: [],
+    };
+  }
+  const details =
+    observation.details && typeof observation.details === "object" && !Array.isArray(observation.details)
+      ? (observation.details as Record<string, unknown>)
+      : null;
+  const expectedArtifactKinds = stringArray(details?.expectedArtifactKinds);
+  const missingExpectedArtifactKinds = stringArray(details?.missingExpectedArtifactKinds);
+  const observed =
+    details !== null &&
+    (Object.prototype.hasOwnProperty.call(details, "expectedArtifactKinds") ||
+      Object.prototype.hasOwnProperty.call(details, "missingExpectedArtifactKinds"));
+  return {
+    observed,
+    complete: observed ? missingExpectedArtifactKinds.length === 0 : null,
+    expectedArtifactKinds,
+    missingExpectedArtifactKinds,
+  };
+}
+
 function compatibilityTelemetry(
   observation: SourceCompatibilityObservation | undefined,
 ): ProductionValidationCompatibilityTelemetry {
   const failure = classifyProductionValidationFailure(observation);
+  const artifactContract = artifactContractTelemetry(observation);
   if (!observation) {
     return {
       state: "UNOBSERVED",
@@ -120,6 +165,7 @@ function compatibilityTelemetry(
       failureClass: failure.class,
       failureObserved: failure.observed,
       adapterRequiredObserved: failure.adapterRequired,
+      artifactContract,
     };
   }
   return {
@@ -132,6 +178,7 @@ function compatibilityTelemetry(
     failureClass: failure.class,
     failureObserved: failure.observed && failure.class !== "NONE",
     adapterRequiredObserved: failure.adapterRequired,
+    artifactContract,
   };
 }
 
@@ -185,7 +232,7 @@ export function buildProductionValidationScorecard(
   });
 
   return {
-    reportVersion: "1.0",
+    reportVersion: "1.1",
     waveId: input.manifest.waveId,
     workspaceId: input.onboarding.workspaceId,
     generatedAt: clock().toISOString(),
@@ -205,6 +252,12 @@ export function buildProductionValidationScorecard(
       failureObserved: results.filter((result) => result.compatibility.failureObserved).length,
       adapterRequiredObserved: results.filter(
         (result) => result.compatibility.adapterRequiredObserved === true,
+      ).length,
+      artifactContractObserved: results.filter(
+        (result) => result.compatibility.artifactContract.observed,
+      ).length,
+      artifactContractGapObserved: results.filter(
+        (result) => result.compatibility.artifactContract.complete === false,
       ).length,
       secondRunValidated: null,
       manualInterventionRequired: null,
