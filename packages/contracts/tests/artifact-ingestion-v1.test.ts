@@ -87,10 +87,7 @@ describe("Artifact Ingestion Protocol v1", () => {
     expect(
       isArtifactUploadDescriptor({
         ...descriptor,
-        parentArtifactIds: [
-          "art_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-          "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
-        ],
+        parentArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAV", "art_01ARZ3NDEKTSV4RRFFQ69G5FAW"],
       }),
     ).toBe(true);
   });
