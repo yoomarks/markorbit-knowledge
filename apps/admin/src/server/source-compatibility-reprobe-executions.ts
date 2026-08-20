@@ -1,6 +1,10 @@
 import type { DatabaseSync } from "node:sqlite";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import {
+  reconcileSourceCompatibilityReprobeExecution,
+  type SourceCompatibilityReprobeReconciliationResult,
+} from "@markorbit/persistence/source-compatibility-reprobe-execution-query";
+import {
   SqliteSourceCompatibilityReprobeExecutionRepository,
   type SourceCompatibilityReprobeExecution,
 } from "@markorbit/persistence/source-compatibility-reprobe-executions";
@@ -130,6 +134,25 @@ export function startSourceCompatibilityReprobeExecution(
     executedByActorId: required(input.executedByActorId, "executedByActorId"),
     idempotencyKey: required(input.idempotencyKey, "idempotencyKey"),
   });
+}
+
+export function reconcileSourceCompatibilityReprobeExecutionForWorker(
+  input: {
+    workerId: string;
+    credential: string;
+    executionId: string;
+  },
+  dependencies: SourceCompatibilityReprobeDependencies,
+): SourceCompatibilityReprobeReconciliationResult {
+  const workerId = authenticate(input.workerId, input.credential, dependencies);
+  return reconcileSourceCompatibilityReprobeExecution(
+    dependencies.database,
+    {
+      workerId,
+      executionId: required(input.executionId, "executionId"),
+    },
+    dependencies.clock,
+  );
 }
 
 export function completeSourceCompatibilityReprobeExecution(
