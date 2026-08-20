@@ -63,7 +63,10 @@ export function classifyProductionValidationFailure(
       adapterRequired: null,
     };
   }
-  if (errorCode === "CANARY_EVIDENCE_INCOMPLETE") {
+  if (
+    errorCode === "CANARY_EVIDENCE_INCOMPLETE" ||
+    errorCode === "CANARY_ARTIFACT_CONTRACT_INCOMPLETE"
+  ) {
     return {
       class: "EVIDENCE_INCOMPLETE",
       observed: true,
