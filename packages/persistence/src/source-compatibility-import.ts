@@ -24,6 +24,14 @@ function optionalText(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function optionalTextArray(value: unknown, field: string): string[] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value)) {
+    throw new RegistryValidationError(`${field} must be an array`);
+  }
+  return value.map((item, index) => text(item, `${field}[${index}]`));
+}
+
 function gitSha(value: unknown, field: string): string {
   const normalized = text(value, field);
   if (!GIT_SHA.test(normalized)) {
@@ -79,6 +87,26 @@ export function parseRepresentativeLiveCanarySummary(
     }
     const errorCode = optionalText(observation.errorCode);
     const errorMessage = optionalText(observation.errorMessage);
+    const expectedArtifactKinds = optionalTextArray(
+      observation.expectedArtifactKinds,
+      `observations[${index}].expectedArtifactKinds`,
+    );
+    const missingExpectedArtifactKinds = optionalTextArray(
+      observation.missingExpectedArtifactKinds,
+      `observations[${index}].missingExpectedArtifactKinds`,
+    );
+    const baselineExpectedArtifactKinds = baseline
+      ? optionalTextArray(
+          baseline.expectedArtifactKinds,
+          `observations[${index}].authorityBaseline.expectedArtifactKinds`,
+        )
+      : undefined;
+    const baselineMissingExpectedArtifactKinds = baseline
+      ? optionalTextArray(
+          baseline.missingExpectedArtifactKinds,
+          `observations[${index}].authorityBaseline.missingExpectedArtifactKinds`,
+        )
+      : undefined;
     return {
       targetId: text(observation.targetId, `observations[${index}].targetId`),
       jurisdiction: text(observation.jurisdiction, `observations[${index}].jurisdiction`),
@@ -106,6 +134,29 @@ export function parseRepresentativeLiveCanarySummary(
         artifactKinds: observation.artifactKinds,
         finalUris: observation.finalUris,
         totalBytes: observation.totalBytes,
+        ...(expectedArtifactKinds ? { expectedArtifactKinds } : {}),
+        ...(missingExpectedArtifactKinds ? { missingExpectedArtifactKinds } : {}),
+        ...(baseline
+          ? {
+              authorityBaseline: {
+                family: baseline.family,
+                requestedUri: baseline.requestedUri,
+                renderJavascript: baseline.renderJavascript,
+                elapsedMs: baseline.elapsedMs,
+                pagesAttempted: baseline.pagesAttempted,
+                artifactCount: baseline.artifactCount,
+                artifactKinds: baseline.artifactKinds,
+                finalUris: baseline.finalUris,
+                totalBytes: baseline.totalBytes,
+                ...(baselineExpectedArtifactKinds
+                  ? { expectedArtifactKinds: baselineExpectedArtifactKinds }
+                  : {}),
+                ...(baselineMissingExpectedArtifactKinds
+                  ? { missingExpectedArtifactKinds: baselineMissingExpectedArtifactKinds }
+                  : {}),
+              },
+            }
+          : {}),
         ...(provenance ? { evidenceContext: provenance } : {}),
       },
     } satisfies SourceCompatibilityObservationInput;
