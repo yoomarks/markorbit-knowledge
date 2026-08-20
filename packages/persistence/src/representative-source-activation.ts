@@ -65,6 +65,12 @@ export const REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS = [
     purpose: "IP Australia modern web guidance and search acquisition paths.",
   },
   {
+    jurisdiction: "NZ",
+    displayName: "New Zealand",
+    profile: "DYNAMIC_PORTAL",
+    purpose: "IPONZ modern web guidance plus JavaScript-rendered trademark search paths.",
+  },
+  {
     jurisdiction: "BR",
     displayName: "Brazil",
     profile: "MULTILINGUAL",
