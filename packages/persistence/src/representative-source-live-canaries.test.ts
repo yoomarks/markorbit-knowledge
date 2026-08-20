@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS } from "./representative-source-activation";
 import {
+  REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS,
   REPRESENTATIVE_SOURCE_LIVE_CANARY_VERSION,
   getRepresentativeSourceLiveCanaries,
 } from "./representative-source-live-canaries";
 
 describe("representative source live canaries", () => {
-  it("selects one distinct active foundational HTML canary for every activation jurisdiction", () => {
+  it("selects one distinct active foundational HTML canary for every live-observation jurisdiction", () => {
     const canaries = getRepresentativeSourceLiveCanaries();
-    expect(canaries).toHaveLength(REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.length);
+    expect(canaries).toHaveLength(REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS.length);
     expect(new Set(canaries.map((canary) => canary.targetId)).size).toBe(canaries.length);
     expect(new Set(canaries.map((canary) => canary.jurisdiction)).size).toBe(canaries.length);
     for (const canary of canaries) {
@@ -22,7 +22,7 @@ describe("representative source live canaries", () => {
   it("preserves every representative acquisition profile in the live matrix", () => {
     const canaries = getRepresentativeSourceLiveCanaries();
     const profiles = new Set(canaries.map((canary) => canary.profile));
-    for (const item of REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS) {
+    for (const item of REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS) {
       expect(profiles.has(item.profile)).toBe(true);
     }
   });
