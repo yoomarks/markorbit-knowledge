@@ -16,7 +16,8 @@
       "canonicalUri": "https://www.wipo.int/en/web/trademarks",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P0",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": ["wo-wipo-madrid-monitor", "wo-wipo-global-brand-database"]
     },
     {
       "id": "us-uspto-trademarks",
@@ -25,7 +26,12 @@
       "canonicalUri": "https://www.uspto.gov/trademarks",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P0",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": [
+        "us-uspto-trademark-search",
+        "us-uspto-tsdr",
+        "us-uspto-trademark-center"
+      ]
     },
     {
       "id": "eu-euipo-trade-marks",
@@ -34,7 +40,8 @@
       "canonicalUri": "https://www.euipo.europa.eu/en/trade-marks",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P0",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": ["eu-euipo-esearch-plus", "eu-euipo-tmclass"]
     },
     {
       "id": "cn-cnipa-trademarks",
@@ -43,7 +50,8 @@
       "canonicalUri": "https://www.cnipa.gov.cn/col/col58/index.html",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P0",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": ["cn-cnipa-trademark-search"]
     },
     {
       "id": "jp-jpo-trademarks",
@@ -52,7 +60,8 @@
       "canonicalUri": "https://www.jpo.go.jp/e/system/trademark/index.html",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P0",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": []
     },
     {
       "id": "kr-kipo-trademarks",
@@ -61,7 +70,8 @@
       "canonicalUri": "https://www.kipo.go.kr/en/HtmlApp?c=93000",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P0",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": []
     },
     {
       "id": "gb-ukipo-trade-marks",
@@ -70,7 +80,8 @@
       "canonicalUri": "https://www.gov.uk/topic/intellectual-property/trade-marks",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P0",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": ["gb-ukipo-trademark-search"]
     },
     {
       "id": "ca-cipo-trademarks",
@@ -79,7 +90,8 @@
       "canonicalUri": "https://ised-isde.canada.ca/site/canadian-intellectual-property-office/en/trademarks",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P0",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": []
     },
     {
       "id": "au-ip-australia-trade-marks",
@@ -88,7 +100,11 @@
       "canonicalUri": "https://www.ipaustralia.gov.au/trade-marks",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P0",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": [
+        "au-ipaustralia-trademark-search",
+        "au-ipaustralia-goods-services-picklist"
+      ]
     },
     {
       "id": "de-dpma-trade-marks",
@@ -97,7 +113,8 @@
       "canonicalUri": "https://www.dpma.de/english/trade_marks/index.html",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P1",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": []
     },
     {
       "id": "fr-inpi-trademarks",
@@ -106,7 +123,8 @@
       "canonicalUri": "https://www.inpi.fr/en/trademarks",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P1",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": ["fr-inpi-trademark-search"]
     },
     {
       "id": "bx-boip-trademarks",
@@ -115,7 +133,8 @@
       "canonicalUri": "https://www.boip.int/en/trademarks",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P1",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": []
     },
     {
       "id": "sg-ipos-trade-marks",
@@ -124,7 +143,8 @@
       "canonicalUri": "https://www.ipos.gov.sg/about-ip/trade-marks",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P1",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": ["sg-ipos-trademark-search"]
     },
     {
       "id": "in-ipindia-trade-marks",
@@ -133,7 +153,8 @@
       "canonicalUri": "https://ipindia.gov.in/trademarks/trademarks.htm",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P1",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": ["in-ipindia-trademark-search"]
     },
     {
       "id": "nz-iponz-trade-marks",
@@ -142,7 +163,8 @@
       "canonicalUri": "https://www.iponz.govt.nz/about-ip/trade-marks/",
       "sourceClass": "OFFICIAL_AUTHORITY",
       "priority": "P1",
-      "validationState": "PENDING_REAL_RUN"
+      "validationState": "PENDING_REAL_RUN",
+      "coverageTargetIds": []
     }
   ]
 }
