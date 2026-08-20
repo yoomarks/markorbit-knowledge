@@ -1,8 +1,6 @@
 import { readFile } from "node:fs/promises";
-import {
-  prepareFoundationalApiRemediation,
-  type FoundationalApiBindingSpec,
-} from "./source-coverage-api-remediation";
+import type { FoundationalApiBindingSpec } from "./source-coverage-api-remediation";
+import { prepareFoundationalApiRemediationWithDriftGuard } from "./source-coverage-api-remediation-drift-guard";
 
 function argument(name: string): string | undefined {
   const prefix = `${name}=`;
@@ -100,7 +98,7 @@ async function loadBindings(path: string): Promise<FoundationalApiBindingSpec[]>
 
 async function main(): Promise<void> {
   const bindings = await loadBindings(requiredArgument("--bindings-file"));
-  const result = await prepareFoundationalApiRemediation({
+  const result = await prepareFoundationalApiRemediationWithDriftGuard({
     baseUrl: requiredEnvironment("MARKORBIT_CONTROL_PLANE_URL"),
     workspaceId: requiredEnvironment("MARKORBIT_WORKSPACE_ID"),
     jurisdiction: requiredArgument("--jurisdiction"),
