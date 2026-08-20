@@ -234,8 +234,7 @@ function collectionRunCoversAttachments(
   const row = database
     .prepare("SELECT workspace_id, source_id, document_json FROM collection_runs WHERE id = ?")
     .get(parent.collectionRunId) as
-    | { workspace_id: string; source_id: string; document_json: string }
-    | undefined;
+    { workspace_id: string; source_id: string; document_json: string } | undefined;
   if (!row) return false;
   if (row.workspace_id !== workspaceId || row.source_id !== sourceId) {
     throw new RegistryConflictError(
@@ -317,7 +316,8 @@ function linkedAttachmentItems(
   });
   items.sort(
     (left, right) =>
-      left.identityUri.localeCompare(right.identityUri) || left.artifactId.localeCompare(right.artifactId),
+      left.identityUri.localeCompare(right.identityUri) ||
+      left.artifactId.localeCompare(right.artifactId),
   );
   const identities = new Set<string>();
   for (const item of items) {

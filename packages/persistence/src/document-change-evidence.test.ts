@@ -159,11 +159,7 @@ function insertRawArtifact(
     );
 }
 
-function insertParentArtifact(
-  database: DatabaseSync,
-  id: "raw-1" | "raw-2",
-  runId: string,
-): void {
+function insertParentArtifact(database: DatabaseSync, id: "raw-1" | "raw-2", runId: string): void {
   insertRawArtifact(database, {
     id,
     digest: "a".repeat(64),
@@ -240,7 +236,13 @@ describe("SqliteDocumentChangeEvidenceRepository", () => {
       readyPackageId: "ready-1",
     });
     expect(created.rawArtifacts).toEqual({ before: null, after: null });
-    expect(created.attachments).toEqual({ before: [], after: [], added: [], removed: [], modified: [] });
+    expect(created.attachments).toEqual({
+      before: [],
+      after: [],
+      added: [],
+      removed: [],
+      modified: [],
+    });
     expect(created.dimensions).toContain("DOCUMENT_CREATED");
     expect(created.coverage.rawArtifactBinary).toBe(false);
     expect(created.coverage.linkedAttachments).toBe(false);
