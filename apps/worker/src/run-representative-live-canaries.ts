@@ -7,9 +7,7 @@ import {
   getRepresentativeSourceLiveCanaries,
   type RepresentativeSourceLiveCanary,
 } from "@markorbit/persistence/representative-source-live-canaries";
-import {
-  assessRepresentativeCanaryArtifacts,
-} from "./representative-live-canary-evidence";
+import { assessRepresentativeCanaryArtifacts } from "./representative-live-canary-evidence";
 
 type CrawlSuccess = {
   protocolVersion: string;
@@ -259,16 +257,12 @@ async function observeProbe(
       /^[a-f0-9]{64}$/u.test(artifact.sha256),
     );
     const pageEvidenceValid =
-      response.artifacts.length >= 2 &&
-      artifactAssessment.pageEvidenceComplete &&
-      validHashes;
-    const passed =
-      pageEvidenceValid && artifactAssessment.targetArtifactContractComplete;
+      response.artifacts.length >= 2 && artifactAssessment.pageEvidenceComplete && validHashes;
+    const passed = pageEvidenceValid && artifactAssessment.targetArtifactContractComplete;
     const failure = !pageEvidenceValid
       ? {
           errorCode: "CANARY_EVIDENCE_INCOMPLETE",
-          errorMessage:
-            "Expected governed HTML + MARKDOWN artifacts with valid SHA-256 evidence.",
+          errorMessage: "Expected governed HTML + MARKDOWN artifacts with valid SHA-256 evidence.",
         }
       : !artifactAssessment.targetArtifactContractComplete
         ? {
