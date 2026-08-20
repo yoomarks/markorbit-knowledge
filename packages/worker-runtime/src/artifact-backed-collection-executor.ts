@@ -25,6 +25,7 @@ export type AcquiredCollectionArtifact = {
   sourceUri: string;
   canonicalUri?: string;
   publishedAt?: string;
+  parentCanonicalUris?: string[];
   content: Uint8Array;
 };
 
@@ -136,7 +137,10 @@ function assertArtifactAllowed(job: Job, artifact: AcquiredCollectionArtifact): 
   }
 }
 
-function descriptorFor(artifact: AcquiredCollectionArtifact): ArtifactUploadDescriptor {
+function descriptorFor(
+  artifact: AcquiredCollectionArtifact,
+  parentArtifactIds: string[] = [],
+): ArtifactUploadDescriptor {
   return {
     artifactKind: artifact.artifactKind,
     mimeType: artifact.mimeType,
@@ -146,6 +150,7 @@ function descriptorFor(artifact: AcquiredCollectionArtifact): ArtifactUploadDesc
     sourceUri: artifact.sourceUri,
     ...(artifact.canonicalUri ? { canonicalUri: artifact.canonicalUri } : {}),
     ...(artifact.publishedAt ? { publishedAt: artifact.publishedAt } : {}),
+    ...(parentArtifactIds.length > 0 ? { parentArtifactIds } : {}),
   };
 }
 
@@ -154,13 +159,29 @@ function isChangeWatch(context: ArtifactBackedExecutionContext): boolean {
   return context.job.jobType === "PAGE_UPDATE_CHECK" || schedule?.mode === "CHANGE_WATCH";
 }
 
+function addArtifactIdentity(
+  identities: Map<string, Set<string>>,
+  canonicalUri: string | undefined,
+  artifactId: string | null | undefined,
+): void {
+  if (!canonicalUri || !artifactId) return;
+  const values = identities.get(canonicalUri) ?? new Set<string>();
+  values.add(artifactId);
+  identities.set(canonicalUri, values);
+}
+
 async function selectChangedArtifacts(
   context: ArtifactBackedExecutionContext,
   acquired: AcquiredCollectionArtifact[],
   client: ArtifactBackedExecutionClient,
-): Promise<{ changed: AcquiredCollectionArtifact[]; unchangedCount: number }> {
+): Promise<{
+  changed: AcquiredCollectionArtifact[];
+  unchangedCount: number;
+  knownArtifactIdsByCanonicalUri: Map<string, Set<string>>;
+}> {
+  const knownArtifactIdsByCanonicalUri = new Map<string, Set<string>>();
   if (!isChangeWatch(context) || !client.checkArtifactContent) {
-    return { changed: acquired, unchangedCount: 0 };
+    return { changed: acquired, unchangedCount: 0, knownArtifactIdsByCanonicalUri };
   }
 
   const changed: AcquiredCollectionArtifact[] = [];
@@ -176,8 +197,16 @@ async function selectChangedArtifacts(
         canonicalUri: artifact.canonicalUri,
         sha256: digest(artifact.content),
       });
-      if (result.unchanged) unchangedCount += 1;
-      else changed.push(artifact);
+      if (result.unchanged) {
+        unchangedCount += 1;
+        addArtifactIdentity(
+          knownArtifactIdsByCanonicalUri,
+          artifact.canonicalUri,
+          result.latestArtifactId,
+        );
+      } else {
+        changed.push(artifact);
+      }
     } catch {
       // Change detection is an optimization, never an evidence gate. If the
       // control plane cannot compare identity, preserve the previous behavior
@@ -185,7 +214,39 @@ async function selectChangedArtifacts(
       changed.push(artifact);
     }
   }
-  return { changed, unchangedCount };
+  return { changed, unchangedCount, knownArtifactIdsByCanonicalUri };
+}
+
+function orderedForLineage(artifacts: AcquiredCollectionArtifact[]): AcquiredCollectionArtifact[] {
+  const parents = artifacts.filter((artifact) => (artifact.parentCanonicalUris?.length ?? 0) === 0);
+  const children = artifacts.filter((artifact) => (artifact.parentCanonicalUris?.length ?? 0) > 0);
+  return [...parents, ...children];
+}
+
+function resolveParentArtifactIds(
+  artifact: AcquiredCollectionArtifact,
+  identities: Map<string, Set<string>>,
+): string[] {
+  const parentUris = artifact.parentCanonicalUris ?? [];
+  if (parentUris.length === 0) return [];
+  const resolved = new Set<string>();
+  const unresolved: string[] = [];
+  for (const parentUri of parentUris) {
+    const values = identities.get(parentUri);
+    if (!values || values.size === 0) {
+      unresolved.push(parentUri);
+      continue;
+    }
+    for (const value of values) resolved.add(value);
+  }
+  if (unresolved.length > 0) {
+    throw new CollectionAcquisitionError(
+      "ATTACHMENT_PARENT_ARTIFACT_UNRESOLVED",
+      `Attachment parent lineage could not resolve immutable RawArtifact identity for ${unresolved.join(", ")}`,
+      false,
+    );
+  }
+  return [...resolved].sort();
 }
 
 /**
@@ -244,15 +305,26 @@ export class ArtifactBackedCollectionExecutor {
 
       const receipts: ArtifactIngestionReceipt[] = [];
       let bytesPrepared = 0;
-      for (const [index, artifact] of selection.changed.entries()) {
-        const descriptor = descriptorFor(artifact);
+      const ordered = orderedForLineage(selection.changed);
+      for (const [index, artifact] of ordered.entries()) {
+        const parentArtifactIds = resolveParentArtifactIds(
+          artifact,
+          selection.knownArtifactIdsByCanonicalUri,
+        );
+        const descriptor = descriptorFor(artifact, parentArtifactIds);
         const session = await this.client.createArtifactSession(
           context,
           descriptor,
           `${prefix}-artifact-${index + 1}`,
         );
         await this.client.uploadArtifactContent(context, session.id, artifact.content);
-        receipts.push(await this.client.finalizeArtifact(context, session.id));
+        const finalized = await this.client.finalizeArtifact(context, session.id);
+        receipts.push(finalized);
+        addArtifactIdentity(
+          selection.knownArtifactIdsByCanonicalUri,
+          artifact.canonicalUri,
+          finalized.artifactId,
+        );
         bytesPrepared += artifact.content.byteLength;
       }
 
