@@ -10,7 +10,6 @@ import {
 import { SqliteSourceCompatibilityObservationRepository } from "@markorbit/persistence/source-compatibility-observations";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { buildFoundationalRemediationQueueSnapshot } from "@/server/foundational-remediation-queue";
-import { exactFoundationalRemediationTarget } from "@/server/production-validation-remediation-mapping";
 import {
   loadProductionValidationWave,
   resolveProductionValidationWorkspaceId,
@@ -29,32 +28,71 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type CoverageLinkedTarget = {
+  id: string;
+  jurisdiction: string;
+  coverageTargetIds: string[];
+};
+
+type StructuredRemediationItem = Omit<
+  ProductionValidationStructuredRemediationTelemetry,
+  "state"
+> & {
+  state: Exclude<ProductionValidationStructuredRemediationTelemetry["state"], "UNOBSERVED">;
+};
+
+function aggregateStructuredRemediation(
+  items: StructuredRemediationItem[],
+): ProductionValidationStructuredRemediationTelemetry | null {
+  if (items.length === 0) return null;
+  const state = items.some((item) => item.state === "INVALID")
+    ? "INVALID"
+    : items.some((item) => item.state === "UNPREPARED")
+      ? "UNPREPARED"
+      : "PREPARED_AWAITING_WORKER_BINDING";
+  const requiredArtifactKinds = [...new Set(items.flatMap((item) => item.requiredArtifactKinds))].sort();
+  const only = items.length === 1 ? items[0] : null;
+  return {
+    state,
+    requiredArtifactKinds,
+    sourceId: only?.sourceId ?? null,
+    planId: only?.planId ?? null,
+    endpointBinding: only?.endpointBinding ?? null,
+    workerEndpointBindingState: "EXTERNAL_UNVERIFIED",
+    collectionAuthorization: "NONE",
+    automaticExecution: false,
+  };
+}
+
 function structuredRemediationFacts(
   workspaceId: string,
-  targets: ReadonlyArray<{ id: string; jurisdiction: string }>,
+  targets: ReadonlyArray<CoverageLinkedTarget>,
 ): Map<string, ProductionValidationStructuredRemediationTelemetry> {
   const database = getRegistryDatabase();
   const result = new Map<string, ProductionValidationStructuredRemediationTelemetry>();
   for (const target of targets) {
-    const coverageTarget = exactFoundationalRemediationTarget(target);
-    if (!coverageTarget) continue;
-    const snapshot = buildFoundationalRemediationQueueSnapshot(database, {
-      workspaceId,
-      jurisdiction: coverageTarget.jurisdiction,
-      targetId: coverageTarget.id,
-    });
-    const item = snapshot.apiRemediation.items[0];
-    if (!item) continue;
-    result.set(target.id, {
-      state: item.state,
-      requiredArtifactKinds: [...item.requiredArtifactKinds],
-      sourceId: item.sourceId,
-      planId: item.planId,
-      endpointBinding: item.endpointBinding,
-      workerEndpointBindingState: item.workerEndpointBindingState,
-      collectionAuthorization: item.collectionAuthorization,
-      automaticExecution: item.automaticExecution,
-    });
+    const items: StructuredRemediationItem[] = [];
+    for (const coverageTargetId of target.coverageTargetIds) {
+      const snapshot = buildFoundationalRemediationQueueSnapshot(database, {
+        workspaceId,
+        jurisdiction: target.jurisdiction,
+        targetId: coverageTargetId,
+      });
+      const item = snapshot.apiRemediation.items[0];
+      if (!item) continue;
+      items.push({
+        state: item.state,
+        requiredArtifactKinds: [...item.requiredArtifactKinds],
+        sourceId: item.sourceId,
+        planId: item.planId,
+        endpointBinding: item.endpointBinding,
+        workerEndpointBindingState: item.workerEndpointBindingState,
+        collectionAuthorization: item.collectionAuthorization,
+        automaticExecution: item.automaticExecution,
+      });
+    }
+    const aggregate = aggregateStructuredRemediation(items);
+    if (aggregate) result.set(target.id, aggregate);
   }
   return result;
 }
