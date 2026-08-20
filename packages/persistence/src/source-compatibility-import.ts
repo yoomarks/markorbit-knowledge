@@ -23,6 +23,21 @@ function optionalText(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function evidenceContext(value: unknown): JsonObject | undefined {
+  if (value === undefined || value === null) return undefined;
+  const context = object(value, "evidenceContext");
+  return {
+    provider: text(context.provider, "evidenceContext.provider"),
+    repository: text(context.repository, "evidenceContext.repository"),
+    runId: text(context.runId, "evidenceContext.runId"),
+    runAttempt: text(context.runAttempt, "evidenceContext.runAttempt"),
+    commitSha: text(context.commitSha, "evidenceContext.commitSha"),
+    workflow: text(context.workflow, "evidenceContext.workflow"),
+    eventName: text(context.eventName, "evidenceContext.eventName"),
+    ...(optionalText(context.serverUrl) ? { serverUrl: optionalText(context.serverUrl) } : {}),
+  };
+}
+
 export function parseRepresentativeLiveCanarySummary(
   input: unknown,
 ): SourceCompatibilityObservationInput[] {
@@ -31,6 +46,7 @@ export function parseRepresentativeLiveCanarySummary(
     throw new RegistryValidationError("unsupported live canary summary version");
   }
   const observedAt = text(summary.observedAt, "observedAt");
+  const provenance = evidenceContext(summary.evidenceContext);
   if (!Array.isArray(summary.observations)) {
     throw new RegistryValidationError("observations must be an array");
   }
@@ -79,6 +95,7 @@ export function parseRepresentativeLiveCanarySummary(
         artifactKinds: observation.artifactKinds,
         finalUris: observation.finalUris,
         totalBytes: observation.totalBytes,
+        ...(provenance ? { evidenceContext: provenance } : {}),
       },
     } satisfies SourceCompatibilityObservationInput;
   });
