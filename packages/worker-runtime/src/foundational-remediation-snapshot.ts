@@ -4,9 +4,7 @@ import type { FoundationalRemediationQueue } from "./foundational-remediation-qu
 export const FOUNDATIONAL_REMEDIATION_QUEUE_SNAPSHOT_PROTOCOL_VERSION = "1.1" as const;
 
 export type FoundationalApiRemediationState =
-  | "UNPREPARED"
-  | "PREPARED_AWAITING_WORKER_BINDING"
-  | "INVALID";
+  "UNPREPARED" | "PREPARED_AWAITING_WORKER_BINDING" | "INVALID";
 
 export type FoundationalApiRemediationItem = {
   targetId: string;
@@ -75,7 +73,9 @@ function validateApiRemediation(
   const seen = new Set<string>();
   for (const item of value.items) {
     if (!targetIds.has(item.targetId)) {
-      throw new Error(`Foundational API remediation target ${item.targetId} is outside readiness scope`);
+      throw new Error(
+        `Foundational API remediation target ${item.targetId} is outside readiness scope`,
+      );
     }
     if (seen.has(item.targetId)) {
       throw new Error(`Foundational API remediation target ${item.targetId} is duplicated`);
@@ -89,7 +89,9 @@ function validateApiRemediation(
       item.collectionAuthorization !== "NONE" ||
       item.automaticExecution !== false
     ) {
-      throw new Error("Foundational API remediation status must remain non-authorizing and read-only");
+      throw new Error(
+        "Foundational API remediation status must remain non-authorizing and read-only",
+      );
     }
   }
 }

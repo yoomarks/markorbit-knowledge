@@ -83,9 +83,7 @@ describe("foundational remediation snapshot", () => {
     expect(snapshot.mutationPerformed).toBe(false);
     expect(snapshot.jurisdiction).toBe("US");
     expect(snapshot.apiRemediation.preparedCount).toBe(1);
-    expect(snapshot.apiRemediation.items[0].workerEndpointBindingState).toBe(
-      "EXTERNAL_UNVERIFIED",
-    );
+    expect(snapshot.apiRemediation.items[0].workerEndpointBindingState).toBe("EXTERNAL_UNVERIFIED");
     expect(snapshot.remediationQueue.items[0].actions[0].automaticExecution).toBe(false);
   });
 
