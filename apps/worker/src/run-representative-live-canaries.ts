@@ -201,10 +201,9 @@ function stderrTail(stderr: string): string | undefined {
   return normalized.slice(-1200);
 }
 
-function emptyArtifactContract(probe: CanaryProbe): Pick<
-  ProbeObservation,
-  "expectedArtifactKinds" | "missingExpectedArtifactKinds"
-> {
+function emptyArtifactContract(
+  probe: CanaryProbe,
+): Pick<ProbeObservation, "expectedArtifactKinds" | "missingExpectedArtifactKinds"> {
   return {
     expectedArtifactKinds: [...probe.expectedArtifactKinds],
     missingExpectedArtifactKinds: [...probe.expectedArtifactKinds].sort(),
@@ -258,7 +257,9 @@ async function observeProbe(
       /^[a-f0-9]{64}$/u.test(artifact.sha256),
     );
     const pageEvidenceValid =
-      response.artifacts.length >= 2 && artifactAssessment.pageEvidenceComplete && validHashes;
+      response.artifacts.length >= 2 &&
+      artifactAssessment.pageEvidenceComplete &&
+      validHashes;
     const passed = pageEvidenceValid && artifactAssessment.targetArtifactContractComplete;
     const failure = !pageEvidenceValid
       ? {
@@ -324,7 +325,9 @@ function baselineProbe(canary: RepresentativeSourceLiveCanary): CanaryProbe {
   return {
     ...canary.authorityBaseline,
     locale: canary.languages[0] ?? "en",
-    expectedArtifactKinds: [...canary.authorityBaseline.expectedArtifactKinds],
+    expectedArtifactKinds: [
+      ...canary.authorityBaseline.expectedArtifactKinds,
+    ],
   };
 }
 
