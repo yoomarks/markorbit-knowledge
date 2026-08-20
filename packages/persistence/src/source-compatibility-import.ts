@@ -4,6 +4,7 @@ import { RegistryValidationError } from "./index";
 type JsonObject = Record<string, unknown>;
 
 const COMPATIBILITY_STATES = new Set(["PASS", "DEGRADED", "BLOCKED"]);
+const GIT_SHA = /^[a-f0-9]{40}$/iu;
 
 function object(value: unknown, field: string): JsonObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -23,6 +24,31 @@ function optionalText(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function gitSha(value: unknown, field: string): string {
+  const normalized = text(value, field);
+  if (!GIT_SHA.test(normalized)) {
+    throw new RegistryValidationError(`${field} must be a 40-character git SHA`);
+  }
+  return normalized.toLowerCase();
+}
+
+function evidenceContext(value: unknown): JsonObject | undefined {
+  if (value === undefined || value === null) return undefined;
+  const context = object(value, "evidenceContext");
+  return {
+    provider: text(context.provider, "evidenceContext.provider"),
+    repository: text(context.repository, "evidenceContext.repository"),
+    runId: text(context.runId, "evidenceContext.runId"),
+    runAttempt: text(context.runAttempt, "evidenceContext.runAttempt"),
+    commitSha: gitSha(context.commitSha, "evidenceContext.commitSha"),
+    workflowSha: gitSha(context.workflowSha, "evidenceContext.workflowSha"),
+    workflow: text(context.workflow, "evidenceContext.workflow"),
+    eventName: text(context.eventName, "evidenceContext.eventName"),
+    ...(optionalText(context.sourceRef) ? { sourceRef: optionalText(context.sourceRef) } : {}),
+    ...(optionalText(context.serverUrl) ? { serverUrl: optionalText(context.serverUrl) } : {}),
+  };
+}
+
 export function parseRepresentativeLiveCanarySummary(
   input: unknown,
 ): SourceCompatibilityObservationInput[] {
@@ -31,6 +57,7 @@ export function parseRepresentativeLiveCanarySummary(
     throw new RegistryValidationError("unsupported live canary summary version");
   }
   const observedAt = text(summary.observedAt, "observedAt");
+  const provenance = evidenceContext(summary.evidenceContext);
   if (!Array.isArray(summary.observations)) {
     throw new RegistryValidationError("observations must be an array");
   }
@@ -79,6 +106,7 @@ export function parseRepresentativeLiveCanarySummary(
         artifactKinds: observation.artifactKinds,
         finalUris: observation.finalUris,
         totalBytes: observation.totalBytes,
+        ...(provenance ? { evidenceContext: provenance } : {}),
       },
     } satisfies SourceCompatibilityObservationInput;
   });
