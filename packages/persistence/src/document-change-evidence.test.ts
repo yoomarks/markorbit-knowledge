@@ -76,24 +76,71 @@ function installRawArtifactEvidenceTable(database: DatabaseSync): void {
   `);
 }
 
+function installCollectionRunEvidenceTable(database: DatabaseSync): void {
+  database.exec(`
+    CREATE TABLE collection_runs (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      document_json TEXT NOT NULL
+    ) STRICT;
+  `);
+}
+
+function insertCollectionRun(database: DatabaseSync, id: string, fetchAttachments: boolean): void {
+  const run = {
+    objectType: "COLLECTION_RUN",
+    id,
+    workspaceId: "workspace-1",
+    sourceId: "source-1",
+    planSnapshot: { policy: { fetchAttachments } },
+  };
+  database
+    .prepare(
+      `INSERT INTO collection_runs (id, workspace_id, source_id, document_json)
+       VALUES (?, ?, ?, ?)`,
+    )
+    .run(id, "workspace-1", "source-1", JSON.stringify(run));
+}
+
 function insertRawArtifact(
   database: DatabaseSync,
-  input: { id: string; digest: string; sizeBytes: number; binaryHash?: string },
+  input: {
+    id: string;
+    digest: string;
+    sizeBytes: number;
+    binaryHash?: string;
+    artifactKind?: "HTML" | "PDF";
+    mimeType?: string;
+    originalName?: string;
+    canonicalUri?: string;
+    sourceUri?: string;
+    collectionRunId?: string;
+    parentArtifactIds?: string[];
+  },
 ): void {
+  const artifactKind = input.artifactKind ?? "PDF";
+  const mimeType = input.mimeType ?? (artifactKind === "HTML" ? "text/html" : "application/pdf");
+  const canonicalUri = input.canonicalUri ?? "https://office.example/rules.pdf";
+  const sourceUri = input.sourceUri ?? canonicalUri;
   const artifact = {
     objectType: "RAW_ARTIFACT",
     id: input.id,
     workspaceId: "workspace-1",
     sourceId: "source-1",
-    artifactKind: "PDF",
-    mimeType: "application/pdf",
-    originalName: `${input.id}.pdf`,
-    canonicalUri: "https://office.example/rules.pdf",
+    ...(input.collectionRunId ? { collectionRunId: input.collectionRunId } : {}),
+    artifactKind,
+    mimeType,
+    originalName: input.originalName ?? `${input.id}.${artifactKind === "HTML" ? "html" : "pdf"}`,
+    canonicalUri,
     binaryHash: { algorithm: "SHA-256", value: input.binaryHash ?? input.digest },
     contentHash: { algorithm: "SHA-256", value: input.binaryHash ?? input.digest },
     sizeBytes: input.sizeBytes,
     capturedAt: "2026-08-20T00:00:00.000Z",
-    provenance: { sourceUri: "https://office.example/rules.pdf" },
+    provenance: {
+      sourceUri,
+      ...(input.parentArtifactIds ? { parentArtifactIds: input.parentArtifactIds } : {}),
+    },
   };
   database
     .prepare(
@@ -106,10 +153,42 @@ function insertRawArtifact(
       "workspace-1",
       "source-1",
       input.digest,
-      "PDF",
-      "application/pdf",
+      artifactKind,
+      mimeType,
       JSON.stringify(artifact),
     );
+}
+
+function insertParentArtifact(database: DatabaseSync, id: "raw-1" | "raw-2", runId: string): void {
+  insertRawArtifact(database, {
+    id,
+    digest: "a".repeat(64),
+    sizeBytes: 1600,
+    artifactKind: "HTML",
+    mimeType: "text/html",
+    originalName: "rules.html",
+    canonicalUri: "https://office.example/rules",
+    sourceUri: "https://office.example/rules",
+    collectionRunId: runId,
+  });
+}
+
+function insertAttachment(
+  database: DatabaseSync,
+  input: { id: string; parentId: string; uri: string; digest: string; runId: string },
+): void {
+  insertRawArtifact(database, {
+    id: input.id,
+    digest: input.digest,
+    sizeBytes: 900,
+    artifactKind: "PDF",
+    mimeType: "application/pdf",
+    originalName: input.uri.split("/").at(-1) ?? "attachment.pdf",
+    canonicalUri: input.uri,
+    sourceUri: input.uri,
+    collectionRunId: input.runId,
+    parentArtifactIds: [input.parentId],
+  });
 }
 
 describe("SqliteDocumentChangeEvidenceRepository", () => {
@@ -157,6 +236,13 @@ describe("SqliteDocumentChangeEvidenceRepository", () => {
       readyPackageId: "ready-1",
     });
     expect(created.rawArtifacts).toEqual({ before: null, after: null });
+    expect(created.attachments).toEqual({
+      before: [],
+      after: [],
+      added: [],
+      removed: [],
+      modified: [],
+    });
     expect(created.dimensions).toContain("DOCUMENT_CREATED");
     expect(created.coverage.rawArtifactBinary).toBe(false);
     expect(created.coverage.linkedAttachments).toBe(false);
@@ -239,6 +325,145 @@ describe("SqliteDocumentChangeEvidenceRepository", () => {
       binarySha256: "2".repeat(64),
       sizeBytes: 1400,
     });
+  });
+
+  it("derives added, removed and binary-changed attachments only from fully covered collection runs", () => {
+    const database = new DatabaseSync(":memory:");
+    const index = new SqliteRetrievalIndexRepository(database);
+    const changes = new SqliteDocumentChangeFeedRepository(database);
+    const body = "# Rules\nCanonical page text remains identical.";
+    const first = indexVersion(index, 1, "Rules", body, {}, "/knowledge/rules.md");
+    changes.recordIndexedVersion(first.document, first.chunks);
+    const second = indexVersion(index, 2, "Rules", body, {}, "/knowledge/rules.md");
+    changes.recordIndexedVersion(second.document, second.chunks);
+
+    installRawArtifactEvidenceTable(database);
+    installCollectionRunEvidenceTable(database);
+    insertCollectionRun(database, "run-1", true);
+    insertCollectionRun(database, "run-2", true);
+    insertParentArtifact(database, "raw-1", "run-1");
+    insertParentArtifact(database, "raw-2", "run-2");
+    insertAttachment(database, {
+      id: "attachment-modified-v1",
+      parentId: "raw-1",
+      uri: "https://office.example/forms/main.pdf",
+      digest: "1".repeat(64),
+      runId: "run-1",
+    });
+    insertAttachment(database, {
+      id: "attachment-removed-v1",
+      parentId: "raw-1",
+      uri: "https://office.example/forms/removed.pdf",
+      digest: "2".repeat(64),
+      runId: "run-1",
+    });
+    insertAttachment(database, {
+      id: "attachment-stable-v1",
+      parentId: "raw-1",
+      uri: "https://office.example/forms/stable.pdf",
+      digest: "3".repeat(64),
+      runId: "run-1",
+    });
+    insertAttachment(database, {
+      id: "attachment-modified-v2",
+      parentId: "raw-2",
+      uri: "https://office.example/forms/main.pdf",
+      digest: "4".repeat(64),
+      runId: "run-2",
+    });
+    insertAttachment(database, {
+      id: "attachment-added-v2",
+      parentId: "raw-2",
+      uri: "https://office.example/forms/added.pdf",
+      digest: "5".repeat(64),
+      runId: "run-2",
+    });
+    insertAttachment(database, {
+      id: "attachment-stable-v2",
+      parentId: "raw-2",
+      uri: "https://office.example/forms/stable.pdf",
+      digest: "3".repeat(64),
+      runId: "run-2",
+    });
+
+    const evidence = new SqliteDocumentChangeEvidenceRepository(database).feed({
+      workspaceId: "workspace-1",
+    });
+    const updated = evidence.items[1]!;
+    expect(updated.coverage.linkedAttachments).toBe(true);
+    expect(updated.dimensions).toEqual(
+      expect.arrayContaining([
+        "ATTACHMENT_ADDED",
+        "ATTACHMENT_REMOVED",
+        "ATTACHMENT_BINARY_CHANGED",
+      ]),
+    );
+    expect(updated.attachments.before).toHaveLength(3);
+    expect(updated.attachments.after).toHaveLength(3);
+    expect(updated.attachments.added.map((item) => item.identityUri)).toEqual([
+      "https://office.example/forms/added.pdf",
+    ]);
+    expect(updated.attachments.removed.map((item) => item.identityUri)).toEqual([
+      "https://office.example/forms/removed.pdf",
+    ]);
+    expect(updated.attachments.modified).toHaveLength(1);
+    expect(updated.attachments.modified[0]).toMatchObject({
+      identityUri: "https://office.example/forms/main.pdf",
+      before: { binarySha256: "1".repeat(64) },
+      after: { binarySha256: "4".repeat(64) },
+    });
+    expect(updated.attachments.modified.map((item) => item.identityUri)).not.toContain(
+      "https://office.example/forms/stable.pdf",
+    );
+  });
+
+  it("does not infer attachment changes when either document version lacks attachment collection coverage", () => {
+    const database = new DatabaseSync(":memory:");
+    const index = new SqliteRetrievalIndexRepository(database);
+    const changes = new SqliteDocumentChangeFeedRepository(database);
+    const body = "# Rules\nCanonical page text remains identical.";
+    const first = indexVersion(index, 1, "Rules", body, {}, "/knowledge/rules.md");
+    changes.recordIndexedVersion(first.document, first.chunks);
+    const second = indexVersion(index, 2, "Rules", body, {}, "/knowledge/rules.md");
+    changes.recordIndexedVersion(second.document, second.chunks);
+
+    installRawArtifactEvidenceTable(database);
+    installCollectionRunEvidenceTable(database);
+    insertCollectionRun(database, "run-1", false);
+    insertCollectionRun(database, "run-2", true);
+    insertParentArtifact(database, "raw-1", "run-1");
+    insertParentArtifact(database, "raw-2", "run-2");
+    insertAttachment(database, {
+      id: "attachment-before",
+      parentId: "raw-1",
+      uri: "https://office.example/forms/before.pdf",
+      digest: "6".repeat(64),
+      runId: "run-1",
+    });
+    insertAttachment(database, {
+      id: "attachment-after",
+      parentId: "raw-2",
+      uri: "https://office.example/forms/after.pdf",
+      digest: "7".repeat(64),
+      runId: "run-2",
+    });
+
+    const updated = new SqliteDocumentChangeEvidenceRepository(database).feed({
+      workspaceId: "workspace-1",
+    }).items[1]!;
+    expect(updated.coverage.linkedAttachments).toBe(false);
+    expect(updated.attachments.before).toHaveLength(1);
+    expect(updated.attachments.after).toHaveLength(1);
+    expect(updated.attachments.added).toEqual([]);
+    expect(updated.attachments.removed).toEqual([]);
+    expect(updated.attachments.modified).toEqual([]);
+    expect(updated.dimensions).not.toEqual(
+      expect.arrayContaining([
+        "ATTACHMENT_ADDED",
+        "ATTACHMENT_REMOVED",
+        "ATTACHMENT_BINARY_CHANGED",
+      ]),
+    );
   });
 
   it("fails closed when persisted raw binary evidence disagrees with its digest row", () => {
