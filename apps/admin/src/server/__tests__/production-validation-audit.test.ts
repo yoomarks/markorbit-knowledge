@@ -23,6 +23,7 @@ const manifest = {
       sourceClass: "OFFICIAL_AUTHORITY",
       priority: "P0",
       validationState: "PENDING_REAL_RUN",
+      coverageTargetIds: ["wo-wipo-madrid-monitor"],
     },
   ],
 };
@@ -40,7 +41,9 @@ describe("production validation audit guards", () => {
   });
 
   it("runs the complete manifest validator on GET-side parsing", () => {
-    expect(parseProductionValidationManifest(manifest).targets[0]?.priority).toBe("P0");
+    const parsed = parseProductionValidationManifest(manifest);
+    expect(parsed.targets[0]?.priority).toBe("P0");
+    expect(parsed.targets[0]?.coverageTargetIds).toEqual(["wo-wipo-madrid-monitor"]);
     expect(() =>
       parseProductionValidationManifest({
         ...manifest,
