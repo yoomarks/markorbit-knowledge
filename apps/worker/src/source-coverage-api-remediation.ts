@@ -240,7 +240,9 @@ export function foundationalApiSourcePayload(
   if (spec.targetId !== target.id) throw new Error("API remediation binding targetId mismatch");
   const gap = apiGapForTarget(target, foundationalSupplyCapabilityGaps([target]));
   const artifactKinds = gap.remediation.apiBinding!.artifactKinds;
-  const acceptedMimeTypes = artifactKinds.map((kind) => MIME_BY_ARTIFACT_KIND[kind]).filter(Boolean);
+  const acceptedMimeTypes = artifactKinds
+    .map((kind) => MIME_BY_ARTIFACT_KIND[kind])
+    .filter(Boolean);
   const uri = logicalApiUri(spec);
   return {
     workspaceId,
@@ -282,10 +284,7 @@ export function foundationalApiSourcePayload(
   };
 }
 
-export function foundationalApiPlanPayload(
-  target: CoverageTarget,
-  sourceId: string,
-): JsonRecord {
+export function foundationalApiPlanPayload(target: CoverageTarget, sourceId: string): JsonRecord {
   const gap = apiGapForTarget(target, foundationalSupplyCapabilityGaps([target]));
   const artifactKinds = gap.remediation.apiBinding!.artifactKinds;
   return {
@@ -397,7 +396,8 @@ async function ensureApiSource(
   );
   for (const candidate of array(record(listed.body)?.items)) {
     const source = record(candidate);
-    if (source?.slug === slug) return { id: requiredString(source.id, "source.id"), state: "REUSED" };
+    if (source?.slug === slug)
+      return { id: requiredString(source.id, "source.id"), state: "REUSED" };
   }
   const created = await requestJson(fetchImpl, baseUrl, "/api/sources", jsonPost(payload));
   const source = record(record(created.body)?.source);
@@ -445,15 +445,12 @@ export async function prepareFoundationalApiRemediation(
     .map((spec) => spec.targetId)
     .filter((targetId, index, values) => values.indexOf(targetId) !== index);
   if (duplicateTargets.length > 0) {
-    throw new Error(`Duplicate API remediation targetId: ${[...new Set(duplicateTargets)].join(", ")}`);
+    throw new Error(
+      `Duplicate API remediation targetId: ${[...new Set(duplicateTargets)].join(", ")}`,
+    );
   }
 
-  const targets = await loadCoverageTargets(
-    fetchImpl,
-    baseUrl,
-    options.workspaceId,
-    jurisdiction,
-  );
+  const targets = await loadCoverageTargets(fetchImpl, baseUrl, options.workspaceId, jurisdiction);
   const targetMap = new Map(targets.map((target) => [target.id, target]));
   const gaps = foundationalSupplyCapabilityGaps(targets);
   const entries: FoundationalApiRemediationEntry[] = [];

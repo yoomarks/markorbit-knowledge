@@ -33,16 +33,12 @@ function target(): CoverageTarget {
 
 describe("foundational API remediation", () => {
   it("builds a logical API Source without persisting endpoint hosts or credentials", () => {
-    const payload = foundationalApiSourcePayload(
-      target(),
-      "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-      {
-        targetId: "us-uspto-id-manual",
-        endpointBinding: "uspto-id-manual",
-        resourcePath: "/api/search",
-        query: { q: "shoes" },
-      },
-    );
+    const payload = foundationalApiSourcePayload(target(), "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV", {
+      targetId: "us-uspto-id-manual",
+      endpointBinding: "uspto-id-manual",
+      resourcePath: "/api/search",
+      query: { q: "shoes" },
+    });
 
     expect(payload).toMatchObject({
       sourceType: "API",
@@ -121,7 +117,9 @@ describe("foundational API remediation", () => {
     const fetchImpl: typeof fetch = async (input, init) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
       const method = init?.method ?? "GET";
-      const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : undefined;
+      const body = init?.body
+        ? (JSON.parse(String(init.body)) as Record<string, unknown>)
+        : undefined;
       requests.push({ method, path: url.pathname, ...(body ? { body } : {}) });
 
       if (method === "GET" && url.pathname === "/api/source-coverage") {
