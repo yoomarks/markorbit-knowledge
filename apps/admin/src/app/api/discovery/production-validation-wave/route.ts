@@ -10,6 +10,7 @@ import {
 import { SqliteSourceCompatibilityObservationRepository } from "@markorbit/persistence/source-compatibility-observations";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { buildFoundationalRemediationQueueSnapshot } from "@/server/foundational-remediation-queue";
+import { exactFoundationalRemediationTarget } from "@/server/production-validation-remediation-mapping";
 import {
   loadProductionValidationWave,
   resolveProductionValidationWorkspaceId,
@@ -35,10 +36,12 @@ function structuredRemediationFacts(
   const database = getRegistryDatabase();
   const result = new Map<string, ProductionValidationStructuredRemediationTelemetry>();
   for (const target of targets) {
+    const coverageTarget = exactFoundationalRemediationTarget(target);
+    if (!coverageTarget) continue;
     const snapshot = buildFoundationalRemediationQueueSnapshot(database, {
       workspaceId,
-      jurisdiction: target.jurisdiction,
-      targetId: target.id,
+      jurisdiction: coverageTarget.jurisdiction,
+      targetId: coverageTarget.id,
     });
     const item = snapshot.apiRemediation.items[0];
     if (!item) continue;
