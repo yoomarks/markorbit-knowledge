@@ -215,6 +215,7 @@ describe("buildProductionValidationScorecard", () => {
         primaryUri: "https://example.com/a",
         renderJavascriptObserved: true,
         errorCode: "CANARY_ARTIFACT_CONTRACT_INCOMPLETE",
+        failureClass: "EVIDENCE_INCOMPLETE",
         failureObserved: true,
         artifactContract: {
           observed: true,
