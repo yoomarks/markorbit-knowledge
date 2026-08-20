@@ -1,7 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import type {
   SourceCompatibilityObservation,
+  SourceSupplyCompatibilityEvidenceProvenance,
   SourceSupplyCompatibilityHealth,
+  SourceSupplyCompatibilityReprobeHealth,
+  SourceSupplyCompatibilityReprobeState,
   SourceSupplyCompatibilityState,
   SourceSupplyGap,
   SourceSupplyHealthRecord,
@@ -10,6 +13,10 @@ import type {
 } from "@markorbit/contracts";
 import { RegistryError, RegistryValidationError } from "./index";
 import { SqliteSourceCompatibilityObservationRepository } from "./source-compatibility-observations";
+import {
+  latestSourceCompatibilityReprobeExecutions,
+} from "./source-compatibility-reprobe-execution-query";
+import type { SourceCompatibilityReprobeExecution } from "./source-compatibility-reprobe-execution";
 import { SqliteSourceOperationalTopologyRepository } from "./source-operational-topology";
 import {
   SqliteSourceSupplyHealthRepository,
@@ -20,6 +27,58 @@ import {
 } from "./source-supply-health";
 
 export const SOURCE_COMPATIBILITY_MAX_AGE_HOURS = 48;
+
+const GIT_SHA = /^[a-f0-9]{40}$/iu;
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function requiredEvidenceText(context: Record<string, unknown>, field: string): string {
+  const value = context[field];
+  if (typeof value !== "string" || !value.trim()) {
+    throw new RegistryValidationError(`Persisted compatibility evidence ${field} is invalid`);
+  }
+  return value.trim();
+}
+
+function compatibilityEvidenceProvenance(
+  observation: SourceCompatibilityObservation,
+): SourceSupplyCompatibilityEvidenceProvenance | null {
+  const details = record(observation.details);
+  if (!details || details.evidenceContext === undefined) return null;
+  const context = record(details.evidenceContext);
+  if (!context) {
+    throw new RegistryValidationError("Persisted compatibility evidenceContext is invalid");
+  }
+  const commitSha = requiredEvidenceText(context, "commitSha").toLowerCase();
+  const workflowSha = requiredEvidenceText(context, "workflowSha").toLowerCase();
+  if (!GIT_SHA.test(commitSha) || !GIT_SHA.test(workflowSha)) {
+    throw new RegistryValidationError("Persisted compatibility evidence git revision is invalid");
+  }
+  const sourceRef = context.sourceRef;
+  const serverUrl = context.serverUrl;
+  if (sourceRef !== undefined && (typeof sourceRef !== "string" || !sourceRef.trim())) {
+    throw new RegistryValidationError("Persisted compatibility evidence sourceRef is invalid");
+  }
+  if (serverUrl !== undefined && (typeof serverUrl !== "string" || !serverUrl.trim())) {
+    throw new RegistryValidationError("Persisted compatibility evidence serverUrl is invalid");
+  }
+  return {
+    provider: requiredEvidenceText(context, "provider"),
+    repository: requiredEvidenceText(context, "repository"),
+    runId: requiredEvidenceText(context, "runId"),
+    runAttempt: requiredEvidenceText(context, "runAttempt"),
+    commitSha,
+    workflowSha,
+    workflow: requiredEvidenceText(context, "workflow"),
+    eventName: requiredEvidenceText(context, "eventName"),
+    sourceRef: typeof sourceRef === "string" ? sourceRef.trim() : null,
+    serverUrl: typeof serverUrl === "string" ? serverUrl.trim() : null,
+  };
+}
 
 function compatibilityHealth(
   observation: SourceCompatibilityObservation | undefined,
@@ -38,6 +97,7 @@ function compatibilityHealth(
       errorMessage: null,
       baselineTargetId: null,
       baselineState: null,
+      evidenceProvenance: null,
     };
   }
   const observationMs = Date.parse(observation.observedAt);
@@ -59,6 +119,7 @@ function compatibilityHealth(
     errorMessage: observation.errorMessage ?? null,
     baselineTargetId: observation.baselineTargetId ?? null,
     baselineState: observation.baselineState ?? null,
+    evidenceProvenance: compatibilityEvidenceProvenance(observation),
   };
 }
 
@@ -120,14 +181,21 @@ export class SqliteCompatibilityAwareSupplyHealthRepository implements SourceSup
       STALE: 0,
       UNOBSERVED: 0,
     };
+    let compatibilityProvenanceObserved = 0;
     for (const item of items) {
       byCompatibility[item.compatibility?.state ?? "UNOBSERVED"] += 1;
       byCompatibilityFreshness[item.compatibility?.freshness ?? "UNOBSERVED"] += 1;
+      if (item.compatibility?.evidenceProvenance) compatibilityProvenanceObserved += 1;
     }
     return {
       ...base,
       items,
-      summary: { ...summary, byCompatibility, byCompatibilityFreshness },
+      summary: {
+        ...summary,
+        byCompatibility,
+        byCompatibilityFreshness,
+        compatibilityProvenanceObserved,
+      },
     };
   }
 }
@@ -205,31 +273,77 @@ export function projectSourceSupplyOperationalTopology(
   };
 }
 
+function compatibilityReprobeHealth(
+  execution: SourceCompatibilityReprobeExecution | undefined,
+): SourceSupplyCompatibilityReprobeHealth {
+  if (!execution) {
+    return {
+      state: "UNOBSERVED",
+      executionId: null,
+      intentId: null,
+      startedAt: null,
+      completedAt: null,
+      observationId: null,
+      observationObservedAt: null,
+      observationState: null,
+      errorCode: null,
+      errorMessage: null,
+    };
+  }
+  return {
+    state: execution.status,
+    executionId: execution.executionId,
+    intentId: execution.intentId,
+    startedAt: execution.startedAt,
+    completedAt: execution.completedAt,
+    observationId: execution.observationId,
+    observationObservedAt: execution.observationObservedAt,
+    observationState: execution.observationState,
+    errorCode: execution.errorCode,
+    errorMessage: execution.errorMessage,
+  };
+}
+
 /**
  * Final read model for the Source Supply Health API. Compatibility remains the
  * only optional observation that can change READY/DEGRADED/BLOCKED state here.
- * Operational topology is evidence coverage only and is deliberately neutral
- * to health state, gaps, scheduling and collection authorization.
+ * Operational topology and re-probe lifecycle are evidence coverage only and
+ * are deliberately neutral to health state, gaps, scheduling and collection
+ * authorization.
  */
 export class SqliteOperationalSupplyHealthRepository implements SourceSupplyHealthRepository {
   private readonly base: SqliteCompatibilityAwareSupplyHealthRepository;
   private readonly topology: SqliteSourceOperationalTopologyRepository;
 
-  constructor(database: DatabaseSync, clock: () => Date = () => new Date()) {
+  constructor(
+    private readonly database: DatabaseSync,
+    clock: () => Date = () => new Date(),
+  ) {
     this.base = new SqliteCompatibilityAwareSupplyHealthRepository(database, clock);
     this.topology = new SqliteSourceOperationalTopologyRepository(database);
   }
 
   list(filters: SourceSupplyHealthFilters): SourceSupplyHealthListResult {
     const base = this.base.list(filters);
+    const latestReprobes = latestSourceCompatibilityReprobeExecutions(this.database, {
+      workspaceId: filters.workspaceId,
+      targetIds: base.items.map((item) => item.targetId),
+    });
     const items = base.items.map((item) => ({
       ...item,
+      latestCompatibilityReprobe: compatibilityReprobeHealth(latestReprobes.get(item.targetId)),
       operationalTopology: projectSourceSupplyOperationalTopology(item.sourceIds, this.topology),
     }));
     const byTopologyProjection: Record<SourceSupplyTopologyProjectionState, number> = {
       UNREGISTERED: 0,
       COMPLETE: 0,
       PARTIAL: 0,
+      FAILED: 0,
+    };
+    const byCompatibilityReprobe: Record<SourceSupplyCompatibilityReprobeState, number> = {
+      UNOBSERVED: 0,
+      STARTED: 0,
+      COMPLETED: 0,
       FAILED: 0,
     };
     let topologySourceRegistryV2Observed = 0;
@@ -240,6 +354,7 @@ export class SqliteOperationalSupplyHealthRepository implements SourceSupplyHeal
     for (const item of items) {
       const topologyHealth = item.operationalTopology;
       byTopologyProjection[topologyHealth.projectionState] += 1;
+      byCompatibilityReprobe[item.latestCompatibilityReprobe.state] += 1;
       if (topologyHealth.sourceRegistryV2ObservedSourceCount > 0)
         topologySourceRegistryV2Observed += 1;
       if (topologyHealth.sourceGraphObservedSourceCount > 0) topologySourceGraphObserved += 1;
@@ -254,6 +369,7 @@ export class SqliteOperationalSupplyHealthRepository implements SourceSupplyHeal
       items,
       summary: {
         ...base.summary,
+        byCompatibilityReprobe,
         byTopologyProjection,
         topologySourceRegistryV2Observed,
         topologySourceGraphObserved,
