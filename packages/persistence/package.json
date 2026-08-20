@@ -21,6 +21,7 @@
     "./priority-trademark-jurisdictions": "./src/priority-trademark-jurisdictions.ts",
     "./source-coverage-discovery-intake": "./src/source-coverage-discovery-intake.ts",
     "./production-validation-discovery-intake": "./src/production-validation-discovery-intake.ts",
+    "./production-validation-coverage-links": "./src/production-validation-coverage-links.ts",
     "./production-validation-onboarding-status": "./src/production-validation-onboarding-status.ts",
     "./production-validation-execution-status": "./src/production-validation-execution-status.ts",
     "./production-validation-pipeline-status": "./src/production-validation-pipeline-status.ts",
