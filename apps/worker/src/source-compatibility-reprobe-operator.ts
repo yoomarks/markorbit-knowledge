@@ -22,6 +22,11 @@ export type SourceCompatibilityReprobeExecutionView = {
   replayed: boolean;
 };
 
+export type SourceCompatibilityReprobeReconciliationView = {
+  reconciled: boolean;
+  execution: SourceCompatibilityReprobeExecutionView;
+};
+
 type FetchLike = typeof fetch;
 type JsonRecord = Record<string, unknown>;
 
@@ -81,7 +86,7 @@ async function operation(
   config: SourceCompatibilityReprobeOperatorConfig,
   payload: JsonRecord,
   fetchImplementation: FetchLike,
-): Promise<SourceCompatibilityReprobeExecutionView> {
+): Promise<JsonRecord> {
   const response = await fetchImplementation(endpoint(config.controlPlaneUrl), {
     method: "POST",
     headers: {
@@ -97,15 +102,16 @@ async function operation(
     );
   }
   const body = record(JSON.parse(text));
-  return parseExecution(body?.execution);
+  if (!body) throw new Error("Compatibility re-probe API returned an invalid response");
+  return body;
 }
 
-export function startSourceCompatibilityReprobe(
+export async function startSourceCompatibilityReprobe(
   config: SourceCompatibilityReprobeOperatorConfig,
   input: { intentId: string; executedByActorId: string; idempotencyKey: string },
   fetchImplementation: FetchLike = fetch,
 ): Promise<SourceCompatibilityReprobeExecutionView> {
-  return operation(
+  const body = await operation(
     config,
     {
       operation: "START",
@@ -115,14 +121,31 @@ export function startSourceCompatibilityReprobe(
     },
     fetchImplementation,
   );
+  return parseExecution(body.execution);
 }
 
-export function completeSourceCompatibilityReprobe(
+export async function reconcileSourceCompatibilityReprobe(
+  config: SourceCompatibilityReprobeOperatorConfig,
+  input: { executionId: string },
+  fetchImplementation: FetchLike = fetch,
+): Promise<SourceCompatibilityReprobeReconciliationView> {
+  const body = await operation(
+    config,
+    { operation: "RECONCILE", executionId: input.executionId },
+    fetchImplementation,
+  );
+  if (typeof body.reconciled !== "boolean") {
+    throw new Error("Compatibility re-probe reconciliation returned an invalid reconciled flag");
+  }
+  return { reconciled: body.reconciled, execution: parseExecution(body.execution) };
+}
+
+export async function completeSourceCompatibilityReprobe(
   config: SourceCompatibilityReprobeOperatorConfig,
   input: { executionId: string; observedAt: string; state: SourceCompatibilityState },
   fetchImplementation: FetchLike = fetch,
 ): Promise<SourceCompatibilityReprobeExecutionView> {
-  return operation(
+  const body = await operation(
     config,
     {
       operation: "COMPLETE",
@@ -132,14 +155,15 @@ export function completeSourceCompatibilityReprobe(
     },
     fetchImplementation,
   );
+  return parseExecution(body.execution);
 }
 
-export function failSourceCompatibilityReprobe(
+export async function failSourceCompatibilityReprobe(
   config: SourceCompatibilityReprobeOperatorConfig,
   input: { executionId: string; errorCode: string; errorMessage: string },
   fetchImplementation: FetchLike = fetch,
 ): Promise<SourceCompatibilityReprobeExecutionView> {
-  return operation(
+  const body = await operation(
     config,
     {
       operation: "FAIL",
@@ -149,6 +173,7 @@ export function failSourceCompatibilityReprobe(
     },
     fetchImplementation,
   );
+  return parseExecution(body.execution);
 }
 
 export type FilteredRepresentativeCanarySummary = {

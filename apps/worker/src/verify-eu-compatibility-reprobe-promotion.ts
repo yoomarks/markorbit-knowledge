@@ -22,6 +22,7 @@ const WORKER_ID = "worker.eu-compatibility-promotion";
 const REQUESTER = "promotion-proof.requester";
 const APPROVER = "promotion-proof.approver";
 const EXECUTOR = "promotion-proof.executor";
+const READINESS_PROTOCOL_VERSION = "1.5";
 
 function packageRoot(): string {
   return fileURLToPath(new URL("..", import.meta.url));
@@ -78,7 +79,7 @@ function approvedIntent(
     canceledByActorId: null,
     status: "PENDING_APPROVAL",
     idempotencyKey,
-    readinessProtocolVersion: "1.3",
+    readinessProtocolVersion: READINESS_PROTOCOL_VERSION,
     queueProtocolVersion: "1.1",
     sourceSnapshotObservedAt: input.observedAt,
     createdAt: input.observedAt,
@@ -159,6 +160,7 @@ async function main(): Promise<void> {
       details: {
         ...(observationInput.details ?? {}),
         recordedByWorkerId: WORKER_ID,
+        reprobeExecutionId: started.executionId,
         promotionProof: "EU_COMPATIBILITY_REPROBE_V1",
       },
     });

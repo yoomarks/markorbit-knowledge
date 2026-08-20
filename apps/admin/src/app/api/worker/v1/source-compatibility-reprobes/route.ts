@@ -7,6 +7,7 @@ import {
   SOURCE_COMPATIBILITY_REPROBE_WORKER_API_VERSION,
   completeSourceCompatibilityReprobeExecution,
   failSourceCompatibilityReprobeExecution,
+  reconcileSourceCompatibilityReprobeExecutionForWorker,
   startSourceCompatibilityReprobeExecution,
 } from "@/server/source-compatibility-reprobe-executions";
 
@@ -48,6 +49,21 @@ export async function POST(request: Request) {
       );
     }
 
+    if (operation === "RECONCILE") {
+      const reconciliation = reconcileSourceCompatibilityReprobeExecutionForWorker(
+        {
+          workerId,
+          credential,
+          executionId: requiredString(body.executionId, "executionId"),
+        },
+        dependencies,
+      );
+      return NextResponse.json({
+        version: SOURCE_COMPATIBILITY_REPROBE_WORKER_API_VERSION,
+        ...reconciliation,
+      });
+    }
+
     if (operation === "COMPLETE") {
       const state = requiredString(body.state, "state") as SourceCompatibilityState;
       if (!SOURCE_COMPATIBILITY_STATES.includes(state)) {
@@ -86,7 +102,7 @@ export async function POST(request: Request) {
       });
     }
 
-    throw new RegistryValidationError("operation must be START, COMPLETE or FAIL");
+    throw new RegistryValidationError("operation must be START, RECONCILE, COMPLETE or FAIL");
   } catch (error) {
     return apiError(error);
   }

@@ -126,3 +126,8 @@ export function latestSourceCompatibilityReprobeExecutions(
   }
   return latest;
 }
+
+export {
+  reconcileSourceCompatibilityReprobeExecution,
+  type SourceCompatibilityReprobeReconciliationResult,
+} from "./source-compatibility-reprobe-reconciliation";

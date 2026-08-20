@@ -17,6 +17,9 @@ export async function POST(request: Request) {
     if (!("summary" in body)) {
       throw new RegistryValidationError("summary is required");
     }
+    if (body.reprobeExecutionId !== undefined && typeof body.reprobeExecutionId !== "string") {
+      throw new RegistryValidationError("reprobeExecutionId must be a string");
+    }
 
     return NextResponse.json(
       recordSourceCompatibilityWorkerIntake(
@@ -24,6 +27,9 @@ export async function POST(request: Request) {
           workerId: body.workerId,
           credential,
           summary: body.summary,
+          ...(typeof body.reprobeExecutionId === "string"
+            ? { reprobeExecutionId: body.reprobeExecutionId }
+            : {}),
         },
         {
           database: getRegistryDatabase(),

@@ -6,12 +6,20 @@ on:
     branches: [main]
     paths:
       - .github/workflows/eu-compatibility-reprobe-promotion.yml
+      - apps/admin/src/app/api/worker/v1/source-compatibility-observations/route.ts
+      - apps/admin/src/app/api/worker/v1/source-compatibility-reprobes/route.ts
+      - apps/admin/src/server/source-compatibility-reprobe-executions.ts
+      - apps/admin/src/server/source-compatibility-worker-intake.ts
+      - apps/worker/src/operate-source-compatibility-reprobe.ts
+      - apps/worker/src/source-compatibility-recorder.ts
+      - apps/worker/src/source-compatibility-reprobe-operator.ts
       - apps/worker/src/verify-eu-compatibility-reprobe-promotion.ts
       - apps/worker/src/run-representative-live-canaries.ts
-      - apps/worker/src/source-compatibility-reprobe-operator.ts
       - packages/persistence/src/source-compatibility-import.ts
       - packages/persistence/src/source-compatibility-observations.ts
       - packages/persistence/src/source-compatibility-reprobe-execution.ts
+      - packages/persistence/src/source-compatibility-reprobe-execution-query.ts
+      - packages/persistence/src/source-compatibility-reprobe-reconciliation.ts
       - packages/persistence/src/representative-source-live-canaries.ts
       - packages/persistence/src/representative-source-activation.ts
       - packages/persistence/src/priority-national-source-coverage.ts
