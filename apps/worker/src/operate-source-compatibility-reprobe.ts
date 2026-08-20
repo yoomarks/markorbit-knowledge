@@ -3,11 +3,12 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { recordRepresentativeLiveCanarySummary } from "./source-compatibility-recorder";
+import { recordRepresentativeLiveCanarySummaryForReprobe } from "./source-compatibility-recorder";
 import {
   completeSourceCompatibilityReprobe,
   failSourceCompatibilityReprobe,
   filterRepresentativeCanarySummary,
+  reconcileSourceCompatibilityReprobe,
   startSourceCompatibilityReprobe,
   type SourceCompatibilityReprobeExecutionView,
   type SourceCompatibilityReprobeOperatorConfig,
@@ -113,6 +114,16 @@ async function main(): Promise<void> {
     );
   }
 
+  const reconciliation = await reconcileSourceCompatibilityReprobe(config, {
+    executionId: execution.executionId,
+  });
+  if (reconciliation.reconciled) {
+    process.stdout.write(
+      `${JSON.stringify({ event: "source-compatibility-reprobe.reconciled", execution: reconciliation.execution })}\n`,
+    );
+    return;
+  }
+
   const requestedOutput = argument("--output-dir") ?? process.env.MARKORBIT_LIVE_CANARY_OUTPUT_DIR;
   const outputRoot = requestedOutput
     ? requestedOutput
@@ -126,7 +137,11 @@ async function main(): Promise<void> {
     const summaryPath = join(outputRoot, "summary.json");
     const rawSummary = JSON.parse(await readFile(summaryPath, "utf8")) as unknown;
     const filtered = filterRepresentativeCanarySummary(rawSummary, execution.targetId);
-    const recorded = await recordRepresentativeLiveCanarySummary(config, filtered.summary);
+    const recorded = await recordRepresentativeLiveCanarySummaryForReprobe(
+      config,
+      filtered.summary,
+      execution.executionId,
+    );
     if (recorded.recorded !== 1 || recorded.observedAt !== filtered.observedAt) {
       throw new Error(
         `Compatibility intake did not confirm the expected single observation for ${execution.targetId}`,
@@ -147,6 +162,8 @@ async function main(): Promise<void> {
       })}\n`,
     );
   } catch (error) {
+    // Once exact execution-bound evidence is durable, leave STARTED intact so a
+    // subsequent operator run can reconcile without repeating external acquisition.
     if (!evidenceRecorded) await bestEffortFail(config, execution, error);
     throw error;
   }
