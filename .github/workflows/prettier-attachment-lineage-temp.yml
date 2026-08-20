@@ -1,0 +1,38 @@
+name: Temporary Attachment Lineage Prettier
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  prettier:
+    if: github.head_ref == 'agent/crawl-attachment-parent-lineage-v1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply repository Prettier
+        run: |
+          pnpm exec prettier --write \
+            packages/worker-runtime/tests/attachment-parent-lineage.test.ts \
+            packages/worker-runtime/tests/crawl4ai-subprocess-acquirer.test.ts
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/worker-runtime/tests/attachment-parent-lineage.test.ts \
+            packages/worker-runtime/tests/crawl4ai-subprocess-acquirer.test.ts
+          git commit -m "style: format attachment lineage tests"
+          git push origin HEAD:${{ github.head_ref }}
