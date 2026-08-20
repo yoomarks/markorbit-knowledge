@@ -16,7 +16,7 @@ on:
     branches: [main]
     # Keep this list limited to code or dependency changes that can alter the live
     # observation path. Generic persistence export-manifest edits are covered by
-    # Validate and must not fan out into twelve external canaries.
+    # Validate and must not fan out into external canaries.
     paths:
       - .github/workflows/representative-source-live-canary.yml
       - apps/worker/src/run-representative-live-canaries.ts
@@ -30,9 +30,7 @@ permissions:
   contents: read
 
 # Each run gets an independent group. A job re-run shares the same run_id and therefore
-# cannot cancel sibling matrix jobs from the original attempt. New PR commits already
-# create a new run and should be allowed to finish so their external observations remain
-# auditable instead of being replaced by synthetic cancellation noise.
+# cannot cancel the original run. New PR commits create a new auditable observation run.
 concurrency:
   group: representative-source-live-canary-${{ github.run_id }}
   cancel-in-progress: false
@@ -40,12 +38,11 @@ concurrency:
 jobs:
   observe-pr:
     if: github.event_name == 'pull_request'
-    strategy:
-      fail-fast: false
-      matrix:
-        jurisdiction: [CN, US, IN, JP, KR, GB, CA, AU, BR, AE, EU, CI]
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # One governed runtime installation is reused for all representative jurisdictions.
+    # The runner records each jurisdiction independently and continues after site-level
+    # failures, so real coverage remains twelve jurisdictions without twelve setup jobs.
+    timeout-minutes: 90
     env:
       MARKORBIT_CRAWL4AI_PYTHON: python
       MARKORBIT_LIVE_CANARY_TIMEOUT_SECONDS: "75"
@@ -79,21 +76,20 @@ jobs:
           crawl4ai-setup
           crawl4ai-doctor
 
-      - name: Observe ${{ matrix.jurisdiction }} external source
+      - name: Observe representative external sources
         shell: bash
         run: |
           pnpm --filter @markorbit/worker canary:representative -- \
-            "--output-dir=$MARKORBIT_LIVE_CANARY_OUTPUT_DIR" \
-            "--jurisdiction=${{ matrix.jurisdiction }}"
+            "--output-dir=$MARKORBIT_LIVE_CANARY_OUTPUT_DIR"
           if [ -f "$MARKORBIT_LIVE_CANARY_OUTPUT_DIR/summary.md" ]; then
             cat "$MARKORBIT_LIVE_CANARY_OUTPUT_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Upload sanitized canary observation
+      - name: Upload sanitized canary observations
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: representative-source-live-canary-${{ matrix.jurisdiction }}-${{ github.run_id }}
+          name: representative-source-live-canary-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/representative-live-canary/summary.json
             ${{ runner.temp }}/representative-live-canary/summary.md
@@ -103,7 +99,7 @@ jobs:
   observe-manual:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 90
     env:
       MARKORBIT_CRAWL4AI_PYTHON: python
       MARKORBIT_LIVE_CANARY_TIMEOUT_SECONDS: "75"
