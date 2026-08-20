@@ -1,4 +1,9 @@
 import type { CoverageRegistration, CoverageTarget } from "./source-coverage-bootstrap";
+import {
+  assertFoundationalTargetDispatchable,
+  foundationalSupplyCapabilityGaps,
+  type SupplyCapabilityGap,
+} from "./source-coverage-capability-gaps";
 
 const ATTACHMENT_KINDS = new Set([
   "PDF",
@@ -30,11 +35,7 @@ export type SupplyRun = {
   runId: string;
 };
 
-export type SupplyCapabilityGap = {
-  targetId: string;
-  code: "STRUCTURED_ENDPOINT_NOT_CAPTURED";
-  expectedArtifactKinds: string[];
-};
+export type { SupplyCapabilityGap } from "./source-coverage-capability-gaps";
 
 type JsonRecord = Record<string, unknown>;
 type FetchLike = typeof fetch;
@@ -302,11 +303,14 @@ export async function prepareFoundationalSupply(options: PrepareFoundationalSupp
     plans.push(await ensureSupplyPlan(fetchImpl, baseUrl, sourceId, target));
   }
 
+  const capabilityGaps: SupplyCapabilityGap[] = foundationalSupplyCapabilityGaps(coverage.targets);
   const requestedTargets = [...new Set(options.dispatchTargetIds ?? [])];
   for (const targetId of requestedTargets) {
-    if (!targetMap.has(targetId)) {
+    const target = targetMap.get(targetId);
+    if (!target) {
       throw new Error(`Unknown ${jurisdiction} FOUNDATIONAL target ${targetId}`);
     }
+    assertFoundationalTargetDispatchable(target);
   }
 
   const planMap = new Map(plans.map((plan) => [plan.targetId, plan]));
@@ -321,20 +325,6 @@ export async function prepareFoundationalSupply(options: PrepareFoundationalSupp
       runId,
     });
   }
-
-  const capabilityGaps: SupplyCapabilityGap[] = coverage.targets
-    .filter(
-      (target) =>
-        !target.acquisition.fetchAttachmentsHint &&
-        target.acquisition.expectedArtifactKinds.some((kind) => kind === "JSON"),
-    )
-    .map((target) => ({
-      targetId: target.id,
-      code: "STRUCTURED_ENDPOINT_NOT_CAPTURED" as const,
-      expectedArtifactKinds: target.acquisition.expectedArtifactKinds.filter(
-        (kind) => kind === "JSON",
-      ),
-    }));
 
   return {
     controlPlaneUrl: baseUrl,
