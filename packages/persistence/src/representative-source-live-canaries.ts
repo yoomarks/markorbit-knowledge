@@ -120,12 +120,17 @@ function selectAuthorityBaseline(
     )[0];
 }
 
-export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveCanary[] {
+export function getRepresentativeSourceLiveCanaries(options?: {
+  includeObservationOnly?: boolean;
+}): RepresentativeSourceLiveCanary[] {
   const targets = listSourceCoverageTargets({
     coverageTier: "FOUNDATIONAL",
     catalogState: "ACTIVE",
   });
-  const canaries = REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS.map((jurisdiction) => {
+  const jurisdictions = options?.includeObservationOnly
+    ? REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS
+    : REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS;
+  const canaries = jurisdictions.map((jurisdiction) => {
     const target = selectCanaryTarget(jurisdiction.jurisdiction, jurisdiction.profile, targets);
     const baseline = selectAuthorityBaseline(target, targets);
     if (!baseline) {
