@@ -2,12 +2,23 @@ import type { SourceCoverageTarget } from "@markorbit/contracts";
 import { RegistryValidationError } from "./index";
 import {
   REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS,
+  type RepresentativeSourceActivationJurisdiction,
   type RepresentativeSourceActivationProfile,
 } from "./representative-source-activation";
 import { listSourceCoverageTargets } from "./source-coverage-catalog";
 
 export const REPRESENTATIVE_SOURCE_LIVE_CANARY_VERSION =
   "REPRESENTATIVE_SOURCE_LIVE_CANARY_V2" as const;
+
+export const REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS = [
+  ...REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS,
+  {
+    jurisdiction: "NZ",
+    displayName: "New Zealand",
+    profile: "DYNAMIC_PORTAL",
+    purpose: "IPONZ modern web guidance plus JavaScript-rendered trademark search paths.",
+  },
+] as const satisfies readonly RepresentativeSourceActivationJurisdiction[];
 
 export type RepresentativeSourceLiveCanaryBaseline = {
   targetId: string;
@@ -114,7 +125,7 @@ export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveC
     coverageTier: "FOUNDATIONAL",
     catalogState: "ACTIVE",
   });
-  const canaries = REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((jurisdiction) => {
+  const canaries = REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS.map((jurisdiction) => {
     const target = selectCanaryTarget(jurisdiction.jurisdiction, jurisdiction.profile, targets);
     const baseline = selectAuthorityBaseline(target, targets);
     if (!baseline) {
