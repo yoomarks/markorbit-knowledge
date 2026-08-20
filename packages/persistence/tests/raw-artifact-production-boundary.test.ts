@@ -5,14 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const productionRoots = ["apps", "packages", "workers"];
-const sourceExtensions = new Set([
-  ".ts",
-  ".tsx",
-  ".js",
-  ".jsx",
-  ".mjs",
-  ".cjs",
-]);
+const sourceExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
 const ignoredDirectoryNames = new Set([
   "node_modules",
   ".next",
@@ -59,8 +52,7 @@ function repoPath(path: string): string {
 
 function directRegistryImports(source: string): string[] {
   const matches: string[] = [];
-  const importPattern =
-    /(?:from\s*|import\s*\()\s*["']([^"']*raw-artifact-registry(?:\.[cm]?[jt]s)?)['"]/g;
+  const importPattern = /(?:from\s*|import\s*\()\s*["']([^"']*raw-artifact-registry(?:\.[cm]?[jt]s)?)['"]/g;
   for (const match of source.matchAll(importPattern)) {
     matches.push(match[1]);
   }
