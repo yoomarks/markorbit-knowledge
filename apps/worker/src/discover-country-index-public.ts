@@ -13,10 +13,14 @@ async function main(): Promise<void> {
   if (!response.ok) throw new Error(`Country Index returned HTTP ${response.status}`);
   const html = await response.text();
   const inventory = extractCountryIndexPublicInventory(html, sourceUri);
-  process.stdout.write(`${JSON.stringify({ event: "country-index.public.inventory", ...inventory }, null, 2)}\n`);
+  process.stdout.write(
+    `${JSON.stringify({ event: "country-index.public.inventory", ...inventory }, null, 2)}\n`,
+  );
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
