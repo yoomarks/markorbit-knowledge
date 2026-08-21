@@ -1,0 +1,77 @@
+name: IP Australia Manual Full Acquisition
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ip-australia-manual-full-acquisition.yml
+      - apps/worker/src/ip-australia-manual-inventory.ts
+      - apps/worker/src/ip-australia-manual-article-fidelity.ts
+      - apps/worker/src/ip-australia-manual-full-acquisition.ts
+      - apps/worker/src/acquire-ip-australia-manual-corpus.ts
+      - apps/worker/package.json
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+      - name: Acquire complete public Trade Marks Manual
+        id: acquire
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$RUNNER_TEMP/ip-australia-manual-full-acquisition"
+          pnpm --filter @markorbit/worker acquire:ip-australia-manual -- \
+            --concurrency=2 --delay-ms=500 \
+            > "$RUNNER_TEMP/ip-australia-manual-full-acquisition/report.json"
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          node -e '
+            const fs = require("fs");
+            const report = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/ip-australia-manual-full-acquisition/report.json", "utf8"));
+            const failed = report.pages.filter((page) => !page.ok);
+            const lines = [
+              "## IP Australia Manual Full Acquisition",
+              "",
+              `- Inventory pages: ${report.inventoryPageCount}`,
+              `- Acquired: ${report.acquiredPageCount}`,
+              `- Failed: ${report.failedPageCount}`,
+              `- Published-date fields: ${report.pagesWithPublishedDateCount}`,
+              `- Amendment-history pages: ${report.pagesWithAmendmentHistoryCount}`,
+              `- Controlled notices: ${report.pagesWithControlledNoticeCount}`,
+              `- Body characters: ${report.totalBodyCharacters}`,
+              `- Concurrency: ${report.concurrency}`,
+              `- Delay per batch: ${report.interBatchDelayMs} ms`,
+              "",
+              ...(failed.length ? ["### Failed pages", "", ...failed.slice(0, 50).map((page) => `- ${page.uri}: ${page.error ?? "unknown"}`)] : ["All inventoried pages acquired successfully."]),
+            ];
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+          '
+          exit 0
+      - name: Upload full Manual acquisition evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ip-australia-manual-full-acquisition-${{ github.run_id }}
+          path: ${{ runner.temp }}/ip-australia-manual-full-acquisition/report.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce full acquisition result
+        if: always()
+        run: exit "${{ steps.acquire.outputs.exit_code }}"
