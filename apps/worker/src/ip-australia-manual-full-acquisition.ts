@@ -9,12 +9,19 @@ import {
   type IpAustraliaManualAmendment,
 } from "./ip-australia-manual-article-fidelity";
 
+export type IpAustraliaManualEvidenceProfile =
+  | "STANDARD_ARTICLE"
+  | "SPECIAL_EVIDENCE_PAGE"
+  | "SOURCE_UNAVAILABLE"
+  | "INCOMPLETE_EVIDENCE";
+
 export type IpAustraliaManualAcquiredPage = {
   uri: string;
   inventoryLabel: string;
   currentNavigation: boolean;
   updateHistoryPages: number[];
   ok: boolean;
+  evidenceProfile: IpAustraliaManualEvidenceProfile;
   status?: number;
   contentType?: string;
   title: string;
@@ -30,6 +37,10 @@ export type IpAustraliaManualFullAcquisitionReport = {
   inventoryPageCount: number;
   acquiredPageCount: number;
   failedPageCount: number;
+  sourceUnavailablePageCount: number;
+  incompleteEvidencePageCount: number;
+  standardArticleCount: number;
+  specialEvidencePageCount: number;
   currentNavigationPageCount: number;
   updateHistoryOnlyPageCount: number;
   pagesWithPublishedDateCount: number;
@@ -52,6 +63,21 @@ function hashContent(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
+function evidenceProfile(
+  article: ReturnType<typeof parseIpAustraliaManualArticle>,
+): IpAustraliaManualEvidenceProfile {
+  const baseEvidencePresent = article.title.length > 0 && article.controlledDocumentNotice;
+  if (!baseEvidencePresent) return "INCOMPLETE_EVIDENCE";
+
+  if (article.datePublished !== null && article.bodyText.length >= 100) {
+    return "STANDARD_ARTICLE";
+  }
+
+  const specialEvidencePresent =
+    article.datePublished !== null || article.bodyText.length >= 100 || article.amendments.length > 0;
+  return specialEvidencePresent ? "SPECIAL_EVIDENCE_PAGE" : "INCOMPLETE_EVIDENCE";
+}
+
 async function acquirePage(
   page: IpAustraliaManualPage,
   fetcher: typeof fetch,
@@ -69,6 +95,7 @@ async function acquirePage(
         ...page,
         inventoryLabel: page.label,
         ok: false,
+        evidenceProfile: response.status === 404 ? "SOURCE_UNAVAILABLE" : "INCOMPLETE_EVIDENCE",
         status: response.status,
         contentType,
         title: "",
@@ -83,16 +110,14 @@ async function acquirePage(
 
     const html = await response.text();
     const article = parseIpAustraliaManualArticle(html, page.uri);
-    const requiredEvidencePresent =
-      article.title.length > 0 &&
-      article.datePublished !== null &&
-      article.bodyText.length >= 100 &&
-      article.controlledDocumentNotice;
+    const profile = evidenceProfile(article);
+    const completeEvidence = profile === "STANDARD_ARTICLE" || profile === "SPECIAL_EVIDENCE_PAGE";
 
     return {
       ...page,
       inventoryLabel: page.label,
-      ok: requiredEvidencePresent,
+      ok: completeEvidence,
+      evidenceProfile: profile,
       status: response.status,
       contentType,
       title: article.title,
@@ -101,15 +126,14 @@ async function acquirePage(
       amendments: article.amendments,
       controlledDocumentNotice: article.controlledDocumentNotice,
       contentSha256: hashContent(html),
-      ...(!requiredEvidencePresent
-        ? { error: "Required manual article evidence was incomplete" }
-        : {}),
+      ...(!completeEvidence ? { error: "Required manual source evidence was incomplete" } : {}),
     };
   } catch (error) {
     return {
       ...page,
       inventoryLabel: page.label,
       ok: false,
+      evidenceProfile: "INCOMPLETE_EVIDENCE",
       title: "",
       datePublished: null,
       bodyText: "",
@@ -139,12 +163,24 @@ export async function acquireIpAustraliaManualCorpus(
   }
 
   acquired.sort((left, right) => left.uri.localeCompare(right.uri));
-  const failedPageCount = acquired.filter((page) => !page.ok).length;
+  const sourceUnavailablePageCount = acquired.filter(
+    (page) => page.evidenceProfile === "SOURCE_UNAVAILABLE",
+  ).length;
+  const incompleteEvidencePageCount = acquired.filter(
+    (page) => page.evidenceProfile === "INCOMPLETE_EVIDENCE",
+  ).length;
+  const failedPageCount = sourceUnavailablePageCount + incompleteEvidencePageCount;
 
   return {
     inventoryPageCount: inventory.totalUniqueManualPageCount,
     acquiredPageCount: acquired.length - failedPageCount,
     failedPageCount,
+    sourceUnavailablePageCount,
+    incompleteEvidencePageCount,
+    standardArticleCount: acquired.filter((page) => page.evidenceProfile === "STANDARD_ARTICLE").length,
+    specialEvidencePageCount: acquired.filter(
+      (page) => page.evidenceProfile === "SPECIAL_EVIDENCE_PAGE",
+    ).length,
     currentNavigationPageCount: inventory.currentNavigationPageCount,
     updateHistoryOnlyPageCount: inventory.updateHistoryOnlyPageCount,
     pagesWithPublishedDateCount: acquired.filter((page) => page.datePublished !== null).length,
@@ -156,6 +192,6 @@ export async function acquireIpAustraliaManualCorpus(
     interBatchDelayMs,
     pages: acquired,
     acceptanceBoundary:
-      "Full public Manual acquisition and source-field fidelity only. CORPUS READY additionally requires persisted RawArtifacts/versions, change-watch evidence, and freshness validation.",
+      "Full public Manual acquisition and source-field fidelity only. SOURCE_UNAVAILABLE records official navigation gaps without reclassifying them as acquisition/parser failures. CORPUS READY additionally requires persisted RawArtifacts/versions, change-watch evidence, and freshness validation.",
   };
 }
