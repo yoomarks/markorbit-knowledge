@@ -13,6 +13,17 @@ const article = (title: string) => `
 <footer>This document is controlled. Its accuracy can only be guaranteed when viewed electronically.</footer>
 </body></html>`;
 
+const specialEvidencePage = `
+<html><body>
+<main>
+<h1>Annex A1 - Flow chart</h1>
+<p>Date Published 31 Oct 2025</p>
+<h2>Amended Reasons</h2>
+<table><tr><th>Amended Reason</th><th>Date Amended</th></tr><tr><td>Accessibility update.</td><td>31 Oct 2025</td></tr></table>
+</main>
+<footer>This document is controlled. Its accuracy can only be guaranteed when viewed electronically.</footer>
+</body></html>`;
+
 function manualRoot(): string {
   return `
     <nav>
@@ -55,12 +66,47 @@ describe("IP Australia full Manual acquisition", () => {
     expect(report.inventoryPageCount).toBe(2);
     expect(report.acquiredPageCount).toBe(2);
     expect(report.failedPageCount).toBe(0);
+    expect(report.standardArticleCount).toBe(2);
     expect(report.pagesWithPublishedDateCount).toBe(2);
     expect(report.pagesWithControlledNoticeCount).toBe(2);
     expect(report.pages.every((page) => page.contentSha256?.length === 64)).toBe(true);
   });
 
-  it("keeps one failed article visible without losing successful corpus evidence", async () => {
+  it("accepts a short annex-style source page as special evidence instead of a failed article", async () => {
+    const fetcher: typeof fetch = async (input) => {
+      const uri = String(input);
+      if (uri === "https://manuals.ipaustralia.gov.au/trademark") {
+        return new Response(manualRoot(), {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        });
+      }
+      if (uri.endsWith("article-a"))
+        return new Response(specialEvidencePage, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        });
+      if (uri.endsWith("article-b"))
+        return new Response(article("Article B"), {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        });
+      return new Response("missing", { status: 404 });
+    };
+
+    const report = await acquireIpAustraliaManualCorpus(fetcher, {
+      concurrency: 2,
+      interBatchDelayMs: 0,
+    });
+
+    expect(report.failedPageCount).toBe(0);
+    expect(report.specialEvidencePageCount).toBe(1);
+    expect(report.pages.find((page) => page.uri.endsWith("article-a"))?.evidenceProfile).toBe(
+      "SPECIAL_EVIDENCE_PAGE",
+    );
+  });
+
+  it("keeps source-side unavailability distinct from incomplete acquisition evidence", async () => {
     const fetcher: typeof fetch = async (input) => {
       const uri = String(input);
       if (uri === "https://manuals.ipaustralia.gov.au/trademark") {
@@ -74,7 +120,7 @@ describe("IP Australia full Manual acquisition", () => {
           status: 200,
           headers: { "content-type": "text/html" },
         });
-      return new Response("unavailable", { status: 503 });
+      return new Response("missing", { status: 404 });
     };
 
     const report = await acquireIpAustraliaManualCorpus(fetcher, {
@@ -84,6 +130,8 @@ describe("IP Australia full Manual acquisition", () => {
 
     expect(report.acquiredPageCount).toBe(1);
     expect(report.failedPageCount).toBe(1);
-    expect(report.pages.find((page) => !page.ok)?.status).toBe(503);
+    expect(report.sourceUnavailablePageCount).toBe(1);
+    expect(report.incompleteEvidencePageCount).toBe(0);
+    expect(report.pages.find((page) => !page.ok)?.evidenceProfile).toBe("SOURCE_UNAVAILABLE");
   });
 });
