@@ -1,0 +1,66 @@
+name: IP Australia Manual Live Fidelity
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ip-australia-manual-live-fidelity.yml
+      - apps/worker/src/ip-australia-manual-article-fidelity.ts
+      - apps/worker/src/audit-ip-australia-manual-fidelity.ts
+      - apps/worker/package.json
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+      - name: Audit live manual article fidelity
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$RUNNER_TEMP/ip-australia-manual-fidelity"
+          pnpm --filter @markorbit/worker audit:ip-australia-manual-fidelity \
+            > "$RUNNER_TEMP/ip-australia-manual-fidelity/report.json"
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          node -e '
+            const fs = require("fs");
+            const report = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/ip-australia-manual-fidelity/report.json", "utf8"));
+            const lines = [
+              "## IP Australia Manual Article Fidelity",
+              "",
+              `- Samples: ${report.passedSampleCount}/${report.sampleCount} passed`,
+              `- Failed: ${report.failedSampleCount}`,
+              "",
+              ...report.outcomes.map((item) => `- ${item.ok ? "PASS" : "FAIL"}: ${item.title || item.uri} | published=${item.datePublished ?? "missing"} | amendments=${item.amendments.length} | bodyChars=${item.bodyText.length}`),
+            ];
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+          '
+          exit 0
+      - name: Upload fidelity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ip-australia-manual-live-fidelity-${{ github.run_id }}
+          path: ${{ runner.temp }}/ip-australia-manual-fidelity/report.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce fidelity result
+        if: always()
+        run: exit "${{ steps.audit.outputs.exit_code }}"
