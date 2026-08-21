@@ -5,6 +5,7 @@ type Json = Record<string, unknown>;
 const SHA256 = /^[a-f0-9]{64}$/;
 const TERMINAL_FAILURES = new Set(["FAILED", "CANCELLED"]);
 const EXPECTED_CONVERTER = { converterId: "builtin-html-markdown", version: "1.0.0" } as const;
+const HTML_MIME_TYPES = new Set(["text/html", "application/xhtml+xml"]);
 
 function record(value: unknown): Json | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -41,7 +42,10 @@ function baseUrl(): string {
 }
 
 function expectedCount(): number {
-  return requiredPositiveInteger(process.env.MARKORBIT_IP_AU_EXPECTED_COUNT ?? "577", "expected count");
+  return requiredPositiveInteger(
+    process.env.MARKORBIT_IP_AU_EXPECTED_COUNT ?? "577",
+    "expected count",
+  );
 }
 
 function timeoutMs(): number {
@@ -90,7 +94,6 @@ async function listConversionRuns(workspaceId: string, sourceId: string): Promis
       throw new Error(`ConversionRun list returned invalid total: ${String(payload.total)}`);
     }
     if (expectedTotal !== null && expectedTotal !== total) {
-      // New finalize handoffs may be arriving while the collection run is still settling.
       expectedTotal = total;
     } else if (expectedTotal === null) {
       expectedTotal = total;
@@ -137,7 +140,11 @@ async function waitForCompletedRuns(
     if (failed.length > 0) {
       throw new Error(
         `Observed terminal conversion failures: ${JSON.stringify(
-          failed.slice(0, 10).map((run) => ({ id: run.id, status: run.status, rawArtifactId: run.rawArtifactId })),
+          failed.slice(0, 10).map((run) => ({
+            id: run.id,
+            status: run.status,
+            rawArtifactId: run.rawArtifactId,
+          })),
         )}`,
       );
     }
@@ -162,15 +169,30 @@ function verifyConversionRuns(runs: Json[], sourceId: string, expected: number):
   for (const run of runs) {
     const runId = requiredString(run.id, "conversionRun.id");
     const rawArtifactId = requiredString(run.rawArtifactId, "conversionRun.rawArtifactId");
-    if (run.status !== "COMPLETED") throw new Error(`ConversionRun ${runId} is ${String(run.status)}`);
-    if (run.sourceId !== sourceId) throw new Error(`ConversionRun ${runId} escaped Source boundary`);
-    if (run.trigger !== "AUTO_PROFILE") throw new Error(`ConversionRun ${runId} was not auto-profile dispatched`);
+    if (run.status !== "COMPLETED") {
+      throw new Error(`ConversionRun ${runId} is ${String(run.status)}`);
+    }
+    if (run.sourceId !== sourceId) {
+      throw new Error(`ConversionRun ${runId} escaped Source boundary`);
+    }
+    if (run.trigger !== "AUTO_PROFILE") {
+      throw new Error(`ConversionRun ${runId} was not auto-profile dispatched`);
+    }
     const converter = record(run.converter);
     if (
       converter?.converterId !== EXPECTED_CONVERTER.converterId ||
       converter?.version !== EXPECTED_CONVERTER.version
     ) {
       throw new Error(`ConversionRun ${runId} used unexpected converter: ${JSON.stringify(converter)}`);
+    }
+    const input = record(run.input);
+    const inputSha256 = requiredString(input?.sha256, "conversionRun.input.sha256");
+    if (
+      input?.artifactKind !== "HTML" ||
+      !HTML_MIME_TYPES.has(String(input.mimeType)) ||
+      !SHA256.test(inputSha256)
+    ) {
+      throw new Error(`ConversionRun ${runId} lost immutable HTML input evidence`);
     }
     const output = record(run.requestedOutput);
     if (output?.format !== "MARKDOWN") {
@@ -200,7 +222,9 @@ function verifyReadyPackages(
   expected: number,
 ): Array<{ id: string; rawArtifactId: string; digest: string; stagingDocumentId: string }> {
   const runById = new Map(runs.map((run) => [requiredString(run.id, "conversionRun.id"), run]));
-  const sourcePackages = packages.filter((readyPackage) => record(readyPackage.evidence)?.sourceId === sourceId);
+  const sourcePackages = packages.filter(
+    (readyPackage) => record(readyPackage.evidence)?.sourceId === sourceId,
+  );
   if (sourcePackages.length !== expected) {
     throw new Error(`Expected ${expected} ReadyPackages for Source, got ${sourcePackages.length}`);
   }
@@ -214,9 +238,14 @@ function verifyReadyPackages(
     }
     const evidence = record(readyPackage.evidence);
     if (!evidence) throw new Error(`ReadyPackage ${id} is missing evidence`);
-    const conversionRunId = requiredString(evidence.conversionRunId, "readyPackage.evidence.conversionRunId");
+    const conversionRunId = requiredString(
+      evidence.conversionRunId,
+      "readyPackage.evidence.conversionRunId",
+    );
     const run = runById.get(conversionRunId);
-    if (!run) throw new Error(`ReadyPackage ${id} references an unexpected ConversionRun ${conversionRunId}`);
+    if (!run) {
+      throw new Error(`ReadyPackage ${id} references an unexpected ConversionRun ${conversionRunId}`);
+    }
     const rawArtifactId = requiredString(run.rawArtifactId, "conversionRun.rawArtifactId");
     const artifactIds = array(evidence.artifactIds).filter(
       (value): value is string => typeof value === "string",
@@ -224,8 +253,12 @@ function verifyReadyPackages(
     if (!artifactIds.includes(rawArtifactId)) {
       throw new Error(`ReadyPackage ${id} does not preserve RawArtifact ${rawArtifactId}`);
     }
-    if (seenRuns.has(conversionRunId)) throw new Error(`Duplicate ReadyPackage for ConversionRun ${conversionRunId}`);
-    if (seenArtifacts.has(rawArtifactId)) throw new Error(`Duplicate ReadyPackage for RawArtifact ${rawArtifactId}`);
+    if (seenRuns.has(conversionRunId)) {
+      throw new Error(`Duplicate ReadyPackage for ConversionRun ${conversionRunId}`);
+    }
+    if (seenArtifacts.has(rawArtifactId)) {
+      throw new Error(`Duplicate ReadyPackage for RawArtifact ${rawArtifactId}`);
+    }
     seenRuns.add(conversionRunId);
     seenArtifacts.add(rawArtifactId);
 
@@ -240,7 +273,9 @@ function verifyReadyPackages(
       evidence.verificationOutcome !== "PASS" &&
       evidence.verificationOutcome !== "PASS_WITH_WARNINGS"
     ) {
-      throw new Error(`ReadyPackage ${id} has unexpected verification outcome ${String(evidence.verificationOutcome)}`);
+      throw new Error(
+        `ReadyPackage ${id} has unexpected verification outcome ${String(evidence.verificationOutcome)}`,
+      );
     }
     const converter = record(evidence.converter);
     if (
@@ -254,13 +289,21 @@ function verifyReadyPackages(
       id,
       rawArtifactId,
       digest: requiredString(evidence.digest, "readyPackage.evidence.digest"),
-      stagingDocumentId: requiredString(evidence.stagingDocumentId, "readyPackage.evidence.stagingDocumentId"),
+      stagingDocumentId: requiredString(
+        evidence.stagingDocumentId,
+        "readyPackage.evidence.stagingDocumentId",
+      ),
     };
   });
 }
 
-async function verifyRetrieval(workspaceId: string, sourceId: string): Promise<Array<{ query: string; total: number }>> {
-  const queries = (process.env.MARKORBIT_IP_AU_RETRIEVAL_QUERIES ?? "registration,examination,classification")
+async function verifyRetrieval(
+  workspaceId: string,
+  sourceId: string,
+): Promise<Array<{ query: string; total: number }>> {
+  const queries = (
+    process.env.MARKORBIT_IP_AU_RETRIEVAL_QUERIES ?? "registration,examination,classification"
+  )
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
@@ -275,7 +318,9 @@ async function verifyRetrieval(workspaceId: string, sourceId: string): Promise<A
       .map(record)
       .filter((value): value is Json => Boolean(value));
     if (!Number.isSafeInteger(total) || total <= 0 || items.length === 0) {
-      throw new Error(`Retrieval query ${JSON.stringify(query)} did not hit verified IP Australia content`);
+      throw new Error(
+        `Retrieval query ${JSON.stringify(query)} did not hit verified IP Australia content`,
+      );
     }
     for (const item of items) {
       if (record(item.document)?.sourceId !== sourceId) {
@@ -291,7 +336,9 @@ async function verifyCoreBoundary(
   workspaceId: string,
   packages: Array<{ id: string; rawArtifactId: string; digest: string; stagingDocumentId: string }>,
 ): Promise<number> {
-  if (packages.length === 0) throw new Error("No ReadyPackages available for Core boundary verification");
+  if (packages.length === 0) {
+    throw new Error("No ReadyPackages available for Core boundary verification");
+  }
   const indexes = [...new Set([0, Math.floor(packages.length / 2), packages.length - 1])];
   for (const index of indexes) {
     const readyPackage = packages[index];
@@ -328,12 +375,23 @@ async function verifyCoreBoundary(
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2).filter((value) => value !== "--");
-  const sourceId = requiredString(args[0] ?? process.env.MARKORBIT_IP_AU_SOURCE_ID, "sourceId");
-  const workspaceId = requiredString(process.env.MARKORBIT_WORKSPACE_ID, "MARKORBIT_WORKSPACE_ID");
+  const sourceId = requiredString(
+    args[0] ?? process.env.MARKORBIT_IP_AU_SOURCE_ID,
+    "sourceId",
+  );
+  const workspaceId = requiredString(
+    process.env.MARKORBIT_WORKSPACE_ID,
+    "MARKORBIT_WORKSPACE_ID",
+  );
   const expected = expectedCount();
   const runs = await waitForCompletedRuns(workspaceId, sourceId, expected, timeoutMs());
   const artifactIds = verifyConversionRuns(runs, sourceId, expected);
-  const verifiedPackages = verifyReadyPackages(await readyPackages(workspaceId), runs, sourceId, expected);
+  const verifiedPackages = verifyReadyPackages(
+    await readyPackages(workspaceId),
+    runs,
+    sourceId,
+    expected,
+  );
   if (verifiedPackages.length !== artifactIds.size) {
     throw new Error("ReadyPackage coverage does not match converted RawArtifact coverage");
   }
@@ -363,6 +421,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });
