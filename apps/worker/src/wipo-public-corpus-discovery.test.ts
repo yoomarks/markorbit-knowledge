@@ -7,13 +7,9 @@ import {
 
 describe("WIPO public trademark corpus discovery", () => {
   it("keeps declarations, Vienna, and find-and-monitor as explicit independent seeds", () => {
-    expect(
-      WIPO_TRADEMARK_CORPUS_SEEDS.some((seed) => seed.domain === "DECLARATIONS"),
-    ).toBe(true);
+    expect(WIPO_TRADEMARK_CORPUS_SEEDS.some((seed) => seed.domain === "DECLARATIONS")).toBe(true);
     expect(WIPO_TRADEMARK_CORPUS_SEEDS.some((seed) => seed.domain === "VIENNA")).toBe(true);
-    expect(
-      WIPO_TRADEMARK_CORPUS_SEEDS.some((seed) => seed.domain === "FIND_MONITOR"),
-    ).toBe(true);
+    expect(WIPO_TRADEMARK_CORPUS_SEEDS.some((seed) => seed.domain === "FIND_MONITOR")).toBe(true);
   });
 
   it("classifies cross-subdomain WIPO trademark knowledge without admitting external sites", () => {

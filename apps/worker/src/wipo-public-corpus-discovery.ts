@@ -118,14 +118,15 @@ function classify(url: URL, label: string): WipoTrademarkDomain | null {
     return "DECLARATIONS";
   if (path.includes("madrid-system/members")) return "MEMBERS";
   if (path.includes("legal_texts") || text.includes("legal texts")) return "LEGAL_TEXTS";
-  if (path.includes("/fees/") || host === "madrid.wipo.int" && path.includes("feecalcapp"))
+  if (path.includes("/fees/") || (host === "madrid.wipo.int" && path.includes("feecalcapp")))
     return "FEES";
   if (path.includes("/forms/")) return "FORMS";
   if (path.includes("find-and-monitor") || text.includes("madrid monitor")) return "FIND_MONITOR";
   if (host === "branddb.wipo.int" || path.includes("global-brand-database"))
     return "GLOBAL_BRAND_DATABASE";
   if (host === "nclpub.wipo.int" || path.includes("classification-nice")) return "NICE";
-  if (path.includes("classification-vienna") || text.includes("vienna classification")) return "VIENNA";
+  if (path.includes("classification-vienna") || text.includes("vienna classification"))
+    return "VIENNA";
   if (path.includes("/how_to") || text.includes("how to") || text.includes("guide"))
     return "GUIDES_HELP";
   if (path.includes("/notices") || path.includes("/news") || text.includes("information notice"))
