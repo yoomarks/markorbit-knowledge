@@ -4,7 +4,6 @@ import type {
   CollectionArtifactAcquirer,
 } from "@markorbit/worker-runtime";
 import { CollectionAcquisitionError } from "@markorbit/worker-runtime";
-import type { ExecutionExecutor } from "@markorbit/contracts";
 import { inventoryIpAustraliaManual } from "./ip-australia-manual-inventory";
 import { parseIpAustraliaManualArticle } from "./ip-australia-manual-article-fidelity";
 
@@ -28,7 +27,7 @@ export type IpAustraliaManualArtifactAcquirerOptions = {
   interBatchDelayMs?: number;
 };
 
-const EXECUTOR: ExecutionExecutor = {
+const EXECUTOR: CollectionArtifactAcquirer["executor"] = {
   executorId: "ip-australia-manual-http",
   version: "1.0.0",
   mode: "PRODUCTION",
@@ -62,13 +61,16 @@ function sourceEvidenceComplete(
     article.bodyText.length >= 100 ||
     article.datePublished !== null ||
     article.amendments.length > 0;
+  const observedPublishedAt = publishedAt(article.datePublished);
   return {
     ok: baseEvidence && substantiveEvidence,
-    ...(publishedAt(article.datePublished)
-      ? { publishedAt: publishedAt(article.datePublished) }
-      : {}),
+    ...(observedPublishedAt ? { publishedAt: observedPublishedAt } : {}),
   };
 }
+
+type PageAcquisitionResult =
+  | { artifact: AcquiredCollectionArtifact; gap?: never }
+  | { artifact?: never; gap: IpAustraliaManualSourceGap };
 
 export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcquirer {
   readonly executor = EXECUTOR;
@@ -122,8 +124,8 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
 
     for (let offset = 0; offset < inventory.pages.length; offset += this.concurrency) {
       const batch = inventory.pages.slice(offset, offset + this.concurrency);
-      const results = await Promise.all(
-        batch.map(async (page) => {
+      const results: PageAcquisitionResult[] = await Promise.all(
+        batch.map(async (page): Promise<PageAcquisitionResult> => {
           try {
             const response = await this.fetcher(page.uri, {
               headers: {
@@ -139,7 +141,7 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
                   status: response.status,
                   reason: response.status === 404 ? "SOURCE_UNAVAILABLE" : "FETCH_FAILED",
                   error: `${page.uri} returned HTTP ${response.status}`,
-                } satisfies IpAustraliaManualSourceGap,
+                },
               };
             }
 
@@ -154,20 +156,20 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
                   reason: "INCOMPLETE_SOURCE_EVIDENCE",
                   error:
                     "Reachable Manual page did not preserve the minimum observed source evidence fields",
-                } satisfies IpAustraliaManualSourceGap,
+                },
               };
             }
 
             return {
               artifact: {
-                artifactKind: "HTML" as const,
+                artifactKind: "HTML",
                 mimeType: "text/html",
                 originalName: safeName(page.uri),
                 sourceUri: page.uri,
                 canonicalUri: page.uri,
                 ...(evidence.publishedAt ? { publishedAt: evidence.publishedAt } : {}),
                 content: new TextEncoder().encode(html),
-              } satisfies AcquiredCollectionArtifact,
+              },
             };
           } catch (error) {
             return {
@@ -176,14 +178,14 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
                 label: page.label,
                 reason: "FETCH_FAILED",
                 error: error instanceof Error ? error.message : String(error),
-              } satisfies IpAustraliaManualSourceGap,
+              },
             };
           }
         }),
       );
 
       for (const result of results) {
-        if ("artifact" in result) artifacts.push(result.artifact);
+        if (result.artifact !== undefined) artifacts.push(result.artifact);
         else sourceGaps.push(result.gap);
       }
       if (offset + this.concurrency < inventory.pages.length) await delay(this.interBatchDelayMs);
