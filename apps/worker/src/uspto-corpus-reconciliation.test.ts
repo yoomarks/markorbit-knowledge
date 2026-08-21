@@ -7,8 +7,16 @@ import {
 
 describe("USPTO corpus reconciliation", () => {
   it("uses the observed current Madrid entrypoint and includes TBMP archives", () => {
-    expect(USPTO_RECONCILIATION_SEEDS.some((seed) => seed.uri.includes("/ip-policy/international-protection/madrid-protocol"))).toBe(true);
-    expect(USPTO_RECONCILIATION_SEEDS.some((seed) => seed.uri.endsWith("/trademarks/ttab/tbmp-archives"))).toBe(true);
+    expect(
+      USPTO_RECONCILIATION_SEEDS.some((seed) =>
+        seed.uri.includes("/ip-policy/international-protection/madrid-protocol"),
+      ),
+    ).toBe(true);
+    expect(
+      USPTO_RECONCILIATION_SEEDS.some((seed) =>
+        seed.uri.endsWith("/trademarks/ttab/tbmp-archives"),
+      ),
+    ).toBe(true);
   });
 
   it("retains official PDF and ZIP assets even when they are outside /trademarks paths", () => {

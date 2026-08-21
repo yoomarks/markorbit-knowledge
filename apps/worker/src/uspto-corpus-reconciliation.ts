@@ -39,7 +39,8 @@ export type UsptoCorpusReconciliationReport = {
   assets: UsptoReferencedAsset[];
 };
 
-const CURRENT_MADRID_URI = "https://www.uspto.gov/ip-policy/international-protection/madrid-protocol";
+const CURRENT_MADRID_URI =
+  "https://www.uspto.gov/ip-policy/international-protection/madrid-protocol";
 const TBMP_ARCHIVES_URI = "https://www.uspto.gov/trademarks/ttab/tbmp-archives";
 
 export const USPTO_RECONCILIATION_SEEDS: readonly UsptoCorpusSeed[] = [
@@ -114,7 +115,9 @@ export function extractUsptoReferencedAssets(
   return [...assets.values()].sort((left, right) => left.uri.localeCompare(right.uri));
 }
 
-function summarizeAssetKinds(assets: readonly UsptoReferencedAsset[]): Record<UsptoAssetKind, number> {
+function summarizeAssetKinds(
+  assets: readonly UsptoReferencedAsset[],
+): Record<UsptoAssetKind, number> {
   const counts: Record<UsptoAssetKind, number> = {
     PDF: 0,
     ZIP: 0,
@@ -160,7 +163,8 @@ export async function reconcileUsptoCorpus(
       const links = extractUsptoTrademarkLinks(html, seed.uri);
       const referencedAssets = extractUsptoReferencedAssets(html, seed.uri);
       for (const link of links) if (!discovered.has(link.uri)) discovered.set(link.uri, link);
-      for (const asset of referencedAssets) if (!assets.has(asset.uri)) assets.set(asset.uri, asset);
+      for (const asset of referencedAssets)
+        if (!assets.has(asset.uri)) assets.set(asset.uri, asset);
 
       outcomes.push({
         seed,
@@ -182,7 +186,9 @@ export async function reconcileUsptoCorpus(
   }
 
   const links = [...discovered.values()].sort((left, right) => left.uri.localeCompare(right.uri));
-  const referencedAssets = [...assets.values()].sort((left, right) => left.uri.localeCompare(right.uri));
+  const referencedAssets = [...assets.values()].sort((left, right) =>
+    left.uri.localeCompare(right.uri),
+  );
   const failedSeedCount = outcomes.filter((outcome) => !outcome.ok).length;
 
   return {
