@@ -21,6 +21,7 @@
     "reconcile:ip-australia-corpus": "tsx src/reconcile-ip-australia-corpus.ts",
     "inventory:ip-australia-manual": "tsx src/inventory-ip-australia-manual.ts",
     "audit:ip-australia-manual-fidelity": "tsx src/audit-ip-australia-manual-fidelity.ts",
+    "acquire:ip-australia-manual": "tsx src/acquire-ip-australia-manual-corpus.ts",
     "activate:representative-coverage": "tsx src/activate-representative-source-wave.ts",
     "promote:representative-supply": "tsx src/promote-representative-source-supply.ts",
     "verify:representative-supply": "tsx src/verify-representative-source-supply.ts",
