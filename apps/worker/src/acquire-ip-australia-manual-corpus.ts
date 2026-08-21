@@ -2,7 +2,10 @@ import { acquireIpAustraliaManualCorpus } from "./ip-australia-manual-full-acqui
 
 function numberArgument(name: string): number | undefined {
   const prefix = `${name}=`;
-  const raw = process.argv.slice(2).find((value) => value.startsWith(prefix))?.slice(prefix.length);
+  const raw = process.argv
+    .slice(2)
+    .find((value) => value.startsWith(prefix))
+    ?.slice(prefix.length);
   if (!raw) return undefined;
   const parsed = Number.parseInt(raw, 10);
   return Number.isFinite(parsed) ? parsed : undefined;

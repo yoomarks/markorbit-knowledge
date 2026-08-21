@@ -29,7 +29,10 @@ describe("IP Australia full Manual acquisition", () => {
     const fetcher: typeof fetch = async (input) => {
       const uri = String(input);
       if (uri === "https://manuals.ipaustralia.gov.au/trademark") {
-        return new Response(manualRoot(), { status: 200, headers: { "content-type": "text/html" } });
+        return new Response(manualRoot(), {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        });
       }
       if (uri.endsWith("article-a"))
         return new Response(article("Article A"), {
@@ -61,7 +64,10 @@ describe("IP Australia full Manual acquisition", () => {
     const fetcher: typeof fetch = async (input) => {
       const uri = String(input);
       if (uri === "https://manuals.ipaustralia.gov.au/trademark") {
-        return new Response(manualRoot(), { status: 200, headers: { "content-type": "text/html" } });
+        return new Response(manualRoot(), {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        });
       }
       if (uri.endsWith("article-a"))
         return new Response(article("Article A"), {

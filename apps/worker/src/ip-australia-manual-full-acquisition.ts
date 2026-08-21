@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-import { inventoryIpAustraliaManual, type IpAustraliaManualPage } from "./ip-australia-manual-inventory";
+import {
+  inventoryIpAustraliaManual,
+  type IpAustraliaManualPage,
+} from "./ip-australia-manual-inventory";
 import {
   parseIpAustraliaManualArticle,
   type IpAustraliaManualAmendment,
