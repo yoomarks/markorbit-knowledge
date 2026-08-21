@@ -28,7 +28,7 @@ async function main(): Promise<void> {
     )}\n`,
   );
 
-  if (report.inventoryFailures > 0 || report.failedPageCount > 0) process.exitCode = 2;
+  if (report.inventoryFailures > 0 || report.incompleteEvidencePageCount > 0) process.exitCode = 2;
 }
 
 main().catch((error) => {
