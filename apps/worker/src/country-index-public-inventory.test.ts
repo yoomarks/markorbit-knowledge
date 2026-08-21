@@ -10,8 +10,8 @@ describe("Country Index public inventory", () => {
       <a href="agreement.aspx?ID=1">EUIPO</a>
       <a href="agreement.aspx?ID=2">WIPO</a>
       <a href="newsletter.aspx">News</a>
-      <a href="ip_office_addresses.aspx">IP Office Addresses</a>
-      <a href="country_codes.aspx">Country Codes</a>
+      <a href="general_info_offices.aspx">IP Office Addresses</a>
+      <a href="general_info_iso.aspx">Country Codes</a>
       <a href="publications.aspx">Publications</a>
       <a href="https://example.com/country_surveys.aspx?ID=1">External</a>
     `;
