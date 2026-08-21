@@ -160,7 +160,7 @@ function buildIntegrationChain(
       domain,
       seedReachable,
       discoveredLinkCount,
-      state: seedReachable && discoveredLinkCount > 0 ? "PRESENT" : "GAP",
+      state: seedReachable ? "PRESENT" : "GAP",
     };
   });
 }
