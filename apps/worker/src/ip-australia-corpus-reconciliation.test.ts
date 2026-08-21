@@ -32,7 +32,10 @@ describe("IP Australia trademark corpus", () => {
       <a href="https://ipa.dev.ipaustralia.gov.au/trade-marks/search-existing-trade-marks">Dev</a>
       <a href="https://example.com/trade-marks">External</a>
     `;
-    const links = extractIpAustraliaTrademarkLinks(html, "https://www.ipaustralia.gov.au/trade-marks");
+    const links = extractIpAustraliaTrademarkLinks(
+      html,
+      "https://www.ipaustralia.gov.au/trade-marks",
+    );
     const counts = summarizeIpAustraliaDomains(links);
 
     expect(links).toHaveLength(3);

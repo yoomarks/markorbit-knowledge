@@ -119,7 +119,10 @@ function classify(url: URL, label: string): IpAustraliaTrademarkDomain | null {
     return "TM_HEADSTART_CHECKER";
   if (path.includes("timeframes-and-fees") || text.includes("timeframes and fees"))
     return "TIMEFRAMES_FEES";
-  if (path.includes("how-to-respond-to-an-examination-report") || text.includes("examination report"))
+  if (
+    path.includes("how-to-respond-to-an-examination-report") ||
+    text.includes("examination report")
+  )
     return "EXAMINATION";
   if (path.includes("opposition") || text.includes("opposition")) return "OPPOSITION";
   if (path.includes("non-use") || text.includes("non-use")) return "NON_USE_CHALLENGE";
@@ -133,12 +136,18 @@ function classify(url: URL, label: string): IpAustraliaTrademarkDomain | null {
     text.includes("license my ip")
   )
     return "OWNERSHIP_COMMERCIALISATION";
-  if (path.includes("tools-and-research/forms") || text === "online services" || text.includes("form"))
+  if (
+    path.includes("tools-and-research/forms") ||
+    text === "online services" ||
+    text.includes("form")
+  )
     return "FORMS_SYSTEMS";
   if (path.includes("customer-service-charter/timeliness") || path.includes("/news"))
     return "NEWS_SERVICE_LEVELS";
-  if (path.includes("search-existing-trade-marks") || text.includes("trade mark search")) return "SEARCH";
-  if (path.includes("how-to-apply-for-a-trade-mark") || text.includes("how to apply")) return "APPLY";
+  if (path.includes("search-existing-trade-marks") || text.includes("trade mark search"))
+    return "SEARCH";
+  if (path.includes("how-to-apply-for-a-trade-mark") || text.includes("how to apply"))
+    return "APPLY";
   if (path === "/trade-marks" || path === "/trade-marks/") return "TRADEMARK_BASICS";
   return null;
 }
