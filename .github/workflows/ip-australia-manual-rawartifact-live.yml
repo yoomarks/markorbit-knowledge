@@ -1,0 +1,360 @@
+name: IP Australia Manual RawArtifact Live
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ip-australia-manual-rawartifact-live.yml
+      - apps/worker/src/ip-australia-manual-artifact-acquirer.ts
+      - apps/worker/src/ip-australia-manual-inventory.ts
+      - apps/worker/src/ip-australia-manual-article-fidelity.ts
+      - apps/worker/src/main.ts
+      - apps/worker/src/config.ts
+      - apps/worker/package.json
+      - packages/worker-runtime/src/artifact-backed-collection-executor.ts
+      - packages/worker-runtime/src/controlled-collection-worker-runtime.ts
+      - packages/worker-runtime/src/http-controlled-collection-client.ts
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ip-australia-manual-rawartifact-live-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  rawartifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+      MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Configure isolated evidence stores
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/ip-au-rawartifact.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/ip-au-artifacts" >> "$GITHUB_ENV"
+          echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/connectors" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/admin.log"
+          exit 1
+
+      - name: Register truthful IP Australia Manual connector
+        run: |
+          cat > "$RUNNER_TEMP/connector.json" <<'JSON'
+          {
+            "connectorId": "ip-australia-manual-http",
+            "displayName": "IP Australia Trade Marks Manual HTTP",
+            "version": "1.0.0",
+            "sourceTypes": ["WEB"],
+            "runtime": "NODE",
+            "capabilities": ["COLLECT", "WATCH"],
+            "supportedJobTypes": ["WEB_CRAWL", "PAGE_UPDATE_CHECK"],
+            "configurationSchema": {"type":"object","properties":{}},
+            "secretSchema": {"type":"object","properties":{}},
+            "outputArtifactKinds": ["HTML"],
+            "healthCheck": {"mode":"WORKER_PROBE","timeoutSeconds":30},
+            "status": "ACTIVE",
+            "extensions": {"x-markorbit-source-specific-adapter":"ip-australia-trade-marks-manual"}
+          }
+          JSON
+          curl --silent --show-error --fail-with-body \
+            -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/connectors" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/connector.json" \
+            > "$RUNNER_TEMP/connector-create.json"
+
+      - name: Create governed Source and initial manual plan
+        run: |
+          cat > "$RUNNER_TEMP/source.json" <<'JSON'
+          {
+            "name": "IP Australia Trade Marks Manual",
+            "slug": "ip-australia-trade-marks-manual-live",
+            "sourceType": "WEB",
+            "category": "OFFICIAL_GUIDANCE",
+            "authorityLevel": "PRIMARY_OFFICIAL",
+            "status": "ACTIVE",
+            "jurisdictions": ["AU"],
+            "languages": ["en"],
+            "connector": {"connectorId":"ip-australia-manual-http","version":"1.0.0"},
+            "canonicalUri": "https://manuals.ipaustralia.gov.au/trademark",
+            "entrypoints": [{"uri":"https://manuals.ipaustralia.gov.au/trademark","label":"Trade Marks Manual"}],
+            "tags": ["ip-australia","trademark","manual","golden-corpus"]
+          }
+          JSON
+          curl --silent --show-error --fail-with-body \
+            -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/sources" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/source.json" \
+            > "$RUNNER_TEMP/source-create.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/source-create.json', 'utf8'));
+          if (!data?.source?.id) throw new Error('Source creation did not return an id');
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_IP_AU_SOURCE_ID=${data.source.id}\n`);
+          NODE
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const payload = {
+            sourceId: process.env.MARKORBIT_IP_AU_SOURCE_ID,
+            name: 'IP Australia Manual RawArtifact Live',
+            status: 'ACTIVE',
+            schedule: { mode: 'MANUAL' },
+            priority: 'HIGH',
+            policy: {
+              includePatterns: ['https://manuals.ipaustralia.gov.au/trademark*'],
+              excludePatterns: [],
+              maxDepth: 1,
+              maxItems: 700,
+              renderJavascript: false,
+              fetchAttachments: false,
+              respectRobots: true,
+              rateLimitPerMinute: 120,
+              timeoutSeconds: 60,
+              retry: { maxAttempts: 1, backoffSeconds: 15 },
+              locale: 'en-AU'
+            },
+            output: { artifactKinds: ['HTML'] },
+            extensions: { 'x-markorbit-acceptance': 'ip-australia-manual-rawartifact-live-v1' }
+          };
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/plan.json', JSON.stringify(payload));
+          NODE
+          curl --silent --show-error --fail-with-body \
+            -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/plans" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/plan.json" \
+            > "$RUNNER_TEMP/plan-create.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/plan-create.json', 'utf8'));
+          const plan = data?.plan?.plan;
+          if (!plan?.id || plan.status !== 'ACTIVE') throw new Error('Active plan creation failed');
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_IP_AU_PLAN_ID=${plan.id}\nMARKORBIT_IP_AU_PLAN_UPDATED_AT=${plan.updatedAt}\n`);
+          NODE
+
+      - name: Register production Worker for exact connector identity
+        run: |
+          cat > "$RUNNER_TEMP/worker.json" <<'JSON'
+          {
+            "displayName": "IP Australia Manual RawArtifact Live Worker",
+            "desiredState": "ACTIVE",
+            "runtime": {"runtimeId":"node-worker","version":"1.0.0"},
+            "supportedJobTypes": ["WEB_CRAWL", "PAGE_UPDATE_CHECK"],
+            "connectorBindings": [{
+              "connectorId":"ip-australia-manual-http",
+              "version":"1.0.0",
+              "capabilities":["COLLECT","WATCH"]
+            }],
+            "maxConcurrency": 1,
+            "labels": ["production","ip-australia","manual","rawartifact-live"]
+          }
+          JSON
+          curl --silent --show-error --fail-with-body \
+            -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/workers" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/worker.json" \
+            > "$RUNNER_TEMP/worker-create.secret.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/worker-create.secret.json', 'utf8'));
+          const workerId = data?.view?.worker?.id;
+          const credential = data?.credential;
+          if (!workerId || !credential) throw new Error('Worker registration did not return one-time credential');
+          process.stdout.write(`::add-mask::${credential}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_WORKER_ID=${workerId}\nMARKORBIT_WORKER_CREDENTIAL=${credential}\n`);
+          NODE
+          rm -f "$RUNNER_TEMP/worker-create.secret.json"
+
+      - name: Dispatch first full Manual collection
+        run: |
+          curl --silent --show-error --fail-with-body \
+            -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/runs" \
+            -H 'content-type: application/json' \
+            -H 'Idempotency-Key: ip-au-manual-rawartifact-first' \
+            --data "{\"planId\":\"$MARKORBIT_IP_AU_PLAN_ID\",\"requestedBy\":{\"type\":\"SYSTEM\",\"id\":\"github-actions-live\"}}" \
+            > "$RUNNER_TEMP/first-dispatch.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/first-dispatch.json', 'utf8'));
+          const runId = data?.record?.run?.id;
+          if (!runId) throw new Error('First dispatch did not return a run id');
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_FIRST_RUN_ID=${runId}\n`);
+          NODE
+
+      - name: Start production Worker
+        env:
+          NODE_ENV: test
+          MARKORBIT_COLLECTION_PROVIDER: ip-australia-manual
+          MARKORBIT_WORKER_POLL_INTERVAL_MS: "750"
+          MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "15000"
+          MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: "840000"
+        run: |
+          pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker.log" 2>&1 &
+          echo "WORKER_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Verify first run produced immutable RawArtifacts
+        shell: bash
+        run: |
+          for attempt in $(seq 1 120); do
+            curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/runs/$MARKORBIT_FIRST_RUN_ID" > "$RUNNER_TEMP/first-run.json"
+            status=$(node -e "const d=require('$RUNNER_TEMP/first-run.json'); process.stdout.write(d.run.run.status)")
+            if [ "$status" = "SUCCEEDED" ]; then break; fi
+            if [ "$status" = "FAILED" ] || [ "$status" = "CANCELLED" ]; then
+              cat "$RUNNER_TEMP/first-run.json"
+              cat "$RUNNER_TEMP/worker.log"
+              exit 1
+            fi
+            sleep 5
+          done
+          node -e "const d=require('$RUNNER_TEMP/first-run.json'); if(d.run.run.status!=='SUCCEEDED') throw new Error('First run did not finish')"
+          curl --silent --show-error --fail \
+            "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&runId=$MARKORBIT_FIRST_RUN_ID&artifactKind=HTML&limit=100" \
+            > "$RUNNER_TEMP/first-artifacts.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/first-artifacts.json', 'utf8'));
+          if (data.total !== 577) throw new Error(`Expected 577 immutable HTML RawArtifacts, got ${data.total}`);
+          process.stdout.write(`${JSON.stringify({event:'ip_australia.manual.rawartifact.first', rawArtifactCount:data.total})}\n`);
+          NODE
+
+      - name: Convert same plan to governed change watch
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/plan-patch.json', JSON.stringify({
+            expectedUpdatedAt: process.env.MARKORBIT_IP_AU_PLAN_UPDATED_AT,
+            schedule: { mode: 'CHANGE_WATCH', pollIntervalSeconds: 3600 }
+          }));
+          NODE
+          curl --silent --show-error --fail-with-body \
+            -X PATCH "$MARKORBIT_CONTROL_PLANE_URL/api/plans/$MARKORBIT_IP_AU_PLAN_ID" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/plan-patch.json" \
+            > "$RUNNER_TEMP/plan-watch.json"
+
+      - name: Wait for scheduled change-watch run and verify identity skip
+        shell: bash
+        run: |
+          SECOND_RUN=""
+          for attempt in $(seq 1 120); do
+            curl --silent --show-error --fail \
+              "$MARKORBIT_CONTROL_PLANE_URL/api/runs?planId=$MARKORBIT_IP_AU_PLAN_ID&limit=20" \
+              > "$RUNNER_TEMP/runs.json"
+            SECOND_RUN=$(node <<'NODE'
+          const fs = require('node:fs');
+          const data = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/runs.json', 'utf8'));
+          const first = process.env.MARKORBIT_FIRST_RUN_ID;
+          const items = Array.isArray(data.items) ? data.items : [];
+          const candidate = items.map((x) => x.run).find((run) => run?.id && run.id !== first);
+          process.stdout.write(candidate?.id ?? '');
+          NODE
+            )
+            if [ -n "$SECOND_RUN" ]; then break; fi
+            sleep 2
+          done
+          if [ -z "$SECOND_RUN" ]; then
+            echo "No scheduled change-watch run appeared"
+            cat "$RUNNER_TEMP/worker.log"
+            exit 1
+          fi
+          echo "MARKORBIT_SECOND_RUN_ID=$SECOND_RUN" >> "$GITHUB_ENV"
+
+          for attempt in $(seq 1 120); do
+            curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/runs/$SECOND_RUN" > "$RUNNER_TEMP/second-run.json"
+            status=$(node -e "const d=require('$RUNNER_TEMP/second-run.json'); process.stdout.write(d.run.run.status)")
+            if [ "$status" = "SUCCEEDED" ]; then break; fi
+            if [ "$status" = "FAILED" ] || [ "$status" = "CANCELLED" ]; then
+              cat "$RUNNER_TEMP/second-run.json"
+              cat "$RUNNER_TEMP/worker.log"
+              exit 1
+            fi
+            sleep 5
+          done
+          node -e "const d=require('$RUNNER_TEMP/second-run.json'); if(d.run.run.status!=='SUCCEEDED') throw new Error('Second run did not finish')"
+          curl --silent --show-error --fail \
+            "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&runId=$SECOND_RUN&artifactKind=HTML&limit=100" \
+            > "$RUNNER_TEMP/second-artifacts.json"
+          curl --silent --show-error --fail \
+            "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&artifactKind=HTML&limit=100" \
+            > "$RUNNER_TEMP/all-artifacts.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const second = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/second-artifacts.json', 'utf8'));
+          const all = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/all-artifacts.json', 'utf8'));
+          const run = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/second-run.json', 'utf8'));
+          const job = run?.run?.jobs?.[0];
+          if (job?.jobType !== 'PAGE_UPDATE_CHECK') throw new Error(`Expected PAGE_UPDATE_CHECK, got ${job?.jobType}`);
+          if (second.total !== 0) throw new Error(`Expected zero new RawArtifacts on unchanged second run, got ${second.total}`);
+          if (all.total !== 577) throw new Error(`Expected corpus RawArtifact total to remain 577, got ${all.total}`);
+          process.stdout.write(`${JSON.stringify({event:'ip_australia.manual.rawartifact.change_watch', secondRunRawArtifactCount:second.total, corpusRawArtifactCount:all.total, jobType:job.jobType})}\n`);
+          NODE
+
+      - name: Write evidence summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## IP Australia Manual RawArtifact Live"
+            echo
+            if [ -f "$RUNNER_TEMP/first-artifacts.json" ]; then
+              echo "- First run RawArtifacts: $(node -e \"const d=require('$RUNNER_TEMP/first-artifacts.json'); process.stdout.write(String(d.total))\")"
+            fi
+            if [ -f "$RUNNER_TEMP/second-artifacts.json" ]; then
+              echo "- Second run new RawArtifacts: $(node -e \"const d=require('$RUNNER_TEMP/second-artifacts.json'); process.stdout.write(String(d.total))\")"
+            fi
+            if [ -f "$RUNNER_TEMP/all-artifacts.json" ]; then
+              echo "- Corpus RawArtifact total after change watch: $(node -e \"const d=require('$RUNNER_TEMP/all-artifacts.json'); process.stdout.write(String(d.total))\")"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop isolated processes
+        if: always()
+        run: |
+          if [ -n "${WORKER_PID:-}" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+
+      - name: Upload sanitized evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ip-australia-manual-rawartifact-live-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/first-run.json
+            ${{ runner.temp }}/first-artifacts.json
+            ${{ runner.temp }}/second-run.json
+            ${{ runner.temp }}/second-artifacts.json
+            ${{ runner.temp }}/all-artifacts.json
+            ${{ runner.temp }}/worker.log
+            ${{ runner.temp }}/admin.log
+          if-no-files-found: warn
+          retention-days: 30
