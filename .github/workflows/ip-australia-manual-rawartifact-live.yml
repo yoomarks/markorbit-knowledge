@@ -93,7 +93,7 @@ jobs:
             --data-binary "@$RUNNER_TEMP/connector.json" \
             > "$RUNNER_TEMP/connector-create.json"
 
-      - name: Create governed Source and initial manual plan
+      - name: Create governed Source
         run: |
           cat > "$RUNNER_TEMP/source.json" <<'JSON'
           {
@@ -123,6 +123,8 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_IP_AU_SOURCE_ID=${data.source.id}\n`);
           NODE
 
+      - name: Create initial governed manual plan
+        run: |
           node <<'NODE'
           const fs = require('node:fs');
           const payload = {
@@ -287,7 +289,6 @@ jobs:
             cat "$RUNNER_TEMP/worker.log"
             exit 1
           fi
-          echo "MARKORBIT_SECOND_RUN_ID=$SECOND_RUN" >> "$GITHUB_ENV"
 
           for attempt in $(seq 1 120); do
             curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/runs/$SECOND_RUN" > "$RUNNER_TEMP/second-run.json"
@@ -321,21 +322,24 @@ jobs:
 
       - name: Write evidence summary
         if: always()
-        shell: bash
         run: |
-          {
-            echo "## IP Australia Manual RawArtifact Live"
-            echo
-            if [ -f "$RUNNER_TEMP/first-artifacts.json" ]; then
-              echo "- First run RawArtifacts: $(node -e \"const d=require('$RUNNER_TEMP/first-artifacts.json'); process.stdout.write(String(d.total))\")"
-            fi
-            if [ -f "$RUNNER_TEMP/second-artifacts.json" ]; then
-              echo "- Second run new RawArtifacts: $(node -e \"const d=require('$RUNNER_TEMP/second-artifacts.json'); process.stdout.write(String(d.total))\")"
-            fi
-            if [ -f "$RUNNER_TEMP/all-artifacts.json" ]; then
-              echo "- Corpus RawArtifact total after change watch: $(node -e \"const d=require('$RUNNER_TEMP/all-artifacts.json'); process.stdout.write(String(d.total))\")"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const dir = process.env.RUNNER_TEMP;
+          const readTotal = (name) => {
+            const path = `${dir}/${name}`;
+            if (!fs.existsSync(path)) return null;
+            return JSON.parse(fs.readFileSync(path, 'utf8')).total;
+          };
+          const lines = ['## IP Australia Manual RawArtifact Live', ''];
+          const first = readTotal('first-artifacts.json');
+          const second = readTotal('second-artifacts.json');
+          const all = readTotal('all-artifacts.json');
+          if (first !== null) lines.push(`- First run RawArtifacts: ${first}`);
+          if (second !== null) lines.push(`- Second run new RawArtifacts: ${second}`);
+          if (all !== null) lines.push(`- Corpus RawArtifact total after change watch: ${all}`);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          NODE
 
       - name: Stop isolated processes
         if: always()
