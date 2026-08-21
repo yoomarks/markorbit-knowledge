@@ -37,7 +37,7 @@ jobs:
       - name: Install workspace
         run: pnpm install --frozen-lockfile
 
-      - name: Inventory live Trade Marks Manual listings
+      - name: Inventory live Trade Marks Manual
         id: inventory
         shell: bash
         run: |
@@ -54,11 +54,12 @@ jobs:
             const lines = [
               "## IP Australia Trade Marks Manual Inventory",
               "",
-              `- Listing pages: ${report.successfulListingPageCount}/${report.listingPageCount} reachable`,
-              `- Highest listing page: ${report.highestListingPage}`,
-              `- Unique manual article pages: ${report.uniqueManualPageCount}`,
-              `- Duplicate listing references: ${report.duplicateReferenceCount}`,
-              `- Failed listing pages: ${report.failedListingPageCount}`,
+              `- Current navigation articles: ${report.currentNavigationPageCount}`,
+              `- Update-history pages: ${report.successfulUpdateHistoryPageCount}/${report.updateHistoryPageCount} reachable`,
+              `- Highest update-history page: ${report.highestUpdateHistoryPage}`,
+              `- History-only manual articles: ${report.updateHistoryOnlyPageCount}`,
+              `- Total unique manual articles: ${report.totalUniqueManualPageCount}`,
+              `- Failed update-history pages: ${report.failedUpdateHistoryPageCount}`,
               "",
               `Acceptance boundary: ${report.acceptanceBoundary}`,
             ];
