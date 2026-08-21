@@ -107,9 +107,11 @@ function cleanText(value: string): string {
 }
 
 function classify(url: URL, label: string): UsptoTrademarkDomain | null {
+  const hostname = url.hostname.toLowerCase();
   const path = url.pathname.toLowerCase();
   const text = label.toLowerCase();
 
+  if (hostname === "tmep.uspto.gov") return "TMEP";
   if (path.includes("tmep-archives")) return "TMEP_ARCHIVE";
   if (path.includes("trademark-examination-guides") || text.includes("examination guide"))
     return "EXAMINATION_GUIDES";
