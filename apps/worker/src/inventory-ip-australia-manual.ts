@@ -13,7 +13,9 @@ async function main(): Promise<void> {
     )}\n`,
   );
 
-  if (report.failedListingPageCount > 0 || report.uniqueManualPageCount === 0) process.exitCode = 2;
+  if (report.failedUpdateHistoryPageCount > 0 || report.currentNavigationPageCount === 0) {
+    process.exitCode = 2;
+  }
 }
 
 main().catch((error) => {
