@@ -49,17 +49,24 @@ function safeName(uri: string): string {
   return `${path.replace(/[^a-z0-9._-]+/gi, "-").slice(0, 180) || "manual"}.html`;
 }
 
-function sourceEvidenceComplete(html: string, uri: string): {
+function sourceEvidenceComplete(
+  html: string,
+  uri: string,
+): {
   ok: boolean;
   publishedAt?: string;
 } {
   const article = parseIpAustraliaManualArticle(html, uri);
   const baseEvidence = article.title.length > 0 && article.controlledDocumentNotice;
   const substantiveEvidence =
-    article.bodyText.length >= 100 || article.datePublished !== null || article.amendments.length > 0;
+    article.bodyText.length >= 100 ||
+    article.datePublished !== null ||
+    article.amendments.length > 0;
   return {
     ok: baseEvidence && substantiveEvidence,
-    ...(publishedAt(article.datePublished) ? { publishedAt: publishedAt(article.datePublished) } : {}),
+    ...(publishedAt(article.datePublished)
+      ? { publishedAt: publishedAt(article.datePublished) }
+      : {}),
   };
 }
 
@@ -145,7 +152,8 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
                   label: page.label,
                   status: response.status,
                   reason: "INCOMPLETE_SOURCE_EVIDENCE",
-                  error: "Reachable Manual page did not preserve the minimum observed source evidence fields",
+                  error:
+                    "Reachable Manual page did not preserve the minimum observed source evidence fields",
                 } satisfies IpAustraliaManualSourceGap,
               };
             }
