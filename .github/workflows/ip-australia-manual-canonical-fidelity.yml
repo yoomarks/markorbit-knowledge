@@ -1,0 +1,70 @@
+name: IP Australia Manual Canonical Fidelity
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ip-australia-manual-canonical-fidelity.yml
+      - apps/worker/src/ip-australia-manual-canonical-fidelity.ts
+      - apps/worker/src/ip-australia-manual-canonical-fidelity.test.ts
+      - apps/worker/src/audit-ip-australia-manual-canonical-fidelity.ts
+      - apps/worker/src/ip-australia-manual-article-fidelity.ts
+      - packages/worker-runtime/src/production-document-normalization.ts
+
+permissions:
+  contents: read
+
+jobs:
+  fidelity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+      - name: Audit live canonical fidelity
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$RUNNER_TEMP/ip-australia-canonical-fidelity"
+          pnpm --filter @markorbit/worker exec tsx src/audit-ip-australia-manual-canonical-fidelity.ts \
+            > "$RUNNER_TEMP/ip-australia-canonical-fidelity/report.json"
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('fs');
+          const path = process.env.RUNNER_TEMP + '/ip-australia-canonical-fidelity/report.json';
+          const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+          console.log('## IP Australia Manual Canonical Fidelity');
+          console.log('');
+          console.log(`- Samples: ${report.sampleCount}`);
+          console.log(`- PASS: ${report.passCount}`);
+          console.log(`- FAIL: ${report.failCount}`);
+          console.log('');
+          console.log('| Sample | Result | Title | Date | Body | Amendments | Controlled notice |');
+          console.log('| --- | --- | --- | --- | --- | --- | --- |');
+          for (const item of report.outcomes) {
+            console.log(`| ${item.source.title || item.uri} | ${item.ok ? 'PASS' : 'FAIL'} | ${item.titlePreserved ? 'yes' : 'no'} | ${item.publishedDatePreserved ? 'yes' : 'no'} | ${item.bodyEvidencePreserved ? 'yes' : 'no'} | ${item.amendmentsPreserved ? 'yes' : 'no'} | ${item.controlledNoticePreserved ? 'yes' : 'no'} |`);
+          }
+          NODE
+          exit 0
+      - name: Upload canonical fidelity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ip-australia-manual-canonical-fidelity-${{ github.run_id }}
+          path: ${{ runner.temp }}/ip-australia-canonical-fidelity/report.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce canonical fidelity
+        if: always()
+        run: exit "${{ steps.audit.outputs.exit_code || '1' }}"
