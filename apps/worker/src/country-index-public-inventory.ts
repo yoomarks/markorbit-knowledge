@@ -44,8 +44,8 @@ function classify(url: URL): CountryIndexInventoryKind | null {
   if (path.endsWith("/country_surveys.aspx") && url.searchParams.has("ID")) return "COUNTRY_SURVEY";
   if (path.endsWith("/agreement.aspx") && url.searchParams.has("ID")) return "MULTINATIONAL_AGREEMENT";
   if (path.endsWith("/newsletter.aspx")) return "NEWS";
-  if (path.endsWith("/ip_office_addresses.aspx")) return "IP_OFFICE_ADDRESSES";
-  if (path.endsWith("/country_codes.aspx")) return "COUNTRY_CODES";
+  if (path.endsWith("/general_info_offices.aspx")) return "IP_OFFICE_ADDRESSES";
+  if (path.endsWith("/general_info_iso.aspx")) return "COUNTRY_CODES";
   return null;
 }
 
