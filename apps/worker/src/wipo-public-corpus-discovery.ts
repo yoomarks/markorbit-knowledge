@@ -83,8 +83,8 @@ export const WIPO_TRADEMARK_CORPUS_SEEDS: readonly WipoCorpusSeed[] = [
   },
   {
     domain: "GUIDES_HELP",
-    uri: "https://www.wipo.int/en/web/madrid-system/how_to",
-    label: "Madrid guides and how-to",
+    uri: "https://www.wipo.int/en/web/madrid-system/how_to/file/index",
+    label: "Madrid filing guides and how-to",
   },
   {
     domain: "NEWS_NOTICES",
