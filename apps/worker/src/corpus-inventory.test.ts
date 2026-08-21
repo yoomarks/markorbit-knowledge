@@ -56,10 +56,7 @@ describe("golden corpus inventory", () => {
       },
     ];
 
-    const audit = auditCorpusCoverage(
-      corpus("wipo-trademark-madrid-public-knowledge"),
-      candidates,
-    );
+    const audit = auditCorpusCoverage(corpus("wipo-trademark-madrid-public-knowledge"), candidates);
 
     expect(audit.candidateCount).toBe(0);
     expect(audit.coveredDomainCount).toBe(0);
