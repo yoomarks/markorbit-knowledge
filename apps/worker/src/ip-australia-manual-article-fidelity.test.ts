@@ -14,13 +14,15 @@ const SAMPLE = `
   <table>
     <tr><th>Amended Reason</th><th>Date Amended</th></tr>
     <tr><td>Minor updates to timing and procedure.</td><td>19 Aug 2026</td></tr>
-    <tr><td>Add option to be heard.</td><td>22 Oct 2025</td></tr>
+    <tr><td>Removed reference to &#039;comments&#039; and added option to be heard.</td><td>22 Oct 2025</td></tr>
   </table>
+</main>
+<footer>
   <p>This document is controlled. Its accuracy can only be guaranteed when viewed electronically.</p>
-</main>`;
+</footer>`;
 
 describe("IP Australia manual article fidelity", () => {
-  it("extracts title, publish date, body, amendment history and controlled-record notice", () => {
+  it("extracts title, publish date, body, amendment history and page-level controlled notice", () => {
     const article = parseIpAustraliaManualArticle(
       SAMPLE,
       "https://manuals.ipaustralia.gov.au/trademark/example",
@@ -30,7 +32,10 @@ describe("IP Australia manual article fidelity", () => {
     expect(article.bodyText).toContain("substantive practice guidance");
     expect(article.amendments).toEqual([
       { reason: "Minor updates to timing and procedure.", dateAmended: "19 Aug 2026" },
-      { reason: "Add option to be heard.", dateAmended: "22 Oct 2025" },
+      {
+        reason: "Removed reference to 'comments' and added option to be heard.",
+        dateAmended: "22 Oct 2025",
+      },
     ]);
     expect(article.controlledDocumentNotice).toBe(true);
   });
