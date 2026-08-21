@@ -142,7 +142,9 @@ export function evaluateIpAustraliaCanonicalFidelity(
     bodyAnchors: anchorEvidence,
     amendmentsPreserved,
     controlledNoticePreserved,
-    ...(!ok ? { error: "Canonical Markdown did not preserve all required Manual evidence fields" } : {}),
+    ...(!ok
+      ? { error: "Canonical Markdown did not preserve all required Manual evidence fields" }
+      : {}),
   };
 }
 
@@ -171,9 +173,7 @@ export async function auditIpAustraliaManualCanonicalFidelity(
       const evaluated = evaluateIpAustraliaCanonicalFidelity(uri, await response.text());
       outcomes.push({ ...evaluated, status: response.status, contentType });
     } catch (error) {
-      outcomes.push(
-        emptyOutcome(uri, error instanceof Error ? error.message : String(error)),
-      );
+      outcomes.push(emptyOutcome(uri, error instanceof Error ? error.message : String(error)));
     }
   }
   return outcomes;
