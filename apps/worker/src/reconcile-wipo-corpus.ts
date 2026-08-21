@@ -13,7 +13,10 @@ async function main(): Promise<void> {
     )}\n`,
   );
 
-  if (report.failedSeedCount > 0 || report.integrationChain.some((stage) => stage.state === "GAP")) {
+  if (
+    report.failedSeedCount > 0 ||
+    report.integrationChain.some((stage) => stage.state === "GAP")
+  ) {
     process.exitCode = 2;
   }
 }

@@ -50,12 +50,13 @@ export type WipoCorpusReconciliationReport = {
 const VIENNA_CURRENT_URI = "https://www.wipo.int/en/web/classification-vienna/index";
 const EMADRID_FIND_MONITOR_URI = "https://www.wipo.int/en/web/emadrid/find-and-monitor";
 
-export const WIPO_RECONCILIATION_SEEDS: readonly WipoCorpusSeed[] =
-  WIPO_TRADEMARK_CORPUS_SEEDS.map((seed) => {
+export const WIPO_RECONCILIATION_SEEDS: readonly WipoCorpusSeed[] = WIPO_TRADEMARK_CORPUS_SEEDS.map(
+  (seed) => {
     if (seed.domain === "VIENNA") return { ...seed, uri: VIENNA_CURRENT_URI };
     if (seed.domain === "FIND_MONITOR") return { ...seed, uri: EMADRID_FIND_MONITOR_URI };
     return seed;
-  });
+  },
+);
 
 const INTEGRATION_CHAIN_DOMAINS: readonly WipoTrademarkDomain[] = [
   "MEMBERS",
@@ -132,7 +133,9 @@ export function extractWipoReferencedAssets(
   return [...assets.values()].sort((left, right) => left.uri.localeCompare(right.uri));
 }
 
-function summarizeAssetKinds(assets: readonly WipoReferencedAsset[]): Record<WipoAssetKind, number> {
+function summarizeAssetKinds(
+  assets: readonly WipoReferencedAsset[],
+): Record<WipoAssetKind, number> {
   const counts: Record<WipoAssetKind, number> = {
     PDF: 0,
     XML: 0,
@@ -195,7 +198,8 @@ export async function reconcileWipoCorpus(
       const links = extractWipoTrademarkLinks(html, seed.uri);
       const referencedAssets = extractWipoReferencedAssets(html, seed.uri);
       for (const link of links) if (!discovered.has(link.uri)) discovered.set(link.uri, link);
-      for (const asset of referencedAssets) if (!assets.has(asset.uri)) assets.set(asset.uri, asset);
+      for (const asset of referencedAssets)
+        if (!assets.has(asset.uri)) assets.set(asset.uri, asset);
 
       outcomes.push({
         seed,

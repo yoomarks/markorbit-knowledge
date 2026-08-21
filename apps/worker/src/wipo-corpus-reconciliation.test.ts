@@ -31,7 +31,9 @@ describe("WIPO corpus reconciliation", () => {
       "https://www.wipo.int/en/web/madrid-system/forms/index",
     );
 
-    expect(new Set(assets.map((asset) => asset.kind))).toEqual(new Set(["PDF", "XML", "CSV", "ZIP"]));
+    expect(new Set(assets.map((asset) => asset.kind))).toEqual(
+      new Set(["PDF", "XML", "CSV", "ZIP"]),
+    );
     expect(assets).toHaveLength(4);
     expect(assets.every((asset) => asset.uri.includes("wipo.int"))).toBe(true);
   });
@@ -40,10 +42,14 @@ describe("WIPO corpus reconciliation", () => {
     const fetcher: typeof fetch = async (input) => {
       const uri = String(input);
       if (uri.includes("members/declarations")) return response("", 503);
-      if (uri.includes("memberprofiles")) return response('<a href="/madrid/memberprofiles/US.html">US</a>');
-      if (uri.includes("legal_texts")) return response('<a href="/edocs/madrid/docs/en/rules.pdf">Rules</a>');
-      if (uri.includes("/fees/")) return response('<a href="/en/web/madrid-system/fees/sched">Fees</a>');
-      if (uri.includes("/forms/")) return response('<a href="/edocs/madrid/docs/en/mm18.pdf">MM18</a>');
+      if (uri.includes("memberprofiles"))
+        return response('<a href="/madrid/memberprofiles/US.html">US</a>');
+      if (uri.includes("legal_texts"))
+        return response('<a href="/edocs/madrid/docs/en/rules.pdf">Rules</a>');
+      if (uri.includes("/fees/"))
+        return response('<a href="/en/web/madrid-system/fees/sched">Fees</a>');
+      if (uri.includes("/forms/"))
+        return response('<a href="/edocs/madrid/docs/en/mm18.pdf">MM18</a>');
       if (uri.includes("madrid-system/members"))
         return response('<a href="/en/web/madrid-system/members/index">Members</a>');
       return response('<a href="/en/web/madrid-system/">Madrid</a>');
