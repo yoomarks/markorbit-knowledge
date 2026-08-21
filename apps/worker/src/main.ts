@@ -13,6 +13,7 @@ import {
   defaultApiTransport,
 } from "@markorbit/worker-runtime";
 import { loadWorkerProcessConfig } from "./config";
+import { IpAustraliaManualArtifactAcquirer } from "./ip-australia-manual-artifact-acquirer";
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -64,10 +65,12 @@ async function main(): Promise<void> {
                 maxItems: config.githubMaxItems,
                 maxDepth: config.githubMaxDepth,
               })
-            : new Crawl4AiSubprocessAcquirer({
-                requireEgressProxy: config.requireEgressProxy,
-                maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
-              });
+            : config.collectionProvider === "ip-australia-manual"
+              ? new IpAustraliaManualArtifactAcquirer()
+              : new Crawl4AiSubprocessAcquirer({
+                  requireEgressProxy: config.requireEgressProxy,
+                  maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
+                });
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
