@@ -1,0 +1,82 @@
+name: IP Australia Manual Live Inventory
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ip-australia-manual-live-inventory.yml
+      - apps/worker/src/ip-australia-manual-inventory.ts
+      - apps/worker/src/inventory-ip-australia-manual.ts
+      - apps/worker/package.json
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ip-australia-manual-live-inventory-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Inventory live Trade Marks Manual
+        id: inventory
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$RUNNER_TEMP/ip-australia-manual-inventory"
+          pnpm --filter @markorbit/worker inventory:ip-australia-manual \
+            > "$RUNNER_TEMP/ip-australia-manual-inventory/report.json"
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          node -e '
+            const fs = require("fs");
+            const path = process.env.RUNNER_TEMP + "/ip-australia-manual-inventory/report.json";
+            const report = JSON.parse(fs.readFileSync(path, "utf8"));
+            const lines = [
+              "## IP Australia Trade Marks Manual Inventory",
+              "",
+              `- Current navigation articles: ${report.currentNavigationPageCount}`,
+              `- Update-history pages: ${report.successfulUpdateHistoryPageCount}/${report.updateHistoryPageCount} reachable`,
+              `- Highest update-history page: ${report.highestUpdateHistoryPage}`,
+              `- History-only manual articles: ${report.updateHistoryOnlyPageCount}`,
+              `- Total unique manual articles: ${report.totalUniqueManualPageCount}`,
+              `- Failed update-history pages: ${report.failedUpdateHistoryPageCount}`,
+              "",
+              `Acceptance boundary: ${report.acceptanceBoundary}`,
+            ];
+            fs.writeFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n", { flag: "a" });
+          '
+          exit 0
+
+      - name: Upload manual inventory evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ip-australia-manual-live-inventory-${{ github.run_id }}
+          path: ${{ runner.temp }}/ip-australia-manual-inventory/report.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce inventory result
+        if: always()
+        shell: bash
+        run: exit "${{ steps.inventory.outputs.exit_code }}"
