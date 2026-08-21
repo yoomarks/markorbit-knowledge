@@ -1,0 +1,83 @@
+name: WIPO Corpus Live Reconciliation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/wipo-corpus-live-reconciliation.yml
+      - apps/worker/src/wipo-public-corpus-discovery.ts
+      - apps/worker/src/wipo-corpus-reconciliation.ts
+      - apps/worker/src/reconcile-wipo-corpus.ts
+      - apps/worker/package.json
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wipo-corpus-live-reconciliation-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Reconcile live WIPO corpus
+        id: reconcile
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$RUNNER_TEMP/wipo-corpus-reconciliation"
+          pnpm --filter @markorbit/worker reconcile:wipo-corpus \
+            > "$RUNNER_TEMP/wipo-corpus-reconciliation/report.json"
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          node -e '
+            const fs = require("fs");
+            const path = process.env.RUNNER_TEMP + "/wipo-corpus-reconciliation/report.json";
+            const report = JSON.parse(fs.readFileSync(path, "utf8"));
+            const lines = [
+              "## WIPO Corpus Live Reconciliation",
+              "",
+              `- Seeds: ${report.successfulSeedCount}/${report.seedCount} reachable`,
+              `- Discovered links: ${report.discoveredLinkCount}`,
+              `- Referenced assets: ${report.referencedAssetCount}`,
+              `- Failed seeds: ${report.failedSeedCount}`,
+              "",
+              "### Integration chain",
+              "",
+              ...report.integrationChain.map((stage) => `- ${stage.domain}: ${stage.state} (links=${stage.discoveredLinkCount})`),
+            ];
+            fs.writeFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n", { flag: "a" });
+          '
+          exit 0
+
+      - name: Upload WIPO corpus evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wipo-corpus-live-reconciliation-${{ github.run_id }}
+          path: ${{ runner.temp }}/wipo-corpus-reconciliation/report.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce reconciliation result
+        if: always()
+        shell: bash
+        run: exit "${{ steps.reconcile.outputs.exit_code }}"
