@@ -6,10 +6,13 @@ import {
 } from "./wipo-public-corpus-discovery";
 
 describe("WIPO public trademark corpus discovery", () => {
-  it("keeps declarations, Vienna, and find-and-monitor as explicit independent seeds", () => {
+  it("keeps declarations, Vienna, find-and-monitor, and a live how-to entry as explicit seeds", () => {
     expect(WIPO_TRADEMARK_CORPUS_SEEDS.some((seed) => seed.domain === "DECLARATIONS")).toBe(true);
     expect(WIPO_TRADEMARK_CORPUS_SEEDS.some((seed) => seed.domain === "VIENNA")).toBe(true);
     expect(WIPO_TRADEMARK_CORPUS_SEEDS.some((seed) => seed.domain === "FIND_MONITOR")).toBe(true);
+    expect(WIPO_TRADEMARK_CORPUS_SEEDS.find((seed) => seed.domain === "GUIDES_HELP")?.uri).toBe(
+      "https://www.wipo.int/en/web/madrid-system/how_to/file/index",
+    );
   });
 
   it("classifies cross-subdomain WIPO trademark knowledge without admitting external sites", () => {
