@@ -17,7 +17,7 @@ function decodeHtml(value: string): string {
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#0*39;|&apos;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">");
 }
@@ -73,6 +73,7 @@ export function parseIpAustraliaManualArticle(
   const scoped = mainHtml(html);
   const title = extractTitle(scoped);
   const fullText = cleanText(scoped);
+  const pageText = cleanText(html);
   const amendmentsIndex = fullText.toLowerCase().indexOf("amended reasons");
   const bodyStart = fullText.toLowerCase().indexOf("date published");
   const afterPublished = bodyStart >= 0 ? fullText.slice(bodyStart) : fullText;
@@ -87,7 +88,7 @@ export function parseIpAustraliaManualArticle(
     datePublished: extractDatePublished(fullText),
     bodyText,
     amendments: extractAmendments(scoped),
-    controlledDocumentNotice: /This\s+document\s+is\s+controlled/i.test(fullText),
+    controlledDocumentNotice: /This\s+document\s+is\s+controlled/i.test(pageText),
   };
 }
 
