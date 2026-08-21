@@ -348,7 +348,7 @@ async function verifyRetrieval(
 
 async function verifyCoreBoundary(
   workspaceId: string,
-  packages: Array<{ id: string; rawArtifactId: string; digest: string; stagingDocumentId: string }>,
+  packages: Array<{ id: string }>,
 ): Promise<number> {
   if (packages.length === 0) {
     throw new Error("No ReadyPackages available for Core boundary verification");
@@ -362,28 +362,20 @@ async function verifyCoreBoundary(
     if (payload.readyPackageStatus !== "VERIFIED" || payload.transportStatus !== "NOT_SUBMITTED") {
       throw new Error(`ReadyPackage ${readyPackage.id} crossed the Core handoff boundary`);
     }
-    const request = record(payload.coreIntakeRequest);
-    if (
-      request?.readyPackageId !== readyPackage.id ||
-      request?.workspaceId !== workspaceId ||
-      request?.digest !== readyPackage.digest
-    ) {
-      throw new Error(`ReadyPackage ${readyPackage.id} Core intake preview lost package identity`);
-    }
-    const evidence = record(request.evidence);
-    const artifactIds = array(evidence?.artifactIds).filter(
-      (value): value is string => typeof value === "string",
-    );
-    if (
-      !artifactIds.includes(readyPackage.rawArtifactId) ||
-      evidence?.stagingDocumentId !== readyPackage.stagingDocumentId
-    ) {
+    if (payload.coreWorkspaceBinding !== null || payload.coreIntakeRequestPreview !== null) {
       throw new Error(
-        `ReadyPackage ${readyPackage.id} Core intake preview lost acquisition evidence`,
+        `ReadyPackage ${readyPackage.id} unexpectedly acquired a Core workspace binding or preview`,
       );
     }
-    if ("intakeId" in payload || "coreIntakeResult" in payload) {
-      throw new Error(`ReadyPackage ${readyPackage.id} fabricated Core acceptance state`);
+    if (payload.latestCoreIntakeSubmission !== null || payload.latestCoreIntakeReceipt !== null) {
+      throw new Error(`ReadyPackage ${readyPackage.id} fabricated Core submission or receipt evidence`);
+    }
+    if (
+      array(payload.coreIntakeSubmissions).length !== 0 ||
+      array(payload.coreIntakeReceipts).length !== 0 ||
+      payload.contentTransportStatus !== "WAITING_FOR_INTAKE"
+    ) {
+      throw new Error(`ReadyPackage ${readyPackage.id} leaked state across the Core boundary`);
     }
   }
   return indexes.length;
