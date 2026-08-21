@@ -31,7 +31,8 @@ describe("WIPO corpus reconciliation", () => {
       "https://www.wipo.int/en/web/madrid-system/forms/index",
     );
 
-    expect(assets.map((asset) => asset.kind)).toEqual(["XML", "CSV", "ZIP", "PDF"].sort());
+    expect(new Set(assets.map((asset) => asset.kind))).toEqual(new Set(["PDF", "XML", "CSV", "ZIP"]));
+    expect(assets).toHaveLength(4);
     expect(assets.every((asset) => asset.uri.includes("wipo.int"))).toBe(true);
   });
 
