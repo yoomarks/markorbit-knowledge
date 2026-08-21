@@ -66,10 +66,7 @@ function extractAmendments(html: string): IpAustraliaManualAmendment[] {
   return amendments;
 }
 
-export function parseIpAustraliaManualArticle(
-  html: string,
-  uri: string,
-): IpAustraliaManualArticle {
+export function parseIpAustraliaManualArticle(html: string, uri: string): IpAustraliaManualArticle {
   const scoped = mainHtml(html);
   const title = extractTitle(scoped);
   const fullText = cleanText(scoped);
