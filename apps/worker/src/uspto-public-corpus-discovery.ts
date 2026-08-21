@@ -29,7 +29,11 @@ export type UsptoDiscoveredLink = {
 export const USPTO_TRADEMARK_CORPUS_SEEDS: readonly UsptoCorpusSeed[] = [
   { domain: "ROOT", uri: "https://www.uspto.gov/trademarks", label: "Trademarks home" },
   { domain: "BASICS", uri: "https://www.uspto.gov/trademarks/basics", label: "Trademark basics" },
-  { domain: "FILING", uri: "https://www.uspto.gov/trademarks/apply", label: "Apply for a trademark" },
+  {
+    domain: "FILING",
+    uri: "https://www.uspto.gov/trademarks/apply",
+    label: "Apply for a trademark",
+  },
   {
     domain: "FILING",
     uri: "https://www.uspto.gov/trademarks/apply/base-application-requirements",
@@ -80,7 +84,11 @@ export const USPTO_TRADEMARK_CORPUS_SEEDS: readonly UsptoCorpusSeed[] = [
     uri: "https://www.uspto.gov/trademarks/videos",
     label: "Trademark videos",
   },
-  { domain: "LAWS_POLICY", uri: "https://www.uspto.gov/trademarks/laws", label: "Trademark laws and regulations" },
+  {
+    domain: "LAWS_POLICY",
+    uri: "https://www.uspto.gov/trademarks/laws",
+    label: "Trademark laws and regulations",
+  },
 ] as const;
 
 function decodeHtml(value: string): string {
@@ -93,7 +101,9 @@ function decodeHtml(value: string): string {
 }
 
 function cleanText(value: string): string {
-  return decodeHtml(value.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+  return decodeHtml(value.replace(/<[^>]+>/g, " "))
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function classify(url: URL, label: string): UsptoTrademarkDomain | null {
@@ -108,28 +118,41 @@ function classify(url: URL, label: string): UsptoTrademarkDomain | null {
   if (path.includes("trial-and-appeal") || text.includes("tbmp") || text.includes("ttab"))
     return "TTAB_TBMP";
   if (path.includes("madrid") || text.includes("madrid protocol")) return "MADRID";
-  if (path.includes("post-registration") || path.includes("/maintain") || text.includes("section 8"))
+  if (
+    path.includes("post-registration") ||
+    path.includes("/maintain") ||
+    text.includes("section 8")
+  )
     return "POST_REGISTRATION";
   if (path.includes("faq") || text.includes("frequently asked")) return "FAQ";
   if (path.includes("/videos") || text.includes("webinar") || text.includes("training video"))
     return "TRAINING_VIDEO";
-  if (path.includes("trademark-center") || path.includes("/forms") || text.includes("trademark center"))
+  if (
+    path.includes("trademark-center") ||
+    path.includes("/forms") ||
+    text.includes("trademark center")
+  )
     return "FORMS_SYSTEMS";
   if (path.includes("/laws") || path.includes("federal-register") || text.includes("rule making"))
     return "LAWS_POLICY";
-  if (path.includes("office-action") || text.includes("office action") || text.includes("examination"))
+  if (
+    path.includes("office-action") ||
+    text.includes("office action") ||
+    text.includes("examination")
+  )
     return "EXAMINATION";
-  if (path.includes("/apply") || text.includes("application requirement") || text.includes("filing basis"))
+  if (
+    path.includes("/apply") ||
+    text.includes("application requirement") ||
+    text.includes("filing basis")
+  )
     return "FILING";
   if (path.includes("/basics")) return "BASICS";
   if (path === "/trademarks" || path === "/trademarks/") return "ROOT";
   return null;
 }
 
-export function extractUsptoTrademarkLinks(
-  html: string,
-  sourceUri: string,
-): UsptoDiscoveredLink[] {
+export function extractUsptoTrademarkLinks(html: string, sourceUri: string): UsptoDiscoveredLink[] {
   const base = new URL(sourceUri);
   const discovered = new Map<string, UsptoDiscoveredLink>();
   const anchor = /<a\b[^>]*href\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a>/gi;
@@ -147,7 +170,8 @@ export function extractUsptoTrademarkLinks(
 
     const hostname = url.hostname.toLowerCase();
     if (hostname !== "uspto.gov" && !hostname.endsWith(".uspto.gov")) continue;
-    if (!url.pathname.toLowerCase().includes("trademark") && hostname !== "tmep.uspto.gov") continue;
+    if (!url.pathname.toLowerCase().includes("trademark") && hostname !== "tmep.uspto.gov")
+      continue;
 
     const label = cleanText(match[4] ?? "") || url.toString();
     const domain = classify(url, label);
