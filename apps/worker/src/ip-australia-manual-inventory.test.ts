@@ -69,9 +69,17 @@ describe("IP Australia trademark manual inventory", () => {
     expect(report.currentNavigationPageCount).toBe(2);
     expect(report.updateHistoryOnlyPageCount).toBe(1);
     expect(report.totalUniqueManualPageCount).toBe(3);
-    expect(report.pages.find((page) => page.label === "Data capture")?.currentNavigation).toBe(true);
-    expect(report.pages.find((page) => page.label === "Data capture")?.updateHistoryPages).toEqual([0]);
-    expect(report.pages.find((page) => page.label === "Historic only")?.currentNavigation).toBe(false);
-    expect(report.pages.find((page) => page.label === "Historic only")?.updateHistoryPages).toEqual([1]);
+    expect(report.pages.find((page) => page.label === "Data capture")?.currentNavigation).toBe(
+      true,
+    );
+    expect(report.pages.find((page) => page.label === "Data capture")?.updateHistoryPages).toEqual([
+      0,
+    ]);
+    expect(report.pages.find((page) => page.label === "Historic only")?.currentNavigation).toBe(
+      false,
+    );
+    expect(report.pages.find((page) => page.label === "Historic only")?.updateHistoryPages).toEqual(
+      [1],
+    );
   });
 });

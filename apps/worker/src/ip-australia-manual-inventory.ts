@@ -95,10 +95,7 @@ function splitRecentUpdates(html: string): { navigationHtml: string; updatesHtml
   };
 }
 
-export function parseIpAustraliaManualScreen(
-  html: string,
-  sourceUri: string,
-): ParsedManualScreen {
+export function parseIpAustraliaManualScreen(html: string, sourceUri: string): ParsedManualScreen {
   const { navigationHtml, updatesHtml } = splitRecentUpdates(html);
   let highestUpdateHistoryPage = 0;
   const base = new URL(sourceUri);
@@ -110,7 +107,10 @@ export function parseIpAustraliaManualScreen(
     try {
       const url = new URL(href, base);
       if (url.hostname.toLowerCase() !== "manuals.ipaustralia.gov.au") continue;
-      if (url.pathname.toLowerCase() !== "/trademark" && url.pathname.toLowerCase() !== "/trademark/")
+      if (
+        url.pathname.toLowerCase() !== "/trademark" &&
+        url.pathname.toLowerCase() !== "/trademark/"
+      )
         continue;
       const page = Number.parseInt(url.searchParams.get("page") ?? "0", 10);
       if (Number.isFinite(page) && page >= 0) {
@@ -238,7 +238,9 @@ export async function inventoryIpAustraliaManual(
     }
   }
 
-  const outcomes = results.map((result) => result.outcome).sort((left, right) => left.page - right.page);
+  const outcomes = results
+    .map((result) => result.outcome)
+    .sort((left, right) => left.page - right.page);
   const uniquePages = [...pages.values()].sort((left, right) => left.uri.localeCompare(right.uri));
   const failedUpdateHistoryPageCount = outcomes.filter((outcome) => !outcome.ok).length;
 
