@@ -182,7 +182,9 @@ jobs:
           node -e "const d=require('$RUNNER_TEMP/collection-artifacts.json');if(d.total!==577)throw new Error('Expected 577 RawArtifacts, got '+d.total)"
 
       - name: Verify 577 auto conversions, ReadyPackages, retrieval and Core boundary
-        run: pnpm --filter @markorbit/worker verify:ip-australia-manual-bulk-conversion -- "$MARKORBIT_IP_AU_SOURCE_ID" | tee "$RUNNER_TEMP/bulk-conversion-verification.log"
+        run: |
+          set -o pipefail
+          pnpm --filter @markorbit/worker verify:ip-australia-manual-bulk-conversion -- "$MARKORBIT_IP_AU_SOURCE_ID" | tee "$RUNNER_TEMP/bulk-conversion-verification.log"
 
       - name: Write evidence summary
         if: always()
