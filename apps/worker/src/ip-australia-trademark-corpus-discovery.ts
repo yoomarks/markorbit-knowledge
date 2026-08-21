@@ -115,6 +115,17 @@ function classify(url: URL, label: string): IpAustraliaTrademarkDomain | null {
 
   if (host === "manuals.ipaustralia.gov.au" && path.startsWith("/trademark"))
     return "PRACTICE_MANUAL";
+
+  // Generic navigation labels such as "How to apply" and "Timeframes and fees"
+  // also appear under patents, designs and PBR. A trademark corpus must not admit
+  // those pages merely because the anchor text looks relevant.
+  if (
+    path.startsWith("/patents") ||
+    path.startsWith("/design-rights") ||
+    path.startsWith("/plant-breeders-rights")
+  )
+    return null;
+
   if (path.includes("tm-checker") || text.includes("tm checker") || text.includes("headstart"))
     return "TM_HEADSTART_CHECKER";
   if (path.includes("timeframes-and-fees") || text.includes("timeframes and fees"))
@@ -162,7 +173,13 @@ export function extractIpAustraliaTrademarkLinks(
 
   for (const match of html.matchAll(anchor)) {
     const href = decodeHtml(match[1] ?? match[2] ?? match[3] ?? "").trim();
-    if (!href || href.startsWith("#") || href.toLowerCase().startsWith("javascript:")) continue;
+    if (
+      !href ||
+      /^['"]+$/.test(href) ||
+      href.startsWith("#") ||
+      href.toLowerCase().startsWith("javascript:")
+    )
+      continue;
 
     let url: URL;
     try {
