@@ -9,6 +9,7 @@ on:
       - apps/worker/src/ip-australia-trademark-corpus-discovery.ts
       - apps/worker/src/ip-australia-corpus-reconciliation.ts
       - apps/worker/src/reconcile-ip-australia-corpus.ts
+      - apps/worker/src/ip-australia-golden-corpus.ts
       - apps/worker/package.json
       - pnpm-lock.yaml
 
@@ -59,6 +60,7 @@ jobs:
               `- Discovered links: ${report.discoveredLinkCount}`,
               `- Referenced assets: ${report.referencedAssetCount}`,
               `- Failed seeds: ${report.failedSeedCount}`,
+              `- Journey gaps: ${report.journeyGapCount}`,
               "",
               "### Journey integrity",
               "",
