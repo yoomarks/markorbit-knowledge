@@ -4,7 +4,13 @@ import {
   type LocalFolderRootMap,
 } from "@markorbit/worker-runtime";
 
-export type WorkerCollectionProvider = "api" | "crawl4ai" | "github" | "local-folder" | "rss";
+export type WorkerCollectionProvider =
+  | "api"
+  | "crawl4ai"
+  | "github"
+  | "ip-australia-manual"
+  | "local-folder"
+  | "rss";
 
 export type WorkerProcessConfig = {
   controlPlaneUrl: string;
@@ -78,13 +84,14 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     value === "api" ||
     value === "crawl4ai" ||
     value === "github" ||
+    value === "ip-australia-manual" ||
     value === "local-folder" ||
     value === "rss"
   ) {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, crawl4ai, github, local-folder, or rss",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, crawl4ai, github, ip-australia-manual, local-folder, or rss",
   );
 }
 
