@@ -1,8 +1,10 @@
 import {
   GOLDEN_CORPORA,
+  auditCorpusCoverage,
   auditGoldenCorpora,
   type CorpusInventoryCandidate,
 } from "./corpus-inventory";
+import { IP_AUSTRALIA_GOLDEN_CORPUS } from "./ip-australia-golden-corpus";
 import { DEFAULT_WORKSPACE_ID, parseCoverageTargets } from "./source-coverage-bootstrap";
 
 type JsonRecord = Record<string, unknown>;
@@ -87,7 +89,7 @@ async function loadCoverageCandidates(
   workspaceId: string,
 ): Promise<CorpusInventoryCandidate[]> {
   const result: CorpusInventoryCandidate[] = [];
-  for (const jurisdiction of ["US", "WO"] as const) {
+  for (const jurisdiction of ["US", "WO", "AU"] as const) {
     const payload = await getJson(
       baseUrl,
       `/api/source-coverage?jurisdiction=${jurisdiction}&coverageTier=FOUNDATIONAL&catalogState=ACTIVE&workspaceId=${encodeURIComponent(workspaceId)}`,
@@ -126,14 +128,17 @@ async function main(): Promise<void> {
     loadCoverageCandidates(baseUrl, workspaceId),
   ]);
   const candidates = dedupe([...sources, ...coverage]);
-  const audits = auditGoldenCorpora(candidates);
+  const audits = [
+    ...auditGoldenCorpora(candidates),
+    auditCorpusCoverage(IP_AUSTRALIA_GOLDEN_CORPUS, candidates),
+  ];
 
   process.stdout.write(
     `${JSON.stringify(
       {
         event: "corpus.coverage.audit",
         workspaceId,
-        corpusCount: GOLDEN_CORPORA.length,
+        corpusCount: GOLDEN_CORPORA.length + 1,
         candidateCount: candidates.length,
         acceptanceBoundary:
           "Inventory coverage only. CORPUS READY additionally requires acquisition completeness, content fidelity, and freshness evidence.",
