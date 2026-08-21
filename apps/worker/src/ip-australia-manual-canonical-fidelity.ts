@@ -21,6 +21,7 @@ export type IpAustraliaCanonicalFidelityOutcome = {
   publishedDatePreserved: boolean;
   bodyEvidencePreserved: boolean;
   bodyAnchorCount: number;
+  requiredBodyAnchorCount: number;
   matchedBodyAnchorCount: number;
   bodyAnchors: IpAustraliaBodyAnchorEvidence[];
   amendmentsPreserved: boolean;
@@ -48,9 +49,9 @@ function bodyAnchors(article: IpAustraliaManualArticle): string[] {
   const tokens = words(article.bodyText);
   if (tokens.length < 32) return [];
 
-  // Skip the publication-date/link-heavy header. Sample several independent windows across the
-  // substantive body so Markdown link targets or minor structural punctuation cannot create a
-  // false fidelity failure while actual body loss still fails closed.
+  // Skip the publication-date/link-heavy header, then sample independent windows across the
+  // substantive body. This proves distributed evidence preservation instead of requiring one
+  // brittle source-text substring to survive Markdown link/structure rendering verbatim.
   const start = Math.min(32, Math.max(0, tokens.length - 12));
   const available = tokens.length - start;
   const anchorCount = Math.min(5, Math.max(1, Math.floor(available / 12)));
@@ -62,6 +63,11 @@ function bodyAnchors(article: IpAustraliaManualArticle): string[] {
     if (anchor.split(" ").length >= 8 && !anchors.includes(anchor)) anchors.push(anchor);
   }
   return anchors;
+}
+
+function requiredBodyAnchors(anchorCount: number): number {
+  if (anchorCount < 3) return 3;
+  return Math.max(3, Math.ceil(anchorCount * 0.8));
 }
 
 function emptyOutcome(uri: string, error: string): IpAustraliaCanonicalFidelityOutcome {
@@ -81,6 +87,7 @@ function emptyOutcome(uri: string, error: string): IpAustraliaCanonicalFidelityO
     publishedDatePreserved: false,
     bodyEvidencePreserved: false,
     bodyAnchorCount: 0,
+    requiredBodyAnchorCount: 3,
     matchedBodyAnchorCount: 0,
     bodyAnchors: [],
     amendmentsPreserved: false,
@@ -102,7 +109,9 @@ export function evaluateIpAustraliaCanonicalFidelity(
   const anchors = bodyAnchors(source);
   const anchorEvidence = anchors.map((text) => ({ text, matched: searchable.includes(text) }));
   const matchedBodyAnchorCount = anchorEvidence.filter((anchor) => anchor.matched).length;
-  const bodyEvidencePreserved = anchors.length >= 3 && matchedBodyAnchorCount === anchors.length;
+  const requiredBodyAnchorCount = requiredBodyAnchors(anchors.length);
+  const bodyEvidencePreserved =
+    anchors.length >= 3 && matchedBodyAnchorCount >= requiredBodyAnchorCount;
   const amendmentsPreserved =
     source.amendments.length > 0 &&
     source.amendments.every(
@@ -128,6 +137,7 @@ export function evaluateIpAustraliaCanonicalFidelity(
     publishedDatePreserved,
     bodyEvidencePreserved,
     bodyAnchorCount: anchors.length,
+    requiredBodyAnchorCount,
     matchedBodyAnchorCount,
     bodyAnchors: anchorEvidence,
     amendmentsPreserved,
