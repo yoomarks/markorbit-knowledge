@@ -24,13 +24,16 @@ describe("IP Australia trademark corpus", () => {
     ).toBe(true);
   });
 
-  it("classifies official main-site and manuals knowledge without admitting dev or external sites", () => {
+  it("classifies official trademark and manuals knowledge without admitting dev, external, or other IP-right journeys", () => {
     const html = `
       <a href="/trade-marks/timeframes-and-fees">Timeframes and fees</a>
       <a href="/trade-marks/how-to-respond-to-an-examination-report">Examination report</a>
       <a href="https://manuals.ipaustralia.gov.au/trademark/1.-fees---general">Manual fees</a>
+      <a href="/patents/how-to-apply-for-a-standard-patent">How to apply</a>
+      <a href="/plant-breeders-rights/timeframes-and-fees-application-part-1">Timeframes and fees</a>
       <a href="https://ipa.dev.ipaustralia.gov.au/trade-marks/search-existing-trade-marks">Dev</a>
       <a href="https://example.com/trade-marks">External</a>
+      <a href="&quot;&quot;">Broken manual href</a>
     `;
     const links = extractIpAustraliaTrademarkLinks(
       html,
@@ -42,6 +45,9 @@ describe("IP Australia trademark corpus", () => {
     expect(counts.TIMEFRAMES_FEES).toBe(1);
     expect(counts.EXAMINATION).toBe(1);
     expect(counts.PRACTICE_MANUAL).toBe(1);
+    expect(links.some((link) => link.uri.includes("/patents/"))).toBe(false);
+    expect(links.some((link) => link.uri.includes("/plant-breeders-rights/"))).toBe(false);
+    expect(links.some((link) => link.uri.includes("%22%22"))).toBe(false);
   });
 
   it("retains official downloadable evidence assets", () => {
