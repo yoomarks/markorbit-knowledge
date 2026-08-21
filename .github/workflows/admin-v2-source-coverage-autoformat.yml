@@ -27,6 +27,8 @@ jobs:
           # Keep business surfaces and shared ingestion-control helpers formatting-clean,
           # including production staging and the bulk collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
+            apps/worker/src/country-index-public-inventory.ts \
+            apps/worker/src/discover-country-index-public.ts \
             apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
@@ -46,6 +48,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            apps/worker/src/country-index-public-inventory.ts \
+            apps/worker/src/discover-country-index-public.ts \
             apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
