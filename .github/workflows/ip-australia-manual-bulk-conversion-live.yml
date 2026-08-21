@@ -121,13 +121,16 @@ jobs:
           process.stdout.write(`::add-mask::${d.credential}\n`);
           fs.appendFileSync(process.env.GITHUB_ENV,`MARKORBIT_WORKER_ID=${d.view.worker.id}\nMARKORBIT_WORKER_CREDENTIAL=${d.credential}\n`);
           NODE
+          rm -f "$RUNNER_TEMP/worker-create.secret.json"
+
+      - name: Resolve Worker workspace and enable conversion
+        run: |
           curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/workers/$MARKORBIT_WORKER_ID" > "$RUNNER_TEMP/worker-view.json"
           node <<'NODE'
           const fs=require('node:fs'); const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/worker-view.json','utf8')); const workspace=d?.view?.worker?.workspaceId;
           if(!workspace)throw new Error('Worker view is missing workspaceId');
           fs.appendFileSync(process.env.GITHUB_ENV,`MARKORBIT_WORKSPACE_ID=${workspace}\nMARKORBIT_CONVERSION_ENABLED=1\nMARKORBIT_CONVERSION_CAPABILITY_REVISION=1\n`);
           NODE
-          rm -f "$RUNNER_TEMP/worker-create.secret.json"
 
       - name: Register HTML Markdown conversion capability
         run: |
