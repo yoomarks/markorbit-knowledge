@@ -92,6 +92,19 @@ describe("loadWorkerProcessConfig", () => {
     expect(config).not.toHaveProperty("apiEndpointBindings");
   });
 
+  it("enables the IP Australia Manual provider without unrelated provider configuration", () => {
+    const config = loadWorkerProcessConfig(
+      env({
+        NODE_ENV: "production",
+        MARKORBIT_COLLECTION_PROVIDER: "ip-australia-manual",
+        MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0",
+      }),
+    );
+    expect(config.collectionProvider).toBe("ip-australia-manual");
+    expect(config.localFolderRoots).toEqual({});
+    expect(config).not.toHaveProperty("apiEndpointBindings");
+  });
+
   it("enables a bounded GitHub provider without persisting its optional token", () => {
     const config = loadWorkerProcessConfig(
       env({
@@ -203,6 +216,16 @@ describe("loadWorkerProcessConfig", () => {
         }),
       ).collectionProvider,
     ).toBe("github");
+
+    expect(
+      loadWorkerProcessConfig(
+        env({
+          NODE_ENV: "production",
+          MARKORBIT_COLLECTION_PROVIDER: "ip-australia-manual",
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0",
+        }),
+      ).collectionProvider,
+    ).toBe("ip-australia-manual");
   });
 
   it("rejects missing credentials, unknown providers, and unsafe timing limits", () => {
