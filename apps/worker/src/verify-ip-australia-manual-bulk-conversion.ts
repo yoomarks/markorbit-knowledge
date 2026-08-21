@@ -149,7 +149,9 @@ async function waitForCompletedRuns(
       );
     }
     if (runs.length > expected) {
-      throw new Error(`Expected exactly ${expected} AUTO_PROFILE conversions, observed ${runs.length}`);
+      throw new Error(
+        `Expected exactly ${expected} AUTO_PROFILE conversions, observed ${runs.length}`,
+      );
     }
     if (runs.length === expected && runs.every((run) => run.status === "COMPLETED")) return runs;
     await new Promise((resolve) => setTimeout(resolve, pollMs()));
@@ -183,7 +185,9 @@ function verifyConversionRuns(runs: Json[], sourceId: string, expected: number):
       converter?.converterId !== EXPECTED_CONVERTER.converterId ||
       converter?.version !== EXPECTED_CONVERTER.version
     ) {
-      throw new Error(`ConversionRun ${runId} used unexpected converter: ${JSON.stringify(converter)}`);
+      throw new Error(
+        `ConversionRun ${runId} used unexpected converter: ${JSON.stringify(converter)}`,
+      );
     }
     const input = record(run.input);
     const inputSha256 = requiredString(input?.sha256, "conversionRun.input.sha256");
@@ -196,11 +200,15 @@ function verifyConversionRuns(runs: Json[], sourceId: string, expected: number):
     }
     const output = record(run.requestedOutput);
     if (output?.format !== "MARKDOWN") {
-      throw new Error(`ConversionRun ${runId} requested unexpected output: ${JSON.stringify(output)}`);
+      throw new Error(
+        `ConversionRun ${runId} requested unexpected output: ${JSON.stringify(output)}`,
+      );
     }
     if (runIds.has(runId)) throw new Error(`Duplicate ConversionRun id ${runId}`);
     if (artifactIds.has(rawArtifactId)) {
-      throw new Error(`RawArtifact ${rawArtifactId} received more than one AUTO_PROFILE conversion`);
+      throw new Error(
+        `RawArtifact ${rawArtifactId} received more than one AUTO_PROFILE conversion`,
+      );
     }
     runIds.add(runId);
     artifactIds.add(rawArtifactId);
@@ -209,7 +217,9 @@ function verifyConversionRuns(runs: Json[], sourceId: string, expected: number):
 }
 
 async function readyPackages(workspaceId: string): Promise<Json[]> {
-  const payload = await getJson(`/api/ready-packages?workspaceId=${encodeURIComponent(workspaceId)}`);
+  const payload = await getJson(
+    `/api/ready-packages?workspaceId=${encodeURIComponent(workspaceId)}`,
+  );
   return array(payload.readyPackages)
     .map(record)
     .filter((value): value is Json => Boolean(value));
@@ -234,7 +244,9 @@ function verifyReadyPackages(
   return sourcePackages.map((readyPackage) => {
     const id = requiredString(readyPackage.id, "readyPackage.id");
     if (readyPackage.status !== "VERIFIED") {
-      throw new Error(`ReadyPackage ${id} must remain VERIFIED, got ${String(readyPackage.status)}`);
+      throw new Error(
+        `ReadyPackage ${id} must remain VERIFIED, got ${String(readyPackage.status)}`,
+      );
     }
     const evidence = record(readyPackage.evidence);
     if (!evidence) throw new Error(`ReadyPackage ${id} is missing evidence`);
@@ -244,7 +256,9 @@ function verifyReadyPackages(
     );
     const run = runById.get(conversionRunId);
     if (!run) {
-      throw new Error(`ReadyPackage ${id} references an unexpected ConversionRun ${conversionRunId}`);
+      throw new Error(
+        `ReadyPackage ${id} references an unexpected ConversionRun ${conversionRunId}`,
+      );
     }
     const rawArtifactId = requiredString(run.rawArtifactId, "conversionRun.rawArtifactId");
     const artifactIds = array(evidence.artifactIds).filter(
@@ -364,7 +378,9 @@ async function verifyCoreBoundary(
       !artifactIds.includes(readyPackage.rawArtifactId) ||
       evidence?.stagingDocumentId !== readyPackage.stagingDocumentId
     ) {
-      throw new Error(`ReadyPackage ${readyPackage.id} Core intake preview lost acquisition evidence`);
+      throw new Error(
+        `ReadyPackage ${readyPackage.id} Core intake preview lost acquisition evidence`,
+      );
     }
     if ("intakeId" in payload || "coreIntakeResult" in payload) {
       throw new Error(`ReadyPackage ${readyPackage.id} fabricated Core acceptance state`);
@@ -375,14 +391,8 @@ async function verifyCoreBoundary(
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2).filter((value) => value !== "--");
-  const sourceId = requiredString(
-    args[0] ?? process.env.MARKORBIT_IP_AU_SOURCE_ID,
-    "sourceId",
-  );
-  const workspaceId = requiredString(
-    process.env.MARKORBIT_WORKSPACE_ID,
-    "MARKORBIT_WORKSPACE_ID",
-  );
+  const sourceId = requiredString(args[0] ?? process.env.MARKORBIT_IP_AU_SOURCE_ID, "sourceId");
+  const workspaceId = requiredString(process.env.MARKORBIT_WORKSPACE_ID, "MARKORBIT_WORKSPACE_ID");
   const expected = expectedCount();
   const runs = await waitForCompletedRuns(workspaceId, sourceId, expected, timeoutMs());
   const artifactIds = verifyConversionRuns(runs, sourceId, expected);
