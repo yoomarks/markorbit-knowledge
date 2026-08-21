@@ -5,12 +5,7 @@ import {
 } from "@markorbit/worker-runtime";
 
 export type WorkerCollectionProvider =
-  | "api"
-  | "crawl4ai"
-  | "github"
-  | "ip-australia-manual"
-  | "local-folder"
-  | "rss";
+  "api" | "crawl4ai" | "github" | "ip-australia-manual" | "local-folder" | "rss";
 
 export type WorkerProcessConfig = {
   controlPlaneUrl: string;
