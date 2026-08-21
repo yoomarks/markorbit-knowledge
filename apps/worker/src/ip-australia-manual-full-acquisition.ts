@@ -10,10 +10,7 @@ import {
 } from "./ip-australia-manual-article-fidelity";
 
 export type IpAustraliaManualEvidenceProfile =
-  | "STANDARD_ARTICLE"
-  | "SPECIAL_EVIDENCE_PAGE"
-  | "SOURCE_UNAVAILABLE"
-  | "INCOMPLETE_EVIDENCE";
+  "STANDARD_ARTICLE" | "SPECIAL_EVIDENCE_PAGE" | "SOURCE_UNAVAILABLE" | "INCOMPLETE_EVIDENCE";
 
 export type IpAustraliaManualAcquiredPage = {
   uri: string;
@@ -74,7 +71,9 @@ function evidenceProfile(
   }
 
   const specialEvidencePresent =
-    article.datePublished !== null || article.bodyText.length >= 100 || article.amendments.length > 0;
+    article.datePublished !== null ||
+    article.bodyText.length >= 100 ||
+    article.amendments.length > 0;
   return specialEvidencePresent ? "SPECIAL_EVIDENCE_PAGE" : "INCOMPLETE_EVIDENCE";
 }
 
@@ -177,7 +176,8 @@ export async function acquireIpAustraliaManualCorpus(
     failedPageCount,
     sourceUnavailablePageCount,
     incompleteEvidencePageCount,
-    standardArticleCount: acquired.filter((page) => page.evidenceProfile === "STANDARD_ARTICLE").length,
+    standardArticleCount: acquired.filter((page) => page.evidenceProfile === "STANDARD_ARTICLE")
+      .length,
     specialEvidencePageCount: acquired.filter(
       (page) => page.evidenceProfile === "SPECIAL_EVIDENCE_PAGE",
     ).length,
