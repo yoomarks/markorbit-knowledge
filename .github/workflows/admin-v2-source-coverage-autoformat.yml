@@ -24,9 +24,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Apply Prettier
         run: |
-          # Keep business surfaces and shared ingestion-control helpers formatting-clean,
-          # including production staging and the bulk collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
+            apps/worker/src/ip-australia-manual-artifact-acquirer.ts \
+            apps/worker/src/ip-australia-manual-artifact-acquirer.test.ts \
             apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
@@ -46,6 +46,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            apps/worker/src/ip-australia-manual-artifact-acquirer.ts \
+            apps/worker/src/ip-australia-manual-artifact-acquirer.test.ts \
             apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
@@ -61,5 +63,5 @@ jobs:
             apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
             apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
             apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
-          git commit -m "style: format admin v2 business surfaces"
+          git commit -m "style: format IP Australia artifact acquirer"
           git push origin HEAD:${{ github.head_ref }}
