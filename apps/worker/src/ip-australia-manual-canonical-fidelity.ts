@@ -5,6 +5,11 @@ import {
   type IpAustraliaManualArticle,
 } from "./ip-australia-manual-article-fidelity";
 
+export type IpAustraliaBodyAnchorEvidence = {
+  text: string;
+  matched: boolean;
+};
+
 export type IpAustraliaCanonicalFidelityOutcome = {
   uri: string;
   ok: boolean;
@@ -17,6 +22,7 @@ export type IpAustraliaCanonicalFidelityOutcome = {
   bodyEvidencePreserved: boolean;
   bodyAnchorCount: number;
   matchedBodyAnchorCount: number;
+  bodyAnchors: IpAustraliaBodyAnchorEvidence[];
   amendmentsPreserved: boolean;
   controlledNoticePreserved: boolean;
   error?: string;
@@ -58,6 +64,31 @@ function bodyAnchors(article: IpAustraliaManualArticle): string[] {
   return anchors;
 }
 
+function emptyOutcome(uri: string, error: string): IpAustraliaCanonicalFidelityOutcome {
+  return {
+    uri,
+    ok: false,
+    source: {
+      uri,
+      title: "",
+      datePublished: null,
+      bodyText: "",
+      amendments: [],
+      controlledDocumentNotice: false,
+    },
+    markdownLength: 0,
+    titlePreserved: false,
+    publishedDatePreserved: false,
+    bodyEvidencePreserved: false,
+    bodyAnchorCount: 0,
+    matchedBodyAnchorCount: 0,
+    bodyAnchors: [],
+    amendmentsPreserved: false,
+    controlledNoticePreserved: false,
+    error,
+  };
+}
+
 export function evaluateIpAustraliaCanonicalFidelity(
   uri: string,
   html: string,
@@ -69,7 +100,8 @@ export function evaluateIpAustraliaCanonicalFidelity(
   const publishedDatePreserved =
     source.datePublished !== null && searchable.includes(plainText(source.datePublished));
   const anchors = bodyAnchors(source);
-  const matchedBodyAnchorCount = anchors.filter((anchor) => searchable.includes(anchor)).length;
+  const anchorEvidence = anchors.map((text) => ({ text, matched: searchable.includes(text) }));
+  const matchedBodyAnchorCount = anchorEvidence.filter((anchor) => anchor.matched).length;
   const bodyEvidencePreserved = anchors.length >= 3 && matchedBodyAnchorCount === anchors.length;
   const amendmentsPreserved =
     source.amendments.length > 0 &&
@@ -97,6 +129,7 @@ export function evaluateIpAustraliaCanonicalFidelity(
     bodyEvidencePreserved,
     bodyAnchorCount: anchors.length,
     matchedBodyAnchorCount,
+    bodyAnchors: anchorEvidence,
     amendmentsPreserved,
     controlledNoticePreserved,
     ...(!ok ? { error: "Canonical Markdown did not preserve all required Manual evidence fields" } : {}),
@@ -119,54 +152,18 @@ export async function auditIpAustraliaManualCanonicalFidelity(
       const contentType = response.headers.get("content-type") ?? undefined;
       if (!response.ok) {
         outcomes.push({
-          uri,
-          ok: false,
+          ...emptyOutcome(uri, `${uri} returned HTTP ${response.status}`),
           status: response.status,
           contentType,
-          source: {
-            uri,
-            title: "",
-            datePublished: null,
-            bodyText: "",
-            amendments: [],
-            controlledDocumentNotice: false,
-          },
-          markdownLength: 0,
-          titlePreserved: false,
-          publishedDatePreserved: false,
-          bodyEvidencePreserved: false,
-          bodyAnchorCount: 0,
-          matchedBodyAnchorCount: 0,
-          amendmentsPreserved: false,
-          controlledNoticePreserved: false,
-          error: `${uri} returned HTTP ${response.status}`,
         });
         continue;
       }
       const evaluated = evaluateIpAustraliaCanonicalFidelity(uri, await response.text());
       outcomes.push({ ...evaluated, status: response.status, contentType });
     } catch (error) {
-      outcomes.push({
-        uri,
-        ok: false,
-        source: {
-          uri,
-          title: "",
-          datePublished: null,
-          bodyText: "",
-          amendments: [],
-          controlledDocumentNotice: false,
-        },
-        markdownLength: 0,
-        titlePreserved: false,
-        publishedDatePreserved: false,
-        bodyEvidencePreserved: false,
-        bodyAnchorCount: 0,
-        matchedBodyAnchorCount: 0,
-        amendmentsPreserved: false,
-        controlledNoticePreserved: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      outcomes.push(
+        emptyOutcome(uri, error instanceof Error ? error.message : String(error)),
+      );
     }
   }
   return outcomes;
