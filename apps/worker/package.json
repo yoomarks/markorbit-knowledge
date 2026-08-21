@@ -17,6 +17,7 @@
     "discover:uspto": "tsx src/discover-uspto-public.ts",
     "reconcile:uspto-corpus": "tsx src/reconcile-uspto-corpus.ts",
     "discover:wipo": "tsx src/discover-wipo-public.ts",
+    "reconcile:wipo-corpus": "tsx src/reconcile-wipo-corpus.ts",
     "activate:representative-coverage": "tsx src/activate-representative-source-wave.ts",
     "promote:representative-supply": "tsx src/promote-representative-source-supply.ts",
     "verify:representative-supply": "tsx src/verify-representative-source-supply.ts",
