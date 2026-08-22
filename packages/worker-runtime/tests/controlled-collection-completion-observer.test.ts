@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type {
   ArtifactIngestionReceipt,
   ArtifactIngestionSession,
@@ -9,6 +9,7 @@ import type {
 import type { CollectionArtifactAcquirer } from "../src/artifact-backed-collection-executor";
 import {
   ControlledCollectionWorkerRuntime,
+  type ControlledCollectionCompletion,
   type ControlledCollectionWorkerClient,
 } from "../src/controlled-collection-worker-runtime";
 
@@ -64,12 +65,16 @@ function fixture() {
 describe("ControlledCollectionWorkerRuntime completion observer", () => {
   it("surfaces governed context and the completed receipt after control-plane completion", async () => {
     const { job, client, acquirer } = fixture();
-    const onCompleted = vi.fn(async () => undefined);
-    const runtime = new ControlledCollectionWorkerRuntime(client, acquirer, { onCompleted });
+    const completions: ControlledCollectionCompletion[] = [];
+    const runtime = new ControlledCollectionWorkerRuntime(client, acquirer, {
+      onCompleted(completion) {
+        completions.push(completion);
+      },
+    });
 
     await expect(runtime.runOnce()).resolves.toBe(true);
-    expect(onCompleted).toHaveBeenCalledTimes(1);
-    const completion = onCompleted.mock.calls[0]![0];
+    expect(completions).toHaveLength(1);
+    const completion = completions[0]!;
     expect(completion.context.job).toBe(job);
     expect(completion.context.workerId).toBe("wrk_learning");
     expect(completion.receipt).toMatchObject({
