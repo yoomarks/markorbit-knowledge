@@ -217,7 +217,9 @@ export function extractAcquisitionRunLessons(evidence: AcquisitionRunEvidence): 
           statement: `${surface.surface} enumerated at least 98% of the known corpus in this run.`,
           confidence: clamp01(0.75 + coverage * 0.25),
           reasonCodes: ["SURFACE_COVERAGE_GTE_98_PERCENT"],
-          ...(surfacePrimitive(surface) ? { recommendedPrimitive: surfacePrimitive(surface) } : {}),
+          ...(surfacePrimitive(surface.surface)
+            ? { recommendedPrimitive: surfacePrimitive(surface.surface) }
+            : {}),
           affectedSurface: surface.surface,
         }),
       );
