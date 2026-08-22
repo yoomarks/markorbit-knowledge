@@ -45,14 +45,9 @@ function inferredOutcome(
 ): AcquisitionRunEvidence["outcome"] {
   const { accepted } = observation.counts;
   if (accepted <= 0) return "FAILED";
-  if (
-    observation.knownCorpus !== null &&
-    accepted === observation.knownCorpus &&
-    (observation.failureSignatures?.length ?? 0) === 0
-  ) {
-    return "SUCCESS";
-  }
-  return "DEGRADED";
+  if ((observation.failureSignatures?.length ?? 0) > 0) return "DEGRADED";
+  if (observation.knownCorpus === null) return "SUCCESS";
+  return accepted === observation.knownCorpus ? "SUCCESS" : "DEGRADED";
 }
 
 function defaultSurfaceOutcomes(
