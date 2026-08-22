@@ -5,6 +5,7 @@ import type {
   RunLesson,
   SourceFingerprint,
 } from "@markorbit/contracts";
+import { RegistryValidationError } from "@markorbit/persistence";
 import {
   SqliteAcquisitionIntelligenceRepository,
   type PersistedAcquisitionStrategySelection,
@@ -38,8 +39,16 @@ export type AcquisitionRunLearningRead = {
 
 function normalizedId(value: string, field: string): string {
   const normalized = value.trim();
-  if (!normalized) throw new Error(`${field} is required`);
+  if (!normalized) throw new RegistryValidationError(`${field} is required`);
   return normalized;
+}
+
+function boundedLimit(value: number | undefined, fallback: number, field: string): number {
+  const resolved = value ?? fallback;
+  if (!Number.isInteger(resolved) || resolved < 1 || resolved > 500) {
+    throw new RegistryValidationError(`${field} must be an integer between 1 and 500`);
+  }
+  return resolved;
 }
 
 export class AcquisitionIntelligenceReadService {
@@ -57,8 +66,10 @@ export class AcquisitionIntelligenceReadService {
     lessonsLimit?: number;
   }): AcquisitionSourceLearningRead {
     const sourceId = normalizedId(input.sourceId, "sourceId");
-    const runs = this.intelligence.listRunEvidenceForSource(sourceId, input.runsLimit ?? 50);
-    const lessons = this.intelligence.listLessonsForSource(sourceId, input.lessonsLimit ?? 100);
+    const runsLimit = boundedLimit(input.runsLimit, 50, "runsLimit");
+    const lessonsLimit = boundedLimit(input.lessonsLimit, 100, "lessonsLimit");
+    const runs = this.intelligence.listRunEvidenceForSource(sourceId, runsLimit);
+    const lessons = this.intelligence.listLessonsForSource(sourceId, lessonsLimit);
     const strategyCandidates = this.governance
       .listCandidates(500)
       .filter((item) => item.candidate.sourceScope.includes(sourceId));
