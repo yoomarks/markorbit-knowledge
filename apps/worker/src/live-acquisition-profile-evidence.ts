@@ -31,6 +31,8 @@ export function buildLiveAcquisitionProfileEvidence(input: {
   bytes: number;
   httpStatusCounts?: Record<string, number>;
   failureSignatures?: AcquisitionFailureSignature[];
+  surfaceOutcomes?: AcquisitionRunEvidence["surfaceOutcomes"];
+  rendering?: AcquisitionRunEvidence["rendering"];
   changeDetection?: AcquisitionRunEvidence["changeDetection"];
   evidenceRefs: string[];
 }): LiveAcquisitionProfileEvidence {
@@ -55,6 +57,8 @@ export function buildLiveAcquisitionProfileEvidence(input: {
       previousCoverageRatio: input.previousCoverageRatio ?? null,
       httpStatusCounts: input.httpStatusCounts,
       failureSignatures: input.failureSignatures,
+      surfaceOutcomes: input.surfaceOutcomes,
+      rendering: input.rendering,
       changeDetection: input.changeDetection,
       bytes: input.bytes,
       evidenceRefs: ["observation-scope:live-canary", ...input.evidenceRefs],
