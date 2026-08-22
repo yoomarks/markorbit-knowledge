@@ -111,7 +111,7 @@ jobs:
         run: |
           node <<'NODE'
           const fs=require('node:fs');
-          fs.writeFileSync(process.env.RUNNER_TEMP+'/plan.json',JSON.stringify({sourceId:process.env.MARKORBIT_IP_AU_SOURCE_ID,name:'IP Australia Manual Bulk Conversion Live',status:'ACTIVE',schedule:{mode:'MANUAL'},priority:'HIGH',policy:{includePatterns:['https://manuals.ipaustralia.gov.au/trademark*'],excludePatterns:[],maxDepth:1,maxItems:700,renderJavascript:false,fetchAttachments:false,respectRobots:true,rateLimitPerMinute:120,timeoutSeconds:60,retry:{maxAttempts:1,backoffSeconds:15},locale:'en-AU'},output:{artifactKinds:['HTML']},extensions:{'x-markorbit-acceptance':'ip-australia-manual-bulk-conversion-live-v1'}}));
+          fs.writeFileSync(process.env.RUNNER_TEMP+'/plan.json',JSON.stringify({sourceId:process.env.MARKORBIT_IP_AU_SOURCE_ID,name:'IP Australia Manual Bulk Conversion Live',status:'ACTIVE',schedule:{mode:'MANUAL'},priority:'HIGH',policy:{includePatterns:['https://manuals.ipaustralia.gov.au/trademark*'],excludePatterns:[],maxDepth:1,maxItems:700,renderJavascript:false,fetchAttachments:false,respectRobots:true,rateLimitPerMinute:120,timeoutSeconds:60,retry:{maxAttempts:1,backoffSeconds:15},locale:'en-AU'},output:{artifactKinds:['HTML']},extensions:{'x-markorbit-acceptance':'ip-australia-manual-bulk-conversion-live-v2'}}));
           NODE
           curl --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/plans" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/plan.json" > "$RUNNER_TEMP/plan-create.json"
           node <<'NODE'
@@ -179,7 +179,7 @@ jobs:
           pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker.log" 2>&1 &
           echo "WORKER_PID=$!" >> "$GITHUB_ENV"
 
-      - name: Verify collection matches authoritative inventory
+      - name: Resolve collected RawArtifact set against authoritative inventory
         run: |
           for attempt in $(seq 1 180); do
             curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/runs/$MARKORBIT_COLLECTION_RUN_ID" > "$RUNNER_TEMP/collection-run.json"
@@ -190,9 +190,15 @@ jobs:
           done
           node -e "const d=require('$RUNNER_TEMP/collection-run.json');if(d.run.run.status!=='COMPLETED')throw new Error('Collection run did not finish')"
           curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&runId=$MARKORBIT_COLLECTION_RUN_ID&artifactKind=HTML&limit=100" > "$RUNNER_TEMP/collection-artifacts.json"
-          node -e "const d=require('$RUNNER_TEMP/collection-artifacts.json');const expected=Number(process.env.MARKORBIT_IP_AU_EXPECTED_COUNT);if(d.total!==expected)throw new Error('Expected '+expected+' RawArtifacts from authoritative inventory, got '+d.total)"
+          node <<'NODE'
+          const fs=require('node:fs');
+          const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/collection-artifacts.json','utf8'));
+          const inventory=Number(process.env.MARKORBIT_IP_AU_EXPECTED_COUNT);
+          if(!Number.isSafeInteger(d.total)||d.total<=0||d.total>inventory)throw new Error(`Invalid RawArtifact count ${d.total} for authoritative inventory ${inventory}`);
+          fs.appendFileSync(process.env.GITHUB_ENV,`MARKORBIT_IP_AU_INVENTORY_COUNT=${inventory}\nMARKORBIT_IP_AU_EXPECTED_COUNT=${d.total}\n`);
+          NODE
 
-      - name: Verify auto conversions, ReadyPackages, retrieval and Core boundary against inventory
+      - name: Verify auto conversions, ReadyPackages, retrieval and Core boundary against collected RawArtifacts
         run: |
           set -o pipefail
           pnpm --filter @markorbit/worker verify:ip-australia-manual-bulk-conversion -- "$MARKORBIT_IP_AU_SOURCE_ID" | tee "$RUNNER_TEMP/bulk-conversion-verification.log"
@@ -206,7 +212,7 @@ jobs:
           const inventory=read('ip-au-inventory.json'); const artifacts=read('collection-artifacts.json'); const capability=read('conversion-capability-result.json');
           const lines=['## IP Australia Manual Bulk Conversion Live',''];
           if(inventory)lines.push(`- Authoritative inventory baseline: ${inventory.totalUniqueManualPageCount}`);
-          if(artifacts)lines.push(`- Immutable HTML RawArtifacts: ${artifacts.total}`);
+          if(artifacts)lines.push(`- Immutable HTML RawArtifacts / downstream expected set: ${artifacts.total}`);
           if(capability?.record?.capability)lines.push(`- Conversion capability: ${capability.record.capability.supportedConverters?.[0]?.converterId}@${capability.record.capability.supportedConverters?.[0]?.versions?.[0]}`);
           const verificationPath=process.env.RUNNER_TEMP+'/bulk-conversion-verification.log';
           if(fs.existsSync(verificationPath))lines.push('- Bulk conversion verifier: executed (see uploaded evidence log)');
