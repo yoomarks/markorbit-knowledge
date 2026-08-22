@@ -16,7 +16,10 @@ import {
   defaultApiTransport,
 } from "@markorbit/worker-runtime";
 import { buildReceiptAcquisitionLearningObservation } from "./acquisition-learning-observation";
-import { acquisitionLearningProfile } from "./acquisition-learning-profiles";
+import {
+  acquisitionLearningProfile,
+  defaultAcquisitionLearningProfileIdForProvider,
+} from "./acquisition-learning-profiles";
 import { loadWorkerProcessConfig } from "./config";
 import { buildIpAustraliaManualAcquisitionRunEvidence } from "./ip-australia-manual-acquisition-learning";
 import { IpAustraliaManualArtifactAcquirer } from "./ip-australia-manual-artifact-acquirer";
@@ -37,11 +40,12 @@ function log(event: string, fields: Record<string, unknown> = {}): void {
 
 async function main(): Promise<void> {
   const config = loadWorkerProcessConfig();
-  const learningProfile = acquisitionLearningProfile(config.acquisitionLearningProfileId);
-  if (config.acquisitionLearningProfileId && !learningProfile) {
-    throw new Error(
-      `Unknown acquisition learning profile: ${config.acquisitionLearningProfileId}`,
-    );
+  const learningProfileId =
+    config.acquisitionLearningProfileId ??
+    defaultAcquisitionLearningProfileIdForProvider(config.collectionProvider);
+  const learningProfile = acquisitionLearningProfile(learningProfileId);
+  if (learningProfileId && !learningProfile) {
+    throw new Error(`Unknown acquisition learning profile: ${learningProfileId}`);
   }
   const collectionClient = new HttpControlledCollectionClient(
     config.controlPlaneUrl,
