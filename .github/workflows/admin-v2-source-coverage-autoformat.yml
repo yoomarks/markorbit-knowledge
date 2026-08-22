@@ -44,7 +44,8 @@ jobs:
             apps/admin/src/server/__tests__/source-failure-root-causes.test.ts \
             apps/admin/src/app/api/acquisition-intelligence/strategy-candidates/[id]/transition/route.ts \
             packages/persistence/src/acquisition-strategy-governance.ts \
-            packages/persistence/tests/acquisition-strategy-governance.test.ts
+            packages/persistence/tests/acquisition-strategy-governance.test.ts \
+            apps/worker/src/bootstrap-uspto-conversion.ts
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -66,6 +67,7 @@ jobs:
             apps/admin/src/server/__tests__/source-failure-root-causes.test.ts \
             apps/admin/src/app/api/acquisition-intelligence/strategy-candidates/[id]/transition/route.ts \
             packages/persistence/src/acquisition-strategy-governance.ts \
-            packages/persistence/tests/acquisition-strategy-governance.test.ts
+            packages/persistence/tests/acquisition-strategy-governance.test.ts \
+            apps/worker/src/bootstrap-uspto-conversion.ts
           git commit -m "style: format admin v2 business surfaces"
           git push origin HEAD:${{ github.head_ref }}
