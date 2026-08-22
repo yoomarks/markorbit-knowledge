@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ACQUISITION_LEARNING_PROFILES, acquisitionLearningProfile } from "./acquisition-learning-profiles";
+import {
+  ACQUISITION_LEARNING_PROFILES,
+  acquisitionLearningProfile,
+  defaultAcquisitionLearningProfileIdForProvider,
+} from "./acquisition-learning-profiles";
 
 const cases = [
   ["static-index-html-v1", "official-static-index-tree", "INDEX_PAGE", "SINGLE"],
@@ -25,6 +29,14 @@ describe("acquisition learning profile matrix", () => {
       expect(profile?.fingerprint.discoverySurfaces).toContain(expectedSurface);
       expect(profile?.fingerprint.localeStructure).toBe(expectedLocale);
     }
+  });
+
+  it("keeps existing source provider defaults as thin declarations outside selector core", () => {
+    expect(defaultAcquisitionLearningProfileIdForProvider("ip-australia-manual")).toBe(
+      "static-index-html-v1",
+    );
+    expect(defaultAcquisitionLearningProfileIdForProvider("crawl4ai")).toBeUndefined();
+    expect(defaultAcquisitionLearningProfileIdForProvider("new-authoritative-source")).toBeUndefined();
   });
 
   it("rejects unknown profile ids instead of silently guessing", () => {
