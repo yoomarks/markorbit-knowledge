@@ -100,8 +100,8 @@ export function buildIpAustraliaManualAcquisitionRunEvidence(input: {
       used: false,
     },
     changeDetection: {
-      etagObserved: false,
-      lastModifiedObserved: false,
+      etagObserved: input.diagnostics.etagObserved,
+      lastModifiedObserved: input.diagnostics.lastModifiedObserved,
       validator304Count: 0,
       digestChanges: 0,
     },
