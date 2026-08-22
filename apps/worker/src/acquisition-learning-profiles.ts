@@ -61,9 +61,19 @@ export const ACQUISITION_LEARNING_PROFILES = {
 
 export type AcquisitionLearningProfileId = keyof typeof ACQUISITION_LEARNING_PROFILES;
 
+const PROVIDER_PROFILE_DEFAULTS: Readonly<Record<string, AcquisitionLearningProfileId>> = {
+  "ip-australia-manual": "static-index-html-v1",
+};
+
 export function acquisitionLearningProfile(
   profileId: string | undefined,
 ): AcquisitionLearningProfile | null {
   if (!profileId) return null;
   return ACQUISITION_LEARNING_PROFILES[profileId as AcquisitionLearningProfileId] ?? null;
+}
+
+export function defaultAcquisitionLearningProfileIdForProvider(
+  provider: string,
+): AcquisitionLearningProfileId | undefined {
+  return PROVIDER_PROFILE_DEFAULTS[provider];
 }
