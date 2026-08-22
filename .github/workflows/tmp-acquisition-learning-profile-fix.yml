@@ -1,8 +1,8 @@
 name: Temporary Acquisition Learning Profile Fix
 
 on:
-  push:
-    branches: [agent/acquisition-learning-profiles-v1]
+  pull_request:
+    branches: [main]
     paths:
       - .github/workflows/tmp-acquisition-learning-profile-fix.yml
 
@@ -11,11 +11,12 @@ permissions:
 
 jobs:
   fix:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/acquisition-learning-profiles-v1
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
@@ -195,4 +196,4 @@ jobs:
           git add packages/contracts packages/worker-runtime apps/admin/src/server/acquisition-intelligence-worker-fingerprint.test.ts apps/worker/src
           git diff --cached --quiet && exit 0
           git commit -m "fix: preserve unknown acquisition observations"
-          git push origin HEAD:agent/acquisition-learning-profiles-v1
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
