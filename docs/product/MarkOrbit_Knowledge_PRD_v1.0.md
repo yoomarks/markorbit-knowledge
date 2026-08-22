@@ -4,9 +4,11 @@
 > **定位**：Mo 的可视化信息采集与知识预处理管理平台  
 > **文档类型**：PRD  
 > **版本**：v1.0 Draft  
-> **状态**：待评审  
+> **状态**：历史产品基线；当前实现状态以 README 与 post-freeze closeout 为准
 > **关联项目**：MarkOrbit Core、Mo Crawl、Obsidian、Mo Lite  
-> **更新时间**：2026-07-15
+> **更新时间**：2026-08-23
+
+> **实现说明**：本文保留最初产品范围与术语，不作为当前完成度清单。v0.1 控制面已于 2026-08-12 freeze-ready；此后已进入官方源生产验证、客观变更证据与 Acquisition Intelligence 阶段。当前状态见 [`README.md`](../../README.md) 与 [`KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md`](../release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md)。
 
 ---
 
