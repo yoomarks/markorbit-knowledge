@@ -1,6 +1,14 @@
 export {};
 
 const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
+const EVIDENCE_PRESERVING_ARTIFACT_STATUSES = new Set([
+  "REGISTERED",
+  "DUPLICATE_CHECKED",
+  "READY_FOR_CONVERSION",
+  "CONVERTED",
+  "STAGED",
+  "ARCHIVED",
+]);
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -126,8 +134,10 @@ function verifyArtifacts(payload: unknown): {
     if (contentObject.sizeBytes !== sizeBytes) {
       throw new Error(`RawArtifact ${String(artifact.id)} size differs from content object`);
     }
-    if (status !== "REGISTERED") {
-      throw new Error(`RawArtifact ${String(artifact.id)} is not REGISTERED: ${status}`);
+    if (!EVIDENCE_PRESERVING_ARTIFACT_STATUSES.has(status)) {
+      throw new Error(
+        `RawArtifact ${String(artifact.id)} has not reached a registered evidence state: ${status}`,
+      );
     }
     if (connectorId !== "crawl4ai-web" || connectorVersion !== "1.1.0") {
       throw new Error(
