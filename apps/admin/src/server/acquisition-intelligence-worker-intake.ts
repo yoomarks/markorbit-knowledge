@@ -1,11 +1,14 @@
 import type { DatabaseSync } from "node:sqlite";
 import {
   isAcquisitionRunEvidence,
+  isSourceFingerprint,
   type AcquisitionPlaybookHistory,
   type AcquisitionRunEvidence,
   type ExecutionAttempt,
+  type SourceFingerprint,
 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
+import { SqliteAcquisitionIntelligenceRepository } from "@markorbit/persistence/acquisition-intelligence";
 import { SqliteAcquisitionLearningLoopRepository } from "@markorbit/persistence/acquisition-learning-loop";
 import type { ExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
 import type { WorkerExecutionRepository } from "@markorbit/persistence/worker-execution";
@@ -27,6 +30,7 @@ export type AcquisitionIntelligenceWorkerIntakeResult = {
   strategyCandidateStage: string | null;
   strategyCandidateEvidenceCount: number;
   reevaluationRequestId: string | null;
+  fingerprintRecorded: boolean;
 };
 
 export type AcquisitionIntelligenceWorkerIntakeDependencies = {
@@ -91,18 +95,23 @@ function assertOutcomeMatchesControlPlane(
   );
 }
 
-function trustedEvidence(
-  evidence: AcquisitionRunEvidence,
-  workerId: string,
-  attempt: ExecutionAttempt,
-): AcquisitionRunEvidence {
+function requireCompletedAt(attempt: ExecutionAttempt): string {
   if (!attempt.completedAt) {
     throw new RegistryConflictError(
       "ACQUISITION_LEARNING_EXECUTION_TIMESTAMP_MISSING",
       "Terminal execution attempt is missing completedAt",
     );
   }
-  const durationMs = Date.parse(attempt.completedAt) - Date.parse(attempt.startedAt);
+  return attempt.completedAt;
+}
+
+function trustedEvidence(
+  evidence: AcquisitionRunEvidence,
+  workerId: string,
+  attempt: ExecutionAttempt,
+): AcquisitionRunEvidence {
+  const completedAt = requireCompletedAt(attempt);
+  const durationMs = Date.parse(completedAt) - Date.parse(attempt.startedAt);
   if (!Number.isFinite(durationMs) || durationMs < 0) {
     throw new RegistryConflictError(
       "ACQUISITION_LEARNING_EXECUTION_TIMESTAMP_INVALID",
@@ -113,7 +122,7 @@ function trustedEvidence(
   const normalized: AcquisitionRunEvidence = {
     ...evidence,
     startedAt: attempt.startedAt,
-    finishedAt: attempt.completedAt,
+    finishedAt: completedAt,
     performance: {
       ...evidence.performance,
       durationMs,
@@ -133,11 +142,34 @@ function trustedEvidence(
   return normalized;
 }
 
+function trustedFingerprint(
+  fingerprint: SourceFingerprint,
+  workerId: string,
+  attempt: ExecutionAttempt,
+): SourceFingerprint {
+  const normalized: SourceFingerprint = {
+    ...fingerprint,
+    observedAt: requireCompletedAt(attempt),
+    evidenceRefs: [
+      ...new Set([
+        ...fingerprint.evidenceRefs,
+        `execution-attempt:${attempt.id}`,
+        `worker:${workerId}`,
+      ]),
+    ].sort(),
+  };
+  if (!isSourceFingerprint(normalized)) {
+    throw new RegistryValidationError("Trusted acquisition source fingerprint is invalid");
+  }
+  return normalized;
+}
+
 export function recordAcquisitionIntelligenceWorkerIntake(
   input: {
     workerId: string;
     credential: string;
     evidence: unknown;
+    fingerprint?: unknown;
   },
   dependencies: AcquisitionIntelligenceWorkerIntakeDependencies,
 ): AcquisitionIntelligenceWorkerIntakeResult {
@@ -145,13 +177,24 @@ export function recordAcquisitionIntelligenceWorkerIntake(
   if (!workerId) throw new RegistryValidationError("workerId is required");
 
   // Authentication must happen before parsing Worker observations or initializing
-  // the acquisition-intelligence write registry.
+  // any acquisition-intelligence write registry.
   const worker = dependencies.workers.verifyCredential(workerId, input.credential);
 
   if (!isAcquisitionRunEvidence(input.evidence)) {
     throw new RegistryValidationError("evidence must satisfy AcquisitionRunEvidence v1");
   }
+  if (input.fingerprint !== undefined && !isSourceFingerprint(input.fingerprint)) {
+    throw new RegistryValidationError("fingerprint must satisfy SourceFingerprint v1");
+  }
   const evidence = input.evidence;
+  const fingerprint = input.fingerprint;
+  if (fingerprint && fingerprint.sourceId !== evidence.sourceId) {
+    throw new RegistryConflictError(
+      "ACQUISITION_LEARNING_FINGERPRINT_SOURCE_MISMATCH",
+      "SourceFingerprint sourceId must match AcquisitionRunEvidence sourceId",
+    );
+  }
+
   const record = dependencies.runs.getById(evidence.runId);
   if (!record) {
     throw new RegistryConflictError(
@@ -185,6 +228,13 @@ export function recordAcquisitionIntelligenceWorkerIntake(
   }
   assertOutcomeMatchesControlPlane(record.run.status, attempt, evidence.outcome);
 
+  const fingerprintRecorded = Boolean(fingerprint);
+  if (fingerprint) {
+    new SqliteAcquisitionIntelligenceRepository(dependencies.database).saveFingerprint(
+      trustedFingerprint(fingerprint, workerId, attempt),
+    );
+  }
+
   const repository = new SqliteAcquisitionLearningLoopRepository(dependencies.database);
   const replayed = repository.getRunEvidence(evidence.runId) !== null;
   const learned = repository.recordLearningRun(trustedEvidence(evidence, workerId, attempt));
@@ -202,5 +252,6 @@ export function recordAcquisitionIntelligenceWorkerIntake(
     strategyCandidateStage: learned.strategyCandidate?.candidate.stage ?? null,
     strategyCandidateEvidenceCount: learned.strategyCandidate?.evidenceCount ?? 0,
     reevaluationRequestId: learned.reevaluationRequest?.id ?? null,
+    fingerprintRecorded,
   };
 }
