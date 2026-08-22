@@ -31,24 +31,28 @@ jobs:
           python <<'PY'
           from pathlib import Path
 
-          def edit(path, replacements):
+          def replace_once(path, old, new):
               p = Path(path)
               text = p.read_text()
-              for old, new in replacements:
-                  if old not in text:
-                      raise SystemExit(f"missing pattern in {path}: {old[:100]!r}")
-                  text = text.replace(old, new)
-              p.write_text(text)
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one pattern in {path}, got {count}: {old[:100]!r}")
+              p.write_text(text.replace(old, new, 1))
 
-          edit("packages/contracts/src/acquisition-intelligence-v1.ts", [
-              ("    etagObserved: boolean;\n    lastModifiedObserved: boolean;",
-               "    etagObserved: boolean | null;\n    lastModifiedObserved: boolean | null;"),
-          ])
-          edit("packages/contracts/src/acquisition-intelligence-learning-v1.ts", [
-              ("  } else if (\n    !evidence.changeDetection.etagObserved &&\n    !evidence.changeDetection.lastModifiedObserved\n  ) {",
-               "  } else if (\n    evidence.changeDetection.etagObserved === false &&\n    evidence.changeDetection.lastModifiedObserved === false\n  ) {")
-          ])
-          edit("packages/worker-runtime/src/acquisition-learning-profile.ts", [
+          replace_once(
+              "packages/contracts/src/acquisition-intelligence-v1.ts",
+              "    etagObserved: boolean;\n    lastModifiedObserved: boolean;",
+              "    etagObserved: boolean | null;\n    lastModifiedObserved: boolean | null;",
+          )
+          replace_once(
+              "packages/contracts/src/acquisition-intelligence-learning-v1.ts",
+              "  } else if (\n    !evidence.changeDetection.etagObserved &&\n    !evidence.changeDetection.lastModifiedObserved\n  ) {",
+              "  } else if (\n    evidence.changeDetection.etagObserved === false &&\n    evidence.changeDetection.lastModifiedObserved === false\n  ) {",
+          )
+
+          p = Path("packages/worker-runtime/src/acquisition-learning-profile.ts")
+          text = p.read_text()
+          pairs = [
               ("  type DiscoverySurface,", "  type AcquisitionDiscoverySurface,"),
               ("  type RenderRequirement,", "  type AcquisitionRenderRequirement,"),
               ("  type SourceArchitecture,", "  type AcquisitionArchitecture,"),
@@ -58,15 +62,28 @@ jobs:
               ("    renderRequirement: RenderRequirement;", "    renderRequirement: AcquisitionRenderRequirement;"),
               ("    localeStructure: SourceLocaleStructure;", "    localeStructure: AcquisitionLocaleStructure;"),
               ("    supportsHttpValidators: boolean;", "    supportsHttpValidators: boolean | null;"),
-              ("      etagObserved: false,\n      lastModifiedObserved: false,",
-               "      etagObserved: null,\n      lastModifiedObserved: null,"),
-              ("export function buildSourceFingerprintFromAcquisitionProfile(input: {",
-               "export function inferHttpValidatorSupport(\n  changeDetection: AcquisitionRunEvidence[\"changeDetection\"] | undefined,\n): boolean | null {\n  if (!changeDetection) return null;\n  if (\n    changeDetection.validator304Count > 0 ||\n    changeDetection.etagObserved === true ||\n    changeDetection.lastModifiedObserved === true\n  ) return true;\n  if (\n    changeDetection.etagObserved === false &&\n    changeDetection.lastModifiedObserved === false\n  ) return false;\n  return null;\n}\n\nexport function buildSourceFingerprintFromAcquisitionProfile(input: {"),
-              ("  evidenceRefs: string[];\n}): SourceFingerprint {",
-               "  evidenceRefs: string[];\n  changeDetection?: AcquisitionRunEvidence[\"changeDetection\"];\n}): SourceFingerprint {"),
-              ("    supportsHttpValidators: input.profile.fingerprint.supportsHttpValidators,",
-               "    supportsHttpValidators:\n      input.changeDetection === undefined\n        ? input.profile.fingerprint.supportsHttpValidators\n        : inferHttpValidatorSupport(input.changeDetection),"),
-          ])
+              ("      etagObserved: false,\n      lastModifiedObserved: false,", "      etagObserved: null,\n      lastModifiedObserved: null,"),
+          ]
+          for old, new in pairs:
+              if text.count(old) != 1:
+                  raise SystemExit(f"runtime profile expected one match, got {text.count(old)}: {old!r}")
+              text = text.replace(old, new, 1)
+
+          marker = "export function buildSourceFingerprintFromAcquisitionProfile(input: {"
+          helper = '''export function inferHttpValidatorSupport(\n  changeDetection: AcquisitionRunEvidence["changeDetection"] | undefined,\n): boolean | null {\n  if (!changeDetection) return null;\n  if (\n    changeDetection.validator304Count > 0 ||\n    changeDetection.etagObserved === true ||\n    changeDetection.lastModifiedObserved === true\n  ) {\n    return true;\n  }\n  if (\n    changeDetection.etagObserved === false &&\n    changeDetection.lastModifiedObserved === false\n  ) {\n    return false;\n  }\n  return null;\n}\n\n'''
+          if text.count(marker) != 1:
+              raise SystemExit("fingerprint builder marker mismatch")
+          text = text.replace(marker, helper + marker, 1)
+          old = "  evidenceRefs: string[];\n}): SourceFingerprint {"
+          new = "  evidenceRefs: string[];\n  changeDetection?: AcquisitionRunEvidence[\"changeDetection\"];\n}): SourceFingerprint {"
+          if text.count(old) != 1:
+              raise SystemExit("fingerprint input marker mismatch")
+          text = text.replace(old, new, 1)
+          old = "    supportsHttpValidators: input.profile.fingerprint.supportsHttpValidators,"
+          new = "    supportsHttpValidators:\n      input.changeDetection === undefined\n        ? input.profile.fingerprint.supportsHttpValidators\n        : inferHttpValidatorSupport(input.changeDetection),"
+          if text.count(old) != 1:
+              raise SystemExit("fingerprint validator marker mismatch")
+          p.write_text(text.replace(old, new, 1))
 
           p = Path("apps/worker/src/acquisition-learning-profiles.ts")
           text = p.read_text()
@@ -74,11 +91,41 @@ jobs:
               raise SystemExit("expected four structural validator priors")
           p.write_text(text.replace("supportsHttpValidators: true", "supportsHttpValidators: null"))
 
-          for path in ["apps/worker/src/main.ts", "apps/worker/src/live-acquisition-profile-evidence.ts"]:
-              edit(path, [
-                  ("    evidenceRefs: evidence.evidenceRefs,\n  });",
-                   "    evidenceRefs: evidence.evidenceRefs,\n    changeDetection: evidence.changeDetection,\n  });")
-              ])
+          def insert_after_unique_line(path, needle, inserted):
+              p = Path(path)
+              text = p.read_text()
+              lines = text.splitlines()
+              indices = [i for i, line in enumerate(lines) if line.strip() == needle]
+              if len(indices) != 1:
+                  raise SystemExit(f"expected one line {needle!r} in {path}, got {len(indices)}")
+              i = indices[0]
+              indent = lines[i][:-len(lines[i].lstrip())]
+              lines.insert(i + 1, indent + inserted)
+              p.write_text("\n".join(lines) + "\n")
+
+          insert_after_unique_line(
+              "apps/worker/src/main.ts",
+              "evidenceRefs: evidence.evidenceRefs,",
+              "changeDetection: evidence.changeDetection,",
+          )
+          insert_after_unique_line(
+              "apps/worker/src/live-acquisition-profile-evidence.ts",
+              "evidenceRefs: evidence.evidenceRefs,",
+              "changeDetection: evidence.changeDetection,",
+          )
+
+          replace_once(
+              "apps/worker/src/acquisition-learning-observation.ts",
+              '    httpStatusCounts: observed > 0 ? { "200": observed } : {},',
+              '    httpStatusCounts: {},',
+          )
+          p = Path("apps/worker/src/acquisition-learning-observation.ts")
+          text = p.read_text()
+          old = '      "observation-scope:bounded-execution-receipt",'
+          new = '      "observation-scope:bounded-execution-receipt",\n      "http-status-observation:unmeasured",'
+          if text.count(old) != 1:
+              raise SystemExit("receipt evidence ref marker mismatch")
+          p.write_text(text.replace(old, new, 1))
           PY
 
           cat > packages/worker-runtime/tests/acquisition-learning-measurement-semantics.test.ts <<'EOF'
@@ -145,7 +192,12 @@ jobs:
             it("derives support from observed validators and fallback lessons from measured absence", () => {
               const available = buildAcquisitionRunEvidenceFromProfile({
                 profile,
-                observation: observation({ etagObserved: true, lastModifiedObserved: false, validator304Count: 0, digestChanges: 0 }),
+                observation: observation({
+                  etagObserved: true,
+                  lastModifiedObserved: false,
+                  validator304Count: 0,
+                  digestChanges: 0,
+                }),
               });
               expect(
                 buildSourceFingerprintFromAcquisitionProfile({
@@ -159,11 +211,48 @@ jobs:
 
               const unavailable = buildAcquisitionRunEvidenceFromProfile({
                 profile,
-                observation: observation({ etagObserved: false, lastModifiedObserved: false, validator304Count: 0, digestChanges: 0 }),
+                observation: observation({
+                  etagObserved: false,
+                  lastModifiedObserved: false,
+                  validator304Count: 0,
+                  digestChanges: 0,
+                }),
               });
               const lessonTypes = extractAcquisitionRunLessons(unavailable).map((lesson) => lesson.lessonType);
               expect(lessonTypes).toContain("HTTP_VALIDATORS_UNAVAILABLE");
               expect(lessonTypes).toContain("DIGEST_WATCH_REQUIRED");
+            });
+          });
+          EOF
+
+          cat > apps/worker/src/acquisition-learning-observation.test.ts <<'EOF'
+          import { describe, expect, it } from "vitest";
+          import type { ControlledCollectionCompletion } from "@markorbit/worker-runtime";
+          import { buildReceiptAcquisitionLearningObservation } from "./acquisition-learning-observation";
+
+          describe("receipt acquisition learning observation", () => {
+            it("does not fabricate HTTP status counts that are absent from the execution receipt", () => {
+              const completion = {
+                context: {
+                  job: {
+                    id: "job_test",
+                    runId: "run_test",
+                    sourceId: "src_test",
+                    planId: "plan_test",
+                  },
+                },
+                receipt: {
+                  executor: { executorId: "fixture", version: "1", mode: "PRODUCTION" },
+                  itemsObserved: 3,
+                  bytesPrepared: 300,
+                  metadataOnly: false,
+                },
+                startedAt: "2026-08-22T00:00:00.000Z",
+                finishedAt: "2026-08-22T00:00:01.000Z",
+              } as unknown as ControlledCollectionCompletion;
+              const observation = buildReceiptAcquisitionLearningObservation(completion);
+              expect(observation?.httpStatusCounts).toEqual({});
+              expect(observation?.evidenceRefs).toContain("http-status-observation:unmeasured");
             });
           });
           EOF
@@ -178,6 +267,8 @@ jobs:
             packages/worker-runtime/tests/acquisition-learning-measurement-semantics.test.ts \
             packages/worker-runtime/tests/http-acquisition-intelligence-client.test.ts \
             apps/admin/src/server/acquisition-intelligence-worker-fingerprint.test.ts \
+            apps/worker/src/acquisition-learning-observation.ts \
+            apps/worker/src/acquisition-learning-observation.test.ts \
             apps/worker/src/acquisition-learning-profiles.ts \
             apps/worker/src/acquisition-learning-profiles.test.ts \
             apps/worker/src/live-acquisition-profile-evidence.ts \
