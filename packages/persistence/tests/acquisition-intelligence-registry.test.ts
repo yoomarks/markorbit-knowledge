@@ -193,10 +193,7 @@ describe("SqliteAcquisitionIntelligenceRepository", () => {
         ),
       },
     });
-    const persisted = repository.recordStrategySelection(
-      selection,
-      "2026-08-22T00:06:00.000Z",
-    );
+    const persisted = repository.recordStrategySelection(selection, "2026-08-22T00:06:00.000Z");
 
     expect(persisted.selection.selectedPlaybookId).toBe("official-static-index-tree");
     expect(persisted.selection.boundaries.selectionGrantsCollectionAuthority).toBe(false);
