@@ -8,28 +8,30 @@ export function buildReceiptAcquisitionLearningObservation(
 ): AcquisitionLearningObservation | null {
   const receipt = completion.receipt;
   if (!receipt) return null;
-  const accepted = receipt.artifactsPrepared;
+  const observed = receipt.itemsObserved;
   return {
     runId: completion.context.job.runId,
     sourceId: completion.context.job.sourceId,
     startedAt: completion.startedAt,
     finishedAt: completion.finishedAt,
+    outcome: "SUCCESS",
     counts: {
-      discovered: accepted,
-      attempted: accepted,
-      fetched: accepted,
-      accepted,
+      discovered: observed,
+      attempted: observed,
+      fetched: observed,
+      accepted: observed,
       duplicates: 0,
       retries: 0,
     },
     knownCorpus: null,
-    httpStatusCounts: accepted > 0 ? { "200": accepted } : {},
+    httpStatusCounts: observed > 0 ? { "200": observed } : {},
     failureSignatures: [],
     bytes: receipt.bytesPrepared,
     evidenceRefs: [
       `collection-run:${completion.context.job.runId}`,
       `collection-plan:${completion.context.job.planId}`,
       `executor:${receipt.executor.executorId}@${receipt.executor.version}`,
+      `execution-receipt-mode:${receipt.metadataOnly ? "metadata-only" : "artifact-backed"}`,
       "observation-scope:bounded-execution-receipt",
     ],
   };
