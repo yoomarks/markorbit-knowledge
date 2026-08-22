@@ -60,7 +60,11 @@ describe("HttpAcquisitionIntelligenceClient", () => {
         authorization: "Bearer credential-1",
         "content-type": "application/json",
       });
-      expect(JSON.parse(String(init?.body))).toEqual({ workerId: "worker-1", evidence, fingerprint });
+      expect(JSON.parse(String(init?.body))).toEqual({
+        workerId: "worker-1",
+        evidence,
+        fingerprint,
+      });
       return new Response(
         JSON.stringify({
           version: "ACQUISITION_INTELLIGENCE_WORKER_INTAKE_V1",

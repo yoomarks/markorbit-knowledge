@@ -93,7 +93,10 @@ describe("acquisition learning profiles", () => {
         httpStatusCounts: { "200": 98, "404": 2 },
         failureSignatures: [{ code: "SOURCE_UNAVAILABLE", count: 2 }],
         bytes: 1000,
-        evidenceRefs: ["source-gap:SOURCE_UNAVAILABLE:404:a", "source-gap:SOURCE_UNAVAILABLE:404:b"],
+        evidenceRefs: [
+          "source-gap:SOURCE_UNAVAILABLE:404:a",
+          "source-gap:SOURCE_UNAVAILABLE:404:b",
+        ],
       },
     });
 

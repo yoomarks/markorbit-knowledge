@@ -24,7 +24,7 @@ export function buildReceiptAcquisitionLearningObservation(
       retries: 0,
     },
     knownCorpus: null,
-    httpStatusCounts: observed > 0 ? { "200": observed } : {},
+    httpStatusCounts: {},
     failureSignatures: [],
     bytes: receipt.bytesPrepared,
     evidenceRefs: [
@@ -33,6 +33,7 @@ export function buildReceiptAcquisitionLearningObservation(
       `executor:${receipt.executor.executorId}@${receipt.executor.version}`,
       `execution-receipt-mode:${receipt.metadataOnly ? "metadata-only" : "artifact-backed"}`,
       "observation-scope:bounded-execution-receipt",
+      "http-status-observation:unmeasured",
     ],
   };
 }

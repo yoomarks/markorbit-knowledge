@@ -1,11 +1,11 @@
 import {
   ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION,
   type AcquisitionRunEvidence,
-  type DiscoverySurface,
-  type RenderRequirement,
-  type SourceArchitecture,
+  type AcquisitionDiscoverySurface,
+  type AcquisitionRenderRequirement,
+  type AcquisitionArchitecture,
   type SourceFingerprint,
-  type SourceLocaleStructure,
+  type AcquisitionLocaleStructure,
 } from "@markorbit/contracts";
 
 export type AcquisitionLearningProfile = {
@@ -13,11 +13,11 @@ export type AcquisitionLearningProfile = {
   playbookId: string;
   playbookRevision: number;
   fingerprint: {
-    architecture: SourceArchitecture;
-    discoverySurfaces: DiscoverySurface[];
-    renderRequirement: RenderRequirement;
-    localeStructure: SourceLocaleStructure;
-    supportsHttpValidators: boolean;
+    architecture: AcquisitionArchitecture;
+    discoverySurfaces: AcquisitionDiscoverySurface[];
+    renderRequirement: AcquisitionRenderRequirement;
+    localeStructure: AcquisitionLocaleStructure;
+    supportsHttpValidators: boolean | null;
     attachmentKinds: string[];
     confidence: number;
   };
@@ -65,11 +65,29 @@ function defaultSurfaceOutcomes(
   }));
 }
 
+export function inferHttpValidatorSupport(
+  changeDetection: AcquisitionRunEvidence["changeDetection"] | undefined,
+): boolean | null {
+  if (!changeDetection) return null;
+  if (
+    changeDetection.validator304Count > 0 ||
+    changeDetection.etagObserved === true ||
+    changeDetection.lastModifiedObserved === true
+  ) {
+    return true;
+  }
+  if (changeDetection.etagObserved === false && changeDetection.lastModifiedObserved === false) {
+    return false;
+  }
+  return null;
+}
+
 export function buildSourceFingerprintFromAcquisitionProfile(input: {
   profile: AcquisitionLearningProfile;
   sourceId: string;
   observedAt: string;
   evidenceRefs: string[];
+  changeDetection?: AcquisitionRunEvidence["changeDetection"];
 }): SourceFingerprint {
   return {
     protocolVersion: ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION,
@@ -80,7 +98,10 @@ export function buildSourceFingerprintFromAcquisitionProfile(input: {
     discoverySurfaces: [...input.profile.fingerprint.discoverySurfaces],
     renderRequirement: input.profile.fingerprint.renderRequirement,
     localeStructure: input.profile.fingerprint.localeStructure,
-    supportsHttpValidators: input.profile.fingerprint.supportsHttpValidators,
+    supportsHttpValidators:
+      input.changeDetection === undefined
+        ? input.profile.fingerprint.supportsHttpValidators
+        : inferHttpValidatorSupport(input.changeDetection),
     attachmentKinds: [...input.profile.fingerprint.attachmentKinds],
     confidence: input.profile.fingerprint.confidence,
     evidenceRefs: [...new Set(input.evidenceRefs)].sort(),
@@ -126,8 +147,8 @@ export function buildAcquisitionRunEvidenceFromProfile(input: {
       used: profile.fingerprint.renderRequirement === "REQUIRED",
     },
     changeDetection: observation.changeDetection ?? {
-      etagObserved: false,
-      lastModifiedObserved: false,
+      etagObserved: null,
+      lastModifiedObserved: null,
       validator304Count: 0,
       digestChanges: 0,
     },

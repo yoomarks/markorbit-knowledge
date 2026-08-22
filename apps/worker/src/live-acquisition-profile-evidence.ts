@@ -69,6 +69,7 @@ export function buildLiveAcquisitionProfileEvidence(input: {
     sourceId: input.sourceId,
     observedAt: input.finishedAt,
     evidenceRefs: evidence.evidenceRefs,
+    changeDetection: evidence.changeDetection,
   });
   return { profileId: profile.profileId, fingerprint, evidence };
 }

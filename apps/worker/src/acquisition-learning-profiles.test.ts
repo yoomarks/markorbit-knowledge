@@ -19,7 +19,9 @@ const cases = [
 
 describe("acquisition learning profile matrix", () => {
   it("keeps representative source families as structural declarations", () => {
-    expect(Object.keys(ACQUISITION_LEARNING_PROFILES).sort()).toEqual(cases.map(([id]) => id).sort());
+    expect(Object.keys(ACQUISITION_LEARNING_PROFILES).sort()).toEqual(
+      cases.map(([id]) => id).sort(),
+    );
 
     for (const [profileId, expectedPlaybook, expectedSurface, expectedLocale] of cases) {
       const profile = acquisitionLearningProfile(profileId);
@@ -36,7 +38,9 @@ describe("acquisition learning profile matrix", () => {
       "static-index-html-v1",
     );
     expect(defaultAcquisitionLearningProfileIdForProvider("crawl4ai")).toBeUndefined();
-    expect(defaultAcquisitionLearningProfileIdForProvider("new-authoritative-source")).toBeUndefined();
+    expect(
+      defaultAcquisitionLearningProfileIdForProvider("new-authoritative-source"),
+    ).toBeUndefined();
   });
 
   it("rejects unknown profile ids instead of silently guessing", () => {

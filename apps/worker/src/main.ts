@@ -125,6 +125,7 @@ async function main(): Promise<void> {
         sourceId: completion.context.job.sourceId,
         observedAt: completion.finishedAt,
         evidenceRefs: evidence.evidenceRefs,
+        changeDetection: evidence.changeDetection,
       });
       const learned = await acquisitionIntelligenceClient.recordRun(evidence, fingerprint);
       const diagnostics = ipAustraliaManualAcquirer?.getDiagnostics();

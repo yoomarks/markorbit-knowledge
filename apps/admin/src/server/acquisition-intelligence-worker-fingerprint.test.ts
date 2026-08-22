@@ -30,9 +30,7 @@ function evidence(): AcquisitionRunEvidence {
     coverage: { knownCorpus: null, ratio: null, previousRatio: null },
     httpStatusCounts: { "200": 8 },
     failureSignatures: [],
-    surfaceOutcomes: [
-      { surface: "INDEX_PAGE", discovered: 8, accepted: 8, knownCorpus: null },
-    ],
+    surfaceOutcomes: [{ surface: "INDEX_PAGE", discovered: 8, accepted: 8, knownCorpus: null }],
     rendering: { used: false },
     changeDetection: {
       etagObserved: false,

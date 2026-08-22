@@ -27,9 +27,16 @@ try {
     .prepare(`SELECT document_json FROM acquisition_run_evidence WHERE run_id = ?`)
     .get(runId) as { document_json: string } | undefined;
   if (!evidenceRow) throw new Error(`No AcquisitionRunEvidence found for ${runId}`);
-  const evidence = parseJson<AcquisitionRunEvidence>(evidenceRow.document_json, "AcquisitionRunEvidence");
-  if (evidence.sourceId !== sourceId) throw new Error("AcquisitionRunEvidence crossed source boundary");
-  if (evidence.playbookId !== profile.playbookId || evidence.playbookRevision !== profile.playbookRevision) {
+  const evidence = parseJson<AcquisitionRunEvidence>(
+    evidenceRow.document_json,
+    "AcquisitionRunEvidence",
+  );
+  if (evidence.sourceId !== sourceId)
+    throw new Error("AcquisitionRunEvidence crossed source boundary");
+  if (
+    evidence.playbookId !== profile.playbookId ||
+    evidence.playbookRevision !== profile.playbookRevision
+  ) {
     throw new Error(
       `Unexpected playbook ${evidence.playbookId}@${evidence.playbookRevision}; expected ${profile.playbookId}@${profile.playbookRevision}`,
     );
@@ -40,7 +47,8 @@ try {
   const attemptRef = evidence.evidenceRefs.find((reference) =>
     reference.startsWith("execution-attempt:"),
   );
-  if (!attemptRef) throw new Error("AcquisitionRunEvidence is missing execution-attempt provenance");
+  if (!attemptRef)
+    throw new Error("AcquisitionRunEvidence is missing execution-attempt provenance");
   if (!evidence.evidenceRefs.some((reference) => reference.startsWith("worker:"))) {
     throw new Error("AcquisitionRunEvidence is missing authenticated Worker provenance");
   }
@@ -67,7 +75,8 @@ try {
     localeStructure: string;
     evidenceRefs: string[];
   }>(fingerprintRow.document_json, "SourceFingerprint");
-  if (fingerprint.sourceId !== sourceId) throw new Error("SourceFingerprint crossed source boundary");
+  if (fingerprint.sourceId !== sourceId)
+    throw new Error("SourceFingerprint crossed source boundary");
   if (fingerprint.architecture !== profile.fingerprint.architecture) {
     throw new Error(`Fingerprint architecture mismatch: ${fingerprint.architecture}`);
   }

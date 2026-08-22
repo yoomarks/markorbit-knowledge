@@ -49,7 +49,8 @@ function parseReceipt(value: unknown): AcquisitionIntelligenceIntakeReceipt {
     typeof payload.replayed !== "boolean" ||
     typeof payload.lessonsRecorded !== "number" ||
     (payload.strategyCandidateId !== null && typeof payload.strategyCandidateId !== "string") ||
-    (payload.strategyCandidateStage !== null && typeof payload.strategyCandidateStage !== "string") ||
+    (payload.strategyCandidateStage !== null &&
+      typeof payload.strategyCandidateStage !== "string") ||
     typeof payload.strategyCandidateEvidenceCount !== "number" ||
     (payload.reevaluationRequestId !== null && typeof payload.reevaluationRequestId !== "string") ||
     typeof payload.fingerprintRecorded !== "boolean" ||
