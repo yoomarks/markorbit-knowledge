@@ -1,3 +1,4 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
 export type SourceGapType =
   | "HTTP_404"
   | "REDIRECT_LOOP"
@@ -30,7 +31,10 @@ export interface AcquisitionResolutionResult {
   artifactCoverage: number;
 }
 
-function sourceGapType(reason: string, statusCode: number | undefined): SourceGapType {
+function sourceGapType(
+  reason: string,
+  statusCode: number | undefined,
+): SourceGapType {
   if (statusCode === 404 && reason === "SOURCE_UNAVAILABLE") return "HTTP_404";
   if ((statusCode === 401 || statusCode === 403) && reason === "FETCH_FAILED") {
     return "ACCESS_BLOCKED";
@@ -50,7 +54,9 @@ export function sourceGapObservationsFromEvidenceRefs(
       const rawStatus = parts[2] ?? "NO_STATUS";
       const encodedUrl = parts.slice(3).join(":");
       const parsedStatus = Number(rawStatus);
-      const statusCode = Number.isSafeInteger(parsedStatus) ? parsedStatus : undefined;
+      const statusCode = Number.isSafeInteger(parsedStatus)
+        ? parsedStatus
+        : undefined;
       let url = "";
       try {
         url = decodeURIComponent(encodedUrl);
@@ -70,7 +76,8 @@ export function sourceGapObservationsFromEvidenceRefs(
 export function resolveAcquisitionOutcome(
   input: AcquisitionResolutionInput,
 ): AcquisitionResolutionResult {
-  const artifactCoverage = input.discovered === 0 ? 0 : input.accepted / input.discovered;
+  const artifactCoverage =
+    input.discovered === 0 ? 0 : input.accepted / input.discovered;
 
   if (
     input.discovered >= 0 &&
