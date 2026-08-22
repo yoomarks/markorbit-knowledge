@@ -65,7 +65,10 @@ function compatibleWithFingerprint(
   }
 
   if (reasonCodes.length === 0) reasonCodes.push("STRUCTURAL_MATCH");
-  return { compatible: reasonCodes.length === 1 && reasonCodes[0] === "STRUCTURAL_MATCH", reasonCodes };
+  return {
+    compatible: reasonCodes.length === 1 && reasonCodes[0] === "STRUCTURAL_MATCH",
+    reasonCodes,
+  };
 }
 
 function playbookScore(
@@ -75,9 +78,7 @@ function playbookScore(
 ): { score: number; reasonCodes: string[] } {
   const coverage = history?.averageCoverage ?? playbook.prior.expectedCoverage;
   const successRate = history?.runs ? history.successRate : playbook.prior.expectedSuccessRate;
-  const confidence = clamp01(
-    playbook.prior.confidence * 0.7 + fingerprint.confidence * 0.3,
-  );
+  const confidence = clamp01(playbook.prior.confidence * 0.7 + fingerprint.confidence * 0.3);
   const costEfficiency = 1 - clamp01(playbook.prior.expectedCostScore);
   const historyWeight = Math.min(history?.runs ?? 0, 10) / 10;
 
@@ -126,10 +127,10 @@ export function selectAcquisitionPlaybook(input: {
 
   const selected = ranked.find((item) => item.compatible) ?? null;
   const selectedPlaybook = selected
-    ? input.playbooks.find(
+    ? (input.playbooks.find(
         (playbook) =>
           playbook.id === selected.playbookId && playbook.revision === selected.revision,
-      ) ?? null
+      ) ?? null)
     : null;
   const compatibleIds = ranked.filter((item) => item.compatible).map((item) => item.playbookId);
   const fallbackOrder = selectedPlaybook
@@ -156,7 +157,9 @@ export function selectAcquisitionPlaybook(input: {
           `Selected ${selected.playbookId}@${selected.revision} from structural fingerprint compatibility and observed outcomes.`,
           `Selection score ${selected.score}; selection does not promote the playbook or grant collection authority.`,
         ]
-      : ["No ACTIVE playbook matched the source fingerprint; a bounded probe or candidate is required."],
+      : [
+          "No ACTIVE playbook matched the source fingerprint; a bounded probe or candidate is required.",
+        ],
     boundaries: {
       selectionGrantsCollectionAuthority: false,
       autoPromotionApplied: false,
@@ -178,9 +181,7 @@ function lesson(
   };
 }
 
-function surfaceCoverage(
-  surface: { accepted: number; knownCorpus: number | null },
-): number | null {
+function surfaceCoverage(surface: { accepted: number; knownCorpus: number | null }): number | null {
   if (surface.knownCorpus === null || surface.knownCorpus <= 0) return null;
   return clamp01(surface.accepted / surface.knownCorpus);
 }
@@ -216,9 +217,7 @@ export function extractAcquisitionRunLessons(evidence: AcquisitionRunEvidence): 
           statement: `${surface.surface} enumerated at least 98% of the known corpus in this run.`,
           confidence: clamp01(0.75 + coverage * 0.25),
           reasonCodes: ["SURFACE_COVERAGE_GTE_98_PERCENT"],
-          ...(surfacePrimitive(surface)
-            ? { recommendedPrimitive: surfacePrimitive(surface) }
-            : {}),
+          ...(surfacePrimitive(surface) ? { recommendedPrimitive: surfacePrimitive(surface) } : {}),
           affectedSurface: surface.surface,
         }),
       );
@@ -246,7 +245,8 @@ export function extractAcquisitionRunLessons(evidence: AcquisitionRunEvidence): 
       lesson(evidence, {
         lessonType: "COVERAGE_REGRESSION",
         scope: "SOURCE",
-        statement: "Corpus coverage regressed by at least five percentage points versus the previous run.",
+        statement:
+          "Corpus coverage regressed by at least five percentage points versus the previous run.",
         confidence: 0.95,
         reasonCodes: ["COVERAGE_DROP_GTE_5_POINTS", "REVALIDATION_REQUIRED"],
         recommendedPrimitive: "CORPUS_RECONCILIATION",
@@ -260,7 +260,8 @@ export function extractAcquisitionRunLessons(evidence: AcquisitionRunEvidence): 
       lesson(evidence, {
         lessonType: "RENDERING_UNNECESSARY",
         scope: "SOURCE",
-        statement: "JavaScript rendering did not increase accepted content during the comparative probe.",
+        statement:
+          "JavaScript rendering did not increase accepted content during the comparative probe.",
         confidence: 0.9,
         reasonCodes: ["RENDERED_ACCEPTED_NOT_GREATER_THAN_STATIC"],
         recommendedPrimitive: "STATIC_HTML_FETCH",
@@ -284,7 +285,8 @@ export function extractAcquisitionRunLessons(evidence: AcquisitionRunEvidence): 
       lesson(evidence, {
         lessonType: "HTTP_VALIDATORS_EFFECTIVE",
         scope: "DOMAIN",
-        statement: "HTTP validators produced 304 responses and can reduce unchanged-content transfer.",
+        statement:
+          "HTTP validators produced 304 responses and can reduce unchanged-content transfer.",
         confidence: 0.95,
         reasonCodes: ["HTTP_304_OBSERVED"],
         recommendedPrimitive: "HTTP_VALIDATOR_CHANGE_WATCH",
@@ -298,7 +300,8 @@ export function extractAcquisitionRunLessons(evidence: AcquisitionRunEvidence): 
       lesson(evidence, {
         lessonType: "HTTP_VALIDATORS_UNAVAILABLE",
         scope: "DOMAIN",
-        statement: "Neither ETag nor Last-Modified was observed; validator-only change watch is unavailable.",
+        statement:
+          "Neither ETag nor Last-Modified was observed; validator-only change watch is unavailable.",
         confidence: 0.9,
         reasonCodes: ["NO_ETAG", "NO_LAST_MODIFIED"],
         recommendedPrimitive: "CONTENT_DIGEST_CHANGE_WATCH",
@@ -308,7 +311,8 @@ export function extractAcquisitionRunLessons(evidence: AcquisitionRunEvidence): 
       lesson(evidence, {
         lessonType: "DIGEST_WATCH_REQUIRED",
         scope: "DOMAIN",
-        statement: "Content digest comparison should remain the fallback change-detection mechanism.",
+        statement:
+          "Content digest comparison should remain the fallback change-detection mechanism.",
         confidence: 0.9,
         reasonCodes: ["HTTP_VALIDATORS_UNAVAILABLE"],
         recommendedPrimitive: "CONTENT_DIGEST_CHANGE_WATCH",
@@ -325,7 +329,8 @@ export function extractAcquisitionRunLessons(evidence: AcquisitionRunEvidence): 
       lesson(evidence, {
         lessonType: "DUPLICATION_HIGH",
         scope: "SOURCE",
-        statement: "At least 15% of accepted-or-duplicate items were duplicates; identity or enumeration rules need refinement.",
+        statement:
+          "At least 15% of accepted-or-duplicate items were duplicates; identity or enumeration rules need refinement.",
         confidence: clamp01(0.75 + duplicateRatio * 0.25),
         reasonCodes: ["DUPLICATE_RATIO_GTE_15_PERCENT"],
         recommendedPrimitive: "CORPUS_RECONCILIATION",
@@ -354,7 +359,8 @@ export function extractAcquisitionRunLessons(evidence: AcquisitionRunEvidence): 
       lesson(evidence, {
         lessonType: "PLAYBOOK_SUCCESS",
         scope: "SOURCE",
-        statement: "The selected playbook completed successfully with no known material coverage gap.",
+        statement:
+          "The selected playbook completed successfully with no known material coverage gap.",
         confidence: evidence.coverage.ratio === null ? 0.7 : 0.95,
         reasonCodes: [
           "RUN_SUCCESS",
