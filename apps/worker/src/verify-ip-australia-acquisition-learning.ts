@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import type { AcquisitionRunEvidence, RunLesson } from "@markorbit/contracts";
+import type { AcquisitionRunEvidence, RunLesson } from "@markorbit/worker-runtime";
 
 function required(name: string): string {
   const value = process.env[name]?.trim();
