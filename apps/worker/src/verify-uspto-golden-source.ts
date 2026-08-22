@@ -139,7 +139,7 @@ function verifyArtifacts(payload: unknown): {
         `RawArtifact ${String(artifact.id)} has not reached a registered evidence state: ${status}`,
       );
     }
-    if (connectorId !== "crawl4ai-web" || connectorVersion !== "1.1.0") {
+    if (connectorId !== "crawl4ai-web" || connectorVersion !== "1.2.0") {
       throw new Error(
         `RawArtifact ${String(artifact.id)} has unexpected collector ${connectorId}@${connectorVersion}`,
       );
