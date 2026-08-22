@@ -1,0 +1,46 @@
+name: Temporary Previous Coverage Prettier
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/tmp-previous-coverage-prettier.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format-and-test:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: |
+          pnpm exec prettier --write \
+            packages/persistence/src/acquisition-learning-loop.ts \
+            packages/persistence/tests/acquisition-learning-previous-coverage.test.ts
+          pnpm --filter @markorbit/persistence test
+          pnpm --filter @markorbit/persistence typecheck
+          pnpm format:check
+      - name: Commit formatted feedback
+        run: |
+          BRANCH=${{ github.event.pull_request.head.ref }}
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages/persistence/src/acquisition-learning-loop.ts packages/persistence/tests/acquisition-learning-previous-coverage.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "style: format acquisition coverage feedback"
+          git fetch origin "$BRANCH"
+          git rebase "origin/$BRANCH"
+          git push origin HEAD:"$BRANCH"
