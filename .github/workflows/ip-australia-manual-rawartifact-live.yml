@@ -50,6 +50,19 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @markorbit/admin build
+          pnpm --filter @markorbit/worker build
+
+      - name: Resolve authoritative Manual inventory baseline
+        run: |
+          pnpm --filter @markorbit/worker inventory:ip-australia-manual > "$RUNNER_TEMP/ip-au-inventory.json"
+          node <<'NODE'
+          const fs=require('node:fs');
+          const report=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/ip-au-inventory.json','utf8'));
+          const expected=Number(report.totalUniqueManualPageCount);
+          if(!Number.isSafeInteger(expected)||expected<=0)throw new Error(`Invalid Manual inventory count ${report.totalUniqueManualPageCount}`);
+          if(report.failedUpdateHistoryPageCount!==0||report.currentNavigationPageCount<=0)throw new Error('Authoritative Manual inventory is incomplete');
+          fs.appendFileSync(process.env.GITHUB_ENV,`MARKORBIT_IP_AU_EXPECTED_COUNT=${expected}\n`);
+          NODE
 
       - name: Start isolated control plane
         run: |
@@ -85,7 +98,7 @@ jobs:
         run: |
           node <<'NODE'
           const fs=require('node:fs');
-          fs.writeFileSync(process.env.RUNNER_TEMP+'/plan.json',JSON.stringify({sourceId:process.env.MARKORBIT_IP_AU_SOURCE_ID,name:'IP Australia Manual RawArtifact Live',status:'ACTIVE',schedule:{mode:'MANUAL'},priority:'HIGH',policy:{includePatterns:['https://manuals.ipaustralia.gov.au/trademark*'],excludePatterns:[],maxDepth:1,maxItems:700,renderJavascript:false,fetchAttachments:false,respectRobots:true,rateLimitPerMinute:120,timeoutSeconds:60,retry:{maxAttempts:1,backoffSeconds:15},locale:'en-AU'},output:{artifactKinds:['HTML']},extensions:{'x-markorbit-acceptance':'ip-australia-manual-rawartifact-live-v1'}}));
+          fs.writeFileSync(process.env.RUNNER_TEMP+'/plan.json',JSON.stringify({sourceId:process.env.MARKORBIT_IP_AU_SOURCE_ID,name:'IP Australia Manual RawArtifact Live',status:'ACTIVE',schedule:{mode:'MANUAL'},priority:'HIGH',policy:{includePatterns:['https://manuals.ipaustralia.gov.au/trademark*'],excludePatterns:[],maxDepth:1,maxItems:700,renderJavascript:false,fetchAttachments:false,respectRobots:true,rateLimitPerMinute:120,timeoutSeconds:60,retry:{maxAttempts:1,backoffSeconds:15},locale:'en-AU'},output:{artifactKinds:['HTML']},extensions:{'x-markorbit-acceptance':'ip-australia-manual-rawartifact-live-v2'}}));
           NODE
           curl --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/plans" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/plan.json" > "$RUNNER_TEMP/plan-create.json"
           node <<'NODE'
@@ -130,7 +143,7 @@ jobs:
           pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker.log" 2>&1 &
           echo "WORKER_PID=$!" >> "$GITHUB_ENV"
 
-      - name: Verify first run produced 577 immutable RawArtifacts
+      - name: Resolve first collected corpus against authoritative inventory
         run: |
           for attempt in $(seq 1 150); do
             curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/runs/$MARKORBIT_FIRST_RUN_ID" > "$RUNNER_TEMP/first-run.json"
@@ -141,7 +154,13 @@ jobs:
           done
           node -e "const d=require('$RUNNER_TEMP/first-run.json');if(d.run.run.status!=='COMPLETED')throw new Error('First run did not finish')"
           curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&runId=$MARKORBIT_FIRST_RUN_ID&artifactKind=HTML&limit=100" > "$RUNNER_TEMP/first-artifacts.json"
-          node -e "const d=require('$RUNNER_TEMP/first-artifacts.json');if(d.total!==577)throw new Error('Expected 577 RawArtifacts, got '+d.total)"
+          node <<'NODE'
+          const fs=require('node:fs');
+          const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/first-artifacts.json','utf8'));
+          const inventory=Number(process.env.MARKORBIT_IP_AU_EXPECTED_COUNT);
+          if(!Number.isSafeInteger(d.total)||d.total<=0||d.total>inventory)throw new Error(`Invalid RawArtifact count ${d.total} for authoritative inventory ${inventory}`);
+          fs.appendFileSync(process.env.GITHUB_ENV,`MARKORBIT_IP_AU_INVENTORY_COUNT=${inventory}\nMARKORBIT_IP_AU_EXPECTED_COUNT=${d.total}\n`);
+          NODE
 
       - name: Convert same plan to CHANGE_WATCH
         run: |
@@ -173,18 +192,18 @@ jobs:
           curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&runId=$MARKORBIT_SECOND_RUN_ID&artifactKind=HTML&limit=100" > "$RUNNER_TEMP/second-artifacts.json"
           curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&artifactKind=HTML&limit=100" > "$RUNNER_TEMP/all-artifacts.json"
           node <<'NODE'
-          const fs=require('node:fs'); const run=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/second-run.json','utf8')); const second=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/second-artifacts.json','utf8')); const all=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/all-artifacts.json','utf8')); const job=run?.run?.jobs?.[0];
+          const fs=require('node:fs'); const run=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/second-run.json','utf8')); const second=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/second-artifacts.json','utf8')); const all=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/all-artifacts.json','utf8')); const job=run?.run?.jobs?.[0]; const expected=Number(process.env.MARKORBIT_IP_AU_EXPECTED_COUNT);
           if(run?.run?.run?.status!=='COMPLETED')throw new Error('Second run did not finish');
           if(job?.jobType!=='PAGE_UPDATE_CHECK')throw new Error(`Expected PAGE_UPDATE_CHECK, got ${job?.jobType}`);
           if(second.total!==0)throw new Error(`Expected 0 new RawArtifacts, got ${second.total}`);
-          if(all.total!==577)throw new Error(`Expected corpus total 577, got ${all.total}`);
+          if(all.total!==expected)throw new Error(`Expected corpus total ${expected} from collected baseline, got ${all.total}`);
           NODE
 
       - name: Write evidence summary
         if: always()
         run: |
           node <<'NODE'
-          const fs=require('node:fs'); const read=(name)=>{const p=`${process.env.RUNNER_TEMP}/${name}`;return fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):null;}; const first=read('first-artifacts.json'),second=read('second-artifacts.json'),all=read('all-artifacts.json'); const lines=['## IP Australia Manual RawArtifact Live','']; if(first)lines.push(`- First run RawArtifacts: ${first.total}`); if(second)lines.push(`- Change-watch new RawArtifacts: ${second.total}`); if(all)lines.push(`- Corpus RawArtifact total: ${all.total}`); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');
+          const fs=require('node:fs'); const read=(name)=>{const p=`${process.env.RUNNER_TEMP}/${name}`;return fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):null;}; const inventory=read('ip-au-inventory.json'),first=read('first-artifacts.json'),second=read('second-artifacts.json'),all=read('all-artifacts.json'); const lines=['## IP Australia Manual RawArtifact Live','']; if(inventory)lines.push(`- Authoritative inventory baseline: ${inventory.totalUniqueManualPageCount}`); if(first)lines.push(`- First run RawArtifacts / collected baseline: ${first.total}`); if(second)lines.push(`- Change-watch new RawArtifacts: ${second.total}`); if(all)lines.push(`- Corpus RawArtifact total after watch: ${all.total}`); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');
           NODE
 
       - name: Stop isolated processes
@@ -199,6 +218,7 @@ jobs:
         with:
           name: ip-australia-manual-rawartifact-live-${{ github.run_id }}
           path: |
+            ${{ runner.temp }}/ip-au-inventory.json
             ${{ runner.temp }}/first-run.json
             ${{ runner.temp }}/first-artifacts.json
             ${{ runner.temp }}/second-run.json

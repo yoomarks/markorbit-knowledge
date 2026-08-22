@@ -19,6 +19,8 @@ export type IpAustraliaManualArtifactAcquirerDiagnostics = {
   inventoryPageCount: number;
   emittedArtifactCount: number;
   sourceGaps: IpAustraliaManualSourceGap[];
+  etagObserved: boolean;
+  lastModifiedObserved: boolean;
 };
 
 export type IpAustraliaManualArtifactAcquirerOptions = {
@@ -69,8 +71,18 @@ function sourceEvidenceComplete(
 }
 
 type PageAcquisitionResult =
-  | { artifact: AcquiredCollectionArtifact; gap?: never }
-  | { artifact?: never; gap: IpAustraliaManualSourceGap };
+  | {
+      artifact: AcquiredCollectionArtifact;
+      gap?: never;
+      etagObserved: boolean;
+      lastModifiedObserved: boolean;
+    }
+  | {
+      artifact?: never;
+      gap: IpAustraliaManualSourceGap;
+      etagObserved: boolean;
+      lastModifiedObserved: boolean;
+    };
 
 export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcquirer {
   readonly executor = EXECUTOR;
@@ -82,6 +94,8 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
     inventoryPageCount: 0,
     emittedArtifactCount: 0,
     sourceGaps: [],
+    etagObserved: false,
+    lastModifiedObserved: false,
   };
 
   constructor(options: IpAustraliaManualArtifactAcquirerOptions = {}) {
@@ -121,6 +135,8 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
 
     const artifacts: AcquiredCollectionArtifact[] = [];
     const sourceGaps: IpAustraliaManualSourceGap[] = [];
+    let etagObserved = false;
+    let lastModifiedObserved = false;
 
     for (let offset = 0; offset < inventory.pages.length; offset += this.concurrency) {
       const batch = inventory.pages.slice(offset, offset + this.concurrency);
@@ -133,6 +149,8 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
                 accept: "text/html,application/xhtml+xml",
               },
             });
+            const responseEtagObserved = Boolean(response.headers.get("etag"));
+            const responseLastModifiedObserved = Boolean(response.headers.get("last-modified"));
             if (!response.ok) {
               return {
                 gap: {
@@ -142,6 +160,8 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
                   reason: response.status === 404 ? "SOURCE_UNAVAILABLE" : "FETCH_FAILED",
                   error: `${page.uri} returned HTTP ${response.status}`,
                 },
+                etagObserved: responseEtagObserved,
+                lastModifiedObserved: responseLastModifiedObserved,
               };
             }
 
@@ -157,6 +177,8 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
                   error:
                     "Reachable Manual page did not preserve the minimum observed source evidence fields",
                 },
+                etagObserved: responseEtagObserved,
+                lastModifiedObserved: responseLastModifiedObserved,
               };
             }
 
@@ -170,6 +192,8 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
                 ...(evidence.publishedAt ? { publishedAt: evidence.publishedAt } : {}),
                 content: new TextEncoder().encode(html),
               },
+              etagObserved: responseEtagObserved,
+              lastModifiedObserved: responseLastModifiedObserved,
             };
           } catch (error) {
             return {
@@ -179,12 +203,16 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
                 reason: "FETCH_FAILED",
                 error: error instanceof Error ? error.message : String(error),
               },
+              etagObserved: false,
+              lastModifiedObserved: false,
             };
           }
         }),
       );
 
       for (const result of results) {
+        etagObserved ||= result.etagObserved;
+        lastModifiedObserved ||= result.lastModifiedObserved;
         if (result.artifact !== undefined) artifacts.push(result.artifact);
         else sourceGaps.push(result.gap);
       }
@@ -195,6 +223,8 @@ export class IpAustraliaManualArtifactAcquirer implements CollectionArtifactAcqu
       inventoryPageCount: inventory.totalUniqueManualPageCount,
       emittedArtifactCount: artifacts.length,
       sourceGaps: sourceGaps.sort((left, right) => left.uri.localeCompare(right.uri)),
+      etagObserved,
+      lastModifiedObserved,
     };
 
     if (artifacts.length === 0) {

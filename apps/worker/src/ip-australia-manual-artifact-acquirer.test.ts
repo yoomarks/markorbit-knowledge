@@ -53,13 +53,16 @@ function fixtureFetch(): typeof fetch {
     if (uri.endsWith("article-a")) {
       return new Response(controlledArticle("Article A"), {
         status: 200,
-        headers: { "content-type": "text/html" },
+        headers: { "content-type": "text/html", etag: '"article-a-v1"' },
       });
     }
     if (uri.endsWith("annex-a1")) {
       return new Response(specialPage, {
         status: 200,
-        headers: { "content-type": "text/html" },
+        headers: {
+          "content-type": "text/html",
+          "last-modified": "Wed, 19 Aug 2026 00:00:00 GMT",
+        },
       });
     }
     return new Response("missing", { status: 404 });
@@ -87,6 +90,8 @@ describe("IP Australia Manual artifact acquirer", () => {
     expect(diagnostics).toMatchObject({
       inventoryPageCount: 3,
       emittedArtifactCount: 2,
+      etagObserved: true,
+      lastModifiedObserved: true,
     });
     expect(diagnostics.sourceGaps).toEqual([
       expect.objectContaining({

@@ -3,6 +3,7 @@ import {
   ControlledCollectionWorkerRuntime,
   Crawl4AiSubprocessAcquirer,
   GitHubArtifactAcquirer,
+  HttpAcquisitionIntelligenceClient,
   HttpControlledCollectionClient,
   HttpProductionConversionClient,
   HttpValidatorControlPlaneClient,
@@ -13,6 +14,7 @@ import {
   defaultApiTransport,
 } from "@markorbit/worker-runtime";
 import { loadWorkerProcessConfig } from "./config";
+import { buildIpAustraliaManualAcquisitionRunEvidence } from "./ip-australia-manual-acquisition-learning";
 import { IpAustraliaManualArtifactAcquirer } from "./ip-australia-manual-artifact-acquirer";
 
 function delay(milliseconds: number): Promise<void> {
@@ -44,6 +46,17 @@ async function main(): Promise<void> {
       config.workerCredential,
     ),
   );
+  const ipAustraliaManualAcquirer =
+    config.collectionProvider === "ip-australia-manual"
+      ? new IpAustraliaManualArtifactAcquirer()
+      : null;
+  const acquisitionIntelligenceClient = ipAustraliaManualAcquirer
+    ? new HttpAcquisitionIntelligenceClient(
+        config.controlPlaneUrl,
+        config.workerId,
+        config.workerCredential,
+      )
+    : null;
   const acquirer =
     config.collectionProvider === "local-folder"
       ? new LocalFolderArtifactAcquirer({
@@ -65,17 +78,47 @@ async function main(): Promise<void> {
                 maxItems: config.githubMaxItems,
                 maxDepth: config.githubMaxDepth,
               })
-            : config.collectionProvider === "ip-australia-manual"
-              ? new IpAustraliaManualArtifactAcquirer()
-              : new Crawl4AiSubprocessAcquirer({
-                  requireEgressProxy: config.requireEgressProxy,
-                  maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
-                });
+            : (ipAustraliaManualAcquirer ??
+              new Crawl4AiSubprocessAcquirer({
+                requireEgressProxy: config.requireEgressProxy,
+                maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
+              }));
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
     onBackgroundError(error) {
-      log("worker.keepalive.error", { message: errorMessage(error) });
+      log("worker.background.error", { message: errorMessage(error) });
+    },
+    async onCompleted(completion) {
+      if (!ipAustraliaManualAcquirer || !acquisitionIntelligenceClient || !completion.receipt)
+        return;
+      const evidence = buildIpAustraliaManualAcquisitionRunEvidence({
+        job: completion.context.job,
+        receipt: completion.receipt,
+        diagnostics: ipAustraliaManualAcquirer.getDiagnostics(),
+        startedAt: completion.startedAt,
+        finishedAt: completion.finishedAt,
+      });
+      const learned = await acquisitionIntelligenceClient.recordRun(evidence);
+      const diagnostics = ipAustraliaManualAcquirer.getDiagnostics();
+      log("worker.acquisition.learning.recorded", {
+        runId: learned.runId,
+        sourceId: learned.sourceId,
+        executionAttemptId: learned.executionAttemptId,
+        replayed: learned.replayed,
+        lessonsRecorded: learned.lessonsRecorded,
+        playbookRuns: learned.playbookHistory.runs,
+        playbookSuccessRate: learned.playbookHistory.successRate,
+        playbookAverageCoverage: learned.playbookHistory.averageCoverage,
+        inventoryPageCount: diagnostics.inventoryPageCount,
+        emittedArtifactCount: diagnostics.emittedArtifactCount,
+        sourceGapCount: diagnostics.sourceGaps.length,
+        sourceGapSamples: diagnostics.sourceGaps.slice(0, 10).map((gap) => ({
+          uri: gap.uri,
+          status: gap.status,
+          reason: gap.reason,
+        })),
+      });
     },
   });
   const conversionRuntime =
@@ -122,6 +165,7 @@ async function main(): Promise<void> {
     localFolderRootIds: Object.keys(config.localFolderRoots),
     maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
     conversionEnabled: config.conversionEnabled,
+    acquisitionLearningEnabled: Boolean(acquisitionIntelligenceClient),
   });
 
   while (!stopping) {
