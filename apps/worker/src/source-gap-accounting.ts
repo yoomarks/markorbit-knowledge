@@ -1,3 +1,4 @@
+// Source gaps preserve authoritative inventory entries that were observed but could not yield RawArtifact evidence.
 export type SourceGapType =
   "HTTP_404" | "REDIRECT_LOOP" | "ACCESS_BLOCKED" | "CONTENT_REMOVED" | "UNKNOWN";
 
