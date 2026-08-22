@@ -10,10 +10,7 @@ function optionalNumber(value: string | null): number | undefined {
   return value === null ? undefined : Number(value);
 }
 
-export async function GET(
-  request: Request,
-  context: { params: Promise<{ sourceId: string }> },
-) {
+export async function GET(request: Request, context: { params: Promise<{ sourceId: string }> }) {
   try {
     const { sourceId } = await context.params;
     const url = new URL(request.url);

@@ -63,8 +63,7 @@ function evidence(input: {
     },
     httpStatusCounts:
       input.outcome === "DEGRADED" ? { "200": input.accepted, "429": 2 } : { "200": 100 },
-    failureSignatures:
-      input.outcome === "DEGRADED" ? [{ code: "HTTP_429", count: 2 }] : [],
+    failureSignatures: input.outcome === "DEGRADED" ? [{ code: "HTTP_429", count: 2 }] : [],
     surfaceOutcomes: [
       {
         surface: "INDEX_PAGE",
@@ -139,7 +138,11 @@ describe("AcquisitionIntelligenceReadService", () => {
       expect(source.runs.map((item) => item.runId)).toEqual(["run_read_2", "run_read_1"]);
       expect(source.runs[0]?.coverage.previousRatio).toBe(1);
       expect(source.lessons.map((item) => item.lessonType)).toEqual(
-        expect.arrayContaining(["COVERAGE_REGRESSION", "INCOMPLETE_ENUMERATOR", "FAILURE_SIGNATURE"]),
+        expect.arrayContaining([
+          "COVERAGE_REGRESSION",
+          "INCOMPLETE_ENUMERATOR",
+          "FAILURE_SIGNATURE",
+        ]),
       );
       expect(source.latestSelection?.selection.selectedPlaybookId).toBe(
         "official-static-index-tree",

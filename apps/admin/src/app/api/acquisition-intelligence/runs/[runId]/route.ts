@@ -6,10 +6,7 @@ import { getRegistryDatabase } from "@/server/source-registry";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _request: Request,
-  context: { params: Promise<{ runId: string }> },
-) {
+export async function GET(_request: Request, context: { params: Promise<{ runId: string }> }) {
   try {
     const { runId } = await context.params;
     const service = new AcquisitionIntelligenceReadService(getRegistryDatabase());
