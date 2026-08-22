@@ -12,6 +12,7 @@ export type {
   ExecutionReceipt,
   Job,
   RunLesson,
+  SourceFingerprint,
 } from "@markorbit/contracts";
 
 export * from "./acquisition-learning-profile";
@@ -122,102 +123,54 @@ export interface WorkerExecutionClient {
     key: string,
   ): Promise<void>;
 }
-
-export interface FixtureExecutionResult {
-  receipt: ExecutionReceipt;
-  idempotencyKeys: string[];
-}
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-export function buildFixtureExecutionReceipt(context: ClaimedExecutionContext): ExecutionReceipt {
-  const binary = sha256(`binary:${context.job.id}:${context.job.input.uri}`);
-  const content = sha256(`content:${context.job.id}:${context.job.input.uri}`);
-  return {
-    schemaVersion: "1.0",
-    objectType: "EXECUTION_RECEIPT",
-    runId: context.job.runId,
-    jobId: context.job.id,
-    leaseId: context.lease.id,
-    workerId: context.workerId,
-    executor: FIXTURE_EXECUTOR,
-    artifactsPrepared: 1,
-    bytesPrepared: Buffer.byteLength(context.job.input.uri, "utf8"),
-    artifactDigests: [
-      {
-        artifactKind: context.job.output.artifactKinds[0] ?? "HTML",
-        binaryHash: { algorithm: "SHA-256", value: binary },
-        contentHash: { algorithm: "SHA-256", value: content },
-      },
-    ],
-    capture: {
-      startedAt: context.lease.leasedAt,
-      completedAt: new Date().toISOString(),
-    },
-    extensions: {
-      "x-markorbit-fixture": true,
-    },
-  };
-}
-
-function idempotencyKey(context: ClaimedExecutionContext, transition: string): string {
-  return `${context.lease.id}:${transition}`;
-}
-
-export async function executeFixtureLease(
+export async function runFixtureExecution(
   client: WorkerExecutionClient,
   context: ClaimedExecutionContext,
-  scenario: FixtureExecutionScenario = "SUCCESS",
-): Promise<FixtureExecutionResult> {
-  const keys: string[] = [];
-  const runTransition = async (
-    transition: string,
-    operation: (key: string) => Promise<void>,
-  ): Promise<void> => {
-    const key = idempotencyKey(context, transition);
-    keys.push(key);
-    await operation(key);
-  };
-
-  await runTransition("start", (key) => client.start(context, FIXTURE_EXECUTOR, key));
+  scenario: FixtureExecutionScenario,
+  idempotencyPrefix: string,
+): Promise<void> {
+  const executor = FIXTURE_EXECUTOR;
+  await client.start(context, executor, `${idempotencyPrefix}:start`);
   if (scenario === "FAIL_AFTER_START") {
-    await runTransition("fail", (key) =>
-      client.fail(
-        context,
-        { code: "FIXTURE_FAIL_AFTER_START", message: "Fixture failure after start", retryable: true },
-        key,
-      ),
+    await client.fail(
+      context,
+      { code: "FIXTURE_START_FAILURE", message: "Fixture failed after START", retryable: false },
+      `${idempotencyPrefix}:fail`,
     );
-    return { receipt: buildFixtureExecutionReceipt(context), idempotencyKeys: keys };
+    return;
   }
-
-  await runTransition("uploading", (key) => client.uploading(context, key));
+  await client.uploading(context, `${idempotencyPrefix}:uploading`);
   if (scenario === "FAIL_DURING_UPLOAD") {
-    await runTransition("fail", (key) =>
-      client.fail(
-        context,
-        { code: "FIXTURE_FAIL_DURING_UPLOAD", message: "Fixture upload failure", retryable: true },
-        key,
-      ),
+    await client.fail(
+      context,
+      { code: "FIXTURE_UPLOAD_FAILURE", message: "Fixture failed during upload", retryable: true },
+      `${idempotencyPrefix}:fail`,
     );
-    return { receipt: buildFixtureExecutionReceipt(context), idempotencyKeys: keys };
+    return;
   }
-
-  await runTransition("verifying", (key) => client.verifying(context, key));
+  await client.verifying(context, `${idempotencyPrefix}:verifying`);
   if (scenario === "FAIL_DURING_VERIFY") {
-    await runTransition("fail", (key) =>
-      client.fail(
-        context,
-        { code: "FIXTURE_FAIL_DURING_VERIFY", message: "Fixture verify failure", retryable: false },
-        key,
-      ),
+    await client.fail(
+      context,
+      { code: "FIXTURE_VERIFY_FAILURE", message: "Fixture failed during verify", retryable: true },
+      `${idempotencyPrefix}:fail`,
     );
-    return { receipt: buildFixtureExecutionReceipt(context), idempotencyKeys: keys };
+    return;
   }
-
-  const receipt = buildFixtureExecutionReceipt(context);
-  await runTransition("complete", (key) => client.complete(context, receipt, key));
-  return { receipt, idempotencyKeys: keys };
+  const payload = JSON.stringify({
+    runId: context.job.runId,
+    jobId: context.job.id,
+    sourceId: context.job.sourceId,
+    workerId: context.workerId,
+  });
+  const contentHash = createHash("sha256").update(payload).digest("hex");
+  const receipt: ExecutionReceipt = {
+    executor,
+    contentHash,
+    itemsObserved: 1,
+    bytesPrepared: Buffer.byteLength(payload),
+    metadataOnly: false,
+    provisional: false,
+  };
+  await client.complete(context, receipt, `${idempotencyPrefix}:complete`);
 }
