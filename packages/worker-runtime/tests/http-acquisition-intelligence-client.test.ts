@@ -83,11 +83,12 @@ describe("HttpAcquisitionIntelligenceClient", () => {
   });
 
   it("surfaces the control-plane error message on rejected evidence", async () => {
-    const fetcher = vi.fn(async () =>
-      new Response(JSON.stringify({ error: { message: "run/source mismatch" } }), {
-        status: 409,
-        headers: { "content-type": "application/json" },
-      }),
+    const fetcher = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: { message: "run/source mismatch" } }), {
+          status: 409,
+          headers: { "content-type": "application/json" },
+        }),
     );
     const client = new HttpAcquisitionIntelligenceClient(
       "https://knowledge.example.test",
