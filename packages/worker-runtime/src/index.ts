@@ -123,54 +123,67 @@ export interface WorkerExecutionClient {
     key: string,
   ): Promise<void>;
 }
-export async function runFixtureExecution(
-  client: WorkerExecutionClient,
-  context: ClaimedExecutionContext,
-  scenario: FixtureExecutionScenario,
-  idempotencyPrefix: string,
-): Promise<void> {
-  const executor = FIXTURE_EXECUTOR;
-  await client.start(context, executor, `${idempotencyPrefix}:start`);
-  if (scenario === "FAIL_AFTER_START") {
-    await client.fail(
-      context,
-      { code: "FIXTURE_START_FAILURE", message: "Fixture failed after START", retryable: false },
-      `${idempotencyPrefix}:fail`,
-    );
-    return;
-  }
-  await client.uploading(context, `${idempotencyPrefix}:uploading`);
-  if (scenario === "FAIL_DURING_UPLOAD") {
-    await client.fail(
-      context,
-      { code: "FIXTURE_UPLOAD_FAILURE", message: "Fixture failed during upload", retryable: true },
-      `${idempotencyPrefix}:fail`,
-    );
-    return;
-  }
-  await client.verifying(context, `${idempotencyPrefix}:verifying`);
-  if (scenario === "FAIL_DURING_VERIFY") {
-    await client.fail(
-      context,
-      { code: "FIXTURE_VERIFY_FAILURE", message: "Fixture failed during verify", retryable: true },
-      `${idempotencyPrefix}:fail`,
-    );
-    return;
-  }
-  const payload = JSON.stringify({
-    runId: context.job.runId,
-    jobId: context.job.id,
-    sourceId: context.job.sourceId,
-    workerId: context.workerId,
-  });
-  const contentHash = createHash("sha256").update(payload).digest("hex");
-  const receipt: ExecutionReceipt = {
-    executor,
-    contentHash,
-    itemsObserved: 1,
-    bytesPrepared: Buffer.byteLength(payload),
-    metadataOnly: false,
-    provisional: false,
+export interface ConnectorExecutor {
+  readonly executor: ExecutionExecutor;
+  execute(
+    context: ClaimedExecutionContext,
+    client: WorkerExecutionClient,
+    scenario?: FixtureExecutionScenario,
+  ): Promise<ExecutionReceipt | null>;
+}
+function deterministicNumber(jobId: string, offset: number, modulo: number): number {
+  const digest = createHash("sha256").update(`${jobId}:${offset}`).digest();
+  return digest.readUInt32BE(0) % modulo;
+}
+function fixtureReceipt(job: Job): ExecutionReceipt {
+  return {
+    executor: FIXTURE_EXECUTOR,
+    outputKinds: [...job.planSnapshot.output.artifactKinds],
+    itemsObserved: deterministicNumber(job.id, 1, 25) + 1,
+    bytesPrepared: deterministicNumber(job.id, 2, 50000),
+    metadataOnly: true,
+    summary: "Deterministic fixture execution; no external I/O or RawArtifact was produced.",
   };
-  await client.complete(context, receipt, `${idempotencyPrefix}:complete`);
+}
+async function failFixture(
+  context: ClaimedExecutionContext,
+  client: WorkerExecutionClient,
+  prefix: string,
+  code: string,
+): Promise<null> {
+  await client.fail(
+    context,
+    {
+      code,
+      message: `Deterministic fixture failure: ${code}`,
+      retryable: false,
+    },
+    `${prefix}-fail`,
+  );
+  return null;
+}
+export class FixtureConnectorExecutor implements ConnectorExecutor {
+  readonly executor = FIXTURE_EXECUTOR;
+  async execute(
+    context: ClaimedExecutionContext,
+    client: WorkerExecutionClient,
+    scenario: FixtureExecutionScenario = "SUCCESS",
+  ): Promise<ExecutionReceipt | null> {
+    const prefix = `fixture-${context.lease.id}`;
+    await client.start(context, this.executor, `${prefix}-start`);
+    if (scenario === "FAIL_AFTER_START") {
+      return failFixture(context, client, prefix, "FIXTURE_FAILURE_AFTER_START");
+    }
+    await client.uploading(context, `${prefix}-uploading`);
+    if (scenario === "FAIL_DURING_UPLOAD") {
+      return failFixture(context, client, prefix, "FIXTURE_FAILURE_DURING_UPLOAD");
+    }
+    await client.verifying(context, `${prefix}-verifying`);
+    if (scenario === "FAIL_DURING_VERIFY") {
+      return failFixture(context, client, prefix, "FIXTURE_FAILURE_DURING_VERIFY");
+    }
+    const receipt = fixtureReceipt(context.job);
+    await client.complete(context, receipt, `${prefix}-complete`);
+    return receipt;
+  }
 }
