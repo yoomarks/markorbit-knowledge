@@ -191,18 +191,17 @@ describe("acquisition strategy governance", () => {
     });
 
     expect(governance.getCandidate(candidateId)?.candidate.stage).toBe("ACTIVE");
-    expect(governance.listTransitions(candidateId).map((transition) => transition.toStage)).toEqual([
-      "CANDIDATE",
-      "VALIDATED",
-      "PROMOTED",
-      "ACTIVE",
-    ]);
+    expect(governance.listTransitions(candidateId).map((transition) => transition.toStage)).toEqual(
+      ["CANDIDATE", "VALIDATED", "PROMOTED", "ACTIVE"],
+    );
     expect(
-      governance.listTransitions(candidateId).every(
-        (transition) =>
-          transition.boundaries.autoPromotionApplied === false &&
-          transition.boundaries.collectionAuthorityGranted === false,
-      ),
+      governance
+        .listTransitions(candidateId)
+        .every(
+          (transition) =>
+            transition.boundaries.autoPromotionApplied === false &&
+            transition.boundaries.collectionAuthorityGranted === false,
+        ),
     ).toBe(true);
     database.close();
   });

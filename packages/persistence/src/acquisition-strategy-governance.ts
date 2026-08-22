@@ -270,9 +270,7 @@ export class SqliteAcquisitionStrategyGovernanceRepository {
     observation: CandidateObservation,
   ): PersistedAcquisitionStrategyCandidate {
     const existingRow = this.database
-      .prepare(
-        `SELECT document_json, created_at FROM acquisition_strategy_candidates WHERE id = ?`,
-      )
+      .prepare(`SELECT document_json, created_at FROM acquisition_strategy_candidates WHERE id = ?`)
       .get(candidate.id) as { document_json: string; created_at: string } | undefined;
     const existingCandidate = existingRow ? parseCandidate(existingRow.document_json) : null;
 
@@ -373,8 +371,7 @@ export class SqliteAcquisitionStrategyGovernanceRepository {
          FROM acquisition_strategy_candidates WHERE id = ?`,
       )
       .get(candidateId.trim()) as
-      | { document_json: string; evidence_count: number; updated_at: string }
-      | undefined;
+      { document_json: string; evidence_count: number; updated_at: string } | undefined;
     if (!row) return null;
     return {
       candidate: parseCandidate(row.document_json),
@@ -577,7 +574,9 @@ export class SqliteAcquisitionStrategyGovernanceRepository {
          WHERE candidate_id = ? ORDER BY transitioned_at, id`,
       )
       .all(candidateId.trim()) as Array<{ document_json: string }>;
-    return rows.map((row) => JSON.parse(row.document_json) as AcquisitionStrategyCandidateTransition);
+    return rows.map(
+      (row) => JSON.parse(row.document_json) as AcquisitionStrategyCandidateTransition,
+    );
   }
 
   listPendingReevaluations(limit = 100): AcquisitionStrategyReevaluationRequest[] {

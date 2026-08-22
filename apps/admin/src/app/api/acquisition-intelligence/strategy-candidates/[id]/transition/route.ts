@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  ACQUISITION_PROMOTION_STAGES,
-  type AcquisitionPromotionStage,
-} from "@markorbit/contracts";
+import { ACQUISITION_PROMOTION_STAGES, type AcquisitionPromotionStage } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { SqliteAcquisitionStrategyGovernanceRepository } from "@markorbit/persistence/acquisition-strategy-governance";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
