@@ -24,117 +24,149 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - name: Install workspace
-        run: pnpm install --frozen-lockfile
-      - name: Apply evidence-semantic and type fixes
+      - run: pnpm install --frozen-lockfile
+      - name: Apply evidence-semantic fixes
         run: |
           python <<'PY'
           from pathlib import Path
 
-          def replace(path, old, new, count=None):
+          def edit(path, replacements):
               p = Path(path)
               text = p.read_text()
-              actual = text.count(old)
-              if actual == 0:
-                  raise SystemExit(f"pattern missing in {path}: {old[:120]!r}")
-              if count is not None and actual != count:
-                  raise SystemExit(f"expected {count} matches in {path}, got {actual}: {old[:120]!r}")
-              p.write_text(text.replace(old, new))
+              for old, new in replacements:
+                  if old not in text:
+                      raise SystemExit(f"missing pattern in {path}: {old[:100]!r}")
+                  text = text.replace(old, new)
+              p.write_text(text)
 
-          replace(
-              "packages/contracts/src/acquisition-intelligence-v1.ts",
-              "    etagObserved: boolean;\n    lastModifiedObserved: boolean;",
-              "    etagObserved: boolean | null;\n    lastModifiedObserved: boolean | null;",
-              1,
-          )
-          replace(
-              "packages/contracts/src/acquisition-intelligence-learning-v1.ts",
-              "  } else if (\n    !evidence.changeDetection.etagObserved &&\n    !evidence.changeDetection.lastModifiedObserved\n  ) {",
-              "  } else if (\n    evidence.changeDetection.etagObserved === false &&\n    evidence.changeDetection.lastModifiedObserved === false\n  ) {",
-              1,
-          )
+          edit("packages/contracts/src/acquisition-intelligence-v1.ts", [
+              ("    etagObserved: boolean;\n    lastModifiedObserved: boolean;",
+               "    etagObserved: boolean | null;\n    lastModifiedObserved: boolean | null;"),
+          ])
+          edit("packages/contracts/src/acquisition-intelligence-learning-v1.ts", [
+              ("  } else if (\n    !evidence.changeDetection.etagObserved &&\n    !evidence.changeDetection.lastModifiedObserved\n  ) {",
+               "  } else if (\n    evidence.changeDetection.etagObserved === false &&\n    evidence.changeDetection.lastModifiedObserved === false\n  ) {")
+          ])
+          edit("packages/worker-runtime/src/acquisition-learning-profile.ts", [
+              ("  type DiscoverySurface,", "  type AcquisitionDiscoverySurface,"),
+              ("  type RenderRequirement,", "  type AcquisitionRenderRequirement,"),
+              ("  type SourceArchitecture,", "  type AcquisitionArchitecture,"),
+              ("  type SourceLocaleStructure,", "  type AcquisitionLocaleStructure,"),
+              ("    architecture: SourceArchitecture;", "    architecture: AcquisitionArchitecture;"),
+              ("    discoverySurfaces: DiscoverySurface[];", "    discoverySurfaces: AcquisitionDiscoverySurface[];"),
+              ("    renderRequirement: RenderRequirement;", "    renderRequirement: AcquisitionRenderRequirement;"),
+              ("    localeStructure: SourceLocaleStructure;", "    localeStructure: AcquisitionLocaleStructure;"),
+              ("    supportsHttpValidators: boolean;", "    supportsHttpValidators: boolean | null;"),
+              ("      etagObserved: false,\n      lastModifiedObserved: false,",
+               "      etagObserved: null,\n      lastModifiedObserved: null,"),
+              ("export function buildSourceFingerprintFromAcquisitionProfile(input: {",
+               "export function inferHttpValidatorSupport(\n  changeDetection: AcquisitionRunEvidence[\"changeDetection\"] | undefined,\n): boolean | null {\n  if (!changeDetection) return null;\n  if (\n    changeDetection.validator304Count > 0 ||\n    changeDetection.etagObserved === true ||\n    changeDetection.lastModifiedObserved === true\n  ) return true;\n  if (\n    changeDetection.etagObserved === false &&\n    changeDetection.lastModifiedObserved === false\n  ) return false;\n  return null;\n}\n\nexport function buildSourceFingerprintFromAcquisitionProfile(input: {"),
+              ("  evidenceRefs: string[];\n}): SourceFingerprint {",
+               "  evidenceRefs: string[];\n  changeDetection?: AcquisitionRunEvidence[\"changeDetection\"];\n}): SourceFingerprint {"),
+              ("    supportsHttpValidators: input.profile.fingerprint.supportsHttpValidators,",
+               "    supportsHttpValidators:\n      input.changeDetection === undefined\n        ? input.profile.fingerprint.supportsHttpValidators\n        : inferHttpValidatorSupport(input.changeDetection),"),
+          ])
 
-          path = Path("packages/worker-runtime/src/acquisition-learning-profile.ts")
-          text = path.read_text()
-          replacements = {
-              "  type DiscoverySurface,": "  type AcquisitionDiscoverySurface,",
-              "  type RenderRequirement,": "  type AcquisitionRenderRequirement,",
-              "  type SourceArchitecture,": "  type AcquisitionArchitecture,",
-              "  type SourceLocaleStructure,": "  type AcquisitionLocaleStructure,",
-              "    architecture: SourceArchitecture;": "    architecture: AcquisitionArchitecture;",
-              "    discoverySurfaces: DiscoverySurface[];": "    discoverySurfaces: AcquisitionDiscoverySurface[];",
-              "    renderRequirement: RenderRequirement;": "    renderRequirement: AcquisitionRenderRequirement;",
-              "    localeStructure: SourceLocaleStructure;": "    localeStructure: AcquisitionLocaleStructure;",
-              "    supportsHttpValidators: boolean;": "    supportsHttpValidators: boolean | null;",
-              "      etagObserved: false,\n      lastModifiedObserved: false,": "      etagObserved: null,\n      lastModifiedObserved: null,",
-          }
-          for old, new in replacements.items():
-              if old not in text:
-                  raise SystemExit(f"runtime profile pattern missing: {old!r}")
-              text = text.replace(old, new)
-          marker = "export function buildSourceFingerprintFromAcquisitionProfile(input: {\n"
-          if marker not in text:
-              raise SystemExit("fingerprint builder marker missing")
-          helper = '''export function inferHttpValidatorSupport(\n  changeDetection: AcquisitionRunEvidence["changeDetection"] | undefined,\n): boolean | null {\n  if (!changeDetection) return null;\n  if (\n    changeDetection.validator304Count > 0 ||\n    changeDetection.etagObserved === true ||\n    changeDetection.lastModifiedObserved === true\n  ) {\n    return true;\n  }\n  if (\n    changeDetection.etagObserved === false &&\n    changeDetection.lastModifiedObserved === false\n  ) {\n    return false;\n  }\n  return null;\n}\n\n'''
-          text = text.replace(marker, helper + marker, 1)
-          old = "  evidenceRefs: string[];\n}): SourceFingerprint {"
-          new = "  evidenceRefs: string[];\n  changeDetection?: AcquisitionRunEvidence[\"changeDetection\"];\n}): SourceFingerprint {"
-          if old not in text:
-              raise SystemExit("fingerprint input marker missing")
-          text = text.replace(old, new, 1)
-          old = "    supportsHttpValidators: input.profile.fingerprint.supportsHttpValidators,"
-          new = "    supportsHttpValidators:\n      input.changeDetection === undefined\n        ? input.profile.fingerprint.supportsHttpValidators\n        : inferHttpValidatorSupport(input.changeDetection),"
-          if old not in text:
-              raise SystemExit("fingerprint validator marker missing")
-          text = text.replace(old, new, 1)
-          path.write_text(text)
+          p = Path("apps/worker/src/acquisition-learning-profiles.ts")
+          text = p.read_text()
+          if text.count("supportsHttpValidators: true") != 4:
+              raise SystemExit("expected four structural validator priors")
+          p.write_text(text.replace("supportsHttpValidators: true", "supportsHttpValidators: null"))
 
-          profile_path = Path("apps/worker/src/acquisition-learning-profiles.ts")
-          profile_text = profile_path.read_text()
-          if profile_text.count("supportsHttpValidators: true") != 4:
-              raise SystemExit("expected four structural profile validator priors")
-          profile_path.write_text(profile_text.replace("supportsHttpValidators: true", "supportsHttpValidators: null"))
-
-          for file_path in [
-              "apps/worker/src/main.ts",
-              "apps/worker/src/live-acquisition-profile-evidence.ts",
-          ]:
-              p = Path(file_path)
-              t = p.read_text()
-              old = "    evidenceRefs: evidence.evidenceRefs,\n  });"
-              new = "    evidenceRefs: evidence.evidenceRefs,\n    changeDetection: evidence.changeDetection,\n  });"
-              if old not in t:
-                  raise SystemExit(f"fingerprint call marker missing in {file_path}")
-              p.write_text(t.replace(old, new, 1))
-
-          test_path = Path("packages/worker-runtime/tests/acquisition-learning-profile.test.ts")
-          test = test_path.read_text()
-          if 'from "@markorbit/contracts"' not in test:
-              test = 'import { extractAcquisitionRunLessons } from "@markorbit/contracts";\n' + test
-          if test.count("supportsHttpValidators: true") != 1:
-              raise SystemExit("runtime test profile validator prior mismatch")
-          test = test.replace("supportsHttpValidators: true", "supportsHttpValidators: null", 1)
-          old = "      renderRequirement: \"NONE\",\n      confidence: 0.9,\n    });"
-          new = "      renderRequirement: \"NONE\",\n      supportsHttpValidators: null,\n      confidence: 0.9,\n    });"
-          if old not in test:
-              raise SystemExit("runtime fingerprint assertion marker missing")
-          test = test.replace(old, new, 1)
-          insert = '''\n  it("does not learn HTTP validator unavailability from an unmeasured generic run", () => {\n    const evidence = buildAcquisitionRunEvidenceFromProfile({\n      profile,\n      observation: {\n        runId: "run_unmeasured_validators",\n        sourceId: "src_new_official_manual",\n        startedAt: "2026-08-22T00:00:00.000Z",\n        finishedAt: "2026-08-22T00:00:01.000Z",\n        counts: {\n          discovered: 1,\n          attempted: 1,\n          fetched: 1,\n          accepted: 1,\n          duplicates: 0,\n          retries: 0,\n        },\n        knownCorpus: null,\n        bytes: 100,\n        evidenceRefs: ["fixture:unmeasured-validator-run"],\n      },\n    });\n\n    expect(evidence.changeDetection).toEqual({\n      etagObserved: null,\n      lastModifiedObserved: null,\n      validator304Count: 0,\n      digestChanges: 0,\n    });\n    const lessonTypes = extractAcquisitionRunLessons(evidence).map((lesson) => lesson.lessonType);\n    expect(lessonTypes).not.toContain("HTTP_VALIDATORS_UNAVAILABLE");\n    expect(lessonTypes).not.toContain("DIGEST_WATCH_REQUIRED");\n  });\n\n  it("derives validator support and fallback lessons only from measured observations", () => {\n    const measuredAvailable = {\n      etagObserved: true,\n      lastModifiedObserved: false,\n      validator304Count: 0,\n      digestChanges: 0,\n    } as const;\n    const fingerprint = buildSourceFingerprintFromAcquisitionProfile({\n      profile,\n      sourceId: "src_measured_validators",\n      observedAt: "2026-08-22T00:00:01.000Z",\n      evidenceRefs: ["fixture:measured-validator-run"],\n      changeDetection: measuredAvailable,\n    });\n    expect(fingerprint.supportsHttpValidators).toBe(true);\n\n    const measuredUnavailable = buildAcquisitionRunEvidenceFromProfile({\n      profile,\n      observation: {\n        runId: "run_measured_no_validators",\n        sourceId: "src_measured_no_validators",\n        startedAt: "2026-08-22T00:00:00.000Z",\n        finishedAt: "2026-08-22T00:00:01.000Z",\n        counts: {\n          discovered: 1,\n          attempted: 1,\n          fetched: 1,\n          accepted: 1,\n          duplicates: 0,\n          retries: 0,\n        },\n        knownCorpus: null,\n        changeDetection: {\n          etagObserved: false,\n          lastModifiedObserved: false,\n          validator304Count: 0,\n          digestChanges: 0,\n        },\n        bytes: 100,\n        evidenceRefs: ["fixture:measured-no-validator-run"],\n      },\n    });\n    const lessonTypes = extractAcquisitionRunLessons(measuredUnavailable).map(\n      (lesson) => lesson.lessonType,\n    );\n    expect(lessonTypes).toContain("HTTP_VALIDATORS_UNAVAILABLE");\n    expect(lessonTypes).toContain("DIGEST_WATCH_REQUIRED");\n  });\n'''
-          end = "\n});\n"
-          if not test.endswith(end):
-              raise SystemExit("runtime test suite ending missing")
-          test = test[:-len(end)] + insert + end
-          test_path.write_text(test)
-
-          live_test_path = Path("apps/worker/src/live-acquisition-profile-evidence.test.ts")
-          live_test = live_test_path.read_text()
-          old = '      localeStructure: "JURISDICTION_GRAPH",\n    });'
-          new = '      localeStructure: "JURISDICTION_GRAPH",\n      supportsHttpValidators: null,\n    });'
-          if old not in live_test:
-              raise SystemExit("live fingerprint assertion marker missing")
-          live_test_path.write_text(live_test.replace(old, new, 1))
+          for path in ["apps/worker/src/main.ts", "apps/worker/src/live-acquisition-profile-evidence.ts"]:
+              edit(path, [
+                  ("    evidenceRefs: evidence.evidenceRefs,\n  });",
+                   "    evidenceRefs: evidence.evidenceRefs,\n    changeDetection: evidence.changeDetection,\n  });")
+              ])
           PY
-      - name: Format touched profile surface
+
+          cat > packages/worker-runtime/tests/acquisition-learning-measurement-semantics.test.ts <<'EOF'
+          import { extractAcquisitionRunLessons } from "@markorbit/contracts";
+          import { describe, expect, it } from "vitest";
+          import {
+            buildAcquisitionRunEvidenceFromProfile,
+            buildSourceFingerprintFromAcquisitionProfile,
+            type AcquisitionLearningProfile,
+          } from "../src/acquisition-learning-profile";
+
+          const profile: AcquisitionLearningProfile = {
+            profileId: "static-index-html-v1",
+            playbookId: "official-static-index-tree",
+            playbookRevision: 1,
+            fingerprint: {
+              architecture: "STATIC_HTML",
+              discoverySurfaces: ["INDEX_PAGE"],
+              renderRequirement: "NONE",
+              localeStructure: "SINGLE",
+              supportsHttpValidators: null,
+              attachmentKinds: ["HTML"],
+              confidence: 0.9,
+            },
+          };
+
+          function observation(changeDetection?: {
+            etagObserved: boolean | null;
+            lastModifiedObserved: boolean | null;
+            validator304Count: number;
+            digestChanges: number;
+          }) {
+            return {
+              runId: "run_validator_measurement",
+              sourceId: "src_validator_measurement",
+              startedAt: "2026-08-22T00:00:00.000Z",
+              finishedAt: "2026-08-22T00:00:01.000Z",
+              counts: { discovered: 1, attempted: 1, fetched: 1, accepted: 1, duplicates: 0, retries: 0 },
+              knownCorpus: null,
+              ...(changeDetection ? { changeDetection } : {}),
+              bytes: 100,
+              evidenceRefs: ["fixture:validator-measurement"],
+            };
+          }
+
+          describe("acquisition learning measurement semantics", () => {
+            it("keeps unmeasured validators unknown and does not fabricate unavailable lessons", () => {
+              const evidence = buildAcquisitionRunEvidenceFromProfile({ profile, observation: observation() });
+              expect(evidence.changeDetection.etagObserved).toBeNull();
+              expect(evidence.changeDetection.lastModifiedObserved).toBeNull();
+              const lessonTypes = extractAcquisitionRunLessons(evidence).map((lesson) => lesson.lessonType);
+              expect(lessonTypes).not.toContain("HTTP_VALIDATORS_UNAVAILABLE");
+              expect(lessonTypes).not.toContain("DIGEST_WATCH_REQUIRED");
+              const fingerprint = buildSourceFingerprintFromAcquisitionProfile({
+                profile,
+                sourceId: evidence.sourceId,
+                observedAt: evidence.finishedAt,
+                evidenceRefs: evidence.evidenceRefs,
+                changeDetection: evidence.changeDetection,
+              });
+              expect(fingerprint.supportsHttpValidators).toBeNull();
+            });
+
+            it("derives support from observed validators and fallback lessons from measured absence", () => {
+              const available = buildAcquisitionRunEvidenceFromProfile({
+                profile,
+                observation: observation({ etagObserved: true, lastModifiedObserved: false, validator304Count: 0, digestChanges: 0 }),
+              });
+              expect(
+                buildSourceFingerprintFromAcquisitionProfile({
+                  profile,
+                  sourceId: available.sourceId,
+                  observedAt: available.finishedAt,
+                  evidenceRefs: available.evidenceRefs,
+                  changeDetection: available.changeDetection,
+                }).supportsHttpValidators,
+              ).toBe(true);
+
+              const unavailable = buildAcquisitionRunEvidenceFromProfile({
+                profile,
+                observation: observation({ etagObserved: false, lastModifiedObserved: false, validator304Count: 0, digestChanges: 0 }),
+              });
+              const lessonTypes = extractAcquisitionRunLessons(unavailable).map((lesson) => lesson.lessonType);
+              expect(lessonTypes).toContain("HTTP_VALIDATORS_UNAVAILABLE");
+              expect(lessonTypes).toContain("DIGEST_WATCH_REQUIRED");
+            });
+          });
+          EOF
+      - name: Format and validate
         run: |
           pnpm exec prettier --write \
             packages/contracts/src/acquisition-intelligence-v1.ts \
@@ -142,6 +174,7 @@ jobs:
             packages/worker-runtime/src/acquisition-learning-profile.ts \
             packages/worker-runtime/src/http-acquisition-intelligence-client.ts \
             packages/worker-runtime/tests/acquisition-learning-profile.test.ts \
+            packages/worker-runtime/tests/acquisition-learning-measurement-semantics.test.ts \
             packages/worker-runtime/tests/http-acquisition-intelligence-client.test.ts \
             apps/admin/src/server/acquisition-intelligence-worker-fingerprint.test.ts \
             apps/worker/src/acquisition-learning-profiles.ts \
@@ -150,21 +183,16 @@ jobs:
             apps/worker/src/live-acquisition-profile-evidence.test.ts \
             apps/worker/src/main.ts \
             apps/worker/src/verify-acquisition-learning-profile-run.ts
-      - name: Validate semantic fixes
-        run: |
           pnpm --filter @markorbit/contracts test
           pnpm --filter @markorbit/worker-runtime test
           pnpm --filter @markorbit/worker test
           pnpm typecheck
           pnpm format:check
-      - name: Commit fixes to PR branch
+      - name: Commit fixes
         run: |
-          if git diff --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add packages/contracts packages/worker-runtime apps/admin/src/server/acquisition-intelligence-worker-fingerprint.test.ts apps/worker/src
+          git diff --cached --quiet && exit 0
           git commit -m "fix: preserve unknown acquisition observations"
           git push origin HEAD:agent/acquisition-learning-profiles-v1
