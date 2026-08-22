@@ -1,5 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
-import type { AcquisitionRunEvidence, RunLesson } from "@markorbit/worker-runtime";
+import type {
+  AcquisitionRunEvidence,
+  RunLesson,
+} from "@markorbit/worker-runtime";
 import {
   resolveAcquisitionOutcome,
   sourceGapObservationsFromEvidenceRefs,
@@ -22,12 +25,22 @@ function parseJson<T>(value: unknown, label: string): T {
 
 function assertEqual(actual: unknown, expected: unknown, label: string): void {
   if (actual !== expected) {
-    throw new Error(`${label}: expected ${String(expected)}, got ${String(actual)}`);
+    throw new Error(
+      `${label}: expected ${String(expected)}, got ${String(actual)}`,
+    );
   }
 }
 
-function assertClose(actual: number | null, expected: number, label: string): void {
-  if (actual === null || !Number.isFinite(actual) || Math.abs(actual - expected) > 1e-12) {
+function assertClose(
+  actual: number | null,
+  expected: number,
+  label: string,
+): void {
+  if (
+    actual === null ||
+    !Number.isFinite(actual) ||
+    Math.abs(actual - expected) > 1e-12
+  ) {
     throw new Error(`${label}: expected ${expected}, got ${String(actual)}`);
   }
 }
@@ -60,22 +73,43 @@ try {
         document_json: string;
       }
     | undefined;
-  if (!row) throw new Error(`No acquisition learning evidence found for run ${runId}`);
+  if (!row)
+    throw new Error(`No acquisition learning evidence found for run ${runId}`);
 
   assertEqual(row.source_id, sourceId, "persisted source boundary");
   assertEqual(row.playbook_id, "official-static-index-tree", "playbook id");
   assertEqual(row.playbook_revision, 1, "playbook revision");
   if (!Number.isFinite(row.duration_ms) || row.duration_ms <= 0) {
-    throw new Error(`control-plane duration must be positive, got ${row.duration_ms}`);
+    throw new Error(
+      `control-plane duration must be positive, got ${row.duration_ms}`,
+    );
   }
 
-  const evidence = parseJson<AcquisitionRunEvidence>(row.document_json, "AcquisitionRunEvidence");
+  const evidence = parseJson<AcquisitionRunEvidence>(
+    row.document_json,
+    "AcquisitionRunEvidence",
+  );
   assertEqual(evidence.runId, runId, "evidence run id");
   assertEqual(evidence.sourceId, sourceId, "evidence source id");
-  assertEqual(evidence.counts.discovered, expectedCount, "discovered corpus count");
-  assertEqual(evidence.counts.attempted, expectedCount, "attempted corpus count");
-  assertEqual(evidence.coverage.knownCorpus, expectedCount, "known corpus count");
-  if (evidence.counts.accepted <= 0 || evidence.counts.accepted > expectedCount) {
+  assertEqual(
+    evidence.counts.discovered,
+    expectedCount,
+    "discovered corpus count",
+  );
+  assertEqual(
+    evidence.counts.attempted,
+    expectedCount,
+    "attempted corpus count",
+  );
+  assertEqual(
+    evidence.coverage.knownCorpus,
+    expectedCount,
+    "known corpus count",
+  );
+  if (
+    evidence.counts.accepted <= 0 ||
+    evidence.counts.accepted > expectedCount
+  ) {
     throw new Error(
       `accepted corpus count is invalid: ${evidence.counts.accepted}/${expectedCount}`,
     );
@@ -103,8 +137,16 @@ try {
   const expectedOutcome = sourceGaps.length === 0 ? "SUCCESS" : "DEGRADED";
   assertEqual(row.outcome, expectedOutcome, "production learning outcome");
   assertEqual(evidence.outcome, expectedOutcome, "evidence outcome");
-  assertClose(row.coverage_ratio, resolution.artifactCoverage, "persisted corpus coverage");
-  assertClose(evidence.coverage.ratio, resolution.artifactCoverage, "evidence coverage ratio");
+  assertClose(
+    row.coverage_ratio,
+    resolution.artifactCoverage,
+    "persisted corpus coverage",
+  );
+  assertClose(
+    evidence.coverage.ratio,
+    resolution.artifactCoverage,
+    "evidence coverage ratio",
+  );
 
   if (sourceGaps.length === 0) {
     assertEqual(evidence.counts.fetched, expectedCount, "fetched corpus count");
@@ -117,10 +159,24 @@ try {
     const unavailable = evidence.failureSignatures
       .filter((failure) => failure.code === "SOURCE_UNAVAILABLE")
       .reduce((total, failure) => total + failure.count, 0);
-    assertEqual(unavailable, sourceGaps.length, "SOURCE_UNAVAILABLE signature count");
-    assertEqual(Number(evidence.httpStatusCounts["404"] ?? 0), sourceGaps.length, "HTTP 404 count");
-    if (sourceGaps.some((gap) => gap.gapType !== "HTTP_404" || gap.statusCode !== 404)) {
-      throw new Error(`Production source gaps are not fully classified as authoritative HTTP 404s`);
+    assertEqual(
+      unavailable,
+      sourceGaps.length,
+      "SOURCE_UNAVAILABLE signature count",
+    );
+    assertEqual(
+      Number(evidence.httpStatusCounts["404"] ?? 0),
+      sourceGaps.length,
+      "HTTP 404 count",
+    );
+    if (
+      sourceGaps.some(
+        (gap) => gap.gapType !== "HTTP_404" || gap.statusCode !== 404,
+      )
+    ) {
+      throw new Error(
+        `Production source gaps are not fully classified as authoritative HTTP 404s`,
+      );
     }
   }
 
@@ -133,11 +189,21 @@ try {
   ) {
     throw new Error("HTTP validator observations must be explicit booleans");
   }
-  if (!evidence.evidenceRefs.some((reference) => reference.startsWith("worker:"))) {
-    throw new Error("learning evidence is missing authenticated Worker provenance");
+  if (
+    !evidence.evidenceRefs.some((reference) => reference.startsWith("worker:"))
+  ) {
+    throw new Error(
+      "learning evidence is missing authenticated Worker provenance",
+    );
   }
-  if (!evidence.evidenceRefs.some((reference) => reference.startsWith("execution-attempt:"))) {
-    throw new Error("learning evidence is missing trusted execution-attempt provenance");
+  if (
+    !evidence.evidenceRefs.some((reference) =>
+      reference.startsWith("execution-attempt:"),
+    )
+  ) {
+    throw new Error(
+      "learning evidence is missing trusted execution-attempt provenance",
+    );
   }
   if (
     evidence.boundaries.legalTruthVerified !== false ||
@@ -162,7 +228,9 @@ try {
     );
   const lessonTypes = new Set(lessons.map((lesson) => lesson.lessonType));
   if (!lessonTypes.has("AUTHORITATIVE_ENUMERATOR")) {
-    throw new Error("Expected production learning lesson AUTHORITATIVE_ENUMERATOR");
+    throw new Error(
+      "Expected production learning lesson AUTHORITATIVE_ENUMERATOR",
+    );
   }
   if (sourceGaps.length > 0 && !lessonTypes.has("FAILURE_SIGNATURE")) {
     throw new Error("Expected production source-gap FAILURE_SIGNATURE lesson");
@@ -173,8 +241,14 @@ try {
   if (sourceGaps.length === 0 && !lessonTypes.has("PLAYBOOK_SUCCESS")) {
     throw new Error("Complete source run should retain PLAYBOOK_SUCCESS");
   }
-  if (lessons.some((lesson) => lesson.sourceId !== sourceId || lesson.runId !== runId)) {
-    throw new Error("Persisted lessons crossed the governed run/source boundary");
+  if (
+    lessons.some(
+      (lesson) => lesson.sourceId !== sourceId || lesson.runId !== runId,
+    )
+  ) {
+    throw new Error(
+      "Persisted lessons crossed the governed run/source boundary",
+    );
   }
 
   const history = database
