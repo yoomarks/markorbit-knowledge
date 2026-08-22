@@ -15,10 +15,11 @@ import { ACQUISITION_SEED_PLAYBOOKS } from "../src/acquisition-playbooks-v1";
 function fingerprint(
   input: Partial<SourceFingerprint> & Pick<SourceFingerprint, "sourceId">,
 ): SourceFingerprint {
+  const { sourceId, ...overrides } = input;
   return {
     protocolVersion: ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION,
     objectType: "SOURCE_FINGERPRINT",
-    sourceId: input.sourceId,
+    sourceId,
     observedAt: "2026-08-22T00:00:00.000Z",
     architecture: "STATIC_HTML",
     discoverySurfaces: ["INDEX_PAGE"],
@@ -28,7 +29,7 @@ function fingerprint(
     attachmentKinds: ["HTML"],
     confidence: 0.9,
     evidenceRefs: ["run:probe-1"],
-    ...input,
+    ...overrides,
   };
 }
 
