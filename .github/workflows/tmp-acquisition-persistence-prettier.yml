@@ -1,0 +1,28 @@
+name: Temporary Acquisition Persistence Prettier
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier diff
+        run: |
+          pnpm exec prettier \
+            packages/persistence/src/acquisition-intelligence-registry.ts \
+            packages/persistence/tests/acquisition-intelligence-registry.test.ts \
+            --write
+          git diff -- \
+            packages/persistence/src/acquisition-intelligence-registry.ts \
+            packages/persistence/tests/acquisition-intelligence-registry.test.ts
