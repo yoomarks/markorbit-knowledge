@@ -44,6 +44,7 @@
     "./source-intelligence-manual-sla": "./src/source-intelligence-manual-sla-registry.ts",
     "./source-intelligence-policy-scope": "./src/source-intelligence-policy-scope-registry.ts",
     "./source-intelligence-policy-resolution": "./src/source-intelligence-policy-resolution-registry.ts",
+    "./acquisition-intelligence": "./src/acquisition-intelligence-registry.ts",
     "./execution-ledger": "./src/execution-ledger.ts",
     "./workers": "./src/safe-worker-registry.ts",
     "./targeted-worker-claim": "./src/targeted-worker-claim.ts",
