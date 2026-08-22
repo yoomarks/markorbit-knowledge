@@ -1,11 +1,12 @@
 import {
   buildAcquisitionRunEvidenceFromProfile,
   buildSourceFingerprintFromAcquisitionProfile,
-  type AcquisitionFailureSignature,
   type AcquisitionRunEvidence,
-  type SourceFingerprint,
 } from "@markorbit/worker-runtime";
 import { acquisitionLearningProfile } from "./acquisition-learning-profiles";
+
+type AcquisitionFailureSignature = AcquisitionRunEvidence["failureSignatures"][number];
+type SourceFingerprint = ReturnType<typeof buildSourceFingerprintFromAcquisitionProfile>;
 
 export type LiveAcquisitionProfileEvidence = {
   profileId: string;
