@@ -235,12 +235,18 @@ function parseReevaluation(value: string): AcquisitionStrategyReevaluationReques
   return parsed;
 }
 
+function clampConfidence(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
 function combinedConfidence(observations: readonly CandidateObservation[]): number {
-  let remainingUncertainty = 1;
-  for (const observation of observations) {
-    remainingUncertainty *= 1 - Math.max(0, Math.min(1, observation.confidence)) * 0.35;
+  if (observations.length === 0) return 0;
+  let confidence = clampConfidence(observations[0]!.confidence);
+  for (const observation of observations.slice(1)) {
+    const independentConfidence = clampConfidence(observation.confidence);
+    confidence += (1 - confidence) * independentConfidence * 0.25;
   }
-  return Math.min(0.99, Math.max(0, 1 - remainingUncertainty));
+  return Math.min(0.99, confidence);
 }
 
 export class SqliteAcquisitionStrategyGovernanceRepository {
