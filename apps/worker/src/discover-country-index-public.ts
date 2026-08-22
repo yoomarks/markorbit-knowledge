@@ -1,4 +1,5 @@
 import { extractCountryIndexPublicInventory } from "./country-index-public-inventory";
+import { persistLiveAcquisitionProfileEvidence } from "./live-acquisition-learning-persistence";
 import { buildLiveAcquisitionProfileEvidence } from "./live-acquisition-profile-evidence";
 
 const DEFAULT_URI = "https://www.country-index.com/";
@@ -49,12 +50,14 @@ async function main(): Promise<void> {
       `country-index:enumerated-items:${inventory.itemCount}`,
     ],
   });
+  const acquisitionLearningPersistence = persistLiveAcquisitionProfileEvidence(learning);
   process.stdout.write(
     `${JSON.stringify(
       {
         event: "country-index.public.inventory",
         ...inventory,
         acquisitionLearning: learning,
+        acquisitionLearningPersistence,
       },
       null,
       2,
