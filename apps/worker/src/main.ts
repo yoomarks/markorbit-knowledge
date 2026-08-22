@@ -78,11 +78,11 @@ async function main(): Promise<void> {
                 maxItems: config.githubMaxItems,
                 maxDepth: config.githubMaxDepth,
               })
-            : ipAustraliaManualAcquirer ??
+            : (ipAustraliaManualAcquirer ??
               new Crawl4AiSubprocessAcquirer({
                 requireEgressProxy: config.requireEgressProxy,
                 maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
-              });
+              }));
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
@@ -90,7 +90,8 @@ async function main(): Promise<void> {
       log("worker.background.error", { message: errorMessage(error) });
     },
     async onCompleted(completion) {
-      if (!ipAustraliaManualAcquirer || !acquisitionIntelligenceClient || !completion.receipt) return;
+      if (!ipAustraliaManualAcquirer || !acquisitionIntelligenceClient || !completion.receipt)
+        return;
       const evidence = buildIpAustraliaManualAcquisitionRunEvidence({
         job: completion.context.job,
         receipt: completion.receipt,
