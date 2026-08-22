@@ -23,6 +23,7 @@
     "audit:ip-australia-manual-fidelity": "tsx src/audit-ip-australia-manual-fidelity.ts",
     "acquire:ip-australia-manual": "tsx src/acquire-ip-australia-manual-corpus.ts",
     "verify:ip-australia-manual-bulk-conversion": "tsx src/verify-ip-australia-manual-bulk-conversion.ts",
+    "verify:ip-australia-acquisition-learning": "tsx src/verify-ip-australia-acquisition-learning.ts",
     "activate:representative-coverage": "tsx src/activate-representative-source-wave.ts",
     "promote:representative-supply": "tsx src/promote-representative-source-supply.ts",
     "verify:representative-supply": "tsx src/verify-representative-source-supply.ts",
