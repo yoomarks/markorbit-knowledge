@@ -378,7 +378,8 @@ export class SqliteAcquisitionIntelligenceRepository {
          ORDER BY selected_at DESC, created_at DESC
          LIMIT 1`,
       )
-      .get(sourceId.trim()) as { id: string; selected_at: string; document_json: string } | undefined;
+      .get(sourceId.trim()) as
+      { id: string; selected_at: string; document_json: string } | undefined;
     if (!row) return null;
     return {
       id: row.id,
