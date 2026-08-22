@@ -1,5 +1,9 @@
-import type { AcquisitionRunEvidence, ExecutionReceipt, Job } from "@markorbit/contracts";
-import { ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION } from "@markorbit/contracts";
+import {
+  ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION,
+  type AcquisitionRunEvidence,
+  type ExecutionReceipt,
+  type Job,
+} from "@markorbit/worker-runtime";
 import type { IpAustraliaManualArtifactAcquirerDiagnostics } from "./ip-australia-manual-artifact-acquirer";
 
 const PLAYBOOK_ID = "official-static-index-tree";
