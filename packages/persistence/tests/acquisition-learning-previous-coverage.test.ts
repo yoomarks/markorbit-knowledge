@@ -155,9 +155,9 @@ describe("acquisition learning previous coverage feedback", () => {
       }),
     );
     expect(explicit.evidence.coverage.previousRatio).toBe(0.92);
-    expect(explicit.evidence.evidenceRefs.some((ref) => ref.startsWith("previous-acquisition-run:"))).toBe(
-      false,
-    );
+    expect(
+      explicit.evidence.evidenceRefs.some((ref) => ref.startsWith("previous-acquisition-run:")),
+    ).toBe(false);
 
     expect(() =>
       loop.recordLearningRun(
