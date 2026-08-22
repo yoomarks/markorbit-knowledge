@@ -4,6 +4,8 @@ Date: 2026-08-12
 Reviewed baseline: `2d3a66b4dbb3ac20e1d494f110d7c6bcd4e9e679`  
 Release line: repository package version `0.1.0`
 
+> Historical baseline notice (2026-08-23): this document records the 2026-08-12 freeze decision. It is not the current repository completion report. See [`KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md`](KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md) for post-freeze production-validation and acquisition-intelligence status.
+
 ## Decision
 
 **The MarkOrbit Knowledge v0.1 control-plane trunk is freeze-ready after this release-closeout change.**
