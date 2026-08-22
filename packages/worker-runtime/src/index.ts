@@ -6,6 +6,14 @@ import {
   type JobLease,
 } from "@markorbit/contracts";
 
+export { ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION } from "@markorbit/contracts";
+export type {
+  AcquisitionRunEvidence,
+  ExecutionReceipt,
+  Job,
+  RunLesson,
+} from "@markorbit/contracts";
+
 export * from "./conversion-fixture";
 export * from "./controlled-fixture-pipeline";
 export * from "./production-markdown-staging";
