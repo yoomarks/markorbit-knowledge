@@ -1,3 +1,4 @@
+import { persistLiveAcquisitionProfileEvidence } from "./live-acquisition-learning-persistence";
 import { buildLiveAcquisitionProfileEvidence } from "./live-acquisition-profile-evidence";
 import { reconcileWipoCorpus } from "./wipo-corpus-reconciliation";
 
@@ -45,12 +46,14 @@ async function main(): Promise<void> {
     },
     evidenceRefs: report.outcomes.map((outcome) => `wipo-seed:${outcome.seed.uri}`),
   });
+  const acquisitionLearningPersistence = persistLiveAcquisitionProfileEvidence(learning);
   process.stdout.write(
     `${JSON.stringify(
       {
         event: "wipo.trademark.corpus.reconciliation",
         ...report,
         acquisitionLearning: learning,
+        acquisitionLearningPersistence,
       },
       null,
       2,
