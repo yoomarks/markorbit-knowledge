@@ -21,6 +21,9 @@ export type WipoSeedOutcome = {
   ok: boolean;
   status?: number;
   contentType?: string;
+  bytes: number;
+  etagObserved: boolean;
+  lastModifiedObserved: boolean;
   discoveredLinkCount: number;
   referencedAssetCount: number;
   error?: string;
@@ -39,6 +42,10 @@ export type WipoCorpusReconciliationReport = {
   failedSeedCount: number;
   discoveredLinkCount: number;
   referencedAssetCount: number;
+  totalFetchedBytes: number;
+  etagObserved: boolean;
+  lastModifiedObserved: boolean;
+  httpStatusCounts: Record<string, number>;
   domainCounts: Record<WipoTrademarkDomain, number>;
   assetKindCounts: Record<WipoAssetKind, number>;
   integrationChain: WipoIntegrationStage[];
@@ -165,6 +172,16 @@ function buildIntegrationChain(
   });
 }
 
+function summarizeHttpStatuses(outcomes: readonly WipoSeedOutcome[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const outcome of outcomes) {
+    if (outcome.status === undefined) continue;
+    const key = String(outcome.status);
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export async function reconcileWipoCorpus(
   fetcher: typeof fetch = fetch,
 ): Promise<WipoCorpusReconciliationReport> {
@@ -181,12 +198,17 @@ export async function reconcileWipoCorpus(
         },
       });
       const contentType = response.headers.get("content-type") ?? undefined;
+      const etagObserved = response.headers.has("etag");
+      const lastModifiedObserved = response.headers.has("last-modified");
       if (!response.ok) {
         outcomes.push({
           seed,
           ok: false,
           status: response.status,
           contentType,
+          bytes: 0,
+          etagObserved,
+          lastModifiedObserved,
           discoveredLinkCount: 0,
           referencedAssetCount: 0,
           error: `${seed.uri} returned HTTP ${response.status}`,
@@ -206,6 +228,9 @@ export async function reconcileWipoCorpus(
         ok: true,
         status: response.status,
         contentType,
+        bytes: Buffer.byteLength(html),
+        etagObserved,
+        lastModifiedObserved,
         discoveredLinkCount: links.length,
         referencedAssetCount: referencedAssets.length,
       });
@@ -213,6 +238,9 @@ export async function reconcileWipoCorpus(
       outcomes.push({
         seed,
         ok: false,
+        bytes: 0,
+        etagObserved: false,
+        lastModifiedObserved: false,
         discoveredLinkCount: 0,
         referencedAssetCount: 0,
         error: error instanceof Error ? error.message : String(error),
@@ -233,6 +261,10 @@ export async function reconcileWipoCorpus(
     failedSeedCount,
     discoveredLinkCount: links.length,
     referencedAssetCount: referencedAssets.length,
+    totalFetchedBytes: outcomes.reduce((total, outcome) => total + outcome.bytes, 0),
+    etagObserved: outcomes.some((outcome) => outcome.etagObserved),
+    lastModifiedObserved: outcomes.some((outcome) => outcome.lastModifiedObserved),
+    httpStatusCounts: summarizeHttpStatuses(outcomes),
     domainCounts,
     assetKindCounts: summarizeAssetKinds(referencedAssets),
     integrationChain: buildIntegrationChain(outcomes, domainCounts),

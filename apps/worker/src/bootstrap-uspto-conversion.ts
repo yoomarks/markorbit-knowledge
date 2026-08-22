@@ -186,6 +186,21 @@ async function ensureCapability(workerId: string, workspaceId: string): Promise<
   return revision;
 }
 
+async function existingConversionRunId(
+  workspaceId: string,
+  artifactId: string,
+): Promise<string | null> {
+  const listed = await json(
+    `/api/conversion-runs?workspaceId=${encodeURIComponent(workspaceId)}&rawArtifactId=${encodeURIComponent(artifactId)}&limit=100`,
+  );
+  const runs = array(listed.items)
+    .map((item) => record(item))
+    .filter((item): item is Json => Boolean(item))
+    .filter((run) => run.status !== "FAILED" && run.status !== "CANCELLED")
+    .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
+  return runs.length > 0 ? string(runs[0]?.id, "conversionRun.id") : null;
+}
+
 async function dispatchLatest(
   workspaceId: string,
   source: string,
@@ -206,6 +221,13 @@ async function dispatchLatest(
   );
   if (!candidate) return null;
   const artifactId = string(candidate.id, "artifact.id");
+
+  // Finalization can legitimately enqueue an AUTO_PROFILE run before this live smoke reaches
+  // its manual dispatch step. Reuse that governed run instead of attempting to overwrite the
+  // sticky conversion-profile authorization on the immutable RawArtifact.
+  const existingRunId = await existingConversionRunId(workspaceId, artifactId);
+  if (existingRunId) return existingRunId;
+
   const authorization = await json(
     `/api/raw-artifacts/${encodeURIComponent(artifactId)}/authorize-conversion`,
     {

@@ -12,8 +12,10 @@ export type {
   ExecutionReceipt,
   Job,
   RunLesson,
+  SourceFingerprint,
 } from "@markorbit/contracts";
 
+export * from "./acquisition-learning-profile";
 export * from "./conversion-fixture";
 export * from "./controlled-fixture-pipeline";
 export * from "./production-markdown-staging";

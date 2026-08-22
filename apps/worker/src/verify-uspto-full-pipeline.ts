@@ -207,21 +207,35 @@ async function verifyCoreIntake(
   if (payload.readyPackageStatus !== "VERIFIED" || payload.transportStatus !== "NOT_SUBMITTED") {
     throw new Error(`Knowledge crossed the Core handoff boundary: ${JSON.stringify(payload)}`);
   }
-  const request = record(payload.coreIntakeRequest);
-  if (!request) throw new Error("Core Intake envelope is missing");
   if (
-    request.readyPackageId !== readyPackageId ||
-    request.workspaceId !== workspaceId ||
-    request.digest !== digest
+    payload.latestCoreIntakeSubmission !== null ||
+    payload.latestCoreIntakeReceipt !== null ||
+    array(payload.coreIntakeSubmissions).length !== 0 ||
+    array(payload.coreIntakeReceipts).length !== 0
   ) {
-    throw new Error("Core Intake envelope does not preserve ReadyPackage identity/digest");
+    throw new Error("Knowledge recorded Core submission evidence without an explicit handoff");
   }
-  const evidence = record(request.evidence);
-  const artifactIds = array(evidence?.artifactIds).filter(
-    (value): value is string => typeof value === "string",
-  );
-  if (!artifactIds.includes(rawArtifactId) || evidence?.stagingDocumentId !== stagingDocumentId) {
-    throw new Error("Core Intake envelope does not preserve acquisition/Staging evidence");
+
+  const binding = record(payload.coreWorkspaceBinding);
+  const preview = record(payload.coreIntakeRequestPreview);
+  if (binding && !preview) {
+    throw new Error("Bound Core workspace is missing the read-only Core Intake preview");
+  }
+  if (preview) {
+    if (
+      preview.readyPackageId !== readyPackageId ||
+      preview.workspaceId !== workspaceId ||
+      preview.digest !== digest
+    ) {
+      throw new Error("Core Intake preview does not preserve ReadyPackage identity/digest");
+    }
+    const evidence = record(preview.evidence);
+    const artifactIds = array(evidence?.artifactIds).filter(
+      (value): value is string => typeof value === "string",
+    );
+    if (!artifactIds.includes(rawArtifactId) || evidence?.stagingDocumentId !== stagingDocumentId) {
+      throw new Error("Core Intake preview does not preserve acquisition/Staging evidence");
+    }
   }
   if ("intakeId" in payload || "coreIntakeResult" in payload) {
     throw new Error("Knowledge must not fabricate a Core acceptance result");

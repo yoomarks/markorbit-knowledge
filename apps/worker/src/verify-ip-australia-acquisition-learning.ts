@@ -1,5 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
-import type { AcquisitionRunEvidence, RunLesson } from "@markorbit/worker-runtime";
+import type {
+  AcquisitionRunEvidence,
+  RunLesson,
+  SourceFingerprint,
+} from "@markorbit/worker-runtime";
 import {
   resolveAcquisitionOutcome,
   sourceGapObservationsFromEvidenceRefs,
@@ -120,7 +124,7 @@ try {
     assertEqual(unavailable, sourceGaps.length, "SOURCE_UNAVAILABLE signature count");
     assertEqual(Number(evidence.httpStatusCounts["404"] ?? 0), sourceGaps.length, "HTTP 404 count");
     if (sourceGaps.some((gap) => gap.gapType !== "HTTP_404" || gap.statusCode !== 404)) {
-      throw new Error(`Production source gaps are not fully classified as authoritative HTTP 404s`);
+      throw new Error("Production source gaps are not fully classified as authoritative HTTP 404s");
     }
   }
 
@@ -133,10 +137,16 @@ try {
   ) {
     throw new Error("HTTP validator observations must be explicit booleans");
   }
+  if (!evidence.evidenceRefs.includes("acquisition-learning-profile:static-index-html-v1")) {
+    throw new Error("learning evidence is missing its structural acquisition profile");
+  }
   if (!evidence.evidenceRefs.some((reference) => reference.startsWith("worker:"))) {
     throw new Error("learning evidence is missing authenticated Worker provenance");
   }
-  if (!evidence.evidenceRefs.some((reference) => reference.startsWith("execution-attempt:"))) {
+  const executionAttemptRef = evidence.evidenceRefs.find((reference) =>
+    reference.startsWith("execution-attempt:"),
+  );
+  if (!executionAttemptRef) {
     throw new Error("learning evidence is missing trusted execution-attempt provenance");
   }
   if (
@@ -145,6 +155,34 @@ try {
     evidence.boundaries.collectionAuthorityGranted !== false
   ) {
     throw new Error("acquisition learning crossed a governance boundary");
+  }
+
+  const fingerprintRow = database
+    .prepare(
+      `SELECT document_json FROM acquisition_source_fingerprints
+       WHERE source_id = ?
+       ORDER BY observed_at DESC, created_at DESC
+       LIMIT 1`,
+    )
+    .get(sourceId) as { document_json: string } | undefined;
+  if (!fingerprintRow) {
+    throw new Error(`No SourceFingerprint found for production source ${sourceId}`);
+  }
+  const fingerprint = parseJson<SourceFingerprint>(
+    fingerprintRow.document_json,
+    "SourceFingerprint",
+  );
+  assertEqual(fingerprint.sourceId, sourceId, "fingerprint source boundary");
+  assertEqual(fingerprint.architecture, "STATIC_HTML", "fingerprint architecture");
+  assertEqual(fingerprint.renderRequirement, "NONE", "fingerprint render requirement");
+  if (!fingerprint.discoverySurfaces.includes("INDEX_PAGE")) {
+    throw new Error("SourceFingerprint is missing INDEX_PAGE discovery surface");
+  }
+  if (!fingerprint.evidenceRefs.includes(executionAttemptRef)) {
+    throw new Error("SourceFingerprint is missing the trusted execution-attempt provenance");
+  }
+  if (!fingerprint.evidenceRefs.some((reference) => reference.startsWith("worker:"))) {
+    throw new Error("SourceFingerprint is missing authenticated Worker provenance");
   }
 
   const lessons = database
@@ -205,7 +243,7 @@ try {
   process.stdout.write(
     `${JSON.stringify(
       {
-        version: "IP_AUSTRALIA_ACQUISITION_LEARNING_LIVE_V2",
+        version: "IP_AUSTRALIA_ACQUISITION_LEARNING_LIVE_V3",
         runId,
         sourceId,
         authoritativeInventory: expectedCount,
@@ -218,6 +256,12 @@ try {
         trustedBytes: evidence.performance.bytes,
         etagObserved: evidence.changeDetection.etagObserved,
         lastModifiedObserved: evidence.changeDetection.lastModifiedObserved,
+        fingerprint: {
+          architecture: fingerprint.architecture,
+          discoverySurfaces: fingerprint.discoverySurfaces,
+          renderRequirement: fingerprint.renderRequirement,
+          confidence: fingerprint.confidence,
+        },
         lessonTypes: [...lessonTypes].sort(),
         playbookHistory: {
           runs: Number(history.runs),

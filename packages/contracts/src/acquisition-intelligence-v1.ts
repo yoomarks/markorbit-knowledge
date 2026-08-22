@@ -167,8 +167,8 @@ export type AcquisitionRunEvidence = {
     };
   };
   changeDetection: {
-    etagObserved: boolean;
-    lastModifiedObserved: boolean;
+    etagObserved: boolean | null;
+    lastModifiedObserved: boolean | null;
     validator304Count: number;
     digestChanges: number;
   };

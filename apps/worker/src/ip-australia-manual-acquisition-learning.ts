@@ -1,13 +1,12 @@
 import {
-  ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION,
+  buildAcquisitionRunEvidenceFromProfile,
+  type AcquisitionLearningProfile,
   type AcquisitionRunEvidence,
   type ExecutionReceipt,
   type Job,
 } from "@markorbit/worker-runtime";
+import { ACQUISITION_LEARNING_PROFILES } from "./acquisition-learning-profiles";
 import type { IpAustraliaManualArtifactAcquirerDiagnostics } from "./ip-australia-manual-artifact-acquirer";
-
-const PLAYBOOK_ID = "official-static-index-tree";
-const PLAYBOOK_REVISION = 1;
 
 function failureSignatures(
   diagnostics: IpAustraliaManualArtifactAcquirerDiagnostics,
@@ -61,6 +60,7 @@ export function buildIpAustraliaManualAcquisitionRunEvidence(input: {
   diagnostics: IpAustraliaManualArtifactAcquirerDiagnostics;
   startedAt: string;
   finishedAt: string;
+  profile?: AcquisitionLearningProfile;
 }): AcquisitionRunEvidence {
   const knownCorpus = input.diagnostics.inventoryPageCount;
   const accepted = input.diagnostics.emittedArtifactCount;
@@ -69,72 +69,50 @@ export function buildIpAustraliaManualAcquisitionRunEvidence(input: {
     input.diagnostics.sourceGaps.filter(
       (gap) => gap.status !== undefined && gap.status >= 200 && gap.status < 300,
     ).length;
-  const ratio = knownCorpus > 0 ? accepted / knownCorpus : null;
-  const outcome: AcquisitionRunEvidence["outcome"] =
-    knownCorpus > 0 && accepted === knownCorpus && input.diagnostics.sourceGaps.length === 0
-      ? "SUCCESS"
-      : accepted > 0
-        ? "DEGRADED"
-        : "FAILED";
-  const durationMs = Math.max(0, Date.parse(input.finishedAt) - Date.parse(input.startedAt));
 
-  return {
-    protocolVersion: ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION,
-    objectType: "ACQUISITION_RUN_EVIDENCE",
-    runId: input.job.runId,
-    sourceId: input.job.sourceId,
-    playbookId: PLAYBOOK_ID,
-    playbookRevision: PLAYBOOK_REVISION,
-    startedAt: input.startedAt,
-    finishedAt: input.finishedAt,
-    outcome,
-    counts: {
-      discovered: knownCorpus,
-      attempted: knownCorpus,
-      fetched,
-      accepted,
-      duplicates: 0,
-      retries: 0,
-    },
-    coverage: {
-      knownCorpus,
-      ratio,
-      previousRatio: null,
-    },
-    httpStatusCounts: httpStatusCounts(input.diagnostics),
-    failureSignatures: failureSignatures(input.diagnostics),
-    surfaceOutcomes: [
-      {
-        surface: "INDEX_PAGE",
+  return buildAcquisitionRunEvidenceFromProfile({
+    profile: input.profile ?? ACQUISITION_LEARNING_PROFILES["static-index-html-v1"],
+    observation: {
+      runId: input.job.runId,
+      sourceId: input.job.sourceId,
+      startedAt: input.startedAt,
+      finishedAt: input.finishedAt,
+      counts: {
         discovered: knownCorpus,
+        attempted: knownCorpus,
+        fetched,
         accepted,
-        knownCorpus,
+        duplicates: 0,
+        retries: 0,
       },
-    ],
-    rendering: {
-      used: false,
-    },
-    changeDetection: {
-      etagObserved: input.diagnostics.etagObserved,
-      lastModifiedObserved: input.diagnostics.lastModifiedObserved,
-      validator304Count: 0,
-      digestChanges: 0,
-    },
-    performance: {
-      durationMs,
+      knownCorpus,
+      httpStatusCounts: httpStatusCounts(input.diagnostics),
+      failureSignatures: failureSignatures(input.diagnostics),
+      surfaceOutcomes: [
+        {
+          surface: "INDEX_PAGE",
+          discovered: knownCorpus,
+          accepted,
+          knownCorpus,
+        },
+      ],
+      rendering: {
+        used: false,
+      },
+      changeDetection: {
+        etagObserved: input.diagnostics.etagObserved,
+        lastModifiedObserved: input.diagnostics.lastModifiedObserved,
+        validator304Count: 0,
+        digestChanges: 0,
+      },
       bytes: input.receipt.bytesPrepared,
+      evidenceRefs: [
+        `collection-run:${input.job.runId}`,
+        `collection-plan:${input.job.planId}`,
+        `executor:${input.receipt.executor.executorId}@${input.receipt.executor.version}`,
+        `authoritative-inventory:${knownCorpus}`,
+        ...sourceGapEvidenceRefs(input.diagnostics),
+      ],
     },
-    evidenceRefs: [
-      `collection-run:${input.job.runId}`,
-      `collection-plan:${input.job.planId}`,
-      `executor:${input.receipt.executor.executorId}@${input.receipt.executor.version}`,
-      `ip-australia-manual-inventory:${knownCorpus}`,
-      ...sourceGapEvidenceRefs(input.diagnostics),
-    ],
-    boundaries: {
-      legalTruthVerified: false,
-      autoPromotionApplied: false,
-      collectionAuthorityGranted: false,
-    },
-  };
+  });
 }
