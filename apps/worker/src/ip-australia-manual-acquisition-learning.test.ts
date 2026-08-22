@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ExecutionReceipt, Job } from "@markorbit/contracts";
+import type { ExecutionReceipt, Job } from "@markorbit/worker-runtime";
 import { buildIpAustraliaManualAcquisitionRunEvidence } from "./ip-australia-manual-acquisition-learning";
 
 const job = {
