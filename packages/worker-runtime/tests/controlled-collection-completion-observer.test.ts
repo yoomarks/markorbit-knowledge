@@ -77,7 +77,9 @@ describe("ControlledCollectionWorkerRuntime completion observer", () => {
       itemsObserved: 1,
       metadataOnly: false,
     });
-    expect(Date.parse(completion.finishedAt)).toBeGreaterThanOrEqual(Date.parse(completion.startedAt));
+    expect(Date.parse(completion.finishedAt)).toBeGreaterThanOrEqual(
+      Date.parse(completion.startedAt),
+    );
   });
 
   it("reports a learning observer failure without changing successful collection outcome", async () => {
