@@ -22,6 +22,7 @@ jobs:
           pnpm exec prettier \
             apps/worker/src/main.ts \
             apps/worker/src/ip-australia-manual-artifact-acquirer.ts \
+            apps/worker/src/ip-australia-manual-artifact-acquirer.test.ts \
             apps/worker/src/ip-australia-manual-acquisition-learning.ts \
             apps/worker/src/ip-australia-manual-acquisition-learning.test.ts \
             apps/worker/src/verify-ip-australia-acquisition-learning.ts \
@@ -34,6 +35,7 @@ jobs:
           git diff -- \
             apps/worker/src/main.ts \
             apps/worker/src/ip-australia-manual-artifact-acquirer.ts \
+            apps/worker/src/ip-australia-manual-artifact-acquirer.test.ts \
             apps/worker/src/ip-australia-manual-acquisition-learning.ts \
             apps/worker/src/ip-australia-manual-acquisition-learning.test.ts \
             apps/worker/src/verify-ip-australia-acquisition-learning.ts \
