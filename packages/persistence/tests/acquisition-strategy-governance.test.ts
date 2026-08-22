@@ -109,12 +109,14 @@ describe("acquisition strategy governance", () => {
 
     expect(first.strategyCandidate?.candidate.stage).toBe("OBSERVED");
     expect(first.strategyCandidate?.evidenceCount).toBe(1);
+    expect(first.strategyCandidate?.candidate.confidence).toBe(0.9);
     expect(second.strategyCandidate?.candidate.id).toBe(first.strategyCandidate?.candidate.id);
     expect(second.strategyCandidate?.candidate.stage).toBe("OBSERVED");
     expect(second.strategyCandidate?.evidenceCount).toBe(2);
     expect(second.strategyCandidate!.candidate.confidence).toBeGreaterThan(
       first.strategyCandidate!.candidate.confidence,
     );
+    expect(second.strategyCandidate?.candidate.confidence).toBeLessThanOrEqual(0.99);
     expect(second.strategyCandidate?.candidate.rationale.join(" ")).toContain("JS_RENDERED_FETCH");
     expect(second.strategyCandidate?.candidate.boundaries.autoActivated).toBe(false);
     database.close();
