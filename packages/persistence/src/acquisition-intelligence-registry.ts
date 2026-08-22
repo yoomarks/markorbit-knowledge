@@ -343,8 +343,7 @@ export class SqliteAcquisitionIntelligenceRepository {
       runs,
       successRate: runs > 0 ? Number(row.success_rate ?? 0) : 0,
       averageCoverage: row.average_coverage === null ? null : Number(row.average_coverage),
-      averageDurationMs:
-        row.average_duration_ms === null ? null : Number(row.average_duration_ms),
+      averageDurationMs: row.average_duration_ms === null ? null : Number(row.average_duration_ms),
     };
   }
 
@@ -379,9 +378,7 @@ export class SqliteAcquisitionIntelligenceRepository {
          ORDER BY selected_at DESC, created_at DESC
          LIMIT 1`,
       )
-      .get(sourceId.trim()) as
-      | { id: string; selected_at: string; document_json: string }
-      | undefined;
+      .get(sourceId.trim()) as { id: string; selected_at: string; document_json: string } | undefined;
     if (!row) return null;
     return {
       id: row.id,
