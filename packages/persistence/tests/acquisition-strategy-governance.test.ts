@@ -150,6 +150,7 @@ describe("acquisition strategy governance", () => {
       toStage: "CANDIDATE",
       actor: { actorType: "SYSTEM", actorId: "candidate-review" },
       rationale: "Promote observation to a reviewable candidate.",
+      transitionedAt: "2026-08-22T01:00:00.000Z",
     });
     expect(() =>
       governance.transitionCandidate({
@@ -165,6 +166,7 @@ describe("acquisition strategy governance", () => {
       actor: { actorType: "SYSTEM", actorId: "validator" },
       rationale: "Regression fixture passed.",
       evidenceRefs: ["test:regression-suite"],
+      transitionedAt: "2026-08-22T01:00:01.000Z",
     });
     governance.transitionCandidate({
       candidateId,
@@ -172,6 +174,7 @@ describe("acquisition strategy governance", () => {
       actor: { actorType: "SYSTEM", actorId: "promotion-review" },
       rationale: "Canary acceptance passed.",
       evidenceRefs: ["test:canary"],
+      transitionedAt: "2026-08-22T01:00:02.000Z",
     });
     expect(() =>
       governance.transitionCandidate({
@@ -188,6 +191,7 @@ describe("acquisition strategy governance", () => {
       actor: { actorType: "HUMAN", actorId: "reviewer@example.test" },
       rationale: "Explicit human approval after validation and canary evidence.",
       evidenceRefs: ["test:human-approval"],
+      transitionedAt: "2026-08-22T01:00:03.000Z",
     });
 
     expect(governance.getCandidate(candidateId)?.candidate.stage).toBe("ACTIVE");
