@@ -2,8 +2,10 @@ import { DatabaseSync } from "node:sqlite";
 import type { AcquisitionRunEvidence } from "@markorbit/worker-runtime";
 import { acquisitionLearningProfile } from "./acquisition-learning-profiles";
 
+const positionalArguments = process.argv.slice(2).filter((value) => value !== "--");
+
 function requiredArgument(index: number, label: string): string {
-  const value = process.argv[index]?.trim();
+  const value = positionalArguments[index]?.trim();
   if (!value) throw new Error(`${label} is required`);
   return value;
 }
@@ -15,9 +17,9 @@ function parseJson<T>(value: unknown, label: string): T {
 
 const databasePath = process.env.MARKORBIT_KNOWLEDGE_DB_PATH?.trim();
 if (!databasePath) throw new Error("MARKORBIT_KNOWLEDGE_DB_PATH is required");
-const runId = requiredArgument(2, "runId");
-const sourceId = requiredArgument(3, "sourceId");
-const profileId = requiredArgument(4, "profileId");
+const runId = requiredArgument(0, "runId");
+const sourceId = requiredArgument(1, "sourceId");
+const profileId = requiredArgument(2, "profileId");
 const profile = acquisitionLearningProfile(profileId);
 if (!profile) throw new Error(`Unknown acquisition learning profile ${profileId}`);
 
