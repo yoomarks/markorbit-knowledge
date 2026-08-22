@@ -24,12 +24,7 @@ export const ACQUISITION_DISCOVERY_SURFACES = [
 ] as const;
 export type AcquisitionDiscoverySurface = (typeof ACQUISITION_DISCOVERY_SURFACES)[number];
 
-export const ACQUISITION_RENDER_REQUIREMENTS = [
-  "NONE",
-  "OPTIONAL",
-  "REQUIRED",
-  "UNKNOWN",
-] as const;
+export const ACQUISITION_RENDER_REQUIREMENTS = ["NONE", "OPTIONAL", "REQUIRED", "UNKNOWN"] as const;
 export type AcquisitionRenderRequirement = (typeof ACQUISITION_RENDER_REQUIREMENTS)[number];
 
 export const ACQUISITION_LOCALE_STRUCTURES = [
