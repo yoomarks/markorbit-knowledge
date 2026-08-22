@@ -21,6 +21,7 @@ export * from "./source-compatibility-v1";
 export * from "./acquisition-intelligence-v1";
 export * from "./acquisition-intelligence-learning-v1";
 export * from "./acquisition-playbooks-v1";
+export * from "./acquisition-strategy-governance-v1";
 export { SOURCE_REGISTRY_VERSION } from "./source-registry-v1";
 export type {
   SourceKind as RegistrySourceKind,
