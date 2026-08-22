@@ -18,6 +18,7 @@ export type WorkerProcessConfig = {
   errorBackoffMinMs: number;
   errorBackoffMaxMs: number;
   collectionProvider: WorkerCollectionProvider;
+  acquisitionLearningProfileId?: string;
   requireEgressProxy: boolean;
   localFolderRoots: LocalFolderRootMap;
   localFolderMaxArtifactBytes: number;
@@ -160,6 +161,8 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
   if (conversionEnabled && !workspaceId) {
     throw new Error("MARKORBIT_WORKSPACE_ID is required when production conversion is enabled");
   }
+  const acquisitionLearningProfileId =
+    env.MARKORBIT_ACQUISITION_LEARNING_PROFILE?.trim() || undefined;
 
   return {
     controlPlaneUrl: normalizedControlPlaneUrl(required(env, "MARKORBIT_CONTROL_PLANE_URL")),
@@ -184,6 +187,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     errorBackoffMinMs,
     errorBackoffMaxMs,
     collectionProvider: provider,
+    ...(acquisitionLearningProfileId ? { acquisitionLearningProfileId } : {}),
     requireEgressProxy,
     localFolderRoots,
     localFolderMaxArtifactBytes: integer(

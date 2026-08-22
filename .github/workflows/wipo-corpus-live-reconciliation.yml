@@ -9,6 +9,12 @@ on:
       - apps/worker/src/wipo-public-corpus-discovery.ts
       - apps/worker/src/wipo-corpus-reconciliation.ts
       - apps/worker/src/reconcile-wipo-corpus.ts
+      - apps/worker/src/live-acquisition-learning-persistence.ts
+      - apps/worker/src/live-acquisition-profile-evidence.ts
+      - apps/worker/src/acquisition-learning-profiles.ts
+      - packages/worker-runtime/src/acquisition-learning-profile.ts
+      - packages/persistence/src/acquisition-intelligence-registry.ts
+      - packages/persistence/src/acquisition-learning-loop.ts
       - apps/worker/package.json
       - pnpm-lock.yaml
 
@@ -35,6 +41,9 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Configure isolated learning registry
+        run: echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/wipo-acquisition-learning.sqlite" >> "$GITHUB_ENV"
+
       - name: Install workspace
         run: pnpm install --frozen-lockfile
 
@@ -47,33 +56,78 @@ jobs:
           pnpm --filter @markorbit/worker reconcile:wipo-corpus \
             > "$RUNNER_TEMP/wipo-corpus-reconciliation/report.json"
           status=$?
+          set -e
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
-          node -e '
-            const fs = require("fs");
-            const path = process.env.RUNNER_TEMP + "/wipo-corpus-reconciliation/report.json";
-            const report = JSON.parse(fs.readFileSync(path, "utf8"));
-            const lines = [
-              "## WIPO Corpus Live Reconciliation",
-              "",
-              `- Seeds: ${report.successfulSeedCount}/${report.seedCount} reachable`,
-              `- Discovered links: ${report.discoveredLinkCount}`,
-              `- Referenced assets: ${report.referencedAssetCount}`,
-              `- Failed seeds: ${report.failedSeedCount}`,
-              "",
-              "### Integration chain",
-              "",
-              ...report.integrationChain.map((stage) => `- ${stage.domain}: ${stage.state} (links=${stage.discoveredLinkCount})`),
-            ];
-            fs.writeFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n", { flag: "a" });
-          '
-          exit 0
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { DatabaseSync } = require('node:sqlite');
+          const path = process.env.RUNNER_TEMP + '/wipo-corpus-reconciliation/report.json';
+          const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const learning = report.acquisitionLearning;
+          if (learning?.profileId !== 'toc-graph-html-v1') {
+            throw new Error(`Unexpected WIPO profile ${learning?.profileId}`);
+          }
+          if (learning?.evidence?.playbookId !== 'official-toc-graph' || learning?.evidence?.playbookRevision !== 1) {
+            throw new Error('WIPO reconciliation did not reuse official-toc-graph@1');
+          }
+          if (!learning?.fingerprint?.discoverySurfaces?.includes('TOC')) {
+            throw new Error('WIPO fingerprint missing TOC surface');
+          }
+          const boundaries = learning?.evidence?.boundaries;
+          if (boundaries?.legalTruthVerified !== false || boundaries?.autoPromotionApplied !== false || boundaries?.collectionAuthorityGranted !== false) {
+            throw new Error('WIPO canary crossed an acquisition-learning governance boundary');
+          }
+          const persistence = report.acquisitionLearningPersistence;
+          if (!persistence || persistence.runId !== learning.evidence.runId || persistence.sourceId !== learning.evidence.sourceId) {
+            throw new Error('WIPO live reconciliation did not persist its acquisition learning result');
+          }
+          const database = new DatabaseSync(process.env.MARKORBIT_KNOWLEDGE_DB_PATH, { readOnly: true });
+          try {
+            const evidence = database.prepare(
+              'SELECT playbook_id, playbook_revision, outcome, coverage_ratio FROM acquisition_run_evidence WHERE run_id = ?'
+            ).get(learning.evidence.runId);
+            if (!evidence || evidence.playbook_id !== 'official-toc-graph' || evidence.playbook_revision !== 1 || evidence.outcome !== learning.evidence.outcome) {
+              throw new Error(`WIPO persisted run evidence is invalid: ${JSON.stringify(evidence)}`);
+            }
+            const fingerprint = database.prepare(
+              'SELECT document_json FROM acquisition_source_fingerprints WHERE source_id = ? ORDER BY observed_at DESC LIMIT 1'
+            ).get(learning.evidence.sourceId);
+            if (!fingerprint) throw new Error('WIPO SourceFingerprint was not persisted');
+            const lessons = database.prepare(
+              'SELECT lesson_type FROM acquisition_run_lessons WHERE run_id = ? ORDER BY lesson_type'
+            ).all(learning.evidence.runId).map((row) => row.lesson_type);
+            if (learning.evidence.outcome === 'SUCCESS' && !lessons.includes('PLAYBOOK_SUCCESS')) {
+              throw new Error(`WIPO persisted lessons are incomplete: ${JSON.stringify(lessons)}`);
+            }
+          } finally {
+            database.close();
+          }
+          const lines = [
+            '## WIPO Corpus Live Reconciliation',
+            '',
+            `- Seeds: ${report.successfulSeedCount}/${report.seedCount} reachable`,
+            `- Discovered links: ${report.discoveredLinkCount}`,
+            `- Referenced assets: ${report.referencedAssetCount}`,
+            `- Failed seeds: ${report.failedSeedCount}`,
+            `- Measured bytes: ${report.totalFetchedBytes}`,
+            `- Acquisition playbook: ${learning.evidence.playbookId}@${learning.evidence.playbookRevision}`,
+            `- Persisted lessons: ${persistence.lessonTypes.join(', ') || 'none'}`,
+            '',
+            '### Integration chain',
+            '',
+            ...report.integrationChain.map((stage) => `- ${stage.domain}: ${stage.state} (links=${stage.discoveredLinkCount})`),
+          ];
+          fs.writeFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n', { flag: 'a' });
+          NODE
 
       - name: Upload WIPO corpus evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: wipo-corpus-live-reconciliation-${{ github.run_id }}
-          path: ${{ runner.temp }}/wipo-corpus-reconciliation/report.json
+          path: |
+            ${{ runner.temp }}/wipo-corpus-reconciliation/report.json
+            ${{ runner.temp }}/wipo-acquisition-learning.sqlite
           if-no-files-found: error
           retention-days: 30
 

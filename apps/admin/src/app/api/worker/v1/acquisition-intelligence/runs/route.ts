@@ -29,6 +29,7 @@ export async function POST(request: Request) {
           workerId: body.workerId,
           credential,
           evidence: body.evidence,
+          ...(body.fingerprint !== undefined ? { fingerprint: body.fingerprint } : {}),
         },
         {
           database: getRegistryDatabase(),

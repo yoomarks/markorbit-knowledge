@@ -1,7 +1,9 @@
 import {
   isAcquisitionRunEvidence,
+  isSourceFingerprint,
   type AcquisitionPlaybookHistory,
   type AcquisitionRunEvidence,
+  type SourceFingerprint,
 } from "@markorbit/contracts";
 import { WorkerControlPlaneHttpError } from "./http-controlled-collection-client";
 
@@ -14,6 +16,11 @@ export type AcquisitionIntelligenceIntakeReceipt = {
   replayed: boolean;
   lessonsRecorded: number;
   playbookHistory: AcquisitionPlaybookHistory;
+  strategyCandidateId: string | null;
+  strategyCandidateStage: string | null;
+  strategyCandidateEvidenceCount: number;
+  reevaluationRequestId: string | null;
+  fingerprintRecorded: boolean;
 };
 
 function normalizedBaseUrl(value: string): string {
@@ -41,6 +48,12 @@ function parseReceipt(value: unknown): AcquisitionIntelligenceIntakeReceipt {
     typeof payload.executionAttemptId !== "string" ||
     typeof payload.replayed !== "boolean" ||
     typeof payload.lessonsRecorded !== "number" ||
+    (payload.strategyCandidateId !== null && typeof payload.strategyCandidateId !== "string") ||
+    (payload.strategyCandidateStage !== null &&
+      typeof payload.strategyCandidateStage !== "string") ||
+    typeof payload.strategyCandidateEvidenceCount !== "number" ||
+    (payload.reevaluationRequestId !== null && typeof payload.reevaluationRequestId !== "string") ||
+    typeof payload.fingerprintRecorded !== "boolean" ||
     !history ||
     typeof history.runs !== "number" ||
     typeof history.successRate !== "number" ||
@@ -68,9 +81,18 @@ export class HttpAcquisitionIntelligenceClient {
     if (!credential.trim()) throw new Error("worker credential is required");
   }
 
-  async recordRun(evidence: AcquisitionRunEvidence): Promise<AcquisitionIntelligenceIntakeReceipt> {
+  async recordRun(
+    evidence: AcquisitionRunEvidence,
+    fingerprint?: SourceFingerprint,
+  ): Promise<AcquisitionIntelligenceIntakeReceipt> {
     if (!isAcquisitionRunEvidence(evidence)) {
       throw new Error("Acquisition learning evidence is invalid");
+    }
+    if (fingerprint && !isSourceFingerprint(fingerprint)) {
+      throw new Error("Acquisition source fingerprint is invalid");
+    }
+    if (fingerprint && fingerprint.sourceId !== evidence.sourceId) {
+      throw new Error("Acquisition source fingerprint must match evidence sourceId");
     }
     const response = await this.fetcher(
       `${this.baseUrl}/api/worker/v1/acquisition-intelligence/runs`,
@@ -80,7 +102,11 @@ export class HttpAcquisitionIntelligenceClient {
           authorization: `Bearer ${this.credential}`,
           "content-type": "application/json",
         },
-        body: JSON.stringify({ workerId: this.workerId, evidence }),
+        body: JSON.stringify({
+          workerId: this.workerId,
+          evidence,
+          ...(fingerprint ? { fingerprint } : {}),
+        }),
       },
     );
     if (!response.ok) {

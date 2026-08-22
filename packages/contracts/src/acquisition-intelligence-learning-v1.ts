@@ -295,8 +295,8 @@ export function extractAcquisitionRunLessons(evidence: AcquisitionRunEvidence): 
       }),
     );
   } else if (
-    !evidence.changeDetection.etagObserved &&
-    !evidence.changeDetection.lastModifiedObserved
+    evidence.changeDetection.etagObserved === false &&
+    evidence.changeDetection.lastModifiedObserved === false
   ) {
     lessons.push(
       lesson(evidence, {
