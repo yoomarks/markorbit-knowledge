@@ -1,5 +1,6 @@
 import {
   buildAcquisitionRunEvidenceFromProfile,
+  type AcquisitionLearningProfile,
   type AcquisitionRunEvidence,
   type ExecutionReceipt,
   type Job,
@@ -59,6 +60,7 @@ export function buildIpAustraliaManualAcquisitionRunEvidence(input: {
   diagnostics: IpAustraliaManualArtifactAcquirerDiagnostics;
   startedAt: string;
   finishedAt: string;
+  profile?: AcquisitionLearningProfile;
 }): AcquisitionRunEvidence {
   const knownCorpus = input.diagnostics.inventoryPageCount;
   const accepted = input.diagnostics.emittedArtifactCount;
@@ -69,7 +71,7 @@ export function buildIpAustraliaManualAcquisitionRunEvidence(input: {
     ).length;
 
   return buildAcquisitionRunEvidenceFromProfile({
-    profile: ACQUISITION_LEARNING_PROFILES["static-index-html-v1"],
+    profile: input.profile ?? ACQUISITION_LEARNING_PROFILES["static-index-html-v1"],
     observation: {
       runId: input.job.runId,
       sourceId: input.job.sourceId,
