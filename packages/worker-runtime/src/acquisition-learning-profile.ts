@@ -28,6 +28,7 @@ export type AcquisitionLearningObservation = {
   sourceId: string;
   startedAt: string;
   finishedAt: string;
+  outcome?: AcquisitionRunEvidence["outcome"];
   counts: AcquisitionRunEvidence["counts"];
   knownCorpus: number | null;
   previousCoverageRatio?: number | null;
@@ -43,10 +44,11 @@ export type AcquisitionLearningObservation = {
 function inferredOutcome(
   observation: AcquisitionLearningObservation,
 ): AcquisitionRunEvidence["outcome"] {
+  if (observation.outcome) return observation.outcome;
   const { accepted } = observation.counts;
-  if (accepted <= 0) return "FAILED";
-  if ((observation.failureSignatures?.length ?? 0) > 0) return "DEGRADED";
+  if ((observation.failureSignatures?.length ?? 0) > 0) return accepted > 0 ? "DEGRADED" : "FAILED";
   if (observation.knownCorpus === null) return "SUCCESS";
+  if (accepted <= 0 && observation.knownCorpus > 0) return "FAILED";
   return accepted === observation.knownCorpus ? "SUCCESS" : "DEGRADED";
 }
 
