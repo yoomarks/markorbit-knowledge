@@ -1,0 +1,92 @@
+name: Country Index Acquisition Learning Live
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/country-index-acquisition-learning-live.yml
+      - apps/worker/src/country-index-public-inventory.ts
+      - apps/worker/src/discover-country-index-public.ts
+      - apps/worker/src/live-acquisition-profile-evidence.ts
+      - apps/worker/src/acquisition-learning-profiles.ts
+      - packages/worker-runtime/src/acquisition-learning-profile.ts
+      - apps/worker/package.json
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  acquisition-learning:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Discover live country-index inventory with structural learning evidence
+        run: |
+          mkdir -p "$RUNNER_TEMP/country-index-learning"
+          pnpm --filter @markorbit/worker discover:country-index \
+            > "$RUNNER_TEMP/country-index-learning/report.json"
+
+      - name: Verify jurisdiction-index playbook reuse
+        shell: bash
+        run: |
+          set -o pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = process.env.RUNNER_TEMP + '/country-index-learning/report.json';
+          const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+          if (!Number.isInteger(report.itemCount) || report.itemCount <= 0) {
+            throw new Error(`Country Index did not expose a non-empty public inventory: ${report.itemCount}`);
+          }
+          const learning = report.acquisitionLearning;
+          if (learning?.profileId !== 'jurisdiction-index-html-v1') {
+            throw new Error(`Unexpected acquisition profile: ${learning?.profileId}`);
+          }
+          if (learning?.evidence?.playbookId !== 'official-jurisdiction-index' || learning?.evidence?.playbookRevision !== 1) {
+            throw new Error('Country Index did not reuse official-jurisdiction-index@1');
+          }
+          if (learning?.evidence?.outcome !== 'SUCCESS') {
+            throw new Error(`Country Index live canary was not successful: ${learning?.evidence?.outcome}`);
+          }
+          const surface = learning?.evidence?.surfaceOutcomes?.find((item) => item.surface === 'COUNTRY_INDEX');
+          if (!surface || surface.discovered !== report.itemCount || surface.accepted !== report.itemCount) {
+            throw new Error('COUNTRY_INDEX surface evidence does not match the real enumerated inventory');
+          }
+          if (!learning?.fingerprint?.discoverySurfaces?.includes('COUNTRY_INDEX')) {
+            throw new Error('Country Index SourceFingerprint is missing COUNTRY_INDEX');
+          }
+          const boundaries = learning?.evidence?.boundaries;
+          if (boundaries?.legalTruthVerified !== false || boundaries?.autoPromotionApplied !== false || boundaries?.collectionAuthorityGranted !== false) {
+            throw new Error('Country Index canary crossed an acquisition-learning governance boundary');
+          }
+          process.stdout.write(`${JSON.stringify({
+            event: 'country-index.acquisition-learning.accepted',
+            itemCount: report.itemCount,
+            playbook: `${learning.evidence.playbookId}@${learning.evidence.playbookRevision}`,
+            fingerprint: learning.fingerprint,
+          }, null, 2)}\n`);
+          NODE
+
+      - name: Upload live evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: country-index-acquisition-learning-${{ github.run_id }}
+          path: ${{ runner.temp }}/country-index-learning/report.json
+          if-no-files-found: error
+          retention-days: 30
