@@ -29,7 +29,11 @@ function staticIndexFingerprint(sourceId: string): SourceFingerprint {
   };
 }
 
-function successfulStaticRun(runId: string, sourceId: string, minute: number): AcquisitionRunEvidence {
+function successfulStaticRun(
+  runId: string,
+  sourceId: string,
+  minute: number,
+): AcquisitionRunEvidence {
   const startedAt = `2026-08-22T23:${String(minute).padStart(2, "0")}:00.000Z`;
   const finishedAt = `2026-08-22T23:${String(minute).padStart(2, "0")}:30.000Z`;
   return {
