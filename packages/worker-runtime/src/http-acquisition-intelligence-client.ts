@@ -14,6 +14,10 @@ export type AcquisitionIntelligenceIntakeReceipt = {
   replayed: boolean;
   lessonsRecorded: number;
   playbookHistory: AcquisitionPlaybookHistory;
+  strategyCandidateId: string | null;
+  strategyCandidateStage: string | null;
+  strategyCandidateEvidenceCount: number;
+  reevaluationRequestId: string | null;
 };
 
 function normalizedBaseUrl(value: string): string {
@@ -41,6 +45,10 @@ function parseReceipt(value: unknown): AcquisitionIntelligenceIntakeReceipt {
     typeof payload.executionAttemptId !== "string" ||
     typeof payload.replayed !== "boolean" ||
     typeof payload.lessonsRecorded !== "number" ||
+    (payload.strategyCandidateId !== null && typeof payload.strategyCandidateId !== "string") ||
+    (payload.strategyCandidateStage !== null && typeof payload.strategyCandidateStage !== "string") ||
+    typeof payload.strategyCandidateEvidenceCount !== "number" ||
+    (payload.reevaluationRequestId !== null && typeof payload.reevaluationRequestId !== "string") ||
     !history ||
     typeof history.runs !== "number" ||
     typeof history.successRate !== "number" ||
