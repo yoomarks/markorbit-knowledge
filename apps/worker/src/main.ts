@@ -11,6 +11,7 @@ import {
   ProductionConversionWorkerRuntime,
   RssArtifactAcquirer,
   buildAcquisitionRunEvidenceFromProfile,
+  buildSourceFingerprintFromAcquisitionProfile,
   createConditionalHttpChangeWatch,
   defaultApiTransport,
 } from "@markorbit/worker-runtime";
@@ -115,7 +116,13 @@ async function main(): Promise<void> {
             profile: learningProfile,
             observation,
           });
-      const learned = await acquisitionIntelligenceClient.recordRun(evidence);
+      const fingerprint = buildSourceFingerprintFromAcquisitionProfile({
+        profile: learningProfile,
+        sourceId: completion.context.job.sourceId,
+        observedAt: completion.finishedAt,
+        evidenceRefs: evidence.evidenceRefs,
+      });
+      const learned = await acquisitionIntelligenceClient.recordRun(evidence, fingerprint);
       const diagnostics = ipAustraliaManualAcquirer?.getDiagnostics();
       log("worker.acquisition.learning.recorded", {
         runId: learned.runId,
@@ -125,6 +132,7 @@ async function main(): Promise<void> {
         playbookRevision: learningProfile.playbookRevision,
         executionAttemptId: learned.executionAttemptId,
         replayed: learned.replayed,
+        fingerprintRecorded: learned.fingerprintRecorded,
         lessonsRecorded: learned.lessonsRecorded,
         playbookRuns: learned.playbookHistory.runs,
         playbookSuccessRate: learned.playbookHistory.successRate,
