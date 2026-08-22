@@ -6,7 +6,7 @@ import {
   type ExecutionAttempt,
 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
-import { SqliteAcquisitionIntelligenceRepository } from "@markorbit/persistence/acquisition-intelligence";
+import { SqliteAcquisitionLearningLoopRepository } from "@markorbit/persistence/acquisition-learning-loop";
 import type { ExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
 import type { WorkerExecutionRepository } from "@markorbit/persistence/worker-execution";
 import type { WorkerRegistryRepository } from "@markorbit/persistence/workers";
@@ -23,6 +23,10 @@ export type AcquisitionIntelligenceWorkerIntakeResult = {
   replayed: boolean;
   lessonsRecorded: number;
   playbookHistory: AcquisitionPlaybookHistory;
+  strategyCandidateId: string | null;
+  strategyCandidateStage: string | null;
+  strategyCandidateEvidenceCount: number;
+  reevaluationRequestId: string | null;
 };
 
 export type AcquisitionIntelligenceWorkerIntakeDependencies = {
@@ -181,7 +185,7 @@ export function recordAcquisitionIntelligenceWorkerIntake(
   }
   assertOutcomeMatchesControlPlane(record.run.status, attempt, evidence.outcome);
 
-  const repository = new SqliteAcquisitionIntelligenceRepository(dependencies.database);
+  const repository = new SqliteAcquisitionLearningLoopRepository(dependencies.database);
   const replayed = repository.getRunEvidence(evidence.runId) !== null;
   const learned = repository.recordLearningRun(trustedEvidence(evidence, workerId, attempt));
 
@@ -194,5 +198,9 @@ export function recordAcquisitionIntelligenceWorkerIntake(
     replayed,
     lessonsRecorded: learned.lessons.length,
     playbookHistory: learned.playbookHistory,
+    strategyCandidateId: learned.strategyCandidate?.candidate.id ?? null,
+    strategyCandidateStage: learned.strategyCandidate?.candidate.stage ?? null,
+    strategyCandidateEvidenceCount: learned.strategyCandidate?.evidenceCount ?? 0,
+    reevaluationRequestId: learned.reevaluationRequest?.id ?? null,
   };
 }
