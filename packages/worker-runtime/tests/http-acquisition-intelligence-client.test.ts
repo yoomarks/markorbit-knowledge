@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION,
   type AcquisitionRunEvidence,
+  type SourceFingerprint,
 } from "@markorbit/contracts";
 import { HttpAcquisitionIntelligenceClient } from "../src/http-acquisition-intelligence-client";
 
@@ -36,15 +37,30 @@ const evidence: AcquisitionRunEvidence = {
   },
 };
 
+const fingerprint: SourceFingerprint = {
+  protocolVersion: ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION,
+  objectType: "SOURCE_FINGERPRINT",
+  sourceId: "src_test",
+  observedAt: "2026-08-22T00:01:00.000Z",
+  architecture: "STATIC_HTML",
+  discoverySurfaces: ["INDEX_PAGE"],
+  renderRequirement: "NONE",
+  localeStructure: "SINGLE",
+  supportsHttpValidators: true,
+  attachmentKinds: ["HTML"],
+  confidence: 0.9,
+  evidenceRefs: ["profile:static-index-html-v1"],
+};
+
 describe("HttpAcquisitionIntelligenceClient", () => {
-  it("submits authenticated run evidence and validates the intake receipt", async () => {
+  it("submits authenticated run evidence plus fingerprint and validates the intake receipt", async () => {
     const fetcher = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       expect(init?.method).toBe("POST");
       expect(init?.headers).toMatchObject({
         authorization: "Bearer credential-1",
         "content-type": "application/json",
       });
-      expect(JSON.parse(String(init?.body))).toEqual({ workerId: "worker-1", evidence });
+      expect(JSON.parse(String(init?.body))).toEqual({ workerId: "worker-1", evidence, fingerprint });
       return new Response(
         JSON.stringify({
           version: "ACQUISITION_INTELLIGENCE_WORKER_INTAKE_V1",
@@ -60,6 +76,11 @@ describe("HttpAcquisitionIntelligenceClient", () => {
             averageCoverage: 1,
             averageDurationMs: 60_000,
           },
+          strategyCandidateId: null,
+          strategyCandidateStage: null,
+          strategyCandidateEvidenceCount: 0,
+          reevaluationRequestId: null,
+          fingerprintRecorded: true,
         }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
@@ -71,15 +92,31 @@ describe("HttpAcquisitionIntelligenceClient", () => {
       fetcher as typeof fetch,
     );
 
-    await expect(client.recordRun(evidence)).resolves.toMatchObject({
+    await expect(client.recordRun(evidence, fingerprint)).resolves.toMatchObject({
       runId: "run_test",
       executionAttemptId: "exa_test",
       lessonsRecorded: 2,
+      fingerprintRecorded: true,
     });
     expect(fetcher).toHaveBeenCalledWith(
       "https://knowledge.example.test/api/worker/v1/acquisition-intelligence/runs",
       expect.any(Object),
     );
+  });
+
+  it("rejects a fingerprint for a different source before transport", async () => {
+    const fetcher = vi.fn();
+    const client = new HttpAcquisitionIntelligenceClient(
+      "https://knowledge.example.test",
+      "worker-1",
+      "credential-1",
+      fetcher as typeof fetch,
+    );
+
+    await expect(
+      client.recordRun(evidence, { ...fingerprint, sourceId: "src_wrong" }),
+    ).rejects.toThrow("must match evidence sourceId");
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("surfaces the control-plane error message on rejected evidence", async () => {
