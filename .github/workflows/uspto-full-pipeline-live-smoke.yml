@@ -2,12 +2,26 @@ name: USPTO Full Pipeline Live Smoke
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/uspto-full-pipeline-live-smoke.yml
+      - apps/worker/src/main.ts
+      - apps/worker/src/acquisition-learning-observation.ts
+      - apps/worker/src/acquisition-learning-profiles.ts
+      - apps/worker/src/verify-acquisition-learning-profile-run.ts
+      - packages/worker-runtime/src/acquisition-learning-profile.ts
+      - packages/worker-runtime/src/http-acquisition-intelligence-client.ts
+      - apps/admin/src/server/acquisition-intelligence-worker-intake.ts
+      - apps/admin/src/app/api/worker/v1/acquisition-intelligence/runs/route.ts
+      - apps/worker/package.json
+      - pnpm-lock.yaml
 
 permissions:
   contents: read
 
 concurrency:
-  group: uspto-full-pipeline-live-smoke
+  group: uspto-full-pipeline-live-smoke-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -212,7 +226,7 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_COLLECTION_RUN_ID=${data.run.id}\n`);
           NODE
 
-      - name: Start production Worker with CI direct-egress exception
+      - name: Start production Worker with CI direct-egress exception and structural learning
         env:
           NODE_ENV: test
           MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
@@ -221,12 +235,42 @@ jobs:
           MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "15000"
           MARKORBIT_WORKER_MAX_ACQUISITION_MS: "360000"
           MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS: "300"
+          MARKORBIT_ACQUISITION_LEARNING_PROFILE: "static-index-html-v1"
         run: |
           pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker.log" 2>&1 &
           echo "WORKER_PID=$!" >> "$GITHUB_ENV"
 
       - name: Verify live collection and immutable RawArtifact evidence
         run: pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_COLLECTION_RUN_ID"
+
+      - name: Wait for authenticated acquisition learning intake
+        shell: bash
+        run: |
+          set -o pipefail
+          for attempt in $(seq 1 60); do
+            if node <<'NODE'
+          const { DatabaseSync } = require('node:sqlite');
+          const database = new DatabaseSync(process.env.MARKORBIT_KNOWLEDGE_DB_PATH, { readOnly: true });
+          try {
+            const row = database.prepare('SELECT run_id FROM acquisition_run_evidence WHERE run_id = ?').get(process.env.MARKORBIT_COLLECTION_RUN_ID);
+            process.exit(row ? 0 : 1);
+          } finally {
+            database.close();
+          }
+          NODE
+            then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat "$RUNNER_TEMP/worker.log"
+              exit 1
+            fi
+            sleep 1
+          done
+          grep -q 'worker.acquisition.learning.recorded' "$RUNNER_TEMP/worker.log"
+
+      - name: Verify structural playbook evidence and SourceFingerprint
+        run: pnpm --filter @markorbit/worker verify:acquisition-learning-profile -- "$MARKORBIT_COLLECTION_RUN_ID" "$MARKORBIT_SOURCE_ID" "static-index-html-v1"
 
       - name: Dispatch latest real USPTO Markdown to production conversion
         run: |
