@@ -8,7 +8,7 @@ import {
  * appear in selector logic; source-specific adapters may only provide traits
  * that select one of these reusable strategies.
  */
-export const ACQUISITION_SEED_PLAYBOOKS = [
+export const ACQUISITION_SEED_PLAYBOOKS: readonly AcquisitionPlaybook[] = [
   {
     protocolVersion: ACQUISITION_INTELLIGENCE_PROTOCOL_VERSION,
     objectType: "ACQUISITION_PLAYBOOK",
@@ -119,4 +119,4 @@ export const ACQUISITION_SEED_PLAYBOOKS = [
     },
     evidenceRefs: [],
   },
-] as const satisfies readonly AcquisitionPlaybook[];
+];
