@@ -9,6 +9,9 @@ on:
       - apps/worker/src/wipo-public-corpus-discovery.ts
       - apps/worker/src/wipo-corpus-reconciliation.ts
       - apps/worker/src/reconcile-wipo-corpus.ts
+      - apps/worker/src/live-acquisition-profile-evidence.ts
+      - apps/worker/src/acquisition-learning-profiles.ts
+      - packages/worker-runtime/src/acquisition-learning-profile.ts
       - apps/worker/package.json
       - pnpm-lock.yaml
 
@@ -52,6 +55,16 @@ jobs:
             const fs = require("fs");
             const path = process.env.RUNNER_TEMP + "/wipo-corpus-reconciliation/report.json";
             const report = JSON.parse(fs.readFileSync(path, "utf8"));
+            const learning = report.acquisitionLearning;
+            if (learning?.profileId !== "toc-graph-html-v1") throw new Error(`Unexpected WIPO profile ${learning?.profileId}`);
+            if (learning?.evidence?.playbookId !== "official-toc-graph" || learning?.evidence?.playbookRevision !== 1) {
+              throw new Error("WIPO reconciliation did not reuse official-toc-graph@1");
+            }
+            if (!learning?.fingerprint?.discoverySurfaces?.includes("TOC")) throw new Error("WIPO fingerprint missing TOC surface");
+            const boundaries = learning?.evidence?.boundaries;
+            if (boundaries?.legalTruthVerified !== false || boundaries?.autoPromotionApplied !== false || boundaries?.collectionAuthorityGranted !== false) {
+              throw new Error("WIPO canary crossed an acquisition-learning governance boundary");
+            }
             const lines = [
               "## WIPO Corpus Live Reconciliation",
               "",
@@ -59,6 +72,8 @@ jobs:
               `- Discovered links: ${report.discoveredLinkCount}`,
               `- Referenced assets: ${report.referencedAssetCount}`,
               `- Failed seeds: ${report.failedSeedCount}`,
+              `- Measured bytes: ${report.totalFetchedBytes}`,
+              `- Acquisition playbook: ${learning.evidence.playbookId}@${learning.evidence.playbookRevision}`,
               "",
               "### Integration chain",
               "",
