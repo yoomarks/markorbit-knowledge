@@ -100,6 +100,7 @@ async function main(): Promise<void> {
         finishedAt: completion.finishedAt,
       });
       const learned = await acquisitionIntelligenceClient.recordRun(evidence);
+      const diagnostics = ipAustraliaManualAcquirer.getDiagnostics();
       log("worker.acquisition.learning.recorded", {
         runId: learned.runId,
         sourceId: learned.sourceId,
@@ -109,6 +110,14 @@ async function main(): Promise<void> {
         playbookRuns: learned.playbookHistory.runs,
         playbookSuccessRate: learned.playbookHistory.successRate,
         playbookAverageCoverage: learned.playbookHistory.averageCoverage,
+        inventoryPageCount: diagnostics.inventoryPageCount,
+        emittedArtifactCount: diagnostics.emittedArtifactCount,
+        sourceGapCount: diagnostics.sourceGaps.length,
+        sourceGapSamples: diagnostics.sourceGaps.slice(0, 10).map((gap) => ({
+          uri: gap.uri,
+          status: gap.status,
+          reason: gap.reason,
+        })),
       });
     },
   });
