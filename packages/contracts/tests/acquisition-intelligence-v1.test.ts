@@ -182,8 +182,7 @@ describe("acquisition intelligence v1", () => {
       ]),
     );
     expect(
-      lessons.find((item) => item.lessonType === "AUTHORITATIVE_ENUMERATOR")
-        ?.recommendedPrimitive,
+      lessons.find((item) => item.lessonType === "AUTHORITATIVE_ENUMERATOR")?.recommendedPrimitive,
     ).toBe("INDEX_TREE_ENUMERATION");
   });
 
