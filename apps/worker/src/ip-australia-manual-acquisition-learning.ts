@@ -44,6 +44,17 @@ function httpStatusCounts(
   return counts;
 }
 
+function sourceGapEvidenceRefs(
+  diagnostics: IpAustraliaManualArtifactAcquirerDiagnostics,
+): string[] {
+  return diagnostics.sourceGaps
+    .map(
+      (gap) =>
+        `source-gap:${gap.reason}:${gap.status ?? "NO_STATUS"}:${encodeURIComponent(gap.uri)}`,
+    )
+    .sort();
+}
+
 export function buildIpAustraliaManualAcquisitionRunEvidence(input: {
   job: Job;
   receipt: ExecutionReceipt;
@@ -118,6 +129,7 @@ export function buildIpAustraliaManualAcquisitionRunEvidence(input: {
       `collection-plan:${input.job.planId}`,
       `executor:${input.receipt.executor.executorId}@${input.receipt.executor.version}`,
       `ip-australia-manual-inventory:${knownCorpus}`,
+      ...sourceGapEvidenceRefs(input.diagnostics),
     ],
     boundaries: {
       legalTruthVerified: false,
