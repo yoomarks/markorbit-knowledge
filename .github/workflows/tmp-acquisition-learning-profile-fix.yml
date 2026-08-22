@@ -83,6 +83,7 @@ jobs:
           new = "    supportsHttpValidators:\n      input.changeDetection === undefined\n        ? input.profile.fingerprint.supportsHttpValidators\n        : inferHttpValidatorSupport(input.changeDetection),"
           if text.count(old) != 1:
               raise SystemExit("fingerprint support marker mismatch")
+          text = text.replace(old, new, 1)
           path.write_text(text)
 
           path = Path("apps/worker/src/acquisition-learning-profiles.ts")
