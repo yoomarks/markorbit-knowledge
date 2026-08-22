@@ -368,7 +368,9 @@ async function verifyCoreBoundary(
       );
     }
     if (payload.latestCoreIntakeSubmission !== null || payload.latestCoreIntakeReceipt !== null) {
-      throw new Error(`ReadyPackage ${readyPackage.id} fabricated Core submission or receipt evidence`);
+      throw new Error(
+        `ReadyPackage ${readyPackage.id} fabricated Core submission or receipt evidence`,
+      );
     }
     if (
       array(payload.coreIntakeSubmissions).length !== 0 ||
