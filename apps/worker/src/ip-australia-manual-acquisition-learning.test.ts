@@ -6,7 +6,7 @@ const job = {
   runId: "run_ip_au_577",
   sourceId: "src_ip_au_manual",
   planId: "pln_ip_au_manual",
-} as Job;
+} as unknown as Job;
 
 const receipt = {
   executor: {
@@ -30,6 +30,8 @@ describe("IP Australia Manual acquisition learning evidence", () => {
         inventoryPageCount: 577,
         emittedArtifactCount: 577,
         sourceGaps: [],
+        etagObserved: true,
+        lastModifiedObserved: false,
       },
       startedAt: "2026-08-22T00:00:00.000Z",
       finishedAt: "2026-08-22T00:05:00.000Z",
@@ -63,6 +65,12 @@ describe("IP Australia Manual acquisition learning evidence", () => {
           knownCorpus: 577,
         },
       ],
+      changeDetection: {
+        etagObserved: true,
+        lastModifiedObserved: false,
+        validator304Count: 0,
+        digestChanges: 0,
+      },
       performance: {
         durationMs: 300_000,
         bytes: 12_000_000,
@@ -91,6 +99,8 @@ describe("IP Australia Manual acquisition learning evidence", () => {
             error: "upstream returned HTTP 503",
           },
         ],
+        etagObserved: false,
+        lastModifiedObserved: true,
       },
       startedAt: "2026-08-22T00:00:00.000Z",
       finishedAt: "2026-08-22T00:05:00.000Z",
@@ -99,6 +109,10 @@ describe("IP Australia Manual acquisition learning evidence", () => {
     expect(evidence.outcome).toBe("DEGRADED");
     expect(evidence.coverage.ratio).toBeCloseTo(576 / 577);
     expect(evidence.httpStatusCounts).toEqual({ "200": 576, "503": 1 });
+    expect(evidence.changeDetection).toMatchObject({
+      etagObserved: false,
+      lastModifiedObserved: true,
+    });
     expect(evidence.failureSignatures).toEqual([
       {
         code: "FETCH_FAILED",
