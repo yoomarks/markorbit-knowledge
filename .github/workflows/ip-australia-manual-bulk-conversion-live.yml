@@ -40,7 +40,6 @@ jobs:
     env:
       MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
       MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
-      MARKORBIT_IP_AU_EXPECTED_COUNT: "577"
       MARKORBIT_IP_AU_CONVERSION_TIMEOUT_MS: "1800000"
       MARKORBIT_IP_AU_CONVERSION_POLL_MS: "3000"
     steps:
@@ -65,6 +64,18 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm --filter @markorbit/admin build
           pnpm --filter @markorbit/worker build
+
+      - name: Resolve authoritative Manual inventory baseline
+        run: |
+          pnpm --filter @markorbit/worker inventory:ip-australia-manual > "$RUNNER_TEMP/ip-au-inventory.json"
+          node <<'NODE'
+          const fs=require('node:fs');
+          const report=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/ip-au-inventory.json','utf8'));
+          const expected=Number(report.totalUniqueManualPageCount);
+          if(!Number.isSafeInteger(expected)||expected<=0)throw new Error(`Invalid Manual inventory count ${report.totalUniqueManualPageCount}`);
+          if(report.failedUpdateHistoryPageCount!==0||report.currentNavigationPageCount<=0)throw new Error('Authoritative Manual inventory is incomplete');
+          fs.appendFileSync(process.env.GITHUB_ENV,`MARKORBIT_IP_AU_EXPECTED_COUNT=${expected}\n`);
+          NODE
 
       - name: Start isolated control plane
         run: |
@@ -168,7 +179,7 @@ jobs:
           pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker.log" 2>&1 &
           echo "WORKER_PID=$!" >> "$GITHUB_ENV"
 
-      - name: Verify collection produced 577 immutable HTML RawArtifacts
+      - name: Verify collection matches authoritative inventory
         run: |
           for attempt in $(seq 1 180); do
             curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/runs/$MARKORBIT_COLLECTION_RUN_ID" > "$RUNNER_TEMP/collection-run.json"
@@ -179,9 +190,9 @@ jobs:
           done
           node -e "const d=require('$RUNNER_TEMP/collection-run.json');if(d.run.run.status!=='COMPLETED')throw new Error('Collection run did not finish')"
           curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&runId=$MARKORBIT_COLLECTION_RUN_ID&artifactKind=HTML&limit=100" > "$RUNNER_TEMP/collection-artifacts.json"
-          node -e "const d=require('$RUNNER_TEMP/collection-artifacts.json');if(d.total!==577)throw new Error('Expected 577 RawArtifacts, got '+d.total)"
+          node -e "const d=require('$RUNNER_TEMP/collection-artifacts.json');const expected=Number(process.env.MARKORBIT_IP_AU_EXPECTED_COUNT);if(d.total!==expected)throw new Error('Expected '+expected+' RawArtifacts from authoritative inventory, got '+d.total)"
 
-      - name: Verify 577 auto conversions, ReadyPackages, retrieval and Core boundary
+      - name: Verify auto conversions, ReadyPackages, retrieval and Core boundary against inventory
         run: |
           set -o pipefail
           pnpm --filter @markorbit/worker verify:ip-australia-manual-bulk-conversion -- "$MARKORBIT_IP_AU_SOURCE_ID" | tee "$RUNNER_TEMP/bulk-conversion-verification.log"
@@ -192,8 +203,9 @@ jobs:
           node <<'NODE'
           const fs=require('node:fs');
           const read=(name)=>{const p=`${process.env.RUNNER_TEMP}/${name}`;return fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):null;};
-          const artifacts=read('collection-artifacts.json'); const capability=read('conversion-capability-result.json');
+          const inventory=read('ip-au-inventory.json'); const artifacts=read('collection-artifacts.json'); const capability=read('conversion-capability-result.json');
           const lines=['## IP Australia Manual Bulk Conversion Live',''];
+          if(inventory)lines.push(`- Authoritative inventory baseline: ${inventory.totalUniqueManualPageCount}`);
           if(artifacts)lines.push(`- Immutable HTML RawArtifacts: ${artifacts.total}`);
           if(capability?.record?.capability)lines.push(`- Conversion capability: ${capability.record.capability.supportedConverters?.[0]?.converterId}@${capability.record.capability.supportedConverters?.[0]?.versions?.[0]}`);
           const verificationPath=process.env.RUNNER_TEMP+'/bulk-conversion-verification.log';
@@ -213,6 +225,7 @@ jobs:
         with:
           name: ip-australia-manual-bulk-conversion-live-${{ github.run_id }}
           path: |
+            ${{ runner.temp }}/ip-au-inventory.json
             ${{ runner.temp }}/source-create.json
             ${{ runner.temp }}/plan-create.json
             ${{ runner.temp }}/worker-view.json
