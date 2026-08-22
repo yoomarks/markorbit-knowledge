@@ -5,10 +5,7 @@ import {
   type AcquisitionRunEvidence,
   type ExecutionAttempt,
 } from "@markorbit/contracts";
-import {
-  RegistryConflictError,
-  RegistryValidationError,
-} from "@markorbit/persistence";
+import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import { SqliteAcquisitionIntelligenceRepository } from "@markorbit/persistence/acquisition-intelligence";
 import type { ExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
 import type { WorkerExecutionRepository } from "@markorbit/persistence/worker-execution";
