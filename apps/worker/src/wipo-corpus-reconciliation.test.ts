@@ -6,7 +6,14 @@ import {
 } from "./wipo-corpus-reconciliation";
 
 function response(body: string, status = 200, contentType = "text/html; charset=utf-8"): Response {
-  return new Response(body, { status, headers: { "content-type": contentType } });
+  return new Response(body, {
+    status,
+    headers: {
+      "content-type": contentType,
+      etag: '"fixture-etag"',
+      "last-modified": "Sat, 22 Aug 2026 00:00:00 GMT",
+    },
+  });
 }
 
 describe("WIPO corpus reconciliation", () => {
@@ -38,7 +45,7 @@ describe("WIPO corpus reconciliation", () => {
     expect(assets.every((asset) => asset.uri.includes("wipo.int"))).toBe(true);
   });
 
-  it("reports chain gaps instead of treating a reachable Madrid root as integration coverage", async () => {
+  it("reports chain gaps and measured transport evidence instead of treating a reachable root as coverage", async () => {
     const fetcher: typeof fetch = async (input) => {
       const uri = String(input);
       if (uri.includes("members/declarations")) return response("", 503);
@@ -68,5 +75,11 @@ describe("WIPO corpus reconciliation", () => {
     });
     expect(legalTexts?.state).toBe("PRESENT");
     expect(report.assetKindCounts.PDF).toBeGreaterThan(0);
+    expect(report.httpStatusCounts["503"]).toBe(1);
+    expect(report.httpStatusCounts["200"]).toBe(report.successfulSeedCount);
+    expect(report.totalFetchedBytes).toBeGreaterThan(0);
+    expect(report.etagObserved).toBe(true);
+    expect(report.lastModifiedObserved).toBe(true);
+    expect(report.outcomes.every((outcome) => typeof outcome.bytes === "number")).toBe(true);
   });
 });
