@@ -10,9 +10,12 @@ import {
   LocalFolderArtifactAcquirer,
   ProductionConversionWorkerRuntime,
   RssArtifactAcquirer,
+  buildAcquisitionRunEvidenceFromProfile,
   createConditionalHttpChangeWatch,
   defaultApiTransport,
 } from "@markorbit/worker-runtime";
+import { buildReceiptAcquisitionLearningObservation } from "./acquisition-learning-observation";
+import { acquisitionLearningProfile } from "./acquisition-learning-profiles";
 import { loadWorkerProcessConfig } from "./config";
 import { buildIpAustraliaManualAcquisitionRunEvidence } from "./ip-australia-manual-acquisition-learning";
 import { IpAustraliaManualArtifactAcquirer } from "./ip-australia-manual-artifact-acquirer";
@@ -33,6 +36,12 @@ function log(event: string, fields: Record<string, unknown> = {}): void {
 
 async function main(): Promise<void> {
   const config = loadWorkerProcessConfig();
+  const learningProfile = acquisitionLearningProfile(config.acquisitionLearningProfileId);
+  if (config.acquisitionLearningProfileId && !learningProfile) {
+    throw new Error(
+      `Unknown acquisition learning profile: ${config.acquisitionLearningProfileId}`,
+    );
+  }
   const collectionClient = new HttpControlledCollectionClient(
     config.controlPlaneUrl,
     config.workerId,
@@ -50,7 +59,7 @@ async function main(): Promise<void> {
     config.collectionProvider === "ip-australia-manual"
       ? new IpAustraliaManualArtifactAcquirer()
       : null;
-  const acquisitionIntelligenceClient = ipAustraliaManualAcquirer
+  const acquisitionIntelligenceClient = learningProfile
     ? new HttpAcquisitionIntelligenceClient(
         config.controlPlaneUrl,
         config.workerId,
@@ -90,34 +99,52 @@ async function main(): Promise<void> {
       log("worker.background.error", { message: errorMessage(error) });
     },
     async onCompleted(completion) {
-      if (!ipAustraliaManualAcquirer || !acquisitionIntelligenceClient || !completion.receipt)
-        return;
-      const evidence = buildIpAustraliaManualAcquisitionRunEvidence({
-        job: completion.context.job,
-        receipt: completion.receipt,
-        diagnostics: ipAustraliaManualAcquirer.getDiagnostics(),
-        startedAt: completion.startedAt,
-        finishedAt: completion.finishedAt,
-      });
+      if (!learningProfile || !acquisitionIntelligenceClient || !completion.receipt) return;
+      const observation = buildReceiptAcquisitionLearningObservation(completion);
+      if (!observation) return;
+      const evidence = ipAustraliaManualAcquirer
+        ? buildIpAustraliaManualAcquisitionRunEvidence({
+            job: completion.context.job,
+            receipt: completion.receipt,
+            diagnostics: ipAustraliaManualAcquirer.getDiagnostics(),
+            startedAt: completion.startedAt,
+            finishedAt: completion.finishedAt,
+            profile: learningProfile,
+          })
+        : buildAcquisitionRunEvidenceFromProfile({
+            profile: learningProfile,
+            observation,
+          });
       const learned = await acquisitionIntelligenceClient.recordRun(evidence);
-      const diagnostics = ipAustraliaManualAcquirer.getDiagnostics();
+      const diagnostics = ipAustraliaManualAcquirer?.getDiagnostics();
       log("worker.acquisition.learning.recorded", {
         runId: learned.runId,
         sourceId: learned.sourceId,
+        profileId: learningProfile.profileId,
+        playbookId: learningProfile.playbookId,
+        playbookRevision: learningProfile.playbookRevision,
         executionAttemptId: learned.executionAttemptId,
         replayed: learned.replayed,
         lessonsRecorded: learned.lessonsRecorded,
         playbookRuns: learned.playbookHistory.runs,
         playbookSuccessRate: learned.playbookHistory.successRate,
         playbookAverageCoverage: learned.playbookHistory.averageCoverage,
-        inventoryPageCount: diagnostics.inventoryPageCount,
-        emittedArtifactCount: diagnostics.emittedArtifactCount,
-        sourceGapCount: diagnostics.sourceGaps.length,
-        sourceGapSamples: diagnostics.sourceGaps.slice(0, 10).map((gap) => ({
-          uri: gap.uri,
-          status: gap.status,
-          reason: gap.reason,
-        })),
+        strategyCandidateId: learned.strategyCandidateId,
+        strategyCandidateStage: learned.strategyCandidateStage,
+        strategyCandidateEvidenceCount: learned.strategyCandidateEvidenceCount,
+        reevaluationRequestId: learned.reevaluationRequestId,
+        ...(diagnostics
+          ? {
+              inventoryPageCount: diagnostics.inventoryPageCount,
+              emittedArtifactCount: diagnostics.emittedArtifactCount,
+              sourceGapCount: diagnostics.sourceGaps.length,
+              sourceGapSamples: diagnostics.sourceGaps.slice(0, 10).map((gap) => ({
+                uri: gap.uri,
+                status: gap.status,
+                reason: gap.reason,
+              })),
+            }
+          : {}),
       });
     },
   });
@@ -166,6 +193,7 @@ async function main(): Promise<void> {
     maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
     conversionEnabled: config.conversionEnabled,
     acquisitionLearningEnabled: Boolean(acquisitionIntelligenceClient),
+    acquisitionLearningProfileId: learningProfile?.profileId ?? null,
   });
 
   while (!stopping) {
