@@ -51,13 +51,58 @@ function boundedLimit(value: number | undefined, fallback: number, field: string
   return resolved;
 }
 
+function parseReevaluation(documentJson: string): AcquisitionStrategyReevaluationRequest {
+  return JSON.parse(documentJson) as AcquisitionStrategyReevaluationRequest;
+}
+
 export class AcquisitionIntelligenceReadService {
   private readonly intelligence: SqliteAcquisitionIntelligenceRepository;
   private readonly governance: SqliteAcquisitionStrategyGovernanceRepository;
 
-  constructor(database: DatabaseSync) {
+  constructor(private readonly database: DatabaseSync) {
     this.intelligence = new SqliteAcquisitionIntelligenceRepository(database);
     this.governance = new SqliteAcquisitionStrategyGovernanceRepository(database);
+  }
+
+  private candidatesForSource(sourceId: string): PersistedAcquisitionStrategyCandidate[] {
+    const rows = this.database
+      .prepare(
+        `SELECT candidate_id, MAX(observed_at) AS latest_observed_at
+         FROM acquisition_strategy_candidate_observations
+         WHERE source_id = ?
+         GROUP BY candidate_id
+         ORDER BY latest_observed_at DESC, candidate_id
+         LIMIT 500`,
+      )
+      .all(sourceId) as Array<{ candidate_id: string }>;
+    return rows
+      .map((row) => this.governance.getCandidate(row.candidate_id))
+      .filter((item): item is PersistedAcquisitionStrategyCandidate => item !== null);
+  }
+
+  private pendingReevaluationsForSource(
+    sourceId: string,
+  ): AcquisitionStrategyReevaluationRequest[] {
+    const rows = this.database
+      .prepare(
+        `SELECT document_json FROM acquisition_strategy_reevaluations
+         WHERE status = 'PENDING' AND source_id = ?
+         ORDER BY requested_at DESC, id
+         LIMIT 500`,
+      )
+      .all(sourceId) as Array<{ document_json: string }>;
+    return rows.map((row) => parseReevaluation(row.document_json));
+  }
+
+  private pendingReevaluationForRun(runId: string): AcquisitionStrategyReevaluationRequest | null {
+    const row = this.database
+      .prepare(
+        `SELECT document_json FROM acquisition_strategy_reevaluations
+         WHERE status = 'PENDING' AND run_id = ?
+         LIMIT 1`,
+      )
+      .get(runId) as { document_json: string } | undefined;
+    return row ? parseReevaluation(row.document_json) : null;
   }
 
   source(input: {
@@ -68,37 +113,27 @@ export class AcquisitionIntelligenceReadService {
     const sourceId = normalizedId(input.sourceId, "sourceId");
     const runsLimit = boundedLimit(input.runsLimit, 50, "runsLimit");
     const lessonsLimit = boundedLimit(input.lessonsLimit, 100, "lessonsLimit");
-    const runs = this.intelligence.listRunEvidenceForSource(sourceId, runsLimit);
-    const lessons = this.intelligence.listLessonsForSource(sourceId, lessonsLimit);
-    const strategyCandidates = this.governance
-      .listCandidates(500)
-      .filter((item) => item.candidate.sourceScope.includes(sourceId));
-    const pendingReevaluations = this.governance
-      .listPendingReevaluations(500)
-      .filter((item) => item.sourceId === sourceId);
 
     return {
       version: ACQUISITION_INTELLIGENCE_READ_SURFACE_VERSION,
       sourceId,
       fingerprint: this.intelligence.latestFingerprintForSource(sourceId),
-      runs,
-      lessons,
+      runs: this.intelligence.listRunEvidenceForSource(sourceId, runsLimit),
+      lessons: this.intelligence.listLessonsForSource(sourceId, lessonsLimit),
       latestSelection: this.intelligence.latestStrategySelectionForSource(sourceId),
-      strategyCandidates,
-      pendingReevaluations,
+      strategyCandidates: this.candidatesForSource(sourceId),
+      pendingReevaluations: this.pendingReevaluationsForSource(sourceId),
     };
   }
 
   run(runIdInput: string): AcquisitionRunLearningRead {
     const runId = normalizedId(runIdInput, "runId");
-    const evidence = this.intelligence.getRunEvidence(runId);
     return {
       version: ACQUISITION_INTELLIGENCE_READ_SURFACE_VERSION,
       runId,
-      evidence,
+      evidence: this.intelligence.getRunEvidence(runId),
       lessons: this.intelligence.listLessonsForRun(runId),
-      pendingReevaluation:
-        this.governance.listPendingReevaluations(500).find((item) => item.runId === runId) ?? null,
+      pendingReevaluation: this.pendingReevaluationForRun(runId),
     };
   }
 }
