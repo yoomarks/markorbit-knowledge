@@ -1,5 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import type { AcquisitionRunEvidence, RunLesson } from "@markorbit/worker-runtime";
+import {
+  resolveAcquisitionOutcome,
+  sourceGapObservationsFromEvidenceRefs,
+} from "./source-gap-accounting";
 
 function required(name: string): string {
   const value = process.env[name]?.trim();
@@ -19,6 +23,12 @@ function parseJson<T>(value: unknown, label: string): T {
 function assertEqual(actual: unknown, expected: unknown, label: string): void {
   if (actual !== expected) {
     throw new Error(`${label}: expected ${String(expected)}, got ${String(actual)}`);
+  }
+}
+
+function assertClose(actual: number | null, expected: number, label: string): void {
+  if (actual === null || !Number.isFinite(actual) || Math.abs(actual - expected) > 1e-12) {
+    throw new Error(`${label}: expected ${expected}, got ${String(actual)}`);
   }
 }
 
@@ -55,8 +65,6 @@ try {
   assertEqual(row.source_id, sourceId, "persisted source boundary");
   assertEqual(row.playbook_id, "official-static-index-tree", "playbook id");
   assertEqual(row.playbook_revision, 1, "playbook revision");
-  assertEqual(row.outcome, "SUCCESS", "production learning outcome");
-  assertEqual(row.coverage_ratio, 1, "production corpus coverage");
   if (!Number.isFinite(row.duration_ms) || row.duration_ms <= 0) {
     throw new Error(`control-plane duration must be positive, got ${row.duration_ms}`);
   }
@@ -66,10 +74,54 @@ try {
   assertEqual(evidence.sourceId, sourceId, "evidence source id");
   assertEqual(evidence.counts.discovered, expectedCount, "discovered corpus count");
   assertEqual(evidence.counts.attempted, expectedCount, "attempted corpus count");
-  assertEqual(evidence.counts.fetched, expectedCount, "fetched corpus count");
-  assertEqual(evidence.counts.accepted, expectedCount, "accepted corpus count");
   assertEqual(evidence.coverage.knownCorpus, expectedCount, "known corpus count");
-  assertEqual(evidence.coverage.ratio, 1, "evidence coverage ratio");
+  if (evidence.counts.accepted <= 0 || evidence.counts.accepted > expectedCount) {
+    throw new Error(`accepted corpus count is invalid: ${evidence.counts.accepted}/${expectedCount}`);
+  }
+
+  const sourceGaps = sourceGapObservationsFromEvidenceRefs(
+    evidence.evidenceRefs,
+    evidence.finishedAt,
+  );
+  const resolution = resolveAcquisitionOutcome({
+    discovered: expectedCount,
+    accepted: evidence.counts.accepted,
+    gaps: sourceGaps,
+  });
+  if (resolution.resolution === "FAILED") {
+    throw new Error(
+      `Unexplained IP Australia corpus gap: ${JSON.stringify({
+        expectedCount,
+        accepted: evidence.counts.accepted,
+        sourceGaps,
+      })}`,
+    );
+  }
+
+  const expectedOutcome = sourceGaps.length === 0 ? "SUCCESS" : "DEGRADED";
+  assertEqual(row.outcome, expectedOutcome, "production learning outcome");
+  assertEqual(evidence.outcome, expectedOutcome, "evidence outcome");
+  assertClose(row.coverage_ratio, resolution.artifactCoverage, "persisted corpus coverage");
+  assertClose(evidence.coverage.ratio, resolution.artifactCoverage, "evidence coverage ratio");
+
+  if (sourceGaps.length === 0) {
+    assertEqual(evidence.counts.fetched, expectedCount, "fetched corpus count");
+  } else {
+    assertEqual(
+      resolution.explainableGapCount,
+      expectedCount - evidence.counts.accepted,
+      "explained source gap count",
+    );
+    const unavailable = evidence.failureSignatures
+      .filter((failure) => failure.code === "SOURCE_UNAVAILABLE")
+      .reduce((total, failure) => total + failure.count, 0);
+    assertEqual(unavailable, sourceGaps.length, "SOURCE_UNAVAILABLE signature count");
+    assertEqual(Number(evidence.httpStatusCounts["404"] ?? 0), sourceGaps.length, "HTTP 404 count");
+    if (sourceGaps.some((gap) => gap.gapType !== "HTTP_404" || gap.statusCode !== 404)) {
+      throw new Error(`Production source gaps are not fully classified as authoritative HTTP 404s`);
+    }
+  }
+
   if (evidence.performance.bytes <= 0) {
     throw new Error("trusted execution bytes must be positive");
   }
@@ -107,10 +159,17 @@ try {
       ),
     );
   const lessonTypes = new Set(lessons.map((lesson) => lesson.lessonType));
-  for (const requiredLesson of ["AUTHORITATIVE_ENUMERATOR", "PLAYBOOK_SUCCESS"] as const) {
-    if (!lessonTypes.has(requiredLesson)) {
-      throw new Error(`Expected production learning lesson ${requiredLesson}`);
-    }
+  if (!lessonTypes.has("AUTHORITATIVE_ENUMERATOR")) {
+    throw new Error("Expected production learning lesson AUTHORITATIVE_ENUMERATOR");
+  }
+  if (sourceGaps.length > 0 && !lessonTypes.has("FAILURE_SIGNATURE")) {
+    throw new Error("Expected production source-gap FAILURE_SIGNATURE lesson");
+  }
+  if (sourceGaps.length > 0 && lessonTypes.has("PLAYBOOK_SUCCESS")) {
+    throw new Error("Source-gap run must not fabricate PLAYBOOK_SUCCESS");
+  }
+  if (sourceGaps.length === 0 && !lessonTypes.has("PLAYBOOK_SUCCESS")) {
+    throw new Error("Complete source run should retain PLAYBOOK_SUCCESS");
   }
   if (lessons.some((lesson) => lesson.sourceId !== sourceId || lesson.runId !== runId)) {
     throw new Error("Persisted lessons crossed the governed run/source boundary");
@@ -130,17 +189,29 @@ try {
     average_coverage: number | null;
   };
   assertEqual(Number(history.runs), 1, "isolated playbook history run count");
-  assertEqual(Number(history.success_rate), 1, "isolated playbook success rate");
-  assertEqual(Number(history.average_coverage), 1, "isolated playbook average coverage");
+  assertEqual(
+    Number(history.success_rate),
+    sourceGaps.length === 0 ? 1 : 0,
+    "isolated playbook strict success rate",
+  );
+  assertClose(
+    history.average_coverage === null ? null : Number(history.average_coverage),
+    resolution.artifactCoverage,
+    "isolated playbook average coverage",
+  );
 
   process.stdout.write(
     `${JSON.stringify(
       {
-        version: "IP_AUSTRALIA_ACQUISITION_LEARNING_LIVE_V1",
+        version: "IP_AUSTRALIA_ACQUISITION_LEARNING_LIVE_V2",
         runId,
         sourceId,
+        authoritativeInventory: expectedCount,
         accepted: evidence.counts.accepted,
-        coverage: evidence.coverage.ratio,
+        sourceGapCount: sourceGaps.length,
+        sourceGaps,
+        resolution: resolution.resolution,
+        coverage: resolution.artifactCoverage,
         trustedDurationMs: evidence.performance.durationMs,
         trustedBytes: evidence.performance.bytes,
         etagObserved: evidence.changeDetection.etagObserved,
@@ -148,7 +219,7 @@ try {
         lessonTypes: [...lessonTypes].sort(),
         playbookHistory: {
           runs: Number(history.runs),
-          successRate: Number(history.success_rate),
+          strictSuccessRate: Number(history.success_rate),
           averageCoverage: Number(history.average_coverage),
         },
         boundaries: evidence.boundaries,
