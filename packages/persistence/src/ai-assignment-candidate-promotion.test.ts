@@ -210,6 +210,66 @@ describe("governed Assignment Candidate promotion", () => {
     expect(second).toEqual(first);
   });
 
+  it("recovers exact durable intermediate writes from the same frozen plan", () => {
+    const { database, assignments, graphs, libraries } = setup();
+    const assignment: AiKnowledgeAssignmentV1 = {
+      protocolVersion: "1.0",
+      objectType: "AI_KNOWLEDGE_ASSIGNMENT",
+      assignmentId: promotionInput.targetAssignmentId,
+      jurisdiction: candidate.jurisdiction,
+      domain: candidate.domain,
+      topic: candidate.topic,
+      title: candidate.title,
+      instructionSetId: candidate.instructionSetId,
+      instructionSetRevision: candidate.instructionSetRevision,
+      language: candidate.language,
+      prompt: candidate.proposedPrompt,
+      createdAt: promotionInput.promotedAt,
+    };
+    assignments.saveAssignment(assignment);
+    graphs.saveGraph({
+      ...graph,
+      revision: 2,
+      nodes: [...graph.nodes, { assignmentId: assignment.assignmentId, role: "FOLLOW_UP" }],
+      edges: [
+        {
+          fromAssignmentId: candidate.parentAssignmentId,
+          toAssignmentId: assignment.assignmentId,
+          relation: candidate.suggestedRelation,
+        },
+      ],
+      changeReason: `Promote ${candidate.candidateId} under approval ${promotionInput.approvalRef}`,
+      triggerEvidenceRefs: [candidate.evidence[0].evidenceRef],
+      createdAt: promotionInput.promotedAt,
+    });
+    libraries.saveLibrary({
+      ...library,
+      revision: 2,
+      entries: [
+        ...library.entries,
+        {
+          sequence: 2,
+          workflow: promotionInput.workflow,
+          assignmentId: assignment.assignmentId,
+          tags: [...promotionInput.tags],
+        },
+      ],
+      changeReason: `Promote ${candidate.candidateId} under approval ${promotionInput.approvalRef}`,
+      createdAt: promotionInput.promotedAt,
+    });
+
+    const recovered = promoteAiAssignmentCandidate(database, promotionInput);
+
+    expect(recovered.assignment).toEqual(assignment);
+    expect(recovered.graph.revision).toBe(2);
+    expect(recovered.library.revision).toBe(2);
+    expect(
+      new SqliteAiAssignmentCandidatePromotionRepository(database).getByCandidateId(
+        candidate.candidateId,
+      ),
+    ).toEqual(recovered.promotion);
+  });
+
   it("refuses to reinterpret an already promoted candidate under a different approval", () => {
     const { database } = setup();
     promoteAiAssignmentCandidate(database, promotionInput);
