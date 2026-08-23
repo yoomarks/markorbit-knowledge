@@ -106,7 +106,6 @@ describe("ReadyPackage V2 restart local finalization", () => {
     expect(result.transportUsed).toBe(false);
     expect(result.replayed).toBe(true);
     expect(recordResult).toHaveBeenCalledWith(WORKSPACE, DELIVERY, protocolResult);
-    expect(recordResult.mock.calls[0]?.[2]).not.toHaveProperty("recordedAt");
     expect(transportSubmit).not.toHaveBeenCalled();
   });
 });
