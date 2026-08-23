@@ -1,0 +1,45 @@
+name: ADK08 Format Once
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format ADK-08 files
+        run: |
+          pnpm exec prettier --write \
+            packages/contracts/src/ai-assignment-library-v1.ts \
+            packages/persistence/src/ai-assignment-library-registry.ts \
+            packages/persistence/tests/ai-assignment-library-registry.test.ts
+      - name: Commit exact Prettier output
+        run: |
+          if git diff --quiet; then
+            echo "ADK-08 files already formatted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/contracts/src/ai-assignment-library-v1.ts \
+            packages/persistence/src/ai-assignment-library-registry.ts \
+            packages/persistence/tests/ai-assignment-library-registry.test.ts
+          git commit -m "style: format ADK-08 assignment library"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
