@@ -1,7 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { ProductionValidationScorecard } from "./production-validation-scorecard";
-import { SqliteProductionValidationScorecardSnapshotRepository } from "./production-validation-scorecard-snapshots";
+import {
+  SqliteProductionValidationScorecardSnapshotRepository,
+} from "./production-validation-scorecard-snapshots";
 
 function scorecard(generatedAt = "2026-08-23T00:00:00.000Z"): ProductionValidationScorecard {
   return {
@@ -59,7 +61,10 @@ describe("production validation scorecard snapshots", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteProductionValidationScorecardSnapshotRepository(database);
     repository.capture({ scorecard: scorecard(), idempotencyKey: "run-1" });
-    repository.capture({ scorecard: scorecard("2026-08-23T03:00:00.000Z"), idempotencyKey: "run-2" });
+    repository.capture({
+      scorecard: scorecard("2026-08-23T03:00:00.000Z"),
+      idempotencyKey: "run-2",
+    });
     expect(repository.list({ workspaceId: "workspace-1", waveId: "wave-1" })).toHaveLength(2);
   });
 });
