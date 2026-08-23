@@ -1,12 +1,12 @@
 # AI Distilled Knowledge Acquisition V1
 
-Status: **ADK-00 through ADK-06 implemented; live multi-provider execution evidence not yet complete**
+Status: **ADK-00 through ADK-08 implemented; ADK-07 durable production queue closed; ADK-08 initial US Trademark Assignment Library established**
 
 ## Purpose
 
 AI models are treated as external research lawyers that answer governed Knowledge assignments. Knowledge issues the assignment, records the exact provider response, extracts the assistant-authored Markdown, and preserves provenance. Knowledge does not grade the answer.
 
-The durable product idea is not one provider integration. It is a provider-replaceable acquisition lane in which the long-lived assets are the assignment, instruction-set revision, raw response, submission evidence, distilled Markdown, versioned Assignment Graph, governed Assignment Candidates and explicit production-pilot receipts.
+The durable product idea is not one provider integration. It is a provider-replaceable acquisition lane in which the long-lived assets are the assignment, instruction-set revision, raw response, submission evidence, distilled Markdown, versioned Assignment Graph, governed Assignment Candidates, durable production execution evidence and reusable Assignment Libraries.
 
 ## Authority boundary
 
@@ -40,7 +40,16 @@ legalTruthVerified = false
 recursiveAutoExecution = false
 ```
 
-Production pilots are separately governed. A pilot plan must freeze exactly three existing Assignment ids, at least two providers, an approval reference and explicit live-provider-call authorization. Pilot execution receipts distinguish real adapter execution from blocked adapter/credential states. Missing adapters or credentials can never be represented as successful production calls.
+Every Assignment Library carries:
+
+```text
+answerContentStored = false
+executionAuthorityGranted = false
+legalTruthVerified = false
+candidateAutoActivation = false
+```
+
+Production execution remains separately governed. A library entry never grants execution authority. ADK-07 queue materialization and workers still require the existing governed production-pilot and execution boundaries.
 
 ## V1 objects
 
@@ -91,6 +100,20 @@ ADK-05 persists candidates immutably, rejects graph/parent/instruction scope dri
 
 ADK-06 supplies the provider-neutral matrix runner and deterministic tests for full execution, missing-adapter and missing-credential paths. The runner never creates a provider ranking, legal-truth conclusion or candidate activation.
 
+### Durable AI Knowledge Job
+
+ADK-07 turns governed Assignment/provider cells into durable production jobs. The queue provides deterministic execution identity, atomic claim semantics, retry boundaries, stale-claim recovery, credential blocking, terminal failures, `BLOCKED_RECOVERY` quarantine for uncertain work, CAS recovery and operator recovery commands.
+
+Provider success followed by Artifact persistence uncertainty is never treated as safely replayable provider work. Raw provider response and Markdown lineage remain the durable completion evidence.
+
+### Assignment Library
+
+`AiAssignmentLibraryV1` is an immutable, versioned proposition library over already-persisted KnowledgeAssignments. It organizes reusable questions by jurisdiction, domain and workflow without storing provider answers or changing Assignment identity.
+
+ADK-08 introduces durable library persistence and the initial `kal_us_trademark_core@1` library backed by `kis_us_trademark_research_core@1`. Its first twelve US Trademark workflows are Filing, Examination, Office Action, Section 8, Section 9, Section 15, Section 71, Specimen, Assignment, Opposition, Cancellation and TTAB.
+
+Library revisions are sequential and immutable. Entries foreign-key to durable Assignments, reject jurisdiction/domain scope drift, and can be resolved by workflow. Australia and Canada are planned jurisdiction expansions and are not represented as implemented until concrete governed libraries exist.
+
 ## Provider runtime
 
 ADK-01 introduces a provider-neutral `AiKnowledgeProviderAdapter` plus the first canary adapter, `DeepSeekKnowledgeAdapter`.
@@ -101,7 +124,7 @@ A live provider request remains credential-gated. Generic CI validates determini
 
 ## Current implementation boundary
 
-ADK-00 through ADK-06 now establish:
+ADK-00 through ADK-08 now establish:
 
 - authority contracts;
 - provider-neutral runtime with DeepSeek canary;
@@ -109,7 +132,9 @@ ADK-00 through ADK-06 now establish:
 - raw provider response and Markdown derivative RawArtifact lineage;
 - immutable, versioned Assignment Graph persistence;
 - evidence-backed Assignment Candidate proposals with no activation authority;
-- governed 3-topic × multi-provider pilot orchestration with explicit blocked-state receipts.
+- governed production-pilot control surface and receipts;
+- durable production queue execution with safe retry/recovery and uncertainty quarantine;
+- immutable Assignment Libraries with an initial twelve-workflow US Trademark proposition catalog.
 
 The implementation intentionally still does **not** provide:
 
@@ -118,7 +143,8 @@ The implementation intentionally still does **not** provide:
 - model comparison or answer scoring;
 - legal-truth verification;
 - Brain validation or Core user-facing conclusions;
-- a claim that live multi-provider execution has happened without real adapters and credentials.
+- execution authority from Assignment Library membership;
+- a claim that future Australia or Canada libraries exist before their concrete governed seeds and tests are merged.
 
 ## Sequence status
 
@@ -128,6 +154,6 @@ The implementation intentionally still does **not** provide:
 4. **ADK-03 — implemented** — raw provider response + Markdown derivative integration with existing RawArtifact boundaries.
 5. **ADK-04 — implemented** — immutable, versioned Assignment Graph.
 6. **ADK-05 — implemented** — evidence-backed Assignment Candidate growth.
-7. **ADK-06 — implemented** — governed 3-topic × multi-provider production-pilot control surface and receipts.
-
-Implementation completion is not the same as live production evidence. A genuine live pilot remains incomplete until the selected providers have real adapters, their runtime credentials are present, and the resulting receipts show `EXECUTED` for the intended matrix cells.
+7. **ADK-06 — implemented** — governed multi-provider production-pilot control surface and receipts.
+8. **ADK-07 — implemented and closed** — durable production queue, worker, failure safety and operator recovery.
+9. **ADK-08 — implemented for initial US Trademark library** — governed Assignment Library contract, persistence, bootstrap and twelve-workflow US seed; Australia and Canada are future expansions.
