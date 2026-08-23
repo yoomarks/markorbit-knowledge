@@ -10,14 +10,26 @@ function scorecard(generatedAt = "2026-08-23T00:00:00.000Z"): ProductionValidati
     workspaceId: "workspace-1",
     generatedAt,
     summary: {
-      targets: 0, onboarded: 0, collectionSucceeded: 0, knowledgeVisible: 0,
-      secondRunObserved: 0, compatibilityObserved: 0, compatibilityPass: 0,
-      compatibilityDegraded: 0, compatibilityBlocked: 0, failureObserved: 0,
-      adapterRequiredObserved: 0, artifactContractObserved: 0,
-      artifactContractGapObserved: 0, structuredRemediationObserved: 0,
-      structuredRemediationRequired: 0, structuredRemediationPrepared: 0,
-      structuredRemediationInvalid: 0, structuredRemediationAwaitingWorkerBinding: 0,
-      secondRunValidated: null, manualInterventionRequired: null,
+      targets: 0,
+      onboarded: 0,
+      collectionSucceeded: 0,
+      knowledgeVisible: 0,
+      secondRunObserved: 0,
+      compatibilityObserved: 0,
+      compatibilityPass: 0,
+      compatibilityDegraded: 0,
+      compatibilityBlocked: 0,
+      failureObserved: 0,
+      adapterRequiredObserved: 0,
+      artifactContractObserved: 0,
+      artifactContractGapObserved: 0,
+      structuredRemediationObserved: 0,
+      structuredRemediationRequired: 0,
+      structuredRemediationPrepared: 0,
+      structuredRemediationInvalid: 0,
+      structuredRemediationAwaitingWorkerBinding: 0,
+      secondRunValidated: null,
+      manualInterventionRequired: null,
     },
     results: [],
   };
@@ -38,7 +50,9 @@ describe("production validation scorecard snapshots", () => {
 
     expect(replay).toEqual(first);
     expect(first.contentSha256).toMatch(/^[a-f0-9]{64}$/u);
-    expect(repository.list({ workspaceId: "workspace-1", waveId: "wave-1" })).toEqual([first]);
+    expect(repository.list({ workspaceId: "workspace-1", waveId: "wave-1" })).toEqual([
+      first,
+    ]);
   });
 
   it("keeps independently keyed captures as append-only history", () => {
