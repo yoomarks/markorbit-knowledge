@@ -8,6 +8,7 @@
     "./ai-knowledge-assignments": "./src/ai-knowledge-assignment-registry.ts",
     "./ai-assignment-graphs": "./src/ai-assignment-graph-registry.ts",
     "./ai-assignment-candidates": "./src/ai-assignment-candidate-registry.ts",
+    "./ai-assignment-candidate-promotions": "./src/ai-assignment-candidate-promotion.ts",
     "./ai-assignment-libraries": "./src/ai-assignment-library-registry.ts",
     "./us-trademark-assignment-library": "./src/us-trademark-assignment-library.ts",
     "./ai-distilled-knowledge-ingestion": "./src/ai-distilled-knowledge-ingestion.ts",
