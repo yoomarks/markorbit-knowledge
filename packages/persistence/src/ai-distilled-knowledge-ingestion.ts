@@ -53,7 +53,9 @@ function byteStream(value: Uint8Array): AsyncIterable<Uint8Array> {
 function validateInput(input: AiDistilledKnowledgeIngestionInput): void {
   const rawResponseSha256 = sha256(input.rawResponse);
   if (rawResponseSha256 !== input.submission.rawResponseSha256) {
-    throw new RegistryValidationError("AI raw provider response SHA-256 does not match submission evidence");
+    throw new RegistryValidationError(
+      "AI raw provider response SHA-256 does not match submission evidence",
+    );
   }
 
   const markdown = Buffer.from(input.artifact.content.content, "utf8");
@@ -76,7 +78,9 @@ function validateInput(input: AiDistilledKnowledgeIngestionInput): void {
     input.artifact.content.mediaType !== "text/markdown" ||
     input.artifact.content.encoding !== "utf-8"
   ) {
-    throw new RegistryValidationError("AI distilled Markdown artifact does not match frozen submission evidence");
+    throw new RegistryValidationError(
+      "AI distilled Markdown artifact does not match frozen submission evidence",
+    );
   }
 }
 
