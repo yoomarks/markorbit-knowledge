@@ -20,7 +20,7 @@
     "release:preflight": "node scripts/release-preflight.mjs",
     "release:backup-restore-drill": "node scripts/release-backup-restore-drill.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write packages/persistence/src/production-validation-scorecard-snapshots.test.ts && git diff -- packages/persistence/src/production-validation-scorecard-snapshots.test.ts && false",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
