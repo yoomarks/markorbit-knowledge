@@ -38,39 +38,55 @@ export function loadAdkAssignmentLibraryBootstrapConfig(
   };
 }
 
+function describeLibrary(library: ReturnType<typeof seedTrademarkAssignmentLibrary>) {
+  const metadata = getTrademarkAssignmentLibraryMetadata(
+    library.jurisdiction as TrademarkAssignmentLibraryJurisdiction,
+  );
+  return {
+    libraryId: library.libraryId,
+    revision: library.revision,
+    jurisdiction: library.jurisdiction,
+    domain: library.domain,
+    workflows: library.entries.map((entry) => entry.workflow),
+    assignmentIds: library.entries.map((entry) => entry.assignmentId),
+    workflowCount: library.entries.length,
+    expectedLibraryId: metadata.libraryId,
+    expectedWorkflows: metadata.workflows,
+    boundaries: library.boundaries,
+  };
+}
+
 async function main(): Promise<void> {
   const config = loadAdkAssignmentLibraryBootstrapConfig();
   const database = new DatabaseSync(config.databasePath);
   database.exec("PRAGMA foreign_keys = ON;");
 
   try {
-    const libraries =
-      config.jurisdiction === "ALL"
-        ? seedAllTrademarkAssignmentLibraries(database)
-        : [seedTrademarkAssignmentLibrary(database, config.jurisdiction)];
+    if (config.jurisdiction === "ALL") {
+      const libraries = seedAllTrademarkAssignmentLibraries(database).map(describeLibrary);
+      process.stdout.write(
+        `${JSON.stringify(
+          {
+            event: "adk.assignment-library.bootstrap.completed",
+            databasePath: config.databasePath,
+            requestedJurisdiction: "ALL",
+            libraries,
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      return;
+    }
+
+    const library = describeLibrary(seedTrademarkAssignmentLibrary(database, config.jurisdiction));
     process.stdout.write(
       `${JSON.stringify(
         {
           event: "adk.assignment-library.bootstrap.completed",
           databasePath: config.databasePath,
           requestedJurisdiction: config.jurisdiction,
-          libraries: libraries.map((library) => {
-            const metadata = getTrademarkAssignmentLibraryMetadata(
-              library.jurisdiction as TrademarkAssignmentLibraryJurisdiction,
-            );
-            return {
-              libraryId: library.libraryId,
-              revision: library.revision,
-              jurisdiction: library.jurisdiction,
-              domain: library.domain,
-              workflows: library.entries.map((entry) => entry.workflow),
-              assignmentIds: library.entries.map((entry) => entry.assignmentId),
-              workflowCount: library.entries.length,
-              expectedLibraryId: metadata.libraryId,
-              expectedWorkflows: metadata.workflows,
-              boundaries: library.boundaries,
-            };
-          }),
+          ...library,
         },
         null,
         2,
