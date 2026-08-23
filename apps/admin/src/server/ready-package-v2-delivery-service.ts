@@ -252,10 +252,18 @@ export class ReadyPackageV2DeliveryService {
     }
     if (diagnosis.state === "LOCAL_FINALIZATION_REQUIRED") {
       if (!submission.transportResult) throw evidenceInconsistent(diagnosis);
+      const transportResult = submission.transportResult;
       submission = this.dependencies.deliveries.recordResult(
         workspaceId,
         submission.submissionId,
-        submission.transportResult,
+        {
+          protocolVersion: transportResult.protocolVersion,
+          objectType: transportResult.objectType,
+          deliveryId: transportResult.deliveryId,
+          readyPackageId: transportResult.readyPackageId,
+          status: transportResult.status,
+          requestSha256: transportResult.requestSha256,
+        },
       );
       return { submission, replayed: true, transportUsed: false };
     }
