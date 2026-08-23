@@ -80,9 +80,7 @@ function loadPlan(path: string): AiProductionPilotPlanV1 {
     parsed.providers[0] !== "DEEPSEEK" ||
     parsed.providers[1] !== "OPENAI"
   ) {
-    throw new Error(
-      "Live ADK pilot provider set must be exactly DEEPSEEK,OPENAI in frozen order",
-    );
+    throw new Error("Live ADK pilot provider set must be exactly DEEPSEEK,OPENAI in frozen order");
   }
   return parsed;
 }

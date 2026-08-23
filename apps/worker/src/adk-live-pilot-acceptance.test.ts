@@ -5,11 +5,7 @@ import {
   type LivePilotReceiptView,
 } from "./adk-live-pilot-acceptance";
 
-const assignments = [
-  "kas_us_section8",
-  "kas_au_renewal",
-  "kas_ca_office_action",
-] as const;
+const assignments = ["kas_us_section8", "kas_au_renewal", "kas_ca_office_action"] as const;
 const providers = ["DEEPSEEK", "OPENAI"] as const;
 
 function receipts(): LivePilotReceiptView[] {

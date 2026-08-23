@@ -17,9 +17,7 @@ export type LivePilotLineage = {
   markdownRawArtifactId: string;
 };
 
-export function toLivePilotReceiptView(
-  receipt: LivePilotReceiptView,
-): LivePilotReceiptView {
+export function toLivePilotReceiptView(receipt: LivePilotReceiptView): LivePilotReceiptView {
   return {
     assignmentId: receipt.assignmentId,
     provider: receipt.provider,
@@ -51,17 +49,16 @@ export function assertLivePilotComplete(input: {
 
   const receiptKeys = new Set(
     input.receipts.map(
-      (receipt) =>
-        `${receipt.assignmentId}:${receipt.provider}:${receipt.submissionId ?? ""}`,
+      (receipt) => `${receipt.assignmentId}:${receipt.provider}:${receipt.submissionId ?? ""}`,
     ),
   );
   const lineageKeys = new Set(
-    input.lineage.map(
-      (entry) => `${entry.assignmentId}:${entry.provider}:${entry.submissionId}`,
-    ),
+    input.lineage.map((entry) => `${entry.assignmentId}:${entry.provider}:${entry.submissionId}`),
   );
   if (receiptKeys.size !== 6 || lineageKeys.size !== 6) {
-    throw new Error("ADK live pilot acceptance requires six unique assignment/provider submissions");
+    throw new Error(
+      "ADK live pilot acceptance requires six unique assignment/provider submissions",
+    );
   }
   for (const key of receiptKeys) {
     if (!lineageKeys.has(key)) {
