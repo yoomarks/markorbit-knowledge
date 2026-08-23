@@ -33,7 +33,10 @@ export function claimJob(job: AiKnowledgeJob): AiKnowledgeJob {
   };
 }
 
-export function markCredentialBlocked(job: AiKnowledgeJob, error: string): AiKnowledgeJob {
+export function markCredentialBlocked(
+  job: AiKnowledgeJob,
+  error: string,
+): AiKnowledgeJob {
   return {
     ...job,
     status: "BLOCKED_CREDENTIAL",
@@ -63,7 +66,10 @@ export function failJob(job: AiKnowledgeJob, error: string): AiKnowledgeJob {
   };
 }
 
-export function completeJob(job: AiKnowledgeJob, artifactIds: string[]): AiKnowledgeJob {
+export function completeJob(
+  job: AiKnowledgeJob,
+  artifactIds: string[],
+): AiKnowledgeJob {
   return {
     ...job,
     status: "SUCCEEDED",
