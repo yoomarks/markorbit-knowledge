@@ -39,7 +39,7 @@ ADK-07 remains the separate governed execution lane. ADK-08 only makes durable A
 - assignment id;
 - tags.
 
-The repository rejects missing Assignments and jurisdiction/domain scope drift. It can retrieve the latest library for a scope and resolve durable Assignments by workflow.
+Assignment identity and sequence are unique inside a library revision, but workflow is deliberately not unique. A workflow is a classification lane and may contain multiple distinct propositions as the Assignment system grows from new evidence. The repository rejects missing Assignments and jurisdiction/domain scope drift and can resolve all durable Assignments within a workflow in sequence order.
 
 ## Initial US Trademark library
 
