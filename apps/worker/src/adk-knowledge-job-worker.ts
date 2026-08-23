@@ -9,7 +9,11 @@ import {
   type AiKnowledgeAcquisition,
   type AiKnowledgeProviderAdapter,
 } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
-import type { AiKnowledgeProvider } from "@markorbit/worker-runtime/ai-production-pilot";
+import {
+  isAiProductionPilotPlanV1,
+  type AiKnowledgeProvider,
+  type AiProductionPilotPlanV1,
+} from "@markorbit/worker-runtime/ai-production-pilot";
 import {
   completeJob,
   failJob,
@@ -46,7 +50,16 @@ export type EnqueueAdkKnowledgeJobsInput = {
   store: AiKnowledgeJobStore;
   assignmentIds: readonly string[];
   providers: readonly AiKnowledgeProvider[];
+  executionScope?: string;
   executionRevision?: number;
+  maxAttempts?: number;
+  now?: () => Date;
+};
+
+export type EnqueueAdkProductionPilotInput = {
+  store: AiKnowledgeJobStore;
+  assignments: AdkAssignmentRepository;
+  plan: AiProductionPilotPlanV1;
   maxAttempts?: number;
   now?: () => Date;
 };
@@ -55,11 +68,12 @@ function jobId(executionKey: string): string {
   return `akj_${createHash("sha256").update(executionKey).digest("hex").slice(0, 32)}`;
 }
 
+export function isSupportedAdkQueueProvider(value: string): value is AiKnowledgeProvider {
+  return value === "DEEPSEEK" || value === "OPENAI";
+}
+
 function providerFromJob(job: AiKnowledgeJob): AiKnowledgeProvider | null {
-  if (job.provider === "DEEPSEEK" || job.provider === "OPENAI") {
-    return job.provider;
-  }
-  return null;
+  return isSupportedAdkQueueProvider(job.provider) ? job.provider : null;
 }
 
 function failureMessage(error: unknown): string {
@@ -78,12 +92,28 @@ function persistFailure(
   return store.save(failJob(running, error, { retryable }));
 }
 
-export function enqueueAdkKnowledgeJobs(input: EnqueueAdkKnowledgeJobsInput): AiKnowledgeJob[] {
+function resolveExecutionScope(input: EnqueueAdkKnowledgeJobsInput): string {
+  const explicit = input.executionScope?.trim();
+  if (explicit) {
+    if (input.executionRevision !== undefined) {
+      throw new Error("ADK executionScope and executionRevision cannot both be supplied");
+    }
+    if (explicit.length > 128) {
+      throw new Error("ADK executionScope must contain at most 128 characters");
+    }
+    return explicit;
+  }
+
   const revision = input.executionRevision ?? 1;
-  const maxAttempts = input.maxAttempts ?? 3;
   if (!Number.isSafeInteger(revision) || revision < 1) {
     throw new Error("ADK execution revision must be a positive integer");
   }
+  return `r${revision}`;
+}
+
+export function enqueueAdkKnowledgeJobs(input: EnqueueAdkKnowledgeJobsInput): AiKnowledgeJob[] {
+  const executionScope = resolveExecutionScope(input);
+  const maxAttempts = input.maxAttempts ?? 3;
   if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1) {
     throw new Error("ADK maxAttempts must be a positive integer");
   }
@@ -92,7 +122,7 @@ export function enqueueAdkKnowledgeJobs(input: EnqueueAdkKnowledgeJobsInput): Ai
   const queued: AiKnowledgeJob[] = [];
   for (const assignmentId of input.assignmentIds) {
     for (const provider of input.providers) {
-      const executionKey = `${assignmentId}:${provider}:r${revision}`;
+      const executionKey = `${assignmentId}:${provider}:${executionScope}`;
       const existing = input.store.getByExecutionKey(executionKey);
       if (existing) {
         queued.push(existing);
@@ -116,6 +146,32 @@ export function enqueueAdkKnowledgeJobs(input: EnqueueAdkKnowledgeJobsInput): Ai
     }
   }
   return queued;
+}
+
+export function enqueueAdkProductionPilot(input: EnqueueAdkProductionPilotInput): AiKnowledgeJob[] {
+  if (!isAiProductionPilotPlanV1(input.plan)) {
+    throw new Error("Invalid AiProductionPilotPlanV1");
+  }
+  const unsupported = input.plan.providers.filter(
+    (provider) => !isSupportedAdkQueueProvider(provider),
+  );
+  if (unsupported.length > 0) {
+    throw new Error(`ADK queue runtime does not support providers: ${unsupported.join(", ")}`);
+  }
+  for (const assignmentId of input.plan.assignmentIds) {
+    if (!input.assignments.getAssignment(assignmentId)) {
+      throw new Error(`ADK production pilot assignment ${assignmentId} was not found`);
+    }
+  }
+
+  return enqueueAdkKnowledgeJobs({
+    store: input.store,
+    assignmentIds: input.plan.assignmentIds,
+    providers: input.plan.providers,
+    executionScope: `pilot:${input.plan.pilotId}`,
+    ...(input.maxAttempts === undefined ? {} : { maxAttempts: input.maxAttempts }),
+    ...(input.now === undefined ? {} : { now: input.now }),
+  });
 }
 
 export function createRawArtifactAdkAcquisitionSink(input: {

@@ -4,10 +4,14 @@ import {
   type AiKnowledgeAcquisition,
   type AiKnowledgeProviderAdapter,
 } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
-import type { AiKnowledgeProvider } from "@markorbit/worker-runtime/ai-production-pilot";
+import type {
+  AiKnowledgeProvider,
+  AiProductionPilotPlanV1,
+} from "@markorbit/worker-runtime/ai-production-pilot";
 import { MemoryAiKnowledgeJobStore } from "./adk-knowledge-job-queue-store";
 import {
   enqueueAdkKnowledgeJobs,
+  enqueueAdkProductionPilot,
   processNextAdkKnowledgeJob,
   type AdkAssignment,
   type AdkAssignmentRepository,
@@ -17,9 +21,35 @@ const assignment = {
   assignmentId: "assignment-1",
 } as AdkAssignment;
 
+const pilotPlan: AiProductionPilotPlanV1 = {
+  protocolVersion: "1.0",
+  objectType: "AI_PRODUCTION_PILOT_PLAN",
+  pilotId: "app_adk_queue_pilot",
+  assignmentIds: ["kas_assignment_one", "kas_assignment_two", "kas_assignment_three"],
+  providers: ["DEEPSEEK", "OPENAI"],
+  approvalRef: "approval://adk/queue-pilot",
+  liveProviderCallsAuthorized: true,
+  boundaries: {
+    compareProviderQuality: false,
+    legalTruthVerified: false,
+    candidateAutoActivation: false,
+  },
+  createdAt: "2026-08-23T12:00:00.000Z",
+};
+
 function assignments(value: AdkAssignment | null = assignment): AdkAssignmentRepository {
   return {
     getAssignment: () => value,
+  };
+}
+
+function pilotAssignments(missingId?: string): AdkAssignmentRepository {
+  const ids = new Set<string>(pilotPlan.assignmentIds);
+  return {
+    getAssignment: (assignmentId) =>
+      ids.has(assignmentId) && assignmentId !== missingId
+        ? ({ ...assignment, assignmentId } as AdkAssignment)
+        : null,
   };
 }
 
@@ -62,6 +92,112 @@ describe("ADK knowledge job worker", () => {
     expect(first.id).toBe(second.id);
     expect(first.executionKey).toBe("assignment-1:OPENAI:r1");
     expect(store.list()).toHaveLength(1);
+  });
+
+  it("uses explicit execution scopes without mixing them with revision scopes", () => {
+    const store = new MemoryAiKnowledgeJobStore();
+    const now = () => new Date("2026-08-23T12:00:00.000Z");
+
+    const first = enqueueAdkKnowledgeJobs({
+      store,
+      assignmentIds: [assignment.assignmentId],
+      providers: ["OPENAI"],
+      executionScope: "pilot:app_scope_one",
+      now,
+    })[0];
+    const replayed = enqueueAdkKnowledgeJobs({
+      store,
+      assignmentIds: [assignment.assignmentId],
+      providers: ["OPENAI"],
+      executionScope: "pilot:app_scope_one",
+      now,
+    })[0];
+    const nextScope = enqueueAdkKnowledgeJobs({
+      store,
+      assignmentIds: [assignment.assignmentId],
+      providers: ["OPENAI"],
+      executionScope: "pilot:app_scope_two",
+      now,
+    })[0];
+
+    expect(first.id).toBe(replayed.id);
+    expect(first.executionKey).toBe("assignment-1:OPENAI:pilot:app_scope_one");
+    expect(nextScope.id).not.toBe(first.id);
+    expect(store.list()).toHaveLength(2);
+    expect(() =>
+      enqueueAdkKnowledgeJobs({
+        store,
+        assignmentIds: [assignment.assignmentId],
+        providers: ["OPENAI"],
+        executionScope: "pilot:app_scope_three",
+        executionRevision: 2,
+      }),
+    ).toThrow(/cannot both be supplied/u);
+  });
+
+  it("materializes a governed production pilot once per pilot identity", () => {
+    const store = new MemoryAiKnowledgeJobStore();
+    const now = () => new Date("2026-08-23T12:00:00.000Z");
+
+    const first = enqueueAdkProductionPilot({
+      store,
+      assignments: pilotAssignments(),
+      plan: pilotPlan,
+      now,
+    });
+    const replayed = enqueueAdkProductionPilot({
+      store,
+      assignments: pilotAssignments(),
+      plan: pilotPlan,
+      now,
+    });
+
+    expect(first).toHaveLength(6);
+    expect(replayed.map((job) => job.id)).toEqual(first.map((job) => job.id));
+    expect(store.list()).toHaveLength(6);
+    expect(first.every((job) => job.executionKey?.endsWith("pilot:app_adk_queue_pilot"))).toBe(
+      true,
+    );
+
+    const nextPilot = enqueueAdkProductionPilot({
+      store,
+      assignments: pilotAssignments(),
+      plan: {
+        ...pilotPlan,
+        pilotId: "app_adk_queue_pilot_two",
+        approvalRef: "approval://adk/queue-pilot-two",
+      },
+      now,
+    });
+
+    expect(nextPilot).toHaveLength(6);
+    expect(nextPilot[0].id).not.toBe(first[0].id);
+    expect(store.list()).toHaveLength(12);
+  });
+
+  it("fails closed before queue writes for unsupported providers or missing pilot assignments", () => {
+    const unsupportedStore = new MemoryAiKnowledgeJobStore();
+    expect(() =>
+      enqueueAdkProductionPilot({
+        store: unsupportedStore,
+        assignments: pilotAssignments(),
+        plan: {
+          ...pilotPlan,
+          providers: ["DEEPSEEK", "KIMI"],
+        },
+      }),
+    ).toThrow(/does not support providers: KIMI/u);
+    expect(unsupportedStore.list()).toHaveLength(0);
+
+    const missingAssignmentStore = new MemoryAiKnowledgeJobStore();
+    expect(() =>
+      enqueueAdkProductionPilot({
+        store: missingAssignmentStore,
+        assignments: pilotAssignments("kas_assignment_two"),
+        plan: pilotPlan,
+      }),
+    ).toThrow(/kas_assignment_two was not found/u);
+    expect(missingAssignmentStore.list()).toHaveLength(0);
   });
 
   it("executes one job and commits distilled plus RawArtifact lineage", async () => {
