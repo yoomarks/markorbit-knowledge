@@ -81,12 +81,14 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  process.stderr.write(
-    `${JSON.stringify({
-      event: "adk.assignment-library.bootstrap.failed",
-      message: error instanceof Error ? error.message : String(error),
-    })}\n`,
-  );
-  process.exitCode = 1;
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    process.stderr.write(
+      `${JSON.stringify({
+        event: "adk.assignment-library.bootstrap.failed",
+        message: error instanceof Error ? error.message : String(error),
+      })}\n`,
+    );
+    process.exitCode = 1;
+  });
+}
