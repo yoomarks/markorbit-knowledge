@@ -75,11 +75,8 @@ function parsePromotion(value: string): AiAssignmentCandidatePromotionV1 {
   return parsed;
 }
 
-function samePromotion(
-  existing: AiAssignmentCandidatePromotionV1,
-  expected: AiAssignmentCandidatePromotionV1,
-): boolean {
-  return JSON.stringify(existing) === JSON.stringify(expected);
+function sameDocument(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function promotionMatchesInput(
@@ -116,7 +113,7 @@ export class SqliteAiAssignmentCandidatePromotionRepository {
 
     const existing = this.getByCandidateId(value.candidateId) ?? this.getPromotion(value.promotionId);
     if (existing) {
-      if (!samePromotion(existing, value)) {
+      if (!sameDocument(existing, value)) {
         throw new RegistryConflictError(
           "AI_ASSIGNMENT_CANDIDATE_PROMOTION_IMMUTABLE_CONFLICT",
           `Assignment Candidate ${value.candidateId} already has a different promotion receipt`,
@@ -213,19 +210,16 @@ export function promoteAiAssignmentCandidate(
     };
   }
 
-  const baseGraph = graphs.getLatestGraph(candidate.graphId);
-  if (!baseGraph || baseGraph.revision !== candidate.graphRevision) {
-    throw new RegistryConflictError(
-      "AI_ASSIGNMENT_CANDIDATE_GRAPH_STALE",
-      `Assignment Candidate ${candidate.candidateId} targets stale graph ${candidate.graphId}@${candidate.graphRevision}`,
+  const baseGraph = graphs.getGraph(candidate.graphId, candidate.graphRevision);
+  if (!baseGraph) {
+    throw new RegistryValidationError(
+      `Assignment Candidate ${candidate.candidateId} references missing graph ${candidate.graphId}@${candidate.graphRevision}`,
     );
   }
-
-  const baseLibrary = libraries.getLatestLibrary(input.libraryId);
-  if (!baseLibrary || baseLibrary.revision !== input.baseLibraryRevision) {
-    throw new RegistryConflictError(
-      "AI_ASSIGNMENT_CANDIDATE_LIBRARY_STALE",
-      `Promotion requires latest library ${input.libraryId}@${input.baseLibraryRevision}`,
+  const baseLibrary = libraries.getLibrary(input.libraryId, input.baseLibraryRevision);
+  if (!baseLibrary) {
+    throw new RegistryValidationError(
+      `Promotion references missing library ${input.libraryId}@${input.baseLibraryRevision}`,
     );
   }
   if (
@@ -242,19 +236,19 @@ export function promoteAiAssignmentCandidate(
   if (!baseGraph.nodes.some((node) => node.assignmentId === candidate.parentAssignmentId)) {
     throw new RegistryConflictError(
       "AI_ASSIGNMENT_CANDIDATE_PARENT_MISSING",
-      `Candidate parent ${candidate.parentAssignmentId} is not present in latest graph`,
+      `Candidate parent ${candidate.parentAssignmentId} is not present in the approved graph revision`,
     );
   }
   if (baseGraph.nodes.some((node) => node.assignmentId === input.targetAssignmentId)) {
     throw new RegistryConflictError(
       "AI_ASSIGNMENT_CANDIDATE_TARGET_ALREADY_IN_GRAPH",
-      `Target Assignment ${input.targetAssignmentId} is already in the graph`,
+      `Target Assignment ${input.targetAssignmentId} is already in the approved graph revision`,
     );
   }
   if (baseLibrary.entries.some((entry) => entry.assignmentId === input.targetAssignmentId)) {
     throw new RegistryConflictError(
       "AI_ASSIGNMENT_CANDIDATE_TARGET_ALREADY_IN_LIBRARY",
-      `Target Assignment ${input.targetAssignmentId} is already in the library`,
+      `Target Assignment ${input.targetAssignmentId} is already in the approved library revision`,
     );
   }
 
@@ -335,6 +329,28 @@ export function promoteAiAssignmentCandidate(
   };
   if (!isAiAssignmentCandidatePromotionV1(promotion)) {
     throw new RegistryValidationError("Promotion input does not produce a valid governed receipt");
+  }
+
+  const latestGraph = graphs.getLatestGraph(baseGraph.graphId);
+  if (
+    !latestGraph ||
+    (latestGraph.revision !== baseGraph.revision && !sameDocument(latestGraph, graph))
+  ) {
+    throw new RegistryConflictError(
+      "AI_ASSIGNMENT_CANDIDATE_GRAPH_STALE",
+      `Assignment Candidate ${candidate.candidateId} targets stale graph ${candidate.graphId}@${candidate.graphRevision}`,
+    );
+  }
+
+  const latestLibrary = libraries.getLatestLibrary(baseLibrary.libraryId);
+  if (
+    !latestLibrary ||
+    (latestLibrary.revision !== baseLibrary.revision && !sameDocument(latestLibrary, library))
+  ) {
+    throw new RegistryConflictError(
+      "AI_ASSIGNMENT_CANDIDATE_LIBRARY_STALE",
+      `Promotion requires latest library ${input.libraryId}@${input.baseLibraryRevision}`,
+    );
   }
 
   assignments.saveAssignment(assignment);
