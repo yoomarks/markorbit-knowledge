@@ -51,9 +51,7 @@ describe("ADK-10 multi-jurisdiction trademark assignment libraries", () => {
     const repository = new SqliteAiAssignmentLibraryRepository(database);
     const assignments = new SqliteAiKnowledgeAssignmentRepository(database);
 
-    expect(library.entries.map((entry) => entry.workflow)).toEqual(
-      AU_TRADEMARK_LIBRARY_WORKFLOWS,
-    );
+    expect(library.entries.map((entry) => entry.workflow)).toEqual(AU_TRADEMARK_LIBRARY_WORKFLOWS);
     expect(library.entries).toHaveLength(10);
     for (const expected of AU_TRADEMARK_LIBRARY_ASSIGNMENTS) {
       const stored = assignments.getAssignment(expected.assignmentId);
@@ -71,9 +69,7 @@ describe("ADK-10 multi-jurisdiction trademark assignment libraries", () => {
     const repository = new SqliteAiAssignmentLibraryRepository(database);
     const assignments = new SqliteAiKnowledgeAssignmentRepository(database);
 
-    expect(library.entries.map((entry) => entry.workflow)).toEqual(
-      CA_TRADEMARK_LIBRARY_WORKFLOWS,
-    );
+    expect(library.entries.map((entry) => entry.workflow)).toEqual(CA_TRADEMARK_LIBRARY_WORKFLOWS);
     expect(library.entries).toHaveLength(10);
     for (const expected of CA_TRADEMARK_LIBRARY_ASSIGNMENTS) {
       const stored = assignments.getAssignment(expected.assignmentId);
