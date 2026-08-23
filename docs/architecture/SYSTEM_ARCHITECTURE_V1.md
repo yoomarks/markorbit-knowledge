@@ -113,3 +113,19 @@ Schema v1 does not select:
 - full JSON Schema validation library.
 
 These implementation decisions must conform to the locked contracts rather than redefining them.
+
+## 11. Governed discovery and production validation
+
+Discovery candidates, registered Sources and authorized CollectionPlans are separate lifecycle states. A data-driven onboarding manifest may create governed Discovery candidates, but it cannot activate a Source, authorize collection or create a production schedule.
+
+Production validation derives an operational scorecard from durable Source, CollectionRun, RawArtifact, ConversionRun, Staging and compatibility evidence. A manifest target remains an inventory declaration; observed success must come from an actual governed run.
+
+## 12. Objective change evidence
+
+Knowledge may project objective before/after facts from immutable evidence, including canonical content changes, raw binary replacements, metadata changes and linked-attachment lineage. It must not assign legal effect, importance, urgency, recommendations or user-facing narrative. Those meanings belong to Core/Brain.
+
+## 13. Acquisition intelligence
+
+Acquisition intelligence learns how to collect evidence more reliably. It records measured source structure, acquisition run evidence, deterministic operational lessons, governed strategy candidates and explainable playbook selections.
+
+Strategy selection cannot authorize collection or activate a candidate. Promotion remains explicit and audited, and production activation requires a HUMAN actor. Source-specific adapters should remain thin discovery or normalization layers over reusable structural acquisition profiles.

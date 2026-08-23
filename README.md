@@ -26,17 +26,28 @@ Ready Package
 MarkOrbit Core
 ```
 
-## Release status
+## Current status
 
 Repository package version: **0.1.0**.
 
-The current v0.1 control-plane trunk is **freeze-ready** after the 2026-08-12 release-readiness closeout. K01-K16 and the K-EXT-A through K-EXT-E production/operations extensions form the completed architectural backbone for this release line.
+The v0.1 control-plane trunk became **freeze-ready** on 2026-08-12. That decision remains the architectural baseline, but it is no longer the complete description of the repository.
+
+The current post-freeze phase is **official-source production validation and acquisition intelligence**:
+
+- governed data-driven onboarding for a 15-authority Wave 1 manifest;
+- durable production scorecards derived from Source, Run, RawArtifact, Conversion and Staging evidence;
+- objective Change Evidence across canonical content, raw binary replacements and linked attachments;
+- live golden-corpus validation for USPTO, WIPO, IP Australia and Country Index public material;
+- a governed acquisition-learning loop that records SourceFingerprint, run evidence, deterministic lessons, strategy candidates and explainable strategy selections;
+- reusable structural acquisition profiles for static indexes, TOC graphs, jurisdiction indexes and API document catalogs.
+
+The 2026-08-22 post-freeze closeout proves all current acquisition-intelligence PR gates green, including USPTO/WIPO/Country Index learning and the full IP Australia acquisition, change-watch and bulk-conversion paths. It does **not** declare all 15 Wave 1 authorities production-validated or claim persistent production deployment.
 
 This does **not** mean every source/provider named in the original PRD v1.0 Draft is implemented. DATABASE connector breadth can be added later through the existing contracts without reopening the trunk architecture.
 
 The principal external activation dependency is the dedicated **MarkOrbit Core ReadyPackage V2 receiver**. Knowledge keeps V2 outbound transport gated unless a dedicated V2 endpoint/protocol is explicitly configured; the missing Core-side receiver therefore blocks V2 production activation, not the internal Knowledge v0.1 freeze. V2 must never fall back to the frozen V1 consumer.
 
-See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md) for the freeze decision, release gates, deferred breadth and post-freeze work order.
+See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md) for the frozen baseline and [Post-freeze Production Validation Closeout](docs/release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md) for the current state and next production gates.
 
 ## Implemented production backbone
 
@@ -195,6 +206,8 @@ Normal pull-request validation covers formatting, lint, typecheck, tests and bui
 
 - [Product requirements v1.0 Draft](docs/product/MarkOrbit_Knowledge_PRD_v1.0.md)
 - [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md)
+- [Post-freeze Production Validation Closeout](docs/release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md)
+- [Production Validation Wave 1](docs/ops/production-validation-wave-1.md)
 - [K-EXT-E Operations Readiness Runbook](docs/operations/K_EXT_E_OPERATIONS_READINESS_RUNBOOK.md)
 - [Knowledge v0.1 Backup and Restore](docs/operations/KNOWLEDGE_V0_1_BACKUP_RESTORE.md)
 
@@ -202,6 +215,7 @@ Normal pull-request validation covers formatting, lint, typecheck, tests and bui
 
 - [System boundaries](docs/architecture/SYSTEM_BOUNDARIES.md)
 - [System architecture v1](docs/architecture/SYSTEM_ARCHITECTURE_V1.md)
+- [Acquisition Intelligence Learning Loop](docs/architecture/ACQUISITION_INTELLIGENCE_LEARNING_LOOP.md)
 - [Schema v1 guide](docs/architecture/SCHEMA_V1.md)
 - [Execution Contract v1](docs/architecture/EXECUTION_CONTRACT_V1.md)
 - [Worker Protocol v1](docs/architecture/WORKER_PROTOCOL_V1.md)
