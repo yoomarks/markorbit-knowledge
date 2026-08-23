@@ -20,6 +20,20 @@ The harness will not create a pilot plan on the fly. `MARKORBIT_ADK_LIVE_PLAN_PA
 
 The three Assignment ids must already exist in the target Knowledge SQLite registry and must reference immutable InstructionSet revisions.
 
+## Preflight
+
+Before exposing provider credentials or starting the run, verify all of the following:
+
+- the plan file already exists and will not be edited during execution;
+- the three Assignment ids resolve from the exact SQLite database selected for the run;
+- the worker identity and active lease belong to the intended Knowledge workspace/source scope;
+- the content-addressed storage root is the storage root associated with that database/runtime;
+- `MARKORBIT_ADK_LIVE_RECEIPT_PATH`, when used, points to a path that does not already exist;
+- no provider key appears in the plan file, shell history, command arguments, issue comments or receipt path;
+- the operator records the exact repository commit used for the live run outside the secret-bearing environment.
+
+A failed preflight is a blocked run, not permission to create replacement Assignments, relax the provider set or bypass the authenticated RawArtifact lifecycle.
+
 ## Runtime secrets
 
 Provider credentials are read only from runtime environment variables:
