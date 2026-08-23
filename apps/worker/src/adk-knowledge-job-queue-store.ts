@@ -170,14 +170,7 @@ export class SqliteAiKnowledgeJobStore implements AiKnowledgeJobStore {
          SET status = ?, attempts = ?, document_json = ?, updated_at = ?
          WHERE id = ? AND status = ?`,
       )
-      .run(
-        job.status,
-        job.attempts,
-        JSON.stringify(job),
-        job.updatedAt,
-        job.id,
-        expectedStatus,
-      );
+      .run(job.status, job.attempts, JSON.stringify(job), job.updatedAt, job.id, expectedStatus);
     return Number(result.changes) === 1 ? clone(job) : undefined;
   }
 
