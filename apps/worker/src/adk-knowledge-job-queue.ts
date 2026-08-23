@@ -37,6 +37,10 @@ export function markCredentialBlocked(
   job: AiKnowledgeJob,
   error: string,
 ): AiKnowledgeJob {
+  if (job.status !== "CLAIMED") {
+    throw new Error("Only claimed jobs can be credential-blocked");
+  }
+
   return {
     ...job,
     status: "BLOCKED_CREDENTIAL",
@@ -46,6 +50,10 @@ export function markCredentialBlocked(
 }
 
 export function markRunning(job: AiKnowledgeJob): AiKnowledgeJob {
+  if (job.status !== "CLAIMED") {
+    throw new Error("Only claimed jobs can start running");
+  }
+
   return {
     ...job,
     status: "RUNNING",
@@ -54,6 +62,10 @@ export function markRunning(job: AiKnowledgeJob): AiKnowledgeJob {
 }
 
 export function failJob(job: AiKnowledgeJob, error: string): AiKnowledgeJob {
+  if (job.status !== "RUNNING") {
+    throw new Error("Only running jobs can fail");
+  }
+
   const attempts = job.attempts + 1;
   const maxAttempts = job.maxAttempts ?? 3;
 
@@ -66,14 +78,35 @@ export function failJob(job: AiKnowledgeJob, error: string): AiKnowledgeJob {
   };
 }
 
+export function requeueJob(job: AiKnowledgeJob): AiKnowledgeJob {
+  if (job.status !== "RETRY_PENDING") {
+    throw new Error("Only retry-pending jobs can be requeued");
+  }
+
+  return {
+    ...job,
+    status: "QUEUED",
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function completeJob(
   job: AiKnowledgeJob,
   artifactIds: string[],
 ): AiKnowledgeJob {
+  if (job.status !== "RUNNING") {
+    throw new Error("Only running jobs can complete");
+  }
+
+  if (artifactIds.length === 0) {
+    throw new Error("Successful jobs require at least one artifact");
+  }
+
   return {
     ...job,
     status: "SUCCEEDED",
     artifactIds,
+    error: undefined,
     updatedAt: new Date().toISOString(),
   };
 }
