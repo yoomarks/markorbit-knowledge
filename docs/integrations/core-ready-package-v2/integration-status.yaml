@@ -1,0 +1,98 @@
+schema_version: 1
+integration:
+  id: MO-KNOWLEDGE-CORE-KV2-COMPLETION-2026-08-23
+  name: knowledge-core-ready-package-v2
+  stage: consumer_completion
+  status: active
+  provider_status: protocol_frozen
+  consumer_status: wp03_wp05_required
+  initiated_at: 2026-08-23
+  production_authorization: false
+baselines:
+  knowledge:
+    repository: yoomarks/markorbit-knowledge
+    role: provider-authority
+    current_main_sha_at_freeze: 5e68862f3e9b7a6522ab0e22aeccd1a426b9cebc
+    frozen_protocol_sha: 3932b7cd5ee0235d3bb0f9e23ceab7cc71e45f7d
+    delivery_protocol_version: "1.0"
+    content_export_contract_version: "2.0"
+  core:
+    repository: yoomarks/markorbit
+    role: consumer-authority
+    implementation_baseline_sha: a8035efff46a2e71a4613abd1927b18dadff086b
+    existing_v2_origin_pr: 91
+    existing_v2_origin_merge_sha: 0551fc49a9adb683463162237f71de8970807020
+    existing_migration: 0048_core_knowledge_v2_deliveries
+    existing_endpoint: POST /internal/knowledge/ready-packages/v2/deliveries
+    existing_body_limit: 12_MiB
+    existing_normal_durable_status: RECEIVED
+frozen_protocol_sources:
+  repository: yoomarks/markorbit-knowledge
+  commit_sha: 3932b7cd5ee0235d3bb0f9e23ceab7cc71e45f7d
+  files:
+    - packages/contracts/src/ready-package-v2-delivery-v1.ts
+    - packages/contracts/src/ready-package-content-export-v2.ts
+    - packages/contracts/src/ready-package-v2.ts
+    - docs/architecture/READY_PACKAGE_V2_DELIVERY_V1.md
+  modification_authorized_by_this_task: false
+transport_contract:
+  endpoint: POST /internal/knowledge/ready-packages/v2/deliveries
+  required_headers:
+    content_type: application/json
+    idempotency_key: ready-package-v2-delivery:<deliveryId>
+    internal_authorization: x-markorbit-internal-authorization
+    protocol_header: x-markorbit-ready-package-v2-delivery-protocol
+    protocol_value: "1.0"
+  v2_to_v1_fallback_allowed: false
+  second_v2_endpoint_allowed: false
+  second_delivery_identity_allowed: false
+work_packages:
+  - id: CORE-KV2-WP-01
+    status: baseline_implemented_regression_required
+  - id: CORE-KV2-WP-02
+    status: baseline_implemented_incremental_migration_only_if_needed
+    migration_lock: 0048_core_knowledge_v2_deliveries_must_not_be_rewritten
+  - id: CORE-KV2-WP-03
+    status: required
+    scope: content_export_v2_and_vault_provenance_integrity
+  - id: CORE-KV2-WP-04
+    status: required
+    scope: durable_consumer_ACCEPTED_and_recovery_semantics
+  - id: CORE-KV2-WP-05
+    status: required
+    scope: eight_real_cross_repo_e2e
+acceptance_gate:
+  required_e2e:
+    - E2E-01_normal_accepted_delivery
+    - E2E-02_core_persists_response_lost_exact_retry
+    - E2E-03_knowledge_restart_before_finalize
+    - E2E-04_knowledge_frozen_submission_corruption_fail_closed
+    - E2E-05_deterministic_core_rejection
+    - E2E-06_same_key_different_body_conflict
+    - E2E-07_concurrent_duplicate_single_logical_delivery
+    - E2E-08_v1_regression
+  real_http_required: true
+  real_core_postgresql_required: true
+  real_knowledge_sqlite_required: true
+  process_restart_required: true
+  repository_local_mocks_sufficient: false
+  completion_receipt_required: true
+  verbal_acceptance_sufficient: false
+post_core_completion:
+  knowledge_independent_non_production_acceptance_required: true
+  fixed_commits_required: true
+  persisted_ACCEPTED_required: true
+  knowledge_finalize_required: true
+  production_activation_allowed_by_this_task: false
+parallel_boundaries:
+  data_engine_requirement: MO-DE-006
+  may_run_in_parallel: true
+  shared_business_tables: false
+  shared_protocol: false
+  shared_framework_refactor: false
+  data_engine_blocks_knowledge_v2: false
+  mo_de_007_008_may_start: false
+authoritative_documents:
+  next_tasks: NEXT_TASKS.md
+  formal_task: docs/tasks/MarkOrbit_Core_Knowledge_Formal_Integration_Task_2026-08-23.md
+  superseded_task: docs/tasks/MARKORBIT-CORE-READY-PACKAGE-V2-RECEIVER-2026-08-23.md
