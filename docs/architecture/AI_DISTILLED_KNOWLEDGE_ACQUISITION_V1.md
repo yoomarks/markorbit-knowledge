@@ -1,12 +1,12 @@
 # AI Distilled Knowledge Acquisition V1
 
-Status: **ADK-00 / ADK-01 scope freeze**
+Status: **ADK-00 through ADK-04 implemented; ADK-05 / ADK-06 not started**
 
 ## Purpose
 
 AI models are treated as external research lawyers that answer governed Knowledge assignments. Knowledge issues the assignment, records the exact provider response, extracts the assistant-authored Markdown, and preserves provenance. Knowledge does not grade the answer.
 
-The durable product idea is not one provider integration. It is a provider-replaceable acquisition lane in which the long-lived assets are the assignment, instruction-set revision, raw response, submission evidence and distilled Markdown.
+The durable product idea is not one provider integration. It is a provider-replaceable acquisition lane in which the long-lived assets are the assignment, instruction-set revision, raw response, submission evidence, distilled Markdown and versioned Assignment Graph.
 
 ## Authority boundary
 
@@ -22,6 +22,15 @@ Every distilled artifact therefore carries:
 sourceKind = SYNTHETIC_AI
 legalTruthVerified = false
 ```
+
+Every Assignment Graph also carries a fixed governance boundary:
+
+```text
+executionAuthorityGranted = false
+legalTruthVerified = false
+```
+
+A graph may describe which governed questions are roots and how follow-up questions relate. It never authorizes a provider call, scheduler action or recursive execution.
 
 ## V1 objects
 
@@ -39,6 +48,8 @@ legalTruthVerified = false
 - creation time.
 
 The assignment, not the provider, is the durable knowledge-engineering asset. The same assignment may later be sent to multiple providers without changing its identity.
+
+ADK-02 persists KnowledgeAssignments and immutable InstructionSet revisions. Revisions are sequential and cannot be rewritten after persistence.
 
 ### Research Submission
 
@@ -59,6 +70,24 @@ Credentials are never part of the contract or stored submission.
 
 The provider response is primary acquisition evidence; Markdown is a derivative knowledge artifact. This mirrors the existing `HTML/JSON -> RawArtifact -> Markdown` Knowledge design rather than creating an AI-only truth store.
 
+ADK-03 sends the exact provider JSON through the existing authenticated Worker/lease RawArtifact lifecycle first. The Markdown derivative is ingested through the same lifecycle only after the raw provider artifact is durable, with `parentArtifactIds` linking the Markdown artifact back to its raw response.
+
+### Assignment Graph
+
+`AiAssignmentGraphV1` is an immutable, versioned topology of already-persisted KnowledgeAssignments within one jurisdiction/domain scope.
+
+A graph revision contains:
+
+- one or more root assignments;
+- follow-up assignments;
+- directed `DECOMPOSES`, `DEPENDS_ON` or `SUPPORTS` relationships;
+- a change reason and optional evidence refs;
+- fixed `executionAuthorityGranted=false` and `legalTruthVerified=false` boundaries.
+
+Graph revisions are sequential and immutable. All referenced assignments must already exist, every node must remain in the graph jurisdiction/domain, edges must reference graph nodes, and the resulting topology must be acyclic.
+
+ADK-04 persists graph snapshots, nodes and edges relationally with foreign-key linkage back to durable KnowledgeAssignments. Graph mutation therefore requires a new revision rather than rewriting history.
+
 ## Provider runtime
 
 ADK-01 introduces a provider-neutral `AiKnowledgeProviderAdapter` plus the first canary adapter, `DeepSeekKnowledgeAdapter`.
@@ -75,30 +104,37 @@ The DeepSeek adapter:
 - classifies contract/content/credential failures as deterministic;
 - never marks legal truth as verified.
 
-## What ADK-01 does not do
+A live provider request remains credential-gated. Generic CI validates the deterministic transport and evidence boundaries without pretending that a production credential was used.
 
-ADK-01 intentionally does not yet add:
+## Current implementation boundary
 
-- database persistence for assignments or submissions;
-- a scheduler/queue for assignments;
-- a growing Assignment Graph;
-- instruction-set revision persistence;
+ADK-00 through ADK-04 now establish:
+
+- the authority contract;
+- provider-neutral runtime with a DeepSeek canary;
+- durable KnowledgeAssignments and immutable InstructionSet revisions;
+- exact raw provider response and Markdown derivative integration with RawArtifact lineage;
+- immutable, versioned Assignment Graph persistence.
+
+The implementation intentionally does **not** yet add:
+
 - automatic assignment-candidate discovery;
+- candidate activation;
+- recursive follow-up execution;
+- a production assignment scheduler;
 - model comparison or answer scoring;
-- Brain validation;
-- production bulk execution;
-- automatic calls when a credential is absent.
-
-These remain later ADK work packages. The initial implementation proves the provider-neutral acquisition contract and the raw-response-to-Markdown integrity boundary without reopening the frozen Source/RawArtifact architecture.
+- legal-truth verification;
+- Brain validation or Core user-facing conclusions;
+- production multi-provider bulk execution.
 
 ## Planned sequence
 
-1. **ADK-00** — architecture and authority contract.
-2. **ADK-01** — provider-neutral runtime + DeepSeek canary.
-3. **ADK-02** — durable KnowledgeAssignment and immutable InstructionSet revisions.
-4. **ADK-03** — durable raw submission + Markdown artifact integration with existing RawArtifact/conversion boundaries.
-5. **ADK-04** — versioned Assignment Graph.
-6. **ADK-05** — evidence-backed Assignment Candidate growth from official, professional, industry and AI artifacts.
-7. **ADK-06** — governed 3-topic × multi-provider production pilot.
+1. **ADK-00 — implemented** — architecture and authority contract.
+2. **ADK-01 — implemented** — provider-neutral runtime + DeepSeek canary.
+3. **ADK-02 — implemented** — durable KnowledgeAssignment and immutable InstructionSet revisions.
+4. **ADK-03 — implemented** — raw provider response + Markdown derivative integration with existing RawArtifact boundaries.
+5. **ADK-04 — implemented** — immutable, versioned Assignment Graph.
+6. **ADK-05 — not started** — evidence-backed Assignment Candidate growth from official, professional, industry and AI artifacts.
+7. **ADK-06 — not started** — governed 3-topic × multi-provider production pilot.
 
 Assignment growth may discover candidates automatically, but activation must remain governed. AI-generated follow-up questions must never recursively authorize their own execution.
