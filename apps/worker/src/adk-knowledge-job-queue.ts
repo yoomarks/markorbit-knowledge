@@ -5,7 +5,8 @@ export type AiKnowledgeJobStatus =
   | "SUCCEEDED"
   | "FAILED"
   | "RETRY_PENDING"
-  | "BLOCKED_CREDENTIAL";
+  | "BLOCKED_CREDENTIAL"
+  | "BLOCKED_RECOVERY";
 
 export type AiKnowledgeJob = {
   id: string;
@@ -92,6 +93,46 @@ export function requeueJob(job: AiKnowledgeJob): AiKnowledgeJob {
   return {
     ...job,
     status: "QUEUED",
+    error: undefined,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function requeueCredentialBlockedJob(job: AiKnowledgeJob): AiKnowledgeJob {
+  if (job.status !== "BLOCKED_CREDENTIAL") {
+    throw new Error("Only credential-blocked jobs can be requeued");
+  }
+
+  return {
+    ...job,
+    status: "QUEUED",
+    error: undefined,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function recoverClaimedJob(job: AiKnowledgeJob): AiKnowledgeJob {
+  if (job.status !== "CLAIMED") {
+    throw new Error("Only claimed jobs can be recovered safely");
+  }
+
+  return {
+    ...job,
+    status: "QUEUED",
+    error: undefined,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function blockJobForRecovery(job: AiKnowledgeJob, error: string): AiKnowledgeJob {
+  if (job.status !== "RUNNING") {
+    throw new Error("Only running jobs can be blocked for recovery");
+  }
+
+  return {
+    ...job,
+    status: "BLOCKED_RECOVERY",
+    error,
     updatedAt: new Date().toISOString(),
   };
 }

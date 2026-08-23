@@ -3,7 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { failJob, markRunning, type AiKnowledgeJob } from "./adk-knowledge-job-queue";
+import {
+  blockJobForRecovery,
+  failJob,
+  markRunning,
+  recoverClaimedJob,
+  type AiKnowledgeJob,
+} from "./adk-knowledge-job-queue";
 import {
   MemoryAiKnowledgeJobStore,
   SqliteAiKnowledgeJobStore,
@@ -107,6 +113,33 @@ describe("ADK knowledge job store", () => {
 
     expect(store.get(job.id)?.status).toBe("RETRY_PENDING");
     expect(store.get(job.id)?.attempts).toBe(1);
+    database.close();
+  });
+
+  it("applies recovery updates only when the persisted status still matches", () => {
+    const database = new DatabaseSync(":memory:");
+    const store = new SqliteAiKnowledgeJobStore(database);
+    store.put(job);
+    const claimed = store.claimNext()!;
+
+    expect(store.saveIfStatus(recoverClaimedJob(claimed), "CLAIMED")?.status).toBe("QUEUED");
+    expect(store.saveIfStatus(recoverClaimedJob(claimed), "CLAIMED")).toBeUndefined();
+    expect(store.get(job.id)?.status).toBe("QUEUED");
+    database.close();
+  });
+
+  it("persists blocked-recovery states for uncertain running work", () => {
+    const database = new DatabaseSync(":memory:");
+    const store = new SqliteAiKnowledgeJobStore(database);
+    store.put(job);
+    const running = markRunning(store.claimNext()!);
+    store.save(running);
+
+    const blocked = blockJobForRecovery(running, "uncertain provider execution");
+    store.save(blocked);
+
+    expect(store.get(job.id)?.status).toBe("BLOCKED_RECOVERY");
+    expect(store.get(job.id)?.error).toBe("uncertain provider execution");
     database.close();
   });
 });

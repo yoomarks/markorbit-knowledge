@@ -7,6 +7,7 @@
     "start": "tsx src/main.ts",
     "adk:pilot:live": "tsx src/run-adk-live-pilot.ts",
     "adk:queue:enqueue": "tsx src/run-adk-queue-enqueue.ts",
+    "adk:queue:recover": "tsx src/run-adk-queue-recover.ts",
     "adk:queue:worker": "tsx src/run-adk-queue-worker.ts",
     "bootstrap:api": "tsx src/bootstrap-api.ts",
     "bootstrap:github": "tsx src/bootstrap-github.ts",

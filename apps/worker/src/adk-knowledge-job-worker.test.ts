@@ -13,6 +13,7 @@ import {
   enqueueAdkKnowledgeJobs,
   enqueueAdkProductionPilot,
   processNextAdkKnowledgeJob,
+  recoverAdkKnowledgeJobs,
   type AdkAssignment,
   type AdkAssignmentRepository,
 } from "./adk-knowledge-job-worker";
@@ -283,6 +284,44 @@ describe("ADK knowledge job worker", () => {
     expect(result?.attempts).toBe(1);
   });
 
+  it("quarantines persistence uncertainty after provider success instead of replaying provider work", async () => {
+    const store = new MemoryAiKnowledgeJobStore();
+    enqueue(store);
+    let providerCalls = 0;
+    const adapter: AiKnowledgeProviderAdapter = {
+      provider: "OPENAI",
+      acquire: async () => {
+        providerCalls += 1;
+        return acquisition();
+      },
+    };
+
+    const result = await processNextAdkKnowledgeJob({
+      store,
+      assignments: assignments(),
+      adapters: adapters(adapter),
+      sink: async () => {
+        throw new Error("storage temporarily unavailable");
+      },
+    });
+
+    expect(result?.status).toBe("BLOCKED_RECOVERY");
+    expect(result?.error).toMatch(/AI_ARTIFACT_PERSISTENCE_UNCERTAIN/u);
+    expect(providerCalls).toBe(1);
+    expect(
+      await processNextAdkKnowledgeJob({
+        store,
+        assignments: assignments(),
+        adapters: adapters(adapter),
+        sink: async () => ({
+          rawProviderArtifactId: "raw-provider-1",
+          markdownRawArtifactId: "raw-markdown-1",
+        }),
+      }),
+    ).toBeUndefined();
+    expect(providerCalls).toBe(1);
+  });
+
   it("fails non-retryable provider errors immediately", async () => {
     const store = new MemoryAiKnowledgeJobStore();
     enqueue(store);
@@ -334,7 +373,7 @@ describe("ADK knowledge job worker", () => {
     expect(missingAdapter?.error).toMatch(/AI_PROVIDER_ADAPTER_MISSING/u);
   });
 
-  it("rejects mismatched or duplicate lineage before success", async () => {
+  it("rejects mismatched lineage and quarantines duplicate persisted lineage", async () => {
     const mismatchStore = new MemoryAiKnowledgeJobStore();
     enqueue(mismatchStore);
     const mismatchedAdapter: AiKnowledgeProviderAdapter = {
@@ -368,7 +407,82 @@ describe("ADK knowledge job worker", () => {
         markdownRawArtifactId: "raw-markdown-1",
       }),
     });
-    expect(duplicate?.status).toBe("FAILED");
-    expect(duplicate?.error).toBe("AI_ACQUISITION_LINEAGE_NOT_UNIQUE");
+    expect(duplicate?.status).toBe("BLOCKED_RECOVERY");
+    expect(duplicate?.error).toBe("AI_ACQUISITION_LINEAGE_REQUIRES_RECONCILIATION");
+  });
+
+  it("recovers only explicitly safe queue states and quarantines stale running work", () => {
+    const store = new MemoryAiKnowledgeJobStore();
+    const retryPending = enqueueAdkKnowledgeJobs({
+      store,
+      assignmentIds: [assignment.assignmentId],
+      providers: ["OPENAI"],
+      executionScope: "recovery:retry",
+      now: () => new Date("2026-08-23T10:00:00.000Z"),
+    })[0];
+    store.save({
+      ...retryPending,
+      status: "RETRY_PENDING",
+      attempts: 1,
+      error: "timeout",
+      updatedAt: "2026-08-23T10:05:00.000Z",
+    });
+
+    const credentialBlocked = enqueueAdkKnowledgeJobs({
+      store,
+      assignmentIds: [assignment.assignmentId],
+      providers: ["OPENAI"],
+      executionScope: "recovery:credential",
+      now: () => new Date("2026-08-23T10:00:00.000Z"),
+    })[0];
+    store.save({
+      ...credentialBlocked,
+      status: "BLOCKED_CREDENTIAL",
+      error: "missing key",
+      updatedAt: "2026-08-23T10:05:00.000Z",
+    });
+
+    const staleClaimed = enqueueAdkKnowledgeJobs({
+      store,
+      assignmentIds: [assignment.assignmentId],
+      providers: ["OPENAI"],
+      executionScope: "recovery:claimed",
+      now: () => new Date("2026-08-23T10:00:00.000Z"),
+    })[0];
+    store.save({
+      ...staleClaimed,
+      status: "CLAIMED",
+      updatedAt: "2026-08-23T10:05:00.000Z",
+    });
+
+    const staleRunning = enqueueAdkKnowledgeJobs({
+      store,
+      assignmentIds: [assignment.assignmentId],
+      providers: ["OPENAI"],
+      executionScope: "recovery:running",
+      now: () => new Date("2026-08-23T10:00:00.000Z"),
+    })[0];
+    store.save({
+      ...staleRunning,
+      status: "RUNNING",
+      updatedAt: "2026-08-23T10:05:00.000Z",
+    });
+
+    const result = recoverAdkKnowledgeJobs({
+      store,
+      staleBefore: new Date("2026-08-23T11:00:00.000Z"),
+      requeueRetryPending: true,
+      requeueCredentialBlocked: true,
+    });
+
+    expect(result.requeuedRetryPending).toEqual([retryPending.id]);
+    expect(result.requeuedCredentialBlocked).toEqual([credentialBlocked.id]);
+    expect(result.requeuedStaleClaimed).toEqual([staleClaimed.id]);
+    expect(result.blockedStaleRunning).toEqual([staleRunning.id]);
+    expect(store.get(retryPending.id)?.status).toBe("QUEUED");
+    expect(store.get(credentialBlocked.id)?.status).toBe("QUEUED");
+    expect(store.get(staleClaimed.id)?.status).toBe("QUEUED");
+    expect(store.get(staleRunning.id)?.status).toBe("BLOCKED_RECOVERY");
+    expect(store.get(staleRunning.id)?.error).toBe("AI_STALE_RUNNING_REQUIRES_RECONCILIATION");
   });
 });
