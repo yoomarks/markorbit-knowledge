@@ -221,10 +221,7 @@ export function recoverAdkKnowledgeJobs(
       continue;
     }
 
-    if (
-      job.status === "BLOCKED_CREDENTIAL" &&
-      input.requeueCredentialBlocked === true
-    ) {
+    if (job.status === "BLOCKED_CREDENTIAL" && input.requeueCredentialBlocked === true) {
       const saved = input.store.saveIfStatus(
         requeueCredentialBlockedJob(job),
         "BLOCKED_CREDENTIAL",
@@ -330,10 +327,7 @@ export async function processNextAdkKnowledgeJob(
     lineage = await input.sink({ job: running, acquisition });
   } catch (error) {
     return input.store.save(
-      blockJobForRecovery(
-        running,
-        `AI_ARTIFACT_PERSISTENCE_UNCERTAIN: ${failureMessage(error)}`,
-      ),
+      blockJobForRecovery(running, `AI_ARTIFACT_PERSISTENCE_UNCERTAIN: ${failureMessage(error)}`),
     );
   }
 
@@ -344,10 +338,7 @@ export async function processNextAdkKnowledgeJob(
   ];
   if (new Set(artifactIds).size !== 3) {
     return input.store.save(
-      blockJobForRecovery(
-        running,
-        "AI_ACQUISITION_LINEAGE_REQUIRES_RECONCILIATION",
-      ),
+      blockJobForRecovery(running, "AI_ACQUISITION_LINEAGE_REQUIRES_RECONCILIATION"),
     );
   }
   return input.store.save(completeJob(running, artifactIds));
