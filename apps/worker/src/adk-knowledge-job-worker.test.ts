@@ -88,15 +88,17 @@ describe("ADK knowledge job worker", () => {
       "raw-provider-1",
       "raw-markdown-1",
     ]);
-    expect(await processNextAdkKnowledgeJob({
-      store,
-      assignments: assignments(),
-      adapters: adapters(adapter),
-      sink: async () => ({
-        rawProviderArtifactId: "raw-provider-1",
-        markdownRawArtifactId: "raw-markdown-1",
+    expect(
+      await processNextAdkKnowledgeJob({
+        store,
+        assignments: assignments(),
+        adapters: adapters(adapter),
+        sink: async () => ({
+          rawProviderArtifactId: "raw-provider-1",
+          markdownRawArtifactId: "raw-markdown-1",
+        }),
       }),
-    })).toBeUndefined();
+    ).toBeUndefined();
   });
 
   it("blocks without consuming an attempt when provider credentials are missing", async () => {
