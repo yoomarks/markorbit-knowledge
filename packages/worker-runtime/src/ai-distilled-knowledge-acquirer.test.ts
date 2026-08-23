@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  AiKnowledgeAcquisitionError,
   DeepSeekKnowledgeAdapter,
   type AiModelTransport,
 } from "./ai-distilled-knowledge-acquirer";
@@ -65,9 +64,7 @@ describe("DeepSeekKnowledgeAdapter", () => {
 
   it("fails closed when runtime credentials are absent", async () => {
     const adapter = new DeepSeekKnowledgeAdapter({ environment: {} });
-    await expect(
-      adapter.acquire({ assignment }),
-    ).rejects.toMatchObject<AiKnowledgeAcquisitionError>({
+    await expect(adapter.acquire({ assignment })).rejects.toMatchObject({
       code: "AI_PROVIDER_CREDENTIAL_MISSING",
       retryable: false,
     });
@@ -78,9 +75,7 @@ describe("DeepSeekKnowledgeAdapter", () => {
       environment: { DEEPSEEK_API_KEY: "runtime-secret" },
       transport: async () => ({ status: 429, body: new Uint8Array() }),
     });
-    await expect(
-      adapter.acquire({ assignment }),
-    ).rejects.toMatchObject<AiKnowledgeAcquisitionError>({
+    await expect(adapter.acquire({ assignment })).rejects.toMatchObject({
       code: "AI_PROVIDER_TEMPORARY_FAILURE",
       retryable: true,
     });
@@ -91,9 +86,7 @@ describe("DeepSeekKnowledgeAdapter", () => {
       environment: { DEEPSEEK_API_KEY: "runtime-secret" },
       transport: async () => ({ status: 200, body: responseBody("   ") }),
     });
-    await expect(
-      adapter.acquire({ assignment }),
-    ).rejects.toMatchObject<AiKnowledgeAcquisitionError>({
+    await expect(adapter.acquire({ assignment })).rejects.toMatchObject({
       code: "AI_PROVIDER_CONTENT_MISSING",
       retryable: false,
     });
