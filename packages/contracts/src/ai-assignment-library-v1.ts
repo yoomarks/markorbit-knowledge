@@ -106,7 +106,6 @@ export function isAiAssignmentLibraryV1(value: unknown): value is AiAssignmentLi
 
   const entries = item.entries as AiAssignmentLibraryEntryV1[];
   const assignmentIds = new Set(entries.map((entry) => entry.assignmentId));
-  const workflows = new Set(entries.map((entry) => entry.workflow));
   const sortedSequences = entries
     .map((entry) => entry.sequence)
     .sort((left, right) => left - right);
@@ -124,7 +123,6 @@ export function isAiAssignmentLibraryV1(value: unknown): value is AiAssignmentLi
     nonEmpty(item.jurisdiction) &&
     nonEmpty(item.domain) &&
     assignmentIds.size === entries.length &&
-    workflows.size === entries.length &&
     sequencesAreContiguous &&
     boundaries.answerContentStored === false &&
     boundaries.executionAuthorityGranted === false &&
