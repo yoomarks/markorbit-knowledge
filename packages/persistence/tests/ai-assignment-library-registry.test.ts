@@ -114,13 +114,14 @@ describe("ADK-08 assignment library", () => {
         ...US_TRADEMARK_ASSIGNMENT_LIBRARY.entries,
         {
           sequence: 13,
-          workflow: "OFFICE_ACTION",
+          workflow: "FOREIGN_SCOPE_TEST",
           assignmentId: foreignAssignment.assignmentId,
           tags: ["scope-test"],
         },
       ],
     };
 
+    expect(isAiAssignmentLibraryV1(revisionTwo)).toBe(true);
     expect(() => repository.saveLibrary(revisionTwo)).toThrow(/SCOPE_MISMATCH/u);
     database.close();
   });
