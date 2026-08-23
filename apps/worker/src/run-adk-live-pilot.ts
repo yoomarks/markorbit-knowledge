@@ -11,6 +11,8 @@ import { DeepSeekKnowledgeAdapter } from "@markorbit/worker-runtime/ai-distilled
 import {
   isAiProductionPilotPlanV1,
   runAiProductionPilot,
+  type AiKnowledgeProvider,
+  type AiKnowledgeProviderAdapter,
   type AiProductionPilotPlanV1,
 } from "@markorbit/worker-runtime/ai-production-pilot";
 import { OpenAiKnowledgeAdapter } from "@markorbit/worker-runtime/openai-knowledge-adapter";
@@ -127,9 +129,9 @@ async function main(): Promise<void> {
       }),
     );
 
-    const adapters = new Map([
-      ["DEEPSEEK" as const, new DeepSeekKnowledgeAdapter()],
-      ["OPENAI" as const, new OpenAiKnowledgeAdapter()],
+    const adapters = new Map<AiKnowledgeProvider, AiKnowledgeProviderAdapter>([
+      ["DEEPSEEK", new DeepSeekKnowledgeAdapter()],
+      ["OPENAI", new OpenAiKnowledgeAdapter()],
     ]);
     const pilot = await runAiProductionPilot({ plan, assignments, adapters });
     if (
