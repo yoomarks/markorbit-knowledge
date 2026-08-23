@@ -15,9 +15,7 @@ export type ProductionValidationScorecardSnapshot = {
   scorecard: ProductionValidationScorecard;
 };
 
-export function ensureProductionValidationScorecardSnapshotRegistry(
-  database: DatabaseSync,
-): void {
+export function ensureProductionValidationScorecardSnapshotRegistry(database: DatabaseSync): void {
   if (INITIALIZED_DATABASES.has(database)) return;
   database.exec(`
     CREATE TABLE IF NOT EXISTS production_validation_scorecard_snapshots (
