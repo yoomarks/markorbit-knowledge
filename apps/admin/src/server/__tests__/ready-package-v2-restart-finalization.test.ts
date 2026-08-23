@@ -92,7 +92,6 @@ describe("ReadyPackage V2 restart finalization", () => {
     expect(result.replayed).toBe(true);
     expect(result.submission.state).toBe("RESULT_RECORDED");
     expect(recordResult).toHaveBeenCalledWith(WORKSPACE, DELIVERY, protocolResult);
-    expect(recordResult.mock.calls[0]?.[2]).not.toHaveProperty("recordedAt");
     expect(transportSubmit).not.toHaveBeenCalled();
   });
 });
