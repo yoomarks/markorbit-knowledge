@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { RegistryValidationError } from "@markorbit/persistence";
 import { queueProductionValidationWaveForDiscovery } from "@markorbit/persistence/production-validation-discovery-intake";
 import { inspectProductionValidationExecution } from "@markorbit/persistence/production-validation-execution-status";
 import { inspectProductionValidationOnboarding } from "@markorbit/persistence/production-validation-onboarding-status";
@@ -7,6 +8,7 @@ import {
   buildProductionValidationScorecard,
   type ProductionValidationStructuredRemediationTelemetry,
 } from "@markorbit/persistence/production-validation-scorecard";
+import { SqliteProductionValidationScorecardSnapshotRepository } from "@markorbit/persistence/production-validation-scorecard-snapshots";
 import { SqliteSourceCompatibilityObservationRepository } from "@markorbit/persistence/source-compatibility-observations";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { buildFoundationalRemediationQueueSnapshot } from "@/server/foundational-remediation-queue";
@@ -27,6 +29,8 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const SCORECARD_CAPTURE_ACTION = "CAPTURE_SCORECARD";
 
 type CoverageLinkedTarget = {
   id: string;
@@ -99,53 +103,56 @@ function structuredRemediationFacts(
   return result;
 }
 
+function inspectCurrentWave(workspaceId: string) {
+  const manifest = loadProductionValidationWave();
+  const sources = getSourceRepository();
+  const onboarding = inspectProductionValidationOnboarding(
+    { workspaceId, manifest },
+    { sources, discovery: getSourceDiscoveryRepository() },
+  );
+  const execution = inspectProductionValidationExecution(
+    { workspaceId, manifest },
+    { sources, runs: getExecutionLedgerRepository() },
+  );
+  const pipeline = inspectProductionValidationPipeline(
+    { workspaceId, manifest },
+    {
+      sources,
+      artifacts: getRawArtifactRepository(),
+      conversionRuns: getConversionRunLedgerRepository(),
+      staging: getStagingContentRepository(),
+    },
+  );
+  const compatibility = new SqliteSourceCompatibilityObservationRepository(
+    getRegistryDatabase(),
+  ).latest(manifest.targets.map((target) => target.id));
+  const structuredRemediation = structuredRemediationFacts(workspaceId, manifest.targets);
+  const scorecard = buildProductionValidationScorecard({
+    manifest,
+    onboarding,
+    execution,
+    pipeline,
+    compatibility,
+    structuredRemediation,
+  });
+  return { manifest, onboarding, execution, pipeline, scorecard };
+}
+
 export async function GET(request: Request) {
   try {
-    const manifest = loadProductionValidationWave();
     const url = new URL(request.url);
     const resolvedWorkspaceId = resolveProductionValidationWorkspaceId(
       url.searchParams.get("workspaceId"),
     );
-    const sources = getSourceRepository();
-    const onboarding = inspectProductionValidationOnboarding(
-      { workspaceId: resolvedWorkspaceId, manifest },
-      {
-        sources,
-        discovery: getSourceDiscoveryRepository(),
-      },
-    );
-    const execution = inspectProductionValidationExecution(
-      { workspaceId: resolvedWorkspaceId, manifest },
-      {
-        sources,
-        runs: getExecutionLedgerRepository(),
-      },
-    );
-    const pipeline = inspectProductionValidationPipeline(
-      { workspaceId: resolvedWorkspaceId, manifest },
-      {
-        sources,
-        artifacts: getRawArtifactRepository(),
-        conversionRuns: getConversionRunLedgerRepository(),
-        staging: getStagingContentRepository(),
-      },
-    );
-    const compatibility = new SqliteSourceCompatibilityObservationRepository(
+    const current = inspectCurrentWave(resolvedWorkspaceId);
+    const scorecardSnapshots = new SqliteProductionValidationScorecardSnapshotRepository(
       getRegistryDatabase(),
-    ).latest(manifest.targets.map((target) => target.id));
-    const structuredRemediation = structuredRemediationFacts(resolvedWorkspaceId, manifest.targets);
-    const scorecard = buildProductionValidationScorecard({
-      manifest,
-      onboarding,
-      execution,
-      pipeline,
-      compatibility,
-      structuredRemediation,
+    ).list({
+      workspaceId: resolvedWorkspaceId,
+      waveId: current.manifest.waveId,
+      limit: 20,
     });
-    return NextResponse.json(
-      { manifest, onboarding, execution, pipeline, scorecard },
-      { status: 200 },
-    );
+    return NextResponse.json({ ...current, scorecardSnapshots }, { status: 200 });
   } catch (error) {
     return apiError(error);
   }
@@ -156,6 +163,34 @@ export async function POST(request: Request) {
     const body = requireRecord(await readJson(request));
     const manifest = loadProductionValidationWave();
     const resolvedWorkspaceId = resolveProductionValidationWorkspaceId(body.workspaceId);
+    if (body.action === SCORECARD_CAPTURE_ACTION) {
+      const idempotencyKey = request.headers.get("Idempotency-Key")?.trim();
+      if (!idempotencyKey) {
+        throw new RegistryValidationError(
+          "Idempotency-Key header is required to capture a scorecard snapshot",
+        );
+      }
+      const repository = new SqliteProductionValidationScorecardSnapshotRepository(
+        getRegistryDatabase(),
+      );
+      const existing = repository.findByIdempotencyKey({
+        workspaceId: resolvedWorkspaceId,
+        waveId: manifest.waveId,
+        idempotencyKey,
+      });
+      const snapshot =
+        existing ??
+        repository.capture({
+          scorecard: inspectCurrentWave(resolvedWorkspaceId).scorecard,
+          idempotencyKey,
+        });
+      return NextResponse.json({ snapshot }, { status: existing ? 200 : 201 });
+    }
+    if (body.action !== undefined && body.action !== "QUEUE_DISCOVERY") {
+      throw new RegistryValidationError(
+        `Unsupported production validation action: ${String(body.action)}`,
+      );
+    }
     const result = withRegistryTransaction(() =>
       queueProductionValidationWaveForDiscovery(
         { workspaceId: resolvedWorkspaceId, manifest },
