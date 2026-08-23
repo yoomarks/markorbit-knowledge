@@ -5,19 +5,15 @@ import {
   isAiProductionPilotPlanV1,
   type AiProductionPilotPlanV1,
 } from "@markorbit/contracts";
-import {
-  SqliteAiKnowledgeAssignmentRepository,
-} from "@markorbit/persistence/ai-knowledge-assignments";
+import { SqliteAiKnowledgeAssignmentRepository } from "@markorbit/persistence/ai-knowledge-assignments";
 import {
   ingestAiDistilledKnowledgeAsRawArtifacts,
   type AiDistilledKnowledgeIngestionResult,
 } from "@markorbit/persistence/ai-distilled-knowledge-ingestion";
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
-import {
-  DeepSeekKnowledgeAdapter,
-  OpenAiKnowledgeAdapter,
-  runAiProductionPilot,
-} from "@markorbit/worker-runtime";
+import { DeepSeekKnowledgeAdapter } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
+import { runAiProductionPilot } from "@markorbit/worker-runtime/ai-production-pilot";
+import { OpenAiKnowledgeAdapter } from "@markorbit/worker-runtime/openai-knowledge-adapter";
 
 type LivePilotConfig = {
   databasePath: string;
