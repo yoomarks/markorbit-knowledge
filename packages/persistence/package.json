@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./ai-knowledge-assignments": "./src/ai-knowledge-assignment-registry.ts",
+    "./ai-assignment-graphs": "./src/ai-assignment-graph-registry.ts",
     "./ai-distilled-knowledge-ingestion": "./src/ai-distilled-knowledge-ingestion.ts",
     "./connectors": "./src/connector-registry.ts",
     "./collection-plans": "./src/collection-plan-registry.ts",
