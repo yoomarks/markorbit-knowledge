@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import {
-  isAiAssignmentCandidateV1,
-  type AiAssignmentCandidateV1,
-} from "@markorbit/contracts";
+import { isAiAssignmentCandidateV1, type AiAssignmentCandidateV1 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "./index";
 import { ensureAiAssignmentGraphRegistry } from "./ai-assignment-graph-registry";
 
@@ -111,8 +108,7 @@ export class SqliteAiAssignmentCandidateRepository {
           WHERE graph_id = ? AND revision = ?`,
       )
       .get(value.graphId, value.graphRevision) as
-      | { jurisdiction: string; domain: string }
-      | undefined;
+      { jurisdiction: string; domain: string } | undefined;
     if (!graph) {
       throw new RegistryValidationError(
         `Candidate references missing Assignment Graph ${value.graphId}@${value.graphRevision}`,
@@ -132,8 +128,7 @@ export class SqliteAiAssignmentCandidateRepository {
           WHERE graph_id = ? AND graph_revision = ? AND assignment_id = ?`,
       )
       .get(value.graphId, value.graphRevision, value.parentAssignmentId) as
-      | { present: number }
-      | undefined;
+      { present: number } | undefined;
     if (!parent) {
       throw new RegistryValidationError(
         `Candidate parent ${value.parentAssignmentId} is not a node in ${value.graphId}@${value.graphRevision}`,
@@ -146,9 +141,7 @@ export class SqliteAiAssignmentCandidateRepository {
            FROM ai_instruction_sets
           WHERE instruction_set_id = ? AND revision = ?`,
       )
-      .get(value.instructionSetId, value.instructionSetRevision) as
-      | { present: number }
-      | undefined;
+      .get(value.instructionSetId, value.instructionSetRevision) as { present: number } | undefined;
     if (!instructionSet) {
       throw new RegistryValidationError(
         `Candidate references missing instruction set ${value.instructionSetId}@${value.instructionSetRevision}`,
@@ -164,9 +157,7 @@ export class SqliteAiAssignmentCandidateRepository {
            FROM ai_assignment_candidates
           WHERE candidate_id = ?`,
       )
-      .get(value.candidateId) as
-      | { document_sha256: string; document_json: string }
-      | undefined;
+      .get(value.candidateId) as { document_sha256: string; document_json: string } | undefined;
     if (existingById) {
       if (existingById.document_sha256 !== sha256 || existingById.document_json !== json) {
         throw new RegistryConflictError(

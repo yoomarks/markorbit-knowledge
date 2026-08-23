@@ -79,15 +79,13 @@ function isEvidence(value: unknown): value is AiAssignmentCandidateEvidenceV1 {
   const item = record(value);
   return Boolean(
     item &&
-      exactKeys(item, ["evidenceRef", "evidenceClass", "sha256", "rationale"]) &&
-      nonEmpty(item.evidenceRef) &&
-      typeof item.evidenceClass === "string" &&
-      (AI_ASSIGNMENT_CANDIDATE_EVIDENCE_CLASSES as readonly string[]).includes(
-        item.evidenceClass,
-      ) &&
-      typeof item.sha256 === "string" &&
-      SHA256.test(item.sha256) &&
-      nonEmpty(item.rationale),
+    exactKeys(item, ["evidenceRef", "evidenceClass", "sha256", "rationale"]) &&
+    nonEmpty(item.evidenceRef) &&
+    typeof item.evidenceClass === "string" &&
+    (AI_ASSIGNMENT_CANDIDATE_EVIDENCE_CLASSES as readonly string[]).includes(item.evidenceClass) &&
+    typeof item.sha256 === "string" &&
+    SHA256.test(item.sha256) &&
+    nonEmpty(item.rationale),
   );
 }
 
@@ -124,56 +122,56 @@ export function isAiAssignmentCandidateV1(value: unknown): value is AiAssignment
   const boundaries = record(item.boundaries);
   return Boolean(
     item.protocolVersion === AI_ASSIGNMENT_CANDIDATE_PROTOCOL_VERSION &&
-      item.objectType === AI_ASSIGNMENT_CANDIDATE_OBJECT_TYPE &&
-      typeof item.candidateId === "string" &&
-      item.candidateId.startsWith("kac_") &&
-      ID.test(item.candidateId) &&
-      typeof item.graphId === "string" &&
-      item.graphId.startsWith("kag_") &&
-      ID.test(item.graphId) &&
-      Number.isSafeInteger(item.graphRevision) &&
-      (item.graphRevision as number) > 0 &&
-      typeof item.parentAssignmentId === "string" &&
-      item.parentAssignmentId.startsWith("kas_") &&
-      ID.test(item.parentAssignmentId) &&
-      typeof item.suggestedRelation === "string" &&
-      ["DECOMPOSES", "DEPENDS_ON", "SUPPORTS"].includes(item.suggestedRelation) &&
-      nonEmpty(item.jurisdiction) &&
-      nonEmpty(item.domain) &&
-      nonEmpty(item.topic) &&
-      nonEmpty(item.title) &&
-      typeof item.instructionSetId === "string" &&
-      item.instructionSetId.startsWith("kis_") &&
-      ID.test(item.instructionSetId) &&
-      Number.isSafeInteger(item.instructionSetRevision) &&
-      (item.instructionSetRevision as number) > 0 &&
-      nonEmpty(item.language) &&
-      nonEmpty(item.proposedPrompt) &&
-      typeof item.discoveryMethod === "string" &&
-      (AI_ASSIGNMENT_CANDIDATE_DISCOVERY_METHODS as readonly string[]).includes(
-        item.discoveryMethod,
-      ) &&
-      Array.isArray(item.evidence) &&
-      item.evidence.length > 0 &&
-      item.evidence.every(isEvidence) &&
-      new Set(
-        (item.evidence as AiAssignmentCandidateEvidenceV1[]).map(
-          (entry) => `${entry.evidenceRef}\u0000${entry.sha256}`,
-        ),
-      ).size === item.evidence.length &&
-      item.status === "PROPOSED" &&
-      boundaries &&
-      exactKeys(boundaries, [
-        "activationAuthorized",
-        "executionAuthorityGranted",
-        "legalTruthVerified",
-        "recursiveAutoExecution",
-      ]) &&
-      boundaries.activationAuthorized === false &&
-      boundaries.executionAuthorityGranted === false &&
-      boundaries.legalTruthVerified === false &&
-      boundaries.recursiveAutoExecution === false &&
-      timestamp(item.createdAt),
+    item.objectType === AI_ASSIGNMENT_CANDIDATE_OBJECT_TYPE &&
+    typeof item.candidateId === "string" &&
+    item.candidateId.startsWith("kac_") &&
+    ID.test(item.candidateId) &&
+    typeof item.graphId === "string" &&
+    item.graphId.startsWith("kag_") &&
+    ID.test(item.graphId) &&
+    Number.isSafeInteger(item.graphRevision) &&
+    (item.graphRevision as number) > 0 &&
+    typeof item.parentAssignmentId === "string" &&
+    item.parentAssignmentId.startsWith("kas_") &&
+    ID.test(item.parentAssignmentId) &&
+    typeof item.suggestedRelation === "string" &&
+    ["DECOMPOSES", "DEPENDS_ON", "SUPPORTS"].includes(item.suggestedRelation) &&
+    nonEmpty(item.jurisdiction) &&
+    nonEmpty(item.domain) &&
+    nonEmpty(item.topic) &&
+    nonEmpty(item.title) &&
+    typeof item.instructionSetId === "string" &&
+    item.instructionSetId.startsWith("kis_") &&
+    ID.test(item.instructionSetId) &&
+    Number.isSafeInteger(item.instructionSetRevision) &&
+    (item.instructionSetRevision as number) > 0 &&
+    nonEmpty(item.language) &&
+    nonEmpty(item.proposedPrompt) &&
+    typeof item.discoveryMethod === "string" &&
+    (AI_ASSIGNMENT_CANDIDATE_DISCOVERY_METHODS as readonly string[]).includes(
+      item.discoveryMethod,
+    ) &&
+    Array.isArray(item.evidence) &&
+    item.evidence.length > 0 &&
+    item.evidence.every(isEvidence) &&
+    new Set(
+      (item.evidence as AiAssignmentCandidateEvidenceV1[]).map(
+        (entry) => `${entry.evidenceRef}\u0000${entry.sha256}`,
+      ),
+    ).size === item.evidence.length &&
+    item.status === "PROPOSED" &&
+    boundaries &&
+    exactKeys(boundaries, [
+      "activationAuthorized",
+      "executionAuthorityGranted",
+      "legalTruthVerified",
+      "recursiveAutoExecution",
+    ]) &&
+    boundaries.activationAuthorized === false &&
+    boundaries.executionAuthorityGranted === false &&
+    boundaries.legalTruthVerified === false &&
+    boundaries.recursiveAutoExecution === false &&
+    timestamp(item.createdAt),
   );
 }
 

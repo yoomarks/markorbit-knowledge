@@ -160,9 +160,9 @@ describe("SqliteAiAssignmentCandidateRepository", () => {
 
   it("rejects candidate scope drift from the bound graph", () => {
     const { candidates } = repositories();
-    expect(() =>
-      candidates.saveCandidate({ ...candidate(), jurisdiction: "CA" }),
-    ).toThrowError(/does not match Assignment Graph scope/u);
+    expect(() => candidates.saveCandidate({ ...candidate(), jurisdiction: "CA" })).toThrowError(
+      /does not match Assignment Graph scope/u,
+    );
   });
 
   it("survives repository restart over the same SQLite database", () => {
