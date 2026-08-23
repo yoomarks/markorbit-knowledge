@@ -1,4 +1,5 @@
 # MarkOrbit Knowledge — Next Tasks
+
 **Baseline:** `yoomarks/markorbit-knowledge@5e68862f3e9b7a6522ab0e22aeccd1a426b9cebc`  
 **Generated:** 2026-08-23 09:11 (UTC+8)
 
@@ -7,11 +8,13 @@
 Current #396 can be misread as requiring a new Core V2 receiver.
 
 Correct state:
+
 - Core PR #91 already implemented WP01/02 baseline.
 - Core current main still returns durable `RECEIVED`.
 - Required work is WP03–05 consumer completion.
 
 Knowledge-side fix:
+
 - amend README / task wording;
 - preserve frozen contracts;
 - record Core #91 / migration 0048 / existing endpoint;
@@ -20,12 +23,14 @@ Knowledge-side fix:
 ## P0-2 — Send formal task to Core Agent
 
 Deliver:
+
 - `MarkOrbit_Core_Knowledge_Formal_Integration_Task_2026-08-23.md`
 
 Core must build on:
 `yoomarks/markorbit@a8035efff46a2e71a4613abd1927b18dadff086b`
 
 Required outcome:
+
 - full Content Export V2 / Vault provenance validation;
 - durable `ACCEPTED`;
 - no second endpoint / ledger;
@@ -36,6 +41,7 @@ Required outcome:
 ## P0-3 — Audit Core return
 
 Require:
+
 - PR URL;
 - final head SHA;
 - merge SHA;
@@ -51,6 +57,7 @@ No verbal acceptance.
 ## P0-4 — Explicit non-production Knowledge→Core acceptance
 
 After Core completion:
+
 - fixed commits;
 - real HTTP;
 - real Core PostgreSQL;
@@ -66,6 +73,7 @@ No production activation in this task.
 Use real governed runs and durable v1.2 scorecard snapshots.
 
 For failures:
+
 - evidence first;
 - classify;
 - generic capability fix only when justified;

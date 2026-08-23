@@ -1,4 +1,5 @@
 # MarkOrbit/Core 正式对接任务书
+
 ## Knowledge → Core ReadyPackage V2 Consumer Completion & Cross-Repository Acceptance
 
 **任务编号：** `MO-KNOWLEDGE-CORE-KV2-COMPLETION-2026-08-23`  
@@ -8,7 +9,7 @@
 **目标仓库：** `yoomarks/markorbit`（MarkOrbit/Core）  
 **任务性质：** 已有跨仓协议接收能力的生产级收口、不可变持久化、恢复语义与真实 E2E 验收  
 **本任务是否授权生产激活：** 否  
-**本任务是否授权修改 Knowledge：** 否；Core 只提交 Core 仓变更，Knowledge 侧由 Knowledge Agent 独立验收  
+**本任务是否授权修改 Knowledge：** 否；Core 只提交 Core 仓变更，Knowledge 侧由 Knowledge Agent 独立验收
 
 ---
 
@@ -19,6 +20,7 @@
 ## 0.1 当前锁定基线
 
 ### Knowledge
+
 - Repository: `yoomarks/markorbit-knowledge`
 - Current `main`: `5e68862f3e9b7a6522ab0e22aeccd1a426b9cebc`
 - Protocol / implementation baseline used by #396:
@@ -28,6 +30,7 @@
 - ReadyPackage Content Export V2 contract: `2.0`
 
 ### Core
+
 - Repository: `yoomarks/markorbit`
 - Current `main`: `a8035efff46a2e71a4613abd1927b18dadff086b`
 - Current open PR: none
@@ -45,6 +48,7 @@
 **不得把本任务理解为“新增一个 V2 Receiver”。**
 
 Core 已经有：
+
 - 独立 V2 route；
 - raw request body；
 - exact request SHA-256；
@@ -81,6 +85,7 @@ Core 已经有：
 ## 1.1 Knowledge 负责
 
 Knowledge 负责：
+
 - 外部证据获取；
 - Source / Collection governance；
 - RawArtifact；
@@ -94,6 +99,7 @@ Knowledge 负责：
 - Knowledge 本地 finalize。
 
 Knowledge 不负责：
+
 - Core PostgreSQL；
 - Core consumer acceptance；
 - Core 业务语义；
@@ -103,6 +109,7 @@ Knowledge 不负责：
 ## 1.2 Core 负责
 
 Core 负责：
+
 - 接收已冻结的 V2 request；
 - 验证 transport / exact bytes / Workspace / contract / digests；
 - 验证并不可变保留 Content Export V2 与 Vault provenance；
@@ -117,6 +124,7 @@ Core 负责：
 > Core 已对 frozen request、Workspace、Content Export V2、内容字节、digest、provenance 进行规定的完整性验证，并已将 consumer evidence 可靠持久化。
 
 `ACCEPTED` **不表示**：
+
 - 法律事实正确；
 - 商标状态正确；
 - 内容具有法律效力；
@@ -139,6 +147,7 @@ Repository:
 `yoomarks/markorbit-knowledge@3932b7cd5ee0235d3bb0f9e23ceab7cc71e45f7d`
 
 规范文件：
+
 - `packages/contracts/src/ready-package-v2-delivery-v1.ts`
 - `packages/contracts/src/ready-package-content-export-v2.ts`
 - `packages/contracts/src/ready-package-v2.ts`
@@ -163,6 +172,7 @@ POST /internal/knowledge/ready-packages/intakes
 ```
 
 V2 不得：
+
 - 转发到 V1；
 - 降级成 V1；
 - 复用 V1 persistence 表作为替代；
@@ -193,15 +203,15 @@ x-markorbit-ready-package-v2-delivery-protocol: 1.0
 type ReadyPackageV2DeliveryRequestV1 = {
   protocolVersion: "1.0";
   objectType: "READY_PACKAGE_V2_DELIVERY_REQUEST";
-  deliveryId: string;             // rvd_*
-  readyPackageId: string;         // rdp_*
-  knowledgeWorkspaceId: string;   // wsp_*
+  deliveryId: string; // rvd_*
+  readyPackageId: string; // rdp_*
+  knowledgeWorkspaceId: string; // wsp_*
   target: {
     service: "MARKORBIT_CORE";
-    workspaceId: string;          // canonical Core UUID
+    workspaceId: string; // canonical Core UUID
   };
-  readyPackageDigest: string;     // lowercase SHA-256
-  contentExportSha256: string;    // lowercase SHA-256
+  readyPackageDigest: string; // lowercase SHA-256
+  contentExportSha256: string; // lowercase SHA-256
   contentExport: ReadyPackageContentExportV2;
   submittedAt: string;
 };
@@ -225,6 +235,7 @@ type ReadyPackageV2DeliveryResultV1 = {
 > Core 实际收到的原始 request UTF-8 bytes
 
 不得改为：
+
 - parse 后重新 stringify；
 - 选取字段；
 - Content Export hash；
@@ -259,6 +270,7 @@ type ReadyPackageV2DeliveryResultV1 = {
 **不得修改已合并的 `0048_core_knowledge_v2_deliveries.sql`。**
 
 如需增加：
+
 - accepted/rejected timestamp；
 - immutable consumer evidence；
 - transition audit；
@@ -336,6 +348,7 @@ content.encoding == "utf-8"
 ## 6.5 Canonical document
 
 必须保留：
+
 - `canonicalDocument.documentId` (`cdd_*`)
 - `canonicalDocument.promotedAt`
 
@@ -370,6 +383,7 @@ verifiedAt
 ```
 
 其中：
+
 - `verificationOutcome` 只能是协议允许的值；
 - 所有 contract IDs 必须符合 frozen prefix；
 - `rootFingerprintSha256` 必须是 lowercase SHA-256；
@@ -422,6 +436,7 @@ Core 接收不得将其改为 true，也不得生成“等效已验证”状态�
 ## 7.4 `REJECTED`
 
 `REJECTED` 只表示确定性 consumer rejection，例如：
+
 - invalid contract；
 - Workspace mismatch；
 - digest mismatch；
@@ -435,6 +450,7 @@ Core 接收不得将其改为 true，也不得生成“等效已验证”状态�
 ## 7.5 Persistence immutability
 
 必须确保：
+
 - frozen request bytes identity 不变；
 - request JSON 不被覆盖；
 - Content Export 不被覆盖；
@@ -454,6 +470,7 @@ UPDATE ... SET request_json = ...
 覆盖历史输入。
 
 若使用 status transition：
+
 - transition 必须是受约束状态机；
 - 最好追加 transition/audit evidence；
 - 禁止 `ACCEPTED -> RECEIVED`；
@@ -466,22 +483,22 @@ UPDATE ... SET request_json = ...
 
 至少保持 / 达到：
 
-| 场景 | 预期 |
-|---|---|
-| wrong/missing internal secret | 401/403；无业务持久化 |
-| wrong/missing protocol header | stable 4xx；无业务持久化 |
-| missing Idempotency-Key | 400；无业务持久化 |
-| key != frozen delivery identity | 409 |
-| body > limit | 413；无业务持久化 |
-| invalid exact contract | 400/422 |
-| missing Core Workspace | 404 或稳定 deterministic rejection |
-| Content Export digest mismatch | 422/稳定 4xx |
-| Markdown SHA/size mismatch | 422/稳定 4xx |
-| invalid Vault provenance | 422/稳定 4xx |
-| same key / different exact bytes | 409 |
-| first fully valid durable consumer acceptance | 200/201 + `ACCEPTED` |
-| exact replay | 200 + original durable `ACCEPTED` |
-| concurrent duplicates | one logical durable acceptance |
+| 场景                                          | 预期                               |
+| --------------------------------------------- | ---------------------------------- |
+| wrong/missing internal secret                 | 401/403；无业务持久化              |
+| wrong/missing protocol header                 | stable 4xx；无业务持久化           |
+| missing Idempotency-Key                       | 400；无业务持久化                  |
+| key != frozen delivery identity               | 409                                |
+| body > limit                                  | 413；无业务持久化                  |
+| invalid exact contract                        | 400/422                            |
+| missing Core Workspace                        | 404 或稳定 deterministic rejection |
+| Content Export digest mismatch                | 422/稳定 4xx                       |
+| Markdown SHA/size mismatch                    | 422/稳定 4xx                       |
+| invalid Vault provenance                      | 422/稳定 4xx                       |
+| same key / different exact bytes              | 409                                |
+| first fully valid durable consumer acceptance | 200/201 + `ACCEPTED`               |
+| exact replay                                  | 200 + original durable `ACCEPTED`  |
+| concurrent duplicates                         | one logical durable acceptance     |
 
 现有 Core 错误码可沿用，但必须稳定、可测、不可把不确定内部错误伪装成 acceptance。
 
@@ -492,6 +509,7 @@ UPDATE ... SET request_json = ...
 这是本任务的核心 merge gate。
 
 必须使用：
+
 - fixed Knowledge commit；
 - fixed Core commit；
 - real HTTP；
@@ -514,6 +532,7 @@ Knowledge prepare
 ```
 
 验收：
+
 - 单一 delivery；
 - exact request SHA 相同；
 - Core `ACCEPTED`；
@@ -523,10 +542,12 @@ Knowledge prepare
 ## E2E-02 Core persists then response is lost
 
 模拟：
+
 - Core 已 durable `ACCEPTED`；
 - response 未被 Knowledge 收到。
 
 Knowledge 再用：
+
 - 同 frozen bytes；
 - 同 Idempotency-Key；
 - 同 delivery ID；
@@ -534,6 +555,7 @@ Knowledge 再用：
 重试。
 
 验收：
+
 - Core 不重复 consumer content；
 - 返回第一次 durable `ACCEPTED`；
 - same `requestSha256`；
@@ -542,11 +564,13 @@ Knowledge 再用：
 ## E2E-03 Knowledge receives result then restarts before finalize
 
 模拟：
+
 - Knowledge 已 durable 保存 Core result；
 - finalize 前 Knowledge process 关闭；
 - 新进程 / reopen SQLite。
 
 验收：
+
 - 不再次发送 HTTP；
 - 本地 reconciliation 完成 finalize；
 - Core delivery count 不增加。
@@ -554,6 +578,7 @@ Knowledge 再用：
 ## E2E-04 Knowledge frozen submission corruption
 
 破坏 fixture：
+
 - frozen request；
 - submission audit；
 - digest / serialized bytes；
@@ -561,6 +586,7 @@ Knowledge 再用：
 任一关键一致性。
 
 验收：
+
 - Knowledge outbound fail closed；
 - Core 不收到 request；
 - 无 consumer business write。
@@ -570,6 +596,7 @@ Knowledge 再用：
 制造确定性 invalid content / provenance / Workspace。
 
 验收：
+
 - Core stable rejection；
 - Knowledge 进入 operator review / deterministic failure；
 - 不自动无限 retry；
@@ -578,6 +605,7 @@ Knowledge 再用：
 ## E2E-06 Same key, different body
 
 验收：
+
 - Core 409；
 - 原 durable delivery 不变；
 - 不生成第二份 content / result。
@@ -587,6 +615,7 @@ Knowledge 再用：
 并发提交完全相同 frozen request。
 
 验收：
+
 - one logical delivery；
 - one immutable content；
 - 所有成功客户端获得一致 result；
@@ -595,6 +624,7 @@ Knowledge 再用：
 ## E2E-08 V1 regression
 
 必须证明现有：
+
 - V1 intake；
 - V1 content；
 - 相关 consumer E2E；
@@ -608,6 +638,7 @@ V2 不得 fallback 到 V1。
 # 10. Security / logging gates
 
 Core 日志不得包含：
+
 - internal secret；
 - 完整 `Idempotency-Key`（如现有日志政策允许 hash / redacted form则按现有规范）；
 - 完整 Markdown；
@@ -616,6 +647,7 @@ Core 日志不得包含：
 - credentials。
 
 错误日志允许：
+
 - delivery ID；
 - request SHA；
 - stable error code；
@@ -654,6 +686,7 @@ Core PR 合并前必须满足：
 至少包含：
 
 ## Identity
+
 - Core PR URL
 - PR number
 - final PR head SHA
@@ -662,6 +695,7 @@ Core PR 合并前必须满足：
 - Knowledge exact baseline SHA
 
 ## Persistence
+
 - new migration ID(s)
 - 是否保持 0048 未修改
 - table / columns / audit table
@@ -670,6 +704,7 @@ Core PR 合并前必须满足：
 - immutable / transition constraints
 
 ## Transport
+
 - final endpoint
 - required headers
 - env var names
@@ -678,6 +713,7 @@ Core PR 合并前必须满足：
 - exact raw bytes source
 
 ## Semantics
+
 - first valid success final status
 - whether `RECEIVED` intermediate state is used
 - deterministic rejection policy
@@ -686,7 +722,9 @@ Core PR 合并前必须满足：
 - response-loss behavior
 
 ## Integrity
+
 明确逐项声明已经验证：
+
 - outer / inner IDs
 - workspace
 - readyPackage digest
@@ -700,13 +738,16 @@ Core PR 合并前必须满足：
 - `legalTruthVerified=false`
 
 ## Evidence
+
 每个 E2E-01～08：
+
 - run URL
 - job name
 - exact commit(s)
 - PASS result
 
 另外：
+
 - V1 regression run URL
 - migration/restart/concurrency run URL
 - fixture request SHA-256
@@ -751,6 +792,7 @@ Core 当前 `main` 已接受 Data Engine G0 provider freeze 和 joint decisions�
 **Knowledge V2 Completion 与 Data Engine G1 是并行跨仓集成，不得混成一个框架重构。**
 
 共享原则可以复用：
+
 - authenticated internal boundary；
 - correlation / trace；
 - immutable evidence；
@@ -759,6 +801,7 @@ Core 当前 `main` 已接受 Data Engine G0 provider freeze 和 joint decisions�
 - restart/replay。
 
 但：
+
 - 不共享业务表；
 - 不共享协议；
 - 不用 Data Engine work 作为 Knowledge V2 completion 的阻塞理由；
@@ -769,6 +812,7 @@ Core 当前 `main` 已接受 Data Engine G0 provider freeze 和 joint decisions�
 # 15. 后续阶段（不属于本次实现授权）
 
 Knowledge 后续还有：
+
 - objective Change Evidence feed；
 - remaining Wave 1 production validation；
 - source acquisition evidence。
