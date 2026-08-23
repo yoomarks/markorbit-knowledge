@@ -84,7 +84,9 @@ function deterministicId(prefix: "ars" | "adk", seed: string): string {
   return `${prefix}_${sha256(seed).slice(0, 32)}`;
 }
 
-async function defaultTransport(request: AiModelTransportRequest): Promise<AiModelTransportResponse> {
+async function defaultTransport(
+  request: AiModelTransportRequest,
+): Promise<AiModelTransportResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), request.timeoutMs);
   try {
@@ -174,8 +176,10 @@ function parseDeepSeekResponse(raw: Uint8Array): {
       false,
     );
   }
-  const model = typeof response.model === "string" && response.model ? response.model : DEEPSEEK_DEFAULT_MODEL;
-  const providerRequestId = typeof response.id === "string" && response.id ? response.id : undefined;
+  const model =
+    typeof response.model === "string" && response.model ? response.model : DEEPSEEK_DEFAULT_MODEL;
+  const providerRequestId =
+    typeof response.id === "string" && response.id ? response.id : undefined;
   return providerRequestId
     ? { markdown: content, model, providerRequestId }
     : { markdown: content, model };

@@ -4,13 +4,7 @@ export const AI_RESEARCH_SUBMISSION_OBJECT_TYPE = "AI_RESEARCH_SUBMISSION" as co
 export const AI_DISTILLED_KNOWLEDGE_ARTIFACT_OBJECT_TYPE =
   "AI_DISTILLED_KNOWLEDGE_ARTIFACT" as const;
 
-export const AI_KNOWLEDGE_PROVIDERS = [
-  "DEEPSEEK",
-  "OPENAI",
-  "KIMI",
-  "CLAUDE",
-  "GEMINI",
-] as const;
+export const AI_KNOWLEDGE_PROVIDERS = ["DEEPSEEK", "OPENAI", "KIMI", "CLAUDE", "GEMINI"] as const;
 
 export type AiKnowledgeProvider = (typeof AI_KNOWLEDGE_PROVIDERS)[number];
 
