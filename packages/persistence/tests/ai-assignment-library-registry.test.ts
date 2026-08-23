@@ -18,6 +18,16 @@ import {
   seedUsTrademarkAssignmentLibrary,
 } from "../src/us-trademark-assignment-library";
 
+function expectConflictCode(action: () => unknown, code: string): void {
+  let thrown: unknown;
+  try {
+    action();
+  } catch (error) {
+    thrown = error;
+  }
+  expect(thrown).toMatchObject({ code });
+}
+
 describe("ADK-08 assignment library", () => {
   it("persists the governed 12-workflow US Trademark proposition library", () => {
     const database = new DatabaseSync(":memory:");
@@ -81,7 +91,10 @@ describe("ADK-08 assignment library", () => {
       title: "Changed title must not rewrite revision 1",
     };
 
-    expect(() => repository.saveLibrary(changed)).toThrow(/IMMUTABLE_CONFLICT/u);
+    expectConflictCode(
+      () => repository.saveLibrary(changed),
+      "AI_ASSIGNMENT_LIBRARY_IMMUTABLE_CONFLICT",
+    );
     database.close();
   });
 
@@ -123,7 +136,10 @@ describe("ADK-08 assignment library", () => {
     };
 
     expect(isAiAssignmentLibraryV1(revisionTwo)).toBe(true);
-    expect(() => repository.saveLibrary(revisionTwo)).toThrow(/SCOPE_MISMATCH/u);
+    expectConflictCode(
+      () => repository.saveLibrary(revisionTwo),
+      "AI_ASSIGNMENT_LIBRARY_SCOPE_MISMATCH",
+    );
     database.close();
   });
 });
