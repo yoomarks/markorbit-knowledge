@@ -5,7 +5,11 @@ import {
   type LivePilotReceiptView,
 } from "./adk-live-pilot-acceptance";
 
-const assignments = ["kas_us_section8", "kas_au_renewal", "kas_ca_office_action"] as const;
+const assignments = [
+  "kas_us_section8",
+  "kas_au_renewal",
+  "kas_ca_office_action",
+] as const;
 const providers = ["DEEPSEEK", "OPENAI"] as const;
 
 function receipts(): LivePilotReceiptView[] {
@@ -36,7 +40,11 @@ function lineage(): LivePilotLineage[] {
 describe("ADK live pilot acceptance", () => {
   it("accepts only a complete six-cell execution with matching RawArtifact lineage", () => {
     expect(() =>
-      assertLivePilotComplete({ receipts: receipts(), acquisitionCount: 6, lineage: lineage() }),
+      assertLivePilotComplete({
+        receipts: receipts(),
+        acquisitionCount: 6,
+        lineage: lineage(),
+      }),
     ).not.toThrow();
   });
 
@@ -50,7 +58,11 @@ describe("ADK live pilot acceptance", () => {
       retryable: false,
     };
     expect(() =>
-      assertLivePilotComplete({ receipts: values, acquisitionCount: 5, lineage: lineage().slice(0, 5) }),
+      assertLivePilotComplete({
+        receipts: values,
+        acquisitionCount: 5,
+        lineage: lineage().slice(0, 5),
+      }),
     ).toThrow(/all 6 intended cells/iu);
   });
 
@@ -58,7 +70,11 @@ describe("ADK live pilot acceptance", () => {
     const values = lineage();
     values[5] = { ...values[5]!, submissionId: "ars_wrong_submission" };
     expect(() =>
-      assertLivePilotComplete({ receipts: receipts(), acquisitionCount: 6, lineage: values }),
+      assertLivePilotComplete({
+        receipts: receipts(),
+        acquisitionCount: 6,
+        lineage: values,
+      }),
     ).toThrow(/lineage for every receipt/iu);
   });
 });
