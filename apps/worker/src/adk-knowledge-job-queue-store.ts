@@ -4,6 +4,7 @@ export interface AiKnowledgeJobStore {
   put(job: AiKnowledgeJob): void;
   get(id: string): AiKnowledgeJob | undefined;
   list(): AiKnowledgeJob[];
+  claimNext(): AiKnowledgeJob | undefined;
 }
 
 export class MemoryAiKnowledgeJobStore implements AiKnowledgeJobStore {
@@ -20,5 +21,22 @@ export class MemoryAiKnowledgeJobStore implements AiKnowledgeJobStore {
 
   list(): AiKnowledgeJob[] {
     return [...this.jobs.values()].map((job) => structuredClone(job));
+  }
+
+  claimNext(): AiKnowledgeJob | undefined {
+    const next = [...this.jobs.values()].find((job) => job.status === "QUEUED");
+
+    if (!next) {
+      return undefined;
+    }
+
+    const claimed: AiKnowledgeJob = {
+      ...next,
+      status: "CLAIMED",
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.jobs.set(claimed.id, claimed);
+    return structuredClone(claimed);
   }
 }
