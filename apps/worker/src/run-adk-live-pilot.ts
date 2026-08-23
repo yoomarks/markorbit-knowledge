@@ -1,10 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import {
-  isAiProductionPilotPlanV1,
-  type AiProductionPilotPlanV1,
-} from "@markorbit/contracts";
 import { SqliteAiKnowledgeAssignmentRepository } from "@markorbit/persistence/ai-knowledge-assignments";
 import {
   ingestAiDistilledKnowledgeAsRawArtifacts,
@@ -12,7 +8,11 @@ import {
 } from "@markorbit/persistence/ai-distilled-knowledge-ingestion";
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import { DeepSeekKnowledgeAdapter } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
-import { runAiProductionPilot } from "@markorbit/worker-runtime/ai-production-pilot";
+import {
+  isAiProductionPilotPlanV1,
+  runAiProductionPilot,
+  type AiProductionPilotPlanV1,
+} from "@markorbit/worker-runtime/ai-production-pilot";
 import { OpenAiKnowledgeAdapter } from "@markorbit/worker-runtime/openai-knowledge-adapter";
 
 type LivePilotConfig = {
