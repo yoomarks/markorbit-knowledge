@@ -101,6 +101,8 @@ The harness performs these steps in order:
 10. require six unique receipt-to-lineage matches;
 11. emit one `AI_PRODUCTION_PILOT_LIVE_ACCEPTANCE_RECORD` to stdout and, optionally, an exclusive receipt file.
 
+If execution stops before acceptance, diagnostic output may include the Assignment id, provider, cell status and stable error code. It must not include provider keys, prompt bodies, raw provider responses or distilled Markdown content.
+
 ## Accepted record minimum evidence
 
 A valid accepted record contains:
