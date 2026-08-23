@@ -45,7 +45,7 @@ The 2026-08-22 post-freeze closeout proves all current acquisition-intelligence 
 
 This does **not** mean every source/provider named in the original PRD v1.0 Draft is implemented. DATABASE connector breadth can be added later through the existing contracts without reopening the trunk architecture.
 
-The principal external activation dependency is the dedicated **MarkOrbit Core ReadyPackage V2 receiver**. Knowledge keeps V2 outbound transport gated unless a dedicated V2 endpoint/protocol is explicitly configured; the missing Core-side receiver therefore blocks V2 production activation, not the internal Knowledge v0.1 freeze. V2 must never fall back to the frozen V1 consumer.
+The principal external activation dependency is completion and explicit cross-repository acceptance of the existing **MarkOrbit Core ReadyPackage V2 consumer**. Core PR #91 already implements the dedicated V2 ingress and durable delivery ledger, but the locked baseline still returns durable `RECEIVED`; the remaining P0 work is WP03–WP05: full Content Export V2 / Vault provenance validation, durable `ACCEPTED`, recovery semantics and eight real cross-repository E2E. Knowledge keeps production V2 activation gated until Core completion evidence is independently accepted in a non-production Knowledge→Core run. V2 must never fall back to the frozen V1 consumer.
 
 See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md) for the frozen baseline and [Post-freeze Production Validation Closeout](docs/release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md) for the current state and next production gates.
 
