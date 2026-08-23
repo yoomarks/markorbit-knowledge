@@ -52,17 +52,20 @@ function timestamp(value: unknown): value is string {
 function isEntry(value: unknown): value is AiAssignmentLibraryEntryV1 {
   const item = record(value);
   if (!item || !exactKeys(item, ["sequence", "workflow", "assignmentId", "tags"])) return false;
-  return (
-    Number.isSafeInteger(item.sequence) &&
-    (item.sequence as number) > 0 &&
-    typeof item.workflow === "string" &&
-    WORKFLOW.test(item.workflow) &&
-    typeof item.assignmentId === "string" &&
-    item.assignmentId.startsWith("kas_") &&
-    ID.test(item.assignmentId) &&
-    Array.isArray(item.tags) &&
-    item.tags.every(nonEmpty)
-  );
+  if (
+    !Number.isSafeInteger(item.sequence) ||
+    (item.sequence as number) <= 0 ||
+    typeof item.workflow !== "string" ||
+    !WORKFLOW.test(item.workflow) ||
+    typeof item.assignmentId !== "string" ||
+    !item.assignmentId.startsWith("kas_") ||
+    !ID.test(item.assignmentId) ||
+    !Array.isArray(item.tags) ||
+    !item.tags.every(nonEmpty)
+  ) {
+    return false;
+  }
+  return new Set(item.tags as string[]).size === item.tags.length;
 }
 
 export function isAiAssignmentLibraryV1(value: unknown): value is AiAssignmentLibraryV1 {
@@ -100,9 +103,13 @@ export function isAiAssignmentLibraryV1(value: unknown): value is AiAssignmentLi
   if (!Array.isArray(item.entries) || item.entries.length === 0 || !item.entries.every(isEntry)) {
     return false;
   }
+
   const entries = item.entries as AiAssignmentLibraryEntryV1[];
   const assignmentIds = new Set(entries.map((entry) => entry.assignmentId));
-  const sequences = new Set(entries.map((entry) => entry.sequence));
+  const workflows = new Set(entries.map((entry) => entry.workflow));
+  const sortedSequences = entries.map((entry) => entry.sequence).sort((left, right) => left - right);
+  const sequencesAreContiguous = sortedSequences.every((sequence, index) => sequence === index + 1);
+
   return (
     item.protocolVersion === AI_ASSIGNMENT_LIBRARY_PROTOCOL_VERSION &&
     item.objectType === AI_ASSIGNMENT_LIBRARY_OBJECT_TYPE &&
@@ -115,7 +122,8 @@ export function isAiAssignmentLibraryV1(value: unknown): value is AiAssignmentLi
     nonEmpty(item.jurisdiction) &&
     nonEmpty(item.domain) &&
     assignmentIds.size === entries.length &&
-    sequences.size === entries.length &&
+    workflows.size === entries.length &&
+    sequencesAreContiguous &&
     boundaries.answerContentStored === false &&
     boundaries.executionAuthorityGranted === false &&
     boundaries.legalTruthVerified === false &&
