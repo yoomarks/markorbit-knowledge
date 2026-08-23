@@ -14,6 +14,11 @@ import {
   type AiProductionPilotPlanV1,
 } from "@markorbit/worker-runtime/ai-production-pilot";
 import { OpenAiKnowledgeAdapter } from "@markorbit/worker-runtime/openai-knowledge-adapter";
+import {
+  assertLivePilotComplete,
+  toLivePilotReceiptView,
+  type LivePilotLineage,
+} from "./adk-live-pilot-acceptance";
 
 type LivePilotConfig = {
   databasePath: string;
@@ -26,15 +31,6 @@ type LivePilotConfig = {
   leaseToken: string;
 };
 
-type LivePilotLineage = {
-  assignmentId: string;
-  provider: "DEEPSEEK" | "OPENAI";
-  submissionId: string;
-  distilledArtifactId: string;
-  rawProviderArtifactId: string;
-  markdownRawArtifactId: string;
-};
-
 type LivePilotAcceptanceRecord = {
   objectType: "AI_PRODUCTION_PILOT_LIVE_ACCEPTANCE_RECORD";
   protocolVersion: "1.0";
@@ -43,7 +39,7 @@ type LivePilotAcceptanceRecord = {
   runId: string;
   assignmentIds: [string, string, string];
   providers: ["DEEPSEEK", "OPENAI"];
-  receipts: ReturnType<typeof receiptView>[];
+  receipts: ReturnType<typeof toLivePilotReceiptView>[];
   lineage: LivePilotLineage[];
   accepted: true;
   boundaries: {
@@ -89,32 +85,6 @@ function loadPlan(path: string): AiProductionPilotPlanV1 {
   return parsed;
 }
 
-function receiptView(receipt: {
-  assignmentId: string;
-  provider: string;
-  status: string;
-  submissionId?: string;
-  artifactId?: string;
-  errorCode?: string;
-  retryable?: boolean;
-}) {
-  return {
-    assignmentId: receipt.assignmentId,
-    provider: receipt.provider,
-    status: receipt.status,
-    ...(receipt.submissionId ? { submissionId: receipt.submissionId } : {}),
-    ...(receipt.artifactId ? { artifactId: receipt.artifactId } : {}),
-    ...(receipt.errorCode ? { errorCode: receipt.errorCode } : {}),
-    ...(receipt.retryable !== undefined ? { retryable: receipt.retryable } : {}),
-  };
-}
-
-function assertAllExecuted(receipts: readonly { status: string }[]): void {
-  if (receipts.length !== 6 || receipts.some((receipt) => receipt.status !== "EXECUTED")) {
-    throw new Error("ADK live pilot acceptance requires all 6 intended cells to be EXECUTED");
-  }
-}
-
 function lineageFrom(
   acquisition: {
     assignment: { assignmentId: string };
@@ -157,7 +127,16 @@ async function main(): Promise<void> {
       ["OPENAI" as const, new OpenAiKnowledgeAdapter()],
     ]);
     const pilot = await runAiProductionPilot({ plan, assignments, adapters });
-    assertAllExecuted(pilot.run.receipts);
+    if (
+      pilot.run.receipts.length !== 6 ||
+      pilot.run.receipts.some((receipt) => receipt.status !== "EXECUTED")
+    ) {
+      throw new Error(
+        `ADK live pilot did not execute all intended cells: ${JSON.stringify(
+          pilot.run.receipts.map(toLivePilotReceiptView),
+        )}`,
+      );
+    }
     if (pilot.acquisitions.length !== 6) {
       throw new Error("ADK live pilot produced an incomplete acquisition set");
     }
@@ -178,9 +157,12 @@ async function main(): Promise<void> {
       lineage.push(lineageFrom(acquisition, ingestion));
     }
 
-    if (lineage.length !== 6) {
-      throw new Error("ADK live pilot RawArtifact lineage is incomplete");
-    }
+    const receiptViews = pilot.run.receipts.map(toLivePilotReceiptView);
+    assertLivePilotComplete({
+      receipts: receiptViews,
+      acquisitionCount: pilot.acquisitions.length,
+      lineage,
+    });
 
     const record: LivePilotAcceptanceRecord = {
       objectType: "AI_PRODUCTION_PILOT_LIVE_ACCEPTANCE_RECORD",
@@ -190,7 +172,7 @@ async function main(): Promise<void> {
       runId: pilot.run.runId,
       assignmentIds: plan.assignmentIds,
       providers: ["DEEPSEEK", "OPENAI"],
-      receipts: pilot.run.receipts.map(receiptView),
+      receipts: receiptViews,
       lineage,
       accepted: true,
       boundaries: {
