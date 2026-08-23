@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/main.ts",
+    "adk:pilot:live": "tsx src/run-adk-live-pilot.ts",
     "bootstrap:api": "tsx src/bootstrap-api.ts",
     "bootstrap:github": "tsx src/bootstrap-github.ts",
     "bootstrap:rss": "tsx src/bootstrap-rss.ts",

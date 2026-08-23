@@ -13,6 +13,10 @@ import {
   type AiKnowledgeProviderAdapter,
 } from "./ai-distilled-knowledge-acquirer";
 
+export { isAiProductionPilotPlanV1 } from "@markorbit/contracts";
+export type { AiKnowledgeProvider, AiProductionPilotPlanV1 } from "@markorbit/contracts";
+export type { AiKnowledgeProviderAdapter } from "./ai-distilled-knowledge-acquirer";
+
 export type AiProductionPilotExecutionInput = {
   plan: AiProductionPilotPlanV1;
   assignments: ReadonlyMap<string, AiKnowledgeAssignmentV1>;
