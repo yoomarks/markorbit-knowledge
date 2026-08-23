@@ -1,0 +1,43 @@
+name: ADK Format Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - "apps/worker/src/run-adk-candidate-promotion.ts"
+      - "apps/worker/src/run-adk-candidate-promotion.test.ts"
+      - "packages/contracts/src/ai-assignment-candidate-promotion-v1.ts"
+      - "packages/contracts/src/ai-assignment-candidate-promotion-v1.test.ts"
+      - "packages/persistence/src/ai-assignment-candidate-promotion.ts"
+      - "packages/persistence/src/ai-assignment-candidate-promotion.test.ts"
+      - ".github/workflows/adk-format-diagnostic.yml"
+
+jobs:
+  prettier-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier diff
+        run: |
+          pnpm exec prettier --write \
+            apps/worker/src/run-adk-candidate-promotion.ts \
+            apps/worker/src/run-adk-candidate-promotion.test.ts \
+            packages/contracts/src/ai-assignment-candidate-promotion-v1.ts \
+            packages/contracts/src/ai-assignment-candidate-promotion-v1.test.ts \
+            packages/persistence/src/ai-assignment-candidate-promotion.ts \
+            packages/persistence/src/ai-assignment-candidate-promotion.test.ts
+          git diff -- \
+            apps/worker/src/run-adk-candidate-promotion.ts \
+            apps/worker/src/run-adk-candidate-promotion.test.ts \
+            packages/contracts/src/ai-assignment-candidate-promotion-v1.ts \
+            packages/contracts/src/ai-assignment-candidate-promotion-v1.test.ts \
+            packages/persistence/src/ai-assignment-candidate-promotion.ts \
+            packages/persistence/src/ai-assignment-candidate-promotion.test.ts
+          exit 1
