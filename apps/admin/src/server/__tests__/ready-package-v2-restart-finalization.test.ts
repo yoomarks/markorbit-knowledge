@@ -22,7 +22,9 @@ function audit(
     sequence,
     type,
     requestSha256: REQUEST_SHA,
-    recordedAt: new Date(Date.parse("2026-08-23T10:00:00.000Z") + sequence * 60_000).toISOString(),
+    recordedAt: new Date(
+      Date.parse("2026-08-23T10:00:00.000Z") + sequence * 60_000,
+    ).toISOString(),
     ...overrides,
   };
 }
@@ -75,11 +77,7 @@ describe("ReadyPackage V2 restart finalization", () => {
       recordTransportResult: vi.fn(),
       recordResult,
       list: vi.fn(() => []),
-      listAuditEvents: vi.fn(() => [
-        audit(1, "PREPARED"),
-        started,
-        transportRecorded,
-      ]),
+      listAuditEvents: vi.fn(() => [audit(1, "PREPARED"), started, transportRecorded]),
     } as never;
     const service = new ReadyPackageV2DeliveryService({
       readyPackages: {} as never,
