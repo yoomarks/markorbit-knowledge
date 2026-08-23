@@ -24,4 +24,15 @@ describe("ADK knowledge job store", () => {
     expect(loaded).toEqual(job);
     expect(loaded).not.toBe(job);
   });
+
+  it("claims queued jobs through the queue boundary", () => {
+    const store = new MemoryAiKnowledgeJobStore();
+
+    store.put(job);
+    const claimed = store.claimNext();
+
+    expect(claimed?.id).toBe(job.id);
+    expect(claimed?.status).toBe("CLAIMED");
+    expect(store.get(job.id)?.status).toBe("CLAIMED");
+  });
 });
