@@ -1,0 +1,35 @@
+name: ADK-03 One-Time Format
+
+on:
+  push:
+    branches:
+      - agent/adk-03-rawartifact-bridge
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/adk-03-rawartifact-bridge
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write packages/persistence/src/ai-distilled-knowledge-ingestion.ts
+      - name: Commit output
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/persistence/src/ai-distilled-knowledge-ingestion.ts
+          git commit -m "style(adk): format ADK-03 RawArtifact bridge"
+          git push origin HEAD:agent/adk-03-rawartifact-bridge
