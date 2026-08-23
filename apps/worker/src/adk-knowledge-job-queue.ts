@@ -33,10 +33,7 @@ export function claimJob(job: AiKnowledgeJob): AiKnowledgeJob {
   };
 }
 
-export function markCredentialBlocked(
-  job: AiKnowledgeJob,
-  error: string,
-): AiKnowledgeJob {
+export function markCredentialBlocked(job: AiKnowledgeJob, error: string): AiKnowledgeJob {
   if (job.status !== "CLAIMED") {
     throw new Error("Only claimed jobs can be credential-blocked");
   }
@@ -90,10 +87,7 @@ export function requeueJob(job: AiKnowledgeJob): AiKnowledgeJob {
   };
 }
 
-export function completeJob(
-  job: AiKnowledgeJob,
-  artifactIds: string[],
-): AiKnowledgeJob {
+export function completeJob(job: AiKnowledgeJob, artifactIds: string[]): AiKnowledgeJob {
   if (job.status !== "RUNNING") {
     throw new Error("Only running jobs can complete");
   }
