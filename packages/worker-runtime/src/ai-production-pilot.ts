@@ -26,7 +26,9 @@ export type AiProductionPilotExecutionResult = {
 
 function stableRunId(plan: AiProductionPilotPlanV1, startedAt: string): string {
   const hash = createHash("sha256")
-    .update(`${plan.pilotId}:${startedAt}:${plan.assignmentIds.join(":")}:${plan.providers.join(":")}`)
+    .update(
+      `${plan.pilotId}:${startedAt}:${plan.assignmentIds.join(":")}:${plan.providers.join(":")}`,
+    )
     .digest("hex");
   return `apr_${hash.slice(0, 32)}`;
 }

@@ -116,14 +116,19 @@ describe("runAiProductionPilot", () => {
   it("runs the full 3-topic matrix without producing rankings or legal truth", async () => {
     const assignmentMap = new Map(assignments.map((item) => [item.assignmentId, item]));
     const adapters = new Map<AiKnowledgeProvider, AiKnowledgeProviderAdapter>([
-      ["DEEPSEEK", adapter("DEEPSEEK", async ({ assignment: value }) => fakeAcquisition(value, "DEEPSEEK"))],
-      ["OPENAI", adapter("OPENAI", async ({ assignment: value }) => fakeAcquisition(value, "OPENAI"))],
+      [
+        "DEEPSEEK",
+        adapter("DEEPSEEK", async ({ assignment: value }) => fakeAcquisition(value, "DEEPSEEK")),
+      ],
+      [
+        "OPENAI",
+        adapter("OPENAI", async ({ assignment: value }) => fakeAcquisition(value, "OPENAI")),
+      ],
     ]);
     const moments = [new Date("2026-08-23T04:12:00.000Z"), new Date("2026-08-23T04:12:06.000Z")];
 
-    const result = await runAiProductionPilot(
-      { plan, assignments: assignmentMap, adapters },
-      () => moments.shift()!,
+    const result = await runAiProductionPilot({ plan, assignments: assignmentMap, adapters }, () =>
+      moments.shift()!,
     );
 
     expect(result.run.receipts).toHaveLength(6);
@@ -137,7 +142,10 @@ describe("runAiProductionPilot", () => {
   it("records missing adapters without pretending the provider executed", async () => {
     const assignmentMap = new Map(assignments.map((item) => [item.assignmentId, item]));
     const adapters = new Map<AiKnowledgeProvider, AiKnowledgeProviderAdapter>([
-      ["DEEPSEEK", adapter("DEEPSEEK", async ({ assignment: value }) => fakeAcquisition(value, "DEEPSEEK"))],
+      [
+        "DEEPSEEK",
+        adapter("DEEPSEEK", async ({ assignment: value }) => fakeAcquisition(value, "DEEPSEEK")),
+      ],
     ]);
 
     const result = await runAiProductionPilot({ plan, assignments: assignmentMap, adapters });
@@ -160,7 +168,10 @@ describe("runAiProductionPilot", () => {
           );
         }),
       ],
-      ["OPENAI", adapter("OPENAI", async ({ assignment: value }) => fakeAcquisition(value, "OPENAI"))],
+      [
+        "OPENAI",
+        adapter("OPENAI", async ({ assignment: value }) => fakeAcquisition(value, "OPENAI")),
+      ],
     ]);
 
     const result = await runAiProductionPilot({ plan, assignments: assignmentMap, adapters });

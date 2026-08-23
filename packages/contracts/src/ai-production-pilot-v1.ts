@@ -19,10 +19,7 @@ export type AiProductionPilotPlanV1 = {
 };
 
 export type AiProductionPilotCellStatus =
-  | "EXECUTED"
-  | "BLOCKED_ADAPTER"
-  | "BLOCKED_CREDENTIAL"
-  | "FAILED";
+  "EXECUTED" | "BLOCKED_ADAPTER" | "BLOCKED_CREDENTIAL" | "FAILED";
 
 export type AiProductionPilotCellReceiptV1 = {
   assignmentId: string;
@@ -69,28 +66,26 @@ export function isAiProductionPilotPlanV1(value: unknown): value is AiProduction
   const boundaries = record(item.boundaries);
   return Boolean(
     item.protocolVersion === AI_PRODUCTION_PILOT_PROTOCOL_VERSION &&
-      item.objectType === "AI_PRODUCTION_PILOT_PLAN" &&
-      typeof item.pilotId === "string" &&
-      item.pilotId.startsWith("app_") &&
-      ID.test(item.pilotId) &&
-      Array.isArray(assignments) &&
-      assignments.length === 3 &&
-      assignments.every(
-        (id) => typeof id === "string" && id.startsWith("kas_") && ID.test(id),
-      ) &&
-      new Set(assignments).size === 3 &&
-      Array.isArray(providers) &&
-      providers.length >= 2 &&
-      new Set(providers).size === providers.length &&
-      providers.every((provider) =>
-        ["DEEPSEEK", "OPENAI", "KIMI", "CLAUDE", "GEMINI"].includes(String(provider)),
-      ) &&
-      typeof item.approvalRef === "string" &&
-      item.approvalRef.trim().length > 0 &&
-      item.liveProviderCallsAuthorized === true &&
-      boundaries?.compareProviderQuality === false &&
-      boundaries?.legalTruthVerified === false &&
-      boundaries?.candidateAutoActivation === false &&
-      timestamp(item.createdAt),
+    item.objectType === "AI_PRODUCTION_PILOT_PLAN" &&
+    typeof item.pilotId === "string" &&
+    item.pilotId.startsWith("app_") &&
+    ID.test(item.pilotId) &&
+    Array.isArray(assignments) &&
+    assignments.length === 3 &&
+    assignments.every((id) => typeof id === "string" && id.startsWith("kas_") && ID.test(id)) &&
+    new Set(assignments).size === 3 &&
+    Array.isArray(providers) &&
+    providers.length >= 2 &&
+    new Set(providers).size === providers.length &&
+    providers.every((provider) =>
+      ["DEEPSEEK", "OPENAI", "KIMI", "CLAUDE", "GEMINI"].includes(String(provider)),
+    ) &&
+    typeof item.approvalRef === "string" &&
+    item.approvalRef.trim().length > 0 &&
+    item.liveProviderCallsAuthorized === true &&
+    boundaries?.compareProviderQuality === false &&
+    boundaries?.legalTruthVerified === false &&
+    boundaries?.candidateAutoActivation === false &&
+    timestamp(item.createdAt),
   );
 }
