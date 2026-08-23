@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 export const AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION = "1.0" as const;
 export const AI_KNOWLEDGE_ASSIGNMENT_OBJECT_TYPE = "AI_KNOWLEDGE_ASSIGNMENT" as const;
 export const AI_RESEARCH_SUBMISSION_OBJECT_TYPE = "AI_RESEARCH_SUBMISSION" as const;
@@ -96,10 +94,6 @@ function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-export function sha256Utf8(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
-}
-
 export function isAiKnowledgeAssignmentV1(value: unknown): value is AiKnowledgeAssignmentV1 {
   const item = record(value);
   if (
@@ -150,52 +144,47 @@ export function assertAiKnowledgeAssignmentV1(
   }
 }
 
-export function createAiDistilledKnowledgeArtifactV1(input: {
-  artifactId: string;
-  assignment: AiKnowledgeAssignmentV1;
-  submission: AiResearchSubmissionV1;
-  markdown: string;
-  createdAt: string;
-}): AiDistilledKnowledgeArtifactV1 {
-  assertAiKnowledgeAssignmentV1(input.assignment);
-  if (!input.artifactId.startsWith("adk_") || !ID.test(input.artifactId)) {
-    throw new TypeError("Invalid AI distilled knowledge artifact id");
-  }
-  if (input.submission.assignmentId !== input.assignment.assignmentId) {
-    throw new TypeError("Submission and assignment identity do not match");
-  }
-  const bytes = Buffer.from(input.markdown, "utf8");
-  const sha256 = sha256Utf8(input.markdown);
-  if (
-    input.submission.markdownSha256 !== sha256 ||
-    input.submission.markdownSizeBytes !== bytes.byteLength
-  ) {
-    throw new TypeError("Submission Markdown integrity does not match artifact content");
-  }
-  return {
-    protocolVersion: AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION,
-    objectType: AI_DISTILLED_KNOWLEDGE_ARTIFACT_OBJECT_TYPE,
-    artifactId: input.artifactId,
-    assignmentId: input.assignment.assignmentId,
-    submissionId: input.submission.submissionId,
-    provider: input.submission.provider,
-    model: input.submission.model,
-    instructionSetId: input.assignment.instructionSetId,
-    instructionSetRevision: input.assignment.instructionSetRevision,
-    provenance: {
-      sourceKind: "SYNTHETIC_AI",
-      legalTruthVerified: false,
-      rawResponseSha256: input.submission.rawResponseSha256,
-      promptSha256: input.submission.promptSha256,
-    },
-    content: {
-      mediaType: "text/markdown",
-      encoding: "utf-8",
-      sha256,
-      sizeBytes: bytes.byteLength,
-      contentAddressedRef: `cas:sha256:${sha256}`,
-      content: input.markdown,
-    },
-    createdAt: input.createdAt,
-  };
+export function isAiResearchSubmissionV1(value: unknown): value is AiResearchSubmissionV1 {
+  const item = record(value);
+  if (!item) return false;
+  const expected = [
+    "protocolVersion",
+    "objectType",
+    "submissionId",
+    "assignmentId",
+    "provider",
+    "model",
+    "requestedAt",
+    "completedAt",
+    "promptSha256",
+    "rawResponseSha256",
+    "markdownSha256",
+    "markdownSizeBytes",
+  ];
+  if ("providerRequestId" in item) expected.push("providerRequestId");
+  if (!exactKeys(item, expected)) return false;
+  return (
+    item.protocolVersion === AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION &&
+    item.objectType === AI_RESEARCH_SUBMISSION_OBJECT_TYPE &&
+    typeof item.submissionId === "string" &&
+    item.submissionId.startsWith("ars_") &&
+    ID.test(item.submissionId) &&
+    typeof item.assignmentId === "string" &&
+    item.assignmentId.startsWith("kas_") &&
+    ID.test(item.assignmentId) &&
+    typeof item.provider === "string" &&
+    (AI_KNOWLEDGE_PROVIDERS as readonly string[]).includes(item.provider) &&
+    nonEmpty(item.model) &&
+    timestamp(item.requestedAt) &&
+    timestamp(item.completedAt) &&
+    typeof item.promptSha256 === "string" &&
+    SHA256.test(item.promptSha256) &&
+    typeof item.rawResponseSha256 === "string" &&
+    SHA256.test(item.rawResponseSha256) &&
+    typeof item.markdownSha256 === "string" &&
+    SHA256.test(item.markdownSha256) &&
+    Number.isSafeInteger(item.markdownSizeBytes) &&
+    (item.markdownSizeBytes as number) >= 0 &&
+    (item.providerRequestId === undefined || nonEmpty(item.providerRequestId))
+  );
 }
