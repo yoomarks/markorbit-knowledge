@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  blockJobForRecovery,
   claimJob,
   completeJob,
   failJob,
   markCredentialBlocked,
   markRunning,
+  recoverClaimedJob,
+  requeueCredentialBlockedJob,
   requeueJob,
 } from "./adk-knowledge-job-queue";
 
@@ -51,6 +54,26 @@ describe("ADK knowledge job queue", () => {
     expect(failed.attempts).toBe(1);
     expect(requeued.status).toBe("QUEUED");
     expect(requeued.attempts).toBe(1);
+    expect(requeued.error).toBeUndefined();
+  });
+
+  it("requeues credential blocks only through an explicit transition", () => {
+    const blocked = markCredentialBlocked(markRunning(claimJob(job)), "missing key");
+    const requeued = requeueCredentialBlockedJob(blocked);
+
+    expect(requeued.status).toBe("QUEUED");
+    expect(requeued.attempts).toBe(0);
+    expect(requeued.error).toBeUndefined();
+  });
+
+  it("recovers claimed work but quarantines uncertain running work", () => {
+    const claimed = claimJob(job);
+    const recovered = recoverClaimedJob(claimed);
+    const blocked = blockJobForRecovery(markRunning(claimed), "uncertain provider execution");
+
+    expect(recovered.status).toBe("QUEUED");
+    expect(blocked.status).toBe("BLOCKED_RECOVERY");
+    expect(blocked.error).toBe("uncertain provider execution");
   });
 
   it("moves exhausted failures into the terminal failed state", () => {
@@ -87,5 +110,8 @@ describe("ADK knowledge job queue", () => {
     expect(() => markRunning(job)).toThrow(/Only claimed jobs/u);
     expect(() => failJob(job, "boom")).toThrow(/Only running jobs/u);
     expect(() => requeueJob(job)).toThrow(/Only retry-pending jobs/u);
+    expect(() => requeueCredentialBlockedJob(job)).toThrow(/credential-blocked/u);
+    expect(() => recoverClaimedJob(job)).toThrow(/claimed jobs/u);
+    expect(() => blockJobForRecovery(job, "uncertain")).toThrow(/running jobs/u);
   });
 });
