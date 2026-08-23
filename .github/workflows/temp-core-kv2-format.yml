@@ -24,14 +24,26 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec prettier --write NEXT_TASKS.md docs/tasks/MarkOrbit_Core_Knowledge_Formal_Integration_Task_2026-08-23.md
-      - name: Commit formatting
+      - name: Correct Knowledge/Core README factual drift
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('README.md')
+          text = path.read_text(encoding='utf-8')
+          old = "The principal external activation dependency is the dedicated **MarkOrbit Core ReadyPackage V2 receiver**. Knowledge keeps V2 outbound transport gated unless a dedicated V2 endpoint/protocol is explicitly configured; the missing Core-side receiver therefore blocks V2 production activation, not the internal Knowledge v0.1 freeze. V2 must never fall back to the frozen V1 consumer."
+          new = "The principal external activation dependency is completion and explicit cross-repository acceptance of the existing **MarkOrbit Core ReadyPackage V2 consumer**. Core PR #91 already implements the dedicated V2 ingress and durable delivery ledger, but the locked baseline still returns durable `RECEIVED`; the remaining P0 work is WP03–WP05: full Content Export V2 / Vault provenance validation, durable `ACCEPTED`, recovery semantics and eight real cross-repository E2E. Knowledge keeps production V2 activation gated until Core completion evidence is independently accepted in a non-production Knowledge→Core run. V2 must never fall back to the frozen V1 consumer."
+          if old not in text:
+              raise SystemExit('Expected drifted README paragraph not found; refusing broad replacement.')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - run: pnpm exec prettier --write README.md NEXT_TASKS.md docs/tasks/MarkOrbit_Core_Knowledge_Formal_Integration_Task_2026-08-23.md
+      - name: Commit correction and formatting
         run: |
           if git diff --quiet; then
             exit 0
           fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add NEXT_TASKS.md docs/tasks/MarkOrbit_Core_Knowledge_Formal_Integration_Task_2026-08-23.md
-          git commit -m "style: format Core KV2 docs"
+          git add README.md NEXT_TASKS.md docs/tasks/MarkOrbit_Core_Knowledge_Formal_Integration_Task_2026-08-23.md
+          git commit -m "docs: correct Core KV2 README baseline"
           git push origin HEAD:docs/core-kv2-cross-repo-freeze
