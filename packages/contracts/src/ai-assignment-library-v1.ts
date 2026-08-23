@@ -107,7 +107,9 @@ export function isAiAssignmentLibraryV1(value: unknown): value is AiAssignmentLi
   const entries = item.entries as AiAssignmentLibraryEntryV1[];
   const assignmentIds = new Set(entries.map((entry) => entry.assignmentId));
   const workflows = new Set(entries.map((entry) => entry.workflow));
-  const sortedSequences = entries.map((entry) => entry.sequence).sort((left, right) => left - right);
+  const sortedSequences = entries
+    .map((entry) => entry.sequence)
+    .sort((left, right) => left - right);
   const sequencesAreContiguous = sortedSequences.every((sequence, index) => sequence === index + 1);
 
   return (
@@ -133,6 +135,8 @@ export function isAiAssignmentLibraryV1(value: unknown): value is AiAssignmentLi
   );
 }
 
-export function assertAiAssignmentLibraryV1(value: unknown): asserts value is AiAssignmentLibraryV1 {
+export function assertAiAssignmentLibraryV1(
+  value: unknown,
+): asserts value is AiAssignmentLibraryV1 {
   if (!isAiAssignmentLibraryV1(value)) throw new TypeError("Invalid AiAssignmentLibraryV1");
 }

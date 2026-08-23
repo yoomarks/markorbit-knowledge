@@ -29,9 +29,9 @@ describe("ADK-08 assignment library", () => {
     expect(library.entries.map((entry) => entry.workflow)).toEqual(US_TRADEMARK_LIBRARY_WORKFLOWS);
     expect(new Set(library.entries.map((entry) => entry.assignmentId)).size).toBe(12);
     expect(repository.getLatestLibrary(US_TRADEMARK_ASSIGNMENT_LIBRARY_ID)).toEqual(library);
-    expect(repository.listLatestLibrariesByScope({ jurisdiction: "US", domain: "TRADEMARK" })).toEqual([
-      library,
-    ]);
+    expect(
+      repository.listLatestLibrariesByScope({ jurisdiction: "US", domain: "TRADEMARK" }),
+    ).toEqual([library]);
     expect(library.boundaries).toEqual({
       answerContentStored: false,
       executionAuthorityGranted: false,
@@ -100,7 +100,8 @@ describe("ADK-08 assignment library", () => {
       instructionSetId: US_TRADEMARK_INSTRUCTION_SET_ID,
       instructionSetRevision: 1,
       language: "en",
-      prompt: "Research the Canadian trademark Office Action lifecycle using current official sources.",
+      prompt:
+        "Research the Canadian trademark Office Action lifecycle using current official sources.",
       createdAt: "2026-08-24T00:10:00.000Z",
     };
     assignments.saveAssignment(foreignAssignment);

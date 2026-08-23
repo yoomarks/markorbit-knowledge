@@ -104,8 +104,7 @@ export class SqliteAiAssignmentLibraryRepository {
          WHERE library_id = ? AND revision = ?`,
       )
       .get(value.libraryId, value.revision) as
-      | { document_sha256: string; document_json: string }
-      | undefined;
+      { document_sha256: string; document_json: string } | undefined;
     if (existing) {
       if (existing.document_sha256 !== sha256 || existing.document_json !== json) {
         throw new RegistryConflictError(
