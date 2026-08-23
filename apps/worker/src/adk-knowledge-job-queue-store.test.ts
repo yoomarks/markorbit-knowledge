@@ -3,11 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import {
-  failJob,
-  markRunning,
-  type AiKnowledgeJob,
-} from "./adk-knowledge-job-queue";
+import { failJob, markRunning, type AiKnowledgeJob } from "./adk-knowledge-job-queue";
 import {
   MemoryAiKnowledgeJobStore,
   SqliteAiKnowledgeJobStore,

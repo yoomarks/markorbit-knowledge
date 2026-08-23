@@ -95,7 +95,9 @@ export class SqliteAiKnowledgeJobStore implements AiKnowledgeJobStore {
     const existing = this.get(job.id) ?? this.getByExecutionKey(executionKey);
     if (existing) {
       if (JSON.stringify(existing) !== JSON.stringify(job)) {
-        throw new Error(`AI knowledge job execution key ${executionKey} conflicts with existing job`);
+        throw new Error(
+          `AI knowledge job execution key ${executionKey} conflicts with existing job`,
+        );
       }
       return clone(existing);
     }
@@ -207,7 +209,9 @@ export class MemoryAiKnowledgeJobStore implements AiKnowledgeJobStore {
     const executionKey = executionKeyOf(job);
     const existing = this.get(job.id) ?? this.getByExecutionKey(executionKey);
     if (existing && JSON.stringify(existing) !== JSON.stringify(job)) {
-      throw new Error(`AI knowledge job execution key ${executionKey} conflicts with existing job`);
+      throw new Error(
+        `AI knowledge job execution key ${executionKey} conflicts with existing job`,
+      );
     }
     if (!existing) this.jobs.set(job.id, clone(job));
     return clone(existing ?? job);
@@ -227,7 +231,9 @@ export class MemoryAiKnowledgeJobStore implements AiKnowledgeJobStore {
   }
 
   getByExecutionKey(executionKey: string): AiKnowledgeJob | undefined {
-    const job = [...this.jobs.values()].find((candidate) => candidate.executionKey === executionKey);
+    const job = [...this.jobs.values()].find(
+      (candidate) => candidate.executionKey === executionKey,
+    );
     return job ? clone(job) : undefined;
   }
 
