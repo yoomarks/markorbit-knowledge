@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  DeepSeekKnowledgeAdapter,
-  type AiModelTransport,
-} from "./ai-distilled-knowledge-acquirer";
+import { DeepSeekKnowledgeAdapter, type AiModelTransport } from "./ai-distilled-knowledge-acquirer";
 import type { AiKnowledgeAssignmentV1 } from "@markorbit/contracts";
 
 const assignment: AiKnowledgeAssignmentV1 = {
