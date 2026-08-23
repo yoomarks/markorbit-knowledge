@@ -46,7 +46,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@markorbit/contracts": "workspace:*",
     "@markorbit/persistence": "workspace:*",
     "@markorbit/worker-runtime": "workspace:*",
     "tsx": "4.20.6"
