@@ -23,7 +23,7 @@ function auditEvent(
     sequence,
     type,
     requestSha256: REQUEST_SHA,
-    recordedAt: new Date(Date.parse("2026-08-23T12:00:00.000Z") + sequence * 60_000).toISOString(),
+    recordedAt: new Date(Date.parse("2026-08-23T12:00:00.000Z") + (sequence - 1) * 60_000).toISOString(),
     ...overrides,
   };
 }
@@ -57,12 +57,12 @@ describe("ReadyPackage V2 restart local finalization", () => {
       updatedAt: RECORDED_AT,
     };
     const auditEvents = [
-      auditEvent(0, "PREPARED", { recordedAt: "2026-08-23T12:00:00.000Z" }),
-      auditEvent(1, "TRANSPORT_ATTEMPT_STARTED", {
+      auditEvent(1, "PREPARED", { recordedAt: "2026-08-23T12:00:00.000Z" }),
+      auditEvent(2, "TRANSPORT_ATTEMPT_STARTED", {
         attemptNumber: 1,
         recordedAt: "2026-08-23T12:02:00.000Z",
       }),
-      auditEvent(2, "TRANSPORT_RESULT_RECORDED", {
+      auditEvent(3, "TRANSPORT_RESULT_RECORDED", {
         attemptNumber: 1,
         resultStatus: "ACCEPTED",
         recordedAt: RECORDED_AT,
