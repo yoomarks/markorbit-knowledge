@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { isAiAssignmentLibraryV1, type AiAssignmentLibraryV1 } from "./ai-assignment-library-v1";
+import {
+  isAiAssignmentLibraryV1,
+  type AiAssignmentLibraryV1,
+} from "./ai-assignment-library-v1";
 
 const library = (): AiAssignmentLibraryV1 => ({
   protocolVersion: "1.0",
