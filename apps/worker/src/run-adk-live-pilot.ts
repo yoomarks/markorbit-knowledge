@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { SqliteAiKnowledgeAssignmentRepository } from "@markorbit/persistence/ai-knowledge-assignments";
@@ -9,11 +9,9 @@ import {
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import { DeepSeekKnowledgeAdapter } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
 import {
-  isAiProductionPilotPlanV1,
   runAiProductionPilot,
   type AiKnowledgeProvider,
   type AiKnowledgeProviderAdapter,
-  type AiProductionPilotPlanV1,
 } from "@markorbit/worker-runtime/ai-production-pilot";
 import { OpenAiKnowledgeAdapter } from "@markorbit/worker-runtime/openai-knowledge-adapter";
 import {
@@ -21,6 +19,8 @@ import {
   toLivePilotReceiptView,
   type LivePilotLineage,
 } from "./adk-live-pilot-acceptance";
+import { loadFrozenAdkLivePilotPlan } from "./adk-live-pilot-plan";
+import { loadAdkLivePilotRuntimeSecret } from "./adk-live-pilot-runtime-secret";
 
 type LivePilotConfig = {
   databasePath: string;
@@ -31,6 +31,11 @@ type LivePilotConfig = {
   workerCredential: string;
   leaseId: string;
   leaseToken: string;
+  runtimeBinding?: {
+    pilotId: string;
+    approvalRef: string;
+    runtimeSecretPath: string;
+  };
 };
 
 type LivePilotAcceptanceRecord = {
@@ -58,8 +63,32 @@ function required(environment: NodeJS.ProcessEnv, name: string): string {
   return value;
 }
 
-function loadConfig(environment: NodeJS.ProcessEnv = process.env): LivePilotConfig {
+export function loadAdkLivePilotConfig(
+  environment: NodeJS.ProcessEnv = process.env,
+): LivePilotConfig {
   const receiptPath = environment.MARKORBIT_ADK_LIVE_RECEIPT_PATH?.trim();
+  const runtimeSecretPath = environment.MARKORBIT_ADK_LIVE_RUNTIME_SECRET_PATH?.trim();
+
+  if (runtimeSecretPath) {
+    const resolvedRuntimeSecretPath = resolve(runtimeSecretPath);
+    const secret = loadAdkLivePilotRuntimeSecret(resolvedRuntimeSecretPath);
+    return {
+      databasePath: resolve(secret.databasePath),
+      storageRoot: resolve(secret.storageRoot),
+      planPath: resolve(secret.planPath),
+      ...(receiptPath ? { receiptPath: resolve(receiptPath) } : {}),
+      workerId: secret.workerId,
+      workerCredential: secret.workerCredential,
+      leaseId: secret.leaseId,
+      leaseToken: secret.leaseToken,
+      runtimeBinding: {
+        pilotId: secret.pilotId,
+        approvalRef: secret.approvalRef,
+        runtimeSecretPath: resolvedRuntimeSecretPath,
+      },
+    };
+  }
+
   return {
     databasePath: resolve(required(environment, "MARKORBIT_ADK_LIVE_DB_PATH")),
     storageRoot: resolve(required(environment, "MARKORBIT_ADK_LIVE_STORAGE_ROOT")),
@@ -70,21 +99,6 @@ function loadConfig(environment: NodeJS.ProcessEnv = process.env): LivePilotConf
     leaseId: required(environment, "MARKORBIT_ADK_LIVE_LEASE_ID"),
     leaseToken: required(environment, "MARKORBIT_ADK_LIVE_LEASE_TOKEN"),
   };
-}
-
-function loadPlan(path: string): AiProductionPilotPlanV1 {
-  const parsed = JSON.parse(readFileSync(path, "utf8")) as unknown;
-  if (!isAiProductionPilotPlanV1(parsed)) {
-    throw new Error("Live ADK pilot plan does not satisfy AiProductionPilotPlanV1");
-  }
-  if (
-    parsed.providers.length !== 2 ||
-    parsed.providers[0] !== "DEEPSEEK" ||
-    parsed.providers[1] !== "OPENAI"
-  ) {
-    throw new Error("Live ADK pilot provider set must be exactly DEEPSEEK,OPENAI in frozen order");
-  }
-  return parsed;
 }
 
 function lineageFrom(
@@ -112,8 +126,16 @@ function lineageFrom(
 }
 
 async function main(): Promise<void> {
-  const config = loadConfig();
-  const plan = loadPlan(config.planPath);
+  const config = loadAdkLivePilotConfig();
+  const plan = loadFrozenAdkLivePilotPlan(config.planPath);
+  if (
+    config.runtimeBinding &&
+    (config.runtimeBinding.pilotId !== plan.pilotId ||
+      config.runtimeBinding.approvalRef !== plan.approvalRef)
+  ) {
+    throw new Error("Prepared ADK live pilot runtime secret does not match the frozen plan");
+  }
+
   const database = new DatabaseSync(config.databasePath);
   database.exec("PRAGMA foreign_keys = ON;");
 
@@ -203,12 +225,14 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  process.stderr.write(
-    `${JSON.stringify({
-      event: "adk.live-pilot.failed",
-      message: error instanceof Error ? error.message : String(error),
-    })}\n`,
-  );
-  process.exitCode = 1;
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    process.stderr.write(
+      `${JSON.stringify({
+        event: "adk.live-pilot.failed",
+        message: error instanceof Error ? error.message : String(error),
+      })}\n`,
+    );
+    process.exitCode = 1;
+  });
+}
