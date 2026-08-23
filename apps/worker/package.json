@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/main.ts",
+    "adk:pilot:live": "tsx src/run-adk-live-pilot.ts",
     "bootstrap:api": "tsx src/bootstrap-api.ts",
     "bootstrap:github": "tsx src/bootstrap-github.ts",
     "bootstrap:rss": "tsx src/bootstrap-rss.ts",
@@ -45,6 +46,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@markorbit/contracts": "workspace:*",
     "@markorbit/persistence": "workspace:*",
     "@markorbit/worker-runtime": "workspace:*",
     "tsx": "4.20.6"
