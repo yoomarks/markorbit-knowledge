@@ -41,9 +41,7 @@ const CATALOG = {
 export function isTrademarkAssignmentLibraryJurisdiction(
   value: string,
 ): value is TrademarkAssignmentLibraryJurisdiction {
-  return (TRADEMARK_ASSIGNMENT_LIBRARY_JURISDICTIONS as readonly string[]).includes(
-    value,
-  );
+  return (TRADEMARK_ASSIGNMENT_LIBRARY_JURISDICTIONS as readonly string[]).includes(value);
 }
 
 export function seedTrademarkAssignmentLibrary(
