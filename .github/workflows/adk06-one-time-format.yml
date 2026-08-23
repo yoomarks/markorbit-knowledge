@@ -1,0 +1,35 @@
+name: ADK-06 One-Time Format
+
+on:
+  push:
+    branches:
+      - agent/adk-06-production-pilot
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/adk-06-production-pilot
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write packages/contracts/src/ai-production-pilot-v1.ts packages/worker-runtime/src/ai-production-pilot.ts packages/worker-runtime/src/ai-production-pilot.test.ts
+      - name: Commit output
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/src/ai-production-pilot-v1.ts packages/worker-runtime/src/ai-production-pilot.ts packages/worker-runtime/src/ai-production-pilot.test.ts
+          git commit -m "style(adk): format ADK-06 pilot files"
+          git push origin HEAD:agent/adk-06-production-pilot
