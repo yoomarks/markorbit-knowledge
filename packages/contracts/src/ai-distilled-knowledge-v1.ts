@@ -1,4 +1,5 @@
 export const AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION = "1.0" as const;
+export const AI_INSTRUCTION_SET_OBJECT_TYPE = "AI_INSTRUCTION_SET" as const;
 export const AI_KNOWLEDGE_ASSIGNMENT_OBJECT_TYPE = "AI_KNOWLEDGE_ASSIGNMENT" as const;
 export const AI_RESEARCH_SUBMISSION_OBJECT_TYPE = "AI_RESEARCH_SUBMISSION" as const;
 export const AI_DISTILLED_KNOWLEDGE_ARTIFACT_OBJECT_TYPE =
@@ -7,6 +8,21 @@ export const AI_DISTILLED_KNOWLEDGE_ARTIFACT_OBJECT_TYPE =
 export const AI_KNOWLEDGE_PROVIDERS = ["DEEPSEEK", "OPENAI", "KIMI", "CLAUDE", "GEMINI"] as const;
 
 export type AiKnowledgeProvider = (typeof AI_KNOWLEDGE_PROVIDERS)[number];
+
+export type AiInstructionSetV1 = {
+  protocolVersion: typeof AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION;
+  objectType: typeof AI_INSTRUCTION_SET_OBJECT_TYPE;
+  instructionSetId: string;
+  revision: number;
+  name: string;
+  purpose: string;
+  stableInstructions: readonly string[];
+  requiredSections: readonly string[];
+  outputFormat: "MARKDOWN";
+  createdAt: string;
+  changeReason: string;
+  triggerEvidenceRefs: readonly string[];
+};
 
 export type AiKnowledgeAssignmentV1 = {
   protocolVersion: typeof AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION;
@@ -86,6 +102,61 @@ function timestamp(value: unknown): value is string {
 
 function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function nonEmptyStrings(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length > 0 && value.every(nonEmpty);
+}
+
+function strings(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => typeof item === "string" && item.trim().length > 0)
+  );
+}
+
+export function isAiInstructionSetV1(value: unknown): value is AiInstructionSetV1 {
+  const item = record(value);
+  if (
+    !item ||
+    !exactKeys(item, [
+      "protocolVersion",
+      "objectType",
+      "instructionSetId",
+      "revision",
+      "name",
+      "purpose",
+      "stableInstructions",
+      "requiredSections",
+      "outputFormat",
+      "createdAt",
+      "changeReason",
+      "triggerEvidenceRefs",
+    ])
+  ) {
+    return false;
+  }
+  return (
+    item.protocolVersion === AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION &&
+    item.objectType === AI_INSTRUCTION_SET_OBJECT_TYPE &&
+    typeof item.instructionSetId === "string" &&
+    item.instructionSetId.startsWith("kis_") &&
+    ID.test(item.instructionSetId) &&
+    Number.isSafeInteger(item.revision) &&
+    (item.revision as number) > 0 &&
+    nonEmpty(item.name) &&
+    nonEmpty(item.purpose) &&
+    nonEmptyStrings(item.stableInstructions) &&
+    nonEmptyStrings(item.requiredSections) &&
+    item.outputFormat === "MARKDOWN" &&
+    timestamp(item.createdAt) &&
+    nonEmpty(item.changeReason) &&
+    strings(item.triggerEvidenceRefs)
+  );
+}
+
+export function assertAiInstructionSetV1(value: unknown): asserts value is AiInstructionSetV1 {
+  if (!isAiInstructionSetV1(value)) throw new TypeError("Invalid AiInstructionSetV1");
 }
 
 export function isAiKnowledgeAssignmentV1(value: unknown): value is AiKnowledgeAssignmentV1 {
