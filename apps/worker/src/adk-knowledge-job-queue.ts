@@ -21,6 +21,10 @@ export type AiKnowledgeJob = {
   error?: string;
 };
 
+export type AiKnowledgeFailureOptions = {
+  retryable?: boolean;
+};
+
 export function claimJob(job: AiKnowledgeJob): AiKnowledgeJob {
   if (job.status !== "QUEUED") {
     throw new Error("Only queued jobs can be claimed");
@@ -34,8 +38,8 @@ export function claimJob(job: AiKnowledgeJob): AiKnowledgeJob {
 }
 
 export function markCredentialBlocked(job: AiKnowledgeJob, error: string): AiKnowledgeJob {
-  if (job.status !== "CLAIMED") {
-    throw new Error("Only claimed jobs can be credential-blocked");
+  if (job.status !== "CLAIMED" && job.status !== "RUNNING") {
+    throw new Error("Only claimed or running jobs can be credential-blocked");
   }
 
   return {
@@ -58,18 +62,23 @@ export function markRunning(job: AiKnowledgeJob): AiKnowledgeJob {
   };
 }
 
-export function failJob(job: AiKnowledgeJob, error: string): AiKnowledgeJob {
+export function failJob(
+  job: AiKnowledgeJob,
+  error: string,
+  options: AiKnowledgeFailureOptions = {},
+): AiKnowledgeJob {
   if (job.status !== "RUNNING") {
     throw new Error("Only running jobs can fail");
   }
 
   const attempts = job.attempts + 1;
   const maxAttempts = job.maxAttempts ?? 3;
+  const retryable = options.retryable ?? true;
 
   return {
     ...job,
     attempts,
-    status: attempts < maxAttempts ? "RETRY_PENDING" : "FAILED",
+    status: retryable && attempts < maxAttempts ? "RETRY_PENDING" : "FAILED",
     error,
     updatedAt: new Date().toISOString(),
   };

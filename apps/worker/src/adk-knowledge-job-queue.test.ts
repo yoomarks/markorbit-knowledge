@@ -31,12 +31,15 @@ describe("ADK knowledge job queue", () => {
     expect(running.status).toBe("RUNNING");
   });
 
-  it("blocks claimed jobs when provider credentials are missing", () => {
+  it("blocks claimed or running jobs when provider credentials are missing", () => {
     const claimed = claimJob(job);
-    const blocked = markCredentialBlocked(claimed, "missing key");
+    const blockedBeforeRun = markCredentialBlocked(claimed, "missing key");
+    const running = markRunning(claimed);
+    const blockedDuringRun = markCredentialBlocked(running, "missing key");
 
-    expect(blocked.status).toBe("BLOCKED_CREDENTIAL");
-    expect(blocked.error).toBe("missing key");
+    expect(blockedBeforeRun.status).toBe("BLOCKED_CREDENTIAL");
+    expect(blockedDuringRun.status).toBe("BLOCKED_CREDENTIAL");
+    expect(blockedDuringRun.attempts).toBe(0);
   });
 
   it("requeues retryable failures before max attempts", () => {
@@ -61,6 +64,14 @@ describe("ADK knowledge job queue", () => {
 
     expect(failed.status).toBe("FAILED");
     expect(failed.attempts).toBe(3);
+  });
+
+  it("moves non-retryable failures directly into the terminal failed state", () => {
+    const running = markRunning(claimJob(job));
+    const failed = failJob(running, "invalid provider response", { retryable: false });
+
+    expect(failed.status).toBe("FAILED");
+    expect(failed.attempts).toBe(1);
   });
 
   it("requires a running job and artifact lineage for success", () => {
