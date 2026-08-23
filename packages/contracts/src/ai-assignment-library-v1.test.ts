@@ -38,19 +38,7 @@ describe("AiAssignmentLibraryV1", () => {
     expect(isAiAssignmentLibraryV1(library())).toBe(true);
   });
 
-  it("rejects duplicate assignment identities, workflows, tags, and sequence gaps", () => {
-    expect(
-      isAiAssignmentLibraryV1({
-        ...library(),
-        entries: [
-          library().entries[0],
-          {
-            ...library().entries[1],
-            assignmentId: "kas_us_trademark_filing",
-          },
-        ],
-      }),
-    ).toBe(false);
+  it("allows multiple distinct propositions inside the same workflow", () => {
     expect(
       isAiAssignmentLibraryV1({
         ...library(),
@@ -59,6 +47,21 @@ describe("AiAssignmentLibraryV1", () => {
           {
             ...library().entries[1],
             workflow: "FILING",
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects duplicate assignment identities, tags, and sequence gaps", () => {
+    expect(
+      isAiAssignmentLibraryV1({
+        ...library(),
+        entries: [
+          library().entries[0],
+          {
+            ...library().entries[1],
+            assignmentId: "kas_us_trademark_filing",
           },
         ],
       }),
