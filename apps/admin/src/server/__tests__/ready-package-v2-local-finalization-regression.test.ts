@@ -31,86 +31,83 @@ function auditEvent(
 }
 
 describe("ReadyPackage V2 restart local finalization", () => {
-  it(
-    "strips durable recordedAt metadata before passing the Core protocol result to recordResult",
-    async () => {
-      const transportResult = {
-        protocolVersion: "1.0" as const,
-        objectType: "READY_PACKAGE_V2_DELIVERY_RESULT" as const,
-        deliveryId: DELIVERY,
-        readyPackageId: PACKAGE,
-        status: "ACCEPTED" as const,
-        requestSha256: REQUEST_SHA,
+  it("strips durable recordedAt metadata before passing the Core protocol result to recordResult", async () => {
+    const transportResult = {
+      protocolVersion: "1.0" as const,
+      objectType: "READY_PACKAGE_V2_DELIVERY_RESULT" as const,
+      deliveryId: DELIVERY,
+      readyPackageId: PACKAGE,
+      status: "ACCEPTED" as const,
+      requestSha256: REQUEST_SHA,
+      recordedAt: RECORDED_AT,
+    };
+    const persisted: ReadyPackageV2DeliverySubmission = {
+      submissionId: DELIVERY,
+      workspaceId: WORKSPACE,
+      readyPackageId: PACKAGE,
+      readyPackageDigest: "b".repeat(64),
+      coreWorkspaceId: "123e4567-e89b-12d3-a456-426614174000",
+      idempotencyKey: `ready-package-v2-delivery:${DELIVERY}`,
+      requestJson: '{"frozen":true}',
+      requestSha256: REQUEST_SHA,
+      contentExportSha256: "c".repeat(64),
+      state: "PENDING",
+      transportAttempts: 1,
+      lastTransportAttemptedAt: "2026-08-23T12:02:00.000Z",
+      transportResult,
+      createdAt: "2026-08-23T12:00:00.000Z",
+      updatedAt: RECORDED_AT,
+    };
+    const auditEvents = [
+      auditEvent(1, "PREPARED", { recordedAt: "2026-08-23T12:00:00.000Z" }),
+      auditEvent(2, "TRANSPORT_ATTEMPT_STARTED", {
+        attemptNumber: 1,
+        recordedAt: "2026-08-23T12:02:00.000Z",
+      }),
+      auditEvent(3, "TRANSPORT_RESULT_RECORDED", {
+        attemptNumber: 1,
+        resultStatus: "ACCEPTED",
         recordedAt: RECORDED_AT,
-      };
-      const persisted: ReadyPackageV2DeliverySubmission = {
-        submissionId: DELIVERY,
-        workspaceId: WORKSPACE,
-        readyPackageId: PACKAGE,
-        readyPackageDigest: "b".repeat(64),
-        coreWorkspaceId: "123e4567-e89b-12d3-a456-426614174000",
-        idempotencyKey: `ready-package-v2-delivery:${DELIVERY}`,
-        requestJson: '{"frozen":true}',
-        requestSha256: REQUEST_SHA,
-        contentExportSha256: "c".repeat(64),
-        state: "PENDING",
-        transportAttempts: 1,
-        lastTransportAttemptedAt: "2026-08-23T12:02:00.000Z",
-        transportResult,
-        createdAt: "2026-08-23T12:00:00.000Z",
-        updatedAt: RECORDED_AT,
-      };
-      const auditEvents = [
-        auditEvent(1, "PREPARED", { recordedAt: "2026-08-23T12:00:00.000Z" }),
-        auditEvent(2, "TRANSPORT_ATTEMPT_STARTED", {
-          attemptNumber: 1,
-          recordedAt: "2026-08-23T12:02:00.000Z",
-        }),
-        auditEvent(3, "TRANSPORT_RESULT_RECORDED", {
-          attemptNumber: 1,
-          resultStatus: "ACCEPTED",
-          recordedAt: RECORDED_AT,
-        }),
-      ];
-      const protocolResult = {
-        protocolVersion: "1.0" as const,
-        objectType: "READY_PACKAGE_V2_DELIVERY_RESULT" as const,
-        deliveryId: DELIVERY,
-        readyPackageId: PACKAGE,
-        status: "ACCEPTED" as const,
-        requestSha256: REQUEST_SHA,
-      };
-      const recordResult = vi.fn(() => ({
-        ...persisted,
-        state: "RESULT_RECORDED" as const,
-        result: { ...protocolResult, recordedAt: "2026-08-23T12:06:00.000Z" },
-        updatedAt: "2026-08-23T12:06:00.000Z",
-      }));
-      const transportSubmit = vi.fn();
-      const service = new ReadyPackageV2DeliveryService({
-        readyPackages: {} as never,
-        canonical: {} as never,
-        staging: {} as never,
-        bindings: {} as never,
-        deliveries: {
-          getByReadyPackage: vi.fn(() => persisted),
-          prepare: vi.fn(),
-          markTransportAttempt: vi.fn(),
-          recordTransportUncertainty: vi.fn(),
-          recordTransportResult: vi.fn(),
-          recordResult,
-          list: vi.fn(() => []),
-          listAuditEvents: vi.fn(() => auditEvents),
-        } as never,
-        transport: { submit: transportSubmit },
-      });
+      }),
+    ];
+    const protocolResult = {
+      protocolVersion: "1.0" as const,
+      objectType: "READY_PACKAGE_V2_DELIVERY_RESULT" as const,
+      deliveryId: DELIVERY,
+      readyPackageId: PACKAGE,
+      status: "ACCEPTED" as const,
+      requestSha256: REQUEST_SHA,
+    };
+    const recordResult = vi.fn(() => ({
+      ...persisted,
+      state: "RESULT_RECORDED" as const,
+      result: { ...protocolResult, recordedAt: "2026-08-23T12:06:00.000Z" },
+      updatedAt: "2026-08-23T12:06:00.000Z",
+    }));
+    const transportSubmit = vi.fn();
+    const service = new ReadyPackageV2DeliveryService({
+      readyPackages: {} as never,
+      canonical: {} as never,
+      staging: {} as never,
+      bindings: {} as never,
+      deliveries: {
+        getByReadyPackage: vi.fn(() => persisted),
+        prepare: vi.fn(),
+        markTransportAttempt: vi.fn(),
+        recordTransportUncertainty: vi.fn(),
+        recordTransportResult: vi.fn(),
+        recordResult,
+        list: vi.fn(() => []),
+        listAuditEvents: vi.fn(() => auditEvents),
+      } as never,
+      transport: { submit: transportSubmit },
+    });
 
-      const result = await service.submit(WORKSPACE, PACKAGE);
+    const result = await service.submit(WORKSPACE, PACKAGE);
 
-      expect(result.transportUsed).toBe(false);
-      expect(result.replayed).toBe(true);
-      expect(recordResult).toHaveBeenCalledWith(WORKSPACE, DELIVERY, protocolResult);
-      expect(transportSubmit).not.toHaveBeenCalled();
-    },
-  );
+    expect(result.transportUsed).toBe(false);
+    expect(result.replayed).toBe(true);
+    expect(recordResult).toHaveBeenCalledWith(WORKSPACE, DELIVERY, protocolResult);
+    expect(transportSubmit).not.toHaveBeenCalled();
+  });
 });
