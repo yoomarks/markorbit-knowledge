@@ -12,9 +12,10 @@ function required(environment: NodeJS.ProcessEnv, name: string): string {
   return value;
 }
 
-export function loadAdkCandidatePromotionConfig(
-  environment: NodeJS.ProcessEnv = process.env,
-): { databasePath: string; planPath: string } {
+export function loadAdkCandidatePromotionConfig(environment: NodeJS.ProcessEnv = process.env): {
+  databasePath: string;
+  planPath: string;
+} {
   return {
     databasePath: resolve(required(environment, "MARKORBIT_ADK_LIBRARY_DB_PATH")),
     planPath: resolve(required(environment, "MARKORBIT_ADK_PROMOTION_PLAN_PATH")),

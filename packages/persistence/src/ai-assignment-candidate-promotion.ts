@@ -111,7 +111,8 @@ export class SqliteAiAssignmentCandidatePromotionRepository {
       throw new RegistryValidationError("AI Assignment Candidate Promotion is invalid");
     }
 
-    const existing = this.getByCandidateId(value.candidateId) ?? this.getPromotion(value.promotionId);
+    const existing =
+      this.getByCandidateId(value.candidateId) ?? this.getPromotion(value.promotionId);
     if (existing) {
       if (!sameDocument(existing, value)) {
         throw new RegistryConflictError(
@@ -191,7 +192,10 @@ export function promoteAiAssignmentCandidate(
       );
     }
     const existingAssignment = assignments.getAssignment(existingPromotion.targetAssignmentId);
-    const existingGraph = graphs.getGraph(existingPromotion.graphId, existingPromotion.resultingGraphRevision);
+    const existingGraph = graphs.getGraph(
+      existingPromotion.graphId,
+      existingPromotion.resultingGraphRevision,
+    );
     const existingLibrary = libraries.getLibrary(
       existingPromotion.libraryId,
       existingPromotion.resultingLibraryRevision,

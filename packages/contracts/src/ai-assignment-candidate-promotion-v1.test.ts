@@ -73,7 +73,9 @@ describe("AiAssignmentCandidatePromotionV1", () => {
   it("requires an approval reference, operator identity and governed workflow tags", () => {
     expect(isAiAssignmentCandidatePromotionV1({ ...promotion(), approvalRef: "" })).toBe(false);
     expect(isAiAssignmentCandidatePromotionV1({ ...promotion(), approvedBy: "" })).toBe(false);
-    expect(isAiAssignmentCandidatePromotionV1({ ...promotion(), workflow: "specimen" })).toBe(false);
+    expect(isAiAssignmentCandidatePromotionV1({ ...promotion(), workflow: "specimen" })).toBe(
+      false,
+    );
     expect(isAiAssignmentCandidatePromotionV1({ ...promotion(), tags: [] })).toBe(false);
   });
 });
