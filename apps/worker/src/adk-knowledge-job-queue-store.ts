@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { claimJob, type AiKnowledgeJob } from "./adk-knowledge-job-queue";
+import { claimJob, type AiKnowledgeJob, type AiKnowledgeJobStatus } from "./adk-knowledge-job-queue";
 
 const INITIALIZED_DATABASES = new WeakSet<DatabaseSync>();
 const JOB_STATUSES = new Set([
@@ -10,11 +10,13 @@ const JOB_STATUSES = new Set([
   "FAILED",
   "RETRY_PENDING",
   "BLOCKED_CREDENTIAL",
+  "BLOCKED_RECOVERY",
 ]);
 
 export interface AiKnowledgeJobStore {
   put(job: AiKnowledgeJob): AiKnowledgeJob;
   save(job: AiKnowledgeJob): AiKnowledgeJob;
+  saveIfStatus(job: AiKnowledgeJob, expectedStatus: AiKnowledgeJobStatus): AiKnowledgeJob | undefined;
   get(id: string): AiKnowledgeJob | undefined;
   getByExecutionKey(executionKey: string): AiKnowledgeJob | undefined;
   list(): AiKnowledgeJob[];
@@ -144,6 +146,34 @@ export class SqliteAiKnowledgeJobStore implements AiKnowledgeJobStore {
     return clone(job);
   }
 
+  saveIfStatus(
+    job: AiKnowledgeJob,
+    expectedStatus: AiKnowledgeJobStatus,
+  ): AiKnowledgeJob | undefined {
+    executionKeyOf(job);
+    const existing = this.get(job.id);
+    if (!existing) {
+      throw new Error(`AI knowledge job ${job.id} does not exist`);
+    }
+    assertImmutableIdentity(existing, job);
+
+    const result = this.database
+      .prepare(
+        `UPDATE ai_knowledge_jobs
+         SET status = ?, attempts = ?, document_json = ?, updated_at = ?
+         WHERE id = ? AND status = ?`,
+      )
+      .run(
+        job.status,
+        job.attempts,
+        JSON.stringify(job),
+        job.updatedAt,
+        job.id,
+        expectedStatus,
+      );
+    return Number(result.changes) === 1 ? clone(job) : undefined;
+  }
+
   get(id: string): AiKnowledgeJob | undefined {
     const row = this.database
       .prepare("SELECT document_json FROM ai_knowledge_jobs WHERE id = ?")
@@ -219,6 +249,18 @@ export class MemoryAiKnowledgeJobStore implements AiKnowledgeJobStore {
     const existing = this.jobs.get(job.id);
     if (!existing) throw new Error(`AI knowledge job ${job.id} does not exist`);
     assertImmutableIdentity(existing, job);
+    this.jobs.set(job.id, clone(job));
+    return clone(job);
+  }
+
+  saveIfStatus(
+    job: AiKnowledgeJob,
+    expectedStatus: AiKnowledgeJobStatus,
+  ): AiKnowledgeJob | undefined {
+    const existing = this.jobs.get(job.id);
+    if (!existing) throw new Error(`AI knowledge job ${job.id} does not exist`);
+    assertImmutableIdentity(existing, job);
+    if (existing.status !== expectedStatus) return undefined;
     this.jobs.set(job.id, clone(job));
     return clone(job);
   }
