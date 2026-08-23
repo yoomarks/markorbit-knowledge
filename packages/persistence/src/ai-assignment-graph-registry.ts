@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import {
-  isAiAssignmentGraphV1,
-  type AiAssignmentGraphV1,
-} from "@markorbit/contracts";
+import { isAiAssignmentGraphV1, type AiAssignmentGraphV1 } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "./index";
 import { ensureAiKnowledgeAssignmentRegistry } from "./ai-knowledge-assignment-registry";
 
@@ -92,8 +89,7 @@ export class SqliteAiAssignmentGraphRepository {
           WHERE graph_id = ? AND revision = ?`,
       )
       .get(value.graphId, value.revision) as
-      | { document_sha256: string; document_json: string }
-      | undefined;
+      { document_sha256: string; document_json: string } | undefined;
 
     if (existing) {
       if (existing.document_sha256 !== sha256 || existing.document_json !== json) {
@@ -133,18 +129,13 @@ export class SqliteAiAssignmentGraphRepository {
              FROM ai_knowledge_assignments
             WHERE assignment_id = ?`,
         )
-        .get(node.assignmentId) as
-        | { jurisdiction: string; domain: string }
-        | undefined;
+        .get(node.assignmentId) as { jurisdiction: string; domain: string } | undefined;
       if (!assignment) {
         throw new RegistryValidationError(
           `Assignment Graph references missing assignment ${node.assignmentId}`,
         );
       }
-      if (
-        assignment.jurisdiction !== value.jurisdiction ||
-        assignment.domain !== value.domain
-      ) {
+      if (assignment.jurisdiction !== value.jurisdiction || assignment.domain !== value.domain) {
         throw new RegistryConflictError(
           "AI_ASSIGNMENT_GRAPH_SCOPE_MISMATCH",
           `Assignment ${node.assignmentId} is outside graph scope ${value.jurisdiction}/${value.domain}`,
@@ -234,10 +225,7 @@ export class SqliteAiAssignmentGraphRepository {
     return row ? parseGraph(row.document_json) : null;
   }
 
-  listLatestGraphsByScope(input: {
-    jurisdiction: string;
-    domain: string;
-  }): AiAssignmentGraphV1[] {
+  listLatestGraphsByScope(input: { jurisdiction: string; domain: string }): AiAssignmentGraphV1[] {
     const rows = this.database
       .prepare(
         `SELECT g.document_json

@@ -85,7 +85,8 @@ function graph(revision = 1): AiAssignmentGraphV1 {
         relation: "DECOMPOSES",
       },
     ],
-    changeReason: revision === 1 ? "Initial governed topology." : "Add verified question topology change.",
+    changeReason:
+      revision === 1 ? "Initial governed topology." : "Add verified question topology change.",
     triggerEvidenceRefs: revision === 1 ? [] : ["art_01ARZ3NDEKTSV4RRFFQ69G5FAV"],
     boundaries: {
       executionAuthorityGranted: false,
@@ -142,7 +143,11 @@ describe("SqliteAiAssignmentGraphRepository", () => {
   it("rejects graphs that reference assignments outside the graph scope", () => {
     const { assignments, graphs } = repositories();
     const foreign = {
-      ...assignment("kas_ca_trademark_declaration_use", "DECLARATION_OF_USE_CA", "2026-08-23T04:03:30.000Z"),
+      ...assignment(
+        "kas_ca_trademark_declaration_use",
+        "DECLARATION_OF_USE_CA",
+        "2026-08-23T04:03:30.000Z",
+      ),
       jurisdiction: "CA",
     };
     assignments.saveAssignment(foreign);

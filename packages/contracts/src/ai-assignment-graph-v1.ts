@@ -2,15 +2,10 @@ export const AI_ASSIGNMENT_GRAPH_PROTOCOL_VERSION = "1.0" as const;
 export const AI_ASSIGNMENT_GRAPH_OBJECT_TYPE = "AI_ASSIGNMENT_GRAPH" as const;
 
 export const AI_ASSIGNMENT_GRAPH_NODE_ROLES = ["ROOT", "FOLLOW_UP"] as const;
-export const AI_ASSIGNMENT_GRAPH_EDGE_RELATIONS = [
-  "DECOMPOSES",
-  "DEPENDS_ON",
-  "SUPPORTS",
-] as const;
+export const AI_ASSIGNMENT_GRAPH_EDGE_RELATIONS = ["DECOMPOSES", "DEPENDS_ON", "SUPPORTS"] as const;
 
 export type AiAssignmentGraphNodeRole = (typeof AI_ASSIGNMENT_GRAPH_NODE_ROLES)[number];
-export type AiAssignmentGraphEdgeRelation =
-  (typeof AI_ASSIGNMENT_GRAPH_EDGE_RELATIONS)[number];
+export type AiAssignmentGraphEdgeRelation = (typeof AI_ASSIGNMENT_GRAPH_EDGE_RELATIONS)[number];
 
 export type AiAssignmentGraphNodeV1 = {
   assignmentId: string;
@@ -69,11 +64,11 @@ function isNode(value: unknown): value is AiAssignmentGraphNodeV1 {
   const item = record(value);
   return Boolean(
     item &&
-      exactKeys(item, ["assignmentId", "role"]) &&
-      typeof item.assignmentId === "string" &&
-      ASSIGNMENT_ID.test(item.assignmentId) &&
-      typeof item.role === "string" &&
-      (AI_ASSIGNMENT_GRAPH_NODE_ROLES as readonly string[]).includes(item.role),
+    exactKeys(item, ["assignmentId", "role"]) &&
+    typeof item.assignmentId === "string" &&
+    ASSIGNMENT_ID.test(item.assignmentId) &&
+    typeof item.role === "string" &&
+    (AI_ASSIGNMENT_GRAPH_NODE_ROLES as readonly string[]).includes(item.role),
   );
 }
 
@@ -81,14 +76,14 @@ function isEdge(value: unknown): value is AiAssignmentGraphEdgeV1 {
   const item = record(value);
   return Boolean(
     item &&
-      exactKeys(item, ["fromAssignmentId", "toAssignmentId", "relation"]) &&
-      typeof item.fromAssignmentId === "string" &&
-      ASSIGNMENT_ID.test(item.fromAssignmentId) &&
-      typeof item.toAssignmentId === "string" &&
-      ASSIGNMENT_ID.test(item.toAssignmentId) &&
-      item.fromAssignmentId !== item.toAssignmentId &&
-      typeof item.relation === "string" &&
-      (AI_ASSIGNMENT_GRAPH_EDGE_RELATIONS as readonly string[]).includes(item.relation),
+    exactKeys(item, ["fromAssignmentId", "toAssignmentId", "relation"]) &&
+    typeof item.fromAssignmentId === "string" &&
+    ASSIGNMENT_ID.test(item.fromAssignmentId) &&
+    typeof item.toAssignmentId === "string" &&
+    ASSIGNMENT_ID.test(item.toAssignmentId) &&
+    item.fromAssignmentId !== item.toAssignmentId &&
+    typeof item.relation === "string" &&
+    (AI_ASSIGNMENT_GRAPH_EDGE_RELATIONS as readonly string[]).includes(item.relation),
   );
 }
 
@@ -145,9 +140,7 @@ export function isAiAssignmentGraphV1(value: unknown): value is AiAssignmentGrap
     !isTimestamp(item.createdAt) ||
     !Array.isArray(item.rootAssignmentIds) ||
     item.rootAssignmentIds.length === 0 ||
-    !item.rootAssignmentIds.every(
-      (id) => typeof id === "string" && ASSIGNMENT_ID.test(id),
-    ) ||
+    !item.rootAssignmentIds.every((id) => typeof id === "string" && ASSIGNMENT_ID.test(id)) ||
     new Set(item.rootAssignmentIds).size !== item.rootAssignmentIds.length ||
     !Array.isArray(item.nodes) ||
     item.nodes.length === 0 ||
@@ -179,7 +172,9 @@ export function isAiAssignmentGraphV1(value: unknown): value is AiAssignmentGrap
   const roots = new Set(item.rootAssignmentIds as string[]);
   if (
     ![...roots].every((id) => nodeIds.has(id)) ||
-    nodes.some((node) => (roots.has(node.assignmentId) ? node.role !== "ROOT" : node.role === "ROOT"))
+    nodes.some((node) =>
+      roots.has(node.assignmentId) ? node.role !== "ROOT" : node.role === "ROOT",
+    )
   ) {
     return false;
   }
