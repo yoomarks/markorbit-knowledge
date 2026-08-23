@@ -82,6 +82,24 @@ function samePromotion(
   return JSON.stringify(existing) === JSON.stringify(expected);
 }
 
+function promotionMatchesInput(
+  existing: AiAssignmentCandidatePromotionV1,
+  input: PromoteAiAssignmentCandidateInput,
+): boolean {
+  return (
+    existing.promotionId === input.promotionId &&
+    existing.candidateId === input.candidateId &&
+    existing.approvalRef === input.approvalRef &&
+    existing.approvedBy === input.approvedBy &&
+    existing.targetAssignmentId === input.targetAssignmentId &&
+    existing.libraryId === input.libraryId &&
+    existing.baseLibraryRevision === input.baseLibraryRevision &&
+    existing.workflow === input.workflow &&
+    JSON.stringify(existing.tags) === JSON.stringify(input.tags) &&
+    existing.promotedAt === input.promotedAt
+  );
+}
+
 function uniqueEvidenceRefs(refs: readonly string[]): string[] {
   return [...new Set(refs)].sort((left, right) => left.localeCompare(right));
 }
@@ -165,6 +183,34 @@ export function promoteAiAssignmentCandidate(
   const candidate = candidates.getCandidate(input.candidateId);
   if (!candidate) {
     throw new RegistryValidationError(`Assignment Candidate ${input.candidateId} does not exist`);
+  }
+
+  const existingPromotion = promotions.getByCandidateId(candidate.candidateId);
+  if (existingPromotion) {
+    if (!promotionMatchesInput(existingPromotion, input)) {
+      throw new RegistryConflictError(
+        "AI_ASSIGNMENT_CANDIDATE_ALREADY_PROMOTED",
+        `Assignment Candidate ${candidate.candidateId} was already promoted differently`,
+      );
+    }
+    const existingAssignment = assignments.getAssignment(existingPromotion.targetAssignmentId);
+    const existingGraph = graphs.getGraph(existingPromotion.graphId, existingPromotion.resultingGraphRevision);
+    const existingLibrary = libraries.getLibrary(
+      existingPromotion.libraryId,
+      existingPromotion.resultingLibraryRevision,
+    );
+    if (!existingAssignment || !existingGraph || !existingLibrary) {
+      throw new RegistryConflictError(
+        "AI_ASSIGNMENT_CANDIDATE_PROMOTION_INCOMPLETE",
+        `Promotion ${existingPromotion.promotionId} is missing durable promoted state`,
+      );
+    }
+    return {
+      assignment: existingAssignment,
+      graph: existingGraph,
+      library: existingLibrary,
+      promotion: existingPromotion,
+    };
   }
 
   const baseGraph = graphs.getLatestGraph(candidate.graphId);
@@ -289,34 +335,6 @@ export function promoteAiAssignmentCandidate(
   };
   if (!isAiAssignmentCandidatePromotionV1(promotion)) {
     throw new RegistryValidationError("Promotion input does not produce a valid governed receipt");
-  }
-
-  const existingPromotion = promotions.getByCandidateId(candidate.candidateId);
-  if (existingPromotion) {
-    if (!samePromotion(existingPromotion, promotion)) {
-      throw new RegistryConflictError(
-        "AI_ASSIGNMENT_CANDIDATE_ALREADY_PROMOTED",
-        `Assignment Candidate ${candidate.candidateId} was already promoted differently`,
-      );
-    }
-    const existingAssignment = assignments.getAssignment(existingPromotion.targetAssignmentId);
-    const existingGraph = graphs.getGraph(existingPromotion.graphId, existingPromotion.resultingGraphRevision);
-    const existingLibrary = libraries.getLibrary(
-      existingPromotion.libraryId,
-      existingPromotion.resultingLibraryRevision,
-    );
-    if (!existingAssignment || !existingGraph || !existingLibrary) {
-      throw new RegistryConflictError(
-        "AI_ASSIGNMENT_CANDIDATE_PROMOTION_INCOMPLETE",
-        `Promotion ${existingPromotion.promotionId} is missing durable promoted state`,
-      );
-    }
-    return {
-      assignment: existingAssignment,
-      graph: existingGraph,
-      library: existingLibrary,
-      promotion: existingPromotion,
-    };
   }
 
   assignments.saveAssignment(assignment);
