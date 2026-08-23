@@ -22,9 +22,7 @@ function audit(
     sequence,
     type,
     requestSha256: REQUEST_SHA,
-    recordedAt: new Date(
-      Date.parse("2026-08-23T10:00:00.000Z") + sequence * 60_000,
-    ).toISOString(),
+    recordedAt: new Date(Date.parse("2026-08-23T10:00:00.000Z") + sequence * 60_000).toISOString(),
     ...overrides,
   };
 }
