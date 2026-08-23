@@ -33,15 +33,15 @@ The intended system-level effect is that onboarding time and source-specific cod
 
 ## Phase 1 acceptance
 
-| Acceptance condition | Evidence in the current trunk |
-| --- | --- |
-| Four reusable source-family shapes without source-name branching in the selector core | Static index, TOC graph, jurisdiction index and API document catalog profiles |
-| Production runs persist strategy revision and run evidence | Authenticated Worker learning intake plus durable SourceFingerprint and AcquisitionRunEvidence |
-| Repeated success improves history without bypassing promotion | Aggregate playbook history and sequential promotion lifecycle |
-| Known failures produce structured lessons | Failure signatures, incomplete enumeration, validator availability and coverage regression lessons |
-| A structurally similar source can reuse an existing playbook | History-backed structural selection regression coverage |
-| Coverage regression requests re-evaluation | Previous-run coverage feedback and governed fallback re-evaluation |
-| No implicit production authority | Selection, lessons and candidates cannot dispatch collection or grant authority; ACTIVE requires HUMAN transition |
+| Acceptance condition                                                                  | Evidence in the current trunk                                                                                     |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Four reusable source-family shapes without source-name branching in the selector core | Static index, TOC graph, jurisdiction index and API document catalog profiles                                     |
+| Production runs persist strategy revision and run evidence                            | Authenticated Worker learning intake plus durable SourceFingerprint and AcquisitionRunEvidence                    |
+| Repeated success improves history without bypassing promotion                         | Aggregate playbook history and sequential promotion lifecycle                                                     |
+| Known failures produce structured lessons                                             | Failure signatures, incomplete enumeration, validator availability and coverage regression lessons                |
+| A structurally similar source can reuse an existing playbook                          | History-backed structural selection regression coverage                                                           |
+| Coverage regression requests re-evaluation                                            | Previous-run coverage feedback and governed fallback re-evaluation                                                |
+| No implicit production authority                                                      | Selection, lessons and candidates cannot dispatch collection or grant authority; ACTIVE requires HUMAN transition |
 
 The initial live evidence set covers USPTO, WIPO, IP Australia and Country Index. Phase 1 completion does not mean every connector is automatically profiled or every Wave 1 authority has completed production validation.
 
