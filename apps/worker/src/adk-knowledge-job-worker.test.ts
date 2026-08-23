@@ -83,11 +83,7 @@ describe("ADK knowledge job worker", () => {
     });
 
     expect(result?.status).toBe("SUCCEEDED");
-    expect(result?.artifactIds).toEqual([
-      "adk-artifact-1",
-      "raw-provider-1",
-      "raw-markdown-1",
-    ]);
+    expect(result?.artifactIds).toEqual(["adk-artifact-1", "raw-provider-1", "raw-markdown-1"]);
     expect(
       await processNextAdkKnowledgeJob({
         store,
