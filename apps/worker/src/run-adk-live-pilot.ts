@@ -80,7 +80,9 @@ function loadPlan(path: string): AiProductionPilotPlanV1 {
     parsed.providers[0] !== "DEEPSEEK" ||
     parsed.providers[1] !== "OPENAI"
   ) {
-    throw new Error("Live ADK pilot provider set must be exactly DEEPSEEK,OPENAI in frozen order");
+    throw new Error(
+      "Live ADK pilot provider set must be exactly DEEPSEEK,OPENAI in frozen order",
+    );
   }
   return parsed;
 }
@@ -93,7 +95,10 @@ function lineageFrom(
   },
   ingestion: AiDistilledKnowledgeIngestionResult,
 ): LivePilotLineage {
-  if (acquisition.submission.provider !== "DEEPSEEK" && acquisition.submission.provider !== "OPENAI") {
+  if (
+    acquisition.submission.provider !== "DEEPSEEK" &&
+    acquisition.submission.provider !== "OPENAI"
+  ) {
     throw new Error("Unexpected provider in live ADK pilot acquisition");
   }
   return {
@@ -117,7 +122,9 @@ async function main(): Promise<void> {
     const assignments = new Map(
       plan.assignmentIds.map((assignmentId) => {
         const assignment = assignmentsRepository.getAssignment(assignmentId);
-        if (!assignment) throw new Error(`Frozen live pilot assignment ${assignmentId} was not found`);
+        if (!assignment) {
+          throw new Error(`Frozen live pilot assignment ${assignmentId} was not found`);
+        }
         return [assignmentId, assignment] as const;
       }),
     );
@@ -185,7 +192,10 @@ async function main(): Promise<void> {
 
     const serialized = `${JSON.stringify(record, null, 2)}\n`;
     if (config.receiptPath) {
-      writeFileSync(config.receiptPath, serialized, { encoding: "utf8", flag: "wx" });
+      writeFileSync(config.receiptPath, serialized, {
+        encoding: "utf8",
+        flag: "wx",
+      });
     }
     process.stdout.write(serialized);
   } finally {
