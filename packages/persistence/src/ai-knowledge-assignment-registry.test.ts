@@ -9,7 +9,8 @@ const instructionSet = (revision = 1): AiInstructionSetV1 => ({
   instructionSetId: "kis_trademark_procedure",
   revision,
   name: "Trademark procedure research",
-  purpose: "Produce comprehensive procedural research as Markdown without asserting MarkOrbit legal truth.",
+  purpose:
+    "Produce comprehensive procedural research as Markdown without asserting MarkOrbit legal truth.",
   stableInstructions: [
     "Separate normal deadlines from grace periods.",
     "Identify exceptions and remedies when known.",
@@ -18,7 +19,10 @@ const instructionSet = (revision = 1): AiInstructionSetV1 => ({
   requiredSections: ["Overview", "Procedure", "Deadlines", "Evidence", "Exceptions"],
   outputFormat: "MARKDOWN",
   createdAt: revision === 1 ? "2026-08-23T04:10:00.000Z" : "2026-08-23T04:20:00.000Z",
-  changeReason: revision === 1 ? "Initial governed instruction grammar" : "Add evidence-backed exception coverage",
+  changeReason:
+    revision === 1
+      ? "Initial governed instruction grammar"
+      : "Add evidence-backed exception coverage",
   triggerEvidenceRefs: revision === 1 ? [] : ["raw_uspto_section8_audit_20260823"],
 });
 

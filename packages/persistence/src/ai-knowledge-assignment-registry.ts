@@ -84,8 +84,7 @@ export class SqliteAiKnowledgeAssignmentRepository {
          WHERE instruction_set_id = ? AND revision = ?`,
       )
       .get(value.instructionSetId, value.revision) as
-      | { document_sha256: string; document_json: string }
-      | undefined;
+      { document_sha256: string; document_json: string } | undefined;
     if (existing) {
       if (existing.document_sha256 !== sha256 || existing.document_json !== json) {
         throw new RegistryConflictError(
@@ -128,7 +127,10 @@ export class SqliteAiKnowledgeAssignmentRepository {
     if (!isAiKnowledgeAssignmentV1(value)) {
       throw new RegistryValidationError("AI knowledge assignment is invalid");
     }
-    const instructionSet = this.getInstructionSet(value.instructionSetId, value.instructionSetRevision);
+    const instructionSet = this.getInstructionSet(
+      value.instructionSetId,
+      value.instructionSetRevision,
+    );
     if (!instructionSet) {
       throw new RegistryValidationError(
         `Assignment references missing instruction set ${value.instructionSetId}@${value.instructionSetRevision}`,
@@ -142,9 +144,7 @@ export class SqliteAiKnowledgeAssignmentRepository {
          FROM ai_knowledge_assignments
          WHERE assignment_id = ?`,
       )
-      .get(value.assignmentId) as
-      | { document_sha256: string; document_json: string }
-      | undefined;
+      .get(value.assignmentId) as { document_sha256: string; document_json: string } | undefined;
     if (existing) {
       if (existing.document_sha256 !== sha256 || existing.document_json !== json) {
         throw new RegistryConflictError(

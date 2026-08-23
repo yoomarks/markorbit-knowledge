@@ -109,7 +109,10 @@ function nonEmptyStrings(value: unknown): value is string[] {
 }
 
 function strings(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim().length > 0);
+  return (
+    Array.isArray(value) &&
+    value.every((item) => typeof item === "string" && item.trim().length > 0)
+  );
 }
 
 export function isAiInstructionSetV1(value: unknown): value is AiInstructionSetV1 {
