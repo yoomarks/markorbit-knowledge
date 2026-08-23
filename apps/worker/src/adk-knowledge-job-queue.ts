@@ -4,6 +4,7 @@ export type AiKnowledgeJobStatus =
   | "RUNNING"
   | "SUCCEEDED"
   | "FAILED"
+  | "RETRY_PENDING"
   | "BLOCKED_CREDENTIAL";
 
 export type AiKnowledgeJob = {
@@ -12,6 +13,8 @@ export type AiKnowledgeJob = {
   provider: string;
   status: AiKnowledgeJobStatus;
   attempts: number;
+  maxAttempts?: number;
+  executionKey?: string;
   createdAt: string;
   updatedAt: string;
   artifactIds: string[];
@@ -34,6 +37,27 @@ export function markCredentialBlocked(job: AiKnowledgeJob, error: string): AiKno
   return {
     ...job,
     status: "BLOCKED_CREDENTIAL",
+    error,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function markRunning(job: AiKnowledgeJob): AiKnowledgeJob {
+  return {
+    ...job,
+    status: "RUNNING",
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function failJob(job: AiKnowledgeJob, error: string): AiKnowledgeJob {
+  const attempts = job.attempts + 1;
+  const maxAttempts = job.maxAttempts ?? 3;
+
+  return {
+    ...job,
+    attempts,
+    status: attempts < maxAttempts ? "RETRY_PENDING" : "FAILED",
     error,
     updatedAt: new Date().toISOString(),
   };
