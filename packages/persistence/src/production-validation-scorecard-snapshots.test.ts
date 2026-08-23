@@ -1,9 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { ProductionValidationScorecard } from "./production-validation-scorecard";
-import {
-  SqliteProductionValidationScorecardSnapshotRepository,
-} from "./production-validation-scorecard-snapshots";
+import { SqliteProductionValidationScorecardSnapshotRepository } from "./production-validation-scorecard-snapshots";
 
 function scorecard(generatedAt = "2026-08-23T00:00:00.000Z"): ProductionValidationScorecard {
   return {
