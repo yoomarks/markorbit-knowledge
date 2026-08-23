@@ -141,16 +141,18 @@ export class SqliteProductionValidationScorecardSnapshotRepository {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
       throw new RegistryValidationError("limit must be an integer between 1 and 100");
     }
-    return (this.database
-      .prepare(
-        `SELECT * FROM production_validation_scorecard_snapshots
+    return (
+      this.database
+        .prepare(
+          `SELECT * FROM production_validation_scorecard_snapshots
          WHERE workspace_id = ? AND wave_id = ?
          ORDER BY captured_at DESC, created_at DESC, id DESC LIMIT ?`,
-      )
-      .all(
-        requireText(input.workspaceId, "workspaceId"),
-        requireText(input.waveId, "waveId"),
-        limit,
-      ) as Array<Record<string, unknown>>).map(rowToSnapshot);
+        )
+        .all(
+          requireText(input.workspaceId, "workspaceId"),
+          requireText(input.waveId, "waveId"),
+          limit,
+        ) as Array<Record<string, unknown>>
+    ).map(rowToSnapshot);
   }
 }
