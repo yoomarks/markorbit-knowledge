@@ -52,9 +52,7 @@ describe("production validation scorecard snapshots", () => {
 
     expect(replay).toEqual(first);
     expect(first.contentSha256).toMatch(/^[a-f0-9]{64}$/u);
-    expect(repository.list({ workspaceId: "workspace-1", waveId: "wave-1" })).toEqual([
-      first,
-    ]);
+    expect(repository.list({ workspaceId: "workspace-1", waveId: "wave-1" })).toEqual([first]);
   });
 
   it("keeps independently keyed captures as append-only history", () => {
