@@ -130,6 +130,19 @@ function evidenceInconsistent(diagnosis: ReadyPackageV2DeliveryDiagnosis): Regis
   );
 }
 
+function protocolResultFromDurableTransportEvidence(
+  result: NonNullable<ReadyPackageV2DeliverySubmission["transportResult"]>,
+) {
+  return {
+    protocolVersion: result.protocolVersion,
+    objectType: result.objectType,
+    deliveryId: result.deliveryId,
+    readyPackageId: result.readyPackageId,
+    status: result.status,
+    requestSha256: result.requestSha256,
+  };
+}
+
 export class ReadyPackageV2DeliveryService {
   constructor(private readonly dependencies: ReadyPackageV2DeliveryServiceDependencies) {}
 
@@ -255,7 +268,7 @@ export class ReadyPackageV2DeliveryService {
       submission = this.dependencies.deliveries.recordResult(
         workspaceId,
         submission.submissionId,
-        submission.transportResult,
+        protocolResultFromDurableTransportEvidence(submission.transportResult),
       );
       return { submission, replayed: true, transportUsed: false };
     }
