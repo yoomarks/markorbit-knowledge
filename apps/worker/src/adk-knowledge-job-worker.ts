@@ -15,10 +15,14 @@ import {
   type AiProductionPilotPlanV1,
 } from "@markorbit/worker-runtime/ai-production-pilot";
 import {
+  blockJobForRecovery,
   completeJob,
   failJob,
   markCredentialBlocked,
   markRunning,
+  recoverClaimedJob,
+  requeueCredentialBlockedJob,
+  requeueJob,
   type AiKnowledgeJob,
 } from "./adk-knowledge-job-queue";
 import type { AiKnowledgeJobStore } from "./adk-knowledge-job-queue-store";
@@ -62,6 +66,20 @@ export type EnqueueAdkProductionPilotInput = {
   plan: AiProductionPilotPlanV1;
   maxAttempts?: number;
   now?: () => Date;
+};
+
+export type RecoverAdkKnowledgeJobsInput = {
+  store: AiKnowledgeJobStore;
+  staleBefore: Date;
+  requeueRetryPending?: boolean;
+  requeueCredentialBlocked?: boolean;
+};
+
+export type RecoverAdkKnowledgeJobsResult = {
+  requeuedRetryPending: string[];
+  requeuedCredentialBlocked: string[];
+  requeuedStaleClaimed: string[];
+  blockedStaleRunning: string[];
 };
 
 function jobId(executionKey: string): string {
@@ -109,6 +127,14 @@ function resolveExecutionScope(input: EnqueueAdkKnowledgeJobsInput): string {
     throw new Error("ADK execution revision must be a positive integer");
   }
   return `r${revision}`;
+}
+
+function isStale(job: AiKnowledgeJob, staleBefore: Date): boolean {
+  const updatedAt = Date.parse(job.updatedAt);
+  if (Number.isNaN(updatedAt)) {
+    throw new Error(`AI knowledge job ${job.id} has an invalid updatedAt timestamp`);
+  }
+  return updatedAt < staleBefore.getTime();
 }
 
 export function enqueueAdkKnowledgeJobs(input: EnqueueAdkKnowledgeJobsInput): AiKnowledgeJob[] {
@@ -174,6 +200,54 @@ export function enqueueAdkProductionPilot(input: EnqueueAdkProductionPilotInput)
   });
 }
 
+export function recoverAdkKnowledgeJobs(
+  input: RecoverAdkKnowledgeJobsInput,
+): RecoverAdkKnowledgeJobsResult {
+  if (Number.isNaN(input.staleBefore.getTime())) {
+    throw new Error("ADK staleBefore must be a valid Date");
+  }
+
+  const result: RecoverAdkKnowledgeJobsResult = {
+    requeuedRetryPending: [],
+    requeuedCredentialBlocked: [],
+    requeuedStaleClaimed: [],
+    blockedStaleRunning: [],
+  };
+
+  for (const job of input.store.list()) {
+    if (job.status === "RETRY_PENDING" && input.requeueRetryPending === true) {
+      const saved = input.store.saveIfStatus(requeueJob(job), "RETRY_PENDING");
+      if (saved) result.requeuedRetryPending.push(job.id);
+      continue;
+    }
+
+    if (job.status === "BLOCKED_CREDENTIAL" && input.requeueCredentialBlocked === true) {
+      const saved = input.store.saveIfStatus(
+        requeueCredentialBlockedJob(job),
+        "BLOCKED_CREDENTIAL",
+      );
+      if (saved) result.requeuedCredentialBlocked.push(job.id);
+      continue;
+    }
+
+    if (job.status === "CLAIMED" && isStale(job, input.staleBefore)) {
+      const saved = input.store.saveIfStatus(recoverClaimedJob(job), "CLAIMED");
+      if (saved) result.requeuedStaleClaimed.push(job.id);
+      continue;
+    }
+
+    if (job.status === "RUNNING" && isStale(job, input.staleBefore)) {
+      const saved = input.store.saveIfStatus(
+        blockJobForRecovery(job, "AI_STALE_RUNNING_REQUIRES_RECONCILIATION"),
+        "RUNNING",
+      );
+      if (saved) result.blockedStaleRunning.push(job.id);
+    }
+  }
+
+  return result;
+}
+
 export function createRawArtifactAdkAcquisitionSink(input: {
   repository: AiRawArtifactIngestionRepository;
   execution: AiRawArtifactExecutionContext;
@@ -226,26 +300,9 @@ export async function processNextAdkKnowledgeJob(
     return persistFailure(input.store, running, `AI_PROVIDER_ADAPTER_MISMATCH: ${provider}`, false);
   }
 
+  let acquisition: AiKnowledgeAcquisition;
   try {
-    const acquisition = await adapter.acquire({ assignment });
-    if (
-      acquisition.assignment.assignmentId !== running.assignmentId ||
-      acquisition.submission.provider !== provider ||
-      acquisition.artifact.provider !== provider
-    ) {
-      return persistFailure(input.store, running, "AI_ACQUISITION_LINEAGE_MISMATCH", false);
-    }
-
-    const lineage = await input.sink({ job: running, acquisition });
-    const artifactIds = [
-      acquisition.artifact.artifactId,
-      lineage.rawProviderArtifactId,
-      lineage.markdownRawArtifactId,
-    ];
-    if (new Set(artifactIds).size !== 3) {
-      return persistFailure(input.store, running, "AI_ACQUISITION_LINEAGE_NOT_UNIQUE", false);
-    }
-    return input.store.save(completeJob(running, artifactIds));
+    acquisition = await adapter.acquire({ assignment });
   } catch (error) {
     if (
       error instanceof AiKnowledgeAcquisitionError &&
@@ -256,4 +313,36 @@ export async function processNextAdkKnowledgeJob(
     const retryable = error instanceof AiKnowledgeAcquisitionError ? error.retryable : true;
     return persistFailure(input.store, running, failureMessage(error), retryable);
   }
+
+  if (
+    acquisition.assignment.assignmentId !== running.assignmentId ||
+    acquisition.submission.provider !== provider ||
+    acquisition.artifact.provider !== provider
+  ) {
+    return persistFailure(input.store, running, "AI_ACQUISITION_LINEAGE_MISMATCH", false);
+  }
+
+  let lineage: AdkPersistedLineage;
+  try {
+    lineage = await input.sink({ job: running, acquisition });
+  } catch (error) {
+    return input.store.save(
+      blockJobForRecovery(
+        running,
+        `AI_ARTIFACT_PERSISTENCE_UNCERTAIN: ${failureMessage(error)}`,
+      ),
+    );
+  }
+
+  const artifactIds = [
+    acquisition.artifact.artifactId,
+    lineage.rawProviderArtifactId,
+    lineage.markdownRawArtifactId,
+  ];
+  if (new Set(artifactIds).size !== 3) {
+    return input.store.save(
+      blockJobForRecovery(running, "AI_ACQUISITION_LINEAGE_REQUIRES_RECONCILIATION"),
+    );
+  }
+  return input.store.save(completeJob(running, artifactIds));
 }
