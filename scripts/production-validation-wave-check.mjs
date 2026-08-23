@@ -78,7 +78,7 @@ function validateManifest(manifest) {
 }
 
 function validateReport(report, manifest, targetIds) {
-  assert(report.reportVersion === "1.0", "Unsupported reportVersion");
+  assert(["1.0", "1.2"].includes(report.reportVersion), "Unsupported reportVersion");
   assert(report.waveId === manifest.waveId, "Report waveId does not match manifest");
   assert(Array.isArray(report.results), "Report results must be an array");
 
@@ -88,39 +88,63 @@ function validateReport(report, manifest, targetIds) {
     assert(!resultIds.has(result.targetId), `Duplicate report targetId: ${result.targetId}`);
     resultIds.add(result.targetId);
 
-    for (const key of [
-      "discovery",
-      "onboarding",
-      "collection",
-      "artifact",
-      "conversion",
-      "knowledge",
-    ]) {
+    if (report.reportVersion === "1.0") {
+      for (const key of [
+        "discovery",
+        "onboarding",
+        "collection",
+        "artifact",
+        "conversion",
+        "knowledge",
+      ]) {
+        assert(
+          result[key] && typeof result[key].status === "string",
+          `${result.targetId}: ${key}.status required`,
+        );
+      }
       assert(
-        result[key] && typeof result[key].status === "string",
-        `${result.targetId}: ${key}.status required`,
+        result.secondRun && typeof result.secondRun.status === "string",
+        `${result.targetId}: secondRun.status required`,
+      );
+      assert(
+        result.http && typeof result.http === "object",
+        `${result.targetId}: http metrics required`,
+      );
+      assert(
+        result.runtime && typeof result.runtime === "object",
+        `${result.targetId}: runtime metrics required`,
+      );
+      assert(
+        typeof result.runtime.manualInterventionRequired === "boolean",
+        `${result.targetId}: manualInterventionRequired must be boolean`,
+      );
+      assert(
+        typeof result.runtime.adapterRequired === "boolean",
+        `${result.targetId}: adapterRequired must be boolean`,
+      );
+    } else {
+      for (const key of ["onboardingState", "executionState", "pipelineState"]) {
+        assert(typeof result[key] === "string", `${result.targetId}: ${key} required`);
+      }
+      for (const key of [
+        "registered",
+        "collectionSucceeded",
+        "secondRunObserved",
+        "knowledgeVisible",
+      ]) {
+        assert(typeof result[key] === "boolean", `${result.targetId}: ${key} must be boolean`);
+      }
+      assert(
+        result.compatibility && typeof result.compatibility.state === "string",
+        `${result.targetId}: compatibility telemetry required`,
+      );
+      assert(
+        result.structuredRemediation &&
+          result.structuredRemediation.collectionAuthorization === "NONE" &&
+          result.structuredRemediation.automaticExecution === false,
+        `${result.targetId}: structured remediation must remain non-authorizing`,
       );
     }
-    assert(
-      result.secondRun && typeof result.secondRun.status === "string",
-      `${result.targetId}: secondRun.status required`,
-    );
-    assert(
-      result.http && typeof result.http === "object",
-      `${result.targetId}: http metrics required`,
-    );
-    assert(
-      result.runtime && typeof result.runtime === "object",
-      `${result.targetId}: runtime metrics required`,
-    );
-    assert(
-      typeof result.runtime.manualInterventionRequired === "boolean",
-      `${result.targetId}: manualInterventionRequired must be boolean`,
-    );
-    assert(
-      typeof result.runtime.adapterRequired === "boolean",
-      `${result.targetId}: adapterRequired must be boolean`,
-    );
   }
 }
 

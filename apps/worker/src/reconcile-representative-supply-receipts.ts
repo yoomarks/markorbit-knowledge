@@ -1,4 +1,4 @@
-import { getRepresentativeSourceLiveCanaries } from "@markorbit/persistence/representative-source-live-canaries";
+import { getRepresentativeSupplyPromotionCanaries } from "@markorbit/persistence/representative-source-live-canaries";
 import { DEFAULT_WORKSPACE_ID } from "./source-coverage-bootstrap";
 
 type JsonRecord = Record<string, unknown>;
@@ -81,7 +81,7 @@ async function main(): Promise<void> {
   );
   const workspaceId = argument("--workspace") || DEFAULT_WORKSPACE_ID;
   const requested = [...new Set(argumentsFor("--jurisdiction"))];
-  const canaries = getRepresentativeSourceLiveCanaries();
+  const canaries = getRepresentativeSupplyPromotionCanaries();
   const supported = new Set(canaries.map((item) => item.jurisdiction));
   const unknown = requested.filter((value) => !supported.has(value));
   if (unknown.length > 0)

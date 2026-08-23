@@ -2,12 +2,28 @@ import type { SourceCoverageTarget } from "@markorbit/contracts";
 import { RegistryValidationError } from "./index";
 import {
   REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS,
+  type RepresentativeSourceActivationJurisdiction,
   type RepresentativeSourceActivationProfile,
 } from "./representative-source-activation";
 import { listSourceCoverageTargets } from "./source-coverage-catalog";
 
 export const REPRESENTATIVE_SOURCE_LIVE_CANARY_VERSION =
-  "REPRESENTATIVE_SOURCE_LIVE_CANARY_V2" as const;
+  "REPRESENTATIVE_SOURCE_LIVE_CANARY_V3" as const;
+
+/**
+ * Observation coverage is deliberately broader than the activation wave. Adding a
+ * jurisdiction here expands read-only compatibility evidence, never supply
+ * promotion. Promotion consumers must use getRepresentativeSupplyPromotionCanaries.
+ */
+export const REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS = [
+  ...REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS,
+  {
+    jurisdiction: "NZ",
+    displayName: "New Zealand",
+    profile: "DYNAMIC_PORTAL",
+    purpose: "IPONZ modern web guidance plus JavaScript-rendered trademark search paths.",
+  },
+] as const satisfies readonly RepresentativeSourceActivationJurisdiction[];
 
 export type RepresentativeSourceLiveCanaryBaseline = {
   targetId: string;
@@ -28,6 +44,7 @@ export type RepresentativeSourceLiveCanary = {
   languages: string[];
   renderJavascript: boolean;
   expectedArtifactKinds: string[];
+  promotionEligible: boolean;
   authorityBaseline: RepresentativeSourceLiveCanaryBaseline;
 };
 
@@ -114,7 +131,10 @@ export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveC
     coverageTier: "FOUNDATIONAL",
     catalogState: "ACTIVE",
   });
-  const canaries = REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((jurisdiction) => {
+  const promotionJurisdictions = new Set<string>(
+    REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((item) => item.jurisdiction),
+  );
+  const canaries = REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS.map((jurisdiction) => {
     const target = selectCanaryTarget(jurisdiction.jurisdiction, jurisdiction.profile, targets);
     const baseline = selectAuthorityBaseline(target, targets);
     if (!baseline) {
@@ -133,6 +153,7 @@ export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveC
       languages: [...target.languages],
       renderJavascript: target.acquisition.renderJavascriptHint,
       expectedArtifactKinds: [...target.acquisition.expectedArtifactKinds],
+      promotionEligible: promotionJurisdictions.has(jurisdiction.jurisdiction),
       authorityBaseline: {
         targetId: baseline.id,
         family: baseline.family,
@@ -151,6 +172,25 @@ export function getRepresentativeSourceLiveCanaries(): RepresentativeSourceLiveC
       `Representative live canaries must use distinct targets: ${duplicateTargets
         .map((item) => item.targetId)
         .join(", ")}`,
+    );
+  }
+  return canaries;
+}
+
+/** Fail-closed view for every path that can prove, dispatch or reconcile supply. */
+export function getRepresentativeSupplyPromotionCanaries(): RepresentativeSourceLiveCanary[] {
+  const canaries = getRepresentativeSourceLiveCanaries().filter(
+    (canary) => canary.promotionEligible,
+  );
+  const expected = new Set<string>(
+    REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((item) => item.jurisdiction),
+  );
+  const actual = new Set(canaries.map((canary) => canary.jurisdiction));
+  const missing = [...expected].filter((jurisdiction) => !actual.has(jurisdiction));
+  const unexpected = [...actual].filter((jurisdiction) => !expected.has(jurisdiction));
+  if (missing.length > 0 || unexpected.length > 0) {
+    throw new RegistryValidationError(
+      `Representative supply promotion scope mismatch; missing=${missing.join(",") || "none"}; unexpected=${unexpected.join(",") || "none"}`,
     );
   }
   return canaries;

@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS } from "./representative-source-activation";
 import {
+  REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS,
   REPRESENTATIVE_SOURCE_LIVE_CANARY_VERSION,
   getRepresentativeSourceLiveCanaries,
+  getRepresentativeSupplyPromotionCanaries,
 } from "./representative-source-live-canaries";
 
 describe("representative source live canaries", () => {
-  it("selects one distinct active foundational HTML canary for every activation jurisdiction", () => {
+  it("selects one distinct active foundational HTML canary for every observation jurisdiction", () => {
     const canaries = getRepresentativeSourceLiveCanaries();
-    expect(canaries).toHaveLength(REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.length);
+    expect(canaries).toHaveLength(REPRESENTATIVE_SOURCE_LIVE_CANARY_JURISDICTIONS.length);
     expect(new Set(canaries.map((canary) => canary.targetId)).size).toBe(canaries.length);
     expect(new Set(canaries.map((canary) => canary.jurisdiction)).size).toBe(canaries.length);
     for (const canary of canaries) {
@@ -17,6 +19,19 @@ describe("representative source live canaries", () => {
       expect(canary.expectedArtifactKinds).toContain("HTML");
       expect(canary.languages.length).toBeGreaterThan(0);
     }
+  });
+
+  it("keeps observation-only jurisdictions out of the fail-closed promotion view", () => {
+    const observed = getRepresentativeSourceLiveCanaries();
+    const promoted = getRepresentativeSupplyPromotionCanaries();
+    expect(observed.find((canary) => canary.jurisdiction === "NZ")).toMatchObject({
+      targetId: "nz-iponz-trademark-search",
+      promotionEligible: false,
+    });
+    expect(promoted.map((canary) => canary.jurisdiction)).toEqual(
+      REPRESENTATIVE_SOURCE_ACTIVATION_JURISDICTIONS.map((item) => item.jurisdiction),
+    );
+    expect(promoted.every((canary) => canary.promotionEligible)).toBe(true);
   });
 
   it("preserves every representative acquisition profile in the live matrix", () => {

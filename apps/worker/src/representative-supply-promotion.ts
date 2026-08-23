@@ -1,4 +1,4 @@
-import { getRepresentativeSourceLiveCanaries } from "@markorbit/persistence/representative-source-live-canaries";
+import { getRepresentativeSupplyPromotionCanaries } from "@markorbit/persistence/representative-source-live-canaries";
 import { prepareFoundationalSupply, type SupplyRun } from "./source-coverage-operations";
 
 export const REPRESENTATIVE_SUPPLY_PROMOTION_VERSION =
@@ -266,7 +266,7 @@ async function recordPromotionReceipt(
 }
 
 function selectCanaries(requested: readonly string[] | undefined, apply: boolean) {
-  const canaries = getRepresentativeSourceLiveCanaries();
+  const canaries = getRepresentativeSupplyPromotionCanaries();
   const supported = new Set<string>(canaries.map((item) => item.jurisdiction));
   const normalized = [
     ...new Set((requested ?? []).map((value) => value.trim().toUpperCase()).filter(Boolean)),

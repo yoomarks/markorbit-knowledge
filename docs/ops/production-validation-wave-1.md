@@ -32,7 +32,20 @@ Each real-run result should record the full path rather than a single success fl
 - manual intervention requirement
 - adapter requirement
 
-Use `config/production-validation-scorecard-template.json` as the empty report envelope. Individual result rows are added by the production-validation runner as real observations become available.
+`config/production-validation-scorecard-template.json` remains the legacy manual v1.0 envelope. The live control-plane API emits the current v1.2 scorecard from durable registry facts; the manifest's `PENDING_REAL_RUN` values remain inventory state and are not rewritten as evidence arrives.
+
+### Durable snapshots
+
+`GET /api/discovery/production-validation-wave?workspaceId=...` returns the current derived scorecard plus the 20 latest immutable `scorecardSnapshots` for that workspace and wave. Capture an operator checkpoint explicitly:
+
+```bash
+curl -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/discovery/production-validation-wave" \
+  -H 'content-type: application/json' \
+  -H 'Idempotency-Key: wave-1-2026-08-23T0900Z' \
+  --data '{"action":"CAPTURE_SCORECARD","workspaceId":"default"}'
+```
+
+Each snapshot stores the complete v1.2 scorecard, capture time, idempotency key and SHA-256 content digest in the registry database. Replaying the same key returns the original immutable snapshot. These records therefore follow the same durable database backup and retention policy as the rest of the registry; CI artifacts are diagnostic copies, not the system of record.
 
 ## Static gate
 
@@ -50,7 +63,7 @@ When a populated scorecard exists, validate it against the same manifest:
 node scripts/production-validation-wave-check.mjs --report path/to/scorecard.json
 ```
 
-The report gate rejects unknown/duplicate targets and requires structured observations for discovery, onboarding, collection, artifact, conversion, Knowledge visibility, second-run behavior, HTTP metrics, runtime metrics, manual intervention, and adapter need.
+The report gate accepts the legacy manual v1.0 envelope and the current derived v1.2 contract. Both reject unknown or duplicate targets; v1.2 additionally verifies lifecycle states, outcome booleans, compatibility telemetry, and the non-authorizing remediation boundary.
 
 ## Acceptance for the next production slice
 
