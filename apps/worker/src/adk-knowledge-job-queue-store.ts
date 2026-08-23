@@ -1,5 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
-import { claimJob, type AiKnowledgeJob, type AiKnowledgeJobStatus } from "./adk-knowledge-job-queue";
+import {
+  claimJob,
+  type AiKnowledgeJob,
+  type AiKnowledgeJobStatus,
+} from "./adk-knowledge-job-queue";
 
 const INITIALIZED_DATABASES = new WeakSet<DatabaseSync>();
 const JOB_STATUSES = new Set([
@@ -16,7 +20,10 @@ const JOB_STATUSES = new Set([
 export interface AiKnowledgeJobStore {
   put(job: AiKnowledgeJob): AiKnowledgeJob;
   save(job: AiKnowledgeJob): AiKnowledgeJob;
-  saveIfStatus(job: AiKnowledgeJob, expectedStatus: AiKnowledgeJobStatus): AiKnowledgeJob | undefined;
+  saveIfStatus(
+    job: AiKnowledgeJob,
+    expectedStatus: AiKnowledgeJobStatus,
+  ): AiKnowledgeJob | undefined;
   get(id: string): AiKnowledgeJob | undefined;
   getByExecutionKey(executionKey: string): AiKnowledgeJob | undefined;
   list(): AiKnowledgeJob[];
