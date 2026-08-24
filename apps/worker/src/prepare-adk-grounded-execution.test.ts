@@ -200,7 +200,7 @@ describe("preparePersistedAiGroundedExecutionV1", () => {
         bindingId: "asb_us_trademark_missing_official",
         resolver: { resolve: async () => undefined },
       }),
-    ).rejects.toMatchObject<Partial<PersistedAiGroundedExecutionPreparationError>>({
+    ).rejects.toMatchObject({
       code: "AI_GROUNDED_BINDING_NOT_FOUND",
     });
     database.close();
@@ -223,7 +223,7 @@ describe("preparePersistedAiGroundedExecutionV1", () => {
           }),
         },
       }),
-    ).rejects.toMatchObject<Partial<AiSourceGroundingError>>({
+    ).rejects.toMatchObject({
       code: "AI_SOURCE_DIGEST_MISMATCH",
     });
     database.close();
