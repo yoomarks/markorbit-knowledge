@@ -171,7 +171,7 @@ export async function prepareAdkGroundedExecutionFile(
 
 async function main(): Promise<void> {
   const output = await prepareAdkGroundedExecutionFile(loadAdkGroundedExecutionPreparationConfig());
-  process.stdout.write(`${JSON.stringify(output.envelope ?? output.preparation.envelope, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify(output.preparation.envelope, null, 2)}\n`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
