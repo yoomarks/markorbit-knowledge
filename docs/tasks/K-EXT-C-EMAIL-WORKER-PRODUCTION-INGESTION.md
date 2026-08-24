@@ -1,9 +1,19 @@
 # K-EXT-C — Email Worker production ingestion
 
+> **Historical task status — SUPERSEDED FOR NEW EMAIL TRANSPORT DEVELOPMENT (2026-08-25).**
+>
+> The implementation/history below remains valuable evidence for read-only mailbox safety, UID/UIDVALIDITY, cursor, restart, hash verification, and RawArtifact ingestion. However, **new generic email send/receive/sync/thread/attachment transport must be developed in the shared `yoomarks/markorbit` Communication Capability**, not expanded as a Knowledge-owned mail platform.
+>
+> Knowledge will use that shared Capability for Expert Q&A and will own Expert question/source semantics and Knowledge provenance. See:
+>
+> - `docs/product/KNOWLEDGE_LONG_TERM_STRATEGY.md`
+> - `docs/architecture/KNOWLEDGE_CAPABILITY_SOURCE_BOUNDARIES.md`
+> - `docs/tasks/KNOWLEDGE_STRATEGIC_EXECUTION_PLAN.md`
+
 - **Direction:** horizontal Knowledge ingestion extension
 - **Base:** `c7f47999d65814b46a7c7ebb4318fc1a48b33c40` (merged K-EXT-B)
-- **Status:** `IMPLEMENTING`
-- **Owner:** Knowledge Worker / existing control plane
+- **Status:** `HISTORICAL / SUPERSEDED FOR FUTURE TRANSPORT OWNERSHIP`
+- **Owner:** historical Knowledge Worker / existing control plane
 
 ## Objective
 
@@ -74,4 +84,4 @@ A private Worker-host state file stores the operational cursor and one inflight 
 
 ## Next
 
-After Owner merge only, continue the next approved Knowledge horizontal ingestion package; do not bypass roadmap order.
+Do not extend this historical Knowledge-owned transport path as the strategic email platform. Reuse its proven safety lessons in `K-CAP-COMM` and build new Expert Q&A over the shared Communication Capability.
