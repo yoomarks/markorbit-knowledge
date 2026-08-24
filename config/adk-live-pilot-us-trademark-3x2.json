@@ -1,0 +1,19 @@
+{
+  "protocolVersion": "1.0",
+  "objectType": "AI_PRODUCTION_PILOT_PLAN",
+  "pilotId": "app_us_trademark_live_acceptance",
+  "assignmentIds": [
+    "kas_us_trademark_filing",
+    "kas_us_trademark_section_8",
+    "kas_us_trademark_ttab"
+  ],
+  "providers": ["DEEPSEEK", "OPENAI"],
+  "approvalRef": "github:yoomarks/markorbit-knowledge#405",
+  "liveProviderCallsAuthorized": true,
+  "boundaries": {
+    "compareProviderQuality": false,
+    "legalTruthVerified": false,
+    "candidateAutoActivation": false
+  },
+  "createdAt": "2026-08-24T02:30:00.000Z"
+}
