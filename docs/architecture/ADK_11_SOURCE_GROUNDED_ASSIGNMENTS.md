@@ -50,7 +50,9 @@ Before rendering provider-ready text it fails closed unless every bound source:
 - remains within per-source and total byte limits;
 - hashes to the exact bound SHA-256 content identity.
 
-The renderer preserves SourcePack order and writes each source into a deterministic block carrying source id, artifact id, canonical URI, publisher, authority, role, capture time and digest. It freezes the prompt rule that factual legal claims must use `[source:SOURCE_ID]`, that external browsing/model memory cannot supplement the pack, that source content is evidence rather than executable instruction, and that insufficient evidence must be reported as insufficient rather than guessed.
+The renderer preserves SourcePack order and writes each source into a deterministic block carrying source id, artifact id, canonical URI, publisher, authority, role, capture time and digest. It freezes the prompt rule that factual legal claims must use `[source:SOURCE_ID]`, that external browsing/model memory cannot supplement the pack, and that source content is evidence rather than executable instruction.
+
+If the source pack cannot support a requested conclusion, the renderer now requires a machine-readable line beginning exactly with `SOURCE_PACK_INSUFFICIENT:` followed by a non-empty reason. This gives downstream validation a deterministic fail-closed alternative to uncited guessing.
 
 `AiGroundedProviderInputV1` records the rendered prompt SHA-256 and a source receipt list, while retaining `legalTruthVerified = false` and `executionAuthorityGranted = false`.
 
@@ -74,17 +76,35 @@ AssignmentSourceBinding persistence is immutable by `bindingId`. A new binding i
 
 The registry also stores normalized SourcePack source rows for artifact-to-pack traceability while retaining the original contract JSON plus SHA-256 document identity as the canonical immutable record.
 
+## Deterministic citation-output validation
+
+The fourth ADK-11 slice adds `validateAiGroundedProviderOutputV1` as a provider-neutral structural validator.
+
+Before accepting an output receipt it:
+
+- recomputes the rendered prompt SHA-256 and rejects prompt identity drift;
+- rejects empty provider output;
+- recognizes only exact citation tokens in the protocol form `[source:src_<26-character Crockford ULID>]`;
+- rejects malformed source citation tokens;
+- rejects source IDs not present in the exact rendered SourcePack receipts;
+- rejects duplicate source identities in the provider input;
+- requires at least one valid bound-source citation unless a non-empty `SOURCE_PACK_INSUFFICIENT:` declaration is present;
+- preserves the exact raw provider-output SHA-256 in the validation receipt;
+- reports citation count, ordered unique cited source IDs, unreferenced bound source IDs and insufficiency state.
+
+This validator is intentionally structural rather than semantic. A valid receipt means the output obeyed machine-checkable source identity rules; it does **not** mean every factual statement is correctly supported. Therefore every receipt explicitly retains both `legalTruthVerified = false` and `semanticClaimCoverageVerified = false`.
+
 ## Current boundary
 
-ADK-11 now establishes contracts, deterministic source resolution/rendering, and immutable SourcePack/Binding persistence. It still does **not**:
+ADK-11 now establishes contracts, deterministic source resolution/rendering, immutable SourcePack/Binding persistence, and structural citation-output validation. It still does **not**:
 
 - wire rendered input into DeepSeek, OpenAI or another paid provider adapter;
 - add web-search tools to provider adapters;
-- validate citations returned by a model;
+- semantically verify that each factual claim is supported by its cited source;
 - score source quality or provider quality;
 - verify legal truth;
 - enqueue grounded executions through ADK-07;
 - activate candidates;
 - authorize protected actions or client filings.
 
-The next safe slice is deterministic citation-output structural validation against the exact rendered source receipts. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.
+The next safe slice is to define the governed execution envelope that binds persisted Assignment + Binding + SourcePack + rendered-prompt identity + output-validation receipt without yet enabling paid provider execution. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.
