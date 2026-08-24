@@ -5,6 +5,7 @@
 > The implementation/history below remains valuable evidence for read-only mailbox safety, UID/UIDVALIDITY, cursor, restart, hash verification, and RawArtifact ingestion. However, **new generic email send/receive/sync/thread/attachment transport must be developed in the shared `yoomarks/markorbit` Communication Capability**, not expanded as a Knowledge-owned mail platform.
 >
 > Knowledge will use that shared Capability for Expert Q&A and will own Expert question/source semantics and Knowledge provenance. See:
+>
 > - `docs/product/KNOWLEDGE_LONG_TERM_STRATEGY.md`
 > - `docs/architecture/KNOWLEDGE_CAPABILITY_SOURCE_BOUNDARIES.md`
 > - `docs/tasks/KNOWLEDGE_STRATEGIC_EXECUTION_PLAN.md`

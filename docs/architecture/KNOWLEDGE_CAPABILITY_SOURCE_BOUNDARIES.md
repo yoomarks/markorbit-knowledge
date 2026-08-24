@@ -41,18 +41,18 @@ Knowledge does not become the owner of platform-wide AI or email transport merel
 
 ## 3. Capability decision matrix
 
-| Capability / domain | Current owner | Target owner | Migrate now? | Reason |
-| --- | --- | --- | --- | --- |
-| AI provider transport / SDKs | Knowledge ADK + thin main package | `yoomarks/markorbit` Capability | Yes | Clear multi-product reuse |
-| AI credentials / model invocation | Knowledge ADK currently contains production paths | `yoomarks/markorbit` Capability | Yes | Must not be Knowledge-specific |
-| AI usage/cost/delivery mechanics | Knowledge ADK currently carries safety logic | `yoomarks/markorbit` Capability | Yes, incrementally | Shared operational concern |
-| Email send/receive/sync | Knowledge has an IMAP ingestion implementation/history | `yoomarks/markorbit` Communication Capability | Yes | Core/MarkReg/Knowledge all need communication |
-| Email thread/attachment mechanics | Knowledge-specific paths exist | Shared Communication Capability | Yes | Reusable transport primitive |
-| Web crawler/acquisition | Knowledge | Knowledge | No | Current reuse does not justify extraction |
-| Expert interview semantics | Not yet first-class | Knowledge | Build | Information-source semantics |
-| Case Dossier semantics | Not yet first-class | Knowledge | Build | Knowledge asset, not platform primitive |
-| MarkReg operational matter | MarkReg | MarkReg | No | Operational system of record |
-| Interpretation/scoring/recommendation | Must remain outside Knowledge | Brain / governed business logic | No | Permanent responsibility boundary |
+| Capability / domain                   | Current owner                                          | Target owner                                  | Migrate now?       | Reason                                        |
+| ------------------------------------- | ------------------------------------------------------ | --------------------------------------------- | ------------------ | --------------------------------------------- |
+| AI provider transport / SDKs          | Knowledge ADK + thin main package                      | `yoomarks/markorbit` Capability               | Yes                | Clear multi-product reuse                     |
+| AI credentials / model invocation     | Knowledge ADK currently contains production paths      | `yoomarks/markorbit` Capability               | Yes                | Must not be Knowledge-specific                |
+| AI usage/cost/delivery mechanics      | Knowledge ADK currently carries safety logic           | `yoomarks/markorbit` Capability               | Yes, incrementally | Shared operational concern                    |
+| Email send/receive/sync               | Knowledge has an IMAP ingestion implementation/history | `yoomarks/markorbit` Communication Capability | Yes                | Core/MarkReg/Knowledge all need communication |
+| Email thread/attachment mechanics     | Knowledge-specific paths exist                         | Shared Communication Capability               | Yes                | Reusable transport primitive                  |
+| Web crawler/acquisition               | Knowledge                                              | Knowledge                                     | No                 | Current reuse does not justify extraction     |
+| Expert interview semantics            | Not yet first-class                                    | Knowledge                                     | Build              | Information-source semantics                  |
+| Case Dossier semantics                | Not yet first-class                                    | Knowledge                                     | Build              | Knowledge asset, not platform primitive       |
+| MarkReg operational matter            | MarkReg                                                | MarkReg                                       | No                 | Operational system of record                  |
+| Interpretation/scoring/recommendation | Must remain outside Knowledge                          | Brain / governed business logic               | No                 | Permanent responsibility boundary             |
 
 ## 4. AI Capability target
 

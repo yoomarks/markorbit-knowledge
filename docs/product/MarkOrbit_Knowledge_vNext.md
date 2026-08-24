@@ -5,6 +5,7 @@
 > This document remains an implementation-history reference for public discovery and evidence-supply work. It is **not** the authority for current AI/email ownership or the long-term Knowledge roadmap.
 >
 > Current canonical direction:
+>
 > - `docs/product/KNOWLEDGE_LONG_TERM_STRATEGY.md`
 > - `docs/architecture/KNOWLEDGE_CAPABILITY_SOURCE_BOUNDARIES.md`
 > - `docs/architecture/CASE_DOSSIER_AND_EXPERT_SOURCE_ARCHITECTURE.md`

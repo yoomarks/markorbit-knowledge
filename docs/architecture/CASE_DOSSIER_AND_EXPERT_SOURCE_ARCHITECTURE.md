@@ -5,6 +5,7 @@
 > Effective: 2026-08-25
 >
 > Depends on:
+>
 > - `docs/product/KNOWLEDGE_LONG_TERM_STRATEGY.md`
 > - `docs/architecture/KNOWLEDGE_CAPABILITY_SOURCE_BOUNDARIES.md`
 

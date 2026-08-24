@@ -680,21 +680,21 @@ Do not design federation solely from abstract schemas.
 
 # 6. Current stop/go decisions
 
-| Topic | Decision |
-| --- | --- |
-| Add more AI providers inside Knowledge | STOP unless required by an approved source need |
-| Build shared AI Capability in main repo | GO |
-| Build shared Communication/email Capability | GO |
-| Move Web crawler to Capability | STOP for now |
-| Build Expert source model | GO after/with Communication V1 |
-| Build Case Dossier model | GO |
-| Build manual “new Case” form as primary entry | STOP |
-| Build MarkReg one-click Case Candidate promotion | GO after K-CASE-000 |
-| Build Knowledge source/expert/case scoring | STOP |
-| Build Brain-style recommendations in Knowledge | STOP |
-| Complete #429 governance | GO when repo-admin capability is available |
-| Execute #405 paid live acceptance | WAIT for actual gates and explicit operational readiness |
-| Expand ADK architecture around #405 indefinitely | STOP |
+| Topic                                            | Decision                                                 |
+| ------------------------------------------------ | -------------------------------------------------------- |
+| Add more AI providers inside Knowledge           | STOP unless required by an approved source need          |
+| Build shared AI Capability in main repo          | GO                                                       |
+| Build shared Communication/email Capability      | GO                                                       |
+| Move Web crawler to Capability                   | STOP for now                                             |
+| Build Expert source model                        | GO after/with Communication V1                           |
+| Build Case Dossier model                         | GO                                                       |
+| Build manual “new Case” form as primary entry    | STOP                                                     |
+| Build MarkReg one-click Case Candidate promotion | GO after K-CASE-000                                      |
+| Build Knowledge source/expert/case scoring       | STOP                                                     |
+| Build Brain-style recommendations in Knowledge   | STOP                                                     |
+| Complete #429 governance                         | GO when repo-admin capability is available               |
+| Execute #405 paid live acceptance                | WAIT for actual gates and explicit operational readiness |
+| Expand ADK architecture around #405 indefinitely | STOP                                                     |
 
 ---
 

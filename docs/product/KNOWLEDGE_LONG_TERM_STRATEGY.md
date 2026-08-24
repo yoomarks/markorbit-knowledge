@@ -62,12 +62,12 @@ Those are Brain, human, Core, or other governed-system responsibilities.
 
 Knowledge will be developed as four first-class information-source families.
 
-| Pillar | Core question | Primary source | Current maturity | Long-term role |
-| --- | --- | --- | --- | --- |
-| Web | What has the public world published? | Websites, official documents, APIs, feeds, media | Established | Broad public-information foundation |
-| AI | What did an AI source answer when asked a defined question? | OpenAI, DeepSeek, Claude, Gemini, other models | Established foundation | Repeatable machine-source interview archive |
-| Expert | What did a lawyer, agent, or expert answer? | Professional correspondence | To build | Professional-practice information archive |
-| Case | What actually happened in a real matter? | MarkReg operational matters and their evidence | To build | Highest-scarcity first-party industry case archive |
+| Pillar | Core question                                               | Primary source                                   | Current maturity       | Long-term role                                     |
+| ------ | ----------------------------------------------------------- | ------------------------------------------------ | ---------------------- | -------------------------------------------------- |
+| Web    | What has the public world published?                        | Websites, official documents, APIs, feeds, media | Established            | Broad public-information foundation                |
+| AI     | What did an AI source answer when asked a defined question? | OpenAI, DeepSeek, Claude, Gemini, other models   | Established foundation | Repeatable machine-source interview archive        |
+| Expert | What did a lawyer, agent, or expert answer?                 | Professional correspondence                      | To build               | Professional-practice information archive          |
+| Case   | What actually happened in a real matter?                    | MarkReg operational matters and their evidence   | To build               | Highest-scarcity first-party industry case archive |
 
 The four pillars are complementary. Knowledge does not declare one pillar inherently true or superior to another. They answer different questions and preserve different observations.
 
