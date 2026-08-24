@@ -185,7 +185,11 @@ export function parseAdkLivePilotCheckpoint(value: unknown): AdkLivePilotCheckpo
     approvalRef: item.approvalRef,
     runId: item.runId,
     startedAt: item.startedAt,
-    assignmentIds: [item.assignmentIds[0] as string, item.assignmentIds[1] as string, item.assignmentIds[2] as string],
+    assignmentIds: [
+      item.assignmentIds[0] as string,
+      item.assignmentIds[1] as string,
+      item.assignmentIds[2] as string,
+    ],
     providers: ["DEEPSEEK", "OPENAI"],
     cells,
     ...(inFlight ? { inFlight } : {}),
@@ -222,7 +226,9 @@ function loadOrCreateCheckpoint(
   now: () => Date,
 ): AdkLivePilotCheckpointV1 {
   if (existsSync(path)) {
-    const checkpoint = parseAdkLivePilotCheckpoint(JSON.parse(readFileSync(path, "utf8")) as unknown);
+    const checkpoint = parseAdkLivePilotCheckpoint(
+      JSON.parse(readFileSync(path, "utf8")) as unknown,
+    );
     assertCheckpointMatchesPlan(checkpoint, plan);
     return checkpoint;
   }
@@ -241,6 +247,13 @@ function loadOrCreateCheckpoint(
   };
   saveCheckpoint(path, checkpoint);
   return checkpoint;
+}
+
+function withoutInFlight(
+  checkpoint: AdkLivePilotCheckpointV1,
+): Omit<AdkLivePilotCheckpointV1, "inFlight"> {
+  const { inFlight: _inFlight, ...rest } = checkpoint;
+  return rest;
 }
 
 function receiptFromDurableCell(cell: AdkLivePilotDurableCellV1): LivePilotReceiptView {
@@ -340,7 +353,10 @@ export async function executeResumableAdkLivePilot(
         acquisition = await adapter.acquire({ assignment });
       } catch (error) {
         if (error instanceof AiKnowledgeAcquisitionError && !providerDeliveryUncertain(error)) {
-          checkpoint = { ...checkpoint, inFlight: undefined, updatedAt: now().toISOString() };
+          checkpoint = {
+            ...withoutInFlight(checkpoint),
+            updatedAt: now().toISOString(),
+          };
           saveCheckpoint(input.checkpointPath, checkpoint);
           return resultFromCheckpoint(checkpoint, {
             assignmentId,
@@ -351,10 +367,9 @@ export async function executeResumableAdkLivePilot(
             retryable: error.retryable,
           });
         }
-        throw new Error(
-          `ADK_LIVE_PROVIDER_DELIVERY_REQUIRES_RECONCILIATION: ${key}`,
-          { cause: error },
-        );
+        throw new Error(`ADK_LIVE_PROVIDER_DELIVERY_REQUIRES_RECONCILIATION: ${key}`, {
+          cause: error,
+        });
       }
 
       if (
@@ -396,9 +411,8 @@ export async function executeResumableAdkLivePilot(
         recordedAt: now().toISOString(),
       };
       checkpoint = {
-        ...checkpoint,
+        ...withoutInFlight(checkpoint),
         cells: [...checkpoint.cells, durableCell],
-        inFlight: undefined,
         updatedAt: now().toISOString(),
       };
       saveCheckpoint(input.checkpointPath, checkpoint);
