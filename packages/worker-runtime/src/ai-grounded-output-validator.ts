@@ -31,7 +31,7 @@ export class AiGroundedOutputValidationError extends Error {
   }
 }
 
-const VALID_CITATION = /\[source:([a-z][a-z0-9_]{2,127})\]/gu;
+const VALID_CITATION = /\[source:(src_[0-9A-HJKMNP-TV-Z]{26})\]/gu;
 const SOURCE_TOKEN_START = "[source:";
 
 function sha256(value: string): string {
@@ -39,9 +39,13 @@ function sha256(value: string): string {
 }
 
 function exactInsufficiencyDeclaration(output: string): boolean {
-  return output
-    .split(/\r?\n/u)
-    .some((line) => line.trim().startsWith(AI_SOURCE_PACK_INSUFFICIENT_PREFIX));
+  return output.split(/\r?\n/u).some((line) => {
+    const trimmed = line.trim();
+    return (
+      trimmed.startsWith(AI_SOURCE_PACK_INSUFFICIENT_PREFIX) &&
+      trimmed.slice(AI_SOURCE_PACK_INSUFFICIENT_PREFIX.length).trim().length > 0
+    );
+  });
 }
 
 function citationScan(output: string): { citedSourceIds: string[]; citationCount: number } {
@@ -78,6 +82,13 @@ export function validateAiGroundedProviderOutputV1(input: {
   providerInput: AiGroundedProviderInputV1;
   output: string;
 }): AiGroundedOutputValidationReceiptV1 {
+  if (sha256(input.providerInput.renderedPrompt) !== input.providerInput.renderedPromptSha256) {
+    throw new AiGroundedOutputValidationError(
+      "AI_GROUNDED_INPUT_PROMPT_DIGEST_MISMATCH",
+      "Grounded provider input prompt no longer matches its frozen SHA-256 identity",
+    );
+  }
+
   const output = input.output.trim();
   if (!output) {
     throw new AiGroundedOutputValidationError(
