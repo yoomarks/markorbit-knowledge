@@ -116,8 +116,7 @@ function assertImmutableIdentity(
     previous.repositoryCommitSha !== next.repositoryCommitSha ||
     previous.approvalRef !== next.approvalRef ||
     previous.gateEvidence.adk06AcceptanceRef !== next.gateEvidence.adk06AcceptanceRef ||
-    previous.gateEvidence.repositoryGovernanceRef !==
-      next.gateEvidence.repositoryGovernanceRef ||
+    previous.gateEvidence.repositoryGovernanceRef !== next.gateEvidence.repositoryGovernanceRef ||
     previous.requestedAt !== next.requestedAt ||
     previous.expiresAt !== next.expiresAt ||
     previous.maxProviderCalls !== next.maxProviderCalls
@@ -200,8 +199,7 @@ export class SqliteAiGroundedProviderExecutionAuthorizationRepository {
          WHERE authorization_id = ? AND revision = ?`,
       )
       .get(authorizationId, revision) as
-      | { document_json: string; document_sha256: string }
-      | undefined;
+      { document_json: string; document_sha256: string } | undefined;
     return row ? parseAuthorization(row.document_json, row.document_sha256) : null;
   }
 
@@ -218,9 +216,7 @@ export class SqliteAiGroundedProviderExecutionAuthorizationRepository {
     return row ? parseAuthorization(row.document_json, row.document_sha256) : null;
   }
 
-  listByExecutionInput(
-    executionInputSha256: string,
-  ): AiGroundedProviderExecutionAuthorizationV1[] {
+  listByExecutionInput(executionInputSha256: string): AiGroundedProviderExecutionAuthorizationV1[] {
     const rows = this.database
       .prepare(
         `SELECT document_json, document_sha256
@@ -262,12 +258,8 @@ export class SqliteAiGroundedProviderExecutionAuthorizationRepository {
            LIMIT 1`,
         )
         .get(authorization.executionInputSha256, authorization.provider) as
-        | { authorization_id: string }
-        | undefined;
-      if (
-        competingLineage &&
-        competingLineage.authorization_id !== authorization.authorizationId
-      ) {
+        { authorization_id: string } | undefined;
+      if (competingLineage && competingLineage.authorization_id !== authorization.authorizationId) {
         throw new RegistryConflictError(
           "AI_GROUNDED_PROVIDER_AUTHORIZATION_LINEAGE_CONFLICT",
           `Grounded execution ${authorization.executionInputSha256} already has an authorization lineage for ${authorization.provider}`,

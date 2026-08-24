@@ -74,10 +74,7 @@ function timestamp(value: unknown): number {
 
 function boundedText(value: unknown, max: number): value is string {
   return (
-    typeof value === "string" &&
-    value.length > 0 &&
-    value.length <= max &&
-    value.trim() === value
+    typeof value === "string" && value.length > 0 && value.length <= max && value.trim() === value
   );
 }
 
