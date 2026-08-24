@@ -14,7 +14,6 @@ import {
   type AiKnowledgeAcquisition,
   type AiKnowledgeProviderAdapter,
 } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
-import type { AiKnowledgeProvider } from "@markorbit/worker-runtime/ai-production-pilot";
 import { OpenAiKnowledgeAdapter } from "@markorbit/worker-runtime/openai-knowledge-adapter";
 import {
   assertLivePilotComplete,
@@ -27,6 +26,8 @@ import {
   type AdkLivePilotDurableCellV1,
 } from "./adk-live-pilot-resume";
 import { loadAdkLivePilotRuntimeSecret } from "./adk-live-pilot-runtime-secret";
+
+type LivePilotProvider = "DEEPSEEK" | "OPENAI";
 
 type LivePilotConfig = {
   databasePath: string;
@@ -206,7 +207,7 @@ async function main(): Promise<void> {
       }),
     );
 
-    const adapters = new Map<AiKnowledgeProvider, AiKnowledgeProviderAdapter>([
+    const adapters = new Map<LivePilotProvider, AiKnowledgeProviderAdapter>([
       ["DEEPSEEK", new DeepSeekKnowledgeAdapter()],
       ["OPENAI", new OpenAiKnowledgeAdapter()],
     ]);
