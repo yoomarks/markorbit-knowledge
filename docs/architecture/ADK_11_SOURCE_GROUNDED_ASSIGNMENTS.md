@@ -151,15 +151,34 @@ The operator-facing `adk:grounded:prepare` dry-run command reads:
 
 It resolves the bound source artifacts from the existing local RawArtifact store, renders the exact provider input, and writes a private `0600` prepared-execution file using exclusive creation. The output includes both the PREPARED envelope and provider input for operator inspection, but the command has no provider adapter and does not read provider secrets.
 
-This slice freezes renderer/input identity but does not yet register the rendered prompt itself as a governed RawArtifact. The private dry-run file is an operator artifact, not the long-term canonical evidence boundary.
+## Governed PREPARED execution evidence and replay
+
+The seventh ADK-11 slice promotes the rendered PREPARED input from an operator-only file into governed evidence without authorizing a provider call.
+
+`ingestAiGroundedPreparedPromptAsRawArtifact` validates the exact rendered prompt bytes against `renderedPromptSha256` before entering the existing authenticated RawArtifact ingestion boundary. The prompt is persisted as `MARKDOWN` / `text/markdown` with stable identities derived from `executionInputSha256` and a stable idempotency key derived from both execution-input and prompt hashes. The finalized RawArtifact is checked again for content hash, size, canonical URI and provenance source URI before it can be linked to evidence.
+
+`SqliteAiGroundedPreparedExecutionEvidenceRepository` then independently revalidates the PREPARED envelope before persistence. It:
+
+- recomputes `sourceReceiptsSha256` from the ordered receipts;
+- recomputes `executionInputSha256` from Assignment, Binding, SourcePack revision, renderer and prompt/source-receipt hashes;
+- resolves the persisted Assignment, Binding and exact SourcePack revision;
+- requires the envelope source receipts to match the complete SourcePack in exact order;
+- rechecks every source receipt against its finalized RawArtifact content hash, URI, media type and size;
+- rechecks the rendered-prompt RawArtifact against the frozen prompt SHA-256 and stable `ai+markorbit://grounded-executions/...` identities;
+- stores normalized source-artifact links plus canonical evidence JSON and its SHA-256.
+
+`executionInputSha256` is the immutable persistence identity. The first successfully persisted evidence keeps the canonical `preparedAt`. A later restart may prepare the same governed input at a different wall-clock time; if all input identities are unchanged, persistence returns the original canonical evidence as an idempotent replay. Any same-input mutation of Assignment, Binding, SourcePack, renderer, source receipts, prompt identity or prompt RawArtifact is rejected.
+
+`persistPreparedAiGroundedExecutionV1` checks the provider-input body against the envelope before storage and queries existing evidence before uploading the prompt. A restart that already has canonical evidence therefore skips the prompt upload entirely and revalidates the existing evidence instead of creating another governed object.
+
+The prompt RawArtifact intentionally does not use `parentArtifactIds` to point at every SourcePack artifact. Existing RawArtifact parent-lineage integrity requires parent artifacts to share one source execution scope, while a legitimate SourcePack may combine multiple official sources. The PREPARED evidence registry therefore records the complete ordered source-artifact lineage explicitly without weakening the existing RawArtifact same-source parent invariant.
 
 ## Current boundary
 
-ADK-11 now establishes SourcePack/Binding contracts, deterministic source resolution/rendering, immutable SourcePack/Binding persistence, structural citation-output validation, immutable validation-evidence linkage, and a provider-neutral PREPARED execution envelope that can be exercised against persisted Knowledge state without a paid model call. It still does **not**:
+ADK-11 now establishes SourcePack/Binding contracts, deterministic source resolution/rendering, immutable SourcePack/Binding persistence, structural citation-output validation, immutable validation-evidence linkage, a provider-neutral PREPARED execution envelope, and governed PREPARED prompt/input evidence with restart/replay semantics. It still does **not**:
 
 - authorize or execute DeepSeek, OpenAI or another provider call through the grounded runtime;
 - add external web-search tools to provider adapters;
-- persist the rendered prompt body as a dedicated governed RawArtifact;
 - semantically verify that each factual claim is supported by its cited source;
 - score source quality or provider quality;
 - verify legal truth;
@@ -167,4 +186,4 @@ ADK-11 now establishes SourcePack/Binding contracts, deterministic source resolu
 - activate candidates;
 - authorize protected actions or client filings.
 
-The next safe slice is to persist the PREPARED execution identity and rendered prompt body as governed evidence with restart/replay semantics, still without connecting a paid provider. Only after that boundary is proven should grounded execution be considered for ADK-07 queue integration. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.
+The next safe slice is to integrate the governed PREPARED execution identity into ADK-07 queue semantics while keeping provider execution disabled: queue/recovery/idempotency should operate on the immutable `executionInputSha256` evidence boundary before any paid-provider adapter is reachable. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.
