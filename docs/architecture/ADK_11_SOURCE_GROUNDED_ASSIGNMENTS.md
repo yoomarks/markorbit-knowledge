@@ -2,7 +2,7 @@
 
 ## Objective
 
-Introduce the first contract boundary for source-grounded AI research without changing the existing Knowledge authority model or authorizing provider execution.
+Introduce a machine-verifiable boundary for source-grounded AI research without changing the existing Knowledge authority model or authorizing provider execution.
 
 ADK-11 starts from a narrow invariant: an AI research answer is not source-grounded merely because its prompt asks the model to cite official sources. The exact source evidence available to the model must be separately identified, content-addressed and bound to the governed KnowledgeAssignment.
 
@@ -38,18 +38,34 @@ Existing KnowledgeAssignment identities remain immutable and provider-neutral. A
 
 This also prevents a prompt-only illusion of grounding: the Assignment can request official sources, but the binding is the machine-verifiable evidence that a concrete source pack was selected.
 
+## Deterministic resolver/renderer
+
+The second ADK-11 slice adds `renderAiGroundedProviderInputV1`. It consumes an Assignment, its strict SourceBinding, the exact SourcePack revision and an injected `AiSourceSnapshotResolver`.
+
+Before rendering provider-ready text it fails closed unless every bound source:
+
+- resolves to the exact bound `sourceId` and RawArtifact `artifactId`;
+- is one of the explicitly supported textual media types;
+- is valid UTF-8 and non-empty;
+- remains within per-source and total byte limits;
+- hashes to the exact bound SHA-256 content identity.
+
+The renderer preserves SourcePack order and writes each source into a deterministic block carrying source id, artifact id, canonical URI, publisher, authority, role, capture time and digest. It also freezes the prompt rule that factual legal claims must use `[source:SOURCE_ID]`, that external browsing/model memory cannot supplement the pack, and that insufficient evidence must be reported as insufficient rather than guessed.
+
+`AiGroundedProviderInputV1` records the rendered prompt SHA-256 and a source receipt list, while retaining `legalTruthVerified = false` and `executionAuthorityGranted = false`.
+
 ## Current boundary
 
-This first ADK-11 slice is contract-only. It does **not** yet:
+ADK-11 now establishes contracts plus deterministic source resolution/rendering. It still does **not**:
 
-- resolve RawArtifact bytes into provider input;
-- call DeepSeek, OpenAI or another provider;
+- wire the rendered input into DeepSeek, OpenAI or another paid provider adapter;
 - add web-search tools to provider adapters;
 - validate citations returned by a model;
+- persist SourcePack/Binding registries;
 - score source quality or provider quality;
 - verify legal truth;
-- enqueue ADK-07 jobs;
+- enqueue grounded executions through ADK-07;
 - activate candidates;
 - authorize protected actions or client filings.
 
-The next slice should add a deterministic source-pack resolver/renderer that loads the bound finalized RawArtifacts and constructs the exact provider input while preserving source IDs for citation provenance. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.
+The next safe slice is persistence for immutable SourcePack and AssignmentSourceBinding revisions, followed by citation-output validation. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.
