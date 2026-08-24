@@ -89,7 +89,8 @@ export function validateAiGroundedProviderOutputV1(input: {
     );
   }
 
-  const output = input.output.trim();
+  const rawOutput = input.output;
+  const output = rawOutput.trim();
   if (!output) {
     throw new AiGroundedOutputValidationError(
       "AI_GROUNDED_OUTPUT_EMPTY",
@@ -130,7 +131,7 @@ export function validateAiGroundedProviderOutputV1(input: {
     sourcePackId: input.providerInput.sourcePackId,
     sourcePackRevision: input.providerInput.sourcePackRevision,
     renderedPromptSha256: input.providerInput.renderedPromptSha256,
-    outputSha256: sha256(output),
+    outputSha256: sha256(rawOutput),
     citationCount,
     citedSourceIds,
     unreferencedSourceIds: knownSourceIds.filter((sourceId) => !citedSourceIds.includes(sourceId)),
