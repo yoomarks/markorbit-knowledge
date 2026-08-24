@@ -1,0 +1,54 @@
+name: One-shot pnpm Pin Upgrade
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pnpm-pin-one-shot-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  upgrade:
+    if: github.actor == github.repository_owner
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Replace broken pnpm pin repository-wide
+        shell: bash
+        env:
+          OLD_PNPM_VERSION: "11.13.0"
+          NEW_PNPM_VERSION: "11.13.1"
+        run: |
+          set -euo pipefail
+          mapfile -t targets < <(
+            grep -RIl --include='*.yml' --include='*.yaml' -- "$OLD_PNPM_VERSION" .github/workflows
+          )
+          targets+=(package.json)
+          for target in "${targets[@]}"; do
+            sed -i "s/${OLD_PNPM_VERSION}/${NEW_PNPM_VERSION}/g" "$target"
+          done
+
+          if grep -RIq -- "$OLD_PNPM_VERSION" .github/workflows package.json; then
+            echo "::error::Broken pnpm pin remains after replacement."
+            grep -RIn -- "$OLD_PNPM_VERSION" .github/workflows package.json || true
+            exit 1
+          fi
+          if ! grep -q '"packageManager": "pnpm@11.13.1"' package.json; then
+            echo "::error::Root packageManager pin was not upgraded."
+            exit 1
+          fi
+
+          # This helper is deliberately absent from the final PR tree.
+          git rm .github/workflows/pnpm-pin-one-shot-upgrade.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json .github/workflows
+          git commit -m "chore: upgrade broken pnpm pin to 11.13.1"
+          git push origin HEAD:${{ github.head_ref }}
