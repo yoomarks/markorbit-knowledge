@@ -1,12 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -147,9 +140,7 @@ describe("ADK live pilot runtime preparation", () => {
   it("fails before creating runtime state when the provider set is not the frozen 3x2 pair", () => {
     const config = fixture(plan({ providers: ["OPENAI", "DEEPSEEK"] }));
 
-    expect(() => prepareAdkLivePilotRuntime(config)).toThrowError(
-      /exactly DEEPSEEK,OPENAI/u,
-    );
+    expect(() => prepareAdkLivePilotRuntime(config)).toThrowError(/exactly DEEPSEEK,OPENAI/u);
     expect(existsSync(config.databasePath)).toBe(false);
     expect(existsSync(config.storageRoot)).toBe(false);
     expect(existsSync(config.runtimeSecretPath)).toBe(false);
@@ -175,7 +166,9 @@ describe("ADK live pilot runtime preparation", () => {
     const config = fixture();
     writeFileSync(config.runtimeSecretPath, "reserved", "utf8");
 
-    expect(() => prepareAdkLivePilotRuntime(config)).toThrowError(/runtime secret target already exists/u);
+    expect(() => prepareAdkLivePilotRuntime(config)).toThrowError(
+      /runtime secret target already exists/u,
+    );
     expect(existsSync(config.databasePath)).toBe(false);
     expect(existsSync(config.storageRoot)).toBe(false);
   });
