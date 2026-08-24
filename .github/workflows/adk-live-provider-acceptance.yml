@@ -1,0 +1,286 @@
+name: ADK-06 Live Provider Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      approval_ref:
+        description: "Exact frozen approval reference for the real 3x2 provider run"
+        required: true
+        default: "github:yoomarks/markorbit-knowledge#405"
+        type: string
+      confirm_live_provider_calls:
+        description: "Authorize real DeepSeek and OpenAI provider calls"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adk-06-live-provider-acceptance
+  cancel-in-progress: false
+
+jobs:
+  live-acceptance:
+    if: ${{ inputs.confirm_live_provider_calls == true }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RUNTIME_ROOT: ${{ github.workspace }}/.adk-live
+      EVIDENCE_ROOT: ${{ github.workspace }}/adk-live-evidence
+      CANONICAL_PLAN: ${{ github.workspace }}/config/adk-live-pilot-us-trademark-3x2.json
+      APPROVAL_REF: ${{ inputs.approval_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install frozen workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Fail closed unless main and frozen approval match
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::ADK-06 live acceptance must be dispatched from main."
+            exit 1
+          fi
+          node <<'NODE'
+          const fs = require("node:fs");
+          const plan = JSON.parse(fs.readFileSync(process.env.CANONICAL_PLAN, "utf8"));
+          if (process.env.APPROVAL_REF !== plan.approvalRef) {
+            throw new Error("approval_ref does not match the frozen canonical plan");
+          }
+          if (
+            plan.liveProviderCallsAuthorized !== true ||
+            JSON.stringify(plan.assignmentIds) !==
+              JSON.stringify([
+                "kas_us_trademark_filing",
+                "kas_us_trademark_section_8",
+                "kas_us_trademark_ttab",
+              ]) ||
+            JSON.stringify(plan.providers) !== JSON.stringify(["DEEPSEEK", "OPENAI"])
+          ) {
+            throw new Error("canonical ADK-06 live plan no longer matches the frozen 3x2 authority");
+          }
+          NODE
+
+      - name: Enforce DeepSeek off-peak window before secrets are exposed
+        run: >-
+          pnpm --filter @markorbit/worker exec tsx -e
+          'import { assertDeepSeekOffPeakExecutionWindow } from
+          "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
+          assertDeepSeekOffPeakExecutionWindow(new Date());'
+
+      - name: Fail closed unless provider and evidence secrets exist
+        shell: bash
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ADK_LIVE_EVIDENCE_PASSPHRASE: ${{ secrets.ADK_LIVE_EVIDENCE_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
+            echo "::error::Repository secret DEEPSEEK_API_KEY is not configured."
+            exit 1
+          fi
+          if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+            echo "::error::Repository secret OPENAI_API_KEY is not configured."
+            exit 1
+          fi
+          if [[ ${#ADK_LIVE_EVIDENCE_PASSPHRASE} -lt 32 ]]; then
+            echo "::error::Repository secret ADK_LIVE_EVIDENCE_PASSPHRASE must contain at least 32 characters."
+            exit 1
+          fi
+
+      - name: Copy frozen plan into fresh runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNTIME_ROOT" "$EVIDENCE_ROOT"
+          cp "$CANONICAL_PLAN" "$RUNTIME_ROOT/plan.json"
+          chmod 600 "$RUNTIME_ROOT/plan.json"
+          cmp --silent "$CANONICAL_PLAN" "$RUNTIME_ROOT/plan.json"
+
+      - name: Prepare authenticated RawArtifact runtime
+        env:
+          MARKORBIT_ADK_LIVE_DB_PATH: ${{ github.workspace }}/.adk-live/live.sqlite
+          MARKORBIT_ADK_LIVE_STORAGE_ROOT: ${{ github.workspace }}/.adk-live/artifacts
+          MARKORBIT_ADK_LIVE_PLAN_PATH: ${{ github.workspace }}/.adk-live/plan.json
+          MARKORBIT_ADK_LIVE_RUNTIME_SECRET_PATH: ${{ github.workspace }}/.adk-live/runtime-secret.json
+          MARKORBIT_ADK_LIVE_PREPARATION_RECEIPT_PATH: ${{ github.workspace }}/.adk-live/preparation-receipt.json
+        run: pnpm --filter @markorbit/worker adk:pilot:prepare
+
+      - name: Execute real DeepSeek Flash plus OpenAI acceptance
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MARKORBIT_ADK_LIVE_RUNTIME_SECRET_PATH: ${{ github.workspace }}/.adk-live/runtime-secret.json
+          MARKORBIT_ADK_LIVE_RECEIPT_PATH: ${{ github.workspace }}/.adk-live/acceptance.json
+        run: pnpm --filter @markorbit/worker adk:pilot:live
+
+      - name: Verify 6 of 6 acceptance and 12 durable RawArtifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+
+          const root = process.env.RUNTIME_ROOT;
+          const acceptance = JSON.parse(fs.readFileSync(path.join(root, "acceptance.json"), "utf8"));
+          const expectedAssignments = [
+            "kas_us_trademark_filing",
+            "kas_us_trademark_section_8",
+            "kas_us_trademark_ttab",
+          ];
+          const receiptIds = acceptance.execution?.artifactReceiptIds ?? [];
+          if (
+            acceptance.accepted !== true ||
+            acceptance.approvalRef !== process.env.APPROVAL_REF ||
+            JSON.stringify(acceptance.assignmentIds) !== JSON.stringify(expectedAssignments) ||
+            JSON.stringify(acceptance.providers) !== JSON.stringify(["DEEPSEEK", "OPENAI"]) ||
+            acceptance.receipts?.length !== 6 ||
+            acceptance.receipts.some((receipt) => receipt.status !== "EXECUTED") ||
+            acceptance.lineage?.length !== 6 ||
+            receiptIds.length !== 12 ||
+            new Set(receiptIds).size !== 12
+          ) {
+            throw new Error("ADK-06 live acceptance evidence is incomplete");
+          }
+
+          const metadata = {
+            objectType: "ADK_LIVE_PROVIDER_WORKFLOW_EVIDENCE",
+            protocolVersion: "1.0",
+            repository: process.env.GITHUB_REPOSITORY,
+            commitSha: process.env.GITHUB_SHA,
+            workflowRunId: process.env.GITHUB_RUN_ID,
+            workflowRunAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            issue: 405,
+            pilotId: acceptance.pilotId,
+            approvalRef: acceptance.approvalRef,
+            assignmentIds: acceptance.assignmentIds,
+            providers: acceptance.providers,
+            executedCells: acceptance.receipts.length,
+            rawArtifactLineageRecords: acceptance.lineage.length,
+            finalizedArtifactReceipts: receiptIds.length,
+            executionAttemptId: acceptance.execution.executionAttemptId,
+            accepted: true,
+            recordedAt: new Date().toISOString(),
+          };
+          fs.writeFileSync(
+            path.join(root, "workflow-metadata.json"),
+            `${JSON.stringify(metadata, null, 2)}\n`,
+            { encoding: "utf8", flag: "wx", mode: 0o600 },
+          );
+          NODE
+
+      - name: Encrypt live evidence before public-repository artifact upload
+        shell: bash
+        env:
+          ADK_LIVE_EVIDENCE_PASSPHRASE: ${{ secrets.ADK_LIVE_EVIDENCE_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          TAR_PATH="$RUNNER_TEMP/adk-06-live-evidence.tar.gz"
+          ENCRYPTED_PATH="$EVIDENCE_ROOT/adk-06-live-evidence.aesgcm"
+          tar -C "$RUNTIME_ROOT" -czf "$TAR_PATH" \
+            plan.json \
+            preparation-receipt.json \
+            acceptance.json \
+            workflow-metadata.json \
+            live.sqlite \
+            artifacts
+          INPUT_PATH="$TAR_PATH" OUTPUT_PATH="$ENCRYPTED_PATH" node <<'NODE'
+          const crypto = require("node:crypto");
+          const fs = require("node:fs");
+
+          const passphrase = process.env.ADK_LIVE_EVIDENCE_PASSPHRASE;
+          if (!passphrase || passphrase.length < 32) throw new Error("evidence passphrase is unavailable");
+          const plaintext = fs.readFileSync(process.env.INPUT_PATH);
+          const salt = crypto.randomBytes(16);
+          const iv = crypto.randomBytes(12);
+          const key = crypto.scryptSync(passphrase, salt, 32);
+          const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+          const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+          const tag = cipher.getAuthTag();
+          const envelope = Buffer.concat([Buffer.from("MOADKAE1"), salt, iv, tag, ciphertext]);
+          fs.writeFileSync(process.env.OUTPUT_PATH, envelope, { flag: "wx", mode: 0o600 });
+          NODE
+          INPUT_PATH="$ENCRYPTED_PATH" EXPECTED_PATH="$TAR_PATH" node <<'NODE'
+          const crypto = require("node:crypto");
+          const fs = require("node:fs");
+
+          const passphrase = process.env.ADK_LIVE_EVIDENCE_PASSPHRASE;
+          const envelope = fs.readFileSync(process.env.INPUT_PATH);
+          if (envelope.subarray(0, 8).toString("utf8") !== "MOADKAE1") {
+            throw new Error("invalid encrypted evidence envelope");
+          }
+          const salt = envelope.subarray(8, 24);
+          const iv = envelope.subarray(24, 36);
+          const tag = envelope.subarray(36, 52);
+          const ciphertext = envelope.subarray(52);
+          const key = crypto.scryptSync(passphrase, salt, 32);
+          const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+          decipher.setAuthTag(tag);
+          const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+          const expected = fs.readFileSync(process.env.EXPECTED_PATH);
+          if (!crypto.timingSafeEqual(crypto.createHash("sha256").update(plaintext).digest(), crypto.createHash("sha256").update(expected).digest())) {
+            throw new Error("encrypted evidence round-trip verification failed");
+          }
+          NODE
+          INPUT_PATH="$ENCRYPTED_PATH" OUTPUT_PATH="$EVIDENCE_ROOT/evidence-manifest.json" node <<'NODE'
+          const crypto = require("node:crypto");
+          const fs = require("node:fs");
+
+          const encrypted = fs.readFileSync(process.env.INPUT_PATH);
+          const manifest = {
+            objectType: "ADK_LIVE_PROVIDER_ENCRYPTED_EVIDENCE_MANIFEST",
+            protocolVersion: "1.0",
+            repository: process.env.GITHUB_REPOSITORY,
+            commitSha: process.env.GITHUB_SHA,
+            workflowRunId: process.env.GITHUB_RUN_ID,
+            workflowRunAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            issue: 405,
+            cipher: "AES-256-GCM",
+            kdf: "scrypt",
+            envelopeVersion: "MOADKAE1",
+            encryptedSha256: crypto.createHash("sha256").update(encrypted).digest("hex"),
+            encryptedSizeBytes: encrypted.byteLength,
+            recordedAt: new Date().toISOString(),
+          };
+          fs.writeFileSync(process.env.OUTPUT_PATH, `${JSON.stringify(manifest, null, 2)}\n`, {
+            encoding: "utf8",
+            flag: "wx",
+            mode: 0o644,
+          });
+          NODE
+
+      - name: Remove plaintext and transient secret material
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$RUNTIME_ROOT"
+          rm -f "$RUNNER_TEMP/adk-06-live-evidence.tar.gz"
+
+      - name: Upload encrypted durable live acceptance evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adk-06-live-acceptance-encrypted-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            adk-live-evidence/adk-06-live-evidence.aesgcm
+            adk-live-evidence/evidence-manifest.json
