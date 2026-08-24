@@ -261,13 +261,13 @@ describe("ADK knowledge job worker", () => {
     expect(result?.attempts).toBe(0);
   });
 
-  it("keeps retryable provider failures retry-pending", async () => {
+  it("keeps explicitly retryable provider responses retry-pending", async () => {
     const store = new MemoryAiKnowledgeJobStore();
     enqueue(store);
     const adapter: AiKnowledgeProviderAdapter = {
       provider: "OPENAI",
       acquire: async () => {
-        throw new AiKnowledgeAcquisitionError("AI_PROVIDER_TIMEOUT", "timeout", true);
+        throw new AiKnowledgeAcquisitionError("AI_PROVIDER_TEMPORARY_FAILURE", "HTTP 429", true);
       },
     };
 
