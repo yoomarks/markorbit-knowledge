@@ -14,7 +14,7 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 300_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 const DEEPSEEK_ENDPOINT = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_DEFAULT_MODEL = "deepseek-chat";
+const DEEPSEEK_DEFAULT_MODEL = "deepseek-v4-pro";
 const DEEPSEEK_SECRET_ENV = "DEEPSEEK_API_KEY";
 
 export type AiModelTransportRequest = {
