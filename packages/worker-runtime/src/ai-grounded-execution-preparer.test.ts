@@ -13,7 +13,7 @@ import {
   AI_GROUNDED_EXECUTION_RENDERER_VERSION,
   prepareAiGroundedExecutionV1,
 } from "./ai-grounded-execution-preparer";
-import { AiSourceGroundingError, type AiSourceSnapshotResolver } from "./ai-source-pack-renderer";
+import type { AiSourceSnapshotResolver } from "./ai-source-pack-renderer";
 
 const SOURCE_ID = "src_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const ARTIFACT_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAV";
@@ -157,7 +157,7 @@ describe("prepareAiGroundedExecutionV1", () => {
         resolver: resolver("tampered official content"),
         preparedAt: "2026-08-24T10:05:00.000Z",
       }),
-    ).rejects.toMatchObject<Partial<AiSourceGroundingError>>({
+    ).rejects.toMatchObject({
       code: "AI_SOURCE_DIGEST_MISMATCH",
     });
   });
