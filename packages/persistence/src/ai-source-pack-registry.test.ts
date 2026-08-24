@@ -109,8 +109,7 @@ function sourcePack(revision = 1): AiSourcePackV1 {
         publishedAt: PUBLISHED_AT,
       },
     ],
-    createdAt:
-      revision === 1 ? "2026-08-24T07:40:00.000Z" : "2026-08-24T08:40:00.000Z",
+    createdAt: revision === 1 ? "2026-08-24T07:40:00.000Z" : "2026-08-24T08:40:00.000Z",
     changeReason: revision === 1 ? "Initial official evidence freeze" : "Refresh governed evidence",
     legalTruthVerified: false,
   };
@@ -206,7 +205,9 @@ describe("SqliteAiSourcePackRepository", () => {
     const firstDatabase = new DatabaseSync(":memory:");
     seedRawArtifact(firstDatabase);
     const firstRepository = new SqliteAiSourcePackRepository(firstDatabase);
-    expect(() => firstRepository.saveSourcePack(sourcePack(2))).toThrowError(/must begin at revision 1/u);
+    expect(() => firstRepository.saveSourcePack(sourcePack(2))).toThrowError(
+      /must begin at revision 1/u,
+    );
     firstDatabase.close();
 
     const database = new DatabaseSync(":memory:");
@@ -234,7 +235,9 @@ describe("SqliteAiSourcePackRepository", () => {
       ) STRICT;
     `);
     const missingRepository = new SqliteAiSourcePackRepository(missingDatabase);
-    expect(() => missingRepository.saveSourcePack(sourcePack())).toThrowError(/missing finalized RawArtifact/u);
+    expect(() => missingRepository.saveSourcePack(sourcePack())).toThrowError(
+      /missing finalized RawArtifact/u,
+    );
     missingDatabase.close();
 
     const digestDatabase = new DatabaseSync(":memory:");

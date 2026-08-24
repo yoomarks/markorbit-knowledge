@@ -136,15 +136,14 @@ function readRawArtifactEvidence(database: DatabaseSync, artifactId: string): Ra
     parsed.canonicalUri !== (row.canonical_uri ?? undefined) ||
     parsed.binaryHash.value !== row.content_digest
   ) {
-    throw new RegistryValidationError(`RawArtifact ${artifactId} registry row is internally inconsistent`);
+    throw new RegistryValidationError(
+      `RawArtifact ${artifactId} registry row is internally inconsistent`,
+    );
   }
   return parsed;
 }
 
-function assertSourceArtifactEvidence(
-  database: DatabaseSync,
-  source: AiSourceSnapshotRefV1,
-): void {
+function assertSourceArtifactEvidence(database: DatabaseSync, source: AiSourceSnapshotRefV1): void {
   const artifact = readRawArtifactEvidence(database, source.artifactId);
   if (!artifact) {
     throw new RegistryValidationError(
@@ -206,8 +205,7 @@ export class SqliteAiSourcePackRepository {
          WHERE source_pack_id = ? AND revision = ?`,
       )
       .get(value.sourcePackId, value.revision) as
-      | { document_sha256: string; document_json: string }
-      | undefined;
+      { document_sha256: string; document_json: string } | undefined;
     if (existing) {
       if (existing.document_sha256 !== sha256 || existing.document_json !== json) {
         throw new RegistryConflictError(
@@ -349,9 +347,7 @@ export class SqliteAiSourcePackRepository {
          FROM ai_assignment_source_bindings
          WHERE binding_id = ?`,
       )
-      .get(value.bindingId) as
-      | { document_sha256: string; document_json: string }
-      | undefined;
+      .get(value.bindingId) as { document_sha256: string; document_json: string } | undefined;
     if (existing) {
       if (existing.document_sha256 !== sha256 || existing.document_json !== json) {
         throw new RegistryConflictError(
