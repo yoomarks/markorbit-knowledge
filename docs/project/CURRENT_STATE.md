@@ -14,19 +14,17 @@ This file is the canonical engineering handoff entry point. It records a verifie
 
 ## ADK sequence
 
-| Stage | Status | Current boundary |
-| --- | --- | --- |
-| ADK-00 | Implemented | architecture and authority contract |
-| ADK-01 | Implemented | provider-neutral runtime and DeepSeek adapter |
-| ADK-02 | Implemented | durable KnowledgeAssignment and immutable InstructionSet revisions |
-| ADK-03 | Implemented | exact provider JSON plus Markdown RawArtifact lineage |
-| ADK-04 | Implemented | immutable versioned Assignment Graph |
-| ADK-05 | Implemented | evidence-backed Assignment Candidates |
-| ADK-06 | Implementation complete; live acceptance **OPEN** | issue #405 still requires a real DeepSeek + OpenAI 3×2 run and retained evidence |
-| ADK-07 | Implemented; safety hardened through #427 | durable queue, explicit retries, ambiguous-delivery quarantine, CAS worker/recovery transitions |
-| ADK-08 | Implemented | initial US Trademark Assignment Library |
-| ADK-09 | Implemented | governed candidate promotion with immutable promotion receipt; no automatic approval/execution |
-| ADK-10 | Implemented | separate US/AU/CA trademark Assignment Libraries and catalog bootstrap |
+- **ADK-00 — Implemented.** Architecture and authority contract.
+- **ADK-01 — Implemented.** Provider-neutral runtime and DeepSeek adapter.
+- **ADK-02 — Implemented.** Durable KnowledgeAssignment and immutable InstructionSet revisions.
+- **ADK-03 — Implemented.** Exact provider JSON plus Markdown RawArtifact lineage.
+- **ADK-04 — Implemented.** Immutable versioned Assignment Graph.
+- **ADK-05 — Implemented.** Evidence-backed Assignment Candidates.
+- **ADK-06 — Implementation complete; live acceptance OPEN.** Issue #405 still requires a real DeepSeek + OpenAI 3×2 run and retained evidence.
+- **ADK-07 — Implemented; safety hardened through #427.** Durable queue, explicit retries, ambiguous-delivery quarantine and CAS worker/recovery transitions.
+- **ADK-08 — Implemented.** Initial US Trademark Assignment Library.
+- **ADK-09 — Implemented.** Governed candidate promotion with immutable promotion receipt; no automatic approval/execution.
+- **ADK-10 — Implemented.** Separate US/AU/CA trademark Assignment Libraries and catalog bootstrap.
 
 ## ADK-06 acceptance gate
 
@@ -59,6 +57,8 @@ A provider response explicitly classified as safely retryable by the governed ad
 The GitHub branch endpoint was verified during the 2026-08-24 takeover and reported `main` as not branch-protected. This repository is public while ADK live workflows depend on paid-provider secrets and an evidence passphrase.
 
 The connected GitHub action surface available to this engineering session does not expose branch-protection/ruleset mutation, so this repository setting has **not** been changed by the takeover. Before routine live paid execution, repository administration should enforce an equivalent protected-main/ruleset policy and preferably gate live secrets through a protected environment.
+
+The repository-governance acceptance work is tracked in issue #429.
 
 ## Current engineering order
 
