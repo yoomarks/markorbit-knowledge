@@ -20,6 +20,21 @@ Neither command creates a pilot plan on the fly. `MARKORBIT_ADK_LIVE_PLAN_PATH` 
 
 The plan is an explicit operator authorization artifact. Do not infer or generate `liveProviderCallsAuthorized: true` merely because the runtime is technically ready.
 
+## DeepSeek cost-window policy
+
+The production DeepSeek adapter defaults to `deepseek-v4-flash` for ADK knowledge production.
+
+DeepSeek's official pricing page states that off-peak prices are one half of peak prices and defines peak periods as **Monday-Friday, Beijing time 09:00-12:00 and 14:00-18:00**. All other times, including weekends, are off-peak. Source: `https://api-docs.deepseek.com/zh-cn/quick_start/pricing/`.
+
+The default adapter therefore enforces `OFF_PEAK_ONLY` behavior:
+
+- during an official peak window, no DeepSeek transport call is made;
+- the adapter returns retryable `AI_PROVIDER_PEAK_PRICING_WINDOW`;
+- queue workers consequently leave the work for a later retry instead of paying peak pricing;
+- the 3×2 live acceptance runner performs the same check before **either** DeepSeek or OpenAI is called, preventing a partially paid acceptance run.
+
+Do not bypass this policy for routine Knowledge production. A code-level `offPeakOnly: false` option exists only for an explicitly approved exceptional runtime and is not used by the standard queue or live acceptance harnesses.
+
 ## Phase 1: prepare the authenticated runtime
 
 Preparation is deliberately separate from provider execution and makes no external AI provider calls.
@@ -112,10 +127,11 @@ Before exposing provider credentials or starting the run, verify all of the foll
 - the non-secret preparation receipt has `providerCallsExecuted: false` and the expected three Assignment ids;
 - the runtime-secret file is private and has not been copied into the repository, logs or issue comments;
 - both provider credentials are available only in the runtime environment;
+- the current time is outside the DeepSeek Monday-Friday Beijing-time peak windows of 09:00-12:00 and 14:00-18:00;
 - `MARKORBIT_ADK_LIVE_RECEIPT_PATH`, when used, points to a path that does not already exist;
 - the operator records the exact repository commit used for the live run outside the secret-bearing environment.
 
-A failed preflight is a blocked run, not permission to create replacement Assignments, relax the provider set, regenerate approval, or bypass the authenticated RawArtifact lifecycle.
+A failed preflight is a blocked run, not permission to create replacement Assignments, relax the provider set, regenerate approval, bypass the off-peak policy, or bypass the authenticated RawArtifact lifecycle.
 
 ## Phase 3: execute the real 3×2 pilot
 
@@ -143,16 +159,17 @@ The live harness performs these steps in order:
 
 1. loads the prepared runtime secret and the frozen plan;
 2. verifies runtime-secret `pilotId` and `approvalRef` match the frozen plan;
-3. requires the provider set to be exactly `DEEPSEEK` + `OPENAI`;
-4. loads all three immutable KnowledgeAssignments from SQLite;
-5. instantiates the real DeepSeek and OpenAI adapters using runtime-only provider credentials;
-6. executes all six Assignment/provider cells;
-7. fails closed unless all six cells are `EXECUTED`;
-8. ingests each exact provider JSON as a RawArtifact using the prepared worker/lease boundary;
-9. ingests each Markdown derivative only after its provider JSON is durable;
-10. preserves Markdown `parentArtifactIds` lineage to the raw provider response;
-11. requires six unique receipt-to-lineage matches;
-12. emits one `AI_PRODUCTION_PILOT_LIVE_ACCEPTANCE_RECORD` to stdout and, optionally, an exclusive receipt file.
+3. refuses to begin during a DeepSeek Beijing-time weekday peak-pricing window, before either provider is called;
+4. requires the provider set to be exactly `DEEPSEEK` + `OPENAI`;
+5. loads all three immutable KnowledgeAssignments from SQLite;
+6. instantiates `deepseek-v4-flash` and the real OpenAI adapter using runtime-only provider credentials;
+7. executes all six Assignment/provider cells;
+8. fails closed unless all six cells are `EXECUTED`;
+9. ingests each exact provider JSON as a RawArtifact using the prepared worker/lease boundary;
+10. ingests each Markdown derivative only after its provider JSON is durable;
+11. preserves Markdown `parentArtifactIds` lineage to the raw provider response;
+12. requires six unique receipt-to-lineage matches;
+13. emits one `AI_PRODUCTION_PILOT_LIVE_ACCEPTANCE_RECORD` to stdout and, optionally, an exclusive receipt file.
 
 If execution stops before acceptance, diagnostic output may include the Assignment id, provider, cell status and stable error code. It must not include provider keys, worker credentials, lease tokens, prompt bodies, raw provider responses or distilled Markdown content.
 
@@ -177,6 +194,7 @@ A valid accepted record contains:
 Do not close issue #405 if any of these are true:
 
 - the plan lacks explicit live-provider authorization;
+- execution occurred during a DeepSeek peak-pricing window without an explicit exceptional approval;
 - any cell is `BLOCKED_CREDENTIAL`, `BLOCKED_ADAPTER` or `FAILED`;
 - fewer than six acquisitions were returned;
 - fewer than six RawArtifact lineage pairs were created;
