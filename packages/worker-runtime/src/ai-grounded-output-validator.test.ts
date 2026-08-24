@@ -93,7 +93,8 @@ describe("ADK-11 grounded-output validator", () => {
 
   it("rejects uncited substantive output and empty insufficiency declarations", async () => {
     await expectValidationError(
-      () => validateAiGroundedProviderOutputV1({ providerInput, output: "This is an uncited answer." }),
+      () =>
+        validateAiGroundedProviderOutputV1({ providerInput, output: "This is an uncited answer." }),
       "AI_GROUNDED_OUTPUT_CITATION_REQUIRED",
     );
     await expectValidationError(
