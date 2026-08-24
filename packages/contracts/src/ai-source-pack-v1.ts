@@ -5,7 +5,8 @@ import {
 
 export const AI_SOURCE_PACK_PROTOCOL_VERSION = "1.0" as const;
 export const AI_SOURCE_PACK_OBJECT_TYPE = "AI_SOURCE_PACK" as const;
-export const AI_ASSIGNMENT_SOURCE_BINDING_OBJECT_TYPE = "AI_ASSIGNMENT_SOURCE_BINDING" as const;
+export const AI_ASSIGNMENT_SOURCE_BINDING_OBJECT_TYPE =
+  "AI_ASSIGNMENT_SOURCE_BINDING" as const;
 
 export const AI_SOURCE_AUTHORITIES = ["OFFICIAL_PRIMARY", "OFFICIAL_SECONDARY"] as const;
 export type AiSourceAuthority = (typeof AI_SOURCE_AUTHORITIES)[number];
@@ -103,7 +104,9 @@ function enumValue(values: readonly string[], value: unknown): value is string {
   return typeof value === "string" && values.includes(value);
 }
 
-export function isAiSourceSnapshotRefV1(value: unknown): value is AiSourceSnapshotRefV1 {
+export function isAiSourceSnapshotRefV1(
+  value: unknown,
+): value is AiSourceSnapshotRefV1 {
   const item = record(value);
   if (!item) return false;
   const expected = [
@@ -169,8 +172,12 @@ export function isAiSourcePackV1(value: unknown): value is AiSourcePackV1 {
   if (!Array.isArray(item.sources) || item.sources.length === 0) return false;
   if (!item.sources.every(isAiSourceSnapshotRefV1)) return false;
   const sources = item.sources as AiSourceSnapshotRefV1[];
-  if (new Set(sources.map((source) => source.sourceId)).size !== sources.length) return false;
-  if (new Set(sources.map((source) => source.artifactId)).size !== sources.length) return false;
+  if (new Set(sources.map((source) => source.sourceId)).size !== sources.length) {
+    return false;
+  }
+  if (new Set(sources.map((source) => source.artifactId)).size !== sources.length) {
+    return false;
+  }
   if (!sources.every((source) => source.jurisdiction === item.jurisdiction)) return false;
   return (
     item.protocolVersion === AI_SOURCE_PACK_PROTOCOL_VERSION &&
@@ -195,7 +202,9 @@ export function assertAiSourcePackV1(value: unknown): asserts value is AiSourceP
   if (!isAiSourcePackV1(value)) throw new TypeError("Invalid AiSourcePackV1");
 }
 
-export function isAiAssignmentSourceBindingV1(value: unknown): value is AiAssignmentSourceBindingV1 {
+export function isAiAssignmentSourceBindingV1(
+  value: unknown,
+): value is AiAssignmentSourceBindingV1 {
   const item = record(value);
   if (
     !item ||
