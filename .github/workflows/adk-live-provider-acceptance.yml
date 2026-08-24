@@ -27,8 +27,6 @@ jobs:
     timeout-minutes: 30
     env:
       RUNTIME_ROOT: ${{ github.workspace }}/.adk-live
-      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       APPROVAL_REF: ${{ inputs.approval_ref }}
     steps:
       - uses: actions/checkout@v4
@@ -47,10 +45,17 @@ jobs:
       - name: Install workspace
         run: pnpm install --frozen-lockfile
 
-      - name: Fail closed unless both provider secrets exist
+      - name: Fail closed unless main, approval and both provider secrets exist
         shell: bash
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::ADK-06 live acceptance must be dispatched from main."
+            exit 1
+          fi
           if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
             echo "::error::Repository secret DEEPSEEK_API_KEY is not configured."
             exit 1
@@ -112,6 +117,8 @@ jobs:
 
       - name: Execute real DeepSeek plus OpenAI acceptance
         env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MARKORBIT_ADK_LIVE_RUNTIME_SECRET_PATH: ${{ github.workspace }}/.adk-live/runtime-secret.json
           MARKORBIT_ADK_LIVE_RECEIPT_PATH: ${{ github.workspace }}/.adk-live/acceptance.json
         run: pnpm --filter @markorbit/worker adk:pilot:live
