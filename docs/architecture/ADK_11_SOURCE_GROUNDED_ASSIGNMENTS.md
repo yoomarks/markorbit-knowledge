@@ -56,7 +56,7 @@ If the source pack cannot support a requested conclusion, the renderer now requi
 
 `AiGroundedProviderInputV1` records the rendered prompt SHA-256 and a source receipt list, while retaining `legalTruthVerified = false` and `executionAuthorityGranted = false`.
 
-## Immutable persistence
+## Immutable SourcePack and Binding persistence
 
 The third ADK-11 slice adds `SqliteAiSourcePackRepository`.
 
@@ -92,14 +92,38 @@ Before accepting an output receipt it:
 - preserves the exact raw provider-output SHA-256 in the validation receipt;
 - reports citation count, ordered unique cited source IDs, unreferenced bound source IDs and insufficiency state.
 
+`AiGroundedOutputValidationReceiptV1` is now a shared `@markorbit/contracts` protocol object rather than a worker-local shape. The contract itself rejects malformed source identities, cited/unreferenced overlap, inconsistent grounded/insufficient status semantics, digest-shape drift and any authority escalation.
+
 This validator is intentionally structural rather than semantic. A valid receipt means the output obeyed machine-checkable source identity rules; it does **not** mean every factual statement is correctly supported. Therefore every receipt explicitly retains both `legalTruthVerified = false` and `semanticClaimCoverageVerified = false`.
+
+## Immutable validation evidence linkage
+
+The fifth ADK-11 slice adds `SqliteAiGroundedValidationEvidenceRepository` and deliberately reuses the existing AI RawArtifact ingestion boundary instead of introducing a second output store.
+
+A grounded validation evidence record binds one immutable `AiResearchSubmissionV1` to:
+
+- the exact persisted Assignment/Binding/SourcePack identities named by its validation receipt;
+- the exact prompt SHA-256 frozen in both submission and receipt;
+- the exact Markdown output SHA-256 frozen in both submission and receipt;
+- the exact raw provider JSON RawArtifact identified by `rawResponseSha256`;
+- the exact distilled Markdown RawArtifact identified by `markdownSha256` and output SHA-256;
+- the Markdown RawArtifact parent lineage back to that raw provider response;
+- the existing `ai+markorbit://` provider, model, assignment and submission URI identities;
+- one shared workspace/source execution scope for the raw and Markdown artifacts.
+
+Before persistence, the repository also compares `citedSourceIds + unreferencedSourceIds` against the complete source-ID set of the exact persisted SourcePack revision. A structurally valid receipt produced from a partial or different source set therefore cannot be admitted as governed evidence.
+
+Evidence is immutable by `submissionId`. Exact replay is idempotent; any same-submission mutation is rejected. The table retains canonical submission + receipt + artifact-link JSON together with an evidence SHA-256 while normalizing assignment, binding, provider/model, artifact and digest fields for audit queries.
+
+This evidence linkage still does not claim that the prompt text itself has been persisted as a dedicated RawArtifact. The prompt identity is frozen by SHA-256 and linked to the immutable Assignment/Binding/SourcePack inputs, but a future execution envelope should also freeze the renderer protocol/version and, if required for long-term byte-for-byte replay, persist the rendered prompt body as governed evidence.
 
 ## Current boundary
 
-ADK-11 now establishes contracts, deterministic source resolution/rendering, immutable SourcePack/Binding persistence, and structural citation-output validation. It still does **not**:
+ADK-11 now establishes SourcePack/Binding contracts, deterministic source resolution/rendering, immutable SourcePack/Binding persistence, structural citation-output validation, and immutable linkage of validation receipts to existing submission/provider-output RawArtifact lineage. It still does **not**:
 
 - wire rendered input into DeepSeek, OpenAI or another paid provider adapter;
 - add web-search tools to provider adapters;
+- persist a dedicated rendered-prompt RawArtifact or renderer-version receipt;
 - semantically verify that each factual claim is supported by its cited source;
 - score source quality or provider quality;
 - verify legal truth;
@@ -107,4 +131,4 @@ ADK-11 now establishes contracts, deterministic source resolution/rendering, imm
 - activate candidates;
 - authorize protected actions or client filings.
 
-The next safe slice is to define the governed execution envelope that binds persisted Assignment + Binding + SourcePack + rendered-prompt identity + output-validation receipt without yet enabling paid provider execution. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.
+The next safe slice is a provider-neutral grounded execution envelope that resolves persisted Assignment + Binding + SourcePack, renders the exact prompt, freezes renderer/input identity, and can be exercised without performing a paid provider call. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.

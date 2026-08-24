@@ -1,25 +1,12 @@
 import { createHash } from "node:crypto";
+import {
+  AI_GROUNDED_OUTPUT_VALIDATION_RECEIPT_OBJECT_TYPE,
+  AI_GROUNDED_VALIDATION_PROTOCOL_VERSION,
+  type AiGroundedOutputValidationReceiptV1,
+} from "@markorbit/contracts";
 import type { AiGroundedProviderInputV1 } from "./ai-source-pack-renderer";
 
 export const AI_SOURCE_PACK_INSUFFICIENT_PREFIX = "SOURCE_PACK_INSUFFICIENT:" as const;
-
-export type AiGroundedOutputValidationStatus = "VALID_GROUNDED" | "VALID_INSUFFICIENT";
-
-export type AiGroundedOutputValidationReceiptV1 = {
-  status: AiGroundedOutputValidationStatus;
-  assignmentId: string;
-  bindingId: string;
-  sourcePackId: string;
-  sourcePackRevision: number;
-  renderedPromptSha256: string;
-  outputSha256: string;
-  citationCount: number;
-  citedSourceIds: readonly string[];
-  unreferencedSourceIds: readonly string[];
-  insufficiencyDeclared: boolean;
-  legalTruthVerified: false;
-  semanticClaimCoverageVerified: false;
-};
 
 export class AiGroundedOutputValidationError extends Error {
   constructor(
@@ -125,6 +112,8 @@ export function validateAiGroundedProviderOutputV1(input: {
   }
 
   return {
+    protocolVersion: AI_GROUNDED_VALIDATION_PROTOCOL_VERSION,
+    objectType: AI_GROUNDED_OUTPUT_VALIDATION_RECEIPT_OBJECT_TYPE,
     status: insufficiencyDeclared ? "VALID_INSUFFICIENT" : "VALID_GROUNDED",
     assignmentId: input.providerInput.assignmentId,
     bindingId: input.providerInput.bindingId,
@@ -140,3 +129,5 @@ export function validateAiGroundedProviderOutputV1(input: {
     semanticClaimCoverageVerified: false,
   };
 }
+
+export type { AiGroundedOutputValidationReceiptV1 } from "@markorbit/contracts";
