@@ -14,8 +14,13 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 300_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 const DEEPSEEK_ENDPOINT = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_DEFAULT_MODEL = "deepseek-v4-pro";
+const DEEPSEEK_DEFAULT_MODEL = "deepseek-v4-flash";
 const DEEPSEEK_SECRET_ENV = "DEEPSEEK_API_KEY";
+const BEIJING_UTC_OFFSET_MS = 8 * 60 * 60 * 1_000;
+const MORNING_PEAK_START_MINUTE = 9 * 60;
+const MORNING_PEAK_END_MINUTE = 12 * 60;
+const AFTERNOON_PEAK_START_MINUTE = 14 * 60;
+const AFTERNOON_PEAK_END_MINUTE = 18 * 60;
 
 export type AiModelTransportRequest = {
   url: string;
@@ -62,6 +67,30 @@ export class AiKnowledgeAcquisitionError extends Error {
     super(message);
     this.name = "AiKnowledgeAcquisitionError";
   }
+}
+
+export function isDeepSeekPeakPricingWindow(at: Date): boolean {
+  if (Number.isNaN(at.getTime())) {
+    throw new TypeError("DeepSeek execution-window timestamp must be valid");
+  }
+  const beijing = new Date(at.getTime() + BEIJING_UTC_OFFSET_MS);
+  const weekday = beijing.getUTCDay();
+  if (weekday === 0 || weekday === 6) return false;
+
+  const minuteOfDay = beijing.getUTCHours() * 60 + beijing.getUTCMinutes();
+  return (
+    (minuteOfDay >= MORNING_PEAK_START_MINUTE && minuteOfDay < MORNING_PEAK_END_MINUTE) ||
+    (minuteOfDay >= AFTERNOON_PEAK_START_MINUTE && minuteOfDay < AFTERNOON_PEAK_END_MINUTE)
+  );
+}
+
+export function assertDeepSeekOffPeakExecutionWindow(at: Date = new Date()): void {
+  if (!isDeepSeekPeakPricingWindow(at)) return;
+  throw new AiKnowledgeAcquisitionError(
+    "AI_PROVIDER_PEAK_PRICING_WINDOW",
+    "DeepSeek paid execution is deferred during Beijing-time weekday peak pricing windows (09:00-12:00 and 14:00-18:00)",
+    true,
+  );
 }
 
 function sha256(value: string | Uint8Array): string {
@@ -192,6 +221,7 @@ export type DeepSeekKnowledgeAdapterOptions = {
   secretEnv?: string;
   maxResponseBytes?: number;
   now?: () => Date;
+  offPeakOnly?: boolean;
 };
 
 export class DeepSeekKnowledgeAdapter implements AiKnowledgeProviderAdapter {
@@ -202,6 +232,7 @@ export class DeepSeekKnowledgeAdapter implements AiKnowledgeProviderAdapter {
   private readonly secretEnv: string;
   private readonly maxResponseBytes: number;
   private readonly now: () => Date;
+  private readonly offPeakOnly: boolean;
 
   constructor(options: DeepSeekKnowledgeAdapterOptions = {}) {
     this.environment = options.environment ?? process.env;
@@ -210,6 +241,7 @@ export class DeepSeekKnowledgeAdapter implements AiKnowledgeProviderAdapter {
     this.secretEnv = options.secretEnv ?? DEEPSEEK_SECRET_ENV;
     this.maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
     this.now = options.now ?? (() => new Date());
+    this.offPeakOnly = options.offPeakOnly ?? true;
     if (this.endpoint !== DEEPSEEK_ENDPOINT) {
       throw new AiKnowledgeAcquisitionError(
         "AI_PROVIDER_ENDPOINT_INVALID",
@@ -229,7 +261,9 @@ export class DeepSeekKnowledgeAdapter implements AiKnowledgeProviderAdapter {
         false,
       );
     }
-    const requestedAt = this.now().toISOString();
+    const requestedAtDate = this.now();
+    if (this.offPeakOnly) assertDeepSeekOffPeakExecutionWindow(requestedAtDate);
+    const requestedAt = requestedAtDate.toISOString();
     const model = request.model ?? DEEPSEEK_DEFAULT_MODEL;
     const providerBody = JSON.stringify({
       model,
