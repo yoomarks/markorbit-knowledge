@@ -62,25 +62,25 @@ function sourceReceipt(value: unknown): value is AiGroundedExecutionSourceReceip
   const item = record(value);
   return Boolean(
     item &&
-      exactKeys(item, [
-        "sourceId",
-        "artifactId",
-        "canonicalUri",
-        "mediaType",
-        "contentSha256",
-        "sizeBytes",
-      ]) &&
-      typeof item.sourceId === "string" &&
-      SOURCE_ID.test(item.sourceId) &&
-      typeof item.artifactId === "string" &&
-      ARTIFACT_ID.test(item.artifactId) &&
-      absoluteHttpUri(item.canonicalUri) &&
-      typeof item.mediaType === "string" &&
-      item.mediaType.length > 0 &&
-      typeof item.contentSha256 === "string" &&
-      SHA256.test(item.contentSha256) &&
-      Number.isSafeInteger(item.sizeBytes) &&
-      (item.sizeBytes as number) > 0,
+    exactKeys(item, [
+      "sourceId",
+      "artifactId",
+      "canonicalUri",
+      "mediaType",
+      "contentSha256",
+      "sizeBytes",
+    ]) &&
+    typeof item.sourceId === "string" &&
+    SOURCE_ID.test(item.sourceId) &&
+    typeof item.artifactId === "string" &&
+    ARTIFACT_ID.test(item.artifactId) &&
+    absoluteHttpUri(item.canonicalUri) &&
+    typeof item.mediaType === "string" &&
+    item.mediaType.length > 0 &&
+    typeof item.contentSha256 === "string" &&
+    SHA256.test(item.contentSha256) &&
+    Number.isSafeInteger(item.sizeBytes) &&
+    (item.sizeBytes as number) > 0,
   );
 }
 
@@ -88,7 +88,9 @@ function sourceReceipts(value: unknown): value is AiGroundedExecutionSourceRecei
   if (!Array.isArray(value) || value.length === 0 || !value.every(sourceReceipt)) return false;
   const sourceIds = value.map((item) => item.sourceId);
   const artifactIds = value.map((item) => item.artifactId);
-  return new Set(sourceIds).size === sourceIds.length && new Set(artifactIds).size === artifactIds.length;
+  return (
+    new Set(sourceIds).size === sourceIds.length && new Set(artifactIds).size === artifactIds.length
+  );
 }
 
 export function isAiGroundedExecutionEnvelopeV1(

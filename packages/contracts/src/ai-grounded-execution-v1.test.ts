@@ -46,7 +46,9 @@ describe("AiGroundedExecutionEnvelopeV1", () => {
     expect(isAiGroundedExecutionEnvelopeV1({ ...envelope, providerCallAuthorized: true })).toBe(
       false,
     );
-    expect(isAiGroundedExecutionEnvelopeV1({ ...envelope, providerCallExecuted: true })).toBe(false);
+    expect(isAiGroundedExecutionEnvelopeV1({ ...envelope, providerCallExecuted: true })).toBe(
+      false,
+    );
     expect(isAiGroundedExecutionEnvelopeV1({ ...envelope, executionAuthorityGranted: true })).toBe(
       false,
     );
