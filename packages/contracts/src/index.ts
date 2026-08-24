@@ -32,6 +32,7 @@ export * from "./ai-source-pack-v1";
 export * from "./ai-grounded-validation-v1";
 export * from "./ai-grounded-execution-v1";
 export * from "./ai-grounded-prepared-evidence-v1";
+export * from "./ai-grounded-provider-authorization-v1";
 export { SOURCE_REGISTRY_VERSION } from "./source-registry-v1";
 export type {
   SourceKind as RegistrySourceKind,
