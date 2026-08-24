@@ -1,20 +1,21 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AiKnowledgeAssignmentV1, AiProductionPilotPlanV1 } from "@markorbit/contracts";
 import {
   AiKnowledgeAcquisitionError,
   type AiKnowledgeAcquisition,
   type AiKnowledgeProviderAdapter,
 } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
-import type { AiKnowledgeProvider } from "@markorbit/worker-runtime/ai-production-pilot";
+import type { AiProductionPilotPlanV1 } from "@markorbit/worker-runtime/ai-production-pilot";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   executeResumableAdkLivePilot,
   parseAdkLivePilotCheckpoint,
   type AdkLivePilotCellPersistence,
-  type AdkLivePilotDurableCellV1,
 } from "./adk-live-pilot-resume";
+
+type AiKnowledgeAssignmentV1 = AiKnowledgeAcquisition["assignment"];
+type LivePilotProvider = "DEEPSEEK" | "OPENAI";
 
 const assignmentIds = [
   "kas_us_trademark_filing",
@@ -47,7 +48,7 @@ const assignments = new Map<string, AiKnowledgeAssignmentV1>(
       assignmentId,
       jurisdiction: "US",
       domain: "TRADEMARK",
-      topic: index === 0 ? "FILING" : index === 1 ? "DECLARATION_OF_USE" : "TTAB",
+      topic: index === 0 ? "APPLICATION_FILING" : index === 1 ? "SECTION_8" : "TTAB_PROCEDURE",
       title: `Assignment ${index + 1}`,
       instructionSetId: "kis_trademark_procedure",
       instructionSetRevision: 1,
@@ -72,7 +73,7 @@ function checkpointPath(): string {
 
 function acquisitionFor(
   assignment: AiKnowledgeAssignmentV1,
-  provider: AiKnowledgeProvider,
+  provider: LivePilotProvider,
 ): AiKnowledgeAcquisition {
   const slug = `${assignment.assignmentId}_${provider.toLowerCase()}`;
   const markdown = `# ${slug}`;
@@ -123,7 +124,7 @@ function acquisitionFor(
 }
 
 function adapter(
-  provider: AiKnowledgeProvider,
+  provider: LivePilotProvider,
   acquire: (assignment: AiKnowledgeAssignmentV1) => Promise<AiKnowledgeAcquisition>,
 ): AiKnowledgeProviderAdapter {
   return {
@@ -133,11 +134,15 @@ function adapter(
 }
 
 function persisted(acquisition: AiKnowledgeAcquisition): AdkLivePilotCellPersistence {
-  const slug = `${acquisition.assignment.assignmentId}_${acquisition.submission.provider.toLowerCase()}`;
+  const provider = acquisition.submission.provider;
+  if (provider !== "DEEPSEEK" && provider !== "OPENAI") {
+    throw new Error("unexpected provider in resumable live test");
+  }
+  const slug = `${acquisition.assignment.assignmentId}_${provider.toLowerCase()}`;
   return {
     lineage: {
       assignmentId: acquisition.assignment.assignmentId,
-      provider: acquisition.submission.provider,
+      provider,
       submissionId: acquisition.submission.submissionId,
       distilledArtifactId: acquisition.artifact.artifactId,
       rawProviderArtifactId: `art_raw_${slug}`,
@@ -163,7 +168,7 @@ function adaptersFrom(input?: {
   );
   return {
     calls: { deepSeek, openAi },
-    adapters: new Map<AiKnowledgeProvider, AiKnowledgeProviderAdapter>([
+    adapters: new Map<LivePilotProvider, AiKnowledgeProviderAdapter>([
       ["DEEPSEEK", adapter("DEEPSEEK", deepSeek)],
       ["OPENAI", adapter("OPENAI", openAi)],
     ]),
@@ -292,7 +297,7 @@ describe("resumable ADK live pilot", () => {
     });
 
     const retry = adaptersFrom();
-    const verifyDurableCell = vi.fn((_cell: AdkLivePilotDurableCellV1) => {
+    const verifyDurableCell = vi.fn(() => {
       throw new Error("restored RawArtifact evidence is missing");
     });
     await expect(
