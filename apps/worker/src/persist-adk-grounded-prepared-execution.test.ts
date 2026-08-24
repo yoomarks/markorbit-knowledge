@@ -144,7 +144,11 @@ function rawRepository(): AiGroundedPromptIngestionRepository {
       replayed: false,
     })) as never,
     uploadContent: vi.fn(async () => ({})) as never,
-    finalize: vi.fn(async () => ({ artifact: promptArtifact(), receipt: {}, replayed: false })) as never,
+    finalize: vi.fn(async () => ({
+      artifact: promptArtifact(),
+      receipt: {},
+      replayed: false,
+    })) as never,
   };
 }
 

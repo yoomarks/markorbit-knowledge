@@ -101,7 +101,11 @@ function repository(captured: { descriptor?: ArtifactUploadDescriptor; uploaded?
     receipt: {},
     replayed: false,
   }));
-  return { createSession, uploadContent, finalize } as unknown as AiGroundedPromptIngestionRepository;
+  return {
+    createSession,
+    uploadContent,
+    finalize,
+  } as unknown as AiGroundedPromptIngestionRepository;
 }
 
 const execution = {

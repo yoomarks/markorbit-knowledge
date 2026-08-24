@@ -303,9 +303,7 @@ export class SqliteAiGroundedPreparedExecutionEvidenceRepository {
          FROM ai_grounded_prepared_execution_evidence
          WHERE execution_input_sha256 = ?`,
       )
-      .get(executionInputSha256) as
-      | { document_json: string; evidence_sha256: string }
-      | undefined;
+      .get(executionInputSha256) as { document_json: string; evidence_sha256: string } | undefined;
     return row ? parseEvidence(row.document_json, row.evidence_sha256) : null;
   }
 
@@ -371,7 +369,9 @@ export class SqliteAiGroundedPreparedExecutionEvidenceRepository {
       executionAuthorityGranted: false,
     };
     if (!isAiGroundedPreparedExecutionEvidenceV1(evidence)) {
-      throw new RegistryValidationError("Generated grounded PREPARED execution evidence is invalid");
+      throw new RegistryValidationError(
+        "Generated grounded PREPARED execution evidence is invalid",
+      );
     }
     const json = JSON.stringify(evidence);
     const evidenceSha256 = sha256(json);

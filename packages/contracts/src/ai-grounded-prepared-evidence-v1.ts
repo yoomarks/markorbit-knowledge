@@ -66,26 +66,26 @@ function sourceReceipt(value: unknown): value is AiGroundedExecutionSourceReceip
   const item = record(value);
   return Boolean(
     item &&
-      exactKeys(item, [
-        "sourceId",
-        "artifactId",
-        "canonicalUri",
-        "mediaType",
-        "contentSha256",
-        "sizeBytes",
-      ]) &&
-      typeof item.sourceId === "string" &&
-      SOURCE_ID.test(item.sourceId) &&
-      typeof item.artifactId === "string" &&
-      ARTIFACT_ID.test(item.artifactId) &&
-      typeof item.canonicalUri === "string" &&
-      /^https?:\/\//u.test(item.canonicalUri) &&
-      typeof item.mediaType === "string" &&
-      item.mediaType.length > 0 &&
-      typeof item.contentSha256 === "string" &&
-      SHA256.test(item.contentSha256) &&
-      Number.isSafeInteger(item.sizeBytes) &&
-      (item.sizeBytes as number) > 0,
+    exactKeys(item, [
+      "sourceId",
+      "artifactId",
+      "canonicalUri",
+      "mediaType",
+      "contentSha256",
+      "sizeBytes",
+    ]) &&
+    typeof item.sourceId === "string" &&
+    SOURCE_ID.test(item.sourceId) &&
+    typeof item.artifactId === "string" &&
+    ARTIFACT_ID.test(item.artifactId) &&
+    typeof item.canonicalUri === "string" &&
+    /^https?:\/\//u.test(item.canonicalUri) &&
+    typeof item.mediaType === "string" &&
+    item.mediaType.length > 0 &&
+    typeof item.contentSha256 === "string" &&
+    SHA256.test(item.contentSha256) &&
+    Number.isSafeInteger(item.sizeBytes) &&
+    (item.sizeBytes as number) > 0,
   );
 }
 
@@ -93,27 +93,27 @@ function promptArtifactLink(value: unknown): value is AiGroundedPreparedPromptAr
   const item = record(value);
   return Boolean(
     item &&
-      exactKeys(item, [
-        "artifactId",
-        "workspaceId",
-        "sourceId",
-        "contentSha256",
-        "sizeBytes",
-        "canonicalUri",
-        "sourceUri",
-      ]) &&
-      typeof item.artifactId === "string" &&
-      ARTIFACT_ID.test(item.artifactId) &&
-      typeof item.workspaceId === "string" &&
-      WORKSPACE_ID.test(item.workspaceId) &&
-      typeof item.sourceId === "string" &&
-      SOURCE_ID.test(item.sourceId) &&
-      typeof item.contentSha256 === "string" &&
-      SHA256.test(item.contentSha256) &&
-      Number.isSafeInteger(item.sizeBytes) &&
-      (item.sizeBytes as number) > 0 &&
-      uri(item.canonicalUri) &&
-      uri(item.sourceUri),
+    exactKeys(item, [
+      "artifactId",
+      "workspaceId",
+      "sourceId",
+      "contentSha256",
+      "sizeBytes",
+      "canonicalUri",
+      "sourceUri",
+    ]) &&
+    typeof item.artifactId === "string" &&
+    ARTIFACT_ID.test(item.artifactId) &&
+    typeof item.workspaceId === "string" &&
+    WORKSPACE_ID.test(item.workspaceId) &&
+    typeof item.sourceId === "string" &&
+    SOURCE_ID.test(item.sourceId) &&
+    typeof item.contentSha256 === "string" &&
+    SHA256.test(item.contentSha256) &&
+    Number.isSafeInteger(item.sizeBytes) &&
+    (item.sizeBytes as number) > 0 &&
+    uri(item.canonicalUri) &&
+    uri(item.sourceUri),
   );
 }
 
