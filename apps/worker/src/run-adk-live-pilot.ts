@@ -8,7 +8,10 @@ import {
 } from "@markorbit/persistence/ai-distilled-knowledge-ingestion";
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import { SqliteWorkerExecutionRepository } from "@markorbit/persistence/worker-execution";
-import { DeepSeekKnowledgeAdapter } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
+import {
+  assertDeepSeekOffPeakExecutionWindow,
+  DeepSeekKnowledgeAdapter,
+} from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
 import {
   runAiProductionPilot,
   type AiKnowledgeProvider,
@@ -148,6 +151,10 @@ async function main(): Promise<void> {
   ) {
     throw new Error("Prepared ADK live pilot runtime secret does not match the frozen plan");
   }
+
+  // Fail before either provider is called so a 3x2 acceptance run cannot become
+  // partially paid during DeepSeek's weekday Beijing-time peak pricing windows.
+  assertDeepSeekOffPeakExecutionWindow();
 
   const database = new DatabaseSync(config.databasePath);
   database.exec("PRAGMA foreign_keys = ON;");
