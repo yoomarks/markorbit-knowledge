@@ -6,12 +6,17 @@ export type AiKnowledgeJobStatus =
   | "FAILED"
   | "RETRY_PENDING"
   | "BLOCKED_CREDENTIAL"
-  | "BLOCKED_RECOVERY";
+  | "BLOCKED_RECOVERY"
+  | "BLOCKED_EXECUTION";
+
+export type AiKnowledgeJobExecutionMode = "LEGACY_PROVIDER" | "GROUNDED_PREPARED";
 
 export type AiKnowledgeJob = {
   id: string;
   assignmentId: string;
   provider: string;
+  executionMode?: AiKnowledgeJobExecutionMode;
+  groundedExecutionInputSha256?: string;
   status: AiKnowledgeJobStatus;
   attempts: number;
   maxAttempts?: number;
@@ -25,6 +30,10 @@ export type AiKnowledgeJob = {
 export type AiKnowledgeFailureOptions = {
   retryable?: boolean;
 };
+
+export function executionModeOf(job: AiKnowledgeJob): AiKnowledgeJobExecutionMode {
+  return job.executionMode ?? "LEGACY_PROVIDER";
+}
 
 export function claimJob(job: AiKnowledgeJob): AiKnowledgeJob {
   if (job.status !== "QUEUED") {
@@ -46,6 +55,19 @@ export function markCredentialBlocked(job: AiKnowledgeJob, error: string): AiKno
   return {
     ...job,
     status: "BLOCKED_CREDENTIAL",
+    error,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function markExecutionBlocked(job: AiKnowledgeJob, error: string): AiKnowledgeJob {
+  if (job.status !== "CLAIMED") {
+    throw new Error("Only claimed jobs can be execution-blocked");
+  }
+
+  return {
+    ...job,
+    status: "BLOCKED_EXECUTION",
     error,
     updatedAt: new Date().toISOString(),
   };

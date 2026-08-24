@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import {
   claimJob,
+  executionModeOf,
   type AiKnowledgeJob,
   type AiKnowledgeJobStatus,
 } from "./adk-knowledge-job-queue";
@@ -15,7 +16,10 @@ const JOB_STATUSES = new Set([
   "RETRY_PENDING",
   "BLOCKED_CREDENTIAL",
   "BLOCKED_RECOVERY",
+  "BLOCKED_EXECUTION",
 ]);
+const JOB_EXECUTION_MODES = new Set(["LEGACY_PROVIDER", "GROUNDED_PREPARED"]);
+const SHA256 = /^[a-f0-9]{64}$/u;
 
 export interface AiKnowledgeJobStore {
   put(job: AiKnowledgeJob): AiKnowledgeJob;
@@ -49,7 +53,26 @@ function parseJob(value: string): AiKnowledgeJob {
   ) {
     throw new Error("Persisted AI knowledge job is invalid");
   }
-  return parsed as AiKnowledgeJob;
+
+  const job = parsed as AiKnowledgeJob;
+  if (job.executionMode !== undefined && !JOB_EXECUTION_MODES.has(job.executionMode)) {
+    throw new Error("Persisted AI knowledge job execution mode is invalid");
+  }
+  const mode = executionModeOf(job);
+  if (mode === "GROUNDED_PREPARED") {
+    const executionInputSha256 = job.groundedExecutionInputSha256;
+    if (
+      job.provider !== "PROVIDER_DISABLED" ||
+      typeof executionInputSha256 !== "string" ||
+      !SHA256.test(executionInputSha256) ||
+      job.executionKey !== `grounded-prepared:${executionInputSha256}`
+    ) {
+      throw new Error("Persisted grounded PREPARED AI knowledge job identity is invalid");
+    }
+  } else if (job.groundedExecutionInputSha256 !== undefined) {
+    throw new Error("Legacy provider AI knowledge jobs cannot carry grounded execution identity");
+  }
+  return job;
 }
 
 function executionKeyOf(job: AiKnowledgeJob): string {
@@ -65,6 +88,8 @@ function assertImmutableIdentity(existing: AiKnowledgeJob, next: AiKnowledgeJob)
     existing.assignmentId !== next.assignmentId ||
     existing.provider !== next.provider ||
     existing.executionKey !== next.executionKey ||
+    executionModeOf(existing) !== executionModeOf(next) ||
+    existing.groundedExecutionInputSha256 !== next.groundedExecutionInputSha256 ||
     existing.createdAt !== next.createdAt
   ) {
     throw new Error(`AI knowledge job ${next.id} immutable identity changed`);

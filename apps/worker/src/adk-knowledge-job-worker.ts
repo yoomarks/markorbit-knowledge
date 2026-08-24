@@ -15,10 +15,16 @@ import {
   type AiProductionPilotPlanV1,
 } from "@markorbit/worker-runtime/ai-production-pilot";
 import {
+  ADK_GROUNDED_PREPARED_EXECUTION_MODE,
+  ADK_GROUNDED_PREPARED_PROVIDER,
+} from "./adk-grounded-queue-admission";
+import {
   blockJobForRecovery,
   completeJob,
+  executionModeOf,
   failJob,
   markCredentialBlocked,
+  markExecutionBlocked,
   markRunning,
   recoverClaimedJob,
   requeueCredentialBlockedJob,
@@ -86,6 +92,7 @@ const DELIVERY_UNCERTAIN_PROVIDER_ERRORS = new Set([
   "AI_PROVIDER_TIMEOUT",
   "AI_PROVIDER_NETWORK_ERROR",
 ]);
+const SHA256 = /^[a-f0-9]{64}$/u;
 
 function jobId(executionKey: string): string {
   return `akj_${createHash("sha256").update(executionKey).digest("hex").slice(0, 32)}`;
@@ -161,6 +168,19 @@ function isStale(job: AiKnowledgeJob, staleBefore: Date): boolean {
     throw new Error(`AI knowledge job ${job.id} has an invalid updatedAt timestamp`);
   }
   return updatedAt < staleBefore.getTime();
+}
+
+function groundedPreparedExecutionBlockReason(job: AiKnowledgeJob): string {
+  const executionInputSha256 = job.groundedExecutionInputSha256;
+  if (
+    job.provider !== ADK_GROUNDED_PREPARED_PROVIDER ||
+    typeof executionInputSha256 !== "string" ||
+    !SHA256.test(executionInputSha256) ||
+    job.executionKey !== `grounded-prepared:${executionInputSha256}`
+  ) {
+    return "AI_GROUNDED_QUEUE_IDENTITY_INVALID";
+  }
+  return "AI_GROUNDED_PROVIDER_EXECUTION_DISABLED";
 }
 
 export function enqueueAdkKnowledgeJobs(input: EnqueueAdkKnowledgeJobsInput): AiKnowledgeJob[] {
@@ -296,6 +316,14 @@ export async function processNextAdkKnowledgeJob(
 ): Promise<AiKnowledgeJob | undefined> {
   const claimed = input.store.claimNext();
   if (!claimed) return undefined;
+
+  if (executionModeOf(claimed) === ADK_GROUNDED_PREPARED_EXECUTION_MODE) {
+    return persistIfStatus(
+      input.store,
+      markExecutionBlocked(claimed, groundedPreparedExecutionBlockReason(claimed)),
+      "CLAIMED",
+    );
+  }
 
   const running = input.store.saveIfStatus(markRunning(claimed), "CLAIMED");
   if (!running) return input.store.get(claimed.id);
