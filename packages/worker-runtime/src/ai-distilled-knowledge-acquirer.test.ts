@@ -47,7 +47,10 @@ describe("DeepSeekKnowledgeAdapter", () => {
     expect(requests[0]?.url).toBe("https://api.deepseek.com/chat/completions");
     expect(requests[0]?.headers.authorization).toBe("Bearer runtime-secret");
     expect(requests[0]?.body).not.toContain("runtime-secret");
-    expect(JSON.parse(requests[0]!.body)).toMatchObject({ model: "deepseek-v4-pro", stream: false });
+    expect(JSON.parse(requests[0]!.body)).toMatchObject({
+      model: "deepseek-v4-pro",
+      stream: false,
+    });
     expect(result.submission.provider).toBe("DEEPSEEK");
     expect(result.submission.model).toBe("deepseek-v4-pro");
     expect(result.submission.providerRequestId).toBe("deepseek-request-1");
