@@ -77,7 +77,15 @@ function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
-function parseEvidence(value: string): AiGroundedPreparedExecutionEvidenceV1 {
+function parseEvidence(
+  value: string,
+  expectedSha256?: string,
+): AiGroundedPreparedExecutionEvidenceV1 {
+  if (expectedSha256 !== undefined && sha256(value) !== expectedSha256) {
+    throw new RegistryValidationError(
+      "Stored grounded PREPARED execution evidence SHA-256 does not match document JSON",
+    );
+  }
   const parsed = JSON.parse(value) as unknown;
   if (!isAiGroundedPreparedExecutionEvidenceV1(parsed)) {
     throw new RegistryValidationError("Stored grounded PREPARED execution evidence is invalid");
@@ -261,7 +269,7 @@ function promptArtifactLink(
 function assertReplayCompatible(
   existing: AiGroundedPreparedExecutionEvidenceV1,
   envelope: AiGroundedExecutionEnvelopeV1,
-  promptArtifactId: string,
+  currentPromptArtifact: AiGroundedPreparedExecutionEvidenceV1["promptArtifact"],
 ): void {
   if (
     existing.executionInputSha256 !== envelope.executionInputSha256 ||
@@ -273,7 +281,7 @@ function assertReplayCompatible(
     existing.renderedPromptSha256 !== envelope.renderedPromptSha256 ||
     existing.sourceReceiptsSha256 !== envelope.sourceReceiptsSha256 ||
     JSON.stringify(existing.sourceReceipts) !== JSON.stringify(envelope.sourceReceipts) ||
-    existing.promptArtifact.artifactId !== promptArtifactId
+    JSON.stringify(existing.promptArtifact) !== JSON.stringify(currentPromptArtifact)
   ) {
     throw new RegistryConflictError(
       "AI_GROUNDED_PREPARED_EVIDENCE_REPLAY_CONFLICT",
@@ -291,24 +299,26 @@ export class SqliteAiGroundedPreparedExecutionEvidenceRepository {
   get(executionInputSha256: string): AiGroundedPreparedExecutionEvidenceV1 | null {
     const row = this.database
       .prepare(
-        `SELECT document_json
+        `SELECT document_json, evidence_sha256
          FROM ai_grounded_prepared_execution_evidence
          WHERE execution_input_sha256 = ?`,
       )
-      .get(executionInputSha256) as { document_json: string } | undefined;
-    return row ? parseEvidence(row.document_json) : null;
+      .get(executionInputSha256) as
+      | { document_json: string; evidence_sha256: string }
+      | undefined;
+    return row ? parseEvidence(row.document_json, row.evidence_sha256) : null;
   }
 
   listByBinding(bindingId: string): AiGroundedPreparedExecutionEvidenceV1[] {
     const rows = this.database
       .prepare(
-        `SELECT document_json
+        `SELECT document_json, evidence_sha256
          FROM ai_grounded_prepared_execution_evidence
          WHERE binding_id = ?
          ORDER BY persisted_at ASC, execution_input_sha256 ASC`,
       )
-      .all(bindingId) as { document_json: string }[];
-    return rows.map((row) => parseEvidence(row.document_json));
+      .all(bindingId) as { document_json: string; evidence_sha256: string }[];
+    return rows.map((row) => parseEvidence(row.document_json, row.evidence_sha256));
   }
 
   save(input: {
@@ -321,8 +331,12 @@ export class SqliteAiGroundedPreparedExecutionEvidenceRepository {
 
     const existing = this.get(input.envelope.executionInputSha256);
     if (existing) {
-      assertReplayCompatible(existing, input.envelope, input.promptArtifactId);
-      promptArtifactLink(this.database, input.envelope, input.promptArtifactId);
+      const currentPromptArtifact = promptArtifactLink(
+        this.database,
+        input.envelope,
+        input.promptArtifactId,
+      );
+      assertReplayCompatible(existing, input.envelope, currentPromptArtifact);
       return { evidence: existing, replayed: true };
     }
 
