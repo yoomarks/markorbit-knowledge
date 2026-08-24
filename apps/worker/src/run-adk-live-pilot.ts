@@ -7,6 +7,7 @@ import {
   type AiDistilledKnowledgeIngestionResult,
 } from "@markorbit/persistence/ai-distilled-knowledge-ingestion";
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
+import { SqliteWorkerExecutionRepository } from "@markorbit/persistence/worker-execution";
 import { DeepSeekKnowledgeAdapter } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
 import {
   runAiProductionPilot,
@@ -48,6 +49,12 @@ type LivePilotAcceptanceRecord = {
   providers: ["DEEPSEEK", "OPENAI"];
   receipts: ReturnType<typeof toLivePilotReceiptView>[];
   lineage: LivePilotLineage[];
+  execution: {
+    workerId: string;
+    leaseId: string;
+    executionAttemptId: string;
+    artifactReceiptIds: string[];
+  };
   accepted: true;
   boundaries: {
     providerRankingProduced: false;
@@ -55,6 +62,12 @@ type LivePilotAcceptanceRecord = {
     candidateAutoActivationApplied: false;
   };
   recordedAt: string;
+};
+
+const LIVE_PILOT_EXECUTOR = {
+  executorId: "adk-live-pilot",
+  version: "1.0.0",
+  mode: "PRODUCTION" as const,
 };
 
 function required(environment: NodeJS.ProcessEnv, name: string): string {
@@ -172,6 +185,8 @@ async function main(): Promise<void> {
 
     const rawArtifacts = new SqliteRawArtifactRepository(database, config.storageRoot);
     const lineage: LivePilotLineage[] = [];
+    const artifactReceiptIds: string[] = [];
+    let bytesPrepared = 0;
     for (const acquisition of pilot.acquisitions) {
       const ingestion = await ingestAiDistilledKnowledgeAsRawArtifacts({
         repository: rawArtifacts,
@@ -184,6 +199,13 @@ async function main(): Promise<void> {
         acquisition,
       });
       lineage.push(lineageFrom(acquisition, ingestion));
+      artifactReceiptIds.push(
+        ingestion.rawProviderArtifact.receiptId,
+        ingestion.markdownArtifact.receiptId,
+      );
+      bytesPrepared +=
+        ingestion.rawProviderArtifact.contentObject.sizeBytes +
+        ingestion.markdownArtifact.contentObject.sizeBytes;
     }
 
     const receiptViews = pilot.run.receipts.map(toLivePilotReceiptView);
@@ -192,6 +214,39 @@ async function main(): Promise<void> {
       acquisitionCount: pilot.acquisitions.length,
       lineage,
     });
+    if (artifactReceiptIds.length !== 12 || new Set(artifactReceiptIds).size !== 12) {
+      throw new Error("ADK live pilot requires twelve unique finalized RawArtifact receipts");
+    }
+
+    const executions = new SqliteWorkerExecutionRepository(database);
+    executions.markVerifying(
+      config.workerId,
+      config.workerCredential,
+      config.leaseId,
+      config.leaseToken,
+      { idempotencyKey: `adk-live-pilot-verify-${plan.pilotId}` },
+    );
+    const completed = executions.complete(
+      config.workerId,
+      config.workerCredential,
+      config.leaseId,
+      config.leaseToken,
+      {
+        idempotencyKey: `adk-live-pilot-complete-${plan.pilotId}`,
+        receipt: {
+          executor: LIVE_PILOT_EXECUTOR,
+          outputKinds: ["JSON", "MARKDOWN"],
+          itemsObserved: artifactReceiptIds.length,
+          bytesPrepared,
+          metadataOnly: false,
+          artifactReceiptIds,
+          summary: "Six real provider responses and six Markdown derivatives finalized for ADK-06.",
+        },
+      },
+    );
+    if (completed.attempt.status !== "COMPLETED") {
+      throw new Error("ADK live pilot authenticated execution did not complete");
+    }
 
     const record: LivePilotAcceptanceRecord = {
       objectType: "AI_PRODUCTION_PILOT_LIVE_ACCEPTANCE_RECORD",
@@ -203,6 +258,12 @@ async function main(): Promise<void> {
       providers: ["DEEPSEEK", "OPENAI"],
       receipts: receiptViews,
       lineage,
+      execution: {
+        workerId: config.workerId,
+        leaseId: config.leaseId,
+        executionAttemptId: completed.attempt.id,
+        artifactReceiptIds,
+      },
       accepted: true,
       boundaries: {
         providerRankingProduced: false,
