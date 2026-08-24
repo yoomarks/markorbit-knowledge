@@ -254,10 +254,7 @@ async function main(): Promise<void> {
       acquisitionCount: pilot.durableCellCount,
       lineage: pilot.lineage,
     });
-    if (
-      pilot.artifactReceiptIds.length !== 12 ||
-      new Set(pilot.artifactReceiptIds).size !== 12
-    ) {
+    if (pilot.artifactReceiptIds.length !== 12 || new Set(pilot.artifactReceiptIds).size !== 12) {
       throw new Error("ADK live pilot requires twelve unique finalized RawArtifact receipts");
     }
 
