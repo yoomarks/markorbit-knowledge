@@ -1,0 +1,46 @@
+name: ADK-11 Authorization Autoformat
+
+on:
+  push:
+    branches:
+      - feat/adk11-provider-execution-authorization
+    paths:
+      - packages/contracts/src/ai-grounded-provider-authorization-v1.ts
+      - packages/persistence/src/ai-grounded-provider-authorization-registry.ts
+      - .github/workflows/adk11-authorization-format.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/adk11-provider-execution-authorization
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format authorization files
+        run: >-
+          pnpm exec prettier --write
+          packages/contracts/src/ai-grounded-provider-authorization-v1.ts
+          packages/persistence/src/ai-grounded-provider-authorization-registry.ts
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/src/ai-grounded-provider-authorization-v1.ts packages/persistence/src/ai-grounded-provider-authorization-registry.ts
+          if git diff --cached --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git commit -m "chore: prettier ADK-11 authorization"
+          git push origin HEAD:feat/adk11-provider-execution-authorization
