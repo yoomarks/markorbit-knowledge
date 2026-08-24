@@ -1,9 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import {
   DEFAULT_WORKSPACE,
@@ -235,11 +230,7 @@ export function prepareAdkLivePilotRuntime(
       worker.credential,
     );
 
-    const claim = workers.claimSpecific(
-      worker.view.worker.id,
-      worker.credential,
-      run.jobs[0].id,
-    );
+    const claim = workers.claimSpecific(worker.view.worker.id, worker.credential, run.jobs[0].id);
     if (!claim.job || !claim.lease || !claim.leaseToken) {
       throw new Error("ADK live pilot execution-envelope job could not be claimed");
     }
