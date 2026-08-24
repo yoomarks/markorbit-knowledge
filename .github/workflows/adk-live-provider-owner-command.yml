@@ -1,0 +1,107 @@
+name: ADK-06 Owner Live Dispatch
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+
+concurrency:
+  group: adk-06-owner-live-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    if: >-
+      github.event.issue.number == 405 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.actor == github.repository_owner &&
+      github.event.comment.body == '/adk06-live-run'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fail closed during DeepSeek Beijing peak pricing windows
+        shell: bash
+        run: |
+          set -euo pipefail
+          dow="$(TZ=Asia/Shanghai date +%u)"
+          hm="$(TZ=Asia/Shanghai date +%H%M)"
+          value=$((10#$hm))
+          if (( dow >= 1 && dow <= 5 )); then
+            if (( (value >= 900 && value < 1200) || (value >= 1400 && value < 1800) )); then
+              echo "::error::ADK-06 owner dispatch is blocked during DeepSeek Beijing-time peak pricing."
+              exit 1
+            fi
+          fi
+
+      - name: Fail closed unless all live secrets are configured
+        shell: bash
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ADK_LIVE_EVIDENCE_PASSPHRASE: ${{ secrets.ADK_LIVE_EVIDENCE_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
+            echo "::error::Repository secret DEEPSEEK_API_KEY is not configured."
+            exit 1
+          fi
+          if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+            echo "::error::Repository secret OPENAI_API_KEY is not configured."
+            exit 1
+          fi
+          if [[ ${#ADK_LIVE_EVIDENCE_PASSPHRASE} -lt 32 ]]; then
+            echo "::error::Repository secret ADK_LIVE_EVIDENCE_PASSPHRASE must contain at least 32 characters."
+            exit 1
+          fi
+
+      - name: Dispatch canonical live acceptance and record run id
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          dispatched_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          payload="$(jq -n \
+            --arg approval 'github:yoomarks/markorbit-knowledge#405' \
+            '{ref:"main",inputs:{approval_ref:$approval,confirm_live_provider_calls:"true",resume_run_id:""}}')"
+          curl -fsS \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/adk-live-provider-acceptance.yml/dispatches" \
+            -d "$payload"
+
+          run_id=""
+          for _ in {1..15}; do
+            response="$(curl -fsS \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/adk-live-provider-acceptance.yml/runs?event=workflow_dispatch&branch=main&per_page=10")"
+            run_id="$(jq -r --arg since "$dispatched_at" \
+              '[.workflow_runs[] | select(.created_at >= $since)] | sort_by(.created_at) | last | .id // empty' \
+              <<<"$response")"
+            if [[ -n "$run_id" ]]; then
+              break
+            fi
+            sleep 2
+          done
+          if [[ -z "$run_id" ]]; then
+            echo "::error::Live acceptance was dispatched but its run id could not be resolved."
+            exit 1
+          fi
+
+          body="ADK-06 live acceptance dispatched by the owner-only command. Workflow run: \`${run_id}\`."
+          comment_payload="$(jq -n --arg body "$body" '{body:$body}')"
+          curl -fsS \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/405/comments" \
+            -d "$comment_payload" >/dev/null
