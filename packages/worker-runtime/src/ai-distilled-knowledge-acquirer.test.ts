@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DeepSeekKnowledgeAdapter, type AiModelTransport } from "./ai-distilled-knowledge-acquirer";
 import type { AiKnowledgeAssignmentV1 } from "@markorbit/contracts";
+import {
+  DeepSeekKnowledgeAdapter,
+  isDeepSeekPeakPricingWindow,
+  type AiModelTransport,
+} from "./ai-distilled-knowledge-acquirer";
 
 const assignment: AiKnowledgeAssignmentV1 = {
   protocolVersion: "1.0",
@@ -17,24 +21,26 @@ const assignment: AiKnowledgeAssignmentV1 = {
   createdAt: "2026-08-23T03:00:00.000Z",
 };
 
+const OFF_PEAK_NOW = new Date("2026-08-23T03:00:01.000Z");
+
 function responseBody(content = "# Section 8\n\nDistilled research content."): Uint8Array {
   return new TextEncoder().encode(
     JSON.stringify({
       id: "deepseek-request-1",
-      model: "deepseek-v4-pro",
+      model: "deepseek-v4-flash",
       choices: [{ message: { role: "assistant", content } }],
     }),
   );
 }
 
 describe("DeepSeekKnowledgeAdapter", () => {
-  it("preserves the raw provider response and emits a Markdown artifact with provenance", async () => {
+  it("preserves the raw provider response and emits a Flash Markdown artifact with provenance", async () => {
     const requests: Parameters<AiModelTransport>[0][] = [];
     const transport: AiModelTransport = async (request) => {
       requests.push(request);
       return { status: 200, body: responseBody() };
     };
-    const moments = [new Date("2026-08-23T03:00:01.000Z"), new Date("2026-08-23T03:00:03.000Z")];
+    const moments = [OFF_PEAK_NOW, new Date("2026-08-23T03:00:03.000Z")];
     const adapter = new DeepSeekKnowledgeAdapter({
       environment: { DEEPSEEK_API_KEY: "runtime-secret" },
       transport,
@@ -48,11 +54,11 @@ describe("DeepSeekKnowledgeAdapter", () => {
     expect(requests[0]?.headers.authorization).toBe("Bearer runtime-secret");
     expect(requests[0]?.body).not.toContain("runtime-secret");
     expect(JSON.parse(requests[0]!.body)).toMatchObject({
-      model: "deepseek-v4-pro",
+      model: "deepseek-v4-flash",
       stream: false,
     });
     expect(result.submission.provider).toBe("DEEPSEEK");
-    expect(result.submission.model).toBe("deepseek-v4-pro");
+    expect(result.submission.model).toBe("deepseek-v4-flash");
     expect(result.submission.providerRequestId).toBe("deepseek-request-1");
     expect(result.artifact.provenance.sourceKind).toBe("SYNTHETIC_AI");
     expect(result.artifact.provenance.legalTruthVerified).toBe(false);
@@ -62,6 +68,34 @@ describe("DeepSeekKnowledgeAdapter", () => {
       `cas:sha256:${result.artifact.content.sha256}`,
     );
     expect(result.rawResponse).toEqual(responseBody());
+  });
+
+  it("recognizes only the official Beijing-time weekday peak windows", () => {
+    expect(isDeepSeekPeakPricingWindow(new Date("2026-08-24T01:00:00.000Z"))).toBe(true);
+    expect(isDeepSeekPeakPricingWindow(new Date("2026-08-24T03:59:59.000Z"))).toBe(true);
+    expect(isDeepSeekPeakPricingWindow(new Date("2026-08-24T04:00:00.000Z"))).toBe(false);
+    expect(isDeepSeekPeakPricingWindow(new Date("2026-08-24T06:00:00.000Z"))).toBe(true);
+    expect(isDeepSeekPeakPricingWindow(new Date("2026-08-24T09:59:59.000Z"))).toBe(true);
+    expect(isDeepSeekPeakPricingWindow(new Date("2026-08-24T10:00:00.000Z"))).toBe(false);
+    expect(isDeepSeekPeakPricingWindow(new Date("2026-08-23T03:00:00.000Z"))).toBe(false);
+  });
+
+  it("defers paid DeepSeek execution during peak pricing before transport is called", async () => {
+    let transportCalls = 0;
+    const adapter = new DeepSeekKnowledgeAdapter({
+      environment: { DEEPSEEK_API_KEY: "runtime-secret" },
+      transport: async () => {
+        transportCalls += 1;
+        return { status: 200, body: responseBody() };
+      },
+      now: () => new Date("2026-08-24T01:30:00.000Z"),
+    });
+
+    await expect(adapter.acquire({ assignment })).rejects.toMatchObject({
+      code: "AI_PROVIDER_PEAK_PRICING_WINDOW",
+      retryable: true,
+    });
+    expect(transportCalls).toBe(0);
   });
 
   it("fails closed when runtime credentials are absent", async () => {
@@ -76,6 +110,7 @@ describe("DeepSeekKnowledgeAdapter", () => {
     const adapter = new DeepSeekKnowledgeAdapter({
       environment: { DEEPSEEK_API_KEY: "runtime-secret" },
       transport: async () => ({ status: 429, body: new Uint8Array() }),
+      now: () => OFF_PEAK_NOW,
     });
     await expect(adapter.acquire({ assignment })).rejects.toMatchObject({
       code: "AI_PROVIDER_TEMPORARY_FAILURE",
@@ -84,9 +119,11 @@ describe("DeepSeekKnowledgeAdapter", () => {
   });
 
   it("rejects empty provider content", async () => {
+    const moments = [OFF_PEAK_NOW, new Date("2026-08-23T03:00:03.000Z")];
     const adapter = new DeepSeekKnowledgeAdapter({
       environment: { DEEPSEEK_API_KEY: "runtime-secret" },
       transport: async () => ({ status: 200, body: responseBody("   ") }),
+      now: () => moments.shift()!,
     });
     await expect(adapter.acquire({ assignment })).rejects.toMatchObject({
       code: "AI_PROVIDER_CONTENT_MISSING",
