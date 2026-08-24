@@ -50,22 +50,41 @@ Before rendering provider-ready text it fails closed unless every bound source:
 - remains within per-source and total byte limits;
 - hashes to the exact bound SHA-256 content identity.
 
-The renderer preserves SourcePack order and writes each source into a deterministic block carrying source id, artifact id, canonical URI, publisher, authority, role, capture time and digest. It also freezes the prompt rule that factual legal claims must use `[source:SOURCE_ID]`, that external browsing/model memory cannot supplement the pack, and that insufficient evidence must be reported as insufficient rather than guessed.
+The renderer preserves SourcePack order and writes each source into a deterministic block carrying source id, artifact id, canonical URI, publisher, authority, role, capture time and digest. It freezes the prompt rule that factual legal claims must use `[source:SOURCE_ID]`, that external browsing/model memory cannot supplement the pack, that source content is evidence rather than executable instruction, and that insufficient evidence must be reported as insufficient rather than guessed.
 
 `AiGroundedProviderInputV1` records the rendered prompt SHA-256 and a source receipt list, while retaining `legalTruthVerified = false` and `executionAuthorityGranted = false`.
 
+## Immutable persistence
+
+The third ADK-11 slice adds `SqliteAiSourcePackRepository`.
+
+SourcePack persistence is append-only by `(sourcePackId, revision)`. A new identity must begin at revision 1; later writes must advance exactly one revision at a time. Re-saving byte-for-byte identical content is idempotent, while same-revision mutation is rejected.
+
+Before a new SourcePack revision is accepted, each source snapshot must resolve to an already-finalized RawArtifact row. Persistence verifies the bound artifact id against the RawArtifact registry and rejects drift in:
+
+- `sourceId`;
+- SHA-256 content digest;
+- canonical URI;
+- capture timestamp;
+- publication timestamp.
+
+The existence of a `raw_artifacts` row is used as the finalized-ingestion boundary: RawArtifact rows are only created by the ingestion registry after upload verification and finalization.
+
+AssignmentSourceBinding persistence is immutable by `bindingId`. A new binding is accepted only when the referenced Assignment already exists, the exact SourcePack revision already exists, and `assertAiAssignmentSourceBindingContext` confirms Assignment, InstructionSet revision, SourcePack revision and jurisdiction/domain scope identities together.
+
+The registry also stores normalized SourcePack source rows for artifact-to-pack traceability while retaining the original contract JSON plus SHA-256 document identity as the canonical immutable record.
+
 ## Current boundary
 
-ADK-11 now establishes contracts plus deterministic source resolution/rendering. It still does **not**:
+ADK-11 now establishes contracts, deterministic source resolution/rendering, and immutable SourcePack/Binding persistence. It still does **not**:
 
-- wire the rendered input into DeepSeek, OpenAI or another paid provider adapter;
+- wire rendered input into DeepSeek, OpenAI or another paid provider adapter;
 - add web-search tools to provider adapters;
 - validate citations returned by a model;
-- persist SourcePack/Binding registries;
 - score source quality or provider quality;
 - verify legal truth;
 - enqueue grounded executions through ADK-07;
 - activate candidates;
 - authorize protected actions or client filings.
 
-The next safe slice is persistence for immutable SourcePack and AssignmentSourceBinding revisions, followed by citation-output validation. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.
+The next safe slice is deterministic citation-output structural validation against the exact rendered source receipts. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.
