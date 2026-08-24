@@ -82,6 +82,11 @@ export type RecoverAdkKnowledgeJobsResult = {
   blockedStaleRunning: string[];
 };
 
+const DELIVERY_UNCERTAIN_PROVIDER_ERRORS = new Set([
+  "AI_PROVIDER_TIMEOUT",
+  "AI_PROVIDER_NETWORK_ERROR",
+]);
+
 function jobId(executionKey: string): string {
   return `akj_${createHash("sha256").update(executionKey).digest("hex").slice(0, 32)}`;
 }
@@ -101,13 +106,34 @@ function failureMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function persistIfStatus(
+  store: AiKnowledgeJobStore,
+  next: AiKnowledgeJob,
+  expectedStatus: AiKnowledgeJob["status"],
+): AiKnowledgeJob {
+  const saved = store.saveIfStatus(next, expectedStatus);
+  if (saved) return saved;
+  const current = store.get(next.id);
+  if (!current) {
+    throw new Error(`AI knowledge job ${next.id} disappeared during state transition`);
+  }
+  return current;
+}
+
 function persistFailure(
   store: AiKnowledgeJobStore,
   running: AiKnowledgeJob,
   error: string,
   retryable: boolean,
 ): AiKnowledgeJob {
-  return store.save(failJob(running, error, { retryable }));
+  return persistIfStatus(store, failJob(running, error, { retryable }), "RUNNING");
+}
+
+function isDeliveryUncertainProviderError(error: unknown): boolean {
+  return (
+    error instanceof AiKnowledgeAcquisitionError &&
+    DELIVERY_UNCERTAIN_PROVIDER_ERRORS.has(error.code)
+  );
 }
 
 function resolveExecutionScope(input: EnqueueAdkKnowledgeJobsInput): string {
@@ -271,7 +297,9 @@ export async function processNextAdkKnowledgeJob(
   const claimed = input.store.claimNext();
   if (!claimed) return undefined;
 
-  const running = input.store.save(markRunning(claimed));
+  const running = input.store.saveIfStatus(markRunning(claimed), "CLAIMED");
+  if (!running) return input.store.get(claimed.id);
+
   const provider = providerFromJob(running);
   if (!provider) {
     return persistFailure(
@@ -308,10 +336,27 @@ export async function processNextAdkKnowledgeJob(
       error instanceof AiKnowledgeAcquisitionError &&
       error.code === "AI_PROVIDER_CREDENTIAL_MISSING"
     ) {
-      return input.store.save(markCredentialBlocked(running, failureMessage(error)));
+      return persistIfStatus(
+        input.store,
+        markCredentialBlocked(running, failureMessage(error)),
+        "RUNNING",
+      );
     }
-    const retryable = error instanceof AiKnowledgeAcquisitionError ? error.retryable : true;
-    return persistFailure(input.store, running, failureMessage(error), retryable);
+    if (isDeliveryUncertainProviderError(error)) {
+      return persistIfStatus(
+        input.store,
+        blockJobForRecovery(running, `AI_PROVIDER_DELIVERY_UNCERTAIN: ${failureMessage(error)}`),
+        "RUNNING",
+      );
+    }
+    if (!(error instanceof AiKnowledgeAcquisitionError)) {
+      return persistIfStatus(
+        input.store,
+        blockJobForRecovery(running, `AI_PROVIDER_EXECUTION_UNCERTAIN: ${failureMessage(error)}`),
+        "RUNNING",
+      );
+    }
+    return persistFailure(input.store, running, failureMessage(error), error.retryable);
   }
 
   if (
@@ -326,8 +371,10 @@ export async function processNextAdkKnowledgeJob(
   try {
     lineage = await input.sink({ job: running, acquisition });
   } catch (error) {
-    return input.store.save(
+    return persistIfStatus(
+      input.store,
       blockJobForRecovery(running, `AI_ARTIFACT_PERSISTENCE_UNCERTAIN: ${failureMessage(error)}`),
+      "RUNNING",
     );
   }
 
@@ -337,9 +384,11 @@ export async function processNextAdkKnowledgeJob(
     lineage.markdownRawArtifactId,
   ];
   if (new Set(artifactIds).size !== 3) {
-    return input.store.save(
+    return persistIfStatus(
+      input.store,
       blockJobForRecovery(running, "AI_ACQUISITION_LINEAGE_REQUIRES_RECONCILIATION"),
+      "RUNNING",
     );
   }
-  return input.store.save(completeJob(running, artifactIds));
+  return persistIfStatus(input.store, completeJob(running, artifactIds), "RUNNING");
 }
