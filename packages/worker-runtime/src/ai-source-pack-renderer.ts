@@ -74,7 +74,10 @@ function sha256(value: string | Uint8Array): string {
 function positiveBound(value: number | undefined, fallback: number, label: string): number {
   if (value === undefined) return fallback;
   if (!Number.isSafeInteger(value) || value < 1) {
-    throw new AiSourceGroundingError("AI_SOURCE_BOUND_INVALID", `${label} must be a positive integer`);
+    throw new AiSourceGroundingError(
+      "AI_SOURCE_BOUND_INVALID",
+      `${label} must be a positive integer`,
+    );
   }
   return value;
 }

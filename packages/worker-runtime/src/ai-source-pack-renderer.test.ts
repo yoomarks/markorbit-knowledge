@@ -116,7 +116,11 @@ function resolver(
   const defaults = new Map<string, ResolvedAiSourceSnapshotV1>([
     [
       sourcePack.sources[0].artifactId,
-      resolvedSource(sourcePack.sources[0].sourceId, sourcePack.sources[0].artifactId, sourceOneText),
+      resolvedSource(
+        sourcePack.sources[0].sourceId,
+        sourcePack.sources[0].artifactId,
+        sourceOneText,
+      ),
     ],
     [
       sourcePack.sources[1].artifactId,
@@ -181,7 +185,12 @@ describe("ADK-11 source-pack renderer", () => {
       [sourcePack.sources[0].artifactId, undefined],
     ]);
     await expectGroundingError(
-      renderAiGroundedProviderInputV1({ assignment, binding, sourcePack, resolver: resolver(missing) }),
+      renderAiGroundedProviderInputV1({
+        assignment,
+        binding,
+        sourcePack,
+        resolver: resolver(missing),
+      }),
       "AI_SOURCE_ARTIFACT_MISSING",
     );
 
@@ -196,7 +205,12 @@ describe("ADK-11 source-pack renderer", () => {
       ],
     ]);
     await expectGroundingError(
-      renderAiGroundedProviderInputV1({ assignment, binding, sourcePack, resolver: resolver(mismatch) }),
+      renderAiGroundedProviderInputV1({
+        assignment,
+        binding,
+        sourcePack,
+        resolver: resolver(mismatch),
+      }),
       "AI_SOURCE_IDENTITY_MISMATCH",
     );
   });
