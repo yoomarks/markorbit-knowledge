@@ -173,7 +173,10 @@ function officialArtifact(): RawArtifact {
   };
 }
 
-function aiArtifact(kind: "raw" | "markdown", parentArtifactId = RAW_PROVIDER_ARTIFACT_ID): RawArtifact {
+function aiArtifact(
+  kind: "raw" | "markdown",
+  parentArtifactId = RAW_PROVIDER_ARTIFACT_ID,
+): RawArtifact {
   const provider = submission.provider.toLowerCase();
   const canonicalUri = `ai+markorbit://${provider}/assignments/${submission.assignmentId}/models/${encodeURIComponent(submission.model.toLowerCase())}`;
   const raw = kind === "raw";
@@ -187,7 +190,9 @@ function aiArtifact(kind: "raw" | "markdown", parentArtifactId = RAW_PROVIDER_AR
     version: 1,
     artifactKind: raw ? "JSON" : "MARKDOWN",
     mimeType: raw ? "application/json" : "text/markdown",
-    originalName: raw ? `${submission.submissionId}.provider-response.json` : `${submission.submissionId}.md`,
+    originalName: raw
+      ? `${submission.submissionId}.provider-response.json`
+      : `${submission.submissionId}.md`,
     canonicalUri,
     storage: { provider: "LOCAL", uri: `artifact+local://sha256/${hash}` },
     binaryHash: { algorithm: "SHA-256", value: hash },
@@ -320,7 +325,10 @@ describe("SqliteAiGroundedValidationEvidenceRepository", () => {
     const sourcePacks = new SqliteAiSourcePackRepository(digestDatabase);
     sourcePacks.saveSourcePack(sourcePack);
     sourcePacks.saveBinding(binding);
-    insertArtifact(digestDatabase, { ...aiArtifact("raw"), contentHash: { algorithm: "SHA-256", value: "d".repeat(64) } });
+    insertArtifact(digestDatabase, {
+      ...aiArtifact("raw"),
+      contentHash: { algorithm: "SHA-256", value: "d".repeat(64) },
+    });
     insertArtifact(digestDatabase, aiArtifact("markdown"));
     const digestRepository = new SqliteAiGroundedValidationEvidenceRepository(digestDatabase);
     expect(() => digestRepository.save(evidence())).toThrowError(/Raw provider artifact/u);

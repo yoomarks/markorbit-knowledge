@@ -98,7 +98,9 @@ function readArtifact(database: DatabaseSync, artifactId: string): RawArtifact {
     throw error;
   }
   if (!row) {
-    throw new RegistryValidationError(`Grounded validation evidence references missing RawArtifact ${artifactId}`);
+    throw new RegistryValidationError(
+      `Grounded validation evidence references missing RawArtifact ${artifactId}`,
+    );
   }
   const parsed = JSON.parse(row.document_json) as unknown;
   if (!isRawArtifact(parsed)) {
@@ -109,7 +111,9 @@ function readArtifact(database: DatabaseSync, artifactId: string): RawArtifact {
     parsed.sourceId !== row.source_id ||
     parsed.binaryHash.value !== row.content_digest
   ) {
-    throw new RegistryValidationError(`RawArtifact ${artifactId} registry row is internally inconsistent`);
+    throw new RegistryValidationError(
+      `RawArtifact ${artifactId} registry row is internally inconsistent`,
+    );
   }
   return parsed;
 }
@@ -140,7 +144,8 @@ function assertArtifactEvidence(input: {
     input.rawProviderArtifact.mimeType !== "application/json" ||
     input.rawProviderArtifact.binaryHash.value !== input.submission.rawResponseSha256 ||
     input.rawProviderArtifact.contentHash.value !== input.submission.rawResponseSha256 ||
-    input.rawProviderArtifact.originalName !== `${input.submission.submissionId}.provider-response.json` ||
+    input.rawProviderArtifact.originalName !==
+      `${input.submission.submissionId}.provider-response.json` ||
     input.rawProviderArtifact.canonicalUri !== expectedCanonicalUri ||
     input.rawProviderArtifact.provenance.sourceUri !== expectedRawSourceUri ||
     input.rawProviderArtifact.publishedAt !== input.submission.completedAt
@@ -269,8 +274,7 @@ export class SqliteAiGroundedValidationEvidenceRepository {
          WHERE submission_id = ?`,
       )
       .get(value.submission.submissionId) as
-      | { evidence_sha256: string; evidence_json: string }
-      | undefined;
+      { evidence_sha256: string; evidence_json: string } | undefined;
     if (existing) {
       if (existing.evidence_sha256 !== sha256 || existing.evidence_json !== json) {
         throw new RegistryConflictError(
