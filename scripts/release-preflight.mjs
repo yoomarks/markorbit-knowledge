@@ -53,10 +53,10 @@ if (rootPackage.version !== expectedVersion) {
 }
 if (rootPackage.private !== true) fail("root package must remain private");
 else pass("root package remains private");
-if (rootPackage.packageManager !== "pnpm@11.13.0") {
-  fail(`packageManager must remain pnpm@11.13.0, found ${rootPackage.packageManager}`);
+if (rootPackage.packageManager !== "pnpm@11.13.1") {
+  fail(`packageManager must remain pnpm@11.13.1, found ${rootPackage.packageManager}`);
 } else {
-  pass("package manager is pinned to pnpm@11.13.0");
+  pass("package manager is pinned to pnpm@11.13.1");
 }
 if (rootPackage.engines?.node !== ">=22 <25") {
   fail(`Node engine must remain >=22 <25, found ${rootPackage.engines?.node ?? "missing"}`);
