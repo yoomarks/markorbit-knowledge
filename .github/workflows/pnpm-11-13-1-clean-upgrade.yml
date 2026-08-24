@@ -1,0 +1,47 @@
+name: pnpm 11.13.1 Clean Upgrade
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    if: github.actor == github.repository_owner
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Replace broken pnpm pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(grep -rl --include='*.yml' --include='*.yaml' '11\.13\.0' .github/workflows || true)
+          if grep -q '"packageManager": "pnpm@11\.13\.0"' package.json; then
+            files+=(package.json)
+          fi
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No 11.13.0 pins remain."
+            exit 0
+          fi
+          printf 'Updating %s\n' "${files[@]}"
+          sed -i 's/11\.13\.0/11.13.1/g' "${files[@]}"
+          if grep -R --line-number --include='*.yml' --include='*.yaml' '11\.13\.0' .github/workflows; then
+            echo "Old workflow pin remains" >&2
+            exit 1
+          fi
+          grep -q '"packageManager": "pnpm@11\.13\.1"' package.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows package.json
+          git commit -m "chore: replace broken pnpm 11.13.0 pin"
+          git push origin HEAD:${{ github.head_ref }}
