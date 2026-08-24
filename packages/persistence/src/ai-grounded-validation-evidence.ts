@@ -138,12 +138,14 @@ function assertArtifactEvidence(input: {
   const expectedRawSourceUri = `ai+markorbit://${provider}/submissions/${input.submission.submissionId}/raw`;
   const expectedMarkdownSourceUri = `ai+markorbit://${provider}/submissions/${input.submission.submissionId}/markdown`;
   const parentArtifactIds = input.markdownArtifact.provenance.parentArtifactIds ?? [];
+  const rawProviderContentSha256 = input.rawProviderArtifact.contentHash?.value;
+  const markdownContentSha256 = input.markdownArtifact.contentHash?.value;
 
   if (
     input.rawProviderArtifact.artifactKind !== "JSON" ||
     input.rawProviderArtifact.mimeType !== "application/json" ||
     input.rawProviderArtifact.binaryHash.value !== input.submission.rawResponseSha256 ||
-    input.rawProviderArtifact.contentHash.value !== input.submission.rawResponseSha256 ||
+    rawProviderContentSha256 !== input.submission.rawResponseSha256 ||
     input.rawProviderArtifact.originalName !==
       `${input.submission.submissionId}.provider-response.json` ||
     input.rawProviderArtifact.canonicalUri !== expectedCanonicalUri ||
@@ -160,8 +162,8 @@ function assertArtifactEvidence(input: {
     input.markdownArtifact.artifactKind !== "MARKDOWN" ||
     input.markdownArtifact.mimeType !== "text/markdown" ||
     input.markdownArtifact.binaryHash.value !== input.submission.markdownSha256 ||
-    input.markdownArtifact.contentHash.value !== input.submission.markdownSha256 ||
-    input.markdownArtifact.contentHash.value !== input.receipt.outputSha256 ||
+    markdownContentSha256 !== input.submission.markdownSha256 ||
+    markdownContentSha256 !== input.receipt.outputSha256 ||
     input.markdownArtifact.sizeBytes !== input.submission.markdownSizeBytes ||
     input.markdownArtifact.originalName !== `${input.submission.submissionId}.md` ||
     input.markdownArtifact.canonicalUri !== expectedCanonicalUri ||
