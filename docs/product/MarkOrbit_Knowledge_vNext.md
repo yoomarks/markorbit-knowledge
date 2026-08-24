@@ -1,5 +1,17 @@
 # MarkOrbit Knowledge vNext
 
+> **Historical status — SUPERSEDED FOR POST-ADK-11 PRODUCT DIRECTION (2026-08-25).**
+>
+> This document remains an implementation-history reference for public discovery and evidence-supply work. It is **not** the authority for current AI/email ownership or the long-term Knowledge roadmap.
+>
+> Current canonical direction:
+> - `docs/product/KNOWLEDGE_LONG_TERM_STRATEGY.md`
+> - `docs/architecture/KNOWLEDGE_CAPABILITY_SOURCE_BOUNDARIES.md`
+> - `docs/architecture/CASE_DOSSIER_AND_EXPERT_SOURCE_ARCHITECTURE.md`
+> - `docs/tasks/KNOWLEDGE_STRATEGIC_EXECUTION_PLAN.md`
+>
+> In particular, new generic AI transport/runtime belongs in the shared MarkOrbit AI Capability; new email send/receive/sync transport belongs in the shared Communication Capability; Web acquisition remains in Knowledge for now.
+
 > Status: Draft implementation direction
 >
 > Scope: acquisition, discovery, evidence preservation and operator control plane
