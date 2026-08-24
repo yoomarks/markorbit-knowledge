@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 import { openRegistryDatabase } from "@markorbit/persistence";
 import { SqliteAiKnowledgeAssignmentRepository } from "@markorbit/persistence/ai-knowledge-assignments";
 import { SqliteAiSourcePackRepository } from "@markorbit/persistence/ai-source-packs";
@@ -174,7 +175,8 @@ async function main(): Promise<void> {
   process.stdout.write(`${JSON.stringify(output.preparation.envelope, null, 2)}\n`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const invokedPath = process.argv[1];
+if (invokedPath && import.meta.url === pathToFileURL(invokedPath).href) {
   main().catch((error) => {
     process.stderr.write(
       `${JSON.stringify({
