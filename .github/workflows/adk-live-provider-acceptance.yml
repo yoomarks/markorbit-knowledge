@@ -8,6 +8,10 @@ on:
         required: true
         default: "github:yoomarks/markorbit-knowledge#405"
         type: string
+      expected_commit_sha:
+        description: "Exact main commit SHA authorized for this live acceptance"
+        required: true
+        type: string
       confirm_live_provider_calls:
         description: "Authorize real DeepSeek and OpenAI provider calls"
         required: true
@@ -37,6 +41,7 @@ jobs:
       EVIDENCE_ROOT: ${{ github.workspace }}/adk-live-evidence
       CANONICAL_PLAN: ${{ github.workspace }}/config/adk-live-pilot-us-trademark-3x2.json
       APPROVAL_REF: ${{ inputs.approval_ref }}
+      EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
       RESUME_RUN_ID: ${{ inputs.resume_run_id }}
     steps:
       - uses: actions/checkout@v4
@@ -56,12 +61,20 @@ jobs:
       - name: Install frozen workspace
         run: pnpm install --frozen-lockfile
 
-      - name: Fail closed unless main and frozen approval match
+      - name: Fail closed unless main, exact commit and frozen approval match
         shell: bash
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
             echo "::error::ADK-06 live acceptance must be dispatched from main."
+            exit 1
+          fi
+          if [[ ! "$EXPECTED_COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::expected_commit_sha must be a full lowercase Git commit SHA."
+            exit 1
+          fi
+          if [[ "$GITHUB_SHA" != "$EXPECTED_COMMIT_SHA" ]]; then
+            echo "::error::main moved after authorization; refusing to run paid ADK-06 provider calls."
             exit 1
           fi
           if [[ -n "$RESUME_RUN_ID" && ! "$RESUME_RUN_ID" =~ ^[0-9]+$ ]]; then
@@ -271,9 +284,10 @@ jobs:
             : null;
           const metadata = {
             objectType: "ADK_LIVE_PROVIDER_WORKFLOW_EVIDENCE",
-            protocolVersion: "1.1",
+            protocolVersion: "1.2",
             repository: process.env.GITHUB_REPOSITORY,
             commitSha: process.env.GITHUB_SHA,
+            expectedCommitSha: process.env.EXPECTED_COMMIT_SHA,
             workflowRunId: process.env.GITHUB_RUN_ID,
             workflowRunAttempt: process.env.GITHUB_RUN_ATTEMPT,
             resumedFromRunId: process.env.RESUME_RUN_ID || null,
@@ -375,9 +389,10 @@ jobs:
           const metadata = JSON.parse(fs.readFileSync(process.env.METADATA_PATH, "utf8"));
           const manifest = {
             objectType: "ADK_LIVE_PROVIDER_ENCRYPTED_EVIDENCE_MANIFEST",
-            protocolVersion: "1.1",
+            protocolVersion: "1.2",
             repository: process.env.GITHUB_REPOSITORY,
             commitSha: process.env.GITHUB_SHA,
+            expectedCommitSha: process.env.EXPECTED_COMMIT_SHA,
             workflowRunId: process.env.GITHUB_RUN_ID,
             workflowRunAttempt: process.env.GITHUB_RUN_ATTEMPT,
             resumedFromRunId: process.env.RESUME_RUN_ID || null,
@@ -413,7 +428,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: adk-06-live-acceptance-encrypted-${{ github.run_id }}
-          retention-days: 30
+          retention-days: 90
           if-no-files-found: ignore
           path: |
             adk-live-evidence/adk-06-live-evidence.aesgcm
