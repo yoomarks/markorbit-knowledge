@@ -36,10 +36,13 @@ The workflow checks only whether the provider credentials are present and whethe
 The workflow requires:
 
 - `approval_ref`, which must exactly equal the canonical plan approval reference `github:yoomarks/markorbit-knowledge#405`;
+- `expected_commit_sha`, a full 40-character lowercase Git SHA that must exactly equal the workflow's `GITHUB_SHA`;
 - `confirm_live_provider_calls=true`;
 - optional `resume_run_id`, containing only the numeric Actions run id of an earlier ADK-06 live workflow whose encrypted partial runtime should be resumed.
 
-The workflow fails unless it is dispatched from `main`. The selected exact commit SHA is preserved in the evidence metadata.
+The owner-only `/adk06-live-run` command resolves the current `main` SHA immediately before dispatch, passes it as `expected_commit_sha`, and resolves the created workflow run only when its `head_sha` matches the frozen commit. The live workflow fails before any provider secret is exposed if `main` moved after authorization or the exact SHA does not match.
+
+The selected commit SHA and the expected commit SHA are both preserved in encrypted evidence metadata and the non-secret integrity manifest.
 
 ## DeepSeek execution window
 
@@ -56,7 +59,7 @@ Dispatch during a peak window is expected to fail before any paid DeepSeek or Op
 
 ## Durable per-cell checkpoint
 
-The live runner no longer waits for all six provider calls before persisting evidence. It processes the frozen cells in assignment/provider order and, after each successful real provider call, immediately finalizes the exact provider JSON and its Markdown derivative through the authenticated RawArtifact lifecycle. Only after both artifacts are durable does it append a `DURABLE` cell to `live-checkpoint.json`.
+The live runner processes the frozen cells in assignment/provider order and, after each successful real provider call, immediately finalizes the exact provider JSON and its Markdown derivative through the authenticated RawArtifact lifecycle. Only after both artifacts are durable does it append a `DURABLE` cell to `live-checkpoint.json`.
 
 Before each provider call the runner writes an `inFlight` marker. The marker is removed only after the provider result has either failed in a way that is known to be retryable without a successful response, or the successful acquisition has been durably persisted and checkpointed.
 
@@ -74,11 +77,12 @@ A failed live execution that reached runtime creation still encrypts and uploads
 
 To resume a safely retryable partial run:
 
-1. dispatch `ADK-06 Live Provider Acceptance` again from `main` during a DeepSeek off-peak window;
-2. keep `approval_ref=github:yoomarks/markorbit-knowledge#405` and `confirm_live_provider_calls=true`;
-3. set `resume_run_id` to the numeric prior workflow run id;
-4. use the same `ADK_LIVE_EVIDENCE_PASSPHRASE` so the prior encrypted envelope can be authenticated and decrypted;
-5. keep both provider credentials available as runtime-only repository secrets.
+1. dispatch `ADK-06 Live Provider Acceptance` again from the exact intended `main` revision during a DeepSeek off-peak window;
+2. set `expected_commit_sha` to that exact current `main` SHA;
+3. keep `approval_ref=github:yoomarks/markorbit-knowledge#405` and `confirm_live_provider_calls=true`;
+4. set `resume_run_id` to the numeric prior workflow run id;
+5. use the same `ADK_LIVE_EVIDENCE_PASSPHRASE` so the prior encrypted envelope can be authenticated and decrypted;
+6. keep both provider credentials available as runtime-only repository secrets.
 
 The workflow downloads only the named encrypted artifact from the specified run, verifies its encrypted SHA-256 against the manifest, authenticates/decrypts it, compares the restored plan byte-for-byte with the current canonical plan, rewrites only runner-local absolute paths in the restored runtime secret, and then invokes the resumable live runner.
 
@@ -88,25 +92,26 @@ If the restored checkpoint contains `inFlight`, the runner fails before any prov
 
 For a fresh run the workflow performs these steps:
 
-1. checks out the exact `main` commit with persisted checkout credentials disabled;
-2. installs the frozen workspace;
-3. verifies the dispatch approval reference against the canonical plan and rechecks the frozen 3×2 assignment/provider authority;
-4. performs the DeepSeek off-peak preflight before provider secrets are exposed;
-5. fails closed unless both provider credentials and the independent evidence passphrase are configured;
-6. copies the canonical plan byte-for-byte into a fresh runtime directory;
-7. runs `adk:pilot:prepare` to create the authenticated SQLite/RawArtifact runtime and private Worker/Lease secret file;
-8. runs `adk:pilot:live`; each successful cell is persisted and checkpointed before another paid provider call begins;
-9. requires all six cells to be durably `EXECUTED`;
-10. requires six RawArtifact lineage records and twelve unique finalized RawArtifact receipts;
-11. requires the authenticated execution attempt to complete;
-12. records success or partial checkpoint metadata;
-13. creates a gzip-compressed evidence bundle containing the plan, checkpoint, receipts when present, runtime secret, metadata, SQLite database, and content-addressed RawArtifacts;
-14. encrypts that bundle using AES-256-GCM with a key derived by `scrypt` from `ADK_LIVE_EVIDENCE_PASSPHRASE`;
-15. immediately decrypts the encrypted envelope in memory and verifies its SHA-256 against the plaintext bundle before cleanup;
-16. removes all plaintext runtime data and plaintext archives;
-17. uploads only the encrypted evidence envelope and a non-secret integrity manifest, on both successful and resumable failed runs.
+1. checks out the exact dispatched `main` commit with persisted checkout credentials disabled;
+2. verifies `GITHUB_SHA == expected_commit_sha` and rejects moving-main drift;
+3. installs the frozen workspace;
+4. verifies the dispatch approval reference against the canonical plan and rechecks the frozen 3×2 assignment/provider authority;
+5. performs the DeepSeek off-peak preflight before provider secrets are exposed;
+6. fails closed unless both provider credentials and the independent evidence passphrase are configured;
+7. copies the canonical plan byte-for-byte into a fresh runtime directory;
+8. runs `adk:pilot:prepare` to create the authenticated SQLite/RawArtifact runtime and private Worker/Lease secret file;
+9. runs `adk:pilot:live`; each successful cell is persisted and checkpointed before another paid provider call begins;
+10. requires all six cells to be durably `EXECUTED`;
+11. requires six RawArtifact lineage records and twelve unique finalized RawArtifact receipts;
+12. requires the authenticated execution attempt to complete;
+13. records success or partial checkpoint metadata including the actual and expected commit SHA;
+14. creates a gzip-compressed evidence bundle containing the plan, checkpoint, receipts when present, runtime secret, metadata, SQLite database, and content-addressed RawArtifacts;
+15. encrypts that bundle using AES-256-GCM with a key derived by `scrypt` from `ADK_LIVE_EVIDENCE_PASSPHRASE`;
+16. immediately decrypts the encrypted envelope in memory and verifies its SHA-256 against the plaintext bundle before cleanup;
+17. removes all plaintext runtime data and plaintext archives;
+18. uploads only the encrypted evidence envelope and a non-secret integrity manifest, on both successful and resumable failed runs.
 
-A resume follows the same authority and off-peak checks, but decrypts the selected prior run instead of creating a new runtime and then skips only cells whose durable evidence verifies successfully.
+A resume follows the same authority, exact-SHA and off-peak checks, but decrypts the selected prior run instead of creating a new runtime and then skips only cells whose durable evidence verifies successfully.
 
 ## Why the evidence is encrypted
 
@@ -119,7 +124,9 @@ adk-06-live-evidence.aesgcm
 evidence-manifest.json
 ```
 
-The manifest contains only repository/run identifiers, resumability state, cipher/KDF metadata, encrypted byte size, and the encrypted file SHA-256. It does not contain provider responses, distilled Markdown, provider keys, Worker credentials, lease tokens, or the evidence passphrase.
+The manifest contains repository/run identifiers, actual and expected commit SHA, resumability state, cipher/KDF metadata, encrypted byte size, and the encrypted file SHA-256. It does not contain provider responses, distilled Markdown, provider keys, Worker credentials, lease tokens, or the evidence passphrase.
+
+GitHub Actions retains this encrypted recovery artifact for 90 days. That retention is an operational recovery window, **not** the long-term evidence archive required to close #405. A successful acceptance must still be copied into authorized non-public durable storage under the project evidence-retention policy.
 
 ## Encrypted envelope format
 
@@ -178,6 +185,7 @@ Because a resumable bundle contains the Worker/Lease runtime secret inside the c
 
 Do not close issue #405 unless the actual manual workflow run succeeds and the decrypted evidence confirms:
 
+- `commitSha` exactly equals `expectedCommitSha` and the frozen operator-authorized commit;
 - exactly six durable `EXECUTED` provider cells;
 - exactly six acquisition/lineage records;
 - exactly twelve finalized RawArtifact receipts;
@@ -186,6 +194,7 @@ Do not close issue #405 unless the actual manual workflow run succeeds and the d
 - exact canonical pilot/approval/assignment/provider identities;
 - no provider ranking;
 - no legal-truth verification;
-- no candidate auto-activation.
+- no candidate auto-activation;
+- the encrypted evidence bundle has been retained outside the temporary public-repository Actions retention window in authorized non-public durable storage.
 
-If a required secret is absent or invalid, execution is attempted during a blocked DeepSeek pricing window, evidence is incomplete, encryption verification fails, the authenticated artifact-backed execution cannot complete, or a provider/persistence outcome is ambiguous, the workflow must fail and issue #405 remains open.
+If a required secret is absent or invalid, `main` moved after authorization, execution is attempted during a blocked DeepSeek pricing window, evidence is incomplete, encryption verification fails, the authenticated artifact-backed execution cannot complete, or a provider/persistence outcome is ambiguous, the workflow must fail and issue #405 remains open.
