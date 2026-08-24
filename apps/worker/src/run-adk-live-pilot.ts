@@ -1,5 +1,5 @@
 import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { SqliteAiKnowledgeAssignmentRepository } from "@markorbit/persistence/ai-knowledge-assignments";
 import {
@@ -11,12 +11,10 @@ import { SqliteWorkerExecutionRepository } from "@markorbit/persistence/worker-e
 import {
   assertDeepSeekOffPeakExecutionWindow,
   DeepSeekKnowledgeAdapter,
-} from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
-import {
-  runAiProductionPilot,
-  type AiKnowledgeProvider,
+  type AiKnowledgeAcquisition,
   type AiKnowledgeProviderAdapter,
-} from "@markorbit/worker-runtime/ai-production-pilot";
+} from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
+import type { AiKnowledgeProvider } from "@markorbit/worker-runtime/ai-production-pilot";
 import { OpenAiKnowledgeAdapter } from "@markorbit/worker-runtime/openai-knowledge-adapter";
 import {
   assertLivePilotComplete,
@@ -24,12 +22,17 @@ import {
   type LivePilotLineage,
 } from "./adk-live-pilot-acceptance";
 import { loadFrozenAdkLivePilotPlan } from "./adk-live-pilot-plan";
+import {
+  executeResumableAdkLivePilot,
+  type AdkLivePilotDurableCellV1,
+} from "./adk-live-pilot-resume";
 import { loadAdkLivePilotRuntimeSecret } from "./adk-live-pilot-runtime-secret";
 
 type LivePilotConfig = {
   databasePath: string;
   storageRoot: string;
   planPath: string;
+  checkpointPath: string;
   receiptPath?: string;
   workerId: string;
   workerCredential: string;
@@ -79,6 +82,11 @@ function required(environment: NodeJS.ProcessEnv, name: string): string {
   return value;
 }
 
+function checkpointPathFor(databasePath: string, environment: NodeJS.ProcessEnv): string {
+  const explicit = environment.MARKORBIT_ADK_LIVE_CHECKPOINT_PATH?.trim();
+  return explicit ? resolve(explicit) : resolve(dirname(databasePath), "live-checkpoint.json");
+}
+
 export function loadAdkLivePilotConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): LivePilotConfig {
@@ -88,10 +96,12 @@ export function loadAdkLivePilotConfig(
   if (runtimeSecretPath) {
     const resolvedRuntimeSecretPath = resolve(runtimeSecretPath);
     const secret = loadAdkLivePilotRuntimeSecret(resolvedRuntimeSecretPath);
+    const databasePath = resolve(secret.databasePath);
     return {
-      databasePath: resolve(secret.databasePath),
+      databasePath,
       storageRoot: resolve(secret.storageRoot),
       planPath: resolve(secret.planPath),
+      checkpointPath: checkpointPathFor(databasePath, environment),
       ...(receiptPath ? { receiptPath: resolve(receiptPath) } : {}),
       workerId: secret.workerId,
       workerCredential: secret.workerCredential,
@@ -105,10 +115,12 @@ export function loadAdkLivePilotConfig(
     };
   }
 
+  const databasePath = resolve(required(environment, "MARKORBIT_ADK_LIVE_DB_PATH"));
   return {
-    databasePath: resolve(required(environment, "MARKORBIT_ADK_LIVE_DB_PATH")),
+    databasePath,
     storageRoot: resolve(required(environment, "MARKORBIT_ADK_LIVE_STORAGE_ROOT")),
     planPath: resolve(required(environment, "MARKORBIT_ADK_LIVE_PLAN_PATH")),
+    checkpointPath: checkpointPathFor(databasePath, environment),
     ...(receiptPath ? { receiptPath: resolve(receiptPath) } : {}),
     workerId: required(environment, "MARKORBIT_ADK_LIVE_WORKER_ID"),
     workerCredential: required(environment, "MARKORBIT_ADK_LIVE_WORKER_CREDENTIAL"),
@@ -139,6 +151,29 @@ function lineageFrom(
     rawProviderArtifactId: ingestion.rawProviderArtifact.artifact.id,
     markdownRawArtifactId: ingestion.markdownArtifact.artifact.id,
   };
+}
+
+function verifyDurableCell(
+  rawArtifacts: SqliteRawArtifactRepository,
+  cell: AdkLivePilotDurableCellV1,
+): void {
+  const raw = rawArtifacts.getArtifact(cell.rawProviderArtifactId);
+  const markdown = rawArtifacts.getArtifact(cell.markdownRawArtifactId);
+  if (!raw || !markdown) {
+    throw new Error(
+      `ADK_LIVE_DURABLE_CELL_ARTIFACT_MISSING: ${cell.assignmentId}:${cell.provider}`,
+    );
+  }
+  if (
+    raw.receiptId !== cell.rawProviderReceiptId ||
+    markdown.receiptId !== cell.markdownReceiptId ||
+    markdown.artifact.provenance.parentArtifactIds?.length !== 1 ||
+    markdown.artifact.provenance.parentArtifactIds[0] !== raw.artifact.id
+  ) {
+    throw new Error(
+      `ADK_LIVE_DURABLE_CELL_LINEAGE_MISMATCH: ${cell.assignmentId}:${cell.provider}`,
+    );
+  }
 }
 
 async function main(): Promise<void> {
@@ -175,53 +210,54 @@ async function main(): Promise<void> {
       ["DEEPSEEK", new DeepSeekKnowledgeAdapter()],
       ["OPENAI", new OpenAiKnowledgeAdapter()],
     ]);
-    const pilot = await runAiProductionPilot({ plan, assignments, adapters });
-    if (
-      pilot.run.receipts.length !== 6 ||
-      pilot.run.receipts.some((receipt) => receipt.status !== "EXECUTED")
-    ) {
+    const rawArtifacts = new SqliteRawArtifactRepository(database, config.storageRoot);
+    const execution = {
+      workerId: config.workerId,
+      credential: config.workerCredential,
+      leaseId: config.leaseId,
+      leaseToken: config.leaseToken,
+    };
+    const pilot = await executeResumableAdkLivePilot({
+      checkpointPath: config.checkpointPath,
+      plan,
+      assignments,
+      adapters,
+      verifyDurableCell: (cell) => verifyDurableCell(rawArtifacts, cell),
+      persistAcquisition: async (acquisition: AiKnowledgeAcquisition) => {
+        const ingestion = await ingestAiDistilledKnowledgeAsRawArtifacts({
+          repository: rawArtifacts,
+          execution,
+          acquisition,
+        });
+        return {
+          lineage: lineageFrom(acquisition, ingestion),
+          rawProviderReceiptId: ingestion.rawProviderArtifact.receiptId,
+          markdownReceiptId: ingestion.markdownArtifact.receiptId,
+          bytesPrepared:
+            ingestion.rawProviderArtifact.contentObject.sizeBytes +
+            ingestion.markdownArtifact.contentObject.sizeBytes,
+        };
+      },
+    });
+
+    if (!pilot.completed) {
       throw new Error(
-        `ADK live pilot did not execute all intended cells: ${JSON.stringify(
-          pilot.run.receipts.map(toLivePilotReceiptView),
+        `ADK live pilot stopped before six durable cells: ${JSON.stringify(
+          pilot.receipts.map(toLivePilotReceiptView),
         )}`,
       );
     }
-    if (pilot.acquisitions.length !== 6) {
-      throw new Error("ADK live pilot produced an incomplete acquisition set");
-    }
 
-    const rawArtifacts = new SqliteRawArtifactRepository(database, config.storageRoot);
-    const lineage: LivePilotLineage[] = [];
-    const artifactReceiptIds: string[] = [];
-    let bytesPrepared = 0;
-    for (const acquisition of pilot.acquisitions) {
-      const ingestion = await ingestAiDistilledKnowledgeAsRawArtifacts({
-        repository: rawArtifacts,
-        execution: {
-          workerId: config.workerId,
-          credential: config.workerCredential,
-          leaseId: config.leaseId,
-          leaseToken: config.leaseToken,
-        },
-        acquisition,
-      });
-      lineage.push(lineageFrom(acquisition, ingestion));
-      artifactReceiptIds.push(
-        ingestion.rawProviderArtifact.receiptId,
-        ingestion.markdownArtifact.receiptId,
-      );
-      bytesPrepared +=
-        ingestion.rawProviderArtifact.contentObject.sizeBytes +
-        ingestion.markdownArtifact.contentObject.sizeBytes;
-    }
-
-    const receiptViews = pilot.run.receipts.map(toLivePilotReceiptView);
+    const receiptViews = pilot.receipts.map(toLivePilotReceiptView);
     assertLivePilotComplete({
       receipts: receiptViews,
-      acquisitionCount: pilot.acquisitions.length,
-      lineage,
+      acquisitionCount: pilot.durableCellCount,
+      lineage: pilot.lineage,
     });
-    if (artifactReceiptIds.length !== 12 || new Set(artifactReceiptIds).size !== 12) {
+    if (
+      pilot.artifactReceiptIds.length !== 12 ||
+      new Set(pilot.artifactReceiptIds).size !== 12
+    ) {
       throw new Error("ADK live pilot requires twelve unique finalized RawArtifact receipts");
     }
 
@@ -243,10 +279,10 @@ async function main(): Promise<void> {
         receipt: {
           executor: LIVE_PILOT_EXECUTOR,
           outputKinds: ["JSON", "MARKDOWN"],
-          itemsObserved: artifactReceiptIds.length,
-          bytesPrepared,
+          itemsObserved: pilot.artifactReceiptIds.length,
+          bytesPrepared: pilot.bytesPrepared,
           metadataOnly: false,
-          artifactReceiptIds,
+          artifactReceiptIds: pilot.artifactReceiptIds,
           summary: "Six real provider responses and six Markdown derivatives finalized for ADK-06.",
         },
       },
@@ -260,16 +296,16 @@ async function main(): Promise<void> {
       protocolVersion: "1.0",
       pilotId: plan.pilotId,
       approvalRef: plan.approvalRef,
-      runId: pilot.run.runId,
+      runId: pilot.runId,
       assignmentIds: plan.assignmentIds,
       providers: ["DEEPSEEK", "OPENAI"],
       receipts: receiptViews,
-      lineage,
+      lineage: pilot.lineage,
       execution: {
         workerId: config.workerId,
         leaseId: config.leaseId,
         executionAttemptId: completed.attempt.id,
-        artifactReceiptIds,
+        artifactReceiptIds: pilot.artifactReceiptIds,
       },
       accepted: true,
       boundaries: {
