@@ -1,13 +1,15 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import type { AiKnowledgeAssignmentV1, AiProductionPilotPlanV1 } from "@markorbit/contracts";
 import {
   AiKnowledgeAcquisitionError,
   type AiKnowledgeAcquisition,
   type AiKnowledgeProviderAdapter,
 } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
-import type { AiKnowledgeProvider } from "@markorbit/worker-runtime/ai-production-pilot";
+import type { AiProductionPilotPlanV1 } from "@markorbit/worker-runtime/ai-production-pilot";
 import type { LivePilotLineage, LivePilotReceiptView } from "./adk-live-pilot-acceptance";
+
+type AiKnowledgeAssignmentV1 = AiKnowledgeAcquisition["assignment"];
+type LivePilotProvider = "DEEPSEEK" | "OPENAI";
 
 export type AdkLivePilotDurableCellV1 = LivePilotLineage & {
   status: "DURABLE";
@@ -19,7 +21,7 @@ export type AdkLivePilotDurableCellV1 = LivePilotLineage & {
 
 export type AdkLivePilotInFlightCellV1 = {
   assignmentId: string;
-  provider: AiKnowledgeProvider;
+  provider: LivePilotProvider;
   startedAt: string;
 };
 
@@ -58,7 +60,7 @@ type ResumableExecutionInput = {
   checkpointPath: string;
   plan: AiProductionPilotPlanV1;
   assignments: ReadonlyMap<string, AiKnowledgeAssignmentV1>;
-  adapters: ReadonlyMap<AiKnowledgeProvider, AiKnowledgeProviderAdapter>;
+  adapters: ReadonlyMap<LivePilotProvider, AiKnowledgeProviderAdapter>;
   persistAcquisition: (acquisition: AiKnowledgeAcquisition) => Promise<AdkLivePilotCellPersistence>;
   verifyDurableCell: (cell: AdkLivePilotDurableCellV1) => void;
   now?: () => Date;
@@ -70,7 +72,7 @@ function record(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-function isProvider(value: unknown): value is AiKnowledgeProvider {
+function isProvider(value: unknown): value is LivePilotProvider {
   return value === "DEEPSEEK" || value === "OPENAI";
 }
 
@@ -82,7 +84,7 @@ function isNonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function cellKey(assignmentId: string, provider: AiKnowledgeProvider): string {
+function cellKey(assignmentId: string, provider: LivePilotProvider): string {
   return `${assignmentId}:${provider}`;
 }
 
@@ -211,6 +213,16 @@ function assertCheckpointMatchesPlan(
   }
 }
 
+function assertLiveProviderOrder(plan: AiProductionPilotPlanV1): void {
+  if (
+    plan.providers.length !== 2 ||
+    plan.providers[0] !== "DEEPSEEK" ||
+    plan.providers[1] !== "OPENAI"
+  ) {
+    throw new Error("ADK live pilot provider set must be exactly DEEPSEEK,OPENAI");
+  }
+}
+
 function saveCheckpoint(path: string, checkpoint: AdkLivePilotCheckpointV1): void {
   const temporary = `${path}.tmp`;
   writeFileSync(temporary, `${JSON.stringify(checkpoint, null, 2)}\n`, {
@@ -252,7 +264,8 @@ function loadOrCreateCheckpoint(
 function withoutInFlight(
   checkpoint: AdkLivePilotCheckpointV1,
 ): Omit<AdkLivePilotCheckpointV1, "inFlight"> {
-  const { inFlight: _inFlight, ...rest } = checkpoint;
+  const { inFlight, ...rest } = checkpoint;
+  void inFlight;
   return rest;
 }
 
@@ -304,6 +317,7 @@ function providerDeliveryUncertain(error: AiKnowledgeAcquisitionError): boolean 
 export async function executeResumableAdkLivePilot(
   input: ResumableExecutionInput,
 ): Promise<AdkLivePilotResumableResult> {
+  assertLiveProviderOrder(input.plan);
   const now = input.now ?? (() => new Date());
   let checkpoint = loadOrCreateCheckpoint(input.checkpointPath, input.plan, now);
 
@@ -321,12 +335,13 @@ export async function executeResumableAdkLivePilot(
   );
   for (const cell of checkpoint.cells) input.verifyDurableCell(cell);
 
+  const providers: readonly LivePilotProvider[] = ["DEEPSEEK", "OPENAI"];
   for (const assignmentId of input.plan.assignmentIds) {
     const assignment = input.assignments.get(assignmentId);
     if (!assignment) {
       throw new Error(`Frozen live pilot assignment ${assignmentId} was not supplied`);
     }
-    for (const provider of input.plan.providers) {
+    for (const provider of providers) {
       const key = cellKey(assignmentId, provider);
       if (durableByKey.has(key)) continue;
 
