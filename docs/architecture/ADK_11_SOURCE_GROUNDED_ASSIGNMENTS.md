@@ -52,7 +52,7 @@ Before rendering provider-ready text it fails closed unless every bound source:
 
 The renderer preserves SourcePack order and writes each source into a deterministic block carrying source id, artifact id, canonical URI, publisher, authority, role, capture time and digest. It freezes the prompt rule that factual legal claims must use `[source:SOURCE_ID]`, that external browsing/model memory cannot supplement the pack, and that source content is evidence rather than executable instruction.
 
-If the source pack cannot support a requested conclusion, the renderer now requires a machine-readable line beginning exactly with `SOURCE_PACK_INSUFFICIENT:` followed by a non-empty reason. This gives downstream validation a deterministic fail-closed alternative to uncited guessing.
+If the source pack cannot support a requested conclusion, the renderer requires a machine-readable line beginning exactly with `SOURCE_PACK_INSUFFICIENT:` followed by a non-empty reason. This gives downstream validation a deterministic fail-closed alternative to uncited guessing.
 
 `AiGroundedProviderInputV1` records the rendered prompt SHA-256 and a source receipt list, while retaining `legalTruthVerified = false` and `executionAuthorityGranted = false`.
 
@@ -92,7 +92,7 @@ Before accepting an output receipt it:
 - preserves the exact raw provider-output SHA-256 in the validation receipt;
 - reports citation count, ordered unique cited source IDs, unreferenced bound source IDs and insufficiency state.
 
-`AiGroundedOutputValidationReceiptV1` is now a shared `@markorbit/contracts` protocol object rather than a worker-local shape. The contract itself rejects malformed source identities, cited/unreferenced overlap, inconsistent grounded/insufficient status semantics, digest-shape drift and any authority escalation.
+`AiGroundedOutputValidationReceiptV1` is a shared `@markorbit/contracts` protocol object rather than a worker-local shape. The contract itself rejects malformed source identities, cited/unreferenced overlap, inconsistent grounded/insufficient status semantics, digest-shape drift and any authority escalation.
 
 This validator is intentionally structural rather than semantic. A valid receipt means the output obeyed machine-checkable source identity rules; it does **not** mean every factual statement is correctly supported. Therefore every receipt explicitly retains both `legalTruthVerified = false` and `semanticClaimCoverageVerified = false`.
 
@@ -115,15 +115,51 @@ Before persistence, the repository also compares `citedSourceIds + unreferencedS
 
 Evidence is immutable by `submissionId`. Exact replay is idempotent; any same-submission mutation is rejected. The table retains canonical submission + receipt + artifact-link JSON together with an evidence SHA-256 while normalizing assignment, binding, provider/model, artifact and digest fields for audit queries.
 
-This evidence linkage still does not claim that the prompt text itself has been persisted as a dedicated RawArtifact. The prompt identity is frozen by SHA-256 and linked to the immutable Assignment/Binding/SourcePack inputs, but a future execution envelope should also freeze the renderer protocol/version and, if required for long-term byte-for-byte replay, persist the rendered prompt body as governed evidence.
+## Prepared grounded execution envelope
+
+The sixth ADK-11 slice introduces `AiGroundedExecutionEnvelopeV1` and `prepareAiGroundedExecutionV1`.
+
+The envelope is intentionally a **PREPARED** object, not an execution authorization. It freezes:
+
+- Assignment identity;
+- Binding identity;
+- exact SourcePack identity and revision;
+- renderer version;
+- rendered prompt SHA-256;
+- the ordered source-receipt list and its SHA-256;
+- a deterministic `executionInputSha256` over the governed input identities;
+- preparation timestamp.
+
+Every envelope contract permanently fixes these boundaries to false:
+
+- `providerCallAuthorized`;
+- `providerCallExecuted`;
+- `externalBrowsingAllowed`;
+- `legalTruthVerified`;
+- `executionAuthorityGranted`.
+
+The worker runtime first invokes the existing strict source renderer, then derives the source-receipt and execution-input hashes from the successfully validated rendered input. Therefore no envelope can be created when a source is missing, has identity drift, uses an unsupported media type, exceeds configured bounds or fails the frozen SHA-256 check.
+
+`apps/worker` adds `preparePersistedAiGroundedExecutionV1`, which resolves a persisted Binding, its immutable Assignment and the exact SourcePack revision before preparing the envelope. This keeps persistence and worker-runtime dependency directions separate while still testing the real persisted composition.
+
+The operator-facing `adk:grounded:prepare` dry-run command reads:
+
+- `MARKORBIT_ADK_GROUNDED_DB_PATH`;
+- `MARKORBIT_ADK_GROUNDED_STORAGE_ROOT`;
+- `MARKORBIT_ADK_GROUNDED_BINDING_ID`;
+- `MARKORBIT_ADK_GROUNDED_OUTPUT_PATH`.
+
+It resolves the bound source artifacts from the existing local RawArtifact store, renders the exact provider input, and writes a private `0600` prepared-execution file using exclusive creation. The output includes both the PREPARED envelope and provider input for operator inspection, but the command has no provider adapter and does not read provider secrets.
+
+This slice freezes renderer/input identity but does not yet register the rendered prompt itself as a governed RawArtifact. The private dry-run file is an operator artifact, not the long-term canonical evidence boundary.
 
 ## Current boundary
 
-ADK-11 now establishes SourcePack/Binding contracts, deterministic source resolution/rendering, immutable SourcePack/Binding persistence, structural citation-output validation, and immutable linkage of validation receipts to existing submission/provider-output RawArtifact lineage. It still does **not**:
+ADK-11 now establishes SourcePack/Binding contracts, deterministic source resolution/rendering, immutable SourcePack/Binding persistence, structural citation-output validation, immutable validation-evidence linkage, and a provider-neutral PREPARED execution envelope that can be exercised against persisted Knowledge state without a paid model call. It still does **not**:
 
-- wire rendered input into DeepSeek, OpenAI or another paid provider adapter;
-- add web-search tools to provider adapters;
-- persist a dedicated rendered-prompt RawArtifact or renderer-version receipt;
+- authorize or execute DeepSeek, OpenAI or another provider call through the grounded runtime;
+- add external web-search tools to provider adapters;
+- persist the rendered prompt body as a dedicated governed RawArtifact;
 - semantically verify that each factual claim is supported by its cited source;
 - score source quality or provider quality;
 - verify legal truth;
@@ -131,4 +167,4 @@ ADK-11 now establishes SourcePack/Binding contracts, deterministic source resolu
 - activate candidates;
 - authorize protected actions or client filings.
 
-The next safe slice is a provider-neutral grounded execution envelope that resolves persisted Assignment + Binding + SourcePack, renders the exact prompt, freezes renderer/input identity, and can be exercised without performing a paid provider call. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.
+The next safe slice is to persist the PREPARED execution identity and rendered prompt body as governed evidence with restart/replay semantics, still without connecting a paid provider. Only after that boundary is proven should grounded execution be considered for ADK-07 queue integration. Real paid-provider execution remains gated by issue #405 and repository governance issue #429.

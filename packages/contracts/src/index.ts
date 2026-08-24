@@ -30,6 +30,7 @@ export * from "./ai-assignment-library-v1";
 export * from "./ai-production-pilot-v1";
 export * from "./ai-source-pack-v1";
 export * from "./ai-grounded-validation-v1";
+export * from "./ai-grounded-execution-v1";
 export { SOURCE_REGISTRY_VERSION } from "./source-registry-v1";
 export type {
   SourceKind as RegistrySourceKind,
