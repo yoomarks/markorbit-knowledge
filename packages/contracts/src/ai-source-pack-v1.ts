@@ -5,8 +5,7 @@ import {
 
 export const AI_SOURCE_PACK_PROTOCOL_VERSION = "1.0" as const;
 export const AI_SOURCE_PACK_OBJECT_TYPE = "AI_SOURCE_PACK" as const;
-export const AI_ASSIGNMENT_SOURCE_BINDING_OBJECT_TYPE =
-  "AI_ASSIGNMENT_SOURCE_BINDING" as const;
+export const AI_ASSIGNMENT_SOURCE_BINDING_OBJECT_TYPE = "AI_ASSIGNMENT_SOURCE_BINDING" as const;
 
 export const AI_SOURCE_AUTHORITIES = ["OFFICIAL_PRIMARY", "OFFICIAL_SECONDARY"] as const;
 export type AiSourceAuthority = (typeof AI_SOURCE_AUTHORITIES)[number];
@@ -104,9 +103,7 @@ function enumValue(values: readonly string[], value: unknown): value is string {
   return typeof value === "string" && values.includes(value);
 }
 
-export function isAiSourceSnapshotRefV1(
-  value: unknown,
-): value is AiSourceSnapshotRefV1 {
+export function isAiSourceSnapshotRefV1(value: unknown): value is AiSourceSnapshotRefV1 {
   const item = record(value);
   if (!item) return false;
   const expected = [

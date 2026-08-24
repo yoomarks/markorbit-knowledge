@@ -44,8 +44,7 @@ const sourcePack: AiSourcePackV1 = {
     {
       sourceId: "src_01ARZ3NDEKTSV4RRFFQ69G5FAV",
       artifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-      canonicalUri:
-        "https://www.uspto.gov/trademarks/maintain/keeping-your-registration-alive",
+      canonicalUri: "https://www.uspto.gov/trademarks/maintain/keeping-your-registration-alive",
       publisher: "USPTO",
       jurisdiction: "US",
       authority: "OFFICIAL_PRIMARY",
@@ -104,10 +103,7 @@ describe("AI source pack V1", () => {
     expect(
       isAiSourcePackV1({
         ...sourcePack,
-        sources: [
-          sourcePack.sources[0],
-          { ...sourcePack.sources[1], jurisdiction: "CA" },
-        ],
+        sources: [sourcePack.sources[0], { ...sourcePack.sources[1], jurisdiction: "CA" }],
       }),
     ).toBe(false);
   });
@@ -116,23 +112,17 @@ describe("AI source pack V1", () => {
     expect(
       isAiSourcePackV1({
         ...sourcePack,
-        sources: [
-          { ...sourcePack.sources[0], contentSha256: "not-a-sha" },
-        ],
+        sources: [{ ...sourcePack.sources[0], contentSha256: "not-a-sha" }],
       }),
     ).toBe(false);
-    expect(isAiSourcePackV1({ ...sourcePack, legalTruthVerified: true })).toBe(
-      false,
-    );
+    expect(isAiSourcePackV1({ ...sourcePack, legalTruthVerified: true })).toBe(false);
   });
 });
 
 describe("AI assignment source binding V1", () => {
   it("locks strict citation and no-external-source boundaries", () => {
     expect(isAiAssignmentSourceBindingV1(binding)).toBe(true);
-    expect(
-      isAiAssignmentSourceBindingV1({ ...binding, allowExternalSources: true }),
-    ).toBe(false);
+    expect(isAiAssignmentSourceBindingV1({ ...binding, allowExternalSources: true })).toBe(false);
     expect(
       isAiAssignmentSourceBindingV1({
         ...binding,
