@@ -1,0 +1,69 @@
+name: ADK-11 Grounded Envelope Format
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor == github.repository_owner
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply exact Prettier output
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec prettier --write \
+            apps/worker/package.json \
+            apps/worker/src/prepare-adk-grounded-execution.test.ts \
+            apps/worker/src/prepare-adk-grounded-execution.ts \
+            docs/architecture/ADK_11_SOURCE_GROUNDED_ASSIGNMENTS.md \
+            packages/contracts/src/ai-grounded-execution-v1.test.ts \
+            packages/contracts/src/ai-grounded-execution-v1.ts \
+            packages/contracts/src/index.ts \
+            packages/worker-runtime/package.json \
+            packages/worker-runtime/src/ai-grounded-execution-preparer.test.ts \
+            packages/worker-runtime/src/ai-grounded-execution-preparer.ts
+          if git diff --quiet -- \
+            apps/worker/package.json \
+            apps/worker/src/prepare-adk-grounded-execution.test.ts \
+            apps/worker/src/prepare-adk-grounded-execution.ts \
+            docs/architecture/ADK_11_SOURCE_GROUNDED_ASSIGNMENTS.md \
+            packages/contracts/src/ai-grounded-execution-v1.test.ts \
+            packages/contracts/src/ai-grounded-execution-v1.ts \
+            packages/contracts/src/index.ts \
+            packages/worker-runtime/package.json \
+            packages/worker-runtime/src/ai-grounded-execution-preparer.test.ts \
+            packages/worker-runtime/src/ai-grounded-execution-preparer.ts; then
+            echo "ADK-11 grounded envelope files already match Prettier."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/worker/package.json \
+            apps/worker/src/prepare-adk-grounded-execution.test.ts \
+            apps/worker/src/prepare-adk-grounded-execution.ts \
+            docs/architecture/ADK_11_SOURCE_GROUNDED_ASSIGNMENTS.md \
+            packages/contracts/src/ai-grounded-execution-v1.test.ts \
+            packages/contracts/src/ai-grounded-execution-v1.ts \
+            packages/contracts/src/index.ts \
+            packages/worker-runtime/package.json \
+            packages/worker-runtime/src/ai-grounded-execution-preparer.test.ts \
+            packages/worker-runtime/src/ai-grounded-execution-preparer.ts
+          git commit -m "style: apply exact Prettier output for ADK-11 grounded envelope"
+          git push origin HEAD:${{ github.head_ref }}
