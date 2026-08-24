@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
+  AI_GROUNDED_OUTPUT_VALIDATION_RECEIPT_OBJECT_TYPE,
+  AI_GROUNDED_VALIDATION_PROTOCOL_VERSION,
+  isAiGroundedOutputValidationReceiptV1,
+} from "@markorbit/contracts";
+import {
   AI_SOURCE_PACK_INSUFFICIENT_PREFIX,
   AiGroundedOutputValidationError,
   validateAiGroundedProviderOutputV1,
@@ -71,6 +76,9 @@ describe("ADK-11 grounded-output validator", () => {
     const second = validateAiGroundedProviderOutputV1({ providerInput, output });
 
     expect(second).toEqual(first);
+    expect(first.protocolVersion).toBe(AI_GROUNDED_VALIDATION_PROTOCOL_VERSION);
+    expect(first.objectType).toBe(AI_GROUNDED_OUTPUT_VALIDATION_RECEIPT_OBJECT_TYPE);
+    expect(isAiGroundedOutputValidationReceiptV1(first)).toBe(true);
     expect(first.status).toBe("VALID_GROUNDED");
     expect(first.citationCount).toBe(3);
     expect(first.citedSourceIds).toEqual([SOURCE_ONE, SOURCE_TWO]);
@@ -84,6 +92,7 @@ describe("ADK-11 grounded-output validator", () => {
     const output = `${AI_SOURCE_PACK_INSUFFICIENT_PREFIX} the bound sources do not state the requested exception.`;
     const receipt = validateAiGroundedProviderOutputV1({ providerInput, output });
 
+    expect(isAiGroundedOutputValidationReceiptV1(receipt)).toBe(true);
     expect(receipt.status).toBe("VALID_INSUFFICIENT");
     expect(receipt.citationCount).toBe(0);
     expect(receipt.citedSourceIds).toEqual([]);
