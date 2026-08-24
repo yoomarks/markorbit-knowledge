@@ -7,6 +7,7 @@
     "start": "tsx src/main.ts",
     "adk:library:bootstrap": "tsx src/run-adk-assignment-library-bootstrap.ts",
     "adk:candidate:promote": "tsx src/run-adk-candidate-promotion.ts",
+    "adk:pilot:prepare": "tsx src/prepare-adk-live-pilot-runtime.ts",
     "adk:pilot:live": "tsx src/run-adk-live-pilot.ts",
     "adk:queue:enqueue": "tsx src/run-adk-queue-enqueue.ts",
     "adk:queue:recover": "tsx src/run-adk-queue-recover.ts",
