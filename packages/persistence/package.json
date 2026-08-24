@@ -10,6 +10,7 @@
     "./ai-grounded-validation-evidence": "./src/ai-grounded-validation-evidence.ts",
     "./ai-grounded-prepared-prompt-ingestion": "./src/ai-grounded-prepared-execution-ingestion.ts",
     "./ai-grounded-prepared-execution-evidence": "./src/ai-grounded-prepared-execution-evidence.ts",
+    "./ai-grounded-provider-authorizations": "./src/ai-grounded-provider-authorization-registry.ts",
     "./ai-assignment-graphs": "./src/ai-assignment-graph-registry.ts",
     "./ai-assignment-candidates": "./src/ai-assignment-candidate-registry.ts",
     "./ai-assignment-candidate-promotions": "./src/ai-assignment-candidate-promotion.ts",
