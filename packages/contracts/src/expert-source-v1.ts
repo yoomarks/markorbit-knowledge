@@ -76,6 +76,14 @@ export type ExpertSourceRecordV1 = {
 };
 
 const ID = /^[a-z][a-z0-9_:-]{2,255}$/u;
+const SENT_OR_LATER = new Set<ExpertQuestionState>([
+  "SENT",
+  "WAITING_RESPONSE",
+  "RESPONSE_RECEIVED",
+  "NEEDS_FOLLOW_UP",
+  "CAPTURED",
+  "CLOSED",
+]);
 const FORBIDDEN_SEMANTIC_KEYS = new Set([
   "expertScore",
   "authorityScore",
@@ -165,6 +173,14 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
   const accessValid = EXPERT_ACCESS_CLASSIFICATIONS.includes(
     item.accessClassification as ExpertAccessClassification,
   );
+  if (!stateValid || !accessValid) return false;
+
+  const sentOrLater = SENT_OR_LATER.has(item.state as ExpertQuestionState);
+  const lifecycleValid = sentOrLater
+    ? nonEmpty(item.communicationSendRequestRef) && timestamp(item.sentAt)
+    : item.sentAt === undefined;
+  const closureValid = item.state === "CLOSED" ? timestamp(item.closedAt) : item.closedAt === undefined;
+
   return (
     item.protocolVersion === EXPERT_SOURCE_PROTOCOL_VERSION &&
     item.objectType === EXPERT_QUESTION_TASK_OBJECT_TYPE &&
@@ -177,13 +193,13 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
     nonEmpty(item.requestedBy) &&
     optionalNonEmpty(item.communicationSendRequestRef) &&
     optionalNonEmpty(item.communicationThreadRef) &&
-    stateValid &&
     timestamp(item.createdAt) &&
     optionalTimestamp(item.sentAt) &&
     optionalTimestamp(item.closedAt) &&
     refs(item.relatedSourceRefs) &&
     refs(item.relatedCaseRefs) &&
-    accessValid
+    lifecycleValid &&
+    closureValid
   );
 }
 
