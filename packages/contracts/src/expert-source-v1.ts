@@ -116,6 +116,10 @@ function refs(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => nonEmpty(item));
 }
 
+function uniqueRefs(value: unknown): value is string[] {
+  return refs(value) && new Set(value).size === value.length;
+}
+
 function optionalNonEmpty(value: unknown): value is string | undefined {
   return value === undefined || nonEmpty(value);
 }
@@ -142,7 +146,7 @@ export function isExpertCommunicationCorrelationV1(
   }
   return (
     nonEmpty(item.communicationThreadRef) &&
-    refs(item.messageRefs) &&
+    uniqueRefs(item.messageRefs) &&
     (item.messageRefs as string[]).length > 0
   );
 }
@@ -258,7 +262,7 @@ export function isExpertSourceRecordV1(value: unknown): value is ExpertSourceRec
     nonEmpty(item.jurisdiction) &&
     nonEmpty(item.topic) &&
     isExpertCommunicationCorrelationV1(item.communication) &&
-    refs(item.rawAnswerArtifactRefs) &&
+    uniqueRefs(item.rawAnswerArtifactRefs) &&
     (item.rawAnswerArtifactRefs as string[]).length > 0 &&
     optionalNonEmpty(item.normalizedDerivativeRef) &&
     refs(item.attachmentRefs) &&

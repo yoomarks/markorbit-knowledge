@@ -107,6 +107,31 @@ describe("Expert source V1 contracts", () => {
     );
   });
 
+  it("rejects duplicate evidence identity references", () => {
+    const duplicateMessage = "comm:message:inbound-001";
+    expect(
+      isExpertCommunicationCorrelationV1({
+        communicationThreadRef: "comm:thread:001",
+        messageRefs: [duplicateMessage, duplicateMessage],
+      }),
+    ).toBe(false);
+    expect(
+      isExpertSourceRecordV1({
+        ...record,
+        communication: {
+          ...record.communication,
+          messageRefs: [...record.communication.messageRefs, duplicateMessage],
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isExpertSourceRecordV1({
+        ...record,
+        rawAnswerArtifactRefs: ["raw:sha256:answer-001", "raw:sha256:answer-001"],
+      }),
+    ).toBe(false);
+  });
+
   it("rejects Brain-style scoring or truth fields", () => {
     expect(isExpertQuestionTaskV1({ ...task, expertScore: 0.98 })).toBe(false);
     expect(isExpertSourceRecordV1({ ...record, truthScore: 1 })).toBe(false);
