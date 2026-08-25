@@ -358,7 +358,7 @@ export async function processNextAdkKnowledgeJob(
 
   let acquisition: AiKnowledgeAcquisition;
   try {
-    acquisition = await adapter.acquire({ assignment });
+    acquisition = await adapter.acquire({ assignment, executionKey: running.executionKey });
   } catch (error) {
     if (
       error instanceof AiKnowledgeAcquisitionError &&

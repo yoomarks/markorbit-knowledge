@@ -42,6 +42,7 @@ export type AiModelTransport = (
 
 export type AiKnowledgeProviderRequest = {
   assignment: AiKnowledgeAssignmentV1;
+  executionKey?: string;
   model?: string;
   timeoutMs?: number;
 };

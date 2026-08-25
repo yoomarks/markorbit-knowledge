@@ -137,7 +137,7 @@ describe("ManagedAiExecutionHttpClient", () => {
     expect(calls).toBe(1);
   });
 
-  it("keeps reconciliation-required Core responses non-retryable", async () => {
+  it("maps reconciliation-required Core responses into the worker recovery boundary", async () => {
     const client = new ManagedAiExecutionHttpClient({
       baseUrl: "http://capability-engine.internal:4105",
       internalServiceSecret: secret,
@@ -156,8 +156,34 @@ describe("ManagedAiExecutionHttpClient", () => {
     });
 
     await expect(client.execute(input())).rejects.toMatchObject({
-      code: "AI_MANAGED_AI_HTTP_MANAGED_AI_EXECUTION_RECONCILIATION_REQUIRED",
+      code: "AI_PROVIDER_NETWORK_ERROR",
       retryable: false,
+      message: expect.stringContaining("MANAGED_AI_EXECUTION_RECONCILIATION_REQUIRED"),
+    });
+  });
+
+  it("maps non-retryable claim-store uncertainty into the worker recovery boundary", async () => {
+    const client = new ManagedAiExecutionHttpClient({
+      baseUrl: "http://capability-engine.internal:4105",
+      internalServiceSecret: secret,
+      idempotencyKey: "knowledge-adk:claim-store",
+      correlationId: "knowledge-adk:claim-store",
+      transport: () =>
+        Promise.resolve({
+          status: 503,
+          body: bytes({
+            code: "MANAGED_AI_CLAIM_STORE_UNAVAILABLE",
+            message: "Outcome persistence is uncertain",
+            correlationId: "knowledge-adk:claim-store",
+            retryable: false,
+          }),
+        }),
+    });
+
+    await expect(client.execute(input())).rejects.toMatchObject({
+      code: "AI_PROVIDER_NETWORK_ERROR",
+      retryable: false,
+      message: expect.stringContaining("MANAGED_AI_CLAIM_STORE_UNAVAILABLE"),
     });
   });
 
