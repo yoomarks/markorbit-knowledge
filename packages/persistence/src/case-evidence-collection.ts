@@ -6,7 +6,10 @@ import {
   type CaseEvidenceCollectionV1,
   type ExactCaseSourcePayloadV1,
 } from "@markorbit/contracts";
-import { ensureCaseCandidateIntakeRegistry, SqliteCaseCandidateIntakeRepository } from "./case-candidate-intake";
+import {
+  ensureCaseCandidateIntakeRegistry,
+  SqliteCaseCandidateIntakeRepository,
+} from "./case-candidate-intake";
 import { RegistryConflictError, RegistryValidationError } from "./index";
 
 const INITIALIZED_DATABASES = new WeakSet<DatabaseSync>();
@@ -162,7 +165,9 @@ function evidenceIdentity(value: CaseEvidenceCollectionV1): string {
         sha256: item.payload.sha256,
         sizeBytes: item.payload.sizeBytes,
       })),
-      omissions: [...value.omissions].sort((left, right) => left.surface.localeCompare(right.surface)),
+      omissions: [...value.omissions].sort((left, right) =>
+        left.surface.localeCompare(right.surface),
+      ),
       provenance: value.provenance,
     }),
   );
@@ -200,8 +205,7 @@ export class SqliteCaseEvidenceCollectionRepository {
             WHERE collection_id = ?`,
         )
         .get(value.collectionId) as
-        | { evidence_identity_sha256: string; document_json: string }
-        | undefined;
+        { evidence_identity_sha256: string; document_json: string } | undefined;
       if (byId) {
         if (byId.evidence_identity_sha256 !== identitySha256) {
           throw new RegistryConflictError(
@@ -222,7 +226,10 @@ export class SqliteCaseEvidenceCollectionRepository {
         )
         .get(value.candidateId, identitySha256) as { document_json: string } | undefined;
       if (byEvidence) {
-        const result = { collection: parseStoredCollection(byEvidence.document_json), replayed: true };
+        const result = {
+          collection: parseStoredCollection(byEvidence.document_json),
+          replayed: true,
+        };
         this.database.exec("COMMIT;");
         return result;
       }

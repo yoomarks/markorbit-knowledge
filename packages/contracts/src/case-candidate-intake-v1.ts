@@ -1,11 +1,7 @@
 export const CASE_CANDIDATE_INTAKE_PROTOCOL_VERSION = "1.0" as const;
 export const CASE_CANDIDATE_INTAKE_OBJECT_TYPE = "CASE_CANDIDATE_INTAKE" as const;
 
-export const CASE_CANDIDATE_COLLECTION_STATES = [
-  "PENDING",
-  "WAITING_SOURCE",
-  "COLLECTED",
-] as const;
+export const CASE_CANDIDATE_COLLECTION_STATES = ["PENDING", "WAITING_SOURCE", "COLLECTED"] as const;
 export type CaseCandidateCollectionState = (typeof CASE_CANDIDATE_COLLECTION_STATES)[number];
 
 export type CaseCandidateSourceUnavailableV1 = {

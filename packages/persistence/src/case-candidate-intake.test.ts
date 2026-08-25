@@ -228,9 +228,12 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
     const repository = new SqliteCaseCandidateIntakeRepository(database);
     repository.acceptCandidate(candidate(), "2026-08-25T03:21:00.000Z");
     expect(
-      repository.recordCollectionComplete("case-candidate_01", "case-evidence_migrated").collectionState,
+      repository.recordCollectionComplete("case-candidate_01", "case-evidence_migrated")
+        .collectionState,
     ).toBe("COLLECTED");
-    const columns = database.prepare("PRAGMA table_info(case_candidate_collection_tickets)").all() as {
+    const columns = database
+      .prepare("PRAGMA table_info(case_candidate_collection_tickets)")
+      .all() as {
       name: string;
     }[];
     expect(columns.map((row) => row.name)).toEqual(

@@ -10,7 +10,10 @@ import {
 import { getRegistryDatabase } from "./source-registry";
 
 export class CaseEvidenceCollectionServiceError extends Error {
-  constructor(readonly code: string, message: string) {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
     super(message);
     this.name = "CaseEvidenceCollectionServiceError";
   }

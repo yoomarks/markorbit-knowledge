@@ -178,9 +178,11 @@ describe("CaseEvidenceCollectionService", () => {
       collectionState: "WAITING_SOURCE",
       sourceUnavailable: { code: "MARKREG_TEMPORARY_FAILURE", retryable: true },
     });
-    expect(new SqliteCaseEvidenceCollectionRepository(database).listCollectionsForCandidate(
-      "case-candidate_01",
-    )).toEqual([]);
+    expect(
+      new SqliteCaseEvidenceCollectionRepository(database).listCollectionsForCandidate(
+        "case-candidate_01",
+      ),
+    ).toEqual([]);
     expect(candidates.getCandidate("case-candidate_01")).toEqual(candidate());
   });
 

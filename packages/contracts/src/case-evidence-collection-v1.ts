@@ -113,9 +113,12 @@ function documentPackage(value: unknown): value is CaseDocumentPackageEvidenceV1
   if (!item) return false;
   return (
     Object.keys(item).every((key) =>
-      ["documentPackageId", "sourceFormalMatterVersion", "sourceFormalMatterHash", "payload"].includes(
-        key,
-      ),
+      [
+        "documentPackageId",
+        "sourceFormalMatterVersion",
+        "sourceFormalMatterHash",
+        "payload",
+      ].includes(key),
     ) &&
     nonEmpty(item.documentPackageId) &&
     typeof item.sourceFormalMatterVersion === "number" &&
@@ -186,8 +189,8 @@ export function isCaseEvidenceCollectionV1(value: unknown): value is CaseEvidenc
     item.documentPackages.every(documentPackage) &&
     Array.isArray(item.omissions) &&
     item.omissions.every(omission) &&
-    new Set(item.omissions.map((entry) => (entry as CaseEvidenceSurfaceOmissionV1).surface)).size ===
-      item.omissions.length &&
+    new Set(item.omissions.map((entry) => (entry as CaseEvidenceSurfaceOmissionV1).surface))
+      .size === item.omissions.length &&
     timestamp(item.collectedAt) &&
     Object.keys(provenance).every((key) =>
       [

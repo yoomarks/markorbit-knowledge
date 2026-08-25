@@ -9,7 +9,10 @@ import {
   type ExactCaseSourcePayloadV1,
 } from "./case-evidence-collection-v1";
 
-function exact(value: unknown, sourceRef = "markreg:/v1/formal-matters/formal-matter_x"): ExactCaseSourcePayloadV1 {
+function exact(
+  value: unknown,
+  sourceRef = "markreg:/v1/formal-matters/formal-matter_x",
+): ExactCaseSourcePayloadV1 {
   const bytes = Buffer.from(JSON.stringify(value), "utf8");
   return {
     sourceRef,

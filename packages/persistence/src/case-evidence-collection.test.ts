@@ -122,9 +122,7 @@ describe("SqliteCaseEvidenceCollectionRepository", () => {
 
     const restarted = new SqliteCaseEvidenceCollectionRepository(fixture.database);
     expect(restarted.getCollection("case-evidence_01")).toEqual(saved.collection);
-    expect(restarted.listCollectionsForCandidate("case-candidate_01")).toEqual([
-      saved.collection,
-    ]);
+    expect(restarted.listCollectionsForCandidate("case-candidate_01")).toEqual([saved.collection]);
   });
 
   it("deduplicates the same evidence identity even when replay metadata changes", () => {
@@ -145,10 +143,9 @@ describe("SqliteCaseEvidenceCollectionRepository", () => {
   it("fails closed when a collection ID is reused for different evidence", () => {
     const fixture = repository();
     fixture.evidence.saveCollection(collection());
-    const changedFormal = exactPayload(
-      "markreg:/v1/formal-matters/formal-matter_12345678",
-      { formalMatter: { changed: true } },
-    );
+    const changedFormal = exactPayload("markreg:/v1/formal-matters/formal-matter_12345678", {
+      formalMatter: { changed: true },
+    });
 
     expect(() =>
       fixture.evidence.saveCollection(collection({ formalMatter: changedFormal })),

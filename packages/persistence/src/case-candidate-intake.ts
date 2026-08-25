@@ -70,9 +70,11 @@ export function ensureCaseCandidateIntakeRegistry(database: DatabaseSync): void 
   `);
 
   const columns = new Set(
-    (database.prepare("PRAGMA table_info(case_candidate_collection_tickets)").all() as {
-      name: string;
-    }[]).map((row) => row.name),
+    (
+      database.prepare("PRAGMA table_info(case_candidate_collection_tickets)").all() as {
+        name: string;
+      }[]
+    ).map((row) => row.name),
   );
   if (!columns.has("collection_ref")) {
     database.exec("ALTER TABLE case_candidate_collection_tickets ADD COLUMN collection_ref TEXT;");

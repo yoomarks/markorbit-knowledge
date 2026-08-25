@@ -56,7 +56,9 @@ export type MarkRegCaseSourceTransport = (
 ) => Promise<MarkRegCaseSourceTransportResponse>;
 
 export interface CaseEvidenceCollectionSink {
-  saveCollection(value: CaseEvidenceCollectionV1):
+  saveCollection(
+    value: CaseEvidenceCollectionV1,
+  ):
     | { collection: CaseEvidenceCollectionV1; replayed: boolean }
     | Promise<{ collection: CaseEvidenceCollectionV1; replayed: boolean }>;
 }
@@ -233,7 +235,11 @@ function baseUrl(value: string): string {
       false,
     );
   }
-  if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || parsed.username || parsed.password) {
+  if (
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+    parsed.username ||
+    parsed.password
+  ) {
     throw new CaseEvidenceCollectionError(
       "MARKREG_SOURCE_ACCESS_INVALID",
       "Resolved MarkReg base URL must be an HTTP(S) service URL without embedded credentials",
@@ -325,10 +331,7 @@ function optionalDisposition(
   );
 }
 
-function verifyFormalMatter(
-  response: Record<string, unknown>,
-  candidate: CaseCandidateV1,
-): void {
+function verifyFormalMatter(response: Record<string, unknown>, candidate: CaseCandidateV1): void {
   const matter = object(response.formalMatter);
   if (
     !matter ||
@@ -345,11 +348,7 @@ function verifyFormalMatter(
   }
 }
 
-function verifyLifecycleReference(
-  value: unknown,
-  candidate: CaseCandidateV1,
-  label: string,
-): void {
+function verifyLifecycleReference(value: unknown, candidate: CaseCandidateV1, label: string): void {
   const item = object(value);
   if (!item) return;
   const formalMatter = object(item.formalMatter);
@@ -368,10 +367,7 @@ function verifyLifecycleReference(
   }
 }
 
-function verifyLifecycle(
-  response: Record<string, unknown>,
-  candidate: CaseCandidateV1,
-): void {
+function verifyLifecycle(response: Record<string, unknown>, candidate: CaseCandidateV1): void {
   if (!("currentView" in response) || !Array.isArray(response.events)) {
     throw new CaseEvidenceCollectionError(
       "MARKREG_RESPONSE_INVALID",
@@ -408,7 +404,9 @@ function matchingDocumentPackages(
         item.sourceFormalMatterHash === candidate.sourceSnapshotSha256 &&
         nonEmpty(item.documentPackageId),
     )
-    .sort((left, right) => String(left.documentPackageId).localeCompare(String(right.documentPackageId)));
+    .sort((left, right) =>
+      String(left.documentPackageId).localeCompare(String(right.documentPackageId)),
+    );
 }
 
 function verifyDocumentPackage(

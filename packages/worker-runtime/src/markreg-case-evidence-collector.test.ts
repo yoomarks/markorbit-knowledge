@@ -160,7 +160,12 @@ class RecordingEvidenceSink implements CaseEvidenceCollectionSink {
 }
 
 class RecordingStateSink implements CaseCandidateCollectionStateSink {
-  readonly unavailable: { candidateId: string; code: string; message: string; observedAt?: string }[] = [];
+  readonly unavailable: {
+    candidateId: string;
+    code: string;
+    message: string;
+    observedAt?: string;
+  }[] = [];
   readonly completed: { candidateId: string; collectionRef: string; collectedAt?: string }[] = [];
 
   recordSourceUnavailable(
