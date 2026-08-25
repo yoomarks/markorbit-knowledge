@@ -39,9 +39,7 @@ export function managedAiKnowledgeHttpExecutionContext(
       false,
     );
   }
-  const identity = sha256(
-    ["markorbit-knowledge-managed-ai-http-v1", executionKey].join("\u001f"),
-  );
+  const identity = sha256(["markorbit-knowledge-managed-ai-http-v1", executionKey].join("\u001f"));
   return {
     idempotencyKey: `knowledge-adk:${identity}`,
     correlationId: `knowledge-adk:${identity.slice(0, 32)}`,
