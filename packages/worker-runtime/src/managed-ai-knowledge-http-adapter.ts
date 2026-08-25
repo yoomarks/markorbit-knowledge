@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
-import type {
-  AiKnowledgeAcquisition,
-  AiKnowledgeProviderAdapter,
-  AiKnowledgeProviderRequest,
+import {
+  AiKnowledgeAcquisitionError,
+  type AiKnowledgeAcquisition,
+  type AiKnowledgeProviderAdapter,
+  type AiKnowledgeProviderRequest,
 } from "./ai-distilled-knowledge-acquirer";
 import { ManagedAiDeepSeekKnowledgeAdapter } from "./managed-ai-knowledge-adapter";
 import {
@@ -30,17 +31,20 @@ function sha256(value: string): string {
 export function managedAiKnowledgeHttpExecutionContext(
   request: Readonly<AiKnowledgeProviderRequest>,
 ): ManagedAiKnowledgeHttpExecutionContext {
-  const assignment = request.assignment;
-  const promptSha256 = sha256(assignment.prompt);
-  const executionSeed = [
-    assignment.assignmentId,
-    assignment.instructionSetId,
-    String(assignment.instructionSetRevision),
-    promptSha256,
-  ].join("\n");
+  const executionKey = request.executionKey?.trim();
+  if (!executionKey || executionKey.length > 512) {
+    throw new AiKnowledgeAcquisitionError(
+      "AI_MANAGED_AI_EXECUTION_IDENTITY_REQUIRED",
+      "Managed AI HTTP acquisition requires a durable executionKey containing 1 to 512 characters",
+      false,
+    );
+  }
+  const identity = sha256(
+    ["markorbit-knowledge-managed-ai-http-v1", executionKey].join("\u001f"),
+  );
   return {
-    idempotencyKey: `knowledge-adk:${sha256(executionSeed)}`,
-    correlationId: `knowledge-adk:${sha256(assignment.assignmentId).slice(0, 32)}`,
+    idempotencyKey: `knowledge-adk:${identity}`,
+    correlationId: `knowledge-adk:${identity.slice(0, 32)}`,
   };
 }
 
