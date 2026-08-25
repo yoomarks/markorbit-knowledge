@@ -186,7 +186,11 @@ export function managedAiHttpExecutionContextV1(
 function parseRouteError(value: unknown): ManagedAiRouteErrorEnvelope | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
-  if (!nonEmpty(record.code) || !nonEmpty(record.message) || typeof record.retryable !== "boolean") {
+  if (
+    !nonEmpty(record.code) ||
+    !nonEmpty(record.message) ||
+    typeof record.retryable !== "boolean"
+  ) {
     return null;
   }
   return {
@@ -211,7 +215,10 @@ function isReconciliationRequired(error: ManagedAiRouteErrorEnvelope): boolean {
   );
 }
 
-async function readBoundedResponse(response: Response, maxResponseBytes: number): Promise<Uint8Array> {
+async function readBoundedResponse(
+  response: Response,
+  maxResponseBytes: number,
+): Promise<Uint8Array> {
   const reader = response.body?.getReader();
   if (!reader) return new Uint8Array();
   const chunks: Uint8Array[] = [];
@@ -362,7 +369,12 @@ export class HttpManagedAiExecutionClient {
       );
     }
 
-    if (parsed === undefined || parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    if (
+      parsed === undefined ||
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
       throw new AiKnowledgeAcquisitionError(
         "AI_MANAGED_AI_HTTP_RESPONSE_INVALID",
         "Managed AI Capability Engine returned a non-object or invalid JSON success response",

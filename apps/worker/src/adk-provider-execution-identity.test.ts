@@ -27,9 +27,8 @@ describe("ADK provider execution identity", () => {
     const adapter: AiKnowledgeProviderAdapter = {
       provider: "OPENAI",
       acquire: async (request: AiKnowledgeProviderRequest) => {
-        capturedExecutionKey = (
-          request as AiKnowledgeProviderRequest & { executionKey?: string }
-        ).executionKey;
+        capturedExecutionKey = (request as AiKnowledgeProviderRequest & { executionKey?: string })
+          .executionKey;
         return {
           assignment,
           submission: { provider: "OPENAI" },
