@@ -3,10 +3,7 @@ import {
   CaseEvidenceCollectionError,
   type AuthorizedMarkRegCaseSourceResolver,
 } from "@markorbit/worker-runtime/markreg-case-evidence-collector";
-import {
-  authorizeCaseProducerRequest,
-  CASE_PRODUCER_PRINCIPAL_HEADER,
-} from "./case-producer-auth";
+import { authorizeCaseProducerRequest, CASE_PRODUCER_PRINCIPAL_HEADER } from "./case-producer-auth";
 
 export type RequestBoundMarkRegCaseSourceResolverOptions = {
   baseUrl?: string | null;

@@ -129,7 +129,9 @@ describe("request-bound MarkReg evidence collection", () => {
       });
     }
 
-    expect(new SqliteCaseCandidateIntakeRepository(database).getIntake(candidate().candidateId)).toMatchObject({
+    expect(
+      new SqliteCaseCandidateIntakeRepository(database).getIntake(candidate().candidateId),
+    ).toMatchObject({
       collectionState: "COLLECTED",
       collectionRef: collection.collectionId,
     });

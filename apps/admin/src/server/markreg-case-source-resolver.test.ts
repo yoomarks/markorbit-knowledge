@@ -124,10 +124,13 @@ describe("request-bound MarkReg Case source resolver", () => {
   });
 
   it("never substitutes a configured credential for a caller that failed internal auth", async () => {
-    const resolver = createRequestBoundMarkRegCaseSourceResolver(request(encodedPrincipal(), "wrong"), {
-      baseUrl: "https://markreg.internal",
-      internalServiceSecret: secret,
-    });
+    const resolver = createRequestBoundMarkRegCaseSourceResolver(
+      request(encodedPrincipal(), "wrong"),
+      {
+        baseUrl: "https://markreg.internal",
+        internalServiceSecret: secret,
+      },
+    );
 
     await expect(resolver.resolve(candidate())).rejects.toMatchObject({
       code: "INTERNAL_SERVICE_UNAUTHORIZED",
