@@ -136,6 +136,13 @@ function parseErrorBody(value: unknown): ManagedAiHttpErrorBody | null {
   };
 }
 
+function requiresReconciliation(error: ManagedAiHttpErrorBody): boolean {
+  return (
+    error.code.includes("RECONCILIATION_REQUIRED") ||
+    (error.code === "MANAGED_AI_CLAIM_STORE_UNAVAILABLE" && error.retryable === false)
+  );
+}
+
 export const fetchManagedAiHttpTransport: ManagedAiHttpTransport = async (request) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), request.timeoutMs);
@@ -258,6 +265,13 @@ export class ManagedAiExecutionHttpClient implements ManagedAiExecutionClient {
         throw new ManagedAiExecutionHttpClientError(
           "AI_MANAGED_AI_HTTP_ERROR_RESPONSE_INVALID",
           `Managed AI returned HTTP ${response.status} with an invalid governed error body`,
+          false,
+        );
+      }
+      if (requiresReconciliation(error)) {
+        throw new ManagedAiExecutionHttpClientError(
+          "AI_PROVIDER_NETWORK_ERROR",
+          `${error.code}: ${error.message}`,
           false,
         );
       }
