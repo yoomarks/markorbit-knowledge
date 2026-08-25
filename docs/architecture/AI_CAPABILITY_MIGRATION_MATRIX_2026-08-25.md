@@ -21,37 +21,50 @@ The migration must therefore extract reusable invocation capability without movi
 
 ## Frozen migration matrix
 
-| Current concern | Current location | Classification | Target owner | Migration rule |
-| --- | --- | --- | --- | --- |
-| HTTP request execution | Knowledge worker runtime | shared transport | `@markorbit/ai` | Move behind generic invocation/provider implementation |
-| abort/timeout control | Knowledge worker runtime | shared transport | `@markorbit/ai` | One bounded timeout model; consumer supplies policy value |
-| maximum provider response bytes | Knowledge worker runtime | shared transport | `@markorbit/ai` | Generic response-size protection |
-| credential lookup/binding | Knowledge adapters | shared transport | `@markorbit/ai` secret boundary | Consumer passes binding/reference/config, never persisted secret |
-| canonical provider endpoint | Knowledge adapters | shared provider transport | `@markorbit/ai` provider implementation | Preserve fail-closed endpoint policy |
-| provider request body mapping | Knowledge adapters | shared provider invocation | `@markorbit/ai` provider implementation | Generic contract must support current proven input without Knowledge types |
-| provider response parsing | Knowledge adapters | shared provider invocation | `@markorbit/ai` provider implementation | Preserve exact raw response in addition to normalized fields |
-| provider request ID | Knowledge adapters | shared invocation metadata | `@markorbit/ai` | Optional field; never invent when absent |
-| model identity | Knowledge adapters | shared invocation metadata | `@markorbit/ai` | Return actual provider/model identity |
-| HTTP 429/5xx retry classification | Knowledge adapters | shared delivery semantics | `@markorbit/ai` | Explicit retryable outcome |
-| timeout/network uncertainty | Knowledge adapters | shared delivery semantics | `@markorbit/ai` | Must distinguish ambiguous delivery; do not auto-replay paid calls |
-| usage/cost metadata | not consistently available today | shared invocation metadata | `@markorbit/ai` | Optional only; never synthesize |
-| `AiKnowledgeAssignmentV1` | Knowledge contracts | Knowledge source semantics | Knowledge | Do not move |
-| Knowledge prompt/instruction meaning | Knowledge assignments/SourcePack | Knowledge source semantics | Knowledge | Map into generic invocation input at bridge boundary |
-| DeepSeek off-peak paid-execution window | Knowledge live orchestration | acceptance/governance policy | Knowledge/operator governance | Do not bake into generic AI SDK |
-| deterministic submission/artifact IDs | Knowledge acquirer | Knowledge source semantics | Knowledge | Preserve after shared invocation returns |
-| `AiResearchSubmissionV1` | Knowledge contracts | Knowledge source semantics | Knowledge | Do not move |
-| `AiDistilledKnowledgeArtifactV1` | Knowledge contracts | Knowledge source semantics | Knowledge | Do not move |
-| prompt/raw/markdown SHA-256 | Knowledge evidence path | Knowledge evidence semantics | Knowledge | Compute/preserve in compatibility bridge |
-| exact provider JSON RawArtifact | Knowledge evidence path | Knowledge evidence semantics | Knowledge | Shared Capability returns bytes; Knowledge persists them |
-| Markdown derivative + parent lineage | Knowledge evidence path | Knowledge evidence semantics | Knowledge | Do not move |
-| CAS/finalization/recovery | Knowledge worker/evidence path | Knowledge durability semantics | Knowledge | Do not move |
-| SourcePack / Binding | Knowledge | Knowledge source semantics | Knowledge | Do not move |
-| structural citation validation | Knowledge | Knowledge source validation | Knowledge | Do not move |
-| PREPARED execution evidence | Knowledge | Knowledge execution/evidence | Knowledge | Do not move |
-| provider-execution authorization | Knowledge | governance | Knowledge/operator governance | Do not move into SDK |
-| #405 exact-SHA gate | Knowledge live workflow | acceptance/governance only | Knowledge/GitHub governance | Preserve independently of shared SDK |
-| #429 branch/secrets/evidence controls | repository administration | governance only | repository administration | Not an AI Capability responsibility |
-| provider ranking / legal-truth decision | prohibited | Brain boundary | nowhere in Knowledge/Capability | Must remain absent |
+### Shared transport and provider invocation -> `@markorbit/ai`
+
+- **HTTP request execution.** Move the generic network call behind the shared Capability.
+- **Abort and timeout control.** Use one bounded timeout model; the consumer may supply the policy value.
+- **Maximum provider response bytes.** Keep generic response-size protection in the Capability.
+- **Credential lookup and binding.** Keep provider secrets inside the shared runtime boundary; consumers must not persist the secret value.
+- **Canonical provider endpoint.** Provider implementations keep fail-closed endpoint policy.
+- **Provider request mapping.** The generic contract must cover current proven provider inputs without importing Knowledge types.
+- **Provider response parsing.** Preserve exact raw provider response in addition to normalized fields.
+- **Provider request ID.** Return it when the provider supplies it; never invent it.
+- **Model identity.** Return actual provider/model identity.
+- **HTTP 429/5xx classification.** Represent retryability explicitly.
+- **Timeout/network uncertainty.** Represent ambiguous delivery explicitly and never auto-replay an ambiguous paid call.
+- **Usage/cost metadata.** Keep optional; never synthesize unavailable values.
+
+### Knowledge source semantics -> remain in Knowledge
+
+- `AiKnowledgeAssignmentV1`.
+- Knowledge prompt and instruction meaning.
+- deterministic submission/artifact IDs.
+- `AiResearchSubmissionV1`.
+- `AiDistilledKnowledgeArtifactV1`.
+- prompt/raw/Markdown SHA-256 identities.
+- exact provider JSON RawArtifact persistence.
+- Markdown derivative and parent lineage.
+- CAS/finalization/recovery.
+- SourcePack / Binding.
+- structural citation validation.
+- PREPARED execution evidence.
+
+The shared Capability returns provider execution evidence; Knowledge remains responsible for turning it into durable Knowledge source records and provenance.
+
+### Acceptance/governance-only -> do not move into the shared SDK
+
+- DeepSeek off-peak paid-execution window policy.
+- provider-execution authorization.
+- issue #405 exact-SHA acceptance gate.
+- issue #429 repository/secrets/evidence governance.
+
+### Prohibited semantics -> remain absent
+
+- provider ranking;
+- legal-truth certification;
+- Brain conclusions or recommendations.
 
 ## Minimal AI Invocation V1 required from `@markorbit/ai`
 
@@ -76,12 +89,12 @@ AiInvocationResultV1
 - delivery outcome
 - retry classification
 - delivery uncertainty
-- providerRequestId? 
-- normalized output? 
+- providerRequestId?
+- normalized output?
 - exactResponseBytes / exactResponseBody
 - response content type/status metadata
-- usage? 
-- cost? 
+- usage?
+- cost?
 
 AiInvocationErrorV1
 - stable generic code
