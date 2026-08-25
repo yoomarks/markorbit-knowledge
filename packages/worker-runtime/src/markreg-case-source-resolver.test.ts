@@ -111,7 +111,7 @@ describe("ConfiguredMarkRegCaseSourceResolver", () => {
   });
 
   it("builds from explicit environment configuration and fails closed when one value is absent", async () => {
-    const environment = {
+    const environment: Record<string, string | undefined> = {
       [MARKREG_CASE_SOURCE_ENV.baseUrl]: "https://markreg.internal.example",
       [MARKREG_CASE_SOURCE_ENV.workspaceId]: workspaceId,
       [MARKREG_CASE_SOURCE_ENV.internalServiceSecret]: "runtime-secret",
@@ -126,7 +126,7 @@ describe("ConfiguredMarkRegCaseSourceResolver", () => {
       internalPrincipal: "runtime-principal",
     });
 
-    const incomplete = { ...environment };
+    const incomplete: Record<string, string | undefined> = { ...environment };
     delete incomplete[MARKREG_CASE_SOURCE_ENV.internalWorkspacePrincipal];
     expect(() => markRegCaseSourceResolverFromEnvironment(incomplete)).toThrowError(
       new RegExp(MARKREG_CASE_SOURCE_ENV.internalWorkspacePrincipal, "u"),
