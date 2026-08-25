@@ -1,0 +1,147 @@
+name: Temporary Managed AI HTTP Preflight
+
+on:
+  push:
+    branches: [mo-cap-002-knowledge-managed-ai-http]
+
+permissions:
+  contents: write
+
+jobs:
+  preflight:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Preserve classified client errors and normalize implementation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          bridge = Path('packages/worker-runtime/src/managed-ai-knowledge-adapter.ts')
+          text = bridge.read_text()
+          old = '''    } catch (error) {
+                throw new AiKnowledgeAcquisitionError(
+                  "AI_PROVIDER_NETWORK_ERROR",
+                  error instanceof Error ? error.message : "Managed AI execution client failed",
+                  true,
+                );
+              }'''
+          if old not in text:
+              old = '''    } catch (error) {
+              throw new AiKnowledgeAcquisitionError(
+                "AI_PROVIDER_NETWORK_ERROR",
+                error instanceof Error ? error.message : "Managed AI execution client failed",
+                true,
+              );
+            }'''
+          if old not in text:
+              raise SystemExit('managed adapter catch block not found')
+          new = old.replace('    } catch (error) {\n', '    } catch (error) {\n      if (error instanceof AiKnowledgeAcquisitionError) throw error;\n', 1)
+          bridge.write_text(text.replace(old, new, 1))
+
+          client = Path('packages/worker-runtime/src/managed-ai-execution-http-client.ts')
+          text = client.read_text()
+          marker = '''import type {
+            ManagedAiExecutionClient,'''
+          if marker not in text:
+              raise SystemExit('client import marker not found')
+          text = text.replace(
+              marker,
+              '''import { AiKnowledgeAcquisitionError } from "./ai-distilled-knowledge-acquirer";\nimport type {\n  ManagedAiExecutionClient,''',
+              1,
+          )
+          old_class = '''export class ManagedAiExecutionHttpClientError extends Error {
+            constructor(
+              readonly code: string,
+              message: string,
+              readonly retryable: boolean,
+            ) {
+              super(message);
+              this.name = "ManagedAiExecutionHttpClientError";
+            }
+          }'''
+          if old_class not in text:
+              raise SystemExit('client error class not found')
+          new_class = '''export class ManagedAiExecutionHttpClientError extends AiKnowledgeAcquisitionError {
+            constructor(code: string, message: string, retryable: boolean) {
+              super(code, message, retryable);
+              this.name = "ManagedAiExecutionHttpClientError";
+            }
+          }'''
+          client.write_text(text.replace(old_class, new_class, 1))
+
+          wrapper = Path('packages/worker-runtime/src/managed-ai-knowledge-http-adapter.ts')
+          text = wrapper.read_text()
+          old_bound = '''class BoundManagedAiExecutionClient extends ManagedAiExecutionHttpClient {
+            async execute(
+              input: Readonly<ManagedAiKnowledgeExecutionInputV1>,
+            ) {
+              return super.execute(input);
+            }
+          }
+
+          '''
+          if old_bound not in text:
+              raise SystemExit('bound client block not found')
+          text = text.replace(old_bound, '', 1)
+          text = text.replace('new BoundManagedAiExecutionClient({', 'new ManagedAiExecutionHttpClient({', 1)
+          text = text.replace('''import {
+            ManagedAiDeepSeekKnowledgeAdapter,
+            type ManagedAiKnowledgeExecutionInputV1,
+          } from "./managed-ai-knowledge-adapter";''', 'import { ManagedAiDeepSeekKnowledgeAdapter } from "./managed-ai-knowledge-adapter";', 1)
+          wrapper.write_text(text)
+          PY
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Format Managed AI bridge files
+        run: |
+          pnpm exec prettier --write \
+            packages/worker-runtime/package.json \
+            packages/worker-runtime/src/managed-ai-knowledge-adapter.ts \
+            packages/worker-runtime/src/managed-ai-execution-http-client.ts \
+            packages/worker-runtime/src/managed-ai-execution-http-client.test.ts \
+            packages/worker-runtime/src/managed-ai-knowledge-http-adapter.ts \
+            packages/worker-runtime/src/managed-ai-knowledge-http-adapter.test.ts \
+            apps/worker/src/adk-deepseek-provider.ts \
+            apps/worker/src/adk-deepseek-provider.test.ts \
+            apps/worker/src/run-adk-queue-worker.ts
+      - name: Persist normalized implementation
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add packages/worker-runtime apps/worker
+            git commit -m "K-CAP-AI: preserve Managed AI HTTP error semantics"
+            git push
+          fi
+      - name: Lint changed runtime files
+        run: |
+          pnpm exec eslint \
+            packages/worker-runtime/src/managed-ai-knowledge-adapter.ts \
+            packages/worker-runtime/src/managed-ai-execution-http-client.ts \
+            packages/worker-runtime/src/managed-ai-execution-http-client.test.ts \
+            packages/worker-runtime/src/managed-ai-knowledge-http-adapter.ts \
+            packages/worker-runtime/src/managed-ai-knowledge-http-adapter.test.ts \
+            apps/worker/src/adk-deepseek-provider.ts \
+            apps/worker/src/adk-deepseek-provider.test.ts \
+            apps/worker/src/run-adk-queue-worker.ts
+      - name: Typecheck worker runtime
+        run: pnpm --filter @markorbit/worker-runtime typecheck
+      - name: Typecheck worker app
+        run: pnpm --filter @markorbit/worker typecheck
+      - name: Test worker runtime
+        run: pnpm --filter @markorbit/worker-runtime test
+      - name: Test worker app
+        run: pnpm --filter @markorbit/worker test
+      - name: Verify repository formatting
+        run: pnpm format:check
