@@ -20,6 +20,8 @@ const SENT_OR_LATER = new Set<ExpertQuestionState>([
   "CLOSED",
 ]);
 
+const REPLY_ACCEPTING_STATES = new Set<ExpertQuestionState>(["SENT", "WAITING_RESPONSE"]);
+
 const ALLOWED_TRANSITIONS: Readonly<Record<ExpertQuestionState, readonly ExpertQuestionState[]>> = {
   DRAFT: ["DRAFT", "READY_TO_SEND"],
   READY_TO_SEND: ["DRAFT", "READY_TO_SEND", "SENT"],
@@ -343,6 +345,18 @@ export class SqliteExpertSourceRepository {
         `Expert source record references missing task ${value.taskId}`,
       );
     }
+    if (!REPLY_ACCEPTING_STATES.has(task.state)) {
+      throw new RegistryConflictError(
+        "EXPERT_SOURCE_TASK_NOT_WAITING_FOR_REPLY",
+        `Expert source record task ${value.taskId} is not waiting for a reply`,
+      );
+    }
+    if (!task.communicationThreadRef) {
+      throw new RegistryConflictError(
+        "EXPERT_SOURCE_TASK_THREAD_NOT_BOUND",
+        `Expert source record task ${value.taskId} has no durable Communication thread`,
+      );
+    }
     if (
       task.expertRef !== value.expertRef ||
       task.organizationRef !== value.organizationRef ||
@@ -353,10 +367,7 @@ export class SqliteExpertSourceRepository {
         `Expert source record identity does not match task ${value.taskId}`,
       );
     }
-    if (
-      task.communicationThreadRef &&
-      task.communicationThreadRef !== value.communication.communicationThreadRef
-    ) {
+    if (task.communicationThreadRef !== value.communication.communicationThreadRef) {
       throw new RegistryValidationError(
         `Expert source record thread does not match task ${value.taskId}`,
       );
