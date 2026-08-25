@@ -29,8 +29,7 @@ export const CASE_DOSSIER_COMPLETENESS_STATUSES = [
   "NOT_APPLICABLE",
   "PENDING_REVIEW",
 ] as const;
-export type CaseDossierCompletenessStatus =
-  (typeof CASE_DOSSIER_COMPLETENESS_STATUSES)[number];
+export type CaseDossierCompletenessStatus = (typeof CASE_DOSSIER_COMPLETENESS_STATUSES)[number];
 
 export type CaseDossierEvidenceRefV1 = {
   collectionId: string;
@@ -228,7 +227,10 @@ function containsForbiddenSemanticKey(value: unknown): boolean {
   return false;
 }
 
-function evidenceRef(value: unknown, expectedCollectionId: string): value is CaseDossierEvidenceRefV1 {
+function evidenceRef(
+  value: unknown,
+  expectedCollectionId: string,
+): value is CaseDossierEvidenceRefV1 {
   const item = record(value);
   if (!item) return false;
   if (
@@ -331,7 +333,8 @@ function identity(value: unknown, collectionId: string): value is CaseDossierIde
   if (item.casePeriod !== undefined) {
     const period = record(item.casePeriod);
     if (!period || !allowedKeys(period, ["startedAt", "endedAt"])) return false;
-    if (period.startedAt !== undefined && !timestampFact(period.startedAt, collectionId)) return false;
+    if (period.startedAt !== undefined && !timestampFact(period.startedAt, collectionId))
+      return false;
     if (period.endedAt !== undefined && !timestampFact(period.endedAt, collectionId)) return false;
   }
   return true;
@@ -375,7 +378,8 @@ function timelineEvent(value: unknown, collectionId: string): value is CaseDossi
     return false;
   }
   if (item.actorRole !== undefined && !textFact(item.actorRole, collectionId)) return false;
-  if (item.resultingStatus !== undefined && !textFact(item.resultingStatus, collectionId)) return false;
+  if (item.resultingStatus !== undefined && !textFact(item.resultingStatus, collectionId))
+    return false;
   if (item.deadline !== undefined && !timestampFact(item.deadline, collectionId)) return false;
   if (item.amount !== undefined && !amount(item.amount, collectionId)) return false;
   return true;
@@ -413,7 +417,8 @@ function document(value: unknown, collectionId: string): value is CaseDossierDoc
   }
   if (item.checksum !== undefined && !nonEmpty(item.checksum)) return false;
   return (item.evidence as CaseDossierEvidenceRefV1[]).some(
-    (entry) => entry.surface === "DOCUMENT_PACKAGE" && entry.documentPackageId === item.documentPackageId,
+    (entry) =>
+      entry.surface === "DOCUMENT_PACKAGE" && entry.documentPackageId === item.documentPackageId,
   );
 }
 
