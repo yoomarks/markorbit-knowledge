@@ -65,7 +65,9 @@ function derivative(
       ],
       documents: [{ documentId: "document_01", documentType: "POWER_OF_ATTORNEY" }],
       money: [],
-      durations: [{ durationId: "duration_01", label: "Observed elapsed time", milliseconds: 1000 }],
+      durations: [
+        { durationId: "duration_01", label: "Observed elapsed time", milliseconds: 1000 },
+      ],
     },
     publicationAuthorized: false,
     ...overrides,
@@ -178,12 +180,10 @@ describe("Case Dossier privacy contracts", () => {
   });
 
   it("never recognizes publication authorization or Brain semantics", () => {
-    expect(
-      isCaseDossierPrivacyReviewV1({ ...review(), publicationAuthorized: true }),
-    ).toBe(false);
-    expect(
-      isCaseDossierPrivacyReviewV1({ ...review(), recommendation: "publish this case" }),
-    ).toBe(false);
+    expect(isCaseDossierPrivacyReviewV1({ ...review(), publicationAuthorized: true })).toBe(false);
+    expect(isCaseDossierPrivacyReviewV1({ ...review(), recommendation: "publish this case" })).toBe(
+      false,
+    );
   });
 
   it("accepts a redacted audience derivative that exposes no source evidence locator", () => {

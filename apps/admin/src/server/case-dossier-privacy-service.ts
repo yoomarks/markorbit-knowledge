@@ -137,7 +137,10 @@ export class CaseDossierPrivacyService {
       derivativeId: input.derivativeId,
     };
     const savedReview = this.privacy.recordDecision(finalizedReview).review;
-    const sourceDossier = this.dossiers.getDossier(savedReview.dossierId, savedReview.dossierVersion);
+    const sourceDossier = this.dossiers.getDossier(
+      savedReview.dossierId,
+      savedReview.dossierVersion,
+    );
     if (!sourceDossier) {
       throw new CaseDossierPrivacyServiceError(
         "CASE_DOSSIER_PRIVACY_SOURCE_MISSING",
@@ -164,9 +167,10 @@ export class CaseDossierPrivacyService {
     return this.privacy.getDerivative(derivativeId);
   }
 
-  private requireReview(
-    reviewId: string,
-  ): { review: CaseDossierPrivacyReviewV1; revision: number } {
+  private requireReview(reviewId: string): {
+    review: CaseDossierPrivacyReviewV1;
+    revision: number;
+  } {
     const current = this.privacy.getReview(reviewId);
     if (!current) {
       throw new CaseDossierPrivacyServiceError(

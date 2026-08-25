@@ -199,11 +199,9 @@ describe("CaseDossierPrivacyService", () => {
     expect(f.dossiers.getDossier("case-dossier_01", 1)?.completeness.privacyReview).toBe(
       "PENDING_REVIEW",
     );
-    expect(f.service.getReviewEvents("case-privacy-review_01").map((event) => event.eventType)).toEqual([
-      "OPENED",
-      "NEEDS_REDACTION",
-      "FINALIZED",
-    ]);
+    expect(
+      f.service.getReviewEvents("case-privacy-review_01").map((event) => event.eventType),
+    ).toEqual(["OPENED", "NEEDS_REDACTION", "FINALIZED"]);
   });
 
   it("replays the same finalization without creating another Dossier version or derivative", () => {

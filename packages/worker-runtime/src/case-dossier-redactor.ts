@@ -50,9 +50,13 @@ function targetKey(target: CaseDossierPrivacyTargetV1): string {
 function audienceView(dossier: CaseDossierV1): CaseDossierAudienceViewV1 {
   return {
     identity: {
-      ...(dossier.identity.jurisdiction ? { jurisdiction: dossier.identity.jurisdiction.value } : {}),
+      ...(dossier.identity.jurisdiction
+        ? { jurisdiction: dossier.identity.jurisdiction.value }
+        : {}),
       ...(dossier.identity.matterType ? { matterType: dossier.identity.matterType.value } : {}),
-      ...(dossier.identity.markReference ? { markReference: dossier.identity.markReference.value } : {}),
+      ...(dossier.identity.markReference
+        ? { markReference: dossier.identity.markReference.value }
+        : {}),
       ...(dossier.identity.applicationNumber
         ? { applicationNumber: dossier.identity.applicationNumber.value }
         : {}),
@@ -86,9 +90,7 @@ function audienceView(dossier: CaseDossierV1): CaseDossierAudienceViewV1 {
       documentId: document.documentId,
       ...(document.documentType ? { documentType: document.documentType } : {}),
       ...(document.displayName ? { displayName: document.displayName } : {}),
-      ...(document.verificationStatus
-        ? { verificationStatus: document.verificationStatus }
-        : {}),
+      ...(document.verificationStatus ? { verificationStatus: document.verificationStatus } : {}),
     })),
     money: dossier.money.map((amount) => ({
       amount: amount.amount,
@@ -105,16 +107,17 @@ function audienceView(dossier: CaseDossierV1): CaseDossierAudienceViewV1 {
           outcome: {
             code: dossier.outcome.code,
             label: dossier.outcome.label,
-            ...(dossier.outcome.occurredAt
-              ? { occurredAt: dossier.outcome.occurredAt.value }
-              : {}),
+            ...(dossier.outcome.occurredAt ? { occurredAt: dossier.outcome.occurredAt.value } : {}),
           },
         }
       : {}),
   };
 }
 
-function requireTarget(content: CaseDossierAudienceViewV1, target: CaseDossierPrivacyTargetV1): void {
+function requireTarget(
+  content: CaseDossierAudienceViewV1,
+  target: CaseDossierPrivacyTargetV1,
+): void {
   let exists = false;
   switch (target.section) {
     case "IDENTITY":
@@ -141,7 +144,9 @@ function requireTarget(content: CaseDossierAudienceViewV1, target: CaseDossierPr
       break;
     case "MONEY":
       exists =
-        target.itemIndex !== undefined && target.itemIndex >= 0 && target.itemIndex < content.money.length;
+        target.itemIndex !== undefined &&
+        target.itemIndex >= 0 &&
+        target.itemIndex < content.money.length;
       break;
     case "OUTCOME":
       exists = content.outcome !== undefined && target.field in content.outcome;
@@ -230,7 +235,9 @@ function omitTargets(
   for (const field of identityFields) {
     delete (content.identity as unknown as Record<string, unknown>)[field];
   }
-  content.identity.parties = content.identity.parties.filter((_, index) => !partyIndexes.has(index));
+  content.identity.parties = content.identity.parties.filter(
+    (_, index) => !partyIndexes.has(index),
+  );
   content.narrative = content.narrative.filter((item) => !narrativeIds.has(item.statementId));
   content.timeline = content.timeline.filter((item) => !timelineIds.has(item.eventId));
   content.documents = content.documents.filter((item) => !documentIds.has(item.documentId));
@@ -246,7 +253,10 @@ export function redactCaseDossierV1(
     throw new CaseDossierRedactionError("CASE_DOSSIER_INVALID", "Source Case Dossier is invalid");
   }
   if (!isCaseDossierPrivacyReviewV1(review)) {
-    throw new CaseDossierRedactionError("CASE_DOSSIER_PRIVACY_REVIEW_INVALID", "Privacy review is invalid");
+    throw new CaseDossierRedactionError(
+      "CASE_DOSSIER_PRIVACY_REVIEW_INVALID",
+      "Privacy review is invalid",
+    );
   }
   if (review.state !== "FINALIZED" || !review.derivativeId || !review.decidedAt) {
     throw new CaseDossierRedactionError(
@@ -265,7 +275,9 @@ export function redactCaseDossierV1(
     );
   }
 
-  const findings = [...review.findings].sort((left, right) => left.findingId.localeCompare(right.findingId));
+  const findings = [...review.findings].sort((left, right) =>
+    left.findingId.localeCompare(right.findingId),
+  );
   const seenTargets = new Set<string>();
   const content = audienceView(dossier);
   for (const finding of findings) {

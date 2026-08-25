@@ -194,13 +194,17 @@ function finalizedReview(): CaseDossierPrivacyReviewV1 {
   });
 }
 
-function derivative(overrides: Partial<CaseDossierRedactedDerivativeV1> = {}): CaseDossierRedactedDerivativeV1 {
+function derivative(
+  overrides: Partial<CaseDossierRedactedDerivativeV1> = {},
+): CaseDossierRedactedDerivativeV1 {
   const content = {
     identity: {
       matterType: "TRADEMARK_REGISTRATION",
       parties: [{ role: "APPLICANT", displayName: "[REDACTED]" }],
     },
-    narrative: [{ statementId: "formal-matter-recorded", text: "MarkReg recorded the Formal Matter." }],
+    narrative: [
+      { statementId: "formal-matter-recorded", text: "MarkReg recorded the Formal Matter." },
+    ],
     timeline: [],
     documents: [],
     money: [],
@@ -277,11 +281,9 @@ describe("SqliteCaseDossierPrivacyRepository", () => {
 
     const restarted = new SqliteCaseDossierPrivacyRepository(f.database);
     expect(restarted.getReview("case-privacy-review_01")?.review.state).toBe("FINALIZED");
-    expect(restarted.listReviewEvents("case-privacy-review_01").map((event) => event.eventType)).toEqual([
-      "OPENED",
-      "NEEDS_REDACTION",
-      "FINALIZED",
-    ]);
+    expect(
+      restarted.listReviewEvents("case-privacy-review_01").map((event) => event.eventType),
+    ).toEqual(["OPENED", "NEEDS_REDACTION", "FINALIZED"]);
   });
 
   it("deduplicates opening the same review lineage after it has advanced", () => {
@@ -298,7 +300,10 @@ describe("SqliteCaseDossierPrivacyRepository", () => {
     const f = fixture();
     expect(() =>
       f.privacy.openReview(
-        review({ sourceAccessClassification: "RESTRICTED", audienceAccessClassification: "RESTRICTED" }),
+        review({
+          sourceAccessClassification: "RESTRICTED",
+          audienceAccessClassification: "RESTRICTED",
+        }),
       ),
     ).toThrowError(RegistryConflictError);
 

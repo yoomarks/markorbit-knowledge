@@ -184,13 +184,16 @@ describe("redactCaseDossierV1", () => {
   });
 
   it("fails closed if the privacy review does not match the source Dossier", () => {
-    expect(() =>
-      redactCaseDossierV1(dossier(), review({ dossierVersion: 2 })),
-    ).toThrowError(CaseDossierRedactionError);
+    expect(() => redactCaseDossierV1(dossier(), review({ dossierVersion: 2 }))).toThrowError(
+      CaseDossierRedactionError,
+    );
     try {
       redactCaseDossierV1(
         dossier(),
-        review({ sourceAccessClassification: "RESTRICTED", audienceAccessClassification: "RESTRICTED" }),
+        review({
+          sourceAccessClassification: "RESTRICTED",
+          audienceAccessClassification: "RESTRICTED",
+        }),
       );
     } catch (error) {
       expect((error as CaseDossierRedactionError).code).toBe(
@@ -201,10 +204,7 @@ describe("redactCaseDossierV1", () => {
 
   it("refuses to generate a derivative before the privacy review is FINALIZED", () => {
     expect(() =>
-      redactCaseDossierV1(
-        dossier(),
-        review({ state: "NEEDS_REDACTION", derivativeId: undefined }),
-      ),
+      redactCaseDossierV1(dossier(), review({ state: "NEEDS_REDACTION", derivativeId: undefined })),
     ).toThrowError(CaseDossierRedactionError);
   });
 

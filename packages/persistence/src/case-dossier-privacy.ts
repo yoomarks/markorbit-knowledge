@@ -182,7 +182,9 @@ export class SqliteCaseDossierPrivacyRepository {
 
   openReview(value: CaseDossierPrivacyReviewV1): SaveCaseDossierPrivacyReviewResult {
     if (!isCaseDossierPrivacyReviewV1(value) || value.state !== "REVIEW_REQUIRED") {
-      throw new RegistryValidationError("A valid REVIEW_REQUIRED Case Dossier privacy review is required");
+      throw new RegistryValidationError(
+        "A valid REVIEW_REQUIRED Case Dossier privacy review is required",
+      );
     }
     const dossier = this.dossiers.getDossier(value.dossierId, value.dossierVersion);
     if (!dossier) {
@@ -262,7 +264,9 @@ export class SqliteCaseDossierPrivacyRepository {
     }
     const current = this.getReview(value.reviewId);
     if (!current) {
-      throw new RegistryValidationError(`Case Dossier privacy review ${value.reviewId} does not exist`);
+      throw new RegistryValidationError(
+        `Case Dossier privacy review ${value.reviewId} does not exist`,
+      );
     }
     assertReviewLineage(current.review, value);
     const incomingHash = documentSha256(value);
@@ -310,9 +314,7 @@ export class SqliteCaseDossierPrivacyRepository {
     }
   }
 
-  saveDerivative(
-    value: CaseDossierRedactedDerivativeV1,
-  ): SaveCaseDossierRedactedDerivativeResult {
+  saveDerivative(value: CaseDossierRedactedDerivativeV1): SaveCaseDossierRedactedDerivativeResult {
     if (!isCaseDossierRedactedDerivativeV1(value)) {
       throw new RegistryValidationError("Case Dossier redacted derivative is invalid");
     }
@@ -395,9 +397,7 @@ export class SqliteCaseDossierPrivacyRepository {
     return { derivative: value, replayed: false };
   }
 
-  getReview(
-    reviewId: string,
-  ): { review: CaseDossierPrivacyReviewV1; revision: number } | null {
+  getReview(reviewId: string): { review: CaseDossierPrivacyReviewV1; revision: number } | null {
     const row = this.database
       .prepare(
         `SELECT review_id, dossier_id, dossier_version, revision, state,

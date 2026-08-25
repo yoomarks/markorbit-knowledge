@@ -34,8 +34,7 @@ export const CASE_DOSSIER_PRIVACY_TARGET_SECTIONS = [
   "MONEY",
   "OUTCOME",
 ] as const;
-export type CaseDossierPrivacyTargetSection =
-  (typeof CASE_DOSSIER_PRIVACY_TARGET_SECTIONS)[number];
+export type CaseDossierPrivacyTargetSection = (typeof CASE_DOSSIER_PRIVACY_TARGET_SECTIONS)[number];
 
 export type CaseDossierPrivacyTargetV1 = {
   section: CaseDossierPrivacyTargetSection;
@@ -240,14 +239,18 @@ export function isCaseDossierAccessBroadened(
 function target(value: unknown): value is CaseDossierPrivacyTargetV1 {
   const item = record(value);
   if (!item || !allowedKeys(item, ["section", "field", "itemId", "itemIndex"])) return false;
-  if (!CASE_DOSSIER_PRIVACY_TARGET_SECTIONS.includes(item.section as CaseDossierPrivacyTargetSection)) {
+  if (
+    !CASE_DOSSIER_PRIVACY_TARGET_SECTIONS.includes(item.section as CaseDossierPrivacyTargetSection)
+  ) {
     return false;
   }
   if (!nonEmpty(item.field)) return false;
   if (item.itemId !== undefined && !nonEmpty(item.itemId)) return false;
   if (
     item.itemIndex !== undefined &&
-    (typeof item.itemIndex !== "number" || !Number.isSafeInteger(item.itemIndex) || item.itemIndex < 0)
+    (typeof item.itemIndex !== "number" ||
+      !Number.isSafeInteger(item.itemIndex) ||
+      item.itemIndex < 0)
   ) {
     return false;
   }
@@ -268,7 +271,9 @@ function target(value: unknown): value is CaseDossierPrivacyTargetV1 {
         ].includes(item.field as string)
       );
     case "PARTY":
-      return item.itemId === undefined && item.itemIndex !== undefined && item.field === "displayName";
+      return (
+        item.itemId === undefined && item.itemIndex !== undefined && item.field === "displayName"
+      );
     case "NARRATIVE":
       return item.itemId !== undefined && item.itemIndex === undefined && item.field === "text";
     case "TIMELINE":
@@ -292,7 +297,11 @@ function target(value: unknown): value is CaseDossierPrivacyTargetV1 {
         ["amount", "currency", "category"].includes(item.field as string)
       );
     case "OUTCOME":
-      return item.itemId === undefined && item.itemIndex === undefined && ["code", "label", "occurredAt"].includes(item.field as string);
+      return (
+        item.itemId === undefined &&
+        item.itemIndex === undefined &&
+        ["code", "label", "occurredAt"].includes(item.field as string)
+      );
     default:
       return false;
   }
@@ -371,7 +380,10 @@ export function isCaseDossierPrivacyReviewV1(value: unknown): value is CaseDossi
     item.audienceAccessClassification,
   );
   if (broadened !== (item.audienceExpansionApproval !== undefined)) return false;
-  if (item.audienceExpansionApproval !== undefined && !expansionApproval(item.audienceExpansionApproval)) {
+  if (
+    item.audienceExpansionApproval !== undefined &&
+    !expansionApproval(item.audienceExpansionApproval)
+  ) {
     return false;
   }
 
@@ -434,7 +446,15 @@ function audienceView(value: unknown): value is CaseDossierAudienceViewV1 {
     !item ||
     containsForbiddenSemanticKey(item) ||
     containsForbiddenAudienceContentKey(item) ||
-    !allowedKeys(item, ["identity", "narrative", "timeline", "documents", "money", "durations", "outcome"]) ||
+    !allowedKeys(item, [
+      "identity",
+      "narrative",
+      "timeline",
+      "documents",
+      "money",
+      "durations",
+      "outcome",
+    ]) ||
     !audienceIdentity(item.identity) ||
     !Array.isArray(item.narrative) ||
     !Array.isArray(item.timeline) ||
@@ -447,13 +467,30 @@ function audienceView(value: unknown): value is CaseDossierAudienceViewV1 {
   if (
     !item.narrative.every((entry) => {
       const row = record(entry);
-      return Boolean(row) && allowedKeys(row!, ["statementId", "text"]) && nonEmpty(row!.statementId) && nonEmpty(row!.text);
+      return (
+        Boolean(row) &&
+        allowedKeys(row!, ["statementId", "text"]) &&
+        nonEmpty(row!.statementId) &&
+        nonEmpty(row!.text)
+      );
     })
-  ) return false;
+  )
+    return false;
   if (
     !item.timeline.every((entry) => {
       const row = record(entry);
-      if (!row || !allowedKeys(row, ["eventId", "occurredAt", "action", "actorRole", "resultingStatus", "deadline"])) return false;
+      if (
+        !row ||
+        !allowedKeys(row, [
+          "eventId",
+          "occurredAt",
+          "action",
+          "actorRole",
+          "resultingStatus",
+          "deadline",
+        ])
+      )
+        return false;
       return (
         nonEmpty(row.eventId) &&
         nonEmpty(row.occurredAt) &&
@@ -463,11 +500,16 @@ function audienceView(value: unknown): value is CaseDossierAudienceViewV1 {
         (row.deadline === undefined || nonEmpty(row.deadline))
       );
     })
-  ) return false;
+  )
+    return false;
   if (
     !item.documents.every((entry) => {
       const row = record(entry);
-      if (!row || !allowedKeys(row, ["documentId", "documentType", "displayName", "verificationStatus"])) return false;
+      if (
+        !row ||
+        !allowedKeys(row, ["documentId", "documentType", "displayName", "verificationStatus"])
+      )
+        return false;
       return (
         nonEmpty(row.documentId) &&
         (row.documentType === undefined || nonEmpty(row.documentType)) &&
@@ -475,13 +517,21 @@ function audienceView(value: unknown): value is CaseDossierAudienceViewV1 {
         (row.verificationStatus === undefined || nonEmpty(row.verificationStatus))
       );
     })
-  ) return false;
+  )
+    return false;
   if (
     !item.money.every((entry) => {
       const row = record(entry);
-      return Boolean(row) && allowedKeys(row!, ["amount", "currency", "category"]) && nonEmpty(row!.amount) && nonEmpty(row!.currency) && nonEmpty(row!.category);
+      return (
+        Boolean(row) &&
+        allowedKeys(row!, ["amount", "currency", "category"]) &&
+        nonEmpty(row!.amount) &&
+        nonEmpty(row!.currency) &&
+        nonEmpty(row!.category)
+      );
     })
-  ) return false;
+  )
+    return false;
   if (
     !item.durations.every((entry) => {
       const row = record(entry);
@@ -495,7 +545,8 @@ function audienceView(value: unknown): value is CaseDossierAudienceViewV1 {
         row!.milliseconds >= 0
       );
     })
-  ) return false;
+  )
+    return false;
   if (item.outcome !== undefined) {
     const outcome = record(item.outcome);
     if (
@@ -504,7 +555,8 @@ function audienceView(value: unknown): value is CaseDossierAudienceViewV1 {
       !nonEmpty(outcome.code) ||
       !nonEmpty(outcome.label) ||
       (outcome.occurredAt !== undefined && !nonEmpty(outcome.occurredAt))
-    ) return false;
+    )
+      return false;
   }
   return true;
 }
@@ -559,8 +611,8 @@ export function isCaseDossierRedactedDerivativeV1(
     SHA256.test(item.contentSha256) &&
     Array.isArray(item.redactions) &&
     item.redactions.every(receipt) &&
-    new Set(item.redactions.map((entry) => (entry as CaseDossierRedactionReceiptV1).findingId)).size ===
-      item.redactions.length &&
+    new Set(item.redactions.map((entry) => (entry as CaseDossierRedactionReceiptV1).findingId))
+      .size === item.redactions.length &&
     audienceView(item.content) &&
     item.publicationAuthorized === false
   );
