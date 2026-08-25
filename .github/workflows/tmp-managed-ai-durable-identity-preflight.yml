@@ -1,0 +1,32 @@
+name: Temporary Managed AI Durable Identity Preflight
+
+on:
+  push:
+    branches:
+      - fix/managed-ai-durable-execution-identity
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Managed AI durable identity tests
+        run: >-
+          pnpm exec vitest run
+          packages/worker-runtime/src/managed-ai-execution-http-client.test.ts
+          packages/worker-runtime/src/managed-ai-knowledge-http-adapter.test.ts
+          apps/worker/src/adk-provider-execution-identity.test.ts
