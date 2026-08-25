@@ -5,12 +5,7 @@ export const CASE_PRODUCER_INTERNAL_AUTHORIZATION_HEADER =
 export const CASE_PRODUCER_PRINCIPAL_HEADER = "x-markorbit-principal" as const;
 export const CASE_PRODUCER_REQUIRED_PERMISSION = "matter:read" as const;
 
-const WORKSPACE_ROLES = new Set([
-  "WORKSPACE_ADMIN",
-  "MATTER_MANAGER",
-  "REVIEWER",
-  "READ_ONLY",
-]);
+const WORKSPACE_ROLES = new Set(["WORKSPACE_ADMIN", "MATTER_MANAGER", "REVIEWER", "READ_ONLY"]);
 
 export type CaseProducerWorkspacePrincipalV1 = {
   kind: "WORKSPACE";

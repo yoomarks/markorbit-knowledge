@@ -106,7 +106,12 @@ describe("Case producer internal authentication", () => {
 
   it("rejects a missing or incorrect internal service credential", () => {
     expectAccessError(
-      () => authorizeCaseProducerRequest(request({ encodedPrincipal: principal() }), candidate(), secret),
+      () =>
+        authorizeCaseProducerRequest(
+          request({ encodedPrincipal: principal() }),
+          candidate(),
+          secret,
+        ),
       { code: "INTERNAL_SERVICE_UNAUTHORIZED", httpStatus: 401 },
     );
     expectAccessError(
