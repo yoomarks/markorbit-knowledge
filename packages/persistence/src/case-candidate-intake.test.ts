@@ -73,6 +73,40 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
     expect(repository.listPending()).toHaveLength(1);
   });
 
+  it("fails closed when the same source snapshot changes retrieval or access semantics", () => {
+    const repository = new SqliteCaseCandidateIntakeRepository(new DatabaseSync(":memory:"));
+    repository.acceptCandidate(candidate(), "2026-08-25T03:21:00.000Z");
+
+    const changedRef = candidate({
+      candidateId: "case-candidate_02",
+      idempotencyKey: "case-intake-002",
+      sourceRetrievalRef: "markreg:/different-authorized-ref",
+    });
+    expect(() =>
+      repository.acceptCandidate(changedRef, "2026-08-25T03:24:00.000Z"),
+    ).toThrowError(RegistryConflictError);
+    try {
+      repository.acceptCandidate(changedRef, "2026-08-25T03:24:00.000Z");
+    } catch (error) {
+      expect((error as RegistryConflictError).code).toBe(
+        "CASE_CANDIDATE_SOURCE_SEMANTICS_CONFLICT",
+      );
+    }
+
+    const changedAccess = candidate({
+      candidateId: "case-candidate_03",
+      idempotencyKey: "case-intake-003",
+      accessScope: {
+        sourceWorkspaceId: "workspace:test",
+        classification: "RESTRICTED",
+      },
+    });
+    expect(() =>
+      repository.acceptCandidate(changedAccess, "2026-08-25T03:25:00.000Z"),
+    ).toThrowError(RegistryConflictError);
+    expect(repository.listPending()).toHaveLength(1);
+  });
+
   it("fails closed when an idempotency key is reused with changed input", () => {
     const repository = new SqliteCaseCandidateIntakeRepository(new DatabaseSync(":memory:"));
     repository.acceptCandidate(candidate(), "2026-08-25T03:21:00.000Z");
