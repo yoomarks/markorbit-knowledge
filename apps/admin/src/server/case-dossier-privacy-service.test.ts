@@ -234,7 +234,10 @@ describe("CaseDossierPrivacyService", () => {
     });
 
     expect(replay).toEqual(first);
-    expect(first.review.findings.map((item) => item.findingId)).toEqual(["finding_01", "finding_02"]);
+    expect(first.review.findings.map((item) => item.findingId)).toEqual([
+      "finding_01",
+      "finding_02",
+    ]);
     expect(first.derivative.content.narrative[0]?.text).toBe("[REDACTED]");
     expect(f.dossiers.getDossier("case-dossier_01")?.version).toBe(2);
     expect(f.service.getReviewEvents("case-privacy-review_01")).toHaveLength(2);
