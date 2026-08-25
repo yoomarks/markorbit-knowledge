@@ -168,6 +168,14 @@ const finding: CaseDossierPrivacyFindingV1 = {
   reason: "Mask client identity in the audience derivative",
 };
 
+const narrativeFinding: CaseDossierPrivacyFindingV1 = {
+  findingId: "finding_02",
+  category: "PERSONAL_DATA",
+  target: { section: "NARRATIVE", field: "text", itemId: "formal-matter-recorded" },
+  action: "MASK_VALUE",
+  reason: "Mask client identity in the narrative",
+};
+
 describe("CaseDossierPrivacyService", () => {
   it("runs review -> redaction -> finalized internal Dossier without rewriting the source version", () => {
     const f = fixture();
@@ -204,25 +212,30 @@ describe("CaseDossierPrivacyService", () => {
     ).toEqual(["OPENED", "NEEDS_REDACTION", "FINALIZED"]);
   });
 
-  it("replays the same finalization without creating another Dossier version or derivative", () => {
+  it("reuses generated timestamps and normalized finding order across retries", () => {
     const f = fixture();
-    f.service.openReview({
+    const openInput = {
       dossierId: "case-dossier_01",
       dossierVersion: 1,
       reviewId: "case-privacy-review_01",
-      audienceAccessClassification: "CONFIDENTIAL",
+      audienceAccessClassification: "CONFIDENTIAL" as const,
       reviewerRef: "user:reviewer:01",
-      openedAt: "2026-08-25T06:40:00.000Z",
-    });
-    const input = {
-      derivativeId: "case-redacted_01",
-      findings: [finding],
-      decidedAt: "2026-08-25T06:45:00.000Z",
     };
-    const first = f.service.finalizeReview("case-privacy-review_01", input);
-    const replay = f.service.finalizeReview("case-privacy-review_01", input);
+    const opened = f.service.openReview(openInput);
+    expect(f.service.openReview(openInput)).toEqual(opened);
+
+    const first = f.service.finalizeReview("case-privacy-review_01", {
+      derivativeId: "case-redacted_01",
+      findings: [narrativeFinding, finding],
+    });
+    const replay = f.service.finalizeReview("case-privacy-review_01", {
+      derivativeId: "case-redacted_01",
+      findings: [finding, narrativeFinding],
+    });
 
     expect(replay).toEqual(first);
+    expect(first.review.findings.map((item) => item.findingId)).toEqual(["finding_01", "finding_02"]);
+    expect(first.derivative.content.narrative[0]?.text).toBe("[REDACTED]");
     expect(f.dossiers.getDossier("case-dossier_01")?.version).toBe(2);
     expect(f.service.getReviewEvents("case-privacy-review_01")).toHaveLength(2);
   });
