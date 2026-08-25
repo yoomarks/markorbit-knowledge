@@ -2,145 +2,132 @@
 
 **Canonical direction:** Web / AI / Expert / Case four-pillar Knowledge strategy  
 **Checkpoint:** 2026-08-25  
-**Current main:** `64e4722d5068c7c6a55fa394c92ab0f096a9229c`  
-**Original audit baseline:** `a5fef459a5a681e2f7159971c87374c6625f4776`
+**Latest audited Knowledge main before this branch:** `ed43351fe29c6392db0d57dc381cb56f964ade3b`  
+**Latest audited MarkOrbit main:** `26eaf35545bb1044f84a78d659fbdc408bc7582f`
 
 This file is a short execution pointer. The canonical detailed plan is `docs/tasks/KNOWLEDGE_STRATEGIC_EXECUTION_PLAN.md`.
 
-## Completed in the current execution stage
+## Completed / frozen in the current execution stage
 
-### K-CAP-AI-001 — Knowledge-side migration audit
+### Shared AI migration — K-CAP-AI-001 + K-CAP-AI-004 boundary
 
-- current DeepSeek/OpenAI provider runtime was classified into shared transport vs Knowledge source semantics vs governance-only concerns;
-- `yoomarks/markorbit/packages/ai` was verified during the audit as a thin starting package, not an already implemented gateway;
-- migration surface is frozen in `docs/architecture/AI_CAPABILITY_MIGRATION_MATRIX_2026-08-25.md`.
+- Knowledge-side provider/semantics split is frozen in `docs/architecture/AI_CAPABILITY_MIGRATION_MATRIX_2026-08-25.md`;
+- main repo now contains the provider-neutral Managed AI contract/runtime plus the first DeepSeek adapter;
+- Knowledge main now contains `managed-ai-knowledge-adapter.ts` and parity tests that map the shared Managed AI contract back into existing Knowledge acquisition semantics;
+- the bridge preserves exact output/provenance and rejects authority escalation;
+- ambiguous delivery remains reconciliation-required rather than automatically replayed.
 
-**Dependency:** K-CAP-AI-002/003 must exist in `yoomarks/markorbit` before Knowledge can build K-CAP-AI-004 compatibility bridge.
+**Not claimed:** a paid/live #405 acceptance or a new concrete cross-repository HTTP execution endpoint. Keep the live-provider acceptance and transport/governance questions separate from the parity bridge.
 
-### K-CAP-COMM-002 — Legacy IMAP safety audit
+### Shared Communication audit — K-CAP-COMM-002
 
-- TLS/read-only semantics, UID/UIDVALIDITY, cursor-after-COMPLETE, restart checkpoints, hash replay, secret separation, and immutable RFC822 evidence boundaries were audited;
-- missing shared features such as outbound idempotency, thread correlation and attachment identity were recorded;
-- checklist is frozen in `docs/architecture/COMMUNICATION_CAPABILITY_MIGRATION_CHECKLIST_2026-08-25.md`.
+- legacy IMAP TLS/read-only, UID/UIDVALIDITY, cursor-after-COMPLETE, restart/hash replay and secret boundaries are frozen;
+- main-repo MO-CAP-003 Managed Communication remains planning-only at the latest audit;
+- no shared production send/thread/attachment capability was found yet.
 
-### K-CASE-000 — discovery pass completed, blocker remains
+### Expert V1 — K-EXP-001/002/003/005
 
-- all currently accessible `yoomarks` repositories were checked during the discovery pass;
-- no MarkReg repository/module or authoritative matter interface was found;
-- unresolved facts and required future discovery receipt are recorded in `docs/architecture/MARKREG_BOUNDARY_AUDIT_2026-08-25.md`.
+Completed in Knowledge:
 
-**Hard rule:** do not invent a MarkReg API, matter ID, or replacement case system.
+- Expert task/source contracts and anti-ranking/truth/recommendation validators;
+- durable persistence and replay idempotency;
+- `/experts` operator workflow with fail-closed send boundary;
+- provenance-preserving Expert source retrieval and filtering.
 
-### K-EXP-001 — Expert source contracts
+**Still blocked:** K-EXP-004 live Expert slice requires real Shared Communication send/reply correlation. Do not fabricate SENT/reply evidence.
 
-- `ExpertQuestionTaskV1` and `ExpertSourceRecordV1`;
-- lifecycle state machine and access classification;
-- opaque shared-Communication send/thread/message correlation refs;
-- attachment/source/case refs;
-- validators that reject expert ranking, truth scoring and recommendation fields.
+### K-CASE-000 — real MarkReg boundary resolved for contract design
 
-### K-EXP-002 — Expert persistence and replay idempotency
+A fresh source audit located the authoritative producer at `yoomarks/markorbit/services/markreg`.
 
-- durable SQLite Expert task/source repositories;
-- exact question identity locks once sent;
-- stable Communication send-request and thread correlation;
-- immutable send timestamps and source records;
-- repeated inbound evidence replay deduplicates deterministically;
-- changed replay semantics fail closed;
-- multiple reply/follow-up evidence can remain linked without overwriting the original evidence.
+Frozen facts now include:
 
-### K-EXP-003 — Expert Q&A operator workbench
+- canonical `FormalMatterId = formal-matter_${string}`;
+- Workspace scope;
+- Formal Matter version + immutable source snapshot + `snapshotSha256`;
+- real `/v1/formal-matters` read surface;
+- lifecycle current view/event provenance surface;
+- durable Document Package evidence references/checksums;
+- internal service secret + Workspace Principal + explicit permission model;
+- no dedicated correspondence model found yet.
 
-- `/experts` operator workbench and Expert task APIs;
-- Draft → Ready → Waiting → Replied → Captured → Closed workflow;
-- reply evidence and attachment inspection;
-- follow-up questions become separate durable tasks;
-- Knowledge exposes only an `ExpertQuestionSender` domain port;
-- production sending remains deliberately fail-closed until the shared Communication Capability is connected.
+See `docs/architecture/MARKREG_BOUNDARY_AUDIT_2026-08-25.md`.
 
-**Not claimed:** K-EXP-004 live Expert acceptance. No real send/reply has been fabricated.
+Repository fixtures are **not** accepted as a live completed Case. K-CASE-008 remains the real-matter acceptance stage.
 
-### K-EXP-005 — Expert source retrieval
+### K-CASE-001 — Case Candidate V1 contract
 
-- versioned Expert retrieval request/result contracts;
-- read-only retrieval over the durable Expert source registry;
-- filters for jurisdiction, topic, expert, organization, received window, related source and related case;
-- deterministic pagination;
-- `/api/expert-sources` and retrieval UI in `/experts`;
-- original raw evidence refs, communication refs, attachments, provenance and access classification remain visible in results.
+This branch introduces the narrow producer-aware Knowledge contract:
+
+- candidate ID;
+- source system fixed to `MARKREG`;
+- exact Formal Matter ID/version/snapshot SHA;
+- opaque authorized source retrieval ref;
+- promotion actor/time and optional operator case-value note;
+- Workspace-scoped access classification;
+- idempotency key;
+- deterministic natural identity based only on source system/workspace/matter/version/snapshot.
+
+No dossier ontology, lesson, recommendation, truth score or manual case re-entry is introduced.
 
 ## Current P0 order
 
-### P0-1 — Re-audit main-repo AI Capability, then implement K-CAP-AI-004 when available
+### P0-1 — K-CASE-003 Knowledge Case Candidate intake
 
-Repository dependency: `yoomarks/markorbit`
+Repository: `yoomarks/markorbit-knowledge`
 
-Expected upstream scope remains K-CAP-AI-002/003:
+After K-CASE-001 merges, implement durable intake that:
 
-1. minimal `@markorbit/ai` invocation/result/error contract;
-2. first real provider: OpenAI;
-3. exact raw response preserved;
-4. explicit timeout/network delivery uncertainty;
-5. no automatic replay of ambiguous paid calls;
-6. no KnowledgeAssignment/SourcePack/Brain semantics in the shared package.
+1. validates `CaseCandidateV1`;
+2. enforces unique natural source identity;
+3. reuses the same candidate on replay;
+4. rejects changed semantics for the same idempotency key/source snapshot;
+5. records source retrieval/snapshot references without copying MarkReg operational tables;
+6. exposes intake state for a future MarkReg one-click producer action;
+7. handles source-unavailable state without inventing evidence.
 
-Knowledge must re-check the current main-repo state before assuming this dependency is still absent. If upstream is ready, implement K-CAP-AI-004 compatibility bridge; otherwise remain blocked rather than creating another Knowledge-local generic provider transport.
+This can proceed entirely in Knowledge and does not require a MarkReg UI write.
 
-### P0-2 — Re-audit shared Communication, then implement K-CAP-COMM-005 when available
+### P0-2 — K-CASE-002 MarkReg one-click promotion UX
 
-Repository dependency: `yoomarks/markorbit`
+Repository/system: `yoomarks/markorbit` / `services/markreg` + relevant UI/Gateway.
 
-Expected upstream scope remains K-CAP-COMM-001/003/004:
+Required product action remains:
 
-- reusable account binding;
-- idempotent outbound send;
-- inbound sync;
-- canonical message/thread/attachment identity;
-- restart-safe cursor;
-- reply correlation;
-- delivery uncertainty;
-- no credential leakage.
+> Send to Knowledge Case
 
-Once the real upstream capability exists, Knowledge should wire the existing `ExpertQuestionSender` port and inbound correlation to it, document legacy email retirement conditions, and keep all provider credentials/transport outside Knowledge.
+This is a cross-repository write and is **not authorized by the current Knowledge takeover permission**. Do not implement it in Knowledge or invent a producer endpoint. Once explicitly authorized on the main repo, wire it to the real Knowledge K-CASE-003 intake contract.
 
-### P0-3 — K-EXP-004 first live Expert vertical slice
+### P0-3 — K-CASE-004 authorized evidence collection adapters
 
-Blocked until K-CAP-COMM-005 is connected.
+After candidate intake and a real producer handoff path exist, collect/reference only proven authorized matter material:
 
-Acceptance must use one legitimate professional question and retain evidence for:
+- Formal Matter snapshot/metadata;
+- lifecycle events/provenance;
+- Document Package evidence refs;
+- correspondence only through a proven Communication/MarkReg evidence interface;
+- fee/payment evidence only when the owning source and authorization are explicit.
 
-- outgoing question;
-- shared Capability send identity;
-- incoming reply;
-- correlated thread/message refs;
-- captured attachments if any;
-- immutable Expert source record;
-- replay deduplication;
-- no expert ranking or truth scoring.
+Reuse RawArtifact/provenance primitives; do not create a parallel operational evidence store.
 
-Do not perform a fake/local-only send to mark this complete.
+### P0-4 — K-EXP-004 first live Expert vertical slice
 
-### P0-4 — Resolve real MarkReg location
-
-K-CASE-000 remains an external discovery gate. Obtain authoritative runtime/repository/service facts and write the discovery receipt before any producer-specific Case Candidate integration.
+Still blocked on Shared Communication. Acceptance requires real outgoing send identity, real reply/thread correlation, immutable raw evidence and replay dedupe.
 
 ## Operational gates kept open, not expanded
 
-- issue #405 remains the real ADK-06 3×2 live-provider acceptance;
-- issue #429 remains repository governance for protected main, live secrets/environment, and durable encrypted evidence retention;
-- as observed on 2026-08-25, the Knowledge `main` branch is not protected, so #429 is still materially unresolved;
-- do not execute paid #405 merely to advance the product roadmap;
-- do not build more generic ADK framework around these open gates.
+- issue #405 remains real ADK-06 live-provider acceptance; do not run paid acceptance merely to advance roadmap;
+- issue #429 remains materially unresolved: Knowledge `main` was still observed unprotected during this checkpoint;
+- do not treat the Managed AI parity bridge as evidence that #405/#429 are complete.
 
 ## STOP / DEFER
 
 - new Knowledge-local generic AI provider transports;
 - new Knowledge-local mailbox/provider platform features;
-- pretending K-EXP-004 is complete without a real shared-Communication send/reply path;
-- Web Capability extraction;
-- provider count as KPI;
-- expert/provider/source ranking;
-- legal-truth certification;
-- lessons/recommendations/predictions in Knowledge;
-- manual reconstruction of MarkReg matters;
-- universal Case ontology before real dossiers.
+- fake live Expert send/reply evidence;
+- direct reads of MarkReg database/persistence;
+- manual reconstruction of MarkReg matters in Knowledge;
+- invented MarkReg promotion HTTP route;
+- universal Case ontology before real dossiers;
+- Case lessons/recommendations/predictions or legal-truth certification;
+- Web Capability extraction until the higher-value Case/Communication dependencies are addressed.
