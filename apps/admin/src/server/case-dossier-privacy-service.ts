@@ -47,7 +47,7 @@ export class CaseDossierPrivacyService {
   private readonly dossiers: SqliteCaseDossierRepository;
   private readonly privacy: SqliteCaseDossierPrivacyRepository;
 
-  constructor(private readonly database: DatabaseSync = getRegistryDatabase()) {
+  constructor(database: DatabaseSync = getRegistryDatabase()) {
     this.dossiers = new SqliteCaseDossierRepository(database);
     this.privacy = new SqliteCaseDossierPrivacyRepository(database);
   }
