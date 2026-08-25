@@ -2,10 +2,10 @@ import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { SqliteAiKnowledgeAssignmentRepository } from "@markorbit/persistence/ai-knowledge-assignments";
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
-import { DeepSeekKnowledgeAdapter } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
 import type { AiKnowledgeProviderAdapter } from "@markorbit/worker-runtime/ai-distilled-knowledge-acquirer";
 import type { AiKnowledgeProvider } from "@markorbit/worker-runtime/ai-production-pilot";
 import { OpenAiKnowledgeAdapter } from "@markorbit/worker-runtime/openai-knowledge-adapter";
+import { createAdkDeepSeekKnowledgeAdapter } from "./adk-deepseek-provider";
 import { SqliteAiKnowledgeJobStore } from "./adk-knowledge-job-queue-store";
 import {
   createRawArtifactAdkAcquisitionSink,
@@ -60,7 +60,7 @@ async function main(): Promise<void> {
     const assignments = new SqliteAiKnowledgeAssignmentRepository(database);
     const rawArtifacts = new SqliteRawArtifactRepository(database, config.storageRoot);
     const adapters = new Map<AiKnowledgeProvider, AiKnowledgeProviderAdapter>([
-      ["DEEPSEEK", new DeepSeekKnowledgeAdapter()],
+      ["DEEPSEEK", createAdkDeepSeekKnowledgeAdapter()],
       ["OPENAI", new OpenAiKnowledgeAdapter()],
     ]);
     const sink = createRawArtifactAdkAcquisitionSink({
