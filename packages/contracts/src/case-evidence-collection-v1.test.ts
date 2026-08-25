@@ -8,9 +8,7 @@ import {
   type ExactCaseSourcePayloadV1,
 } from "./case-evidence-collection-v1";
 
-function exact(
-  sourceRef = "markreg:/v1/formal-matters/formal-matter_x",
-): ExactCaseSourcePayloadV1 {
+function exact(sourceRef = "markreg:/v1/formal-matters/formal-matter_x"): ExactCaseSourcePayloadV1 {
   return {
     sourceRef,
     mediaType: "application/json",
