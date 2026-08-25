@@ -43,6 +43,12 @@ export type FinalizedCaseDossierPrivacyResult = {
   finalizedDossier: CaseDossierV1;
 };
 
+function normalizedFindings(
+  findings: readonly CaseDossierPrivacyFindingV1[],
+): CaseDossierPrivacyFindingV1[] {
+  return [...findings].sort((left, right) => left.findingId.localeCompare(right.findingId));
+}
+
 export class CaseDossierPrivacyService {
   private readonly dossiers: SqliteCaseDossierRepository;
   private readonly privacy: SqliteCaseDossierPrivacyRepository;
@@ -66,7 +72,8 @@ export class CaseDossierPrivacyService {
         `Case Dossier ${input.dossierId} version ${input.dossierVersion} is not reviewable`,
       );
     }
-    const openedAt = input.openedAt ?? new Date().toISOString();
+    const existing = this.privacy.getReview(input.reviewId)?.review;
+    const openedAt = input.openedAt ?? existing?.openedAt ?? new Date().toISOString();
     const review: CaseDossierPrivacyReviewV1 = {
       protocolVersion: CASE_DOSSIER_PRIVACY_PROTOCOL_VERSION,
       objectType: CASE_DOSSIER_PRIVACY_REVIEW_OBJECT_TYPE,
@@ -90,14 +97,18 @@ export class CaseDossierPrivacyService {
   markNeedsRedaction(
     reviewId: string,
     findings: CaseDossierPrivacyFindingV1[],
-    decidedAt = new Date().toISOString(),
+    decidedAt?: string,
   ): CaseDossierPrivacyReviewV1 {
     const current = this.requireReview(reviewId);
+    const resolvedDecidedAt =
+      decidedAt ??
+      (current.review.state === "NEEDS_REDACTION" ? current.review.decidedAt : undefined) ??
+      new Date().toISOString();
     const decision: CaseDossierPrivacyReviewV1 = {
       ...current.review,
       state: "NEEDS_REDACTION",
-      decidedAt,
-      findings,
+      decidedAt: resolvedDecidedAt,
+      findings: normalizedFindings(findings),
       derivativeId: undefined,
     };
     return this.privacy.recordDecision(decision).review;
@@ -106,14 +117,18 @@ export class CaseDossierPrivacyService {
   rejectReview(
     reviewId: string,
     findings: CaseDossierPrivacyFindingV1[] = [],
-    decidedAt = new Date().toISOString(),
+    decidedAt?: string,
   ): CaseDossierPrivacyReviewV1 {
     const current = this.requireReview(reviewId);
+    const resolvedDecidedAt =
+      decidedAt ??
+      (current.review.state === "REJECTED" ? current.review.decidedAt : undefined) ??
+      new Date().toISOString();
     const decision: CaseDossierPrivacyReviewV1 = {
       ...current.review,
       state: "REJECTED",
-      decidedAt,
-      findings,
+      decidedAt: resolvedDecidedAt,
+      findings: normalizedFindings(findings),
       derivativeId: undefined,
     };
     return this.privacy.recordDecision(decision).review;
@@ -128,12 +143,15 @@ export class CaseDossierPrivacyService {
     },
   ): FinalizedCaseDossierPrivacyResult {
     const current = this.requireReview(reviewId);
-    const decidedAt = input.decidedAt ?? new Date().toISOString();
+    const decidedAt =
+      input.decidedAt ??
+      (current.review.state === "FINALIZED" ? current.review.decidedAt : undefined) ??
+      new Date().toISOString();
     const finalizedReview: CaseDossierPrivacyReviewV1 = {
       ...current.review,
       state: "FINALIZED",
       decidedAt,
-      findings: input.findings,
+      findings: normalizedFindings(input.findings),
       derivativeId: input.derivativeId,
     };
     const savedReview = this.privacy.recordDecision(finalizedReview).review;
