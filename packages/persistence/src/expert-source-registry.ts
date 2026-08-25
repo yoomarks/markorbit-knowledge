@@ -20,20 +20,13 @@ const SENT_OR_LATER = new Set<ExpertQuestionState>([
   "CLOSED",
 ]);
 
-const ALLOWED_TRANSITIONS: Readonly<
-  Record<ExpertQuestionState, readonly ExpertQuestionState[]>
-> = {
+const ALLOWED_TRANSITIONS: Readonly<Record<ExpertQuestionState, readonly ExpertQuestionState[]>> = {
   DRAFT: ["DRAFT", "READY_TO_SEND"],
   READY_TO_SEND: ["DRAFT", "READY_TO_SEND", "SENT"],
   SENT: ["SENT", "WAITING_RESPONSE", "RESPONSE_RECEIVED"],
   WAITING_RESPONSE: ["WAITING_RESPONSE", "RESPONSE_RECEIVED"],
   RESPONSE_RECEIVED: ["RESPONSE_RECEIVED", "NEEDS_FOLLOW_UP", "CAPTURED"],
-  NEEDS_FOLLOW_UP: [
-    "NEEDS_FOLLOW_UP",
-    "WAITING_RESPONSE",
-    "RESPONSE_RECEIVED",
-    "CAPTURED",
-  ],
+  NEEDS_FOLLOW_UP: ["NEEDS_FOLLOW_UP", "WAITING_RESPONSE", "RESPONSE_RECEIVED", "CAPTURED"],
   CAPTURED: ["CAPTURED", "CLOSED"],
   CLOSED: ["CLOSED"],
 };
@@ -86,9 +79,7 @@ export function ensureExpertSourceRegistry(database: DatabaseSync): void {
 }
 
 function digest(value: unknown): string {
-  return createHash("sha256")
-    .update(JSON.stringify(value), "utf8")
-    .digest("hex");
+  return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
 }
 
 function sorted(values: readonly string[]): string[] {
@@ -160,24 +151,17 @@ function validateLifecycleShape(value: ExpertQuestionTaskV1): void {
     );
   }
   if (!sent && value.sentAt) {
-    throw new RegistryValidationError(
-      "Pre-send Expert task cannot already have sentAt",
-    );
+    throw new RegistryValidationError("Pre-send Expert task cannot already have sentAt");
   }
   if (value.state === "CLOSED" && !value.closedAt) {
     throw new RegistryValidationError("Closed Expert task requires closedAt");
   }
   if (value.state !== "CLOSED" && value.closedAt) {
-    throw new RegistryValidationError(
-      "Only a closed Expert task may have closedAt",
-    );
+    throw new RegistryValidationError("Only a closed Expert task may have closedAt");
   }
 }
 
-function validateTransition(
-  from: ExpertQuestionState,
-  to: ExpertQuestionState,
-): void {
+function validateTransition(from: ExpertQuestionState, to: ExpertQuestionState): void {
   if (!ALLOWED_TRANSITIONS[from].includes(to)) {
     throw new RegistryConflictError(
       "EXPERT_TASK_STATE_TRANSITION_INVALID",
@@ -249,10 +233,7 @@ export class SqliteExpertSourceRepository {
     const previous = parseTask(existing.document_json);
     validateTransition(existing.state, value.state);
 
-    if (
-      existing.question_lock_sha256 &&
-      existing.question_lock_sha256 !== questionLock(value)
-    ) {
+    if (existing.question_lock_sha256 && existing.question_lock_sha256 !== questionLock(value)) {
       throw new RegistryConflictError(
         "EXPERT_TASK_QUESTION_LOCKED",
         `Expert task ${value.taskId} question identity is immutable after send`,
@@ -374,8 +355,7 @@ export class SqliteExpertSourceRepository {
     }
     if (
       task.communicationThreadRef &&
-      task.communicationThreadRef !==
-        value.communication.communicationThreadRef
+      task.communicationThreadRef !== value.communication.communicationThreadRef
     ) {
       throw new RegistryValidationError(
         `Expert source record thread does not match task ${value.taskId}`,
@@ -393,9 +373,7 @@ export class SqliteExpertSourceRepository {
          FROM expert_source_records
          WHERE evidence_key = ?`,
       )
-      .get(key) as
-      | { replay_payload_sha256: string; document_json: string }
-      | undefined;
+      .get(key) as { replay_payload_sha256: string; document_json: string } | undefined;
     if (sameEvidence) {
       if (sameEvidence.replay_payload_sha256 !== payloadSha256) {
         throw new RegistryConflictError(
@@ -412,9 +390,7 @@ export class SqliteExpertSourceRepository {
          FROM expert_source_records
          WHERE source_record_id = ?`,
       )
-      .get(value.sourceRecordId) as
-      | { document_sha256: string; document_json: string }
-      | undefined;
+      .get(value.sourceRecordId) as { document_sha256: string; document_json: string } | undefined;
     if (sameId) {
       if (sameId.document_sha256 !== sha256 || sameId.document_json !== json) {
         throw new RegistryConflictError(
@@ -447,9 +423,7 @@ export class SqliteExpertSourceRepository {
 
   getSourceRecord(sourceRecordId: string): ExpertSourceRecordV1 | null {
     const row = this.database
-      .prepare(
-        `SELECT document_json FROM expert_source_records WHERE source_record_id = ?`,
-      )
+      .prepare(`SELECT document_json FROM expert_source_records WHERE source_record_id = ?`)
       .get(sourceRecordId) as { document_json: string } | undefined;
     return row ? parseSourceRecord(row.document_json) : null;
   }
