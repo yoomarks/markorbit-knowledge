@@ -81,7 +81,7 @@ describe("request-bound MarkReg evidence collection", () => {
           formalMatterId: matterId,
           workspaceId,
           version: 1,
-          snapshotSha256,
+          snapshotSha256: snapshotSha,
           sourceSnapshot: { matterDraft: { jurisdiction: "US" } },
         },
         consequences: {
