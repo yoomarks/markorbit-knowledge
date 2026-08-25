@@ -108,6 +108,32 @@ describe("CaseLiveAcceptanceReceiptV1", () => {
     ).toBe(false);
   });
 
+  it("represents privacy rejection as terminal failure and never as eligibility", () => {
+    const rejected = receipt({
+      state: "FAILED",
+      evidence: { collectionId: "case-evidence_01", documentSha256: sha },
+      assembledDossier: { dossierId: "case-dossier_01", version: 1, documentSha256: sha },
+      privacyReview: { reviewId: "case-privacy-review_01", state: "REJECTED" },
+      failure: {
+        stage: "PRIVACY",
+        code: "CASE_LIVE_ACCEPTANCE_PRIVACY_REJECTED",
+        retryable: false,
+      },
+      updatedAt: "2026-08-25T09:40:00.000Z",
+    });
+    expect(isCaseLiveAcceptanceReceiptV1(rejected)).toBe(true);
+    expect(
+      isCaseLiveAcceptanceReceiptV1({
+        ...rejected,
+        state: "PRIVACY_REVIEW_REQUIRED",
+        failure: undefined,
+      }),
+    ).toBe(false);
+    expect(
+      isCaseLiveAcceptanceReceiptV1({ ...rejected, eligibleForKCase008Review: true }),
+    ).toBe(false);
+  });
+
   it("accepts retryable collection waiting state but rejects fake waiting states", () => {
     const waiting = receipt({
       state: "WAITING_SOURCE",
