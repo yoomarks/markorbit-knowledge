@@ -378,6 +378,13 @@ export class SqliteCaseCandidateIntakeRepository {
     if (!this.getCandidate(candidateId)) {
       throw new RegistryValidationError(`Case Candidate ${candidateId} does not exist`);
     }
+    const current = this.requireIntake(candidateId);
+    if (current.collectionState === "COLLECTED") {
+      throw new RegistryConflictError(
+        "CASE_CANDIDATE_ALREADY_COLLECTED",
+        `Case Candidate ${candidateId} already has completed evidence collection`,
+      );
+    }
     this.database
       .prepare(
         `UPDATE case_candidate_collection_tickets
