@@ -1,0 +1,53 @@
+name: Managed AI Core HTTP E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/managed-ai-core-http-e2e.yml"
+      - "apps/worker/src/adk-knowledge-job-worker.ts"
+      - "packages/worker-runtime/src/ai-distilled-knowledge-acquirer.ts"
+      - "packages/worker-runtime/src/managed-ai-knowledge-adapter.ts"
+      - "packages/worker-runtime/src/managed-ai-execution-http-client.ts"
+      - "packages/worker-runtime/src/managed-ai-knowledge-http-adapter.ts"
+      - "packages/worker-runtime/src/managed-ai-core-http-e2e.test.ts"
+
+permissions:
+  contents: read
+
+env:
+  CORE_REF: e277043dbf5d10e10626121662b0a16efc6f4ad1
+
+jobs:
+  managed-ai-core-http:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Knowledge
+        uses: actions/checkout@v4
+      - name: Checkout pinned Core
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: ${{ env.CORE_REF }}
+          path: .e2e/markorbit-core
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Knowledge dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Core dependencies
+        working-directory: .e2e/markorbit-core
+        run: pnpm install --frozen-lockfile
+      - name: Build Core Capability Engine dependency closure
+        working-directory: .e2e/markorbit-core
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
+      - name: Run real Knowledge to Core Managed AI HTTP acceptance
+        env:
+          MARKORBIT_CORE_CHECKOUT: ${{ github.workspace }}/.e2e/markorbit-core
+        run: >-
+          pnpm --filter @markorbit/worker-runtime exec vitest run
+          src/managed-ai-core-http-e2e.test.ts
