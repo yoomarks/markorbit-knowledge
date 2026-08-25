@@ -10,6 +10,11 @@ const plannedActions: Record<Exclude<ModuleKey, "dashboard">, string[]> = {
     "维护 Include / Exclude Discovery Policy",
   ],
   sources: ["创建与分类数据源", "按国家、类型和状态筛选", "测试连接、预览采集和检查更新"],
+  experts: [
+    "创建和审核待咨询的专家问题",
+    "通过共享 Communication 能力发送并跟踪回复",
+    "保留原始回复、附件和后续追问的来源证据",
+  ],
   foundational: [
     "查看核心基础资料覆盖与健康",
     "下钻来源登记、采集、转换、入库与检索状态",
