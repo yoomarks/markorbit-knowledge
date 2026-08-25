@@ -33,6 +33,12 @@ export type CaseLiveAcceptanceCandidateIdentityV1 = {
   sourceMatterVersion: number;
   sourceSnapshotSha256: string;
   sourceWorkspaceId: string;
+  sourceAccessClassification: "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
+};
+
+export type CaseLiveAcceptancePrivacyPlanV1 = {
+  reviewId: string;
+  reviewerRef: string;
 };
 
 export type CaseLiveAcceptanceEvidenceReceiptV1 = {
@@ -74,6 +80,11 @@ export type CaseLiveAcceptanceFailureV1 = {
  * the future K-CASE-002 MarkReg one-click handoff; Knowledge does not invent or
  * interpret that producer reference.
  *
+ * The privacy review identity is frozen from STARTED so WAITING_SOURCE retries
+ * cannot silently change reviewer identity. The acceptance harness deliberately
+ * opens privacy review at the Candidate source access classification; audience
+ * broadening, when needed, remains an explicit K-CASE-007 operation.
+ *
  * `eligibleForKCase008Review` is not an acceptance decision. It only means the
  * technical prerequisites recorded here are complete enough for an operator to
  * review the run as K-CASE-008 evidence.
@@ -86,6 +97,7 @@ export type CaseLiveAcceptanceReceiptV1 = {
   transportMode: CaseLiveAcceptanceTransportMode;
   state: CaseLiveAcceptanceState;
   candidate: CaseLiveAcceptanceCandidateIdentityV1;
+  privacyPlan: CaseLiveAcceptancePrivacyPlanV1;
   producerPromotionRef?: string;
   evidence?: CaseLiveAcceptanceEvidenceReceiptV1;
   assembledDossier?: CaseLiveAcceptanceDossierReceiptV1;
@@ -155,6 +167,7 @@ function isCandidate(value: unknown): value is CaseLiveAcceptanceCandidateIdenti
         "sourceMatterVersion",
         "sourceSnapshotSha256",
         "sourceWorkspaceId",
+        "sourceAccessClassification",
       ]) &&
       nonEmpty(item.candidateId) &&
       item.sourceSystem === "MARKREG" &&
@@ -162,7 +175,20 @@ function isCandidate(value: unknown): value is CaseLiveAcceptanceCandidateIdenti
       positiveVersion(item.sourceMatterVersion) &&
       typeof item.sourceSnapshotSha256 === "string" &&
       SHA256.test(item.sourceSnapshotSha256) &&
-      nonEmpty(item.sourceWorkspaceId),
+      nonEmpty(item.sourceWorkspaceId) &&
+      (item.sourceAccessClassification === "INTERNAL" ||
+        item.sourceAccessClassification === "CONFIDENTIAL" ||
+        item.sourceAccessClassification === "RESTRICTED"),
+  );
+}
+
+function isPrivacyPlan(value: unknown): value is CaseLiveAcceptancePrivacyPlanV1 {
+  const item = record(value);
+  return Boolean(
+    item &&
+      onlyAllowedKeys(item, ["reviewId", "reviewerRef"]) &&
+      nonEmpty(item.reviewId) &&
+      nonEmpty(item.reviewerRef),
   );
 }
 
@@ -275,6 +301,7 @@ export function isCaseLiveAcceptanceReceiptV1(
       "transportMode",
       "state",
       "candidate",
+      "privacyPlan",
       "producerPromotionRef",
       "evidence",
       "assembledDossier",
@@ -296,6 +323,7 @@ export function isCaseLiveAcceptanceReceiptV1(
     ) ||
     !CASE_LIVE_ACCEPTANCE_STATES.includes(item.state as CaseLiveAcceptanceState) ||
     !isCandidate(item.candidate) ||
+    !isPrivacyPlan(item.privacyPlan) ||
     (item.producerPromotionRef !== undefined && !nonEmpty(item.producerPromotionRef)) ||
     (item.evidence !== undefined && !isEvidence(item.evidence)) ||
     (item.assembledDossier !== undefined && !isDossier(item.assembledDossier)) ||
@@ -318,6 +346,12 @@ export function isCaseLiveAcceptanceReceiptV1(
   if (item.state === "WAITING_SOURCE") {
     const failure = item.failure as CaseLiveAcceptanceFailureV1;
     if (!failure.retryable || failure.stage !== "COLLECTION") return false;
+  }
+
+  if (item.privacyReview) {
+    const privacy = item.privacyReview as CaseLiveAcceptancePrivacyReceiptV1;
+    const plan = item.privacyPlan as CaseLiveAcceptancePrivacyPlanV1;
+    if (privacy.reviewId !== plan.reviewId) return false;
   }
 
   if (item.state === "FINALIZED") {
