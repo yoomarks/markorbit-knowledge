@@ -88,7 +88,10 @@ function requireTask(repository: SqliteExpertSourceRepository, id: string): Expe
   return task;
 }
 
-function requireReplyBinding(task: ExpertQuestionTaskV1, reply: ExpertSourceRecordV1): void {
+function requireReplyBinding(
+  task: ExpertQuestionTaskV1,
+  reply: ExpertSourceRecordV1,
+): void {
   if (!task.communicationThreadRef) {
     throw new RegistryConflictError(
       "EXPERT_TASK_COMMUNICATION_THREAD_NOT_BOUND",
@@ -102,7 +105,9 @@ function requireReplyBinding(task: ExpertQuestionTaskV1, reply: ExpertSourceReco
     );
   }
   if (reply.communication.messageRefs.length === 0) {
-    throw new RegistryValidationError("Expert reply must reference at least one Communication message");
+    throw new RegistryValidationError(
+      "Expert reply must reference at least one Communication message",
+    );
   }
   if (
     reply.expertRef !== task.expertRef ||
