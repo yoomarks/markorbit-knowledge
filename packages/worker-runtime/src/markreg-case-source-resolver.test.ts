@@ -75,7 +75,8 @@ describe("ConfiguredMarkRegCaseSourceResolver", () => {
 
   it("rejects invalid service URLs and embedded credentials", () => {
     expect(
-      () => new ConfiguredMarkRegCaseSourceResolver({ ...options(), baseUrl: "ftp://markreg.test" }),
+      () =>
+        new ConfiguredMarkRegCaseSourceResolver({ ...options(), baseUrl: "ftp://markreg.test" }),
     ).toThrowError(/HTTP\(S\)/u);
     expect(
       () =>
