@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertExpertQuestionTaskV1,
   assertExpertSourceRecordV1,
+  isExpertCommunicationCorrelationV1,
   isExpertQuestionTaskV1,
   isExpertSourceRecordV1,
   type ExpertQuestionTaskV1,
@@ -83,6 +84,27 @@ describe("Expert source V1 contracts", () => {
     expect(isExpertSourceRecordV1(followUp)).toBe(true);
     expect(Object.keys(followUp)).not.toContain("expertScore");
     expect(Object.keys(followUp)).not.toContain("truthScore");
+  });
+
+  it("requires at least one correlated Communication message for Expert evidence", () => {
+    const withoutMessages = {
+      ...record,
+      communication: {
+        ...record.communication,
+        messageRefs: [],
+      },
+    };
+
+    expect(
+      isExpertCommunicationCorrelationV1({
+        communicationThreadRef: "comm:thread:001",
+        messageRefs: [],
+      }),
+    ).toBe(false);
+    expect(isExpertSourceRecordV1(withoutMessages)).toBe(false);
+    expect(() => assertExpertSourceRecordV1(withoutMessages)).toThrow(
+      "Invalid ExpertSourceRecordV1",
+    );
   });
 
   it("rejects Brain-style scoring or truth fields", () => {
