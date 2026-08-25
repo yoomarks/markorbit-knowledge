@@ -107,7 +107,11 @@ function response(value: unknown, status = 200): Response {
 }
 
 function executionRequest(executionKey: string): AiKnowledgeProviderRequest {
-  return { assignment, executionKey } as AiKnowledgeProviderRequest & { executionKey: string };
+  return {
+    assignment,
+    executionKey,
+    timeoutMs: 45_000,
+  } as AiKnowledgeProviderRequest & { executionKey: string };
 }
 
 describe("Managed AI Capability Engine HTTP bridge", () => {
