@@ -37,7 +37,7 @@ export type CaseCandidateV1 = {
   idempotencyKey: string;
 };
 
-const CANDIDATE_ID = /^case-candidate_[a-zA-Z0-9][a-zA-Z0-9._:-]{2,255}$/u;
+const CANDIDATE_ID = /^case-candidate_[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$/u;
 const MARKREG_FORMAL_MATTER_ID = /^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{2,255}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
 const FORBIDDEN_SEMANTIC_KEYS = new Set([
