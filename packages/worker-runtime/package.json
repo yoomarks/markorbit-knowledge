@@ -14,6 +14,7 @@
     "./ai-grounded-output-validator": "./src/ai-grounded-output-validator.ts",
     "./markreg-case-evidence-collector": "./src/markreg-case-evidence-collector.ts",
     "./case-dossier-assembler": "./src/case-dossier-assembler.ts",
+    "./case-dossier-redactor": "./src/case-dossier-redactor.ts",
     "./foundational-readiness": "./src/foundational-readiness.ts",
     "./foundational-remediation-queue": "./src/foundational-remediation-queue.ts",
     "./foundational-remediation-snapshot": "./src/foundational-remediation-snapshot.ts",
