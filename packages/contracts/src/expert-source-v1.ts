@@ -38,6 +38,8 @@ export type ExpertQuestionTaskV1 = {
   expertRef: string;
   organizationRef?: string;
   requestedBy: string;
+  /** Stable idempotency/correlation reference owned by shared Communication. */
+  communicationSendRequestRef?: string;
   communicationThreadRef?: string;
   state: ExpertQuestionState;
   createdAt: string;
@@ -146,6 +148,7 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
       "expertRef",
       "organizationRef",
       "requestedBy",
+      "communicationSendRequestRef",
       "communicationThreadRef",
       "state",
       "createdAt",
@@ -172,6 +175,7 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
     nonEmpty(item.expertRef) &&
     optionalNonEmpty(item.organizationRef) &&
     nonEmpty(item.requestedBy) &&
+    optionalNonEmpty(item.communicationSendRequestRef) &&
     optionalNonEmpty(item.communicationThreadRef) &&
     stateValid &&
     timestamp(item.createdAt) &&
