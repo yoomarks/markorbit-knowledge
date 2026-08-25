@@ -130,10 +130,14 @@ function requireTarget(content: CaseDossierAudienceViewV1, target: CaseDossierPr
       exists = content.narrative.some((item) => item.statementId === target.itemId);
       break;
     case "TIMELINE":
-      exists = content.timeline.some((item) => item.eventId === target.itemId);
+      exists = content.timeline.some(
+        (item) => item.eventId === target.itemId && target.field in item,
+      );
       break;
     case "DOCUMENT":
-      exists = content.documents.some((item) => item.documentId === target.itemId);
+      exists = content.documents.some(
+        (item) => item.documentId === target.itemId && target.field in item,
+      );
       break;
     case "MONEY":
       exists =
