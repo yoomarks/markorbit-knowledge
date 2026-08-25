@@ -33,7 +33,9 @@ function pagination(value: number | undefined, field: "limit" | "offset"): numbe
   if (value === undefined) return field === "limit" ? DEFAULT_LIMIT : 0;
   if (!Number.isInteger(value) || value < (field === "limit" ? 1 : 0)) {
     throw new RegistryValidationError(
-      field === "limit" ? "limit must be a positive integer" : "offset must be a non-negative integer",
+      field === "limit"
+        ? "limit must be a positive integer"
+        : "offset must be a non-negative integer",
     );
   }
   if (field === "limit" && value > MAX_LIMIT) {

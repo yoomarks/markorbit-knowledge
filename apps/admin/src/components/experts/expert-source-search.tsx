@@ -207,19 +207,26 @@ export function ExpertSourceSearch() {
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
                   <p className="font-medium text-slate-800">Communication</p>
-                  <p className="mt-1 break-all">Thread: {record.communication.communicationThreadRef}</p>
-                  <p className="mt-1 break-all">Messages: {record.communication.messageRefs.join(", ")}</p>
+                  <p className="mt-1 break-all">
+                    Thread: {record.communication.communicationThreadRef}
+                  </p>
+                  <p className="mt-1 break-all">
+                    Messages: {record.communication.messageRefs.join(", ")}
+                  </p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
                   <p className="font-medium text-slate-800">Attachments / related refs</p>
                   <p className="mt-1 break-all">
-                    Attachments: {record.attachmentRefs.length ? record.attachmentRefs.join(", ") : "None"}
+                    Attachments:{" "}
+                    {record.attachmentRefs.length ? record.attachmentRefs.join(", ") : "None"}
                   </p>
                   <p className="mt-1 break-all">
-                    Sources: {record.relatedSourceRefs.length ? record.relatedSourceRefs.join(", ") : "None"}
+                    Sources:{" "}
+                    {record.relatedSourceRefs.length ? record.relatedSourceRefs.join(", ") : "None"}
                   </p>
                   <p className="mt-1 break-all">
-                    Cases: {record.relatedCaseRefs.length ? record.relatedCaseRefs.join(", ") : "None"}
+                    Cases:{" "}
+                    {record.relatedCaseRefs.length ? record.relatedCaseRefs.join(", ") : "None"}
                   </p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">

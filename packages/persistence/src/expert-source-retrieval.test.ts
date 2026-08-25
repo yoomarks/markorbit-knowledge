@@ -176,9 +176,7 @@ describe("SqliteExpertSourceRetrievalRepository", () => {
 
     const retrieval = new SqliteExpertSourceRetrievalRepository(database);
     expect(retrieval.search({ jurisdiction: "US", limit: 2 }).items).toEqual([third, second]);
-    expect(retrieval.search({ jurisdiction: "US", limit: 1, offset: 1 }).items).toEqual([
-      second,
-    ]);
+    expect(retrieval.search({ jurisdiction: "US", limit: 1, offset: 1 }).items).toEqual([second]);
     database.close();
   });
 
