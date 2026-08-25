@@ -72,6 +72,19 @@ function parseCandidate(value: string): CaseCandidateV1 {
   return parsed;
 }
 
+function assertCompatibleSourceSemantics(existing: CaseCandidateV1, incoming: CaseCandidateV1): void {
+  if (
+    existing.sourceRetrievalRef !== incoming.sourceRetrievalRef ||
+    existing.accessScope.classification !== incoming.accessScope.classification
+  ) {
+    throw new RegistryConflictError(
+      "CASE_CANDIDATE_SOURCE_SEMANTICS_CONFLICT",
+      "The same MarkReg source snapshot was promoted with different retrieval or access semantics",
+      { existingCandidateId: existing.candidateId },
+    );
+  }
+}
+
 function parseIntake(row: {
   candidate_id: string;
   source_identity_sha256: string;
@@ -112,7 +125,10 @@ export class SqliteCaseCandidateIntakeRepository {
     ensureCaseCandidateIntakeRegistry(database);
   }
 
-  acceptCandidate(value: CaseCandidateV1, acceptedAt = new Date().toISOString()): CaseCandidateIntakeResultV1 {
+  acceptCandidate(
+    value: CaseCandidateV1,
+    acceptedAt = new Date().toISOString(),
+  ): CaseCandidateIntakeResultV1 {
     if (!isCaseCandidateV1(value)) {
       throw new RegistryValidationError("Case Candidate is invalid");
     }
@@ -148,12 +164,15 @@ export class SqliteCaseCandidateIntakeRepository {
 
       const existingBySource = this.database
         .prepare(
-          `SELECT candidate_id
+          `SELECT candidate_id, document_json
              FROM case_candidates
             WHERE source_identity_sha256 = ?`,
         )
-        .get(sourceIdentitySha256) as { candidate_id: string } | undefined;
+        .get(sourceIdentitySha256) as
+        | { candidate_id: string; document_json: string }
+        | undefined;
       if (existingBySource) {
+        assertCompatibleSourceSemantics(parseCandidate(existingBySource.document_json), value);
         this.database
           .prepare(
             `INSERT INTO case_candidate_intake_commands(
