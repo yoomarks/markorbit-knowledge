@@ -18,6 +18,7 @@ const task: ExpertQuestionTaskV1 = {
   expertRef: "expert:us:outside-counsel-001",
   organizationRef: "org:outside-firm-001",
   requestedBy: "user:operator-001",
+  communicationSendRequestRef: "comm:send-request:001",
   communicationThreadRef: "comm:thread:001",
   state: "WAITING_RESPONSE",
   createdAt: "2026-08-25T01:00:00.000Z",
@@ -90,10 +91,31 @@ describe("Expert source V1 contracts", () => {
     expect(isExpertSourceRecordV1({ ...record, legalTruthVerified: true })).toBe(false);
   });
 
+  it("requires durable send correlation for sent states", () => {
+    expect(isExpertQuestionTaskV1({ ...task, communicationSendRequestRef: undefined })).toBe(false);
+    expect(isExpertQuestionTaskV1({ ...task, sentAt: undefined })).toBe(false);
+    expect(
+      isExpertQuestionTaskV1({
+        ...task,
+        state: "READY_TO_SEND",
+        sentAt: undefined,
+      }),
+    ).toBe(true);
+    expect(
+      isExpertQuestionTaskV1({
+        ...task,
+        state: "READY_TO_SEND",
+        sentAt: undefined,
+        communicationSendRequestRef: undefined,
+      }),
+    ).toBe(true);
+  });
+
   it("requires original answer evidence and fail-closes malformed lifecycle fields", () => {
     expect(isExpertSourceRecordV1({ ...record, rawAnswerArtifactRefs: [] })).toBe(false);
     expect(isExpertQuestionTaskV1({ ...task, state: "AUTO_APPROVED" })).toBe(false);
     expect(isExpertQuestionTaskV1({ ...task, createdAt: "not-a-date" })).toBe(false);
+    expect(isExpertQuestionTaskV1({ ...task, state: "CLOSED", closedAt: undefined })).toBe(false);
     expect(() => assertExpertSourceRecordV1({ ...record, rawAnswerArtifactRefs: [] })).toThrow(
       "Invalid ExpertSourceRecordV1",
     );

@@ -38,6 +38,8 @@ export type ExpertQuestionTaskV1 = {
   expertRef: string;
   organizationRef?: string;
   requestedBy: string;
+  /** Stable idempotency/correlation reference owned by shared Communication. */
+  communicationSendRequestRef?: string;
   communicationThreadRef?: string;
   state: ExpertQuestionState;
   createdAt: string;
@@ -74,6 +76,14 @@ export type ExpertSourceRecordV1 = {
 };
 
 const ID = /^[a-z][a-z0-9_:-]{2,255}$/u;
+const SENT_OR_LATER = new Set<ExpertQuestionState>([
+  "SENT",
+  "WAITING_RESPONSE",
+  "RESPONSE_RECEIVED",
+  "NEEDS_FOLLOW_UP",
+  "CAPTURED",
+  "CLOSED",
+]);
 const FORBIDDEN_SEMANTIC_KEYS = new Set([
   "expertScore",
   "authorityScore",
@@ -127,7 +137,9 @@ export function isExpertCommunicationCorrelationV1(
   value: unknown,
 ): value is ExpertCommunicationCorrelationV1 {
   const item = record(value);
-  if (!item || !onlyAllowedKeys(item, ["communicationThreadRef", "messageRefs"])) return false;
+  if (!item || !onlyAllowedKeys(item, ["communicationThreadRef", "messageRefs"])) {
+    return false;
+  }
   return nonEmpty(item.communicationThreadRef) && refs(item.messageRefs);
 }
 
@@ -146,6 +158,7 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
       "expertRef",
       "organizationRef",
       "requestedBy",
+      "communicationSendRequestRef",
       "communicationThreadRef",
       "state",
       "createdAt",
@@ -162,6 +175,15 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
   const accessValid = EXPERT_ACCESS_CLASSIFICATIONS.includes(
     item.accessClassification as ExpertAccessClassification,
   );
+  if (!stateValid || !accessValid) return false;
+
+  const sentOrLater = SENT_OR_LATER.has(item.state as ExpertQuestionState);
+  const lifecycleValid = sentOrLater
+    ? nonEmpty(item.communicationSendRequestRef) && timestamp(item.sentAt)
+    : item.sentAt === undefined;
+  const closureValid =
+    item.state === "CLOSED" ? timestamp(item.closedAt) : item.closedAt === undefined;
+
   return (
     item.protocolVersion === EXPERT_SOURCE_PROTOCOL_VERSION &&
     item.objectType === EXPERT_QUESTION_TASK_OBJECT_TYPE &&
@@ -172,19 +194,22 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
     nonEmpty(item.expertRef) &&
     optionalNonEmpty(item.organizationRef) &&
     nonEmpty(item.requestedBy) &&
+    optionalNonEmpty(item.communicationSendRequestRef) &&
     optionalNonEmpty(item.communicationThreadRef) &&
-    stateValid &&
     timestamp(item.createdAt) &&
     optionalTimestamp(item.sentAt) &&
     optionalTimestamp(item.closedAt) &&
     refs(item.relatedSourceRefs) &&
     refs(item.relatedCaseRefs) &&
-    accessValid
+    lifecycleValid &&
+    closureValid
   );
 }
 
 export function assertExpertQuestionTaskV1(value: unknown): asserts value is ExpertQuestionTaskV1 {
-  if (!isExpertQuestionTaskV1(value)) throw new TypeError("Invalid ExpertQuestionTaskV1");
+  if (!isExpertQuestionTaskV1(value)) {
+    throw new TypeError("Invalid ExpertQuestionTaskV1");
+  }
 }
 
 export function isExpertSourceRecordV1(value: unknown): value is ExpertSourceRecordV1 {
@@ -251,5 +276,7 @@ export function isExpertSourceRecordV1(value: unknown): value is ExpertSourceRec
 }
 
 export function assertExpertSourceRecordV1(value: unknown): asserts value is ExpertSourceRecordV1 {
-  if (!isExpertSourceRecordV1(value)) throw new TypeError("Invalid ExpertSourceRecordV1");
+  if (!isExpertSourceRecordV1(value)) {
+    throw new TypeError("Invalid ExpertSourceRecordV1");
+  }
 }
