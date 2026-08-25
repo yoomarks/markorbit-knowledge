@@ -12,7 +12,7 @@ const markdown = "# Managed AI Core E2E\n\nProvider-neutral HTTP acceptance.";
 const assignment: AiKnowledgeAssignmentV1 = {
   protocolVersion: "1.0",
   objectType: "AI_KNOWLEDGE_ASSIGNMENT",
-  assignmentId: "assignment-managed-ai-core-http-e2e",
+  assignmentId: "kas_managed_ai_core_http_e2e",
   jurisdiction: "US",
   domain: "TRADEMARK",
   topic: "DECLARATION_OF_USE",
