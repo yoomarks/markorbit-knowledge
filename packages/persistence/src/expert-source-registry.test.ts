@@ -119,6 +119,31 @@ describe("SqliteExpertSourceRepository", () => {
     database.close();
   });
 
+  it("locks the terminal closedAt audit timestamp once recorded", () => {
+    const database = new DatabaseSync(":memory:");
+    const repository = new SqliteExpertSourceRepository(database);
+    const sent = advanceToSent(repository);
+    const responseReceived = { ...sent, state: "RESPONSE_RECEIVED" as const };
+    repository.saveTask(responseReceived);
+    const captured = { ...responseReceived, state: "CAPTURED" as const };
+    repository.saveTask(captured);
+    const closed = {
+      ...captured,
+      state: "CLOSED" as const,
+      closedAt: "2026-08-25T03:00:00.000Z",
+    };
+    repository.saveTask(closed);
+
+    expect(() =>
+      repository.saveTask({
+        ...closed,
+        closedAt: "2026-08-25T04:00:00.000Z",
+      }),
+    ).toThrowError(/closedAt is immutable once recorded/u);
+    expect(repository.getTask(closed.taskId)).toEqual(closed);
+    database.close();
+  });
+
   it("requires durable send correlation before entering a sent state", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteExpertSourceRepository(database);
