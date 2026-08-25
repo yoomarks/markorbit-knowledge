@@ -33,6 +33,18 @@ describe("CaseCandidateV1", () => {
     expect(isCaseCandidateV1(candidate())).toBe(true);
   });
 
+  it("does not add a producer-unowned minimum suffix length to Formal Matter IDs", () => {
+    expect(
+      isCaseCandidateV1(
+        candidate({
+          sourceMatterId: "formal-matter_a",
+          sourceRetrievalRef: "/v1/formal-matters/formal-matter_a",
+        }),
+      ),
+    ).toBe(true);
+    expect(isCaseCandidateV1(candidate({ sourceMatterId: "formal-matter_" }))).toBe(false);
+  });
+
   it("uses the exact source snapshot identity as the stable natural key", () => {
     const first = candidate({
       candidateId: "case-candidate_first",
