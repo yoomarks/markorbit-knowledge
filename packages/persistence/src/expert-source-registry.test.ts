@@ -145,6 +145,32 @@ describe("SqliteExpertSourceRepository", () => {
     database.close();
   });
 
+  it("rejects duplicate refs that could mutate replay evidence identity", () => {
+    const database = new DatabaseSync(":memory:");
+    const repository = new SqliteExpertSourceRepository(database);
+    advanceToSent(repository);
+
+    expect(() =>
+      repository.saveSourceRecord(
+        sourceRecord({
+          communication: {
+            communicationThreadRef: "comm:thread:001",
+            messageRefs: ["comm:message:inbound-001", "comm:message:inbound-001"],
+          },
+        }),
+      ),
+    ).toThrowError(/Expert source record is invalid/u);
+    expect(() =>
+      repository.saveSourceRecord(
+        sourceRecord({
+          rawAnswerArtifactRefs: ["raw:sha256:answer-001", "raw:sha256:answer-001"],
+        }),
+      ),
+    ).toThrowError(/Expert source record is invalid/u);
+    expect(repository.listSourceRecordsForTask("eqt_us_section8_001")).toHaveLength(0);
+    database.close();
+  });
+
   it("fails closed when the same inbound evidence is replayed with changed semantics", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteExpertSourceRepository(database);
