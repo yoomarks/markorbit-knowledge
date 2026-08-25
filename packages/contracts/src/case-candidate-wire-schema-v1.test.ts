@@ -138,6 +138,19 @@ describe("CaseCandidateV1 portable wire schema", () => {
     );
   });
 
+  it("matches the authoritative MarkReg FormalMatterId prefix contract without inventing a suffix length", () => {
+    const minimal = candidate({
+      sourceMatterId: "formal-matter_a",
+      sourceRetrievalRef: "/v1/formal-matters/formal-matter_a",
+    });
+    expectSameDecision(minimal);
+    expect(isCaseCandidateV1(minimal)).toBe(true);
+
+    const emptySuffix = candidate({ sourceMatterId: "formal-matter_" });
+    expectSameDecision(emptySuffix);
+    expect(isCaseCandidateV1(emptySuffix)).toBe(false);
+  });
+
   it("makes the portable schema and runtime validator agree on producer boundaries", () => {
     const valid = candidate();
     const invalidCases: unknown[] = [
