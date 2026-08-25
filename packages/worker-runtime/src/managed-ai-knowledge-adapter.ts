@@ -385,6 +385,7 @@ export class ManagedAiDeepSeekKnowledgeAdapter implements AiKnowledgeProviderAda
     try {
       outcome = await this.client.execute(input);
     } catch (error) {
+      if (error instanceof AiKnowledgeAcquisitionError) throw error;
       throw new AiKnowledgeAcquisitionError(
         "AI_PROVIDER_NETWORK_ERROR",
         error instanceof Error ? error.message : "Managed AI execution client failed",

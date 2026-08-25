@@ -4,10 +4,7 @@ import type {
   AiKnowledgeProviderAdapter,
   AiKnowledgeProviderRequest,
 } from "./ai-distilled-knowledge-acquirer";
-import {
-  ManagedAiDeepSeekKnowledgeAdapter,
-  type ManagedAiKnowledgeExecutionInputV1,
-} from "./managed-ai-knowledge-adapter";
+import { ManagedAiDeepSeekKnowledgeAdapter } from "./managed-ai-knowledge-adapter";
 import {
   ManagedAiExecutionHttpClient,
   type ManagedAiHttpTransport,
@@ -47,14 +44,6 @@ export function managedAiKnowledgeHttpExecutionContext(
   };
 }
 
-class BoundManagedAiExecutionClient extends ManagedAiExecutionHttpClient {
-  async execute(
-    input: Readonly<ManagedAiKnowledgeExecutionInputV1>,
-  ) {
-    return super.execute(input);
-  }
-}
-
 export class ManagedAiHttpDeepSeekKnowledgeAdapter implements AiKnowledgeProviderAdapter {
   readonly provider = "DEEPSEEK" as const;
 
@@ -62,7 +51,7 @@ export class ManagedAiHttpDeepSeekKnowledgeAdapter implements AiKnowledgeProvide
 
   async acquire(request: AiKnowledgeProviderRequest): Promise<AiKnowledgeAcquisition> {
     const context = managedAiKnowledgeHttpExecutionContext(request);
-    const client = new BoundManagedAiExecutionClient({
+    const client = new ManagedAiExecutionHttpClient({
       baseUrl: this.options.baseUrl,
       internalServiceSecret: this.options.internalServiceSecret,
       idempotencyKey: context.idempotencyKey,

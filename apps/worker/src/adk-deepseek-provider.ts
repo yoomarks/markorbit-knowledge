@@ -26,7 +26,11 @@ function assertManagedCoreUrl(value: string): string {
   } catch {
     throw new Error(`${CAPABILITY_ENGINE_URL_ENV} must be a valid URL`);
   }
-  if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || parsed.username || parsed.password) {
+  if (
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+    parsed.username ||
+    parsed.password
+  ) {
     throw new Error(
       `${CAPABILITY_ENGINE_URL_ENV} must use http/https and must not contain credentials`,
     );

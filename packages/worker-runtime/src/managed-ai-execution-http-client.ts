@@ -1,3 +1,4 @@
+import { AiKnowledgeAcquisitionError } from "./ai-distilled-knowledge-acquirer";
 import type {
   ManagedAiExecutionClient,
   ManagedAiKnowledgeExecutionInputV1,
@@ -28,20 +29,19 @@ export type ManagedAiHttpTransport = (
   request: Readonly<ManagedAiHttpTransportRequest>,
 ) => Promise<ManagedAiHttpTransportResponse>;
 
-export class ManagedAiExecutionHttpClientError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-    readonly retryable: boolean,
-  ) {
-    super(message);
+export class ManagedAiExecutionHttpClientError extends AiKnowledgeAcquisitionError {
+  constructor(code: string, message: string, retryable: boolean) {
+    super(code, message, retryable);
     this.name = "ManagedAiExecutionHttpClientError";
   }
 }
 
 export class ManagedAiHttpTransportError extends Error {
   constructor(
-    readonly code: "MANAGED_AI_HTTP_TIMEOUT" | "MANAGED_AI_HTTP_NETWORK_ERROR" | "MANAGED_AI_HTTP_RESPONSE_TOO_LARGE",
+    readonly code:
+      | "MANAGED_AI_HTTP_TIMEOUT"
+      | "MANAGED_AI_HTTP_NETWORK_ERROR"
+      | "MANAGED_AI_HTTP_RESPONSE_TOO_LARGE",
     message: string,
     readonly retryable: boolean,
   ) {
@@ -89,7 +89,11 @@ function managedAiEndpoint(baseUrl: string): string {
   } catch {
     throw new TypeError("Managed AI baseUrl must be a valid URL");
   }
-  if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || parsed.username || parsed.password) {
+  if (
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+    parsed.username ||
+    parsed.password
+  ) {
     throw new TypeError("Managed AI baseUrl must use http/https and must not contain credentials");
   }
   if (parsed.search || parsed.hash) {
