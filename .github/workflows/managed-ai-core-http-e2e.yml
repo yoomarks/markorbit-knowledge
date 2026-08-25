@@ -2,6 +2,8 @@ name: Managed AI Core HTTP E2E
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
   pull_request:
     paths:
       - ".github/workflows/managed-ai-core-http-e2e.yml"
@@ -19,7 +21,27 @@ env:
   CORE_REF: e277043dbf5d10e10626121662b0a16efc6f4ad1
 
 jobs:
+  core-ref-freshness:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require pinned Core ref to match current main
+        shell: bash
+        run: |
+          current_core_ref="$(git ls-remote https://github.com/yoomarks/markorbit.git refs/heads/main | awk '{print $1}')"
+          if [ -z "$current_core_ref" ]; then
+            echo "::error::Unable to resolve yoomarks/markorbit main SHA."
+            exit 1
+          fi
+
+          echo "Current Core main: $current_core_ref"
+          echo "Pinned Core ref:    $CORE_REF"
+          if [ "$current_core_ref" != "$CORE_REF" ]; then
+            echo "::error::Managed AI Core acceptance pin is stale. Audit the new Core main, update CORE_REF, and rerun the real localhost E2E before treating the boundary as current."
+            exit 1
+          fi
+
   managed-ai-core-http:
+    needs: core-ref-freshness
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Knowledge
