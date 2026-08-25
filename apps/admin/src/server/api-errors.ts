@@ -23,6 +23,7 @@ import {
   WorkerAuthorizationError,
   WorkerNotFoundError,
 } from "@markorbit/persistence/workers";
+import { CaseProducerAccessError } from "./case-producer-auth";
 import { CoreIntakeTransportError } from "./core-intake-http-transport";
 
 export type ApiErrorEnvelope = {
@@ -34,6 +35,12 @@ export type ApiErrorEnvelope = {
 };
 
 export function apiError(error: unknown): NextResponse<ApiErrorEnvelope> {
+  if (error instanceof CaseProducerAccessError) {
+    return NextResponse.json(
+      { error: { code: error.code, message: error.message } },
+      { status: error.httpStatus },
+    );
+  }
   if (error instanceof CoreIntakeTransportError) {
     return NextResponse.json(
       { error: { code: error.code, message: error.message } },
