@@ -25,6 +25,11 @@ function receipt(
       sourceMatterVersion: 1,
       sourceSnapshotSha256: sha,
       sourceWorkspaceId: "workspace:test",
+      sourceAccessClassification: "CONFIDENTIAL",
+    },
+    privacyPlan: {
+      reviewId: "case-privacy-review_01",
+      reviewerRef: "user:privacy-reviewer:01",
     },
     eligibleForKCase008Review: false,
     publicationAuthorized: false,
@@ -83,6 +88,23 @@ describe("CaseLiveAcceptanceReceiptV1", () => {
     ).toBe(false);
     expect(
       isCaseLiveAcceptanceReceiptV1({ ...value, transportMode: "INJECTED_TEST" }),
+    ).toBe(false);
+  });
+
+  it("freezes privacy review identity into the acceptance lineage", () => {
+    const value = receipt({
+      state: "PRIVACY_REVIEW_REQUIRED",
+      evidence: { collectionId: "case-evidence_01", documentSha256: sha },
+      assembledDossier: { dossierId: "case-dossier_01", version: 1, documentSha256: sha },
+      privacyReview: { reviewId: "case-privacy-review_01", state: "REVIEW_REQUIRED" },
+      updatedAt: "2026-08-25T09:35:00.000Z",
+    });
+    expect(isCaseLiveAcceptanceReceiptV1(value)).toBe(true);
+    expect(
+      isCaseLiveAcceptanceReceiptV1({
+        ...value,
+        privacyReview: { reviewId: "case-privacy-review_other", state: "REVIEW_REQUIRED" },
+      }),
     ).toBe(false);
   });
 
