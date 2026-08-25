@@ -152,7 +152,7 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
     expect(restarted.listPending()).toHaveLength(1);
   });
 
-  it("records collection completion durably and removes completed work from pending", () => {
+  it("records collection completion durably and makes completion immutable", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteCaseCandidateIntakeRepository(database);
     repository.acceptCandidate(candidate(), "2026-08-25T03:21:00.000Z");
@@ -187,12 +187,11 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
         message: "Late transport failure",
       }),
     ).toThrowError(RegistryConflictError);
-
-    const requeued = restarted.requeueCandidate("case-candidate_01", "2026-08-25T03:45:00.000Z");
-    expect(requeued.collectionState).toBe("PENDING");
-    expect(requeued.collectionRef).toBeUndefined();
-    expect(requeued.collectedAt).toBeUndefined();
-    expect(restarted.listPending()).toHaveLength(1);
+    expect(() =>
+      restarted.requeueCandidate("case-candidate_01", "2026-08-25T03:45:00.000Z"),
+    ).toThrowError(RegistryConflictError);
+    expect(restarted.getIntake("case-candidate_01")).toEqual(completed);
+    expect(restarted.listPending()).toHaveLength(0);
   });
 
   it("migrates pre-K-CASE-004 collection tickets without rebuilding prior state", () => {
