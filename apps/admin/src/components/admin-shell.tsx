@@ -11,6 +11,7 @@ const bilingualLabels: Record<ModuleKey, { zh: string; en: string }> = {
   dashboard: { zh: "总览", en: "Overview" },
   discovery: { zh: "来源发现", en: "Discovery" },
   sources: { zh: "来源管理", en: "Sources" },
+  experts: { zh: "专家知识", en: "Expert Knowledge" },
   foundational: { zh: "基础资料健康", en: "Foundational Health" },
   foundationalDiagnostics: { zh: "基础资料诊断", en: "Foundational Diagnostics" },
   intelligence: { zh: "来源智能诊断", en: "Source Intelligence" },
