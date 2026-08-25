@@ -88,10 +88,7 @@ function requireTask(repository: SqliteExpertSourceRepository, id: string): Expe
   return task;
 }
 
-function requireReplyBinding(
-  task: ExpertQuestionTaskV1,
-  reply: ExpertSourceRecordV1,
-): void {
+function requireReplyBinding(task: ExpertQuestionTaskV1, reply: ExpertSourceRecordV1): void {
   if (!task.communicationThreadRef) {
     throw new RegistryConflictError(
       "EXPERT_TASK_COMMUNICATION_THREAD_NOT_BOUND",
