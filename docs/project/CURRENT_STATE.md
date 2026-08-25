@@ -9,7 +9,8 @@ This file is the canonical engineering handoff entry point. It records a verifie
 - Repository: `yoomarks/markorbit-knowledge`
 - Verified Knowledge `main` before this reconciliation branch: `c6984e371493cf525600607b02c2506c2c8ca84b`
 - Latest merged Knowledge PR: #474 — `Docs: sync Case handoff after 473`
-- Latest audited MarkOrbit/Core `main`: `e277043dbf5d10e10626121662b0a16efc6f4ad1`
+- Latest audited MarkOrbit/Core `main`: `fd068c90376184099631f66d2bfba036a2a78bf2`
+- Latest audited Core merge: #221 — `MO-CAP-002: harden Managed AI provider follow-up policy`
 - Open paid/live acceptance gate: issue #405 — ADK-06 real 3×2 provider acceptance
 - Open repository-governance gate: issue #429 — protected main/ruleset, protected live secrets/environment, and durable encrypted evidence retention
 - Open Case producer dependency: issue #467 — real MarkReg `Send to Knowledge Case` producer action
@@ -72,7 +73,8 @@ Current merged state includes:
 - PR #458 routing ADK DeepSeek through authenticated Managed AI HTTP behind an explicit runtime gate while retaining the legacy direct adapter as fallback;
 - PR #462 binding Managed AI replay to durable ADK queue `executionKey` identity and preserving fail-closed reconciliation semantics;
 - PR #463 real non-live cross-repository localhost HTTP acceptance against exact Core SHA using the production Knowledge HTTP adapter and authenticated Core runtime, with a fake executor only;
-- PR #466 a permanent Core-ref freshness/drift guard before cross-repository Managed AI acceptance.
+- PR #466 a permanent Core-ref freshness/drift guard before cross-repository Managed AI acceptance;
+- Core PR #221 distinguishes DeepSeek rate-limit vs temporary-service failure semantics and exposes provider-neutral follow-up policy classification without converting that into Knowledge truth/ranking semantics.
 
 **Not claimed:** paid-provider/live acceptance. The non-live cross-repository gate is capability evidence, not #405 evidence.
 
