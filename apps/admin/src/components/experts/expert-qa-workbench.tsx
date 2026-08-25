@@ -65,8 +65,25 @@ export function ExpertQaWorkbench() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    void fetch("/api/expert-tasks", { cache: "no-store" })
+      .then((response) => responseJson<ListResponse>(response))
+      .then((next) => {
+        if (!active) return;
+        setData(next);
+        setError(null);
+      })
+      .catch((loadError: unknown) => {
+        if (!active) return;
+        setError(loadError instanceof Error ? loadError.message : "Failed to load Expert tasks");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const counts = useMemo(() => {
     const result = { active: 0, waiting: 0, replied: 0, captured: 0 };
