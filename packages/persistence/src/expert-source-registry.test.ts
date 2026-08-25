@@ -1,9 +1,14 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import type { ExpertQuestionTaskV1, ExpertSourceRecordV1 } from "@markorbit/contracts";
+import type {
+  ExpertQuestionTaskV1,
+  ExpertSourceRecordV1,
+} from "@markorbit/contracts";
 import { SqliteExpertSourceRepository } from "./expert-source-registry";
 
-function draftTask(overrides: Partial<ExpertQuestionTaskV1> = {}): ExpertQuestionTaskV1 {
+function draftTask(
+  overrides: Partial<ExpertQuestionTaskV1> = {},
+): ExpertQuestionTaskV1 {
   return {
     protocolVersion: "1.0",
     objectType: "EXPERT_QUESTION_TASK",
@@ -23,7 +28,9 @@ function draftTask(overrides: Partial<ExpertQuestionTaskV1> = {}): ExpertQuestio
   };
 }
 
-function sentTask(overrides: Partial<ExpertQuestionTaskV1> = {}): ExpertQuestionTaskV1 {
+function sentTask(
+  overrides: Partial<ExpertQuestionTaskV1> = {},
+): ExpertQuestionTaskV1 {
   return draftTask({
     state: "SENT",
     communicationSendRequestRef: "comm:send-request:001",
@@ -33,7 +40,9 @@ function sentTask(overrides: Partial<ExpertQuestionTaskV1> = {}): ExpertQuestion
   });
 }
 
-function sourceRecord(overrides: Partial<ExpertSourceRecordV1> = {}): ExpertSourceRecordV1 {
+function sourceRecord(
+  overrides: Partial<ExpertSourceRecordV1> = {},
+): ExpertSourceRecordV1 {
   return {
     protocolVersion: "1.0",
     objectType: "EXPERT_SOURCE_RECORD",
@@ -45,7 +54,10 @@ function sourceRecord(overrides: Partial<ExpertSourceRecordV1> = {}): ExpertSour
     topic: "SECTION_8_DECLARATION",
     communication: {
       communicationThreadRef: "comm:thread:001",
-      messageRefs: ["comm:message:outbound-001", "comm:message:inbound-001"],
+      messageRefs: [
+        "comm:message:outbound-001",
+        "comm:message:inbound-001",
+      ],
     },
     rawAnswerArtifactRefs: ["raw:sha256:answer-001"],
     normalizedDerivativeRef: "derivative:expert-answer:001",
@@ -64,7 +76,9 @@ function sourceRecord(overrides: Partial<ExpertSourceRecordV1> = {}): ExpertSour
   };
 }
 
-function advanceToSent(repository: SqliteExpertSourceRepository): ExpertQuestionTaskV1 {
+function advanceToSent(
+  repository: SqliteExpertSourceRepository,
+): ExpertQuestionTaskV1 {
   const draft = draftTask();
   repository.saveTask(draft);
   repository.saveTask({ ...draft, state: "READY_TO_SEND" });
@@ -81,7 +95,9 @@ describe("SqliteExpertSourceRepository", () => {
 
     const restarted = new SqliteExpertSourceRepository(database);
     expect(restarted.getTask(sent.taskId)).toEqual(sent);
-    expect(restarted.listTasks({ state: "SENT", jurisdiction: "US" })).toEqual([sent]);
+    expect(
+      restarted.listTasks({ state: "SENT", jurisdiction: "US" }),
+    ).toEqual([sent]);
     database.close();
   });
 
@@ -100,13 +116,22 @@ describe("SqliteExpertSourceRepository", () => {
     const sent = sentTask({ question: revisedDraft.question });
     repository.saveTask(sent);
 
-    expect(() => repository.saveTask({ ...sent, question: "Mutated after send" })).toThrowError(
-      /question identity is immutable after send/u,
-    );
     expect(() =>
-      repository.saveTask({ ...sent, communicationSendRequestRef: "comm:send-request:changed" }),
+      repository.saveTask({ ...sent, question: "Mutated after send" }),
+    ).toThrowError(/question identity is immutable after send/u);
+    expect(() =>
+      repository.saveTask({
+        ...sent,
+        communicationSendRequestRef: "comm:send-request:changed",
+      }),
     ).toThrowError(/send request reference is immutable/u);
-    expect(() => repository.saveTask({ ...sent, state: "READY_TO_SEND", sentAt: undefined })).toThrow();
+    expect(() =>
+      repository.saveTask({
+        ...sent,
+        state: "READY_TO_SEND",
+        sentAt: undefined,
+      }),
+    ).toThrow();
     database.close();
   });
 
@@ -114,9 +139,9 @@ describe("SqliteExpertSourceRepository", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteExpertSourceRepository(database);
 
-    expect(() => repository.saveTask(draftTask({ state: "SENT" }))).toThrowError(
-      /requires communicationSendRequestRef and sentAt/u,
-    );
+    expect(() =>
+      repository.saveTask(draftTask({ state: "SENT" })),
+    ).toThrowError(/requires communicationSendRequestRef and sentAt/u);
     database.close();
   });
 
@@ -149,7 +174,9 @@ describe("SqliteExpertSourceRepository", () => {
           attachmentRefs: ["comm:attachment:different"],
         }),
       ),
-    ).toThrowError(/same inbound Expert evidence was replayed with different source semantics/u);
+    ).toThrowError(
+      /same inbound Expert evidence was replayed with different source semantics/u,
+    );
     database.close();
   });
 
@@ -183,7 +210,10 @@ describe("SqliteExpertSourceRepository", () => {
 
     repository.saveSourceRecord(first);
     repository.saveSourceRecord(followUp);
-    expect(repository.listSourceRecordsForTask(first.taskId)).toEqual([first, followUp]);
+    expect(repository.listSourceRecordsForTask(first.taskId)).toEqual([
+      first,
+      followUp,
+    ]);
     database.close();
   });
 
