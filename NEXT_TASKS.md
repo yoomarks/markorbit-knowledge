@@ -2,7 +2,7 @@
 
 **Canonical direction:** Web / AI / Expert / Case four-pillar Knowledge strategy  
 **Checkpoint:** 2026-08-25  
-**Latest audited Knowledge main before this branch:** `a9a53319cbc5716d2c516a19737d138601eaf4ec`  
+**Latest audited Knowledge main before this branch:** `1e600c08a30526d6f908f9b063b31f94a4dca681`  
 **Latest audited MarkOrbit main:** `e277043dbf5d10e10626121662b0a16efc6f4ad1`
 
 This file is the short execution pointer. The long-term plan remains `docs/tasks/KNOWLEDGE_STRATEGIC_EXECUTION_PLAN.md`; stale Case baseline/status statements in that older plan are superseded by `docs/tasks/CASE_EXECUTION_RECONCILIATION_2026-08-25.md`.
@@ -19,17 +19,19 @@ This file is the short execution pointer. The long-term plan remains `docs/tasks
 - PR #463 adds a permanent non-live cross-repository Managed AI HTTP acceptance gate against exact Core SHA `e277043dbf5d10e10626121662b0a16efc6f4ad1`;
 - #463 builds the real Core Capability Engine dependency closure, starts the authenticated Core runtime on localhost, and drives it through the production Knowledge HTTP adapter with real `fetch` and a fake executor only;
 - #463 proves same `executionKey` replay does not re-execute Core, distinct execution scopes remain distinct, caller-selected provider/model do not enter governed Core input, and post-dispatch executor uncertainty becomes reconciliation-required / non-retryable without a second executor invocation;
-- #463 final head passed Managed AI Core HTTP E2E, Node 22/24 Validate, UI Preview, Core Intake E2E and Autoformat;
+- PR #466 adds a daily/manual/relevant-PR Core-ref freshness gate: it resolves current `yoomarks/markorbit/main`, fails closed when `CORE_REF` is stale, and only then allows the real localhost Core HTTP E2E to run;
+- #466 exact head proved the current Core main still equals the frozen `CORE_REF`, then passed the real Managed AI Core HTTP E2E, Node 22/24 Validate and Autoformat;
 - ambiguous delivery remains reconciliation-required rather than automatically replayed.
 
-**Not claimed:** paid/live #405 acceptance or live-provider production acceptance. The #463 cross-repository gate uses localhost and a fake executor only; repository code and non-live acceptance are not paid-provider execution evidence.
+**Not claimed:** paid/live #405 acceptance or live-provider production acceptance. The #463/#466 cross-repository gates use localhost and a fake executor only; repository code and non-live acceptance are not paid-provider execution evidence.
 
 ### Shared Communication / Expert
 
 - legacy mailbox acquisition boundaries are frozen;
 - no verified shared production Communication send/reply capability is used by Knowledge yet;
 - K-EXP-001, K-EXP-002, K-EXP-003 and K-EXP-005 are complete;
-- K-EXP-004 remains blocked until real Shared Communication send identity and inbound reply/thread correlation exist.
+- K-EXP-004 remains blocked until real Shared Communication send identity and inbound reply/thread correlation exist;
+- issue #468 is the authoritative external dependency/acceptance ledger for that Shared Communication boundary and the first real Expert live slice.
 
 ### Case foundation
 
@@ -56,7 +58,7 @@ The #456 harness does **not** make K-CASE-008 complete. TEST runs can never beco
 
 ### P0-1 — K-CASE-002 MarkReg one-click promotion + trusted resolver binding
 
-Repository/system: `yoomarks/markorbit` / `services/markreg` + relevant UI/Gateway.
+Tracked by issue #467. Repository/system: `yoomarks/markorbit` / `services/markreg` + relevant UI/Gateway.
 
 Required operator action remains conceptually:
 
@@ -70,9 +72,9 @@ The producer must:
 - return an opaque producer promotion reference suitable for the live acceptance receipt;
 - preserve idempotency and avoid implying publication.
 
-Fresh read-only audit of MarkOrbit main `e277043dbf5d10e10626121662b0a16efc6f4ad1` plus its current open-PR set found no `Send to Knowledge`, `CaseCandidateV1` producer binding, K-CASE-002 implementation or matching open PR. The latest main change is Managed AI server bootstrap, not Case promotion. This remains the primary Case blocker.
+Fresh read-only audit of MarkOrbit main `e277043dbf5d10e10626121662b0a16efc6f4ad1` plus its current open-PR/issue set found no `Send to Knowledge`, `CaseCandidateV1` producer binding, K-CASE-002 implementation or matching implementation PR. The latest main change is Managed AI server bootstrap, not Case promotion. This remains the primary Case blocker.
 
-Current Knowledge takeover permission does **not** authorize writing `yoomarks/markorbit`. Do not invent a Knowledge-owned producer endpoint, credential or substitute resolver.
+Current Knowledge takeover permission does **not** authorize writing `yoomarks/markorbit`. Do not invent a Knowledge-owned producer endpoint, credential or substitute resolver. Use #467 as the producer handoff and acceptance ledger.
 
 ### P0-2 — K-CASE-008 first real Case Dossier
 
@@ -84,7 +86,7 @@ Do not create another acceptance framework. Reuse #456.
 
 ### P0-3 — K-EXP-004 first live Expert vertical slice
 
-Still blocked on Shared Communication. Acceptance requires real outgoing send identity, real reply/thread correlation, immutable raw evidence and replay dedupe.
+Tracked by issue #468 and still blocked on Shared Communication. Acceptance requires real outgoing send identity, real reply/thread correlation, immutable raw evidence and replay dedupe.
 
 ## Do not start merely to keep coding
 
@@ -108,9 +110,10 @@ Still blocked on Shared Communication. Acceptance requires real outgoing send id
 
 ## Operational gates kept open
 
-- issue #405 remains paid/live ADK acceptance; non-paid readiness now includes the real cross-repository localhost HTTP gate from #463, but do not run paid acceptance merely to advance roadmap and do not infer repository-secret configuration from code;
+- issue #405 remains paid/live ADK acceptance; non-paid readiness now includes the real cross-repository localhost HTTP gate from #463 plus the Core-ref freshness guard from #466, but do not run paid acceptance merely to advance roadmap and do not infer repository-secret configuration from code;
 - issue #429 remains open until the repository settings layer is actually enabled and verified;
+- issues #467 and #468 are explicit cross-repository dependency ledgers, not evidence that producer/Communication implementations exist;
 - PR #460 CODEOWNERS does not itself prove protected-main enforcement;
-- Knowledge main `a9a53319cbc5716d2c516a19737d138601eaf4ec` is the latest audited code checkpoint before this docs branch;
+- Knowledge main `1e600c08a30526d6f908f9b063b31f94a4dca681` is the latest audited code checkpoint before this docs branch;
 - MarkOrbit main `e277043dbf5d10e10626121662b0a16efc6f4ad1` is the latest audited cross-repo checkpoint;
 - repository implementation is not evidence that production secrets, routes, credentials or external providers are live.
