@@ -112,7 +112,11 @@ function setup(markCollected = true) {
   const evidence = new SqliteCaseEvidenceCollectionRepository(database);
   const saved = evidence.saveCollection(collection()).collection;
   if (markCollected) {
-    candidates.recordCollectionComplete(candidate().candidateId, saved.collectionId, saved.collectedAt);
+    candidates.recordCollectionComplete(
+      candidate().candidateId,
+      saved.collectionId,
+      saved.collectedAt,
+    );
   }
   return { database, candidates, evidence, saved };
 }
