@@ -140,7 +140,11 @@ export function isExpertCommunicationCorrelationV1(
   if (!item || !onlyAllowedKeys(item, ["communicationThreadRef", "messageRefs"])) {
     return false;
   }
-  return nonEmpty(item.communicationThreadRef) && refs(item.messageRefs);
+  return (
+    nonEmpty(item.communicationThreadRef) &&
+    refs(item.messageRefs) &&
+    (item.messageRefs as string[]).length > 0
+  );
 }
 
 export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionTaskV1 {
