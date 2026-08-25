@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   CASE_EVIDENCE_COLLECTION_OBJECT_TYPE,
@@ -10,16 +9,14 @@ import {
 } from "./case-evidence-collection-v1";
 
 function exact(
-  value: unknown,
   sourceRef = "markreg:/v1/formal-matters/formal-matter_x",
 ): ExactCaseSourcePayloadV1 {
-  const bytes = Buffer.from(JSON.stringify(value), "utf8");
   return {
     sourceRef,
     mediaType: "application/json",
-    sha256: createHash("sha256").update(bytes).digest("hex"),
-    sizeBytes: bytes.byteLength,
-    dataBase64: bytes.toString("base64"),
+    sha256: "a".repeat(64),
+    sizeBytes: 2,
+    dataBase64: "e30=",
   };
 }
 
@@ -37,7 +34,7 @@ function collection(overrides: Partial<CaseEvidenceCollectionV1> = {}): CaseEvid
       sourceRetrievalRef: "markreg:authorized-ref:01",
       sourceWorkspaceId: "workspace:test",
     },
-    formalMatter: exact({ formalMatter: { formalMatterId: "formal-matter_x" } }),
+    formalMatter: exact(),
     documentPackages: [],
     omissions: [
       { surface: "LIFECYCLE_PROVENANCE", reason: "NOT_AVAILABLE" },
