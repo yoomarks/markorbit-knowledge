@@ -171,6 +171,23 @@ describe("SqliteExpertSourceRepository", () => {
     database.close();
   });
 
+  it("rejects reply evidence received before the task was sent", () => {
+    const database = new DatabaseSync(":memory:");
+    const repository = new SqliteExpertSourceRepository(database);
+    advanceToSent(repository);
+
+    expect(() =>
+      repository.saveSourceRecord(
+        sourceRecord({
+          receivedAt: "2026-08-25T01:00:30.000Z",
+          capturedAt: "2026-08-25T01:00:45.000Z",
+        }),
+      ),
+    ).toThrowError(/cannot be received before task send/u);
+    expect(repository.listSourceRecordsForTask("eqt_us_section8_001")).toHaveLength(0);
+    database.close();
+  });
+
   it("fails closed when the same inbound evidence is replayed with changed semantics", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteExpertSourceRepository(database);
