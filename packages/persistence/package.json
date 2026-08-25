@@ -26,6 +26,7 @@
     "./case-evidence-collections": "./src/case-evidence-collection.ts",
     "./case-dossiers": "./src/case-dossier.ts",
     "./case-dossier-privacy": "./src/case-dossier-privacy.ts",
+    "./case-live-acceptance": "./src/case-live-acceptance.ts",
     "./connectors": "./src/connector-registry.ts",
     "./collection-plans": "./src/collection-plan-registry.ts",
     "./collection-scheduler": "./src/collection-scheduler.ts",
