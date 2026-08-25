@@ -67,6 +67,20 @@ function finalized(): CaseLiveAcceptanceReceiptV1 {
   };
 }
 
+function rejected(): CaseLiveAcceptanceReceiptV1 {
+  return {
+    ...privacyRequired(),
+    state: "FAILED",
+    privacyReview: { reviewId: "case-privacy-review_01", state: "REJECTED" },
+    failure: {
+      stage: "PRIVACY",
+      code: "CASE_LIVE_ACCEPTANCE_PRIVACY_REJECTED",
+      retryable: false,
+    },
+    updatedAt: "2026-08-25T09:40:00.000Z",
+  };
+}
+
 describe("SqliteCaseLiveAcceptanceRepository", () => {
   it("persists append-only acceptance snapshots across repository restart", () => {
     const database = new DatabaseSync(":memory:");
@@ -111,6 +125,16 @@ describe("SqliteCaseLiveAcceptanceRepository", () => {
     expect(repository.getReceipt("case-live-run_01")?.receipt.state).toBe(
       "PRIVACY_REVIEW_REQUIRED",
     );
+  });
+
+  it("stores privacy rejection as terminal FAILED and never allows revival", () => {
+    const database = new DatabaseSync(":memory:");
+    const repository = new SqliteCaseLiveAcceptanceRepository(database);
+    repository.saveReceipt(started());
+    repository.saveReceipt(privacyRequired());
+    repository.saveReceipt(rejected());
+    expect(repository.getReceipt("case-live-run_01")?.receipt).toEqual(rejected());
+    expect(() => repository.saveReceipt(finalized())).toThrowError(RegistryConflictError);
   });
 
   it("rejects source or privacy-plan lineage drift and terminal mutation", () => {
