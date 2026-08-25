@@ -357,6 +357,12 @@ export class SqliteExpertSourceRepository {
         `Expert source record task ${value.taskId} has no durable Communication thread`,
       );
     }
+    if (!task.sentAt || Date.parse(value.receivedAt) < Date.parse(task.sentAt)) {
+      throw new RegistryConflictError(
+        "EXPERT_SOURCE_RECEIVED_BEFORE_SEND",
+        `Expert source record ${value.sourceRecordId} cannot be received before task send`,
+      );
+    }
     if (
       task.expertRef !== value.expertRef ||
       task.organizationRef !== value.organizationRef ||
