@@ -54,7 +54,7 @@ export type CaseLiveAcceptanceDossierReceiptV1 = {
 
 export type CaseLiveAcceptancePrivacyReceiptV1 = {
   reviewId: string;
-  state: "REVIEW_REQUIRED" | "NEEDS_REDACTION" | "FINALIZED";
+  state: "REVIEW_REQUIRED" | "NEEDS_REDACTION" | "FINALIZED" | "REJECTED";
 };
 
 export type CaseLiveAcceptanceFinalizedReceiptV1 = {
@@ -223,7 +223,8 @@ function isPrivacy(value: unknown): value is CaseLiveAcceptancePrivacyReceiptV1 
       nonEmpty(item.reviewId) &&
       (item.state === "REVIEW_REQUIRED" ||
         item.state === "NEEDS_REDACTION" ||
-        item.state === "FINALIZED"),
+        item.state === "FINALIZED" ||
+        item.state === "REJECTED"),
   );
 }
 
@@ -352,6 +353,7 @@ export function isCaseLiveAcceptanceReceiptV1(
     const privacy = item.privacyReview as CaseLiveAcceptancePrivacyReceiptV1;
     const plan = item.privacyPlan as CaseLiveAcceptancePrivacyPlanV1;
     if (privacy.reviewId !== plan.reviewId) return false;
+    if (privacy.state === "REJECTED" && item.state !== "FAILED") return false;
   }
 
   if (item.state === "FINALIZED") {
