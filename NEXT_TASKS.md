@@ -2,8 +2,8 @@
 
 **Canonical direction:** Web / AI / Expert / Case four-pillar Knowledge strategy  
 **Checkpoint:** 2026-08-25  
-**Latest audited Knowledge main before this branch:** `a8d495ca75fbf6489df9d75b818b6d9aa0e967ae`  
-**Latest audited MarkOrbit main:** `4473e4be2ba432332d546c04b44397cb3bba3137`
+**Latest audited Knowledge main before this branch:** `2c69e3ce6905796c93188324056697b8999d0ade`  
+**Latest audited MarkOrbit main:** `e277043dbf5d10e10626121662b0a16efc6f4ad1`
 
 This file is the short execution pointer. The long-term plan remains `docs/tasks/KNOWLEDGE_STRATEGIC_EXECUTION_PLAN.md`; stale Case baseline/status statements in that older plan are superseded by `docs/tasks/CASE_EXECUTION_RECONCILIATION_2026-08-25.md`.
 
@@ -12,11 +12,12 @@ This file is the short execution pointer. The long-term plan remains `docs/tasks
 ### Shared AI boundary
 
 - Knowledge-side provider/semantics split remains frozen in `docs/architecture/AI_CAPABILITY_MIGRATION_MATRIX_2026-08-25.md`;
-- latest audited MarkOrbit main contains the shared Managed AI capability/runtime path and durable execution-claim hardening;
+- latest audited MarkOrbit main contains the shared Managed AI capability/runtime path, durable execution-claim hardening and gated server bootstrap;
 - Knowledge contains the managed-AI bridge that maps shared execution output into Knowledge acquisition semantics while preserving exact output/provenance;
+- PR #458 routes ADK DeepSeek through the authenticated Managed AI HTTP bridge behind an explicit Knowledge runtime gate while retaining the legacy direct adapter as the default fallback;
 - ambiguous delivery remains reconciliation-required rather than automatically replayed.
 
-**Not claimed:** paid/live #405 acceptance or end-to-end production Knowledge-to-shared-AI acceptance. Repository code is not live-provider evidence.
+**Not claimed:** paid/live #405 acceptance or live-provider production acceptance. Repository code and mocked/in-process tests are not provider-execution evidence.
 
 ### Shared Communication / Expert
 
@@ -34,13 +35,18 @@ This file is the short execution pointer. The long-term plan remains `docs/tasks
 - **K-CASE-005 — complete:** PR #453, evidence-backed objective `CaseDossierV1` contract.
 - **K-CASE-006 — complete:** PR #454, deterministic objective Dossier assembly from immutable evidence with no extra MarkReg request.
 - **K-CASE-007 — complete:** PR #455, human privacy review/redaction/finalization with immutable originals and no publication authorization.
-- **K-CASE-008 acceptance harness — infrastructure complete:** PR #456, merged on Knowledge main `a8d495ca75fbf6489df9d75b818b6d9aa0e967ae`.
+- **K-CASE-008 acceptance harness — infrastructure complete:** PR #456, durable TEST/LIVE-separated acceptance receipts/events over the existing intake -> trusted collection -> deterministic assembly -> human privacy path.
 
-The #456 harness composes the existing intake -> trusted collection -> deterministic assembly -> human privacy workflow and adds durable acceptance receipts/events. TEST runs can never become K-CASE-008 eligible; LIVE mode cannot use injected test transport; a finalized LIVE receipt needs a real producer promotion reference before it can even become eligible for operator K-CASE-008 review.
+The #456 harness does **not** make K-CASE-008 complete. TEST runs can never become K-CASE-008 eligible; LIVE mode cannot use injected test transport; a finalized LIVE receipt needs a real producer promotion reference before it can even become eligible for operator K-CASE-008 review. Fixtures and synthetic MarkReg responses are not live acceptance evidence.
 
-**K-CASE-008 itself is not complete.** Fixtures, synthetic MarkReg responses and unit tests are not live acceptance evidence.
+### Repository governance
 
-## Current P0 order after #456
+- issue #429 remains open and materially unresolved at the repository-settings layer;
+- PR #460 added `.github/CODEOWNERS`, assigning repository ownership and explicit ownership of `.github/workflows/**` and `.github/CODEOWNERS` to `@yoomarks`;
+- CODEOWNERS is only a preparation layer until the `main` ruleset actually requires Code Owner review;
+- the current engineering connector still exposes no branch-protection/ruleset or GitHub Environment administration, so protected-main enforcement, Environment approval/secret isolation and durable non-public ADK live-evidence retention cannot be truthfully marked complete from repository code alone.
+
+## Current P0 order
 
 ### P0-1 — K-CASE-002 MarkReg one-click promotion + trusted resolver binding
 
@@ -58,7 +64,7 @@ The producer must:
 - return an opaque producer promotion reference suitable for the live acceptance receipt;
 - preserve idempotency and avoid implying publication.
 
-Fresh read-only audit of MarkOrbit main `4473e4be2ba432332d546c04b44397cb3bba3137` found no `Send to Knowledge`, `CaseCandidateV1` producer binding, Case promotion implementation or matching PR. This remains the primary Case blocker.
+Fresh read-only audit of MarkOrbit main `e277043dbf5d10e10626121662b0a16efc6f4ad1` plus its current open-PR set found no `Send to Knowledge`, `CaseCandidateV1` producer binding, K-CASE-002 implementation or matching open PR. The latest main change is Managed AI server bootstrap, not Case promotion. This remains the primary Case blocker.
 
 Current Knowledge takeover permission does **not** authorize writing `yoomarks/markorbit`. Do not invent a Knowledge-owned producer endpoint, credential or substitute resolver.
 
@@ -91,12 +97,14 @@ Still blocked on Shared Communication. Acceptance requires real outgoing send id
 - treating MarkReg Recommended Action as Knowledge Case conclusion;
 - treating `FINALIZED` as publication authorization;
 - public/broader Case release without explicit access review;
+- paid/live #405 execution merely to advance roadmap;
 - Web Capability expansion ahead of higher-value Case/Communication dependencies.
 
 ## Operational gates kept open
 
 - issue #405 remains paid/live ADK acceptance; do not run paid acceptance merely to advance roadmap;
-- issue #429 remains materially unresolved;
-- Knowledge main `a8d495ca75fbf6489df9d75b818b6d9aa0e967ae` was verified unprotected at this checkpoint;
-- MarkOrbit main `4473e4be2ba432332d546c04b44397cb3bba3137` was also verified unprotected;
+- issue #429 remains open until the repository settings layer is actually enabled and verified;
+- PR #460 CODEOWNERS does not itself prove protected-main enforcement;
+- Knowledge main `2c69e3ce6905796c93188324056697b8999d0ade` is the latest audited code checkpoint before this docs branch;
+- MarkOrbit main `e277043dbf5d10e10626121662b0a16efc6f4ad1` is the latest audited cross-repo checkpoint;
 - repository implementation is not evidence that production secrets, routes, credentials or external providers are live.
