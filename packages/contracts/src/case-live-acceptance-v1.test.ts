@@ -58,9 +58,9 @@ describe("CaseLiveAcceptanceReceiptV1", () => {
       updatedAt: "2026-08-25T09:40:00.000Z",
     });
     expect(isCaseLiveAcceptanceReceiptV1(value)).toBe(true);
-    expect(
-      isCaseLiveAcceptanceReceiptV1({ ...value, eligibleForKCase008Review: true }),
-    ).toBe(false);
+    expect(isCaseLiveAcceptanceReceiptV1({ ...value, eligibleForKCase008Review: true })).toBe(
+      false,
+    );
   });
 
   it("requires LIVE + default HTTP + producer promotion ref before review eligibility", () => {
@@ -83,12 +83,10 @@ describe("CaseLiveAcceptanceReceiptV1", () => {
       updatedAt: "2026-08-25T09:40:00.000Z",
     });
     expect(isCaseLiveAcceptanceReceiptV1(value)).toBe(true);
-    expect(
-      isCaseLiveAcceptanceReceiptV1({ ...value, producerPromotionRef: undefined }),
-    ).toBe(false);
-    expect(
-      isCaseLiveAcceptanceReceiptV1({ ...value, transportMode: "INJECTED_TEST" }),
-    ).toBe(false);
+    expect(isCaseLiveAcceptanceReceiptV1({ ...value, producerPromotionRef: undefined })).toBe(
+      false,
+    );
+    expect(isCaseLiveAcceptanceReceiptV1({ ...value, transportMode: "INJECTED_TEST" })).toBe(false);
   });
 
   it("freezes privacy review identity into the acceptance lineage", () => {
@@ -129,9 +127,9 @@ describe("CaseLiveAcceptanceReceiptV1", () => {
         failure: undefined,
       }),
     ).toBe(false);
-    expect(
-      isCaseLiveAcceptanceReceiptV1({ ...rejected, eligibleForKCase008Review: true }),
-    ).toBe(false);
+    expect(isCaseLiveAcceptanceReceiptV1({ ...rejected, eligibleForKCase008Review: true })).toBe(
+      false,
+    );
   });
 
   it("accepts retryable collection waiting state but rejects fake waiting states", () => {

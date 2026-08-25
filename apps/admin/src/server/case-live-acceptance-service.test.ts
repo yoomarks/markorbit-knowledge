@@ -122,7 +122,9 @@ const matterPath = `/v1/formal-matters/${matterId}`;
 const lifecyclePath = `/v1/operations/formal-matters/${matterId}/lifecycle-provenance`;
 const packagePath = "/v1/document-packages/document-package_01";
 
-function successTransport(requests: MarkRegCaseSourceTransportRequest[]): MarkRegCaseSourceTransport {
+function successTransport(
+  requests: MarkRegCaseSourceTransportRequest[],
+): MarkRegCaseSourceTransport {
   const routes: Readonly<Record<string, { status: number; body: Uint8Array }>> = {
     [matterPath]: response(formalMatter()),
     [lifecyclePath]: response(lifecycle()),
@@ -285,11 +287,7 @@ describe("CaseLiveAcceptanceService", () => {
       ]),
     });
     await service.prepareRun(prepareInput());
-    const rejected = service.rejectRun(
-      "case-live-run_01",
-      [],
-      "2026-08-25T09:40:00.000Z",
-    );
+    const rejected = service.rejectRun("case-live-run_01", [], "2026-08-25T09:40:00.000Z");
     expect(rejected.state).toBe("FAILED");
     expect(rejected.privacyReview?.state).toBe("REJECTED");
     expect(rejected.failure).toEqual({

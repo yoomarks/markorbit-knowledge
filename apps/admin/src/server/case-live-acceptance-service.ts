@@ -184,9 +184,7 @@ export class CaseLiveAcceptanceService {
         reviewId: input.privacyReviewId,
         reviewerRef: input.privacyReviewerRef,
       },
-      ...(this.producerPromotionRef
-        ? { producerPromotionRef: this.producerPromotionRef }
-        : {}),
+      ...(this.producerPromotionRef ? { producerPromotionRef: this.producerPromotionRef } : {}),
       eligibleForKCase008Review: false,
       publicationAuthorized: false,
       startedAt,
@@ -402,10 +400,7 @@ export class CaseLiveAcceptanceService {
     }
   }
 
-  private requirePrivacyRun(
-    runId: string,
-    allowFinalized = false,
-  ): CaseLiveAcceptanceReceiptV1 {
+  private requirePrivacyRun(runId: string, allowFinalized = false): CaseLiveAcceptanceReceiptV1 {
     const current = this.getReceipt(runId);
     if (!current) {
       throw new CaseLiveAcceptanceServiceError(

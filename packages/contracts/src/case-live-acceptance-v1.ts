@@ -5,8 +5,7 @@ export const CASE_LIVE_ACCEPTANCE_RUN_MODES = ["TEST", "LIVE"] as const;
 export type CaseLiveAcceptanceRunMode = (typeof CASE_LIVE_ACCEPTANCE_RUN_MODES)[number];
 
 export const CASE_LIVE_ACCEPTANCE_TRANSPORT_MODES = ["DEFAULT_HTTP", "INJECTED_TEST"] as const;
-export type CaseLiveAcceptanceTransportMode =
-  (typeof CASE_LIVE_ACCEPTANCE_TRANSPORT_MODES)[number];
+export type CaseLiveAcceptanceTransportMode = (typeof CASE_LIVE_ACCEPTANCE_TRANSPORT_MODES)[number];
 
 export const CASE_LIVE_ACCEPTANCE_STATES = [
   "STARTED",
@@ -23,8 +22,7 @@ export const CASE_LIVE_ACCEPTANCE_FAILURE_STAGES = [
   "ASSEMBLY",
   "PRIVACY",
 ] as const;
-export type CaseLiveAcceptanceFailureStage =
-  (typeof CASE_LIVE_ACCEPTANCE_FAILURE_STAGES)[number];
+export type CaseLiveAcceptanceFailureStage = (typeof CASE_LIVE_ACCEPTANCE_FAILURE_STAGES)[number];
 
 export type CaseLiveAcceptanceCandidateIdentityV1 = {
   candidateId: string;
@@ -160,25 +158,25 @@ function isCandidate(value: unknown): value is CaseLiveAcceptanceCandidateIdenti
   const item = record(value);
   return Boolean(
     item &&
-      onlyAllowedKeys(item, [
-        "candidateId",
-        "sourceSystem",
-        "sourceMatterId",
-        "sourceMatterVersion",
-        "sourceSnapshotSha256",
-        "sourceWorkspaceId",
-        "sourceAccessClassification",
-      ]) &&
-      nonEmpty(item.candidateId) &&
-      item.sourceSystem === "MARKREG" &&
-      nonEmpty(item.sourceMatterId) &&
-      positiveVersion(item.sourceMatterVersion) &&
-      typeof item.sourceSnapshotSha256 === "string" &&
-      SHA256.test(item.sourceSnapshotSha256) &&
-      nonEmpty(item.sourceWorkspaceId) &&
-      (item.sourceAccessClassification === "INTERNAL" ||
-        item.sourceAccessClassification === "CONFIDENTIAL" ||
-        item.sourceAccessClassification === "RESTRICTED"),
+    onlyAllowedKeys(item, [
+      "candidateId",
+      "sourceSystem",
+      "sourceMatterId",
+      "sourceMatterVersion",
+      "sourceSnapshotSha256",
+      "sourceWorkspaceId",
+      "sourceAccessClassification",
+    ]) &&
+    nonEmpty(item.candidateId) &&
+    item.sourceSystem === "MARKREG" &&
+    nonEmpty(item.sourceMatterId) &&
+    positiveVersion(item.sourceMatterVersion) &&
+    typeof item.sourceSnapshotSha256 === "string" &&
+    SHA256.test(item.sourceSnapshotSha256) &&
+    nonEmpty(item.sourceWorkspaceId) &&
+    (item.sourceAccessClassification === "INTERNAL" ||
+      item.sourceAccessClassification === "CONFIDENTIAL" ||
+      item.sourceAccessClassification === "RESTRICTED"),
   );
 }
 
@@ -186,9 +184,9 @@ function isPrivacyPlan(value: unknown): value is CaseLiveAcceptancePrivacyPlanV1
   const item = record(value);
   return Boolean(
     item &&
-      onlyAllowedKeys(item, ["reviewId", "reviewerRef"]) &&
-      nonEmpty(item.reviewId) &&
-      nonEmpty(item.reviewerRef),
+    onlyAllowedKeys(item, ["reviewId", "reviewerRef"]) &&
+    nonEmpty(item.reviewId) &&
+    nonEmpty(item.reviewerRef),
   );
 }
 
@@ -196,10 +194,10 @@ function isEvidence(value: unknown): value is CaseLiveAcceptanceEvidenceReceiptV
   const item = record(value);
   return Boolean(
     item &&
-      onlyAllowedKeys(item, ["collectionId", "documentSha256"]) &&
-      nonEmpty(item.collectionId) &&
-      typeof item.documentSha256 === "string" &&
-      SHA256.test(item.documentSha256),
+    onlyAllowedKeys(item, ["collectionId", "documentSha256"]) &&
+    nonEmpty(item.collectionId) &&
+    typeof item.documentSha256 === "string" &&
+    SHA256.test(item.documentSha256),
   );
 }
 
@@ -207,11 +205,11 @@ function isDossier(value: unknown): value is CaseLiveAcceptanceDossierReceiptV1 
   const item = record(value);
   return Boolean(
     item &&
-      onlyAllowedKeys(item, ["dossierId", "version", "documentSha256"]) &&
-      nonEmpty(item.dossierId) &&
-      positiveVersion(item.version) &&
-      typeof item.documentSha256 === "string" &&
-      SHA256.test(item.documentSha256),
+    onlyAllowedKeys(item, ["dossierId", "version", "documentSha256"]) &&
+    nonEmpty(item.dossierId) &&
+    positiveVersion(item.version) &&
+    typeof item.documentSha256 === "string" &&
+    SHA256.test(item.documentSha256),
   );
 }
 
@@ -219,12 +217,12 @@ function isPrivacy(value: unknown): value is CaseLiveAcceptancePrivacyReceiptV1 
   const item = record(value);
   return Boolean(
     item &&
-      onlyAllowedKeys(item, ["reviewId", "state"]) &&
-      nonEmpty(item.reviewId) &&
-      (item.state === "REVIEW_REQUIRED" ||
-        item.state === "NEEDS_REDACTION" ||
-        item.state === "FINALIZED" ||
-        item.state === "REJECTED"),
+    onlyAllowedKeys(item, ["reviewId", "state"]) &&
+    nonEmpty(item.reviewId) &&
+    (item.state === "REVIEW_REQUIRED" ||
+      item.state === "NEEDS_REDACTION" ||
+      item.state === "FINALIZED" ||
+      item.state === "REJECTED"),
   );
 }
 
@@ -232,20 +230,20 @@ function isFinalized(value: unknown): value is CaseLiveAcceptanceFinalizedReceip
   const item = record(value);
   return Boolean(
     item &&
-      onlyAllowedKeys(item, [
-        "derivativeId",
-        "derivativeSha256",
-        "dossierId",
-        "dossierVersion",
-        "dossierSha256",
-      ]) &&
-      nonEmpty(item.derivativeId) &&
-      typeof item.derivativeSha256 === "string" &&
-      SHA256.test(item.derivativeSha256) &&
-      nonEmpty(item.dossierId) &&
-      positiveVersion(item.dossierVersion) &&
-      typeof item.dossierSha256 === "string" &&
-      SHA256.test(item.dossierSha256),
+    onlyAllowedKeys(item, [
+      "derivativeId",
+      "derivativeSha256",
+      "dossierId",
+      "dossierVersion",
+      "dossierSha256",
+    ]) &&
+    nonEmpty(item.derivativeId) &&
+    typeof item.derivativeSha256 === "string" &&
+    SHA256.test(item.derivativeSha256) &&
+    nonEmpty(item.dossierId) &&
+    positiveVersion(item.dossierVersion) &&
+    typeof item.dossierSha256 === "string" &&
+    SHA256.test(item.dossierSha256),
   );
 }
 
@@ -253,12 +251,10 @@ function isFailure(value: unknown): value is CaseLiveAcceptanceFailureV1 {
   const item = record(value);
   return Boolean(
     item &&
-      onlyAllowedKeys(item, ["stage", "code", "retryable"]) &&
-      CASE_LIVE_ACCEPTANCE_FAILURE_STAGES.includes(
-        item.stage as CaseLiveAcceptanceFailureStage,
-      ) &&
-      nonEmpty(item.code) &&
-      typeof item.retryable === "boolean",
+    onlyAllowedKeys(item, ["stage", "code", "retryable"]) &&
+    CASE_LIVE_ACCEPTANCE_FAILURE_STAGES.includes(item.stage as CaseLiveAcceptanceFailureStage) &&
+    nonEmpty(item.code) &&
+    typeof item.retryable === "boolean",
   );
 }
 

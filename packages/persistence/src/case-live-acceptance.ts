@@ -116,9 +116,7 @@ function privacyProgressionAllowed(
   if (!to || from.reviewId !== to.reviewId) return false;
   if (from.state === to.state) return true;
   if (from.state === "REVIEW_REQUIRED") {
-    return (
-      to.state === "NEEDS_REDACTION" || to.state === "FINALIZED" || to.state === "REJECTED"
-    );
+    return to.state === "NEEDS_REDACTION" || to.state === "FINALIZED" || to.state === "REJECTED";
   }
   if (from.state === "NEEDS_REDACTION") {
     return to.state === "FINALIZED" || to.state === "REJECTED";
