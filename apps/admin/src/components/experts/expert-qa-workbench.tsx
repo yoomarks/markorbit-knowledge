@@ -3,13 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ExpertQuestionTaskV1, ExpertSourceRecordV1 } from "@markorbit/contracts";
 
-type OperatorStatus =
-  | "DRAFT"
-  | "READY_TO_SEND"
-  | "WAITING"
-  | "REPLIED"
-  | "CAPTURED"
-  | "CLOSED";
+type OperatorStatus = "DRAFT" | "READY_TO_SEND" | "WAITING" | "REPLIED" | "CAPTURED" | "CLOSED";
 
 type OperatorView = {
   task: ExpertQuestionTaskV1;
@@ -106,7 +100,9 @@ export function ExpertQaWorkbench() {
       setQuestion("");
       await load();
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Failed to create Expert draft");
+      setError(
+        createError instanceof Error ? createError.message : "Failed to create Expert draft",
+      );
     }
   }
 
@@ -169,7 +165,9 @@ export function ExpertQaWorkbench() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-base font-semibold text-slate-950">新建专家问题 · New Expert Question</h2>
+          <h2 className="text-base font-semibold text-slate-950">
+            新建专家问题 · New Expert Question
+          </h2>
           <p className="mt-1 text-xs text-slate-500">
             只记录专家身份、问题与证据关联；不进行专家评分、真伪评分或推荐。
           </p>
@@ -241,7 +239,10 @@ export function ExpertQaWorkbench() {
         ) : null}
 
         {data.items.map(({ task, status, replies }) => (
-          <article key={task.taskId} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <article
+            key={task.taskId}
+            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -268,13 +269,17 @@ export function ExpertQaWorkbench() {
             {replies.length > 0 ? (
               <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
                 {replies.map((reply) => (
-                  <div key={reply.sourceRecordId} className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+                  <div
+                    key={reply.sourceRecordId}
+                    className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600"
+                  >
                     <p className="font-medium text-slate-800">
                       Reply evidence · {new Date(reply.receivedAt).toLocaleString()}
                     </p>
                     <p className="mt-1">Raw evidence: {reply.rawAnswerArtifactRefs.join(", ")}</p>
                     <p className="mt-1">
-                      Attachments: {reply.attachmentRefs.length ? reply.attachmentRefs.join(", ") : "None"}
+                      Attachments:{" "}
+                      {reply.attachmentRefs.length ? reply.attachmentRefs.join(", ") : "None"}
                     </p>
                   </div>
                 ))}

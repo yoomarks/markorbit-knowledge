@@ -12,7 +12,8 @@ export default function ExpertsPage() {
           专家问答工作台 · Expert Q&amp;A
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-          管理需要向专业人士确认的问题、回复证据与后续追问。Knowledge 只保存信息与来源证据；专家评分、真伪裁决、推荐和策略判断不属于此工作台。
+          管理需要向专业人士确认的问题、回复证据与后续追问。Knowledge
+          只保存信息与来源证据；专家评分、真伪裁决、推荐和策略判断不属于此工作台。
         </p>
       </div>
       <ExpertQaWorkbench />

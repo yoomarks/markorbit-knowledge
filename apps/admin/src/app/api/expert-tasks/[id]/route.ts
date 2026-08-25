@@ -19,10 +19,7 @@ function requiredString(body: Record<string, unknown>, field: string): string {
   return value;
 }
 
-export async function GET(
-  _request: Request,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
     return NextResponse.json(service().getView(id));
@@ -31,10 +28,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
     const body = requireRecord(await readJson(request));

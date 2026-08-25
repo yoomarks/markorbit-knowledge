@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { ExpertQuestionTaskV1, ExpertSourceRecordV1 } from "@markorbit/contracts";
-import { RegistryConflictError, RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+} from "@markorbit/persistence";
 import { SqliteExpertSourceRepository } from "@markorbit/persistence/expert-sources";
 
 export type ExpertQuestionSendReceipt = {
@@ -41,12 +45,7 @@ export type CreateExpertDraftInput = {
 };
 
 export type ExpertOperatorStatus =
-  | "DRAFT"
-  | "READY_TO_SEND"
-  | "WAITING"
-  | "REPLIED"
-  | "CAPTURED"
-  | "CLOSED";
+  "DRAFT" | "READY_TO_SEND" | "WAITING" | "REPLIED" | "CAPTURED" | "CLOSED";
 
 export type ExpertOperatorTaskView = {
   task: ExpertQuestionTaskV1;
@@ -83,10 +82,7 @@ function operatorStatus(task: ExpertQuestionTaskV1): ExpertOperatorStatus {
   }
 }
 
-function requireTask(
-  repository: SqliteExpertSourceRepository,
-  id: string,
-): ExpertQuestionTaskV1 {
+function requireTask(repository: SqliteExpertSourceRepository, id: string): ExpertQuestionTaskV1 {
   const task = repository.getTask(id);
   if (!task) throw new RegistryValidationError(`Expert task ${id} was not found`);
   return task;
@@ -155,7 +151,12 @@ export class ExpertQaOperatorService {
       state: "SENT",
       communicationSendRequestRef: sendRequestRef,
       ...(receipt.communicationThreadRef
-        ? { communicationThreadRef: required(receipt.communicationThreadRef, "communicationThreadRef") }
+        ? {
+            communicationThreadRef: required(
+              receipt.communicationThreadRef,
+              "communicationThreadRef",
+            ),
+          }
         : {}),
       sentAt,
     });
