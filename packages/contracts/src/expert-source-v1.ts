@@ -13,10 +13,15 @@ export const EXPERT_QUESTION_STATES = [
   "CLOSED",
 ] as const;
 
-export const EXPERT_ACCESS_CLASSIFICATIONS = ["INTERNAL", "CONFIDENTIAL", "RESTRICTED"] as const;
+export const EXPERT_ACCESS_CLASSIFICATIONS = [
+  "INTERNAL",
+  "CONFIDENTIAL",
+  "RESTRICTED",
+] as const;
 
 export type ExpertQuestionState = (typeof EXPERT_QUESTION_STATES)[number];
-export type ExpertAccessClassification = (typeof EXPERT_ACCESS_CLASSIFICATIONS)[number];
+export type ExpertAccessClassification =
+  (typeof EXPERT_ACCESS_CLASSIFICATIONS)[number];
 
 /**
  * Opaque reference owned by the shared Communication Capability.
@@ -101,7 +106,11 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 function timestamp(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0 && !Number.isNaN(Date.parse(value));
+  return (
+    typeof value === "string" &&
+    value.trim().length > 0 &&
+    !Number.isNaN(Date.parse(value))
+  );
 }
 
 function nonEmpty(value: unknown): value is string {
@@ -128,7 +137,10 @@ function hasForbiddenSemanticKey(value: Record<string, unknown>): boolean {
   return Object.keys(value).some((key) => FORBIDDEN_SEMANTIC_KEYS.has(key));
 }
 
-function onlyAllowedKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
+function onlyAllowedKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+): boolean {
   const set = new Set(allowed);
   return Object.keys(value).every((key) => set.has(key));
 }
@@ -137,11 +149,18 @@ export function isExpertCommunicationCorrelationV1(
   value: unknown,
 ): value is ExpertCommunicationCorrelationV1 {
   const item = record(value);
-  if (!item || !onlyAllowedKeys(item, ["communicationThreadRef", "messageRefs"])) return false;
+  if (
+    !item ||
+    !onlyAllowedKeys(item, ["communicationThreadRef", "messageRefs"])
+  ) {
+    return false;
+  }
   return nonEmpty(item.communicationThreadRef) && refs(item.messageRefs);
 }
 
-export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionTaskV1 {
+export function isExpertQuestionTaskV1(
+  value: unknown,
+): value is ExpertQuestionTaskV1 {
   const item = record(value);
   if (
     !item ||
@@ -169,7 +188,9 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
   ) {
     return false;
   }
-  const stateValid = EXPERT_QUESTION_STATES.includes(item.state as ExpertQuestionState);
+  const stateValid = EXPERT_QUESTION_STATES.includes(
+    item.state as ExpertQuestionState,
+  );
   const accessValid = EXPERT_ACCESS_CLASSIFICATIONS.includes(
     item.accessClassification as ExpertAccessClassification,
   );
@@ -179,7 +200,10 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
   const lifecycleValid = sentOrLater
     ? nonEmpty(item.communicationSendRequestRef) && timestamp(item.sentAt)
     : item.sentAt === undefined;
-  const closureValid = item.state === "CLOSED" ? timestamp(item.closedAt) : item.closedAt === undefined;
+  const closureValid =
+    item.state === "CLOSED"
+      ? timestamp(item.closedAt)
+      : item.closedAt === undefined;
 
   return (
     item.protocolVersion === EXPERT_SOURCE_PROTOCOL_VERSION &&
@@ -203,11 +227,17 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
   );
 }
 
-export function assertExpertQuestionTaskV1(value: unknown): asserts value is ExpertQuestionTaskV1 {
-  if (!isExpertQuestionTaskV1(value)) throw new TypeError("Invalid ExpertQuestionTaskV1");
+export function assertExpertQuestionTaskV1(
+  value: unknown,
+): asserts value is ExpertQuestionTaskV1 {
+  if (!isExpertQuestionTaskV1(value)) {
+    throw new TypeError("Invalid ExpertQuestionTaskV1");
+  }
 }
 
-export function isExpertSourceRecordV1(value: unknown): value is ExpertSourceRecordV1 {
+export function isExpertSourceRecordV1(
+  value: unknown,
+): value is ExpertSourceRecordV1 {
   const item = record(value);
   if (
     !item ||
@@ -270,6 +300,10 @@ export function isExpertSourceRecordV1(value: unknown): value is ExpertSourceRec
   );
 }
 
-export function assertExpertSourceRecordV1(value: unknown): asserts value is ExpertSourceRecordV1 {
-  if (!isExpertSourceRecordV1(value)) throw new TypeError("Invalid ExpertSourceRecordV1");
+export function assertExpertSourceRecordV1(
+  value: unknown,
+): asserts value is ExpertSourceRecordV1 {
+  if (!isExpertSourceRecordV1(value)) {
+    throw new TypeError("Invalid ExpertSourceRecordV1");
+  }
 }
