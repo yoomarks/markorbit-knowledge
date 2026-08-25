@@ -15,6 +15,7 @@
     "./ai-grounded-execution-preparer": "./src/ai-grounded-execution-preparer.ts",
     "./ai-grounded-output-validator": "./src/ai-grounded-output-validator.ts",
     "./markreg-case-evidence-collector": "./src/markreg-case-evidence-collector.ts",
+    "./markreg-case-source-resolver": "./src/markreg-case-source-resolver.ts",
     "./case-dossier-assembler": "./src/case-dossier-assembler.ts",
     "./case-dossier-redactor": "./src/case-dossier-redactor.ts",
     "./foundational-readiness": "./src/foundational-readiness.ts",
