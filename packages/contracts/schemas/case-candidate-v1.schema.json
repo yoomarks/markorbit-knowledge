@@ -35,7 +35,7 @@
     },
     "sourceMatterId": {
       "type": "string",
-      "pattern": "^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{2,255}$"
+      "pattern": "^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$"
     },
     "sourceMatterVersion": {
       "type": "integer",

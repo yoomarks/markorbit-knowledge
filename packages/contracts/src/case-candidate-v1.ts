@@ -5,7 +5,7 @@ export const CASE_CANDIDATE_SOURCE_SYSTEM = "MARKREG" as const;
 export const CASE_CANDIDATE_ID_PATTERN =
   "^case-candidate_[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$" as const;
 export const MARKREG_FORMAL_MATTER_ID_PATTERN =
-  "^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{2,255}$" as const;
+  "^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$" as const;
 export const CASE_CANDIDATE_SNAPSHOT_SHA256_PATTERN = "^[a-f0-9]{64}$" as const;
 
 export const CASE_CANDIDATE_ACCESS_CLASSIFICATIONS = [
