@@ -2,7 +2,7 @@
 
 **Canonical direction:** Web / AI / Expert / Case four-pillar Knowledge strategy  
 **Checkpoint:** 2026-08-25  
-**Latest audited Knowledge main before this branch:** `038e96cfff9af19ecac6e8b79e8a73a7d5eb7d99`  
+**Latest audited Knowledge main before this branch:** `a9a53319cbc5716d2c516a19737d138601eaf4ec`  
 **Latest audited MarkOrbit main:** `e277043dbf5d10e10626121662b0a16efc6f4ad1`
 
 This file is the short execution pointer. The long-term plan remains `docs/tasks/KNOWLEDGE_STRATEGIC_EXECUTION_PLAN.md`; stale Case baseline/status statements in that older plan are superseded by `docs/tasks/CASE_EXECUTION_RECONCILIATION_2026-08-25.md`.
@@ -16,10 +16,13 @@ This file is the short execution pointer. The long-term plan remains `docs/tasks
 - Knowledge contains the managed-AI bridge that maps shared execution output into Knowledge acquisition semantics while preserving exact output/provenance;
 - PR #458 routes ADK DeepSeek through the authenticated Managed AI HTTP bridge behind an explicit Knowledge runtime gate while retaining the legacy direct adapter as the default fallback;
 - PR #462 binds Managed AI HTTP claim identity to the durable ADK queue `executionKey`, preserves same-execution replay while separating execution scopes, and routes reconciliation-required / non-retryable claim-store uncertainty into the existing `BLOCKED_RECOVERY` boundary;
-- #462 exact-head Validate passed Node 22/24 format, lint, typecheck, full tests and build; UI Preview, Core Intake E2E and Autoformat also passed;
+- PR #463 adds a permanent non-live cross-repository Managed AI HTTP acceptance gate against exact Core SHA `e277043dbf5d10e10626121662b0a16efc6f4ad1`;
+- #463 builds the real Core Capability Engine dependency closure, starts the authenticated Core runtime on localhost, and drives it through the production Knowledge HTTP adapter with real `fetch` and a fake executor only;
+- #463 proves same `executionKey` replay does not re-execute Core, distinct execution scopes remain distinct, caller-selected provider/model do not enter governed Core input, and post-dispatch executor uncertainty becomes reconciliation-required / non-retryable without a second executor invocation;
+- #463 final head passed Managed AI Core HTTP E2E, Node 22/24 Validate, UI Preview, Core Intake E2E and Autoformat;
 - ambiguous delivery remains reconciliation-required rather than automatically replayed.
 
-**Not claimed:** paid/live #405 acceptance or live-provider production acceptance. Repository code and mocked/in-process tests are not provider-execution evidence.
+**Not claimed:** paid/live #405 acceptance or live-provider production acceptance. The #463 cross-repository gate uses localhost and a fake executor only; repository code and non-live acceptance are not paid-provider execution evidence.
 
 ### Shared Communication / Expert
 
@@ -105,9 +108,9 @@ Still blocked on Shared Communication. Acceptance requires real outgoing send id
 
 ## Operational gates kept open
 
-- issue #405 remains paid/live ADK acceptance; non-paid readiness was re-audited on current main, but do not run paid acceptance merely to advance roadmap and do not infer repository-secret configuration from code;
+- issue #405 remains paid/live ADK acceptance; non-paid readiness now includes the real cross-repository localhost HTTP gate from #463, but do not run paid acceptance merely to advance roadmap and do not infer repository-secret configuration from code;
 - issue #429 remains open until the repository settings layer is actually enabled and verified;
 - PR #460 CODEOWNERS does not itself prove protected-main enforcement;
-- Knowledge main `038e96cfff9af19ecac6e8b79e8a73a7d5eb7d99` is the latest audited code checkpoint before this docs branch;
+- Knowledge main `a9a53319cbc5716d2c516a19737d138601eaf4ec` is the latest audited code checkpoint before this docs branch;
 - MarkOrbit main `e277043dbf5d10e10626121662b0a16efc6f4ad1` is the latest audited cross-repo checkpoint;
 - repository implementation is not evidence that production secrets, routes, credentials or external providers are live.
