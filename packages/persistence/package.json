@@ -20,6 +20,7 @@
     "./ca-trademark-assignment-library": "./src/ca-trademark-assignment-library.ts",
     "./trademark-assignment-library-catalog": "./src/trademark-assignment-library-catalog.ts",
     "./ai-distilled-knowledge-ingestion": "./src/ai-distilled-knowledge-ingestion.ts",
+    "./expert-sources": "./src/expert-source-registry.ts",
     "./connectors": "./src/connector-registry.ts",
     "./collection-plans": "./src/collection-plan-registry.ts",
     "./collection-scheduler": "./src/collection-scheduler.ts",
