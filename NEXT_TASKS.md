@@ -1,95 +1,115 @@
 # MarkOrbit Knowledge — Next Tasks
 
-**Baseline:** `yoomarks/markorbit-knowledge@5e68862f3e9b7a6522ab0e22aeccd1a426b9cebc`  
-**Generated:** 2026-08-23 09:11 (UTC+8)
+**Canonical direction:** Web / AI / Expert / Case four-pillar Knowledge strategy  
+**Checkpoint:** 2026-08-25  
+**Baseline audited:** `yoomarks/markorbit-knowledge@a5fef459a5a681e2f7159971c87374c6625f4776`
 
-## P0-1 — Correct Knowledge/Core V2 factual documentation drift
+This file is a short execution pointer. The canonical detailed plan is `docs/tasks/KNOWLEDGE_STRATEGIC_EXECUTION_PLAN.md`.
 
-Current #396 can be misread as requiring a new Core V2 receiver.
+## Completed in the current execution stage
 
-Correct state:
+### K-CAP-AI-001 — Knowledge-side migration audit
 
-- Core PR #91 already implemented WP01/02 baseline.
-- Core current main still returns durable `RECEIVED`.
-- Required work is WP03–05 consumer completion.
+- current DeepSeek/OpenAI provider runtime was classified into shared transport vs Knowledge source semantics vs governance-only concerns;
+- `yoomarks/markorbit/packages/ai` was verified to be a thin starting package, not an already implemented gateway;
+- migration surface is frozen in `docs/architecture/AI_CAPABILITY_MIGRATION_MATRIX_2026-08-25.md`.
 
-Knowledge-side fix:
+**Next dependency:** K-CAP-AI-002/003 must be implemented in `yoomarks/markorbit` before Knowledge can build K-CAP-AI-004 compatibility bridge.
 
-- amend README / task wording;
-- preserve frozen contracts;
-- record Core #91 / migration 0048 / existing endpoint;
-- use `MarkOrbit_Core_Knowledge_Formal_Integration_Task_2026-08-23.md` as the corrected formal baseline.
+### K-CAP-COMM-002 — Legacy IMAP safety audit
 
-## P0-2 — Send formal task to Core Agent
+- TLS/read-only semantics, UID/UIDVALIDITY, cursor-after-COMPLETE, restart checkpoints, hash replay, secret separation, and immutable RFC822 evidence boundaries were audited;
+- missing shared features such as outbound idempotency, thread correlation and attachment identity were recorded;
+- checklist is frozen in `docs/architecture/COMMUNICATION_CAPABILITY_MIGRATION_CHECKLIST_2026-08-25.md`.
 
-Deliver:
+### K-CASE-000 — discovery pass completed, blocker remains
 
-- `MarkOrbit_Core_Knowledge_Formal_Integration_Task_2026-08-23.md`
+- all currently accessible `yoomarks` repositories were re-checked;
+- no MarkReg repository/module or authoritative matter interface was found;
+- unresolved facts and required future discovery receipt are recorded in `docs/architecture/MARKREG_BOUNDARY_AUDIT_2026-08-25.md`.
 
-Core must build on:
-`yoomarks/markorbit@a8035efff46a2e71a4613abd1927b18dadff086b`
+**Hard rule:** do not invent a MarkReg API, matter ID, or replacement case system.
 
-Required outcome:
+### K-EXP-001 — Expert source contracts
 
-- full Content Export V2 / Vault provenance validation;
-- durable `ACCEPTED`;
-- no second endpoint / ledger;
-- new migration only if needed; never rewrite 0048;
-- 8 real cross-repo E2E;
-- final completion receipt.
+- `ExpertQuestionTaskV1`;
+- `ExpertSourceRecordV1`;
+- lifecycle state machine;
+- opaque shared-Communication correlation refs;
+- attachment/source refs;
+- access classification;
+- validators that reject expert ranking/truth/recommendation fields;
+- deterministic contract tests.
 
-## P0-3 — Audit Core return
+## Current P0 order
 
-Require:
+### P0-1 — Main repo AI Capability V1
 
-- PR URL;
-- final head SHA;
-- merge SHA;
-- migration ID;
-- final endpoint;
-- CI URLs;
-- E2E-01..08 run evidence;
-- V1 regression;
-- fixture request/content hashes.
+Repository: `yoomarks/markorbit`
 
-No verbal acceptance.
+Implement K-CAP-AI-002 and K-CAP-AI-003 using the frozen migration matrix:
 
-## P0-4 — Explicit non-production Knowledge→Core acceptance
+1. minimal `@markorbit/ai` invocation/result/error contract;
+2. first real provider: OpenAI;
+3. exact raw response preserved;
+4. explicit timeout/network delivery uncertainty;
+5. no automatic replay of ambiguous paid calls;
+6. no KnowledgeAssignment/SourcePack/Brain semantics in the shared package.
 
-After Core completion:
+After that, return the exact main-repo PR/commit so Knowledge can implement K-CAP-AI-004.
 
-- fixed commits;
-- real HTTP;
-- real Core PostgreSQL;
-- Knowledge SQLite restart;
-- persisted `ACCEPTED`;
-- Knowledge finalize;
-- durable evidence.
+### P0-2 — Main repo Communication Capability V1
 
-No production activation in this task.
+Repository: `yoomarks/markorbit`
 
-## P0-5 — Continue remaining Wave 1 authorities
+Implement K-CAP-COMM-001/003/004 from the migration checklist:
 
-Use real governed runs and durable v1.2 scorecard snapshots.
+- reusable account binding;
+- idempotent outbound send;
+- inbound sync;
+- canonical message/thread/attachment identity;
+- restart-safe cursor;
+- reply correlation;
+- delivery uncertainty;
+- no credential leakage.
 
-For failures:
+After that, Knowledge can wire the Expert vertical slice.
 
-- evidence first;
-- classify;
-- generic capability fix only when justified;
-- rerun;
-- never count manifest membership as validation.
+### P0-3 — K-EXP-002 persistence and idempotency
 
-## P1 — Acquisition Intelligence follow-up only from real evidence
+Repository: `yoomarks/markorbit-knowledge`
 
-Phase 1 is complete.
+Once K-EXP-001 contracts are merged, implement durable repositories with these invariants:
 
-Do not add new profiles / statistical rankers unless real acquisition evidence proves a limitation.
+- exact question becomes immutable once sent;
+- stable communication send request reference;
+- repeated inbound replay does not create duplicate Expert source records;
+- one task may correlate multiple follow-up messages;
+- original raw evidence remains authoritative;
+- normalized derivative remains separate;
+- no expert/truth ranking fields.
 
-## Deferred
+This work can proceed while shared Communication is being implemented, as long as no new Knowledge-owned mail transport is added.
 
-- provider breadth expansion;
-- UI polish;
-- semantic/legal reasoning;
-- production V2 activation;
-- Knowledge-side meaning/recommendation generation.
+### P0-4 — Resolve real MarkReg location
+
+K-CASE-000 remains a real external discovery gate. Obtain authoritative runtime/repository/service facts and write the discovery receipt before any producer-specific Case Candidate integration.
+
+## Operational gates kept open, not expanded
+
+- issue #405 remains the real ADK-06 3×2 live-provider acceptance;
+- issue #429 remains repository governance for protected main, live secrets/environment, and durable encrypted evidence retention;
+- do not execute paid #405 merely to advance the product roadmap;
+- do not build more generic ADK framework around these open gates.
+
+## STOP / DEFER
+
+- new Knowledge-local generic AI provider transports;
+- new Knowledge-local mailbox platform features;
+- Web Capability extraction;
+- provider count as KPI;
+- expert/provider/source ranking;
+- legal-truth certification;
+- lessons/recommendations/predictions in Knowledge;
+- manual reconstruction of MarkReg matters;
+- universal Case ontology before real dossiers.
