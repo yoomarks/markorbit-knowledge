@@ -1,7 +1,7 @@
 export const CASE_CANDIDATE_INTAKE_PROTOCOL_VERSION = "1.0" as const;
 export const CASE_CANDIDATE_INTAKE_OBJECT_TYPE = "CASE_CANDIDATE_INTAKE" as const;
 
-export const CASE_CANDIDATE_COLLECTION_STATES = ["PENDING", "WAITING_SOURCE"] as const;
+export const CASE_CANDIDATE_COLLECTION_STATES = ["PENDING", "WAITING_SOURCE", "COLLECTED"] as const;
 export type CaseCandidateCollectionState = (typeof CASE_CANDIDATE_COLLECTION_STATES)[number];
 
 export type CaseCandidateSourceUnavailableV1 = {
@@ -15,6 +15,8 @@ export type CaseCandidateSourceUnavailableV1 = {
  * Durable Knowledge-side intake state for a promoted Case Candidate.
  * PENDING means collection work has been durably queued, not completed.
  * WAITING_SOURCE preserves the candidate when its source is temporarily unavailable.
+ * COLLECTED points at an immutable Knowledge evidence snapshot; MarkReg remains
+ * the operational system of record.
  */
 export type CaseCandidateIntakeV1 = {
   protocolVersion: typeof CASE_CANDIDATE_INTAKE_PROTOCOL_VERSION;
@@ -25,6 +27,8 @@ export type CaseCandidateIntakeV1 = {
   acceptedAt: string;
   updatedAt: string;
   sourceUnavailable?: CaseCandidateSourceUnavailableV1;
+  collectionRef?: string;
+  collectedAt?: string;
 };
 
 const SHA256 = /^[a-f0-9]{64}$/u;
@@ -71,6 +75,8 @@ export function isCaseCandidateIntakeV1(value: unknown): value is CaseCandidateI
         "acceptedAt",
         "updatedAt",
         "sourceUnavailable",
+        "collectionRef",
+        "collectedAt",
       ].includes(key),
     )
   ) {
@@ -93,9 +99,26 @@ export function isCaseCandidateIntakeV1(value: unknown): value is CaseCandidateI
   }
 
   if (item.collectionState === "WAITING_SOURCE") {
-    return sourceUnavailable(item.sourceUnavailable);
+    return (
+      sourceUnavailable(item.sourceUnavailable) &&
+      item.collectionRef === undefined &&
+      item.collectedAt === undefined
+    );
   }
-  return item.sourceUnavailable === undefined;
+
+  if (item.collectionState === "COLLECTED") {
+    return (
+      item.sourceUnavailable === undefined &&
+      nonEmpty(item.collectionRef) &&
+      timestamp(item.collectedAt)
+    );
+  }
+
+  return (
+    item.sourceUnavailable === undefined &&
+    item.collectionRef === undefined &&
+    item.collectedAt === undefined
+  );
 }
 
 export function assertCaseCandidateIntakeV1(
