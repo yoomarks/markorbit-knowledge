@@ -177,10 +177,10 @@ export class SqliteExpertSourceRepository {
   }
 
   saveTask(value: ExpertQuestionTaskV1): ExpertQuestionTaskV1 {
+    validateLifecycleShape(value);
     if (!isExpertQuestionTaskV1(value)) {
       throw new RegistryValidationError("Expert question task is invalid");
     }
-    validateLifecycleShape(value);
 
     const json = JSON.stringify(value);
     const sha256 = digest(value);
