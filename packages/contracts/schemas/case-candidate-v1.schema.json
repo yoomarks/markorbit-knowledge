@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://markorbit.com/schemas/knowledge/case-candidate-v1.schema.json",
+  "title": "CaseCandidateV1",
+  "description": "Portable wire contract for one Knowledge Case candidate promoted from an exact MarkReg Formal Matter snapshot. MarkReg remains the operational system of record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "objectType",
+    "candidateId",
+    "sourceSystem",
+    "sourceMatterId",
+    "sourceMatterVersion",
+    "sourceSnapshotSha256",
+    "sourceRetrievalRef",
+    "promotedBy",
+    "promotedAt",
+    "accessScope",
+    "idempotencyKey"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "const": "1.0"
+    },
+    "objectType": {
+      "const": "CASE_CANDIDATE"
+    },
+    "candidateId": {
+      "type": "string",
+      "pattern": "^case-candidate_[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$"
+    },
+    "sourceSystem": {
+      "const": "MARKREG"
+    },
+    "sourceMatterId": {
+      "type": "string",
+      "pattern": "^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{2,255}$"
+    },
+    "sourceMatterVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "sourceSnapshotSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sourceRetrievalRef": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "promotedBy": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "promotedAt": {
+      "type": "string",
+      "minLength": 1,
+      "x-markorbit-date-parseable": true
+    },
+    "operatorCaseValueNote": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "accessScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceWorkspaceId", "classification"],
+      "properties": {
+        "sourceWorkspaceId": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "classification": {
+          "type": "string",
+          "enum": ["INTERNAL", "CONFIDENTIAL", "RESTRICTED"]
+        }
+      }
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 200,
+      "pattern": "\\S"
+    }
+  },
+  "x-markorbit-runtime-validator": "isCaseCandidateV1",
+  "x-markorbit-source-identity-fields": [
+    "protocolVersion",
+    "sourceSystem",
+    "accessScope.sourceWorkspaceId",
+    "sourceMatterId",
+    "sourceMatterVersion",
+    "sourceSnapshotSha256"
+  ],
+  "x-markorbit-not-authority": [
+    "publication authorization",
+    "legal truth",
+    "recommendation",
+    "success probability"
+  ]
+}

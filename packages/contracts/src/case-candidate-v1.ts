@@ -2,6 +2,12 @@ export const CASE_CANDIDATE_PROTOCOL_VERSION = "1.0" as const;
 export const CASE_CANDIDATE_OBJECT_TYPE = "CASE_CANDIDATE" as const;
 export const CASE_CANDIDATE_SOURCE_SYSTEM = "MARKREG" as const;
 
+export const CASE_CANDIDATE_ID_PATTERN =
+  "^case-candidate_[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$" as const;
+export const MARKREG_FORMAL_MATTER_ID_PATTERN =
+  "^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{2,255}$" as const;
+export const CASE_CANDIDATE_SNAPSHOT_SHA256_PATTERN = "^[a-f0-9]{64}$" as const;
+
 export const CASE_CANDIDATE_ACCESS_CLASSIFICATIONS = [
   "INTERNAL",
   "CONFIDENTIAL",
@@ -37,9 +43,9 @@ export type CaseCandidateV1 = {
   idempotencyKey: string;
 };
 
-const CANDIDATE_ID = /^case-candidate_[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$/u;
-const MARKREG_FORMAL_MATTER_ID = /^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{2,255}$/u;
-const SHA256 = /^[a-f0-9]{64}$/u;
+const CANDIDATE_ID = new RegExp(CASE_CANDIDATE_ID_PATTERN, "u");
+const MARKREG_FORMAL_MATTER_ID = new RegExp(MARKREG_FORMAL_MATTER_ID_PATTERN, "u");
+const SHA256 = new RegExp(CASE_CANDIDATE_SNAPSHOT_SHA256_PATTERN, "u");
 const FORBIDDEN_SEMANTIC_KEYS = new Set([
   "lesson",
   "lessons",
