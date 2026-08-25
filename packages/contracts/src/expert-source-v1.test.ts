@@ -132,6 +132,28 @@ describe("Expert source V1 contracts", () => {
     ).toBe(false);
   });
 
+  it("rejects causally impossible Expert timestamps", () => {
+    expect(
+      isExpertQuestionTaskV1({
+        ...task,
+        sentAt: "2026-08-25T00:59:59.000Z",
+      }),
+    ).toBe(false);
+    expect(
+      isExpertQuestionTaskV1({
+        ...task,
+        state: "CLOSED",
+        closedAt: "2026-08-25T01:00:30.000Z",
+      }),
+    ).toBe(false);
+    expect(
+      isExpertSourceRecordV1({
+        ...record,
+        capturedAt: "2026-08-25T01:59:59.000Z",
+      }),
+    ).toBe(false);
+  });
+
   it("rejects Brain-style scoring or truth fields", () => {
     expect(isExpertQuestionTaskV1({ ...task, expertScore: 0.98 })).toBe(false);
     expect(isExpertSourceRecordV1({ ...record, truthScore: 1 })).toBe(false);

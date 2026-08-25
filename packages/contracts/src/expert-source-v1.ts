@@ -104,6 +104,10 @@ function timestamp(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0 && !Number.isNaN(Date.parse(value));
 }
 
+function atOrAfter(value: unknown, reference: unknown): boolean {
+  return timestamp(value) && timestamp(reference) && Date.parse(value) >= Date.parse(reference);
+}
+
 function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -187,10 +191,14 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
 
   const sentOrLater = SENT_OR_LATER.has(item.state as ExpertQuestionState);
   const lifecycleValid = sentOrLater
-    ? nonEmpty(item.communicationSendRequestRef) && timestamp(item.sentAt)
+    ? nonEmpty(item.communicationSendRequestRef) &&
+      timestamp(item.sentAt) &&
+      atOrAfter(item.sentAt, item.createdAt)
     : item.sentAt === undefined;
   const closureValid =
-    item.state === "CLOSED" ? timestamp(item.closedAt) : item.closedAt === undefined;
+    item.state === "CLOSED"
+      ? timestamp(item.closedAt) && atOrAfter(item.closedAt, item.sentAt)
+      : item.closedAt === undefined;
 
   return (
     item.protocolVersion === EXPERT_SOURCE_PROTOCOL_VERSION &&
@@ -268,6 +276,7 @@ export function isExpertSourceRecordV1(value: unknown): value is ExpertSourceRec
     refs(item.attachmentRefs) &&
     timestamp(item.receivedAt) &&
     timestamp(item.capturedAt) &&
+    atOrAfter(item.capturedAt, item.receivedAt) &&
     refs(item.relatedSourceRefs) &&
     refs(item.relatedCaseRefs) &&
     provenance !== null &&
