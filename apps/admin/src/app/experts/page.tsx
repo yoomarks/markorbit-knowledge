@@ -1,5 +1,6 @@
 import { AdminShell } from "@/components/admin-shell";
 import { ExpertQaWorkbench } from "@/components/experts/expert-qa-workbench";
+import { ExpertSourceSearch } from "@/components/experts/expert-source-search";
 
 export default function ExpertsPage() {
   return (
@@ -16,7 +17,10 @@ export default function ExpertsPage() {
           只保存信息与来源证据；专家评分、真伪裁决、推荐和策略判断不属于此工作台。
         </p>
       </div>
-      <ExpertQaWorkbench />
+      <div className="space-y-6">
+        <ExpertSourceSearch />
+        <ExpertQaWorkbench />
+      </div>
     </AdminShell>
   );
 }
