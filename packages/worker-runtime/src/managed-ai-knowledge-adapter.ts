@@ -178,16 +178,13 @@ function mapManagedFailure(outcome: ManagedAiKnowledgeExecutionOutcomeV1): never
     outcome.deliveryState === "DELIVERY_UNCERTAIN" ||
     outcome.retryDisposition === "RECONCILIATION_REQUIRED"
   ) {
-    const code = outcome.error?.code === "TIMEOUT" ? "AI_PROVIDER_TIMEOUT" : "AI_PROVIDER_NETWORK_ERROR";
+    const code =
+      outcome.error?.code === "TIMEOUT" ? "AI_PROVIDER_TIMEOUT" : "AI_PROVIDER_NETWORK_ERROR";
     throw new AiKnowledgeAcquisitionError(code, providerMessage, true);
   }
 
   if (outcome.error?.code === "AUTHENTICATION_FAILED") {
-    throw new AiKnowledgeAcquisitionError(
-      "AI_PROVIDER_CREDENTIAL_MISSING",
-      providerMessage,
-      false,
-    );
+    throw new AiKnowledgeAcquisitionError("AI_PROVIDER_CREDENTIAL_MISSING", providerMessage, false);
   }
 
   if (outcome.deliveryState === "NOT_DELIVERED" && outcome.retryDisposition === "RETRY_ALLOWED") {
@@ -202,11 +199,7 @@ function mapManagedFailure(outcome: ManagedAiKnowledgeExecutionOutcomeV1): never
     outcome.deliveryState === "DELIVERED_CONFIRMED" &&
     outcome.retryDisposition === "RETRY_ALLOWED"
   ) {
-    throw new AiKnowledgeAcquisitionError(
-      "AI_PROVIDER_TEMPORARY_FAILURE",
-      providerMessage,
-      true,
-    );
+    throw new AiKnowledgeAcquisitionError("AI_PROVIDER_TEMPORARY_FAILURE", providerMessage, true);
   }
 
   throw new AiKnowledgeAcquisitionError(
@@ -260,7 +253,11 @@ function parseStructuredMarkdown(outcome: ManagedAiKnowledgeExecutionOutcomeV1):
     );
   }
   const record = structured as Record<string, unknown>;
-  if (record.outputFormat !== "MARKDOWN" || typeof record.text !== "string" || !record.text.trim()) {
+  if (
+    record.outputFormat !== "MARKDOWN" ||
+    typeof record.text !== "string" ||
+    !record.text.trim()
+  ) {
     throw new AiKnowledgeAcquisitionError(
       "AI_MANAGED_AI_STRUCTURED_OUTPUT_INVALID",
       "Managed AI structured output must contain non-empty Markdown text",
@@ -283,7 +280,8 @@ function buildKnowledgeAcquisition(input: {
   requestedAt: string;
   completedAt: string;
 }): AiKnowledgeAcquisition {
-  const { request, rawResponse, markdown, model, providerRequestId, requestedAt, completedAt } = input;
+  const { request, rawResponse, markdown, model, providerRequestId, requestedAt, completedAt } =
+    input;
   const promptSha256 = sha256(request.assignment.prompt);
   const rawResponseSha256 = sha256(rawResponse);
   const markdownBytes = Buffer.from(markdown, "utf8");

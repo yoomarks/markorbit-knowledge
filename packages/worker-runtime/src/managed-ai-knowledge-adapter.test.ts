@@ -1,10 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { AiKnowledgeAssignmentV1 } from "@markorbit/contracts";
-import {
-  DeepSeekKnowledgeAdapter,
-  type AiModelTransport,
-} from "./ai-distilled-knowledge-acquirer";
+import { DeepSeekKnowledgeAdapter, type AiModelTransport } from "./ai-distilled-knowledge-acquirer";
 import {
   MANAGED_AI_CAPABILITY_ID,
   MANAGED_AI_CONTRACT_VERSION,
