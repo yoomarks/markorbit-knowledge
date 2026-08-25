@@ -107,9 +107,7 @@ describe("CaseCandidateV1 portable wire schema", () => {
     expect(properties.sourceSystem?.const).toBe(CASE_CANDIDATE_SOURCE_SYSTEM);
     expect(properties.candidateId?.pattern).toBe(CASE_CANDIDATE_ID_PATTERN);
     expect(properties.sourceMatterId?.pattern).toBe(MARKREG_FORMAL_MATTER_ID_PATTERN);
-    expect(properties.sourceSnapshotSha256?.pattern).toBe(
-      CASE_CANDIDATE_SNAPSHOT_SHA256_PATTERN,
-    );
+    expect(properties.sourceSnapshotSha256?.pattern).toBe(CASE_CANDIDATE_SNAPSHOT_SHA256_PATTERN);
     expect(properties.sourceMatterVersion?.maximum).toBe(Number.MAX_SAFE_INTEGER);
     expect(properties.accessScope?.properties?.classification?.enum).toEqual([
       ...CASE_CANDIDATE_ACCESS_CLASSIFICATIONS,
@@ -135,7 +133,9 @@ describe("CaseCandidateV1 portable wire schema", () => {
     expect(schema.additionalProperties).toBe(false);
     expect(schema.properties?.accessScope?.additionalProperties).toBe(false);
     expect(conforms(candidate(), schema)).toBe(true);
-    expect(conforms(candidate({ operatorCaseValueNote: "Evidence-rich matter." }), schema)).toBe(true);
+    expect(conforms(candidate({ operatorCaseValueNote: "Evidence-rich matter." }), schema)).toBe(
+      true,
+    );
   });
 
   it("makes the portable schema and runtime validator agree on producer boundaries", () => {
