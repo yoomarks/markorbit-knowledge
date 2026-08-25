@@ -106,22 +106,26 @@ export class ConfiguredMarkRegCaseSourceResolver implements AuthorizedMarkRegCas
     });
   }
 
-  async resolve(candidate: Readonly<CaseCandidateV1>): Promise<ResolvedMarkRegCaseSourceAccess> {
+  resolve(candidate: Readonly<CaseCandidateV1>): Promise<ResolvedMarkRegCaseSourceAccess> {
     if (candidate.sourceSystem !== "MARKREG") {
-      throw new CaseEvidenceCollectionError(
-        "MARKREG_SOURCE_SYSTEM_UNSUPPORTED",
-        "Configured MarkReg source access can resolve only MARKREG Case Candidates",
-        false,
+      return Promise.reject(
+        new CaseEvidenceCollectionError(
+          "MARKREG_SOURCE_SYSTEM_UNSUPPORTED",
+          "Configured MarkReg source access can resolve only MARKREG Case Candidates",
+          false,
+        ),
       );
     }
     if (candidate.accessScope.sourceWorkspaceId !== this.access.workspaceId) {
-      throw new CaseEvidenceCollectionError(
-        "MARKREG_WORKSPACE_MISMATCH",
-        "Configured MarkReg Workspace does not match the Case Candidate",
-        false,
+      return Promise.reject(
+        new CaseEvidenceCollectionError(
+          "MARKREG_WORKSPACE_MISMATCH",
+          "Configured MarkReg Workspace does not match the Case Candidate",
+          false,
+        ),
       );
     }
-    return { ...this.access };
+    return Promise.resolve({ ...this.access });
   }
 }
 
