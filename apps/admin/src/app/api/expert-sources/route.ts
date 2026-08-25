@@ -20,33 +20,28 @@ function integer(searchParams: URLSearchParams, name: string): number | undefine
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const jurisdiction = text(searchParams, "jurisdiction");
+    const topic = text(searchParams, "topic");
+    const expertRef = text(searchParams, "expertRef");
+    const organizationRef = text(searchParams, "organizationRef");
+    const receivedFrom = text(searchParams, "receivedFrom");
+    const receivedTo = text(searchParams, "receivedTo");
+    const relatedSourceRef = text(searchParams, "relatedSourceRef");
+    const relatedCaseRef = text(searchParams, "relatedCaseRef");
+    const limit = integer(searchParams, "limit");
+    const offset = integer(searchParams, "offset");
+
     const input: ExpertSourceRetrievalRequestV1 = {
-      ...(text(searchParams, "jurisdiction") !== undefined
-        ? { jurisdiction: text(searchParams, "jurisdiction") }
-        : {}),
-      ...(text(searchParams, "topic") !== undefined ? { topic: text(searchParams, "topic") } : {}),
-      ...(text(searchParams, "expertRef") !== undefined
-        ? { expertRef: text(searchParams, "expertRef") }
-        : {}),
-      ...(text(searchParams, "organizationRef") !== undefined
-        ? { organizationRef: text(searchParams, "organizationRef") }
-        : {}),
-      ...(text(searchParams, "receivedFrom") !== undefined
-        ? { receivedFrom: text(searchParams, "receivedFrom") }
-        : {}),
-      ...(text(searchParams, "receivedTo") !== undefined
-        ? { receivedTo: text(searchParams, "receivedTo") }
-        : {}),
-      ...(text(searchParams, "relatedSourceRef") !== undefined
-        ? { relatedSourceRef: text(searchParams, "relatedSourceRef") }
-        : {}),
-      ...(text(searchParams, "relatedCaseRef") !== undefined
-        ? { relatedCaseRef: text(searchParams, "relatedCaseRef") }
-        : {}),
-      ...(integer(searchParams, "limit") !== undefined ? { limit: integer(searchParams, "limit") } : {}),
-      ...(integer(searchParams, "offset") !== undefined
-        ? { offset: integer(searchParams, "offset") }
-        : {}),
+      ...(jurisdiction !== undefined ? { jurisdiction } : {}),
+      ...(topic !== undefined ? { topic } : {}),
+      ...(expertRef !== undefined ? { expertRef } : {}),
+      ...(organizationRef !== undefined ? { organizationRef } : {}),
+      ...(receivedFrom !== undefined ? { receivedFrom } : {}),
+      ...(receivedTo !== undefined ? { receivedTo } : {}),
+      ...(relatedSourceRef !== undefined ? { relatedSourceRef } : {}),
+      ...(relatedCaseRef !== undefined ? { relatedCaseRef } : {}),
+      ...(limit !== undefined ? { limit } : {}),
+      ...(offset !== undefined ? { offset } : {}),
     };
     return NextResponse.json(getExpertSourceRetrievalRepository().search(input));
   } catch (error) {
