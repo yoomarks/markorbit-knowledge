@@ -22,6 +22,7 @@
     "./ai-distilled-knowledge-ingestion": "./src/ai-distilled-knowledge-ingestion.ts",
     "./expert-sources": "./src/expert-source-registry.ts",
     "./expert-source-retrieval": "./src/expert-source-retrieval.ts",
+    "./case-candidate-intake": "./src/case-candidate-intake.ts",
     "./connectors": "./src/connector-registry.ts",
     "./collection-plans": "./src/collection-plan-registry.ts",
     "./collection-scheduler": "./src/collection-scheduler.ts",
