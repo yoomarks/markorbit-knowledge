@@ -18,6 +18,19 @@ export type CaseCandidateIntakeResultV1 = {
   intake: CaseCandidateIntakeV1;
 };
 
+type IntakeRow = {
+  candidate_id: string;
+  source_identity_sha256: string;
+  collection_state: "PENDING" | "WAITING_SOURCE";
+  source_error_code: string | null;
+  source_error_message: string | null;
+  source_error_observed_at: string | null;
+  collection_ref: string | null;
+  collected_at: string | null;
+  accepted_at: string;
+  updated_at: string;
+};
+
 export function ensureCaseCandidateIntakeRegistry(database: DatabaseSync): void {
   if (INITIALIZED_DATABASES.has(database)) return;
   database.exec("PRAGMA foreign_keys = ON;");
@@ -45,6 +58,8 @@ export function ensureCaseCandidateIntakeRegistry(database: DatabaseSync): void 
       source_error_code TEXT,
       source_error_message TEXT,
       source_error_observed_at TEXT,
+      collection_ref TEXT,
+      collected_at TEXT,
       accepted_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY(candidate_id) REFERENCES case_candidates(candidate_id)
@@ -53,6 +68,19 @@ export function ensureCaseCandidateIntakeRegistry(database: DatabaseSync): void 
     CREATE INDEX IF NOT EXISTS case_candidate_collection_state_idx
       ON case_candidate_collection_tickets(collection_state, updated_at ASC, candidate_id ASC);
   `);
+
+  const columns = new Set(
+    (database.prepare("PRAGMA table_info(case_candidate_collection_tickets)").all() as {
+      name: string;
+    }[]).map((row) => row.name),
+  );
+  if (!columns.has("collection_ref")) {
+    database.exec("ALTER TABLE case_candidate_collection_tickets ADD COLUMN collection_ref TEXT;");
+  }
+  if (!columns.has("collected_at")) {
+    database.exec("ALTER TABLE case_candidate_collection_tickets ADD COLUMN collected_at TEXT;");
+  }
+
   INITIALIZED_DATABASES.add(database);
 }
 
@@ -88,34 +116,31 @@ function assertCompatibleSourceSemantics(
   }
 }
 
-function parseIntake(row: {
-  candidate_id: string;
-  source_identity_sha256: string;
-  collection_state: "PENDING" | "WAITING_SOURCE";
-  source_error_code: string | null;
-  source_error_message: string | null;
-  source_error_observed_at: string | null;
-  accepted_at: string;
-  updated_at: string;
-}): CaseCandidateIntakeV1 {
+function parseIntake(row: IntakeRow): CaseCandidateIntakeV1 {
+  const semanticallyCollected = row.collection_ref !== null || row.collected_at !== null;
   const value: CaseCandidateIntakeV1 = {
     protocolVersion: CASE_CANDIDATE_INTAKE_PROTOCOL_VERSION,
     objectType: CASE_CANDIDATE_INTAKE_OBJECT_TYPE,
     candidateId: row.candidate_id,
     sourceIdentitySha256: row.source_identity_sha256,
-    collectionState: row.collection_state,
+    collectionState: semanticallyCollected ? "COLLECTED" : row.collection_state,
     acceptedAt: row.accepted_at,
     updatedAt: row.updated_at,
-    ...(row.collection_state === "WAITING_SOURCE"
+    ...(semanticallyCollected
       ? {
-          sourceUnavailable: {
-            code: row.source_error_code ?? "SOURCE_UNAVAILABLE",
-            message: row.source_error_message ?? "Case source is temporarily unavailable",
-            observedAt: row.source_error_observed_at ?? row.updated_at,
-            retryable: true as const,
-          },
+          collectionRef: row.collection_ref ?? undefined,
+          collectedAt: row.collected_at ?? undefined,
         }
-      : {}),
+      : row.collection_state === "WAITING_SOURCE"
+        ? {
+            sourceUnavailable: {
+              code: row.source_error_code ?? "SOURCE_UNAVAILABLE",
+              message: row.source_error_message ?? "Case source is temporarily unavailable",
+              observedAt: row.source_error_observed_at ?? row.updated_at,
+              retryable: true as const,
+            },
+          }
+        : {}),
   };
   if (!isCaseCandidateIntakeV1(value)) {
     throw new RegistryValidationError("Stored Case Candidate intake state is invalid");
@@ -249,22 +274,11 @@ export class SqliteCaseCandidateIntakeRepository {
       .prepare(
         `SELECT candidate_id, source_identity_sha256, collection_state,
                 source_error_code, source_error_message, source_error_observed_at,
-                accepted_at, updated_at
+                collection_ref, collected_at, accepted_at, updated_at
            FROM case_candidate_collection_tickets
           WHERE candidate_id = ?`,
       )
-      .get(candidateId) as
-      | {
-          candidate_id: string;
-          source_identity_sha256: string;
-          collection_state: "PENDING" | "WAITING_SOURCE";
-          source_error_code: string | null;
-          source_error_message: string | null;
-          source_error_observed_at: string | null;
-          accepted_at: string;
-          updated_at: string;
-        }
-      | undefined;
+      .get(candidateId) as IntakeRow | undefined;
     return row ? parseIntake(row) : null;
   }
 
@@ -277,6 +291,7 @@ export class SqliteCaseCandidateIntakeRepository {
         `SELECT candidate_id
            FROM case_candidate_collection_tickets
           WHERE collection_state = 'PENDING'
+            AND collected_at IS NULL
           ORDER BY updated_at ASC, candidate_id ASC
           LIMIT ?`,
       )
@@ -299,6 +314,13 @@ export class SqliteCaseCandidateIntakeRepository {
     if (!this.getCandidate(candidateId)) {
       throw new RegistryValidationError(`Case Candidate ${candidateId} does not exist`);
     }
+    const current = this.requireIntake(candidateId);
+    if (current.collectionState === "COLLECTED") {
+      throw new RegistryConflictError(
+        "CASE_CANDIDATE_ALREADY_COLLECTED",
+        `Case Candidate ${candidateId} already has completed evidence collection`,
+      );
+    }
     this.database
       .prepare(
         `UPDATE case_candidate_collection_tickets
@@ -308,6 +330,41 @@ export class SqliteCaseCandidateIntakeRepository {
           WHERE candidate_id = ?`,
       )
       .run(code, message, observedAt, observedAt, candidateId);
+    return this.requireIntake(candidateId);
+  }
+
+  recordCollectionComplete(
+    candidateId: string,
+    collectionRef: string,
+    collectedAt = new Date().toISOString(),
+  ): CaseCandidateIntakeV1 {
+    const ref = collectionRef.trim();
+    if (!ref || Number.isNaN(Date.parse(collectedAt))) {
+      throw new RegistryValidationError("A collection reference and valid timestamp are required");
+    }
+    if (!this.getCandidate(candidateId)) {
+      throw new RegistryValidationError(`Case Candidate ${candidateId} does not exist`);
+    }
+    const current = this.requireIntake(candidateId);
+    if (current.collectionState === "COLLECTED") {
+      if (current.collectionRef !== ref) {
+        throw new RegistryConflictError(
+          "CASE_CANDIDATE_COLLECTION_CONFLICT",
+          `Case Candidate ${candidateId} already points at a different evidence collection`,
+        );
+      }
+      return current;
+    }
+    this.database
+      .prepare(
+        `UPDATE case_candidate_collection_tickets
+            SET collection_state = 'PENDING',
+                source_error_code = NULL, source_error_message = NULL,
+                source_error_observed_at = NULL,
+                collection_ref = ?, collected_at = ?, updated_at = ?
+          WHERE candidate_id = ?`,
+      )
+      .run(ref, collectedAt, collectedAt, candidateId);
     return this.requireIntake(candidateId);
   }
 
@@ -326,7 +383,8 @@ export class SqliteCaseCandidateIntakeRepository {
         `UPDATE case_candidate_collection_tickets
             SET collection_state = 'PENDING',
                 source_error_code = NULL, source_error_message = NULL,
-                source_error_observed_at = NULL, updated_at = ?
+                source_error_observed_at = NULL,
+                collection_ref = NULL, collected_at = NULL, updated_at = ?
           WHERE candidate_id = ?`,
       )
       .run(requeuedAt, candidateId);
