@@ -132,11 +132,12 @@ function assertStableLineage(
     current.transportMode !== next.transportMode ||
     current.producerPromotionRef !== next.producerPromotionRef ||
     current.startedAt !== next.startedAt ||
-    !same(current.candidate, next.candidate)
+    !same(current.candidate, next.candidate) ||
+    !same(current.privacyPlan, next.privacyPlan)
   ) {
     throw new RegistryConflictError(
       "CASE_LIVE_ACCEPTANCE_LINEAGE_CONFLICT",
-      "Case live acceptance run identity or producer/source lineage changed after creation",
+      "Case live acceptance run identity, producer/source lineage or privacy plan changed after creation",
     );
   }
   if (!transitionAllowed(current.state, next.state)) {
