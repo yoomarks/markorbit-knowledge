@@ -12,6 +12,7 @@
     "./ai-source-pack-renderer": "./src/ai-source-pack-renderer.ts",
     "./ai-grounded-execution-preparer": "./src/ai-grounded-execution-preparer.ts",
     "./ai-grounded-output-validator": "./src/ai-grounded-output-validator.ts",
+    "./markreg-case-evidence-collector": "./src/markreg-case-evidence-collector.ts",
     "./foundational-readiness": "./src/foundational-readiness.ts",
     "./foundational-remediation-queue": "./src/foundational-remediation-queue.ts",
     "./foundational-remediation-snapshot": "./src/foundational-remediation-snapshot.ts",
