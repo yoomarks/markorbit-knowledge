@@ -27,6 +27,11 @@ function started(
       sourceMatterVersion: 1,
       sourceSnapshotSha256: sha,
       sourceWorkspaceId: "workspace:test",
+      sourceAccessClassification: "CONFIDENTIAL",
+    },
+    privacyPlan: {
+      reviewId: "case-privacy-review_01",
+      reviewerRef: "user:privacy-reviewer:01",
     },
     eligibleForKCase008Review: false,
     publicationAuthorized: false,
@@ -108,7 +113,7 @@ describe("SqliteCaseLiveAcceptanceRepository", () => {
     );
   });
 
-  it("rejects source lineage drift and terminal mutation", () => {
+  it("rejects source or privacy-plan lineage drift and terminal mutation", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteCaseLiveAcceptanceRepository(database);
     repository.saveReceipt(started());
@@ -116,6 +121,17 @@ describe("SqliteCaseLiveAcceptanceRepository", () => {
       repository.saveReceipt(
         started({
           candidate: { ...started().candidate, sourceWorkspaceId: "workspace:other" },
+          updatedAt: "2026-08-25T09:31:00.000Z",
+        }),
+      ),
+    ).toThrowError(RegistryConflictError);
+    expect(() =>
+      repository.saveReceipt(
+        started({
+          privacyPlan: {
+            reviewId: "case-privacy-review_other",
+            reviewerRef: "user:privacy-reviewer:02",
+          },
           updatedAt: "2026-08-25T09:31:00.000Z",
         }),
       ),
