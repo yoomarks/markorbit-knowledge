@@ -42,6 +42,7 @@ export type AiModelTransport = (
 
 export type AiKnowledgeProviderRequest = {
   assignment: AiKnowledgeAssignmentV1;
+  executionKey?: string;
   model?: string;
   timeoutMs?: number;
 };
@@ -151,13 +152,17 @@ async function defaultTransport(
       body.set(chunk, offset);
       offset += chunk.byteLength;
     }
-    return { status: response.status, body };
+    return {
+      status: response.status,
+      body,
+      headers: Object.fromEntries(response.headers.entries()),
+    };
   } catch (error) {
     if (error instanceof AiKnowledgeAcquisitionError) throw error;
-    const aborted = error instanceof Error && error.name === "AbortError";
+    const timedOut = error instanceof Error && error.name === "AbortError";
     throw new AiKnowledgeAcquisitionError(
-      aborted ? "AI_PROVIDER_TIMEOUT" : "AI_PROVIDER_NETWORK_ERROR",
-      aborted ? "AI provider request timed out" : "AI provider request failed",
+      timedOut ? "AI_PROVIDER_TIMEOUT" : "AI_PROVIDER_NETWORK_ERROR",
+      timedOut ? "AI provider request timed out" : "AI provider request failed",
       true,
     );
   } finally {
@@ -165,107 +170,106 @@ async function defaultTransport(
   }
 }
 
-function parseDeepSeekResponse(raw: Uint8Array): {
-  markdown: string;
-  model: string;
-  providerRequestId?: string;
-} {
-  let parsed: unknown;
+function parseProviderText(value: unknown): string {
+  if (!value || typeof value !== "object") {
+    throw new AiKnowledgeAcquisitionError(
+      "AI_PROVIDER_RESPONSE_INVALID",
+      "AI provider response is not an object",
+      false,
+    );
+  }
+  const record = value as Record<string, unknown>;
+  const choices = record.choices;
+  if (!Array.isArray(choices) || choices.length === 0) {
+    throw new AiKnowledgeAcquisitionError(
+      "AI_PROVIDER_RESPONSE_INVALID",
+      "AI provider response does not contain choices",
+      false,
+    );
+  }
+  const first = choices[0];
+  if (!first || typeof first !== "object") {
+    throw new AiKnowledgeAcquisitionError(
+      "AI_PROVIDER_RESPONSE_INVALID",
+      "AI provider response contains an invalid choice",
+      false,
+    );
+  }
+  const message = (first as Record<string, unknown>).message;
+  if (!message || typeof message !== "object") {
+    throw new AiKnowledgeAcquisitionError(
+      "AI_PROVIDER_RESPONSE_INVALID",
+      "AI provider response does not contain a message",
+      false,
+    );
+  }
+  const content = (message as Record<string, unknown>).content;
+  if (typeof content !== "string" || !content.trim()) {
+    throw new AiKnowledgeAcquisitionError(
+      "AI_PROVIDER_RESPONSE_INVALID",
+      "AI provider response does not contain text content",
+      false,
+    );
+  }
+  return content;
+}
+
+function parsedJson(bytes: Uint8Array): unknown {
   try {
-    parsed = JSON.parse(new TextDecoder().decode(raw));
+    return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
   } catch {
     throw new AiKnowledgeAcquisitionError(
       "AI_PROVIDER_RESPONSE_INVALID",
-      "DeepSeek returned invalid JSON",
+      "AI provider returned invalid JSON",
       false,
     );
   }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new AiKnowledgeAcquisitionError(
-      "AI_PROVIDER_RESPONSE_INVALID",
-      "DeepSeek response must be an object",
-      false,
-    );
-  }
-  const response = parsed as Record<string, unknown>;
-  const choices = response.choices;
-  const first = Array.isArray(choices) ? choices[0] : undefined;
-  const message =
-    first && typeof first === "object" && !Array.isArray(first)
-      ? (first as Record<string, unknown>).message
-      : undefined;
-  const content =
-    message && typeof message === "object" && !Array.isArray(message)
-      ? (message as Record<string, unknown>).content
-      : undefined;
-  if (typeof content !== "string" || content.trim().length === 0) {
-    throw new AiKnowledgeAcquisitionError(
-      "AI_PROVIDER_CONTENT_MISSING",
-      "DeepSeek response did not contain non-empty assistant Markdown",
-      false,
-    );
-  }
-  const model =
-    typeof response.model === "string" && response.model ? response.model : DEEPSEEK_DEFAULT_MODEL;
-  const providerRequestId =
-    typeof response.id === "string" && response.id ? response.id : undefined;
-  return providerRequestId
-    ? { markdown: content, model, providerRequestId }
-    : { markdown: content, model };
 }
 
-export type DeepSeekKnowledgeAdapterOptions = {
-  environment?: NodeJS.ProcessEnv;
-  transport?: AiModelTransport;
-  endpoint?: string;
-  secretEnv?: string;
-  maxResponseBytes?: number;
-  now?: () => Date;
-  offPeakOnly?: boolean;
-};
+function optionalHeader(headers: Readonly<Record<string, string>> | undefined, name: string) {
+  if (!headers) return undefined;
+  const target = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === target) return value;
+  }
+  return undefined;
+}
 
 export class DeepSeekKnowledgeAdapter implements AiKnowledgeProviderAdapter {
   readonly provider = "DEEPSEEK" as const;
-  private readonly environment: NodeJS.ProcessEnv;
   private readonly transport: AiModelTransport;
+  private readonly apiKey: string;
+  private readonly model: string;
   private readonly endpoint: string;
-  private readonly secretEnv: string;
   private readonly maxResponseBytes: number;
-  private readonly now: () => Date;
-  private readonly offPeakOnly: boolean;
 
-  constructor(options: DeepSeekKnowledgeAdapterOptions = {}) {
-    this.environment = options.environment ?? process.env;
-    this.transport = options.transport ?? defaultTransport;
-    this.endpoint = options.endpoint ?? DEEPSEEK_ENDPOINT;
-    this.secretEnv = options.secretEnv ?? DEEPSEEK_SECRET_ENV;
+  constructor(options: {
+    apiKey?: string;
+    model?: string;
+    endpoint?: string;
+    maxResponseBytes?: number;
+    transport?: AiModelTransport;
+  } = {}) {
+    this.apiKey = options.apiKey ?? process.env[DEEPSEEK_SECRET_ENV] ?? "";
+    this.model = options.model?.trim() || DEEPSEEK_DEFAULT_MODEL;
+    this.endpoint = options.endpoint?.trim() || DEEPSEEK_ENDPOINT;
     this.maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
-    this.now = options.now ?? (() => new Date());
-    this.offPeakOnly = options.offPeakOnly ?? true;
-    if (this.endpoint !== DEEPSEEK_ENDPOINT) {
-      throw new AiKnowledgeAcquisitionError(
-        "AI_PROVIDER_ENDPOINT_INVALID",
-        "DeepSeek production adapter only permits the canonical HTTPS endpoint",
-        false,
-      );
-    }
+    this.transport = options.transport ?? defaultTransport;
   }
 
   async acquire(request: AiKnowledgeProviderRequest): Promise<AiKnowledgeAcquisition> {
     assertAiKnowledgeAssignmentV1(request.assignment);
-    const secret = this.environment[this.secretEnv];
-    if (!secret) {
+    if (!this.apiKey) {
       throw new AiKnowledgeAcquisitionError(
         "AI_PROVIDER_CREDENTIAL_MISSING",
-        `DeepSeek credential environment variable ${this.secretEnv} is not configured`,
+        `DeepSeek credential environment variable ${DEEPSEEK_SECRET_ENV} is not configured`,
         false,
       );
     }
-    const requestedAtDate = this.now();
-    if (this.offPeakOnly) assertDeepSeekOffPeakExecutionWindow(requestedAtDate);
-    const requestedAt = requestedAtDate.toISOString();
-    const model = request.model ?? DEEPSEEK_DEFAULT_MODEL;
-    const providerBody = JSON.stringify({
+    const timeoutMs = boundedTimeout(request.timeoutMs);
+    assertDeepSeekOffPeakExecutionWindow();
+    const model = request.model?.trim() || this.model;
+    const rawRequestBody = JSON.stringify({
       model,
       messages: [
         {
@@ -277,83 +281,79 @@ export class DeepSeekKnowledgeAdapter implements AiKnowledgeProviderAdapter {
       ],
       stream: false,
     });
-    const raw = await this.transport({
+    const response = await this.transport({
       url: this.endpoint,
       headers: {
-        authorization: `Bearer ${secret}`,
+        authorization: `Bearer ${this.apiKey}`,
         "content-type": "application/json",
-        accept: "application/json",
       },
-      body: providerBody,
-      timeoutMs: boundedTimeout(request.timeoutMs),
+      body: rawRequestBody,
+      timeoutMs,
       maxResponseBytes: this.maxResponseBytes,
     });
-    if (raw.status === 429 || raw.status >= 500) {
+    if (response.status < 200 || response.status >= 300) {
       throw new AiKnowledgeAcquisitionError(
-        "AI_PROVIDER_TEMPORARY_FAILURE",
-        `DeepSeek returned HTTP ${raw.status}`,
-        true,
+        response.status === 429 || response.status >= 500
+          ? "AI_PROVIDER_TEMPORARY_FAILURE"
+          : "AI_PROVIDER_REJECTED",
+        `DeepSeek returned HTTP ${response.status}`,
+        response.status === 429 || response.status >= 500,
       );
     }
-    if (raw.status < 200 || raw.status >= 300) {
-      throw new AiKnowledgeAcquisitionError(
-        "AI_PROVIDER_REJECTED",
-        `DeepSeek returned HTTP ${raw.status}`,
-        false,
-      );
-    }
-    const parsed = parseDeepSeekResponse(raw.body);
-    const completedAt = this.now().toISOString();
-    const promptSha256 = sha256(request.assignment.prompt);
-    const rawResponseSha256 = sha256(raw.body);
-    const markdownBytes = Buffer.from(parsed.markdown, "utf8");
-    const markdownSha256 = sha256(markdownBytes);
-    const submissionId = deterministicId(
-      "ars",
-      `${request.assignment.assignmentId}:${this.provider}:${rawResponseSha256}`,
-    );
+
+    const parsed = parsedJson(response.body);
+    const markdown = parseProviderText(parsed);
+    const providerRequestId =
+      typeof (parsed as Record<string, unknown>).id === "string"
+        ? ((parsed as Record<string, unknown>).id as string)
+        : optionalHeader(response.headers, "x-request-id");
+    const capturedAt = new Date().toISOString();
+    const assignment = request.assignment;
+    const seed = [
+      assignment.assignmentId,
+      this.provider,
+      model,
+      assignment.instructionSetId,
+      String(assignment.instructionSetRevision),
+      assignment.prompt,
+      markdown,
+    ].join("\u001f");
+
     const submission: AiResearchSubmissionV1 = {
       protocolVersion: AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION,
       objectType: AI_RESEARCH_SUBMISSION_OBJECT_TYPE,
-      submissionId,
-      assignmentId: request.assignment.assignmentId,
+      submissionId: deterministicId("ars", seed),
+      assignmentId: assignment.assignmentId,
       provider: this.provider,
-      model: parsed.model,
-      requestedAt,
-      completedAt,
-      promptSha256,
-      rawResponseSha256,
-      markdownSha256,
-      markdownSizeBytes: markdownBytes.byteLength,
-      ...(parsed.providerRequestId ? { providerRequestId: parsed.providerRequestId } : {}),
+      model,
+      instructionSetId: assignment.instructionSetId,
+      instructionSetRevision: assignment.instructionSetRevision,
+      contentFormat: "MARKDOWN",
+      content: markdown,
+      ...(providerRequestId ? { providerRequestId } : {}),
+      submittedAt: capturedAt,
     };
-    const artifactId = deterministicId("adk", `${submissionId}:${markdownSha256}`);
     const artifact: AiDistilledKnowledgeArtifactV1 = {
       protocolVersion: AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION,
       objectType: AI_DISTILLED_KNOWLEDGE_ARTIFACT_OBJECT_TYPE,
-      artifactId,
-      assignmentId: request.assignment.assignmentId,
-      submissionId,
-      provider: this.provider,
-      model: parsed.model,
-      instructionSetId: request.assignment.instructionSetId,
-      instructionSetRevision: request.assignment.instructionSetRevision,
-      provenance: {
-        sourceKind: "SYNTHETIC_AI",
-        legalTruthVerified: false,
-        rawResponseSha256,
-        promptSha256,
-      },
-      content: {
-        mediaType: "text/markdown",
-        encoding: "utf-8",
-        sha256: markdownSha256,
-        sizeBytes: markdownBytes.byteLength,
-        contentAddressedRef: `cas:sha256:${markdownSha256}`,
-        content: parsed.markdown,
-      },
-      createdAt: completedAt,
+      artifactId: deterministicId("adk", seed),
+      assignmentId: assignment.assignmentId,
+      submissionId: submission.submissionId,
+      provider: submission.provider,
+      model: submission.model,
+      instructionSetId: submission.instructionSetId,
+      instructionSetRevision: submission.instructionSetRevision,
+      sourceClass: "AI_DISTILLED_KNOWLEDGE",
+      contentFormat: "MARKDOWN",
+      content: markdown,
+      capturedAt,
     };
-    return { assignment: request.assignment, submission, artifact, rawResponse: raw.body };
+
+    return {
+      assignment,
+      submission,
+      artifact,
+      rawResponse: response.body,
+    };
   }
 }
