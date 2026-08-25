@@ -276,7 +276,10 @@ describe("assembleCaseDossierV1", () => {
 
   it("fails closed if exact payload bytes do not match their recorded identity", () => {
     const value = collection();
-    value.formalMatter = { ...value.formalMatter, dataBase64: Buffer.from("{}").toString("base64") };
+    value.formalMatter = {
+      ...value.formalMatter,
+      dataBase64: Buffer.from("{}").toString("base64"),
+    };
     expect(() => assembleCaseDossierV1(candidate(), value)).toThrowError(CaseDossierAssemblyError);
     try {
       assembleCaseDossierV1(candidate(), value);

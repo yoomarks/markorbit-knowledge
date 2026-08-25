@@ -16,7 +16,11 @@ import {
 } from "@markorbit/contracts";
 
 export class CaseDossierAssemblyError extends Error {
-  constructor(readonly code: string, message: string, options?: ErrorOptions) {
+  constructor(
+    readonly code: string,
+    message: string,
+    options?: ErrorOptions,
+  ) {
     super(message, options);
     this.name = "CaseDossierAssemblyError";
   }
@@ -184,7 +188,10 @@ function directText(value: unknown): string | undefined {
   return nonEmpty(value) ? value.trim() : undefined;
 }
 
-function deterministicDossierId(candidate: CaseCandidateV1, collection: CaseEvidenceCollectionV1): string {
+function deterministicDossierId(
+  candidate: CaseCandidateV1,
+  collection: CaseEvidenceCollectionV1,
+): string {
   return `case-dossier_${sha256(
     canonical({
       candidateId: candidate.candidateId,
@@ -196,9 +203,7 @@ function deterministicDossierId(candidate: CaseCandidateV1, collection: CaseEvid
   ).slice(0, 32)}`;
 }
 
-function buildDocuments(
-  collection: CaseEvidenceCollectionV1,
-): CaseDossierDocumentV1[] {
+function buildDocuments(collection: CaseEvidenceCollectionV1): CaseDossierDocumentV1[] {
   const documents: CaseDossierDocumentV1[] = [];
   for (const packageEvidence of [...collection.documentPackages].sort((left, right) =>
     left.documentPackageId.localeCompare(right.documentPackageId),
@@ -209,7 +214,10 @@ function buildDocuments(
     );
     if (
       payload.documentPackageId !== packageEvidence.documentPackageId ||
-      !sameVersion(payload.sourceFormalMatterVersion, collection.sourceMatter.sourceMatterVersion) ||
+      !sameVersion(
+        payload.sourceFormalMatterVersion,
+        collection.sourceMatter.sourceMatterVersion,
+      ) ||
       payload.sourceFormalMatterHash !== collection.sourceMatter.sourceSnapshotSha256
     ) {
       throw new CaseDossierAssemblyError(
@@ -267,7 +275,9 @@ function buildLifecycleTimeline(
     .filter((event) => timestamp(event.occurredAt) && nonEmpty(event.lifecycleEventId))
     .map((event) => {
       const action =
-        directText(event.customerSafeLabel) ?? directText(event.eventCode) ?? "Lifecycle event recorded";
+        directText(event.customerSafeLabel) ??
+        directText(event.eventCode) ??
+        "Lifecycle event recorded";
       const result: CaseDossierTimelineEventV1 = {
         eventId: String(event.lifecycleEventId),
         occurredAt: { value: String(event.occurredAt), evidence: [ref] },
@@ -290,7 +300,10 @@ export function assembleCaseDossierV1(
   collection: Readonly<CaseEvidenceCollectionV1>,
 ): CaseDossierV1 {
   if (!isCaseCandidateV1(candidate)) {
-    throw new CaseDossierAssemblyError("CASE_DOSSIER_CANDIDATE_INVALID", "Case Candidate is invalid");
+    throw new CaseDossierAssemblyError(
+      "CASE_DOSSIER_CANDIDATE_INVALID",
+      "Case Candidate is invalid",
+    );
   }
   if (!isCaseEvidenceCollectionV1(collection)) {
     throw new CaseDossierAssemblyError(
@@ -378,7 +391,9 @@ export function assembleCaseDossierV1(
   const lifecycleOmitted = collection.omissions.some(
     (entry) => entry.surface === "LIFECYCLE_PROVENANCE",
   );
-  const documentsOmitted = collection.omissions.some((entry) => entry.surface === "DOCUMENT_PACKAGES");
+  const documentsOmitted = collection.omissions.some(
+    (entry) => entry.surface === "DOCUMENT_PACKAGES",
+  );
   const assembledAt = collection.collectedAt;
   const dossier: CaseDossierV1 = {
     protocolVersion: CASE_DOSSIER_PROTOCOL_VERSION,
@@ -404,7 +419,11 @@ export function assembleCaseDossierV1(
     completeness: {
       matterMetadata: "PRESENT",
       startEndState: "MISSING",
-      timeline: lifecycleOmitted ? "SOURCE_UNAVAILABLE" : timeline.length > 0 ? "PRESENT" : "MISSING",
+      timeline: lifecycleOmitted
+        ? "SOURCE_UNAVAILABLE"
+        : timeline.length > 0
+          ? "PRESENT"
+          : "MISSING",
       communications: "SOURCE_UNAVAILABLE",
       materialDocuments: documentsOmitted
         ? "SOURCE_UNAVAILABLE"

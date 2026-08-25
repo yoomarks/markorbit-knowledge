@@ -120,7 +120,10 @@ function record(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-function collectEvidenceRefs(value: unknown, output: CaseDossierEvidenceRefV1[] = []): CaseDossierEvidenceRefV1[] {
+function collectEvidenceRefs(
+  value: unknown,
+  output: CaseDossierEvidenceRefV1[] = [],
+): CaseDossierEvidenceRefV1[] {
   if (Array.isArray(value)) {
     for (const item of value) collectEvidenceRefs(item, output);
     return output;
@@ -251,8 +254,7 @@ export class SqliteCaseDossierRepository {
             WHERE dossier_id = ? AND version = ?`,
         )
         .get(value.dossierId, value.version) as
-        | { document_sha256: string; document_json: string }
-        | undefined;
+        { document_sha256: string; document_json: string } | undefined;
       if (byId) {
         if (byId.document_sha256 !== documentSha256) {
           throw new RegistryConflictError(
@@ -272,8 +274,7 @@ export class SqliteCaseDossierRepository {
             WHERE candidate_id = ? AND evidence_collection_id = ? AND version = ?`,
         )
         .get(value.candidateId, value.evidenceCollectionId, value.version) as
-        | { dossier_id: string; document_sha256: string; document_json: string }
-        | undefined;
+        { dossier_id: string; document_sha256: string; document_json: string } | undefined;
       if (bySource) {
         if (bySource.document_sha256 !== documentSha256) {
           throw new RegistryConflictError(

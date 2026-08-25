@@ -90,7 +90,10 @@ function collection(): CaseEvidenceCollectionV1 {
   };
 }
 
-function dossier(formalRef: CaseDossierEvidenceRefV1, overrides: Partial<CaseDossierV1> = {}): CaseDossierV1 {
+function dossier(
+  formalRef: CaseDossierEvidenceRefV1,
+  overrides: Partial<CaseDossierV1> = {},
+): CaseDossierV1 {
   return {
     protocolVersion: CASE_DOSSIER_PROTOCOL_VERSION,
     objectType: CASE_DOSSIER_OBJECT_TYPE,
@@ -193,7 +196,11 @@ describe("SqliteCaseDossierRepository", () => {
       f.dossiers.saveDossier(
         dossier(f.formalRef, {
           narrative: [
-            { statementId: "formal-matter-recorded", text: "Changed text", evidence: [f.formalRef] },
+            {
+              statementId: "formal-matter-recorded",
+              text: "Changed text",
+              evidence: [f.formalRef],
+            },
           ],
         }),
       ),
