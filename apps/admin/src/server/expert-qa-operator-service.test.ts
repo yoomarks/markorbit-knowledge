@@ -145,8 +145,8 @@ describe("ExpertQaOperatorService", () => {
     fixture.service.markReady(created.taskId);
     await fixture.service.sendReady(created.taskId);
 
-    expect(() => fixture.service.recordReply(reply(created.taskId))).toThrowError(
-      expect.objectContaining({ code: "EXPERT_TASK_COMMUNICATION_THREAD_NOT_BOUND" }),
+    expect(() => fixture.service.recordReply(reply(created.taskId))).toThrow(
+      "has no shared Communication thread identity",
     );
     expect(fixture.repository.getTask(created.taskId)?.state).toBe("WAITING_RESPONSE");
     expect(fixture.repository.listSourceRecordsForTask(created.taskId)).toHaveLength(0);
@@ -164,8 +164,8 @@ describe("ExpertQaOperatorService", () => {
       communicationThreadRef: "comm:thread:unrelated-999",
     };
 
-    expect(() => fixture.service.recordReply(mismatched)).toThrowError(
-      expect.objectContaining({ code: "EXPERT_REPLY_THREAD_MISMATCH" }),
+    expect(() => fixture.service.recordReply(mismatched)).toThrow(
+      "Expert reply thread does not match task",
     );
     expect(fixture.repository.getTask(created.taskId)?.state).toBe("WAITING_RESPONSE");
     expect(fixture.repository.listSourceRecordsForTask(created.taskId)).toHaveLength(0);
@@ -177,10 +177,13 @@ describe("ExpertQaOperatorService", () => {
     const created = draft(fixture.service);
     fixture.service.markReady(created.taskId);
     await fixture.service.sendReady(created.taskId);
-    const mismatched = { ...reply(created.taskId), expertRef: "expert:us:other-counsel-999" };
+    const mismatched: ExpertSourceRecordV1 = {
+      ...reply(created.taskId),
+      expertRef: "expert:us:other-counsel-999",
+    };
 
-    expect(() => fixture.service.recordReply(mismatched)).toThrowError(
-      expect.objectContaining({ code: "EXPERT_REPLY_TASK_BINDING_MISMATCH" }),
+    expect(() => fixture.service.recordReply(mismatched)).toThrow(
+      "Expert reply identity or scope does not match task",
     );
     expect(fixture.repository.getTask(created.taskId)?.state).toBe("WAITING_RESPONSE");
     expect(fixture.repository.listSourceRecordsForTask(created.taskId)).toHaveLength(0);
