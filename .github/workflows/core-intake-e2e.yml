@@ -21,13 +21,33 @@ permissions:
   contents: read
 
 env:
-  CORE_REF: 0518d105a4560d6c5e42883455537a70573ef1bf
+  CORE_REF: fd068c90376184099631f66d2bfba036a2a78bf2
   CORE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/markorbit_core_e2e
   CORE_INTERNAL_SECRET: markorbit-core-intake-e2e-secret-32-bytes
   CORE_WORKSPACE_ID: 01900000-0000-7000-8000-830000000001
 
 jobs:
+  core-ref-freshness:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require pinned Core ref to match current main
+        shell: bash
+        run: |
+          current_core_ref="$(git ls-remote https://github.com/yoomarks/markorbit.git refs/heads/main | awk '{print $1}')"
+          if [ -z "$current_core_ref" ]; then
+            echo "::error::Unable to resolve yoomarks/markorbit main SHA."
+            exit 1
+          fi
+
+          echo "Current Core main: $current_core_ref"
+          echo "Pinned Core ref:    $CORE_REF"
+          if [ "$current_core_ref" != "$CORE_REF" ]; then
+            echo "::error::Core Intake acceptance pin is stale. Audit current Core main, update CORE_REF, and rerun the real Core Intake E2E before treating the boundary as current."
+            exit 1
+          fi
+
   real-core-intake:
+    needs: core-ref-freshness
     runs-on: ubuntu-latest
     services:
       postgres:
