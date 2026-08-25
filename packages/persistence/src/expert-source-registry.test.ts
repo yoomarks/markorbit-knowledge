@@ -213,6 +213,22 @@ describe("SqliteExpertSourceRepository", () => {
     database.close();
   });
 
+  it("requires captured evidence to inherit the task access classification", () => {
+    const database = new DatabaseSync(":memory:");
+    const repository = new SqliteExpertSourceRepository(database);
+    advanceToSent(repository);
+
+    expect(() =>
+      repository.saveSourceRecord(
+        sourceRecord({
+          accessClassification: "INTERNAL",
+        }),
+      ),
+    ).toThrowError(/identity does not match task/u);
+    expect(repository.listSourceRecordsForTask("eqt_us_section8_001")).toHaveLength(0);
+    database.close();
+  });
+
   it("fails closed when the same inbound evidence is replayed with changed semantics", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteExpertSourceRepository(database);
