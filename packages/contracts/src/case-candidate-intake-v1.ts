@@ -47,7 +47,9 @@ function sourceUnavailable(value: unknown): value is CaseCandidateSourceUnavaila
   const item = record(value);
   if (!item) return false;
   return (
-    Object.keys(item).every((key) => ["code", "message", "observedAt", "retryable"].includes(key)) &&
+    Object.keys(item).every((key) =>
+      ["code", "message", "observedAt", "retryable"].includes(key),
+    ) &&
     nonEmpty(item.code) &&
     nonEmpty(item.message) &&
     timestamp(item.observedAt) &&
@@ -81,7 +83,9 @@ export function isCaseCandidateIntakeV1(value: unknown): value is CaseCandidateI
     !nonEmpty(item.candidateId) ||
     typeof item.sourceIdentitySha256 !== "string" ||
     !SHA256.test(item.sourceIdentitySha256) ||
-    !CASE_CANDIDATE_COLLECTION_STATES.includes(item.collectionState as CaseCandidateCollectionState) ||
+    !CASE_CANDIDATE_COLLECTION_STATES.includes(
+      item.collectionState as CaseCandidateCollectionState,
+    ) ||
     !timestamp(item.acceptedAt) ||
     !timestamp(item.updatedAt)
   ) {
@@ -94,6 +98,8 @@ export function isCaseCandidateIntakeV1(value: unknown): value is CaseCandidateI
   return item.sourceUnavailable === undefined;
 }
 
-export function assertCaseCandidateIntakeV1(value: unknown): asserts value is CaseCandidateIntakeV1 {
+export function assertCaseCandidateIntakeV1(
+  value: unknown,
+): asserts value is CaseCandidateIntakeV1 {
   if (!isCaseCandidateIntakeV1(value)) throw new TypeError("Invalid CaseCandidateIntakeV1");
 }

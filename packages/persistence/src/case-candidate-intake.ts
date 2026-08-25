@@ -72,7 +72,10 @@ function parseCandidate(value: string): CaseCandidateV1 {
   return parsed;
 }
 
-function assertCompatibleSourceSemantics(existing: CaseCandidateV1, incoming: CaseCandidateV1): void {
+function assertCompatibleSourceSemantics(
+  existing: CaseCandidateV1,
+  incoming: CaseCandidateV1,
+): void {
   if (
     existing.sourceRetrievalRef !== incoming.sourceRetrievalRef ||
     existing.accessScope.classification !== incoming.accessScope.classification
@@ -147,9 +150,7 @@ export class SqliteCaseCandidateIntakeRepository {
              FROM case_candidate_intake_commands
             WHERE idempotency_key = ?`,
         )
-        .get(value.idempotencyKey) as
-        | { request_sha256: string; candidate_id: string }
-        | undefined;
+        .get(value.idempotencyKey) as { request_sha256: string; candidate_id: string } | undefined;
       if (replay) {
         if (replay.request_sha256 !== requestSha256) {
           throw new RegistryConflictError(
@@ -168,9 +169,7 @@ export class SqliteCaseCandidateIntakeRepository {
              FROM case_candidates
             WHERE source_identity_sha256 = ?`,
         )
-        .get(sourceIdentitySha256) as
-        | { candidate_id: string; document_json: string }
-        | undefined;
+        .get(sourceIdentitySha256) as { candidate_id: string; document_json: string } | undefined;
       if (existingBySource) {
         assertCompatibleSourceSemantics(parseCandidate(existingBySource.document_json), value);
         this.database
@@ -193,9 +192,7 @@ export class SqliteCaseCandidateIntakeRepository {
              FROM case_candidates
             WHERE candidate_id = ?`,
         )
-        .get(value.candidateId) as
-        | { document_sha256: string; document_json: string }
-        | undefined;
+        .get(value.candidateId) as { document_sha256: string; document_json: string } | undefined;
       if (existingById) {
         if (
           existingById.document_sha256 !== candidateDocumentSha256 ||
@@ -213,13 +210,7 @@ export class SqliteCaseCandidateIntakeRepository {
               candidate_id, source_identity_sha256, document_sha256, document_json, accepted_at
             ) VALUES (?, ?, ?, ?, ?)`,
           )
-          .run(
-            value.candidateId,
-            sourceIdentitySha256,
-            candidateDocumentSha256,
-            json,
-            acceptedAt,
-          );
+          .run(value.candidateId, sourceIdentitySha256, candidateDocumentSha256, json, acceptedAt);
         this.database
           .prepare(
             `INSERT INTO case_candidate_collection_tickets(
@@ -301,7 +292,9 @@ export class SqliteCaseCandidateIntakeRepository {
     const message = input.message.trim();
     const observedAt = input.observedAt ?? new Date().toISOString();
     if (!code || !message || Number.isNaN(Date.parse(observedAt))) {
-      throw new RegistryValidationError("A source-unavailable code, message and timestamp are required");
+      throw new RegistryValidationError(
+        "A source-unavailable code, message and timestamp are required",
+      );
     }
     if (!this.getCandidate(candidateId)) {
       throw new RegistryValidationError(`Case Candidate ${candidateId} does not exist`);
@@ -318,7 +311,10 @@ export class SqliteCaseCandidateIntakeRepository {
     return this.requireIntake(candidateId);
   }
 
-  requeueCandidate(candidateId: string, requeuedAt = new Date().toISOString()): CaseCandidateIntakeV1 {
+  requeueCandidate(
+    candidateId: string,
+    requeuedAt = new Date().toISOString(),
+  ): CaseCandidateIntakeV1 {
     if (Number.isNaN(Date.parse(requeuedAt))) {
       throw new RegistryValidationError("requeuedAt must be a valid timestamp");
     }

@@ -82,9 +82,9 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
       idempotencyKey: "case-intake-002",
       sourceRetrievalRef: "markreg:/different-authorized-ref",
     });
-    expect(() =>
-      repository.acceptCandidate(changedRef, "2026-08-25T03:24:00.000Z"),
-    ).toThrowError(RegistryConflictError);
+    expect(() => repository.acceptCandidate(changedRef, "2026-08-25T03:24:00.000Z")).toThrowError(
+      RegistryConflictError,
+    );
     try {
       repository.acceptCandidate(changedRef, "2026-08-25T03:24:00.000Z");
     } catch (error) {
@@ -155,7 +155,10 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
   it("rejects invalid candidates and invalid collection updates", () => {
     const repository = new SqliteCaseCandidateIntakeRepository(new DatabaseSync(":memory:"));
     expect(() =>
-      repository.acceptCandidate({ ...candidate(), sourceMatterId: "guessed-matter" } as CaseCandidateV1),
+      repository.acceptCandidate({
+        ...candidate(),
+        sourceMatterId: "guessed-matter",
+      } as CaseCandidateV1),
     ).toThrowError(RegistryValidationError);
     expect(() =>
       repository.recordSourceUnavailable("case-candidate_missing", {
