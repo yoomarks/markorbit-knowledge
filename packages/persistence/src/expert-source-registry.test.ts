@@ -196,6 +196,37 @@ describe("SqliteExpertSourceRepository", () => {
     database.close();
   });
 
+  it("rejects reply evidence before the task reaches a reply-accepting state", () => {
+    const database = new DatabaseSync(":memory:");
+    const repository = new SqliteExpertSourceRepository(database);
+    repository.saveTask(draftTask());
+
+    expect(() => repository.saveSourceRecord(sourceRecord())).toThrowError(
+      /is not waiting for a reply/u,
+    );
+    expect(repository.listSourceRecordsForTask("eqt_us_section8_001")).toHaveLength(0);
+    database.close();
+  });
+
+  it("rejects reply evidence when the sent task has no durable Communication thread", () => {
+    const database = new DatabaseSync(":memory:");
+    const repository = new SqliteExpertSourceRepository(database);
+    const draft = draftTask();
+    repository.saveTask(draft);
+    repository.saveTask({ ...draft, state: "READY_TO_SEND" });
+    repository.saveTask(
+      sentTask({
+        communicationThreadRef: undefined,
+      }),
+    );
+
+    expect(() => repository.saveSourceRecord(sourceRecord())).toThrowError(
+      /has no durable Communication thread/u,
+    );
+    expect(repository.listSourceRecordsForTask("eqt_us_section8_001")).toHaveLength(0);
+    database.close();
+  });
+
   it("rejects source records that do not match the durable task or known thread", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteExpertSourceRepository(database);
