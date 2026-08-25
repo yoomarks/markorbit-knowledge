@@ -68,10 +68,7 @@ function authority() {
   } as const;
 }
 
-function completedOutcome(
-  sequence: number,
-  context: { executionId: string; correlationId: string },
-) {
+function completedOutcome(sequence: number) {
   const providerRequestId = `deepseek-e2e-${sequence}`;
   const raw = new TextEncoder().encode(
     JSON.stringify({
@@ -110,7 +107,6 @@ function completedOutcome(
     },
     structuredOutput: { text: markdown, outputFormat: "MARKDOWN" },
     authority: authority(),
-    e2eContext: context,
   };
 }
 
@@ -142,14 +138,14 @@ crossRepoDescribe("Knowledge -> Core Managed AI HTTP", () => {
       internalServiceSecret: secret,
       runtimeCapabilityRegistry: unusedRuntimeCapabilityRegistry,
       managedAiExecutor: {
-        execute: (input, context) => {
+        execute: (input) => {
           executorInputs.push(input);
           executorCalls += 1;
           if (failNext) {
             failNext = false;
             return Promise.reject(new Error("synthetic executor failure after dispatch mark"));
           }
-          return Promise.resolve(completedOutcome(executorCalls, context));
+          return Promise.resolve(completedOutcome(executorCalls));
         },
       },
     });
