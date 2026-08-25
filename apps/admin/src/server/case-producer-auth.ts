@@ -109,9 +109,8 @@ function parseWorkspacePrincipal(value: string | null): CaseProducerWorkspacePri
   };
 }
 
-export function authorizeCaseProducerRequest(
+export function authenticateCaseProducerRequest(
   request: Request,
-  candidate: CaseCandidateV1,
   internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET,
 ): CaseProducerWorkspacePrincipalV1 {
   if (!internalServiceSecret) {
@@ -138,6 +137,13 @@ export function authorizeCaseProducerRequest(
       `${CASE_PRODUCER_REQUIRED_PERMISSION} permission is required.`,
     );
   }
+  return principal;
+}
+
+export function authorizeCaseProducerWorkspace(
+  principal: CaseProducerWorkspacePrincipalV1,
+  candidate: CaseCandidateV1,
+): void {
   if (principal.workspaceId !== candidate.accessScope.sourceWorkspaceId) {
     throw new CaseProducerAccessError(
       "WORKSPACE_MISMATCH",
@@ -145,6 +151,14 @@ export function authorizeCaseProducerRequest(
       "Workspace Principal does not match the Case Candidate source workspace.",
     );
   }
+}
 
+export function authorizeCaseProducerRequest(
+  request: Request,
+  candidate: CaseCandidateV1,
+  internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET,
+): CaseProducerWorkspacePrincipalV1 {
+  const principal = authenticateCaseProducerRequest(request, internalServiceSecret);
+  authorizeCaseProducerWorkspace(principal, candidate);
   return principal;
 }
