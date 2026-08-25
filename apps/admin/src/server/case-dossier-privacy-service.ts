@@ -53,7 +53,10 @@ export class CaseDossierPrivacyService {
   private readonly dossiers: SqliteCaseDossierRepository;
   private readonly privacy: SqliteCaseDossierPrivacyRepository;
 
-  constructor(database: DatabaseSync = getRegistryDatabase()) {
+  constructor(
+    database: DatabaseSync = getRegistryDatabase(),
+    private readonly now: () => Date = () => new Date(),
+  ) {
     this.dossiers = new SqliteCaseDossierRepository(database);
     this.privacy = new SqliteCaseDossierPrivacyRepository(database);
   }
@@ -73,7 +76,7 @@ export class CaseDossierPrivacyService {
       );
     }
     const existing = this.privacy.getReview(input.reviewId)?.review;
-    const openedAt = input.openedAt ?? existing?.openedAt ?? new Date().toISOString();
+    const openedAt = input.openedAt ?? existing?.openedAt ?? this.now().toISOString();
     const review: CaseDossierPrivacyReviewV1 = {
       protocolVersion: CASE_DOSSIER_PRIVACY_PROTOCOL_VERSION,
       objectType: CASE_DOSSIER_PRIVACY_REVIEW_OBJECT_TYPE,
@@ -103,7 +106,7 @@ export class CaseDossierPrivacyService {
     const resolvedDecidedAt =
       decidedAt ??
       (current.review.state === "NEEDS_REDACTION" ? current.review.decidedAt : undefined) ??
-      new Date().toISOString();
+      this.now().toISOString();
     const decision: CaseDossierPrivacyReviewV1 = {
       ...current.review,
       state: "NEEDS_REDACTION",
@@ -123,7 +126,7 @@ export class CaseDossierPrivacyService {
     const resolvedDecidedAt =
       decidedAt ??
       (current.review.state === "REJECTED" ? current.review.decidedAt : undefined) ??
-      new Date().toISOString();
+      this.now().toISOString();
     const decision: CaseDossierPrivacyReviewV1 = {
       ...current.review,
       state: "REJECTED",
@@ -146,7 +149,7 @@ export class CaseDossierPrivacyService {
     const decidedAt =
       input.decidedAt ??
       (current.review.state === "FINALIZED" ? current.review.decidedAt : undefined) ??
-      new Date().toISOString();
+      this.now().toISOString();
     const finalizedReview: CaseDossierPrivacyReviewV1 = {
       ...current.review,
       state: "FINALIZED",
