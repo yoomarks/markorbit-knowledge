@@ -69,15 +69,15 @@ jobs:
         run: |
           node <<'NODE'
           const fs = require('node:fs');
-          const identity = fs.readFileSync('.e2e/markorbit-core/packages/contracts/src/identity.ts', 'utf8');
+          const contracts = fs.readFileSync('.e2e/markorbit-core/packages/contracts/src/index.ts', 'utf8');
           const formalMatter = fs.readFileSync('.e2e/markorbit-core/services/markreg/src/formal-matter.ts', 'utf8');
 
           const checks = [
-            [identity.includes('export type FormalMatterId = `formal-matter_${string}`;'), 'FormalMatterId prefix contract changed'],
-            [identity.includes('formalMatterId: FormalMatterId;'), 'FormalMatter identity field changed'],
-            [identity.includes('workspaceId: string;'), 'FormalMatter workspace boundary changed'],
-            [identity.includes('version: 1;'), 'FormalMatter version contract changed'],
-            [identity.includes('snapshotSha256: string;'), 'FormalMatter snapshot SHA contract changed'],
+            [contracts.includes('export type FormalMatterId = `formal-matter_${string}`;'), 'FormalMatterId prefix contract changed'],
+            [contracts.includes('formalMatterId: FormalMatterId;'), 'FormalMatter identity field changed'],
+            [contracts.includes('workspaceId: string;'), 'FormalMatter workspace boundary changed'],
+            [contracts.includes('version: 1;'), 'FormalMatter version contract changed'],
+            [contracts.includes('snapshotSha256: string;'), 'FormalMatter snapshot SHA contract changed'],
             [formalMatter.includes('findById(workspaceId: string, id: string)'), 'MarkReg workspace-scoped source read contract changed'],
             [formalMatter.includes("'AUTHENTICATION_REQUIRED'"), 'MarkReg authentication failure boundary changed'],
             [formalMatter.includes("'WORKSPACE_MISMATCH'"), 'MarkReg workspace isolation boundary changed'],
