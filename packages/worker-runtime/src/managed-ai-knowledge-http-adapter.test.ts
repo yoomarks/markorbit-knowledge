@@ -45,17 +45,43 @@ function noAuthority(): ManagedAiKnowledgeAuthorityV1 {
 }
 
 describe("ManagedAiHttpDeepSeekKnowledgeAdapter", () => {
-  it("derives stable claim identity from the frozen Knowledge assignment and changes it with assignment revision", () => {
-    const first = managedAiKnowledgeHttpExecutionContext({ assignment });
-    const replay = managedAiKnowledgeHttpExecutionContext({ assignment });
-    const revised = managedAiKnowledgeHttpExecutionContext({
-      assignment: { ...assignment, instructionSetRevision: 2 },
+  it("derives stable claim identity from the durable queue executionKey and separates execution scopes", () => {
+    const first = managedAiKnowledgeHttpExecutionContext({
+      assignment,
+      executionKey: "kas_us_trademark_section8:DEEPSEEK:pilot:managed-ai-a",
+    });
+    const replay = managedAiKnowledgeHttpExecutionContext({
+      assignment,
+      executionKey: "kas_us_trademark_section8:DEEPSEEK:pilot:managed-ai-a",
+    });
+    const nextScope = managedAiKnowledgeHttpExecutionContext({
+      assignment,
+      executionKey: "kas_us_trademark_section8:DEEPSEEK:pilot:managed-ai-b",
     });
 
     expect(replay).toEqual(first);
-    expect(revised.idempotencyKey).not.toBe(first.idempotencyKey);
+    expect(nextScope.idempotencyKey).not.toBe(first.idempotencyKey);
+    expect(nextScope.correlationId).not.toBe(first.correlationId);
     expect(first.idempotencyKey).toMatch(/^knowledge-adk:[a-f0-9]{64}$/u);
     expect(first.correlationId).toMatch(/^knowledge-adk:[a-f0-9]{32}$/u);
+  });
+
+  it("fails before transport when durable execution identity is absent", async () => {
+    let calls = 0;
+    const adapter = new ManagedAiHttpDeepSeekKnowledgeAdapter({
+      baseUrl: "http://127.0.0.1:4105",
+      internalServiceSecret: secret,
+      transport: () => {
+        calls += 1;
+        return Promise.reject(new Error("transport must not be called"));
+      },
+    });
+
+    await expect(adapter.acquire({ assignment })).rejects.toMatchObject({
+      code: "AI_MANAGED_AI_EXECUTION_IDENTITY_REQUIRED",
+      retryable: false,
+    });
+    expect(calls).toBe(0);
   });
 
   it("executes through Core HTTP and preserves Knowledge-owned acquisition evidence", async () => {
@@ -66,7 +92,11 @@ describe("ManagedAiHttpDeepSeekKnowledgeAdapter", () => {
         choices: [{ message: { role: "assistant", content: markdown } }],
       }),
     );
-    const execution = managedAiKnowledgeHttpExecutionContext({ assignment });
+    const providerRequest = {
+      assignment,
+      executionKey: "kas_us_trademark_section8:DEEPSEEK:pilot:managed-ai-http",
+    };
+    const execution = managedAiKnowledgeHttpExecutionContext(providerRequest);
     let captured: ManagedAiHttpTransportRequest | undefined;
     const adapter = new ManagedAiHttpDeepSeekKnowledgeAdapter({
       baseUrl: "http://127.0.0.1:4105",
@@ -111,7 +141,7 @@ describe("ManagedAiHttpDeepSeekKnowledgeAdapter", () => {
       },
     });
 
-    const acquisition = await adapter.acquire({ assignment });
+    const acquisition = await adapter.acquire(providerRequest);
 
     expect(captured?.headers["idempotency-key"]).toBe(execution.idempotencyKey);
     expect(captured?.headers["x-correlation-id"]).toBe(execution.correlationId);
