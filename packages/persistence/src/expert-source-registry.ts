@@ -265,6 +265,12 @@ export class SqliteExpertSourceRepository {
         `Expert task ${value.taskId} sentAt is immutable once recorded`,
       );
     }
+    if (previous.closedAt && previous.closedAt !== value.closedAt) {
+      throw new RegistryConflictError(
+        "EXPERT_TASK_CLOSED_AT_IMMUTABLE",
+        `Expert task ${value.taskId} closedAt is immutable once recorded`,
+      );
+    }
 
     const lock =
       existing.question_lock_sha256 ??
