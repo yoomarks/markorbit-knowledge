@@ -9,6 +9,7 @@ import {
   FileStack,
   History,
   Home,
+  MessagesSquare,
   PackageCheck,
   Workflow,
 } from "lucide-react";
@@ -28,6 +29,11 @@ export const modules = {
     label: "Sources",
     description: "统一完成来源审批、启用、状态管理、重新扫描与国家资源覆盖检查。",
     icon: Database,
+  },
+  experts: {
+    label: "Expert Knowledge",
+    description: "管理专家问题、回复证据、附件与后续追问，不进行专家评分或推荐。",
+    icon: MessagesSquare,
   },
   foundational: {
     label: "Foundational Health",
@@ -132,6 +138,7 @@ export const primaryModuleOrder: ModuleKey[] = [
   "dashboard",
   "discovery",
   "sources",
+  "experts",
   "knowledge",
   "packages",
 ];
