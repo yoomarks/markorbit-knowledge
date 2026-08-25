@@ -30,10 +30,17 @@ type CoreRuntime = {
   stop(): Promise<void>;
 };
 
+type CoreRuntimeCapabilityRegistry = {
+  importAccepted(): Promise<never>;
+  findCurrent(): Promise<never>;
+  findVersion(): Promise<never>;
+};
+
 type CoreModule = {
   createRuntime(options: {
     port: number;
     internalServiceSecret: string;
+    runtimeCapabilityRegistry: CoreRuntimeCapabilityRegistry;
     managedAiExecutor: {
       execute(
         input: unknown,
@@ -61,7 +68,10 @@ function authority() {
   } as const;
 }
 
-function completedOutcome(sequence: number, context: { executionId: string; correlationId: string }) {
+function completedOutcome(
+  sequence: number,
+  context: { executionId: string; correlationId: string },
+) {
   const providerRequestId = `deepseek-e2e-${sequence}`;
   const raw = new TextEncoder().encode(
     JSON.stringify({
@@ -113,12 +123,24 @@ crossRepoDescribe("Knowledge -> Core Managed AI HTTP", () => {
       pathToFileURL(resolve(coreCheckout, "services/capability-engine/dist/index.js")).href
     )) as CoreModule;
 
+    const unusedRuntimeCapabilityRegistry: CoreRuntimeCapabilityRegistry = {
+      async importAccepted() {
+        throw new Error("Managed AI E2E must not call the runtime capability import route");
+      },
+      async findCurrent() {
+        throw new Error("Managed AI E2E must not call the runtime capability current route");
+      },
+      async findVersion() {
+        throw new Error("Managed AI E2E must not call the runtime capability version route");
+      },
+    };
     let executorCalls = 0;
     let failNext = false;
     const executorInputs: unknown[] = [];
     const runtime = coreModule.createRuntime({
       port: 0,
       internalServiceSecret: secret,
+      runtimeCapabilityRegistry: unusedRuntimeCapabilityRegistry,
       managedAiExecutor: {
         execute: (input, context) => {
           executorInputs.push(input);
