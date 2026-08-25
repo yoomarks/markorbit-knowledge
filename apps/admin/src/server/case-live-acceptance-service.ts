@@ -148,7 +148,7 @@ export class CaseLiveAcceptanceService {
       now: this.now,
     });
     this.dossiers = new CaseDossierAssemblyService(database);
-    this.privacy = new CaseDossierPrivacyService(database);
+    this.privacy = new CaseDossierPrivacyService(database, this.now);
   }
 
   async prepareRun(input: PrepareCaseLiveAcceptanceRunInput): Promise<CaseLiveAcceptanceReceiptV1> {
