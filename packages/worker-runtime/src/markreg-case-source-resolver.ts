@@ -67,10 +67,7 @@ function configuredBaseUrl(value: string): string {
   return parsed.toString().replace(/\/$/u, "");
 }
 
-function requiredEnvironmentValue(
-  environment: MarkRegCaseSourceEnvironment,
-  name: string,
-): string {
+function requiredEnvironmentValue(environment: MarkRegCaseSourceEnvironment, name: string): string {
   const value = environment[name];
   if (value === undefined) {
     throw new CaseEvidenceCollectionError(
