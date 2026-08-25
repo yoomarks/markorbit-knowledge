@@ -373,7 +373,8 @@ export class SqliteExpertSourceRepository {
       task.expertRef !== value.expertRef ||
       task.organizationRef !== value.organizationRef ||
       task.jurisdiction !== value.jurisdiction ||
-      task.topic !== value.topic
+      task.topic !== value.topic ||
+      task.accessClassification !== value.accessClassification
     ) {
       throw new RegistryValidationError(
         `Expert source record identity does not match task ${value.taskId}`,
