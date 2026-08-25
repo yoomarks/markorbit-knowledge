@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./ai-distilled-knowledge-acquirer": "./src/ai-distilled-knowledge-acquirer.ts",
+    "./managed-ai-knowledge-adapter": "./src/managed-ai-knowledge-adapter.ts",
     "./openai-knowledge-adapter": "./src/openai-knowledge-adapter.ts",
     "./ai-production-pilot": "./src/ai-production-pilot.ts",
     "./ai-source-pack-renderer": "./src/ai-source-pack-renderer.ts",
