@@ -152,6 +152,93 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
     expect(restarted.listPending()).toHaveLength(1);
   });
 
+  it("records collection completion durably and removes completed work from pending", () => {
+    const database = new DatabaseSync(":memory:");
+    const repository = new SqliteCaseCandidateIntakeRepository(database);
+    repository.acceptCandidate(candidate(), "2026-08-25T03:21:00.000Z");
+
+    const completed = repository.recordCollectionComplete(
+      "case-candidate_01",
+      "case-evidence_abc123",
+      "2026-08-25T03:35:00.000Z",
+    );
+    expect(completed).toMatchObject({
+      collectionState: "COLLECTED",
+      collectionRef: "case-evidence_abc123",
+      collectedAt: "2026-08-25T03:35:00.000Z",
+    });
+    expect(repository.listPending()).toHaveLength(0);
+
+    const restarted = new SqliteCaseCandidateIntakeRepository(database);
+    expect(restarted.getIntake("case-candidate_01")).toEqual(completed);
+    expect(
+      restarted.recordCollectionComplete(
+        "case-candidate_01",
+        "case-evidence_abc123",
+        "2026-08-25T03:40:00.000Z",
+      ),
+    ).toEqual(completed);
+    expect(() =>
+      restarted.recordCollectionComplete("case-candidate_01", "case-evidence_other"),
+    ).toThrowError(RegistryConflictError);
+    expect(() =>
+      restarted.recordSourceUnavailable("case-candidate_01", {
+        code: "MARKREG_UNAVAILABLE",
+        message: "Late transport failure",
+      }),
+    ).toThrowError(RegistryConflictError);
+
+    const requeued = restarted.requeueCandidate("case-candidate_01", "2026-08-25T03:45:00.000Z");
+    expect(requeued.collectionState).toBe("PENDING");
+    expect(requeued.collectionRef).toBeUndefined();
+    expect(requeued.collectedAt).toBeUndefined();
+    expect(restarted.listPending()).toHaveLength(1);
+  });
+
+  it("migrates pre-K-CASE-004 collection tickets without rebuilding prior state", () => {
+    const database = new DatabaseSync(":memory:");
+    database.exec(`
+      PRAGMA foreign_keys = ON;
+      CREATE TABLE case_candidates (
+        candidate_id TEXT PRIMARY KEY,
+        source_identity_sha256 TEXT NOT NULL UNIQUE CHECK (length(source_identity_sha256) = 64),
+        document_sha256 TEXT NOT NULL CHECK (length(document_sha256) = 64),
+        document_json TEXT NOT NULL,
+        accepted_at TEXT NOT NULL
+      ) STRICT;
+      CREATE TABLE case_candidate_intake_commands (
+        idempotency_key TEXT PRIMARY KEY,
+        request_sha256 TEXT NOT NULL CHECK (length(request_sha256) = 64),
+        candidate_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(candidate_id) REFERENCES case_candidates(candidate_id)
+      ) STRICT;
+      CREATE TABLE case_candidate_collection_tickets (
+        candidate_id TEXT PRIMARY KEY,
+        source_identity_sha256 TEXT NOT NULL CHECK (length(source_identity_sha256) = 64),
+        collection_state TEXT NOT NULL CHECK (collection_state IN ('PENDING', 'WAITING_SOURCE')),
+        source_error_code TEXT,
+        source_error_message TEXT,
+        source_error_observed_at TEXT,
+        accepted_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(candidate_id) REFERENCES case_candidates(candidate_id)
+      ) STRICT;
+    `);
+
+    const repository = new SqliteCaseCandidateIntakeRepository(database);
+    repository.acceptCandidate(candidate(), "2026-08-25T03:21:00.000Z");
+    expect(
+      repository.recordCollectionComplete("case-candidate_01", "case-evidence_migrated").collectionState,
+    ).toBe("COLLECTED");
+    const columns = database.prepare("PRAGMA table_info(case_candidate_collection_tickets)").all() as {
+      name: string;
+    }[];
+    expect(columns.map((row) => row.name)).toEqual(
+      expect.arrayContaining(["collection_ref", "collected_at"]),
+    );
+  });
+
   it("rejects invalid candidates and invalid collection updates", () => {
     const repository = new SqliteCaseCandidateIntakeRepository(new DatabaseSync(":memory:"));
     expect(() =>
