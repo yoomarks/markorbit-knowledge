@@ -64,7 +64,7 @@ export type CaseEvidenceCollectionV1 = {
 
 const SHA256 = /^[a-f0-9]{64}$/u;
 const COLLECTION_ID = /^case-evidence_[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$/u;
-const FORMAL_MATTER_ID = /^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{2,255}$/u;
+const FORMAL_MATTER_ID = /^formal-matter_[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$/u;
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
