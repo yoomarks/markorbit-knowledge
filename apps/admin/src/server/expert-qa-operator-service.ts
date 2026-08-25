@@ -88,6 +88,37 @@ function requireTask(repository: SqliteExpertSourceRepository, id: string): Expe
   return task;
 }
 
+function requireReplyBinding(task: ExpertQuestionTaskV1, reply: ExpertSourceRecordV1): void {
+  if (!task.communicationThreadRef) {
+    throw new RegistryConflictError(
+      "EXPERT_TASK_COMMUNICATION_THREAD_NOT_BOUND",
+      `Expert task ${task.taskId} has no shared Communication thread identity`,
+    );
+  }
+  if (reply.communication.communicationThreadRef !== task.communicationThreadRef) {
+    throw new RegistryConflictError(
+      "EXPERT_REPLY_THREAD_MISMATCH",
+      `Expert reply thread does not match task ${task.taskId}`,
+    );
+  }
+  if (reply.communication.messageRefs.length === 0) {
+    throw new RegistryValidationError(
+      "Expert reply must reference at least one Communication message",
+    );
+  }
+  if (
+    reply.expertRef !== task.expertRef ||
+    reply.organizationRef !== task.organizationRef ||
+    reply.jurisdiction !== task.jurisdiction ||
+    reply.topic !== task.topic
+  ) {
+    throw new RegistryConflictError(
+      "EXPERT_REPLY_TASK_BINDING_MISMATCH",
+      `Expert reply identity or scope does not match task ${task.taskId}`,
+    );
+  }
+}
+
 export class ExpertQaOperatorService {
   constructor(
     private readonly repository: SqliteExpertSourceRepository,
@@ -171,6 +202,7 @@ export class ExpertQaOperatorService {
         `Expert task ${task.taskId} is not waiting for a reply`,
       );
     }
+    requireReplyBinding(task, record);
     this.repository.saveSourceRecord(record);
     return this.repository.saveTask({ ...task, state: "RESPONSE_RECEIVED" });
   }

@@ -22,6 +22,15 @@ class FakeSender implements ExpertQuestionSender {
   }
 }
 
+class SenderWithoutThread implements ExpertQuestionSender {
+  async sendQuestion(intent: ExpertQuestionSendIntent) {
+    return {
+      communicationSendRequestRef: `comm:send:${intent.idempotencyKey}`,
+      sentAt: "2026-08-25T02:00:00.000Z",
+    };
+  }
+}
+
 function service(sender: ExpertQuestionSender = new FakeSender()) {
   const database = new DatabaseSync(":memory:");
   const repository = new SqliteExpertSourceRepository(database);
@@ -127,6 +136,73 @@ describe("ExpertQaOperatorService", () => {
     const closed = fixture.service.close(created.taskId, new Date("2026-08-25T04:00:00.000Z"));
     expect(closed.state).toBe("CLOSED");
     expect(fixture.service.getView(created.taskId).status).toBe("CLOSED");
+    fixture.database.close();
+  });
+
+  it("rejects a reply when the send receipt did not establish a durable Communication thread", async () => {
+    const fixture = service(new SenderWithoutThread());
+    const created = draft(fixture.service);
+    fixture.service.markReady(created.taskId);
+    await fixture.service.sendReady(created.taskId);
+
+    expect(() => fixture.service.recordReply(reply(created.taskId))).toThrow(
+      "has no shared Communication thread identity",
+    );
+    expect(fixture.repository.getTask(created.taskId)?.state).toBe("WAITING_RESPONSE");
+    expect(fixture.repository.listSourceRecordsForTask(created.taskId)).toHaveLength(0);
+    fixture.database.close();
+  });
+
+  it("rejects reply evidence from a different Communication thread", async () => {
+    const fixture = service();
+    const created = draft(fixture.service);
+    fixture.service.markReady(created.taskId);
+    await fixture.service.sendReady(created.taskId);
+    const mismatched = reply(created.taskId);
+    mismatched.communication = {
+      ...mismatched.communication,
+      communicationThreadRef: "comm:thread:unrelated-999",
+    };
+
+    expect(() => fixture.service.recordReply(mismatched)).toThrow(
+      "Expert reply thread does not match task",
+    );
+    expect(fixture.repository.getTask(created.taskId)?.state).toBe("WAITING_RESPONSE");
+    expect(fixture.repository.listSourceRecordsForTask(created.taskId)).toHaveLength(0);
+    fixture.database.close();
+  });
+
+  it("rejects reply evidence whose expert identity or task scope differs", async () => {
+    const fixture = service();
+    const created = draft(fixture.service);
+    fixture.service.markReady(created.taskId);
+    await fixture.service.sendReady(created.taskId);
+    const mismatched: ExpertSourceRecordV1 = {
+      ...reply(created.taskId),
+      expertRef: "expert:us:other-counsel-999",
+    };
+
+    expect(() => fixture.service.recordReply(mismatched)).toThrow(
+      "Expert reply identity or scope does not match task",
+    );
+    expect(fixture.repository.getTask(created.taskId)?.state).toBe("WAITING_RESPONSE");
+    expect(fixture.repository.listSourceRecordsForTask(created.taskId)).toHaveLength(0);
+    fixture.database.close();
+  });
+
+  it("rejects reply evidence without a shared Communication message reference", async () => {
+    const fixture = service();
+    const created = draft(fixture.service);
+    fixture.service.markReady(created.taskId);
+    await fixture.service.sendReady(created.taskId);
+    const missingMessage = reply(created.taskId);
+    missingMessage.communication = { ...missingMessage.communication, messageRefs: [] };
+
+    expect(() => fixture.service.recordReply(missingMessage)).toThrow(
+      "Expert reply must reference at least one Communication message",
+    );
+    expect(fixture.repository.getTask(created.taskId)?.state).toBe("WAITING_RESPONSE");
+    expect(fixture.repository.listSourceRecordsForTask(created.taskId)).toHaveLength(0);
     fixture.database.close();
   });
 
