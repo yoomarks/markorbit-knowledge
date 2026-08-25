@@ -106,7 +106,7 @@ export class ConfiguredMarkRegCaseSourceResolver implements AuthorizedMarkRegCas
     });
   }
 
-  resolve(candidate: Readonly<CaseCandidateV1>): Promise<ResolvedMarkRegCaseSourceAccess> {
+  async resolve(candidate: Readonly<CaseCandidateV1>): Promise<ResolvedMarkRegCaseSourceAccess> {
     if (candidate.sourceSystem !== "MARKREG") {
       throw new CaseEvidenceCollectionError(
         "MARKREG_SOURCE_SYSTEM_UNSUPPORTED",
@@ -121,7 +121,7 @@ export class ConfiguredMarkRegCaseSourceResolver implements AuthorizedMarkRegCas
         false,
       );
     }
-    return Promise.resolve({ ...this.access });
+    return { ...this.access };
   }
 }
 
