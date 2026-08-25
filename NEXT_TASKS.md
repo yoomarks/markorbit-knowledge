@@ -2,7 +2,7 @@
 
 **Canonical direction:** Web / AI / Expert / Case four-pillar Knowledge strategy  
 **Checkpoint:** 2026-08-25  
-**Latest audited Knowledge main before this branch:** `2c69e3ce6905796c93188324056697b8999d0ade`  
+**Latest audited Knowledge main before this branch:** `038e96cfff9af19ecac6e8b79e8a73a7d5eb7d99`  
 **Latest audited MarkOrbit main:** `e277043dbf5d10e10626121662b0a16efc6f4ad1`
 
 This file is the short execution pointer. The long-term plan remains `docs/tasks/KNOWLEDGE_STRATEGIC_EXECUTION_PLAN.md`; stale Case baseline/status statements in that older plan are superseded by `docs/tasks/CASE_EXECUTION_RECONCILIATION_2026-08-25.md`.
@@ -15,6 +15,8 @@ This file is the short execution pointer. The long-term plan remains `docs/tasks
 - latest audited MarkOrbit main contains the shared Managed AI capability/runtime path, durable execution-claim hardening and gated server bootstrap;
 - Knowledge contains the managed-AI bridge that maps shared execution output into Knowledge acquisition semantics while preserving exact output/provenance;
 - PR #458 routes ADK DeepSeek through the authenticated Managed AI HTTP bridge behind an explicit Knowledge runtime gate while retaining the legacy direct adapter as the default fallback;
+- PR #462 binds Managed AI HTTP claim identity to the durable ADK queue `executionKey`, preserves same-execution replay while separating execution scopes, and routes reconciliation-required / non-retryable claim-store uncertainty into the existing `BLOCKED_RECOVERY` boundary;
+- #462 exact-head Validate passed Node 22/24 format, lint, typecheck, full tests and build; UI Preview, Core Intake E2E and Autoformat also passed;
 - ambiguous delivery remains reconciliation-required rather than automatically replayed.
 
 **Not claimed:** paid/live #405 acceptance or live-provider production acceptance. Repository code and mocked/in-process tests are not provider-execution evidence.
@@ -39,12 +41,13 @@ This file is the short execution pointer. The long-term plan remains `docs/tasks
 
 The #456 harness does **not** make K-CASE-008 complete. TEST runs can never become K-CASE-008 eligible; LIVE mode cannot use injected test transport; a finalized LIVE receipt needs a real producer promotion reference before it can even become eligible for operator K-CASE-008 review. Fixtures and synthetic MarkReg responses are not live acceptance evidence.
 
-### Repository governance
+### Repository governance and toolchain
 
 - issue #429 remains open and materially unresolved at the repository-settings layer;
 - PR #460 added `.github/CODEOWNERS`, assigning repository ownership and explicit ownership of `.github/workflows/**` and `.github/CODEOWNERS` to `@yoomarks`;
 - CODEOWNERS is only a preparation layer until the `main` ruleset actually requires Code Owner review;
-- the current engineering connector still exposes no branch-protection/ruleset or GitHub Environment administration, so protected-main enforcement, Environment approval/secret isolation and durable non-public ADK live-evidence retention cannot be truthfully marked complete from repository code alone.
+- the current engineering connector still exposes no branch-protection/ruleset or GitHub Environment administration, so protected-main enforcement, Environment approval/secret isolation and durable non-public ADK live-evidence retention cannot be truthfully marked complete from repository code alone;
+- issue #430 is closed as completed: PR #438 replaced the broken pnpm 11.13.0 pins with pnpm 11.13.1 across root/workflows and PR #442 aligned release preflight; current Node 22/24 validation remains green on that toolchain.
 
 ## Current P0 order
 
@@ -102,9 +105,9 @@ Still blocked on Shared Communication. Acceptance requires real outgoing send id
 
 ## Operational gates kept open
 
-- issue #405 remains paid/live ADK acceptance; do not run paid acceptance merely to advance roadmap;
+- issue #405 remains paid/live ADK acceptance; non-paid readiness was re-audited on current main, but do not run paid acceptance merely to advance roadmap and do not infer repository-secret configuration from code;
 - issue #429 remains open until the repository settings layer is actually enabled and verified;
 - PR #460 CODEOWNERS does not itself prove protected-main enforcement;
-- Knowledge main `2c69e3ce6905796c93188324056697b8999d0ade` is the latest audited code checkpoint before this docs branch;
+- Knowledge main `038e96cfff9af19ecac6e8b79e8a73a7d5eb7d99` is the latest audited code checkpoint before this docs branch;
 - MarkOrbit main `e277043dbf5d10e10626121662b0a16efc6f4ad1` is the latest audited cross-repo checkpoint;
 - repository implementation is not evidence that production secrets, routes, credentials or external providers are live.
