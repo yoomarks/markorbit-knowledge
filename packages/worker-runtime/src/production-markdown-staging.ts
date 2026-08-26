@@ -163,6 +163,24 @@ function decodeUtf8(content: Uint8Array): string {
     .replace(/\r\n?/g, "\n");
 }
 
+type LeadingFrontmatter = {
+  yaml: string | null;
+  body: string;
+};
+
+function splitLeadingFrontmatter(markdown: string): LeadingFrontmatter {
+  if (!markdown.startsWith("---\n")) return { yaml: null, body: markdown };
+  const closing = markdown.indexOf("\n---\n", 4);
+  if (closing < 0) {
+    throw new Error("MARKDOWN_STAGING_FRONTMATTER_UNTERMINATED");
+  }
+  const yaml = markdown.slice(4, closing);
+  if (/^markorbit\s*:/mu.test(yaml)) {
+    throw new Error("MARKDOWN_STAGING_RESERVED_FRONTMATTER_CONFLICT");
+  }
+  return { yaml, body: markdown.slice(closing + 5).replace(/^\n/, "") };
+}
+
 export function canonicalMarkdownFrontmatter(metadata: CanonicalMarkdownMetadataV1): string {
   if (!isCanonicalMarkdownMetadataV1(metadata)) {
     throw new Error("CANONICAL_MARKDOWN_METADATA_INVALID");
@@ -198,6 +216,20 @@ export function canonicalMarkdownFrontmatter(metadata: CanonicalMarkdownMetadata
   ].join("\n");
 }
 
+function canonicalMarkdownWithMergedFrontmatter(
+  metadata: CanonicalMarkdownMetadataV1,
+  markdown: string,
+): string {
+  const parsed = splitLeadingFrontmatter(markdown);
+  if (parsed.yaml === null || !parsed.yaml.trim()) {
+    return `${canonicalMarkdownFrontmatter(metadata)}${parsed.body}`;
+  }
+  const canonical = canonicalMarkdownFrontmatter(metadata);
+  const closing = canonical.lastIndexOf("---\n\n");
+  if (closing < 0) throw new Error("CANONICAL_MARKDOWN_FRONTMATTER_INVALID");
+  return `${canonical.slice(0, closing)}${parsed.yaml}\n---\n\n${parsed.body}`;
+}
+
 export function convertProductionMarkdownToStaging(
   context: ProductionMarkdownStagingContext,
   input: Uint8Array,
@@ -215,9 +247,8 @@ export function convertProductionMarkdownToStaging(
 
   const body = decodeUtf8(input);
   if (!body.trim()) throw new Error("MARKDOWN_STAGING_INPUT_EMPTY");
-  const output = new TextEncoder().encode(
-    `${canonicalMarkdownFrontmatter(context.documentMetadata)}${body}${body.endsWith("\n") ? "" : "\n"}`,
-  );
+  const canonical = canonicalMarkdownWithMergedFrontmatter(context.documentMetadata, body);
+  const output = new TextEncoder().encode(`${canonical}${canonical.endsWith("\n") ? "" : "\n"}`);
   const maximumOutput = Math.min(
     PRODUCTION_MARKDOWN_STAGING_LIMITS.maximumOutputBytes,
     context.outputGrant.maximumBytes,
