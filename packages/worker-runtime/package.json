@@ -9,6 +9,8 @@
     "./managed-ai-knowledge-adapter": "./src/managed-ai-knowledge-adapter.ts",
     "./managed-ai-execution-http-client": "./src/managed-ai-execution-http-client.ts",
     "./managed-ai-knowledge-http-adapter": "./src/managed-ai-knowledge-http-adapter.ts",
+    "./capability-runtime-managed-ai-http-client": "./src/capability-runtime-managed-ai-http-client.ts",
+    "./managed-ai-capability-http-adapter": "./src/managed-ai-capability-http-adapter.ts",
     "./openai-knowledge-adapter": "./src/openai-knowledge-adapter.ts",
     "./ai-production-pilot": "./src/ai-production-pilot.ts",
     "./ai-source-pack-renderer": "./src/ai-source-pack-renderer.ts",

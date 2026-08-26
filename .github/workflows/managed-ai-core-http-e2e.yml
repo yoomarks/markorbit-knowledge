@@ -7,18 +7,23 @@ on:
   pull_request:
     paths:
       - ".github/workflows/managed-ai-core-http-e2e.yml"
+      - "apps/worker/src/adk-deepseek-provider.ts"
+      - "apps/worker/src/adk-deepseek-provider.test.ts"
       - "apps/worker/src/adk-knowledge-job-worker.ts"
       - "packages/worker-runtime/src/ai-distilled-knowledge-acquirer.ts"
       - "packages/worker-runtime/src/managed-ai-knowledge-adapter.ts"
       - "packages/worker-runtime/src/managed-ai-execution-http-client.ts"
       - "packages/worker-runtime/src/managed-ai-knowledge-http-adapter.ts"
+      - "packages/worker-runtime/src/capability-runtime-managed-ai-http-client.ts"
+      - "packages/worker-runtime/src/capability-runtime-managed-ai-http-client.test.ts"
       - "packages/worker-runtime/src/managed-ai-core-http-e2e.test.ts"
+      - "packages/worker-runtime/package.json"
 
 permissions:
   contents: read
 
 env:
-  CORE_REF: f9b7fa6af81be052f5992d3033567ca58edb75fe
+  CORE_REF: 86f4f666bdf0c621c9832115a2018a6d29ad0d5a
 
 jobs:
   core-ref-freshness:
@@ -36,7 +41,7 @@ jobs:
           echo "Current Core main: $current_core_ref"
           echo "Pinned Core ref:    $CORE_REF"
           if [ "$current_core_ref" != "$CORE_REF" ]; then
-            echo "::error::Managed AI Core acceptance pin is stale. Audit the new Core main, update CORE_REF, and rerun the real localhost E2E before treating the boundary as current."
+            echo "::error::Capability Runtime V2 acceptance pin is stale. Audit the new Core main, update CORE_REF, and rerun the real localhost E2E before treating the boundary as current."
             exit 1
           fi
 
@@ -67,9 +72,22 @@ jobs:
       - name: Build Core Capability Engine dependency closure
         working-directory: .e2e/markorbit-core
         run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
-      - name: Run real Knowledge to Core Managed AI HTTP acceptance
+      - name: Build exact-Core internal E2E entry bundles
+        working-directory: .e2e/markorbit-core
+        run: >-
+          pnpm exec tsup
+          services/capability-engine/src/governed-runtime-bootstrap.ts
+          services/capability-engine/src/durable-governed-capability-runtime.ts
+          services/capability-engine/src/capability-runtime-replay-store.ts
+          services/capability-engine/src/managed-ai-execution-claim.ts
+          services/capability-engine/src/managed-ai-exact-output.ts
+          --format esm
+          --target es2022
+          --out-dir services/capability-engine/.e2e-dist
+      - name: Run real Knowledge to Core Capability Runtime V2 acceptance
         env:
           MARKORBIT_CORE_CHECKOUT: ${{ github.workspace }}/.e2e/markorbit-core
         run: >-
           pnpm --filter @markorbit/worker-runtime exec vitest run
+          src/capability-runtime-managed-ai-http-client.test.ts
           src/managed-ai-core-http-e2e.test.ts
