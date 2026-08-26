@@ -92,16 +92,45 @@ describe("Knowledge relationship production READY-to-Vault acceptance", () => {
         request,
       );
     } catch (error) {
+      const verificationRepository = getStagingVerificationRepository();
       const documents = staging.listDocuments({ workspaceId, limit: 100 }).items;
-      const evidence = documents.map((document) => ({
-        id: document.descriptor.id,
-        status: document.descriptor.status,
-        validation: document.descriptor.validation,
-        verification: getStagingVerificationRepository().getByDocument(
-          document.descriptor.id,
-          workspaceId,
-        ),
-      }));
+      const evidence = documents.map((document) => {
+        let directVerification: unknown = null;
+        try {
+          directVerification = verificationRepository.verifyGenerated({
+            workspaceId,
+            stagingDocumentId: document.descriptor.id,
+            idempotencyKey: `kg004-diagnostic:${document.descriptor.id}`,
+          });
+        } catch (verificationError) {
+          directVerification = {
+            name: verificationError instanceof Error ? verificationError.name : undefined,
+            message:
+              verificationError instanceof Error
+                ? verificationError.message
+                : String(verificationError),
+            code:
+              typeof verificationError === "object" &&
+              verificationError !== null &&
+              "code" in verificationError
+                ? String(verificationError.code)
+                : undefined,
+            details:
+              typeof verificationError === "object" &&
+              verificationError !== null &&
+              "details" in verificationError
+                ? verificationError.details
+                : undefined,
+          };
+        }
+        return {
+          id: document.descriptor.id,
+          status: document.descriptor.status,
+          validation: document.descriptor.validation,
+          verification: verificationRepository.getByDocument(document.descriptor.id, workspaceId),
+          directVerification,
+        };
+      });
       throw new Error(
         `KG004_FULL_VAULT_STAGING_DIAGNOSTIC ${JSON.stringify({
           cause: error instanceof Error ? error.message : String(error),
