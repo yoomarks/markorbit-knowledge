@@ -78,14 +78,14 @@ function pendingRun(stagingDocumentId: string, contentSha256: string): VaultExpo
 }
 
 describe("Knowledge relationship Vault export orchestration", () => {
-  it("stages the deterministic note, projects it and finalizes the export run", () => {
+  it("stages the deterministic note, projects it and finalizes the export run", async () => {
     let stagedKey = "";
     let stagedMarkdown = "";
     let projectionCalls = 0;
     let currentRun: VaultExportRunV1 | null = null;
 
     const staging: KnowledgeRelationshipExportStagingGateway = {
-      stageReady: (stageInput) => {
+      stageReady: async (stageInput) => {
         stagedKey = stageInput.idempotencyKey;
         stagedMarkdown = stageInput.markdown;
         return {
@@ -148,7 +148,7 @@ describe("Knowledge relationship Vault export orchestration", () => {
       },
     };
 
-    const result = executeKnowledgeRelationshipVaultExport(
+    const result = await executeKnowledgeRelationshipVaultExport(
       { relationships, staging, exportRuns, projection },
       input(),
     );
@@ -160,10 +160,10 @@ describe("Knowledge relationship Vault export orchestration", () => {
     expect(result.run.result?.disposition).toBe("WRITTEN");
   });
 
-  it("returns a completed replay without projecting a second time", () => {
+  it("returns a completed replay without projecting a second time", async () => {
     let projectionCalls = 0;
     const staging: KnowledgeRelationshipExportStagingGateway = {
-      stageReady: (stageInput) => ({
+      stageReady: async (stageInput) => ({
         stagingDocumentId: "stg_relationship-note",
         workspaceId: stageInput.workspaceId,
         targetPath: stageInput.targetPath,
@@ -214,7 +214,7 @@ describe("Knowledge relationship Vault export orchestration", () => {
       },
     };
 
-    const result = executeKnowledgeRelationshipVaultExport(
+    const result = await executeKnowledgeRelationshipVaultExport(
       { relationships, staging, exportRuns, projection },
       input(),
     );
@@ -224,9 +224,9 @@ describe("Knowledge relationship Vault export orchestration", () => {
     expect(result.projection.written).toBe(false);
   });
 
-  it("fails closed when the staging gateway changes the rendered artifact", () => {
+  it("fails closed when the staging gateway changes the rendered artifact", async () => {
     const staging: KnowledgeRelationshipExportStagingGateway = {
-      stageReady: (stageInput) => ({
+      stageReady: async (stageInput) => ({
         stagingDocumentId: "stg_relationship-note",
         workspaceId: stageInput.workspaceId,
         targetPath: stageInput.targetPath,
@@ -234,7 +234,7 @@ describe("Knowledge relationship Vault export orchestration", () => {
       }),
     };
 
-    expect(() =>
+    await expect(
       executeKnowledgeRelationshipVaultExport(
         {
           relationships,
@@ -244,6 +244,6 @@ describe("Knowledge relationship Vault export orchestration", () => {
         },
         input(),
       ),
-    ).toThrow(/does not match the rendered artifact/i);
+    ).rejects.toThrow(/does not match the rendered artifact/i);
   });
 });
