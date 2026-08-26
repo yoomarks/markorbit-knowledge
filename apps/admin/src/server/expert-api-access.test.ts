@@ -16,7 +16,9 @@ import {
 
 const SECRET = "expert-api-test-secret";
 
-function principalHeader(input: { role?: string; permissions?: string[]; workspaceId?: string } = {}) {
+function principalHeader(
+  input: { role?: string; permissions?: string[]; workspaceId?: string } = {},
+) {
   return Buffer.from(
     JSON.stringify({
       schemaVersion: 1,
@@ -35,7 +37,9 @@ function principalHeader(input: { role?: string; permissions?: string[]; workspa
   ).toString("base64url");
 }
 
-function request(input: { secret?: string; role?: string; permissions?: string[] } = {}) {
+function request(
+  input: { secret?: string; role?: string; permissions?: string[] } = {},
+) {
   return new Request("http://localhost/api/expert-tasks", {
     headers: {
       [CASE_PRODUCER_INTERNAL_AUTHORIZATION_HEADER]: input.secret ?? SECRET,
