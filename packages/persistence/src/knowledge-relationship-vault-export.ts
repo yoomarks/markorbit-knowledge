@@ -29,7 +29,9 @@ export type KnowledgeRelationshipReadyStaging = {
 };
 
 export interface KnowledgeRelationshipExportStagingGateway {
-  stageReady(input: KnowledgeRelationshipStagingInput): KnowledgeRelationshipReadyStaging;
+  stageReady(
+    input: KnowledgeRelationshipStagingInput,
+  ): Promise<KnowledgeRelationshipReadyStaging>;
 }
 
 export type ExecuteKnowledgeRelationshipVaultExportInput = {
@@ -76,14 +78,14 @@ function stagingIdempotencyKey(artifact: KnowledgeObsidianExportArtifact): strin
   )}`;
 }
 
-export function executeKnowledgeRelationshipVaultExport(
+export async function executeKnowledgeRelationshipVaultExport(
   dependencies: KnowledgeRelationshipVaultExportDependencies,
   input: ExecuteKnowledgeRelationshipVaultExportInput,
-): ExecuteKnowledgeRelationshipVaultExportResult {
+): Promise<ExecuteKnowledgeRelationshipVaultExportResult> {
   const rootFingerprintSha256 = assertSha256(input.rootFingerprintSha256, "rootFingerprintSha256");
   const artifact = buildKnowledgeObsidianRelationshipNote(dependencies.relationships, input.note);
   const expectedContentSha256 = sha256(artifact.markdown);
-  const staging = dependencies.staging.stageReady({
+  const staging = await dependencies.staging.stageReady({
     workspaceId: artifact.content.workspaceId,
     title: input.note.title,
     targetPath: artifact.targetPath,
