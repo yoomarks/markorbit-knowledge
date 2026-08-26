@@ -43,7 +43,7 @@ function principal(overrides: Record<string, unknown> = {}): string {
         workspaceId,
         membershipId: "membership_01",
         role: "MATTER_MANAGER",
-        permissions: ["workspace:read", "matter:read", "future:permission"],
+        permissions: ["workspace:read", "matter:read", "audit:read"],
         sessionExpiresAt: "2026-08-26T15:00:00.000Z",
         ...overrides,
       },
@@ -94,12 +94,12 @@ function authorize(
 }
 
 describe("Case producer internal authentication", () => {
-  it("accepts the existing MarkReg Workspace Principal shape with matter:read", () => {
+  it("accepts the existing MarkReg Workspace Principal shape with standard permissions", () => {
     const result = authorize();
 
     expect(result.workspaceId).toBe(workspaceId);
     expect(result.permissions).toContain("matter:read");
-    expect(result.permissions).toContain("future:permission");
+    expect(result.permissions).toContain("audit:read");
   });
 
   it("fails closed when the shared internal service secret is not configured", () => {
@@ -138,6 +138,10 @@ describe("Case producer internal authentication", () => {
       httpStatus: 401,
     });
     expectAccessError(() => authorize(principal({ role: "UNKNOWN" })), {
+      code: "AUTHENTICATION_REQUIRED",
+      httpStatus: 401,
+    });
+    expectAccessError(() => authorize(principal({ permissions: ["matter:read", "future:permission"] })), {
       code: "AUTHENTICATION_REQUIRED",
       httpStatus: 401,
     });
