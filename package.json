@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "test:e2e:core-intake": "pnpm --filter @markorbit/admin exec vitest run --config vitest.e2e.config.ts",
+    "test:e2e:core-intake": "pnpm --filter @markorbit/admin exec vitest run --config vitest.e2e.config.ts src/server/e2e/core-intake-real-core.e2e.ts",
     "calibrate:source-intelligence": "node scripts/source-intelligence-calibration.mjs",
     "calibrate:source-intelligence:evidence": "node scripts/source-intelligence-evidence-calibration.mjs",
     "check:source-intelligence:evidence-report": "node scripts/source-intelligence-evidence-report-check.mjs",
