@@ -19,12 +19,7 @@ const content: ContentObjectRefV1 = {
 
 const relationships: ContentRelationshipReadRepository = {
   listFacets: () => [],
-  listNeighbors: () => ({
-    items: [],
-    total: 0,
-    limit: 200,
-    offset: 0,
-  }),
+  listNeighbors: () => ({ items: [], total: 0, limit: 200, offset: 0 }),
 };
 
 function sha256(value: string): string {
@@ -45,11 +40,7 @@ function input() {
       },
     },
     rootFingerprintSha256: "a".repeat(64),
-    binding: {
-      bindingId: "vlt_binding-a",
-      revision: 1,
-      relativeRoot: "knowledge",
-    },
+    binding: { bindingId: "vlt_binding-a", revision: 1, relativeRoot: "knowledge" },
   };
 }
 
@@ -61,11 +52,7 @@ function pendingRun(stagingDocumentId: string, contentSha256: string): VaultExpo
     workspaceId: "workspace-a",
     idempotencyKey: "vault-export:test",
     rootFingerprintSha256: "a".repeat(64),
-    binding: {
-      bindingId: "vlt_binding-a",
-      revision: 1,
-      relativeRoot: "knowledge",
-    },
+    binding: { bindingId: "vlt_binding-a", revision: 1, relativeRoot: "knowledge" },
     staging: {
       stagingDocumentId,
       contentSha256,
@@ -78,21 +65,22 @@ function pendingRun(stagingDocumentId: string, contentSha256: string): VaultExpo
 }
 
 describe("Knowledge relationship Vault export orchestration", () => {
-  it("stages the deterministic note, projects it and finalizes the export run", () => {
+  it("stages the deterministic note, projects it and finalizes the export run", async () => {
     let stagedKey = "";
     let stagedMarkdown = "";
     let projectionCalls = 0;
     let currentRun: VaultExportRunV1 | null = null;
 
     const staging: KnowledgeRelationshipExportStagingGateway = {
-      stageReady: (stageInput) => {
+      stageReady: async (stageInput) => {
         stagedKey = stageInput.idempotencyKey;
         stagedMarkdown = stageInput.markdown;
         return {
           stagingDocumentId: "stg_relationship-note",
           workspaceId: stageInput.workspaceId,
           targetPath: stageInput.targetPath,
-          contentSha256: sha256(stageInput.markdown),
+          sourceContentSha256: sha256(stageInput.markdown),
+          contentSha256: sha256(`canonical:${stageInput.markdown}`),
         };
       },
     };
@@ -112,10 +100,7 @@ describe("Knowledge relationship Vault export orchestration", () => {
         if (!currentRun) throw new Error("run missing");
         currentRun = {
           ...currentRun,
-          projectionReceipt: {
-            ...receipt,
-            recordedAt: "2026-08-26T06:00:01.000Z",
-          },
+          projectionReceipt: { ...receipt, recordedAt: "2026-08-26T06:00:01.000Z" },
         };
         return currentRun;
       },
@@ -142,32 +127,35 @@ describe("Knowledge relationship Vault export orchestration", () => {
           stagingDocumentId,
           workspaceId,
           vaultRelativePath: "knowledge/note.md",
-          contentSha256: sha256(stagedMarkdown),
+          contentSha256: sha256(`canonical:${stagedMarkdown}`),
           written: true,
         };
       },
     };
 
-    const result = executeKnowledgeRelationshipVaultExport(
+    const result = await executeKnowledgeRelationshipVaultExport(
       { relationships, staging, exportRuns, projection },
       input(),
     );
 
     expect(stagedKey).toMatch(/^knowledge-obsidian:[a-f0-9]{64}$/u);
     expect(stagedMarkdown).toContain('knowledge_id: "web:article:assignment-guide"');
+    expect(result.staging.sourceContentSha256).toBe(sha256(stagedMarkdown));
+    expect(result.staging.contentSha256).not.toBe(result.staging.sourceContentSha256);
     expect(projectionCalls).toBe(1);
     expect(result.run.state).toBe("SUCCEEDED");
     expect(result.run.result?.disposition).toBe("WRITTEN");
   });
 
-  it("returns a completed replay without projecting a second time", () => {
+  it("returns a completed replay without projecting a second time", async () => {
     let projectionCalls = 0;
     const staging: KnowledgeRelationshipExportStagingGateway = {
-      stageReady: (stageInput) => ({
+      stageReady: async (stageInput) => ({
         stagingDocumentId: "stg_relationship-note",
         workspaceId: stageInput.workspaceId,
         targetPath: stageInput.targetPath,
-        contentSha256: sha256(stageInput.markdown),
+        sourceContentSha256: sha256(stageInput.markdown),
+        contentSha256: sha256(`canonical:${stageInput.markdown}`),
       }),
     };
 
@@ -186,12 +174,7 @@ describe("Knowledge relationship Vault export orchestration", () => {
         };
         return {
           replayed: true,
-          run: {
-            ...run,
-            state: "SUCCEEDED",
-            projectionReceipt: receipt,
-            result: receipt,
-          },
+          run: { ...run, state: "SUCCEEDED", projectionReceipt: receipt, result: receipt },
         };
       },
       getById: () => null,
@@ -214,7 +197,7 @@ describe("Knowledge relationship Vault export orchestration", () => {
       },
     };
 
-    const result = executeKnowledgeRelationshipVaultExport(
+    const result = await executeKnowledgeRelationshipVaultExport(
       { relationships, staging, exportRuns, projection },
       input(),
     );
@@ -224,17 +207,18 @@ describe("Knowledge relationship Vault export orchestration", () => {
     expect(result.projection.written).toBe(false);
   });
 
-  it("fails closed when the staging gateway changes the rendered artifact", () => {
+  it("fails closed when the staging gateway changes rendered provenance", async () => {
     const staging: KnowledgeRelationshipExportStagingGateway = {
-      stageReady: (stageInput) => ({
+      stageReady: async (stageInput) => ({
         stagingDocumentId: "stg_relationship-note",
         workspaceId: stageInput.workspaceId,
         targetPath: stageInput.targetPath,
-        contentSha256: "b".repeat(64),
+        sourceContentSha256: "b".repeat(64),
+        contentSha256: "c".repeat(64),
       }),
     };
 
-    expect(() =>
+    await expect(
       executeKnowledgeRelationshipVaultExport(
         {
           relationships,
@@ -244,6 +228,6 @@ describe("Knowledge relationship Vault export orchestration", () => {
         },
         input(),
       ),
-    ).toThrow(/does not match the rendered artifact/i);
+    ).rejects.toThrow(/does not match the rendered artifact provenance/i);
   });
 });
