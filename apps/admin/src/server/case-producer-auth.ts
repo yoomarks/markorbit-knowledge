@@ -14,6 +14,7 @@ const WORKSPACE_PERMISSIONS = new Set([
   "matter:read",
   "matter:create",
   "matter:manage",
+  "matter:promote-knowledge",
   "order:create",
   "order:read",
   "order:update",
