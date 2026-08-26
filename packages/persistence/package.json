@@ -28,6 +28,7 @@
     "./case-dossiers": "./src/case-dossier.ts",
     "./case-dossier-privacy": "./src/case-dossier-privacy.ts",
     "./case-live-acceptance": "./src/case-live-acceptance.ts",
+    "./content-relationships": "./src/content-relationship-registry.ts",
     "./connectors": "./src/connector-registry.ts",
     "./collection-plans": "./src/collection-plan-registry.ts",
     "./collection-scheduler": "./src/collection-scheduler.ts",
