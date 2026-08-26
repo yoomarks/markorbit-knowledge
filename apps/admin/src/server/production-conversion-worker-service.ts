@@ -109,7 +109,7 @@ function assertCanonicalMarkdown(content: Uint8Array, expectedFrontmatter: strin
     );
   }
 
-  const closingMarker = "\n---\n\n";
+  const closingMarker = "\n---\n";
   const expectedClosing = expectedFrontmatter.lastIndexOf(closingMarker);
   if (expectedClosing < 0) {
     throw new RegistryConflictError(
