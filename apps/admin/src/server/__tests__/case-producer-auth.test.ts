@@ -141,10 +141,10 @@ describe("Case producer internal authentication", () => {
       code: "AUTHENTICATION_REQUIRED",
       httpStatus: 401,
     });
-    expectAccessError(() => authorize(principal({ permissions: ["matter:read", "future:permission"] })), {
-      code: "AUTHENTICATION_REQUIRED",
-      httpStatus: 401,
-    });
+    expectAccessError(
+      () => authorize(principal({ permissions: ["matter:read", "future:permission"] })),
+      { code: "AUTHENTICATION_REQUIRED", httpStatus: 401 },
+    );
   });
 
   it("rejects invalid, expired, and exactly-expired Workspace Principal sessions", () => {
