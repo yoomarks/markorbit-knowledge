@@ -97,6 +97,7 @@ function questionLock(value: ExpertQuestionTaskV1): string {
     organizationRef: value.organizationRef ?? null,
     requestedBy: value.requestedBy,
     createdAt: value.createdAt,
+    accessClassification: value.accessClassification,
   });
 }
 
