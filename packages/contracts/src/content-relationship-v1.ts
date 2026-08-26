@@ -126,7 +126,12 @@ export function isContentEdgeV1(value: unknown): value is ContentEdgeV1 {
     return false;
   }
   if (value.from.workspaceId !== value.to.workspaceId) return false;
-  if (value.from.objectId === value.to.objectId && value.relationType !== "VERSION_OF") return false;
+  if (
+    value.from.objectId === value.to.objectId &&
+    value.relationType !== "VERSION_OF"
+  ) {
+    return false;
+  }
 
   if (value.origin === "MACHINE_DERIVED") {
     if (
