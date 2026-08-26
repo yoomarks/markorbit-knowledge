@@ -13,6 +13,10 @@ import { ensureExpertSourceRegistry } from "./expert-source-registry";
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
 
+export type ExpertSourceRetrievalScope = {
+  taskIds: readonly string[];
+};
+
 function optionalText(value: string | undefined, field: string): string | undefined {
   if (value === undefined) return undefined;
   const normalized = value.trim();
@@ -61,7 +65,10 @@ export class SqliteExpertSourceRetrievalRepository {
     ensureExpertSourceRegistry(database);
   }
 
-  search(input: ExpertSourceRetrievalRequestV1 = {}): ExpertSourceRetrievalResultV1 {
+  search(
+    input: ExpertSourceRetrievalRequestV1 = {},
+    scope?: ExpertSourceRetrievalScope,
+  ): ExpertSourceRetrievalResultV1 {
     const jurisdiction = optionalText(input.jurisdiction, "jurisdiction");
     const topic = optionalText(input.topic, "topic");
     const expertRef = optionalText(input.expertRef, "expertRef");
@@ -75,6 +82,7 @@ export class SqliteExpertSourceRetrievalRepository {
     }
     const limit = pagination(input.limit, "limit");
     const offset = pagination(input.offset, "offset");
+    const allowedTaskIds = scope ? new Set(scope.taskIds) : undefined;
 
     const clauses: string[] = [];
     const values: string[] = [];
@@ -100,6 +108,7 @@ export class SqliteExpertSourceRetrievalRepository {
       .map((row) => parseSourceRecord(row.document_json))
       .filter(
         (record) =>
+          (allowedTaskIds === undefined || allowedTaskIds.has(record.taskId)) &&
           (jurisdiction === undefined || record.jurisdiction === jurisdiction) &&
           (topic === undefined || record.topic === topic) &&
           (expertRef === undefined || record.expertRef === expertRef) &&
