@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { ExpertQuestionTaskV1 } from "@markorbit/contracts";
 import { SqliteExpertSourceRepository } from "@markorbit/persistence/expert-sources";
+import { SqliteExpertTaskWorkspaceBindingRepository } from "@markorbit/persistence/expert-task-workspace-bindings";
 import {
   CASE_PRODUCER_INTERNAL_AUTHORIZATION_HEADER,
   CASE_PRODUCER_PRINCIPAL_HEADER,
@@ -11,7 +12,6 @@ import {
 import {
   authenticateExpertMutationRequest,
   authenticateExpertReadRequest,
-  ExpertTaskWorkspaceBindingRepository,
 } from "./expert-api-access";
 
 const SECRET = "expert-api-test-secret";
@@ -75,28 +75,28 @@ describe("Expert API access", () => {
     ).toThrowError(/cannot mutate Expert tasks/u);
   });
 
-  it("durably isolates task bindings by workspace and fails closed when unbound", () => {
+  it("durably isolates task bindings by workspace and records the schema migration", () => {
     const database = new DatabaseSync(":memory:");
     const tasks = new SqliteExpertSourceRepository(database);
     tasks.saveTask(task("eqt_bound"));
     tasks.saveTask(task("eqt_unbound"));
 
-    const bindings = new ExpertTaskWorkspaceBindingRepository(database);
+    const bindings = new SqliteExpertTaskWorkspaceBindingRepository(database);
     bindings.bind("eqt_bound", "workspace-a");
     bindings.bind("eqt_bound", "workspace-a");
 
     expect(bindings.listTaskIds("workspace-a")).toEqual(["eqt_bound"]);
     expect(bindings.listTaskIds("workspace-b")).toEqual([]);
-    expect(() => bindings.authorize("eqt_bound", "workspace-a")).not.toThrow();
-    expect(() => bindings.authorize("eqt_bound", "workspace-b")).toThrowError(
-      /does not match the Expert task workspace/u,
-    );
-    expect(() => bindings.authorize("eqt_unbound", "workspace-a")).toThrowError(
-      /no durable workspace binding/u,
-    );
+    expect(bindings.getWorkspaceId("eqt_bound")).toBe("workspace-a");
+    expect(bindings.getWorkspaceId("eqt_unbound")).toBeNull();
     expect(() => bindings.bind("eqt_bound", "workspace-b")).toThrowError(
       /already bound to a different workspace/u,
     );
+    expect(
+      database
+        .prepare("SELECT id FROM schema_migrations WHERE id = ?")
+        .get("0022_expert_task_workspace_bindings"),
+    ).toBeTruthy();
     database.close();
   });
 });
