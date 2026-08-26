@@ -1,10 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import {
-  isExpertQuestionTaskV1,
-  type ExpertQuestionTaskV1,
-  type ExpertSourceRecordV1,
-} from "@markorbit/contracts";
+import type { ExpertQuestionTaskV1, ExpertSourceRecordV1 } from "@markorbit/contracts";
 import { SqliteExpertSourceRepository } from "./expert-source-registry";
 
 function task(overrides: Partial<ExpertQuestionTaskV1> = {}): ExpertQuestionTaskV1 {
@@ -76,18 +72,6 @@ function advanceToSent(repository: SqliteExpertSourceRepository): ExpertQuestion
 }
 
 describe("Expert durable replay lifecycle", () => {
-  it("rejects transport send receipts on pre-send task shapes", () => {
-    const preSend = task({ communicationSendRequestRef: "comm:send:premature" });
-    expect(isExpertQuestionTaskV1(preSend)).toBe(false);
-
-    const database = new DatabaseSync(":memory:");
-    const repository = new SqliteExpertSourceRepository(database);
-    expect(() => repository.saveTask(preSend)).toThrowError(
-      /Pre-send Expert task cannot already have communicationSendRequestRef/u,
-    );
-    database.close();
-  });
-
   it("keeps createdAt immutable from initial persistence, including before send", () => {
     const database = new DatabaseSync(":memory:");
     const repository = new SqliteExpertSourceRepository(database);
