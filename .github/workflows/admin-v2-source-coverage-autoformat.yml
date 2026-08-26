@@ -30,44 +30,35 @@ jobs:
 
           path = Path("packages/persistence/src/staging-verification.ts")
           text = path.read_text()
-          old = """    const fields = [...parsed.frontmatter.types.entries()]
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(([key, valueType]) => ({
-              key: key
-                .split(".")
-                .at(-1)!
-                .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-                .toLowerCase(),
-              valueType,
-            }));
-          """
-          new = """    const usedSummaryKeys = new Set<string>();
-            const fields = [...parsed.frontmatter.types.entries()]
-              .sort(([left], [right]) => left.localeCompare(right))
-              .map(([path, valueType]) => {
-                let normalized = path
-                  .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-                  .replace(/[^A-Za-z0-9_-]+/g, "_")
-                  .replace(/-+/g, "_")
-                  .toLowerCase();
-                if (!/^[a-z]/.test(normalized)) normalized = `field_${normalized}`;
-
-                let key = normalized;
-                if (key.length > 64 || usedSummaryKeys.has(key)) {
-                  let attempt = 0;
-                  do {
-                    const suffix = sha256(attempt === 0 ? path : `${path}:${attempt}`).slice(0, 12);
-                    key = `${normalized.slice(0, 51)}_${suffix}`;
-                    attempt += 1;
-                  } while (usedSummaryKeys.has(key));
-                }
-                usedSummaryKeys.add(key);
-                return { key, valueType };
-              });
-          """
-          if old not in text:
-              raise SystemExit("KG-004 verifier summary target block not found")
-          path.write_text(text.replace(old, new, 1))
+          start = text.index("    const fields = [...parsed.frontmatter.types.entries()]")
+          end = text.index("    return this.outcome", start)
+          replacement = "\n".join([
+              "    const usedSummaryKeys = new Set<string>();",
+              "    const fields = [...parsed.frontmatter.types.entries()]",
+              "      .sort(([left], [right]) => left.localeCompare(right))",
+              "      .map(([path, valueType]) => {",
+              "        let normalized = path",
+              "          .replace(/([a-z0-9])([A-Z])/g, \"$1_$2\")",
+              "          .replace(/[^A-Za-z0-9_-]+/g, \"_\")",
+              "          .replace(/-+/g, \"_\")",
+              "          .toLowerCase();",
+              "        if (!/^[a-z]/.test(normalized)) normalized = `field_${normalized}`;",
+              "",
+              "        let key = normalized;",
+              "        if (key.length > 64 || usedSummaryKeys.has(key)) {",
+              "          let attempt = 0;",
+              "          do {",
+              "            const suffix = sha256(attempt === 0 ? path : `${path}:${attempt}`).slice(0, 12);",
+              "            key = `${normalized.slice(0, 51)}_${suffix}`;",
+              "            attempt += 1;",
+              "          } while (usedSummaryKeys.has(key));",
+              "        }",
+              "        usedSummaryKeys.add(key);",
+              "        return { key, valueType };",
+              "      });",
+              "",
+          ])
+          path.write_text(text[:start] + replacement + text[end:])
           PY
           pnpm exec prettier --write packages/persistence/src/staging-verification.ts
           if git diff --quiet -- packages/persistence/src/staging-verification.ts; then exit 0; fi
