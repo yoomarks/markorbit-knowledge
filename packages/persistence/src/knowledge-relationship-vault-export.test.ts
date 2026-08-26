@@ -78,7 +78,7 @@ function pendingRun(stagingDocumentId: string, contentSha256: string): VaultExpo
 }
 
 describe("Knowledge relationship Vault export orchestration", () => {
-  it("stages the deterministic note, projects it and finalizes the export run", async () => {
+  it("stages the deterministic note, projects enriched READY content and finalizes the export run", async () => {
     let stagedKey = "";
     let stagedMarkdown = "";
     let projectionCalls = 0;
@@ -92,7 +92,8 @@ describe("Knowledge relationship Vault export orchestration", () => {
           stagingDocumentId: "stg_relationship-note",
           workspaceId: stageInput.workspaceId,
           targetPath: stageInput.targetPath,
-          contentSha256: sha256(stageInput.markdown),
+          sourceContentSha256: sha256(stageInput.markdown),
+          contentSha256: sha256(`enriched:${stageInput.markdown}`),
         };
       },
     };
@@ -142,7 +143,7 @@ describe("Knowledge relationship Vault export orchestration", () => {
           stagingDocumentId,
           workspaceId,
           vaultRelativePath: "knowledge/note.md",
-          contentSha256: sha256(stagedMarkdown),
+          contentSha256: sha256(`enriched:${stagedMarkdown}`),
           written: true,
         };
       },
@@ -155,6 +156,8 @@ describe("Knowledge relationship Vault export orchestration", () => {
 
     expect(stagedKey).toMatch(/^knowledge-obsidian:[a-f0-9]{64}$/u);
     expect(stagedMarkdown).toContain('knowledge_id: "web:article:assignment-guide"');
+    expect(result.staging.sourceContentSha256).toBe(sha256(stagedMarkdown));
+    expect(result.staging.contentSha256).not.toBe(result.staging.sourceContentSha256);
     expect(projectionCalls).toBe(1);
     expect(result.run.state).toBe("SUCCEEDED");
     expect(result.run.result?.disposition).toBe("WRITTEN");
@@ -167,7 +170,8 @@ describe("Knowledge relationship Vault export orchestration", () => {
         stagingDocumentId: "stg_relationship-note",
         workspaceId: stageInput.workspaceId,
         targetPath: stageInput.targetPath,
-        contentSha256: sha256(stageInput.markdown),
+        sourceContentSha256: sha256(stageInput.markdown),
+        contentSha256: sha256(`enriched:${stageInput.markdown}`),
       }),
     };
 
@@ -224,13 +228,14 @@ describe("Knowledge relationship Vault export orchestration", () => {
     expect(result.projection.written).toBe(false);
   });
 
-  it("fails closed when the staging gateway changes the rendered artifact", async () => {
+  it("fails closed when the staging gateway changes the rendered source binding", async () => {
     const staging: KnowledgeRelationshipExportStagingGateway = {
       stageReady: async (stageInput) => ({
         stagingDocumentId: "stg_relationship-note",
         workspaceId: stageInput.workspaceId,
         targetPath: stageInput.targetPath,
-        contentSha256: "b".repeat(64),
+        sourceContentSha256: "b".repeat(64),
+        contentSha256: sha256(`enriched:${stageInput.markdown}`),
       }),
     };
 
