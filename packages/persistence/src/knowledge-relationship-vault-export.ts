@@ -25,6 +25,7 @@ export type KnowledgeRelationshipReadyStaging = {
   stagingDocumentId: string;
   workspaceId: string;
   targetPath: string;
+  sourceContentSha256: string;
   contentSha256: string;
 };
 
@@ -84,7 +85,7 @@ export async function executeKnowledgeRelationshipVaultExport(
 ): Promise<ExecuteKnowledgeRelationshipVaultExportResult> {
   const rootFingerprintSha256 = assertSha256(input.rootFingerprintSha256, "rootFingerprintSha256");
   const artifact = buildKnowledgeObsidianRelationshipNote(dependencies.relationships, input.note);
-  const expectedContentSha256 = sha256(artifact.markdown);
+  const sourceContentSha256 = sha256(artifact.markdown);
   const staging = await dependencies.staging.stageReady({
     workspaceId: artifact.content.workspaceId,
     title: input.note.title,
@@ -96,10 +97,11 @@ export async function executeKnowledgeRelationshipVaultExport(
   if (
     staging.workspaceId !== artifact.content.workspaceId ||
     staging.targetPath !== artifact.targetPath ||
-    staging.contentSha256 !== expectedContentSha256
+    staging.sourceContentSha256 !== sourceContentSha256 ||
+    !/^[a-f0-9]{64}$/u.test(staging.contentSha256)
   ) {
     throw new RegistryValidationError(
-      "Knowledge relationship staging result does not match the rendered artifact",
+      "Knowledge relationship staging result does not match the rendered artifact provenance",
     );
   }
 
