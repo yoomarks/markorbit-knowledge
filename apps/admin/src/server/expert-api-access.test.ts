@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
@@ -12,9 +13,14 @@ import {
 import {
   authenticateExpertMutationRequest,
   authenticateExpertReadRequest,
+  resolveExpertMutationPrincipal,
+  resolveExpertReadPrincipal,
 } from "./expert-api-access";
 
 const SECRET = "expert-api-test-secret";
+const CORE_SECRET = "0123456789abcdef0123456789abcdef";
+const CSRF_SECRET = "abcdef0123456789abcdef0123456789";
+const WORKSPACE_A = "11111111-1111-4111-8111-111111111111";
 
 type PrincipalInput = {
   role?: string;
@@ -69,6 +75,44 @@ function task(taskId: string): ExpertQuestionTaskV1 {
   };
 }
 
+function browserOptions(role: "REVIEWER" | "READ_ONLY") {
+  const fetchImpl: typeof fetch = async () =>
+    Response.json({
+      kind: "WORKSPACE",
+      sessionId: "session-browser",
+      userId: "user-browser",
+      workspaceId: WORKSPACE_A,
+      membershipId: "membership-browser",
+      role,
+      permissions: ["workspace:read", "matter:read", "review:read"],
+      sessionExpiresAt: "2099-08-27T00:00:00.000Z",
+    });
+  return {
+    coreAuthUrl: "http://core.test:4101",
+    internalSecret: CORE_SECRET,
+    csrfSecret: CSRF_SECRET,
+    allowedOrigins: ["http://knowledge.test"],
+    fetchImpl,
+    now: new Date("2026-08-26T00:00:00.000Z"),
+  };
+}
+
+function browserRequest(extra: HeadersInit = {}) {
+  const csrfToken = createHmac("sha256", CSRF_SECRET)
+    .update("knowledge-admin-expert:session-browser", "utf8")
+    .digest("base64url");
+  return new Request("http://knowledge.test/api/expert-tasks", {
+    method: "POST",
+    headers: {
+      cookie: "mo_session=browser-token",
+      origin: "http://knowledge.test",
+      "x-markorbit-workspace-id": WORKSPACE_A,
+      "x-markorbit-csrf-token": csrfToken,
+      ...Object.fromEntries(new Headers(extra)),
+    },
+  });
+}
+
 describe("Expert API access", () => {
   it("reuses the governed Workspace Principal and rejects read-only mutation", () => {
     expect(authenticateExpertReadRequest(request(), SECRET).workspaceId).toBe("workspace-a");
@@ -87,6 +131,28 @@ describe("Expert API access", () => {
         SECRET,
       ),
     ).toThrowError(/session has expired/u);
+  });
+
+  it("resolves the browser workspace through Core and rejects READ_ONLY mutation", async () => {
+    await expect(
+      resolveExpertReadPrincipal(browserRequest(), browserOptions("REVIEWER")),
+    ).resolves.toMatchObject({
+      userId: "user-browser",
+      workspaceId: WORKSPACE_A,
+      role: "REVIEWER",
+    });
+    await expect(
+      resolveExpertMutationPrincipal(browserRequest(), browserOptions("READ_ONLY")),
+    ).rejects.toMatchObject({ code: "PERMISSION_DENIED", httpStatus: 403 });
+  });
+
+  it("does not let a browser-supplied Principal header fall back to browser session auth", async () => {
+    await expect(
+      resolveExpertReadPrincipal(
+        browserRequest({ [CASE_PRODUCER_PRINCIPAL_HEADER]: principalHeader() }),
+        browserOptions("REVIEWER"),
+      ),
+    ).rejects.toBeInstanceOf(CaseProducerAccessError);
   });
 
   it("durably isolates task bindings by workspace and records the schema migration", () => {

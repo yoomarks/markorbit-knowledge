@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
-  authenticateExpertMutationRequest,
-  authenticateExpertReadRequest,
   authorizeExpertTaskWorkspace,
   bindExpertTaskWorkspace,
+  resolveExpertMutationPrincipal,
+  resolveExpertReadPrincipal,
 } from "@/server/expert-api-access";
 import { ExpertQaOperatorService } from "@/server/expert-qa-operator-service";
 import { getExpertSourceRepository } from "@/server/expert-source-registry";
@@ -28,7 +28,7 @@ function requiredString(body: Record<string, unknown>, field: string): string {
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const principal = authenticateExpertReadRequest(request);
+    const principal = await resolveExpertReadPrincipal(request);
     const { id } = await context.params;
     authorizeExpertTaskWorkspace(id, principal.workspaceId);
     return NextResponse.json(service().getView(id));
@@ -39,7 +39,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const principal = authenticateExpertMutationRequest(request);
+    const principal = await resolveExpertMutationPrincipal(request);
     const { id } = await context.params;
     authorizeExpertTaskWorkspace(id, principal.workspaceId);
     const body = requireRecord(await readJson(request));

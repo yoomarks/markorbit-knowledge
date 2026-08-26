@@ -18,6 +18,11 @@ type ListResponse = {
 
 type ApiError = { error?: { message?: string } };
 
+type ExpertQaWorkbenchProps = {
+  workspaceId: string;
+  csrfToken: string;
+};
+
 const statusLabels: Record<OperatorStatus, string> = {
   DRAFT: "草稿 · Draft",
   READY_TO_SEND: "待发送 · Ready",
@@ -36,7 +41,7 @@ async function responseJson<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export function ExpertQaWorkbench() {
+export function ExpertQaWorkbench({ workspaceId, csrfToken }: ExpertQaWorkbenchProps) {
   const [data, setData] = useState<ListResponse>({
     items: [],
     communication: { connected: false },
@@ -51,10 +56,19 @@ export function ExpertQaWorkbench() {
   const [question, setQuestion] = useState("");
   const [followUps, setFollowUps] = useState<Record<string, string>>({});
 
+  const workspaceHeaders = useMemo(
+    () => ({ "x-markorbit-workspace-id": workspaceId }),
+    [workspaceId],
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/expert-tasks", { cache: "no-store" });
+      const response = await fetch("/api/expert-tasks", {
+        cache: "no-store",
+        credentials: "include",
+        headers: workspaceHeaders,
+      });
       setData(await responseJson<ListResponse>(response));
       setError(null);
     } catch (loadError) {
@@ -62,11 +76,15 @@ export function ExpertQaWorkbench() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspaceHeaders]);
 
   useEffect(() => {
     let active = true;
-    void fetch("/api/expert-tasks", { cache: "no-store" })
+    void fetch("/api/expert-tasks", {
+      cache: "no-store",
+      credentials: "include",
+      headers: workspaceHeaders,
+    })
       .then((response) => responseJson<ListResponse>(response))
       .then((next) => {
         if (!active) return;
@@ -83,7 +101,7 @@ export function ExpertQaWorkbench() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [workspaceHeaders]);
 
   const counts = useMemo(() => {
     const result = { active: 0, waiting: 0, replied: 0, captured: 0 };
@@ -103,14 +121,18 @@ export function ExpertQaWorkbench() {
       await responseJson(
         await fetch("/api/expert-tasks", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            ...workspaceHeaders,
+            "x-markorbit-csrf-token": csrfToken,
+          },
           body: JSON.stringify({
             topic,
             jurisdiction,
             expertRef,
             organizationRef,
             question,
-            requestedBy: "user:admin",
           }),
         }),
       );
@@ -130,7 +152,12 @@ export function ExpertQaWorkbench() {
       await responseJson(
         await fetch(`/api/expert-tasks/${encodeURIComponent(id)}`, {
           method: "PATCH",
-          headers: { "content-type": "application/json" },
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            ...workspaceHeaders,
+            "x-markorbit-csrf-token": csrfToken,
+          },
           body: JSON.stringify(body),
         }),
       );
@@ -350,7 +377,6 @@ export function ExpertQaWorkbench() {
                       void action(task.taskId, {
                         action: "FOLLOW_UP",
                         question: followUps[task.taskId] ?? "",
-                        requestedBy: "user:admin",
                       })
                     }
                     className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-40"

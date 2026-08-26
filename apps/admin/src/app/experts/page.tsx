@@ -1,4 +1,5 @@
 import { AdminShell } from "@/components/admin-shell";
+import { ExpertAdminWorkspace } from "@/components/experts/expert-admin-workspace";
 
 export default function ExpertsPage() {
   return (
@@ -16,22 +17,7 @@ export default function ExpertsPage() {
         </p>
       </div>
 
-      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-        <p className="text-sm font-semibold text-slate-950">
-          Expert operator access is temporarily fail-closed
-        </p>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
-          Expert task and source APIs now require a governed Workspace Principal and durable
-          workspace binding. The Admin browser does not yet have a trusted session-to-principal
-          bridge, so this page intentionally does not call the protected Expert APIs until that
-          identity boundary is implemented.
-        </p>
-        <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-600">
-          Internal service credentials must remain server-side and must not be exposed to browser
-          code. Existing Expert data remains preserved; only the unauthenticated browser operator
-          surface is disabled.
-        </p>
-      </section>
+      <ExpertAdminWorkspace />
     </AdminShell>
   );
 }

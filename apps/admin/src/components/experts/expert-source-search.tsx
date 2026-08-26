@@ -5,6 +5,10 @@ import type { ExpertSourceRetrievalResultV1 } from "@markorbit/contracts";
 
 type ApiError = { error?: { message?: string } };
 
+type ExpertSourceSearchProps = {
+  workspaceId: string;
+};
+
 const PAGE_SIZE = 20;
 
 async function responseJson<T>(response: Response): Promise<T> {
@@ -16,7 +20,7 @@ async function responseJson<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export function ExpertSourceSearch() {
+export function ExpertSourceSearch({ workspaceId }: ExpertSourceSearchProps) {
   const [jurisdiction, setJurisdiction] = useState("");
   const [topic, setTopic] = useState("");
   const [expertRef, setExpertRef] = useState("");
@@ -47,6 +51,8 @@ export function ExpertSourceSearch() {
 
       const response = await fetch(`/api/expert-sources?${params.toString()}`, {
         cache: "no-store",
+        credentials: "include",
+        headers: { "x-markorbit-workspace-id": workspaceId },
       });
       setResult(await responseJson<ExpertSourceRetrievalResultV1>(response));
     } catch (searchError) {
