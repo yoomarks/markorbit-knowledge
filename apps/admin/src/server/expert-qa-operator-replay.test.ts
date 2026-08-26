@@ -18,7 +18,10 @@ class Sender implements ExpertQuestionSender {
   }
 }
 
-function reply(taskId: string, overrides: Partial<ExpertSourceRecordV1> = {}): ExpertSourceRecordV1 {
+function reply(
+  taskId: string,
+  overrides: Partial<ExpertSourceRecordV1> = {},
+): ExpertSourceRecordV1 {
   return {
     protocolVersion: "1.0",
     objectType: "EXPERT_SOURCE_RECORD",
