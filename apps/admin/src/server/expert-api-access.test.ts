@@ -9,7 +9,10 @@ import {
   CASE_PRODUCER_PRINCIPAL_HEADER,
   CaseProducerAccessError,
 } from "./case-producer-auth";
-import { authenticateExpertMutationRequest, authenticateExpertReadRequest } from "./expert-api-access";
+import {
+  authenticateExpertMutationRequest,
+  authenticateExpertReadRequest,
+} from "./expert-api-access";
 
 const SECRET = "expert-api-test-secret";
 
