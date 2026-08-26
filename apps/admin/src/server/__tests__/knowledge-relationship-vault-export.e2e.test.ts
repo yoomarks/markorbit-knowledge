@@ -21,14 +21,20 @@ import {
 const tempRoot = mkdtempSync(join(tmpdir(), "markorbit-kg-vault-export-"));
 const vaultRoot = join(tempRoot, "vault");
 
+function resetProductionRegistry(): void {
+  delete (globalThis as typeof globalThis & { markorbitRegistries?: unknown }).markorbitRegistries;
+}
+
 beforeAll(() => {
   process.env.MARKORBIT_KNOWLEDGE_DB_PATH = join(tempRoot, "knowledge.sqlite");
   process.env.MARKORBIT_ARTIFACT_STORE_PATH = join(tempRoot, "artifacts");
   process.env.MARKORBIT_STAGING_STORE_PATH = join(tempRoot, "staging");
   process.env.MARKORBIT_MANUAL_UPLOAD_MAX_BYTES = String(1024 * 1024);
+  resetProductionRegistry();
 });
 
 afterAll(() => {
+  resetProductionRegistry();
   delete process.env.MARKORBIT_KNOWLEDGE_DB_PATH;
   delete process.env.MARKORBIT_ARTIFACT_STORE_PATH;
   delete process.env.MARKORBIT_STAGING_STORE_PATH;
