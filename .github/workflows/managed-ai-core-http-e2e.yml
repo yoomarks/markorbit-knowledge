@@ -8,17 +8,21 @@ on:
     paths:
       - ".github/workflows/managed-ai-core-http-e2e.yml"
       - "apps/worker/src/adk-knowledge-job-worker.ts"
+      - "apps/worker/src/adk-deepseek-provider.ts"
       - "packages/worker-runtime/src/ai-distilled-knowledge-acquirer.ts"
       - "packages/worker-runtime/src/managed-ai-knowledge-adapter.ts"
       - "packages/worker-runtime/src/managed-ai-execution-http-client.ts"
       - "packages/worker-runtime/src/managed-ai-knowledge-http-adapter.ts"
+      - "packages/worker-runtime/src/capability-runtime-v2-http-client.ts"
+      - "packages/worker-runtime/src/managed-ai-capability-http-adapter.ts"
       - "packages/worker-runtime/src/managed-ai-core-http-e2e.test.ts"
+      - "packages/worker-runtime/src/capability-v2-core-http-e2e.test.ts"
 
 permissions:
   contents: read
 
 env:
-  CORE_REF: f9b7fa6af81be052f5992d3033567ca58edb75fe
+  CORE_REF: 86f4f666bdf0c621c9832115a2018a6d29ad0d5a
 
 jobs:
   core-ref-freshness:
@@ -67,9 +71,10 @@ jobs:
       - name: Build Core Capability Engine dependency closure
         working-directory: .e2e/markorbit-core
         run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
-      - name: Run real Knowledge to Core Managed AI HTTP acceptance
+      - name: Run real Knowledge to Core Managed AI and Capability V2 HTTP acceptance
         env:
           MARKORBIT_CORE_CHECKOUT: ${{ github.workspace }}/.e2e/markorbit-core
         run: >-
           pnpm --filter @markorbit/worker-runtime exec vitest run
           src/managed-ai-core-http-e2e.test.ts
+          src/capability-v2-core-http-e2e.test.ts
