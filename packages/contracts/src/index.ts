@@ -41,6 +41,7 @@ export * from "./case-evidence-collection-v1";
 export * from "./case-dossier-v1";
 export * from "./case-dossier-privacy-v1";
 export * from "./case-live-acceptance-v1";
+export * from "./content-relationship-v1";
 export { SOURCE_REGISTRY_VERSION } from "./source-registry-v1";
 export type {
   SourceKind as RegistrySourceKind,
