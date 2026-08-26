@@ -1,6 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { isExpertQuestionTaskV1, type ExpertQuestionTaskV1, type ExpertSourceRecordV1 } from "@markorbit/contracts";
+import {
+  isExpertQuestionTaskV1,
+  type ExpertQuestionTaskV1,
+  type ExpertSourceRecordV1,
+} from "@markorbit/contracts";
 import { SqliteExpertSourceRepository } from "./expert-source-registry";
 
 function task(overrides: Partial<ExpertQuestionTaskV1> = {}): ExpertQuestionTaskV1 {
