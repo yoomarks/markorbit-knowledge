@@ -47,7 +47,7 @@ function encodedPrincipal(): string {
         membershipId: "membership_request_bound",
         role: "MATTER_MANAGER",
         permissions: ["matter:read"],
-        sessionExpiresAt: "2026-08-26T15:50:00.000Z",
+        sessionExpiresAt: "9999-12-31T23:59:59.999Z",
       },
     }),
     "utf8",
