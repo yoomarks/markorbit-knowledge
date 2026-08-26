@@ -1,7 +1,13 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import type { ContentEdgeV1, ContentFacetV1, ContentObjectRefV1 } from "@markorbit/contracts";
-import { SqliteContentRelationshipRepository } from "./content-relationship-registry";
+import type {
+  ContentEdgeV1,
+  ContentFacetV1,
+  ContentObjectRefV1,
+} from "@markorbit/contracts";
+import {
+  SqliteContentRelationshipRepository,
+} from "./content-relationship-registry";
 
 const article: ContentObjectRefV1 = {
   protocolVersion: "1.0",
@@ -73,61 +79,86 @@ describe("SqliteContentRelationshipRepository", () => {
       expect(repo.listFacets(article)).toEqual([topic]);
       expect(repo.listBacklinks(article).items).toEqual([citation]);
       expect(
-        database.prepare("SELECT COUNT(*) AS count FROM content_relationship_facets").get(),
+        database
+          .prepare(
+            "SELECT COUNT(*) AS count FROM content_relationship_facets",
+          )
+          .get(),
       ).toMatchObject({ count: 1 });
       expect(
-        database.prepare("SELECT COUNT(*) AS count FROM content_relationship_edges").get(),
+        database
+          .prepare(
+            "SELECT COUNT(*) AS count FROM content_relationship_edges",
+          )
+          .get(),
       ).toMatchObject({ count: 1 });
     } finally {
       database.close();
     }
   });
 
-  it("rebuilds one content projection without mutating incoming backlinks", () => {
-    const { database, repo } = repository();
-    try {
-      repo.upsertEdge(citation);
-      repo.replaceProjection(article, [topic, source], []);
-      expect(repo.listFacets(article)).toEqual([source, topic]);
-      expect(repo.listBacklinks(article)).toMatchObject({ total: 1, items: [citation] });
+  it(
+    "rebuilds one content projection without mutating incoming backlinks",
+    () => {
+      const { database, repo } = repository();
+      try {
+        repo.upsertEdge(citation);
+        repo.replaceProjection(article, [topic, source], []);
+        expect(repo.listFacets(article)).toEqual([source, topic]);
+        expect(repo.listBacklinks(article)).toMatchObject({
+          total: 1,
+          items: [citation],
+        });
 
-      repo.replaceProjection(article, [topic], []);
-      expect(repo.listFacets(article)).toEqual([topic]);
-      expect(repo.listBacklinks(article).total).toBe(1);
-    } finally {
-      database.close();
-    }
-  });
+        repo.replaceProjection(article, [topic], []);
+        expect(repo.listFacets(article)).toEqual([topic]);
+        expect(repo.listBacklinks(article).total).toBe(1);
+      } finally {
+        database.close();
+      }
+    },
+  );
 
-  it("retrieves backlinks, local neighbors and objective facet matches deterministically", () => {
-    const { database, repo } = repository();
-    try {
-      repo.upsertFacet(topic);
-      repo.upsertEdge(citation);
+  it(
+    "retrieves backlinks, local neighbors and objective facet matches deterministically",
+    () => {
+      const { database, repo } = repository();
+      try {
+        repo.upsertFacet(topic);
+        repo.upsertEdge(citation);
 
-      expect(repo.listBacklinks(article)).toMatchObject({
-        total: 1,
-        items: [citation],
-      });
-      expect(repo.listNeighbors(article).items).toMatchObject([
-        { direction: "INCOMING", neighbor: expert },
-      ]);
-      expect(repo.listNeighbors(expert).items).toMatchObject([
-        { direction: "OUTGOING", neighbor: article },
-      ]);
-      expect(
-        repo.findContentByFacet("workspace-a", "TOPIC", "us trademark assignment"),
-      ).toEqual({
-        items: [article],
-        total: 1,
-        limit: 50,
-        offset: 0,
-      });
-      expect(
-        repo.findContentByFacet("workspace-b", "TOPIC", "us trademark assignment").total,
-      ).toBe(0);
-    } finally {
-      database.close();
-    }
-  });
+        expect(repo.listBacklinks(article)).toMatchObject({
+          total: 1,
+          items: [citation],
+        });
+        expect(repo.listNeighbors(article).items).toMatchObject([
+          { direction: "INCOMING", neighbor: expert },
+        ]);
+        expect(repo.listNeighbors(expert).items).toMatchObject([
+          { direction: "OUTGOING", neighbor: article },
+        ]);
+        expect(
+          repo.findContentByFacet(
+            "workspace-a",
+            "TOPIC",
+            "us trademark assignment",
+          ),
+        ).toEqual({
+          items: [article],
+          total: 1,
+          limit: 50,
+          offset: 0,
+        });
+        expect(
+          repo.findContentByFacet(
+            "workspace-b",
+            "TOPIC",
+            "us trademark assignment",
+          ).total,
+        ).toBe(0);
+      } finally {
+        database.close();
+      }
+    },
+  );
 });
