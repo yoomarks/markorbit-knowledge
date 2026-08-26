@@ -9,6 +9,7 @@ import {
 
 const workspaceId = "550e8400-e29b-41d4-a716-446655440001";
 const secret = "test-internal-service-secret";
+const now = new Date("2026-08-26T14:00:00.000Z");
 
 function candidate(overrides: Partial<CaseCandidateV1> = {}): CaseCandidateV1 {
   return {
@@ -79,13 +80,22 @@ function expectAccessError(
   }
 }
 
+function authorize(
+  encodedPrincipal = principal(),
+  authorization = secret,
+  clock = now,
+): ReturnType<typeof authorizeCaseProducerRequest> {
+  return authorizeCaseProducerRequest(
+    request({ authorization, encodedPrincipal }),
+    candidate(),
+    secret,
+    clock,
+  );
+}
+
 describe("Case producer internal authentication", () => {
   it("accepts the existing MarkReg Workspace Principal shape with matter:read", () => {
-    const result = authorizeCaseProducerRequest(
-      request({ authorization: secret, encodedPrincipal: principal() }),
-      candidate(),
-      secret,
-    );
+    const result = authorize();
 
     expect(result.workspaceId).toBe(workspaceId);
     expect(result.permissions).toContain("matter:read");
@@ -99,6 +109,7 @@ describe("Case producer internal authentication", () => {
           request({ authorization: secret, encodedPrincipal: principal() }),
           candidate(),
           "",
+          now,
         ),
       { code: "CASE_PRODUCER_AUTH_NOT_CONFIGURED", httpStatus: 503 },
     );
@@ -111,68 +122,53 @@ describe("Case producer internal authentication", () => {
           request({ encodedPrincipal: principal() }),
           candidate(),
           secret,
+          now,
         ),
       { code: "INTERNAL_SERVICE_UNAUTHORIZED", httpStatus: 401 },
     );
-    expectAccessError(
-      () =>
-        authorizeCaseProducerRequest(
-          request({ authorization: "wrong", encodedPrincipal: principal() }),
-          candidate(),
-          secret,
-        ),
-      { code: "INTERNAL_SERVICE_UNAUTHORIZED", httpStatus: 401 },
-    );
+    expectAccessError(() => authorize(principal(), "wrong"), {
+      code: "INTERNAL_SERVICE_UNAUTHORIZED",
+      httpStatus: 401,
+    });
   });
 
   it("rejects malformed Workspace Principal envelopes", () => {
+    expectAccessError(() => authorize("not-base64-json"), {
+      code: "AUTHENTICATION_REQUIRED",
+      httpStatus: 401,
+    });
+    expectAccessError(() => authorize(principal({ role: "UNKNOWN" })), {
+      code: "AUTHENTICATION_REQUIRED",
+      httpStatus: 401,
+    });
+  });
+
+  it("rejects invalid, expired, and exactly-expired Workspace Principal sessions", () => {
+    expectAccessError(() => authorize(principal({ sessionExpiresAt: "not-a-timestamp" })), {
+      code: "AUTHENTICATION_REQUIRED",
+      httpStatus: 401,
+    });
     expectAccessError(
-      () =>
-        authorizeCaseProducerRequest(
-          request({ authorization: secret, encodedPrincipal: "not-base64-json" }),
-          candidate(),
-          secret,
-        ),
-      { code: "AUTHENTICATION_REQUIRED", httpStatus: 401 },
+      () => authorize(principal({ sessionExpiresAt: "2026-08-26T13:59:59.999Z" })),
+      { code: "SESSION_EXPIRED", httpStatus: 401 },
     );
-    expectAccessError(
-      () =>
-        authorizeCaseProducerRequest(
-          request({ authorization: secret, encodedPrincipal: principal({ role: "UNKNOWN" }) }),
-          candidate(),
-          secret,
-        ),
-      { code: "AUTHENTICATION_REQUIRED", httpStatus: 401 },
-    );
+    expectAccessError(() => authorize(principal({ sessionExpiresAt: now.toISOString() })), {
+      code: "SESSION_EXPIRED",
+      httpStatus: 401,
+    });
   });
 
   it("requires the same matter:read permission used by MarkReg Formal Matter reads", () => {
-    expectAccessError(
-      () =>
-        authorizeCaseProducerRequest(
-          request({
-            authorization: secret,
-            encodedPrincipal: principal({ permissions: ["workspace:read"] }),
-          }),
-          candidate(),
-          secret,
-        ),
-      { code: "PERMISSION_DENIED", httpStatus: 403 },
-    );
+    expectAccessError(() => authorize(principal({ permissions: ["workspace:read"] })), {
+      code: "PERMISSION_DENIED",
+      httpStatus: 403,
+    });
   });
 
   it("rejects cross-workspace promotion even with valid service authentication", () => {
-    expectAccessError(
-      () =>
-        authorizeCaseProducerRequest(
-          request({
-            authorization: secret,
-            encodedPrincipal: principal({ workspaceId: "workspace_other" }),
-          }),
-          candidate(),
-          secret,
-        ),
-      { code: "WORKSPACE_MISMATCH", httpStatus: 403 },
-    );
+    expectAccessError(() => authorize(principal({ workspaceId: "workspace_other" })), {
+      code: "WORKSPACE_MISMATCH",
+      httpStatus: 403,
+    });
   });
 });

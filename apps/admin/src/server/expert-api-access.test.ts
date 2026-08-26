@@ -16,9 +16,14 @@ import {
 
 const SECRET = "expert-api-test-secret";
 
-function principalHeader(
-  input: { role?: string; permissions?: string[]; workspaceId?: string } = {},
-) {
+type PrincipalInput = {
+  role?: string;
+  permissions?: string[];
+  workspaceId?: string;
+  sessionExpiresAt?: string;
+};
+
+function principalHeader(input: PrincipalInput = {}) {
   return Buffer.from(
     JSON.stringify({
       schemaVersion: 1,
@@ -30,14 +35,14 @@ function principalHeader(
         membershipId: "membership-001",
         role: input.role ?? "REVIEWER",
         permissions: input.permissions ?? ["matter:read"],
-        sessionExpiresAt: "2026-08-27T00:00:00.000Z",
+        sessionExpiresAt: input.sessionExpiresAt ?? "2099-08-27T00:00:00.000Z",
       },
     }),
     "utf8",
   ).toString("base64url");
 }
 
-function request(input: { secret?: string; role?: string; permissions?: string[] } = {}) {
+function request(input: PrincipalInput & { secret?: string } = {}) {
   return new Request("http://localhost/api/expert-tasks", {
     headers: {
       [CASE_PRODUCER_INTERNAL_AUTHORIZATION_HEADER]: input.secret ?? SECRET,
@@ -73,6 +78,15 @@ describe("Expert API access", () => {
     expect(() =>
       authenticateExpertMutationRequest(request({ role: "READ_ONLY" }), SECRET),
     ).toThrowError(/cannot mutate Expert tasks/u);
+  });
+
+  it("rejects expired Workspace Principals on the Expert surface", () => {
+    expect(() =>
+      authenticateExpertReadRequest(
+        request({ sessionExpiresAt: "2000-01-01T00:00:00.000Z" }),
+        SECRET,
+      ),
+    ).toThrowError(/session has expired/u);
   });
 
   it("durably isolates task bindings by workspace and records the schema migration", () => {
