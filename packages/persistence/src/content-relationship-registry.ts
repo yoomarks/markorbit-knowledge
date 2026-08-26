@@ -157,7 +157,9 @@ export class SqliteContentRelationshipRepository {
   }
 
   upsertFacet(facet: ContentFacetV1): ContentFacetV1 {
-    if (!isContentFacetV1(facet)) throw new RegistryValidationError("Content facet is invalid");
+    if (!isContentFacetV1(facet)) {
+      throw new RegistryValidationError("Content facet is invalid");
+    }
     const id = facetId(facet);
     this.database
       .prepare(
@@ -181,7 +183,9 @@ export class SqliteContentRelationshipRepository {
   }
 
   upsertEdge(edge: ContentEdgeV1): ContentEdgeV1 {
-    if (!isContentEdgeV1(edge)) throw new RegistryValidationError("Content edge is invalid");
+    if (!isContentEdgeV1(edge)) {
+      throw new RegistryValidationError("Content edge is invalid");
+    }
     const id = edgeId(edge);
     this.database
       .prepare(
@@ -214,11 +218,24 @@ export class SqliteContentRelationshipRepository {
     if (!isContentObjectRefV1(content)) {
       throw new RegistryValidationError("Content object reference is invalid");
     }
-    if (facets.some((facet) => facet.content.objectId !== content.objectId || facet.content.workspaceId !== content.workspaceId)) {
+    if (
+      facets.some(
+        (facet) =>
+          facet.content.objectId !== content.objectId ||
+          facet.content.workspaceId !== content.workspaceId,
+      )
+    ) {
       throw new RegistryValidationError("All facets must belong to the projected content object");
     }
-    if (outgoingEdges.some((edge) => edge.from.objectId !== content.objectId || edge.from.workspaceId !== content.workspaceId)) {
-      throw new RegistryValidationError("All replacement edges must originate from the projected content object");
+    if (
+      outgoingEdges.some(
+        (edge) =>
+          edge.from.objectId !== content.objectId || edge.from.workspaceId !== content.workspaceId,
+      )
+    ) {
+      throw new RegistryValidationError(
+        "All replacement edges must originate from the projected content object",
+      );
     }
 
     this.database.exec("BEGIN IMMEDIATE;");
@@ -255,7 +272,9 @@ export class SqliteContentRelationshipRepository {
            WHERE workspace_id = ? AND content_kind = ? AND content_id = ?
            ORDER BY facet_type ASC, normalized_value ASC, facet_id ASC`,
         )
-        .all(content.workspaceId, content.objectKind, content.objectId) as { document_json: string }[]
+        .all(content.workspaceId, content.objectKind, content.objectId) as {
+        document_json: string;
+      }[]
     ).map((row) => parseFacet(row.document_json));
   }
 
@@ -324,7 +343,8 @@ export class SqliteContentRelationshipRepository {
     }[];
     const items = rows.map((row): ContentNeighborV1 => {
       const edge = parseEdge(row.document_json);
-      const outgoing = edge.from.objectKind === content.objectKind && edge.from.objectId === content.objectId;
+      const outgoing =
+        edge.from.objectKind === content.objectKind && edge.from.objectId === content.objectId;
       return {
         direction: outgoing ? "OUTGOING" : "INCOMING",
         edge,
