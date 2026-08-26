@@ -153,11 +153,6 @@ function validateLifecycleShape(value: ExpertQuestionTaskV1): void {
       "Expert task at SENT or later requires communicationSendRequestRef and sentAt",
     );
   }
-  if (!sent && value.communicationSendRequestRef) {
-    throw new RegistryValidationError(
-      "Pre-send Expert task cannot already have communicationSendRequestRef",
-    );
-  }
   if (!sent && value.sentAt) {
     throw new RegistryValidationError("Pre-send Expert task cannot already have sentAt");
   }
