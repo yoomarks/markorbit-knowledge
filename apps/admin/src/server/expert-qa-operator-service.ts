@@ -196,15 +196,12 @@ export class ExpertQaOperatorService {
 
   recordReply(record: ExpertSourceRecordV1): ExpertQuestionTaskV1 {
     const task = requireTask(this.repository, record.taskId);
-    if (task.state !== "WAITING_RESPONSE" && task.state !== "SENT") {
-      throw new RegistryConflictError(
-        "EXPERT_TASK_NOT_WAITING_FOR_REPLY",
-        `Expert task ${task.taskId} is not waiting for a reply`,
-      );
-    }
     requireReplyBinding(task, record);
     this.repository.saveSourceRecord(record);
-    return this.repository.saveTask({ ...task, state: "RESPONSE_RECEIVED" });
+    if (task.state === "WAITING_RESPONSE" || task.state === "SENT") {
+      return this.repository.saveTask({ ...task, state: "RESPONSE_RECEIVED" });
+    }
+    return task;
   }
 
   capture(id: string): ExpertQuestionTaskV1 {

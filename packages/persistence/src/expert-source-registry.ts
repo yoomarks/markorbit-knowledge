@@ -236,6 +236,12 @@ export class SqliteExpertSourceRepository {
     const previous = parseTask(existing.document_json);
     validateTransition(existing.state, value.state);
 
+    if (previous.createdAt !== value.createdAt) {
+      throw new RegistryConflictError(
+        "EXPERT_TASK_CREATED_AT_IMMUTABLE",
+        `Expert task ${value.taskId} createdAt is immutable once created`,
+      );
+    }
     if (existing.question_lock_sha256 && existing.question_lock_sha256 !== questionLock(value)) {
       throw new RegistryConflictError(
         "EXPERT_TASK_QUESTION_LOCKED",
@@ -352,40 +358,6 @@ export class SqliteExpertSourceRepository {
         `Expert source record references missing task ${value.taskId}`,
       );
     }
-    if (!REPLY_ACCEPTING_STATES.has(task.state)) {
-      throw new RegistryConflictError(
-        "EXPERT_SOURCE_TASK_NOT_WAITING_FOR_REPLY",
-        `Expert source record task ${value.taskId} is not waiting for a reply`,
-      );
-    }
-    if (!task.communicationThreadRef) {
-      throw new RegistryConflictError(
-        "EXPERT_SOURCE_TASK_THREAD_NOT_BOUND",
-        `Expert source record task ${value.taskId} has no durable Communication thread`,
-      );
-    }
-    if (!task.sentAt || Date.parse(value.receivedAt) < Date.parse(task.sentAt)) {
-      throw new RegistryConflictError(
-        "EXPERT_SOURCE_RECEIVED_BEFORE_SEND",
-        `Expert source record ${value.sourceRecordId} cannot be received before task send`,
-      );
-    }
-    if (
-      task.expertRef !== value.expertRef ||
-      task.organizationRef !== value.organizationRef ||
-      task.jurisdiction !== value.jurisdiction ||
-      task.topic !== value.topic ||
-      task.accessClassification !== value.accessClassification
-    ) {
-      throw new RegistryValidationError(
-        `Expert source record identity does not match task ${value.taskId}`,
-      );
-    }
-    if (task.communicationThreadRef !== value.communication.communicationThreadRef) {
-      throw new RegistryValidationError(
-        `Expert source record thread does not match task ${value.taskId}`,
-      );
-    }
 
     const key = evidenceKey(value);
     const payloadSha256 = replayPayload(value);
@@ -424,6 +396,41 @@ export class SqliteExpertSourceRepository {
         );
       }
       return parseSourceRecord(sameId.document_json);
+    }
+
+    if (!REPLY_ACCEPTING_STATES.has(task.state)) {
+      throw new RegistryConflictError(
+        "EXPERT_SOURCE_TASK_NOT_WAITING_FOR_REPLY",
+        `Expert source record task ${value.taskId} is not waiting for a reply`,
+      );
+    }
+    if (!task.communicationThreadRef) {
+      throw new RegistryConflictError(
+        "EXPERT_SOURCE_TASK_THREAD_NOT_BOUND",
+        `Expert source record task ${value.taskId} has no durable Communication thread`,
+      );
+    }
+    if (!task.sentAt || Date.parse(value.receivedAt) < Date.parse(task.sentAt)) {
+      throw new RegistryConflictError(
+        "EXPERT_SOURCE_RECEIVED_BEFORE_SEND",
+        `Expert source record ${value.sourceRecordId} cannot be received before task send`,
+      );
+    }
+    if (
+      task.expertRef !== value.expertRef ||
+      task.organizationRef !== value.organizationRef ||
+      task.jurisdiction !== value.jurisdiction ||
+      task.topic !== value.topic ||
+      task.accessClassification !== value.accessClassification
+    ) {
+      throw new RegistryValidationError(
+        `Expert source record identity does not match task ${value.taskId}`,
+      );
+    }
+    if (task.communicationThreadRef !== value.communication.communicationThreadRef) {
+      throw new RegistryValidationError(
+        `Expert source record thread does not match task ${value.taskId}`,
+      );
     }
 
     this.database
