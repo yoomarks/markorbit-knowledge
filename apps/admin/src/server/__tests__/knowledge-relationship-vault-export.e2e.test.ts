@@ -4,7 +4,10 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import type { ContentRelationshipReadRepository } from "@markorbit/persistence/content-relationship-obsidian-export";
-import { executeKnowledgeRelationshipVaultExport } from "@markorbit/persistence/knowledge-relationship-vault-export";
+import {
+  executeKnowledgeRelationshipVaultExport,
+  type ExecuteKnowledgeRelationshipVaultExportInput,
+} from "@markorbit/persistence/knowledge-relationship-vault-export";
 import { LocalObsidianVaultProjectionRepository } from "@markorbit/persistence/obsidian-vault-projection";
 import { SqliteVaultExportRunRepository } from "@markorbit/persistence/vault-export-runs";
 import { ProductionKnowledgeRelationshipReadyStagingGateway } from "../knowledge-relationship-ready-staging-gateway";
@@ -44,11 +47,11 @@ describe("Knowledge relationship production READY-to-Vault acceptance", () => {
     const exportRuns = new SqliteVaultExportRunRepository(getRegistryDatabase());
     const projection = new LocalObsidianVaultProjectionRepository(staging, vaultRoot);
     const gateway = new ProductionKnowledgeRelationshipReadyStagingGateway();
-    const request = {
+    const request: ExecuteKnowledgeRelationshipVaultExportInput = {
       note: {
         content: {
-          protocolVersion: "1.0" as const,
-          objectType: "CONTENT_OBJECT_REF" as const,
+          protocolVersion: "1.0",
+          objectType: "CONTENT_OBJECT_REF",
           objectId: "web:article:kg-production-acceptance",
           objectKind: "WEB_CONTENT",
           workspaceId: DEFAULT_WORKSPACE.id,
@@ -59,7 +62,7 @@ describe("Knowledge relationship production READY-to-Vault acceptance", () => {
         access: {
           authorized: true,
           workspaceId: DEFAULT_WORKSPACE.id,
-          classification: "INTERNAL" as const,
+          classification: "INTERNAL",
         },
       },
       rootFingerprintSha256: "a".repeat(64),
