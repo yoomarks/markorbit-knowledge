@@ -227,7 +227,7 @@ function canonicalMarkdownWithMergedFrontmatter(
   const canonical = canonicalMarkdownFrontmatter(metadata);
   const closing = canonical.lastIndexOf("---\n\n");
   if (closing < 0) throw new Error("CANONICAL_MARKDOWN_FRONTMATTER_INVALID");
-  return `${canonical.slice(0, closing)}${parsed.yaml}\n---\n\n${parsed.body}`;
+  return `${canonical.slice(0, closing)}${parsed.yaml ? `\n${parsed.yaml}` : ""}\n---\n\n${parsed.body}`;
 }
 
 export function convertProductionMarkdownToStaging(
