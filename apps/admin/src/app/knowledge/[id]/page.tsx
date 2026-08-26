@@ -1,5 +1,6 @@
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import { AdminShell } from "@/components/admin-shell";
+import { ContentLocalGraph } from "@/components/knowledge/content-local-graph";
 import { ContentReader } from "@/components/knowledge/content-reader";
 import { ContentRelationshipPanel } from "@/components/knowledge/content-relationship-panel";
 
@@ -16,6 +17,7 @@ export default async function KnowledgeContentReaderPage({
       <div className="space-y-5">
         <ContentReader documentId={id} workspaceId={DEFAULT_WORKSPACE.id} />
         <ContentRelationshipPanel documentId={id} workspaceId={DEFAULT_WORKSPACE.id} />
+        <ContentLocalGraph documentId={id} workspaceId={DEFAULT_WORKSPACE.id} />
       </div>
     </AdminShell>
   );
