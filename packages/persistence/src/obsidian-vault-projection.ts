@@ -20,6 +20,7 @@ export type ObsidianVaultProjectionConflictPolicy = "OVERWRITE" | "FAIL_IF_DIFFE
 
 export type ObsidianVaultProjectionOptions = {
   conflictPolicy?: ObsidianVaultProjectionConflictPolicy;
+  targetPathOverride?: string;
 };
 
 export type ObsidianVaultProjectionResult = {
@@ -201,7 +202,9 @@ export class LocalObsidianVaultProjectionRepository implements ObsidianVaultProj
     options: ObsidianVaultProjectionOptions = {},
   ): ObsidianVaultProjectionResult {
     const record = this.loadRecord(workspaceId, stagingDocumentId);
-    const targetPath = normalizeObsidianTargetPath(record.descriptor.targetPath);
+    const targetPath = normalizeObsidianTargetPath(
+      options.targetPathOverride ?? record.descriptor.targetPath,
+    );
     const target = this.target(workspaceId, targetPath, true);
     const content = this.staging.readContent(stagingDocumentId, workspaceId);
 
