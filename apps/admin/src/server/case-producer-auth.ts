@@ -33,7 +33,10 @@ function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-function parseWorkspacePrincipal(value: string | null): CaseProducerWorkspacePrincipalV1 {
+function parseWorkspacePrincipal(
+  value: string | null,
+  now: Date,
+): CaseProducerWorkspacePrincipalV1 {
   if (!value) {
     throw new CaseProducerAccessError(
       "AUTHENTICATION_REQUIRED",
@@ -97,6 +100,22 @@ function parseWorkspacePrincipal(value: string | null): CaseProducerWorkspacePri
     );
   }
 
+  const sessionExpiresAt = Date.parse(principal.sessionExpiresAt);
+  if (Number.isNaN(sessionExpiresAt)) {
+    throw new CaseProducerAccessError(
+      "AUTHENTICATION_REQUIRED",
+      401,
+      "Workspace Principal session expiry is invalid.",
+    );
+  }
+  if (sessionExpiresAt <= now.getTime()) {
+    throw new CaseProducerAccessError(
+      "SESSION_EXPIRED",
+      401,
+      "Workspace Principal session has expired.",
+    );
+  }
+
   return {
     kind: "WORKSPACE",
     sessionId: principal.sessionId,
@@ -112,6 +131,7 @@ function parseWorkspacePrincipal(value: string | null): CaseProducerWorkspacePri
 export function authenticateCaseProducerRequest(
   request: Request,
   internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET,
+  now = new Date(),
 ): CaseProducerWorkspacePrincipalV1 {
   if (!internalServiceSecret) {
     throw new CaseProducerAccessError(
@@ -129,7 +149,10 @@ export function authenticateCaseProducerRequest(
     );
   }
 
-  const principal = parseWorkspacePrincipal(request.headers.get(CASE_PRODUCER_PRINCIPAL_HEADER));
+  const principal = parseWorkspacePrincipal(
+    request.headers.get(CASE_PRODUCER_PRINCIPAL_HEADER),
+    now,
+  );
   if (!principal.permissions.includes(CASE_PRODUCER_REQUIRED_PERMISSION)) {
     throw new CaseProducerAccessError(
       "PERMISSION_DENIED",
@@ -157,8 +180,9 @@ export function authorizeCaseProducerRequest(
   request: Request,
   candidate: CaseCandidateV1,
   internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET,
+  now = new Date(),
 ): CaseProducerWorkspacePrincipalV1 {
-  const principal = authenticateCaseProducerRequest(request, internalServiceSecret);
+  const principal = authenticateCaseProducerRequest(request, internalServiceSecret, now);
   authorizeCaseProducerWorkspace(principal, candidate);
   return principal;
 }
