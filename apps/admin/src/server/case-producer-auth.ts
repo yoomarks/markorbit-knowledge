@@ -6,6 +6,32 @@ export const CASE_PRODUCER_PRINCIPAL_HEADER = "x-markorbit-principal" as const;
 export const CASE_PRODUCER_REQUIRED_PERMISSION = "matter:read" as const;
 
 const WORKSPACE_ROLES = new Set(["WORKSPACE_ADMIN", "MATTER_MANAGER", "REVIEWER", "READ_ONLY"]);
+const WORKSPACE_PERMISSIONS = new Set([
+  "workspace:read",
+  "workspace:manage",
+  "membership:read",
+  "membership:manage",
+  "matter:read",
+  "matter:create",
+  "matter:manage",
+  "order:create",
+  "order:read",
+  "order:update",
+  "order:confirm",
+  "order:matter:create",
+  "order:cancel",
+  "order:audit:read",
+  "review:read",
+  "review:perform",
+  "execution:read",
+  "execution:manage",
+  "document-package:read",
+  "document-package:prepare",
+  "instruction-ledger:read",
+  "instruction-ledger:write",
+  "document-package:mark-ready",
+  "audit:read",
+]);
 
 export type CaseProducerWorkspacePrincipalV1 = {
   kind: "WORKSPACE";
@@ -90,7 +116,9 @@ function parseWorkspacePrincipal(
     !nonEmpty(principal.role) ||
     !WORKSPACE_ROLES.has(principal.role) ||
     !Array.isArray(permissions) ||
-    permissions.some((permission) => !nonEmpty(permission)) ||
+    permissions.some(
+      (permission) => !nonEmpty(permission) || !WORKSPACE_PERMISSIONS.has(permission),
+    ) ||
     !nonEmpty(principal.sessionExpiresAt)
   ) {
     throw new CaseProducerAccessError(
