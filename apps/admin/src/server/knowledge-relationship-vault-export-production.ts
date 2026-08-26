@@ -52,7 +52,9 @@ function sha256(value: string | Uint8Array): string {
 
 function stableKey(input: KnowledgeRelationshipStagingInput): string {
   return sha256(
-    [input.workspaceId, input.idempotencyKey, input.targetPath, sha256(input.markdown)].join("\u001f"),
+    [input.workspaceId, input.idempotencyKey, input.targetPath, sha256(input.markdown)].join(
+      "\u001f",
+    ),
   );
 }
 
@@ -219,11 +221,7 @@ function existingReady(
   };
 }
 
-function requireTargetRun(
-  workspaceId: string,
-  rawArtifactId: string,
-  conversionProfileId: string,
-) {
+function requireTargetRun(workspaceId: string, rawArtifactId: string, conversionProfileId: string) {
   const runs = getConversionRunLedgerRepository().list({
     workspaceId,
     rawArtifactId,
@@ -264,7 +262,10 @@ function assertQueueIsolation(workspaceId: string, targetRunId: string): void {
 }
 
 class InProcessProductionConversionClient
-  implements ProductionRawArtifactReader, ProductionStagingUploader, ProductionConversionRuntimeClient
+  implements
+    ProductionRawArtifactReader,
+    ProductionStagingUploader,
+    ProductionConversionRuntimeClient
 {
   constructor(
     private readonly service: ProductionConversionWorkerService,
@@ -323,7 +324,13 @@ class InProcessProductionConversionClient
     idempotencyKey: string,
   ): Promise<void> {
     const report: ConversionOutputReadyReport = {
-      ...this.reportBase(context, "CONVERSION_OUTPUT_READY_REPORT", idempotencyKey, "RUNNING", "cor"),
+      ...this.reportBase(
+        context,
+        "CONVERSION_OUTPUT_READY_REPORT",
+        idempotencyKey,
+        "RUNNING",
+        "cor",
+      ),
       objectType: "CONVERSION_OUTPUT_READY_REPORT",
       output: evidence,
     };
@@ -370,9 +377,7 @@ class InProcessProductionConversionClient
   }
 }
 
-export class ProductionKnowledgeRelationshipExportStagingGateway
-  implements KnowledgeRelationshipExportStagingGateway
-{
+export class ProductionKnowledgeRelationshipExportStagingGateway implements KnowledgeRelationshipExportStagingGateway {
   async stageReady(
     input: KnowledgeRelationshipStagingInput,
   ): Promise<KnowledgeRelationshipReadyStaging> {
@@ -399,7 +404,10 @@ export class ProductionKnowledgeRelationshipExportStagingGateway
 
     const ready = existingReady(input, upload.artifact.id, profile.id);
     if (ready) return ready;
-    if (upload.autoConversion.status === "FAILED" || upload.autoConversion.status === "NOT_APPLICABLE") {
+    if (
+      upload.autoConversion.status === "FAILED" ||
+      upload.autoConversion.status === "NOT_APPLICABLE"
+    ) {
       throw new RegistryConflictError(
         "KG004_AUTO_CONVERSION_NOT_DISPATCHED",
         `Relationship export automatic conversion did not dispatch: ${upload.autoConversion.status}`,
@@ -556,7 +564,8 @@ export class ProductionKnowledgeRelationshipExportStagingGateway
       }
       try {
         const current = workers.getById(workerId);
-        if (current) workers.update(workerId, { desiredState: "DISABLED" }, current.worker.updatedAt);
+        if (current)
+          workers.update(workerId, { desiredState: "DISABLED" }, current.worker.updatedAt);
       } catch {
         // Preserve primary result/failure; durable Worker state remains inspectable.
       }
