@@ -1,49 +1,50 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ContentRelationshipReadRepository } from "@markorbit/persistence/content-relationship-obsidian-export";
-import {
-  executeKnowledgeRelationshipVaultExport,
-  type ExecuteKnowledgeRelationshipVaultExportInput,
-} from "@markorbit/persistence/knowledge-relationship-vault-export";
-import { LocalObsidianVaultProjectionRepository } from "@markorbit/persistence/obsidian-vault-projection";
-import { SqliteVaultExportRunRepository } from "@markorbit/persistence/vault-export-runs";
+import type { ExecuteKnowledgeRelationshipVaultExportInput } from "@markorbit/persistence/knowledge-relationship-vault-export";
 
-const tempRoot = mkdtempSync(join(tmpdir(), "markorbit-kg-vault-export-"));
-const vaultRoot = join(tempRoot, "vault");
+const workspaceId = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
+const roots: string[] = [];
 
 function resetProductionRegistry(): void {
   delete (globalThis as typeof globalThis & { markorbitRegistries?: unknown }).markorbitRegistries;
 }
-
-beforeAll(() => {
-  process.env.MARKORBIT_KNOWLEDGE_DB_PATH = join(tempRoot, "knowledge.sqlite");
-  process.env.MARKORBIT_ARTIFACT_STORE_PATH = join(tempRoot, "artifacts");
-  process.env.MARKORBIT_STAGING_STORE_PATH = join(tempRoot, "staging");
-  process.env.MARKORBIT_MANUAL_UPLOAD_MAX_BYTES = String(1024 * 1024);
-  resetProductionRegistry();
-  vi.resetModules();
-});
-
-afterAll(() => {
-  resetProductionRegistry();
-  delete process.env.MARKORBIT_KNOWLEDGE_DB_PATH;
-  delete process.env.MARKORBIT_ARTIFACT_STORE_PATH;
-  delete process.env.MARKORBIT_STAGING_STORE_PATH;
-  delete process.env.MARKORBIT_MANUAL_UPLOAD_MAX_BYTES;
-  vi.resetModules();
-  rmSync(tempRoot, { recursive: true, force: true });
-});
 
 const relationships: ContentRelationshipReadRepository = {
   listFacets: () => [],
   listNeighbors: () => ({ items: [], total: 0, limit: 200, offset: 0 }),
 };
 
+afterEach(() => {
+  resetProductionRegistry();
+  delete process.env.MARKORBIT_KNOWLEDGE_DB_PATH;
+  delete process.env.MARKORBIT_ARTIFACT_STORE_PATH;
+  delete process.env.MARKORBIT_STAGING_STORE_PATH;
+  delete process.env.MARKORBIT_MANUAL_UPLOAD_MAX_BYTES;
+  vi.resetModules();
+  roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true }));
+});
+
 describe("Knowledge relationship production READY-to-Vault acceptance", () => {
   it("runs governed ingestion through READY staging, writes the deterministic Vault note, and replays without rewriting", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "markorbit-kg-vault-export-"));
+    roots.push(tempRoot);
+    const vaultRoot = join(tempRoot, "vault");
+    process.env.MARKORBIT_KNOWLEDGE_DB_PATH = join(tempRoot, "knowledge.sqlite");
+    process.env.MARKORBIT_ARTIFACT_STORE_PATH = join(tempRoot, "artifacts");
+    process.env.MARKORBIT_STAGING_STORE_PATH = join(tempRoot, "staging");
+    process.env.MARKORBIT_MANUAL_UPLOAD_MAX_BYTES = String(1024 * 1024);
+    resetProductionRegistry();
+    vi.resetModules();
+
+    const { executeKnowledgeRelationshipVaultExport } =
+      await import("@markorbit/persistence/knowledge-relationship-vault-export");
+    const { LocalObsidianVaultProjectionRepository } =
+      await import("@markorbit/persistence/obsidian-vault-projection");
+    const { SqliteVaultExportRunRepository } =
+      await import("@markorbit/persistence/vault-export-runs");
     const { ProductionKnowledgeRelationshipReadyStagingGateway } =
       await import("../knowledge-relationship-ready-staging-gateway");
     const {
@@ -64,14 +65,14 @@ describe("Knowledge relationship production READY-to-Vault acceptance", () => {
           objectType: "CONTENT_OBJECT_REF",
           objectId: "web:article:kg-production-acceptance",
           objectKind: "WEB_CONTENT",
-          workspaceId: DEFAULT_WORKSPACE.id,
+          workspaceId,
         },
         title: "KG Production Acceptance",
         bodyMarkdown: "Relationship-aware Knowledge export body.",
         sourceRef: "https://example.invalid/kg-production-acceptance",
         access: {
           authorized: true,
-          workspaceId: DEFAULT_WORKSPACE.id,
+          workspaceId,
           classification: "INTERNAL",
         },
       },
@@ -91,27 +92,25 @@ describe("Knowledge relationship production READY-to-Vault acceptance", () => {
     expect(first.run.state).toBe("SUCCEEDED");
     expect(first.staging.targetPath).toBe(first.artifact.targetPath);
     expect(first.artifact.targetPath).toMatch(/^knowledge\/.+\.md$/u);
-    expect(first.projection.vaultRelativePath).toBe(
-      `${DEFAULT_WORKSPACE.id}/${first.artifact.targetPath}`,
-    );
+    expect(first.projection.vaultRelativePath).toBe(`${workspaceId}/${first.artifact.targetPath}`);
     expect(first.projection.written).toBe(true);
 
-    const stagedRecord = staging.getDocument(first.staging.stagingDocumentId, DEFAULT_WORKSPACE.id);
+    const stagedRecord = staging.getDocument(first.staging.stagingDocumentId, workspaceId);
     expect(stagedRecord?.descriptor.status).toBe("READY");
     expect(stagedRecord?.descriptor.targetPath).toBe(first.artifact.targetPath);
     expect(stagedRecord?.descriptor.contentHash.value).toBe(first.staging.contentSha256);
     const stagedMarkdown = new TextDecoder().decode(
-      staging.readContent(first.staging.stagingDocumentId, DEFAULT_WORKSPACE.id),
+      staging.readContent(first.staging.stagingDocumentId, workspaceId),
     );
     expect(stagedMarkdown.match(/^---$/gmu)).toHaveLength(2);
     expect(stagedMarkdown).toContain("markorbit:");
     expect(stagedMarkdown).toContain('knowledge_id: "web:article:kg-production-acceptance"');
     expect(stagedMarkdown).toContain("Relationship-aware Knowledge export body.");
 
-    const projectedPath = join(vaultRoot, DEFAULT_WORKSPACE.id, first.artifact.targetPath);
+    const projectedPath = join(vaultRoot, workspaceId, first.artifact.targetPath);
     expect(readFileSync(projectedPath, "utf8")).toBe(stagedMarkdown);
 
-    const readyPackages = getReadyPackageRepository().list(DEFAULT_WORKSPACE.id);
+    const readyPackages = getReadyPackageRepository().list(workspaceId);
     expect(readyPackages).toHaveLength(1);
     expect(readyPackages[0]?.evidence.stagingDocumentId).toBe(first.staging.stagingDocumentId);
 
@@ -125,12 +124,12 @@ describe("Knowledge relationship production READY-to-Vault acceptance", () => {
     expect(readFileSync(projectedPath, "utf8")).toBe(stagedMarkdown);
 
     const conversionRuns = getConversionRunLedgerRepository().list({
-      workspaceId: DEFAULT_WORKSPACE.id,
+      workspaceId,
       converterId: "builtin-markdown-staging",
       limit: 100,
     });
     expect(conversionRuns.items).toHaveLength(1);
     expect(conversionRuns.items[0]?.status).toBe("COMPLETED");
-    expect(staging.listDocuments({ workspaceId: DEFAULT_WORKSPACE.id, limit: 100 }).total).toBe(1);
+    expect(staging.listDocuments({ workspaceId, limit: 100 }).total).toBe(1);
   }, 30_000);
 });
