@@ -1,6 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import type { ContentEdgeV1, ContentFacetV1, ContentObjectRefV1 } from "@markorbit/contracts";
+import type {
+  ContentEdgeV1,
+  ContentFacetV1,
+  ContentObjectRefV1,
+} from "@markorbit/contracts";
 import { SqliteContentRelationshipRepository } from "./content-relationship-registry";
 
 const article: ContentObjectRefV1 = {
@@ -52,7 +56,13 @@ const citation: ContentEdgeV1 = {
 
 function repository() {
   const database = new DatabaseSync(":memory:");
-  return { database, repo: new SqliteContentRelationshipRepository(database, () => new Date("2026-08-26T12:00:00.000Z")) };
+  return {
+    database,
+    repo: new SqliteContentRelationshipRepository(
+      database,
+      () => new Date("2026-08-26T12:00:00.000Z"),
+    ),
+  };
 }
 
 describe("SqliteContentRelationshipRepository", () => {
@@ -109,13 +119,17 @@ describe("SqliteContentRelationshipRepository", () => {
       expect(repo.listNeighbors(expert).items).toMatchObject([
         { direction: "OUTGOING", neighbor: article },
       ]);
-      expect(repo.findContentByFacet("workspace-a", "TOPIC", "us trademark assignment")).toEqual({
+      expect(
+        repo.findContentByFacet("workspace-a", "TOPIC", "us trademark assignment"),
+      ).toEqual({
         items: [article],
         total: 1,
         limit: 50,
         offset: 0,
       });
-      expect(repo.findContentByFacet("workspace-b", "TOPIC", "us trademark assignment").total).toBe(0);
+      expect(
+        repo.findContentByFacet("workspace-b", "TOPIC", "us trademark assignment").total,
+      ).toBe(0);
     } finally {
       database.close();
     }
