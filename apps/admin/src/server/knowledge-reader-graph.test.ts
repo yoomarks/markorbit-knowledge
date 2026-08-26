@@ -168,11 +168,11 @@ describe("buildKnowledgeReaderGraph", () => {
       expect.arrayContaining(["NEIGHBOR_PAGE_LIMIT", "NODE_BUDGET"]),
     );
 
-    const edgeLimited = buildKnowledgeReaderGraph(
-      repository([rootToFirst, rootToSecond]),
-      root,
-      { depth: 1, maxNodes: 10, maxEdges: 1 },
-    );
+    const edgeLimited = buildKnowledgeReaderGraph(repository([rootToFirst, rootToSecond]), root, {
+      depth: 1,
+      maxNodes: 10,
+      maxEdges: 1,
+    });
     expect(edgeLimited.edges).toHaveLength(1);
     expect(edgeLimited.nodes).toHaveLength(2);
     expect(edgeLimited.truncationReasons).toContain("EDGE_BUDGET");

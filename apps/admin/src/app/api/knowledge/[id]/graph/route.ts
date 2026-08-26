@@ -57,7 +57,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         const neighborRecord = staging.getDocument(neighbor.objectId, workspaceId);
         if (!neighborRecord) return undefined;
         const source = sources.getById(neighborRecord.descriptor.sourceId);
-        const artifact = artifacts.getArtifact(neighborRecord.descriptor.rawArtifactId)?.artifact ?? null;
+        const artifact =
+          artifacts.getArtifact(neighborRecord.descriptor.rawArtifactId)?.artifact ?? null;
         return {
           title: neighborRecord.descriptor.title,
           ...(source?.name ? { sourceName: source.name } : {}),

@@ -252,7 +252,9 @@ export function ContentLocalGraph({
               <div className="space-y-2">
                 {depth === 1 ? (
                   <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-                    {zh ? "切换到 2 跳以展开第二层。" : "Switch to 2 hops to expand the second layer."}
+                    {zh
+                      ? "切换到 2 跳以展开第二层。"
+                      : "Switch to 2 hops to expand the second layer."}
                   </p>
                 ) : secondHop.length ? (
                   secondHop.map((node) => <NodeCard key={node.ref} node={node} />)
@@ -288,8 +290,8 @@ export function ContentLocalGraph({
           {data.truncated ? (
             <p className="mt-4 text-[10px] leading-4 text-amber-700">
               {zh ? "截断原因" : "Truncation"}: {data.truncationReasons.join(", ")} · max{" "}
-              {data.limits.maxNodes} nodes / {data.limits.maxEdges} edges / {data.limits.neighborPageLimit}{" "}
-              per neighborhood
+              {data.limits.maxNodes} nodes / {data.limits.maxEdges} edges /{" "}
+              {data.limits.neighborPageLimit} per neighborhood
             </p>
           ) : null}
         </>

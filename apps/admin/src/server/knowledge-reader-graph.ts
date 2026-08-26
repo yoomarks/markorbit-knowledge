@@ -7,9 +7,7 @@ export const DEFAULT_KNOWLEDGE_GRAPH_MAX_EDGES = 80;
 
 export type KnowledgeReaderGraphDepth = 1 | 2;
 export type KnowledgeReaderGraphTruncationReason =
-  | "NEIGHBOR_PAGE_LIMIT"
-  | "NODE_BUDGET"
-  | "EDGE_BUDGET";
+  "NEIGHBOR_PAGE_LIMIT" | "NODE_BUDGET" | "EDGE_BUDGET";
 
 export type KnowledgeReaderGraphNode = {
   ref: string;
@@ -156,16 +154,8 @@ export function buildKnowledgeReaderGraph(
   const depth = options.depth ?? 2;
   if (depth !== 1 && depth !== 2) throw new Error("depth must be 1 or 2");
 
-  const maxNodes = positiveInteger(
-    options.maxNodes,
-    DEFAULT_KNOWLEDGE_GRAPH_MAX_NODES,
-    "maxNodes",
-  );
-  const maxEdges = positiveInteger(
-    options.maxEdges,
-    DEFAULT_KNOWLEDGE_GRAPH_MAX_EDGES,
-    "maxEdges",
-  );
+  const maxNodes = positiveInteger(options.maxNodes, DEFAULT_KNOWLEDGE_GRAPH_MAX_NODES, "maxNodes");
+  const maxEdges = positiveInteger(options.maxEdges, DEFAULT_KNOWLEDGE_GRAPH_MAX_EDGES, "maxEdges");
   const rootKey = contentKey(root);
   const nodes = new Map<string, KnowledgeReaderGraphNode>([
     [rootKey, graphNode(root, 0, options.resolveMetadata)],
