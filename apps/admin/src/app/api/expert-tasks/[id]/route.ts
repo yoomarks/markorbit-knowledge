@@ -5,9 +5,11 @@ import {
   authenticateExpertMutationRequest,
   authenticateExpertReadRequest,
   authorizeExpertTaskWorkspace,
+  bindExpertTaskWorkspace,
 } from "@/server/expert-api-access";
 import { ExpertQaOperatorService } from "@/server/expert-qa-operator-service";
 import { getExpertSourceRepository } from "@/server/expert-source-registry";
+import { withRegistryTransaction } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,12 +56,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       case "CLOSE":
         return NextResponse.json({ task: operator.close(id) });
       case "FOLLOW_UP": {
-        const followUp = operator.createFollowUp(
-          id,
-          requiredString(body, "question"),
-          principal.userId,
-        );
-        bindFollowUpWorkspace(followUp.taskId, principal.workspaceId);
+        const followUp = withRegistryTransaction(() => {
+          const created = operator.createFollowUp(
+            id,
+            requiredString(body, "question"),
+            principal.userId,
+          );
+          bindExpertTaskWorkspace(created.taskId, principal.workspaceId);
+          return created;
+        });
         return NextResponse.json({ task: followUp });
       }
       default:
@@ -68,11 +73,4 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   } catch (error) {
     return apiError(error);
   }
-}
-
-function bindFollowUpWorkspace(taskId: string, workspaceId: string): void {
-  // Local import avoidance keeps action flow synchronous while preserving the parent workspace.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { bindExpertTaskWorkspace } = require("@/server/expert-api-access") as typeof import("@/server/expert-api-access");
-  bindExpertTaskWorkspace(taskId, workspaceId);
 }
