@@ -78,23 +78,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function nonBlank(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.trim().length > 0 &&
-    value === value.trim()
-  );
+  return typeof value === "string" && value.trim().length > 0 && value === value.trim();
 }
 
-function oneOf<T extends readonly string[]>(
-  values: T,
-  value: unknown,
-): value is T[number] {
+function oneOf<T extends readonly string[]>(values: T, value: unknown): value is T[number] {
   return typeof value === "string" && (values as readonly string[]).includes(value);
 }
 
-export function isContentObjectRefV1(
-  value: unknown,
-): value is ContentObjectRefV1 {
+export function isContentObjectRefV1(value: unknown): value is ContentObjectRefV1 {
   if (!isRecord(value)) return false;
   return (
     value.protocolVersion === CONTENT_RELATIONSHIP_PROTOCOL_VERSION &&
@@ -114,8 +105,7 @@ export function isContentFacetV1(value: unknown): value is ContentFacetV1 {
     oneOf(CONTENT_FACET_TYPES, value.facetType) &&
     nonBlank(value.value) &&
     nonBlank(value.normalizedValue) &&
-    value.normalizedValue ===
-      value.normalizedValue.toLocaleLowerCase("en-US") &&
+    value.normalizedValue === value.normalizedValue.toLocaleLowerCase("en-US") &&
     oneOf(RELATION_ORIGINS, value.origin) &&
     value.origin !== "MACHINE_DERIVED" &&
     (value.evidenceRef === undefined || nonBlank(value.evidenceRef))
@@ -136,10 +126,7 @@ export function isContentEdgeV1(value: unknown): value is ContentEdgeV1 {
     return false;
   }
   if (value.from.workspaceId !== value.to.workspaceId) return false;
-  if (
-    value.from.objectId === value.to.objectId &&
-    value.relationType !== "VERSION_OF"
-  ) {
+  if (value.from.objectId === value.to.objectId && value.relationType !== "VERSION_OF") {
     return false;
   }
 
