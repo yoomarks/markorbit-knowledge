@@ -126,49 +126,49 @@ describe("Case producer internal authentication", () => {
         ),
       { code: "INTERNAL_SERVICE_UNAUTHORIZED", httpStatus: 401 },
     );
-    expectAccessError(
-      () => authorize(principal(), "wrong"),
-      { code: "INTERNAL_SERVICE_UNAUTHORIZED", httpStatus: 401 },
-    );
+    expectAccessError(() => authorize(principal(), "wrong"), {
+      code: "INTERNAL_SERVICE_UNAUTHORIZED",
+      httpStatus: 401,
+    });
   });
 
   it("rejects malformed Workspace Principal envelopes", () => {
-    expectAccessError(
-      () => authorize("not-base64-json"),
-      { code: "AUTHENTICATION_REQUIRED", httpStatus: 401 },
-    );
-    expectAccessError(
-      () => authorize(principal({ role: "UNKNOWN" })),
-      { code: "AUTHENTICATION_REQUIRED", httpStatus: 401 },
-    );
+    expectAccessError(() => authorize("not-base64-json"), {
+      code: "AUTHENTICATION_REQUIRED",
+      httpStatus: 401,
+    });
+    expectAccessError(() => authorize(principal({ role: "UNKNOWN" })), {
+      code: "AUTHENTICATION_REQUIRED",
+      httpStatus: 401,
+    });
   });
 
   it("rejects invalid, expired, and exactly-expired Workspace Principal sessions", () => {
-    expectAccessError(
-      () => authorize(principal({ sessionExpiresAt: "not-a-timestamp" })),
-      { code: "AUTHENTICATION_REQUIRED", httpStatus: 401 },
-    );
+    expectAccessError(() => authorize(principal({ sessionExpiresAt: "not-a-timestamp" })), {
+      code: "AUTHENTICATION_REQUIRED",
+      httpStatus: 401,
+    });
     expectAccessError(
       () => authorize(principal({ sessionExpiresAt: "2026-08-26T13:59:59.999Z" })),
       { code: "SESSION_EXPIRED", httpStatus: 401 },
     );
-    expectAccessError(
-      () => authorize(principal({ sessionExpiresAt: now.toISOString() })),
-      { code: "SESSION_EXPIRED", httpStatus: 401 },
-    );
+    expectAccessError(() => authorize(principal({ sessionExpiresAt: now.toISOString() })), {
+      code: "SESSION_EXPIRED",
+      httpStatus: 401,
+    });
   });
 
   it("requires the same matter:read permission used by MarkReg Formal Matter reads", () => {
-    expectAccessError(
-      () => authorize(principal({ permissions: ["workspace:read"] })),
-      { code: "PERMISSION_DENIED", httpStatus: 403 },
-    );
+    expectAccessError(() => authorize(principal({ permissions: ["workspace:read"] })), {
+      code: "PERMISSION_DENIED",
+      httpStatus: 403,
+    });
   });
 
   it("rejects cross-workspace promotion even with valid service authentication", () => {
-    expectAccessError(
-      () => authorize(principal({ workspaceId: "workspace_other" })),
-      { code: "WORKSPACE_MISMATCH", httpStatus: 403 },
-    );
+    expectAccessError(() => authorize(principal({ workspaceId: "workspace_other" })), {
+      code: "WORKSPACE_MISMATCH",
+      httpStatus: 403,
+    });
   });
 });
