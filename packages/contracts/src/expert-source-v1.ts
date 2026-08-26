@@ -206,7 +206,7 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
     ? canonicalRef(item.communicationSendRequestRef) &&
       timestamp(item.sentAt) &&
       atOrAfter(item.sentAt, item.createdAt)
-    : item.sentAt === undefined && item.communicationSendRequestRef === undefined;
+    : item.sentAt === undefined;
   const closureValid =
     item.state === "CLOSED"
       ? timestamp(item.closedAt) && atOrAfter(item.closedAt, item.sentAt)
