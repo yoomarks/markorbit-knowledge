@@ -24,7 +24,7 @@ export type KnowledgeRelationshipStagingInput = {
 export type KnowledgeRelationshipReadyStaging = {
   stagingDocumentId: string;
   workspaceId: string;
-  targetPath: string;
+  stagingTargetPath: string;
   sourceContentSha256: string;
   contentSha256: string;
 };
@@ -130,8 +130,8 @@ export async function executeKnowledgeRelationshipVaultExport(
 
   if (
     staging.workspaceId !== artifact.content.workspaceId ||
-    staging.targetPath !== artifact.targetPath ||
     staging.sourceContentSha256 !== renderedContentSha256 ||
+    !staging.stagingTargetPath.trim() ||
     !/^[a-f0-9]{64}$/u.test(staging.contentSha256)
   ) {
     throw new RegistryValidationError(
@@ -146,7 +146,7 @@ export async function executeKnowledgeRelationshipVaultExport(
     staging: {
       stagingDocumentId: staging.stagingDocumentId,
       contentSha256: staging.contentSha256,
-      targetPath: staging.targetPath,
+      targetPath: staging.stagingTargetPath,
     },
   });
 
@@ -165,11 +165,10 @@ export async function executeKnowledgeRelationshipVaultExport(
     };
   }
 
-  const projection = dependencies.projection.project(
-    staging.workspaceId,
-    staging.stagingDocumentId,
-    { conflictPolicy: "FAIL_IF_DIFFERENT" },
-  );
+  const projection = dependencies.projection.project(staging.workspaceId, staging.stagingDocumentId, {
+    conflictPolicy: "FAIL_IF_DIFFERENT",
+    targetPathOverride: artifact.targetPath,
+  });
   const withReceipt = dependencies.exportRuns.recordProjectionReceipt(
     staging.workspaceId,
     prepared.run.id,
