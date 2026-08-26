@@ -30,9 +30,7 @@ export type KnowledgeRelationshipReadyStaging = {
 };
 
 export interface KnowledgeRelationshipExportStagingGateway {
-  stageReady(
-    input: KnowledgeRelationshipStagingInput,
-  ): Promise<KnowledgeRelationshipReadyStaging>;
+  stageReady(input: KnowledgeRelationshipStagingInput): Promise<KnowledgeRelationshipReadyStaging>;
 }
 
 export type ExecuteKnowledgeRelationshipVaultExportInput = {

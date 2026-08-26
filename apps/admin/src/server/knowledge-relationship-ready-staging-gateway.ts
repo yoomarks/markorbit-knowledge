@@ -64,7 +64,8 @@ function sha256(value: Uint8Array | string): string {
 
 function normalizedTargetPath(value: string): string {
   const normalized = normalizeStagingTargetPath(value);
-  if (!normalized) throw new RegistryValidationError("Knowledge relationship targetPath is invalid");
+  if (!normalized)
+    throw new RegistryValidationError("Knowledge relationship targetPath is invalid");
   return normalized;
 }
 
@@ -145,11 +146,7 @@ function ensureRelationshipSource(input: KnowledgeRelationshipStagingInput) {
   }
 }
 
-function ensureRelationshipProfile(
-  workspaceId: string,
-  sourceId: string,
-  targetPath: string,
-) {
+function ensureRelationshipProfile(workspaceId: string, sourceId: string, targetPath: string) {
   const converters = getConverterRegistryRepository();
   const name = `Knowledge relationship staging ${sha256(`${sourceId}:${targetPath}`).slice(0, 16)}`;
   const existing = converters
@@ -290,9 +287,7 @@ function existingReady(
   };
 }
 
-export class ProductionKnowledgeRelationshipReadyStagingGateway
-  implements KnowledgeRelationshipExportStagingGateway
-{
+export class ProductionKnowledgeRelationshipReadyStagingGateway implements KnowledgeRelationshipExportStagingGateway {
   async stageReady(
     input: KnowledgeRelationshipStagingInput,
   ): Promise<KnowledgeRelationshipReadyStaging> {
@@ -544,7 +539,11 @@ export class ProductionKnowledgeRelationshipReadyStagingGateway
         result.commit.stagingDocumentId,
         input.workspaceId,
       );
-      if (!ready || ready.descriptor.status !== "READY" || ready.descriptor.targetPath !== targetPath) {
+      if (
+        !ready ||
+        ready.descriptor.status !== "READY" ||
+        ready.descriptor.targetPath !== targetPath
+      ) {
         throw new RegistryConflictError(
           "KNOWLEDGE_RELATIONSHIP_READY_EVIDENCE_MISSING",
           "Verified READY staging evidence could not be re-read after finalization",

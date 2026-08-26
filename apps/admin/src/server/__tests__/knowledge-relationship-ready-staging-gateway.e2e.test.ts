@@ -34,9 +34,8 @@ describe("ProductionKnowledgeRelationshipReadyStagingGateway E2E", () => {
     resetProductionRegistry();
     vi.resetModules();
 
-    const { ProductionKnowledgeRelationshipReadyStagingGateway } = await import(
-      "../knowledge-relationship-ready-staging-gateway"
-    );
+    const { ProductionKnowledgeRelationshipReadyStagingGateway } =
+      await import("../knowledge-relationship-ready-staging-gateway");
     const {
       getConversionRunLedgerRepository,
       getConversionRuntimeRepository,
@@ -105,9 +104,7 @@ describe("ProductionKnowledgeRelationshipReadyStagingGateway E2E", () => {
         workerId: conversionWorkers[0]?.worker.id,
         limit: 20,
       }).items,
-    ).toEqual([
-      expect.objectContaining({ active: false }),
-    ]);
+    ).toEqual([expect.objectContaining({ active: false })]);
 
     const second = await gateway.stageReady(request);
     expect(second).toEqual(first);
