@@ -111,7 +111,7 @@ describe("Knowledge relationship production READY-to-Vault acceptance", () => {
     );
     expect(second.run.id).toBe(first.run.id);
     expect(second.staging.stagingDocumentId).toBe(first.staging.stagingDocumentId);
-    expect(second.projection.written).toBe(true);
+    expect(second.projection.written).toBe(false);
     expect(readFileSync(projectedPath, "utf8")).toBe(stagedMarkdown);
 
     const conversionRuns = getConversionRunLedgerRepository().list({
