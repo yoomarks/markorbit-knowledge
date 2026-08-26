@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import type { ExpertSourceRetrievalRequestV1 } from "@markorbit/contracts";
 import { apiError } from "@/server/api-errors";
 import {
-  authenticateExpertReadRequest,
   listExpertTaskIdsForWorkspace,
+  resolveExpertReadPrincipal,
 } from "@/server/expert-api-access";
 import { getExpertSourceRetrievalRepository } from "@/server/expert-source-retrieval";
 
@@ -23,7 +23,7 @@ function integer(searchParams: URLSearchParams, name: string): number | undefine
 
 export async function GET(request: Request) {
   try {
-    const principal = authenticateExpertReadRequest(request);
+    const principal = await resolveExpertReadPrincipal(request);
     const { searchParams } = new URL(request.url);
     const jurisdiction = text(searchParams, "jurisdiction");
     const topic = text(searchParams, "topic");

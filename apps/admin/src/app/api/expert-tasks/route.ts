@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
-  authenticateExpertMutationRequest,
-  authenticateExpertReadRequest,
   bindExpertTaskWorkspace,
   listExpertTaskIdsForWorkspace,
+  resolveExpertMutationPrincipal,
+  resolveExpertReadPrincipal,
 } from "@/server/expert-api-access";
 import { ExpertQaOperatorService } from "@/server/expert-qa-operator-service";
 import { getExpertSourceRepository } from "@/server/expert-source-registry";
@@ -28,7 +28,7 @@ function service(): ExpertQaOperatorService {
 
 export async function GET(request: Request) {
   try {
-    const principal = authenticateExpertReadRequest(request);
+    const principal = await resolveExpertReadPrincipal(request);
     const operator = service();
     const items = listExpertTaskIdsForWorkspace(principal.workspaceId).map((id) =>
       operator.getView(id),
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const principal = authenticateExpertMutationRequest(request);
+    const principal = await resolveExpertMutationPrincipal(request);
     const body = requireRecord(await readJson(request));
     const created = withRegistryTransaction(() => {
       const task = service().createDraft({
