@@ -98,12 +98,9 @@ describe("Knowledge relationship production READY-to-Vault acceptance", () => {
     const projectedPath = join(vaultRoot, DEFAULT_WORKSPACE.id, first.artifact.targetPath);
     expect(readFileSync(projectedPath, "utf8")).toBe(stagedMarkdown);
 
-    const readyPackages = getReadyPackageRepository().list({
-      workspaceId: DEFAULT_WORKSPACE.id,
-      limit: 100,
-    });
-    expect(readyPackages.items).toHaveLength(1);
-    expect(readyPackages.items[0]?.stagingDocumentId).toBe(first.staging.stagingDocumentId);
+    const readyPackages = getReadyPackageRepository().list(DEFAULT_WORKSPACE.id);
+    expect(readyPackages).toHaveLength(1);
+    expect(readyPackages[0]?.evidence.stagingDocumentId).toBe(first.staging.stagingDocumentId);
 
     const second = await executeKnowledgeRelationshipVaultExport(
       { relationships, staging: gateway, exportRuns, projection },
