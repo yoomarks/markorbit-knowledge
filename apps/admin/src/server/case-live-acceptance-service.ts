@@ -162,14 +162,25 @@ export class CaseLiveAcceptanceService {
       );
     }
 
+    const storedCandidate = this.candidates.getCandidate(input.candidate.candidateId);
     let accepted: CaseCandidateV1;
-    try {
-      accepted = this.candidates.acceptCandidate(input.candidate, startedAt).candidate;
-    } catch (error) {
-      throw new CaseLiveAcceptanceServiceError(
-        errorCode(error, "CASE_LIVE_ACCEPTANCE_INTAKE_FAILED"),
-        "Case Candidate intake failed before an acceptance run could start",
-      );
+    if (storedCandidate) {
+      if (canonical(storedCandidate) !== canonical(input.candidate)) {
+        throw new CaseLiveAcceptanceServiceError(
+          "CASE_LIVE_ACCEPTANCE_CANDIDATE_CONFLICT",
+          "The persisted Case Candidate differs from the producer-backed acceptance input",
+        );
+      }
+      accepted = storedCandidate;
+    } else {
+      try {
+        accepted = this.candidates.acceptCandidate(input.candidate, startedAt).candidate;
+      } catch (error) {
+        throw new CaseLiveAcceptanceServiceError(
+          errorCode(error, "CASE_LIVE_ACCEPTANCE_INTAKE_FAILED"),
+          "Case Candidate intake failed before an acceptance run could start",
+        );
+      }
     }
 
     const base: CaseLiveAcceptanceReceiptV1 = {
