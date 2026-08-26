@@ -52,6 +52,7 @@ describe("Knowledge relationship production READY-to-Vault acceptance", () => {
       getReadyPackageRepository,
       getRegistryDatabase,
       getStagingContentRepository,
+      getStagingVerificationRepository,
     } = await import("../source-registry");
 
     const staging = getStagingContentRepository();
@@ -84,10 +85,30 @@ describe("Knowledge relationship production READY-to-Vault acceptance", () => {
       },
     };
 
-    const first = await executeKnowledgeRelationshipVaultExport(
-      { relationships, staging: gateway, exportRuns, projection },
-      request,
-    );
+    let first;
+    try {
+      first = await executeKnowledgeRelationshipVaultExport(
+        { relationships, staging: gateway, exportRuns, projection },
+        request,
+      );
+    } catch (error) {
+      const documents = staging.listDocuments({ workspaceId, limit: 100 }).items;
+      const evidence = documents.map((document) => ({
+        id: document.descriptor.id,
+        status: document.descriptor.status,
+        validation: document.descriptor.validation,
+        verification: getStagingVerificationRepository().getByDocument(
+          document.descriptor.id,
+          workspaceId,
+        ),
+      }));
+      throw new Error(
+        `KG004_FULL_VAULT_STAGING_DIAGNOSTIC ${JSON.stringify({
+          cause: error instanceof Error ? error.message : String(error),
+          evidence,
+        })}`,
+      );
+    }
 
     expect(first.run.state).toBe("SUCCEEDED");
     expect(first.staging.targetPath).toBe(first.artifact.targetPath);
