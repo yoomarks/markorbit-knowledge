@@ -112,6 +112,10 @@ function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function canonicalRef(value: unknown): value is string {
+  return nonEmpty(value) && value === value.trim();
+}
+
 function identifier(value: unknown): value is string {
   return typeof value === "string" && ID.test(value);
 }
@@ -120,12 +124,20 @@ function refs(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => nonEmpty(item));
 }
 
-function uniqueRefs(value: unknown): value is string[] {
-  return refs(value) && new Set(value).size === value.length;
+function canonicalRefs(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => canonicalRef(item));
+}
+
+function uniqueCanonicalRefs(value: unknown): value is string[] {
+  return canonicalRefs(value) && new Set(value).size === value.length;
 }
 
 function optionalNonEmpty(value: unknown): value is string | undefined {
   return value === undefined || nonEmpty(value);
+}
+
+function optionalCanonicalRef(value: unknown): value is string | undefined {
+  return value === undefined || canonicalRef(value);
 }
 
 function optionalTimestamp(value: unknown): value is string | undefined {
@@ -149,8 +161,8 @@ export function isExpertCommunicationCorrelationV1(
     return false;
   }
   return (
-    nonEmpty(item.communicationThreadRef) &&
-    uniqueRefs(item.messageRefs) &&
+    canonicalRef(item.communicationThreadRef) &&
+    uniqueCanonicalRefs(item.messageRefs) &&
     (item.messageRefs as string[]).length > 0
   );
 }
@@ -191,7 +203,7 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
 
   const sentOrLater = SENT_OR_LATER.has(item.state as ExpertQuestionState);
   const lifecycleValid = sentOrLater
-    ? nonEmpty(item.communicationSendRequestRef) &&
+    ? canonicalRef(item.communicationSendRequestRef) &&
       timestamp(item.sentAt) &&
       atOrAfter(item.sentAt, item.createdAt)
     : item.sentAt === undefined;
@@ -210,8 +222,8 @@ export function isExpertQuestionTaskV1(value: unknown): value is ExpertQuestionT
     nonEmpty(item.expertRef) &&
     optionalNonEmpty(item.organizationRef) &&
     nonEmpty(item.requestedBy) &&
-    optionalNonEmpty(item.communicationSendRequestRef) &&
-    optionalNonEmpty(item.communicationThreadRef) &&
+    optionalCanonicalRef(item.communicationSendRequestRef) &&
+    optionalCanonicalRef(item.communicationThreadRef) &&
     timestamp(item.createdAt) &&
     optionalTimestamp(item.sentAt) &&
     optionalTimestamp(item.closedAt) &&
@@ -270,7 +282,7 @@ export function isExpertSourceRecordV1(value: unknown): value is ExpertSourceRec
     nonEmpty(item.jurisdiction) &&
     nonEmpty(item.topic) &&
     isExpertCommunicationCorrelationV1(item.communication) &&
-    uniqueRefs(item.rawAnswerArtifactRefs) &&
+    uniqueCanonicalRefs(item.rawAnswerArtifactRefs) &&
     (item.rawAnswerArtifactRefs as string[]).length > 0 &&
     optionalNonEmpty(item.normalizedDerivativeRef) &&
     refs(item.attachmentRefs) &&
