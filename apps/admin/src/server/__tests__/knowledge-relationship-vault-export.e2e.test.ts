@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import type { ContentRelationshipReadRepository } from "@markorbit/persistence/content-relationship-obsidian-export";
 import {
@@ -10,13 +10,6 @@ import {
 } from "@markorbit/persistence/knowledge-relationship-vault-export";
 import { LocalObsidianVaultProjectionRepository } from "@markorbit/persistence/obsidian-vault-projection";
 import { SqliteVaultExportRunRepository } from "@markorbit/persistence/vault-export-runs";
-import { ProductionKnowledgeRelationshipReadyStagingGateway } from "../knowledge-relationship-ready-staging-gateway";
-import {
-  getConversionRunLedgerRepository,
-  getReadyPackageRepository,
-  getRegistryDatabase,
-  getStagingContentRepository,
-} from "../source-registry";
 
 const tempRoot = mkdtempSync(join(tmpdir(), "markorbit-kg-vault-export-"));
 const vaultRoot = join(tempRoot, "vault");
@@ -31,6 +24,7 @@ beforeAll(() => {
   process.env.MARKORBIT_STAGING_STORE_PATH = join(tempRoot, "staging");
   process.env.MARKORBIT_MANUAL_UPLOAD_MAX_BYTES = String(1024 * 1024);
   resetProductionRegistry();
+  vi.resetModules();
 });
 
 afterAll(() => {
@@ -39,6 +33,7 @@ afterAll(() => {
   delete process.env.MARKORBIT_ARTIFACT_STORE_PATH;
   delete process.env.MARKORBIT_STAGING_STORE_PATH;
   delete process.env.MARKORBIT_MANUAL_UPLOAD_MAX_BYTES;
+  vi.resetModules();
   rmSync(tempRoot, { recursive: true, force: true });
 });
 
@@ -49,6 +44,15 @@ const relationships: ContentRelationshipReadRepository = {
 
 describe("Knowledge relationship production READY-to-Vault acceptance", () => {
   it("runs governed ingestion through READY staging, writes the deterministic Vault note, and replays without rewriting", async () => {
+    const { ProductionKnowledgeRelationshipReadyStagingGateway } =
+      await import("../knowledge-relationship-ready-staging-gateway");
+    const {
+      getConversionRunLedgerRepository,
+      getReadyPackageRepository,
+      getRegistryDatabase,
+      getStagingContentRepository,
+    } = await import("../source-registry");
+
     const staging = getStagingContentRepository();
     const exportRuns = new SqliteVaultExportRunRepository(getRegistryDatabase());
     const projection = new LocalObsidianVaultProjectionRepository(staging, vaultRoot);
