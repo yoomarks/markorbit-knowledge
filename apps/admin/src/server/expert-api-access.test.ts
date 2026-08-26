@@ -134,9 +134,13 @@ describe("Expert API access", () => {
   });
 
   it("resolves the browser workspace through Core and rejects READ_ONLY mutation", async () => {
-    await expect(resolveExpertReadPrincipal(browserRequest(), browserOptions("REVIEWER"))).resolves.toMatchObject(
-      { userId: "user-browser", workspaceId: WORKSPACE_A, role: "REVIEWER" },
-    );
+    await expect(
+      resolveExpertReadPrincipal(browserRequest(), browserOptions("REVIEWER")),
+    ).resolves.toMatchObject({
+      userId: "user-browser",
+      workspaceId: WORKSPACE_A,
+      role: "REVIEWER",
+    });
     await expect(
       resolveExpertMutationPrincipal(browserRequest(), browserOptions("READ_ONLY")),
     ).rejects.toMatchObject({ code: "PERMISSION_DENIED", httpStatus: 403 });

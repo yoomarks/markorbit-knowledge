@@ -47,11 +47,7 @@ function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-function fail(
-  code: string,
-  status: 401 | 403 | 503,
-  message: string,
-): never {
+function fail(code: string, status: 401 | 403 | 503, message: string): never {
   throw new CaseProducerAccessError(code, status, message);
 }
 
