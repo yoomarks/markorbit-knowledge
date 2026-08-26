@@ -93,7 +93,9 @@ export function enrichKnowledgeRelationshipMarkdown(
 ): string {
   const canonical = splitFrontmatter(canonicalFrontmatter, "canonicalFrontmatter");
   if (canonical.body.trim()) {
-    throw new RegistryValidationError("canonicalFrontmatter must not contain Markdown body content");
+    throw new RegistryValidationError(
+      "canonicalFrontmatter must not contain Markdown body content",
+    );
   }
   const rendered = splitFrontmatter(renderedMarkdown, "renderedMarkdown");
   return `---\n${canonical.frontmatter}\n${rendered.frontmatter}\n---\n${rendered.body}`;
