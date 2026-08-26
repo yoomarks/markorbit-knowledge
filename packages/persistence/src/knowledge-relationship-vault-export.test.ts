@@ -5,6 +5,7 @@ import type { ContentRelationshipReadRepository } from "./content-relationship-o
 import type { ObsidianVaultProjectionRepository } from "./obsidian-vault-projection";
 import type { VaultExportRunRepository } from "./vault-export-run-registry";
 import {
+  enrichKnowledgeRelationshipMarkdown,
   executeKnowledgeRelationshipVaultExport,
   type KnowledgeRelationshipExportStagingGateway,
 } from "./knowledge-relationship-vault-export";
@@ -78,6 +79,42 @@ function pendingRun(stagingDocumentId: string, contentSha256: string): VaultExpo
 }
 
 describe("Knowledge relationship Vault export orchestration", () => {
+  it("merges canonical provenance and relationship metadata into one frontmatter block", () => {
+    const merged = enrichKnowledgeRelationshipMarkdown(
+      [
+        "---",
+        "markorbit:",
+        '  workspaceId: "workspace-a"',
+        '  sourceId: "src_a"',
+        '  rawArtifactId: "raw_a"',
+        '  conversionRunId: "cvr_a"',
+        '  converterId: "builtin-markdown-staging"',
+        '  converterVersion: "1.0.0"',
+        `  inputSha256: "${"a".repeat(64)}"`,
+        "---",
+        "",
+      ].join("\n"),
+      [
+        "---",
+        'knowledge_id: "web:article:assignment-guide"',
+        'knowledge_kind: "WEB_CONTENT"',
+        'workspace_id: "workspace-a"',
+        'classification: "INTERNAL"',
+        "---",
+        "",
+        "# Assignment Guide",
+        "",
+        "Canonical body.",
+        "",
+      ].join("\n"),
+    );
+
+    expect(merged.match(/^---$/gmu)).toHaveLength(2);
+    expect(merged).toContain('  conversionRunId: "cvr_a"');
+    expect(merged).toContain('knowledge_id: "web:article:assignment-guide"');
+    expect(merged).toContain("# Assignment Guide");
+  });
+
   it("stages the deterministic note, projects enriched READY content and finalizes the export run", async () => {
     let stagedKey = "";
     let stagedMarkdown = "";
