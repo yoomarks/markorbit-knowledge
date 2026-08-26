@@ -108,10 +108,42 @@ function assertCanonicalMarkdown(content: Uint8Array, expectedFrontmatter: strin
       "Canonical Markdown must be valid UTF-8",
     );
   }
-  if (!text.startsWith(expectedFrontmatter)) {
+
+  const closingMarker = "\n---\n";
+  const expectedClosing = expectedFrontmatter.lastIndexOf(closingMarker);
+  if (expectedClosing < 0) {
+    throw new RegistryConflictError(
+      "CANONICAL_MARKDOWN_METADATA_MISMATCH",
+      "Expected canonical Markdown frontmatter is invalid",
+    );
+  }
+  const requiredCanonicalPrefix = expectedFrontmatter.slice(0, expectedClosing);
+  if (!text.startsWith(requiredCanonicalPrefix)) {
     throw new RegistryConflictError(
       "CANONICAL_MARKDOWN_METADATA_MISMATCH",
       "Canonical Markdown frontmatter does not match control-plane provenance",
+    );
+  }
+
+  const remainder = text.slice(requiredCanonicalPrefix.length);
+  const actualClosing = remainder.indexOf(closingMarker);
+  if (actualClosing < 0) {
+    throw new RegistryConflictError(
+      "CANONICAL_MARKDOWN_METADATA_MISMATCH",
+      "Canonical Markdown frontmatter is not terminated",
+    );
+  }
+  const appendedYaml = remainder.slice(0, actualClosing);
+  if (appendedYaml && !appendedYaml.startsWith("\n")) {
+    throw new RegistryConflictError(
+      "CANONICAL_MARKDOWN_METADATA_MISMATCH",
+      "Canonical Markdown appended frontmatter is malformed",
+    );
+  }
+  if (/^markorbit\s*:/mu.test(appendedYaml)) {
+    throw new RegistryConflictError(
+      "CANONICAL_MARKDOWN_METADATA_MISMATCH",
+      "Canonical Markdown may not redefine reserved MarkOrbit provenance",
     );
   }
 }

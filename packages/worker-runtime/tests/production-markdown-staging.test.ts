@@ -130,6 +130,25 @@ describe("production Markdown staging converter", () => {
     );
   });
 
+  it("preserves non-reserved leading frontmatter inside canonical staging frontmatter", () => {
+    const source = new TextEncoder().encode(
+      '---\nknowledge_id: "obj-1"\nclassification: "INTERNAL"\n---\n\n# Relationship Note\n\nBody.\n',
+    );
+    const sourceSha = createHash("sha256").update(source).digest("hex");
+    const mergedContext = context();
+    mergedContext.inputGrant.expectedBytes = source.byteLength;
+    mergedContext.inputGrant.expectedSha256 = sourceSha;
+    mergedContext.documentMetadata.inputSha256 = sourceSha;
+
+    const markdown = new TextDecoder().decode(
+      convertProductionMarkdownToStaging(mergedContext, source),
+    );
+    expect(markdown).toContain(`  inputSha256: "${sourceSha}"\nknowledge_id: "obj-1"`);
+    expect(markdown).toContain('classification: "INTERNAL"\n---\n\n# Relationship Note');
+    expect(markdown.match(/^---$/gm)).toHaveLength(2);
+    expect(markdown).not.toContain("\n---\n\n---\n");
+  });
+
   it("rejects MIME, size, digest, metadata and exact Converter mismatches", () => {
     const wrongMime = context();
     wrongMime.inputGrant.expectedMime = "text/html";

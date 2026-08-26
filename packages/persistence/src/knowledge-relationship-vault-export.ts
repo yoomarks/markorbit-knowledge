@@ -123,7 +123,7 @@ export async function executeKnowledgeRelationshipVaultExport(
         workspaceId: staging.workspaceId,
         vaultRelativePath: prepared.run.result.vaultRelativePath,
         contentSha256: prepared.run.result.contentSha256,
-        written: prepared.run.result.disposition === "WRITTEN",
+        written: false,
       },
       run: prepared.run,
     };

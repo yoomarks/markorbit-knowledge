@@ -658,16 +658,29 @@ export class SqliteStagingVerificationRepository implements StagingVerificationR
       ? [`Unrecognized frontmatter fields: ${parsed.frontmatter.extraKeys.sort().join(", ")}`]
       : [];
     if (warnings.length) checks.push(check("FRONTMATTER_EXTRA_FIELDS", "WARN", warnings[0]));
+    const usedSummaryKeys = new Set<string>();
     const fields = [...parsed.frontmatter.types.entries()]
       .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, valueType]) => ({
-        key: key
-          .split(".")
-          .at(-1)!
+      .map(([path, valueType]) => {
+        let normalized = path
           .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-          .toLowerCase(),
-        valueType,
-      }));
+          .replace(/[^A-Za-z0-9_-]+/g, "_")
+          .replace(/-+/g, "_")
+          .toLowerCase();
+        if (!/^[a-z]/.test(normalized)) normalized = `field_${normalized}`;
+
+        let key = normalized;
+        if (key.length > 64 || usedSummaryKeys.has(key)) {
+          let attempt = 0;
+          do {
+            const suffix = sha256(attempt === 0 ? path : `${path}:${attempt}`).slice(0, 12);
+            key = `${normalized.slice(0, 51)}_${suffix}`;
+            attempt += 1;
+          } while (usedSummaryKeys.has(key));
+        }
+        usedSummaryKeys.add(key);
+        return { key, valueType };
+      });
     return this.outcome(checks, warnings, { fieldCount: fields.length, fields });
   }
 
