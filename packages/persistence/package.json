@@ -29,6 +29,8 @@
     "./case-dossier-privacy": "./src/case-dossier-privacy.ts",
     "./case-live-acceptance": "./src/case-live-acceptance.ts",
     "./content-relationships": "./src/content-relationship-registry.ts",
+    "./content-relationship-obsidian-export": "./src/content-relationship-obsidian-export.ts",
+    "./knowledge-relationship-vault-export": "./src/knowledge-relationship-vault-export.ts",
     "./connectors": "./src/connector-registry.ts",
     "./collection-plans": "./src/collection-plan-registry.ts",
     "./collection-scheduler": "./src/collection-scheduler.ts",
