@@ -51,7 +51,9 @@ export function ContentReaderIndex({ workspaceId }: { workspaceId: string }) {
             {zh ? "内容阅读器" : "Content Reader"}
           </h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            {zh ? "最近进入 Knowledge 的资料，可直接打开阅读。" : "Open recently acquired Knowledge documents in the native reader."}
+            {zh
+              ? "最近进入 Knowledge 的资料，可直接打开阅读。"
+              : "Open recently acquired Knowledge documents in the native reader."}
           </p>
         </div>
       </div>
