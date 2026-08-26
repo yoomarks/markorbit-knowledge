@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import type {
-  ContentObjectRefV1,
-  VaultExportRunV1,
-} from "@markorbit/contracts";
+import type { ContentObjectRefV1, VaultExportRunV1 } from "@markorbit/contracts";
 import type { ContentRelationshipReadRepository } from "./content-relationship-obsidian-export";
 import type { ObsidianVaultProjectionRepository } from "./obsidian-vault-projection";
 import type { VaultExportRunRepository } from "./vault-export-run-registry";
@@ -157,9 +154,7 @@ describe("Knowledge relationship Vault export orchestration", () => {
     );
 
     expect(stagedKey).toMatch(/^knowledge-obsidian:[a-f0-9]{64}$/u);
-    expect(stagedMarkdown).toContain(
-      'knowledge_id: "web:article:assignment-guide"',
-    );
+    expect(stagedMarkdown).toContain('knowledge_id: "web:article:assignment-guide"');
     expect(projectionCalls).toBe(1);
     expect(result.run.state).toBe("SUCCEEDED");
     expect(result.run.result?.disposition).toBe("WRITTEN");

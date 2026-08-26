@@ -1,8 +1,5 @@
 import { createHash } from "node:crypto";
-import type {
-  VaultExportBindingSnapshotV1,
-  VaultExportRunV1,
-} from "@markorbit/contracts";
+import type { VaultExportBindingSnapshotV1, VaultExportRunV1 } from "@markorbit/contracts";
 import type { ContentRelationshipReadRepository } from "./content-relationship-obsidian-export";
 import {
   buildKnowledgeObsidianRelationshipNote,
@@ -32,9 +29,7 @@ export type KnowledgeRelationshipReadyStaging = {
 };
 
 export interface KnowledgeRelationshipExportStagingGateway {
-  stageReady(
-    input: KnowledgeRelationshipStagingInput,
-  ): KnowledgeRelationshipReadyStaging;
+  stageReady(input: KnowledgeRelationshipStagingInput): KnowledgeRelationshipReadyStaging;
 }
 
 export type ExecuteKnowledgeRelationshipVaultExportInput = {
@@ -69,9 +64,7 @@ function assertSha256(value: string, field: string): string {
   return normalized;
 }
 
-function stagingIdempotencyKey(
-  artifact: KnowledgeObsidianExportArtifact,
-): string {
+function stagingIdempotencyKey(artifact: KnowledgeObsidianExportArtifact): string {
   return `knowledge-obsidian:${sha256(
     [
       artifact.content.workspaceId,
@@ -87,14 +80,8 @@ export function executeKnowledgeRelationshipVaultExport(
   dependencies: KnowledgeRelationshipVaultExportDependencies,
   input: ExecuteKnowledgeRelationshipVaultExportInput,
 ): ExecuteKnowledgeRelationshipVaultExportResult {
-  const rootFingerprintSha256 = assertSha256(
-    input.rootFingerprintSha256,
-    "rootFingerprintSha256",
-  );
-  const artifact = buildKnowledgeObsidianRelationshipNote(
-    dependencies.relationships,
-    input.note,
-  );
+  const rootFingerprintSha256 = assertSha256(input.rootFingerprintSha256, "rootFingerprintSha256");
+  const artifact = buildKnowledgeObsidianRelationshipNote(dependencies.relationships, input.note);
   const expectedContentSha256 = sha256(artifact.markdown);
   const staging = dependencies.staging.stageReady({
     workspaceId: artifact.content.workspaceId,
@@ -157,10 +144,7 @@ export function executeKnowledgeRelationshipVaultExport(
   const run =
     withReceipt.state === "SUCCEEDED"
       ? withReceipt
-      : dependencies.exportRuns.finalize(
-          staging.workspaceId,
-          prepared.run.id,
-        );
+      : dependencies.exportRuns.finalize(staging.workspaceId, prepared.run.id);
 
   return { artifact, staging, projection, run };
 }
