@@ -1,10 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import type {
-  ContentEdgeV1,
-  ContentFacetV1,
-  ContentObjectRefV1,
-} from "@markorbit/contracts";
+import type { ContentEdgeV1, ContentFacetV1, ContentObjectRefV1 } from "@markorbit/contracts";
 import { SqliteContentRelationshipRepository } from "./content-relationship-registry";
 
 const article: ContentObjectRefV1 = {
