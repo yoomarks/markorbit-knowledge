@@ -129,7 +129,11 @@ export function isContentEdgeV1(value: unknown): value is ContentEdgeV1 {
   if (value.from.objectId === value.to.objectId && value.relationType !== "VERSION_OF") return false;
 
   if (value.origin === "MACHINE_DERIVED") {
-    if (!isRecord(value.algorithm) || !nonBlank(value.algorithm.id) || !nonBlank(value.algorithm.version)) {
+    if (
+      !isRecord(value.algorithm) ||
+      !nonBlank(value.algorithm.id) ||
+      !nonBlank(value.algorithm.version)
+    ) {
       return false;
     }
   } else if (value.algorithm !== undefined) {
