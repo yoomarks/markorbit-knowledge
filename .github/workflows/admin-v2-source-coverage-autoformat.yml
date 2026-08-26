@@ -22,48 +22,44 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply and format KG-004 verifier fix
-        shell: bash
+      - name: Apply Prettier
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path("packages/persistence/src/staging-verification.ts")
-          text = path.read_text()
-          start = text.index("    const fields = [...parsed.frontmatter.types.entries()]")
-          end = text.index("    return this.outcome", start)
-          replacement = "\n".join([
-              "    const usedSummaryKeys = new Set<string>();",
-              "    const fields = [...parsed.frontmatter.types.entries()]",
-              "      .sort(([left], [right]) => left.localeCompare(right))",
-              "      .map(([path, valueType]) => {",
-              "        let normalized = path",
-              "          .replace(/([a-z0-9])([A-Z])/g, \"$1_$2\")",
-              "          .replace(/[^A-Za-z0-9_-]+/g, \"_\")",
-              "          .replace(/-+/g, \"_\")",
-              "          .toLowerCase();",
-              "        if (!/^[a-z]/.test(normalized)) normalized = `field_${normalized}`;",
-              "",
-              "        let key = normalized;",
-              "        if (key.length > 64 || usedSummaryKeys.has(key)) {",
-              "          let attempt = 0;",
-              "          do {",
-              "            const suffix = sha256(attempt === 0 ? path : `${path}:${attempt}`).slice(0, 12);",
-              "            key = `${normalized.slice(0, 51)}_${suffix}`;",
-              "            attempt += 1;",
-              "          } while (usedSummaryKeys.has(key));",
-              "        }",
-              "        usedSummaryKeys.add(key);",
-              "        return { key, valueType };",
-              "      });",
-              "",
-          ])
-          path.write_text(text[:start] + replacement + text[end:])
-          PY
-          pnpm exec prettier --write packages/persistence/src/staging-verification.ts
-          if git diff --quiet -- packages/persistence/src/staging-verification.ts; then exit 0; fi
+          # Keep business surfaces and shared ingestion-control helpers formatting-clean,
+          # including production staging and the bulk collection-to-Knowledge P0 acceptance path.
+          pnpm exec prettier --write \
+            apps/admin/src/components/sources/source-country-coverage.tsx \
+            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/sources/radar-collection-authorization.tsx \
+            apps/admin/src/components/sources/source-failure-root-causes.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/server/m3-converter-bootstrap.ts \
+            apps/admin/src/server/production-conversion-worker-service.ts \
+            apps/admin/src/server/raw-artifact-auto-conversion.ts \
+            apps/admin/src/server/raw-artifact-conversion-authorization.ts \
+            apps/admin/src/server/source-failure-root-causes.ts \
+            apps/admin/src/server/__tests__/bulk-conversion-to-knowledge.e2e.test.ts \
+            apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
+            apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
+            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
+          if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/persistence/src/staging-verification.ts
-          git commit -m "fix: preserve unique frontmatter summary paths"
+          git add \
+            apps/admin/src/components/sources/source-country-coverage.tsx \
+            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/sources/radar-collection-authorization.tsx \
+            apps/admin/src/components/sources/source-failure-root-causes.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/server/m3-converter-bootstrap.ts \
+            apps/admin/src/server/production-conversion-worker-service.ts \
+            apps/admin/src/server/raw-artifact-auto-conversion.ts \
+            apps/admin/src/server/raw-artifact-conversion-authorization.ts \
+            apps/admin/src/server/source-failure-root-causes.ts \
+            apps/admin/src/server/__tests__/bulk-conversion-to-knowledge.e2e.test.ts \
+            apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
+            apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
+            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
+          git commit -m "style: format admin v2 business surfaces"
           git push origin HEAD:${{ github.head_ref }}
