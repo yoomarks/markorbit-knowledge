@@ -84,6 +84,7 @@
     "./converters": "./src/converter-registry.ts",
     "./conversion-runs": "./src/conversion-runs.ts",
     "./conversion-runtime": "./src/conversion-runtime-persistence.ts",
+    "./targeted-conversion-claim": "./src/targeted-conversion-claim.ts",
     "./conversion-runtime-transitions": "./src/conversion-runtime-transitions.ts",
     "./staging-content": "./src/staging-content-registry.ts",
     "./staging-verification": "./src/staging-verification.ts",
