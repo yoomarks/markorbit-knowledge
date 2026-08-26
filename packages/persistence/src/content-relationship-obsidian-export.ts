@@ -1,21 +1,9 @@
 import { createHash } from "node:crypto";
-import type {
-  ContentFacetV1,
-  ContentObjectRefV1,
-} from "@markorbit/contracts";
-import {
-  RegistryValidationError,
-} from "./index";
-import type {
-  ContentNeighborV1,
-  ContentRelationshipPage,
-} from "./content-relationship-registry";
+import type { ContentFacetV1, ContentObjectRefV1 } from "@markorbit/contracts";
+import { RegistryValidationError } from "./index";
+import type { ContentNeighborV1, ContentRelationshipPage } from "./content-relationship-registry";
 
-export type KnowledgeExportClassification =
-  | "PUBLIC"
-  | "INTERNAL"
-  | "CONFIDENTIAL"
-  | "RESTRICTED";
+export type KnowledgeExportClassification = "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
 
 export type KnowledgeObsidianExportAccessContext = {
   authorized: boolean;
@@ -66,9 +54,7 @@ function noteName(content: ContentObjectRefV1): string {
   return `${content.objectKind.toLowerCase()}-${digest}`;
 }
 
-export function knowledgeObsidianNoteTargetPath(
-  content: ContentObjectRefV1,
-): string {
+export function knowledgeObsidianNoteTargetPath(content: ContentObjectRefV1): string {
   return `knowledge/${noteName(content)}.md`;
 }
 
@@ -78,10 +64,7 @@ function wikilink(content: ContentObjectRefV1): string {
 
 function renderFacets(facets: readonly ContentFacetV1[]): string[] {
   if (facets.length === 0) return ["- none"];
-  return facets.map(
-    (facet) =>
-      `- ${facet.facetType}: ${facet.value} (${facet.origin})`,
-  );
+  return facets.map((facet) => `- ${facet.facetType}: ${facet.value} (${facet.origin})`);
 }
 
 function renderNeighbors(

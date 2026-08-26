@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-  ContentEdgeV1,
-  ContentFacetV1,
-  ContentObjectRefV1,
-} from "@markorbit/contracts";
+import type { ContentEdgeV1, ContentFacetV1, ContentObjectRefV1 } from "@markorbit/contracts";
 import {
   buildKnowledgeObsidianRelationshipNote,
   knowledgeObsidianNoteTargetPath,
@@ -100,9 +96,7 @@ describe("Knowledge Obsidian relationship export", () => {
 
     expect(replay).toEqual(first);
     expect(first.targetPath).toBe(knowledgeObsidianNoteTargetPath(article));
-    expect(first.markdown).toContain(
-      'knowledge_id: "web:article:assignment-guide"',
-    );
+    expect(first.markdown).toContain('knowledge_id: "web:article:assignment-guide"');
     expect(first.markdown).toContain("- SOURCE: USPTO (EXPLICIT_SOURCE)");
     expect(first.markdown).toContain("- TOPIC: Assignment (SYSTEM_DERIVED)");
     expect(first.markdown).toContain("## Backlinks");
