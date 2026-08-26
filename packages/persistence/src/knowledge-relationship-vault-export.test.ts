@@ -175,12 +175,6 @@ describe("Knowledge relationship Vault export orchestration", () => {
         contentSha256: sha256(stageInput.markdown),
       }),
     };
-    const artifactHash = sha256(
-      executeKnowledgeRelationshipVaultExport
-        .toString()
-        .slice(0, 0),
-    );
-    void artifactHash;
 
     const exportRuns: VaultExportRunRepository = {
       prepare: (prepareInput) => {
