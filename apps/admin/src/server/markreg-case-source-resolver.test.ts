@@ -44,7 +44,7 @@ function encodedPrincipal(overrides: Record<string, unknown> = {}): string {
         membershipId: "membership_01",
         role: "MATTER_MANAGER",
         permissions: ["matter:read"],
-        sessionExpiresAt: "2026-08-26T15:45:00.000Z",
+        sessionExpiresAt: "9999-12-31T23:59:59.999Z",
         ...overrides,
       },
     }),
