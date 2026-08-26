@@ -37,9 +37,7 @@ function principalHeader(
   ).toString("base64url");
 }
 
-function request(
-  input: { secret?: string; role?: string; permissions?: string[] } = {},
-) {
+function request(input: { secret?: string; role?: string; permissions?: string[] } = {}) {
   return new Request("http://localhost/api/expert-tasks", {
     headers: {
       [CASE_PRODUCER_INTERNAL_AUTHORIZATION_HEADER]: input.secret ?? SECRET,
