@@ -65,6 +65,40 @@ function assertSha256(value: string, field: string): string {
   return normalized;
 }
 
+function splitFrontmatter(markdown: string, field: string): { frontmatter: string; body: string } {
+  if (!markdown.startsWith("---\n")) {
+    throw new RegistryValidationError(`${field} must start with Markdown frontmatter`);
+  }
+  const closing = markdown.indexOf("\n---\n", 4);
+  if (closing < 0) {
+    throw new RegistryValidationError(`${field} frontmatter closing delimiter is missing`);
+  }
+  return {
+    frontmatter: markdown.slice(4, closing).trimEnd(),
+    body: markdown.slice(closing + 5),
+  };
+}
+
+/**
+ * Merge immutable conversion provenance and Knowledge relationship metadata into one YAML block.
+ *
+ * Staging verification requires the canonical markorbit.* provenance fields to be the first
+ * frontmatter block. Obsidian relationship notes also need their knowledge_* fields at the top
+ * level. Keeping one merged block avoids a second YAML fence being rendered as body text while
+ * preserving the deterministic relationship-note payload.
+ */
+export function enrichKnowledgeRelationshipMarkdown(
+  canonicalFrontmatter: string,
+  renderedMarkdown: string,
+): string {
+  const canonical = splitFrontmatter(canonicalFrontmatter, "canonicalFrontmatter");
+  if (canonical.body.trim()) {
+    throw new RegistryValidationError("canonicalFrontmatter must not contain Markdown body content");
+  }
+  const rendered = splitFrontmatter(renderedMarkdown, "renderedMarkdown");
+  return `---\n${canonical.frontmatter}\n${rendered.frontmatter}\n---\n${rendered.body}`;
+}
+
 function stagingIdempotencyKey(artifact: KnowledgeObsidianExportArtifact): string {
   return `knowledge-obsidian:${sha256(
     [
