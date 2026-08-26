@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import type { ExpertSourceRetrievalRequestV1 } from "@markorbit/contracts";
 import { apiError } from "@/server/api-errors";
+import {
+  authenticateExpertReadRequest,
+  listExpertTaskIdsForWorkspace,
+} from "@/server/expert-api-access";
 import { getExpertSourceRetrievalRepository } from "@/server/expert-source-retrieval";
 
 export const runtime = "nodejs";
@@ -19,6 +23,7 @@ function integer(searchParams: URLSearchParams, name: string): number | undefine
 
 export async function GET(request: Request) {
   try {
+    const principal = authenticateExpertReadRequest(request);
     const { searchParams } = new URL(request.url);
     const jurisdiction = text(searchParams, "jurisdiction");
     const topic = text(searchParams, "topic");
@@ -43,7 +48,8 @@ export async function GET(request: Request) {
       ...(limit !== undefined ? { limit } : {}),
       ...(offset !== undefined ? { offset } : {}),
     };
-    return NextResponse.json(getExpertSourceRetrievalRepository().search(input));
+    const taskIds = listExpertTaskIdsForWorkspace(principal.workspaceId);
+    return NextResponse.json(getExpertSourceRetrievalRepository().search(input, { taskIds }));
   } catch (error) {
     return apiError(error);
   }
