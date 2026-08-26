@@ -24,18 +24,42 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Apply Prettier
         run: |
+          # Keep business surfaces and shared ingestion-control helpers formatting-clean,
+          # including production staging and the bulk collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
-            packages/persistence/src/knowledge-relationship-vault-export.ts \
-            packages/persistence/src/knowledge-relationship-vault-export.test.ts \
-            apps/admin/src/server/knowledge-relationship-ready-staging-gateway.ts \
-            apps/admin/src/server/__tests__/knowledge-relationship-ready-staging-gateway.e2e.test.ts
+            apps/admin/src/components/sources/source-country-coverage.tsx \
+            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/sources/radar-collection-authorization.tsx \
+            apps/admin/src/components/sources/source-failure-root-causes.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/server/m3-converter-bootstrap.ts \
+            apps/admin/src/server/production-conversion-worker-service.ts \
+            apps/admin/src/server/raw-artifact-auto-conversion.ts \
+            apps/admin/src/server/raw-artifact-conversion-authorization.ts \
+            apps/admin/src/server/source-failure-root-causes.ts \
+            apps/admin/src/server/__tests__/bulk-conversion-to-knowledge.e2e.test.ts \
+            apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
+            apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
+            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            packages/persistence/src/knowledge-relationship-vault-export.ts \
-            packages/persistence/src/knowledge-relationship-vault-export.test.ts \
-            apps/admin/src/server/knowledge-relationship-ready-staging-gateway.ts \
-            apps/admin/src/server/__tests__/knowledge-relationship-ready-staging-gateway.e2e.test.ts
-          git commit -m "style: format KG-004 production gateway"
+            apps/admin/src/components/sources/source-country-coverage.tsx \
+            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/sources/radar-collection-authorization.tsx \
+            apps/admin/src/components/sources/source-failure-root-causes.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/server/m3-converter-bootstrap.ts \
+            apps/admin/src/server/production-conversion-worker-service.ts \
+            apps/admin/src/server/raw-artifact-auto-conversion.ts \
+            apps/admin/src/server/raw-artifact-conversion-authorization.ts \
+            apps/admin/src/server/source-failure-root-causes.ts \
+            apps/admin/src/server/__tests__/bulk-conversion-to-knowledge.e2e.test.ts \
+            apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
+            apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
+            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
+          git commit -m "style: format admin v2 business surfaces"
           git push origin HEAD:${{ github.head_ref }}
