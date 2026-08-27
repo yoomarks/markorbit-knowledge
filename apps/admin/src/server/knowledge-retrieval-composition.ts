@@ -15,6 +15,7 @@ import { RegistryValidationError } from "@markorbit/persistence";
 import type { ContentNeighborV1 } from "@markorbit/persistence/content-relationships";
 
 const DEFAULT_LIMIT = 20;
+const SHA256_HEX = /^[a-f0-9]{64}$/;
 
 export type KnowledgeLexicalHit = {
   content: ContentObjectRefV1;
@@ -22,6 +23,9 @@ export type KnowledgeLexicalHit = {
   score: number;
   snippet: string;
   headingPath: string[];
+  chunkId?: string;
+  contentSha256?: string;
+  indexedAt?: string;
 };
 
 export interface KnowledgeLexicalRetrievalReader {
@@ -71,6 +75,25 @@ function identity(content: ContentObjectRefV1): string {
 function validateContent(content: ContentObjectRefV1, workspaceId: string, channel: string): void {
   if (!isContentObjectRefV1(content) || content.workspaceId !== workspaceId) {
     throw new RegistryValidationError(`${channel} retrieval returned invalid workspace content`);
+  }
+}
+
+function validateLexicalLineage(hit: KnowledgeLexicalHit): void {
+  const lineage = [hit.chunkId, hit.contentSha256, hit.indexedAt];
+  const present = lineage.filter((value) => value !== undefined).length;
+  if (present === 0) return;
+  if (present !== lineage.length) {
+    throw new RegistryValidationError("Lexical retrieval returned incomplete chunk lineage");
+  }
+  if (
+    !hit.chunkId ||
+    hit.chunkId !== hit.chunkId.trim() ||
+    !hit.contentSha256 ||
+    !SHA256_HEX.test(hit.contentSha256) ||
+    !hit.indexedAt ||
+    Number.isNaN(Date.parse(hit.indexedAt))
+  ) {
+    throw new RegistryValidationError("Lexical retrieval returned invalid chunk lineage");
   }
 }
 
@@ -158,6 +181,7 @@ export async function composeKnowledgeRetrieval(
     if (!Number.isFinite(hit.score)) {
       throw new RegistryValidationError("Lexical retrieval returned an invalid score");
     }
+    validateLexicalLineage(hit);
     const evidence: KnowledgeLexicalEvidenceV1 = {
       channel: "LEXICAL",
       position: index + 1,
@@ -165,6 +189,13 @@ export async function composeKnowledgeRetrieval(
       score: hit.score,
       snippet: hit.snippet,
       headingPath: [...hit.headingPath],
+      ...(hit.chunkId === undefined
+        ? {}
+        : {
+            chunkId: hit.chunkId,
+            contentSha256: hit.contentSha256!,
+            indexedAt: hit.indexedAt!,
+          }),
     };
     add(hit.content, evidence);
   });
