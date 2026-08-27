@@ -16,8 +16,7 @@ function evidence(
         ? "https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule"
         : "https://www.uspto.gov/trademarks/trademark-fee-information",
     documentId: `document-${role.toLowerCase()}`,
-    documentContentSha256:
-      role === "NUMERIC_AUTHORITY" ? "a".repeat(64) : "b".repeat(64),
+    documentContentSha256: role === "NUMERIC_AUTHORITY" ? "a".repeat(64) : "b".repeat(64),
     chunkId: `chunk-${role.toLowerCase()}`,
     chunkContentSha256: role === "NUMERIC_AUTHORITY" ? "c".repeat(64) : "d".repeat(64),
     indexedAt: "2026-08-28T00:00:00.000Z",
