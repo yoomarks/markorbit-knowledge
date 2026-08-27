@@ -1,0 +1,34 @@
+name: KG-010 Prettier Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - "apps/admin/src/server/knowledge-retrieval-composition.ts"
+      - "packages/contracts/src/knowledge-retrieval-composition-v1.ts"
+      - ".github/workflows/kg-010-prettier-diagnostic.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  canonical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print canonical KG-010 files
+        run: |
+          pnpm exec prettier --write apps/admin/src/server/knowledge-retrieval-composition.ts packages/contracts/src/knowledge-retrieval-composition-v1.ts
+          echo '===SERVICE_BEGIN==='
+          cat apps/admin/src/server/knowledge-retrieval-composition.ts
+          echo '===SERVICE_END==='
+          echo '===CONTRACT_BEGIN==='
+          cat packages/contracts/src/knowledge-retrieval-composition-v1.ts
+          echo '===CONTRACT_END==='
