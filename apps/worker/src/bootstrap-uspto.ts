@@ -1,8 +1,57 @@
 const CONNECTOR_ID = "crawl4ai-web";
 const CONNECTOR_VERSION = "1.2.0";
-const SOURCE_SLUG = "uspto-trademarks-golden-source";
-const PLAN_NAME = "USPTO Trademarks Golden Source";
-const WORKER_LABEL = "golden-source-uspto";
+
+function envText(name: string, fallback: string): string {
+  const value = process.env[name]?.trim();
+  return value || fallback;
+}
+
+function envInteger(name: string, fallback: number, minimum: number, maximum: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    throw new Error(`${name} must be an integer in ${minimum}..${maximum}`);
+  }
+  return value;
+}
+
+const SOURCE_SLUG = envText("MARKORBIT_USPTO_SOURCE_SLUG", "uspto-trademarks-golden-source");
+const SOURCE_NAME = envText("MARKORBIT_USPTO_SOURCE_NAME", "USPTO Trademarks — Golden Source");
+const PLAN_NAME = envText("MARKORBIT_USPTO_PLAN_NAME", "USPTO Trademarks Golden Source");
+const WORKER_LABEL = envText("MARKORBIT_USPTO_WORKER_LABEL", "golden-source-uspto");
+const CANONICAL_URI = envText("MARKORBIT_USPTO_CANONICAL_URI", "https://www.uspto.gov/trademarks");
+const ENTRYPOINT_LABEL = envText("MARKORBIT_USPTO_ENTRYPOINT_LABEL", "USPTO Trademarks");
+const INCLUDE_PATTERN = envText(
+  "MARKORBIT_USPTO_INCLUDE_PATTERN",
+  "https://www.uspto.gov/trademarks*",
+);
+const MAX_DEPTH = envInteger("MARKORBIT_USPTO_MAX_DEPTH", 1, 0, 5);
+const MAX_ITEMS = envInteger("MARKORBIT_USPTO_MAX_ITEMS", 8, 1, 100);
+
+function validateUsptoBoundary(uri: string, label: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(uri);
+  } catch {
+    throw new Error(`${label} must be an absolute URL`);
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  if (
+    parsed.protocol !== "https:" ||
+    (hostname !== "uspto.gov" && !hostname.endsWith(".uspto.gov")) ||
+    !parsed.pathname.toLowerCase().includes("trademark")
+  ) {
+    throw new Error(`${label} must remain inside the HTTPS USPTO trademark boundary`);
+  }
+}
+
+validateUsptoBoundary(CANONICAL_URI, "MARKORBIT_USPTO_CANONICAL_URI");
+if (!INCLUDE_PATTERN.startsWith("https://") || !INCLUDE_PATTERN.includes("uspto.gov/trademark")) {
+  throw new Error(
+    "MARKORBIT_USPTO_INCLUDE_PATTERN must remain inside the USPTO trademark boundary",
+  );
+}
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -121,7 +170,7 @@ async function ensureSource(baseUrl: string): Promise<string> {
     baseUrl,
     "/api/sources",
     jsonPost({
-      name: "USPTO Trademarks — Golden Source",
+      name: SOURCE_NAME,
       slug: SOURCE_SLUG,
       sourceType: "WEB",
       category: "OFFICIAL_AUTHORITY",
@@ -130,9 +179,9 @@ async function ensureSource(baseUrl: string): Promise<string> {
       jurisdictions: ["US"],
       languages: ["en-US"],
       connector: { connectorId: CONNECTOR_ID, version: CONNECTOR_VERSION },
-      connectorConfig: { renderJavascript: false, maxDepth: 1 },
-      canonicalUri: "https://www.uspto.gov/trademarks",
-      entrypoints: [{ uri: "https://www.uspto.gov/trademarks", label: "USPTO Trademarks" }],
+      connectorConfig: { renderJavascript: false, maxDepth: MAX_DEPTH },
+      canonicalUri: CANONICAL_URI,
+      entrypoints: [{ uri: CANONICAL_URI, label: ENTRYPOINT_LABEL }],
       tags: ["official", "primary-authority", "trademark", "us", "golden-source"],
       extensions: {
         "x-markorbit-golden-source": true,
@@ -164,10 +213,10 @@ async function ensurePlan(baseUrl: string, sourceId: string): Promise<string> {
       schedule: { mode: "MANUAL" },
       priority: "HIGH",
       policy: {
-        includePatterns: ["https://www.uspto.gov/trademarks*"],
+        includePatterns: [INCLUDE_PATTERN],
         excludePatterns: ["*[?]*"],
-        maxDepth: 1,
-        maxItems: 8,
+        maxDepth: MAX_DEPTH,
+        maxItems: MAX_ITEMS,
         renderJavascript: false,
         fetchAttachments: false,
         respectRobots: true,
@@ -241,7 +290,7 @@ async function dispatch(baseUrl: string, planId: string): Promise<string> {
     }),
     headers: {
       "content-type": "application/json",
-      "Idempotency-Key": `bootstrap-uspto-${new Date().toISOString().slice(0, 10)}`,
+      "Idempotency-Key": `bootstrap-uspto-${SOURCE_SLUG}-${new Date().toISOString().slice(0, 10)}`,
     },
   });
   const recordValue = record(record(result.body)?.record);
@@ -266,6 +315,8 @@ async function main(): Promise<void> {
         controlPlaneUrl: baseUrl,
         connector: `${CONNECTOR_ID}@${CONNECTOR_VERSION}`,
         sourceId,
+        sourceSlug: SOURCE_SLUG,
+        canonicalUri: CANONICAL_URI,
         planId,
         workerId: worker.workerId,
         workerCredential: worker.credential,

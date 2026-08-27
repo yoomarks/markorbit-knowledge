@@ -1,0 +1,182 @@
+name: USPTO Official Fee Phase2 Live Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/uspto-official-fee-phase2-live.yml
+      - apps/worker/src/bootstrap-uspto.ts
+      - apps/worker/src/verify-uspto-exact-page-pipeline.ts
+      - apps/admin/src/server/uspto-official-fee-live-evidence.test.ts
+      - apps/admin/src/server/knowledge-retrieval-composition.ts
+      - apps/admin/src/server/knowledge-retrieval-evaluation.ts
+      - apps/admin/src/server/knowledge-retrieval-evaluation-runner.ts
+      - packages/persistence/src/retrieval-index.ts
+      - apps/worker/package.json
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uspto-official-fee-phase2-live-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  live-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+      MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
+      MARKORBIT_GOLDEN_SOURCE_TIMEOUT_MS: "420000"
+      MARKORBIT_GOLDEN_PIPELINE_TIMEOUT_MS: "420000"
+      MARKORBIT_USPTO_SOURCE_SLUG: uspto-trademark-fee-information-phase2
+      MARKORBIT_USPTO_SOURCE_NAME: USPTO Trademark Fee Information — Phase 2 Pilot
+      MARKORBIT_USPTO_PLAN_NAME: USPTO Trademark Fee Information — Exact Page
+      MARKORBIT_USPTO_WORKER_LABEL: phase2-uspto-official-fee
+      MARKORBIT_USPTO_CANONICAL_URI: https://www.uspto.gov/trademarks/trademark-fee-information
+      MARKORBIT_USPTO_ENTRYPOINT_LABEL: USPTO Trademark Fee Information
+      MARKORBIT_USPTO_INCLUDE_PATTERN: https://www.uspto.gov/trademarks/trademark-fee-information
+      MARKORBIT_USPTO_MAX_DEPTH: "0"
+      MARKORBIT_USPTO_MAX_ITEMS: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure isolated evidence stores
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/phase2-uspto-fee.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/phase2-uspto-fee-artifacts" >> "$GITHUB_ENV"
+          echo "MARKORBIT_STAGING_STORE_PATH=$RUNNER_TEMP/phase2-uspto-fee-staging" >> "$GITHUB_ENV"
+          echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/admin.log"
+          exit 1
+
+      - name: Bootstrap exact canonical fee page and dispatch collection
+        run: |
+          pnpm --filter @markorbit/worker bootstrap:uspto -- --dispatch > "$RUNNER_TEMP/bootstrap.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/bootstrap.json', 'utf8');
+          const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          const expected = 'https://www.uspto.gov/trademarks/trademark-fee-information';
+          if (data.canonicalUri !== expected) throw new Error(`Bootstrap canonical URI drifted: ${data.canonicalUri}`);
+          if (!data.sourceId || !data.workerId || !data.workerCredential || !data.runId) {
+            throw new Error('Exact-page bootstrap did not return source/worker credential/run evidence');
+          }
+          process.stdout.write(`::add-mask::${data.workerCredential}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `MARKORBIT_SOURCE_ID=${data.sourceId}\nMARKORBIT_WORKER_ID=${data.workerId}\nMARKORBIT_WORKER_CREDENTIAL=${data.workerCredential}\nMARKORBIT_COLLECTION_RUN_ID=${data.runId}\n`);
+          NODE
+
+      - name: Provision production Markdown conversion for exact Source
+        run: |
+          pnpm --filter @markorbit/worker bootstrap:uspto-conversion > "$RUNNER_TEMP/conversion-bootstrap.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/conversion-bootstrap.json', 'utf8');
+          const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          if (data.sourceId !== process.env.MARKORBIT_SOURCE_ID) throw new Error('Conversion bootstrap changed Source boundary');
+          if (!data.workspaceId || !Number.isInteger(data.capabilityRevision)) throw new Error('Conversion bootstrap missing workspace/capability evidence');
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `MARKORBIT_WORKSPACE_ID=${data.workspaceId}\nMARKORBIT_CONVERSION_ENABLED=1\nMARKORBIT_CONVERSION_CAPABILITY_REVISION=${data.capabilityRevision}\n`);
+          NODE
+
+      - name: Start production Worker with bounded CI egress exception
+        env:
+          NODE_ENV: test
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
+          MARKORBIT_CRAWL4AI_PYTHON: python
+          MARKORBIT_WORKER_POLL_INTERVAL_MS: "500"
+          MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "15000"
+          MARKORBIT_WORKER_MAX_ACQUISITION_MS: "360000"
+          MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS: "300"
+        run: |
+          pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker.log" 2>&1 &
+          echo "WORKER_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Verify exact-page live collection and immutable RawArtifact evidence
+        run: pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_COLLECTION_RUN_ID"
+
+      - name: Dispatch acquired Markdown through production conversion
+        run: |
+          pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/conversion-dispatch.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/conversion-dispatch.json', 'utf8');
+          const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          if (data.sourceId !== process.env.MARKORBIT_SOURCE_ID || !data.conversionRunId) {
+            throw new Error('No exact-source Markdown conversion run was dispatched');
+          }
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_CONVERSION_RUN_ID=${data.conversionRunId}\n`);
+          NODE
+
+      - name: Verify conversion, Staging and ReadyPackage for exact page
+        run: pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_SOURCE_ID" "$MARKORBIT_CONVERSION_RUN_ID"
+
+      - name: Run real retrieval replay and versioned evaluation acceptance
+        env:
+          MARKORBIT_USPTO_FEE_LIVE_EVIDENCE: "1"
+        run: |
+          set -o pipefail
+          pnpm --filter @markorbit/admin exec vitest run src/server/uspto-official-fee-live-evidence.test.ts --reporter=verbose \
+            | tee "$RUNNER_TEMP/phase2-retrieval-evaluation.txt"
+
+      - name: Stop local processes
+        if: always()
+        run: |
+          if [ -n "${WORKER_PID:-}" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+
+      - name: Upload Phase 2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uspto-official-fee-phase2-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/bootstrap.json
+            ${{ runner.temp }}/conversion-bootstrap.json
+            ${{ runner.temp }}/conversion-dispatch.json
+            ${{ runner.temp }}/phase2-retrieval-evaluation.txt
+            ${{ runner.temp }}/admin.log
+            ${{ runner.temp }}/worker.log
+          if-no-files-found: warn
+          retention-days: 30
