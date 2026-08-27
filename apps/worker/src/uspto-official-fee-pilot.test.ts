@@ -13,9 +13,7 @@ describe("Phase 2 USPTO official fee pilot", () => {
       filingBases: ["SECTION_1", "SECTION_44"],
       unit: "PER_CLASS",
     });
-    expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.amountStorage).toBe(
-      "SOURCE_CONTENT_ONLY",
-    );
+    expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.amountStorage).toBe("SOURCE_CONTENT_ONLY");
     expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.hardcodedAmountAllowed).toBe(false);
     expect(JSON.stringify(USPTO_OFFICIAL_FEE_PILOT_V1)).not.toContain("350");
   });
@@ -28,9 +26,7 @@ describe("Phase 2 USPTO official fee pilot", () => {
       requireIndexedAt: true,
       requireSourceUri: true,
     });
-    expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.staleEvidenceBehavior).toBe(
-      "FAIL_CLOSED",
-    );
+    expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.staleEvidenceBehavior).toBe("FAIL_CLOSED");
     expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.conflictingEvidenceBehavior).toBe(
       "FAIL_CLOSED",
     );

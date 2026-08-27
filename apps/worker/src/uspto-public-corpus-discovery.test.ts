@@ -24,9 +24,7 @@ describe("USPTO public trademark corpus discovery", () => {
       expect(domains.has(required as never)).toBe(true);
     }
 
-    expect(
-      USPTO_TRADEMARK_CORPUS_SEEDS.find((seed) => seed.domain === "FEE"),
-    ).toEqual({
+    expect(USPTO_TRADEMARK_CORPUS_SEEDS.find((seed) => seed.domain === "FEE")).toEqual({
       domain: "FEE",
       uri: "https://www.uspto.gov/trademarks/trademark-fee-information",
       label: "Trademark fee information",
