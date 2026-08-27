@@ -33,6 +33,16 @@ function request(workspaceId = "workspace-a", permissions = ["matter:read"]): Re
   });
 }
 
+function expectAccessError(action: () => void, code: string, httpStatus: number): void {
+  try {
+    action();
+    throw new Error("Expected access to be denied");
+  } catch (error) {
+    expect(error).toBeInstanceOf(CaseProducerAccessError);
+    expect(error).toMatchObject({ code, httpStatus });
+  }
+}
+
 describe("KG-009 relationship authorization", () => {
   it("accepts an authenticated matter reader in the requested workspace", () => {
     const authorized = authorizeKnowledgeRelationshipRequest(
@@ -45,50 +55,33 @@ describe("KG-009 relationship authorization", () => {
   });
 
   it("fails closed on workspace mismatch", () => {
-    expect(() =>
-      authorizeKnowledgeRelationshipRequest(
-        request("workspace-b"),
-        "workspace-a",
-        secret,
-        now,
-      ),
-    ).toThrowError(
-      expect.objectContaining<Partial<CaseProducerAccessError>>({
-        code: "WORKSPACE_MISMATCH",
-        httpStatus: 403,
-      }),
+    expectAccessError(
+      () => authorizeKnowledgeRelationshipRequest(request("workspace-b"), "workspace-a", secret, now),
+      "WORKSPACE_MISMATCH",
+      403,
     );
   });
 
   it("fails closed when matter:read permission is absent", () => {
-    expect(() =>
-      authorizeKnowledgeRelationshipRequest(
-        request("workspace-a", ["workspace:read"]),
-        "workspace-a",
-        secret,
-        now,
-      ),
-    ).toThrowError(
-      expect.objectContaining<Partial<CaseProducerAccessError>>({
-        code: "PERMISSION_DENIED",
-        httpStatus: 403,
-      }),
+    expectAccessError(
+      () =>
+        authorizeKnowledgeRelationshipRequest(
+          request("workspace-a", ["workspace:read"]),
+          "workspace-a",
+          secret,
+          now,
+        ),
+      "PERMISSION_DENIED",
+      403,
     );
   });
 
   it("fails closed when the internal service secret is invalid", () => {
-    expect(() =>
-      authorizeKnowledgeRelationshipRequest(
-        request(),
-        "workspace-a",
-        "different-secret",
-        now,
-      ),
-    ).toThrowError(
-      expect.objectContaining<Partial<CaseProducerAccessError>>({
-        code: "INTERNAL_SERVICE_UNAUTHORIZED",
-        httpStatus: 401,
-      }),
+    expectAccessError(
+      () =>
+        authorizeKnowledgeRelationshipRequest(request(), "workspace-a", "different-secret", now),
+      "INTERNAL_SERVICE_UNAUTHORIZED",
+      401,
     );
   });
 });
