@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/uspto-official-fee-phase2-live.yml
       - apps/worker/src/bootstrap-uspto.ts
+      - apps/worker/src/verify-uspto-exact-page-pipeline.ts
       - apps/admin/src/server/uspto-official-fee-live-evidence.e2e.ts
       - apps/admin/src/server/knowledge-retrieval-composition.ts
       - apps/admin/src/server/knowledge-retrieval-evaluation.ts
@@ -148,8 +149,8 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_CONVERSION_RUN_ID=${data.conversionRunId}\n`);
           NODE
 
-      - name: Verify conversion, Staging, ReadyPackage and automatic retrieval indexing
-        run: pnpm --filter @markorbit/worker verify:uspto-pipeline -- "$MARKORBIT_SOURCE_ID" "$MARKORBIT_CONVERSION_RUN_ID"
+      - name: Verify conversion, Staging and ReadyPackage for exact page
+        run: pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_SOURCE_ID" "$MARKORBIT_CONVERSION_RUN_ID"
 
       - name: Run real retrieval replay and versioned evaluation acceptance
         env:
