@@ -37,6 +37,9 @@ export type OfficialEvidenceFailClosedReason =
   | "INCOMPLETE_LINEAGE"
   | "INVALID_LINEAGE_HASH"
   | "INVALID_INDEXED_AT"
+  | "MISSING_EFFECTIVE_AT"
+  | "INVALID_EFFECTIVE_AT"
+  | "INVALID_EXPIRES_AT"
   | "TEMPORAL_STATUS_UNRESOLVED"
   | "STALE_EVIDENCE"
   | "UNRESOLVED_CONFLICT"
@@ -116,6 +119,15 @@ export function evaluateOfficialEvidenceAdmissibility(
       addReason(reasons, "INVALID_LINEAGE_HASH");
     }
     if (!isValidDateTime(item.indexedAt)) addReason(reasons, "INVALID_INDEXED_AT");
+
+    if (item.effectiveAt === null) {
+      addReason(reasons, "MISSING_EFFECTIVE_AT");
+    } else if (!isValidDateTime(item.effectiveAt)) {
+      addReason(reasons, "INVALID_EFFECTIVE_AT");
+    }
+    if (item.expiresAt !== null && !isValidDateTime(item.expiresAt)) {
+      addReason(reasons, "INVALID_EXPIRES_AT");
+    }
 
     if (item.temporalStatus === "UNRESOLVED") {
       addReason(reasons, "TEMPORAL_STATUS_UNRESOLVED");
