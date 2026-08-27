@@ -1,0 +1,64 @@
+name: Issue 530 Knowledge Entry Patch
+
+on:
+  push:
+    branches:
+      - issue-530-kg-008-hybrid-search-graph-navigation
+    paths:
+      - .github/workflows/issue-530-knowledge-entry.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: issue-530-kg-008-hybrid-search-graph-navigation
+      - name: Add Hybrid Search entry to active Knowledge page
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("apps/admin/src/app/[section]/page.tsx")
+          text = path.read_text()
+          old = '''function KnowledgePage() {
+            return (
+              <>
+                <CorePageHeading page="knowledge" />
+                <KnowledgeBrowser workspaceId={DEFAULT_WORKSPACE.id} />
+              </>
+            );
+          }
+          '''
+          new = '''function KnowledgePage() {
+            return (
+              <>
+                <CorePageHeading page="knowledge" />
+                <div className="mb-4 flex justify-end">
+                  <Link
+                    href="/knowledge/search"
+                    className="inline-flex items-center rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800"
+                  >
+                    混合搜索 / Hybrid Search
+                  </Link>
+                </div>
+                <KnowledgeBrowser workspaceId={DEFAULT_WORKSPACE.id} />
+              </>
+            );
+          }
+          '''
+          if old not in text:
+            raise SystemExit("KnowledgePage target block not found")
+          path.write_text(text.replace(old, new, 1))
+      - name: Commit entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'apps/admin/src/app/[section]/page.tsx'
+          git commit -m 'ui: expose KG-008 search from Knowledge workspace'
+          git push origin HEAD:issue-530-kg-008-hybrid-search-graph-navigation
