@@ -2,6 +2,7 @@ export type UsptoTrademarkDomain =
   | "ROOT"
   | "BASICS"
   | "FILING"
+  | "FEE"
   | "EXAMINATION"
   | "TMEP"
   | "TMEP_ARCHIVE"
@@ -38,6 +39,11 @@ export const USPTO_TRADEMARK_CORPUS_SEEDS: readonly UsptoCorpusSeed[] = [
     domain: "FILING",
     uri: "https://www.uspto.gov/trademarks/apply/base-application-requirements",
     label: "Base application requirements",
+  },
+  {
+    domain: "FEE",
+    uri: "https://www.uspto.gov/trademarks/trademark-fee-information",
+    label: "Trademark fee information",
   },
   {
     domain: "TMEP",
@@ -120,6 +126,8 @@ function classify(url: URL, label: string): UsptoTrademarkDomain | null {
   if (path.includes("trial-and-appeal") || text.includes("tbmp") || text.includes("ttab"))
     return "TTAB_TBMP";
   if (path.includes("madrid") || text.includes("madrid protocol")) return "MADRID";
+  if (path.includes("trademark-fee-information") || text.includes("trademark fee information"))
+    return "FEE";
   if (
     path.includes("post-registration") ||
     path.includes("/maintain") ||
@@ -194,6 +202,7 @@ export function summarizeUsptoDomains(
     ROOT: 0,
     BASICS: 0,
     FILING: 0,
+    FEE: 0,
     EXAMINATION: 0,
     TMEP: 0,
     TMEP_ARCHIVE: 0,

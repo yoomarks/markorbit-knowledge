@@ -10,6 +10,7 @@ describe("USPTO public trademark corpus discovery", () => {
   it("keeps independent knowledge trees as explicit seeds", () => {
     const domains = new Set(USPTO_TRADEMARK_CORPUS_SEEDS.map((seed) => seed.domain));
     for (const required of [
+      "FEE",
       "TMEP",
       "TMEP_ARCHIVE",
       "EXAMINATION_GUIDES",
@@ -22,10 +23,17 @@ describe("USPTO public trademark corpus discovery", () => {
     ]) {
       expect(domains.has(required as never)).toBe(true);
     }
+
+    expect(USPTO_TRADEMARK_CORPUS_SEEDS.find((seed) => seed.domain === "FEE")).toEqual({
+      domain: "FEE",
+      uri: "https://www.uspto.gov/trademarks/trademark-fee-information",
+      label: "Trademark fee information",
+    });
   });
 
   it("classifies observed official trademark links by knowledge domain", () => {
     const html = `
+      <a href="/trademarks/trademark-fee-information">Trademark fee information</a>
       <a href="/trademarks/guides-and-manuals/tmep-archives">TMEP files and archives</a>
       <a href="/trademarks/guides-and-manuals/trademark-examination-guides">Trademark examination guides</a>
       <a href="/trademarks/maintain/post-registration-faqs">Post-Registration FAQs</a>
@@ -40,6 +48,7 @@ describe("USPTO public trademark corpus discovery", () => {
     const links = extractUsptoTrademarkLinks(html, "https://www.uspto.gov/trademarks");
     const counts = summarizeUsptoDomains(links);
 
+    expect(counts.FEE).toBe(1);
     expect(counts.TMEP_ARCHIVE).toBe(1);
     expect(counts.EXAMINATION_GUIDES).toBe(1);
     expect(counts.POST_REGISTRATION).toBe(1);
@@ -48,7 +57,7 @@ describe("USPTO public trademark corpus discovery", () => {
     expect(counts.TRAINING_VIDEO).toBe(1);
     expect(counts.FORMS_SYSTEMS).toBe(1);
     expect(counts.LAWS_POLICY).toBe(1);
-    expect(links).toHaveLength(8);
+    expect(links).toHaveLength(9);
   });
 
   it("accepts official USPTO subdomains but rejects non-trademark paths", () => {
