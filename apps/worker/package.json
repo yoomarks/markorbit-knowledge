@@ -47,6 +47,7 @@
     "operate:foundational:us": "tsx src/operate-us-foundational.ts",
     "verify:uspto": "tsx src/verify-uspto-golden-source.ts",
     "verify:uspto-pipeline": "tsx src/verify-uspto-full-pipeline.ts",
+    "verify:uspto-exact-page-pipeline": "tsx src/verify-uspto-exact-page-pipeline.ts",
     "verify:coverage": "tsx src/verify-source-coverage.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
