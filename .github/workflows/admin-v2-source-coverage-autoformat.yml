@@ -56,7 +56,6 @@ jobs:
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
             apps/admin/src/components/knowledge/content-reader-model.ts \
             apps/admin/src/components/knowledge/content-reader.tsx \
-            apps/admin/src/components/knowledge/content-reader.tsx \
             apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
