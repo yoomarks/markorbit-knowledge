@@ -8,6 +8,7 @@ import {
   resolveExpertReadPrincipal,
 } from "@/server/expert-api-access";
 import { getExpertQuestionSender } from "@/server/expert-communication-bridge";
+import { getExpertReplyImporter } from "@/server/expert-communication-reply-importer";
 import { ExpertQaOperatorService } from "@/server/expert-qa-operator-service";
 import { getExpertSourceRepository } from "@/server/expert-source-registry";
 import { withRegistryTransaction } from "@/server/source-registry";
@@ -55,6 +56,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         return NextResponse.json({ task: operator.markReady(id) });
       case "SEND":
         return NextResponse.json({ task: await operator.sendReady(id) });
+      case "IMPORT_REPLY": {
+        const imported = await getExpertReplyImporter(
+          getExpertSourceRepository(),
+          principal.workspaceId,
+        ).importReply(id);
+        return NextResponse.json(imported);
+      }
       case "CAPTURE":
         return NextResponse.json({ task: operator.capture(id) });
       case "CLOSE":
