@@ -73,6 +73,9 @@ describe("official evidence admissibility", () => {
   });
 
   it.each([
+    ["missing effective date", { effectiveAt: null }, "MISSING_EFFECTIVE_AT" as const],
+    ["invalid effective date", { effectiveAt: "not-a-date" }, "INVALID_EFFECTIVE_AT" as const],
+    ["invalid expiry date", { expiresAt: "not-a-date" }, "INVALID_EXPIRES_AT" as const],
     [
       "unresolved temporal metadata",
       { temporalStatus: "UNRESOLVED" as const },
