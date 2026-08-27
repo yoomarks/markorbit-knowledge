@@ -1,4 +1,5 @@
 import {
+  isContentEdgeV1,
   isContentObjectRefV1,
   isKnowledgeRetrievalCompositionQueryV1,
   type ContentObjectRefV1,
@@ -66,6 +67,34 @@ function identity(content: ContentObjectRefV1): string {
 function validateContent(content: ContentObjectRefV1, workspaceId: string, channel: string): void {
   if (!isContentObjectRefV1(content) || content.workspaceId !== workspaceId) {
     throw new RegistryValidationError(`${channel} retrieval returned invalid workspace content`);
+  }
+}
+
+function validateGraphNeighbor(
+  seed: ContentObjectRefV1,
+  neighbor: ContentNeighborV1,
+  workspaceId: string,
+): void {
+  validateContent(neighbor.neighbor, workspaceId, "GRAPH");
+  if (!isContentEdgeV1(neighbor.edge)) {
+    throw new RegistryValidationError("GRAPH retrieval returned an invalid content edge");
+  }
+
+  const seedIdentity = identity(seed);
+  const neighborIdentity = identity(neighbor.neighbor);
+  const fromIdentity = identity(neighbor.edge.from);
+  const toIdentity = identity(neighbor.edge.to);
+  const matchesDirection =
+    neighbor.direction === "OUTGOING"
+      ? fromIdentity === seedIdentity && toIdentity === neighborIdentity
+      : neighbor.direction === "INCOMING"
+        ? toIdentity === seedIdentity && fromIdentity === neighborIdentity
+        : false;
+
+  if (!matchesDirection) {
+    throw new RegistryValidationError(
+      "GRAPH retrieval returned an edge inconsistent with the requested seed and neighbor",
+    );
   }
 }
 
@@ -140,6 +169,7 @@ export async function composeKnowledgeRetrieval(
     ? graph.listNeighbors(query.graphSeed, graphLimit, 0).items
     : [];
   graphNeighbors.forEach((neighbor, index) => {
+    validateGraphNeighbor(query.graphSeed!, neighbor, query.workspaceId);
     const evidence: KnowledgeGraphEvidenceV1 = {
       channel: "GRAPH",
       position: index + 1,
