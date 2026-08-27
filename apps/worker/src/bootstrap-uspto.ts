@@ -48,7 +48,9 @@ function validateUsptoBoundary(uri: string, label: string): void {
 
 validateUsptoBoundary(CANONICAL_URI, "MARKORBIT_USPTO_CANONICAL_URI");
 if (!INCLUDE_PATTERN.startsWith("https://") || !INCLUDE_PATTERN.includes("uspto.gov/trademark")) {
-  throw new Error("MARKORBIT_USPTO_INCLUDE_PATTERN must remain inside the USPTO trademark boundary");
+  throw new Error(
+    "MARKORBIT_USPTO_INCLUDE_PATTERN must remain inside the USPTO trademark boundary",
+  );
 }
 
 function record(value: unknown): Record<string, unknown> | null {

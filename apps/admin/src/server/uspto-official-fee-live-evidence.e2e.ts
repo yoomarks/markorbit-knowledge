@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { ContentObjectRefV1, KnowledgeRetrievalCompositionQueryV1 } from "@markorbit/contracts";
+import type {
+  ContentObjectRefV1,
+  KnowledgeRetrievalCompositionQueryV1,
+} from "@markorbit/contracts";
 import { SqliteContentRelationshipRepository } from "@markorbit/persistence/content-relationships";
-import { composeKnowledgeRetrieval, type KnowledgeLexicalRetrievalReader } from "./knowledge-retrieval-composition";
+import {
+  composeKnowledgeRetrieval,
+  type KnowledgeLexicalRetrievalReader,
+} from "./knowledge-retrieval-composition";
 import { runFrozenRetrievalEvaluation } from "./knowledge-retrieval-evaluation-runner";
 import {
   getRegistryDatabase,
@@ -97,14 +103,12 @@ liveDescribe("Phase 2 live USPTO official fee research evidence", () => {
     expect(Number.isNaN(Date.parse(canonicalHit.document.indexedAt))).toBe(false);
 
     const markdown = canonicalText(
-      getStagingContentRepository().readContent(canonicalHit.document.stagingDocumentId, workspaceId),
+      getStagingContentRepository().readContent(
+        canonicalHit.document.stagingDocumentId,
+        workspaceId,
+      ),
     ).toLowerCase();
-    for (const anchor of [
-      "base application filing fee",
-      "section 1",
-      "section 44",
-      "per class",
-    ]) {
+    for (const anchor of ["base application filing fee", "section 1", "section 44", "per class"]) {
       expect(markdown).toContain(anchor);
     }
 
@@ -112,7 +116,9 @@ liveDescribe("Phase 2 live USPTO official fee research evidence", () => {
     const second = await composedResult(workspaceId, sourceId);
     expect(second).toEqual(first);
 
-    const item = first.items.find((entry) => entry.content.objectId === canonicalHit.document.documentId);
+    const item = first.items.find(
+      (entry) => entry.content.objectId === canonicalHit.document.documentId,
+    );
     expect(item).toBeDefined();
     const lexical = item?.evidence.find(
       (evidence) =>
