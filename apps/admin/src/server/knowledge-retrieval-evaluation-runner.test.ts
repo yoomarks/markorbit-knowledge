@@ -100,7 +100,22 @@ function result(
         ? [
             {
               content: irrelevantGraph,
-              evidence: [{ channel: "GRAPH" as const, position: 1 }],
+              evidence: [
+                {
+                  channel: "GRAPH" as const,
+                  position: 1,
+                  seed: contentRef,
+                  direction: "OUTGOING" as const,
+                  edge: {
+                    protocolVersion: "1.0" as const,
+                    objectType: "CONTENT_EDGE" as const,
+                    from: contentRef,
+                    relationType: "SIMILAR_TO" as const,
+                    to: irrelevantGraph,
+                    origin: "SYSTEM_DERIVED" as const,
+                  },
+                },
+              ],
             },
           ]
         : []),
