@@ -17,7 +17,9 @@ export default async function KnowledgeContentReaderPage({
       <div className="space-y-5">
         <ContentReader documentId={id} workspaceId={DEFAULT_WORKSPACE.id} />
         <ContentRelationshipPanel documentId={id} workspaceId={DEFAULT_WORKSPACE.id} />
-        <ContentLocalGraph documentId={id} workspaceId={DEFAULT_WORKSPACE.id} />
+        <div id="knowledge-graph">
+          <ContentLocalGraph documentId={id} workspaceId={DEFAULT_WORKSPACE.id} />
+        </div>
       </div>
     </AdminShell>
   );
