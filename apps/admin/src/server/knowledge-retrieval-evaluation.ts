@@ -73,7 +73,9 @@ function validateEvaluation(
         chunk.chunkId !== chunk.chunkId.trim() ||
         !SHA256_HEX.test(chunk.contentSha256)
       ) {
-        throw new RegistryValidationError("Retrieval evaluation contains invalid expected chunk lineage");
+        throw new RegistryValidationError(
+          "Retrieval evaluation contains invalid expected chunk lineage",
+        );
       }
       if (chunkIds.has(chunk.chunkId)) {
         throw new RegistryValidationError("Retrieval evaluation contains duplicate expected chunks");
