@@ -114,7 +114,9 @@ export function getUsptoOfficialFeePilotSourceRole(
   if (normalized === USPTO_OFFICIAL_FEE_PILOT_V1.sourceSet.primaryNumeric.uri) {
     return "PRIMARY_NUMERIC";
   }
-  if (normalized === USPTO_OFFICIAL_FEE_PILOT_V1.sourceSet.secondaryApplicabilityContext.uri) {
+  if (
+    normalized === USPTO_OFFICIAL_FEE_PILOT_V1.sourceSet.secondaryApplicabilityContext.uri
+  ) {
     return "SECONDARY_APPLICABILITY_CONTEXT";
   }
   return undefined;
