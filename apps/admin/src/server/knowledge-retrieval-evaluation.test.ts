@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-  ContentObjectRefV1,
-  KnowledgeRetrievalCompositionResultV1,
-} from "@markorbit/contracts";
+import type { ContentObjectRefV1, KnowledgeRetrievalCompositionResultV1 } from "@markorbit/contracts";
 import { evaluateKnowledgeRetrieval } from "./knowledge-retrieval-evaluation";
 
 const workspaceId = "workspace-eval";
