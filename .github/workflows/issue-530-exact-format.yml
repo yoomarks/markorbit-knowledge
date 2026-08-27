@@ -1,23 +1,21 @@
 name: Issue 530 Exact Format
 
 on:
-  push:
-    branches:
-      - issue-530-kg-008-hybrid-search-graph-navigation
-    paths:
-      - .github/workflows/issue-530-exact-format.yml
+  pull_request:
+    types: [synchronize]
 
 permissions:
   contents: write
 
 jobs:
   format:
+    if: github.event.pull_request.head.ref == 'issue-530-kg-008-hybrid-search-graph-navigation'
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout branch
+      - name: Checkout PR head
         uses: actions/checkout@v4
         with:
-          ref: issue-530-kg-008-hybrid-search-graph-navigation
+          ref: ${{ github.event.pull_request.head.ref }}
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.1
@@ -50,4 +48,4 @@ jobs:
             exit 0
           fi
           git commit -m 'style: format KG-008 hybrid search'
-          git push origin HEAD:issue-530-kg-008-hybrid-search-graph-navigation
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
