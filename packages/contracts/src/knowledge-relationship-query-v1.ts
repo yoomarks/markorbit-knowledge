@@ -43,7 +43,9 @@ function nonNegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
-export function isKnowledgeRelationshipQueryV1(value: unknown): value is KnowledgeRelationshipQueryV1 {
+export function isKnowledgeRelationshipQueryV1(
+  value: unknown,
+): value is KnowledgeRelationshipQueryV1 {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   const query = value as Record<string, unknown>;
   return (
