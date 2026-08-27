@@ -79,12 +79,7 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
   }, [jurisdiction, q, sourceId, workspaceId]);
 
   useEffect(() => {
-    if (!query) {
-      setResult(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
+    if (!query) return;
     let active = true;
     const timer = window.setTimeout(() => {
       const load = async () => {
