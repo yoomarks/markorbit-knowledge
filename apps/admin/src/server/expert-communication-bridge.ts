@@ -74,7 +74,13 @@ function coreBaseUrl(options: CoreExpertQuestionSenderOptions): string {
       "Core Shared Communication endpoint is invalid.",
     );
   }
-  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
+  if (
+    !["http:", "https:"].includes(url.protocol) ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  ) {
     throw new RegistryError(
       "EXPERT_COMMUNICATION_CAPABILITY_NOT_CONFIGURED",
       "Core Shared Communication endpoint must be an HTTP(S) origin without embedded credentials.",
@@ -104,7 +110,9 @@ function participant(value: unknown, field: string): ParticipantConfig {
   }
   const address = required(record.address, `${field}.address`);
   const displayName =
-    record.displayName === undefined ? undefined : required(record.displayName, `${field}.displayName`, 300);
+    record.displayName === undefined
+      ? undefined
+      : required(record.displayName, `${field}.displayName`, 300);
   return { address, ...(displayName ? { displayName } : {}) };
 }
 
@@ -132,7 +140,12 @@ function parseConfig(options: CoreExpertQuestionSenderOptions): ExpertCommunicat
     );
   }
   const root = parsed as Record<string, unknown>;
-  if (Object.keys(root).some((key) => key !== "workspaces") || !root.workspaces || typeof root.workspaces !== "object" || Array.isArray(root.workspaces)) {
+  if (
+    Object.keys(root).some((key) => key !== "workspaces") ||
+    !root.workspaces ||
+    typeof root.workspaces !== "object" ||
+    Array.isArray(root.workspaces)
+  ) {
     throw new RegistryError(
       "EXPERT_COMMUNICATION_CAPABILITY_NOT_CONFIGURED",
       "Expert Communication routing configuration must contain only a workspaces object.",
@@ -151,10 +164,20 @@ function workspaceConfig(options: CoreExpertQuestionSenderOptions): WorkspaceCom
     );
   }
   const record = raw as unknown as Record<string, unknown>;
-  if (Object.keys(record).some((key) => !["accountRef", "sender", "recipients"].includes(key))) {
-    throw new RegistryValidationError("Expert workspace Communication configuration contains unsupported fields");
+  if (
+    Object.keys(record).some(
+      (key) => !["accountRef", "sender", "recipients"].includes(key),
+    )
+  ) {
+    throw new RegistryValidationError(
+      "Expert workspace Communication configuration contains unsupported fields",
+    );
   }
-  if (!record.recipients || typeof record.recipients !== "object" || Array.isArray(record.recipients)) {
+  if (
+    !record.recipients ||
+    typeof record.recipients !== "object" ||
+    Array.isArray(record.recipients)
+  ) {
     throw new RegistryValidationError("Expert workspace Communication recipients must be an object");
   }
   const recipients = Object.fromEntries(
@@ -206,7 +229,8 @@ function parseReceipt(value: unknown, workspaceId: string, accountRef: string): 
     threadRef: required(record.threadRef, "threadRef"),
     acceptedAt: required(record.acceptedAt, "acceptedAt", 80),
   };
-  if (new Date(receipt.acceptedAt).toISOString() !== receipt.acceptedAt) {
+  const acceptedAt = new Date(receipt.acceptedAt);
+  if (Number.isNaN(acceptedAt.getTime()) || acceptedAt.toISOString() !== receipt.acceptedAt) {
     throw new RegistryError(
       "EXPERT_COMMUNICATION_RECEIPT_INVALID",
       "Core Shared Communication receipt acceptedAt is not a canonical timestamp.",
