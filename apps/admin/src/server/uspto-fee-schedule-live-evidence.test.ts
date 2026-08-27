@@ -109,7 +109,7 @@ liveDescribe("Phase 2 live USPTO Fee Schedule primary authority evidence", () =>
         workspaceId,
       ),
     ).toLowerCase();
-    for (const anchor of ["base application fee", "7017", "2.6(a)(1)(iii)"]) {
+    for (const anchor of ["base application, per class", "7017", "2.6(a)(1)(iii)"]) {
       expect(markdown).toContain(anchor);
     }
 
