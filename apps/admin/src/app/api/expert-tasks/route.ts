@@ -7,6 +7,7 @@ import {
   resolveExpertMutationPrincipal,
   resolveExpertReadPrincipal,
 } from "@/server/expert-api-access";
+import { getExpertCommunicationStatus } from "@/server/expert-communication-bridge";
 import { ExpertQaOperatorService } from "@/server/expert-qa-operator-service";
 import { getExpertSourceRepository } from "@/server/expert-source-registry";
 import { withRegistryTransaction } from "@/server/source-registry";
@@ -35,11 +36,7 @@ export async function GET(request: Request) {
     );
     return NextResponse.json({
       items,
-      communication: {
-        connected: false,
-        reason:
-          "Shared Communication bridge is intentionally fail-closed until K-CAP-COMM-005 is implemented.",
-      },
+      communication: getExpertCommunicationStatus(principal.workspaceId),
     });
   } catch (error) {
     return apiError(error);
