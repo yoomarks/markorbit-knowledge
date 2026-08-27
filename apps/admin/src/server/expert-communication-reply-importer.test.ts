@@ -80,6 +80,18 @@ function resolution(overrides: Record<string, unknown> = {}) {
           providerThreadId: "provider-thread-001",
           observedAt: "2026-08-27T05:15:05.000Z",
         },
+        exactEvidence: {
+          schemaVersion: 1,
+          evidenceRef: "commevidence_test_exact_001",
+          sha256: "b".repeat(64),
+          mediaType: "message/rfc822",
+          sizeBytes: 128,
+          observedAt: "2026-08-27T05:15:05.000Z",
+          provider: "TEST_PROVIDER",
+          providerMessageId: "provider-message-001",
+          headers: [],
+          metadata: {},
+        },
         ...overrides,
       },
     ],
@@ -120,9 +132,7 @@ describe("CoreExpertReplyImporter", () => {
       communicationThreadRef: "commthread_001",
       messageRefs: ["commmsg_inbound_001"],
     });
-    expect(first.sourceRecord.rawAnswerArtifactRefs).toEqual([
-      "markorbit-core:managed-communication-message:commmsg_inbound_001",
-    ]);
+    expect(first.sourceRecord.rawAnswerArtifactRefs).toEqual(["commevidence_test_exact_001"]);
     expect(first.sourceRecord.relatedSourceRefs).toEqual(task.relatedSourceRefs);
     expect(first.sourceRecord.relatedCaseRefs).toEqual(task.relatedCaseRefs);
     expect(first.sourceRecord.accessClassification).toBe("CONFIDENTIAL");
