@@ -159,14 +159,7 @@ async function ensureSource(baseUrl: string): Promise<string> {
       connectorConfig: { renderJavascript: false, maxDepth: 0 },
       canonicalUri: CANONICAL_URI,
       entrypoints: [{ uri: CANONICAL_URI, label: "USPTO Fee Schedule" }],
-      tags: [
-        "official",
-        "primary-authority",
-        "trademark",
-        "fee-schedule",
-        "us",
-        "phase2",
-      ],
+      tags: ["official", "primary-authority", "trademark", "fee-schedule", "us", "phase2"],
       extensions: {
         "x-markorbit-phase2-primary-fee-authority": true,
         "x-markorbit-source-owner": "United States Patent and Trademark Office",
