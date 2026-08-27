@@ -34,6 +34,7 @@ type ThreadMessage = {
   participants: { role: string; address: string }[];
   attachments: { attachmentRef: string; sha256: string }[];
   occurredAt: string;
+  exactEvidence: { evidenceRef: string; sha256: string };
 };
 
 function required(value: unknown, field: string, max = 500): string {
@@ -219,13 +220,48 @@ function parseMessage(value: unknown, accountRef: string, threadRef: string): Th
       sha256,
     };
   });
-  object(raw.providerObservation, "providerObservation");
+  const providerObservation = object(raw.providerObservation, "providerObservation");
+  const exactEvidence = object(raw.exactEvidence, "exactEvidence");
+  if (exactEvidence.schemaVersion !== 1) {
+    throw new RegistryError(
+      "EXPERT_COMMUNICATION_EXACT_EVIDENCE_REQUIRED",
+      "Inbound Expert reply must retain Core exact provider evidence.",
+    );
+  }
+  const evidenceRef = required(exactEvidence.evidenceRef, "exactEvidence.evidenceRef");
+  const evidenceSha256 = required(exactEvidence.sha256, "exactEvidence.sha256", 64);
+  if (!/^[a-f0-9]{64}$/u.test(evidenceSha256)) {
+    throw new RegistryError(
+      "EXPERT_COMMUNICATION_REPLY_INVALID",
+      "Core exact evidence must retain a lowercase SHA-256 digest.",
+    );
+  }
+  if (
+    required(exactEvidence.provider, "exactEvidence.provider", 120) !==
+      required(providerObservation.provider, "providerObservation.provider", 120) ||
+    required(exactEvidence.providerMessageId, "exactEvidence.providerMessageId") !==
+      required(providerObservation.providerMessageId, "providerObservation.providerMessageId") ||
+    timestamp(exactEvidence.observedAt, "exactEvidence.observedAt") !==
+      timestamp(providerObservation.observedAt, "providerObservation.observedAt")
+  ) {
+    throw new RegistryError(
+      "EXPERT_COMMUNICATION_REPLY_INVALID",
+      "Core exact evidence provenance must match the normalized provider observation.",
+    );
+  }
+  if (!Number.isSafeInteger(exactEvidence.sizeBytes) || (exactEvidence.sizeBytes as number) < 1) {
+    throw new RegistryError(
+      "EXPERT_COMMUNICATION_REPLY_INVALID",
+      "Core exact evidence size must be a positive safe integer.",
+    );
+  }
   return {
     messageId: required(raw.messageId, "messageId"),
     direction: raw.direction,
     participants,
     attachments,
     occurredAt: timestamp(raw.occurredAt, "occurredAt"),
+    exactEvidence: { evidenceRef, sha256: evidenceSha256 },
   };
 }
 
@@ -386,7 +422,7 @@ export class CoreExpertReplyImporter {
         communicationThreadRef: task.communicationThreadRef,
         messageRefs: [inbound.messageId],
       },
-      rawAnswerArtifactRefs: [`markorbit-core:managed-communication-message:${inbound.messageId}`],
+      rawAnswerArtifactRefs: [inbound.exactEvidence.evidenceRef],
       attachmentRefs: inbound.attachments.map((attachment) => attachment.attachmentRef),
       receivedAt: inbound.occurredAt,
       capturedAt,
