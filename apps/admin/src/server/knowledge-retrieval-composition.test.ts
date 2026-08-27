@@ -52,6 +52,12 @@ const query: KnowledgeRetrievalCompositionQueryV1 = {
   graphSeed: seed,
 };
 
+const frozenChunkLineage = {
+  chunkId: "chunk:doc-one:assignment:0",
+  contentSha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  indexedAt: "2026-08-27T14:00:00.000Z",
+} as const;
+
 const lexical: KnowledgeLexicalRetrievalReader = {
   search: () => [
     {
@@ -60,6 +66,7 @@ const lexical: KnowledgeLexicalRetrievalReader = {
       score: -2.75,
       snippet: "trademark assignment evidence",
       headingPath: ["Assignment"],
+      ...frozenChunkLineage,
     },
   ],
 };
@@ -84,7 +91,7 @@ const vector: KnowledgeVectorRetrievalProvider = {
 };
 
 describe("KG-010 retrieval composition", () => {
-  it("deduplicates content while preserving lexical and graph evidence", async () => {
+  it("deduplicates content while preserving exact lexical chunk lineage and graph evidence", async () => {
     const result = await composeKnowledgeRetrieval(query, lexical, graph);
 
     expect(result.items).toHaveLength(1);
@@ -94,6 +101,8 @@ describe("KG-010 retrieval composition", () => {
       channel: "LEXICAL",
       score: -2.75,
       indexMode: "SQLITE_FTS5_BM25",
+      headingPath: ["Assignment"],
+      ...frozenChunkLineage,
     });
     expect(result.items[0].evidence[1]).toMatchObject({
       channel: "GRAPH",
@@ -105,6 +114,25 @@ describe("KG-010 retrieval composition", () => {
       count: 0,
       reason: "PROVIDER_UNAVAILABLE",
     });
+  });
+
+  it("fails closed when only part of lexical chunk lineage is supplied", async () => {
+    const incompleteLexical: KnowledgeLexicalRetrievalReader = {
+      search: () => [
+        {
+          content: document,
+          indexMode: "SQLITE_FTS5_BM25",
+          score: -2.75,
+          snippet: "trademark assignment evidence",
+          headingPath: ["Assignment"],
+          chunkId: frozenChunkLineage.chunkId,
+        },
+      ],
+    };
+
+    await expect(composeKnowledgeRetrieval(query, incompleteLexical, graph)).rejects.toThrow(
+      "Lexical retrieval returned incomplete chunk lineage",
+    );
   });
 
   it("preserves real vector provider identity and native values without blending scores", async () => {
