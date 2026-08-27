@@ -51,13 +51,8 @@ export const USPTO_OFFICIAL_FEE_PILOT_V1 = {
 } as const;
 
 export type UsptoOfficialFeePilotV1 = typeof USPTO_OFFICIAL_FEE_PILOT_V1;
-export type UsptoOfficialFeeSourceRole =
-  | "PRIMARY_NUMERIC"
-  | "SECONDARY_APPLICABILITY_CONTEXT";
-export type UsptoOfficialFeeSourceVersionState =
-  | "CURRENT_CANONICAL"
-  | "SUPERSEDED"
-  | "UNKNOWN";
+export type UsptoOfficialFeeSourceRole = "PRIMARY_NUMERIC" | "SECONDARY_APPLICABILITY_CONTEXT";
+export type UsptoOfficialFeeSourceVersionState = "CURRENT_CANONICAL" | "SUPERSEDED" | "UNKNOWN";
 
 export interface UsptoOfficialFeeEvidenceObservationV1 {
   role: UsptoOfficialFeeSourceRole;
@@ -114,9 +109,7 @@ export function getUsptoOfficialFeePilotSourceRole(
   if (normalized === USPTO_OFFICIAL_FEE_PILOT_V1.sourceSet.primaryNumeric.uri) {
     return "PRIMARY_NUMERIC";
   }
-  if (
-    normalized === USPTO_OFFICIAL_FEE_PILOT_V1.sourceSet.secondaryApplicabilityContext.uri
-  ) {
+  if (normalized === USPTO_OFFICIAL_FEE_PILOT_V1.sourceSet.secondaryApplicabilityContext.uri) {
     return "SECONDARY_APPLICABILITY_CONTEXT";
   }
   return undefined;

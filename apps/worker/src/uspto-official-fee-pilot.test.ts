@@ -32,8 +32,7 @@ function observation(
 }
 
 const primary = () => observation("PRIMARY_NUMERIC", PRIMARY_URI, sha("a"));
-const secondary = () =>
-  observation("SECONDARY_APPLICABILITY_CONTEXT", SECONDARY_URI, sha("b"));
+const secondary = () => observation("SECONDARY_APPLICABILITY_CONTEXT", SECONDARY_URI, sha("b"));
 
 describe("Phase 2 USPTO official fee pilot", () => {
   it("freezes the two-source authority set without hardcoding the fee amount", () => {
@@ -51,9 +50,7 @@ describe("Phase 2 USPTO official fee pilot", () => {
       role: "SECONDARY_APPLICABILITY_CONTEXT",
       uri: SECONDARY_URI,
     });
-    expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.amountStorage).toBe(
-      "SOURCE_CONTENT_ONLY",
-    );
+    expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.amountStorage).toBe("SOURCE_CONTENT_ONLY");
     expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.hardcodedAmountAllowed).toBe(false);
     expect(JSON.stringify(USPTO_OFFICIAL_FEE_PILOT_V1)).not.toContain("350");
   });
