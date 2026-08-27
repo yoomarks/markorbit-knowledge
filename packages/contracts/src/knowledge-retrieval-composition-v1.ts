@@ -27,6 +27,9 @@ export type KnowledgeLexicalEvidenceV1 = {
   score: number;
   snippet: string;
   headingPath: string[];
+  chunkId?: string;
+  contentSha256?: string;
+  indexedAt?: string;
 };
 
 export type KnowledgeGraphEvidenceV1 = {
