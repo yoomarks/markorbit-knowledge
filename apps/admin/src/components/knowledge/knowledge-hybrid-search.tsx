@@ -147,7 +147,11 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
             <input
               value={q}
               onChange={(event) => setQ(event.target.value)}
-              placeholder={zh ? "搜索标题、来源、文件名或正文内容" : "Search metadata or indexed document content"}
+              placeholder={
+                zh
+                  ? "搜索标题、来源、文件名或正文内容"
+                  : "Search metadata or indexed document content"
+              }
               className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-3 text-sm"
             />
           </label>
@@ -230,7 +234,8 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                       ))}
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
-                      {item.source?.name ?? "—"} · {item.artifact?.originalName ?? item.targetPath} · {item.status}
+                      {item.source?.name ?? "—"} · {item.artifact?.originalName ?? item.targetPath}{" "}
+                      · {item.status}
                     </p>
                     {item.searchMatch.fullText ? (
                       <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">

@@ -47,9 +47,7 @@ export function composeKnowledgeHybridSearch<T extends { id: string }>(
     composed.push({
       ...candidate.item,
       searchMatch: {
-        channels: metadataIds.has(candidate.item.id)
-          ? ["FULL_TEXT", "METADATA"]
-          : ["FULL_TEXT"],
+        channels: metadataIds.has(candidate.item.id) ? ["FULL_TEXT", "METADATA"] : ["FULL_TEXT"],
         fullText: candidate.evidence,
       },
     });

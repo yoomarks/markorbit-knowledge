@@ -21,6 +21,7 @@ KG-008 does not claim vector search. Vector composition remains KG-010. Knowledg
 ## Acceptance evidence
 
 Automated composition tests cover:
+
 - FTS order preservation;
 - duplicate full-text chunks collapsing to one document;
 - one document exposing both `FULL_TEXT` and `METADATA` channels;
