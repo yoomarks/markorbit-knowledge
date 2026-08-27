@@ -25,6 +25,8 @@ const MAX_SCAN = 100;
 const MAX_FTS_HITS = 50;
 const DEFAULT_LIMIT = 25;
 
+type SearchTruncationReason = "METADATA_SCAN_LIMIT" | "FULL_TEXT_HIT_LIMIT";
+
 function integerParam(value: string | null, fallback: number, max: number): number {
   if (!value) return fallback;
   const parsed = Number(value);
@@ -182,6 +184,11 @@ export function GET(request: Request) {
     const kinds = [
       ...new Set(allScanned.map((item) => item.artifact?.artifactKind).filter(Boolean)),
     ].sort();
+    const truncationReasons: SearchTruncationReason[] = [];
+    if (documents.total > documents.items.length) truncationReasons.push("METADATA_SCAN_LIMIT");
+    if (fullTextResult.total > fullTextResult.items.length) {
+      truncationReasons.push("FULL_TEXT_HIT_LIMIT");
+    }
 
     return NextResponse.json({
       search: {
@@ -190,6 +197,9 @@ export function GET(request: Request) {
         graphNavigation: "OBJECTIVE_LOCAL_1_2_HOP",
         graphAffectsRank: false,
         vectorSearch: false,
+        truncated: truncationReasons.length > 0,
+        truncationReasons,
+        limits: { metadataScan: MAX_SCAN, fullTextHits: MAX_FTS_HITS },
       },
       query: q,
       items: page,
