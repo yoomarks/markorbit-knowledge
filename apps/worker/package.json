@@ -18,6 +18,7 @@
     "bootstrap:rss": "tsx src/bootstrap-rss.ts",
     "bootstrap:local-folder": "tsx src/bootstrap-local-folder.ts",
     "bootstrap:uspto": "tsx src/bootstrap-uspto.ts",
+    "bootstrap:uspto-fee-schedule": "tsx src/bootstrap-uspto-fee-schedule.ts",
     "bootstrap:uspto-conversion": "tsx src/bootstrap-uspto-conversion.ts",
     "bootstrap:coverage": "tsx src/bootstrap-source-coverage.ts",
     "audit:golden-corpora": "tsx src/audit-golden-corpora.ts",
