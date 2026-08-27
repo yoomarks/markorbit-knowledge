@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import type { ExpertQuestionTaskV1, ExpertSourceRecordV1 } from "@markorbit/contracts";
-import { RegistryConflictError, RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+} from "@markorbit/persistence";
 import { SqliteExpertSourceRepository } from "@markorbit/persistence/expert-sources";
 import { ExpertQaOperatorService } from "./expert-qa-operator-service";
 
@@ -71,7 +75,13 @@ function baseUrl(options: CoreExpertReplyImporterOptions): string {
       "Core Shared Communication endpoint is invalid.",
     );
   }
-  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
+  if (
+    !["http:", "https:"].includes(url.protocol) ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  ) {
     throw new RegistryError(
       "EXPERT_COMMUNICATION_CAPABILITY_NOT_CONFIGURED",
       "Core Shared Communication endpoint must be an HTTP(S) origin.",
@@ -128,7 +138,9 @@ function workspaceConfig(options: CoreExpertReplyImporterOptions): WorkspaceConf
       "Expert Communication routing must contain workspaces.",
     );
   }
-  const workspace = (workspaces as Record<string, unknown>)[required(options.workspaceId, "workspaceId")];
+  const workspace = (workspaces as Record<string, unknown>)[
+    required(options.workspaceId, "workspaceId")
+  ];
   if (!workspace || typeof workspace !== "object" || Array.isArray(workspace)) {
     throw new RegistryError(
       "EXPERT_COMMUNICATION_WORKSPACE_NOT_CONFIGURED",
@@ -136,8 +148,14 @@ function workspaceConfig(options: CoreExpertReplyImporterOptions): WorkspaceConf
     );
   }
   const record = workspace as Record<string, unknown>;
-  if (!record.recipients || typeof record.recipients !== "object" || Array.isArray(record.recipients)) {
-    throw new RegistryValidationError("Expert workspace Communication recipients must be an object");
+  if (
+    !record.recipients ||
+    typeof record.recipients !== "object" ||
+    Array.isArray(record.recipients)
+  ) {
+    throw new RegistryValidationError(
+      "Expert workspace Communication recipients must be an object",
+    );
   }
   return {
     accountRef: required(record.accountRef, "accountRef"),
@@ -161,9 +179,13 @@ function object(value: unknown, field: string): Record<string, unknown> {
 function parseMessage(value: unknown, accountRef: string, threadRef: string): ThreadMessage {
   const raw = object(value, "message");
   if (
-    raw.schemaVersion !== 1 || raw.accountRef !== accountRef || raw.threadRef !== threadRef ||
-    raw.channel !== "EMAIL" || (raw.direction !== "INBOUND" && raw.direction !== "OUTBOUND") ||
-    !Array.isArray(raw.participants) || !Array.isArray(raw.attachments)
+    raw.schemaVersion !== 1 ||
+    raw.accountRef !== accountRef ||
+    raw.threadRef !== threadRef ||
+    raw.channel !== "EMAIL" ||
+    (raw.direction !== "INBOUND" && raw.direction !== "OUTBOUND") ||
+    !Array.isArray(raw.participants) ||
+    !Array.isArray(raw.attachments)
   ) {
     throw new RegistryError(
       "EXPERT_COMMUNICATION_REPLY_INVALID",
@@ -211,7 +233,11 @@ function normalizeAddress(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function verifyIdentity(value: ThreadMessage, expert: ParticipantConfig, localSender: ParticipantConfig): void {
+function verifyIdentity(
+  value: ThreadMessage,
+  expert: ParticipantConfig,
+  localSender: ParticipantConfig,
+): void {
   const sender = value.participants.find((participant) => participant.role === "SENDER");
   if (!sender || normalizeAddress(sender.address) !== normalizeAddress(expert.address)) {
     throw new RegistryConflictError(
@@ -219,9 +245,13 @@ function verifyIdentity(value: ThreadMessage, expert: ParticipantConfig, localSe
       "Inbound Communication sender does not match the configured Expert identity.",
     );
   }
-  if (!value.participants.some((participant) =>
-    (participant.role === "TO" || participant.role === "CC") &&
-    normalizeAddress(participant.address) === normalizeAddress(localSender.address))) {
+  if (
+    !value.participants.some(
+      (participant) =>
+        (participant.role === "TO" || participant.role === "CC") &&
+        normalizeAddress(participant.address) === normalizeAddress(localSender.address),
+    )
+  ) {
     throw new RegistryConflictError(
       "EXPERT_REPLY_RECIPIENT_MISMATCH",
       "Inbound Communication reply is not addressed to the configured Knowledge sender.",
@@ -280,7 +310,10 @@ export class CoreExpertReplyImporter {
             "x-markorbit-internal-authorization": authorization(this.options),
             "x-markorbit-workspace-id": workspaceId,
           },
-          body: JSON.stringify({ accountRef: route.accountRef, threadRef: task.communicationThreadRef }),
+          body: JSON.stringify({
+            accountRef: route.accountRef,
+            threadRef: task.communicationThreadRef,
+          }),
           signal: AbortSignal.timeout(10_000),
         },
       );
@@ -292,7 +325,11 @@ export class CoreExpertReplyImporter {
     }
 
     let body: unknown = null;
-    try { body = await response.json(); } catch { /* fail closed below */ }
+    try {
+      body = await response.json();
+    } catch {
+      /* fail closed below */
+    }
     if (!response.ok) {
       throw new RegistryError(
         "EXPERT_COMMUNICATION_REPLY_RESOLUTION_FAILED",
@@ -301,8 +338,11 @@ export class CoreExpertReplyImporter {
     }
     const raw = object(body, "threadResolution");
     if (
-      raw.schemaVersion !== 1 || raw.workspaceId !== workspaceId || raw.accountRef !== route.accountRef ||
-      raw.threadRef !== task.communicationThreadRef || !Array.isArray(raw.messages)
+      raw.schemaVersion !== 1 ||
+      raw.workspaceId !== workspaceId ||
+      raw.accountRef !== route.accountRef ||
+      raw.threadRef !== task.communicationThreadRef ||
+      !Array.isArray(raw.messages)
     ) {
       throw new RegistryError(
         "EXPERT_COMMUNICATION_REPLY_INVALID",
@@ -313,7 +353,11 @@ export class CoreExpertReplyImporter {
     const inbound = raw.messages
       .map((value) => parseMessage(value, route.accountRef, task.communicationThreadRef!))
       .filter((value) => value.direction === "INBOUND" && Date.parse(value.occurredAt) >= sentAt)
-      .sort((left, right) => Date.parse(left.occurredAt) - Date.parse(right.occurredAt) || left.messageId.localeCompare(right.messageId))[0];
+      .sort(
+        (left, right) =>
+          Date.parse(left.occurredAt) - Date.parse(right.occurredAt) ||
+          left.messageId.localeCompare(right.messageId),
+      )[0];
     if (!inbound) {
       throw new RegistryError(
         "EXPERT_REPLY_NOT_OBSERVED",
@@ -356,7 +400,8 @@ export class CoreExpertReplyImporter {
       accessClassification: task.accessClassification,
     };
     const updated = this.operator.recordReply(sourceRecord);
-    const persisted = this.repository.listSourceRecordsForTask(task.taskId)
+    const persisted = this.repository
+      .listSourceRecordsForTask(task.taskId)
       .find((record) => record.sourceRecordId === sourceRecord.sourceRecordId);
     if (!persisted) {
       throw new RegistryError(
