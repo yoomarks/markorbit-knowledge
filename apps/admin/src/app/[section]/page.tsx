@@ -71,6 +71,14 @@ function KnowledgePage() {
   return (
     <>
       <CorePageHeading page="knowledge" />
+      <div className="mb-4 flex justify-end">
+        <Link
+          href="/knowledge/search"
+          className="inline-flex items-center rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800"
+        >
+          混合搜索 / Hybrid Search
+        </Link>
+      </div>
       <KnowledgeBrowser workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );
