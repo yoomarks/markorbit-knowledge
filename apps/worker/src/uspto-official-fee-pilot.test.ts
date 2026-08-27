@@ -32,7 +32,8 @@ function observation(
 }
 
 const primary = () => observation("PRIMARY_NUMERIC", PRIMARY_URI, sha("a"));
-const secondary = () => observation("SECONDARY_APPLICABILITY_CONTEXT", SECONDARY_URI, sha("b"));
+const secondary = () =>
+  observation("SECONDARY_APPLICABILITY_CONTEXT", SECONDARY_URI, sha("b"));
 
 describe("Phase 2 USPTO official fee pilot", () => {
   it("freezes the two-source authority set without hardcoding the fee amount", () => {
@@ -50,7 +51,9 @@ describe("Phase 2 USPTO official fee pilot", () => {
       role: "SECONDARY_APPLICABILITY_CONTEXT",
       uri: SECONDARY_URI,
     });
-    expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.amountStorage).toBe("SOURCE_CONTENT_ONLY");
+    expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.amountStorage).toBe(
+      "SOURCE_CONTENT_ONLY",
+    );
     expect(USPTO_OFFICIAL_FEE_PILOT_V1.resolutionPolicy.hardcodedAmountAllowed).toBe(false);
     expect(JSON.stringify(USPTO_OFFICIAL_FEE_PILOT_V1)).not.toContain("350");
   });
@@ -81,12 +84,21 @@ describe("Phase 2 USPTO official fee pilot", () => {
     ["missing secondary", [primary()], ["MISSING_SECONDARY"]],
     [
       "missing lineage",
-      [primary(), observation("SECONDARY_APPLICABILITY_CONTEXT", SECONDARY_URI, sha("b"), { chunkId: "" })],
+      [
+        primary(),
+        observation("SECONDARY_APPLICABILITY_CONTEXT", SECONDARY_URI, sha("b"), {
+          chunkId: "",
+        }),
+      ],
       ["MISSING_LINEAGE"],
     ],
     [
       "out of scope source",
-      [primary(), secondary(), observation("SECONDARY_APPLICABILITY_CONTEXT", "https://example.com/fee", sha("e"))],
+      [
+        primary(),
+        secondary(),
+        observation("SECONDARY_APPLICABILITY_CONTEXT", "https://example.com/fee", sha("e")),
+      ],
       ["OUT_OF_SCOPE_SOURCE"],
     ],
     [
@@ -96,12 +108,20 @@ describe("Phase 2 USPTO official fee pilot", () => {
     ],
     [
       "superseded source",
-      [primary(), observation("SECONDARY_APPLICABILITY_CONTEXT", SECONDARY_URI, sha("b"), { versionState: "SUPERSEDED" })],
+      [
+        primary(),
+        observation("SECONDARY_APPLICABILITY_CONTEXT", SECONDARY_URI, sha("b"), {
+          versionState: "SUPERSEDED",
+        }),
+      ],
       ["STALE_SOURCE_VERSION"],
     ],
     [
       "unknown temporal state",
-      [observation("PRIMARY_NUMERIC", PRIMARY_URI, sha("a"), { versionState: "UNKNOWN" }), secondary()],
+      [
+        observation("PRIMARY_NUMERIC", PRIMARY_URI, sha("a"), { versionState: "UNKNOWN" }),
+        secondary(),
+      ],
       ["TEMPORAL_STATE_UNRESOLVED"],
     ],
   ] as const)("fails closed for %s", (_label, observations, reasons) => {
@@ -115,7 +135,9 @@ describe("Phase 2 USPTO official fee pilot", () => {
     const conflictingPrimary = observation("PRIMARY_NUMERIC", PRIMARY_URI, sha("f"), {
       chunkContentSha256: sha("e"),
     });
-    expect(assessUsptoOfficialFeeEvidenceSetV1([primary(), conflictingPrimary, secondary()])).toEqual({
+    expect(
+      assessUsptoOfficialFeeEvidenceSetV1([primary(), conflictingPrimary, secondary()]),
+    ).toEqual({
       status: "FAIL_CLOSED",
       reasons: ["CONFLICTING_SOURCE_VERSION"],
     });
