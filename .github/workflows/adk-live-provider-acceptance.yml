@@ -34,6 +34,7 @@ concurrency:
 jobs:
   live-acceptance:
     if: ${{ inputs.confirm_live_provider_calls == true }}
+    environment: adk-live
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
