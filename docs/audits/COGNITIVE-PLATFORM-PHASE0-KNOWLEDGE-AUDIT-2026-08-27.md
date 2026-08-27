@@ -4,7 +4,7 @@ Status: evidence-backed Phase 0 decision baseline.
 
 ## Executive decision
 
-Knowledge already has substantially more governed retrieval and relationship infrastructure than the initial audit assumed. The repository currently provides canonical document provenance, chunk-level lexical retrieval, a deterministic content-relationship projection, a provider-neutral relationship API, generated Obsidian wikilinks/backlinks, and an explicit lexical/graph/vector retrieval-composition contract.
+Knowledge already has substantially more governed retrieval and relationship infrastructure than the initial audit assumed. The repository currently provides canonical document provenance, chunk-level lexical retrieval, a deterministic content-relationship projection, a provider-neutral relationship API, generated Obsidian wikilinks/backlinks and an explicit lexical/graph/vector retrieval-composition contract.
 
 Phase 0 therefore does **not** justify a new graph platform or a second Obsidian relationship index.
 
@@ -31,28 +31,26 @@ These should be preserved.
 
 ## Capability matrix
 
-| Signal / capability | Real current state | Phase 0 decision |
-| --- | --- | --- |
-| canonical document identity/version | IMPLEMENTED | preserve |
-| exact provenance/source hash | IMPLEMENTED | preserve |
-| complete canonical Markdown | IMPLEMENTED | preserve |
-| direct exact section/chunk identity | IMPLEMENTED | `RetrievalChunkV1` has `chunkId`, `documentId`, ordinal, `headingPath`, text and `contentSha256` |
-| lexical retrieval | IMPLEMENTED | SQLite FTS5/BM25; keep as governed baseline |
-| objective relationship graph | IMPLEMENTED | persisted facets + directed edges with evidence/origin |
-| relationship query API | IMPLEMENTED | use existing provider-neutral relationship API |
-| generated Obsidian wikilinks | IMPLEMENTED | derivative export from governed relationship graph |
-| generated backlinks | IMPLEMENTED | derivative export from incoming governed edges |
-| jurisdiction/source/corpus relationships | IMPLEMENTED | facets plus `SAME_SOURCE_AS` / `SAME_CORPUS_AS` |
-| topic/keyword relationships | IMPLEMENTED | objective facets plus `SHARES_TOPIC` / `SHARES_KEYWORD` |
-| `SUPERSEDES` / `VERSION_OF` relation types | IMPLEMENTED AS CONTRACT/GRAPH TYPES | only claim when backed by explicit persisted evidence |
-| document change feed | IMPLEMENTED | `CREATED` / `UPDATED` / `REPLACED` with canonical hash/provenance |
-| lexical + graph composition | IMPLEMENTED | existing composition service preserves separate evidence channels |
-| vector evidence contract | IMPLEMENTED | provider-neutral contract exists |
-| deployed vector provider in current internal compose route | MISSING | do not synthesize semantic evidence; evaluate only with real provider |
-| chunk identity in Brain-facing composed lexical evidence | PARTIAL / GAP | direct retrieval has it; current composition drops `chunkId` / `contentSha256` |
-| human-authored Vault tags as authoritative inbound graph signals | NOT PROVEN | do not assume |
-| human-authored Vault wikilinks/backlinks as authoritative inbound graph signals | NOT PROVEN | do not create a parallel graph index |
-| generic source-family semantic resolution | PARTIAL | objective source/corpus facets exist; semantic family resolution belongs downstream |
+- Canonical document identity/version: **IMPLEMENTED**. Preserve.
+- Exact provenance/source hash: **IMPLEMENTED**. Preserve.
+- Complete canonical Markdown: **IMPLEMENTED**. Preserve.
+- Direct exact section/chunk identity: **IMPLEMENTED**. `RetrievalChunkV1` has `chunkId`, `documentId`, ordinal, `headingPath`, text and `contentSha256`.
+- Lexical retrieval: **IMPLEMENTED**. SQLite FTS5/BM25 is the governed baseline.
+- Objective relationship graph: **IMPLEMENTED**. Facets and directed edges persist with evidence/origin.
+- Relationship query API: **IMPLEMENTED**. Use the existing provider-neutral relationship API.
+- Generated Obsidian wikilinks: **IMPLEMENTED** as a derivative export from the governed relationship graph.
+- Generated backlinks: **IMPLEMENTED** as a derivative export from incoming governed edges.
+- Jurisdiction/source/corpus relationships: **IMPLEMENTED** through facets plus `SAME_SOURCE_AS` / `SAME_CORPUS_AS`.
+- Topic/keyword relationships: **IMPLEMENTED** through objective facets plus `SHARES_TOPIC` / `SHARES_KEYWORD`.
+- `SUPERSEDES` / `VERSION_OF` relation types: **IMPLEMENTED AS CONTRACT/GRAPH TYPES**. Claim them only when backed by explicit persisted evidence.
+- Document change feed: **IMPLEMENTED** with `CREATED` / `UPDATED` / `REPLACED` and canonical hash/provenance.
+- Lexical + graph composition: **IMPLEMENTED**. Existing composition preserves separate evidence channels.
+- Vector evidence contract: **IMPLEMENTED** as a provider-neutral contract.
+- Deployed vector provider in the current internal compose route: **MISSING**. Do not synthesize semantic evidence; evaluate only with a real provider.
+- Chunk identity in Brain-facing composed lexical evidence: **PARTIAL / GAP**. Direct retrieval has it; current composition drops `chunkId` / `contentSha256`.
+- Human-authored Vault tags as authoritative inbound graph signals: **NOT PROVEN**. Do not assume.
+- Human-authored Vault wikilinks/backlinks as authoritative inbound graph signals: **NOT PROVEN**. Do not create a parallel graph index.
+- Generic source-family semantic resolution: **PARTIAL**. Objective source/corpus facets exist; semantic family resolution belongs downstream.
 
 ## Proven retrieval and navigation surfaces
 
