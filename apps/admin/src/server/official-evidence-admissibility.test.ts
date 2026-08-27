@@ -1,25 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   evaluateOfficialEvidenceAdmissibility,
-  type OfficialEvidenceAdmissibilityPolicy,
   type OfficialEvidenceItem,
 } from "./official-evidence-admissibility";
-
-const POLICY: OfficialEvidenceAdmissibilityPolicy = {
-  schemaVersion: "1.0",
-  authorities: [
-    {
-      role: "NUMERIC_AUTHORITY",
-      canonicalUri:
-        "https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule",
-    },
-    {
-      role: "APPLICABILITY_CONTEXT",
-      canonicalUri:
-        "https://www.uspto.gov/trademarks/trademark-fee-information",
-    },
-  ],
-};
+import { USPTO_FEE_EVIDENCE_POLICY } from "./uspto-fee-evidence-policy";
 
 function evidence(
   role: OfficialEvidenceItem["role"],
@@ -48,10 +32,10 @@ function evidence(
 }
 
 describe("official evidence admissibility", () => {
-  it("admits the complete two-source authority set without interpreting fee values", () => {
+  it("admits the complete USPTO two-source authority set without interpreting fee values", () => {
     const input = [evidence("NUMERIC_AUTHORITY"), evidence("APPLICABILITY_CONTEXT")];
 
-    expect(evaluateOfficialEvidenceAdmissibility(POLICY, input)).toEqual({
+    expect(evaluateOfficialEvidenceAdmissibility(USPTO_FEE_EVIDENCE_POLICY, input)).toEqual({
       status: "ADMISSIBLE",
       evidence: input,
       reasons: [],
@@ -59,7 +43,7 @@ describe("official evidence admissibility", () => {
   });
 
   it("fails closed when either required authority is missing", () => {
-    const result = evaluateOfficialEvidenceAdmissibility(POLICY, [
+    const result = evaluateOfficialEvidenceAdmissibility(USPTO_FEE_EVIDENCE_POLICY, [
       evidence("NUMERIC_AUTHORITY"),
     ]);
 
@@ -68,7 +52,7 @@ describe("official evidence admissibility", () => {
   });
 
   it("fails closed on incomplete or invalid lineage", () => {
-    const result = evaluateOfficialEvidenceAdmissibility(POLICY, [
+    const result = evaluateOfficialEvidenceAdmissibility(USPTO_FEE_EVIDENCE_POLICY, [
       evidence("NUMERIC_AUTHORITY", { chunkId: "", chunkContentSha256: "not-a-sha" }),
       evidence("APPLICABILITY_CONTEXT"),
     ]);
@@ -79,7 +63,7 @@ describe("official evidence admissibility", () => {
   });
 
   it("fails closed when canonical source identity drifts", () => {
-    const result = evaluateOfficialEvidenceAdmissibility(POLICY, [
+    const result = evaluateOfficialEvidenceAdmissibility(USPTO_FEE_EVIDENCE_POLICY, [
       evidence("NUMERIC_AUTHORITY", { sourceUri: "https://www.uspto.gov/trademarks/fees" }),
       evidence("APPLICABILITY_CONTEXT"),
     ]);
@@ -111,7 +95,7 @@ describe("official evidence admissibility", () => {
       "SUPERSEDED_EVIDENCE" as const,
     ],
   ])("fails closed for %s", (_label, overrides, reason) => {
-    const result = evaluateOfficialEvidenceAdmissibility(POLICY, [
+    const result = evaluateOfficialEvidenceAdmissibility(USPTO_FEE_EVIDENCE_POLICY, [
       evidence("NUMERIC_AUTHORITY", overrides),
       evidence("APPLICABILITY_CONTEXT"),
     ]);
@@ -121,7 +105,7 @@ describe("official evidence admissibility", () => {
   });
 
   it("fails closed on duplicate evidence for a single authority role", () => {
-    const result = evaluateOfficialEvidenceAdmissibility(POLICY, [
+    const result = evaluateOfficialEvidenceAdmissibility(USPTO_FEE_EVIDENCE_POLICY, [
       evidence("NUMERIC_AUTHORITY"),
       evidence("NUMERIC_AUTHORITY", {
         documentId: "duplicate-document",
