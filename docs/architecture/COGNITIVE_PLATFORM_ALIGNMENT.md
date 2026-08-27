@@ -2,129 +2,142 @@
 
 Status: Proposed alignment baseline
 
-This document aligns MarkOrbit Knowledge with the MarkOrbit cognitive-platform architecture used by Core/Brain/Capability and Data Engine.
+This document aligns MarkOrbit Knowledge with the shared cognitive-platform architecture used by Brain, Capability, Data Engine, and product runtimes.
 
 ## 1. Knowledge responsibility
 
-Knowledge owns documents, evidence, acquisition provenance, conversion, reviewed Markdown, and durable staging/delivery.
+Knowledge owns documents, evidence, acquisition provenance, conversion, reviewed canonical Markdown, and durable staging/delivery.
 
-Knowledge does not own business intelligence conclusions or Brain methods.
+Knowledge does not own Brain methods, business intelligence conclusions, product caches, or customer/business state.
 
-The governing boundary is:
+The governing model is:
 
-> Knowledge owns documents. Data Engine owns facts. Brain owns methods. Capability owns execution. Products own business state.
+> Knowledge owns documents. Data Engine owns facts. Brain Research consumes both. Brain publishes reusable methods. Capability executes ACTIVE methods. Products own business state.
 
-## 2. What Knowledge must provide downstream
+## 2. Knowledge as Brain Research input
+
+Knowledge is a first-class Brain Research source.
+
+Brain Research may use Knowledge to study:
+
+- official rules and procedures;
+- filing-basis logic;
+- fee/deadline structures;
+- authority conflicts;
+- effective-date and supersession rules;
+- case reasoning;
+- domain terminology and concept relationships;
+- reusable retrieval/source/temporal-resolution methods.
 
 Knowledge should make canonical Markdown easy to retrieve, navigate, and verify without becoming an intelligence engine.
 
-Required downstream signals should include, where available and governed:
+## 3. Downstream signals
+
+Required downstream signals should include, where actually available and governed:
 
 - canonical document identity;
+- exact content version/hash;
 - source identity and authority metadata;
-- content version/hash;
 - publication/effective/supersession dates when known;
-- jurisdiction and document type metadata;
+- jurisdiction/document type;
 - Markdown heading/section structure;
-- tags and topic metadata;
-- explicit links and backlinks;
+- tags/topic metadata;
+- explicit links/backlinks;
 - related-document relationships;
 - supersedes/superseded-by relationships;
 - source-family/authority relationships;
-- Vault/Obsidian relationships that are explicitly represented and indexable.
+- explicitly represented Vault/Obsidian relationships;
+- exact section/range identity sufficient for Brain research lineage.
 
-## 3. Obsidian/Vault rule
+## 4. Obsidian/Vault rule
 
-Obsidian/Vault is valuable only when it improves one or more of:
+Obsidian/Vault is valuable only when it measurably improves one or more of:
 
 1. governed human review;
 2. document navigation;
 3. retrieval precision/recall;
 4. relationship expansion;
-5. version/supersession understanding.
+5. version/supersession understanding;
+6. Brain Research cost/latency.
 
-Vault storage alone must not be treated as a semantic knowledge graph.
+Vault storage alone must not be treated as a semantic graph.
 
-Before adding new Obsidian-style graph functionality, measure whether existing Vault structure already provides useful links/tags/relationships for Brain retrieval. Add only the smallest relationship index that produces measurable retrieval value.
+Before adding graph functionality, audit what tags, links, backlinks, headings, and relationships actually exist. Add only the smallest relationship index justified by measured research value.
 
-## 4. What Knowledge must not do
+## 5. Research path versus production path
+
+Knowledge belongs primarily to the slow Brain Research/recompile path.
+
+```text
+Knowledge Markdown -> Brain Research -> candidate method -> evaluation -> executable method package
+```
+
+Ordinary Capability requests should normally not retrieve and re-read Knowledge from scratch.
+
+For stable constants such as fees, deadlines, grace periods, or operation windows, use controlled refresh/materialization:
+
+```text
+Knowledge -> Brain Resolution Method -> Reference Materializer -> Capability Reference Store -> high-frequency reads
+```
+
+Live request-time Knowledge retrieval is allowed only for capabilities that explicitly require it and whose latency/cost trade-off is accepted.
+
+## 6. What Knowledge must not do
 
 Knowledge must not become responsible for:
 
-- fee or deadline resolution as current business values;
+- current resolved fee/deadline values as business truth;
 - trademark/entity classification conclusions;
 - risk scores;
 - opportunity detection;
 - entity-group inference;
 - scoring/ranking algorithms;
 - product recommendations;
+- Capability caches/materialized result ownership;
 - customer/business lifecycle state.
 
-Those belong to Brain methods, Capability execution, or product state depending on the artifact.
+## 7. Long-term development obligations
 
-## 5. Brain interaction model
+### K-CG-A — relationship and retrieval inventory
 
-Brain research may consume Knowledge in two modes:
+Audit current Vault/Obsidian and Markdown implementation and document which signals are truly available today.
 
-### Research mode
+### K-CG-B — Brain Research retrieval contract
 
-Brain retrieves and reads Markdown to form or improve reusable methods.
+Define a read-only contract supporting canonical Markdown discovery, section retrieval, relationship expansion, provenance, and exact version identity.
 
-Examples:
-
-- Official Fee Resolution Method;
-- Deadline Resolution Method;
-- Filing-Basis Interpretation Method;
-- Source Resolution Method;
-- Temporal Resolution Method.
-
-### Capability execution mode
-
-A Capability may execute an ACTIVE Brain retrieval/resolution method against Knowledge to resolve a current value or rule.
-
-Knowledge remains the source-document truth. Resolved values are not written back as Knowledge truth merely because a Brain/Capability method produced them.
-
-## 6. Long-term development obligations
-
-### K-CG-A — relationship inventory
-
-Audit current Vault/Obsidian implementation and document which of the following are truly available today:
-
-- tags;
-- wikilinks;
-- backlinks;
-- headings;
-- related-document references;
-- supersession links;
-- explicit concept relationships.
-
-Do not infer capabilities from the word “Obsidian”.
-
-### K-CG-B — retrieval contract
-
-Define a read-only downstream retrieval/navigation contract for canonical Markdown and relationship signals. It must preserve provenance and version identity.
+It should support Brain Research missions without requiring Knowledge to interpret the documents for Brain.
 
 ### K-CG-C — retrieval-value evaluation
 
-Using real Brain research tasks, compare:
+Using real Brain Research tasks, compare:
 
 - metadata + lexical retrieval;
 - semantic retrieval;
-- metadata + lexical + semantic;
-- the same retrieval plus Obsidian/Vault relationship expansion where available.
+- hybrid metadata/lexical/semantic retrieval;
+- hybrid retrieval plus Obsidian/Vault relationship expansion where available.
 
-Only expand graph/index functionality if it materially improves quality or reduces cost/latency.
+Measure quality, cost, and latency.
 
-### K-CG-D — no semantic-boundary drift
+### K-CG-D — controlled reference refresh
 
-Add architecture tests/documentation gates so Knowledge does not absorb Brain method logic, Capability result caches, or product state.
+Define the smallest contract needed for Brain/Capability to refresh stable resolved references when Knowledge sources change, without placing Knowledge on every request hot path.
 
-## 7. Exit criteria for Knowledge cognitive readiness
+### K-CG-E — change signal for method/references
 
-Knowledge is cognitive-platform-ready when:
+Where feasible, expose source/document version changes so downstream systems can determine whether a method or materialized reference may require revalidation/re-resolution.
 
-- canonical Markdown can be retrieved with provenance and version identity;
-- relevant structural/navigation relationships can be queried when present;
-- Brain can reproducibly locate source sections used in a method or resolved reference;
-- the value of Obsidian relationship enhancement has been measured rather than assumed;
-- no Brain/business conclusion is required to be persisted in Knowledge.
+### K-CG-F — no semantic-boundary drift
+
+Add architecture documentation/tests ensuring Knowledge does not absorb Brain method logic, product intelligence, or business state.
+
+## 8. Exit criteria for Knowledge cognitive readiness
+
+Knowledge is ready when:
+
+- Brain Research can reproducibly locate and read canonical Markdown with exact provenance/version identity;
+- structural/navigation relationships can be queried where they genuinely exist;
+- source changes can drive controlled research/reference refresh decisions;
+- Obsidian enhancement value has been measured rather than assumed;
+- high-frequency Capability reads do not require repeated full-document research;
+- no Brain/business conclusion must be persisted in Knowledge.
