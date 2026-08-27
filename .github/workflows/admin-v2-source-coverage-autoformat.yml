@@ -32,14 +32,12 @@ jobs:
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
             apps/admin/src/components/knowledge/content-reader-model.ts \
             apps/admin/src/components/knowledge/content-reader.tsx \
-            apps/admin/src/components/knowledge/knowledge-hybrid-search.tsx \
             apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
             apps/admin/src/components/sources/source-failure-root-causes.tsx \
             apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
             apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
-            apps/admin/src/server/knowledge-hybrid-search.ts \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/production-conversion-worker-service.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
@@ -48,9 +46,7 @@ jobs:
             apps/admin/src/server/__tests__/bulk-conversion-to-knowledge.e2e.test.ts \
             apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
             apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
-            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts \
-            docs/tasks/KG_008_HYBRID_SEARCH_GRAPH_NAVIGATION_2026-08-27.md \
-            docs/tasks/KG_008_MERGE_GATE.md
+            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -60,14 +56,12 @@ jobs:
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
             apps/admin/src/components/knowledge/content-reader-model.ts \
             apps/admin/src/components/knowledge/content-reader.tsx \
-            apps/admin/src/components/knowledge/knowledge-hybrid-search.tsx \
             apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
             apps/admin/src/components/sources/source-failure-root-causes.tsx \
             apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
             apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
-            apps/admin/src/server/knowledge-hybrid-search.ts \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/production-conversion-worker-service.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
@@ -76,8 +70,6 @@ jobs:
             apps/admin/src/server/__tests__/bulk-conversion-to-knowledge.e2e.test.ts \
             apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
             apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
-            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts \
-            docs/tasks/KG_008_HYBRID_SEARCH_GRAPH_NAVIGATION_2026-08-27.md \
-            docs/tasks/KG_008_MERGE_GATE.md
+            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
           git commit -m "style: format admin v2 business surfaces"
           git push origin HEAD:${{ github.head_ref }}
