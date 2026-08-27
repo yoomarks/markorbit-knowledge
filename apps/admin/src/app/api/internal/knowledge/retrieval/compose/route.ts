@@ -51,6 +51,9 @@ export async function POST(request: Request) {
             score: hit.score,
             snippet: hit.snippet,
             headingPath: [...hit.chunk.headingPath],
+            chunkId: hit.chunk.chunkId,
+            contentSha256: hit.chunk.contentSha256,
+            indexedAt: hit.document.indexedAt,
           };
         }),
     };
