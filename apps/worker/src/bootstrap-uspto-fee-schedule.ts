@@ -1,3 +1,5 @@
+export {};
+
 const CONNECTOR_ID = "crawl4ai-web";
 const CONNECTOR_VERSION = "1.2.0";
 const SOURCE_SLUG = "uspto-fee-schedule-phase2";
