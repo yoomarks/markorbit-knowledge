@@ -1,215 +1,105 @@
 # MarkOrbit Knowledge — Current Engineering State
 
-Checkpoint date: 2026-08-26
+Checkpoint date: 2026-08-28
 
-This file is the canonical engineering handoff entry point. It records a verified checkpoint, not a dynamically generated branch pointer. Before any protected, paid or live operation, verify the current GitHub `main` SHA and the relevant issue/PR state again.
+This is the canonical engineering handoff entry point. It records a verified checkpoint, not a permanently current branch pointer. Re-verify GitHub `main`, open PRs/issues, and any paid/live gate before protected or external execution.
 
 ## Verified baseline
 
 - Repository: `yoomarks/markorbit-knowledge`
-- Verified Knowledge `main` before this reconciliation branch: `c6984e371493cf525600607b02c2506c2c8ca84b`
-- Latest merged Knowledge PR: #474 — `Docs: sync Case handoff after 473`
-- Latest audited MarkOrbit/Core `main`: `fd068c90376184099631f66d2bfba036a2a78bf2`
-- Latest audited Core merge: #221 — `MO-CAP-002: harden Managed AI provider follow-up policy`
-- Open paid/live acceptance gate: issue #405 — ADK-06 real 3×2 provider acceptance
-- Open repository-governance gate: issue #429 — protected main/ruleset, protected live secrets/environment, and durable encrypted evidence retention
-- Open Case producer dependency: issue #467 — real MarkReg `Send to Knowledge Case` producer action
-- Open Expert dependency: issue #468 — Shared Communication send/reply identity for the first live Expert slice
-- `main` is still verified as `protected: false`; PR #460 CODEOWNERS is preparation only and does not close #429.
+- Verified Knowledge `main`: `8ffd26b4e86bacdb47790956d66b999f29ad95d7`
+- Latest merged Knowledge PR: #546 — deterministic retrieval evaluation harness
+- Latest audited MarkOrbit/Core `main`: `4a094c8ba81c557c5528b9dc9b04eaab3d8032f6`
+- Open paid/live acceptance gate: #405 — ADK-06 real 3×2 provider acceptance
+- Open repository-governance closeout: #429 — Code Owner enforcement plus durable non-public live-evidence archive
+- Open Expert live acceptance ledger: #468 — one real send → reply → immutable evidence vertical slice
+- Open retrieval-quality lane after #546: continue only with evidence-backed frozen corpus/query evaluation, not speculative retrieval framework expansion
+- Former Case producer dependency #467 is closed/completed and must not be treated as an active P0 blocker.
 
 ## Canonical strategic direction
 
-The product direction remains Web / AI / Expert / Case, with Knowledge preserving objective information and Brain owning interpretation, evaluation and recommendation.
+The product direction is Web / AI / Expert / Case, with Knowledge preserving objective information and Brain owning interpretation, evaluation, recommendation and protected decision semantics.
 
-Primary canonical documents:
+Knowledge owns acquisition, preservation, structure, relationships, update/version lineage, retrieval and evidence provenance. Knowledge does not own source/provider/expert truth ranking, legal-truth certification, prediction, recommendation, strategy or protected decisions.
 
-1. `docs/product/KNOWLEDGE_LONG_TERM_STRATEGY.md`
-2. `docs/architecture/KNOWLEDGE_CAPABILITY_SOURCE_BOUNDARIES.md`
-3. `docs/architecture/CASE_DOSSIER_AND_EXPERT_SOURCE_ARCHITECTURE.md`
-4. `docs/tasks/KNOWLEDGE_STRATEGIC_EXECUTION_PLAN.md`
-5. `docs/tasks/CASE_EXECUTION_RECONCILIATION_2026-08-25.md`
-6. `NEXT_TASKS.md`
+For Knowledge, an AI answer or Expert reply is acquired source evidence. For Brain, AI may additionally be used as a reasoning tool. Do not collapse those responsibilities.
 
-Where older implementation-status statements conflict with the Case reconciliation or `NEXT_TASKS.md`, the newer execution checkpoint governs. The long-term product boundaries and non-goals remain unchanged.
+## Four pillars
 
-## Permanent Knowledge / Brain boundary
+### Web
 
-Knowledge objectively acquires, preserves, structures, relates, updates, versions and retrieves information.
+Public web, official sources, documents, APIs, feeds, media and structured public information remain inside Knowledge. Do not migrate or broadly expand Web acquisition merely to create more framework surface.
 
-Knowledge does **not** own:
+### AI
 
-- source/provider/expert ranking to decide who is right;
-- legal-truth certification;
-- deep interpretation;
-- cross-case generalization;
-- prediction;
-- recommendation;
-- strategy;
-- protected decisions.
+The shared Managed AI boundary is materially proven. Knowledge retains assignment/source semantics, exact raw evidence, RawArtifact lineage, provenance and recovery; generic AI transport/runtime belongs in shared MarkOrbit Capability.
 
-Those belong to Brain, humans, Core or another governed decision system.
+ADK-06 implementation is complete but paid/live acceptance remains open in #405. Non-live cross-repository acceptance is not live provider evidence.
 
-For Knowledge, an AI answer is an acquired source. For Brain, AI may be a reasoning tool. Do not merge those responsibilities.
+### Expert
 
-## Four long-term Knowledge pillars
+Knowledge-owned Expert contracts, persistence, workbench, retrieval, outbound Shared Communication integration and same-thread inbound import are implemented.
 
-### 1. Web
+Core Shared Communication now provides governed outbound send identity, durable send/thread receipts, idempotency, fail-closed delivery uncertainty reconciliation and authenticated thread resolution. Knowledge PRs #538/#539/#540 consume that boundary without adding a Knowledge-local mail/provider stack.
 
-Public web, official sources, documents, APIs, feeds, media and structured public information.
+#468 therefore no longer tracks a missing generic Shared Communication implementation. It now remains open only for a real production vertical slice proving one legitimate Expert question is sent through a concrete deployed sender/account, one real same-thread Expert reply is imported with immutable provenance-bearing evidence, and replay creates no duplicate send or source record.
 
-**State:** substantial production foundation exists.
+### Case
 
-**Current decision:** Web acquisition remains inside `markorbit-knowledge`; do not migrate it to shared Capability now and do not expand it ahead of the higher-value Case/Communication blockers unless a concrete production gap requires it.
+The MarkReg producer dependency tracked by #467 is closed/completed. The Knowledge Case foundation and producer/consumer integration must therefore not be re-planned from the old 2026-08-25 blocker state.
 
-### 2. AI
+The permanent boundary still stands: authoritative operational matter state belongs to MarkReg; Knowledge must not directly read MarkReg persistence, manually reconstruct a second matter system, fabricate correspondence/payment evidence, or convert MarkReg recommended actions into Knowledge conclusions.
 
-Defined questions/assignments answered by AI providers and preserved as auditable source responses.
+Further Case refresh/versioning or matter-type abstraction should be driven by real dossier behavior and observed production needs rather than another acceptance framework.
 
-**State:** Knowledge acquisition/evidence semantics are mature and the shared Managed AI boundary has been materially proven.
+## Knowledge Graph and retrieval state
 
-Current merged state includes:
+Current merged retrieval/graph state includes:
 
-- Knowledge-side Managed AI bridge preserving Knowledge acquisition/provenance semantics;
-- PR #458 routing ADK DeepSeek through authenticated Managed AI HTTP behind an explicit runtime gate while retaining the legacy direct adapter as fallback;
-- PR #462 binding Managed AI replay to durable ADK queue `executionKey` identity and preserving fail-closed reconciliation semantics;
-- PR #463 real non-live cross-repository localhost HTTP acceptance against exact Core SHA using the production Knowledge HTTP adapter and authenticated Core runtime, with a fake executor only;
-- PR #466 a permanent Core-ref freshness/drift guard before cross-repository Managed AI acceptance;
-- Core PR #221 distinguishes DeepSeek rate-limit vs temporary-service failure semantics and exposes provider-neutral follow-up policy classification without converting that into Knowledge truth/ranking semantics.
+- KG-006 — Related / Backlinks reader surface;
+- KG-007 — bounded 1-hop/2-hop local Knowledge Graph View;
+- KG-008 — hybrid Knowledge search with graph navigation;
+- KG-009 — provider-neutral Knowledge Relationship API;
+- KG-010 — explicit LEXICAL / GRAPH / VECTOR retrieval composition with channel-native provenance and no blended score;
+- #544 — exact lexical chunk identity/hash lineage propagated through composed retrieval;
+- #546 — deterministic retrieval evaluation harness reporting document recall@k, exact chunk hit rate, provenance completeness and graph-expansion noise.
 
-**Not claimed:** paid-provider/live acceptance. The non-live cross-repository gate is capability evidence, not #405 evidence.
+Do not invent blended relevance semantics or synthetic vector/provider metrics. The next retrieval-quality work should use frozen real corpus/query fixtures and exact source/chunk expectations, then compare channel variants only when backed by real provider execution.
 
-**Current decision:** generic AI transport/runtime belongs in shared MarkOrbit Capability; Knowledge retains assignment/source semantics, exact raw evidence, RawArtifact lineage, provenance, recovery and no-legal-truth boundaries.
+## Repository governance (#429)
 
-### 3. Expert
+Repository ruleset `Protect main` is active for the default branch. It enforces PR-based changes, blocks deletion and non-fast-forward updates, requires review-thread resolution and requires `autoformat`, `validate (22)` and `validate (24)`. There are no bypass actors.
 
-Questions sent to lawyers/agents/experts and their professional replies/attachments preserved as Knowledge sources.
+The ADK-06 live workflow is bound to the `adk-live` protected Environment according to owner-side verification, with approval/secret isolation in place.
 
-**State:** Knowledge-owned Expert foundation is implemented.
+#429 remains open only for the remaining governance closeout:
 
-Completed:
+1. verify/enforce required Code Owner approval for `.github/workflows/**` / CODEOWNERS;
+2. after successful #405 execution, retain the encrypted evidence bundle and manifest in authorized non-public durable storage outside temporary GitHub Actions retention.
 
-- K-EXP-001 — `ExpertQuestionTaskV1` / `ExpertSourceRecordV1` contracts;
-- K-EXP-002 — durable persistence and replay idempotency;
-- K-EXP-003 — fail-closed operator workbench/task flow;
-- K-EXP-005 — provenance-preserving Expert source retrieval/filtering/pagination.
+Do not reopen already-resolved protected-main/ruleset work.
 
-Remaining blocker:
+## Current engineering order
 
-- K-EXP-004 — first real live Expert vertical slice, blocked on Shared Communication production send identity, durable message/thread identity and real inbound reply correlation. Tracked by #468.
+1. Keep the retrieval-quality lane disciplined: after #546, add only frozen real-corpus/query evaluation and measured variants that preserve exact lineage and channel-native evidence.
+2. Re-audit #468 only against the current Core exact head before any live Expert run; code integration is largely complete, while production sender/account and real reply evidence remain the acceptance gap.
+3. Keep #405 operationally blocked until provider credentials, cost authorization, exact current main SHA, protected environment approval and durable evidence archive are genuinely ready.
+4. Close #429 only with actual Code Owner enforcement plus durable archive evidence; do not substitute documentation for repository settings or archive proof.
+5. Advance Case or Web work only when it closes a real production evidence/retrieval/interoperability gap.
 
-Knowledge must remain the consumer of communication evidence, not become a second generic mailbox/provider platform.
+## Stop / defer
 
-### 4. Case
-
-Complete objective Case Dossiers reconstructed from real operational matters.
-
-**State:** Knowledge-side Case foundation is largely implemented; the remaining first-order blocker is the real MarkReg producer action.
-
-Authoritative producer boundary:
-
-- `yoomarks/markorbit/services/markreg`
-- canonical `FormalMatterId = formal-matter_${string}`
-- workspace-scoped Formal Matter identity
-- version + immutable snapshot SHA lineage
-- authenticated Formal Matter read surface
-- lifecycle provenance
-- Document Package evidence metadata/checksum/storage references
-
-Completed Knowledge-owned work:
-
-- K-CASE-000 — real MarkReg boundary located/frozen;
-- K-CASE-001 — `CaseCandidateV1` contract, PR #450;
-- K-CASE-003 — durable Candidate intake/replay/source-state persistence, PR #451;
-- K-CASE-004 — immutable authorized MarkReg evidence collection through trusted resolver, PR #452;
-- K-CASE-005 — evidence-backed objective `CaseDossierV1`, PR #453;
-- K-CASE-006 — deterministic objective Dossier assembly from immutable evidence, PR #454;
-- K-CASE-007 — human privacy review/redaction/finalization, PR #455;
-- K-CASE-008 acceptance infrastructure — TEST/LIVE-separated durable acceptance harness, PR #456;
-- PR #470 — portable `CaseCandidateV1` JSON Schema/package subpath;
-- PR #471 — fail-closed authenticated internal Candidate intake;
-- PR #472 — request-bound authenticated MarkReg evidence collection;
-- PR #473 — Formal Matter ID wire-contract fidelity.
-
-The #456 harness does **not** make K-CASE-008 complete. TEST fixtures and injected transport are not live acceptance evidence.
-
-Remaining blocker:
-
-- K-CASE-002 — real MarkReg-side operator action equivalent to `Send to Knowledge Case`, tracked by #467.
-
-That producer must create/reuse a valid Candidate from a real Formal Matter, preserve workspace/version/snapshot lineage, call the authenticated Knowledge intake/resolver boundaries, return an opaque producer promotion reference and remain idempotent. Knowledge must not invent a fake producer, read MarkReg persistence directly or manually reconstruct the matter.
-
-After the producer exists, run one real K-CASE-008 matter through the already merged #456 path before starting K-CASE-009 refresh/versioning or K-CASE-010 matter-type expansion.
-
-## ADK sequence and current role
-
-- **ADK-00 through ADK-05 — Implemented.** Architecture, provider-neutral runtime, durable assignments/instructions, exact raw lineage, assignment graph and evidence-backed candidates.
-- **ADK-06 — Implementation complete; paid/live acceptance OPEN.** #405 remains the acceptance ledger.
-- **ADK-07 — Implemented and safety hardened.** Durable queue, explicit retries, ambiguous-delivery quarantine and CAS worker/recovery transitions.
-- **ADK-08 through ADK-10 — Implemented.** Assignment libraries, governed promotion and jurisdiction libraries/catalog.
-- **ADK-11 — Implemented through the current safety boundary.** Grounded SourcePack/binding, prompt rendering, citation validation/evidence, PREPARED envelopes, safe queue admission and explicit append-only provider authorization.
-
-#405 is an infrastructure/live acceptance milestone, not the product roadmap. Do not create more ADK framework merely because the paid live run remains open.
-
-## ADK-06 acceptance gate (#405)
-
-#405 stays open until the actual live acceptance proves all frozen requirements, including:
-
-- assignments `kas_us_trademark_filing`, `kas_us_trademark_section_8`, `kas_us_trademark_ttab`;
-- providers `DEEPSEEK` + `OPENAI`;
-- exact authorized `main` SHA;
-- 6/6 real provider cells `EXECUTED`;
-- twelve unique finalized RawArtifact receipts;
-- no unresolved in-flight provider delivery;
-- authenticated execution `COMPLETED`;
-- no provider ranking/legal-truth/candidate auto-activation;
-- encrypted evidence retained in authorized non-public durable storage beyond temporary Actions retention.
-
-Do not execute the paid acceptance merely to advance the Case/Expert roadmap.
-
-## Repository governance gate (#429)
-
-The repository remains public and `main` remains unprotected at this checkpoint.
-
-PR #460 added CODEOWNERS, but CODEOWNERS alone does not enforce review. #429 remains open until repository administration actually proves the required ruleset/main protection, workflow review controls, protected live secret/environment boundary where available, and durable non-public evidence retention.
-
-## Current P0 engineering order
-
-1. **K-CASE-002 / #467:** implement the real MarkReg-side `Send to Knowledge Case` producer in `yoomarks/markorbit` / `services/markreg`; do not create a Knowledge-local substitute.
-2. **K-CASE-008:** after that producer exists, run one completed real Formal Matter through the existing #456 LIVE/default-HTTP path and prove idempotent end-to-end lineage.
-3. **K-EXP-004 / #468:** once Shared Communication provides real send/reply identity, run one legitimate Expert Q&A vertical slice.
-4. Keep shared Managed AI compatibility and drift guards healthy; do not add new Knowledge-local generic provider transports.
-5. Only after real Case/Expert samples exist, advance K-CASE-009/010 and four-pillar federation based on observed production behavior.
-6. Close #429 only with real repository-settings evidence; run #405 only when its operational gates and secret/evidence controls are genuinely ready.
-
-## Current stop/go decisions
-
-### GO
-
-- real MarkReg -> Knowledge Case producer integration;
-- first real Case Dossier acceptance;
-- shared Communication needed by Expert;
-- first real Expert source slice;
-- provenance/durability/retrieval/interoperability required by real four-pillar sources;
-- maintenance of the proven Managed AI compatibility boundary.
-
-### STOP / DEFER
-
-- additional Knowledge-local generic AI provider transports;
-- additional Knowledge-local mailbox/provider platform features;
-- Web Capability extraction or broad Web expansion ahead of current blockers;
-- K-CASE-009/010 before the first real K-CASE-008 slice;
-- another Case acceptance framework instead of #456;
-- Knowledge-local fake MarkReg producer/resolver/credentials;
-- direct MarkReg database/persistence reads;
-- manual reconstruction of MarkReg matters;
+- new Knowledge-local generic AI transports;
+- new Knowledge-local generic mailbox/provider stack;
 - fake live Expert send/reply evidence;
-- correspondence/payment ingestion without a proven owner/auth/evidence boundary;
-- provider/expert/source ranking as truth selection;
-- Case lessons/recommendations/predictions/legal-truth certification;
-- universal Case ontology before real dossiers justify it.
+- blended cross-channel truth/relevance scores without an explicit governed design;
+- source/provider/expert ranking as truth selection;
+- direct MarkReg database reads or manual matter reconstruction;
+- another Case acceptance framework;
+- speculative universal Case ontology;
+- broad Web extraction/expansion without a concrete production need;
+- paid/live #405 execution merely to advance roadmap optics.
 
 ## Engineering operating rule
 
-**抓大放小.** Prefer durable end-to-end information assets and real source flows over micro-frameworks and speculative abstraction.
-
-Before accepting a material task, ask whether it strengthens one of the four pillars, completes the shared AI/Communication capability boundary, or materially improves provenance/durability/retrieval/interoperability required by those pillars. If not, defer it unless it fixes a production defect, security gap or governance risk.
+**抓大放小.** Prefer durable end-to-end information assets, exact lineage, real source flows and measurable retrieval quality over micro-frameworks and speculative abstraction.
