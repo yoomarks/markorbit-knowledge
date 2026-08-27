@@ -8,7 +8,7 @@ on:
       - .github/workflows/uspto-official-fee-phase2-live.yml
       - apps/worker/src/bootstrap-uspto.ts
       - apps/worker/src/verify-uspto-exact-page-pipeline.ts
-      - apps/admin/src/server/uspto-official-fee-live-evidence.e2e.ts
+      - apps/admin/src/server/uspto-official-fee-live-evidence.test.ts
       - apps/admin/src/server/knowledge-retrieval-composition.ts
       - apps/admin/src/server/knowledge-retrieval-evaluation.ts
       - apps/admin/src/server/knowledge-retrieval-evaluation-runner.ts
@@ -157,7 +157,7 @@ jobs:
           MARKORBIT_USPTO_FEE_LIVE_EVIDENCE: "1"
         run: |
           set -o pipefail
-          pnpm --filter @markorbit/admin exec vitest run src/server/uspto-official-fee-live-evidence.e2e.ts --reporter=verbose \
+          pnpm --filter @markorbit/admin exec vitest run src/server/uspto-official-fee-live-evidence.test.ts --reporter=verbose \
             | tee "$RUNNER_TEMP/phase2-retrieval-evaluation.txt"
 
       - name: Stop local processes
