@@ -152,6 +152,34 @@ describe("KG-010 retrieval composition", () => {
     );
   });
 
+  it("rejects graph evidence that does not connect the requested seed and neighbor", async () => {
+    const inconsistentEdge: ContentEdgeV1 = {
+      ...edge,
+      to: vectorOnly,
+    };
+    const inconsistentGraph: KnowledgeGraphRetrievalReader = {
+      listNeighbors: () => ({
+        items: [{ direction: "OUTGOING", edge: inconsistentEdge, neighbor: document }],
+      }),
+    };
+
+    await expect(composeKnowledgeRetrieval(query, lexical, inconsistentGraph)).rejects.toThrow(
+      "GRAPH retrieval returned an edge inconsistent with the requested seed and neighbor",
+    );
+  });
+
+  it("rejects graph evidence whose direction disagrees with the edge orientation", async () => {
+    const inconsistentGraph: KnowledgeGraphRetrievalReader = {
+      listNeighbors: () => ({
+        items: [{ direction: "INCOMING", edge, neighbor: document }],
+      }),
+    };
+
+    await expect(composeKnowledgeRetrieval(query, lexical, inconsistentGraph)).rejects.toThrow(
+      "GRAPH retrieval returned an edge inconsistent with the requested seed and neighbor",
+    );
+  });
+
   it("is deterministic over unchanged channel inputs", async () => {
     const first = await composeKnowledgeRetrieval(query, lexical, graph, vector);
     const second = await composeKnowledgeRetrieval(query, lexical, graph, vector);
