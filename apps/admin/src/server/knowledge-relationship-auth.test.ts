@@ -46,7 +46,12 @@ describe("KG-009 relationship authorization", () => {
 
   it("fails closed on workspace mismatch", () => {
     expect(() =>
-      authorizeKnowledgeRelationshipRequest(request("workspace-b"), "workspace-a", secret, now),
+      authorizeKnowledgeRelationshipRequest(
+        request("workspace-b"),
+        "workspace-a",
+        secret,
+        now,
+      ),
     ).toThrowError(
       expect.objectContaining<Partial<CaseProducerAccessError>>({
         code: "WORKSPACE_MISMATCH",
@@ -73,7 +78,12 @@ describe("KG-009 relationship authorization", () => {
 
   it("fails closed when the internal service secret is invalid", () => {
     expect(() =>
-      authorizeKnowledgeRelationshipRequest(request(), "workspace-a", "different-secret", now),
+      authorizeKnowledgeRelationshipRequest(
+        request(),
+        "workspace-a",
+        "different-secret",
+        now,
+      ),
     ).toThrowError(
       expect.objectContaining<Partial<CaseProducerAccessError>>({
         code: "INTERNAL_SERVICE_UNAUTHORIZED",
