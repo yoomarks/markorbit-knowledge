@@ -7,6 +7,7 @@ import {
   resolveExpertMutationPrincipal,
   resolveExpertReadPrincipal,
 } from "@/server/expert-api-access";
+import { getExpertQuestionSender } from "@/server/expert-communication-bridge";
 import { ExpertQaOperatorService } from "@/server/expert-qa-operator-service";
 import { getExpertSourceRepository } from "@/server/expert-source-registry";
 import { withRegistryTransaction } from "@/server/source-registry";
@@ -14,8 +15,11 @@ import { withRegistryTransaction } from "@/server/source-registry";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function service(): ExpertQaOperatorService {
-  return new ExpertQaOperatorService(getExpertSourceRepository());
+function service(workspaceId?: string): ExpertQaOperatorService {
+  return new ExpertQaOperatorService(
+    getExpertSourceRepository(),
+    workspaceId ? getExpertQuestionSender(workspaceId) : undefined,
+  );
 }
 
 function requiredString(body: Record<string, unknown>, field: string): string {
@@ -44,7 +48,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     authorizeExpertTaskWorkspace(id, principal.workspaceId);
     const body = requireRecord(await readJson(request));
     const action = requiredString(body, "action");
-    const operator = service();
+    const operator = service(principal.workspaceId);
 
     switch (action) {
       case "READY":
