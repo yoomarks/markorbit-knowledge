@@ -81,8 +81,9 @@ describe("CoreExpertQuestionSender", () => {
   });
 
   it("fails closed when Core requires delivery reconciliation", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(JSON.stringify({ code: "RECONCILIATION_REQUIRED" }), { status: 409 }),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ code: "RECONCILIATION_REQUIRED" }), { status: 409 }),
     ) as unknown as typeof fetch;
     const sender = new CoreExpertQuestionSender({
       workspaceId,

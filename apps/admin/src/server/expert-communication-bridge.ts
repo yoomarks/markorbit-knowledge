@@ -164,11 +164,7 @@ function workspaceConfig(options: CoreExpertQuestionSenderOptions): WorkspaceCom
     );
   }
   const record = raw as unknown as Record<string, unknown>;
-  if (
-    Object.keys(record).some(
-      (key) => !["accountRef", "sender", "recipients"].includes(key),
-    )
-  ) {
+  if (Object.keys(record).some((key) => !["accountRef", "sender", "recipients"].includes(key))) {
     throw new RegistryValidationError(
       "Expert workspace Communication configuration contains unsupported fields",
     );
@@ -178,7 +174,9 @@ function workspaceConfig(options: CoreExpertQuestionSenderOptions): WorkspaceCom
     typeof record.recipients !== "object" ||
     Array.isArray(record.recipients)
   ) {
-    throw new RegistryValidationError("Expert workspace Communication recipients must be an object");
+    throw new RegistryValidationError(
+      "Expert workspace Communication recipients must be an object",
+    );
   }
   const recipients = Object.fromEntries(
     Object.entries(record.recipients as Record<string, unknown>).map(([expertRef, value]) => [
