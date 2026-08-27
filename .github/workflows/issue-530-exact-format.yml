@@ -1,0 +1,53 @@
+name: Issue 530 Exact Format
+
+on:
+  push:
+    branches:
+      - issue-530-kg-008-hybrid-search-graph-navigation
+    paths:
+      - .github/workflows/issue-530-exact-format.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: issue-530-kg-008-hybrid-search-graph-navigation
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Format exact KG-008 files
+        run: >-
+          pnpm exec prettier --write
+          apps/admin/src/components/knowledge/knowledge-hybrid-search.tsx
+          apps/admin/src/server/knowledge-hybrid-search.ts
+          docs/tasks/KG_008_HYBRID_SEARCH_GRAPH_NAVIGATION_2026-08-27.md
+          docs/tasks/KG_008_MERGE_GATE.md
+      - name: Commit format
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/admin/src/components/knowledge/knowledge-hybrid-search.tsx \
+            apps/admin/src/server/knowledge-hybrid-search.ts \
+            docs/tasks/KG_008_HYBRID_SEARCH_GRAPH_NAVIGATION_2026-08-27.md \
+            docs/tasks/KG_008_MERGE_GATE.md
+          if git diff --cached --quiet; then
+            echo 'No formatting changes required.'
+            exit 0
+          fi
+          git commit -m 'style: format KG-008 hybrid search'
+          git push origin HEAD:issue-530-kg-008-hybrid-search-graph-navigation
