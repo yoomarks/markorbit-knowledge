@@ -56,7 +56,13 @@ describe("KG-009 relationship authorization", () => {
 
   it("fails closed on workspace mismatch", () => {
     expectAccessError(
-      () => authorizeKnowledgeRelationshipRequest(request("workspace-b"), "workspace-a", secret, now),
+      () =>
+        authorizeKnowledgeRelationshipRequest(
+          request("workspace-b"),
+          "workspace-a",
+          secret,
+          now,
+        ),
       "WORKSPACE_MISMATCH",
       403,
     );
@@ -79,7 +85,12 @@ describe("KG-009 relationship authorization", () => {
   it("fails closed when the internal service secret is invalid", () => {
     expectAccessError(
       () =>
-        authorizeKnowledgeRelationshipRequest(request(), "workspace-a", "different-secret", now),
+        authorizeKnowledgeRelationshipRequest(
+          request(),
+          "workspace-a",
+          "different-secret",
+          now,
+        ),
       "INTERNAL_SERVICE_UNAUTHORIZED",
       401,
     );
