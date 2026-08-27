@@ -5,7 +5,10 @@ import { authorizeKnowledgeRelationshipRequest } from "./knowledge-relationship-
 const secret = "internal-secret";
 const now = new Date("2026-08-27T00:00:00.000Z");
 
-function principal(workspaceId = "workspace-a", permissions = ["matter:read"]): string {
+function principal(
+  workspaceId = "workspace-a",
+  permissions = ["matter:read"],
+): string {
   return Buffer.from(
     JSON.stringify({
       schemaVersion: 1,
@@ -24,7 +27,10 @@ function principal(workspaceId = "workspace-a", permissions = ["matter:read"]): 
   ).toString("base64url");
 }
 
-function request(workspaceId = "workspace-a", permissions = ["matter:read"]): Request {
+function request(
+  workspaceId = "workspace-a",
+  permissions = ["matter:read"],
+): Request {
   return new Request("https://knowledge.example/internal", {
     headers: {
       "x-markorbit-internal-authorization": secret,
@@ -33,7 +39,11 @@ function request(workspaceId = "workspace-a", permissions = ["matter:read"]): Re
   });
 }
 
-function expectAccessError(action: () => void, code: string, httpStatus: number): void {
+function expectAccessError(
+  action: () => void,
+  code: string,
+  httpStatus: number,
+): void {
   try {
     action();
     throw new Error("Expected access to be denied");
