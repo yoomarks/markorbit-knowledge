@@ -1,4 +1,8 @@
-import { isContentObjectRefV1, type ContentEdgeV1, type ContentObjectRefV1 } from "./content-relationship-v1";
+import {
+  isContentObjectRefV1,
+  type ContentEdgeV1,
+  type ContentObjectRefV1,
+} from "./content-relationship-v1";
 
 export const KNOWLEDGE_RETRIEVAL_COMPOSITION_PROTOCOL_VERSION = "1.0" as const;
 export const KNOWLEDGE_VECTOR_MODES = ["DISABLED", "OPTIONAL", "REQUIRED"] as const;
@@ -33,9 +37,7 @@ export type KnowledgeGraphEvidenceV1 = {
   edge: ContentEdgeV1;
 };
 
-export type KnowledgeVectorMetricV1 =
-  | "SIMILARITY_HIGHER_IS_BETTER"
-  | "DISTANCE_LOWER_IS_BETTER";
+export type KnowledgeVectorMetricV1 = "SIMILARITY_HIGHER_IS_BETTER" | "DISTANCE_LOWER_IS_BETTER";
 
 export type KnowledgeVectorProviderDescriptorV1 = {
   providerId: string;
@@ -52,9 +54,7 @@ export type KnowledgeVectorEvidenceV1 = {
 };
 
 export type KnowledgeRetrievalEvidenceV1 =
-  | KnowledgeLexicalEvidenceV1
-  | KnowledgeGraphEvidenceV1
-  | KnowledgeVectorEvidenceV1;
+  KnowledgeLexicalEvidenceV1 | KnowledgeGraphEvidenceV1 | KnowledgeVectorEvidenceV1;
 
 export type KnowledgeRetrievalCompositionItemV1 = {
   content: ContentObjectRefV1;

@@ -25,9 +25,11 @@ export type KnowledgeLexicalHit = {
 };
 
 export interface KnowledgeLexicalRetrievalReader {
-  search(input: { workspaceId: string; queryText: string; limit: number }):
-    | KnowledgeLexicalHit[]
-    | Promise<KnowledgeLexicalHit[]>;
+  search(input: {
+    workspaceId: string;
+    queryText: string;
+    limit: number;
+  }): KnowledgeLexicalHit[] | Promise<KnowledgeLexicalHit[]>;
 }
 
 export interface KnowledgeGraphRetrievalReader {
@@ -45,9 +47,11 @@ export type KnowledgeVectorHit = {
 
 export interface KnowledgeVectorRetrievalProvider {
   descriptor: KnowledgeVectorProviderDescriptorV1;
-  search(input: { workspaceId: string; queryText: string; limit: number }):
-    | KnowledgeVectorHit[]
-    | Promise<KnowledgeVectorHit[]>;
+  search(input: {
+    workspaceId: string;
+    queryText: string;
+    limit: number;
+  }): KnowledgeVectorHit[] | Promise<KnowledgeVectorHit[]>;
 }
 
 export class KnowledgeVectorProviderUnavailableError extends Error {
