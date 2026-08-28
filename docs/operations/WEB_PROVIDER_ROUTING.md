@@ -21,6 +21,8 @@ The v1 posture is **free-tier-first and fail-closed**:
 5. Quota/payment/rate-limit responses do not trigger provider-layer retry loops.
 6. Once a provider request may have been delivered but its response is unknown, the provider layer reports a non-retryable error. This preserves the Knowledge rule that unknown paid-provider delivery must not auto-replay.
 
+Live calls to paid providers are an explicit operational action, not a merge prerequisite; repository acceptance remains deterministic and credential-free.
+
 ## Tavily discovery
 
 `TavilyWebsiteDiscoveryProvider` implements the existing `SourceDiscoveryProvider` interface.
