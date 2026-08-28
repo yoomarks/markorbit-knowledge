@@ -1,0 +1,41 @@
+name: Temporary Format 559
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/tmp-format-559.yml
+      - apps/admin/src/server/uspto-fee-evidence-normalization.ts
+      - apps/admin/src/server/uspto-fee-evidence-normalization.test.ts
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format phase2 normalization files
+        run: |
+          pnpm exec prettier --write \
+            apps/admin/src/server/uspto-fee-evidence-normalization.ts \
+            apps/admin/src/server/uspto-fee-evidence-normalization.test.ts
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/admin/src/server/uspto-fee-evidence-normalization.ts \
+            apps/admin/src/server/uspto-fee-evidence-normalization.test.ts
+          git commit -m "style: format phase2 fee normalization"
+          git push origin HEAD:${{ github.head_ref }}
