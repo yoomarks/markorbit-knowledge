@@ -167,9 +167,11 @@ export function evaluateAcquisitionRecurringRegression(input: {
             ? null
             : current.coverage.ratio - baseline.coverage.ratio,
         accepted: (current?.counts.accepted ?? 0) - (baseline?.counts.accepted ?? 0),
-        duplicateRatio: baseline && current ? duplicateRatio(current) - duplicateRatio(baseline) : 0,
+        duplicateRatio:
+          baseline && current ? duplicateRatio(current) - duplicateRatio(baseline) : 0,
         failures: baseline && current ? failureCount(current) - failureCount(baseline) : 0,
-        httpErrorRatio: baseline && current ? httpErrorRatio(current) - httpErrorRatio(baseline) : 0,
+        httpErrorRatio:
+          baseline && current ? httpErrorRatio(current) - httpErrorRatio(baseline) : 0,
         digestChanges:
           (current?.changeDetection.digestChanges ?? 0) -
           (baseline?.changeDetection.digestChanges ?? 0),
