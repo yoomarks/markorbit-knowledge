@@ -95,10 +95,10 @@ function validateEvaluation(
 function hasCompleteLineage(evidence: KnowledgeLexicalEvidenceV1): boolean {
   return Boolean(
     evidence.chunkId &&
-      evidence.contentSha256 &&
-      SHA256_HEX.test(evidence.contentSha256) &&
-      evidence.indexedAt &&
-      !Number.isNaN(Date.parse(evidence.indexedAt)),
+    evidence.contentSha256 &&
+    SHA256_HEX.test(evidence.contentSha256) &&
+    evidence.indexedAt &&
+    !Number.isNaN(Date.parse(evidence.indexedAt)),
   );
 }
 

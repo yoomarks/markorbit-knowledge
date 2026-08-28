@@ -126,13 +126,7 @@ function result(
 const results = [
   {
     queryId: "filing-basics",
-    result: result(
-      fixture.queries[0].queryText,
-      expectedA,
-      "chunk:a:0",
-      shaA,
-      irrelevantGraph,
-    ),
+    result: result(fixture.queries[0].queryText, expectedA, "chunk:a:0", shaA, irrelevantGraph),
   },
   {
     queryId: "section-8",
@@ -249,12 +243,7 @@ describe("Frozen retrieval evaluation runner", () => {
       },
       {
         queryId: "expert-direct",
-        result: result(
-          multisourceFixture.queries[1].queryText,
-          expectedB,
-          "chunk:b:0",
-          shaB,
-        ),
+        result: result(multisourceFixture.queries[1].queryText, expectedB, "chunk:b:0", shaB),
       },
     ];
 
