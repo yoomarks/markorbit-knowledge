@@ -1,10 +1,10 @@
 # Repository ownership baseline.
 # Enforcement requires the main branch ruleset to require Code Owner review.
-* @yoomarks
+* @yoomarks @whalemarks
 
 # Workflow changes are security-sensitive because live-provider and evidence-retention
 # controls are implemented under this directory.
-/.github/workflows/** @yoomarks
+/.github/workflows/** @yoomarks @whalemarks
 
 # Keep ownership changes themselves behind the same owner review once rulesets are enabled.
-/.github/CODEOWNERS @yoomarks
+/.github/CODEOWNERS @yoomarks @whalemarks
