@@ -67,7 +67,7 @@ function result(
   contentRef: ContentObjectRefV1,
   chunkId: string,
   contentSha256: string,
-  includeNoise = false,
+  graphTarget?: ContentObjectRefV1,
 ): KnowledgeRetrievalCompositionResultV1 {
   return {
     protocolVersion: "1.0",
@@ -76,7 +76,7 @@ function result(
     queryText,
     channels: {
       lexical: { available: true, count: 1 },
-      graph: { available: includeNoise, count: includeNoise ? 1 : 0 },
+      graph: { available: Boolean(graphTarget), count: graphTarget ? 1 : 0 },
       vector: { available: false, count: 0, reason: "PROVIDER_UNAVAILABLE" },
     },
     items: [
@@ -96,10 +96,10 @@ function result(
           },
         ],
       },
-      ...(includeNoise
+      ...(graphTarget
         ? [
             {
-              content: irrelevantGraph,
+              content: graphTarget,
               evidence: [
                 {
                   channel: "GRAPH" as const,
@@ -111,7 +111,7 @@ function result(
                     objectType: "CONTENT_EDGE" as const,
                     from: contentRef,
                     relationType: "SIMILAR_TO" as const,
-                    to: irrelevantGraph,
+                    to: graphTarget,
                     origin: "SYSTEM_DERIVED" as const,
                   },
                 },
@@ -126,7 +126,13 @@ function result(
 const results = [
   {
     queryId: "filing-basics",
-    result: result(fixture.queries[0].queryText, expectedA, "chunk:a:0", shaA, true),
+    result: result(
+      fixture.queries[0].queryText,
+      expectedA,
+      "chunk:a:0",
+      shaA,
+      irrelevantGraph,
+    ),
   },
   {
     queryId: "section-8",
@@ -154,7 +160,9 @@ describe("Frozen retrieval evaluation runner", () => {
             lexicalProvenanceCompleteCount: 1,
             provenanceCompletenessRate: 1,
             graphExpandedOnlyCount: 1,
+            graphExpandedExpectedCount: 0,
             graphExpandedIrrelevantCount: 1,
+            relationshipExpansionContributionRate: 0,
             relationshipExpansionNoiseRate: 1,
           },
         },
@@ -171,7 +179,9 @@ describe("Frozen retrieval evaluation runner", () => {
             lexicalProvenanceCompleteCount: 1,
             provenanceCompletenessRate: 1,
             graphExpandedOnlyCount: 0,
+            graphExpandedExpectedCount: 0,
             graphExpandedIrrelevantCount: 0,
+            relationshipExpansionContributionRate: null,
             relationshipExpansionNoiseRate: null,
           },
         },
@@ -188,10 +198,79 @@ describe("Frozen retrieval evaluation runner", () => {
         lexicalProvenanceCompleteCount: 2,
         provenanceCompletenessRate: 1,
         graphExpandedOnlyCount: 1,
+        graphExpandedExpectedCount: 0,
         graphExpandedIrrelevantCount: 1,
+        relationshipExpansionContributionRate: 0,
         relationshipExpansionNoiseRate: 1,
       },
     });
+  });
+
+  it("measures useful relationship expansion separately from noise and groups by source/query class", () => {
+    const multisourceFixture: FrozenRetrievalFixtureV1 = {
+      schemaVersion: "1.0",
+      fixtureId: "retrieval-multisource-phase2",
+      fixtureVersion: "2026-08-28.1",
+      queries: [
+        {
+          queryId: "official-cross-reference",
+          workspaceId,
+          queryText: "Which official source provides the related applicability context?",
+          sourceFamily: "OFFICIAL_WEB",
+          queryClass: "RELATIONSHIP_ASSISTED",
+          evaluation: {
+            k: 1,
+            expectedSources: [{ content: expectedA }, { content: expectedB }],
+          },
+        },
+        {
+          queryId: "expert-direct",
+          workspaceId,
+          queryText: "What did the expert source say?",
+          sourceFamily: "EXPERT",
+          queryClass: "LEXICAL_DIRECT",
+          evaluation: {
+            k: 1,
+            expectedSources: [{ content: expectedB }],
+          },
+        },
+      ],
+    };
+    const multisourceResults = [
+      {
+        queryId: "official-cross-reference",
+        result: result(
+          multisourceFixture.queries[0].queryText,
+          expectedA,
+          "chunk:a:0",
+          shaA,
+          expectedB,
+        ),
+      },
+      {
+        queryId: "expert-direct",
+        result: result(
+          multisourceFixture.queries[1].queryText,
+          expectedB,
+          "chunk:b:0",
+          shaB,
+        ),
+      },
+    ];
+
+    const measured = runFrozenRetrievalEvaluation(multisourceFixture, multisourceResults);
+    expect(measured.queries[0].metrics.graphExpandedExpectedCount).toBe(1);
+    expect(measured.queries[0].metrics.relationshipExpansionContributionRate).toBe(1);
+    expect(measured.queries[0].metrics.relationshipExpansionNoiseRate).toBe(0);
+    expect(measured.bySourceFamily?.map(({ dimension }) => dimension)).toEqual([
+      "EXPERT",
+      "OFFICIAL_WEB",
+    ]);
+    expect(measured.byQueryClass?.map(({ dimension }) => dimension)).toEqual([
+      "LEXICAL_DIRECT",
+      "RELATIONSHIP_ASSISTED",
+    ]);
+    expect(measured.byQueryClass?.[1]?.metrics.graphExpandedExpectedCount).toBe(1);
   });
 
   it("is deterministic for unchanged fixture and result identities", () => {
@@ -212,6 +291,18 @@ describe("Frozen retrieval evaluation runner", () => {
     expect(() => runFrozenRetrievalEvaluation(fixture, mismatched)).toThrow(
       "Retrieval result identity does not match the frozen query fixture",
     );
+  });
+
+  it("fails closed on invalid Phase 2 dimensions", () => {
+    expect(() =>
+      runFrozenRetrievalEvaluation(
+        {
+          ...fixture,
+          queries: [{ ...fixture.queries[0], sourceFamily: " OFFICIAL_WEB" }, fixture.queries[1]],
+        },
+        results,
+      ),
+    ).toThrow("Retrieval fixture source family must be a non-empty trimmed string");
   });
 
   it("fails closed on duplicate fixture query ids", () => {
