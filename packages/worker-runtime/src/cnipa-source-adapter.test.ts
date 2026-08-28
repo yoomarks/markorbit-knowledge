@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  CnipaAcquisitionError,
   CnipaSourceAdapter,
   type CnipaAuthenticatedRequest,
   type CnipaAuthenticatedSessionExecutor,
@@ -172,16 +171,10 @@ describe("CnipaSourceAdapter", () => {
         registrationNumber: "12345678",
         documentKinds: ["REGISTRATION_EXAMINATION"],
       }),
-    ).rejects.toBeInstanceOf(CnipaAcquisitionError);
-    await expect(
-      Promise.reject(
-        new CnipaAcquisitionError(
-          "CNIPA_DETAIL_LIMIT_EXCEEDED",
-          "synthetic assertion helper",
-          false,
-        ),
-      ),
-    ).rejects.toMatchObject({ code: "CNIPA_DETAIL_LIMIT_EXCEEDED" });
+    ).rejects.toMatchObject({
+      code: "CNIPA_DETAIL_LIMIT_EXCEEDED",
+      retryable: false,
+    });
     expect(executor.requests.filter((request) => request.surface === "DETAIL")).toHaveLength(2);
   });
 });
