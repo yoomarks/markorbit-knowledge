@@ -106,7 +106,9 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
   const brightDataApiToken = env.BRIGHTDATA_API_TOKEN?.trim() || undefined;
   const brightDataZone = env.BRIGHTDATA_WEB_UNLOCKER_ZONE?.trim() || undefined;
   if (brightDataFallbackEnabled && provider !== "crawl4ai") {
-    throw new Error("Bright Data fallback may only be enabled with MARKORBIT_COLLECTION_PROVIDER=crawl4ai");
+    throw new Error(
+      "Bright Data fallback may only be enabled with MARKORBIT_COLLECTION_PROVIDER=crawl4ai",
+    );
   }
   if (brightDataFallbackEnabled && (!brightDataApiToken || !brightDataZone)) {
     throw new Error(

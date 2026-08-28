@@ -102,7 +102,9 @@ describe("BrightDataFallbackAcquirer", () => {
     await expect(acquirer.acquire(context(["HTML", "MARKDOWN"]))).resolves.toBe(expected);
     expect(unlockCalls).toBe(1);
     expect(processorInput).toMatchObject({
-      pages: [{ sourceUri: "https://example.gov/page", html: "<html><body>unlocked</body></html>" }],
+      pages: [
+        { sourceUri: "https://example.gov/page", html: "<html><body>unlocked</body></html>" },
+      ],
       outputKinds: ["HTML", "MARKDOWN"],
     });
   });
@@ -115,18 +117,30 @@ describe("BrightDataFallbackAcquirer", () => {
         return { sourceUri: url, html: "<html>fallback</html>" };
       },
     };
-    const processor: RawHtmlArtifactProcessor = { async process() { return [artifact()]; } };
+    const processor: RawHtmlArtifactProcessor = {
+      async process() {
+        return [artifact()];
+      },
+    };
     const fetchError = new CollectionAcquisitionError("CRAWL4AI_FETCH_FAILED", "blocked", true);
     const attachmentAcquirer = new BrightDataFallbackAcquirer({
-      primary: primary(async () => { throw fetchError; }),
+      primary: primary(async () => {
+        throw fetchError;
+      }),
       unlocker,
       processor,
     });
     await expect(attachmentAcquirer.acquire(context(["PDF"]))).rejects.toBe(fetchError);
 
-    const policyError = new CollectionAcquisitionError("CROSS_DOMAIN_REDIRECT_BLOCKED", "blocked", false);
+    const policyError = new CollectionAcquisitionError(
+      "CROSS_DOMAIN_REDIRECT_BLOCKED",
+      "blocked",
+      false,
+    );
     const policyAcquirer = new BrightDataFallbackAcquirer({
-      primary: primary(async () => { throw policyError; }),
+      primary: primary(async () => {
+        throw policyError;
+      }),
       unlocker,
       processor,
     });
@@ -147,11 +161,17 @@ describe("BrightDataFallbackAcquirer", () => {
         throw new CollectionAcquisitionError("CRAWL4AI_FETCH_FAILED", "blocked", true);
       }),
       unlocker,
-      processor: { async process() { return [artifact()]; } },
+      processor: {
+        async process() {
+          return [artifact()];
+        },
+      },
       maxRequestsPerRun: 1,
     });
     const twoUrls = context();
-    (twoUrls.job.sourceSnapshot.entrypoints as Array<{ uri: string }>).push({ uri: "https://example.gov/two" });
+    (twoUrls.job.sourceSnapshot.entrypoints as Array<{ uri: string }>).push({
+      uri: "https://example.gov/two",
+    });
 
     await expect(acquirer.acquire(twoUrls)).rejects.toMatchObject({
       code: "BRIGHTDATA_FALLBACK_REQUEST_BUDGET_EXCEEDED",

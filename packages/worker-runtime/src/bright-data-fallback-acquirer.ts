@@ -10,7 +10,10 @@ import {
   CollectionAcquisitionError,
   type CollectionArtifactAcquirer,
 } from "./artifact-backed-collection-executor";
-import type { Crawl4AiArtifactManifest, Crawl4AiRunnerResponse } from "./crawl4ai-subprocess-acquirer";
+import type {
+  Crawl4AiArtifactManifest,
+  Crawl4AiRunnerResponse,
+} from "./crawl4ai-subprocess-acquirer";
 
 const PROTOCOL_VERSION = "1.0" as const;
 const DEFAULT_ENDPOINT = "https://api.brightdata.com/request";
@@ -75,7 +78,9 @@ export class BrightDataWebUnlockerClient implements BrightDataWebUnlocker {
     if (!response.ok) {
       const quotaOrPayment = response.status === 402 || response.status === 429;
       throw new CollectionAcquisitionError(
-        quotaOrPayment ? "BRIGHTDATA_QUOTA_OR_PAYMENT_REQUIRED" : `BRIGHTDATA_HTTP_${response.status}`,
+        quotaOrPayment
+          ? "BRIGHTDATA_QUOTA_OR_PAYMENT_REQUIRED"
+          : `BRIGHTDATA_HTTP_${response.status}`,
         quotaOrPayment
           ? "Bright Data free allowance, rate, or provider-side payment boundary was reached"
           : `Bright Data Web Unlocker failed with HTTP ${response.status}`,
@@ -230,7 +235,11 @@ async function readArtifact(
     );
   }
   const metadata = await stat(resolved);
-  if (!metadata.isFile() || metadata.size !== manifest.sizeBytes || metadata.size > maxArtifactBytes) {
+  if (
+    !metadata.isFile() ||
+    metadata.size !== manifest.sizeBytes ||
+    metadata.size > maxArtifactBytes
+  ) {
     throw new CollectionAcquisitionError(
       "CRAWL4AI_RAW_ARTIFACT_SIZE_MISMATCH",
       "Raw HTML processor artifact size does not match its bounded manifest",
@@ -265,7 +274,8 @@ export class Crawl4AiRawHtmlSubprocessProcessor implements RawHtmlArtifactProces
   private readonly maxStderrBytes: number;
 
   constructor(options: Crawl4AiRawHtmlSubprocessProcessorOptions = {}) {
-    this.pythonExecutable = options.pythonExecutable ?? process.env.MARKORBIT_CRAWL4AI_PYTHON ?? "python3";
+    this.pythonExecutable =
+      options.pythonExecutable ?? process.env.MARKORBIT_CRAWL4AI_PYTHON ?? "python3";
     this.scriptPath = options.scriptPath ?? "workers/crawl4ai/process_raw_html.py";
     this.cwd = options.cwd ?? process.cwd();
     this.timeoutMs = options.timeoutMs ?? 120_000;
@@ -276,74 +286,105 @@ export class Crawl4AiRawHtmlSubprocessProcessor implements RawHtmlArtifactProces
   async process(request: RawHtmlProcessorRequest): Promise<AcquiredCollectionArtifact[]> {
     const outputDirectory = await mkdtemp(join(tmpdir(), "markorbit-crawl4ai-raw-"));
     try {
-      const response = await new Promise<Crawl4AiRunnerResponse>((resolvePromise, rejectPromise) => {
-        const child = spawn(this.pythonExecutable, [this.scriptPath], {
-          cwd: this.cwd,
-          env: safeEnvironment(),
-          stdio: ["pipe", "pipe", "pipe"],
-          windowsHide: true,
-        });
-        const stdout: Buffer[] = [];
-        let stdoutBytes = 0;
-        let stderrBytes = 0;
-        const stderr: Buffer[] = [];
-        let terminal = false;
-        const fail = (error: CollectionAcquisitionError) => {
-          if (terminal) return;
-          terminal = true;
-          child.kill("SIGKILL");
-          rejectPromise(error);
-        };
-        const timer = setTimeout(
-          () => fail(new CollectionAcquisitionError("CRAWL4AI_RAW_TIMEOUT", "Raw HTML processor timed out", false)),
-          this.timeoutMs,
-        );
-        child.stdout.on("data", (chunk: Buffer) => {
-          stdoutBytes += chunk.byteLength;
-          if (stdoutBytes > this.maxStdoutBytes) {
-            fail(new CollectionAcquisitionError("CRAWL4AI_RAW_PROTOCOL_TOO_LARGE", "Raw HTML processor protocol output exceeded its limit", false));
-            return;
-          }
-          stdout.push(chunk);
-        });
-        child.stderr.on("data", (chunk: Buffer) => {
-          if (stderrBytes >= this.maxStderrBytes) return;
-          const bounded = chunk.subarray(0, this.maxStderrBytes - stderrBytes);
-          stderrBytes += bounded.byteLength;
-          stderr.push(bounded);
-        });
-        child.on("error", (error) => {
-          clearTimeout(timer);
-          if (!terminal) {
+      const response = await new Promise<Crawl4AiRunnerResponse>(
+        (resolvePromise, rejectPromise) => {
+          const child = spawn(this.pythonExecutable, [this.scriptPath], {
+            cwd: this.cwd,
+            env: safeEnvironment(),
+            stdio: ["pipe", "pipe", "pipe"],
+            windowsHide: true,
+          });
+          const stdout: Buffer[] = [];
+          let stdoutBytes = 0;
+          let stderrBytes = 0;
+          const stderr: Buffer[] = [];
+          let terminal = false;
+          const fail = (error: CollectionAcquisitionError) => {
+            if (terminal) return;
             terminal = true;
-            rejectPromise(new CollectionAcquisitionError("CRAWL4AI_RAW_RUNTIME_UNAVAILABLE", `Unable to start raw HTML processor: ${error.message}`, false));
-          }
-        });
-        child.on("close", (code) => {
-          clearTimeout(timer);
-          if (terminal) return;
-          terminal = true;
-          if (code !== 0) {
-            const diagnostic = Buffer.concat(stderr).toString("utf8").trim().slice(0, 1000);
-            rejectPromise(new CollectionAcquisitionError("CRAWL4AI_RAW_PROCESS_FAILED", diagnostic ? `Raw HTML processor exited with code ${code}: ${diagnostic}` : `Raw HTML processor exited with code ${code}`, false));
-            return;
-          }
-          try {
-            resolvePromise(parseProcessorResponse(Buffer.concat(stdout).toString("utf8").trim()));
-          } catch (error) {
+            child.kill("SIGKILL");
             rejectPromise(error);
-          }
-        });
-        child.stdin.on("error", () => undefined);
-        child.stdin.end(JSON.stringify({
-          protocolVersion: PROTOCOL_VERSION,
-          outputDirectory,
-          pages: request.pages,
-          outputKinds: request.outputKinds,
-          maxArtifactBytes: request.maxArtifactBytes,
-          maxTotalBytes: request.maxTotalBytes,
-        }));
-      });
+          };
+          const timer = setTimeout(
+            () =>
+              fail(
+                new CollectionAcquisitionError(
+                  "CRAWL4AI_RAW_TIMEOUT",
+                  "Raw HTML processor timed out",
+                  false,
+                ),
+              ),
+            this.timeoutMs,
+          );
+          child.stdout.on("data", (chunk: Buffer) => {
+            stdoutBytes += chunk.byteLength;
+            if (stdoutBytes > this.maxStdoutBytes) {
+              fail(
+                new CollectionAcquisitionError(
+                  "CRAWL4AI_RAW_PROTOCOL_TOO_LARGE",
+                  "Raw HTML processor protocol output exceeded its limit",
+                  false,
+                ),
+              );
+              return;
+            }
+            stdout.push(chunk);
+          });
+          child.stderr.on("data", (chunk: Buffer) => {
+            if (stderrBytes >= this.maxStderrBytes) return;
+            const bounded = chunk.subarray(0, this.maxStderrBytes - stderrBytes);
+            stderrBytes += bounded.byteLength;
+            stderr.push(bounded);
+          });
+          child.on("error", (error) => {
+            clearTimeout(timer);
+            if (!terminal) {
+              terminal = true;
+              rejectPromise(
+                new CollectionAcquisitionError(
+                  "CRAWL4AI_RAW_RUNTIME_UNAVAILABLE",
+                  `Unable to start raw HTML processor: ${error.message}`,
+                  false,
+                ),
+              );
+            }
+          });
+          child.on("close", (code) => {
+            clearTimeout(timer);
+            if (terminal) return;
+            terminal = true;
+            if (code !== 0) {
+              const diagnostic = Buffer.concat(stderr).toString("utf8").trim().slice(0, 1000);
+              rejectPromise(
+                new CollectionAcquisitionError(
+                  "CRAWL4AI_RAW_PROCESS_FAILED",
+                  diagnostic
+                    ? `Raw HTML processor exited with code ${code}: ${diagnostic}`
+                    : `Raw HTML processor exited with code ${code}`,
+                  false,
+                ),
+              );
+              return;
+            }
+            try {
+              resolvePromise(parseProcessorResponse(Buffer.concat(stdout).toString("utf8").trim()));
+            } catch (error) {
+              rejectPromise(error);
+            }
+          });
+          child.stdin.on("error", () => undefined);
+          child.stdin.end(
+            JSON.stringify({
+              protocolVersion: PROTOCOL_VERSION,
+              outputDirectory,
+              pages: request.pages,
+              outputKinds: request.outputKinds,
+              maxArtifactBytes: request.maxArtifactBytes,
+              maxTotalBytes: request.maxTotalBytes,
+            }),
+          );
+        },
+      );
 
       if (!response.ok) {
         throw new CollectionAcquisitionError(response.error.code, response.error.message, false);
@@ -352,17 +393,34 @@ export class Crawl4AiRawHtmlSubprocessProcessor implements RawHtmlArtifactProces
       let totalBytes = 0;
       for (const manifest of response.artifacts) {
         if (!isManifest(manifest)) {
-          throw new CollectionAcquisitionError("CRAWL4AI_RAW_PROTOCOL_INVALID", "Raw HTML processor returned an invalid artifact manifest", false);
+          throw new CollectionAcquisitionError(
+            "CRAWL4AI_RAW_PROTOCOL_INVALID",
+            "Raw HTML processor returned an invalid artifact manifest",
+            false,
+          );
         }
-        const artifact = await readArtifact(outputDirectory, manifest, request.outputKinds, request.maxArtifactBytes);
+        const artifact = await readArtifact(
+          outputDirectory,
+          manifest,
+          request.outputKinds,
+          request.maxArtifactBytes,
+        );
         totalBytes += artifact.content.byteLength;
         if (totalBytes > request.maxTotalBytes) {
-          throw new CollectionAcquisitionError("COLLECTION_TOO_LARGE", "Unlocked collection exceeded the governed total byte limit", false);
+          throw new CollectionAcquisitionError(
+            "COLLECTION_TOO_LARGE",
+            "Unlocked collection exceeded the governed total byte limit",
+            false,
+          );
         }
         artifacts.push(artifact);
       }
       if (artifacts.length === 0 || response.totalBytes !== totalBytes) {
-        throw new CollectionAcquisitionError("CRAWL4AI_RAW_ARTIFACT_SIZE_MISMATCH", "Raw HTML processor byte manifest is incomplete", false);
+        throw new CollectionAcquisitionError(
+          "CRAWL4AI_RAW_ARTIFACT_SIZE_MISMATCH",
+          "Raw HTML processor byte manifest is incomplete",
+          false,
+        );
       }
       return artifacts;
     } finally {

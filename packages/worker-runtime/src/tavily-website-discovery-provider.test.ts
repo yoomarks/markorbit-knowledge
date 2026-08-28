@@ -1,6 +1,9 @@
 import type { SourceDiscoveryBatch } from "@markorbit/contracts";
 import { describe, expect, it } from "vitest";
-import { TavilyDiscoveryError, TavilyWebsiteDiscoveryProvider } from "./tavily-website-discovery-provider";
+import {
+  TavilyDiscoveryError,
+  TavilyWebsiteDiscoveryProvider,
+} from "./tavily-website-discovery-provider";
 
 function batch(overrides: Partial<SourceDiscoveryBatch> = {}): SourceDiscoveryBatch {
   return {

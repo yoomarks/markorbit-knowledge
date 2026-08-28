@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
-import type { SourceCandidate, SourceDiscoveryBatch, SourceDiscoverySeed } from "@markorbit/contracts";
+import type {
+  SourceCandidate,
+  SourceDiscoveryBatch,
+  SourceDiscoverySeed,
+} from "@markorbit/contracts";
 import type { SourceDiscoveryProvider } from "./source-discovery-runner";
 
 const DEFAULT_ENDPOINT = "https://api.tavily.com/search";
@@ -130,7 +134,10 @@ export class TavilyWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
       0,
       Math.min(batch.constraints?.maxCandidates ?? DEFAULT_MAX_CANDIDATES, 5_000),
     );
-    const maxFetches = Math.max(0, Math.min(batch.constraints?.maxFetches ?? DEFAULT_MAX_FETCHES, 1_000));
+    const maxFetches = Math.max(
+      0,
+      Math.min(batch.constraints?.maxFetches ?? DEFAULT_MAX_FETCHES, 1_000),
+    );
     if (maxCandidates === 0 || maxFetches === 0 || batch.seeds.length === 0) return [];
 
     const candidates = new Map<string, SourceCandidate>();
@@ -176,7 +183,8 @@ export class TavilyWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
       }
 
       if (!response.ok) {
-        const quotaOrPayment = response.status === 402 || response.status === 432 || response.status === 433;
+        const quotaOrPayment =
+          response.status === 402 || response.status === 432 || response.status === 433;
         const rateLimited = response.status === 429;
         throw new TavilyDiscoveryError(
           quotaOrPayment
