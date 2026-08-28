@@ -71,6 +71,13 @@ function canonicalText(value: string): string {
     .replace(/\r\n?/g, "\n");
 }
 
+function lines(text: string): string[] {
+  return canonicalText(text)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 function sameLineage(document: RetrievalDocument, chunk: RetrievalChunk): boolean {
   return (
     chunk.documentId === document.documentId &&
@@ -96,20 +103,6 @@ function evidenceRef(document: RetrievalDocument, chunk: RetrievalChunk): UsptoF
   };
 }
 
-function windows(text: string, radius = 3): string[] {
-  const lines = canonicalText(text)
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const result: string[] = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    const start = Math.max(0, index - radius);
-    const end = Math.min(lines.length, index + radius + 1);
-    result.push(lines.slice(start, end).join(" "));
-  }
-  return result;
-}
-
 function operationMatch(text: string): boolean {
   const lower = canonicalText(text).toLowerCase();
   return (
@@ -130,19 +123,27 @@ function numericRowMatch(text: string): boolean {
   );
 }
 
-function moneyMinor(text: string): number | null {
+function amountsOnLine(line: string): number[] {
   const candidates = new Set<number>();
-  for (const window of windows(text)) {
-    if (!numericRowMatch(window) && !operationMatch(window)) continue;
-    const patterns = [/\$\s*([0-9][0-9,]*(?:\.\d{2})?)/g, /(?:^|[|\s])([0-9]{2,5}\.\d{2})(?=[|\s]|$)/g];
-    for (const pattern of patterns) {
-      for (const match of window.matchAll(pattern)) {
-        const raw = match[1]?.replace(/,/g, "");
-        if (!raw) continue;
-        const amount = Number(raw);
-        if (Number.isFinite(amount) && amount > 0) candidates.add(Math.round(amount * 100));
-      }
+  const patterns = [
+    /\$\s*([0-9][0-9,]*(?:\.\d{2})?)/g,
+    /(?:^|[|\s])([0-9]{2,5}\.\d{2})(?=[|\s]|$)/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of line.matchAll(pattern)) {
+      const raw = match[1]?.replace(/,/g, "");
+      if (!raw) continue;
+      const amount = Number(raw);
+      if (Number.isFinite(amount) && amount > 0) candidates.add(Math.round(amount * 100));
     }
+  }
+  return [...candidates];
+}
+
+function amountFromSemanticLine(text: string, matcher: (line: string) => boolean): number | null {
+  const candidates = new Set<number>();
+  for (const line of lines(text).filter(matcher)) {
+    for (const amount of amountsOnLine(line)) candidates.add(amount);
   }
   return candidates.size === 1 ? [...candidates][0]! : null;
 }
@@ -177,8 +178,8 @@ export function resolveUsptoFeeEvidence(
     return { status: "FAIL_CLOSED", reason: "LINEAGE_MISMATCH" };
   }
 
-  const numericAmount = moneyMinor(input.numericChunk.text);
-  if (numericAmount === null || !numericRowMatch(input.numericChunk.text)) {
+  const numericAmount = amountFromSemanticLine(input.numericChunk.text, numericRowMatch);
+  if (numericAmount === null) {
     return { status: "FAIL_CLOSED", reason: "NUMERIC_ROW_UNRESOLVED" };
   }
 
@@ -187,7 +188,9 @@ export function resolveUsptoFeeEvidence(
     return { status: "FAIL_CLOSED", reason: "TEMPORAL_OPERATION_UNRESOLVED" };
   }
   const temporalAmountCandidates = new Set(
-    temporalOperationChunks.map((chunk) => moneyMinor(chunk.text)).filter((value): value is number => value !== null),
+    temporalOperationChunks
+      .map((chunk) => amountFromSemanticLine(chunk.text, operationMatch))
+      .filter((value): value is number => value !== null),
   );
   if (temporalAmountCandidates.size !== 1 || !temporalAmountCandidates.has(numericAmount)) {
     return { status: "FAIL_CLOSED", reason: "CROSS_SOURCE_AMOUNT_CONFLICT" };
