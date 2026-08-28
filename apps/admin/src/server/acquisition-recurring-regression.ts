@@ -1,43 +1,11 @@
-import type {
-  AcquisitionRunEvidence,
-  AcquisitionStrategyReevaluationRequest,
-  SourceFingerprint,
+import {
+  ACQUISITION_RECURRING_REGRESSION_VERSION,
+  type AcquisitionRecurringRegressionResultV1,
+  type AcquisitionRegressionState,
+  type AcquisitionRunEvidence,
+  type AcquisitionStrategyReevaluationRequest,
+  type SourceFingerprint,
 } from "@markorbit/contracts";
-
-export const ACQUISITION_REGRESSION_STATES = [
-  "UNCHANGED",
-  "EXPECTED_CHANGE",
-  "COVERAGE_DEGRADED",
-  "SOURCE_IDENTITY_DRIFT",
-  "PLAYBOOK_BEHAVIOR_DRIFT",
-  "INSUFFICIENT_EVIDENCE",
-] as const;
-
-export type AcquisitionRegressionState = (typeof ACQUISITION_REGRESSION_STATES)[number];
-
-export type AcquisitionRecurringRegressionResultV1 = {
-  version: "ACQUISITION_RECURRING_REGRESSION_V1";
-  sourceId: string;
-  baselineRunId: string;
-  currentRunId: string;
-  state: AcquisitionRegressionState;
-  reasonCodes: string[];
-  deltas: {
-    coverageRatio: number | null;
-    accepted: number;
-    duplicateRatio: number;
-    failures: number;
-    httpErrorRatio: number;
-    digestChanges: number;
-  };
-  evidenceRefs: string[];
-  reevaluationRequest: AcquisitionStrategyReevaluationRequest | null;
-  boundaries: {
-    autoPromotionApplied: false;
-    collectionAuthorityGranted: false;
-    legalTruthVerified: false;
-  };
-};
 
 const COVERAGE_DROP_THRESHOLD = 0.05;
 const DUPLICATE_RATIO_INCREASE_THRESHOLD = 0.05;
@@ -140,6 +108,8 @@ export function evaluateAcquisitionRecurringRegression(input: {
   const currentFingerprint = input.currentFingerprint ?? undefined;
 
   const sourceId = current?.sourceId ?? baseline?.sourceId ?? "UNKNOWN";
+  const playbookId = current?.playbookId ?? baseline?.playbookId ?? "UNKNOWN";
+  const playbookRevision = current?.playbookRevision ?? baseline?.playbookRevision ?? 1;
   const baselineRunId = baseline?.runId ?? "MISSING";
   const currentRunId = current?.runId ?? "MISSING";
 
@@ -152,8 +122,10 @@ export function evaluateAcquisitionRecurringRegression(input: {
         ? evidenceRefs(baseline, current, baselineFingerprint, currentFingerprint)
         : [];
     return {
-      version: "ACQUISITION_RECURRING_REGRESSION_V1",
+      version: ACQUISITION_RECURRING_REGRESSION_VERSION,
       sourceId,
+      playbookId,
+      playbookRevision,
       baselineRunId,
       currentRunId,
       state,
