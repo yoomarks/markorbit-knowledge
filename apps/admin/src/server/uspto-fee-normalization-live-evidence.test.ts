@@ -35,7 +35,7 @@ liveDescribe("Phase 2 live USPTO fee value and temporal normalization", () => {
     const temporalSourceId = required("MARKORBIT_TEMPORAL_SOURCE_ID");
     const applicabilitySourceId = required("MARKORBIT_APPLICABILITY_SOURCE_ID");
 
-    const numeric = search(numericSourceId, "base application fee 7017 2.6(a)(1)(iii)").find(
+    const numeric = search(numericSourceId, "base application fee 7017 trademark").find(
       (hit) =>
         hit.document.sourceUri === NUMERIC_URI &&
         hit.chunk.text.includes("7017") &&
