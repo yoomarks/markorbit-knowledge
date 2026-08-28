@@ -1,4 +1,8 @@
-import type { AcquisitionRunEvidence, SourceFingerprint } from "@markorbit/contracts";
+import type {
+  AcquisitionRunEvidence,
+  AcquisitionStrategyReevaluationRequest,
+  SourceFingerprint,
+} from "@markorbit/contracts";
 
 export const ACQUISITION_REGRESSION_STATES = [
   "UNCHANGED",
@@ -27,6 +31,7 @@ export type AcquisitionRecurringRegressionResultV1 = {
     digestChanges: number;
   };
   evidenceRefs: string[];
+  reevaluationRequest: AcquisitionStrategyReevaluationRequest | null;
   boundaries: {
     autoPromotionApplied: false;
     collectionAuthorityGranted: false;
@@ -87,6 +92,42 @@ function evidenceRefs(
     .sort();
 }
 
+function reevaluationRequest(
+  state: AcquisitionRegressionState,
+  reasonCodes: readonly string[],
+  current: AcquisitionRunEvidence,
+  refs: readonly string[],
+): AcquisitionStrategyReevaluationRequest | null {
+  if (
+    state !== "COVERAGE_DEGRADED" &&
+    state !== "SOURCE_IDENTITY_DRIFT" &&
+    state !== "PLAYBOOK_BEHAVIOR_DRIFT"
+  ) {
+    return null;
+  }
+
+  return {
+    protocolVersion: "1.0",
+    objectType: "ACQUISITION_STRATEGY_REEVALUATION_REQUEST",
+    id: `recurring-regression:${current.runId}:${state}`,
+    runId: current.runId,
+    sourceId: current.sourceId,
+    playbookId: current.playbookId,
+    playbookRevision: current.playbookRevision,
+    requestedAt: current.finishedAt,
+    status: "PENDING",
+    lessonTypes: state === "COVERAGE_DEGRADED" ? ["COVERAGE_REGRESSION"] : [],
+    reasonCodes: [...reasonCodes].sort(),
+    fallbackPlaybookIds: [],
+    evidenceRefs: [...refs],
+    boundaries: {
+      autoDispatchApplied: false,
+      autoPromotionApplied: false,
+      collectionAuthorityGranted: false,
+    },
+  };
+}
+
 export function evaluateAcquisitionRecurringRegression(input: {
   baseline?: AcquisitionRunEvidence | null;
   current?: AcquisitionRunEvidence | null;
@@ -105,39 +146,45 @@ export function evaluateAcquisitionRecurringRegression(input: {
   const result = (
     state: AcquisitionRegressionState,
     reasonCodes: string[],
-  ): AcquisitionRecurringRegressionResultV1 => ({
-    version: "ACQUISITION_RECURRING_REGRESSION_V1",
-    sourceId,
-    baselineRunId,
-    currentRunId,
-    state,
-    reasonCodes: [...reasonCodes].sort(),
-    deltas: {
-      coverageRatio:
-        baseline?.coverage.ratio === null ||
-        baseline?.coverage.ratio === undefined ||
-        current?.coverage.ratio === null ||
-        current?.coverage.ratio === undefined
-          ? null
-          : current.coverage.ratio - baseline.coverage.ratio,
-      accepted: (current?.counts.accepted ?? 0) - (baseline?.counts.accepted ?? 0),
-      duplicateRatio: baseline && current ? duplicateRatio(current) - duplicateRatio(baseline) : 0,
-      failures: baseline && current ? failureCount(current) - failureCount(baseline) : 0,
-      httpErrorRatio: baseline && current ? httpErrorRatio(current) - httpErrorRatio(baseline) : 0,
-      digestChanges:
-        (current?.changeDetection.digestChanges ?? 0) -
-        (baseline?.changeDetection.digestChanges ?? 0),
-    },
-    evidenceRefs:
+  ): AcquisitionRecurringRegressionResultV1 => {
+    const refs =
       baseline && current
         ? evidenceRefs(baseline, current, baselineFingerprint, currentFingerprint)
-        : [],
-    boundaries: {
-      autoPromotionApplied: false,
-      collectionAuthorityGranted: false,
-      legalTruthVerified: false,
-    },
-  });
+        : [];
+    return {
+      version: "ACQUISITION_RECURRING_REGRESSION_V1",
+      sourceId,
+      baselineRunId,
+      currentRunId,
+      state,
+      reasonCodes: [...reasonCodes].sort(),
+      deltas: {
+        coverageRatio:
+          baseline?.coverage.ratio === null ||
+          baseline?.coverage.ratio === undefined ||
+          current?.coverage.ratio === null ||
+          current?.coverage.ratio === undefined
+            ? null
+            : current.coverage.ratio - baseline.coverage.ratio,
+        accepted: (current?.counts.accepted ?? 0) - (baseline?.counts.accepted ?? 0),
+        duplicateRatio:
+          baseline && current ? duplicateRatio(current) - duplicateRatio(baseline) : 0,
+        failures: baseline && current ? failureCount(current) - failureCount(baseline) : 0,
+        httpErrorRatio:
+          baseline && current ? httpErrorRatio(current) - httpErrorRatio(baseline) : 0,
+        digestChanges:
+          (current?.changeDetection.digestChanges ?? 0) -
+          (baseline?.changeDetection.digestChanges ?? 0),
+      },
+      evidenceRefs: refs,
+      reevaluationRequest: current ? reevaluationRequest(state, reasonCodes, current, refs) : null,
+      boundaries: {
+        autoPromotionApplied: false,
+        collectionAuthorityGranted: false,
+        legalTruthVerified: false,
+      },
+    };
+  };
 
   if (!baseline || !current || !baselineFingerprint || !currentFingerprint) {
     return result("INSUFFICIENT_EVIDENCE", ["BASELINE_OR_CURRENT_EVIDENCE_MISSING"]);

@@ -82,7 +82,7 @@ function pair(currentOverrides: Partial<AcquisitionRunEvidence> = {}) {
 }
 
 describe("acquisition recurring regression", () => {
-  it("returns UNCHANGED for stable objective evidence", () => {
+  it("returns UNCHANGED for stable objective evidence without reevaluation", () => {
     const result = evaluateAcquisitionRecurringRegression(pair());
     expect(result.state).toBe("UNCHANGED");
     expect(result.reasonCodes).toEqual(["OBJECTIVE_ACQUISITION_SIGNALS_STABLE"]);
@@ -95,32 +95,59 @@ describe("acquisition recurring regression", () => {
       "fingerprint:current",
     ]);
     expect(result.deltas.httpErrorRatio).toBe(0);
+    expect(result.reevaluationRequest).toBeNull();
     expect(result.boundaries.autoPromotionApplied).toBe(false);
   });
 
-  it("detects a controlled coverage regression", () => {
+  it("detects a controlled coverage regression and emits governed reevaluation evidence", () => {
     const result = evaluateAcquisitionRecurringRegression(
       pair({ coverage: { knownCorpus: 100, ratio: 0.89, previousRatio: 0.95 } }),
     );
     expect(result.state).toBe("COVERAGE_DEGRADED");
     expect(result.reasonCodes).toEqual(["COVERAGE_DROP_GTE_5_POINTS"]);
     expect(result.deltas.coverageRatio).toBeCloseTo(-0.06);
+    expect(result.reevaluationRequest).toEqual({
+      protocolVersion: "1.0",
+      objectType: "ACQUISITION_STRATEGY_REEVALUATION_REQUEST",
+      id: "recurring-regression:run-current:COVERAGE_DEGRADED",
+      runId: "run-current",
+      sourceId: "src-official",
+      playbookId: "official-index-v1",
+      playbookRevision: 1,
+      requestedAt: "2026-08-29T00:01:00.000Z",
+      status: "PENDING",
+      lessonTypes: ["COVERAGE_REGRESSION"],
+      reasonCodes: ["COVERAGE_DROP_GTE_5_POINTS"],
+      fallbackPlaybookIds: [],
+      evidenceRefs: result.evidenceRefs,
+      boundaries: {
+        autoDispatchApplied: false,
+        autoPromotionApplied: false,
+        collectionAuthorityGranted: false,
+      },
+    });
   });
 
-  it("distinguishes structural source identity drift from content change", () => {
+  it("distinguishes structural source identity drift and requests reevaluation without promotion", () => {
     const input = pair();
     input.currentFingerprint = fingerprint({
       architecture: "SPA",
       renderRequirement: "REQUIRED",
       observedAt: "2026-08-29T00:01:00.000Z",
     });
-    expect(evaluateAcquisitionRecurringRegression(input).state).toBe("SOURCE_IDENTITY_DRIFT");
+    const result = evaluateAcquisitionRecurringRegression(input);
+    expect(result.state).toBe("SOURCE_IDENTITY_DRIFT");
+    expect(result.reevaluationRequest?.reasonCodes).toEqual(["STRUCTURAL_FINGERPRINT_CHANGED"]);
+    expect(result.reevaluationRequest?.lessonTypes).toEqual([]);
+    expect(result.reevaluationRequest?.boundaries.autoDispatchApplied).toBe(false);
+    expect(result.reevaluationRequest?.boundaries.autoPromotionApplied).toBe(false);
   });
 
   it("detects playbook revision and behavioral drift without activating anything", () => {
-    expect(evaluateAcquisitionRecurringRegression(pair({ playbookRevision: 2 })).state).toBe(
-      "PLAYBOOK_BEHAVIOR_DRIFT",
-    );
+    const revision = evaluateAcquisitionRecurringRegression(pair({ playbookRevision: 2 }));
+    expect(revision.state).toBe("PLAYBOOK_BEHAVIOR_DRIFT");
+    expect(revision.reevaluationRequest?.playbookRevision).toBe(2);
+    expect(revision.reevaluationRequest?.boundaries.autoPromotionApplied).toBe(false);
 
     const behavioral = pair({
       outcome: "DEGRADED",
@@ -129,6 +156,10 @@ describe("acquisition recurring regression", () => {
     const result = evaluateAcquisitionRecurringRegression(behavioral);
     expect(result.state).toBe("PLAYBOOK_BEHAVIOR_DRIFT");
     expect(result.reasonCodes).toEqual(["FAILURE_COUNT_INCREASED", "OUTCOME_CHANGED"]);
+    expect(result.reevaluationRequest?.reasonCodes).toEqual([
+      "FAILURE_COUNT_INCREASED",
+      "OUTCOME_CHANGED",
+    ]);
     expect(result.boundaries.collectionAuthorityGranted).toBe(false);
   });
 
@@ -139,6 +170,7 @@ describe("acquisition recurring regression", () => {
     expect(result.state).toBe("PLAYBOOK_BEHAVIOR_DRIFT");
     expect(result.reasonCodes).toEqual(["HTTP_ERROR_RATIO_INCREASE_GTE_5_POINTS"]);
     expect(result.deltas.httpErrorRatio).toBeCloseTo(0.1);
+    expect(result.reevaluationRequest?.status).toBe("PENDING");
   });
 
   it("treats content digest movement without acquisition regression as EXPECTED_CHANGE", () => {
@@ -154,6 +186,7 @@ describe("acquisition recurring regression", () => {
     );
     expect(result.state).toBe("EXPECTED_CHANGE");
     expect(result.reasonCodes).toEqual(["CONTENT_DIGEST_CHANGE_WITHOUT_ACQUISITION_REGRESSION"]);
+    expect(result.reevaluationRequest).toBeNull();
   });
 
   it.each([
@@ -187,39 +220,42 @@ describe("acquisition recurring regression", () => {
         observedAt: "2026-08-29T00:01:00.000Z",
         evidenceRefs: [`${sourceId}:fingerprint-current`],
       });
-      expect(
-        evaluateAcquisitionRecurringRegression({
-          baseline,
-          current,
-          baselineFingerprint,
-          currentFingerprint,
-        }).state,
-      ).toBe("UNCHANGED");
+      const result = evaluateAcquisitionRecurringRegression({
+        baseline,
+        current,
+        baselineFingerprint,
+        currentFingerprint,
+      });
+      expect(result.state).toBe("UNCHANGED");
+      expect(result.reevaluationRequest).toBeNull();
     },
   );
 
   it("fails closed when evidence is missing or identities are incompatible", () => {
-    expect(
-      evaluateAcquisitionRecurringRegression({
-        baseline: evidence(),
-        current: null,
-        baselineFingerprint: fingerprint(),
-        currentFingerprint: null,
-      }).state,
-    ).toBe("INSUFFICIENT_EVIDENCE");
+    const missing = evaluateAcquisitionRecurringRegression({
+      baseline: evidence(),
+      current: null,
+      baselineFingerprint: fingerprint(),
+      currentFingerprint: null,
+    });
+    expect(missing.state).toBe("INSUFFICIENT_EVIDENCE");
+    expect(missing.reevaluationRequest).toBeNull();
 
-    expect(
-      evaluateAcquisitionRecurringRegression(pair({ sourceId: "src-different" })).reasonCodes,
-    ).toEqual(["SOURCE_IDENTITY_INCOMPATIBLE"]);
+    const sourceMismatch = evaluateAcquisitionRecurringRegression(
+      pair({ sourceId: "src-different" }),
+    );
+    expect(sourceMismatch.reasonCodes).toEqual(["SOURCE_IDENTITY_INCOMPATIBLE"]);
+    expect(sourceMismatch.reevaluationRequest).toBeNull();
 
-    expect(
-      evaluateAcquisitionRecurringRegression(pair({ playbookId: "different-playbook" }))
-        .reasonCodes,
-    ).toEqual(["PLAYBOOK_ID_INCOMPATIBLE"]);
+    const playbookMismatch = evaluateAcquisitionRecurringRegression(
+      pair({ playbookId: "different-playbook" }),
+    );
+    expect(playbookMismatch.reasonCodes).toEqual(["PLAYBOOK_ID_INCOMPATIBLE"]);
+    expect(playbookMismatch.reevaluationRequest).toBeNull();
   });
 
   it("is deterministic for the same baseline and current evidence", () => {
-    const input = pair();
+    const input = pair({ coverage: { knownCorpus: 100, ratio: 0.89, previousRatio: 0.95 } });
     expect(JSON.stringify(evaluateAcquisitionRecurringRegression(input))).toBe(
       JSON.stringify(evaluateAcquisitionRecurringRegression(input)),
     );
