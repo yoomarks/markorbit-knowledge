@@ -23,6 +23,7 @@ export type AcquisitionRecurringRegressionResultV1 = {
     accepted: number;
     duplicateRatio: number;
     failures: number;
+    httpErrorRatio: number;
     digestChanges: number;
   };
   evidenceRefs: string[];
@@ -35,6 +36,7 @@ export type AcquisitionRecurringRegressionResultV1 = {
 
 const COVERAGE_DROP_THRESHOLD = 0.05;
 const DUPLICATE_RATIO_INCREASE_THRESHOLD = 0.05;
+const HTTP_ERROR_RATIO_INCREASE_THRESHOLD = 0.05;
 
 function duplicateRatio(evidence: AcquisitionRunEvidence): number {
   const denominator = evidence.counts.accepted + evidence.counts.duplicates;
@@ -43,6 +45,17 @@ function duplicateRatio(evidence: AcquisitionRunEvidence): number {
 
 function failureCount(evidence: AcquisitionRunEvidence): number {
   return evidence.failureSignatures.reduce((total, failure) => total + failure.count, 0);
+}
+
+function httpErrorRatio(evidence: AcquisitionRunEvidence): number {
+  const entries = Object.entries(evidence.httpStatusCounts);
+  const total = entries.reduce((sum, [, count]) => sum + count, 0);
+  if (total === 0) return 0;
+  const errors = entries.reduce((sum, [status, count]) => {
+    const code = Number.parseInt(status, 10);
+    return Number.isInteger(code) && code >= 400 ? sum + count : sum;
+  }, 0);
+  return errors / total;
 }
 
 function fingerprintIdentity(fingerprint: SourceFingerprint): string {
@@ -110,6 +123,8 @@ export function evaluateAcquisitionRecurringRegression(input: {
       accepted: (current?.counts.accepted ?? 0) - (baseline?.counts.accepted ?? 0),
       duplicateRatio: baseline && current ? duplicateRatio(current) - duplicateRatio(baseline) : 0,
       failures: baseline && current ? failureCount(current) - failureCount(baseline) : 0,
+      httpErrorRatio:
+        baseline && current ? httpErrorRatio(current) - httpErrorRatio(baseline) : 0,
       digestChanges:
         (current?.changeDetection.digestChanges ?? 0) -
         (baseline?.changeDetection.digestChanges ?? 0),
@@ -155,10 +170,12 @@ export function evaluateAcquisitionRecurringRegression(input: {
 
   const duplicateDelta = duplicateRatio(current) - duplicateRatio(baseline);
   const failuresDelta = failureCount(current) - failureCount(baseline);
+  const httpErrorDelta = httpErrorRatio(current) - httpErrorRatio(baseline);
   if (
     current.outcome !== baseline.outcome ||
     duplicateDelta >= DUPLICATE_RATIO_INCREASE_THRESHOLD ||
-    failuresDelta > 0
+    failuresDelta > 0 ||
+    httpErrorDelta >= HTTP_ERROR_RATIO_INCREASE_THRESHOLD
   ) {
     const reasons = [
       ...(current.outcome !== baseline.outcome ? ["OUTCOME_CHANGED"] : []),
@@ -166,6 +183,9 @@ export function evaluateAcquisitionRecurringRegression(input: {
         ? ["DUPLICATE_RATIO_INCREASE_GTE_5_POINTS"]
         : []),
       ...(failuresDelta > 0 ? ["FAILURE_COUNT_INCREASED"] : []),
+      ...(httpErrorDelta >= HTTP_ERROR_RATIO_INCREASE_THRESHOLD
+        ? ["HTTP_ERROR_RATIO_INCREASE_GTE_5_POINTS"]
+        : []),
     ];
     return result("PLAYBOOK_BEHAVIOR_DRIFT", reasons);
   }
