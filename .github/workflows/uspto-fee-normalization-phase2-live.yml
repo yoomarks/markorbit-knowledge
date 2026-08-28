@@ -133,7 +133,7 @@ jobs:
       - name: Verify numeric live acquisition
         run: pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_NUMERIC_RUN_ID"
 
-      - name: Convert and verify numeric Source
+      - name: Convert numeric Source
         run: |
           MARKORBIT_SOURCE_ID="$MARKORBIT_NUMERIC_SOURCE_ID" \
             pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/numeric-conversion.json"
@@ -144,7 +144,9 @@ jobs:
           if (data.sourceId !== process.env.MARKORBIT_NUMERIC_SOURCE_ID || !data.conversionRunId) throw new Error('Numeric conversion was not dispatched');
           fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_NUMERIC_CONVERSION_RUN_ID=${data.conversionRunId}\n`);
           NODE
-          pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_NUMERIC_SOURCE_ID" "$MARKORBIT_NUMERIC_CONVERSION_RUN_ID"
+
+      - name: Verify numeric converted Source
+        run: pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_NUMERIC_SOURCE_ID" "$MARKORBIT_NUMERIC_CONVERSION_RUN_ID"
 
       - name: Bootstrap temporal authority Source
         env:
@@ -172,9 +174,11 @@ jobs:
             `MARKORBIT_TEMPORAL_SOURCE_ID=${data.sourceId}\nMARKORBIT_TEMPORAL_RUN_ID=${data.runId}\n`);
           NODE
 
-      - name: Verify, convert and verify temporal Source
+      - name: Verify temporal live acquisition
+        run: pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_TEMPORAL_RUN_ID"
+
+      - name: Convert temporal Source
         run: |
-          pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_TEMPORAL_RUN_ID"
           MARKORBIT_SOURCE_ID="$MARKORBIT_TEMPORAL_SOURCE_ID" \
             pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/temporal-conversion.json"
           node <<'NODE'
@@ -184,7 +188,9 @@ jobs:
           if (data.sourceId !== process.env.MARKORBIT_TEMPORAL_SOURCE_ID || !data.conversionRunId) throw new Error('Temporal conversion was not dispatched');
           fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_TEMPORAL_CONVERSION_RUN_ID=${data.conversionRunId}\n`);
           NODE
-          pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_TEMPORAL_SOURCE_ID" "$MARKORBIT_TEMPORAL_CONVERSION_RUN_ID"
+
+      - name: Verify temporal converted Source
+        run: pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_TEMPORAL_SOURCE_ID" "$MARKORBIT_TEMPORAL_CONVERSION_RUN_ID"
 
       - name: Bootstrap applicability/context Source
         env:
@@ -212,9 +218,11 @@ jobs:
             `MARKORBIT_APPLICABILITY_SOURCE_ID=${data.sourceId}\nMARKORBIT_APPLICABILITY_RUN_ID=${data.runId}\n`);
           NODE
 
-      - name: Verify, convert and verify applicability/context Source
+      - name: Verify applicability/context live acquisition
+        run: pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_APPLICABILITY_RUN_ID"
+
+      - name: Convert applicability/context Source
         run: |
-          pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_APPLICABILITY_RUN_ID"
           MARKORBIT_SOURCE_ID="$MARKORBIT_APPLICABILITY_SOURCE_ID" \
             pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/applicability-conversion.json"
           node <<'NODE'
@@ -224,7 +232,9 @@ jobs:
           if (data.sourceId !== process.env.MARKORBIT_APPLICABILITY_SOURCE_ID || !data.conversionRunId) throw new Error('Applicability conversion was not dispatched');
           fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_APPLICABILITY_CONVERSION_RUN_ID=${data.conversionRunId}\n`);
           NODE
-          pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_APPLICABILITY_SOURCE_ID" "$MARKORBIT_APPLICABILITY_CONVERSION_RUN_ID"
+
+      - name: Verify applicability/context converted Source
+        run: pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_APPLICABILITY_SOURCE_ID" "$MARKORBIT_APPLICABILITY_CONVERSION_RUN_ID"
 
       - name: Resolve real fee value and temporal evidence from retrieval text
         env:
