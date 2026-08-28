@@ -349,10 +349,8 @@ export class SqliteAcquisitionRecurringRegressionLedger {
       );
     }
 
-    const previous = this.getAcceptedBaseline(snapshot.result);
     const eventId = stableId("aba", {
       snapshotId: snapshot.id,
-      previousBaselineRunId: previous?.runId ?? null,
       newBaselineRunId: snapshot.result.currentRunId,
       authorizationRef: authorization.authorizationRef,
     });
@@ -363,7 +361,11 @@ export class SqliteAcquisitionRecurringRegressionLedger {
     );
     if (existingEvent) {
       const baseline = this.getAcceptedBaseline(snapshot.result);
-      if (!baseline || baseline.advancementEventId !== eventId) {
+      if (
+        !baseline ||
+        baseline.advancementEventId !== eventId ||
+        baseline.runId !== snapshot.result.currentRunId
+      ) {
         throw new RegistryConflictError(
           "ACQUISITION_BASELINE_REPLAY_POINTER_CONFLICT",
           "Replayed baseline advancement no longer matches the accepted baseline pointer",
@@ -371,6 +373,30 @@ export class SqliteAcquisitionRecurringRegressionLedger {
         );
       }
       return { baseline, event: existingEvent, replayed: true };
+    }
+
+    const previous = this.getAcceptedBaseline(snapshot.result);
+    if (previous?.runId === snapshot.result.currentRunId) {
+      throw new RegistryConflictError(
+        "ACQUISITION_BASELINE_ALREADY_ACCEPTED",
+        "The target acquisition run is already the accepted baseline under a different governance event",
+        { runId: snapshot.result.currentRunId, advancementEventId: previous.advancementEventId },
+      );
+    }
+    if (
+      previous &&
+      Date.parse(snapshot.result.currentFinishedAt) < Date.parse(previous.finishedAt)
+    ) {
+      throw new RegistryConflictError(
+        "ACQUISITION_BASELINE_TIME_REGRESSION",
+        "Accepted baseline cannot move backward to an earlier acquisition run",
+        {
+          currentAcceptedRunId: previous.runId,
+          currentAcceptedFinishedAt: previous.finishedAt,
+          requestedRunId: snapshot.result.currentRunId,
+          requestedFinishedAt: snapshot.result.currentFinishedAt,
+        },
+      );
     }
 
     const refs = [
