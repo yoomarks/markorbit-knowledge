@@ -58,7 +58,7 @@ jobs:
 
       - name: Compare recurring acquisition evidence
         run: |
-          pnpm exec tsx scripts/acquisition-recurring-regression-canary.ts \
+          pnpm --filter @markorbit/worker exec tsx ../../scripts/acquisition-recurring-regression-canary.ts \
             --baseline "$RUNNER_TEMP/country-index-regression/baseline.json" \
             --current "$RUNNER_TEMP/country-index-regression/current.json" \
             --output "$RUNNER_TEMP/country-index-regression/regression.json"
