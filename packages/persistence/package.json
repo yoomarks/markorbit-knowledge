@@ -74,6 +74,7 @@
     "./acquisition-intelligence": "./src/acquisition-intelligence-registry.ts",
     "./acquisition-learning-loop": "./src/acquisition-learning-loop.ts",
     "./acquisition-strategy-governance": "./src/acquisition-strategy-governance.ts",
+    "./acquisition-recurring-regressions": "./src/acquisition-recurring-regression-ledger.ts",
     "./execution-ledger": "./src/execution-ledger.ts",
     "./workers": "./src/safe-worker-registry.ts",
     "./targeted-worker-claim": "./src/targeted-worker-claim.ts",
