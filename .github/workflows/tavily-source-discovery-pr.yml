@@ -1,0 +1,63 @@
+name: Tavily Source Discovery PR
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/tavily-source-discovery-pr.yml
+      - .github/workflows/tavily-source-discovery-live.yml
+      - apps/worker/src/discover-tavily-public.ts
+      - apps/worker/src/discover-tavily-public.test.ts
+      - apps/worker/package.json
+      - packages/worker-runtime/src/tavily-website-discovery-provider.ts
+      - packages/worker-runtime/src/tavily-website-discovery-provider.test.ts
+      - packages/worker-runtime/src/source-discovery-runner.ts
+      - packages/worker-runtime/src/index.ts
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install frozen workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck worker runtime and worker
+        run: |
+          pnpm --filter @markorbit/worker-runtime typecheck
+          pnpm --filter @markorbit/worker typecheck
+
+      - name: Run Tavily deterministic tests only
+        run: |
+          pnpm --filter @markorbit/worker-runtime exec vitest run src/tavily-website-discovery-provider.test.ts
+          pnpm --filter @markorbit/worker exec vitest run src/discover-tavily-public.test.ts
+
+      - name: Verify live workflow is manual-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const text = fs.readFileSync('.github/workflows/tavily-source-discovery-live.yml', 'utf8');
+          if (!text.includes('workflow_dispatch:')) throw new Error('live Tavily workflow must be manual-only');
+          if (/\n\s+(pull_request|push|schedule):/.test(text)) throw new Error('live Tavily workflow must not run on PR/push/schedule');
+          if (!text.includes('environment: TAVILY_API_KEY')) throw new Error('live Tavily workflow lost the approved GitHub Environment binding');
+          if (!text.includes('secrets.TAVILY_API_KEY')) throw new Error('live Tavily workflow lost environment secret injection');
+          NODE

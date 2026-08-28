@@ -23,6 +23,7 @@
     "bootstrap:coverage": "tsx src/bootstrap-source-coverage.ts",
     "audit:golden-corpora": "tsx src/audit-golden-corpora.ts",
     "discover:country-index": "tsx src/discover-country-index-public.ts",
+    "discover:tavily": "tsx src/discover-tavily-public.ts",
     "discover:uspto": "tsx src/discover-uspto-public.ts",
     "reconcile:uspto-corpus": "tsx src/reconcile-uspto-corpus.ts",
     "discover:wipo": "tsx src/discover-wipo-public.ts",

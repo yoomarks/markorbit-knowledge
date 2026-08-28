@@ -1,0 +1,107 @@
+name: Tavily Source Discovery Live Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit_sha:
+        description: "Exact main commit SHA authorized for this live Tavily smoke"
+        required: true
+        type: string
+      seed_url:
+        description: "Public seed URL used to constrain same-host discovery"
+        required: true
+        default: "https://www.uspto.gov/trademarks"
+        type: string
+      discovery_query:
+        description: "Operator-authored discovery query"
+        required: true
+        default: "official trademark source"
+        type: string
+      max_candidates:
+        description: "Maximum structural candidates to return (1-20)"
+        required: true
+        default: "5"
+        type: string
+      confirm_live_tavily_call:
+        description: "Authorize exactly one live Tavily search request"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tavily-source-discovery-live-smoke
+  cancel-in-progress: false
+
+jobs:
+  live-smoke:
+    if: ${{ inputs.confirm_live_tavily_call == true }}
+    environment: TAVILY_API_KEY
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+      TAVILY_DISCOVERY_SEED_URL: ${{ inputs.seed_url }}
+      TAVILY_DISCOVERY_QUERY: ${{ inputs.discovery_query }}
+      TAVILY_DISCOVERY_MAX_CANDIDATES: ${{ inputs.max_candidates }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install frozen workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Fail closed unless main and exact commit match
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Tavily live smoke must be dispatched from main."
+            exit 1
+          fi
+          if [[ ! "$EXPECTED_COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::expected_commit_sha must be a full lowercase Git commit SHA."
+            exit 1
+          fi
+          if [[ "$GITHUB_SHA" != "$EXPECTED_COMMIT_SHA" ]]; then
+            echo "::error::main moved after authorization; refusing to spend a Tavily request."
+            exit 1
+          fi
+          if [[ ! "$TAVILY_DISCOVERY_MAX_CANDIDATES" =~ ^[0-9]+$ ]] || (( TAVILY_DISCOVERY_MAX_CANDIDATES < 1 || TAVILY_DISCOVERY_MAX_CANDIDATES > 20 )); then
+            echo "::error::max_candidates must be an integer from 1 through 20."
+            exit 1
+          fi
+          if [[ -z "${TAVILY_DISCOVERY_QUERY// }" ]]; then
+            echo "::error::discovery_query must not be empty."
+            exit 1
+          fi
+          node -e 'const u = new URL(process.env.TAVILY_DISCOVERY_SEED_URL); if (!/^https?:$/.test(u.protocol)) throw new Error("seed_url must use http/https")'
+
+      - name: Fail closed unless Tavily environment secret exists
+        shell: bash
+        env:
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${TAVILY_API_KEY:-}" ]]; then
+            echo "::error::Environment secret TAVILY_API_KEY is not configured."
+            exit 1
+          fi
+
+      - name: Run exactly one bounded Tavily discovery request
+        env:
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+        run: pnpm --filter @markorbit/worker discover:tavily
