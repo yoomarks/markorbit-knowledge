@@ -149,6 +149,69 @@ describe("SqliteAcquisitionRecurringRegressionLedger", () => {
     const replay = ledger.advanceBaseline(snapshot.id, authorization());
     expect(replay.replayed).toBe(true);
     expect(replay.event.id).toBe(first.event.id);
+    expect(replay.baseline.version).toBe(1);
+    expect(ledger.listBaselineAdvancements(identity)).toHaveLength(1);
+    database.close();
+  });
+
+  it("rejects a second governance event for an already accepted target run", () => {
+    const database = new DatabaseSync(databasePath());
+    const ledger = new SqliteAcquisitionRecurringRegressionLedger(database);
+    const snapshot = ledger.recordSnapshot(regression());
+    const first = ledger.advanceBaseline(snapshot.id, authorization());
+
+    expect(() =>
+      ledger.advanceBaseline(
+        snapshot.id,
+        authorization({
+          authorizationRef: "governance-approval:different",
+          evidenceRefs: ["review:different"],
+        }),
+      ),
+    ).toThrow(RegistryConflictError);
+    expect(ledger.getAcceptedBaseline(identity)).toMatchObject({
+      runId: "run-002",
+      version: 1,
+      advancementEventId: first.event.id,
+    });
+    expect(ledger.listBaselineAdvancements(identity)).toHaveLength(1);
+    database.close();
+  });
+
+  it("rejects moving an accepted baseline backward in acquisition time", () => {
+    const database = new DatabaseSync(databasePath());
+    const ledger = new SqliteAcquisitionRecurringRegressionLedger(database);
+    const newer = ledger.recordSnapshot(
+      regression({
+        baselineRunId: "run-002",
+        baselineFinishedAt: "2026-08-28T02:00:00.000Z",
+        currentRunId: "run-003",
+        currentFinishedAt: "2026-08-28T03:00:00.000Z",
+        evidenceRefs: ["acquisition-run:run-002", "acquisition-run:run-003"],
+      }),
+    );
+    ledger.advanceBaseline(
+      newer.id,
+      authorization({
+        authorizationRef: "governance-approval:newer",
+        advancedAt: "2026-08-28T03:05:00.000Z",
+      }),
+    );
+
+    const older = ledger.recordSnapshot(regression());
+    expect(() =>
+      ledger.advanceBaseline(
+        older.id,
+        authorization({
+          authorizationRef: "governance-approval:older",
+          advancedAt: "2026-08-28T03:10:00.000Z",
+        }),
+      ),
+    ).toThrow(RegistryConflictError);
+    expect(ledger.getAcceptedBaseline(identity)).toMatchObject({
+      runId: "run-003",
+      version: 1,
+    });
     expect(ledger.listBaselineAdvancements(identity)).toHaveLength(1);
     database.close();
   });
