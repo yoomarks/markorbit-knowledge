@@ -34,7 +34,7 @@ describe("buildTavilyDiscoveryBatch", () => {
       buildTavilyDiscoveryBatch({
         TAVILY_DISCOVERY_SEED_URL: "https://example.gov/fees",
         TAVILY_DISCOVERY_QUERY: "official fees",
-      }).constraints.maxCandidates,
+      }).constraints?.maxCandidates,
     ).toBe(5);
 
     expect(() =>
