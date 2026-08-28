@@ -20,7 +20,9 @@ export type AcquisitionRecurringRegressionResultV1 = {
   playbookId: string;
   playbookRevision: number;
   baselineRunId: string;
+  baselineFinishedAt: string;
   currentRunId: string;
+  currentFinishedAt: string;
   state: AcquisitionRegressionState;
   reasonCodes: string[];
   deltas: {
@@ -40,6 +42,10 @@ export type AcquisitionRecurringRegressionResultV1 = {
   };
 };
 
+function validDateTime(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && Number.isFinite(Date.parse(value));
+}
+
 export function isAcquisitionRecurringRegressionResult(
   value: unknown,
 ): value is AcquisitionRecurringRegressionResultV1 {
@@ -55,8 +61,10 @@ export function isAcquisitionRecurringRegressionResult(
     Number(item.playbookRevision) > 0 &&
     typeof item.baselineRunId === "string" &&
     item.baselineRunId.length > 0 &&
+    validDateTime(item.baselineFinishedAt) &&
     typeof item.currentRunId === "string" &&
     item.currentRunId.length > 0 &&
+    validDateTime(item.currentFinishedAt) &&
     ACQUISITION_REGRESSION_STATES.includes(item.state as AcquisitionRegressionState) &&
     Array.isArray(item.reasonCodes) &&
     item.reasonCodes.every((reason) => typeof reason === "string" && reason.length > 0) &&
