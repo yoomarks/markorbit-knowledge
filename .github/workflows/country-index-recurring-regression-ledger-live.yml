@@ -1,0 +1,107 @@
+name: Country Index Recurring Regression Ledger Live
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/country-index-recurring-regression-ledger-live.yml
+      - apps/admin/src/server/acquisition-recurring-regression.ts
+      - packages/contracts/src/acquisition-recurring-regression-v1.ts
+      - packages/persistence/src/acquisition-recurring-regression-ledger.ts
+      - packages/persistence/src/acquisition-recurring-regression-ledger.test.ts
+      - scripts/acquisition-recurring-regression-ledger-canary.ts
+      - apps/worker/src/country-index-public-inventory.ts
+      - apps/worker/src/discover-country-index-public.ts
+      - apps/worker/src/live-acquisition-learning-persistence.ts
+      - apps/worker/src/live-acquisition-profile-evidence.ts
+      - apps/worker/src/acquisition-learning-profiles.ts
+      - packages/worker-runtime/src/acquisition-learning-profile.ts
+      - packages/persistence/src/acquisition-intelligence-registry.ts
+      - packages/persistence/src/acquisition-learning-loop.ts
+      - apps/worker/package.json
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  durable-regression-ledger:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Configure isolated durable regression registry
+        run: echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/country-index-regression-ledger.sqlite" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Run real baseline country-index acquisition
+        run: |
+          mkdir -p "$RUNNER_TEMP/country-index-regression-ledger"
+          pnpm --filter @markorbit/worker discover:country-index \
+            > "$RUNNER_TEMP/country-index-regression-ledger/baseline.json"
+
+      - name: Run real current country-index acquisition
+        run: |
+          pnpm --filter @markorbit/worker discover:country-index \
+            > "$RUNNER_TEMP/country-index-regression-ledger/current.json"
+
+      - name: Persist regression, govern baseline advancement, and prove restart
+        run: |
+          pnpm --filter @markorbit/worker exec tsx ../../scripts/acquisition-recurring-regression-ledger-canary.ts \
+            --baseline "$RUNNER_TEMP/country-index-regression-ledger/baseline.json" \
+            --current "$RUNNER_TEMP/country-index-regression-ledger/current.json" \
+            --output "$RUNNER_TEMP/country-index-regression-ledger/accepted.json"
+
+      - name: Verify live acceptance artifact
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const accepted = JSON.parse(
+            fs.readFileSync(process.env.RUNNER_TEMP + '/country-index-regression-ledger/accepted.json', 'utf8')
+          );
+          if (accepted.event !== 'country-index.recurring-regression-ledger.accepted') {
+            throw new Error(`Unexpected ledger acceptance event: ${accepted.event}`);
+          }
+          if (accepted.replayIdentical !== true || accepted.historyCount !== 1 || accepted.advancementHistoryCount !== 1) {
+            throw new Error(`Durable replay/history evidence is invalid: ${JSON.stringify(accepted)}`);
+          }
+          if (accepted.acceptedBaseline?.runId !== accepted.currentRunId || accepted.acceptedBaseline?.version !== 1) {
+            throw new Error('Accepted baseline pointer does not match the real second acquisition run');
+          }
+          const boundaries = accepted.advancementEvent?.boundaries;
+          if (
+            boundaries?.autoDispatchApplied !== false ||
+            boundaries?.autoPromotionApplied !== false ||
+            boundaries?.collectionAuthorityGranted !== false ||
+            boundaries?.activePlaybookRewritten !== false
+          ) {
+            throw new Error('Governed baseline advancement crossed a permanent boundary');
+          }
+          NODE
+
+      - name: Upload durable live evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: country-index-recurring-regression-ledger-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/country-index-regression-ledger/baseline.json
+            ${{ runner.temp }}/country-index-regression-ledger/current.json
+            ${{ runner.temp }}/country-index-regression-ledger/accepted.json
+            ${{ runner.temp }}/country-index-regression-ledger.sqlite
+          if-no-files-found: warn
+          retention-days: 30
