@@ -109,7 +109,9 @@ function operationMatch(text: string): boolean {
     lower.includes("base application") &&
     lower.includes("per class") &&
     (lower.includes("section 1") || lower.includes("sections 1")) &&
-    (lower.includes("section 44") || lower.includes("sections 1 and 44") || lower.includes("1 and 44"))
+    (lower.includes("section 44") ||
+      lower.includes("sections 1 and 44") ||
+      lower.includes("1 and 44"))
   );
 }
 
@@ -183,7 +185,9 @@ export function resolveUsptoFeeEvidence(
     return { status: "FAIL_CLOSED", reason: "NUMERIC_ROW_UNRESOLVED" };
   }
 
-  const temporalOperationChunks = input.temporalChunks.filter((chunk) => operationMatch(chunk.text));
+  const temporalOperationChunks = input.temporalChunks.filter((chunk) =>
+    operationMatch(chunk.text),
+  );
   if (temporalOperationChunks.length === 0) {
     return { status: "FAIL_CLOSED", reason: "TEMPORAL_OPERATION_UNRESOLVED" };
   }
@@ -227,7 +231,10 @@ export function resolveUsptoFeeEvidence(
       asOf,
     }),
   ];
-  if (evaluateOfficialEvidenceAdmissibility(USPTO_FEE_EVIDENCE_POLICY, evidence).status !== "ADMISSIBLE") {
+  if (
+    evaluateOfficialEvidenceAdmissibility(USPTO_FEE_EVIDENCE_POLICY, evidence).status !==
+    "ADMISSIBLE"
+  ) {
     return { status: "FAIL_CLOSED", reason: "ADMISSIBILITY_REJECTED" };
   }
 

@@ -109,7 +109,11 @@ describe("USPTO fee evidence normalization", () => {
 
   it("does not resolve when the numeric row is missing or changed", () => {
     const input = fixture();
-    input.numericChunk = chunk(input.numericDocument, "numeric", "Base application fee information");
+    input.numericChunk = chunk(
+      input.numericDocument,
+      "numeric",
+      "Base application fee information",
+    );
     expect(resolveUsptoFeeEvidence(input)).toEqual({
       status: "FAIL_CLOSED",
       reason: "NUMERIC_ROW_UNRESOLVED",
