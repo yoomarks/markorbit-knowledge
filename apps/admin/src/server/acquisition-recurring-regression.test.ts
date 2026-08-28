@@ -94,6 +94,7 @@ describe("acquisition recurring regression", () => {
       "fingerprint:baseline",
       "fingerprint:current",
     ]);
+    expect(result.deltas.httpErrorRatio).toBe(0);
     expect(result.boundaries.autoPromotionApplied).toBe(false);
   });
 
@@ -131,6 +132,15 @@ describe("acquisition recurring regression", () => {
     expect(result.boundaries.collectionAuthorityGranted).toBe(false);
   });
 
+  it("detects material HTTP error-distribution drift", () => {
+    const result = evaluateAcquisitionRecurringRegression(
+      pair({ httpStatusCounts: { "200": 90, "429": 10 } }),
+    );
+    expect(result.state).toBe("PLAYBOOK_BEHAVIOR_DRIFT");
+    expect(result.reasonCodes).toEqual(["HTTP_ERROR_RATIO_INCREASE_GTE_5_POINTS"]);
+    expect(result.deltas.httpErrorRatio).toBeCloseTo(0.1);
+  });
+
   it("treats content digest movement without acquisition regression as EXPECTED_CHANGE", () => {
     const result = evaluateAcquisitionRecurringRegression(
       pair({
@@ -144,6 +154,40 @@ describe("acquisition recurring regression", () => {
     );
     expect(result.state).toBe("EXPECTED_CHANGE");
     expect(result.reasonCodes).toEqual(["CONTENT_DIGEST_CHANGE_WITHOUT_ACQUISITION_REGRESSION"]);
+  });
+
+  it.each([
+    ["USPTO", "src-uspto", "official-index-v1", ["INDEX_PAGE"] as const],
+    ["WIPO", "src-wipo", "official-index-v1", ["INDEX_PAGE", "DOCUMENT_CATALOG"] as const],
+    ["IP Australia", "src-ip-australia", "official-index-v1", ["INDEX_PAGE"] as const],
+    ["Country Index", "src-country-index", "official-jurisdiction-index", ["COUNTRY_INDEX"] as const],
+  ])("replays stable deterministic %s family evidence", (_family, sourceId, playbookId, surfaces) => {
+    const baseline = evidence({ sourceId, playbookId, evidenceRefs: [`${sourceId}:baseline`] });
+    const current = evidence({
+      runId: `${sourceId}:current`,
+      sourceId,
+      playbookId,
+      evidenceRefs: [`${sourceId}:current-evidence`],
+    });
+    const baselineFingerprint = fingerprint({
+      sourceId,
+      discoverySurfaces: [...surfaces],
+      evidenceRefs: [`${sourceId}:fingerprint-baseline`],
+    });
+    const currentFingerprint = fingerprint({
+      sourceId,
+      discoverySurfaces: [...surfaces],
+      observedAt: "2026-08-29T00:01:00.000Z",
+      evidenceRefs: [`${sourceId}:fingerprint-current`],
+    });
+    expect(
+      evaluateAcquisitionRecurringRegression({
+        baseline,
+        current,
+        baselineFingerprint,
+        currentFingerprint,
+      }).state,
+    ).toBe("UNCHANGED");
   });
 
   it("fails closed when evidence is missing or identities are incompatible", () => {
