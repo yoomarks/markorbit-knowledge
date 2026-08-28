@@ -111,7 +111,9 @@ export function evaluateAcquisitionRecurringRegression(input: {
   const playbookId = current?.playbookId ?? baseline?.playbookId ?? "UNKNOWN";
   const playbookRevision = current?.playbookRevision ?? baseline?.playbookRevision ?? 1;
   const baselineRunId = baseline?.runId ?? "MISSING";
+  const baselineFinishedAt = baseline?.finishedAt ?? "1970-01-01T00:00:00.000Z";
   const currentRunId = current?.runId ?? "MISSING";
+  const currentFinishedAt = current?.finishedAt ?? "1970-01-01T00:00:00.000Z";
 
   const result = (
     state: AcquisitionRegressionState,
@@ -127,7 +129,9 @@ export function evaluateAcquisitionRecurringRegression(input: {
       playbookId,
       playbookRevision,
       baselineRunId,
+      baselineFinishedAt,
       currentRunId,
+      currentFinishedAt,
       state,
       reasonCodes: [...reasonCodes].sort(),
       deltas: {
