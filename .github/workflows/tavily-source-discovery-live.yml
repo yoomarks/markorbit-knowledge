@@ -13,9 +13,9 @@ on:
         default: "https://www.uspto.gov/trademarks"
         type: string
       discovery_query:
-        description: "Optional operator-authored discovery query"
-        required: false
-        default: ""
+        description: "Operator-authored discovery query"
+        required: true
+        default: "official trademark source"
         type: string
       max_candidates:
         description: "Maximum structural candidates to return (1-20)"
@@ -43,9 +43,9 @@ jobs:
     timeout-minutes: 10
     env:
       EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
-      TAVILY_SEED_URL: ${{ inputs.seed_url }}
+      TAVILY_DISCOVERY_SEED_URL: ${{ inputs.seed_url }}
       TAVILY_DISCOVERY_QUERY: ${{ inputs.discovery_query }}
-      TAVILY_MAX_CANDIDATES: ${{ inputs.max_candidates }}
+      TAVILY_DISCOVERY_MAX_CANDIDATES: ${{ inputs.max_candidates }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,11 +80,15 @@ jobs:
             echo "::error::main moved after authorization; refusing to spend a Tavily request."
             exit 1
           fi
-          if [[ ! "$TAVILY_MAX_CANDIDATES" =~ ^[0-9]+$ ]] || (( TAVILY_MAX_CANDIDATES < 1 || TAVILY_MAX_CANDIDATES > 20 )); then
+          if [[ ! "$TAVILY_DISCOVERY_MAX_CANDIDATES" =~ ^[0-9]+$ ]] || (( TAVILY_DISCOVERY_MAX_CANDIDATES < 1 || TAVILY_DISCOVERY_MAX_CANDIDATES > 20 )); then
             echo "::error::max_candidates must be an integer from 1 through 20."
             exit 1
           fi
-          node -e 'const u = new URL(process.env.TAVILY_SEED_URL); if (!/^https?:$/.test(u.protocol)) throw new Error("seed_url must use http/https")'
+          if [[ -z "${TAVILY_DISCOVERY_QUERY// }" ]]; then
+            echo "::error::discovery_query must not be empty."
+            exit 1
+          fi
+          node -e 'const u = new URL(process.env.TAVILY_DISCOVERY_SEED_URL); if (!/^https?:$/.test(u.protocol)) throw new Error("seed_url must use http/https")'
 
       - name: Fail closed unless Tavily environment secret exists
         shell: bash
