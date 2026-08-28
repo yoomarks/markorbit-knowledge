@@ -20,6 +20,10 @@ export type WorkerProcessConfig = {
   collectionProvider: WorkerCollectionProvider;
   acquisitionLearningProfileId?: string;
   requireEgressProxy: boolean;
+  brightDataFallbackEnabled: boolean;
+  brightDataApiToken?: string;
+  brightDataZone?: string;
+  brightDataMaxRequestsPerRun: number;
   localFolderRoots: LocalFolderRootMap;
   localFolderMaxArtifactBytes: number;
   localFolderMaxTotalBytes: number;
@@ -97,6 +101,25 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
   if (env.NODE_ENV === "production" && provider === "crawl4ai" && !requireEgressProxy) {
     throw new Error("Production Crawl4AI Worker cannot disable the egress-proxy requirement");
   }
+
+  const brightDataFallbackEnabled = enabled(env, "MARKORBIT_BRIGHTDATA_FALLBACK_ENABLED", false);
+  const brightDataApiToken = env.BRIGHTDATA_API_TOKEN?.trim() || undefined;
+  const brightDataZone = env.BRIGHTDATA_WEB_UNLOCKER_ZONE?.trim() || undefined;
+  if (brightDataFallbackEnabled && provider !== "crawl4ai") {
+    throw new Error("Bright Data fallback may only be enabled with MARKORBIT_COLLECTION_PROVIDER=crawl4ai");
+  }
+  if (brightDataFallbackEnabled && (!brightDataApiToken || !brightDataZone)) {
+    throw new Error(
+      "BRIGHTDATA_API_TOKEN and BRIGHTDATA_WEB_UNLOCKER_ZONE are required when Bright Data fallback is enabled",
+    );
+  }
+  const brightDataMaxRequestsPerRun = integer(
+    env,
+    "MARKORBIT_BRIGHTDATA_MAX_REQUESTS_PER_RUN",
+    5,
+    1,
+    50,
+  );
 
   const localFolderRoots = parseLocalFolderRoots(env.MARKORBIT_LOCAL_FOLDER_ROOTS);
   if (provider === "local-folder" && Object.keys(localFolderRoots).length === 0) {
@@ -189,6 +212,10 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     collectionProvider: provider,
     ...(acquisitionLearningProfileId ? { acquisitionLearningProfileId } : {}),
     requireEgressProxy,
+    brightDataFallbackEnabled,
+    ...(brightDataApiToken ? { brightDataApiToken } : {}),
+    ...(brightDataZone ? { brightDataZone } : {}),
+    brightDataMaxRequestsPerRun,
     localFolderRoots,
     localFolderMaxArtifactBytes: integer(
       env,
