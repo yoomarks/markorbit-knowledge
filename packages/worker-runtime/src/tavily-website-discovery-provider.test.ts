@@ -1,9 +1,6 @@
 import type { SourceDiscoveryBatch } from "@markorbit/contracts";
 import { describe, expect, it } from "vitest";
-import {
-  TavilyDiscoveryError,
-  TavilyWebsiteDiscoveryProvider,
-} from "./tavily-website-discovery-provider";
+import { TavilyWebsiteDiscoveryProvider } from "./tavily-website-discovery-provider";
 
 function batch(overrides: Partial<SourceDiscoveryBatch> = {}): SourceDiscoveryBatch {
   return {
@@ -116,7 +113,7 @@ describe("TavilyWebsiteDiscoveryProvider", () => {
       },
     });
 
-    await expect(provider.discover(batch())).rejects.toMatchObject<TavilyDiscoveryError>({
+    await expect(provider.discover(batch())).rejects.toMatchObject({
       code: "TAVILY_QUOTA_OR_PAYMENT_REQUIRED",
       retryable: false,
     });
@@ -133,7 +130,7 @@ describe("TavilyWebsiteDiscoveryProvider", () => {
       },
     });
 
-    await expect(provider.discover(batch())).rejects.toMatchObject<TavilyDiscoveryError>({
+    await expect(provider.discover(batch())).rejects.toMatchObject({
       code: "TAVILY_DELIVERY_UNKNOWN",
       retryable: false,
     });
