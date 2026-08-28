@@ -45,10 +45,7 @@ class FixtureDecoder implements CnipaJudgmentResponseDecoder {
     return { sourceRecordIds: [`${documentKind}-1`], hasMore: false };
   }
 
-  decodeDetail(
-    documentKind: CnipaDocumentKind,
-    sourceRecordId: string,
-  ): CnipaDecodedDetail {
+  decodeDetail(documentKind: CnipaDocumentKind, sourceRecordId: string): CnipaDecodedDetail {
     const parties: CnipaDecodedDetail["parties"] =
       documentKind === "REGISTRATION_EXAMINATION"
         ? [{ role: "APPLICANT", name: "Synthetic Applicant", sourceField: "applicantCnName" }]
@@ -99,14 +96,18 @@ describe("CnipaSourceAdapter", () => {
     expect(result.evidence.every((item) => item.content.byteLength > 0)).toBe(true);
     expect(result.coverageStatus).toBe("UNKNOWN");
     expect(result.schemaStatus).toBe("OPERATOR_SUPPLIED_UNVERIFIED");
-    expect(result.documents.every((item) => item.identityStatus.includes("PROVISIONAL"))).toBe(true);
+    expect(result.documents.every((item) => item.identityStatus.includes("PROVISIONAL"))).toBe(
+      true,
+    );
   });
 
   it("models party/date queries but fails closed instead of inventing unverified request fields", async () => {
     const executor = new FixtureExecutor();
     const adapter = new CnipaSourceAdapter(executor, new FixtureDecoder());
 
-    await expect(adapter.fetch({ mode: "PARTY_NAME", partyName: "某某科技有限公司" })).rejects.toMatchObject({
+    await expect(
+      adapter.fetch({ mode: "PARTY_NAME", partyName: "某某科技有限公司" }),
+    ).rejects.toMatchObject({
       code: "CNIPA_SCHEMA_UNVERIFIED",
       retryable: false,
     });

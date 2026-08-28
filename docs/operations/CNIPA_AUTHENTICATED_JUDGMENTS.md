@@ -57,11 +57,11 @@ Session expiry/security challenge must fail closed as `CNIPA_REAUTH_REQUIRED`. T
 
 The following mapping was supplied from a frontend/network inspection. It is deliberately marked `OPERATOR_SUPPLIED_UNVERIFIED` until a controlled authenticated live probe verifies it.
 
-| Document kind | Candidate list endpoint | Candidate detail endpoint | Candidate party fields |
-| --- | --- | --- | --- |
-| `REGISTRATION_EXAMINATION` | `/pubnotice/portal/tmscJudgment/queryPageList` | `/tmscJudgment/queryInfo?id=...` | `applicantCnName` |
-| `OPPOSITION_DECISION` | `/pubnotice/portal/tmyyJudgment/queryPageList` | `/tmyyJudgment/queryInfo?id=...` | `objenderCnName`, `objeperCnName` |
-| `REVIEW_ADJUDICATION` | `/pubnotice/portal/tmpsJudgment/queryPageList` | `/tmpsJudgment/queryInfo?id=...` | `applicantName`, `respondentName` |
+| Document kind              | Candidate list endpoint                        | Candidate detail endpoint        | Candidate party fields            |
+| -------------------------- | ---------------------------------------------- | -------------------------------- | --------------------------------- |
+| `REGISTRATION_EXAMINATION` | `/pubnotice/portal/tmscJudgment/queryPageList` | `/tmscJudgment/queryInfo?id=...` | `applicantCnName`                 |
+| `OPPOSITION_DECISION`      | `/pubnotice/portal/tmyyJudgment/queryPageList` | `/tmyyJudgment/queryInfo?id=...` | `objenderCnName`, `objeperCnName` |
+| `REVIEW_ADJUDICATION`      | `/pubnotice/portal/tmpsJudgment/queryPageList` | `/tmpsJudgment/queryInfo?id=...` | `applicantName`, `respondentName` |
 
 The observed registration-number list body is:
 
@@ -149,15 +149,15 @@ If the source imposes a hard cap that cannot be partitioned using legitimate doc
 
 ## 7. Error and retry policy
 
-| Code | Meaning | Automatic retry |
-| --- | --- | --- |
-| `CNIPA_REAUTH_REQUIRED` | operator login/session renewal required | No |
-| `CNIPA_ACCESS_DENIED` | authenticated request rejected/access denied | No |
-| `CNIPA_RATE_LIMITED` | explicit rate limiting | Only through a separately bounded policy after Phase 2 review |
-| `CNIPA_SCHEMA_CHANGED` | response is no longer compatible with verified decoder | No |
-| `CNIPA_COVERAGE_UNKNOWN` | completeness cannot be established | No |
-| `CNIPA_DELIVERY_UNKNOWN` | browser/session execution result is ambiguous | No |
-| `CNIPA_SOURCE_TEMPORARY_FAILURE` | explicit server-side 5xx | Eligible only for bounded retry policy |
+| Code                             | Meaning                                                | Automatic retry                                               |
+| -------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| `CNIPA_REAUTH_REQUIRED`          | operator login/session renewal required                | No                                                            |
+| `CNIPA_ACCESS_DENIED`            | authenticated request rejected/access denied           | No                                                            |
+| `CNIPA_RATE_LIMITED`             | explicit rate limiting                                 | Only through a separately bounded policy after Phase 2 review |
+| `CNIPA_SCHEMA_CHANGED`           | response is no longer compatible with verified decoder | No                                                            |
+| `CNIPA_COVERAGE_UNKNOWN`         | completeness cannot be established                     | No                                                            |
+| `CNIPA_DELIVERY_UNKNOWN`         | browser/session execution result is ambiguous          | No                                                            |
+| `CNIPA_SOURCE_TEMPORARY_FAILURE` | explicit server-side 5xx                               | Eligible only for bounded retry policy                        |
 
 The adapter itself performs no hidden retry. This prevents repeated login/security requests and avoids turning an ambiguous browser failure into a retry storm.
 

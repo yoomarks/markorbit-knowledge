@@ -4,16 +4,10 @@ export const CNIPA_JUDGMENT_SCHEMA_STATUS = "OPERATOR_SUPPLIED_UNVERIFIED" as co
 export const CNIPA_JUDGMENT_SCHEMA_REVISION = "candidate-2026-08-29" as const;
 
 export type CnipaDocumentKind =
-  | "REGISTRATION_EXAMINATION"
-  | "OPPOSITION_DECISION"
-  | "REVIEW_ADJUDICATION";
+  "REGISTRATION_EXAMINATION" | "OPPOSITION_DECISION" | "REVIEW_ADJUDICATION";
 
 export type CnipaPartyRole =
-  | "APPLICANT"
-  | "RESPONDENT"
-  | "OPPOSER"
-  | "OPPOSED_PARTY"
-  | "UNVERIFIED";
+  "APPLICANT" | "RESPONDENT" | "OPPOSER" | "OPPOSED_PARTY" | "UNVERIFIED";
 
 export type CnipaCoverageStatus = "COMPLETE" | "PARTIAL" | "UNKNOWN";
 
@@ -43,9 +37,7 @@ export type CnipaDateRangeQuery = {
 };
 
 export type CnipaTrademarkJudgmentQuery =
-  | CnipaRegistrationNumberQuery
-  | CnipaPartyNameQuery
-  | CnipaDateRangeQuery;
+  CnipaRegistrationNumberQuery | CnipaPartyNameQuery | CnipaDateRangeQuery;
 
 export type CnipaCandidateEndpointSpec = {
   documentKind: CnipaDocumentKind;
@@ -59,7 +51,9 @@ export type CnipaCandidateEndpointSpec = {
  * Operator-observed candidates only. These paths/fields are deliberately not
  * described as verified until an authenticated live probe freezes the schema.
  */
-export const CNIPA_CANDIDATE_ENDPOINTS: Readonly<Record<CnipaDocumentKind, CnipaCandidateEndpointSpec>> = {
+export const CNIPA_CANDIDATE_ENDPOINTS: Readonly<
+  Record<CnipaDocumentKind, CnipaCandidateEndpointSpec>
+> = {
   REGISTRATION_EXAMINATION: {
     documentKind: "REGISTRATION_EXAMINATION",
     listPath: "/pubnotice/portal/tmscJudgment/queryPageList",
@@ -98,11 +92,7 @@ export type CnipaAuthenticatedRequest = {
   jsonBody?: Readonly<Record<string, string | number>>;
 };
 
-export type CnipaSessionSecurityState =
-  | "OK"
-  | "REAUTH_REQUIRED"
-  | "ACCESS_DENIED"
-  | "RATE_LIMITED";
+export type CnipaSessionSecurityState = "OK" | "REAUTH_REQUIRED" | "ACCESS_DENIED" | "RATE_LIMITED";
 
 /**
  * A sealed browser/session execution result. Implementations may use cookies,
@@ -218,11 +208,7 @@ function nonEmpty(value: unknown, label: string): string {
 function dateOnly(value: unknown, label: string): string {
   const result = nonEmpty(value, label);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(result) || Number.isNaN(Date.parse(`${result}T00:00:00Z`))) {
-    throw new CnipaAcquisitionError(
-      "CNIPA_QUERY_INVALID",
-      `${label} must use YYYY-MM-DD`,
-      false,
-    );
+    throw new CnipaAcquisitionError("CNIPA_QUERY_INVALID", `${label} must use YYYY-MM-DD`, false);
   }
   return result;
 }

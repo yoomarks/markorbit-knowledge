@@ -86,11 +86,14 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
       const listResponse = await this.execute(listRequest);
       evidence.push(cnipaResponseEvidence(listResponse, listRequest));
       const page = this.decoder.decodeList(documentKind, parseCnipaJson(listResponse));
-      const sourceRecordIds = [...new Set(page.sourceRecordIds.map((value) => value.trim()))].filter(
-        Boolean,
-      );
+      const sourceRecordIds = [
+        ...new Set(page.sourceRecordIds.map((value) => value.trim())),
+      ].filter(Boolean);
 
-      if (page.hasMore !== false || (page.total !== undefined && page.total > sourceRecordIds.length)) {
+      if (
+        page.hasMore !== false ||
+        (page.total !== undefined && page.total > sourceRecordIds.length)
+      ) {
         coverageReasons.add(`${documentKind} list indicates or may contain additional pages`);
       }
 
