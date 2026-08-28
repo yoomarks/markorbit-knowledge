@@ -108,10 +108,9 @@ jobs:
           NODE
 
       - name: Provision conversion runtime for numeric Source
-        env:
-          MARKORBIT_SOURCE_ID: ${{ env.MARKORBIT_NUMERIC_SOURCE_ID }}
         run: |
-          pnpm --filter @markorbit/worker bootstrap:uspto-conversion > "$RUNNER_TEMP/numeric-conversion-bootstrap.json"
+          MARKORBIT_SOURCE_ID="$MARKORBIT_NUMERIC_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion > "$RUNNER_TEMP/numeric-conversion-bootstrap.json"
           node <<'NODE'
           const fs = require('node:fs');
           const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/numeric-conversion-bootstrap.json', 'utf8');
@@ -135,10 +134,9 @@ jobs:
         run: pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_NUMERIC_RUN_ID"
 
       - name: Convert and verify numeric Source
-        env:
-          MARKORBIT_SOURCE_ID: ${{ env.MARKORBIT_NUMERIC_SOURCE_ID }}
         run: |
-          pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/numeric-conversion.json"
+          MARKORBIT_SOURCE_ID="$MARKORBIT_NUMERIC_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/numeric-conversion.json"
           node <<'NODE'
           const fs = require('node:fs');
           const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/numeric-conversion.json', 'utf8');
@@ -175,11 +173,10 @@ jobs:
           NODE
 
       - name: Verify, convert and verify temporal Source
-        env:
-          MARKORBIT_SOURCE_ID: ${{ env.MARKORBIT_TEMPORAL_SOURCE_ID }}
         run: |
           pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_TEMPORAL_RUN_ID"
-          pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/temporal-conversion.json"
+          MARKORBIT_SOURCE_ID="$MARKORBIT_TEMPORAL_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/temporal-conversion.json"
           node <<'NODE'
           const fs = require('node:fs');
           const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/temporal-conversion.json', 'utf8');
@@ -216,11 +213,10 @@ jobs:
           NODE
 
       - name: Verify, convert and verify applicability/context Source
-        env:
-          MARKORBIT_SOURCE_ID: ${{ env.MARKORBIT_APPLICABILITY_SOURCE_ID }}
         run: |
           pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_APPLICABILITY_RUN_ID"
-          pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/applicability-conversion.json"
+          MARKORBIT_SOURCE_ID="$MARKORBIT_APPLICABILITY_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/applicability-conversion.json"
           node <<'NODE'
           const fs = require('node:fs');
           const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/applicability-conversion.json', 'utf8');
