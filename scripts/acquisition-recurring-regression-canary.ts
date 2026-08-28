@@ -59,3 +59,8 @@ if (
     `Recurring acquisition canary detected ${result.state}: ${result.reasonCodes.join(",")}`,
   );
 }
+if (result.reevaluationRequest !== null) {
+  throw new Error(
+    `Stable recurring acquisition canary must not emit reevaluation evidence: ${result.reevaluationRequest.id}`,
+  );
+}
