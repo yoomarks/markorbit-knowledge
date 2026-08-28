@@ -46,7 +46,7 @@ const comparison = evaluateAcquisitionRecurringRegression({
   baselineFingerprint: baseline.fingerprint,
   currentFingerprint: current.fingerprint,
 });
-if (!['UNCHANGED', 'EXPECTED_CHANGE'].includes(comparison.state)) {
+if (!["UNCHANGED", "EXPECTED_CHANGE"].includes(comparison.state)) {
   throw new Error(`Live ledger canary requires a non-regressed pair, got ${comparison.state}`);
 }
 if (comparison.reevaluationRequest !== null) {

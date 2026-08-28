@@ -140,10 +140,16 @@ function snapshotId(result: AcquisitionRecurringRegressionResultV1): string {
   });
 }
 
-function parseSnapshot(row: { id: string; document_json: string; created_at: string }): PersistedAcquisitionRegressionSnapshot {
+function parseSnapshot(row: {
+  id: string;
+  document_json: string;
+  created_at: string;
+}): PersistedAcquisitionRegressionSnapshot {
   const result = JSON.parse(row.document_json) as unknown;
   if (!isAcquisitionRecurringRegressionResult(result)) {
-    throw new RegistryValidationError("Stored recurring acquisition regression snapshot is invalid");
+    throw new RegistryValidationError(
+      "Stored recurring acquisition regression snapshot is invalid",
+    );
   }
   return { id: row.id, result, createdAt: row.created_at };
 }
@@ -177,7 +183,9 @@ function validateDurableResult(result: AcquisitionRecurringRegressionResultV1): 
   }
 }
 
-function parseBaseline(row: Record<string, unknown> | undefined): AcquisitionAcceptedBaseline | null {
+function parseBaseline(
+  row: Record<string, unknown> | undefined,
+): AcquisitionAcceptedBaseline | null {
   if (!row) return null;
   return {
     sourceId: String(row.source_id),
@@ -191,7 +199,9 @@ function parseBaseline(row: Record<string, unknown> | undefined): AcquisitionAcc
   };
 }
 
-function parseAdvancement(row: { document_json: string } | undefined): AcquisitionBaselineAdvancementEvent | null {
+function parseAdvancement(
+  row: { document_json: string } | undefined,
+): AcquisitionBaselineAdvancementEvent | null {
   return row?.document_json
     ? (JSON.parse(row.document_json) as AcquisitionBaselineAdvancementEvent)
     : null;
@@ -226,7 +236,9 @@ export class SqliteAcquisitionRecurringRegressionLedger {
     ensureAcquisitionRecurringRegressionLedger(database);
   }
 
-  recordSnapshot(result: AcquisitionRecurringRegressionResultV1): PersistedAcquisitionRegressionSnapshot {
+  recordSnapshot(
+    result: AcquisitionRecurringRegressionResultV1,
+  ): PersistedAcquisitionRegressionSnapshot {
     validateDurableResult(result);
     const id = snapshotId(result);
     const serialized = JSON.stringify(result);
@@ -309,15 +321,18 @@ export class SqliteAcquisitionRecurringRegressionLedger {
          WHERE source_id = ? AND playbook_id = ? AND playbook_revision = ?`,
       )
       .get(input.sourceId, input.playbookId, input.playbookRevision) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     return parseBaseline(row);
   }
 
   advanceBaseline(
     snapshotIdValue: string,
     authorization: AcquisitionBaselineAdvancementAuthorization,
-  ): { baseline: AcquisitionAcceptedBaseline; event: AcquisitionBaselineAdvancementEvent; replayed: boolean } {
+  ): {
+    baseline: AcquisitionAcceptedBaseline;
+    event: AcquisitionBaselineAdvancementEvent;
+    replayed: boolean;
+  } {
     validateAuthorization(authorization);
     const snapshot = this.getSnapshot(snapshotIdValue);
     if (!snapshot) {

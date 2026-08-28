@@ -67,7 +67,8 @@ function authorization(
     decision: "APPROVED",
     authorizationRef: "governance-approval:001",
     actor: { actorType: "HUMAN", actorId: "reviewer-1" },
-    rationale: "Reviewed exact recurring acquisition evidence and accepted the current run as baseline.",
+    rationale:
+      "Reviewed exact recurring acquisition evidence and accepted the current run as baseline.",
     advancedAt: "2026-08-28T02:05:00.000Z",
     evidenceRefs: ["review:001"],
     ...overrides,
