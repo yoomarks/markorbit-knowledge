@@ -1,5 +1,7 @@
 import {
   ApiArtifactAcquirer,
+  BrightDataFallbackAcquirer,
+  BrightDataWebUnlockerClient,
   ControlledCollectionWorkerRuntime,
   Crawl4AiSubprocessAcquirer,
   GitHubArtifactAcquirer,
@@ -64,6 +66,23 @@ async function main(): Promise<void> {
     config.collectionProvider === "ip-australia-manual"
       ? new IpAustraliaManualArtifactAcquirer()
       : null;
+  const crawl4AiAcquirer = new Crawl4AiSubprocessAcquirer({
+    requireEgressProxy: config.requireEgressProxy,
+    maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
+  });
+  const crawl4AiWithOptionalUnlock = (() => {
+    if (!config.brightDataFallbackEnabled) return crawl4AiAcquirer;
+    const apiToken = config.brightDataApiToken;
+    const zone = config.brightDataZone;
+    if (!apiToken || !zone) {
+      throw new Error("Bright Data fallback configuration is incomplete");
+    }
+    return new BrightDataFallbackAcquirer({
+      primary: crawl4AiAcquirer,
+      unlocker: new BrightDataWebUnlockerClient({ apiToken, zone }),
+      maxRequestsPerRun: config.brightDataMaxRequestsPerRun,
+    });
+  })();
   const acquisitionIntelligenceClient = learningProfile
     ? new HttpAcquisitionIntelligenceClient(
         config.controlPlaneUrl,
@@ -92,11 +111,7 @@ async function main(): Promise<void> {
                 maxItems: config.githubMaxItems,
                 maxDepth: config.githubMaxDepth,
               })
-            : (ipAustraliaManualAcquirer ??
-              new Crawl4AiSubprocessAcquirer({
-                requireEgressProxy: config.requireEgressProxy,
-                maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
-              }));
+            : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
@@ -202,6 +217,8 @@ async function main(): Promise<void> {
     runtimeVersion: config.runtimeVersion,
     collectionProvider: config.collectionProvider,
     requireEgressProxy: config.requireEgressProxy,
+    brightDataFallbackEnabled: config.brightDataFallbackEnabled,
+    brightDataMaxRequestsPerRun: config.brightDataMaxRequestsPerRun,
     localFolderRootIds: Object.keys(config.localFolderRoots),
     maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
     conversionEnabled: config.conversionEnabled,
