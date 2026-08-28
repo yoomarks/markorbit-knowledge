@@ -53,9 +53,7 @@ if (result.state === "INSUFFICIENT_EVIDENCE") {
   );
 }
 if (
-  ["COVERAGE_DEGRADED", "SOURCE_IDENTITY_DRIFT", "PLAYBOOK_BEHAVIOR_DRIFT"].includes(
-    result.state,
-  )
+  ["COVERAGE_DEGRADED", "SOURCE_IDENTITY_DRIFT", "PLAYBOOK_BEHAVIOR_DRIFT"].includes(result.state)
 ) {
   throw new Error(
     `Recurring acquisition canary detected ${result.state}: ${result.reasonCodes.join(",")}`,

@@ -69,7 +69,9 @@ function evidenceRefs(
     ...(currentFingerprint?.evidenceRefs ?? []),
     `acquisition-run:${baseline.runId}`,
     `acquisition-run:${current.runId}`,
-  ].filter((value, index, all) => all.indexOf(value) === index).sort();
+  ]
+    .filter((value, index, all) => all.indexOf(value) === index)
+    .sort();
 }
 
 export function evaluateAcquisitionRecurringRegression(input: {
@@ -106,8 +108,7 @@ export function evaluateAcquisitionRecurringRegression(input: {
           ? null
           : current.coverage.ratio - baseline.coverage.ratio,
       accepted: (current?.counts.accepted ?? 0) - (baseline?.counts.accepted ?? 0),
-      duplicateRatio:
-        baseline && current ? duplicateRatio(current) - duplicateRatio(baseline) : 0,
+      duplicateRatio: baseline && current ? duplicateRatio(current) - duplicateRatio(baseline) : 0,
       failures: baseline && current ? failureCount(current) - failureCount(baseline) : 0,
       digestChanges:
         (current?.changeDetection.digestChanges ?? 0) -

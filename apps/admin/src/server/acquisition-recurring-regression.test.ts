@@ -24,9 +24,7 @@ function evidence(overrides: Partial<AcquisitionRunEvidence> = {}): AcquisitionR
     coverage: { knownCorpus: 100, ratio: 0.95, previousRatio: null },
     httpStatusCounts: { "200": 100 },
     failureSignatures: [],
-    surfaceOutcomes: [
-      { surface: "INDEX_PAGE", discovered: 100, accepted: 95, knownCorpus: 100 },
-    ],
+    surfaceOutcomes: [{ surface: "INDEX_PAGE", discovered: 100, accepted: 95, knownCorpus: 100 }],
     rendering: { used: false },
     changeDetection: {
       etagObserved: true,
@@ -119,9 +117,9 @@ describe("acquisition recurring regression", () => {
   });
 
   it("detects playbook revision and behavioral drift without activating anything", () => {
-    expect(
-      evaluateAcquisitionRecurringRegression(pair({ playbookRevision: 2 })).state,
-    ).toBe("PLAYBOOK_BEHAVIOR_DRIFT");
+    expect(evaluateAcquisitionRecurringRegression(pair({ playbookRevision: 2 })).state).toBe(
+      "PLAYBOOK_BEHAVIOR_DRIFT",
+    );
 
     const behavioral = pair({
       outcome: "DEGRADED",
@@ -145,9 +143,7 @@ describe("acquisition recurring regression", () => {
       }),
     );
     expect(result.state).toBe("EXPECTED_CHANGE");
-    expect(result.reasonCodes).toEqual([
-      "CONTENT_DIGEST_CHANGE_WITHOUT_ACQUISITION_REGRESSION",
-    ]);
+    expect(result.reasonCodes).toEqual(["CONTENT_DIGEST_CHANGE_WITHOUT_ACQUISITION_REGRESSION"]);
   });
 
   it("fails closed when evidence is missing or identities are incompatible", () => {
@@ -161,15 +157,12 @@ describe("acquisition recurring regression", () => {
     ).toBe("INSUFFICIENT_EVIDENCE");
 
     expect(
-      evaluateAcquisitionRecurringRegression(
-        pair({ sourceId: "src-different" }),
-      ).reasonCodes,
+      evaluateAcquisitionRecurringRegression(pair({ sourceId: "src-different" })).reasonCodes,
     ).toEqual(["SOURCE_IDENTITY_INCOMPATIBLE"]);
 
     expect(
-      evaluateAcquisitionRecurringRegression(
-        pair({ playbookId: "different-playbook" }),
-      ).reasonCodes,
+      evaluateAcquisitionRecurringRegression(pair({ playbookId: "different-playbook" }))
+        .reasonCodes,
     ).toEqual(["PLAYBOOK_ID_INCOMPATIBLE"]);
   });
 
