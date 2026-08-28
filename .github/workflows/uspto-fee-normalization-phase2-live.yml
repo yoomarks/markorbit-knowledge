@@ -1,0 +1,270 @@
+name: USPTO Fee Normalization Phase2 Live Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/uspto-fee-normalization-phase2-live.yml
+      - apps/admin/src/server/uspto-fee-evidence-normalization.ts
+      - apps/admin/src/server/uspto-fee-evidence-normalization.test.ts
+      - apps/admin/src/server/uspto-fee-normalization-live-evidence.test.ts
+      - apps/admin/src/server/official-evidence-admissibility.ts
+      - apps/admin/src/server/official-evidence-retrieval-adapter.ts
+      - apps/admin/src/server/uspto-fee-evidence-policy.ts
+      - apps/worker/src/bootstrap-uspto.ts
+      - apps/worker/src/bootstrap-uspto-fee-schedule.ts
+      - apps/worker/src/bootstrap-uspto-conversion.ts
+      - apps/worker/src/verify-uspto-golden-source.ts
+      - apps/worker/src/verify-uspto-exact-page-pipeline.ts
+      - packages/persistence/src/retrieval-index.ts
+      - apps/worker/package.json
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uspto-fee-normalization-phase2-live-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  live-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+      MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
+      MARKORBIT_GOLDEN_SOURCE_TIMEOUT_MS: "420000"
+      MARKORBIT_GOLDEN_PIPELINE_TIMEOUT_MS: "420000"
+      MARKORBIT_WORKER_POLL_INTERVAL_MS: "500"
+      MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "15000"
+      MARKORBIT_WORKER_MAX_ACQUISITION_MS: "360000"
+      MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS: "300"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure isolated evidence stores
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/phase2-uspto-fee-normalization.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/phase2-uspto-fee-normalization-artifacts" >> "$GITHUB_ENV"
+          echo "MARKORBIT_STAGING_STORE_PATH=$RUNNER_TEMP/phase2-uspto-fee-normalization-staging" >> "$GITHUB_ENV"
+          echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/admin.log"
+          exit 1
+
+      - name: Bootstrap numeric Fee Schedule Source
+        run: |
+          pnpm --filter @markorbit/worker bootstrap:uspto-fee-schedule -- --dispatch > "$RUNNER_TEMP/numeric-bootstrap.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/numeric-bootstrap.json', 'utf8');
+          const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          const expected = 'https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule';
+          if (data.canonicalUri !== expected) throw new Error(`Numeric canonical URI drifted: ${data.canonicalUri}`);
+          if (!data.sourceId || !data.workerId || !data.workerCredential || !data.runId) {
+            throw new Error('Numeric bootstrap missing source/worker credential/run evidence');
+          }
+          process.stdout.write(`::add-mask::${data.workerCredential}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `MARKORBIT_NUMERIC_SOURCE_ID=${data.sourceId}\nMARKORBIT_WORKER_ID=${data.workerId}\nMARKORBIT_WORKER_CREDENTIAL=${data.workerCredential}\nMARKORBIT_NUMERIC_RUN_ID=${data.runId}\n`);
+          NODE
+
+      - name: Provision conversion runtime for numeric Source
+        run: |
+          MARKORBIT_SOURCE_ID="$MARKORBIT_NUMERIC_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion > "$RUNNER_TEMP/numeric-conversion-bootstrap.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/numeric-conversion-bootstrap.json', 'utf8');
+          const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          if (data.sourceId !== process.env.MARKORBIT_NUMERIC_SOURCE_ID) throw new Error('Numeric conversion Source drifted');
+          if (!data.workspaceId || !Number.isInteger(data.capabilityRevision)) throw new Error('Numeric conversion missing workspace/capability evidence');
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `MARKORBIT_WORKSPACE_ID=${data.workspaceId}\nMARKORBIT_CONVERSION_ENABLED=1\nMARKORBIT_CONVERSION_CAPABILITY_REVISION=${data.capabilityRevision}\n`);
+          NODE
+
+      - name: Start one production Worker for all three Sources
+        env:
+          NODE_ENV: test
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
+          MARKORBIT_CRAWL4AI_PYTHON: python
+        run: |
+          pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker.log" 2>&1 &
+          echo "WORKER_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Verify numeric live acquisition
+        run: pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_NUMERIC_RUN_ID"
+
+      - name: Convert numeric Source
+        run: |
+          MARKORBIT_SOURCE_ID="$MARKORBIT_NUMERIC_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/numeric-conversion.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/numeric-conversion.json', 'utf8');
+          const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          if (data.sourceId !== process.env.MARKORBIT_NUMERIC_SOURCE_ID || !data.conversionRunId) throw new Error('Numeric conversion was not dispatched');
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_NUMERIC_CONVERSION_RUN_ID=${data.conversionRunId}\n`);
+          NODE
+
+      - name: Verify numeric converted Source
+        run: pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_NUMERIC_SOURCE_ID" "$MARKORBIT_NUMERIC_CONVERSION_RUN_ID"
+
+      - name: Bootstrap temporal authority Source
+        env:
+          MARKORBIT_USPTO_SOURCE_SLUG: uspto-trademark-fee-changes-2025-phase2
+          MARKORBIT_USPTO_SOURCE_NAME: USPTO Summary of 2025 Trademark Fee Changes — Phase 2
+          MARKORBIT_USPTO_PLAN_NAME: USPTO 2025 Trademark Fee Changes — Exact Page
+          MARKORBIT_USPTO_WORKER_LABEL: phase2-uspto-fee-schedule
+          MARKORBIT_USPTO_CANONICAL_URI: https://www.uspto.gov/trademarks/fees-payment-information/summary-2025-trademark-fee-changes
+          MARKORBIT_USPTO_ENTRYPOINT_LABEL: USPTO Summary of 2025 Trademark Fee Changes
+          MARKORBIT_USPTO_INCLUDE_PATTERN: https://www.uspto.gov/trademarks/fees-payment-information/summary-2025-trademark-fee-changes
+          MARKORBIT_USPTO_MAX_DEPTH: "0"
+          MARKORBIT_USPTO_MAX_ITEMS: "1"
+        run: |
+          pnpm --filter @markorbit/worker bootstrap:uspto -- --dispatch > "$RUNNER_TEMP/temporal-bootstrap.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/temporal-bootstrap.json', 'utf8');
+          const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          const expected = 'https://www.uspto.gov/trademarks/fees-payment-information/summary-2025-trademark-fee-changes';
+          if (data.canonicalUri !== expected) throw new Error(`Temporal canonical URI drifted: ${data.canonicalUri}`);
+          if (!data.sourceId || !data.runId || data.workerId !== process.env.MARKORBIT_WORKER_ID) {
+            throw new Error('Temporal bootstrap did not reuse the accepted Worker or return Source/run evidence');
+          }
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `MARKORBIT_TEMPORAL_SOURCE_ID=${data.sourceId}\nMARKORBIT_TEMPORAL_RUN_ID=${data.runId}\n`);
+          NODE
+
+      - name: Verify temporal live acquisition
+        run: pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_TEMPORAL_RUN_ID"
+
+      - name: Convert temporal Source
+        run: |
+          MARKORBIT_SOURCE_ID="$MARKORBIT_TEMPORAL_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/temporal-conversion.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/temporal-conversion.json', 'utf8');
+          const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          if (data.sourceId !== process.env.MARKORBIT_TEMPORAL_SOURCE_ID || !data.conversionRunId) throw new Error('Temporal conversion was not dispatched');
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_TEMPORAL_CONVERSION_RUN_ID=${data.conversionRunId}\n`);
+          NODE
+
+      - name: Verify temporal converted Source
+        run: pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_TEMPORAL_SOURCE_ID" "$MARKORBIT_TEMPORAL_CONVERSION_RUN_ID"
+
+      - name: Bootstrap applicability/context Source
+        env:
+          MARKORBIT_USPTO_SOURCE_SLUG: uspto-trademark-fee-information-phase2-normalization
+          MARKORBIT_USPTO_SOURCE_NAME: USPTO Trademark Fee Information — Phase 2 Normalization
+          MARKORBIT_USPTO_PLAN_NAME: USPTO Trademark Fee Information — Exact Page Normalization
+          MARKORBIT_USPTO_WORKER_LABEL: phase2-uspto-fee-schedule
+          MARKORBIT_USPTO_CANONICAL_URI: https://www.uspto.gov/trademarks/trademark-fee-information
+          MARKORBIT_USPTO_ENTRYPOINT_LABEL: USPTO Trademark Fee Information
+          MARKORBIT_USPTO_INCLUDE_PATTERN: https://www.uspto.gov/trademarks/trademark-fee-information
+          MARKORBIT_USPTO_MAX_DEPTH: "0"
+          MARKORBIT_USPTO_MAX_ITEMS: "1"
+        run: |
+          pnpm --filter @markorbit/worker bootstrap:uspto -- --dispatch > "$RUNNER_TEMP/applicability-bootstrap.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/applicability-bootstrap.json', 'utf8');
+          const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          const expected = 'https://www.uspto.gov/trademarks/trademark-fee-information';
+          if (data.canonicalUri !== expected) throw new Error(`Applicability canonical URI drifted: ${data.canonicalUri}`);
+          if (!data.sourceId || !data.runId || data.workerId !== process.env.MARKORBIT_WORKER_ID) {
+            throw new Error('Applicability bootstrap did not reuse the accepted Worker or return Source/run evidence');
+          }
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `MARKORBIT_APPLICABILITY_SOURCE_ID=${data.sourceId}\nMARKORBIT_APPLICABILITY_RUN_ID=${data.runId}\n`);
+          NODE
+
+      - name: Verify applicability/context live acquisition
+        run: pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_APPLICABILITY_RUN_ID"
+
+      - name: Convert applicability/context Source
+        run: |
+          MARKORBIT_SOURCE_ID="$MARKORBIT_APPLICABILITY_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/applicability-conversion.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/applicability-conversion.json', 'utf8');
+          const data = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          if (data.sourceId !== process.env.MARKORBIT_APPLICABILITY_SOURCE_ID || !data.conversionRunId) throw new Error('Applicability conversion was not dispatched');
+          fs.appendFileSync(process.env.GITHUB_ENV, `MARKORBIT_APPLICABILITY_CONVERSION_RUN_ID=${data.conversionRunId}\n`);
+          NODE
+
+      - name: Verify applicability/context converted Source
+        run: pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- "$MARKORBIT_APPLICABILITY_SOURCE_ID" "$MARKORBIT_APPLICABILITY_CONVERSION_RUN_ID"
+
+      - name: Resolve real fee value and temporal evidence from retrieval text
+        env:
+          MARKORBIT_USPTO_FEE_NORMALIZATION_LIVE_EVIDENCE: "1"
+        run: |
+          set -o pipefail
+          pnpm --filter @markorbit/admin exec vitest run src/server/uspto-fee-normalization-live-evidence.test.ts --reporter=verbose \
+            | tee "$RUNNER_TEMP/phase2-fee-normalization-evidence.txt"
+
+      - name: Stop local processes
+        if: always()
+        run: |
+          if [ -n "${WORKER_PID:-}" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+
+      - name: Upload Phase 2 normalization evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uspto-fee-normalization-phase2-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/numeric-bootstrap.json
+            ${{ runner.temp }}/numeric-conversion-bootstrap.json
+            ${{ runner.temp }}/numeric-conversion.json
+            ${{ runner.temp }}/temporal-bootstrap.json
+            ${{ runner.temp }}/temporal-conversion.json
+            ${{ runner.temp }}/applicability-bootstrap.json
+            ${{ runner.temp }}/applicability-conversion.json
+            ${{ runner.temp }}/phase2-fee-normalization-evidence.txt
+            ${{ runner.temp }}/admin.log
+            ${{ runner.temp }}/worker.log
+          if-no-files-found: warn
+          retention-days: 30

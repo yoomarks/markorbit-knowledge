@@ -131,7 +131,7 @@ async function ensureProfile(
     body: JSON.stringify({
       workspaceId,
       sourceId: source,
-      name: "USPTO Markdown → Verified Staging",
+      name: `USPTO Markdown → Verified Staging (${source})`,
       status: "ACTIVE",
       converter: CONVERTER,
       input: { artifactKinds: ["MARKDOWN"], mimePatterns: ["text/markdown"] },
