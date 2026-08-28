@@ -146,7 +146,10 @@ export function assessUsptoOfficialFeeEvidenceSetV1(
       reasons.push("OUT_OF_SCOPE_SOURCE");
       continue;
     }
-    if (expectedRole !== observation.role) reasons.push("ROLE_SOURCE_MISMATCH");
+    if (expectedRole !== observation.role) {
+      reasons.push("ROLE_SOURCE_MISMATCH");
+      continue;
+    }
     if (!hasCompleteLineage(observation)) reasons.push("MISSING_LINEAGE");
     if (observation.versionState === "SUPERSEDED") reasons.push("STALE_SOURCE_VERSION");
     if (observation.versionState === "UNKNOWN") reasons.push("TEMPORAL_STATE_UNRESOLVED");
