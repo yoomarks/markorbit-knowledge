@@ -103,7 +103,9 @@ describe("Knowledge retrieval evaluation", () => {
       lexicalProvenanceCompleteCount: 1,
       provenanceCompletenessRate: 0.5,
       graphExpandedOnlyCount: 2,
+      graphExpandedExpectedCount: 1,
       graphExpandedIrrelevantCount: 1,
+      relationshipExpansionContributionRate: 0.5,
       relationshipExpansionNoiseRate: 0.5,
     });
   });

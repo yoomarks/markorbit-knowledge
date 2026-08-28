@@ -10,6 +10,8 @@ export type FrozenRetrievalQueryV1 = {
   queryId: string;
   workspaceId: string;
   queryText: string;
+  sourceFamily?: string;
+  queryClass?: string;
   evaluation: FrozenRetrievalEvaluationV1;
 };
 
@@ -27,6 +29,8 @@ export type FrozenRetrievalResultV1 = {
 
 export type FrozenRetrievalQueryEvaluationV1 = {
   queryId: string;
+  sourceFamily?: string;
+  queryClass?: string;
   metrics: KnowledgeRetrievalEvaluationMetricsV1;
 };
 
@@ -42,8 +46,15 @@ export type FrozenRetrievalAggregateMetricsV1 = {
   lexicalProvenanceCompleteCount: number;
   provenanceCompletenessRate: number | null;
   graphExpandedOnlyCount: number;
+  graphExpandedExpectedCount: number;
   graphExpandedIrrelevantCount: number;
+  relationshipExpansionContributionRate: number | null;
   relationshipExpansionNoiseRate: number | null;
+};
+
+export type FrozenRetrievalDimensionMetricsV1 = {
+  dimension: string;
+  metrics: FrozenRetrievalAggregateMetricsV1;
 };
 
 export type FrozenRetrievalFixtureEvaluationV1 = {
@@ -52,6 +63,8 @@ export type FrozenRetrievalFixtureEvaluationV1 = {
   fixtureVersion: string;
   queries: FrozenRetrievalQueryEvaluationV1[];
   aggregate: FrozenRetrievalAggregateMetricsV1;
+  bySourceFamily?: FrozenRetrievalDimensionMetricsV1[];
+  byQueryClass?: FrozenRetrievalDimensionMetricsV1[];
 };
 
 function requireIdentifier(value: string, label: string): void {
@@ -75,6 +88,12 @@ function validateFixture(fixture: FrozenRetrievalFixtureV1): void {
     requireIdentifier(query.queryId, "Retrieval fixture query id");
     requireIdentifier(query.workspaceId, "Retrieval fixture workspace id");
     requireIdentifier(query.queryText, "Retrieval fixture query text");
+    if (query.sourceFamily !== undefined) {
+      requireIdentifier(query.sourceFamily, "Retrieval fixture source family");
+    }
+    if (query.queryClass !== undefined) {
+      requireIdentifier(query.queryClass, "Retrieval fixture query class");
+    }
     if (queryIds.has(query.queryId)) {
       throw new RegistryValidationError("Retrieval fixture contains duplicate query ids");
     }
@@ -95,6 +114,7 @@ function aggregateMetrics(
       aggregate.lexicalEvidenceCount += metrics.lexicalEvidenceCount;
       aggregate.lexicalProvenanceCompleteCount += metrics.lexicalProvenanceCompleteCount;
       aggregate.graphExpandedOnlyCount += metrics.graphExpandedOnlyCount;
+      aggregate.graphExpandedExpectedCount += metrics.graphExpandedExpectedCount;
       aggregate.graphExpandedIrrelevantCount += metrics.graphExpandedIrrelevantCount;
       return aggregate;
     },
@@ -106,6 +126,7 @@ function aggregateMetrics(
       lexicalEvidenceCount: 0,
       lexicalProvenanceCompleteCount: 0,
       graphExpandedOnlyCount: 0,
+      graphExpandedExpectedCount: 0,
       graphExpandedIrrelevantCount: 0,
     },
   );
@@ -123,11 +144,33 @@ function aggregateMetrics(
       totals.lexicalEvidenceCount === 0
         ? null
         : totals.lexicalProvenanceCompleteCount / totals.lexicalEvidenceCount,
+    relationshipExpansionContributionRate:
+      totals.graphExpandedOnlyCount === 0
+        ? null
+        : totals.graphExpandedExpectedCount / totals.graphExpandedOnlyCount,
     relationshipExpansionNoiseRate:
       totals.graphExpandedOnlyCount === 0
         ? null
         : totals.graphExpandedIrrelevantCount / totals.graphExpandedOnlyCount,
   };
+}
+
+function groupMetrics(
+  queries: FrozenRetrievalQueryEvaluationV1[],
+  selector: (query: FrozenRetrievalQueryEvaluationV1) => string | undefined,
+): FrozenRetrievalDimensionMetricsV1[] | undefined {
+  const grouped = new Map<string, FrozenRetrievalQueryEvaluationV1[]>();
+  for (const query of queries) {
+    const dimension = selector(query);
+    if (!dimension) continue;
+    const entries = grouped.get(dimension) ?? [];
+    entries.push(query);
+    grouped.set(dimension, entries);
+  }
+  if (grouped.size === 0) return undefined;
+  return [...grouped.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([dimension, entries]) => ({ dimension, metrics: aggregateMetrics(entries) }));
 }
 
 export function runFrozenRetrievalEvaluation(
@@ -168,9 +211,14 @@ export function runFrozenRetrievalEvaluation(
 
     return {
       queryId: query.queryId,
+      ...(query.sourceFamily ? { sourceFamily: query.sourceFamily } : {}),
+      ...(query.queryClass ? { queryClass: query.queryClass } : {}),
       metrics: evaluateKnowledgeRetrieval(result, query.evaluation),
     };
   });
+
+  const bySourceFamily = groupMetrics(queries, (query) => query.sourceFamily);
+  const byQueryClass = groupMetrics(queries, (query) => query.queryClass);
 
   return {
     schemaVersion: "1.0",
@@ -178,5 +226,7 @@ export function runFrozenRetrievalEvaluation(
     fixtureVersion: fixture.fixtureVersion,
     queries,
     aggregate: aggregateMetrics(queries),
+    ...(bySourceFamily ? { bySourceFamily } : {}),
+    ...(byQueryClass ? { byQueryClass } : {}),
   };
 }

@@ -34,7 +34,9 @@ export type KnowledgeRetrievalEvaluationMetricsV1 = {
   lexicalProvenanceCompleteCount: number;
   provenanceCompletenessRate: number | null;
   graphExpandedOnlyCount: number;
+  graphExpandedExpectedCount: number;
   graphExpandedIrrelevantCount: number;
+  relationshipExpansionContributionRate: number | null;
   relationshipExpansionNoiseRate: number | null;
 };
 
@@ -115,6 +117,7 @@ export function evaluateKnowledgeRetrieval(
   let lexicalEvidenceCount = 0;
   let lexicalProvenanceCompleteCount = 0;
   let graphExpandedOnlyCount = 0;
+  let graphExpandedExpectedCount = 0;
   let graphExpandedIrrelevantCount = 0;
 
   for (const item of result.items) {
@@ -140,7 +143,8 @@ export function evaluateKnowledgeRetrieval(
 
     if (lexical.length === 0 && graph.length > 0) {
       graphExpandedOnlyCount += 1;
-      if (!expectedByIdentity.has(identity)) graphExpandedIrrelevantCount += 1;
+      if (expectedByIdentity.has(identity)) graphExpandedExpectedCount += 1;
+      else graphExpandedIrrelevantCount += 1;
     }
   }
 
@@ -166,7 +170,10 @@ export function evaluateKnowledgeRetrieval(
     provenanceCompletenessRate:
       lexicalEvidenceCount === 0 ? null : lexicalProvenanceCompleteCount / lexicalEvidenceCount,
     graphExpandedOnlyCount,
+    graphExpandedExpectedCount,
     graphExpandedIrrelevantCount,
+    relationshipExpansionContributionRate:
+      graphExpandedOnlyCount === 0 ? null : graphExpandedExpectedCount / graphExpandedOnlyCount,
     relationshipExpansionNoiseRate:
       graphExpandedOnlyCount === 0 ? null : graphExpandedIrrelevantCount / graphExpandedOnlyCount,
   };
