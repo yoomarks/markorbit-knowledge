@@ -2,6 +2,7 @@ import {
   ApiArtifactAcquirer,
   BrightDataFallbackAcquirer,
   BrightDataWebUnlockerClient,
+  CollectionAcquisitionError,
   ControlledCollectionWorkerRuntime,
   Crawl4AiSubprocessAcquirer,
   GitHubArtifactAcquirer,
@@ -17,11 +18,13 @@ import {
   createConditionalHttpChangeWatch,
   defaultApiTransport,
 } from "@markorbit/worker-runtime";
+import { CnipaJudgmentArtifactAcquirer } from "@markorbit/worker-runtime/cnipa-artifact-acquirer";
 import { buildReceiptAcquisitionLearningObservation } from "./acquisition-learning-observation";
 import {
   acquisitionLearningProfile,
   defaultAcquisitionLearningProfileIdForProvider,
 } from "./acquisition-learning-profiles";
+import { CnipaPlaywrightSessionExecutorFactory } from "./cnipa-playwright-session-executor";
 import { loadWorkerProcessConfig } from "./config";
 import { buildIpAustraliaManualAcquisitionRunEvidence } from "./ip-australia-manual-acquisition-learning";
 import { IpAustraliaManualArtifactAcquirer } from "./ip-australia-manual-artifact-acquirer";
@@ -65,6 +68,12 @@ async function main(): Promise<void> {
   const ipAustraliaManualAcquirer =
     config.collectionProvider === "ip-australia-manual"
       ? new IpAustraliaManualArtifactAcquirer()
+      : null;
+  const cnipaAcquirer =
+    config.collectionProvider === "cnipa" && config.cnipaSession
+      ? new CnipaJudgmentArtifactAcquirer(
+          new CnipaPlaywrightSessionExecutorFactory(config.cnipaSession),
+        )
       : null;
   const crawl4AiAcquirer = new Crawl4AiSubprocessAcquirer({
     requireEgressProxy: config.requireEgressProxy,
@@ -111,7 +120,12 @@ async function main(): Promise<void> {
                 maxItems: config.githubMaxItems,
                 maxDepth: config.githubMaxDepth,
               })
-            : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
+            : config.collectionProvider === "cnipa"
+              ? (cnipaAcquirer ??
+                (() => {
+                  throw new Error("CNIPA acquirer configuration is incomplete");
+                })())
+              : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
@@ -219,6 +233,7 @@ async function main(): Promise<void> {
     requireEgressProxy: config.requireEgressProxy,
     brightDataFallbackEnabled: config.brightDataFallbackEnabled,
     brightDataMaxRequestsPerRun: config.brightDataMaxRequestsPerRun,
+    cnipaAuthenticatedRuntimeEnabled: Boolean(cnipaAcquirer),
     localFolderRootIds: Object.keys(config.localFolderRoots),
     maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
     conversionEnabled: config.conversionEnabled,
@@ -234,6 +249,18 @@ async function main(): Promise<void> {
       consecutiveFailures = 0;
       if (!collectionProcessed && !conversionProcessed) await delay(config.pollIntervalMs);
     } catch (error) {
+      if (
+        config.collectionProvider === "cnipa" &&
+        error instanceof CollectionAcquisitionError &&
+        error.code === "CNIPA_REAUTH_REQUIRED"
+      ) {
+        log("worker.cnipa.reauth_required", {
+          message:
+            "CNIPA collection stopped before another claim. Complete operator re-login, then restart this Worker.",
+        });
+        stopping = true;
+        continue;
+      }
       consecutiveFailures += 1;
       const backoff = Math.min(
         config.errorBackoffMaxMs,

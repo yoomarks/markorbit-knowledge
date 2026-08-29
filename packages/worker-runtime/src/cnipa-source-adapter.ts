@@ -14,6 +14,7 @@ import {
   type CnipaAuthenticatedRequest,
   type CnipaAuthenticatedSessionExecutor,
   type CnipaAuthenticatedSessionResponse,
+  type CnipaDocumentKind,
   type CnipaJudgmentCollection,
   type CnipaJudgmentResponseDecoder,
   type CnipaTrademarkJudgmentQuery,
@@ -23,30 +24,71 @@ export * from "./cnipa-trademark-judgment";
 
 export type CnipaSourceAdapterOptions = {
   maxDetailRequestsPerRun?: number;
+  maxPagesPerLibrary?: number;
+  pageSize?: number;
 };
 
-function boundedDetailLimit(value: number | undefined): number {
-  const resolved = value ?? 30;
-  if (!Number.isSafeInteger(resolved) || resolved < 1 || resolved > 100) {
+function boundedInteger(
+  value: number | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+  label: string,
+): number {
+  const resolved = value ?? fallback;
+  if (!Number.isSafeInteger(resolved) || resolved < minimum || resolved > maximum) {
     throw new CnipaAcquisitionError(
       "CNIPA_QUERY_INVALID",
-      "maxDetailRequestsPerRun must be an integer between 1 and 100",
+      `${label} must be an integer between ${minimum} and ${maximum}`,
       false,
     );
   }
   return resolved;
 }
 
+function pagedListRequest(
+  documentKind: CnipaDocumentKind,
+  query: CnipaTrademarkJudgmentQuery,
+  pageIndex: number,
+  pageSize: number,
+): CnipaAuthenticatedRequest {
+  const request = buildCnipaCandidateListRequest(documentKind, query);
+  return {
+    ...request,
+    jsonBody: {
+      ...(request.jsonBody ?? {}),
+      pageIndex,
+      pageSize,
+    },
+  };
+}
+
 export class CnipaSourceAdapter implements SourceAdapterPort {
   readonly sourceId = "CNIPA";
   private readonly maxDetailRequestsPerRun: number;
+  private readonly maxPagesPerLibrary: number;
+  private readonly pageSize: number;
 
   constructor(
     private readonly executor: CnipaAuthenticatedSessionExecutor,
     private readonly decoder: CnipaJudgmentResponseDecoder,
     options: CnipaSourceAdapterOptions = {},
   ) {
-    this.maxDetailRequestsPerRun = boundedDetailLimit(options.maxDetailRequestsPerRun);
+    this.maxDetailRequestsPerRun = boundedInteger(
+      options.maxDetailRequestsPerRun,
+      30,
+      1,
+      100,
+      "maxDetailRequestsPerRun",
+    );
+    this.maxPagesPerLibrary = boundedInteger(
+      options.maxPagesPerLibrary,
+      10,
+      1,
+      50,
+      "maxPagesPerLibrary",
+    );
+    this.pageSize = boundedInteger(options.pageSize, 10, 1, 100, "pageSize");
   }
 
   private async execute(
@@ -82,19 +124,54 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
     let detailRequests = 0;
 
     for (const documentKind of resolveCnipaDocumentKinds(normalizedQuery)) {
-      const listRequest = buildCnipaCandidateListRequest(documentKind, normalizedQuery);
-      const listResponse = await this.execute(listRequest);
-      evidence.push(cnipaResponseEvidence(listResponse, listRequest));
-      const page = this.decoder.decodeList(documentKind, parseCnipaJson(listResponse));
-      const sourceRecordIds = [
-        ...new Set(page.sourceRecordIds.map((value) => value.trim())),
-      ].filter(Boolean);
+      const sourceRecordIds = new Set<string>();
+      let pageIndex = 1;
 
-      if (
-        page.hasMore !== false ||
-        (page.total !== undefined && page.total > sourceRecordIds.length)
-      ) {
-        coverageReasons.add(`${documentKind} list indicates or may contain additional pages`);
+      while (pageIndex <= this.maxPagesPerLibrary) {
+        const listRequest = pagedListRequest(
+          documentKind,
+          normalizedQuery,
+          pageIndex,
+          this.pageSize,
+        );
+        const listResponse = await this.execute(listRequest);
+        evidence.push(cnipaResponseEvidence(listResponse, listRequest));
+        const page = this.decoder.decodeList(documentKind, parseCnipaJson(listResponse));
+        const pageIds = [...new Set(page.sourceRecordIds.map((value) => value.trim()))].filter(
+          Boolean,
+        );
+        for (const sourceRecordId of pageIds) sourceRecordIds.add(sourceRecordId);
+
+        if (page.hasMore === true && pageIds.length === 0) {
+          throw new CnipaAcquisitionError(
+            "CNIPA_SCHEMA_CHANGED",
+            `${documentKind} reported hasMore=true with an empty page`,
+            false,
+          );
+        }
+
+        const observed = sourceRecordIds.size;
+        const definitelyComplete =
+          page.hasMore === false ||
+          pageIds.length === 0 ||
+          (page.total !== undefined && observed >= page.total);
+        if (definitelyComplete) break;
+
+        const definitelyMore =
+          page.hasMore === true || (page.total !== undefined && observed < page.total);
+        if (!definitelyMore) {
+          coverageReasons.add(
+            `${documentKind} pagination metadata is insufficient to prove whether another page exists`,
+          );
+          break;
+        }
+        if (pageIndex === this.maxPagesPerLibrary) {
+          coverageReasons.add(
+            `${documentKind} reached the configured ${this.maxPagesPerLibrary}-page safety ceiling while more results may exist`,
+          );
+          break;
+        }
+        pageIndex += 1;
       }
 
       for (const sourceRecordId of sourceRecordIds) {

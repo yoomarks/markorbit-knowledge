@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/main.ts",
+    "cnipa:session:login": "tsx src/cnipa-session-login.ts",
     "adk:library:bootstrap": "tsx src/run-adk-assignment-library-bootstrap.ts",
     "adk:candidate:promote": "tsx src/run-adk-candidate-promotion.ts",
     "adk:grounded:prepare": "tsx src/prepare-adk-grounded-execution.ts",
@@ -59,6 +60,7 @@
     "@markorbit/contracts": "workspace:*",
     "@markorbit/persistence": "workspace:*",
     "@markorbit/worker-runtime": "workspace:*",
+    "playwright-core": "1.62.1",
     "tsx": "4.20.6"
   },
   "devDependencies": {
