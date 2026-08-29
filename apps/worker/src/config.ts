@@ -9,13 +9,7 @@ import type {
 } from "./cnipa-playwright-session-executor";
 
 export type WorkerCollectionProvider =
-  | "api"
-  | "cnipa"
-  | "crawl4ai"
-  | "github"
-  | "ip-australia-manual"
-  | "local-folder"
-  | "rss";
+  "api" | "cnipa" | "crawl4ai" | "github" | "ip-australia-manual" | "local-folder" | "rss";
 
 export type WorkerProcessConfig = {
   controlPlaneUrl: string;
@@ -117,7 +111,9 @@ function normalizedCnipaOrigin(value: string): string {
     url.search ||
     url.hash
   ) {
-    throw new Error("MARKORBIT_CNIPA_BASE_URL must be an HTTPS origin without credentials/path/query");
+    throw new Error(
+      "MARKORBIT_CNIPA_BASE_URL must be an HTTPS origin without credentials/path/query",
+    );
   }
   return url.origin;
 }
@@ -152,7 +148,9 @@ function cnipaBearerStorage(env: NodeJS.ProcessEnv): CnipaBearerStorageBinding |
   let valuePath: string[] | undefined;
   if (input.valuePath !== undefined) {
     if (!Array.isArray(input.valuePath) || input.valuePath.length > 8) {
-      throw new Error("MARKORBIT_CNIPA_BEARER_STORAGE.valuePath must be an array with at most 8 keys");
+      throw new Error(
+        "MARKORBIT_CNIPA_BEARER_STORAGE.valuePath must be an array with at most 8 keys",
+      );
     }
     valuePath = input.valuePath.map((item) => {
       if (typeof item !== "string" || !item.trim() || item.length > 128) {
@@ -161,7 +159,10 @@ function cnipaBearerStorage(env: NodeJS.ProcessEnv): CnipaBearerStorageBinding |
       return item.trim();
     });
   }
-  if (input.prefix !== undefined && (typeof input.prefix !== "string" || input.prefix.length > 32)) {
+  if (
+    input.prefix !== undefined &&
+    (typeof input.prefix !== "string" || input.prefix.length > 32)
+  ) {
     throw new Error("MARKORBIT_CNIPA_BEARER_STORAGE.prefix must be a short string");
   }
   return {
@@ -208,11 +209,7 @@ export function loadCnipaBrowserSessionConfig(
       1_000,
       180_000,
     ),
-    treatForbiddenAsReauth: enabled(
-      env,
-      "MARKORBIT_CNIPA_TREAT_FORBIDDEN_AS_REAUTH",
-      false,
-    ),
+    treatForbiddenAsReauth: enabled(env, "MARKORBIT_CNIPA_TREAT_FORBIDDEN_AS_REAUTH", false),
     ...(cnipaBearerStorage(env) ? { bearerStorage: cnipaBearerStorage(env) } : {}),
   };
 }

@@ -106,7 +106,10 @@ function detailFields(value: unknown): CnipaDetailFieldSchema | undefined {
   for (const key of allowed) {
     const raw = input[key];
     if (raw !== undefined) {
-      (result as Record<string, string>)[key] = fieldName(raw, `responseSchema.detail.fields.${key}`);
+      (result as Record<string, string>)[key] = fieldName(
+        raw,
+        `responseSchema.detail.fields.${key}`,
+      );
     }
   }
   return result;
@@ -150,7 +153,8 @@ function partySchemas(
 
 export function parseCnipaResponseSchemaConfig(value: unknown): CnipaResponseSchemaConfig {
   const input = record(value);
-  if (!input) return schemaError("CNIPA responseSchema is required before authenticated collection");
+  if (!input)
+    return schemaError("CNIPA responseSchema is required before authenticated collection");
   const list = record(input.list);
   const detail = record(input.detail);
   if (!list || !detail) {
@@ -192,7 +196,8 @@ function valueAtPath(value: unknown, path: CnipaResponsePath, label: string): un
   let current = value;
   for (const key of path) {
     const container = record(current);
-    if (!container || !(key in container)) return responseError(`${label} path is missing at ${key}`);
+    if (!container || !(key in container))
+      return responseError(`${label} path is missing at ${key}`);
     current = container[key];
   }
   return current;
@@ -205,7 +210,11 @@ function scalarString(value: unknown, label: string): string | undefined {
   return responseError(`${label} must be a string or finite number when present`);
 }
 
-function optionalField(container: Record<string, unknown>, field: string | undefined, label: string) {
+function optionalField(
+  container: Record<string, unknown>,
+  field: string | undefined,
+  label: string,
+) {
   if (!field) return undefined;
   return scalarString(container[field], label);
 }
@@ -215,7 +224,8 @@ export class CnipaConfigurableResponseDecoder implements CnipaJudgmentResponseDe
 
   decodeList(_documentKind: CnipaDocumentKind, value: unknown): CnipaDecodedListPage {
     const rows = valueAtPath(value, this.schema.list.recordsPath, "CNIPA list records");
-    if (!Array.isArray(rows)) return responseError("CNIPA list records path did not resolve to an array");
+    if (!Array.isArray(rows))
+      return responseError("CNIPA list records path did not resolve to an array");
     const sourceRecordIds = rows.map((row, index) => {
       const container = record(row);
       if (!container) return responseError(`CNIPA list record ${index} is not an object`);
@@ -239,7 +249,8 @@ export class CnipaConfigurableResponseDecoder implements CnipaJudgmentResponseDe
     let hasMore: boolean | undefined;
     if (this.schema.list.hasMorePath) {
       const rawHasMore = valueAtPath(value, this.schema.list.hasMorePath, "CNIPA list hasMore");
-      if (typeof rawHasMore !== "boolean") return responseError("CNIPA list hasMore must be boolean");
+      if (typeof rawHasMore !== "boolean")
+        return responseError("CNIPA list hasMore must be boolean");
       hasMore = rawHasMore;
     }
 
@@ -296,7 +307,11 @@ export class CnipaConfigurableResponseDecoder implements CnipaJudgmentResponseDe
         : {}),
       ...(optionalField(container, fields.documentNumber, "CNIPA document number")
         ? {
-            documentNumber: optionalField(container, fields.documentNumber, "CNIPA document number"),
+            documentNumber: optionalField(
+              container,
+              fields.documentNumber,
+              "CNIPA document number",
+            ),
           }
         : {}),
       ...(optionalField(container, fields.contentHtml, "CNIPA content html")

@@ -120,7 +120,10 @@ async function main(): Promise<void> {
                 maxDepth: config.githubMaxDepth,
               })
             : config.collectionProvider === "cnipa"
-              ? (cnipaAcquirer ?? (() => { throw new Error("CNIPA acquirer configuration is incomplete"); })())
+              ? (cnipaAcquirer ??
+                (() => {
+                  throw new Error("CNIPA acquirer configuration is incomplete");
+                })())
               : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,

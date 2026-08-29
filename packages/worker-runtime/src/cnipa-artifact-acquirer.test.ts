@@ -44,9 +44,7 @@ function context(): ArtifactBackedExecutionContext {
               sourceRecordIdField: "id",
               fields: { registrationNumber: "regNo" },
               parties: {
-                REGISTRATION_EXAMINATION: [
-                  { field: "applicantCnName", role: "APPLICANT" },
-                ],
+                REGISTRATION_EXAMINATION: [{ field: "applicantCnName", role: "APPLICANT" }],
               },
             },
           },

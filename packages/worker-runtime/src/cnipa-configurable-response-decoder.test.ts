@@ -74,8 +74,8 @@ describe("CnipaConfigurableResponseDecoder", () => {
 
   it("fails closed when the configured envelope drifts", () => {
     const decoder = new CnipaConfigurableResponseDecoder(schema);
-    expect(() =>
-      decoder.decodeList("REGISTRATION_EXAMINATION", { data: { items: [] } }),
-    ).toThrow(/path is missing/i);
+    expect(() => decoder.decodeList("REGISTRATION_EXAMINATION", { data: { items: [] } })).toThrow(
+      /path is missing/i,
+    );
   });
 });

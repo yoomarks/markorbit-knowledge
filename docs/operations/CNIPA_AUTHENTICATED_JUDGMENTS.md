@@ -106,9 +106,7 @@ Phase 2 deliberately does not guess the CNIPA response envelope. Each Source sna
         "trademarkName": "tmName"
       },
       "parties": {
-        "REGISTRATION_EXAMINATION": [
-          { "field": "applicantCnName", "role": "APPLICANT" }
-        ]
+        "REGISTRATION_EXAMINATION": [{ "field": "applicantCnName", "role": "APPLICANT" }]
       }
     }
   },
@@ -144,11 +142,11 @@ List canonical identity includes a local query digest and page number so two reg
 
 The following operator-supplied mappings are still `OPERATOR_SUPPLIED_UNVERIFIED`:
 
-| Document kind | Candidate list endpoint | Candidate detail endpoint | Candidate party fields |
-| --- | --- | --- | --- |
-| `REGISTRATION_EXAMINATION` | `/pubnotice/portal/tmscJudgment/queryPageList` | `/tmscJudgment/queryInfo?id=...` | `applicantCnName` |
-| `OPPOSITION_DECISION` | `/pubnotice/portal/tmyyJudgment/queryPageList` | `/tmyyJudgment/queryInfo?id=...` | `objenderCnName`, `objeperCnName` |
-| `REVIEW_ADJUDICATION` | `/pubnotice/portal/tmpsJudgment/queryPageList` | `/tmpsJudgment/queryInfo?id=...` | `applicantName`, `respondentName` |
+| Document kind              | Candidate list endpoint                        | Candidate detail endpoint        | Candidate party fields            |
+| -------------------------- | ---------------------------------------------- | -------------------------------- | --------------------------------- |
+| `REGISTRATION_EXAMINATION` | `/pubnotice/portal/tmscJudgment/queryPageList` | `/tmscJudgment/queryInfo?id=...` | `applicantCnName`                 |
+| `OPPOSITION_DECISION`      | `/pubnotice/portal/tmyyJudgment/queryPageList` | `/tmyyJudgment/queryInfo?id=...` | `objenderCnName`, `objeperCnName` |
+| `REVIEW_ADJUDICATION`      | `/pubnotice/portal/tmpsJudgment/queryPageList` | `/tmpsJudgment/queryInfo?id=...` | `applicantName`, `respondentName` |
 
 The supplied registration-number list body remains the only request shape represented as a candidate:
 

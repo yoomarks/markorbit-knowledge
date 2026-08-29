@@ -126,7 +126,9 @@ function browserFetch(page: Page, input: BrowserFetchInput): Promise<BrowserFetc
     const bytes = new Uint8Array(buffer);
     let binary = "";
     for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-      binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+      binary += String.fromCharCode(
+        ...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)),
+      );
     }
     return {
       kind: "RESPONSE",
@@ -188,7 +190,9 @@ function integer(
   return resolved;
 }
 
-function validateOptions(options: CnipaPlaywrightSessionOptions): Required<
+function validateOptions(
+  options: CnipaPlaywrightSessionOptions,
+): Required<
   Pick<
     CnipaPlaywrightSessionOptions,
     | "baseUrl"
@@ -209,7 +213,12 @@ function validateOptions(options: CnipaPlaywrightSessionOptions): Required<
     throw new Error("CNIPA baseUrl must be an HTTPS origin without path, query, or fragment");
   }
   const entry = new URL(options.sessionEntryUrl);
-  if (entry.protocol !== "https:" || entry.origin !== base.origin || entry.username || entry.password) {
+  if (
+    entry.protocol !== "https:" ||
+    entry.origin !== base.origin ||
+    entry.username ||
+    entry.password
+  ) {
     throw new Error("CNIPA sessionEntryUrl must be an HTTPS URL on the configured base origin");
   }
   if (!path.isAbsolute(options.userDataDir)) {
@@ -259,12 +268,20 @@ function validateOptions(options: CnipaPlaywrightSessionOptions): Required<
 }
 
 function requestUrl(baseUrl: string, request: CnipaAuthenticatedRequest): string {
-  if (!request.path.startsWith("/") || request.path.startsWith("//") || request.path.includes("\\")) {
+  if (
+    !request.path.startsWith("/") ||
+    request.path.startsWith("//") ||
+    request.path.includes("\\")
+  ) {
     throw new CnipaAcquisitionError("CNIPA_QUERY_INVALID", "CNIPA request path is invalid", false);
   }
   const url = new URL(request.path, baseUrl);
   if (url.origin !== new URL(baseUrl).origin) {
-    throw new CnipaAcquisitionError("CNIPA_QUERY_INVALID", "CNIPA request escaped the configured origin", false);
+    throw new CnipaAcquisitionError(
+      "CNIPA_QUERY_INVALID",
+      "CNIPA request escaped the configured origin",
+      false,
+    );
   }
   for (const [key, value] of Object.entries(request.query ?? {})) url.searchParams.set(key, value);
   return url.toString();
@@ -283,7 +300,9 @@ function requestIdentity(request: CnipaAuthenticatedRequest): string {
     .digest("hex");
 }
 
-function cloneResponse(response: CnipaAuthenticatedSessionResponse): CnipaAuthenticatedSessionResponse {
+function cloneResponse(
+  response: CnipaAuthenticatedSessionResponse,
+): CnipaAuthenticatedSessionResponse {
   return { ...response, body: new Uint8Array(response.body) };
 }
 
@@ -312,7 +331,9 @@ class PlaywrightCnipaSessionExecutor implements CnipaClosableAuthenticatedSessio
 
     const elapsed = Date.now() - this.lastRequestAt;
     if (this.lastRequestAt > 0 && elapsed < this.options.minRequestIntervalMs) {
-      await new Promise((resolve) => setTimeout(resolve, this.options.minRequestIntervalMs - elapsed));
+      await new Promise((resolve) =>
+        setTimeout(resolve, this.options.minRequestIntervalMs - elapsed),
+      );
     }
     this.requestCount += 1;
     this.lastRequestAt = Date.now();
@@ -368,7 +389,8 @@ class PlaywrightCnipaSessionExecutor implements CnipaClosableAuthenticatedSessio
       body: Buffer.from(result.bodyBase64, "base64"),
       securityState,
     };
-    if (result.status >= 200 && result.status < 300) this.cache.set(cacheKey, cloneResponse(response));
+    if (result.status >= 200 && result.status < 300)
+      this.cache.set(cacheKey, cloneResponse(response));
     return response;
   }
 
@@ -378,9 +400,7 @@ class PlaywrightCnipaSessionExecutor implements CnipaClosableAuthenticatedSessio
   }
 }
 
-export class CnipaPlaywrightSessionExecutorFactory
-  implements CnipaAuthenticatedSessionExecutorFactory
-{
+export class CnipaPlaywrightSessionExecutorFactory implements CnipaAuthenticatedSessionExecutorFactory {
   private readonly options: ReturnType<typeof validateOptions>;
 
   constructor(

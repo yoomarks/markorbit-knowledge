@@ -36,10 +36,7 @@ describe("CNIPA bounded pagination", () => {
           ? { sourceRecordIds: ["one"], total: 2, hasMore: true }
           : { sourceRecordIds: ["two"], total: 2, hasMore: false };
       },
-      decodeDetail(
-        _documentKind: CnipaDocumentKind,
-        sourceRecordId: string,
-      ): CnipaDecodedDetail {
+      decodeDetail(_documentKind: CnipaDocumentKind, sourceRecordId: string): CnipaDecodedDetail {
         return { sourceRecordId, parties: [] };
       },
     };
