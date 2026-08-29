@@ -76,7 +76,7 @@ function assertBindingMatches(current: VaultBindingV1 | null, intent: VaultImpor
 }
 
 function assertDirectory(path: string, code: string): void {
-  const stat = lstatSync(path);
+  const stat = lstatSync(/* turbopackIgnore: true */ path);
   if (stat.isSymbolicLink() || !stat.isDirectory()) {
     throw new RegistryConflictError(code, "Vault import path must contain only real directories");
   }
@@ -96,14 +96,14 @@ function requireRoot(rawValue: string | undefined, expectedFingerprint: string):
       "Server Obsidian Vault root must be an absolute path",
     );
   }
-  const root = resolve(raw);
+  const root = resolve(/* turbopackIgnore: true */ raw);
   if (sha256(root) !== expectedFingerprint) {
     throw new RegistryConflictError(
       "VAULT_IMPORT_EXECUTION_ROOT_CHANGED",
       "Configured Vault root differs from the root reviewed by the operator",
     );
   }
-  if (!existsSync(root)) {
+  if (!existsSync(/* turbopackIgnore: true */ root)) {
     throw new RegistryConflictError(
       "VAULT_IMPORT_EXECUTION_ROOT_NOT_FOUND",
       "Configured Vault root does not exist",
@@ -116,14 +116,14 @@ function requireRoot(rawValue: string | undefined, expectedFingerprint: string):
 function resolveDirectorySegments(root: string, segments: string[]): string | null {
   let current = root;
   for (const segment of segments) {
-    const next = resolve(current, segment);
+    const next = resolve(/* turbopackIgnore: true */ current, segment);
     if (next === current || !next.startsWith(`${current}${sep}`)) {
       throw new RegistryConflictError(
         "VAULT_IMPORT_EXECUTION_PATH_ESCAPE",
         "Vault import path escaped the configured root",
       );
     }
-    if (!existsSync(next)) return null;
+    if (!existsSync(/* turbopackIgnore: true */ next)) return null;
     assertDirectory(next, "VAULT_IMPORT_EXECUTION_DIRECTORY_INVALID");
     current = next;
   }
@@ -143,30 +143,30 @@ function readFrozenCandidate(root: string, intent: VaultImportIntentV1): Uint8Ar
   }
   const parent = resolveDirectorySegments(bound, segments);
   if (!parent) return null;
-  const absolutePath = resolve(parent, fileName);
+  const absolutePath = resolve(/* turbopackIgnore: true */ parent, fileName);
   if (absolutePath === parent || !absolutePath.startsWith(`${parent}${sep}`)) {
     throw new RegistryConflictError(
       "VAULT_IMPORT_EXECUTION_PATH_ESCAPE",
       "Reviewed Vault file escaped the approved Binding",
     );
   }
-  if (!existsSync(absolutePath)) return null;
-  const stat = lstatSync(absolutePath);
+  if (!existsSync(/* turbopackIgnore: true */ absolutePath)) return null;
+  const stat = lstatSync(/* turbopackIgnore: true */ absolutePath);
   if (stat.isSymbolicLink() || !stat.isFile()) {
     throw new RegistryConflictError(
       "VAULT_IMPORT_EXECUTION_TARGET_INVALID",
       "Reviewed Vault target must remain a regular file and not a symbolic link",
     );
   }
-  return readFileSync(absolutePath);
+  return readFileSync(/* turbopackIgnore: true */ absolutePath);
 }
 
 function stagingStorePath(): string {
   const configured = process.env.MARKORBIT_STAGING_STORE_PATH?.trim();
-  if (configured) return resolve(configured);
+  if (configured) return resolve(/* turbopackIgnore: true */ configured);
   const repositoryRoot =
     process.env.MARKORBIT_REPOSITORY_ROOT ?? process.env.INIT_CWD ?? process.cwd();
-  return resolve(repositoryRoot, ".data", "staging");
+  return resolve(/* turbopackIgnore: true */ repositoryRoot, ".data", "staging");
 }
 
 export class VaultImportExecutionService {
