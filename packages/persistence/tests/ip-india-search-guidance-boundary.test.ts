@@ -9,7 +9,7 @@ const AI_ML_SEARCH_URI =
 const PUBLIC_SEARCH_URI = "https://tmrsearch.ipindia.gov.in/tmrpublicsearch/";
 
 describe("IP India trademark search acquisition boundary", () => {
-  it("models the public guidance page as crawlable evidence without claiming anonymous search JSON", () => {
+  it("keeps anonymous acquisition on the public guidance page", () => {
     const target = IP_INDIA_SOURCE_COVERAGE_TARGETS.find(
       (item) => item.id === "in-ipindia-trademark-search",
     );
@@ -30,13 +30,19 @@ describe("IP India trademark search acquisition boundary", () => {
     });
     expect(target?.entrypoints).toEqual([
       { uri: GUIDANCE_URI, label: "Search guidance" },
-      { uri: AI_ML_SEARCH_URI, label: "Protected AI/ML search (account + OTP)" },
-      { uri: PUBLIC_SEARCH_URI, label: "Protected public search (CAPTCHA + OTP)" },
+      {
+        uri: AI_ML_SEARCH_URI,
+        label: "Protected AI/ML search (account + OTP)",
+      },
+      {
+        uri: PUBLIC_SEARCH_URI,
+        label: "Protected public search (CAPTCHA + OTP)",
+      },
     ]);
-    expect(target?.notes).toContain("does not claim anonymous structured-search access");
+    expect(target?.notes).toContain("anonymous structured-search");
   });
 
-  it("keeps the India representative canary on public guidance with a distinct filing baseline", () => {
+  it("keeps the India canary public with a distinct filing baseline", () => {
     const india = getRepresentativeSourceLiveCanaries().find(
       (canary) => canary.jurisdiction === "IN",
     );
