@@ -1,34 +1,19 @@
 import { acquireIpAustraliaManualCorpus } from "./ip-australia-manual-full-acquisition";
-
-function numberArgument(name: string): number | undefined {
-  const prefix = `${name}=`;
-  const raw = process.argv
-    .slice(2)
-    .find((value) => value.startsWith(prefix))
-    ?.slice(prefix.length);
-  if (!raw) return undefined;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
+import {
+  emitIpAustraliaManualFullAcquisitionReport,
+  ipAustraliaManualFullAcquisitionExitCode,
+  parseIpAustraliaManualFullAcquisitionCliOptions,
+} from "./ip-australia-manual-full-acquisition-cli";
 
 async function main(): Promise<void> {
-  const report = await acquireIpAustraliaManualCorpus(fetch, {
-    concurrency: numberArgument("--concurrency"),
-    interBatchDelayMs: numberArgument("--delay-ms"),
-  });
+  const options = parseIpAustraliaManualFullAcquisitionCliOptions(process.argv.slice(2));
+  const report = await acquireIpAustraliaManualCorpus(fetch, options);
 
-  process.stdout.write(
-    `${JSON.stringify(
-      {
-        event: "ip_australia.trademark.manual.full_acquisition",
-        ...report,
-      },
-      null,
-      2,
-    )}\n`,
+  await emitIpAustraliaManualFullAcquisitionReport(
+    report,
+    options.outputPath ? { outputPath: options.outputPath } : {},
   );
-
-  if (report.inventoryFailures > 0 || report.incompleteEvidencePageCount > 0) process.exitCode = 2;
+  process.exitCode = ipAustraliaManualFullAcquisitionExitCode(report);
 }
 
 main().catch((error) => {
