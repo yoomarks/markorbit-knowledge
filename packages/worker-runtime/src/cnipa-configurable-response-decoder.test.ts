@@ -72,6 +72,19 @@ describe("CnipaConfigurableResponseDecoder", () => {
     expect(detail.parties.map((party) => party.role)).toEqual(["UNVERIFIED", "UNVERIFIED"]);
   });
 
+  it("rejects authoritative opposition roles before Phase 3 verifies source-field semantics", () => {
+    expect(() =>
+      parseCnipaResponseSchemaConfig({
+        list: { recordsPath: ["data", "records"], sourceRecordIdField: "id" },
+        detail: {
+          parties: {
+            OPPOSITION_DECISION: [{ field: "objenderCnName", role: "OPPOSER" }],
+          },
+        },
+      }),
+    ).toThrow(/must remain UNVERIFIED until Phase 3/i);
+  });
+
   it("fails closed when the configured envelope drifts", () => {
     const decoder = new CnipaConfigurableResponseDecoder(schema);
     expect(() => decoder.decodeList("REGISTRATION_EXAMINATION", { data: { items: [] } })).toThrow(
