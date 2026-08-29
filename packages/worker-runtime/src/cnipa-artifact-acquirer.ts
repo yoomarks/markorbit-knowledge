@@ -157,9 +157,9 @@ export class CnipaJudgmentArtifactAcquirer implements CollectionArtifactAcquirer
   constructor(private readonly sessionFactory: CnipaAuthenticatedSessionExecutorFactory) {}
 
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
-    const config = sourceConfig(context);
     let session: CnipaClosableAuthenticatedSessionExecutor | undefined;
     try {
+      const config = sourceConfig(context);
       session = await this.sessionFactory.create();
       const adapter = new CnipaSourceAdapter(
         session,
