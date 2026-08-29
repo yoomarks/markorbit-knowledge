@@ -49,14 +49,16 @@ describe("representative live canary artifact evidence", () => {
   });
 
   it("fails fast when a WEB canary contract asks Crawl4AI for unsupported artifact kinds", () => {
-    expect(
-      unsupportedRepresentativeCanaryArtifactKinds(["JSON", "HTML", "IMAGE", "JSON"]),
-    ).toEqual(["IMAGE", "JSON"]);
-    expect(() =>
-      assertRepresentativeCanaryArtifactContractSupported(["HTML", "JSON"]),
-    ).toThrow(/cannot produce expected artifact kinds.*JSON/u);
-    expect(() =>
-      assertRepresentativeCanaryArtifactContractSupported(["HTML", "MARKDOWN"]),
-    ).not.toThrow();
+    const unsupported = unsupportedRepresentativeCanaryArtifactKinds(["JSON", "IMAGE"]);
+    const assertUnsupported = () => {
+      assertRepresentativeCanaryArtifactContractSupported(["HTML", "JSON"]);
+    };
+    const assertSupported = () => {
+      assertRepresentativeCanaryArtifactContractSupported(["HTML", "MARKDOWN"]);
+    };
+
+    expect(unsupported).toEqual(["IMAGE", "JSON"]);
+    expect(assertUnsupported).toThrow(/cannot produce expected artifact kinds.*JSON/u);
+    expect(assertSupported).not.toThrow();
   });
 });
