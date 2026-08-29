@@ -4,8 +4,7 @@ import { getRepresentativeSourceLiveCanaries } from "../src/representative-sourc
 
 const GUIDANCE_URI =
   "https://ipindia.gov.in/trade-marks-before-you-apply-search-existing-trademarks";
-const AI_ML_SEARCH_URI =
-  "https://tmsearch.ipindia.gov.in/ords/r/tisa/trademark_search600/login";
+const AI_ML_SEARCH_URI = "https://tmsearch.ipindia.gov.in/ords/r/tisa/trademark_search600/login";
 const PUBLIC_SEARCH_URI = "https://tmrsearch.ipindia.gov.in/tmrpublicsearch/";
 
 describe("IP India trademark search acquisition boundary", () => {
