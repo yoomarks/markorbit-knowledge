@@ -25,6 +25,11 @@ on:
       - packages/persistence/src/representative-source-activation.ts
       - packages/persistence/src/representative-source-live-canaries.ts
       - packages/persistence/src/representative-source-live-canaries.test.ts
+      - packages/persistence/src/source-coverage-catalog.ts
+      - packages/persistence/src/priority-national-source-coverage.ts
+      - packages/persistence/src/priority-national-source-coverage-builder.ts
+      - packages/persistence/src/euipo-source-coverage.ts
+      - packages/persistence/src/priority-regional-source-coverage.ts
       - pnpm-lock.yaml
 
 permissions:

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { assessRepresentativeCanaryArtifacts } from "./representative-live-canary-evidence";
+import {
+  assertRepresentativeCanaryArtifactContractSupported,
+  assessRepresentativeCanaryArtifacts,
+  unsupportedRepresentativeCanaryArtifactKinds,
+} from "./representative-live-canary-evidence";
 
 describe("representative live canary artifact evidence", () => {
   it("passes the default HTML + MARKDOWN artifact contract", () => {
@@ -42,5 +46,19 @@ describe("representative live canary artifact evidence", () => {
       missingPageEvidenceKinds: ["MARKDOWN"],
       missingExpectedArtifactKinds: [],
     });
+  });
+
+  it("fails fast when a WEB canary contract asks Crawl4AI for unsupported artifact kinds", () => {
+    const unsupported = unsupportedRepresentativeCanaryArtifactKinds(["JSON", "IMAGE"]);
+    const assertUnsupported = () => {
+      assertRepresentativeCanaryArtifactContractSupported(["HTML", "JSON"]);
+    };
+    const assertSupported = () => {
+      assertRepresentativeCanaryArtifactContractSupported(["HTML", "MARKDOWN"]);
+    };
+
+    expect(unsupported).toEqual(["IMAGE", "JSON"]);
+    expect(assertUnsupported).toThrow(/cannot produce expected artifact kinds.*JSON/u);
+    expect(assertSupported).not.toThrow();
   });
 });
