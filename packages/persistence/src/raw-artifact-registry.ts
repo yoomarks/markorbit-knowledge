@@ -36,7 +36,6 @@ import {
 import { RegistryConflictError, RegistryError, RegistryValidationError } from "./index";
 import {
   SqliteWorkerRegistryRepository,
-  ensureWorkerRegistry,
   type WorkerRegistryRepository,
 } from "./safe-worker-registry";
 import { ensureWorkerExecutionRegistry } from "./controlled-worker-execution";

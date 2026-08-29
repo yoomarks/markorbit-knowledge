@@ -82,11 +82,6 @@ function unique(values: readonly string[]): string[] {
   return [...new Set(values.filter(Boolean))];
 }
 
-function queryEndpoint(path: string, workspaceId: string, jurisdiction: string): string {
-  const query = new URLSearchParams({ workspaceId, jurisdiction });
-  return `${path}?${query.toString()}`;
-}
-
 function targetQueryEndpoint(
   path: string,
   workspaceId: string,

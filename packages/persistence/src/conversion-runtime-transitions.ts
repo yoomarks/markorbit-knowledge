@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import {
   CONVERSION_EXECUTION_VERSION,
@@ -33,7 +33,6 @@ import { generateConversionEventId } from "./conversion-run-ledger";
 import { SqliteWorkerRegistryRepository } from "./safe-worker-registry";
 
 const MIGRATION_ID = "0011_conversion_runtime_transitions";
-const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const FAILURE_CODE = /^[A-Z0-9][A-Z0-9_]{1,99}$/;
 const KEY = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
 const ACTOR = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/;
@@ -93,22 +92,6 @@ export interface ConversionRuntimeTransitionRepository {
     leaseId: string,
     input: ReconcileExpiredConversionLeaseInput,
   ): ConversionRuntimeTransitionResult;
-}
-
-function encodeBase32(value: bigint, length: number): string {
-  let output = "";
-  let remaining = value;
-  for (let index = 0; index < length; index += 1) {
-    output = CROCKFORD[Number(remaining & 31n)] + output;
-    remaining >>= 5n;
-  }
-  return output;
-}
-
-function typedId(prefix: string, now = Date.now()): string {
-  const timestamp = encodeBase32(BigInt(now), 10);
-  const randomValue = BigInt(`0x${randomBytes(10).toString("hex")}`);
-  return `${prefix}_${timestamp}${encodeBase32(randomValue, 16)}`;
 }
 
 function stable(value: unknown): string {

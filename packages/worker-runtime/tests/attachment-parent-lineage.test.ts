@@ -4,7 +4,6 @@ import type {
   ArtifactIngestionSession,
   ArtifactUploadDescriptor,
   ExecutionAttempt,
-  ExecutionReceipt,
 } from "@markorbit/contracts";
 import {
   ArtifactBackedCollectionExecutor,
@@ -126,7 +125,7 @@ function client(
       } as ArtifactIngestionReceipt;
     },
     async verifying() {},
-    async complete(_context, _receipt: ExecutionReceipt) {},
+    async complete() {},
     async fail(_context, failure) {
       failures.push(failure);
     },

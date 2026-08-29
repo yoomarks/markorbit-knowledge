@@ -1,11 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_WORKSPACE,
-  RegistryConflictError,
-  SqliteSourceRepository,
-  type CreateSourceInput,
-} from "../src/index";
+import { DEFAULT_WORKSPACE, SqliteSourceRepository, type CreateSourceInput } from "../src/index";
 import {
   SqliteCollectionPlanRepository,
   type CreateCollectionPlanInput,

@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { isIP } from "node:net";
 import type { ArtifactKind, ExecutionExecutor } from "@markorbit/contracts";
 import {
   defaultApiResolver,

@@ -30,7 +30,7 @@ describe("CNIPA bounded pagination", () => {
       },
     };
     const decoder: CnipaJudgmentResponseDecoder = {
-      decodeList(_kind, _value) {
+      decodeList() {
         const page = Number(requests.at(-1)?.jsonBody?.pageIndex ?? 1);
         return page === 1
           ? { sourceRecordIds: ["one"], total: 2, hasMore: true }

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  CORE_DISCOVERY_PROPOSAL_VERSION,
-  CORE_DISCOVERY_PROPOSER,
-  type SourceDiscoveryBatch,
-} from "@markorbit/contracts";
+import { CORE_DISCOVERY_PROPOSAL_VERSION, CORE_DISCOVERY_PROPOSER } from "@markorbit/contracts";
 import { openRegistryDatabase, SqliteSourceRepository } from "@markorbit/persistence";
 import { SqliteCollectionPlanRepository } from "@markorbit/persistence/collection-plans";
 import { SqliteConnectorRepository } from "@markorbit/persistence/connectors";
@@ -31,7 +27,7 @@ describe("CoreDiscoveryProposalService", () => {
       plans,
       connectors,
       provider: {
-        async discover(_batch: SourceDiscoveryBatch) {
+        async discover() {
           providerCalls += 1;
           throw new Error("Core proposals must not invoke website discovery before review");
         },

@@ -13,7 +13,6 @@ import {
   type VaultImportExecutionRepository,
 } from "@markorbit/persistence/vault-import-executions";
 import type {
-  RecordVaultImportIntentInput,
   VaultImportIntentRecordResult,
   VaultImportIntentRepository,
 } from "@markorbit/persistence/vault-import-intents";
@@ -74,7 +73,7 @@ function intent(root: string): VaultImportIntentV1 {
 
 class FixedIntentRepository implements VaultImportIntentRepository {
   constructor(private readonly value: VaultImportIntentV1) {}
-  record(_input: RecordVaultImportIntentInput): VaultImportIntentRecordResult {
+  record(): VaultImportIntentRecordResult {
     throw new Error("not used");
   }
   getById(workspaceId: string, intentId: string) {
