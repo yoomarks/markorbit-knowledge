@@ -22,185 +22,54 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Remove exact unused lint symbols
+      - name: Apply Prettier
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          def replace(path: str, old: str, new: str, expected: int = 1) -> None:
-              file = Path(path)
-              text = file.read_text()
-              actual = text.count(old)
-              if actual != expected:
-                  raise SystemExit(f"{path}: expected {expected} occurrence(s), found {actual}: {old!r}")
-              file.write_text(text.replace(old, new, expected))
-
-          replace(
-              "apps/admin/src/server/__tests__/core-discovery-proposal-service.test.ts",
-              "  type SourceDiscoveryBatch,\n",
-              "",
-          )
-          replace(
-              "apps/admin/src/server/__tests__/core-discovery-proposal-service.test.ts",
-              "async discover(_batch: SourceDiscoveryBatch)",
-              "async discover()",
-          )
-          replace(
-              "apps/admin/src/server/__tests__/vault-import-execution-service.test.ts",
-              "  RecordVaultImportIntentInput,\n",
-              "",
-          )
-          replace(
-              "apps/admin/src/server/__tests__/vault-import-execution-service.test.ts",
-              "record(_input: RecordVaultImportIntentInput): VaultImportIntentRecordResult",
-              "record(): VaultImportIntentRecordResult",
-          )
-          replace(
-              "apps/worker/src/prepare-adk-grounded-execution.test.ts",
-              'import { AiSourceGroundingError } from "@markorbit/worker-runtime/ai-source-pack-renderer";\n',
-              "",
-          )
-          replace(
-              "apps/worker/src/prepare-adk-grounded-execution.test.ts",
-              "  PersistedAiGroundedExecutionPreparationError,\n",
-              "",
-          )
-          replace(
-              "packages/contracts/src/worker-protocol-v1.ts",
-              "  JOB_STATUSES,\n",
-              "",
-          )
-          replace(
-              "packages/persistence/src/conversion-runtime-transitions.ts",
-              'import { createHash, randomBytes } from "node:crypto";',
-              'import { createHash } from "node:crypto";',
-          )
-          replace(
-              "packages/persistence/src/conversion-runtime-transitions.ts",
-              'const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";\n',
-              "",
-          )
-          replace(
-              "packages/persistence/src/conversion-runtime-transitions.ts",
-              '''function encodeBase32(value: bigint, length: number): string {
-            let output = "";
-            let remaining = value;
-            for (let index = 0; index < length; index += 1) {
-              output = CROCKFORD[Number(remaining & 31n)] + output;
-              remaining >>= 5n;
-            }
-            return output;
-          }
-
-          function typedId(prefix: string, now = Date.now()): string {
-            const timestamp = encodeBase32(BigInt(now), 10);
-            const randomValue = BigInt(`0x${randomBytes(10).toString("hex")}`);
-            return `${prefix}_${timestamp}${encodeBase32(randomValue, 16)}`;
-          }
-
-          ''',
-              "",
-          )
-          replace(
-              "packages/persistence/src/raw-artifact-registry.ts",
-              "  ensureWorkerRegistry,\n",
-              "",
-          )
-          replace(
-              "packages/persistence/tests/conversion-runtime-persistence.test.ts",
-              'import { DatabaseSync } from "node:sqlite";\n',
-              "",
-          )
-          replace(
-              "packages/persistence/tests/foundational-action-execution-ledger.test.ts",
-              "  RegistryConflictError,\n",
-              "",
-          )
-          replace(
-              "packages/worker-runtime/src/cnipa-source-adapter-pagination.test.ts",
-              "decodeList(_kind, _value)",
-              "decodeList()",
-          )
-          replace(
-              "packages/worker-runtime/src/foundational-remediation-queue.ts",
-              '''function queryEndpoint(path: string, workspaceId: string, jurisdiction: string): string {
-            const query = new URLSearchParams({ workspaceId, jurisdiction });
-            return `${path}?${query.toString()}`;
-          }
-
-          ''',
-              "",
-          )
-          replace(
-              "packages/worker-runtime/src/github-acquirer.ts",
-              'import { isIP } from "node:net";\n',
-              "",
-          )
-          replace(
-              "packages/worker-runtime/tests/attachment-parent-lineage.test.ts",
-              "  ExecutionReceipt,\n",
-              "",
-          )
-          replace(
-              "packages/worker-runtime/tests/attachment-parent-lineage.test.ts",
-              "async complete(_context, _receipt: ExecutionReceipt) {},",
-              "async complete() {},",
-          )
-          replace(
-              "packages/worker-runtime/tests/conditional-http-change-watch.test.ts",
-              'import type { ExecutionAttempt, ExecutionReceipt } from "@markorbit/contracts";',
-              'import type { ExecutionAttempt } from "@markorbit/contracts";',
-          )
-          replace(
-              "packages/worker-runtime/tests/conditional-http-change-watch.test.ts",
-              "const complete = vi.fn(async (_context, _receipt: ExecutionReceipt) => {});",
-              "const complete = vi.fn(async () => {});",
-          )
-          replace(
-              "packages/worker-runtime/tests/expanding-website-discovery-provider.test.ts",
-              'import type { SourceCandidate, SourceDiscoveryBatch } from "@markorbit/contracts";',
-              'import type { SourceCandidate } from "@markorbit/contracts";',
-          )
-          replace(
-              "packages/worker-runtime/tests/expanding-website-discovery-provider.test.ts",
-              "vi.fn(async (batch: SourceDiscoveryBatch) =>",
-              "vi.fn(async () =>",
-              expected=2,
-          )
-          PY
-
+          # Keep business surfaces and shared ingestion-control helpers formatting-clean,
+          # including production staging and the bulk collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
-            apps/admin/src/server/__tests__/core-discovery-proposal-service.test.ts \
-            apps/admin/src/server/__tests__/vault-import-execution-service.test.ts \
-            apps/worker/src/prepare-adk-grounded-execution.test.ts \
-            packages/contracts/src/worker-protocol-v1.ts \
-            packages/persistence/src/conversion-runtime-transitions.ts \
-            packages/persistence/src/raw-artifact-registry.ts \
-            packages/persistence/tests/conversion-runtime-persistence.test.ts \
-            packages/persistence/tests/foundational-action-execution-ledger.test.ts \
-            packages/worker-runtime/src/cnipa-source-adapter-pagination.test.ts \
-            packages/worker-runtime/src/foundational-remediation-queue.ts \
-            packages/worker-runtime/src/github-acquirer.ts \
-            packages/worker-runtime/tests/attachment-parent-lineage.test.ts \
-            packages/worker-runtime/tests/conditional-http-change-watch.test.ts \
-            packages/worker-runtime/tests/expanding-website-discovery-provider.test.ts
-          pnpm lint
+            apps/admin/src/app/knowledge/[id]/page.tsx \
+            apps/admin/src/components/knowledge/content-reader-index.tsx \
+            apps/admin/src/components/knowledge/content-reader-model.test.ts \
+            apps/admin/src/components/knowledge/content-reader-model.ts \
+            apps/admin/src/components/knowledge/content-reader.tsx \
+            apps/admin/src/components/sources/source-country-coverage.tsx \
+            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/sources/radar-collection-authorization.tsx \
+            apps/admin/src/components/sources/source-failure-root-causes.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/server/m3-converter-bootstrap.ts \
+            apps/admin/src/server/production-conversion-worker-service.ts \
+            apps/admin/src/server/raw-artifact-auto-conversion.ts \
+            apps/admin/src/server/raw-artifact-conversion-authorization.ts \
+            apps/admin/src/server/source-failure-root-causes.ts \
+            apps/admin/src/server/__tests__/bulk-conversion-to-knowledge.e2e.test.ts \
+            apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
+            apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
+            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
+          if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            apps/admin/src/server/__tests__/core-discovery-proposal-service.test.ts \
-            apps/admin/src/server/__tests__/vault-import-execution-service.test.ts \
-            apps/worker/src/prepare-adk-grounded-execution.test.ts \
-            packages/contracts/src/worker-protocol-v1.ts \
-            packages/persistence/src/conversion-runtime-transitions.ts \
-            packages/persistence/src/raw-artifact-registry.ts \
-            packages/persistence/tests/conversion-runtime-persistence.test.ts \
-            packages/persistence/tests/foundational-action-execution-ledger.test.ts \
-            packages/worker-runtime/src/cnipa-source-adapter-pagination.test.ts \
-            packages/worker-runtime/src/foundational-remediation-queue.ts \
-            packages/worker-runtime/src/github-acquirer.ts \
-            packages/worker-runtime/tests/attachment-parent-lineage.test.ts \
-            packages/worker-runtime/tests/conditional-http-change-watch.test.ts \
-            packages/worker-runtime/tests/expanding-website-discovery-provider.test.ts
-          git commit -m "chore: remove unused lint symbols"
+            apps/admin/src/app/knowledge/[id]/page.tsx \
+            apps/admin/src/components/knowledge/content-reader-index.tsx \
+            apps/admin/src/components/knowledge/content-reader-model.test.ts \
+            apps/admin/src/components/knowledge/content-reader-model.ts \
+            apps/admin/src/components/knowledge/content-reader.tsx \
+            apps/admin/src/components/sources/source-country-coverage.tsx \
+            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/sources/radar-collection-authorization.tsx \
+            apps/admin/src/components/sources/source-failure-root-causes.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/server/m3-converter-bootstrap.ts \
+            apps/admin/src/server/production-conversion-worker-service.ts \
+            apps/admin/src/server/raw-artifact-auto-conversion.ts \
+            apps/admin/src/server/raw-artifact-conversion-authorization.ts \
+            apps/admin/src/server/source-failure-root-causes.ts \
+            apps/admin/src/server/__tests__/bulk-conversion-to-knowledge.e2e.test.ts \
+            apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
+            apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
+            apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
+          git commit -m "style: format admin v2 business surfaces"
           git push origin HEAD:${{ github.head_ref }}
