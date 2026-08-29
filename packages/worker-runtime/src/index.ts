@@ -52,7 +52,6 @@ export * from "./worker-crash-recovery-manager";
 export * from "./worker-heartbeat-manager";
 export * from "./source-discovery-runner";
 export * from "./source-collection-flow";
-export * from "./discovery-candidate-intelligence";
 export * from "./source-intelligence-evaluator";
 export * from "./source-intelligence-observation";
 export * from "./source-intelligence-cross-source-observation";
