@@ -3,9 +3,19 @@ import {
   parseLocalFolderRoots,
   type LocalFolderRootMap,
 } from "@markorbit/worker-runtime";
+import type {
+  CnipaBearerStorageBinding,
+  CnipaPlaywrightSessionOptions,
+} from "./cnipa-playwright-session-executor";
 
 export type WorkerCollectionProvider =
-  "api" | "crawl4ai" | "github" | "ip-australia-manual" | "local-folder" | "rss";
+  | "api"
+  | "cnipa"
+  | "crawl4ai"
+  | "github"
+  | "ip-australia-manual"
+  | "local-folder"
+  | "rss";
 
 export type WorkerProcessConfig = {
   controlPlaneUrl: string;
@@ -24,6 +34,7 @@ export type WorkerProcessConfig = {
   brightDataApiToken?: string;
   brightDataZone?: string;
   brightDataMaxRequestsPerRun: number;
+  cnipaSession?: CnipaPlaywrightSessionOptions;
   localFolderRoots: LocalFolderRootMap;
   localFolderMaxArtifactBytes: number;
   localFolderMaxTotalBytes: number;
@@ -82,6 +93,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
   const value = env.MARKORBIT_COLLECTION_PROVIDER?.trim().toLowerCase() || "crawl4ai";
   if (
     value === "api" ||
+    value === "cnipa" ||
     value === "crawl4ai" ||
     value === "github" ||
     value === "ip-australia-manual" ||
@@ -91,8 +103,118 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, crawl4ai, github, ip-australia-manual, local-folder, or rss",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, crawl4ai, github, ip-australia-manual, local-folder, or rss",
   );
+}
+
+function normalizedCnipaOrigin(value: string): string {
+  const url = new URL(value);
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error("MARKORBIT_CNIPA_BASE_URL must be an HTTPS origin without credentials/path/query");
+  }
+  return url.origin;
+}
+
+function normalizedCnipaEntry(value: string, baseUrl: string): string {
+  const url = new URL(value);
+  if (url.protocol !== "https:" || url.origin !== baseUrl || url.username || url.password) {
+    throw new Error("MARKORBIT_CNIPA_SESSION_ENTRY_URL must be HTTPS on MARKORBIT_CNIPA_BASE_URL");
+  }
+  return url.toString();
+}
+
+function cnipaBearerStorage(env: NodeJS.ProcessEnv): CnipaBearerStorageBinding | undefined {
+  const raw = env.MARKORBIT_CNIPA_BEARER_STORAGE?.trim();
+  if (!raw) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("MARKORBIT_CNIPA_BEARER_STORAGE must be JSON");
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("MARKORBIT_CNIPA_BEARER_STORAGE must be a JSON object");
+  }
+  const input = parsed as Record<string, unknown>;
+  if (input.area !== "localStorage" && input.area !== "sessionStorage") {
+    throw new Error("MARKORBIT_CNIPA_BEARER_STORAGE.area must be localStorage or sessionStorage");
+  }
+  if (typeof input.key !== "string" || !input.key.trim() || input.key.length > 128) {
+    throw new Error("MARKORBIT_CNIPA_BEARER_STORAGE.key must be a bounded storage key");
+  }
+  let valuePath: string[] | undefined;
+  if (input.valuePath !== undefined) {
+    if (!Array.isArray(input.valuePath) || input.valuePath.length > 8) {
+      throw new Error("MARKORBIT_CNIPA_BEARER_STORAGE.valuePath must be an array with at most 8 keys");
+    }
+    valuePath = input.valuePath.map((item) => {
+      if (typeof item !== "string" || !item.trim() || item.length > 128) {
+        throw new Error("MARKORBIT_CNIPA_BEARER_STORAGE.valuePath contains an invalid key");
+      }
+      return item.trim();
+    });
+  }
+  if (input.prefix !== undefined && (typeof input.prefix !== "string" || input.prefix.length > 32)) {
+    throw new Error("MARKORBIT_CNIPA_BEARER_STORAGE.prefix must be a short string");
+  }
+  return {
+    area: input.area,
+    key: input.key.trim(),
+    ...(valuePath ? { valuePath } : {}),
+    ...(typeof input.prefix === "string" ? { prefix: input.prefix } : {}),
+  };
+}
+
+export function loadCnipaBrowserSessionConfig(
+  env: NodeJS.ProcessEnv = process.env,
+  overrides: { headless?: boolean } = {},
+): CnipaPlaywrightSessionOptions {
+  const baseUrl = normalizedCnipaOrigin(required(env, "MARKORBIT_CNIPA_BASE_URL"));
+  return {
+    baseUrl,
+    sessionEntryUrl: normalizedCnipaEntry(
+      required(env, "MARKORBIT_CNIPA_SESSION_ENTRY_URL"),
+      baseUrl,
+    ),
+    userDataDir: required(env, "MARKORBIT_CNIPA_USER_DATA_DIR"),
+    executablePath: required(env, "MARKORBIT_CNIPA_BROWSER_EXECUTABLE_PATH"),
+    headless: overrides.headless ?? enabled(env, "MARKORBIT_CNIPA_HEADLESS", true),
+    minRequestIntervalMs: integer(
+      env,
+      "MARKORBIT_CNIPA_MIN_REQUEST_INTERVAL_MS",
+      2_000,
+      250,
+      60_000,
+    ),
+    maxRequestsPerRun: integer(env, "MARKORBIT_CNIPA_MAX_REQUESTS_PER_RUN", 50, 1, 200),
+    maxResponseBytes: integer(
+      env,
+      "MARKORBIT_CNIPA_MAX_RESPONSE_BYTES",
+      5 * 1024 * 1024,
+      1,
+      20 * 1024 * 1024,
+    ),
+    navigationTimeoutMs: integer(
+      env,
+      "MARKORBIT_CNIPA_NAVIGATION_TIMEOUT_MS",
+      60_000,
+      1_000,
+      180_000,
+    ),
+    treatForbiddenAsReauth: enabled(
+      env,
+      "MARKORBIT_CNIPA_TREAT_FORBIDDEN_AS_REAUTH",
+      false,
+    ),
+    ...(cnipaBearerStorage(env) ? { bearerStorage: cnipaBearerStorage(env) } : {}),
+  };
 }
 
 export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): WorkerProcessConfig {
@@ -137,6 +259,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
       );
     }
   }
+  const cnipaSession = provider === "cnipa" ? loadCnipaBrowserSessionConfig(env) : undefined;
 
   const githubMaxFileBytes = integer(
     env,
@@ -218,6 +341,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     ...(brightDataApiToken ? { brightDataApiToken } : {}),
     ...(brightDataZone ? { brightDataZone } : {}),
     brightDataMaxRequestsPerRun,
+    ...(cnipaSession ? { cnipaSession } : {}),
     localFolderRoots,
     localFolderMaxArtifactBytes: integer(
       env,

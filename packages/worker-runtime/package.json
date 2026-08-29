@@ -25,7 +25,8 @@
     "./foundational-remediation-snapshot": "./src/foundational-remediation-snapshot.ts",
     "./foundational-action-intent": "./src/foundational-action-intent.ts",
     "./foundational-action-execution": "./src/foundational-action-execution.ts",
-    "./foundational-collection-outcome": "./src/foundational-collection-outcome.ts"
+    "./foundational-collection-outcome": "./src/foundational-collection-outcome.ts",
+    "./cnipa-artifact-acquirer": "./src/cnipa-artifact-acquirer.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
