@@ -107,4 +107,25 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
     });
     expect(creates).toBe(0);
   });
+
+  it("keeps invalid response-schema failures typed and does not open a browser", async () => {
+    let creates = 0;
+    const factory: CnipaAuthenticatedSessionExecutorFactory = {
+      async create() {
+        creates += 1;
+        throw new Error("must not be reached");
+      },
+    };
+    const input = context();
+    (input.job.sourceSnapshot.connectorConfig as Record<string, unknown>).responseSchema = {
+      list: { recordsPath: [], sourceRecordIdField: "id" },
+      detail: {},
+    };
+
+    await expect(new CnipaJudgmentArtifactAcquirer(factory).acquire(input)).rejects.toMatchObject({
+      code: "CNIPA_SCHEMA_UNVERIFIED",
+      retryable: false,
+    });
+    expect(creates).toBe(0);
+  });
 });
