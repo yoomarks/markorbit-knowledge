@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SourceCandidate } from "@markorbit/contracts";
+import type { SourceCandidate, SourceDiscoveryBatch } from "@markorbit/contracts";
 import { ExpandingWebsiteDiscoveryProvider, type SourceDiscoveryProvider } from "../src/index";
 
 function candidate(
@@ -23,28 +23,34 @@ function candidate(
 describe("ExpandingWebsiteDiscoveryProvider", () => {
   it("reserves the existing budgets and emits only one-hop external candidates", async () => {
     const seedLocator = "https://example.test/";
-    const primaryDiscover = vi.fn(async () => [
-      candidate("cand_primary", "https://example.test/internal", seedLocator, {
-        kind: "PAGE",
-        robotsAllowed: true,
-      }),
-    ]);
-    const externalDiscover = vi.fn(async () => [
-      candidate("cand_duplicate", "https://example.test/internal", seedLocator, {
-        kind: "PAGE",
-        robotsAllowed: true,
-      }),
-      candidate("cand_external_a", "https://outside.test/article", seedLocator, {
-        kind: "PAGE",
-        host: "outside.test",
-        robotsAllowed: false,
-      }),
-      candidate("cand_external_b", "https://docs.test/guide.pdf", seedLocator, {
-        kind: "DOCUMENT",
-        host: "docs.test",
-        robotsAllowed: true,
-      }),
-    ]);
+    const primaryDiscover = vi.fn(async (batch: SourceDiscoveryBatch) => {
+      void batch;
+      return [
+        candidate("cand_primary", "https://example.test/internal", seedLocator, {
+          kind: "PAGE",
+          robotsAllowed: true,
+        }),
+      ];
+    });
+    const externalDiscover = vi.fn(async (batch: SourceDiscoveryBatch) => {
+      void batch;
+      return [
+        candidate("cand_duplicate", "https://example.test/internal", seedLocator, {
+          kind: "PAGE",
+          robotsAllowed: true,
+        }),
+        candidate("cand_external_a", "https://outside.test/article", seedLocator, {
+          kind: "PAGE",
+          host: "outside.test",
+          robotsAllowed: false,
+        }),
+        candidate("cand_external_b", "https://docs.test/guide.pdf", seedLocator, {
+          kind: "DOCUMENT",
+          host: "docs.test",
+          robotsAllowed: true,
+        }),
+      ];
+    });
     const primary: SourceDiscoveryProvider = { discover: primaryDiscover };
     const external: SourceDiscoveryProvider = { discover: externalDiscover };
     const provider = new ExpandingWebsiteDiscoveryProvider(primary, external);
