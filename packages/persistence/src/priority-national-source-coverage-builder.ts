@@ -38,6 +38,11 @@ type PriorityNationalCoverageTargetOverride = Partial<
   Omit<PriorityNationalCoverageTargetInput, "id" | "family">
 >;
 
+const CNIPA_SEARCH_GUIDANCE_URI =
+  "https://www.cnipa.gov.cn/jact/front/mailpubdetail.do?sysid=13&transactId=502906";
+const CNIPA_SEARCH_LANDING_URI = "https://sbj.cnipa.gov.cn/sbj/sbcx/";
+const CNIPA_SEARCH_SERVICE_URI = "https://wcjs.sbj.cnipa.gov.cn/";
+const CNIPA_SSO_NOTICE_URI = "https://sbj.cnipa.gov.cn/sbj/tzgg/202512/t20251203_36767.html";
 const IP_INDIA_SEARCH_GUIDANCE_URI =
   "https://ipindia.gov.in/trade-marks-before-you-apply-search-existing-trademarks";
 const IPONZ_SEARCH_GUIDANCE_URI = "https://www.iponz.govt.nz/get-ip/trade-marks/search/";
@@ -50,6 +55,27 @@ const IPONZ_SEARCH_GUIDANCE_URI = "https://www.iponz.govt.nz/get-ip/trade-marks/
 const PRIORITY_NATIONAL_CURATED_OVERRIDES: Readonly<
   Record<string, PriorityNationalCoverageTargetOverride>
 > = {
+  "cn-cnipa-trademark-search": {
+    displayName: "CNIPA Trademark Search Access Guidance",
+    canonicalUri: CNIPA_SEARCH_GUIDANCE_URI,
+    entrypoints: [
+      { uri: CNIPA_SEARCH_GUIDANCE_URI, label: "Official trademark search access guidance" },
+      { uri: CNIPA_SEARCH_LANDING_URI, label: "Trademark search landing and usage notice" },
+      {
+        uri: CNIPA_SEARCH_SERVICE_URI,
+        label: "Protected trademark online search (account sign-in required)",
+      },
+      { uri: CNIPA_SSO_NOTICE_URI, label: "Unified identity authentication notice" },
+    ],
+    mode: "WEB_CRAWL",
+    renderJavascriptHint: false,
+    fetchAttachmentsHint: false,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verifiedAt: "2026-08-29T12:25:00Z",
+    verificationEvidenceUri: CNIPA_SEARCH_GUIDANCE_URI,
+    notes:
+      "The canonical CNIPA page is anonymously readable official guidance confirming that trademark online search requires account registration or sign-in. The current query service is a separate protected entrypoint; this coverage target does not claim anonymous structured-result JSON acquisition and does not authorize authentication automation.",
+  },
   "in-ipindia-trademark-search": {
     displayName: "IP India Search Existing Trademarks Guidance",
     canonicalUri: IP_INDIA_SEARCH_GUIDANCE_URI,
