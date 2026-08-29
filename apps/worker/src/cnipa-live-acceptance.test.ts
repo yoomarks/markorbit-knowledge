@@ -66,11 +66,7 @@ describe("CNIPA live acceptance harness", () => {
       executeLive: false,
     });
     expect(() =>
-      parseCnipaLiveAcceptanceArguments([
-        "--plan",
-        "/tmp/cnipa-plan.json",
-        "--execute-live-cnipa",
-      ]),
+      parseCnipaLiveAcceptanceArguments(["--plan", "/tmp/cnipa-plan.json", "--execute-live-cnipa"]),
     ).toThrow(/--output is required/i);
   });
 

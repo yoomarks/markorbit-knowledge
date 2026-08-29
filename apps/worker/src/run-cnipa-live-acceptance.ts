@@ -49,7 +49,8 @@ export function parseCnipaLiveAcceptanceArguments(args: string[]): CliArguments 
     throw new Error(`Unknown CNIPA live acceptance argument: ${arg}`);
   }
   if (!planPath) throw new Error("--plan is required");
-  if (executeLive && !outputDirectory) throw new Error("--output is required with --execute-live-cnipa");
+  if (executeLive && !outputDirectory)
+    throw new Error("--output is required with --execute-live-cnipa");
   return {
     planPath: path.resolve(planPath),
     ...(outputDirectory ? { outputDirectory: path.resolve(outputDirectory) } : {}),

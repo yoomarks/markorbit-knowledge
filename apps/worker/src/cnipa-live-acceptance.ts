@@ -12,7 +12,8 @@ import type { CnipaAuthenticatedSessionExecutorFactory } from "@markorbit/worker
 
 const PROBE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const FIELD_NAME_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
-const SENSITIVE_FIELD = /(?:^|[-_.])(authorization|cookie|token|secret|password|passwd|credential|auth|api[-_.]?key|access[-_.]?key)(?:$|[-_.])/i;
+const SENSITIVE_FIELD =
+  /(?:^|[-_.])(authorization|cookie|token|secret|password|passwd|credential|auth|api[-_.]?key|access[-_.]?key)(?:$|[-_.])/i;
 const MAX_PROBES = 50;
 const MAX_FIELDS = 30;
 const MAX_STRING_VALUE_LENGTH = 4_096;
@@ -102,7 +103,8 @@ function query(value: unknown, label: string): Record<string, string> | undefine
   const input = record(value);
   if (!input) fail(`${label} must be an object`);
   const entries = Object.entries(input);
-  if (entries.length === 0 || entries.length > MAX_FIELDS) fail(`${label} has an invalid field count`);
+  if (entries.length === 0 || entries.length > MAX_FIELDS)
+    fail(`${label} has an invalid field count`);
   const result: Record<string, string> = {};
   for (const [key, raw] of entries) {
     result[fieldName(key, `${label} key`)] = boundedString(raw, `${label}.${key}`);
@@ -115,7 +117,8 @@ function jsonBody(value: unknown, label: string): Record<string, string | number
   const input = record(value);
   if (!input) fail(`${label} must be an object`);
   const entries = Object.entries(input);
-  if (entries.length === 0 || entries.length > MAX_FIELDS) fail(`${label} has an invalid field count`);
+  if (entries.length === 0 || entries.length > MAX_FIELDS)
+    fail(`${label} has an invalid field count`);
   const result: Record<string, string | number> = {};
   for (const [key, raw] of entries) {
     const safeKey = fieldName(key, `${label} key`);
@@ -191,7 +194,11 @@ export function parseCnipaLiveAcceptancePlan(value: unknown): CnipaLiveAcceptanc
   if (!input) fail("root must be an object");
   assertOnlyKeys(input, ["version", "probes"], "root");
   if (input.version !== 1) fail("version must be 1");
-  if (!Array.isArray(input.probes) || input.probes.length === 0 || input.probes.length > MAX_PROBES) {
+  if (
+    !Array.isArray(input.probes) ||
+    input.probes.length === 0 ||
+    input.probes.length > MAX_PROBES
+  ) {
     fail(`probes must contain between 1 and ${MAX_PROBES} entries`);
   }
   const probes = input.probes.map(probe);
@@ -203,13 +210,19 @@ export function parseCnipaLiveAcceptancePlan(value: unknown): CnipaLiveAcceptanc
   return { version: 1, probes };
 }
 
-export function assertPathOutsideWorkingTree(target: string, workingDirectory = process.cwd()): string {
+export function assertPathOutsideWorkingTree(
+  target: string,
+  workingDirectory = process.cwd(),
+): string {
   if (!path.isAbsolute(target)) throw new Error("CNIPA live acceptance path must be absolute");
   const resolvedTarget = path.resolve(target);
   const resolvedWorkingDirectory = path.resolve(workingDirectory);
   const relative = path.relative(resolvedWorkingDirectory, resolvedTarget);
   const inside = relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
-  if (inside) throw new Error("CNIPA live acceptance plan/evidence paths must be outside the repository working tree");
+  if (inside)
+    throw new Error(
+      "CNIPA live acceptance plan/evidence paths must be outside the repository working tree",
+    );
   return resolvedTarget;
 }
 
