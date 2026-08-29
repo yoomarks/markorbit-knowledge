@@ -42,7 +42,10 @@ export function loadProductionValidationWave(
   let parsed: unknown;
   try {
     parsed = JSON.parse(
-      readFileSync(/* turbopackIgnore: true */ absolutePath, "utf8"),
+      readFileSync(
+        /* turbopackIgnore: true */ absolutePath,
+        "utf8",
+      ),
     ) as unknown;
   } catch (error) {
     throw new RegistryValidationError(
