@@ -13,7 +13,8 @@ import type { CnipaAuthenticatedSessionExecutorFactory } from "@markorbit/worker
 const PROBE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const FIELD_NAME_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
 const SENSITIVE_FIELD =
-  /(?:^|[-_.])(authorization|cookie|token|secret|password|passwd|credential|auth|api[-_.]?key|access[-_.]?key)(?:$|[-_.])/i;
+  /(authorization|cookie|token|secret|password|passwd|credential|api[-_.]?key|access[-_.]?key)/i;
+const AUTH_FIELD = /(?:^|[-_.])auth(?:$|[-_.])/i;
 const MAX_PROBES = 50;
 const MAX_FIELDS = 30;
 const MAX_STRING_VALUE_LENGTH = 4_096;
@@ -80,7 +81,7 @@ function assertOnlyKeys(input: Record<string, unknown>, allowed: readonly string
 }
 
 function fieldName(value: string, label: string): string {
-  if (!FIELD_NAME_PATTERN.test(value) || SENSITIVE_FIELD.test(value)) {
+  if (!FIELD_NAME_PATTERN.test(value) || SENSITIVE_FIELD.test(value) || AUTH_FIELD.test(value)) {
     fail(`${label} is invalid or credential-like`);
   }
   return value;
