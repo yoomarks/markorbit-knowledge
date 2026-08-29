@@ -35,10 +35,10 @@ export function parseProductionValidationManifest(
 export function loadProductionValidationWave(
   path = process.env.MARKORBIT_PRODUCTION_VALIDATION_MANIFEST_PATH ?? DEFAULT_MANIFEST_PATH,
 ): ProductionValidationCoverageLinkedManifest {
-  const absolutePath = resolve(repositoryRoot(), path);
+  const absolutePath = resolve(/* turbopackIgnore: true */ repositoryRoot(), path);
   let parsed: unknown;
   try {
-    parsed = JSON.parse(readFileSync(absolutePath, "utf8")) as unknown;
+    parsed = JSON.parse(readFileSync(/* turbopackIgnore: true */ absolutePath, "utf8")) as unknown;
   } catch (error) {
     throw new RegistryValidationError(
       `Unable to load production validation manifest at ${absolutePath}: ${
