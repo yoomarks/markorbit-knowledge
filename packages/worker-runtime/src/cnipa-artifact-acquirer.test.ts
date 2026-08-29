@@ -51,7 +51,7 @@ function context(): ArtifactBackedExecutionContext {
         },
       },
     },
-  } as ArtifactBackedExecutionContext;
+  } as unknown as ArtifactBackedExecutionContext;
 }
 
 describe("CnipaJudgmentArtifactAcquirer", () => {
