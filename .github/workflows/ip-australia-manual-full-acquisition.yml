@@ -9,6 +9,7 @@ on:
       - apps/worker/src/ip-australia-manual-inventory.ts
       - apps/worker/src/ip-australia-manual-article-fidelity.ts
       - apps/worker/src/ip-australia-manual-full-acquisition.ts
+      - apps/worker/src/ip-australia-manual-full-acquisition-cli.ts
       - apps/worker/src/acquire-ip-australia-manual-corpus.ts
       - apps/worker/package.json
       - pnpm-lock.yaml
@@ -36,33 +37,38 @@ jobs:
         shell: bash
         run: |
           set +e
-          mkdir -p "$RUNNER_TEMP/ip-australia-manual-full-acquisition"
+          evidence_dir="$RUNNER_TEMP/ip-australia-manual-full-acquisition"
+          report_path="$evidence_dir/report.json"
+          mkdir -p "$evidence_dir"
           pnpm --filter @markorbit/worker acquire:ip-australia-manual -- \
-            --concurrency=2 --delay-ms=500 \
-            > "$RUNNER_TEMP/ip-australia-manual-full-acquisition/report.json"
+            --concurrency=2 --delay-ms=500 --output="$report_path"
           status=$?
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
-          node -e '
-            const fs = require("fs");
-            const report = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/ip-australia-manual-full-acquisition/report.json", "utf8"));
-            const failed = report.pages.filter((page) => !page.ok);
-            const lines = [
-              "## IP Australia Manual Full Acquisition",
-              "",
-              `- Inventory pages: ${report.inventoryPageCount}`,
-              `- Acquired: ${report.acquiredPageCount}`,
-              `- Failed: ${report.failedPageCount}`,
-              `- Published-date fields: ${report.pagesWithPublishedDateCount}`,
-              `- Amendment-history pages: ${report.pagesWithAmendmentHistoryCount}`,
-              `- Controlled notices: ${report.pagesWithControlledNoticeCount}`,
-              `- Body characters: ${report.totalBodyCharacters}`,
-              `- Concurrency: ${report.concurrency}`,
-              `- Delay per batch: ${report.interBatchDelayMs} ms`,
-              "",
-              ...(failed.length ? ["### Failed pages", "", ...failed.slice(0, 50).map((page) => `- ${page.uri}: ${page.error ?? "unknown"}`)] : ["All inventoried pages acquired successfully."]),
-            ];
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
-          '
+          if [ -s "$report_path" ]; then
+            node -e '
+              const fs = require("fs");
+              const report = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/ip-australia-manual-full-acquisition/report.json", "utf8"));
+              const failed = report.pages.filter((page) => !page.ok);
+              const lines = [
+                "## IP Australia Manual Full Acquisition",
+                "",
+                `- Inventory pages: ${report.inventoryPageCount}`,
+                `- Acquired: ${report.acquiredPageCount}`,
+                `- Failed: ${report.failedPageCount}`,
+                `- Published-date fields: ${report.pagesWithPublishedDateCount}`,
+                `- Amendment-history pages: ${report.pagesWithAmendmentHistoryCount}`,
+                `- Controlled notices: ${report.pagesWithControlledNoticeCount}`,
+                `- Body characters: ${report.totalBodyCharacters}`,
+                `- Concurrency: ${report.concurrency}`,
+                `- Delay per batch: ${report.interBatchDelayMs} ms`,
+                "",
+                ...(failed.length ? ["### Failed pages", "", ...failed.slice(0, 50).map((page) => `- ${page.uri}: ${page.error ?? "unknown"}`)] : ["All inventoried pages acquired successfully."]),
+              ];
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+            '
+          else
+            printf '## IP Australia Manual Full Acquisition\n\n- Acquisition command exited: %s\n- No JSON report was emitted.\n' "$status" >> "$GITHUB_STEP_SUMMARY"
+          fi
           exit 0
       - name: Upload full Manual acquisition evidence
         if: always()
