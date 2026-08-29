@@ -59,6 +59,21 @@ describe("CNIPA live acceptance harness", () => {
         ],
       }),
     ).toThrow(/credential-like/i);
+    expect(() =>
+      parseCnipaLiveAcceptancePlan({
+        version: 1,
+        probes: [
+          {
+            id: "cookie-field",
+            documentKind: "REGISTRATION_EXAMINATION",
+            surface: "LIST",
+            method: "POST",
+            path: "/pubnotice/portal/tmscJudgment/queryPageList",
+            jsonBody: { cookieHeader: "must-not-be-accepted" },
+          },
+        ],
+      }),
+    ).toThrow(/credential-like/i);
   });
 
   it("requires an explicit live switch before output is required", () => {
