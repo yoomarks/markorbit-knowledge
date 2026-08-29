@@ -61,7 +61,9 @@ The 2026-08-29 representative-source audit also exposed a separate CNIPA public-
 
 PR #591 therefore keeps the representative CN `SEARCH` target on an anonymously readable official CNIPA access-guidance surface and records the real search service as a protected/login-required entrypoint. The anonymous contract is `WEB_CRAWL` with `HTML`/`MARKDOWN`, no JavaScript requirement, and no invented JSON result claim. It also adds a fail-fast invariant so the WEB representative-canary runner cannot silently accept future artifact contracts outside its real Crawl4AI output capability.
 
-Exact head `203c08a6de863607fbae35d0e631e360c894f47f` passed `Validate` on Node 22 and Node 24 through Python compile/tests, format, lint, typecheck, full workspace tests and build; UI Preview also passed. The external CN strict live canary remains deliberately unclaimed because #591 is stacked on #589 rather than targeting `main`, and the connected GitHub tool surface does not expose workflow dispatch. This is a pending live-observation gate, not a reason to restore the superseded anonymous `HTML + JSON` assumption.
+Exact head `203c08a6de863607fbae35d0e631e360c894f47f` passed `Validate` on Node 22 and Node 24 through Python compile/tests, format, lint, typecheck, full workspace tests and build; UI Preview also passed. Temporary validation-only PR #592 then targeted that same source head at `main` solely to trigger the real Representative Source Live Canary. Run `33257215728` proved CN twice without code changes: attempt 1 PASS in 3.370s and attempt 2 PASS in 3.382s, each with one page, two `HTML`/`MARKDOWN` artifacts, zero missing expected kinds and 14,698 bytes. The evidence artifacts are `9716207455` (`sha256:9e0565813c85e63bb708cf27a813bdc35416c0d8cc74c360c1e94b7ebe5f7d1d`) and `9716291879` (`sha256:262e505032dc76fc646939f6ff9340c3814c70a2a02a88e3b60038536562d94d`).
+
+The whole 13-country matrix is deliberately not described as 13/13 because unrelated public-site availability varied between attempts: India had a one-off DNS timeout on attempt 1 but passed attempt 2; Korea timed out on both primary/baseline and UAE primary timed out on attempt 2, while prior #589 evidence had Korea and UAE passing. Those transients do not change the repeated exact-head CN acceptance. PR #592 was closed without merge after recording the evidence back to #590/#591.
 
 ### Runtime simplification
 
@@ -79,7 +81,7 @@ These removals reduce duplicate authority rather than remove production behavior
 
 The latest cleanup PR (#587) passed the exact-head canonical `Validate` workflow on Node 22 and Node 24, including Python worker checks, format, lint, typecheck, tests and build. The cleanup also removed the previously reported unused-symbol lint warnings without changing runtime contracts.
 
-The later source-coverage branches remain separately reviewable rather than being treated as merged main: PR #589 has exact-head Node 22/24 validation plus representative live evidence at 12/13 PASS with only the superseded CN target degraded, while stacked PR #591 has exact-head Node 22/24 validation and UI Preview green with the corrected CN contract. Do not report either branch as merged until their protected-branch review/merge gates actually complete.
+The later source-coverage branches remain separately reviewable rather than being treated as merged main: PR #589 has exact-head Node 22/24 validation plus representative live evidence at 12/13 PASS with only the superseded CN target degraded, while stacked PR #591 has exact-head Node 22/24 validation and UI Preview green plus repeated real CN live PASS evidence from validation-only PR #592. Do not report either branch as merged until their protected-branch review/merge gates actually complete.
 
 ## Active gates
 
@@ -109,7 +111,7 @@ No additional generic CNIPA framework should be added before authenticated evide
 
 ### 3. #590 — CNIPA public trademark-search acquisition boundary
 
-The engineering correction is implemented in stacked PR #591 and exact-head CI is green. The remaining acceptance step is a real strict CN representative live observation against the corrected anonymous guidance target in a `main`-targeted or manually dispatched workflow context.
+The engineering correction is implemented in stacked PR #591, exact-head CI is green, and the corrected anonymous guidance target has now passed the real CN representative live canary twice on the same exact source head. The remaining repository gate is protected review/merge of #589 followed by #591; no additional CN acquisition implementation or live observation is required for #590.
 
 Do not reopen anonymous JSON/API acquisition for CNIPA trademark search without new official evidence of a stable anonymous structured endpoint. The repository already has a governed production API acquirer for genuine API sources; that does not turn an authenticated CNIPA browser service into an anonymous API.
 
@@ -133,7 +135,7 @@ Do not spend provider credits from ordinary repository-maintenance authority and
 
 1. Restore and verify #429 independent review enforcement at repository-admin level.
 2. Execute #573 authenticated CNIPA Phase 3 only with an authorized human session; freeze verified schema/coverage facts from evidence only.
-3. Complete #590 only after a real strict CN representative live observation proves the corrected anonymous guidance target; do not substitute fake JSON or authenticated search automation.
+3. Complete protected review/merge of #589 and then stacked #591; #590 needs no further CN acquisition implementation or live-canary rerun.
 4. Keep #468 on the existing Knowledge consumer boundary while Core #305 owns production communication runtime/provider activation.
 5. Keep #405 manual and explicitly authorized; no automatic paid execution.
 6. Continue source/product breadth only when a concrete evidence-backed gap exists; do not create another ingestion, scheduling, communication, semantic-scoring or execution framework.
