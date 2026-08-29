@@ -35,7 +35,10 @@ export function parseProductionValidationManifest(
 export function loadProductionValidationWave(
   path = process.env.MARKORBIT_PRODUCTION_VALIDATION_MANIFEST_PATH ?? DEFAULT_MANIFEST_PATH,
 ): ProductionValidationCoverageLinkedManifest {
-  const absolutePath = resolve(/* turbopackIgnore: true */ repositoryRoot(), path);
+  const absolutePath = resolve(
+    /* turbopackIgnore: true */ repositoryRoot(),
+    path,
+  );
   let parsed: unknown;
   try {
     parsed = JSON.parse(
