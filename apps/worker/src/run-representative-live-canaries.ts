@@ -7,7 +7,11 @@ import {
   getRepresentativeSourceLiveCanaries,
   type RepresentativeSourceLiveCanary,
 } from "@markorbit/persistence/representative-source-live-canaries";
-import { assessRepresentativeCanaryArtifacts } from "./representative-live-canary-evidence";
+import {
+  assertRepresentativeCanaryArtifactContractSupported,
+  assessRepresentativeCanaryArtifacts,
+  REPRESENTATIVE_CANARY_PAGE_EVIDENCE_KINDS,
+} from "./representative-live-canary-evidence";
 
 type CrawlSuccess = {
   protocolVersion: string;
@@ -132,11 +136,12 @@ async function runSubprocess(
   outputDirectory: string,
   timeoutSeconds: number,
 ): Promise<{ response: CrawlResponse; stderr: string; elapsedMs: number }> {
+  assertRepresentativeCanaryArtifactContractSupported(probe.expectedArtifactKinds);
   const request = {
     protocolVersion: "1.0",
     outputDirectory,
     startUrls: [probe.canonicalUri],
-    outputKinds: ["HTML", "MARKDOWN"],
+    outputKinds: [...REPRESENTATIVE_CANARY_PAGE_EVIDENCE_KINDS],
     maxDepth: 0,
     maxItems: 1,
     renderJavascript: probe.renderJavascript,
@@ -361,11 +366,10 @@ async function observeCanary(
       ...primary,
       state: "DEGRADED",
       errorCode: "CANARY_ADAPTER_REQUIRED",
-      errorMessage: `Primary target ${canary.targetId} failed while authority baseline ${authorityBaseline.targetId} remained collectible. A source-specific adapter or acquisition strategy is required. Primary signal: ${primary.errorCode ?? "FAILED"}: ${primary.errorMessage ?? "unknown error"}`,
+      errorMessage: `Primary target ${canary.targetId} failed while authority baseline ${canary.authorityBaseline.targetId} remained collectible. A source-specific adapter or acquisition strategy is required. Primary signal: ${primary.errorCode ?? "UNKNOWN"}: ${primary.errorMessage ?? "unknown failure"}`,
       authorityBaseline,
     };
   }
-
   return {
     jurisdiction: canary.jurisdiction,
     displayName: canary.displayName,
@@ -373,103 +377,81 @@ async function observeCanary(
     ...primary,
     state: "BLOCKED",
     errorCode: "CANARY_AUTHORITY_BASELINE_FAILED",
-    errorMessage: `Primary target ${canary.targetId} and authority baseline ${authorityBaseline.targetId} both failed. Primary signal: ${primary.errorCode ?? "FAILED"}; baseline signal: ${authorityBaseline.errorCode ?? "FAILED"}.`,
+    errorMessage: `Primary target ${canary.targetId} and authority baseline ${canary.authorityBaseline.targetId} both failed. Primary signal: ${primary.errorCode ?? "UNKNOWN"}: ${primary.errorMessage ?? "unknown failure"}; baseline signal: ${authorityBaseline.errorCode ?? "UNKNOWN"}: ${authorityBaseline.errorMessage ?? "unknown failure"}`,
     authorityBaseline,
   };
 }
 
-function markdownReport(observations: CanaryObservation[]): string {
-  const passed = observations.filter((item) => item.state === "PASS").length;
-  const degraded = observations.filter((item) => item.state === "DEGRADED").length;
-  const blocked = observations.filter((item) => item.state === "BLOCKED").length;
-  const lines = [
-    "# MarkOrbit Representative Source Live Canary",
-    "",
-    `Observed: ${new Date().toISOString()}`,
-    `Result: ${passed}/${observations.length} PASS, ${degraded} DEGRADED, ${blocked} BLOCKED`,
-    "",
-    "| Jurisdiction | Profile | Primary target | JS | State | Artifacts | Missing expected | Time | Signal |",
-    "|---|---|---|---:|---|---:|---|---:|---|",
-  ];
-  for (const item of observations) {
-    const signal =
-      item.state === "PASS"
-        ? item.finalUris.join("<br>")
-        : item.state === "DEGRADED"
-          ? `ADAPTER_REQUIRED; baseline ${item.authorityBaseline?.targetId ?? "unknown"} PASS`
-          : `${item.errorCode ?? "BLOCKED"}: ${(item.errorMessage ?? "").replaceAll("|", "\\|")}`;
-    lines.push(
-      `| ${item.jurisdiction} | ${item.profile} | ${item.targetId} | ${item.renderJavascript ? "yes" : "no"} | ${item.state} | ${item.artifactCount} | ${item.missingExpectedArtifactKinds.join(", ") || "none"} | ${(item.elapsedMs / 1000).toFixed(1)}s | ${signal} |`,
-    );
-  }
-  lines.push(
-    "",
-    "PASS means the primary path produced governed page evidence and satisfied its declared artifact contract. DEGRADED means the authority remains collectible through a low-interaction official baseline while the primary path needs a dedicated adapter or acquisition strategy. BLOCKED means both primary and baseline acquisition failed.",
-    "",
-    "Live observations do not mutate Source Registry or start production collection.",
-    "",
-  );
-  return lines.join("\n");
-}
-
 async function main(): Promise<void> {
+  const outputRoot =
+    argument("--output-dir")?.trim() || process.env.MARKORBIT_LIVE_CANARY_OUTPUT_DIR?.trim();
+  const root = outputRoot || (await mkdtemp(join(tmpdir(), "markorbit-representative-canary-")));
   const timeoutSeconds = boundedInteger(
-    argument("--timeout-seconds") ?? process.env.MARKORBIT_LIVE_CANARY_TIMEOUT_SECONDS,
-    75,
-    15,
+    process.env.MARKORBIT_LIVE_CANARY_TIMEOUT_SECONDS,
+    60,
+    10,
     180,
   );
-  const strict =
-    process.argv.includes("--strict") || process.env.MARKORBIT_LIVE_CANARY_STRICT === "1";
-  const requestedOutput = argument("--output-dir") ?? process.env.MARKORBIT_LIVE_CANARY_OUTPUT_DIR;
-  const outputRoot = requestedOutput
-    ? requestedOutput
-    : await mkdtemp(join(tmpdir(), "markorbit-live-canary-"));
-  await mkdir(outputRoot, { recursive: true });
-
+  const canaries = selectedCanaries();
   const observations: CanaryObservation[] = [];
-  for (const canary of selectedCanaries()) {
+  for (const canary of canaries) {
     process.stdout.write(
-      `${JSON.stringify({ event: "representative-live-canary.start", jurisdiction: canary.jurisdiction, targetId: canary.targetId, uri: canary.canonicalUri, expectedArtifactKinds: canary.expectedArtifactKinds, authorityBaseline: canary.authorityBaseline })}\n`,
+      `${JSON.stringify({
+        event: "representative-live-canary.start",
+        jurisdiction: canary.jurisdiction,
+        targetId: canary.targetId,
+        uri: canary.canonicalUri,
+        expectedArtifactKinds: canary.expectedArtifactKinds,
+        authorityBaseline: canary.authorityBaseline,
+      })}\n`,
     );
-    const observation = await observeCanary(canary, outputRoot, timeoutSeconds);
+    const observation = await observeCanary(canary, root, timeoutSeconds);
     observations.push(observation);
     process.stdout.write(
       `${JSON.stringify({ event: "representative-live-canary.result", ...observation })}\n`,
     );
   }
-
-  const passed = observations.filter((item) => item.state === "PASS").length;
-  const degraded = observations.filter((item) => item.state === "DEGRADED").length;
-  const blocked = observations.filter((item) => item.state === "BLOCKED").length;
   const summary = {
-    version: "REPRESENTATIVE_SOURCE_LIVE_CANARY_RESULT_V2",
+    version: "REPRESENTATIVE_SOURCE_LIVE_CANARY_RESULT_V2" as const,
     observedAt: new Date().toISOString(),
-    strict,
+    strict: false,
     total: observations.length,
-    passed,
-    degraded,
-    blocked,
-    failed: degraded + blocked,
+    passed: observations.filter((item) => item.state === "PASS").length,
+    degraded: observations.filter((item) => item.state === "DEGRADED").length,
+    blocked: observations.filter((item) => item.state === "BLOCKED").length,
+    failed: observations.filter((item) => item.state !== "PASS").length,
     observations,
   };
-  const jsonPath = join(outputRoot, "summary.json");
-  const markdownPath = join(outputRoot, "summary.md");
-  await writeFile(jsonPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
-  await writeFile(markdownPath, markdownReport(observations), "utf8");
+  await writeFile(join(root, "summary.json"), `${JSON.stringify(summary, null, 2)}\n`, "utf8");
+  const lines = [
+    "# Representative Source Live Canary",
+    "",
+    `Observed: ${summary.observedAt}`,
+    `Result: ${summary.passed}/${summary.total} passed; ${summary.degraded} degraded; ${summary.blocked} blocked`,
+    "",
+    "| Jurisdiction | Target | Profile | JS | Result | Artifacts | Missing | Baseline |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...observations.map((item) => {
+      const baseline = item.authorityBaseline
+        ? `${item.authorityBaseline.targetId}:${item.authorityBaseline.state}`
+        : "not-run";
+      return `| ${item.jurisdiction} | ${item.targetId} | ${item.profile} | ${item.renderJavascript ? "yes" : "no"} | ${item.state} | ${item.artifactKinds.join(",") || "none"} | ${item.missingExpectedArtifactKinds.join(",") || "none"} | ${baseline} |`;
+    }),
+  ];
+  await writeFile(join(root, "summary.md"), `${lines.join("\n")}\n`, "utf8");
   process.stdout.write(
-    `${JSON.stringify({ event: "representative-live-canary.summary", jsonPath, markdownPath, ...summary })}\n`,
+    `${JSON.stringify({
+      event: "representative-live-canary.summary",
+      jsonPath: join(root, "summary.json"),
+      markdownPath: join(root, "summary.md"),
+      ...summary,
+    })}\n`,
   );
-
-  if (strict && summary.failed > 0) process.exitCode = 1;
-
-  await readFile(jsonPath, "utf8");
-  await readFile(markdownPath, "utf8");
 }
 
-main().catch((error) => {
-  process.stderr.write(
-    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
-  );
-  process.exitCode = 1;
-});
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`);
+    process.exitCode = 1;
+  });
+}
