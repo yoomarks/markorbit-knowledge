@@ -40,11 +40,12 @@ type PriorityNationalCoverageTargetOverride = Partial<
 
 const IP_INDIA_SEARCH_GUIDANCE_URI =
   "https://ipindia.gov.in/trade-marks-before-you-apply-search-existing-trademarks";
+const IPONZ_SEARCH_GUIDANCE_URI = "https://www.iponz.govt.nz/get-ip/trade-marks/search/";
 
 /**
- * Evidence-driven corrections for national declarations whose public guidance and protected
- * service entrypoints have different acquisition boundaries. Keep these narrow and explicit:
- * they refine catalog evidence only and never authorize access to protected services.
+ * Evidence-driven corrections for national declarations whose public guidance and interactive
+ * or protected service entrypoints have different acquisition boundaries. Keep these narrow and
+ * explicit: they refine catalog evidence only and never authorize access to service entrypoints.
  */
 const PRIORITY_NATIONAL_CURATED_OVERRIDES: Readonly<
   Record<string, PriorityNationalCoverageTargetOverride>
@@ -71,6 +72,26 @@ const PRIORITY_NATIONAL_CURATED_OVERRIDES: Readonly<
     verificationEvidenceUri: IP_INDIA_SEARCH_GUIDANCE_URI,
     notes:
       "The canonical guidance page is publicly crawlable. Its two official search applications are protected by account/OTP or CAPTCHA/OTP; this coverage target does not claim anonymous structured-search access.",
+  },
+  "nz-iponz-trademark-search": {
+    displayName: "IPONZ Search for Existing Trade Marks Guidance",
+    canonicalUri: IPONZ_SEARCH_GUIDANCE_URI,
+    entrypoints: [
+      { uri: IPONZ_SEARCH_GUIDANCE_URI, label: "Trade mark search guidance" },
+      { uri: "https://app.iponz.govt.nz/app/TradeMarkCheck", label: "Trade Mark Check" },
+      {
+        uri: "https://app.iponz.govt.nz/app/Extra/Default.aspx?directAccess=true&fcoOp=EXTRA__Default&op=EXTRA_tm_qbe",
+        label: "Trade Mark Case Search",
+      },
+    ],
+    mode: "WEB_CRAWL",
+    renderJavascriptHint: false,
+    fetchAttachmentsHint: false,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verifiedAt: "2026-08-29T12:23:00Z",
+    verificationEvidenceUri: IPONZ_SEARCH_GUIDANCE_URI,
+    notes:
+      "The canonical IPONZ page is public search guidance and is anonymously crawlable as HTML/Markdown. Trade Mark Check and Trade Mark Case Search are separate interactive public entrypoints; this coverage target does not claim structured-result JSON or image artifacts from the guidance page.",
   },
 };
 
