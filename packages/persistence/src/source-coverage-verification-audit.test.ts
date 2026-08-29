@@ -95,7 +95,7 @@ describe("priority national source coverage verification", () => {
 
   it("keeps the live national catalog structurally auditable without changing its coverage data", () => {
     const audit = auditSourceCoverageVerification(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS, {
-      observedAt: new Date("2026-08-29T11:45:00Z"),
+      observedAt: new Date("2026-08-29T12:25:00Z"),
       maxAgeDays: 3650,
     });
     const jurisdictions = new Set(
