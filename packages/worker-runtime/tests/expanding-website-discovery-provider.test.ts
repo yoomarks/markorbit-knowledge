@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SourceCandidate, SourceDiscoveryBatch } from "@markorbit/contracts";
+import type { SourceCandidate } from "@markorbit/contracts";
 import { ExpandingWebsiteDiscoveryProvider, type SourceDiscoveryProvider } from "../src/index";
 
 function candidate(
@@ -23,13 +23,13 @@ function candidate(
 describe("ExpandingWebsiteDiscoveryProvider", () => {
   it("reserves the existing budgets and emits only one-hop external candidates", async () => {
     const seedLocator = "https://example.test/";
-    const primaryDiscover = vi.fn(async (batch: SourceDiscoveryBatch) => [
+    const primaryDiscover = vi.fn(async () => [
       candidate("cand_primary", "https://example.test/internal", seedLocator, {
         kind: "PAGE",
         robotsAllowed: true,
       }),
     ]);
-    const externalDiscover = vi.fn(async (batch: SourceDiscoveryBatch) => [
+    const externalDiscover = vi.fn(async () => [
       candidate("cand_duplicate", "https://example.test/internal", seedLocator, {
         kind: "PAGE",
         robotsAllowed: true,

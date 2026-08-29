@@ -14,11 +14,7 @@ import {
 } from "@markorbit/contracts";
 import { SqliteAiKnowledgeAssignmentRepository } from "@markorbit/persistence/ai-knowledge-assignments";
 import { SqliteAiSourcePackRepository } from "@markorbit/persistence/ai-source-packs";
-import { AiSourceGroundingError } from "@markorbit/worker-runtime/ai-source-pack-renderer";
-import {
-  PersistedAiGroundedExecutionPreparationError,
-  preparePersistedAiGroundedExecutionV1,
-} from "./prepare-adk-grounded-execution";
+import { preparePersistedAiGroundedExecutionV1 } from "./prepare-adk-grounded-execution";
 
 const SOURCE_ID = "src_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const ARTIFACT_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAV";

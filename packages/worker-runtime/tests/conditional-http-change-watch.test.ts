@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ExecutionAttempt, ExecutionReceipt } from "@markorbit/contracts";
+import type { ExecutionAttempt } from "@markorbit/contracts";
 import {
   ArtifactBackedCollectionExecutor,
   CollectionNotModifiedSignal,
@@ -140,7 +140,7 @@ describe("conditional HTTP change watch", () => {
 
 describe("ArtifactBackedCollectionExecutor HTTP 304 completion", () => {
   it("records 304 as metadata-only success without failure or RawArtifact upload", async () => {
-    const complete = vi.fn(async (_context, _receipt: ExecutionReceipt) => {});
+    const complete = vi.fn(async () => {});
     const fail = vi.fn(async () => {});
     const createArtifactSession = vi.fn();
     const client: ArtifactBackedExecutionClient = {
