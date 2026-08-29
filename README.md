@@ -32,22 +32,15 @@ Repository package version: **0.1.0**.
 
 The v0.1 control-plane trunk became **freeze-ready** on 2026-08-12. That decision remains the architectural baseline, but it is no longer the complete description of the repository.
 
-The current post-freeze phase is **official-source production validation and acquisition intelligence**:
+The current post-freeze phase is **official-source production validation and acquisition intelligence**. The repository now includes governed Wave 1 onboarding and scorecards, objective Change Evidence, live public-source validation, acquisition-learning/regression ledgers, reusable structural acquisition profiles, bounded Tavily discovery and Bright Data fallback routing, plus an operator-assisted authenticated CNIPA acquisition path whose real Phase 3 evidence remains pending.
 
-- governed data-driven onboarding for a 15-authority Wave 1 manifest;
-- durable production scorecards derived from Source, Run, RawArtifact, Conversion and Staging evidence;
-- objective Change Evidence across canonical content, raw binary replacements and linked attachments;
-- live golden-corpus validation for USPTO, WIPO, IP Australia and Country Index public material;
-- a governed acquisition-learning loop that records SourceFingerprint, run evidence, deterministic lessons, strategy candidates and explainable strategy selections;
-- reusable structural acquisition profiles for static indexes, TOC graphs, jurisdiction indexes and API document catalogs.
+The 2026-08-23 closeout remains a historical acceptance baseline. Since then, the repository has also consolidated production Worker/Scheduler execution onto the durable Worker Protocol / Execution Ledger path and removed obsolete semantic-scoring and in-memory execution scaffolds rather than creating parallel runtimes.
 
-The 2026-08-22 post-freeze closeout proves all current acquisition-intelligence PR gates green, including USPTO/WIPO/Country Index learning and the full IP Australia acquisition, change-watch and bulk-conversion paths. It does **not** declare all 15 Wave 1 authorities production-validated or claim persistent production deployment.
+The dedicated Knowledge -> Core intake boundary is no longer only a planned external dependency. The latest boundary-scoping acceptance passed a real cross-repository Core receiver/PostgreSQL E2E with durable Core `ACCEPTED` state on the exact audited Core pin. Core may advance independently after that acceptance; the freshness gate must be rerun when an intake-boundary path changes, and V2 must never fall back to the frozen V1 consumer.
 
-This does **not** mean every source/provider named in the original PRD v1.0 Draft is implemented. DATABASE connector breadth can be added later through the existing contracts without reopening the trunk architecture.
+Current open work is narrow rather than architectural: repository review-governance verification (#429), authenticated CNIPA Phase 3 live validation (#573), Core-owned production Shared Communication activation for the Expert live slice (#468 / Core #305), and explicitly authorized ADK-06 paid-provider acceptance (#405).
 
-The principal external activation dependency is completion and explicit cross-repository acceptance of the existing **MarkOrbit Core ReadyPackage V2 consumer**. Core PR #91 already implements the dedicated V2 ingress and durable delivery ledger, but the locked baseline still returns durable `RECEIVED`; the remaining P0 work is WP03–WP05: full Content Export V2 / Vault provenance validation, durable `ACCEPTED`, recovery semantics and eight real cross-repository E2E. Knowledge keeps production V2 activation gated until Core completion evidence is independently accepted in a non-production Knowledge→Core run. V2 must never fall back to the frozen V1 consumer.
-
-See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md) for the frozen baseline and [Post-freeze Production Validation Closeout](docs/release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md) for the current state and next production gates.
+See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md) for the frozen baseline, [Post-freeze Production Validation Closeout](docs/release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md) for the historical post-freeze checkpoint, and [Knowledge Current State 2026-08-29](docs/release/KNOWLEDGE_CURRENT_STATE_2026-08-29.md) for the current takeover baseline and active gates.
 
 ## Implemented production backbone
 
@@ -207,6 +200,7 @@ Normal pull-request validation covers formatting, lint, typecheck, tests and bui
 - [Product requirements v1.0 Draft](docs/product/MarkOrbit_Knowledge_PRD_v1.0.md)
 - [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md)
 - [Post-freeze Production Validation Closeout](docs/release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md)
+- [Knowledge Current State 2026-08-29](docs/release/KNOWLEDGE_CURRENT_STATE_2026-08-29.md)
 - [Production Validation Wave 1](docs/ops/production-validation-wave-1.md)
 - [K-EXT-E Operations Readiness Runbook](docs/operations/K_EXT_E_OPERATIONS_READINESS_RUNBOOK.md)
 - [Knowledge v0.1 Backup and Restore](docs/operations/KNOWLEDGE_V0_1_BACKUP_RESTORE.md)
