@@ -55,6 +55,14 @@ Verified implementation boundaries include:
 
 CNIPA is not yet production-accepted. Authenticated live evidence is still required for a real registration number across all three libraries, party-name/role mapping, list/detail identity semantics, page 11 / >100 behavior, coverage classification, and endpoint/schema promotion from operator-supplied unverified observations.
 
+### Public trademark-search source-boundary correction
+
+The 2026-08-29 representative-source audit also exposed a separate CNIPA public-search modeling problem tracked in #590 and PR #591. Current official CNIPA evidence shows that the real `wcjs.sbj.cnipa.gov.cn` trademark online-search service requires registration/sign-in under the unified identity boundary, so it must not be represented as an anonymously collectible JSON/API source.
+
+PR #591 therefore keeps the representative CN `SEARCH` target on an anonymously readable official CNIPA access-guidance surface and records the real search service as a protected/login-required entrypoint. The anonymous contract is `WEB_CRAWL` with `HTML`/`MARKDOWN`, no JavaScript requirement, and no invented JSON result claim. It also adds a fail-fast invariant so the WEB representative-canary runner cannot silently accept future artifact contracts outside its real Crawl4AI output capability.
+
+Exact head `203c08a6de863607fbae35d0e631e360c894f47f` passed `Validate` on Node 22 and Node 24 through Python compile/tests, format, lint, typecheck, full workspace tests and build; UI Preview also passed. The external CN strict live canary remains deliberately unclaimed because #591 is stacked on #589 rather than targeting `main`, and the connected GitHub tool surface does not expose workflow dispatch. This is a pending live-observation gate, not a reason to restore the superseded anonymous `HTML + JSON` assumption.
+
 ### Runtime simplification
 
 The repository intentionally retired obsolete parallel execution paths after the production path became durable:
@@ -70,6 +78,8 @@ These removals reduce duplicate authority rather than remove production behavior
 ### Current validation baseline
 
 The latest cleanup PR (#587) passed the exact-head canonical `Validate` workflow on Node 22 and Node 24, including Python worker checks, format, lint, typecheck, tests and build. The cleanup also removed the previously reported unused-symbol lint warnings without changing runtime contracts.
+
+The later source-coverage branches remain separately reviewable rather than being treated as merged main: PR #589 has exact-head Node 22/24 validation plus representative live evidence at 12/13 PASS with only the superseded CN target degraded, while stacked PR #591 has exact-head Node 22/24 validation and UI Preview green with the corrected CN contract. Do not report either branch as merged until their protected-branch review/merge gates actually complete.
 
 ## Active gates
 
@@ -97,15 +107,21 @@ Protected `adk-live` Environment administration remains an owner/admin verificat
 
 No additional generic CNIPA framework should be added before authenticated evidence exists. The next valid work is an authorized operator login/CAPTCHA session and the bounded Phase 3 live probe. Any unsupported identity, query field, pagination or completeness behavior must remain `UNKNOWN`/`PARTIAL` rather than being inferred.
 
-### 3. #468 — Expert Shared Communication live slice
+### 3. #590 — CNIPA public trademark-search acquisition boundary
+
+The engineering correction is implemented in stacked PR #591 and exact-head CI is green. The remaining acceptance step is a real strict CN representative live observation against the corrected anonymous guidance target in a `main`-targeted or manually dispatched workflow context.
+
+Do not reopen anonymous JSON/API acquisition for CNIPA trademark search without new official evidence of a stable anonymous structured endpoint. The repository already has a governed production API acquirer for genuine API sources; that does not turn an authenticated CNIPA browser service into an anonymous API.
+
+### 4. #468 — Expert Shared Communication live slice
 
 Knowledge already contains the outbound and inbound Core consumer seams from PR #538 and PR #540. Core #274/#283 provide the provider-neutral send/receipt/thread and immutable exact inbound-evidence contracts.
 
-The remaining blocker is Core-owned issue `yoomarks/markorbit#305`: production Capability Engine bootstrap still does not wire the Managed Communication exchange/thread/exact-evidence bindings and no concrete production `ManagedCommunicationProviderSenderV1` sender is currently verified.
+The remaining blocker is Core-owned issue `yoomarks/markorbit#305`. A fresh 2026-08-29 audit against current Core main `bde37b56c3ddba8afc3b127a2d06e1b4b553d37e` confirms that production `services/capability-engine/src/main.ts` still wires Managed AI and governed Capability runtime but does not construct/inject Managed Communication production bindings, and no concrete production provider sender is verified. Core #305 remains open with no implementation PR at this checkpoint.
 
 Do not add a Knowledge-local SMTP/Gmail/Graph transport. Resume Knowledge live acceptance only after Core #305 supplies the production runtime plus one real provider/account, then prove exactly-once Expert send -> durable receipt/thread -> real inbound reply -> immutable Core exact evidence -> Knowledge `ExpertSourceRecordV1` import -> replay without duplicate send/import.
 
-### 4. #405 — ADK-06 paid provider acceptance
+### 5. #405 — ADK-06 paid provider acceptance
 
 Repository-controlled readiness is complete enough for the frozen 3x2 DeepSeek/OpenAI pilot, but deterministic CI/fake execution is not final acceptance.
 
@@ -117,9 +133,10 @@ Do not spend provider credits from ordinary repository-maintenance authority and
 
 1. Restore and verify #429 independent review enforcement at repository-admin level.
 2. Execute #573 authenticated CNIPA Phase 3 only with an authorized human session; freeze verified schema/coverage facts from evidence only.
-3. Keep #468 on the existing Knowledge consumer boundary while Core #305 owns production communication runtime/provider activation.
-4. Keep #405 manual and explicitly authorized; no automatic paid execution.
-5. Continue source/product breadth only when a concrete evidence-backed gap exists; do not create another ingestion, scheduling, communication, semantic-scoring or execution framework.
+3. Complete #590 only after a real strict CN representative live observation proves the corrected anonymous guidance target; do not substitute fake JSON or authenticated search automation.
+4. Keep #468 on the existing Knowledge consumer boundary while Core #305 owns production communication runtime/provider activation.
+5. Keep #405 manual and explicitly authorized; no automatic paid execution.
+6. Continue source/product breadth only when a concrete evidence-backed gap exists; do not create another ingestion, scheduling, communication, semantic-scoring or execution framework.
 
 ## Historical-document rule
 
