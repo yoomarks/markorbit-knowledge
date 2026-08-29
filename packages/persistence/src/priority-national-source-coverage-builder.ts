@@ -34,6 +34,93 @@ export type PriorityNationalCoverageTargetInput = {
   notes?: string;
 };
 
+type PriorityNationalCoverageTargetOverride = Partial<
+  Omit<PriorityNationalCoverageTargetInput, "id" | "family">
+>;
+
+const CNIPA_SEARCH_GUIDANCE_URI =
+  "https://www.cnipa.gov.cn/jact/front/mailpubdetail.do?sysid=13&transactId=502906";
+const CNIPA_SEARCH_LANDING_URI = "https://sbj.cnipa.gov.cn/sbj/sbcx/";
+const CNIPA_SEARCH_SERVICE_URI = "https://wcjs.sbj.cnipa.gov.cn/";
+const CNIPA_SSO_NOTICE_URI = "https://sbj.cnipa.gov.cn/sbj/tzgg/202512/t20251203_36767.html";
+const IP_INDIA_SEARCH_GUIDANCE_URI =
+  "https://ipindia.gov.in/trade-marks-before-you-apply-search-existing-trademarks";
+const IPONZ_SEARCH_GUIDANCE_URI = "https://www.iponz.govt.nz/get-ip/trade-marks/search/";
+
+/**
+ * Evidence-driven corrections for national declarations whose public guidance and interactive
+ * or protected service entrypoints have different acquisition boundaries. Keep these narrow and
+ * explicit: they refine catalog evidence only and never authorize access to service entrypoints.
+ */
+const PRIORITY_NATIONAL_CURATED_OVERRIDES: Readonly<
+  Record<string, PriorityNationalCoverageTargetOverride>
+> = {
+  "cn-cnipa-trademark-search": {
+    displayName: "CNIPA Trademark Search Access Guidance",
+    canonicalUri: CNIPA_SEARCH_GUIDANCE_URI,
+    entrypoints: [
+      { uri: CNIPA_SEARCH_GUIDANCE_URI, label: "Official trademark search access guidance" },
+      { uri: CNIPA_SEARCH_LANDING_URI, label: "Trademark search landing and usage notice" },
+      {
+        uri: CNIPA_SEARCH_SERVICE_URI,
+        label: "Protected trademark online search (account sign-in required)",
+      },
+      { uri: CNIPA_SSO_NOTICE_URI, label: "Unified identity authentication notice" },
+    ],
+    mode: "WEB_CRAWL",
+    renderJavascriptHint: false,
+    fetchAttachmentsHint: false,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verifiedAt: "2026-08-29T12:25:00Z",
+    verificationEvidenceUri: CNIPA_SEARCH_GUIDANCE_URI,
+    notes:
+      "The canonical CNIPA page is anonymously readable official guidance confirming that trademark online search requires account registration or sign-in. The current query service is a separate protected entrypoint; this coverage target does not claim anonymous structured-result JSON acquisition and does not authorize authentication automation.",
+  },
+  "in-ipindia-trademark-search": {
+    displayName: "IP India Search Existing Trademarks Guidance",
+    canonicalUri: IP_INDIA_SEARCH_GUIDANCE_URI,
+    entrypoints: [
+      { uri: IP_INDIA_SEARCH_GUIDANCE_URI, label: "Search guidance" },
+      {
+        uri: "https://tmsearch.ipindia.gov.in/ords/r/tisa/trademark_search600/login",
+        label: "Protected AI/ML search (account + OTP)",
+      },
+      {
+        uri: "https://tmrsearch.ipindia.gov.in/tmrpublicsearch/",
+        label: "Protected public search (CAPTCHA + OTP)",
+      },
+    ],
+    mode: "WEB_CRAWL",
+    renderJavascriptHint: false,
+    fetchAttachmentsHint: false,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verifiedAt: "2026-08-29T11:36:00Z",
+    verificationEvidenceUri: IP_INDIA_SEARCH_GUIDANCE_URI,
+    notes:
+      "The canonical guidance page is publicly crawlable. Its two official search applications are protected by account/OTP or CAPTCHA/OTP; this coverage target does not claim anonymous structured-search access.",
+  },
+  "nz-iponz-trademark-search": {
+    displayName: "IPONZ Search for Existing Trade Marks Guidance",
+    canonicalUri: IPONZ_SEARCH_GUIDANCE_URI,
+    entrypoints: [
+      { uri: IPONZ_SEARCH_GUIDANCE_URI, label: "Trade mark search guidance" },
+      { uri: "https://app.iponz.govt.nz/app/TradeMarkCheck", label: "Trade Mark Check" },
+      {
+        uri: "https://app.iponz.govt.nz/app/Extra/Default.aspx?directAccess=true&fcoOp=EXTRA__Default&op=EXTRA_tm_qbe",
+        label: "Trade Mark Case Search",
+      },
+    ],
+    mode: "WEB_CRAWL",
+    renderJavascriptHint: false,
+    fetchAttachmentsHint: false,
+    expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    verifiedAt: "2026-08-29T12:23:00Z",
+    verificationEvidenceUri: IPONZ_SEARCH_GUIDANCE_URI,
+    notes:
+      "The canonical IPONZ page is public search guidance and is anonymously crawlable as HTML/Markdown. Trade Mark Check and Trade Mark Case Search are separate interactive public entrypoints; this coverage target does not claim structured-result JSON or image artifacts from the guidance page.",
+  },
+};
+
 /**
  * Builds a version-controlled national coverage target. The catalog declaration is
  * evidence metadata only; it never creates a Source, CollectionPlan or collection authorization.
@@ -45,6 +132,11 @@ export function buildPriorityNationalSourceCoverageTarget(
   authority: PriorityNationalCoverageAuthority,
   input: PriorityNationalCoverageTargetInput,
 ): SourceCoverageTarget {
+  const resolvedInput = {
+    ...input,
+    ...PRIORITY_NATIONAL_CURATED_OVERRIDES[input.id],
+  } satisfies PriorityNationalCoverageTargetInput;
+
   return {
     protocolVersion: SOURCE_COVERAGE_PROTOCOL_VERSION,
     objectType: "SOURCE_COVERAGE_TARGET",
@@ -55,22 +147,23 @@ export function buildPriorityNationalSourceCoverageTarget(
     category: "OFFICIAL_AUTHORITY",
     authorityLevel: "PRIMARY_OFFICIAL",
     languages: [...authority.languages],
-    catalogState: input.catalogState ?? "ACTIVE",
-    coverageTier: input.coverageTier ?? "FOUNDATIONAL",
-    changeSensitivity: input.changeSensitivity ?? "HIGH",
-    verifiedAt: input.verifiedAt ?? PRIORITY_NATIONAL_DEFAULT_VERIFIED_AT,
-    id: input.id,
-    family: input.family,
-    displayName: input.displayName,
-    canonicalUri: input.canonicalUri,
-    entrypoints: input.entrypoints ?? [{ uri: input.canonicalUri }],
+    catalogState: resolvedInput.catalogState ?? "ACTIVE",
+    coverageTier: resolvedInput.coverageTier ?? "FOUNDATIONAL",
+    changeSensitivity: resolvedInput.changeSensitivity ?? "HIGH",
+    verifiedAt: resolvedInput.verifiedAt ?? PRIORITY_NATIONAL_DEFAULT_VERIFIED_AT,
+    id: resolvedInput.id,
+    family: resolvedInput.family,
+    displayName: resolvedInput.displayName,
+    canonicalUri: resolvedInput.canonicalUri,
+    entrypoints: resolvedInput.entrypoints ?? [{ uri: resolvedInput.canonicalUri }],
     acquisition: {
-      mode: input.mode ?? "WEB_CRAWL",
-      renderJavascriptHint: input.renderJavascriptHint ?? false,
-      fetchAttachmentsHint: input.fetchAttachmentsHint ?? false,
-      expectedArtifactKinds: input.expectedArtifactKinds ?? ["HTML", "MARKDOWN"],
+      mode: resolvedInput.mode ?? "WEB_CRAWL",
+      renderJavascriptHint: resolvedInput.renderJavascriptHint ?? false,
+      fetchAttachmentsHint: resolvedInput.fetchAttachmentsHint ?? false,
+      expectedArtifactKinds: resolvedInput.expectedArtifactKinds ?? ["HTML", "MARKDOWN"],
     },
-    verificationEvidenceUri: input.verificationEvidenceUri ?? authority.verificationEvidenceUri,
-    ...(input.notes ? { notes: input.notes } : {}),
+    verificationEvidenceUri:
+      resolvedInput.verificationEvidenceUri ?? authority.verificationEvidenceUri,
+    ...(resolvedInput.notes ? { notes: resolvedInput.notes } : {}),
   };
 }

@@ -57,12 +57,17 @@ describe("representative source live canaries", () => {
     }
   });
 
-  it("uses the stable CNIPA filing guide as the authority baseline for trademark search", () => {
+  it("uses public CNIPA access guidance with the stable filing guide as authority baseline", () => {
     const china = getRepresentativeSourceLiveCanaries().find(
       (canary) => canary.jurisdiction === "CN",
     );
-    expect(china?.targetId).toBe("cn-cnipa-trademark-search");
-    expect(china?.expectedArtifactKinds).toEqual(["HTML", "JSON"]);
+    expect(china).toMatchObject({
+      targetId: "cn-cnipa-trademark-search",
+      canonicalUri:
+        "https://www.cnipa.gov.cn/jact/front/mailpubdetail.do?sysid=13&transactId=502906",
+      renderJavascript: false,
+      expectedArtifactKinds: ["HTML", "MARKDOWN"],
+    });
     expect(china?.authorityBaseline).toEqual({
       targetId: "cn-cnipa-trademark-filing-guide",
       family: "FILING",

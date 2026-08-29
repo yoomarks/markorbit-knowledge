@@ -11,6 +11,24 @@ function normalizedKinds(kinds: readonly string[]): string[] {
   return [...new Set(kinds)].sort();
 }
 
+export function unsupportedRepresentativeCanaryArtifactKinds(
+  expectedArtifactKinds: readonly string[],
+): string[] {
+  const supported = new Set<string>(REPRESENTATIVE_CANARY_PAGE_EVIDENCE_KINDS);
+  return normalizedKinds(expectedArtifactKinds).filter((kind) => !supported.has(kind));
+}
+
+export function assertRepresentativeCanaryArtifactContractSupported(
+  expectedArtifactKinds: readonly string[],
+): void {
+  const unsupported = unsupportedRepresentativeCanaryArtifactKinds(expectedArtifactKinds);
+  if (unsupported.length > 0) {
+    throw new Error(
+      `Representative WEB canary cannot produce expected artifact kinds with its Crawl4AI page executor: ${unsupported.join(", ")}`,
+    );
+  }
+}
+
 export function assessRepresentativeCanaryArtifacts(input: {
   observedArtifactKinds: readonly string[];
   expectedArtifactKinds: readonly string[];
