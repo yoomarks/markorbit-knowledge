@@ -128,7 +128,8 @@ function partySchemas(
   ]);
   const result: Partial<Record<CnipaDocumentKind, readonly CnipaPartyFieldSchema[]>> = {};
   for (const [kind, rawMappings] of Object.entries(input)) {
-    if (!allowedKinds.has(kind as CnipaDocumentKind)) {
+    const documentKind = kind as CnipaDocumentKind;
+    if (!allowedKinds.has(documentKind)) {
       return schemaError(`Unsupported CNIPA document kind in party schema: ${kind}`);
     }
     if (!Array.isArray(rawMappings) || rawMappings.length > 10) {
@@ -141,12 +142,17 @@ function partySchemas(
       if (typeof role !== "string" || !PARTY_ROLES.has(role as CnipaPartyRole)) {
         return schemaError(`${kind} party mapping ${index} has an unsupported role`);
       }
+      if (documentKind === "OPPOSITION_DECISION" && role !== "UNVERIFIED") {
+        return schemaError(
+          "OPPOSITION_DECISION party roles must remain UNVERIFIED until Phase 3 authenticates the source-field semantics",
+        );
+      }
       return {
         field: fieldName(mapping.field, `${kind} party mapping ${index}.field`),
         role: role as CnipaPartyRole,
       };
     });
-    result[kind as CnipaDocumentKind] = mappings;
+    result[documentKind] = mappings;
   }
   return result;
 }
