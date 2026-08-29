@@ -2,6 +2,7 @@ import {
   ApiArtifactAcquirer,
   BrightDataFallbackAcquirer,
   BrightDataWebUnlockerClient,
+  CollectionAcquisitionError,
   ControlledCollectionWorkerRuntime,
   Crawl4AiSubprocessAcquirer,
   GitHubArtifactAcquirer,
@@ -248,6 +249,18 @@ async function main(): Promise<void> {
       consecutiveFailures = 0;
       if (!collectionProcessed && !conversionProcessed) await delay(config.pollIntervalMs);
     } catch (error) {
+      if (
+        config.collectionProvider === "cnipa" &&
+        error instanceof CollectionAcquisitionError &&
+        error.code === "CNIPA_REAUTH_REQUIRED"
+      ) {
+        log("worker.cnipa.reauth_required", {
+          message:
+            "CNIPA collection stopped before another claim. Complete operator re-login, then restart this Worker.",
+        });
+        stopping = true;
+        continue;
+      }
       consecutiveFailures += 1;
       const backoff = Math.min(
         config.errorBackoffMaxMs,
