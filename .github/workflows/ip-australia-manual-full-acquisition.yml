@@ -36,13 +36,16 @@ jobs:
         id: acquire
         shell: bash
         run: |
-          set +e
           evidence_dir="$RUNNER_TEMP/ip-australia-manual-full-acquisition"
           report_path="$evidence_dir/report.json"
           mkdir -p "$evidence_dir"
+
+          set +e
           pnpm --filter @markorbit/worker acquire:ip-australia-manual -- \
             --concurrency=2 --delay-ms=500 --output="$report_path"
           status=$?
+          set -e
+
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
           if [ -s "$report_path" ]; then
             node -e '
@@ -69,7 +72,6 @@ jobs:
           else
             printf '## IP Australia Manual Full Acquisition\n\n- Acquisition command exited: %s\n- No JSON report was emitted.\n' "$status" >> "$GITHUB_STEP_SUMMARY"
           fi
-          exit 0
       - name: Upload full Manual acquisition evidence
         if: always()
         uses: actions/upload-artifact@v4
