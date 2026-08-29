@@ -34,6 +34,10 @@ export type PriorityNationalCoverageTargetInput = {
   notes?: string;
 };
 
+type PriorityNationalCoverageTargetOverride = Partial<
+  Omit<PriorityNationalCoverageTargetInput, "id" | "family">
+>;
+
 const IP_INDIA_SEARCH_GUIDANCE_URI =
   "https://ipindia.gov.in/trade-marks-before-you-apply-search-existing-trademarks";
 
@@ -43,7 +47,7 @@ const IP_INDIA_SEARCH_GUIDANCE_URI =
  * they refine catalog evidence only and never authorize access to protected services.
  */
 const PRIORITY_NATIONAL_CURATED_OVERRIDES: Readonly<
-  Record<string, Partial<PriorityNationalCoverageTargetInput>>
+  Record<string, PriorityNationalCoverageTargetOverride>
 > = {
   "in-ipindia-trademark-search": {
     displayName: "IP India Search Existing Trademarks Guidance",
