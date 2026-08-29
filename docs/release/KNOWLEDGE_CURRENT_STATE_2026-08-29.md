@@ -1,150 +1,111 @@
 # MarkOrbit Knowledge Current State
 
 Date: 2026-08-29  
-Reviewed Knowledge baseline: `273d85c4a73d2ad0d23b8d3e20cd3cbdfafe25ae`  
+Reviewed Knowledge baseline: `929fbe783d345b0364e90f64f7c58013c80f7103`  
 Release line: repository package version `0.1.0`
 
 ## Decision
 
-The v0.1 architectural freeze remains valid. The repository has moved materially beyond the 2026-08-23 post-freeze closeout, but the Source -> CollectionPlan -> Run/Job -> Worker -> RawArtifact -> Conversion/Staging -> ReadyPackage backbone should not be reopened.
+The v0.1 architectural freeze remains valid. Do not reopen the Source -> CollectionPlan -> Run/Job -> Worker -> RawArtifact -> Conversion/Staging -> ReadyPackage backbone.
 
-Current work is no longer a broad architecture build. It is concentrated in production/live acceptance, repository governance, provider activation, and evidence-backed source expansion.
+Knowledge owns acquisition, immutable evidence, provenance, objective change facts, conversion/staging and downstream delivery preparation. Core/Brain owns semantic interpretation, entities/relationships, legal/business meaning, value scoring, capabilities, recommendations and Next Best Action.
 
-Knowledge continues to own acquisition, immutable evidence, provenance, objective change facts, conversion/staging and downstream delivery preparation. Core/Brain continues to own information understanding, entity/relationship interpretation, legal/business meaning, value scoring, capabilities, recommendations and Next Best Action.
+Current work is narrow: production/live acceptance, repository governance, and external Core/provider dependencies. It is not a request for another ingestion, scheduling, communication, semantic-scoring or execution framework.
 
 ## Verified after the 2026-08-23 closeout
 
 ### Core intake boundary
 
-The Knowledge -> Core intake path has a real cross-repository acceptance gate. The latest boundary-scoping PR (#584) passed `core-ref-freshness` and `real-core-intake` on its exact head, including:
+Knowledge -> Core intake has a real cross-repository acceptance gate. The accepted run checked out the audited Core receiver, bootstrapped real Core PostgreSQL, started the authenticated receiver, submitted the frozen Knowledge ReadyPackage/content through the production HTTP path, obtained durable Core `ACCEPTED`, and asserted the persisted staging Markdown against the submitted content.
 
-- checkout of the audited exact Core receiver SHA;
-- real Core PostgreSQL bootstrap;
-- startup of the authenticated Core receiver;
-- Knowledge -> Core ReadyPackage/content submission through the production HTTP path;
-- durable Core `ACCEPTED` state;
-- PostgreSQL assertion that the frozen staging Markdown equals the submitted content.
+The accepted Core pin for that run remains `b6013d79697e6873f5941bb7e17058b124b5c643`. Core can advance independently; rerun the freshness/E2E gate when an intake-boundary path changes rather than refreshing this historical acceptance pin for unrelated Core commits.
 
-The accepted pin for that run was Core `b6013d79697e6873f5941bb7e17058b124b5c643`. Core has since advanced with unrelated Brain/Capability work; do not represent the workflow pin as equal to the current Core main unless the freshness gate is rerun. Re-run the cross-repository gate when a Knowledge/Core intake-boundary path changes rather than refreshing the pin for unrelated Core commits.
+### Acquisition/runtime posture
 
-### Web acquisition provider routing
+Post-freeze acquisition includes:
 
-Post-freeze web acquisition now includes the existing Crawl4AI primary path plus bounded optional provider support:
+- production Crawl4AI web acquisition;
+- bounded Tavily structural source discovery;
+- Bright Data Web Unlocker as disabled-by-default fallback for eligible Crawl4AI failures;
+- immutable RawArtifact/CAS evidence and provenance;
+- durable Worker Protocol / Execution Ledger scheduling and collection;
+- removal of obsolete Knowledge-local semantic scoring and in-memory worker/scheduler scaffolds.
 
-- Tavily structural source discovery;
-- Bright Data Web Unlocker as a disabled-by-default fallback for eligible Crawl4AI fetch failures;
-- unlocked HTML routed back through Crawl4AI processing so RawArtifact semantics remain unified;
-- provider credentials remain runtime-only;
-- ordinary CI makes no paid-provider calls.
+Ordinary CI performs no paid-provider calls.
 
-Tavily discovery has a dedicated bounded runtime command and a manual-only live smoke path. Tavily remains structural discovery, not collection authority, legal truth or semantic relevance scoring.
+### CNIPA authenticated acquisition readiness — #573
 
-### CNIPA authenticated acquisition readiness
+Deterministic Phase 1 contracts, Phase 2 operator-assisted Playwright runtime, and the manual-only Phase 3 acceptance harness are implemented.
 
-Issue #573 has completed deterministic Phase 1 contracts, Phase 2 operator-assisted Playwright runtime, and the manual-only Phase 3 live acceptance harness.
+The safety boundary remains strict: no CAPTCHA solving/bypass, no OTP bypass, no token forging, no stealth/proxy-rotation behavior, and no repository-stored authenticated session material. Cookies/Bearer/session state stay inside the operator-managed authenticated execution boundary; exact sanitized evidence flows through the existing immutable RawArtifact protocol.
 
-Verified implementation boundaries include:
+Production acceptance still requires one authorized human login/CAPTCHA session and real evidence for the target registration across all three libraries, party/role mapping, list/detail identity semantics, pagination/coverage behavior and schema promotion. Unsupported facts remain `UNKNOWN`/`PARTIAL` until observed.
 
-- operator-managed authenticated browser session outside the repository;
-- no CAPTCHA solving/bypass, token forging, stealth or proxy-rotation behavior;
-- cookies/Bearer/session state remain inside the authenticated execution boundary;
-- exact sanitized list/detail response evidence flows through the existing immutable RawArtifact protocol;
-- bounded requests/pages/details, pacing and fail-closed reauthentication/access/schema/coverage handling;
-- party/date acquisition remains disabled where request parameters are not yet live-verified;
-- ordinary CI performs zero CNIPA live requests.
+### Public trademark-search source boundaries — resolved #590
 
-CNIPA is not yet production-accepted. Authenticated live evidence is still required for a real registration number across all three libraries, party-name/role mapping, list/detail identity semantics, page 11 / >100 behavior, coverage classification, and endpoint/schema promotion from operator-supplied unverified observations.
+The 2026-08-29 source audit established that CNIPA's real trademark online-search service is behind unified identity registration/sign-in and must not be modeled as an anonymous structured JSON/API source.
 
-### Public trademark-search source-boundary correction
+The corrected model is now merged to `main` via PR #593 (`929fbe783d345b0364e90f64f7c58013c80f7103`), superseding draft PRs #589 and #591:
 
-The 2026-08-29 representative-source audit also exposed a separate CNIPA public-search modeling problem tracked in #590 and PR #591. Current official CNIPA evidence shows that the real `wcjs.sbj.cnipa.gov.cn` trademark online-search service requires registration/sign-in under the unified identity boundary, so it must not be represented as an anonymously collectible JSON/API source.
+- India: anonymous official guidance is the governed WEB target; protected search entrypoints retain their account/OTP or CAPTCHA/OTP boundary.
+- New Zealand: the official guidance page is the anonymous governed target; Trade Mark Check / Case Search remain separate interactive entrypoints.
+- China: the representative anonymous `SEARCH` target is an official CNIPA guidance surface with `WEB_CRAWL` + `HTML`/`MARKDOWN`; the actual online-search service is recorded as login-protected, with no invented anonymous JSON claim.
+- Representative Source Live Canary path filters now include source-catalog inputs that can change the selected live target.
+- The WEB canary runner fails fast if a future selected target requires artifact kinds outside its real Crawl4AI HTML/Markdown capability.
 
-PR #591 therefore keeps the representative CN `SEARCH` target on an anonymously readable official CNIPA access-guidance surface and records the real search service as a protected/login-required entrypoint. The anonymous contract is `WEB_CRAWL` with `HTML`/`MARKDOWN`, no JavaScript requirement, and no invented JSON result claim. It also adds a fail-fast invariant so the WEB representative-canary runner cannot silently accept future artifact contracts outside its real Crawl4AI output capability.
+Exact source head `203c08a6de863607fbae35d0e631e360c894f47f` passed Node 22/24 Validate through Python compile/tests, format, lint, typecheck, full workspace tests and build. A real main-targeted Representative Source Live Canary then proved the corrected CN target twice at the same exact source head: 3.370s and 3.382s, one page each, two `HTML`/`MARKDOWN` artifacts, zero missing expected kinds, 14,698 bytes. Evidence artifacts: `9716207455` (`sha256:9e0565813c85e63bb708cf27a813bdc35416c0d8cc74c360c1e94b7ebe5f7d1d`) and `9716291879` (`sha256:262e505032dc76fc646939f6ff9340c3814c70a2a02a88e3b60038536562d94d`).
 
-Exact head `203c08a6de863607fbae35d0e631e360c894f47f` passed `Validate` on Node 22 and Node 24 through Python compile/tests, format, lint, typecheck, full workspace tests and build; UI Preview also passed. Temporary validation-only PR #592 then targeted that same source head at `main` solely to trigger the real Representative Source Live Canary. Run `33257215728` proved CN twice without code changes: attempt 1 PASS in 3.370s and attempt 2 PASS in 3.382s, each with one page, two `HTML`/`MARKDOWN` artifacts, zero missing expected kinds and 14,698 bytes. The evidence artifacts are `9716207455` (`sha256:9e0565813c85e63bb708cf27a813bdc35416c0d8cc74c360c1e94b7ebe5f7d1d`) and `9716291879` (`sha256:262e505032dc76fc646939f6ff9340c3814c70a2a02a88e3b60038536562d94d`).
-
-The whole 13-country matrix is deliberately not described as 13/13 because unrelated public-site availability varied between attempts: India had a one-off DNS timeout on attempt 1 but passed attempt 2; Korea timed out on both primary/baseline and UAE primary timed out on attempt 2, while prior #589 evidence had Korea and UAE passing. Those transients do not change the repeated exact-head CN acceptance. PR #592 was closed without merge after recording the evidence back to #590/#591.
-
-### Runtime simplification
-
-The repository intentionally retired obsolete parallel execution paths after the production path became durable:
-
-- Knowledge-local semantic discovery scoring was removed; semantic topic/relevance/priority inference remains a Core responsibility;
-- the legacy in-process worker runner/loop/lease/concurrency/heartbeat scaffold was removed;
-- the legacy memory scheduler/dispatcher scaffold was removed;
-- production scheduling remains the persistence-backed scheduler and Execution Ledger;
-- production collection remains Worker Protocol v1 / controlled worker runtime / ArtifactBackedCollectionExecutor.
-
-These removals reduce duplicate authority rather than remove production behavior.
-
-### Current validation baseline
-
-The latest cleanup PR (#587) passed the exact-head canonical `Validate` workflow on Node 22 and Node 24, including Python worker checks, format, lint, typecheck, tests and build. The cleanup also removed the previously reported unused-symbol lint warnings without changing runtime contracts.
-
-The later source-coverage branches remain separately reviewable rather than being treated as merged main: PR #589 has exact-head Node 22/24 validation plus representative live evidence at 12/13 PASS with only the superseded CN target degraded, while stacked PR #591 has exact-head Node 22/24 validation and UI Preview green plus repeated real CN live PASS evidence from validation-only PR #592. Do not report either branch as merged until their protected-branch review/merge gates actually complete.
+PR #593 then reran the required main-targeted `validate (22)`, `validate (24)` and autoformat gates successfully before merge. Issue #590 is closed as completed. Do not reopen anonymous CNIPA JSON/API acquisition without new official evidence of a stable anonymous structured endpoint.
 
 ## Active gates
 
 ### 1. #429 — repository governance
 
-The default branch is protected by active ruleset `Protect main` and currently enforces:
+Active ruleset `Protect main` currently enforces PR-only changes, deletion/non-fast-forward protection, review-thread resolution, strict required checks `autoformat`, `validate (22)`, `validate (24)`, and no bypass actors.
 
-- pull-request-only changes;
-- deletion and non-fast-forward protection;
-- review-thread resolution;
-- strict required checks `autoformat`, `validate (22)`, and `validate (24)`;
-- no bypass actors.
-
-However the current ruleset has regressed to:
+The remaining governance regression is:
 
 - `required_approving_review_count = 0`;
 - `require_code_owner_review = false`;
 - `require_last_push_approval = false`.
 
-`CODEOWNERS` already assigns both repository-wide and workflow ownership to `@yoomarks @whalemarks`, so an independent Code Owner path exists. The repository-admin remediation is to restore at least one approving review plus Code Owner review without weakening the existing exact-head checks, review-thread resolution or no-bypass policy.
+`.github/CODEOWNERS` already assigns repository/workflow ownership to `@yoomarks @whalemarks`. Restore at least one approving review plus Code Owner review without weakening exact-head checks, thread resolution or no-bypass policy.
 
-Protected `adk-live` Environment administration remains an owner/admin verification boundary because the connected engineering API cannot read Environment reviewers or secret scope. The durable non-public live-evidence archive requirement also remains tied to a successful #405 execution.
+Protected `adk-live` Environment administration remains an owner/admin verification boundary because the connected engineering API cannot verify Environment reviewers or secret scope.
 
 ### 2. #573 — CNIPA authenticated live validation
 
-No additional generic CNIPA framework should be added before authenticated evidence exists. The next valid work is an authorized operator login/CAPTCHA session and the bounded Phase 3 live probe. Any unsupported identity, query field, pagination or completeness behavior must remain `UNKNOWN`/`PARTIAL` rather than being inferred.
+No additional generic CNIPA framework is justified before authenticated evidence exists. The next valid step is an authorized human login/CAPTCHA session followed by the bounded Phase 3 probe. Do not infer unsupported query, identity, pagination or completeness behavior.
 
-### 3. #590 — CNIPA public trademark-search acquisition boundary
+### 3. #468 — Expert Shared Communication live slice
 
-The engineering correction is implemented in stacked PR #591, exact-head CI is green, and the corrected anonymous guidance target has now passed the real CN representative live canary twice on the same exact source head. The remaining repository gate is protected review/merge of #589 followed by #591; no additional CN acquisition implementation or live observation is required for #590.
+Knowledge already contains the outbound/inbound Core consumer seams. The remaining blocker is Core-owned `yoomarks/markorbit#305`.
 
-Do not reopen anonymous JSON/API acquisition for CNIPA trademark search without new official evidence of a stable anonymous structured endpoint. The repository already has a governed production API acquirer for genuine API sources; that does not turn an authenticated CNIPA browser service into an anonymous API.
+A 2026-08-29 audit of Core main `bde37b56c3ddba8afc3b127a2d06e1b4b553d37e` found no production Managed Communication bootstrap/provider sender wiring in `services/capability-engine/src/main.ts`, and Core #305 remains open without a verified production provider implementation.
 
-### 4. #468 — Expert Shared Communication live slice
+Do not add a Knowledge-local SMTP/Gmail/Graph transport. Resume the Knowledge live slice only after Core provides the production runtime plus one real provider/account, then prove exactly-once send -> durable receipt/thread -> inbound reply -> immutable Core exact evidence -> Knowledge `ExpertSourceRecordV1` import -> replay without duplicate send/import.
 
-Knowledge already contains the outbound and inbound Core consumer seams from PR #538 and PR #540. Core #274/#283 provide the provider-neutral send/receipt/thread and immutable exact inbound-evidence contracts.
+### 4. #405 — ADK-06 paid-provider acceptance
 
-The remaining blocker is Core-owned issue `yoomarks/markorbit#305`. A fresh 2026-08-29 audit against current Core main `bde37b56c3ddba8afc3b127a2d06e1b4b553d37e` confirms that production `services/capability-engine/src/main.ts` still wires Managed AI and governed Capability runtime but does not construct/inject Managed Communication production bindings, and no concrete production provider sender is verified. Core #305 remains open with no implementation PR at this checkpoint.
+Repository-controlled readiness is complete enough for the frozen 3x2 DeepSeek/OpenAI pilot, but deterministic/fake CI is not final acceptance.
 
-Do not add a Knowledge-local SMTP/Gmail/Graph transport. Resume Knowledge live acceptance only after Core #305 supplies the production runtime plus one real provider/account, then prove exactly-once Expert send -> durable receipt/thread -> real inbound reply -> immutable Core exact evidence -> Knowledge `ExpertSourceRecordV1` import -> replay without duplicate send/import.
+Final acceptance still requires explicit authorization for a real provider run, the frozen plan, exact-current-main gate, DeepSeek off-peak policy, 6/6 executed cells, 12 unique finalized RawArtifact receipts, encrypted evidence packaging and authorized non-public durable retention.
 
-### 5. #405 — ADK-06 paid provider acceptance
-
-Repository-controlled readiness is complete enough for the frozen 3x2 DeepSeek/OpenAI pilot, but deterministic CI/fake execution is not final acceptance.
-
-Final acceptance still requires an explicitly authorized real provider run with the frozen plan, exact-current-main gate, DeepSeek off-peak policy, 6/6 executed cells, 12 unique finalized RawArtifact receipts, encrypted evidence packaging, and authorized non-public durable retention.
-
-Do not spend provider credits from ordinary repository-maintenance authority and do not close #405 from fake, skipped, partial, or old-main evidence.
+Do not spend provider credits or close #405 from fake, skipped, partial or stale-main evidence.
 
 ## Current work order
 
 1. Restore and verify #429 independent review enforcement at repository-admin level.
-2. Execute #573 authenticated CNIPA Phase 3 only with an authorized human session; freeze verified schema/coverage facts from evidence only.
-3. Complete protected review/merge of #589 and then stacked #591; #590 needs no further CN acquisition implementation or live-canary rerun.
-4. Keep #468 on the existing Knowledge consumer boundary while Core #305 owns production communication runtime/provider activation.
-5. Keep #405 manual and explicitly authorized; no automatic paid execution.
-6. Continue source/product breadth only when a concrete evidence-backed gap exists; do not create another ingestion, scheduling, communication, semantic-scoring or execution framework.
+2. Execute #573 Phase 3 only with an authorized human CNIPA session and freeze only evidence-backed schema/coverage facts.
+3. Keep #468 on the existing Knowledge consumer boundary while Core #305 owns production Managed Communication runtime/provider activation.
+4. Keep #405 manual and explicitly authorized; no automatic paid execution.
+5. Continue source/product breadth only when a concrete evidence-backed gap exists.
 
 ## Historical-document rule
 
-The following files remain historical baselines and should not be rewritten to pretend they described later work:
+Do not rewrite earlier acceptance records to pretend they described later work:
 
 - `KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md`;
 - `KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md`.
 
-Use this document for the 2026-08-29 takeover baseline. Future phase closeouts should add a newer dated current-state document and update issue state rather than silently changing historical acceptance evidence.
+Use this file as the 2026-08-29 takeover baseline. Future phase closeouts should add a newer dated current-state document and update issue state rather than silently mutating historical acceptance evidence.
