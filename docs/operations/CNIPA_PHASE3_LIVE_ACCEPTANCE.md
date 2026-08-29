@@ -114,6 +114,8 @@ The manifest does not duplicate registration numbers, party-name values or other
 
 Do not upload the browser profile, storage state, plan or live response evidence to a public issue/PR or commit them to Git.
 
+The harness itself does not decide verification; an operator must review the evidence before changing #573 or promoting the schema status.
+
 ## 6. Phase 3 acceptance sequence
 
 Use separate reviewed probe plans/evidence to establish, in order:
