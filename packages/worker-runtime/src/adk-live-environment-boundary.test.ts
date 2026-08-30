@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const workflow = (name: string) =>
   readFileSync(
     fileURLToPath(new URL(`../../../.github/workflows/${name}`, import.meta.url)),
-    'utf8'
+    'utf8',
   );
 
 describe('ADK-06 live Environment boundary', () => {
@@ -27,20 +27,20 @@ describe('ADK-06 live Environment boundary', () => {
     expect(liveAcceptance).toContain('DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}');
     expect(liveAcceptance).toContain('OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}');
     expect(liveAcceptance).toContain(
-      'ADK_LIVE_EVIDENCE_PASSPHRASE: ${{ secrets.ADK_LIVE_EVIDENCE_PASSPHRASE }}'
+      'ADK_LIVE_EVIDENCE_PASSPHRASE: ${{ secrets.ADK_LIVE_EVIDENCE_PASSPHRASE }}',
     );
 
     const exactMainGate = liveAcceptance.indexOf(
-      '- name: Fail closed unless main, exact commit and frozen approval match'
+      '- name: Fail closed unless main, exact commit and frozen approval match',
     );
     const offPeakGate = liveAcceptance.indexOf(
-      '- name: Enforce DeepSeek off-peak window before secrets are exposed'
+      '- name: Enforce DeepSeek off-peak window before secrets are exposed',
     );
     const secretGate = liveAcceptance.indexOf(
-      '- name: Fail closed unless provider and evidence secrets exist'
+      '- name: Fail closed unless provider and evidence secrets exist',
     );
     const providerExecution = liveAcceptance.indexOf(
-      '- name: Execute real DeepSeek Flash plus OpenAI acceptance'
+      '- name: Execute real DeepSeek Flash plus OpenAI acceptance',
     );
 
     expect(exactMainGate).toBeGreaterThan(-1);
