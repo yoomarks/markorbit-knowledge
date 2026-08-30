@@ -20,6 +20,11 @@ export type SaveCaseDossierResult = {
   replayed: boolean;
 };
 
+type StoredCaseDossierRow = {
+  document_sha256: string;
+  document_json: string;
+};
+
 export function ensureCaseDossierRegistry(database: DatabaseSync): void {
   ensureCaseEvidenceCollectionRegistry(database);
   if (INITIALIZED_DATABASES.has(database)) return;
@@ -253,36 +258,38 @@ export class SqliteCaseDossierRepository {
              FROM case_dossiers
             WHERE dossier_id = ? AND version = ?`,
         )
-        .get(value.dossierId, value.version) as
-        { document_sha256: string; document_json: string } | undefined;
+        .get(value.dossierId, value.version) as StoredCaseDossierRow | undefined;
       if (byId) {
+        const stored = this.attestStoredDossier(byId);
         if (byId.document_sha256 !== documentSha256) {
           throw new RegistryConflictError(
             "CASE_DOSSIER_IMMUTABLE_CONFLICT",
             `Case Dossier ${value.dossierId} version ${value.version} already exists with different content`,
           );
         }
-        const result = { dossier: parseStoredDossier(byId.document_json), replayed: true };
+        const result = { dossier: stored, replayed: true };
         this.database.exec("COMMIT;");
         return result;
       }
 
       const bySource = this.database
         .prepare(
-          `SELECT dossier_id, document_sha256, document_json
+          `SELECT document_sha256, document_json
              FROM case_dossiers
             WHERE candidate_id = ? AND evidence_collection_id = ? AND version = ?`,
         )
         .get(value.candidateId, value.evidenceCollectionId, value.version) as
-        { dossier_id: string; document_sha256: string; document_json: string } | undefined;
+        | StoredCaseDossierRow
+        | undefined;
       if (bySource) {
+        const stored = this.attestStoredDossier(bySource);
         if (bySource.document_sha256 !== documentSha256) {
           throw new RegistryConflictError(
             "CASE_DOSSIER_SOURCE_VERSION_CONFLICT",
             "The same Candidate/evidence collection/version already produced different dossier content",
           );
         }
-        const result = { dossier: parseStoredDossier(bySource.document_json), replayed: true };
+        const result = { dossier: stored, replayed: true };
         this.database.exec("COMMIT;");
         return result;
       }
@@ -319,32 +326,51 @@ export class SqliteCaseDossierRepository {
       version === undefined
         ? (this.database
             .prepare(
-              `SELECT document_json
+              `SELECT document_sha256, document_json
                  FROM case_dossiers
                 WHERE dossier_id = ?
                 ORDER BY version DESC
                 LIMIT 1`,
             )
-            .get(dossierId) as { document_json: string } | undefined)
+            .get(dossierId) as StoredCaseDossierRow | undefined)
         : (this.database
             .prepare(
-              `SELECT document_json
+              `SELECT document_sha256, document_json
                  FROM case_dossiers
                 WHERE dossier_id = ? AND version = ?`,
             )
-            .get(dossierId, version) as { document_json: string } | undefined);
-    return row ? parseStoredDossier(row.document_json) : null;
+            .get(dossierId, version) as StoredCaseDossierRow | undefined);
+    return row ? this.attestStoredDossier(row) : null;
   }
 
   listDossiersForCandidate(candidateId: string): CaseDossierV1[] {
     const rows = this.database
       .prepare(
-        `SELECT document_json
+        `SELECT document_sha256, document_json
            FROM case_dossiers
           WHERE candidate_id = ?
           ORDER BY version DESC, assembled_at DESC, dossier_id ASC`,
       )
-      .all(candidateId) as { document_json: string }[];
-    return rows.map((row) => parseStoredDossier(row.document_json));
+      .all(candidateId) as StoredCaseDossierRow[];
+    return rows.map((row) => this.attestStoredDossier(row));
+  }
+
+  private attestStoredDossier(row: StoredCaseDossierRow): CaseDossierV1 {
+    const dossier = parseStoredDossier(row.document_json);
+    if (sha256(canonical(dossier)) !== row.document_sha256) {
+      throw new RegistryConflictError(
+        "CASE_DOSSIER_STORAGE_HASH_MISMATCH",
+        "Stored Case Dossier document does not match its durable hash",
+      );
+    }
+    const collection = this.evidence.getCollection(dossier.evidenceCollectionId);
+    if (!collection) {
+      throw new RegistryConflictError(
+        "CASE_DOSSIER_EVIDENCE_COLLECTION_MISSING",
+        `Stored Case Dossier ${dossier.dossierId} references a missing evidence collection`,
+      );
+    }
+    assertSourceLineage(dossier, collection, this.candidates);
+    return dossier;
   }
 }
