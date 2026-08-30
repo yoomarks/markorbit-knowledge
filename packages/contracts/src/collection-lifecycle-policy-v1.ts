@@ -10,8 +10,7 @@ export const COLLECTION_LIFECYCLE_POLICY_CLASSES = [
   "MANUAL_ON_DEMAND",
   "RETIRED",
 ] as const;
-export type CollectionLifecyclePolicyClass =
-  (typeof COLLECTION_LIFECYCLE_POLICY_CLASSES)[number];
+export type CollectionLifecyclePolicyClass = (typeof COLLECTION_LIFECYCLE_POLICY_CLASSES)[number];
 
 export const COLLECTION_LIFECYCLE_HEALTH_DIRECTIVES = [
   "ELIGIBLE_FOR_PLAN_PROPOSAL",
@@ -35,8 +34,7 @@ export const COLLECTION_LIFECYCLE_REASON_CODES = [
   "SUPPLY_BLOCKED",
   "SUPPLY_UNOBSERVED",
 ] as const;
-export type CollectionLifecycleReasonCode =
-  (typeof COLLECTION_LIFECYCLE_REASON_CODES)[number];
+export type CollectionLifecycleReasonCode = (typeof COLLECTION_LIFECYCLE_REASON_CODES)[number];
 
 export type CollectionLifecyclePolicyProjection = {
   protocolVersion: typeof COLLECTION_LIFECYCLE_POLICY_PROTOCOL_VERSION;
