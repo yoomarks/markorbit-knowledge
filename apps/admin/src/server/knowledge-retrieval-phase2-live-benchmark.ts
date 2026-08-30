@@ -1,8 +1,5 @@
 import type { ContentObjectRefV1, RetrievalDocument } from "@markorbit/contracts";
-import {
-  RegistryConflictError,
-  RegistryValidationError,
-} from "@markorbit/persistence";
+import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import type { RetrievalIndexRepository } from "@markorbit/persistence/retrieval-index";
 import {
   composeKnowledgeRetrieval,
@@ -51,9 +48,10 @@ function normalizedWorkspaceId(workspaceId: string): string {
 }
 
 function liveEvidenceByRef(evidenceRef: string): RetrievalCorpusEvidenceV1 {
-  const evidence = KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1.evidence.find(
-    (entry) => entry.evidenceRef === evidenceRef,
-  );
+  const evidence: RetrievalCorpusEvidenceV1 | undefined =
+    KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1.evidence.find(
+      (entry) => entry.evidenceRef === evidenceRef,
+    );
   if (!evidence || evidence.evidenceKind !== "LIVE_ACCEPTED") {
     throw new RegistryValidationError(`Frozen live retrieval evidence is missing: ${evidenceRef}`);
   }
@@ -61,6 +59,12 @@ function liveEvidenceByRef(evidenceRef: string): RetrievalCorpusEvidenceV1 {
     throw new RegistryValidationError(`Frozen live retrieval evidence is incomplete: ${evidenceRef}`);
   }
   return evidence;
+}
+
+function liveCorpusEvidence(): RetrievalCorpusEvidenceV1[] {
+  return KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1.evidence.filter(
+    (evidence) => evidence.evidenceKind === "LIVE_ACCEPTED",
+  );
 }
 
 function contentRef(workspaceId: string, documentId: string): ContentObjectRefV1 {
@@ -156,9 +160,9 @@ export function attestKnowledgeRetrievalPhase2LiveCorpus(input: {
   repository: RetrievalIndexRepository;
 }): RetrievalDocument[] {
   const workspaceId = normalizedWorkspaceId(input.workspaceId);
-  return KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1.evidence
-    .filter((evidence) => evidence.evidenceKind === "LIVE_ACCEPTED")
-    .map((evidence) => assertFrozenDocument(input.repository, workspaceId, evidence));
+  return liveCorpusEvidence().map((evidence) =>
+    assertFrozenDocument(input.repository, workspaceId, evidence),
+  );
 }
 
 export function createRetrievalIndexLexicalReader(
