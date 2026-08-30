@@ -27,6 +27,8 @@ jobs:
           # Keep business surfaces and shared ingestion-control helpers formatting-clean,
           # including production staging and the bulk collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
+            packages/contracts/src/collection-lifecycle-policy-v1.ts \
+            packages/contracts/src/collection-lifecycle-policy-v1.test.ts \
             apps/admin/src/app/knowledge/[id]/page.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
@@ -51,6 +53,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            packages/contracts/src/collection-lifecycle-policy-v1.ts \
+            packages/contracts/src/collection-lifecycle-policy-v1.test.ts \
             apps/admin/src/app/knowledge/[id]/page.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
