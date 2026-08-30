@@ -37,27 +37,10 @@ jobs:
             fi
           fi
 
-      - name: Fail closed unless all live secrets are configured
-        shell: bash
-        env:
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ADK_LIVE_EVIDENCE_PASSPHRASE: ${{ secrets.ADK_LIVE_EVIDENCE_PASSPHRASE }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
-            echo "::error::Repository secret DEEPSEEK_API_KEY is not configured."
-            exit 1
-          fi
-          if [[ -z "${OPENAI_API_KEY:-}" ]]; then
-            echo "::error::Repository secret OPENAI_API_KEY is not configured."
-            exit 1
-          fi
-          if [[ ${#ADK_LIVE_EVIDENCE_PASSPHRASE} -lt 32 ]]; then
-            echo "::error::Repository secret ADK_LIVE_EVIDENCE_PASSPHRASE must contain at least 32 characters."
-            exit 1
-          fi
-
+      # Provider credentials and the evidence passphrase intentionally stay behind the
+      # protected `adk-live` Environment. The environment-bound acceptance workflow
+      # validates their presence before any provider call; this dispatch workflow must
+      # not require repository-level duplicates of those secrets.
       - name: Dispatch exact-main live acceptance and record run id
         shell: bash
         env:
