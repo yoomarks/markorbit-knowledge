@@ -79,6 +79,15 @@ function resolvePolicyClass(target: SourceCoverageTarget): {
   return { policyClass: "STANDARD_REFRESH", reasonCode: "ACTIVE_STANDARD_COVERAGE" };
 }
 
+function resolveSupplyReasonCode(
+  health: SourceSupplyHealthRecord | undefined,
+): CollectionLifecycleReasonCode {
+  if (!health) return "SUPPLY_UNOBSERVED";
+  if (health.state === "READY") return "SUPPLY_READY";
+  if (health.state === "DEGRADED") return "SUPPLY_DEGRADED";
+  return "SUPPLY_BLOCKED";
+}
+
 function resolveHealthDirective(
   policyClass: CollectionLifecyclePolicyClass,
   health: SourceSupplyHealthRecord | undefined,
@@ -88,12 +97,16 @@ function resolveHealthDirective(
   observedHealthState: SourceSupplyHealthRecord["state"] | "UNOBSERVED";
 } {
   if (policyClass === "RETIRED") {
-    return { directive: "DISABLED", reasonCode: null, observedHealthState: health?.state ?? "UNOBSERVED" };
+    return {
+      directive: "DISABLED",
+      reasonCode: null,
+      observedHealthState: health?.state ?? "UNOBSERVED",
+    };
   }
   if (policyClass === "MANUAL_ON_DEMAND") {
     return {
       directive: "OBSERVE_ONLY",
-      reasonCode: health ? health.state === "READY" ? "SUPPLY_READY" : health.state === "DEGRADED" ? "SUPPLY_DEGRADED" : "SUPPLY_BLOCKED" : "SUPPLY_UNOBSERVED",
+      reasonCode: resolveSupplyReasonCode(health),
       observedHealthState: health?.state ?? "UNOBSERVED",
     };
   }
