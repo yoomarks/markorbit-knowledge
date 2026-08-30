@@ -112,9 +112,9 @@ describe("projectCollectionLifecyclePolicy", () => {
       },
     ];
 
-    expect(
-      cases.map(({ target }) => projectCollectionLifecyclePolicy(target).policyClass),
-    ).toEqual(cases.map(({ expected }) => expected));
+    expect(cases.map(({ target }) => projectCollectionLifecyclePolicy(target).policyClass)).toEqual(
+      cases.map(({ expected }) => expected),
+    );
   });
 
   it("uses supply health only as an operational directive, never as schedule authority", () => {
