@@ -5,11 +5,12 @@ import type {
   RetrievalSearchRequest,
   RetrievalSearchResult,
 } from "@markorbit/contracts";
-import {
-  RegistryConflictError,
-} from "@markorbit/persistence";
+import { RegistryConflictError } from "@markorbit/persistence";
 import type { RetrievalIndexRepository } from "@markorbit/persistence/retrieval-index";
-import { KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1 } from "./knowledge-retrieval-phase2-corpus";
+import {
+  KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1,
+  type RetrievalCorpusEvidenceV1,
+} from "./knowledge-retrieval-phase2-corpus";
 import {
   attestKnowledgeRetrievalPhase2LiveCorpus,
   buildKnowledgeRetrievalPhase2FrozenFixture,
@@ -18,9 +19,10 @@ import {
 } from "./knowledge-retrieval-phase2-live-benchmark";
 
 const workspaceId = "workspace-phase2-live-benchmark";
-const liveEvidence = KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1.evidence.filter(
-  (evidence) => evidence.evidenceKind === "LIVE_ACCEPTED",
-);
+const liveEvidence: RetrievalCorpusEvidenceV1[] =
+  KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1.evidence.filter(
+    (evidence) => evidence.evidenceKind === "LIVE_ACCEPTED",
+  );
 
 function documentFor(index: number): RetrievalDocument {
   const evidence = liveEvidence[index];
@@ -129,9 +131,9 @@ describe("Knowledge retrieval Phase 2 live benchmark", () => {
 
     expect(fixture.fixtureVersion).toBe(KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1.corpusVersion);
     expect(fixture.queries).toHaveLength(3);
-    expect(fixture.queries.map((query) => query.evaluation.expectedSources[0].content.objectId)).toEqual(
-      liveEvidence.map((evidence) => evidence.documentId),
-    );
+    expect(
+      fixture.queries.map((query) => query.evaluation.expectedSources[0].content.objectId),
+    ).toEqual(liveEvidence.map((evidence) => evidence.documentId));
     expect(fixture.queries.map((query) => query.evaluation.expectedSources[0].chunks?.[0])).toEqual(
       liveEvidence.map((evidence) => ({
         chunkId: evidence.chunks?.[0].chunkId,
