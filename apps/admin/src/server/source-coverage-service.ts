@@ -1,3 +1,9 @@
+import {
+  projectCollectionLifecyclePolicy,
+  type CollectionLifecycleHealthDirective,
+  type CollectionLifecyclePolicyClass,
+  type CollectionLifecycleReasonCode,
+} from "@markorbit/contracts";
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import {
   evaluateSourceCoverage,
@@ -25,6 +31,13 @@ export type SourceCoverageSupplyView = {
   retrievalAvailable: boolean;
 };
 
+export type SourceCoverageLifecycleView = {
+  policyClass: CollectionLifecyclePolicyClass;
+  healthDirective: CollectionLifecycleHealthDirective;
+  observedHealthState: "READY" | "DEGRADED" | "BLOCKED" | "UNOBSERVED";
+  reasonCodes: CollectionLifecycleReasonCode[];
+};
+
 export type SourceCoverageTargetView = {
   id: string;
   displayName: string;
@@ -35,6 +48,7 @@ export type SourceCoverageTargetView = {
   state: "REGISTERED" | "UNREGISTERED";
   sources: Array<{ id: string; name: string; status: string }>;
   supply: SourceCoverageSupplyView;
+  lifecycle: SourceCoverageLifecycleView;
   discoveryCandidate?: { candidateId: string; status: string };
 };
 
@@ -116,6 +130,7 @@ export function getSourceCoverageSnapshot(
     const targetItems = registrations.map((registration) => {
       const target = targetById.get(registration.targetId)!;
       const health = supplyByTargetId.get(target.id);
+      const lifecycle = projectCollectionLifecyclePolicy(target, health);
       const discoveryCandidate =
         registration.state === "UNREGISTERED"
           ? discovery.getCandidateByLocator(target.canonicalUri)
@@ -144,6 +159,12 @@ export function getSourceCoverageSnapshot(
           acquisitionObserved: (health?.acquisition.artifactCount ?? 0) > 0,
           normalizedAvailable: (health?.normalization.readyDocumentCount ?? 0) > 0,
           retrievalAvailable: (health?.retrieval.currentDocumentCount ?? 0) > 0,
+        },
+        lifecycle: {
+          policyClass: lifecycle.policyClass,
+          healthDirective: lifecycle.healthDirective,
+          observedHealthState: lifecycle.observedHealthState,
+          reasonCodes: [...lifecycle.reasonCodes],
         },
         ...(discoveryCandidate
           ? {
