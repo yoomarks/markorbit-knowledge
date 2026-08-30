@@ -56,7 +56,9 @@ function liveEvidenceByRef(evidenceRef: string): RetrievalCorpusEvidenceV1 {
     throw new RegistryValidationError(`Frozen live retrieval evidence is missing: ${evidenceRef}`);
   }
   if (!evidence.documentId || !evidence.documentContentSha256 || !evidence.chunks?.length) {
-    throw new RegistryValidationError(`Frozen live retrieval evidence is incomplete: ${evidenceRef}`);
+    throw new RegistryValidationError(
+      `Frozen live retrieval evidence is incomplete: ${evidenceRef}`,
+    );
   }
   return evidence;
 }
@@ -119,7 +121,9 @@ function assertFrozenDocument(
   evidence: RetrievalCorpusEvidenceV1,
 ): RetrievalDocument {
   if (!evidence.documentId || !evidence.documentContentSha256 || !evidence.chunks?.length) {
-    throw new RegistryValidationError(`Frozen retrieval evidence is incomplete: ${evidence.evidenceRef}`);
+    throw new RegistryValidationError(
+      `Frozen retrieval evidence is incomplete: ${evidence.evidenceRef}`,
+    );
   }
   const document = repository.getDocument(workspaceId, evidence.documentId);
   if (!document) {
