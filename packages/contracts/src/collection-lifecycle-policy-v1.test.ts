@@ -4,9 +4,7 @@ import type { SourceCoverageTarget } from "./source-coverage-v1";
 import type { SourceSupplyHealthRecord } from "./source-supply-health-v1";
 import { projectCollectionLifecyclePolicy } from "./collection-lifecycle-policy-v1";
 
-function makeTarget(
-  overrides: Partial<SourceCoverageTarget> = {},
-): SourceCoverageTarget {
+function makeTarget(overrides: Partial<SourceCoverageTarget> = {}): SourceCoverageTarget {
   return {
     protocolVersion: "1.0",
     objectType: "SOURCE_COVERAGE_TARGET",
@@ -155,7 +153,9 @@ describe("projectCollectionLifecyclePolicy", () => {
       policyClass: "MANUAL_ON_DEMAND",
       healthDirective: "OBSERVE_ONLY",
     });
-    expect(projectCollectionLifecyclePolicy(retiredTarget, makeHealth(retiredTarget))).toMatchObject({
+    expect(
+      projectCollectionLifecyclePolicy(retiredTarget, makeHealth(retiredTarget)),
+    ).toMatchObject({
       policyClass: "RETIRED",
       healthDirective: "DISABLED",
     });
