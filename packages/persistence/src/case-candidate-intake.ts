@@ -18,6 +18,13 @@ export type CaseCandidateIntakeResultV1 = {
   intake: CaseCandidateIntakeV1;
 };
 
+type StoredCaseCandidateRow = {
+  candidate_id: string;
+  source_identity_sha256: string;
+  document_sha256: string;
+  document_json: string;
+};
+
 type IntakeRow = {
   candidate_id: string;
   source_identity_sha256: string;
@@ -192,13 +199,20 @@ export class SqliteCaseCandidateIntakeRepository {
 
       const existingBySource = this.database
         .prepare(
-          `SELECT candidate_id, document_json
+          `SELECT candidate_id
              FROM case_candidates
             WHERE source_identity_sha256 = ?`,
         )
-        .get(sourceIdentitySha256) as { candidate_id: string; document_json: string } | undefined;
+        .get(sourceIdentitySha256) as { candidate_id: string } | undefined;
       if (existingBySource) {
-        assertCompatibleSourceSemantics(parseCandidate(existingBySource.document_json), value);
+        const existing = this.getCandidate(existingBySource.candidate_id);
+        if (!existing) {
+          throw new RegistryConflictError(
+            "CASE_CANDIDATE_STORAGE_MISSING",
+            `Case Candidate ${existingBySource.candidate_id} disappeared during source replay`,
+          );
+        }
+        assertCompatibleSourceSemantics(existing, value);
         this.database
           .prepare(
             `INSERT INTO case_candidate_intake_commands(
@@ -215,15 +229,17 @@ export class SqliteCaseCandidateIntakeRepository {
       const candidateDocumentSha256 = documentSha256(value);
       const existingById = this.database
         .prepare(
-          `SELECT document_sha256, document_json
+          `SELECT candidate_id, source_identity_sha256, document_sha256, document_json
              FROM case_candidates
             WHERE candidate_id = ?`,
         )
-        .get(value.candidateId) as { document_sha256: string; document_json: string } | undefined;
+        .get(value.candidateId) as StoredCaseCandidateRow | undefined;
       if (existingById) {
+        const stored = this.attestStoredCandidate(existingById);
         if (
           existingById.document_sha256 !== candidateDocumentSha256 ||
-          existingById.document_json !== json
+          existingById.document_json !== json ||
+          stored.candidateId !== value.candidateId
         ) {
           throw new RegistryConflictError(
             "CASE_CANDIDATE_IMMUTABLE_CONFLICT",
@@ -266,9 +282,13 @@ export class SqliteCaseCandidateIntakeRepository {
 
   getCandidate(candidateId: string): CaseCandidateV1 | null {
     const row = this.database
-      .prepare(`SELECT document_json FROM case_candidates WHERE candidate_id = ?`)
-      .get(candidateId) as { document_json: string } | undefined;
-    return row ? parseCandidate(row.document_json) : null;
+      .prepare(
+        `SELECT candidate_id, source_identity_sha256, document_sha256, document_json
+           FROM case_candidates
+          WHERE candidate_id = ?`,
+      )
+      .get(candidateId) as StoredCaseCandidateRow | undefined;
+    return row ? this.attestStoredCandidate(row) : null;
   }
 
   getIntake(candidateId: string): CaseCandidateIntakeV1 | null {
@@ -281,7 +301,16 @@ export class SqliteCaseCandidateIntakeRepository {
           WHERE candidate_id = ?`,
       )
       .get(candidateId) as IntakeRow | undefined;
-    return row ? parseIntake(row) : null;
+    if (!row) return null;
+    const intake = parseIntake(row);
+    const candidate = this.getCandidate(candidateId);
+    if (!candidate) {
+      throw new RegistryConflictError(
+        "CASE_CANDIDATE_COLLECTION_TICKET_ORPHANED",
+        `Case Candidate collection ticket ${candidateId} has no durable Candidate`,
+      );
+    }
+    return intake;
   }
 
   listPending(limit = 25): CaseCandidateIntakeResultV1[] {
@@ -398,6 +427,70 @@ export class SqliteCaseCandidateIntakeRepository {
       )
       .run(requeuedAt, candidateId);
     return this.requireIntake(candidateId);
+  }
+
+  private attestStoredCandidate(row: StoredCaseCandidateRow): CaseCandidateV1 {
+    if (sha256(row.document_json) !== row.document_sha256) {
+      throw new RegistryConflictError(
+        "CASE_CANDIDATE_STORAGE_HASH_MISMATCH",
+        "Stored Case Candidate document does not match its durable hash",
+      );
+    }
+    const candidate = parseCandidate(row.document_json);
+    if (candidate.candidateId !== row.candidate_id) {
+      throw new RegistryConflictError(
+        "CASE_CANDIDATE_STORAGE_ID_MISMATCH",
+        "Stored Case Candidate document does not match its durable candidate ID",
+      );
+    }
+    const expectedSourceIdentity = sha256(caseCandidateSourceIdentityKeyV1(candidate));
+    if (expectedSourceIdentity !== row.source_identity_sha256) {
+      throw new RegistryConflictError(
+        "CASE_CANDIDATE_STORAGE_SOURCE_IDENTITY_MISMATCH",
+        "Stored Case Candidate document does not match its durable source identity",
+      );
+    }
+
+    const ticket = this.database
+      .prepare(
+        `SELECT source_identity_sha256
+           FROM case_candidate_collection_tickets
+          WHERE candidate_id = ?`,
+      )
+      .get(row.candidate_id) as { source_identity_sha256: string } | undefined;
+    if (!ticket) {
+      throw new RegistryConflictError(
+        "CASE_CANDIDATE_COLLECTION_TICKET_MISSING",
+        `Stored Case Candidate ${row.candidate_id} has no durable collection ticket`,
+      );
+    }
+    if (ticket.source_identity_sha256 !== row.source_identity_sha256) {
+      throw new RegistryConflictError(
+        "CASE_CANDIDATE_COLLECTION_TICKET_IDENTITY_MISMATCH",
+        "Stored Case Candidate and collection ticket disagree on source identity",
+      );
+    }
+
+    const command = this.database
+      .prepare(
+        `SELECT request_sha256, candidate_id
+           FROM case_candidate_intake_commands
+          WHERE idempotency_key = ?`,
+      )
+      .get(candidate.idempotencyKey) as { request_sha256: string; candidate_id: string } | undefined;
+    if (!command) {
+      throw new RegistryConflictError(
+        "CASE_CANDIDATE_INTAKE_COMMAND_MISSING",
+        `Stored Case Candidate ${row.candidate_id} has no durable originating intake command`,
+      );
+    }
+    if (command.candidate_id !== row.candidate_id || command.request_sha256 !== row.document_sha256) {
+      throw new RegistryConflictError(
+        "CASE_CANDIDATE_INTAKE_COMMAND_MISMATCH",
+        "Stored Case Candidate does not match its originating intake command",
+      );
+    }
+    return candidate;
   }
 
   private requireIntake(candidateId: string): CaseCandidateIntakeV1 {
