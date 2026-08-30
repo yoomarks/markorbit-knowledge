@@ -19,6 +19,12 @@ export type SaveCaseEvidenceCollectionResult = {
   replayed: boolean;
 };
 
+type StoredCaseEvidenceCollectionRow = {
+  evidence_identity_sha256: string;
+  document_sha256: string;
+  document_json: string;
+};
+
 export function ensureCaseEvidenceCollectionRegistry(database: DatabaseSync): void {
   ensureCaseCandidateIntakeRegistry(database);
   if (INITIALIZED_DATABASES.has(database)) return;
@@ -200,34 +206,34 @@ export class SqliteCaseEvidenceCollectionRepository {
     try {
       const byId = this.database
         .prepare(
-          `SELECT evidence_identity_sha256, document_json
+          `SELECT evidence_identity_sha256, document_sha256, document_json
              FROM case_evidence_collections
             WHERE collection_id = ?`,
         )
-        .get(value.collectionId) as
-        { evidence_identity_sha256: string; document_json: string } | undefined;
+        .get(value.collectionId) as StoredCaseEvidenceCollectionRow | undefined;
       if (byId) {
+        const stored = this.attestStoredCollection(byId);
         if (byId.evidence_identity_sha256 !== identitySha256) {
           throw new RegistryConflictError(
             "CASE_EVIDENCE_COLLECTION_IMMUTABLE_CONFLICT",
             `Case evidence collection ${value.collectionId} already exists with different evidence`,
           );
         }
-        const result = { collection: parseStoredCollection(byId.document_json), replayed: true };
+        const result = { collection: stored, replayed: true };
         this.database.exec("COMMIT;");
         return result;
       }
 
       const byEvidence = this.database
         .prepare(
-          `SELECT document_json
+          `SELECT evidence_identity_sha256, document_sha256, document_json
              FROM case_evidence_collections
             WHERE candidate_id = ? AND evidence_identity_sha256 = ?`,
         )
-        .get(value.candidateId, identitySha256) as { document_json: string } | undefined;
+        .get(value.candidateId, identitySha256) as StoredCaseEvidenceCollectionRow | undefined;
       if (byEvidence) {
         const result = {
-          collection: parseStoredCollection(byEvidence.document_json),
+          collection: this.attestStoredCollection(byEvidence),
           replayed: true,
         };
         this.database.exec("COMMIT;");
@@ -260,20 +266,50 @@ export class SqliteCaseEvidenceCollectionRepository {
 
   getCollection(collectionId: string): CaseEvidenceCollectionV1 | null {
     const row = this.database
-      .prepare(`SELECT document_json FROM case_evidence_collections WHERE collection_id = ?`)
-      .get(collectionId) as { document_json: string } | undefined;
-    return row ? parseStoredCollection(row.document_json) : null;
+      .prepare(
+        `SELECT evidence_identity_sha256, document_sha256, document_json
+           FROM case_evidence_collections
+          WHERE collection_id = ?`,
+      )
+      .get(collectionId) as StoredCaseEvidenceCollectionRow | undefined;
+    return row ? this.attestStoredCollection(row) : null;
   }
 
   listCollectionsForCandidate(candidateId: string): CaseEvidenceCollectionV1[] {
     const rows = this.database
       .prepare(
-        `SELECT document_json
+        `SELECT evidence_identity_sha256, document_sha256, document_json
            FROM case_evidence_collections
           WHERE candidate_id = ?
           ORDER BY collected_at ASC, collection_id ASC`,
       )
-      .all(candidateId) as { document_json: string }[];
-    return rows.map((row) => parseStoredCollection(row.document_json));
+      .all(candidateId) as StoredCaseEvidenceCollectionRow[];
+    return rows.map((row) => this.attestStoredCollection(row));
+  }
+
+  private attestStoredCollection(row: StoredCaseEvidenceCollectionRow): CaseEvidenceCollectionV1 {
+    if (sha256(row.document_json) !== row.document_sha256) {
+      throw new RegistryConflictError(
+        "CASE_EVIDENCE_COLLECTION_STORAGE_HASH_MISMATCH",
+        "Stored Case evidence collection document does not match its durable hash",
+      );
+    }
+    const collection = parseStoredCollection(row.document_json);
+    verifyExactEvidence(collection);
+    if (evidenceIdentity(collection) !== row.evidence_identity_sha256) {
+      throw new RegistryConflictError(
+        "CASE_EVIDENCE_COLLECTION_STORAGE_IDENTITY_MISMATCH",
+        "Stored Case evidence collection does not match its durable evidence identity",
+      );
+    }
+    const candidate = this.candidates.getCandidate(collection.candidateId);
+    if (!candidate) {
+      throw new RegistryConflictError(
+        "CASE_EVIDENCE_COLLECTION_CANDIDATE_MISSING",
+        `Stored Case evidence collection ${collection.collectionId} references a missing Candidate`,
+      );
+    }
+    assertCandidateLineage(collection, candidate);
+    return collection;
   }
 }
