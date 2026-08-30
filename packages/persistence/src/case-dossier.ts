@@ -279,8 +279,7 @@ export class SqliteCaseDossierRepository {
             WHERE candidate_id = ? AND evidence_collection_id = ? AND version = ?`,
         )
         .get(value.candidateId, value.evidenceCollectionId, value.version) as
-        | StoredCaseDossierRow
-        | undefined;
+        StoredCaseDossierRow | undefined;
       if (bySource) {
         const stored = this.attestStoredDossier(bySource);
         if (bySource.document_sha256 !== documentSha256) {

@@ -281,9 +281,7 @@ describe("Case persistence read attestation", () => {
       narrative: [{ ...current.narrative[0]!, text: "Tampered narrative" }],
     };
     f.database
-      .prepare(
-        `UPDATE case_dossiers SET document_json = ? WHERE dossier_id = ? AND version = 1`,
-      )
+      .prepare(`UPDATE case_dossiers SET document_json = ? WHERE dossier_id = ? AND version = 1`)
       .run(JSON.stringify(changed), current.dossierId);
 
     expectConflict(
