@@ -4,15 +4,7 @@ import path from "node:path";
 import { assertPathOutsideWorkingTree } from "./cnipa-live-acceptance";
 
 const CNIPA_HOST = "pub.sbj.cnipa.gov.cn";
-const HTTP_METHODS = new Set([
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-  "HEAD",
-  "OPTIONS",
-]);
+const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 const ALLOWED_PATH =
   /^\/toas-pub-prod\/pub-prod-api\/(?:pubnotice\/portal\/(?:tmsc|tmyy|tmps)Judgment\/(?:queryPageList|queryInfo|getTodayCount)|public\/web\/anncInfo\/(?:searchEsTmgg|searchEsTmggFile|maxIssue|queryTmggTypeDict)|public\/web\/portal\/fileAddr)$/;
 const HTTP_STATUS = /^HTTP\/\S+\s+([1-5][0-9]{2})(?:\s|$)/;
@@ -91,15 +83,11 @@ function cnipaHost(host: string): boolean {
 }
 
 function sortedRecord(counts: Map<string, number>): Record<string, number> {
-  const entries = [...counts.entries()].sort(([left], [right]) =>
-    left.localeCompare(right),
-  );
+  const entries = [...counts.entries()].sort(([left], [right]) => left.localeCompare(right));
   return Object.fromEntries(entries);
 }
 
-function captureMode(
-  constants: JsonRecord | null,
-): CnipaNetLogSummary["capture_mode"] {
+function captureMode(constants: JsonRecord | null): CnipaNetLogSummary["capture_mode"] {
   const value = constants?.logCaptureMode;
   return value === "Default" || value === "IncludeSensitive" || value === "Everything"
     ? value
