@@ -81,8 +81,10 @@ describe("KnowledgeFederatedCaseReader", () => {
       "2026-08-31T00:01:00.000Z",
     );
     database
-      .prepare("UPDATE case_candidates SET document_json = ? WHERE candidate_id = ?")
-      .run("{}", "case-candidate_001");
+      .prepare(
+        "UPDATE case_candidates SET document_json = json_set(document_json, '$.promotedBy', ?) WHERE candidate_id = ?",
+      )
+      .run("operator:tampered", "case-candidate_001");
 
     const reader = new KnowledgeFederatedCaseReader(database);
     expect(() => reader.search({ workspaceId: "workspace:test" })).toThrowError(
