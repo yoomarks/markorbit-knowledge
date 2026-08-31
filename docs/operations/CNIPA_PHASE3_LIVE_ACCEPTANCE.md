@@ -15,6 +15,18 @@ The persistent browser profile remains the authentication boundary. Cookies, bro
 
 Both the probe plan and the evidence output directory must be absolute paths outside the repository working tree.
 
+## Observed transport boundary
+
+Sanitized ordinary-Chrome NetLog evidence has verified the transport host/path/method surface only:
+
+- host: `pub.sbj.cnipa.gov.cn`;
+- full API prefix: `/toas-pub-prod/pub-prod-api/pubnotice/portal`;
+- list requests for all three judgment libraries use `POST`;
+- detail requests for all three judgment libraries also use `POST`;
+- detail requests use the query parameter key `id`.
+
+These observations do **not** verify request payload fields, response envelope/schema, list-to-detail identity semantics, party-role semantics, pagination limits, coverage completeness, or authenticated application behavior. Those remain Phase 3 live-validation work.
+
 ## 1. Prepare the browser session
 
 Configure the same CNIPA runtime environment used by the Phase 2 Worker:
@@ -46,7 +58,7 @@ Example plan shape (store it outside the repository; replace placeholders only d
       "documentKind": "REGISTRATION_EXAMINATION",
       "surface": "LIST",
       "method": "POST",
-      "path": "/pubnotice/portal/tmscJudgment/queryPageList",
+      "path": "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryPageList",
       "jsonBody": {
         "pageIndex": 1,
         "pageSize": 10,
@@ -58,7 +70,7 @@ Example plan shape (store it outside the repository; replace placeholders only d
       "documentKind": "REGISTRATION_EXAMINATION",
       "surface": "LIST",
       "method": "POST",
-      "path": "/pubnotice/portal/tmscJudgment/queryPageList",
+      "path": "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryPageList",
       "jsonBody": {
         "pageIndex": 11,
         "pageSize": 10,
@@ -69,7 +81,7 @@ Example plan shape (store it outside the repository; replace placeholders only d
 }
 ```
 
-The harness accepts only the three frozen candidate list/detail endpoint paths already recorded in `CNIPA_CANDIDATE_ENDPOINTS` and enforces `POST` for list probes and `GET` for detail probes. Detail probes require exactly one `id` query parameter.
+The harness accepts only the three frozen observed list/detail endpoint paths already recorded in `CNIPA_CANDIDATE_ENDPOINTS`. It enforces `POST` for both list and detail probes. Detail probes require exactly one `id` query parameter.
 
 Party-name/date-range parameter names are **not** supplied by the repository. If an authorized operator observes their exact request body in the authenticated browser, that observed body may be represented in the external probe plan for validation. Do not invent parameter names.
 
@@ -78,7 +90,7 @@ Party-name/date-range parameter names are **not** supplied by the repository. If
 First run the command without the live switch:
 
 ```text
-pnpm --filter @markorbit/worker cnipa:acceptance:live -- --plan "D:\markorbit-private\cnipa\probe-plan.json"
+pnpm --filter @markorbit/worker cnipa:acceptance:live -- --plan "D:\\markorbit-private\\cnipa\\probe-plan.json"
 ```
 
 This performs only local plan validation. It does not launch a browser and does not make a CNIPA request. Output explicitly reports `liveRequestPerformed: false`.
@@ -88,9 +100,9 @@ This performs only local plan validation. It does not launch a browser and does 
 Only after the plan has been reviewed and the persistent browser session is authenticated:
 
 ```text
-pnpm --filter @markorbit/worker cnipa:acceptance:live -- \
-  --plan "D:\markorbit-private\cnipa\probe-plan.json" \
-  --output "D:\markorbit-private\cnipa\evidence\2026-08-29" \
+pnpm --filter @markorbit/worker cnipa:acceptance:live -- \\
+  --plan "D:\\markorbit-private\\cnipa\\probe-plan.json" \\
+  --output "D:\\markorbit-private\\cnipa\\evidence\\2026-08-29" \\
   --execute-live-cnipa
 ```
 
