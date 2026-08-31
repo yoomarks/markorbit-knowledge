@@ -70,9 +70,11 @@ describe("CNIPA offline NetLog CLI", () => {
     expect(classifyCnipaOfflineNetLogFailure(new SyntaxError("SECRET_VALUE"))).toBe(
       "INVALID_JSON",
     );
-    expect(classifyCnipaOfflineNetLogFailure(Object.assign(new Error("SECRET_VALUE"), { code: "ENOENT" }))).toBe(
-      "INPUT_UNREADABLE",
-    );
+    expect(
+      classifyCnipaOfflineNetLogFailure(
+        Object.assign(new Error("SECRET_VALUE"), { code: "ENOENT" }),
+      ),
+    ).toBe("INPUT_UNREADABLE");
     expect(
       classifyCnipaOfflineNetLogFailure(
         new Error("Unsupported CNIPA offline NetLog argument: --secret"),
