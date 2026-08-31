@@ -131,7 +131,10 @@ export function isKnowledgeFederatedRetrievalQueryV1(
   }
   if (
     item.limitPerFamily !== undefined &&
-    (!Number.isSafeInteger(item.limitPerFamily) || item.limitPerFamily < 1 || item.limitPerFamily > 100)
+    (typeof item.limitPerFamily !== "number" ||
+      !Number.isSafeInteger(item.limitPerFamily) ||
+      item.limitPerFamily < 1 ||
+      item.limitPerFamily > 100)
   ) {
     return false;
   }
