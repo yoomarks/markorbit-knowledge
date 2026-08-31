@@ -7,6 +7,7 @@
     "start": "tsx src/main.ts",
     "cnipa:session:login": "tsx src/cnipa-session-login.ts",
     "cnipa:acceptance:live": "tsx src/run-cnipa-live-acceptance.ts",
+    "cnipa:evidence:import-har": "tsx src/run-cnipa-offline-har-evidence.ts",
     "adk:library:bootstrap": "tsx src/run-adk-assignment-library-bootstrap.ts",
     "adk:candidate:promote": "tsx src/run-adk-candidate-promotion.ts",
     "adk:grounded:prepare": "tsx src/prepare-adk-grounded-execution.ts",
