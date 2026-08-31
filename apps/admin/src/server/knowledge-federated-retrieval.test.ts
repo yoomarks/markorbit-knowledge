@@ -143,17 +143,15 @@ describe("retrieveKnowledgeFederated", () => {
       ],
       total: 3,
     }));
-    const expertSearch = vi.fn(
-      (): ExpertSourceRetrievalResultV1 => ({
-        protocolVersion: "1.0",
-        objectType: "EXPERT_SOURCE_RETRIEVAL_RESULT",
-        filters: { topic: "trademark assignment" },
-        items: [expertRecord()],
-        total: 1,
-        limit: 10,
-        offset: 0,
-      }),
-    );
+    const expertSearch = vi.fn((): ExpertSourceRetrievalResultV1 => ({
+      protocolVersion: "1.0",
+      objectType: "EXPERT_SOURCE_RETRIEVAL_RESULT",
+      filters: { topic: "trademark assignment" },
+      items: [expertRecord()],
+      total: 1,
+      limit: 10,
+      offset: 0,
+    }));
     const caseSearch = vi.fn(() => [caseCandidate()]);
 
     const result = retrieveKnowledgeFederated(query(), {
@@ -192,17 +190,15 @@ describe("retrieveKnowledgeFederated", () => {
   it("does not query or leak unrequested source families", () => {
     const canonicalSearch = vi.fn();
     const caseSearch = vi.fn();
-    const expertSearch = vi.fn(
-      (): ExpertSourceRetrievalResultV1 => ({
-        protocolVersion: "1.0",
-        objectType: "EXPERT_SOURCE_RETRIEVAL_RESULT",
-        filters: {},
-        items: [expertRecord()],
-        total: 1,
-        limit: 25,
-        offset: 0,
-      }),
-    );
+    const expertSearch = vi.fn((): ExpertSourceRetrievalResultV1 => ({
+      protocolVersion: "1.0",
+      objectType: "EXPERT_SOURCE_RETRIEVAL_RESULT",
+      filters: {},
+      items: [expertRecord()],
+      total: 1,
+      limit: 25,
+      offset: 0,
+    }));
 
     const result = retrieveKnowledgeFederated(
       query({

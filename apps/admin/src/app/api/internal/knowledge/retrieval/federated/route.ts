@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
-import {
-  isKnowledgeFederatedRetrievalQueryV1,
-} from "@markorbit/contracts";
+import { isKnowledgeFederatedRetrievalQueryV1 } from "@markorbit/contracts";
 import { apiError, readJson } from "@/server/api-errors";
 import { listExpertTaskIdsForWorkspace } from "@/server/expert-api-access";
 import { getExpertSourceRetrievalRepository } from "@/server/expert-source-retrieval";
 import { KnowledgeFederatedCaseReader } from "@/server/knowledge-federated-case-reader";
 import { retrieveKnowledgeFederated } from "@/server/knowledge-federated-retrieval";
 import { authorizeKnowledgeRelationshipRequest } from "@/server/knowledge-relationship-auth";
-import {
-  getRegistryDatabase,
-  getRetrievalIndexRepository,
-} from "@/server/source-registry";
+import { getRegistryDatabase, getRetrievalIndexRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

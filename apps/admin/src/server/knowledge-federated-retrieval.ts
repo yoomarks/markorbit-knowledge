@@ -40,7 +40,10 @@ function requestedFamilies(input: KnowledgeFederatedRetrievalQueryV1): Knowledge
   return input.sourceFamilies ? [...input.sourceFamilies] : [...KNOWLEDGE_SOURCE_FAMILIES];
 }
 
-function hasFamily(families: readonly KnowledgeSourceFamily[], family: KnowledgeSourceFamily): boolean {
+function hasFamily(
+  families: readonly KnowledgeSourceFamily[],
+  family: KnowledgeSourceFamily,
+): boolean {
   return families.includes(family);
 }
 
@@ -57,7 +60,10 @@ function canonicalHits(
   reader: KnowledgeFederatedCanonicalReader,
   limit: number,
 ): { WEB: KnowledgeFederatedCanonicalHitV1[]; AI: KnowledgeFederatedCanonicalHitV1[] } {
-  const result = { WEB: [] as KnowledgeFederatedCanonicalHitV1[], AI: [] as KnowledgeFederatedCanonicalHitV1[] };
+  const result = {
+    WEB: [] as KnowledgeFederatedCanonicalHitV1[],
+    AI: [] as KnowledgeFederatedCanonicalHitV1[],
+  };
   const queryText = input.queryText?.trim();
   if (!queryText || (!hasFamily(families, "WEB") && !hasFamily(families, "AI"))) return result;
 

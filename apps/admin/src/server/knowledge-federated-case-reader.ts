@@ -1,10 +1,7 @@
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { isCaseCandidateV1, type CaseCandidateV1 } from "@markorbit/contracts";
-import {
-  RegistryConflictError,
-  RegistryValidationError,
-} from "@markorbit/persistence";
+import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import { ensureCaseCandidateIntakeRegistry } from "@markorbit/persistence/case-candidate-intake";
 
 export type KnowledgeFederatedCaseSearchV1 = {
