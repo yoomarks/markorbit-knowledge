@@ -98,6 +98,7 @@ export const knowledgeRetrievalRegressionCorpusV1 = {
   cases: [
     {
       caseId: "us-filing-basis",
+      metadataFilterBaselineCandidates: [filingBasis, filingSpecimen],
       result: result(
         "Which source lineage should support a US trademark filing-basis research answer?",
         [
@@ -167,6 +168,7 @@ export const knowledgeRetrievalRegressionCorpusV1 = {
     },
     {
       caseId: "us-section-8-maintenance",
+      metadataFilterBaselineCandidates: [section8Use],
       result: result("Which maintained source should support Section 8 use and timing research?", [
         {
           content: section8Use,
@@ -225,6 +227,7 @@ export const knowledgeRetrievalRegressionCorpusV1 = {
     },
     {
       caseId: "us-ttab-procedure",
+      metadataFilterBaselineCandidates: [ttabProcedure, ttabEvidence],
       result: result(
         "Which source lineage supports a TTAB procedure and evidence research answer?",
         [
