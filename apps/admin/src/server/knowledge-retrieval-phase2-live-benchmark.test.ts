@@ -16,6 +16,7 @@ import {
   buildKnowledgeRetrievalPhase2FrozenFixture,
   createRetrievalIndexLexicalReader,
   runKnowledgeRetrievalPhase2LiveBenchmark,
+  runKnowledgeRetrievalPhase2LiveVariantBenchmark,
 } from "./knowledge-retrieval-phase2-live-benchmark";
 
 const workspaceId = "workspace-phase2-live-benchmark";
@@ -212,6 +213,79 @@ describe("Knowledge retrieval Phase 2 live benchmark", () => {
       "LEXICAL_APPLICABILITY_EVIDENCE",
       "LEXICAL_EXACT_IDENTIFIER",
       "LEXICAL_TEMPORAL_EVIDENCE",
+    ]);
+  });
+
+  it("compares the accepted OFFICIAL_WEB metadata baseline with real lexical evidence without inventing graph evidence", async () => {
+    const measured = await runKnowledgeRetrievalPhase2LiveVariantBenchmark({
+      workspaceId,
+      repository: exactLiveRepository(),
+    });
+
+    expect(measured).toMatchObject({
+      schemaVersion: 1,
+      fixtureId: "knowledge-retrieval-multisource-phase2-live-benchmark-variant-comparison",
+      corpusVersion: KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1.corpusVersion,
+      passed: true,
+    });
+    expect(
+      measured.cases.map((regressionCase) => ({
+        baselineCandidates: regressionCase.variantComparison.metadataFilterBaseline.candidateCount,
+        baselineCoverage:
+          regressionCase.variantComparison.metadataFilterBaseline.expectedDocumentCoverageRate,
+        lexicalCandidates: regressionCase.variantComparison.lexicalOnly.candidateCount,
+        lexicalCoverage: regressionCase.variantComparison.lexicalOnly.expectedDocumentCoverageRate,
+        lexicalRelationshipCandidates:
+          regressionCase.variantComparison.lexicalRelationship.candidateCount,
+        lexicalRelationshipCoverage:
+          regressionCase.variantComparison.lexicalRelationship.expectedDocumentCoverageRate,
+        lexicalVsBaselineDelta:
+          regressionCase.variantComparison.deltas.lexicalVsMetadataFilterCoverageDelta,
+        relationshipVsLexicalDelta:
+          regressionCase.variantComparison.deltas.relationshipVsLexicalCoverageDelta,
+        relationshipContribution:
+          regressionCase.variantComparison.lexicalRelationship.metrics
+            .relationshipExpansionContributionRate,
+        relationshipNoise:
+          regressionCase.variantComparison.lexicalRelationship.metrics.relationshipExpansionNoiseRate,
+      })),
+    ).toEqual([
+      {
+        baselineCandidates: 3,
+        baselineCoverage: 1,
+        lexicalCandidates: 1,
+        lexicalCoverage: 1,
+        lexicalRelationshipCandidates: 1,
+        lexicalRelationshipCoverage: 1,
+        lexicalVsBaselineDelta: 0,
+        relationshipVsLexicalDelta: 0,
+        relationshipContribution: null,
+        relationshipNoise: null,
+      },
+      {
+        baselineCandidates: 3,
+        baselineCoverage: 1,
+        lexicalCandidates: 1,
+        lexicalCoverage: 1,
+        lexicalRelationshipCandidates: 1,
+        lexicalRelationshipCoverage: 1,
+        lexicalVsBaselineDelta: 0,
+        relationshipVsLexicalDelta: 0,
+        relationshipContribution: null,
+        relationshipNoise: null,
+      },
+      {
+        baselineCandidates: 3,
+        baselineCoverage: 1,
+        lexicalCandidates: 1,
+        lexicalCoverage: 1,
+        lexicalRelationshipCandidates: 1,
+        lexicalRelationshipCoverage: 1,
+        lexicalVsBaselineDelta: 0,
+        relationshipVsLexicalDelta: 0,
+        relationshipContribution: null,
+        relationshipNoise: null,
+      },
     ]);
   });
 });
