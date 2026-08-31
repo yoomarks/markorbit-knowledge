@@ -253,12 +253,8 @@ describe("K-FED repository integration", () => {
     expect(resultA.families.CASE.map((item) => item.sourceIdentity)).toEqual([
       "case-candidate_kfed_a",
     ]);
-    expect(resultA.families.WEB[0]?.rawEvidenceRefs).toEqual([
-      "art_00000000000000000000000001",
-    ]);
-    expect(resultA.families.AI[0]?.rawEvidenceRefs).toEqual([
-      "art_00000000000000000000000002",
-    ]);
+    expect(resultA.families.WEB[0]?.rawEvidenceRefs).toEqual(["art_00000000000000000000000001"]);
+    expect(resultA.families.AI[0]?.rawEvidenceRefs).toEqual(["art_00000000000000000000000002"]);
     expect(resultA.families.EXPERT[0]?.rawEvidenceRefs).toEqual(["raw:expert:kfed:a"]);
     expect(resultA.families.CASE[0]?.rawEvidenceRefs).toEqual([
       "markreg:/v1/formal-matters/formal-matter_kfed_a",
