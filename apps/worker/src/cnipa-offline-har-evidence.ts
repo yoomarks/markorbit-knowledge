@@ -1,10 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import {
-  CNIPA_CANDIDATE_ENDPOINTS,
-  type CnipaDocumentKind,
-} from "@markorbit/worker-runtime";
+import { CNIPA_CANDIDATE_ENDPOINTS, type CnipaDocumentKind } from "@markorbit/worker-runtime";
 import { assertPathOutsideWorkingTree } from "./cnipa-live-acceptance";
 
 const CNIPA_HOST = "pub.sbj.cnipa.gov.cn";
@@ -114,12 +111,15 @@ function parseResponseBody(content: unknown): {
   jsonValid: boolean | null;
 } {
   const input = record(content) as HarResponseContent | null;
-  const contentType = typeof input?.mimeType === "string" ? input.mimeType : "application/octet-stream";
+  const contentType =
+    typeof input?.mimeType === "string" ? input.mimeType : "application/octet-stream";
   if (!input || typeof input.text !== "string") {
     return { contentType, body: null, jsonValid: null };
   }
   if (input.encoding !== undefined && input.encoding !== "base64") {
-    throw new Error(`CNIPA HAR response uses unsupported content encoding: ${String(input.encoding)}`);
+    throw new Error(
+      `CNIPA HAR response uses unsupported content encoding: ${String(input.encoding)}`,
+    );
   }
   const body = Buffer.from(input.text, input.encoding === "base64" ? "base64" : "utf8");
   if (body.byteLength > MAX_RESPONSE_BYTES) {
@@ -165,7 +165,9 @@ function parseEntry(value: unknown): ParsedEvidenceEntry | null {
 
   const queryKeys = [...new Set([...url.searchParams.keys()])].sort();
   if (endpoint.surface === "LIST" && queryKeys.length > 0) {
-    throw new Error(`CNIPA HAR LIST endpoint ${endpoint.path} unexpectedly contains query parameters`);
+    throw new Error(
+      `CNIPA HAR LIST endpoint ${endpoint.path} unexpectedly contains query parameters`,
+    );
   }
   if (endpoint.surface === "DETAIL" && (queryKeys.length !== 1 || queryKeys[0] !== "id")) {
     throw new Error(`CNIPA HAR DETAIL endpoint ${endpoint.path} must contain only the id query key`);
@@ -178,7 +180,9 @@ function parseEntry(value: unknown): ParsedEvidenceEntry | null {
 
   const requestBody = parseRequestBody(request.postData);
   if (endpoint.surface === "DETAIL" && requestBody.keys.length > 0) {
-    throw new Error(`CNIPA HAR DETAIL endpoint ${endpoint.path} unexpectedly contains a request body`);
+    throw new Error(
+      `CNIPA HAR DETAIL endpoint ${endpoint.path} unexpectedly contains a request body`,
+    );
   }
   const responseBody = parseResponseBody(response.content);
 
@@ -218,7 +222,9 @@ export function parseCnipaOfflineHarEvidence(value: unknown): ParsedEvidenceEntr
       throw new Error(`CNIPA offline HAR evidence exceeds ${MAX_MATCHED_ENTRIES} matched entries`);
     }
     if (totalResponseBytes > MAX_TOTAL_RESPONSE_BYTES) {
-      throw new Error(`CNIPA offline HAR evidence exceeds ${MAX_TOTAL_RESPONSE_BYTES} total response bytes`);
+      throw new Error(
+        `CNIPA offline HAR evidence exceeds ${MAX_TOTAL_RESPONSE_BYTES} total response bytes`,
+      );
     }
   }
   if (result.length === 0) {
@@ -255,7 +261,10 @@ export async function importCnipaOfflineHarEvidence(options: {
 
   const manifestEntries: CnipaOfflineHarManifestEntry[] = [];
   for (const [index, entry] of entries.entries()) {
-    const prefix = `${String(index + 1).padStart(3, "0")}-${entry.documentKind.toLowerCase()}-${entry.surface.toLowerCase()}`;
+    const prefix = `${String(index + 1).padStart(
+      3,
+      "0",
+    )}-${entry.documentKind.toLowerCase()}-${entry.surface.toLowerCase()}`;
     let responseFile: string | null = null;
     let responseSha256: string | null = null;
     let responseBytes = 0;
