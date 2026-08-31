@@ -34,7 +34,7 @@ function retrievalHit(
       sourceUri,
       sourceName: documentId,
       sourceCategory: "OFFICIAL_GUIDANCE",
-      authorityLevel: "PRIMARY",
+      authorityLevel: "PRIMARY_OFFICIAL",
       jurisdictions: ["US"],
       languages: ["en"],
       capturedAt: "2026-08-31T00:00:00.000Z",
@@ -111,7 +111,9 @@ function caseCandidate(): CaseCandidateV1 {
   };
 }
 
-function query(overrides: Partial<KnowledgeFederatedRetrievalQueryV1> = {}): KnowledgeFederatedRetrievalQueryV1 {
+function query(
+  overrides: Partial<KnowledgeFederatedRetrievalQueryV1> = {},
+): KnowledgeFederatedRetrievalQueryV1 {
   return {
     protocolVersion: KNOWLEDGE_FEDERATED_RETRIEVAL_PROTOCOL_VERSION,
     objectType: KNOWLEDGE_FEDERATED_RETRIEVAL_QUERY_OBJECT_TYPE,
@@ -132,7 +134,11 @@ describe("retrieveKnowledgeFederated", () => {
       query: "assignment",
       items: [
         retrievalHit("web-doc", "https://www.uspto.gov/assignment", null),
-        retrievalHit("ai-doc", "ai+markorbit://provider/submissions/001", "ai+markorbit://provider/assignments/001"),
+        retrievalHit(
+          "ai-doc",
+          "ai+markorbit://provider/submissions/001",
+          "ai+markorbit://provider/assignments/001",
+        ),
         retrievalHit("local-doc", "file:///vault/manual.md", null),
       ],
       total: 3,
@@ -199,7 +205,12 @@ describe("retrieveKnowledgeFederated", () => {
     );
 
     const result = retrieveKnowledgeFederated(
-      query({ sourceFamilies: ["EXPERT"], queryText: undefined, topic: undefined, limitPerFamily: undefined }),
+      query({
+        sourceFamilies: ["EXPERT"],
+        queryText: undefined,
+        topic: undefined,
+        limitPerFamily: undefined,
+      }),
       {
         canonical: { search: canonicalSearch },
         expert: { search: expertSearch },
