@@ -4,7 +4,15 @@ import path from "node:path";
 import { assertPathOutsideWorkingTree } from "./cnipa-live-acceptance";
 
 const CNIPA_HOST = "pub.sbj.cnipa.gov.cn";
-const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
+const HTTP_METHODS = new Set([
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+]);
 const ALLOWED_PATH =
   /^\/toas-pub-prod\/pub-prod-api\/(?:pubnotice\/portal\/(?:tmsc|tmyy|tmps)Judgment\/(?:queryPageList|queryInfo|getTodayCount)|public\/web\/anncInfo\/(?:searchEsTmgg|searchEsTmggFile|maxIssue|queryTmggTypeDict)|public\/web\/portal\/fileAddr)$/;
 const HTTP_STATUS = /^HTTP\/\S+\s+([1-5][0-9]{2})(?:\s|$)/;
@@ -71,7 +79,9 @@ function eventNameMap(constants: JsonRecord | null): Map<string, string> {
   const result = new Map<string, string>();
   if (!eventTypes) return result;
   for (const [name, value] of Object.entries(eventTypes)) {
-    if (typeof value === "number" || typeof value === "string") result.set(String(value), name);
+    if (typeof value === "number" || typeof value === "string") {
+      result.set(String(value), name);
+    }
   }
   return result;
 }
@@ -81,10 +91,15 @@ function cnipaHost(host: string): boolean {
 }
 
 function sortedRecord(counts: Map<string, number>): Record<string, number> {
-  return Object.fromEntries([...counts.entries()].sort(([left], [right]) => left.localeCompare(right)));
+  const entries = [...counts.entries()].sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  return Object.fromEntries(entries);
 }
 
-function captureMode(constants: JsonRecord | null): CnipaNetLogSummary["capture_mode"] {
+function captureMode(
+  constants: JsonRecord | null,
+): CnipaNetLogSummary["capture_mode"] {
   const value = constants?.logCaptureMode;
   return value === "Default" || value === "IncludeSensitive" || value === "Everything"
     ? value
@@ -158,9 +173,8 @@ export function summarizeCnipaNetLog(raw: Buffer): CnipaNetLogSummary {
     const id = sourceId(event);
     if (id !== null) {
       for (const related of bySource.get(id) ?? []) {
-        if (eventNames.get(String(related.event.type)) !== "HTTP_TRANSACTION_READ_RESPONSE_HEADERS") {
-          continue;
-        }
+        const relatedType = eventNames.get(String(related.event.type));
+        if (relatedType !== "HTTP_TRANSACTION_READ_RESPONSE_HEADERS") continue;
         const relatedParams = record(related.event.params);
         for (const line of stringArray(relatedParams?.headers)) {
           const match = HTTP_STATUS.exec(line);
@@ -171,9 +185,9 @@ export function summarizeCnipaNetLog(raw: Buffer): CnipaNetLogSummary {
       }
     }
 
-    const queryNames = [
-      ...new Set([...url.searchParams.keys()].filter((name) => name === "id")),
-    ].sort();
+    const rawQueryNames = [...url.searchParams.keys()];
+    const allowlistedQueryNames = rawQueryNames.filter((name) => name === "id");
+    const queryNames = [...new Set(allowlistedQueryNames)].sort();
     requests.push({
       host,
       path: url.pathname,
@@ -227,7 +241,8 @@ export async function sanitizeCnipaNetLog(options: {
 
   const raw = await readFile(inputPath);
   const summary = summarizeCnipaNetLog(raw);
+  const serialized = `${JSON.stringify(summary, null, 2)}\n`;
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(summary, null, 2)}\n`, { flag: "wx" });
+  await writeFile(outputPath, serialized, { flag: "wx" });
   return summary;
 }
