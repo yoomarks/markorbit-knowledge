@@ -52,14 +52,7 @@ describe("CNIPA offline NetLog CLI", () => {
       "Unsupported CNIPA offline NetLog argument",
     );
     expect(() =>
-      parseCnipaOfflineNetLogArguments([
-        "--input",
-        "/a",
-        "--input",
-        "/b",
-        "--output",
-        "/c",
-      ]),
+      parseCnipaOfflineNetLogArguments(["--input", "/a", "--input", "/b", "--output", "/c"]),
     ).toThrow("--input may be specified only once");
     expect(() => parseCnipaOfflineNetLogArguments(["--input", "/a"])).toThrow(
       "requires --input and --output",
@@ -67,9 +60,7 @@ describe("CNIPA offline NetLog CLI", () => {
   });
 
   it("classifies failures without exposing the underlying message", () => {
-    expect(classifyCnipaOfflineNetLogFailure(new SyntaxError("SECRET_VALUE"))).toBe(
-      "INVALID_JSON",
-    );
+    expect(classifyCnipaOfflineNetLogFailure(new SyntaxError("SECRET_VALUE"))).toBe("INVALID_JSON");
     expect(
       classifyCnipaOfflineNetLogFailure(
         Object.assign(new Error("SECRET_VALUE"), { code: "ENOENT" }),
@@ -80,9 +71,7 @@ describe("CNIPA offline NetLog CLI", () => {
         new Error("Unsupported CNIPA offline NetLog argument: --secret"),
       ),
     ).toBe("ARGUMENT_ERROR");
-    expect(classifyCnipaOfflineNetLogFailure(new Error("SECRET_VALUE"))).toBe(
-      "SANITIZE_FAILED",
-    );
+    expect(classifyCnipaOfflineNetLogFailure(new Error("SECRET_VALUE"))).toBe("SANITIZE_FAILED");
 
     for (const kind of [
       "ARGUMENT_ERROR",

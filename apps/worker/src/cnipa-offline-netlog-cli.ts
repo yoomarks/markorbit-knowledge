@@ -4,10 +4,7 @@ export type CnipaOfflineNetLogArguments = {
 };
 
 export type CnipaOfflineNetLogFailureKind =
-  | "ARGUMENT_ERROR"
-  | "INPUT_UNREADABLE"
-  | "INVALID_JSON"
-  | "SANITIZE_FAILED";
+  "ARGUMENT_ERROR" | "INPUT_UNREADABLE" | "INVALID_JSON" | "SANITIZE_FAILED";
 
 export function parseCnipaOfflineNetLogArguments(
   argv: readonly string[],
@@ -52,18 +49,11 @@ function nodeErrorCode(error: unknown): string | null {
   return typeof code === "string" ? code : null;
 }
 
-export function classifyCnipaOfflineNetLogFailure(
-  error: unknown,
-): CnipaOfflineNetLogFailureKind {
+export function classifyCnipaOfflineNetLogFailure(error: unknown): CnipaOfflineNetLogFailureKind {
   if (error instanceof SyntaxError) return "INVALID_JSON";
 
   const code = nodeErrorCode(error);
-  if (
-    code === "ENOENT" ||
-    code === "EACCES" ||
-    code === "EPERM" ||
-    code === "EISDIR"
-  ) {
+  if (code === "ENOENT" || code === "EACCES" || code === "EPERM" || code === "EISDIR") {
     return "INPUT_UNREADABLE";
   }
 
@@ -85,9 +75,7 @@ export function classifyCnipaOfflineNetLogFailure(
   return "SANITIZE_FAILED";
 }
 
-export function cnipaOfflineNetLogFailureMessage(
-  kind: CnipaOfflineNetLogFailureKind,
-): string {
+export function cnipaOfflineNetLogFailureMessage(kind: CnipaOfflineNetLogFailureKind): string {
   switch (kind) {
     case "ARGUMENT_ERROR":
       return "CNIPA NetLog command arguments are invalid. Use the documented --input/--output form. No raw log content was printed.";
