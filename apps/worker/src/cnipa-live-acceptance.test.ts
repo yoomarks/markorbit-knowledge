@@ -81,7 +81,7 @@ describe("CNIPA live acceptance harness", () => {
     ).toThrow(/credential-like/i);
   });
 
-  it("requires observed POST detail transport with exactly one id query parameter", () => {
+  it("requires observed POST detail transport and id without claiming other query keys are absent", () => {
     expect(
       parseCnipaLiveAcceptancePlan({
         version: 1,
@@ -92,7 +92,7 @@ describe("CNIPA live acceptance harness", () => {
             surface: "DETAIL",
             method: "POST",
             path: REGISTRATION_DETAIL_PATH,
-            query: { id: "synthetic-record-id" },
+            query: { id: "synthetic-record-id", observedExtraField: "synthetic-value" },
           },
         ],
       }).probes[0],
@@ -100,7 +100,7 @@ describe("CNIPA live acceptance harness", () => {
       surface: "DETAIL",
       method: "POST",
       path: REGISTRATION_DETAIL_PATH,
-      query: { id: "synthetic-record-id" },
+      query: { id: "synthetic-record-id", observedExtraField: "synthetic-value" },
     });
 
     expect(() =>
@@ -133,7 +133,7 @@ describe("CNIPA live acceptance harness", () => {
           },
         ],
       }),
-    ).toThrow(/exactly one id query parameter/);
+    ).toThrow(/observed id query parameter/);
   });
 
   it("requires an explicit live switch before output is required", () => {
