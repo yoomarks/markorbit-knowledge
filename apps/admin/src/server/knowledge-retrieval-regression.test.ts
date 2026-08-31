@@ -76,8 +76,7 @@ describe("Knowledge retrieval representative corpus regression", () => {
         lexicalCoverage: regressionCase.variantComparison.lexicalOnly.expectedDocumentCoverageRate,
         relationshipCoverage:
           regressionCase.variantComparison.lexicalRelationship.expectedDocumentCoverageRate,
-        lexicalDelta:
-          regressionCase.variantComparison.deltas.lexicalVsMetadataFilterCoverageDelta,
+        lexicalDelta: regressionCase.variantComparison.deltas.lexicalVsMetadataFilterCoverageDelta,
         relationshipDelta:
           regressionCase.variantComparison.deltas.relationshipVsLexicalCoverageDelta,
         lexicalRelationshipContribution:

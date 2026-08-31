@@ -141,7 +141,10 @@ function validateBaselineCandidates(regressionCase: KnowledgeRetrievalRegression
 
   const identities = new Set<string>();
   for (const candidate of regressionCase.metadataFilterBaselineCandidates) {
-    if (!isContentObjectRefV1(candidate) || candidate.workspaceId !== regressionCase.result.workspaceId) {
+    if (
+      !isContentObjectRefV1(candidate) ||
+      candidate.workspaceId !== regressionCase.result.workspaceId
+    ) {
       throw new RegistryValidationError(
         "Retrieval regression metadata/filter baseline candidate must be valid content in the result workspace",
       );
@@ -266,7 +269,10 @@ function compareVariants(
     regressionCase.evaluation,
   );
   const lexicalCandidates = lexicalResult.items.map((item) => item.content);
-  const lexicalCoverage = expectedDocumentCoverageRate(lexicalCandidates, regressionCase.evaluation);
+  const lexicalCoverage = expectedDocumentCoverageRate(
+    lexicalCandidates,
+    regressionCase.evaluation,
+  );
   const relationshipCandidates = lexicalRelationshipCandidates(regressionCase.result);
   const relationshipCoverage = expectedDocumentCoverageRate(
     relationshipCandidates,
