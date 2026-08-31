@@ -247,7 +247,8 @@ describe("Knowledge retrieval Phase 2 live benchmark", () => {
           regressionCase.variantComparison.lexicalRelationship.metrics
             .relationshipExpansionContributionRate,
         relationshipNoise:
-          regressionCase.variantComparison.lexicalRelationship.metrics.relationshipExpansionNoiseRate,
+          regressionCase.variantComparison.lexicalRelationship.metrics
+            .relationshipExpansionNoiseRate,
       })),
     ).toEqual([
       {
