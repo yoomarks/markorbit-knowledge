@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { sanitizeCnipaNetLog, summarizeCnipaNetLog } from "./cnipa-offline-netlog-evidence";
 
 const DETAIL_PATH = "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryInfo";
+const PORTAL_UI_PREFIX = "/toas-pub-prod/portalui-pub-prod";
 
 function netLog() {
   return {
@@ -86,6 +87,74 @@ describe("CNIPA offline NetLog evidence", () => {
     const result = summarizeCnipaNetLog(raw);
     expect(JSON.stringify(result)).not.toContain("SECRET_VALUE");
     expect(result.candidate_endpoint_url_events).toEqual([]);
+  });
+
+  it("exports only exact-host portal UI static asset paths without query or fragment values", () => {
+    const assetPath = `${PORTAL_UI_PREFIX}/assets/app.a1b2c3.js`;
+    const cssPath = `${PORTAL_UI_PREFIX}/css/theme.abc123.css`;
+    const raw = Buffer.from(
+      JSON.stringify({
+        events: [
+          {
+            params: {
+              url: `https://pub.sbj.cnipa.gov.cn${assetPath}?token=SECRET_VALUE#SECRET_VALUE`,
+              method: "GET",
+              headers: ["Authorization: SECRET_VALUE"],
+            },
+          },
+          {
+            params: {
+              url: `https://pub.sbj.cnipa.gov.cn${assetPath}?cache=another-value`,
+              method: "GET",
+            },
+          },
+          {
+            params: {
+              url: `https://pub.sbj.cnipa.gov.cn${cssPath}?cache=SECRET_VALUE`,
+              method: "GET",
+            },
+          },
+          {
+            params: {
+              url: "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/private.js?token=SECRET_VALUE",
+              method: "GET",
+            },
+          },
+          {
+            params: {
+              url: `https://sso.cnipa.gov.cn${PORTAL_UI_PREFIX}/assets/sso.js?token=SECRET_VALUE`,
+              method: "GET",
+            },
+          },
+        ],
+      }),
+      "utf8",
+    );
+    const result = summarizeCnipaNetLog(raw);
+    const serialized = JSON.stringify(result);
+
+    expect(result.static_application_asset_path_count).toBe(2);
+    expect(result.static_application_asset_paths).toEqual([assetPath, cssPath]);
+    expect(result.static_application_asset_paths_truncated).toBe(false);
+    expect(serialized).not.toContain("SECRET_VALUE");
+    expect(serialized).not.toContain("another-value");
+    expect(serialized).not.toContain("private.js");
+    expect(serialized).not.toContain("sso.js");
+  });
+
+  it("bounds and reports static application asset path output", () => {
+    const events = Array.from({ length: 205 }, (_, index) => ({
+      params: {
+        url: `https://pub.sbj.cnipa.gov.cn${PORTAL_UI_PREFIX}/assets/chunk-${index}.js?token=SECRET_VALUE`,
+        method: "GET",
+      },
+    }));
+    const result = summarizeCnipaNetLog(Buffer.from(JSON.stringify({ events }), "utf8"));
+
+    expect(result.static_application_asset_path_count).toBe(205);
+    expect(result.static_application_asset_paths).toHaveLength(200);
+    expect(result.static_application_asset_paths_truncated).toBe(true);
+    expect(JSON.stringify(result)).not.toContain("SECRET_VALUE");
   });
 
   it("writes only the sanitized summary outside the repository working tree", async () => {
