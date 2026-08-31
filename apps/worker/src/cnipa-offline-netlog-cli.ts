@@ -19,7 +19,9 @@ export function parseCnipaOfflineNetLogArguments(
   for (let index = 0; index < normalized.length; index += 1) {
     const argument = normalized[index];
     if (argument === "--") {
-      throw new Error("CNIPA offline NetLog argument separator is allowed only as the first argument");
+      throw new Error(
+        "CNIPA offline NetLog argument separator is allowed only as the first argument",
+      );
     }
     if (argument !== "--input" && argument !== "--output") {
       throw new Error(`Unsupported CNIPA offline NetLog argument: ${argument}`);
@@ -56,7 +58,12 @@ export function classifyCnipaOfflineNetLogFailure(
   if (error instanceof SyntaxError) return "INVALID_JSON";
 
   const code = nodeErrorCode(error);
-  if (code === "ENOENT" || code === "EACCES" || code === "EPERM" || code === "EISDIR") {
+  if (
+    code === "ENOENT" ||
+    code === "EACCES" ||
+    code === "EPERM" ||
+    code === "EISDIR"
+  ) {
     return "INPUT_UNREADABLE";
   }
 
@@ -78,7 +85,9 @@ export function classifyCnipaOfflineNetLogFailure(
   return "SANITIZE_FAILED";
 }
 
-export function cnipaOfflineNetLogFailureMessage(kind: CnipaOfflineNetLogFailureKind): string {
+export function cnipaOfflineNetLogFailureMessage(
+  kind: CnipaOfflineNetLogFailureKind,
+): string {
   switch (kind) {
     case "ARGUMENT_ERROR":
       return "CNIPA NetLog command arguments are invalid. Use the documented --input/--output form. No raw log content was printed.";
