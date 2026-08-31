@@ -24,7 +24,10 @@ function value(overrides: Partial<CaseCandidateV1> = {}): CaseCandidateV1 {
     sourceRetrievalRef: "markreg:authorized-ref:read-attestation",
     promotedBy: "operator:test",
     promotedAt: "2026-08-31T02:00:00.000Z",
-    accessScope: { sourceWorkspaceId: "workspace:read-attestation", classification: "CONFIDENTIAL" },
+    accessScope: {
+      sourceWorkspaceId: "workspace:read-attestation",
+      classification: "CONFIDENTIAL",
+    },
     idempotencyKey: "case-candidate-read-attestation-001",
     ...overrides,
   };
@@ -54,23 +57,85 @@ describe("Case Candidate read attestation", () => {
   it("rejects stored document hash drift", () => {
     const f = setup();
     const changed = JSON.stringify(value({ promotedBy: "operator:changed" }));
-    f.database.prepare("UPDATE case_candidates SET document_json = ? WHERE candidate_id = ?").run(changed, id);
+    f.database
+      .prepare("UPDATE case_candidates SET document_json = ? WHERE candidate_id = ?")
+      .run(changed, id);
+
     expectCode(() => f.repository.getCandidate(id), "CASE_CANDIDATE_STORAGE_HASH_MISMATCH");
   });
 
   it("rejects stored natural source identity drift", () => {
     const f = setup();
-    const changed = JSON.stringify(value({
-      accessScope: { sourceWorkspaceId: "workspace:changed", classification: "CONFIDENTIAL" },
-    }));
-    f.database.prepare("UPDATE case_candidates SET document_json = ?, document_sha256 = ? WHERE candidate_id = ?").run(changed, hash(changed), id);
-    expectCode(() => f.repository.getCandidate(id), "CASE_CANDIDATE_STORAGE_SOURCE_IDENTITY_MISMATCH");
+    const changed = JSON.stringify(
+      value({
+        accessScope: {
+          sourceWorkspaceId: "workspace:changed",
+          classification: "CONFIDENTIAL",
+        },
+      }),
+    );
+    f.database
+      .prepare(
+        "UPDATE case_candidates SET document_json = ?, document_sha256 = ? WHERE candidate_id = ?",
+      )
+      .run(changed, hash(changed), id);
+
+    expectCode(
+      () => f.repository.getCandidate(id),
+      "CASE_CANDIDATE_STORAGE_SOURCE_IDENTITY_MISMATCH",
+    );
   });
 
   it("uses the originating intake command to reject retrieval-semantic drift", () => {
     const f = setup();
-    const changed = JSON.stringify(value({ sourceRetrievalRef: "markreg:authorized-ref:changed" }));
-    f.database.prepare("UPDATE case_candidates SET document_json = ?, document_sha256 = ? WHERE candidate_id = ?").run(changed, hash(changed), id);
+    const changed = JSON.stringify(
+      value({ sourceRetrievalRef: "markreg:authorized-ref:changed" }),
+    );
+    f.database
+      .prepare(
+        "UPDATE case_candidates SET document_json = ?, document_sha256 = ? WHERE candidate_id = ?",
+      )
+      .run(changed, hash(changed), id);
+
     expectCode(() => f.repository.getCandidate(id), "CASE_CANDIDATE_INTAKE_COMMAND_MISMATCH");
+  });
+
+  it("rejects collection-ticket source identity drift", () => {
+    const f = setup();
+    f.database
+      .prepare(
+        "UPDATE case_candidate_collection_tickets SET source_identity_sha256 = ? WHERE candidate_id = ?",
+      )
+      .run("f".repeat(64), id);
+
+    expectCode(
+      () => f.repository.getIntake(id),
+      "CASE_CANDIDATE_COLLECTION_TICKET_IDENTITY_MISMATCH",
+    );
+  });
+
+  it("rejects originating intake request hash drift", () => {
+    const f = setup();
+    f.database
+      .prepare(
+        "UPDATE case_candidate_intake_commands SET request_sha256 = ? WHERE idempotency_key = ?",
+      )
+      .run("f".repeat(64), value().idempotencyKey);
+
+    expectCode(() => f.repository.getCandidate(id), "CASE_CANDIDATE_INTAKE_COMMAND_MISMATCH");
+  });
+
+  it("rejects a Candidate document ID that disagrees with the durable row ID", () => {
+    const f = setup();
+    const changed = JSON.stringify(
+      value({ candidateId: "case-candidate_read_attestation_changed" }),
+    );
+    f.database
+      .prepare(
+        "UPDATE case_candidates SET document_json = ?, document_sha256 = ? WHERE candidate_id = ?",
+      )
+      .run(changed, hash(changed), id);
+
+    expectCode(() => f.repository.getCandidate(id), "CASE_CANDIDATE_STORAGE_ID_MISMATCH");
   });
 });
