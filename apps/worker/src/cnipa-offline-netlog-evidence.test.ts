@@ -25,6 +25,7 @@ function netLog() {
           headers: ["Authorization: SECRET_VALUE"],
         },
       },
+      "ignored-non-object-event",
       {
         type: 2,
         source: { id: 10 },
@@ -54,6 +55,7 @@ describe("CNIPA offline NetLog evidence", () => {
     expect(serialized).not.toContain("Set-Cookie");
     expect(serialized).not.toContain("Authorization");
     expect(result.capture_mode).toBe("Default");
+    expect(result.event_count).toBe(5);
     expect(result.observed_request_start_events).toHaveLength(1);
     expect(result.observed_request_start_events[0]).toMatchObject({
       host: "pub.sbj.cnipa.gov.cn",
@@ -61,6 +63,7 @@ describe("CNIPA offline NetLog evidence", () => {
       method: "POST",
       allowlisted_query_parameter_names: ["id"],
       http_status_codes: [200],
+      response_status_event_indices_zero_based: [2],
       request_payload_fields: "NOT_OBSERVED",
       response_envelope: "NOT_OBSERVED",
     });
