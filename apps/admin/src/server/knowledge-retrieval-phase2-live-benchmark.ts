@@ -10,11 +10,16 @@ import {
   runFrozenRetrievalEvaluation,
   type FrozenRetrievalFixtureEvaluationV1,
   type FrozenRetrievalFixtureV1,
+  type FrozenRetrievalResultV1,
 } from "./knowledge-retrieval-evaluation-runner";
 import {
   KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1,
   type RetrievalCorpusEvidenceV1,
 } from "./knowledge-retrieval-phase2-corpus";
+import {
+  runKnowledgeRetrievalRegression,
+  type KnowledgeRetrievalRegressionResultV1,
+} from "./knowledge-retrieval-regression";
 
 const EMPTY_GRAPH_READER: KnowledgeGraphRetrievalReader = {
   listNeighbors: () => ({ items: [] }),
@@ -66,6 +71,19 @@ function liveEvidenceByRef(evidenceRef: string): RetrievalCorpusEvidenceV1 {
 function liveCorpusEvidence(): RetrievalCorpusEvidenceV1[] {
   return KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1.evidence.filter(
     (evidence) => evidence.evidenceKind === "LIVE_ACCEPTED",
+  );
+}
+
+function officialWebLiveDocumentIds(): Set<string> {
+  return new Set(
+    KNOWLEDGE_RETRIEVAL_PHASE2_CORPUS_V1.evidence
+      .filter(
+        (evidence) =>
+          evidence.evidenceKind === "LIVE_ACCEPTED" &&
+          evidence.sourceFamily === "OFFICIAL_WEB" &&
+          Boolean(evidence.documentId),
+      )
+      .map((evidence) => evidence.documentId!),
   );
 }
 
@@ -189,13 +207,21 @@ export function createRetrievalIndexLexicalReader(
   };
 }
 
-export async function runKnowledgeRetrievalPhase2LiveBenchmark(input: {
+async function executeKnowledgeRetrievalPhase2LiveCompositions(input: {
   workspaceId: string;
   repository: RetrievalIndexRepository;
   graph?: KnowledgeGraphRetrievalReader;
-}): Promise<FrozenRetrievalFixtureEvaluationV1> {
+}): Promise<{
+  workspaceId: string;
+  attestedDocuments: RetrievalDocument[];
+  fixture: FrozenRetrievalFixtureV1;
+  results: FrozenRetrievalResultV1[];
+}> {
   const workspaceId = normalizedWorkspaceId(input.workspaceId);
-  attestKnowledgeRetrievalPhase2LiveCorpus({ workspaceId, repository: input.repository });
+  const attestedDocuments = attestKnowledgeRetrievalPhase2LiveCorpus({
+    workspaceId,
+    repository: input.repository,
+  });
   const fixture = buildKnowledgeRetrievalPhase2FrozenFixture(workspaceId);
   const lexical = createRetrievalIndexLexicalReader(input.repository);
   const graph = input.graph ?? EMPTY_GRAPH_READER;
@@ -216,5 +242,61 @@ export async function runKnowledgeRetrievalPhase2LiveBenchmark(input: {
       ),
     })),
   );
+  return { workspaceId, attestedDocuments, fixture, results };
+}
+
+export async function runKnowledgeRetrievalPhase2LiveBenchmark(input: {
+  workspaceId: string;
+  repository: RetrievalIndexRepository;
+  graph?: KnowledgeGraphRetrievalReader;
+}): Promise<FrozenRetrievalFixtureEvaluationV1> {
+  const { fixture, results } = await executeKnowledgeRetrievalPhase2LiveCompositions(input);
   return runFrozenRetrievalEvaluation(fixture, results);
+}
+
+export async function runKnowledgeRetrievalPhase2LiveVariantBenchmark(input: {
+  workspaceId: string;
+  repository: RetrievalIndexRepository;
+  graph?: KnowledgeGraphRetrievalReader;
+}): Promise<KnowledgeRetrievalRegressionResultV1> {
+  const { workspaceId, attestedDocuments, fixture, results } =
+    await executeKnowledgeRetrievalPhase2LiveCompositions(input);
+  const officialWebIds = officialWebLiveDocumentIds();
+  const metadataFilterBaselineCandidates = attestedDocuments
+    .filter((document) => officialWebIds.has(document.documentId))
+    .map((document) => contentRef(workspaceId, document.documentId));
+
+  if (metadataFilterBaselineCandidates.length === 0) {
+    throw new RegistryConflictError(
+      "RETRIEVAL_PHASE2_METADATA_BASELINE_EMPTY",
+      "Frozen Phase 2 LIVE_ACCEPTED OFFICIAL_WEB metadata baseline is empty",
+    );
+  }
+
+  const resultByQueryId = new Map(results.map((entry) => [entry.queryId, entry.result] as const));
+  return runKnowledgeRetrievalRegression({
+    schemaVersion: 1,
+    fixtureId: `${fixture.fixtureId}-variant-comparison`,
+    corpusVersion: fixture.fixtureVersion,
+    cases: fixture.queries.map((query) => {
+      const result = resultByQueryId.get(query.queryId);
+      if (!result) {
+        throw new RegistryConflictError(
+          "RETRIEVAL_PHASE2_VARIANT_RESULT_MISSING",
+          `Phase 2 retrieval composition result is missing: ${query.queryId}`,
+        );
+      }
+      return {
+        caseId: query.queryId,
+        metadataFilterBaselineCandidates,
+        result,
+        evaluation: query.evaluation,
+        thresholds: {
+          minDocumentRecallAtK: 1,
+          minExactChunkHitRate: 1,
+          minProvenanceCompletenessRate: 1,
+        },
+      };
+    }),
+  });
 }
