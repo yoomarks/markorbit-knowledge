@@ -38,8 +38,6 @@ jobs:
             apps/admin/src/components/sources/source-failure-root-causes.tsx \
             apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
             apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
-            apps/admin/src/server/knowledge-retrieval-regression.test.ts \
-            apps/admin/src/server/knowledge-retrieval-regression.ts \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/production-conversion-worker-service.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
@@ -64,8 +62,6 @@ jobs:
             apps/admin/src/components/sources/source-failure-root-causes.tsx \
             apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
             apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
-            apps/admin/src/server/knowledge-retrieval-regression.test.ts \
-            apps/admin/src/server/knowledge-retrieval-regression.ts \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/production-conversion-worker-service.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
