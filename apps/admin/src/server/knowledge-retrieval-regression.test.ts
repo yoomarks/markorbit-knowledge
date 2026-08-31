@@ -65,6 +65,62 @@ describe("Knowledge retrieval representative corpus regression", () => {
     ]);
   });
 
+  it("compares metadata/filter, lexical-only, and lexical+relationship variants without a blended score", () => {
+    const result = runKnowledgeRetrievalRegression(knowledgeRetrievalRegressionCorpusV1);
+
+    expect(
+      result.cases.map((regressionCase) => ({
+        caseId: regressionCase.caseId,
+        metadataCoverage:
+          regressionCase.variantComparison.metadataFilterBaseline.expectedDocumentCoverageRate,
+        lexicalCoverage: regressionCase.variantComparison.lexicalOnly.expectedDocumentCoverageRate,
+        relationshipCoverage:
+          regressionCase.variantComparison.lexicalRelationship.expectedDocumentCoverageRate,
+        lexicalDelta:
+          regressionCase.variantComparison.deltas.lexicalVsMetadataFilterCoverageDelta,
+        relationshipDelta:
+          regressionCase.variantComparison.deltas.relationshipVsLexicalCoverageDelta,
+        lexicalRelationshipContribution:
+          regressionCase.variantComparison.lexicalOnly.metrics
+            .relationshipExpansionContributionRate,
+        combinedRelationshipContribution:
+          regressionCase.variantComparison.lexicalRelationship.metrics
+            .relationshipExpansionContributionRate,
+      })),
+    ).toEqual([
+      {
+        caseId: "us-filing-basis",
+        metadataCoverage: 2 / 3,
+        lexicalCoverage: 2 / 3,
+        relationshipCoverage: 1,
+        lexicalDelta: 0,
+        relationshipDelta: 1 / 3,
+        lexicalRelationshipContribution: null,
+        combinedRelationshipContribution: 0.5,
+      },
+      {
+        caseId: "us-section-8-maintenance",
+        metadataCoverage: 0.5,
+        lexicalCoverage: 0.5,
+        relationshipCoverage: 1,
+        lexicalDelta: 0,
+        relationshipDelta: 0.5,
+        lexicalRelationshipContribution: null,
+        combinedRelationshipContribution: 1,
+      },
+      {
+        caseId: "us-ttab-procedure",
+        metadataCoverage: 2 / 3,
+        lexicalCoverage: 2 / 3,
+        relationshipCoverage: 1,
+        lexicalDelta: 0,
+        relationshipDelta: 1 / 3,
+        lexicalRelationshipContribution: null,
+        combinedRelationshipContribution: 0.5,
+      },
+    ]);
+  });
+
   it("is deterministic over an unchanged versioned fixture", () => {
     const first = runKnowledgeRetrievalRegression(knowledgeRetrievalRegressionCorpusV1);
     const second = runKnowledgeRetrievalRegression(knowledgeRetrievalRegressionCorpusV1);
@@ -96,6 +152,19 @@ describe("Knowledge retrieval representative corpus regression", () => {
 
     expect(() => runKnowledgeRetrievalRegression(fixture)).toThrow(
       "Retrieval regression fixture contains duplicate caseId",
+    );
+  });
+
+  it("fails closed on duplicate metadata/filter baseline candidates", () => {
+    const fixture = structuredClone(
+      knowledgeRetrievalRegressionCorpusV1,
+    ) as KnowledgeRetrievalRegressionFixtureV1;
+    fixture.cases[0]!.metadataFilterBaselineCandidates.push(
+      fixture.cases[0]!.metadataFilterBaselineCandidates[0]!,
+    );
+
+    expect(() => runKnowledgeRetrievalRegression(fixture)).toThrow(
+      "Retrieval regression metadata/filter baseline contains duplicate candidates",
     );
   });
 
