@@ -12,6 +12,7 @@ export * from "./conversion-execution-v1";
 export * from "./conversion-runtime-v1";
 export * from "./canonical-markdown-v1";
 export * from "./retrieval-v1";
+export * from "./knowledge-federated-retrieval-v1";
 export * from "./change-feed-v1";
 export * from "./change-evidence-v1";
 export * from "./source-coverage-v1";
