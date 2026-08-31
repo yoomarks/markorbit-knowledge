@@ -250,6 +250,37 @@ jobs:
           if [ -n "${WORKER_PID:-}" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
           if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
 
+      - name: Sanitize retained bootstrap evidence
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const files = [
+            'numeric-bootstrap.json',
+            'temporal-bootstrap.json',
+            'applicability-bootstrap.json',
+          ];
+          for (const name of files) {
+            const file = path.join(process.env.RUNNER_TEMP, name);
+            if (!fs.existsSync(file)) continue;
+            const raw = fs.readFileSync(file, 'utf8');
+            const start = raw.indexOf('{');
+            const end = raw.lastIndexOf('}');
+            if (start < 0 || end < start) throw new Error(`Bootstrap evidence is not parseable JSON: ${name}`);
+            const data = JSON.parse(raw.slice(start, end + 1));
+            if (Object.prototype.hasOwnProperty.call(data, 'workerCredential')) {
+              data.workerCredential = null;
+              data.credentialNote = 'Worker credential redacted before artifact retention.';
+            }
+            fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+            const retained = JSON.parse(fs.readFileSync(file, 'utf8'));
+            if (retained.workerCredential) {
+              throw new Error(`Retained bootstrap evidence still contains a worker credential: ${name}`);
+            }
+          }
+          NODE
+
       - name: Upload Phase 2 normalization evidence
         if: always()
         uses: actions/upload-artifact@v4
