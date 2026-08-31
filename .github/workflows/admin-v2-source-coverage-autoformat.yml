@@ -43,9 +43,6 @@ jobs:
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
             apps/admin/src/server/raw-artifact-conversion-authorization.ts \
             apps/admin/src/server/source-failure-root-causes.ts \
-            apps/admin/src/server/knowledge-retrieval-regression.ts \
-            apps/admin/src/server/knowledge-retrieval-regression.test.ts \
-            apps/admin/src/server/fixtures/knowledge-retrieval-regression-corpus-v1.ts \
             apps/admin/src/server/__tests__/bulk-conversion-to-knowledge.e2e.test.ts \
             apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
             apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
@@ -70,12 +67,9 @@ jobs:
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
             apps/admin/src/server/raw-artifact-conversion-authorization.ts \
             apps/admin/src/server/source-failure-root-causes.ts \
-            apps/admin/src/server/knowledge-retrieval-regression.ts \
-            apps/admin/src/server/knowledge-retrieval-regression.test.ts \
-            apps/admin/src/server/fixtures/knowledge-retrieval-regression-corpus-v1.ts \
             apps/admin/src/server/__tests__/bulk-conversion-to-knowledge.e2e.test.ts \
             apps/admin/src/server/__tests__/discovery-bulk-source-pipeline.e2e.test.ts \
             apps/admin/src/server/__tests__/m3-converter-bootstrap.test.ts \
             apps/admin/src/server/__tests__/source-failure-root-causes.test.ts
-          git commit -m "style: format retrieval regression files"
+          git commit -m "style: format admin v2 business surfaces"
           git push origin HEAD:${{ github.head_ref }}
