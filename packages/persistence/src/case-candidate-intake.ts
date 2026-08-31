@@ -477,14 +477,18 @@ export class SqliteCaseCandidateIntakeRepository {
            FROM case_candidate_intake_commands
           WHERE idempotency_key = ?`,
       )
-      .get(candidate.idempotencyKey) as { request_sha256: string; candidate_id: string } | undefined;
+      .get(candidate.idempotencyKey) as
+      { request_sha256: string; candidate_id: string } | undefined;
     if (!command) {
       throw new RegistryConflictError(
         "CASE_CANDIDATE_INTAKE_COMMAND_MISSING",
         `Stored Case Candidate ${row.candidate_id} has no durable originating intake command`,
       );
     }
-    if (command.candidate_id !== row.candidate_id || command.request_sha256 !== row.document_sha256) {
+    if (
+      command.candidate_id !== row.candidate_id ||
+      command.request_sha256 !== row.document_sha256
+    ) {
       throw new RegistryConflictError(
         "CASE_CANDIDATE_INTAKE_COMMAND_MISMATCH",
         "Stored Case Candidate does not match its originating intake command",

@@ -88,9 +88,7 @@ describe("Case Candidate read attestation", () => {
 
   it("uses the originating intake command to reject retrieval-semantic drift", () => {
     const f = setup();
-    const changed = JSON.stringify(
-      value({ sourceRetrievalRef: "markreg:authorized-ref:changed" }),
-    );
+    const changed = JSON.stringify(value({ sourceRetrievalRef: "markreg:authorized-ref:changed" }));
     f.database
       .prepare(
         "UPDATE case_candidates SET document_json = ?, document_sha256 = ? WHERE candidate_id = ?",
