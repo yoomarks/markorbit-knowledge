@@ -71,42 +71,45 @@ export const knowledgeRetrievalRegressionCorpusV1 = {
   cases: [
     {
       caseId: "us-filing-basis",
-      result: result("Which source lineage should support a US trademark filing-basis research answer?", [
-        {
-          content: filingBasis,
-          evidence: [
-            {
-              channel: "LEXICAL",
-              position: 1,
-              indexMode: "SQLITE_FTS5_BM25",
-              score: -8.4,
-              snippet: "filing basis source snapshot",
-              headingPath: ["Filing basis"],
-              chunkId: "chunk:filing-basis:0",
-              contentSha256: sha.filingBasis,
-              indexedAt,
-            },
-          ],
-        },
-        {
-          content: filingSpecimen,
-          evidence: [
-            {
-              channel: "LEXICAL",
-              position: 2,
-              indexMode: "SQLITE_FTS5_BM25",
-              score: -6.1,
-              snippet: "use specimen source snapshot",
-              headingPath: ["Use evidence"],
-              chunkId: "chunk:filing-specimen:0",
-              contentSha256: sha.filingSpecimen,
-              indexedAt,
-            },
-          ],
-        },
-        { content: filingRelated, evidence: [{ channel: "GRAPH", position: 1 }] },
-        { content: filingNoise, evidence: [{ channel: "GRAPH", position: 2 }] },
-      ]),
+      result: result(
+        "Which source lineage should support a US trademark filing-basis research answer?",
+        [
+          {
+            content: filingBasis,
+            evidence: [
+              {
+                channel: "LEXICAL",
+                position: 1,
+                indexMode: "SQLITE_FTS5_BM25",
+                score: -8.4,
+                snippet: "filing basis source snapshot",
+                headingPath: ["Filing basis"],
+                chunkId: "chunk:filing-basis:0",
+                contentSha256: sha.filingBasis,
+                indexedAt,
+              },
+            ],
+          },
+          {
+            content: filingSpecimen,
+            evidence: [
+              {
+                channel: "LEXICAL",
+                position: 2,
+                indexMode: "SQLITE_FTS5_BM25",
+                score: -6.1,
+                snippet: "use specimen source snapshot",
+                headingPath: ["Use evidence"],
+                chunkId: "chunk:filing-specimen:0",
+                contentSha256: sha.filingSpecimen,
+                indexedAt,
+              },
+            ],
+          },
+          { content: filingRelated, evidence: [{ channel: "GRAPH", position: 1 }] },
+          { content: filingNoise, evidence: [{ channel: "GRAPH", position: 2 }] },
+        ],
+      ),
       evaluation: {
         k: 2,
         expectedSources: [
@@ -116,9 +119,7 @@ export const knowledgeRetrievalRegressionCorpusV1 = {
           },
           {
             content: filingSpecimen,
-            chunks: [
-              { chunkId: "chunk:filing-specimen:0", contentSha256: sha.filingSpecimen },
-            ],
+            chunks: [{ chunkId: "chunk:filing-specimen:0", contentSha256: sha.filingSpecimen }],
           },
           { content: filingRelated },
         ],
@@ -188,50 +189,51 @@ export const knowledgeRetrievalRegressionCorpusV1 = {
     },
     {
       caseId: "us-ttab-procedure",
-      result: result("Which source lineage supports a TTAB procedure and evidence research answer?", [
-        {
-          content: ttabProcedure,
-          evidence: [
-            {
-              channel: "LEXICAL",
-              position: 1,
-              indexMode: "SQLITE_FTS5_BM25",
-              score: -9.1,
-              snippet: "ttab procedure source snapshot",
-              headingPath: ["TTAB", "Procedure"],
-              chunkId: "chunk:ttab-procedure:0",
-              contentSha256: sha.ttabProcedure,
-              indexedAt,
-            },
-          ],
-        },
-        {
-          content: ttabEvidence,
-          evidence: [
-            {
-              channel: "LEXICAL",
-              position: 4,
-              indexMode: "SQLITE_FTS5_BM25",
-              score: -3.8,
-              snippet: "ttab evidence source snapshot",
-              headingPath: ["TTAB", "Evidence"],
-              chunkId: "chunk:ttab-evidence:0",
-              contentSha256: sha.ttabEvidence,
-              indexedAt,
-            },
-          ],
-        },
-        { content: ttabRelated, evidence: [{ channel: "GRAPH", position: 1 }] },
-        { content: ttabNoise, evidence: [{ channel: "GRAPH", position: 2 }] },
-      ]),
+      result: result(
+        "Which source lineage supports a TTAB procedure and evidence research answer?",
+        [
+          {
+            content: ttabProcedure,
+            evidence: [
+              {
+                channel: "LEXICAL",
+                position: 1,
+                indexMode: "SQLITE_FTS5_BM25",
+                score: -9.1,
+                snippet: "ttab procedure source snapshot",
+                headingPath: ["TTAB", "Procedure"],
+                chunkId: "chunk:ttab-procedure:0",
+                contentSha256: sha.ttabProcedure,
+                indexedAt,
+              },
+            ],
+          },
+          {
+            content: ttabEvidence,
+            evidence: [
+              {
+                channel: "LEXICAL",
+                position: 4,
+                indexMode: "SQLITE_FTS5_BM25",
+                score: -3.8,
+                snippet: "ttab evidence source snapshot",
+                headingPath: ["TTAB", "Evidence"],
+                chunkId: "chunk:ttab-evidence:0",
+                contentSha256: sha.ttabEvidence,
+                indexedAt,
+              },
+            ],
+          },
+          { content: ttabRelated, evidence: [{ channel: "GRAPH", position: 1 }] },
+          { content: ttabNoise, evidence: [{ channel: "GRAPH", position: 2 }] },
+        ],
+      ),
       evaluation: {
         k: 3,
         expectedSources: [
           {
             content: ttabProcedure,
-            chunks: [
-              { chunkId: "chunk:ttab-procedure:0", contentSha256: sha.ttabProcedure },
-            ],
+            chunks: [{ chunkId: "chunk:ttab-procedure:0", contentSha256: sha.ttabProcedure }],
           },
           {
             content: ttabEvidence,

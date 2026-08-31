@@ -120,7 +120,10 @@ function validateFixture(fixture: KnowledgeRetrievalRegressionFixtureV1): void {
       throw new RegistryValidationError("Retrieval regression fixture contains duplicate caseId");
     }
     caseIds.add(regressionCase.caseId);
-    if (!regressionCase.result.queryText || regressionCase.result.queryText !== regressionCase.result.queryText.trim()) {
+    if (
+      !regressionCase.result.queryText ||
+      regressionCase.result.queryText !== regressionCase.result.queryText.trim()
+    ) {
       throw new RegistryValidationError(
         "Retrieval regression result queryText must be a non-empty trimmed string",
       );
