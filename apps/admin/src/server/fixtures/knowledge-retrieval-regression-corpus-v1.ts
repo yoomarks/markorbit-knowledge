@@ -26,6 +26,33 @@ function content(objectId: string): ContentObjectRefV1 {
   };
 }
 
+type GraphEvidenceV1 = Extract<
+  KnowledgeRetrievalCompositionResultV1["items"][number]["evidence"][number],
+  { channel: "GRAPH" }
+>;
+
+function graphEvidence(
+  seed: ContentObjectRefV1,
+  target: ContentObjectRefV1,
+  position: number,
+  relationType: "CITES" | "SIMILAR_TO",
+): GraphEvidenceV1 {
+  return {
+    channel: "GRAPH",
+    position,
+    seed,
+    direction: "OUTGOING",
+    edge: {
+      protocolVersion: "1.0",
+      objectType: "CONTENT_EDGE",
+      from: seed,
+      relationType,
+      to: target,
+      origin: relationType === "CITES" ? "EXPLICIT_SOURCE" : "SYSTEM_DERIVED",
+    },
+  };
+}
+
 function result(
   queryText: string,
   items: KnowledgeRetrievalCompositionResultV1["items"],
@@ -106,8 +133,14 @@ export const knowledgeRetrievalRegressionCorpusV1 = {
               },
             ],
           },
-          { content: filingRelated, evidence: [{ channel: "GRAPH", position: 1 }] },
-          { content: filingNoise, evidence: [{ channel: "GRAPH", position: 2 }] },
+          {
+            content: filingRelated,
+            evidence: [graphEvidence(filingBasis, filingRelated, 1, "CITES")],
+          },
+          {
+            content: filingNoise,
+            evidence: [graphEvidence(filingBasis, filingNoise, 2, "SIMILAR_TO")],
+          },
         ],
       ),
       evaluation: {
@@ -167,7 +200,10 @@ export const knowledgeRetrievalRegressionCorpusV1 = {
             },
           ],
         },
-        { content: section8Timing, evidence: [{ channel: "GRAPH", position: 1 }] },
+        {
+          content: section8Timing,
+          evidence: [graphEvidence(section8Use, section8Timing, 1, "CITES")],
+        },
       ]),
       evaluation: {
         k: 3,
@@ -224,8 +260,14 @@ export const knowledgeRetrievalRegressionCorpusV1 = {
               },
             ],
           },
-          { content: ttabRelated, evidence: [{ channel: "GRAPH", position: 1 }] },
-          { content: ttabNoise, evidence: [{ channel: "GRAPH", position: 2 }] },
+          {
+            content: ttabRelated,
+            evidence: [graphEvidence(ttabProcedure, ttabRelated, 1, "CITES")],
+          },
+          {
+            content: ttabNoise,
+            evidence: [graphEvidence(ttabProcedure, ttabNoise, 2, "SIMILAR_TO")],
+          },
         ],
       ),
       evaluation: {
