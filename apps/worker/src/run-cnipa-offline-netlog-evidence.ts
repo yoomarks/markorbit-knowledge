@@ -43,6 +43,8 @@ async function main(): Promise<void> {
         0,
       ),
       observedRequestStartCount: summary.observed_request_start_events.length,
+      staticApplicationAssetPathCount: summary.static_application_asset_path_count,
+      staticApplicationAssetPathsTruncated: summary.static_application_asset_paths_truncated,
       networkRequestPerformed: false,
       headersPersisted: false,
       cookiesPersisted: false,
