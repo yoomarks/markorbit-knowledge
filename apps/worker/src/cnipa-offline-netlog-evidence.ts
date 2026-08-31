@@ -98,16 +98,19 @@ export function summarizeCnipaNetLog(raw: Buffer): CnipaNetLogSummary {
 
   const constants = record(document.constants);
   const eventNames = eventNameMap(constants);
-  const events = Array.isArray(document.events)
-    ? document.events.map(record).filter((event): event is JsonRecord => event !== null)
-    : [];
+  const rawEvents = Array.isArray(document.events) ? document.events : [];
+  const events: IndexedEvent[] = [];
+  for (const [index, value] of rawEvents.entries()) {
+    const event = record(value);
+    if (event) events.push({ index, event });
+  }
 
   const bySource = new Map<string, IndexedEvent[]>();
-  for (const [index, event] of events.entries()) {
-    const id = sourceId(event);
+  for (const indexed of events) {
+    const id = sourceId(indexed.event);
     if (id === null) continue;
     const related = bySource.get(id) ?? [];
-    related.push({ index, event });
+    related.push(indexed);
     bySource.set(id, related);
   }
 
@@ -116,7 +119,7 @@ export function summarizeCnipaNetLog(raw: Buffer): CnipaNetLogSummary {
   const requests: CnipaNetLogRequestObservation[] = [];
   let urlEventCount = 0;
 
-  for (const event of events) {
+  for (const { event } of events) {
     const params = record(event.params);
     if (!params || typeof params.url !== "string") continue;
     urlEventCount += 1;
@@ -132,7 +135,8 @@ export function summarizeCnipaNetLog(raw: Buffer): CnipaNetLogSummary {
     hostCounts.set(host, (hostCounts.get(host) ?? 0) + 1);
     if (host !== CNIPA_HOST || !ALLOWED_PATH.test(url.pathname)) continue;
 
-    const method = typeof params.method === "string" && HTTP_METHODS.has(params.method) ? params.method : null;
+    const method =
+      typeof params.method === "string" && HTTP_METHODS.has(params.method) ? params.method : null;
     const endpointKey = `${host}\u0000${url.pathname}\u0000${method ?? ""}`;
     const existing = endpointCounts.get(endpointKey);
     if (existing) {
@@ -167,7 +171,9 @@ export function summarizeCnipaNetLog(raw: Buffer): CnipaNetLogSummary {
       }
     }
 
-    const queryNames = [...new Set([...url.searchParams.keys()].filter((name) => name === "id"))].sort();
+    const queryNames = [
+      ...new Set([...url.searchParams.keys()].filter((name) => name === "id")),
+    ].sort();
     requests.push({
       host,
       path: url.pathname,
@@ -181,7 +187,9 @@ export function summarizeCnipaNetLog(raw: Buffer): CnipaNetLogSummary {
   }
 
   const endpointEvents = [...endpointCounts.values()].sort((left, right) =>
-    `${left.path}\u0000${left.method ?? ""}`.localeCompare(`${right.path}\u0000${right.method ?? ""}`),
+    `${left.path}\u0000${left.method ?? ""}`.localeCompare(
+      `${right.path}\u0000${right.method ?? ""}`,
+    ),
   );
 
   return {
@@ -189,7 +197,7 @@ export function summarizeCnipaNetLog(raw: Buffer): CnipaNetLogSummary {
     source_sha256: createHash("sha256").update(raw).digest("hex"),
     source_bytes: raw.byteLength,
     capture_mode: captureMode(constants),
-    event_count: events.length,
+    event_count: rawEvents.length,
     url_parameter_event_count: urlEventCount,
     cnipa_host_url_event_counts: sortedRecord(hostCounts),
     candidate_endpoint_url_events: endpointEvents,
