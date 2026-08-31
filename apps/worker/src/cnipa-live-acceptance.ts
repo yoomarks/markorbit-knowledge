@@ -175,8 +175,8 @@ function probe(value: unknown, index: number): CnipaLiveAcceptanceProbe {
     if (!parsedBody) fail(`probes[${index}] LIST probes require jsonBody`);
   } else {
     if (parsedBody) fail(`probes[${index}] DETAIL probes cannot use jsonBody`);
-    if (!parsedQuery || Object.keys(parsedQuery).length !== 1 || !parsedQuery.id) {
-      fail(`probes[${index}] DETAIL probes require exactly one id query parameter`);
+    if (!parsedQuery?.id) {
+      fail(`probes[${index}] DETAIL probes require the observed id query parameter`);
     }
   }
   return {
