@@ -11,6 +11,13 @@ const LIST_PATH =
   "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryPageList";
 const DETAIL_PATH = "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryInfo";
 
+type MutableListEntry = {
+  request: {
+    method: string;
+    postData: { mimeType: string; text: string };
+  };
+};
+
 function har() {
   return {
     log: {
@@ -26,7 +33,11 @@ function har() {
             cookies: [{ name: "session", value: "must-not-leak" }],
             postData: {
               mimeType: "application/json",
-              text: JSON.stringify({ pageIndex: 1, pageSize: 10, regNo: "REAL-VALUE-MUST-NOT-LEAK" }),
+              text: JSON.stringify({
+                pageIndex: 1,
+                pageSize: 10,
+                regNo: "REAL-VALUE-MUST-NOT-LEAK",
+              }),
             },
           },
           response: {
@@ -34,7 +45,9 @@ function har() {
             headers: [{ name: "Set-Cookie", value: "must-not-leak" }],
             content: {
               mimeType: "application/json",
-              text: JSON.stringify({ records: [{ id: "public-record-1", regNo: "PUBLIC-RESPONSE" }] }),
+              text: JSON.stringify({
+                records: [{ id: "public-record-1", regNo: "PUBLIC-RESPONSE" }],
+              }),
             },
           },
         },
@@ -87,42 +100,45 @@ describe("CNIPA offline HAR evidence", () => {
     });
   });
 
-  it("writes external response evidence without leaking request credentials or values into the manifest", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "markorbit-cnipa-har-"));
-    const inputPath = path.join(root, "capture.har");
-    const outputDirectory = path.join(root, "evidence");
-    const source = JSON.stringify(har());
-    await writeFile(inputPath, source, "utf8");
+  it(
+    "writes external response evidence without leaking request credentials or values into the manifest",
+    async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "markorbit-cnipa-har-"));
+      const inputPath = path.join(root, "capture.har");
+      const outputDirectory = path.join(root, "evidence");
+      const source = JSON.stringify(har());
+      await writeFile(inputPath, source, "utf8");
 
-    const manifest = await importCnipaOfflineHarEvidence({
-      inputPath,
-      outputDirectory,
-      workingDirectory: path.join(root, "repo"),
-    });
-    const manifestText = await readFile(path.join(outputDirectory, "manifest.json"), "utf8");
+      const manifest = await importCnipaOfflineHarEvidence({
+        inputPath,
+        outputDirectory,
+        workingDirectory: path.join(root, "repo"),
+      });
+      const manifestText = await readFile(path.join(outputDirectory, "manifest.json"), "utf8");
 
-    expect(manifest.matchedEntryCount).toBe(2);
-    expect(manifestText).not.toContain("must-not-leak");
-    expect(manifestText).not.toContain("REAL-VALUE-MUST-NOT-LEAK");
-    expect(manifestText).not.toContain("SECRET-REQUEST-ID");
-    expect(manifestText).not.toContain("Authorization");
-    expect(manifestText).not.toContain("Cookie");
-    expect(manifestText).toContain('"jsonBodyKeys": [');
-    expect(manifestText).toContain('"regNo"');
+      expect(manifest.matchedEntryCount).toBe(2);
+      expect(manifestText).not.toContain("must-not-leak");
+      expect(manifestText).not.toContain("REAL-VALUE-MUST-NOT-LEAK");
+      expect(manifestText).not.toContain("SECRET-REQUEST-ID");
+      expect(manifestText).not.toContain("Authorization");
+      expect(manifestText).not.toContain("Cookie");
+      expect(manifestText).toContain('"jsonBodyKeys": [');
+      expect(manifestText).toContain('"regNo"');
 
-    const firstResponse = manifest.entries[0]?.responseFile;
-    expect(firstResponse).toBeTruthy();
-    const responseText = await readFile(path.join(outputDirectory, firstResponse!), "utf8");
-    expect(responseText).toContain("PUBLIC-RESPONSE");
-  });
+      const firstResponse = manifest.entries[0]?.responseFile;
+      expect(firstResponse).toBeTruthy();
+      const responseText = await readFile(path.join(outputDirectory, firstResponse!), "utf8");
+      expect(responseText).toContain("PUBLIC-RESPONSE");
+    },
+  );
 
   it("fails closed on transport drift or credential-like request-body fields", () => {
     const wrongMethod = har();
-    wrongMethod.log.entries[0]!.request.method = "GET";
+    (wrongMethod.log.entries[0] as MutableListEntry).request.method = "GET";
     expect(() => parseCnipaOfflineHarEvidence(wrongMethod)).toThrow(/must use POST/);
 
     const credentialBody = har();
-    credentialBody.log.entries[0]!.request.postData!.text = JSON.stringify({
+    (credentialBody.log.entries[0] as MutableListEntry).request.postData.text = JSON.stringify({
       pageIndex: 1,
       authToken: "must-not-be-accepted",
     });
