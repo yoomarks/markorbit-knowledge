@@ -160,7 +160,7 @@ function probe(value: unknown, index: number): CnipaLiveAcceptanceProbe {
   if (input.surface !== "LIST" && input.surface !== "DETAIL") {
     fail(`probes[${index}].surface must be LIST or DETAIL`);
   }
-  const expectedMethod = input.surface === "LIST" ? "POST" : "GET";
+  const expectedMethod = "POST";
   const expectedPath = input.surface === "LIST" ? endpoint.listPath : endpoint.detailPath;
   if (input.method !== expectedMethod) {
     fail(`probes[${index}] ${input.surface} must use ${expectedMethod}`);

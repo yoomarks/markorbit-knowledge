@@ -10,6 +10,11 @@ import {
 } from "./cnipa-live-acceptance";
 import { parseCnipaLiveAcceptanceArguments } from "./run-cnipa-live-acceptance";
 
+const REGISTRATION_LIST_PATH =
+  "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryPageList";
+const REGISTRATION_DETAIL_PATH =
+  "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryInfo";
+
 function plan() {
   return parseCnipaLiveAcceptancePlan({
     version: 1,
@@ -19,7 +24,7 @@ function plan() {
         documentKind: "REGISTRATION_EXAMINATION",
         surface: "LIST",
         method: "POST",
-        path: "/pubnotice/portal/tmscJudgment/queryPageList",
+        path: REGISTRATION_LIST_PATH,
         jsonBody: { pageIndex: 1, pageSize: 10, regNo: "synthetic-registration-number" },
       },
     ],
@@ -53,7 +58,7 @@ describe("CNIPA live acceptance harness", () => {
             documentKind: "REGISTRATION_EXAMINATION",
             surface: "LIST",
             method: "POST",
-            path: "/pubnotice/portal/tmscJudgment/queryPageList",
+            path: REGISTRATION_LIST_PATH,
             jsonBody: { authorizationToken: "must-not-be-accepted" },
           },
         ],
@@ -68,12 +73,67 @@ describe("CNIPA live acceptance harness", () => {
             documentKind: "REGISTRATION_EXAMINATION",
             surface: "LIST",
             method: "POST",
-            path: "/pubnotice/portal/tmscJudgment/queryPageList",
+            path: REGISTRATION_LIST_PATH,
             jsonBody: { cookieHeader: "must-not-be-accepted" },
           },
         ],
       }),
     ).toThrow(/credential-like/i);
+  });
+
+  it("requires observed POST detail transport with exactly one id query parameter", () => {
+    expect(
+      parseCnipaLiveAcceptancePlan({
+        version: 1,
+        probes: [
+          {
+            id: "registration-detail",
+            documentKind: "REGISTRATION_EXAMINATION",
+            surface: "DETAIL",
+            method: "POST",
+            path: REGISTRATION_DETAIL_PATH,
+            query: { id: "synthetic-record-id" },
+          },
+        ],
+      }).probes[0],
+    ).toMatchObject({
+      surface: "DETAIL",
+      method: "POST",
+      path: REGISTRATION_DETAIL_PATH,
+      query: { id: "synthetic-record-id" },
+    });
+
+    expect(() =>
+      parseCnipaLiveAcceptancePlan({
+        version: 1,
+        probes: [
+          {
+            id: "legacy-detail-get",
+            documentKind: "REGISTRATION_EXAMINATION",
+            surface: "DETAIL",
+            method: "GET",
+            path: REGISTRATION_DETAIL_PATH,
+            query: { id: "synthetic-record-id" },
+          },
+        ],
+      }),
+    ).toThrow(/DETAIL must use POST/);
+
+    expect(() =>
+      parseCnipaLiveAcceptancePlan({
+        version: 1,
+        probes: [
+          {
+            id: "missing-detail-id",
+            documentKind: "REGISTRATION_EXAMINATION",
+            surface: "DETAIL",
+            method: "POST",
+            path: REGISTRATION_DETAIL_PATH,
+            query: { recordId: "synthetic-record-id" },
+          },
+        ],
+      }),
+    ).toThrow(/exactly one id query parameter/);
   });
 
   it("requires an explicit live switch before output is required", () => {

@@ -48,30 +48,31 @@ export type CnipaCandidateEndpointSpec = {
 };
 
 /**
- * Operator-observed candidates only. These paths/fields are deliberately not
- * described as verified until an authenticated live probe freezes the schema.
+ * Ordinary-Chrome NetLog evidence verifies only the transport host/path/method
+ * surface represented by these paths. Payload fields, response envelopes,
+ * identity mapping, party semantics, pagination and coverage remain unverified.
  */
 export const CNIPA_CANDIDATE_ENDPOINTS: Readonly<
   Record<CnipaDocumentKind, CnipaCandidateEndpointSpec>
 > = {
   REGISTRATION_EXAMINATION: {
     documentKind: "REGISTRATION_EXAMINATION",
-    listPath: "/pubnotice/portal/tmscJudgment/queryPageList",
-    detailPath: "/tmscJudgment/queryInfo",
+    listPath: "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryPageList",
+    detailPath: "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryInfo",
     candidatePartyFields: ["applicantCnName"],
     schemaStatus: CNIPA_JUDGMENT_SCHEMA_STATUS,
   },
   OPPOSITION_DECISION: {
     documentKind: "OPPOSITION_DECISION",
-    listPath: "/pubnotice/portal/tmyyJudgment/queryPageList",
-    detailPath: "/tmyyJudgment/queryInfo",
+    listPath: "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmyyJudgment/queryPageList",
+    detailPath: "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmyyJudgment/queryInfo",
     candidatePartyFields: ["objenderCnName", "objeperCnName"],
     schemaStatus: CNIPA_JUDGMENT_SCHEMA_STATUS,
   },
   REVIEW_ADJUDICATION: {
     documentKind: "REVIEW_ADJUDICATION",
-    listPath: "/pubnotice/portal/tmpsJudgment/queryPageList",
-    detailPath: "/tmpsJudgment/queryInfo",
+    listPath: "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmpsJudgment/queryPageList",
+    detailPath: "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmpsJudgment/queryInfo",
     candidatePartyFields: ["applicantName", "respondentName"],
     schemaStatus: CNIPA_JUDGMENT_SCHEMA_STATUS,
   },
@@ -321,7 +322,7 @@ export function buildCnipaCandidateDetailRequest(
 ): CnipaAuthenticatedRequest {
   const id = nonEmpty(sourceRecordId, "sourceRecordId");
   return {
-    method: "GET",
+    method: "POST",
     path: CNIPA_CANDIDATE_ENDPOINTS[documentKind].detailPath,
     documentKind,
     surface: "DETAIL",
