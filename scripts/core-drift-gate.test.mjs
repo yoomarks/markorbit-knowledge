@@ -42,6 +42,17 @@ test("proven MarkReg Web-only drift is IRRELEVANT_DRIFT for every profile", () =
   }
 });
 
+test("audited Order journey heading assertion drift is isolated for every profile", () => {
+  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+    const result = classify({
+      profileName,
+      changedPaths: ["tests/e2e/order-journey-real-runtime.spec.ts"],
+    });
+    assert.equal(result.state, CORE_DRIFT_STATES.IRRELEVANT_DRIFT);
+    assert.deepEqual(result.relevantPaths, []);
+  }
+});
+
 test("proven MGSN service-only drift is IRRELEVANT_DRIFT", () => {
   const result = classify({
     changedPaths: [
