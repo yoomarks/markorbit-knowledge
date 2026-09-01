@@ -36,11 +36,11 @@ The current post-freeze phase is **official-source production validation and acq
 
 The 2026-08-23 closeout remains a historical acceptance baseline. Since then, the repository has also consolidated production Worker/Scheduler execution onto the durable Worker Protocol / Execution Ledger path and removed obsolete semantic-scoring and in-memory execution scaffolds rather than creating parallel runtimes.
 
-The dedicated Knowledge -> Core intake boundary is no longer only a planned external dependency. The latest boundary-scoping acceptance passed a real cross-repository Core receiver/PostgreSQL E2E with durable Core `ACCEPTED` state on the exact audited Core pin. Core may advance independently after that acceptance; the freshness gate must be rerun when an intake-boundary path changes, and V2 must never fall back to the frozen V1 consumer.
+The current cross-repository acceptance suite covers Core Intake, Managed AI + Capability V2, provider-neutral Managed Communication production bootstrap, MarkReg contract invariants and K-CASE-008. PR #658 re-accepted all five against the same audited Core dependency baseline with real HTTP/PostgreSQL/restart paths where applicable. Core may advance independently; the dependency-aware freshness classifier fails closed on relevant or unknown drift and can test current Core without baseline churn when later drift is confined to an already-proven isolated surface.
 
-Current open work is narrow rather than architectural: independent-review and `adk-live` governance verification (#429), authenticated CNIPA Phase 3 live validation (#573), Core-owned production Shared Communication activation for the Expert live slice (#468 / Core #305), and explicitly authorized ADK-06 paid-provider acceptance (#405).
+Current open work is narrow rather than architectural: independent-review and `adk-live` governance verification (#429), authenticated CNIPA Phase 3 raw/source validation (#573), Core-owned real-provider activation for the Expert live slice (#468 / Core #305), the one-request Tavily live smoke that has not yet been dispatched (#571), and explicitly authorized ADK-06 paid-provider acceptance (#405).
 
-See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md) for the frozen baseline, [Post-freeze Production Validation Closeout](docs/release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md) for the historical post-freeze checkpoint, [Knowledge Current State 2026-08-29](docs/release/KNOWLEDGE_CURRENT_STATE_2026-08-29.md) for the prior takeover baseline, and [Knowledge Current State 2026-09-01](docs/release/KNOWLEDGE_CURRENT_STATE_2026-09-01.md) for the current checkpoint and active gates.
+See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md) for the frozen baseline, [Post-freeze Production Validation Closeout](docs/release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md) for the historical post-freeze checkpoint, [Knowledge Current State 2026-08-29](docs/release/KNOWLEDGE_CURRENT_STATE_2026-08-29.md) and [Knowledge Current State 2026-09-01](docs/release/KNOWLEDGE_CURRENT_STATE_2026-09-01.md) for prior checkpoints, and [Knowledge Current State 2026-09-02](docs/release/KNOWLEDGE_CURRENT_STATE_2026-09-02.md) for the current checkpoint and active gates.
 
 ## Implemented production backbone
 
@@ -158,7 +158,7 @@ New provider breadth should reuse the existing Source → Connector → Collecti
 
 ```bash
 corepack enable
-corepack prepare pnpm@11.13.0 --activate
+corepack prepare pnpm@11.13.1 --activate
 pnpm install --frozen-lockfile
 pnpm dev
 ```
@@ -202,6 +202,7 @@ Normal pull-request validation covers formatting, lint, typecheck, tests and bui
 - [Post-freeze Production Validation Closeout](docs/release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md)
 - [Knowledge Current State 2026-08-29](docs/release/KNOWLEDGE_CURRENT_STATE_2026-08-29.md)
 - [Knowledge Current State 2026-09-01](docs/release/KNOWLEDGE_CURRENT_STATE_2026-09-01.md)
+- [Knowledge Current State 2026-09-02](docs/release/KNOWLEDGE_CURRENT_STATE_2026-09-02.md)
 - [Production Validation Wave 1](docs/ops/production-validation-wave-1.md)
 - [K-EXT-E Operations Readiness Runbook](docs/operations/K_EXT_E_OPERATIONS_READINESS_RUNBOOK.md)
 - [Knowledge v0.1 Backup and Restore](docs/operations/KNOWLEDGE_V0_1_BACKUP_RESTORE.md)
