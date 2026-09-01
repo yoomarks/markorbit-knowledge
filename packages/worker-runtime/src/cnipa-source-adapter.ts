@@ -20,6 +20,7 @@ import {
   type CnipaTrademarkJudgmentQuery,
 } from "./cnipa-trademark-judgment";
 
+export * from "./cnipa-frontend-static-contract";
 export * from "./cnipa-trademark-judgment";
 
 export type CnipaSourceAdapterOptions = {
