@@ -14,6 +14,7 @@ const PROVEN_MONOREPO_ISOLATED_PREFIXES = Object.freeze([
   "apps/lite-web/",
   "apps/markreg-web/",
   "services/mgsn/",
+  "tests/e2e/order-journey-real-runtime.spec.ts",
 ]);
 const PROVEN_NON_CAPABILITY_PREFIXES = Object.freeze([
   ...PROVEN_MONOREPO_ISOLATED_PREFIXES,
