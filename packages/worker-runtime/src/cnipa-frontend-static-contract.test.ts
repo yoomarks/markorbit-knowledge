@@ -68,31 +68,34 @@ describe("CNIPA official frontend static request contract", () => {
       fixedListRequestFields: { openFlag: 1 },
       detailRowIdField: "adjuOpenId",
     });
-    expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.REVIEW_ADJUDICATION).toMatchObject(
-      {
-        listRequestFields: [
-          "openFlag",
-          "regNo",
-          "tmName",
-          "applicantName",
-          "respondentName",
-          "judgeDateStart",
-          "judgeDateEnd",
-          "pageIndex",
-          "pageSize",
-        ],
-        fixedListRequestFields: { openFlag: 1 },
-        detailRowIdField: "pubId",
-      },
-    );
+    expect(
+      CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.REVIEW_ADJUDICATION,
+    ).toMatchObject({
+      listRequestFields: [
+        "openFlag",
+        "regNo",
+        "tmName",
+        "applicantName",
+        "respondentName",
+        "judgeDateStart",
+        "judgeDateEnd",
+        "pageIndex",
+        "pageSize",
+      ],
+      fixedListRequestFields: { openFlag: 1 },
+      detailRowIdField: "pubId",
+    });
   });
 
   it("applies only the statically observed fixed openFlag behavior to candidate list requests", () => {
-    expect(buildCnipaCandidateListRequest("REGISTRATION_EXAMINATION", registrationNumberQuery).jsonBody)
-      .toEqual({ pageIndex: 1, pageSize: 10, regNo: "1234567" });
-    expect(buildCnipaCandidateListRequest("OPPOSITION_DECISION", registrationNumberQuery).jsonBody)
-      .toEqual({ openFlag: 1, pageIndex: 1, pageSize: 10, regNo: "1234567" });
-    expect(buildCnipaCandidateListRequest("REVIEW_ADJUDICATION", registrationNumberQuery).jsonBody)
-      .toEqual({ openFlag: 1, pageIndex: 1, pageSize: 10, regNo: "1234567" });
+    expect(
+      buildCnipaCandidateListRequest("REGISTRATION_EXAMINATION", registrationNumberQuery).jsonBody,
+    ).toEqual({ pageIndex: 1, pageSize: 10, regNo: "1234567" });
+    expect(
+      buildCnipaCandidateListRequest("OPPOSITION_DECISION", registrationNumberQuery).jsonBody,
+    ).toEqual({ openFlag: 1, pageIndex: 1, pageSize: 10, regNo: "1234567" });
+    expect(
+      buildCnipaCandidateListRequest("REVIEW_ADJUDICATION", registrationNumberQuery).jsonBody,
+    ).toEqual({ openFlag: 1, pageIndex: 1, pageSize: 10, regNo: "1234567" });
   });
 });
