@@ -42,6 +42,20 @@ test('Capability Engine drift is relevant for Managed AI', () => {
   assert.deepEqual(result.relevantPaths, ['services/capability-engine/src/index.ts']);
 });
 
+test('Capability Engine-only drift is isolated from non-Capability acceptance profiles', () => {
+  for (const profileName of ['core-intake', 'markreg-contract', 'k-case-008']) {
+    const result = classify({
+      profileName,
+      changedPaths: [
+        'services/capability-engine/src/current-source-admission-evidence-v4.ts',
+        'services/capability-engine/src/index.ts'
+      ]
+    });
+    assert.equal(result.state, CORE_DRIFT_STATES.IRRELEVANT_DRIFT);
+    assert.deepEqual(result.relevantPaths, []);
+  }
+});
+
 test('shared contracts drift is relevant for every profile', () => {
   for (const profileName of ['core-intake', 'managed-ai', 'markreg-contract', 'k-case-008']) {
     const result = classify({
