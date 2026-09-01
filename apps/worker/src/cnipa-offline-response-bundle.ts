@@ -163,7 +163,8 @@ function parseEntry(value: unknown, index: number): CnipaOfflineResponseBundleEn
   if (input.method !== "POST") fail(`entries[${index}].method must be POST`);
 
   const expectedEndpoint = CNIPA_CANDIDATE_ENDPOINTS[documentKind];
-  const expectedPath = input.surface === "LIST" ? expectedEndpoint.listPath : expectedEndpoint.detailPath;
+  const expectedPath =
+    input.surface === "LIST" ? expectedEndpoint.listPath : expectedEndpoint.detailPath;
   if (input.path !== expectedPath) {
     fail(`entries[${index}].path must exactly match the frozen candidate endpoint`);
   }
@@ -175,7 +176,11 @@ function parseEntry(value: unknown, index: number): CnipaOfflineResponseBundleEn
   ) {
     fail(`entries[${index}].responseFile must be a simple relative filename`);
   }
-  if (!Number.isSafeInteger(input.status) || (input.status as number) < 100 || (input.status as number) > 599) {
+  if (
+    !Number.isSafeInteger(input.status) ||
+    (input.status as number) < 100 ||
+    (input.status as number) > 599
+  ) {
     fail(`entries[${index}].status must be an HTTP status integer`);
   }
 
@@ -198,7 +203,11 @@ export function parseCnipaOfflineResponseBundleDescriptor(
   if (!input) fail("root must be an object");
   assertOnlyKeys(input, DESCRIPTOR_ROOT_KEYS, "root");
   if (input.version !== 1) fail("version must be 1");
-  if (!Array.isArray(input.entries) || input.entries.length === 0 || input.entries.length > MAX_ENTRIES) {
+  if (
+    !Array.isArray(input.entries) ||
+    input.entries.length === 0 ||
+    input.entries.length > MAX_ENTRIES
+  ) {
     fail(`entries must contain between 1 and ${MAX_ENTRIES} items`);
   }
   const entries = input.entries.map(parseEntry);
@@ -218,7 +227,10 @@ function sha256(value: Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function valueType(value: unknown, exists: boolean): CnipaOfflineResponseListStructure["totalType"] {
+function valueType(
+  value: unknown,
+  exists: boolean,
+): CnipaOfflineResponseListStructure["totalType"] {
   if (!exists) return "missing";
   if (value === null) return "null";
   if (typeof value === "number") return "number";
@@ -242,7 +254,8 @@ function assessList(
   const list = dataObject && Array.isArray(dataObject.list) ? dataObject.list : null;
   const expectedFields =
     CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind[documentKind].frontendConsumedListFields;
-  const objectRows = list?.map(objectRecord).filter((row): row is Record<string, unknown> => row !== null) ?? [];
+  const objectRows =
+    list?.map(objectRecord).filter((row): row is Record<string, unknown> => row !== null) ?? [];
   const presentOnEvery =
     objectRows.length === 0
       ? []
@@ -261,7 +274,13 @@ function assessList(
     expectedFieldsMissingFromAnyObjectRow: missingFromAny,
   };
 
-  if (!rootObject || !dataObject || !list || structure.totalType === "missing" || structure.totalType === "other") {
+  if (
+    !rootObject ||
+    !dataObject ||
+    !list ||
+    structure.totalType === "missing" ||
+    structure.totalType === "other"
+  ) {
     return { assessmentStatus: "MISMATCH_STATIC_EXPECTED_SHAPE", structure };
   }
   if (list.length === 0) return { assessmentStatus: "INSUFFICIENT_EMPTY_LIST", structure };
@@ -350,7 +369,10 @@ async function loadDescriptor(input: {
   };
 }
 
-async function createOutputDirectory(outputDirectory: string, workingDirectory: string): Promise<string> {
+async function createOutputDirectory(
+  outputDirectory: string,
+  workingDirectory: string,
+): Promise<string> {
   const lexicalPath = assertPathOutsideWorkingTree(outputDirectory, workingDirectory);
   const realParent = await realpath(path.dirname(lexicalPath));
   const resolved = path.join(realParent, path.basename(lexicalPath));

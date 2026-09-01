@@ -4,10 +4,7 @@ export type CnipaOfflineResponseBundleArguments = {
 };
 
 export type CnipaOfflineResponseBundleFailureKind =
-  | "ARGUMENT_ERROR"
-  | "INPUT_UNREADABLE"
-  | "OUTPUT_ERROR"
-  | "ASSESSMENT_FAILED";
+  "ARGUMENT_ERROR" | "INPUT_UNREADABLE" | "OUTPUT_ERROR" | "ASSESSMENT_FAILED";
 
 export function parseCnipaOfflineResponseBundleArguments(
   argv: readonly string[],
@@ -41,9 +38,7 @@ export function parseCnipaOfflineResponseBundleArguments(
   }
 
   if (!descriptorPath || !outputDirectory) {
-    throw new Error(
-      "CNIPA offline response-bundle assessment requires --descriptor and --output",
-    );
+    throw new Error("CNIPA offline response-bundle assessment requires --descriptor and --output");
   }
   return { descriptorPath, outputDirectory };
 }
@@ -68,8 +63,7 @@ export function classifyCnipaOfflineResponseBundleFailure(
     if (
       message.startsWith("Unsupported CNIPA offline response-bundle argument:") ||
       message.startsWith("CNIPA offline response-bundle argument separator") ||
-      message ===
-        "CNIPA offline response-bundle assessment requires --descriptor and --output" ||
+      message === "CNIPA offline response-bundle assessment requires --descriptor and --output" ||
       message === "--descriptor may be specified only once" ||
       message === "--output may be specified only once" ||
       message === "--descriptor requires a value" ||
