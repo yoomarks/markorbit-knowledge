@@ -1,20 +1,16 @@
 import { createHash } from "node:crypto";
 import { CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE } from "./cnipa-frontend-static-contract";
 
+export * from "./cnipa-frontend-static-contract";
+
 export const CNIPA_JUDGMENT_SCHEMA_STATUS = "OPERATOR_SUPPLIED_UNVERIFIED" as const;
 export const CNIPA_JUDGMENT_SCHEMA_REVISION = "candidate-2026-08-29" as const;
 
 export type CnipaDocumentKind =
-  | "REGISTRATION_EXAMINATION"
-  | "OPPOSITION_DECISION"
-  | "REVIEW_ADJUDICATION";
+  "REGISTRATION_EXAMINATION" | "OPPOSITION_DECISION" | "REVIEW_ADJUDICATION";
 
 export type CnipaPartyRole =
-  | "APPLICANT"
-  | "RESPONDENT"
-  | "OPPOSER"
-  | "OPPOSED_PARTY"
-  | "UNVERIFIED";
+  "APPLICANT" | "RESPONDENT" | "OPPOSER" | "OPPOSED_PARTY" | "UNVERIFIED";
 
 export type CnipaCoverageStatus = "COMPLETE" | "PARTIAL" | "UNKNOWN";
 
@@ -44,9 +40,7 @@ export type CnipaDateRangeQuery = {
 };
 
 export type CnipaTrademarkJudgmentQuery =
-  | CnipaRegistrationNumberQuery
-  | CnipaPartyNameQuery
-  | CnipaDateRangeQuery;
+  CnipaRegistrationNumberQuery | CnipaPartyNameQuery | CnipaDateRangeQuery;
 
 export type CnipaCandidateEndpointSpec = {
   documentKind: CnipaDocumentKind;
@@ -103,11 +97,7 @@ export type CnipaAuthenticatedRequest = {
   jsonBody?: Readonly<Record<string, string | number>>;
 };
 
-export type CnipaSessionSecurityState =
-  | "OK"
-  | "REAUTH_REQUIRED"
-  | "ACCESS_DENIED"
-  | "RATE_LIMITED";
+export type CnipaSessionSecurityState = "OK" | "REAUTH_REQUIRED" | "ACCESS_DENIED" | "RATE_LIMITED";
 
 /**
  * A sealed browser/session execution result. Implementations may use cookies,
