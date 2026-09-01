@@ -27,6 +27,7 @@ jobs:
           # Keep business surfaces and shared ingestion-control helpers formatting-clean,
           # including production staging and the bulk collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
+            docs/operations/CORE_DEPENDENCY_DRIFT_GATES.md \
             apps/admin/src/app/knowledge/[id]/page.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
@@ -51,6 +52,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            docs/operations/CORE_DEPENDENCY_DRIFT_GATES.md \
             apps/admin/src/app/knowledge/[id]/page.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
