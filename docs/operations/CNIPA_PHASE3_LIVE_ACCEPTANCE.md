@@ -1,10 +1,11 @@
 # CNIPA Phase 3 manual authenticated live acceptance
 
-Status: operator-only acceptance harness. The Playwright-authenticated live path is currently blocked by an observed CNIPA access-control gate; do not execute or bypass it. Use the ordinary-Chrome NetLog evidence workflow for currently available transport evidence and official frontend static-code review for request-construction evidence.
+Status: operator-only acceptance harness. The Playwright-authenticated live path is currently blocked by an observed CNIPA access-control gate; do not execute or bypass it. Use the ordinary-Chrome NetLog evidence workflow for currently available transport evidence and official frontend static-code review for request-construction/client-expectation evidence.
 
 Parent issue: #573  
 Implementation issue: #576  
-Official frontend static-contract issue: #624
+Official frontend static-contract issue: #624  
+Frontend client-expectations issue: #627
 
 ## Safety boundary
 
@@ -42,21 +43,30 @@ These observations do **not** verify request payload fields, response envelope/s
 
 ## Official frontend static-code evidence boundary
 
-Operator-retrieved official CNIPA portal static application code provides a second, separate evidence layer. It establishes frontend request construction and frontend response-access expectations without exposing browser-session credentials.
+Operator-retrieved official CNIPA portal static application code provides a second, separate evidence layer. It establishes frontend request construction and client expectations without exposing browser-session credentials.
 
 The public frontend configuration sets the application API base path to `/toas-pub-prod/pub-prod-api`. Combined with the request wrappers in the official application bundle, the currently observed request contract is:
 
 - registration examination list fields: `regNo`, `tmName`, `applicantCnName`, `returnDateStart`, `returnDateEnd`, `pageIndex`, `pageSize`; no fixed `openFlag` was observed in its list request construction;
 - opposition decision list fields: fixed `openFlag: 1`, plus `regNo`, `tmName`, `objenderCnName`, `objeperCnName`, `objenderAgentName`, `objeperAgentName`, `returnDateStart`, `returnDateEnd`, `pageIndex`, `pageSize`;
 - review adjudication list fields: fixed `openFlag: 1`, plus `regNo`, `tmName`, `applicantName`, `respondentName`, `judgeDateStart`, `judgeDateEnd`, `pageIndex`, `pageSize`;
-- the frontend passes row property `adjuOpenId` into registration/opposition detail calls and `pubId` into review detail calls;
-- after its HTTP-client wrapper, the frontend reads list items from `data.list`, list totals from `data.total`, and detail data from `data`.
+- the frontend passes row property `adjuOpenId` into registration/opposition route query `id` and `pubId` into review route query `id`; each detail wrapper then sends that `id` to its `queryInfo?id=...` request.
 
-This evidence is represented by `CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE`. It is **not** a live server-response capture. In particular, the frontend's `data.list` / `data.total` access does not prove the raw HTTP JSON envelope because the application's HTTP client may transform responses before feature code receives them. Likewise, `adjuOpenId` / `pubId` are frontend row-to-detail expectations, not yet a live-verified list-to-detail identity mapping.
+Further inspection of the same bundle establishes the response-access chain used by those features. The shared Axios success interceptor returns Axios `response.data`, and the judgment request helper is that same client. Therefore the feature result represents the Axios-parsed HTTP JSON body: list pages expect that body to expose `data.list` and `data.total`, while detail pages expect the body to expose `data`. The wrapper also inspects application-level `response.data.code` before returning successful data.
 
-The bundle also exposes UI-side page-size/date-range behavior. Those client constraints are not treated as backend limits and must not be promoted into coverage or pagination claims without separate business-result evidence.
+This is a **static client expectation**, not an authenticated live server-response observation. It supports an expected JSON-body envelope but does not prove that the current authenticated service actually returns that envelope, that `code`/`data` have the expected business semantics, or that any real response is non-empty. The configurable live response decoder therefore remains untouched and `CNIPA_JUDGMENT_SCHEMA_STATUS` remains `OPERATOR_SUPPLIED_UNVERIFIED`.
 
-`CNIPA_JUDGMENT_SCHEMA_STATUS` therefore remains `OPERATOR_SUPPLIED_UNVERIFIED`.
+The official UI also provides additional semantic intent and client constraints:
+
+- `applicantCnName` is presented as applicant intent for registration examination;
+- opposition labels present `objenderCnName` as opposer intent and `objeperCnName` as opposed-party intent;
+- review labels present `applicantName` as applicant intent and `respondentName` as respondent / 被申请人 intent;
+- all three judgment date pickers disable candidate dates whose day difference from the selected counterpart exceeds 30 days;
+- all three pages initialize page index `1` and page size `10`, consume `data.total`, and expose normal pagination controls.
+
+These labels and controls are frontend intent only. They do **not** live-verify party roles, establish that the backend enforces a 30-day date limit, establish a backend page-size/result cap, prove page 11 / >100 behavior, or prove coverage completeness. Likewise, the observed `adjuOpenId` / `pubId` route flow establishes the frontend's intended row-field-to-detail-id mapping but not consistency of real list/detail records.
+
+This evidence is represented by `CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE`, separately from the live schema/coverage state.
 
 ## 1. Future authenticated browser-session preparation
 
@@ -104,7 +114,7 @@ The harness accepts only the three frozen observed list/detail endpoint paths al
 
 Detail probes require the observed `id` query key. Additional non-credential query keys may be included only after their exact names are established by a separate permitted evidence source; the current allowlisted NetLog summary does not prove their absence. Do not invent parameter names.
 
-Official frontend static code now establishes the request **field names** listed above and fixed `openFlag: 1` for opposition/review list construction. This does not establish party-role meaning, backend date semantics, business-result behavior or raw response schema. The production candidate request builder therefore continues to execute registration-number queries only; party-name/date-range modes remain fail-closed until their execution semantics are validated by a permitted evidence source.
+Official frontend static code now establishes the request **field names** listed above and fixed `openFlag: 1` for opposition/review list construction. The same static code establishes UI role intent, an intended row-field-to-detail-id flow, a 30-day-difference date-picker constraint and pagination defaults. None of those facts establishes live party-role meaning, backend date/pagination limits, business-result behavior or current server conformance to the expected response envelope. The production candidate request builder therefore continues to execute registration-number queries only; party-name/date-range modes remain fail-closed until their execution semantics are validated by a permitted evidence source.
 
 ## 3. Local plan validation
 
@@ -145,7 +155,7 @@ For an authorized future live run, each non-empty source response is written byt
 
 The manifest does not duplicate registration numbers, party-name values or other request payload values. The external probe plan remains the controlled mapping between a probe id and its authorized case input.
 
-Do not upload the browser profile, storage state, plan, raw NetLog or live response evidence to a public issue/PR or commit them to Git. Do not commit the retrieved minified frontend bundle; record only the bounded public request-contract facts needed by the runtime and tests.
+Do not upload the browser profile, storage state, plan, raw NetLog or live response evidence to a public issue/PR or commit them to Git. Do not commit the retrieved minified frontend bundle; record only the bounded public request-contract/client-expectation facts needed by the runtime and tests.
 
 The harness itself does not decide verification; evidence must be reviewed before changing #573 or promoting the schema status.
 
@@ -154,12 +164,12 @@ The harness itself does not decide verification; evidence must be reviewed befor
 The following still require evidence before schema/coverage promotion:
 
 1. one real registration-number result across all three document libraries;
-2. actual raw/list response envelope and source-record id field as delivered by the authenticated service;
-3. real list -> detail request/response identity mapping, despite the frontend's observed `adjuOpenId` / `pubId` expectations;
-4. real party-name business behavior and party-role semantics, including opposition roles; field names alone are now statically observed;
-5. page 11 / >100 business-result behavior and backend pagination limits;
-6. backend date-window behavior despite observed frontend date fields/UI constraints;
+2. actual authenticated HTTP JSON response conformance and source-record id field, despite the statically observed client envelope expectation;
+3. real list -> detail request/response identity consistency, despite the frontend's intended `adjuOpenId` / `pubId` -> query `id` flow;
+4. real party-name business behavior and party-role semantics, despite the statically observed UI role intent;
+5. page 11 / >100 business-result behavior and backend pagination limits, despite frontend page defaults and controls;
+6. backend date-window behavior despite the frontend's 30-day-difference date-picker constraint;
 7. authenticated 403 semantics when a supported authenticated execution path exists;
 8. resulting coverage classification.
 
-Ordinary-Chrome Default-mode NetLog can support transport/status observations, and official frontend static code can support request-construction expectations, but neither establishes the live server business/schema facts above. Until separate permitted evidence supports them, keep schema status `OPERATOR_SUPPLIED_UNVERIFIED` and coverage `UNKNOWN` or `PARTIAL` as applicable.
+Ordinary-Chrome Default-mode NetLog can support transport/status observations, and official frontend static code can support request-construction/client expectations, but neither establishes the live server business/schema facts above. Until separate permitted evidence supports them, keep schema status `OPERATOR_SUPPLIED_UNVERIFIED` and coverage `UNKNOWN` or `PARTIAL` as applicable.
