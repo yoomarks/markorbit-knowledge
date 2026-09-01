@@ -53,6 +53,15 @@ test("audited Order journey heading assertion drift is isolated for every profil
   }
 });
 
+test("exact-path isolation does not exempt similarly prefixed files", () => {
+  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+    const filePath = "tests/e2e/order-journey-real-runtime.spec.ts.backup";
+    const result = classify({ profileName, changedPaths: [filePath] });
+    assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
+    assert.deepEqual(result.relevantPaths, [filePath]);
+  }
+});
+
 test("proven MGSN service-only drift is IRRELEVANT_DRIFT", () => {
   const result = classify({
     changedPaths: [
