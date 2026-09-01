@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 env:
-  CORE_REF: 98ea145d682cb2cc59ef164ac473f27a34109a1b
+  CORE_REF: 6a33f3d9f0a68102cd08a538944af2e3f50ac549
   MARKREG_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/markorbit_kcase008
   MARKREG_MIGRATION_NAMESPACE: markreg_kcase008
   MO_INTERNAL_SERVICE_SECRET: markorbit-k-case-008-shared-secret-0001
