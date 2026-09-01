@@ -20,12 +20,21 @@ describe("CNIPA official frontend static request contract", () => {
       observedDate: "2026-09-01",
       evidenceKind: "OPERATOR_RETRIEVED_OFFICIAL_STATIC_APPLICATION_CODE",
       publicApiBasePath: "/toas-pub-prod/pub-prod-api",
+      httpClientSuccessReturn: "axiosResponse.data",
+      featureResultRepresents: "AXIOS_RESPONSE_DATA_JSON_BODY",
+      applicationCodeAccess: "axiosResponse.data.code",
     });
     expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
       "RAW_HTTP_RESPONSE_ENVELOPE_OR_SCHEMA",
     );
     expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
       "REAL_LIST_TO_DETAIL_IDENTITY",
+    );
+    expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
+      "PARTY_ROLE_SEMANTICS",
+    );
+    expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
+      "BACKEND_PAGINATION_OR_DATE_LIMITS",
     );
     expect(CNIPA_JUDGMENT_SCHEMA_STATUS).toBe("OPERATOR_SUPPLIED_UNVERIFIED");
   });
@@ -45,6 +54,7 @@ describe("CNIPA official frontend static request contract", () => {
       ],
       fixedListRequestFields: {},
       detailRowIdField: "adjuOpenId",
+      frontendUsesRowFieldAsDetailQueryId: true,
       frontendListItemsAccess: "data.list",
       frontendListTotalAccess: "data.total",
       frontendDetailAccess: "data",
@@ -67,6 +77,7 @@ describe("CNIPA official frontend static request contract", () => {
       ],
       fixedListRequestFields: { openFlag: 1 },
       detailRowIdField: "adjuOpenId",
+      frontendUsesRowFieldAsDetailQueryId: true,
     });
     expect(
       CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.REVIEW_ADJUDICATION,
@@ -84,7 +95,34 @@ describe("CNIPA official frontend static request contract", () => {
       ],
       fixedListRequestFields: { openFlag: 1 },
       detailRowIdField: "pubId",
+      frontendUsesRowFieldAsDetailQueryId: true,
     });
+  });
+
+  it("records UI role intent and UI pagination/date constraints without promoting backend semantics", () => {
+    const registration =
+      CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.REGISTRATION_EXAMINATION;
+    const opposition =
+      CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.OPPOSITION_DECISION;
+    const review = CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.REVIEW_ADJUDICATION;
+
+    expect(registration.frontendUiPartyRoleIntentByField).toEqual({
+      applicantCnName: "APPLICANT",
+    });
+    expect(opposition.frontendUiPartyRoleIntentByField).toEqual({
+      objenderCnName: "OPPOSER",
+      objeperCnName: "OPPOSED_PARTY",
+    });
+    expect(review.frontendUiPartyRoleIntentByField).toEqual({
+      applicantName: "APPLICANT",
+      respondentName: "RESPONDENT",
+    });
+
+    for (const spec of [registration, opposition, review]) {
+      expect(spec.frontendDateRangeMaxDifferenceDays).toBe(30);
+      expect(spec.frontendInitialPageIndex).toBe(1);
+      expect(spec.frontendInitialPageSize).toBe(10);
+    }
   });
 
   it("applies only the statically observed fixed openFlag behavior to candidate list requests", () => {
@@ -97,5 +135,22 @@ describe("CNIPA official frontend static request contract", () => {
     expect(
       buildCnipaCandidateListRequest("REVIEW_ADJUDICATION", registrationNumberQuery).jsonBody,
     ).toEqual({ openFlag: 1, pageIndex: 1, pageSize: 10, regNo: "1234567" });
+  });
+
+  it("keeps party-name and date-range production request construction fail-closed", () => {
+    expect(() =>
+      buildCnipaCandidateListRequest("OPPOSITION_DECISION", {
+        mode: "PARTY_NAME",
+        partyName: "Synthetic Party",
+      }),
+    ).toThrow(/request semantics are not yet authenticated-live-verified/i);
+
+    expect(() =>
+      buildCnipaCandidateListRequest("REVIEW_ADJUDICATION", {
+        mode: "DATE_RANGE",
+        fromDate: "2026-01-01",
+        toDate: "2026-01-30",
+      }),
+    ).toThrow(/request semantics are not yet authenticated-live-verified/i);
   });
 });
