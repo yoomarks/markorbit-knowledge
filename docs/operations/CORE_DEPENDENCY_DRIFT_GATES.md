@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Knowledge has several acceptance workflows that exercise production boundaries implemented in the `yoomarks/markorbit` monorepo. Each workflow keeps an exact **audited Core baseline SHA**. The baseline is evidence of the last Core boundary that was explicitly reviewed; it is not automatically advanced by scheduled CI.
+Knowledge has several acceptance workflows that exercise production boundaries implemented in the `yoomarks/markorbit` monorepo. Each workflow keeps an exact **audited Core baseline SHA**. The baseline is evidence of the last relevant Core boundary that was explicitly reviewed; it is not automatically advanced by scheduled CI.
 
-A monorepo-wide `current main == baseline` check is unnecessarily coarse: unrelated application lanes can advance Core main without changing a Knowledge-consumed service. The drift gate therefore distinguishes a proven isolated change from a change that may affect the tested boundary.
+A monorepo-wide `current main == baseline` check is unnecessarily coarse: unrelated lanes or services can advance Core main without changing the dependency closure exercised by a particular Knowledge acceptance. The drift gate therefore distinguishes proven isolated changes from changes that may affect the tested boundary.
 
 ## States
 
@@ -12,34 +12,51 @@ A monorepo-wide `current main == baseline` check is unnecessarily coarse: unrela
 : Core main is exactly the audited baseline.
 
 `IRRELEVANT_DRIFT`
-: Core main advanced, the baseline is still an ancestor, the complete path diff was obtained, and every changed path is inside an explicitly reviewed isolated prefix. The acceptance workflow proceeds against the **current Core main**, while leaving the audited baseline unchanged.
+: Core main advanced, the baseline is still an ancestor, the complete path diff was obtained, and every changed path is inside an explicitly reviewed isolated prefix for that profile. The acceptance workflow proceeds against the **current Core main**, while leaving the audited baseline unchanged.
 
 `RELEVANT_DRIFT`
-: At least one changed path is not explicitly proven isolated. The workflow fails closed. The new Core boundary must be audited, the baseline updated deliberately, and the existing real acceptance rerun.
+: At least one changed path is not explicitly proven isolated for that profile. The workflow fails closed. The affected Core boundary must be audited, the baseline updated deliberately, and the existing real acceptance rerun.
 
 `UNKNOWN_DRIFT`
 : The comparison cannot be proven complete or trustworthy, including missing baseline history, non-ancestor history, invalid commit identity, or Git comparison failure. The workflow fails closed.
 
 ## Conservative default
 
-The classifier is intentionally default-relevant. It does not attempt to maintain a fragile exhaustive list of all shared dependencies.
+The classifier is intentionally default-relevant. It does not attempt to maintain a fragile exhaustive list of all shared dependencies. A path is isolated only after exact file-level review plus acceptance/build-closure evidence establishes that the profile does not consume it.
 
-The only initial isolated prefixes are paths whose independence from the current Knowledge acceptance closures was established by exact file-level audits during issue #643/#645:
+The common lane-isolated prefixes established during #643/#645 are:
 
 - `apps/lite-web/**`;
 - `services/mgsn/**`.
 
-A change to any other path is treated as relevant, including contracts, persistence, migrations, package-manager/build configuration, Capability Engine, MarkReg, or an unknown new directory. Expanding the isolated set requires an explicit dependency review; a commit title is never enough.
+Additional profile-specific isolation is intentionally narrow:
+
+| Profile | Additional proven isolated service prefixes |
+| --- | --- |
+| `core-intake` | `services/capability-engine/**`, `services/markreg/**` |
+| `managed-ai` | `services/markreg/**` |
+| `markreg-contract` | `services/capability-engine/**` |
+| `k-case-008` | `services/capability-engine/**` |
+
+Why:
+
+- Core Intake builds and exercises the Core receiver/PostgreSQL intake closure; it does not build Capability Engine or MarkReg.
+- Managed AI builds and exercises `@markorbit/capability-engine...`; Capability Engine therefore remains relevant, while MarkReg is outside that closure.
+- MarkReg Contract inspects the MarkReg Formal Matter/contract boundary; Capability Engine is outside that closure.
+- K-CASE builds and exercises the MarkReg producer/PostgreSQL closure; Capability Engine is outside that closure.
+
+Shared contracts, persistence, migrations, lockfiles, workspace/package-manager/build configuration and every unlisted or unknown path remain relevant by default. A commit title is never sufficient evidence for isolation.
 
 ## Profiles
 
-The shared helper exposes named profiles for:
+The shared helper exposes four named profiles:
 
+- `core-intake`;
 - `managed-ai`;
 - `markreg-contract`;
 - `k-case-008`.
 
-They intentionally begin with the same small isolated set. Named profiles allow future divergence only when dependency evidence justifies it without duplicating workflow logic.
+Their isolated sets differ only where the real build/test closures justify that difference. A service that is isolated for one profile may remain relevant for another.
 
 ## Runtime behavior
 
@@ -53,16 +70,18 @@ Each freshness job:
 6. fails on `RELEVANT_DRIFT` or `UNKNOWN_DRIFT`;
 7. runs the existing real acceptance against `core_ref_to_test` for `NO_DRIFT` or `IRRELEVANT_DRIFT`.
 
-The real Managed AI/Capability V2 HTTP E2E, MarkReg invariant audit, and K-CASE PostgreSQL acceptance remain the compatibility evidence. Path classification is only a conservative freshness precondition; it is never a substitute for those tests and never authorizes a relevant Core change.
+The real Core Intake PostgreSQL receiver E2E, Managed AI/Capability V2 HTTP E2E, MarkReg invariant audit, and K-CASE PostgreSQL acceptance remain the compatibility evidence. Path classification is only a conservative freshness precondition; it is never a substitute for those tests and never authorizes a relevant Core change.
 
 ## Baseline updates
 
 When a relevant Core path changes:
 
 1. inspect the exact baseline-to-current diff;
-2. determine which Knowledge boundary is affected;
+2. determine which Knowledge profile(s) actually consume the changed surface;
 3. update only the affected audited baseline(s);
-4. rerun the corresponding real acceptance at the exact PR head;
+4. rerun the corresponding real acceptance at the exact PR head against current Core;
 5. record the Core and Knowledge SHAs in the issue/PR audit trail.
+
+If the changed service is proven outside another profile's build/test closure, that profile may classify the same commit as `IRRELEVANT_DRIFT`; its real acceptance still runs against current Core.
 
 Scheduled workflows must never mutate baselines automatically.
