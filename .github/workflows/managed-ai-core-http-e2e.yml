@@ -7,6 +7,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/managed-ai-core-http-e2e.yml"
+      - "scripts/core-drift-gate.mjs"
+      - "scripts/core-drift-gate.test.mjs"
       - "apps/worker/src/adk-knowledge-job-worker.ts"
       - "apps/worker/src/adk-deepseek-provider.ts"
       - "packages/worker-runtime/src/ai-distilled-knowledge-acquirer.ts"
@@ -27,22 +29,31 @@ env:
 jobs:
   core-ref-freshness:
     runs-on: ubuntu-24.04
+    outputs:
+      core_ref_to_test: ${{ steps.classify.outputs.core_ref_to_test }}
+      drift_state: ${{ steps.classify.outputs.drift_state }}
     steps:
-      - name: Require pinned Core ref to match current main
-        shell: bash
-        run: |
-          current_core_ref="$(git ls-remote https://github.com/yoomarks/markorbit.git refs/heads/main | awk '{print $1}')"
-          if [ -z "$current_core_ref" ]; then
-            echo "::error::Unable to resolve yoomarks/markorbit main SHA."
-            exit 1
-          fi
-
-          echo "Current Core main: $current_core_ref"
-          echo "Pinned Core ref:    $CORE_REF"
-          if [ "$current_core_ref" != "$CORE_REF" ]; then
-            echo "::error::Managed AI Core acceptance pin is stale. Audit the new Core main, update CORE_REF, and rerun the real localhost E2E before treating the boundary as current."
-            exit 1
-          fi
+      - name: Checkout Knowledge
+        uses: actions/checkout@v4
+      - name: Checkout Core history for drift classification
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+          path: .core-drift/markorbit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Classify Core dependency drift
+        id: classify
+        run: >-
+          node scripts/core-drift-gate.mjs
+          --repo .core-drift/markorbit
+          --baseline "$CORE_REF"
+          --profile managed-ai
+          --github-output "$GITHUB_OUTPUT"
 
   managed-ai-core-http:
     needs: core-ref-freshness
@@ -50,11 +61,11 @@ jobs:
     steps:
       - name: Checkout Knowledge
         uses: actions/checkout@v4
-      - name: Checkout pinned Core
+      - name: Checkout classified current Core
         uses: actions/checkout@v4
         with:
           repository: yoomarks/markorbit
-          ref: ${{ env.CORE_REF }}
+          ref: ${{ needs.core-ref-freshness.outputs.core_ref_to_test }}
           path: .e2e/markorbit-core
       - uses: pnpm/action-setup@v4
         with:
