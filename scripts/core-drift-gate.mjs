@@ -10,7 +10,11 @@ export const CORE_DRIFT_STATES = Object.freeze({
   UNKNOWN_DRIFT: "UNKNOWN_DRIFT",
 });
 
-const PROVEN_MONOREPO_ISOLATED_PREFIXES = Object.freeze(["apps/lite-web/", "services/mgsn/"]);
+const PROVEN_MONOREPO_ISOLATED_PREFIXES = Object.freeze([
+  "apps/lite-web/",
+  "apps/markreg-web/",
+  "services/mgsn/",
+]);
 const PROVEN_NON_CAPABILITY_PREFIXES = Object.freeze([
   ...PROVEN_MONOREPO_ISOLATED_PREFIXES,
   "services/capability-engine/",
