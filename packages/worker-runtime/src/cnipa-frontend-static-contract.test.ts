@@ -23,14 +23,27 @@ describe("CNIPA official frontend static request contract", () => {
       httpClientSuccessReturn: "axiosResponse.data",
       featureResultRepresents: "AXIOS_RESPONSE_DATA_JSON_BODY",
       applicationCodeAccess: "axiosResponse.data.code",
+      sharedDetailViewConsumedFields: [
+        "title",
+        "source",
+        "sendNoStr",
+        "fileContent",
+        "returnDate",
+      ],
     });
     expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
       "RAW_HTTP_RESPONSE_ENVELOPE_OR_SCHEMA",
     );
     expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
+      "LIVE_SOURCE_FIELD_CONFORMANCE",
+    );
+    expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
       "REAL_LIST_TO_DETAIL_IDENTITY",
     );
     expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain("PARTY_ROLE_SEMANTICS");
+    expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
+      "NORMALIZED_FIELD_SEMANTICS",
+    );
     expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
       "BACKEND_PAGINATION_OR_DATE_LIMITS",
     );
@@ -95,6 +108,35 @@ describe("CNIPA official frontend static request contract", () => {
       detailRowIdField: "pubId",
       frontendUsesRowFieldAsDetailQueryId: true,
     });
+  });
+
+  it("records only the list/detail fields consumed by the official frontend", () => {
+    expect(
+      CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.REGISTRATION_EXAMINATION
+        .frontendConsumedListFields,
+    ).toEqual(["adjuOpenId", "regNo", "tmName", "applicantCnName", "returnDateStr"]);
+    expect(
+      CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.OPPOSITION_DECISION
+        .frontendConsumedListFields,
+    ).toEqual([
+      "adjuOpenId",
+      "regNo",
+      "tmName",
+      "objenderCnName",
+      "objeperCnName",
+      "returnDateStr",
+    ]);
+    expect(
+      CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.REVIEW_ADJUDICATION
+        .frontendConsumedListFields,
+    ).toEqual(["pubId", "regNo", "tmName", "applicantName", "respondentName", "judgeDate"]);
+    expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.sharedDetailViewConsumedFields).toEqual([
+      "title",
+      "source",
+      "sendNoStr",
+      "fileContent",
+      "returnDate",
+    ]);
   });
 
   it("records UI role intent and UI pagination/date constraints without promoting backend semantics", () => {
