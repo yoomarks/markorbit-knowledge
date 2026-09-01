@@ -13,6 +13,7 @@ export const CORE_DRIFT_STATES = Object.freeze({
 const PROVEN_ISOLATED_PREFIXES = Object.freeze(['apps/lite-web/', 'services/mgsn/']);
 
 export const CORE_DRIFT_PROFILES = Object.freeze({
+  'core-intake': Object.freeze({ isolatedPrefixes: PROVEN_ISOLATED_PREFIXES }),
   'managed-ai': Object.freeze({ isolatedPrefixes: PROVEN_ISOLATED_PREFIXES }),
   'markreg-contract': Object.freeze({ isolatedPrefixes: PROVEN_ISOLATED_PREFIXES }),
   'k-case-008': Object.freeze({ isolatedPrefixes: PROVEN_ISOLATED_PREFIXES })
