@@ -7,6 +7,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/markreg-core-contract-drift.yml"
+      - "scripts/core-drift-gate.mjs"
+      - "scripts/core-drift-gate.test.mjs"
       - "packages/contracts/src/case-candidate-v1.ts"
       - "packages/contracts/src/case-candidate-wire-schema-v1.test.ts"
       - "packages/contracts/schemas/case-candidate-v1.schema.json"
@@ -22,22 +24,31 @@ env:
 jobs:
   core-ref-freshness:
     runs-on: ubuntu-24.04
+    outputs:
+      core_ref_to_test: ${{ steps.classify.outputs.core_ref_to_test }}
+      drift_state: ${{ steps.classify.outputs.drift_state }}
     steps:
-      - name: Require pinned Core ref to match current main
-        shell: bash
-        run: |
-          current_core_ref="$(git ls-remote https://github.com/yoomarks/markorbit.git refs/heads/main | awk '{print $1}')"
-          if [ -z "$current_core_ref" ]; then
-            echo "::error::Unable to resolve yoomarks/markorbit main SHA."
-            exit 1
-          fi
-
-          echo "Current Core main: $current_core_ref"
-          echo "Pinned Core ref:    $CORE_REF"
-          if [ "$current_core_ref" != "$CORE_REF" ]; then
-            echo "::error::MarkReg contract pin is stale. Audit the new Core main before treating the Case boundary as current."
-            exit 1
-          fi
+      - name: Checkout Knowledge
+        uses: actions/checkout@v4
+      - name: Checkout Core history for drift classification
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+          path: .core-drift/markorbit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Classify Core dependency drift
+        id: classify
+        run: >-
+          node scripts/core-drift-gate.mjs
+          --repo .core-drift/markorbit
+          --baseline "$CORE_REF"
+          --profile markreg-contract
+          --github-output "$GITHUB_OUTPUT"
 
   markreg-contract:
     needs: core-ref-freshness
@@ -45,11 +56,11 @@ jobs:
     steps:
       - name: Checkout Knowledge
         uses: actions/checkout@v4
-      - name: Checkout pinned Core
+      - name: Checkout classified current Core
         uses: actions/checkout@v4
         with:
           repository: yoomarks/markorbit
-          ref: ${{ env.CORE_REF }}
+          ref: ${{ needs.core-ref-freshness.outputs.core_ref_to_test }}
           path: .e2e/markorbit-core
       - uses: pnpm/action-setup@v4
         with:
