@@ -1,139 +1,150 @@
 # MarkOrbit Knowledge Current State
 
 Date: 2026-09-01  
-Reviewed Knowledge baseline: `f2feb27de36d10b3b462238eeeccbff9eb349333`  
-Reviewed Core baseline: `0ff0d806fbb632584f2aefba41134a771ba02b6e`  
+Reviewed Knowledge baseline: `0e1068d3de9c32151dac0a7acd64d7ca13536056`  
 Release line: repository package version `0.1.0`
 
 ## Decision
 
-The v0.1 architectural freeze remains valid. Do not reopen the Source -> CollectionPlan -> Run/Job -> Worker -> RawArtifact -> Conversion/Staging -> ReadyPackage backbone.
+The v0.1 architectural freeze remains valid. Do not reopen or duplicate the Source -> CollectionPlan -> Run/Job -> Worker -> RawArtifact -> Conversion/Staging -> ReadyPackage backbone.
 
-Knowledge still owns acquisition, immutable evidence, provenance, objective change facts, conversion/staging and downstream delivery preparation. Core/Brain still owns semantic interpretation, entity/relationship meaning, legal/business conclusions, value scoring, capabilities, recommendations and Next Best Action.
+Knowledge continues to own acquisition, immutable evidence, provenance, objective change facts, normalization/conversion, retrieval, source intelligence, and downstream delivery preparation. Core/Brain continues to own semantic interpretation, entities/relationships, legal/business meaning, capability governance, scoring, recommendations, and Next Best Action.
 
-The 2026-09-01 takeover work did not discover a missing Knowledge framework. It closed cross-repository acceptance-maintenance debt, reran real current-Core acceptance, and narrowed the remaining work to external/live evidence and repository-administration decisions.
+The repository is not missing another generic ingestion, communication, scoring, scheduler, or execution framework. Current work is narrow and evidence-gated: repository governance, authenticated CNIPA source verification, Shared Communication production/live acceptance, and the explicitly authorized ADK paid-provider acceptance.
 
-## 2026-09-01 completed work
+## 2026-09-01 cross-repository acceptance hardening
 
-### Core-coupled acceptance maintenance
+### Audited pin refreshes — PR #640 and PR #642
 
-Three maintenance steps first restored exact audited Core acceptance before changing freshness semantics:
+PR #640 merged as `9a558730831783b252e3d2040d5d5cb7ae940cdd`. It refreshed the then-exact audited Core refs used by Managed AI / Capability V2 HTTP acceptance and MarkReg contract drift checks, without weakening the fail-closed freshness guard.
 
-- #639 / PR #640 refreshed Managed AI and MarkReg audited Core pins after an exact incremental Core audit. Squash merge: `9a558730831783b252e3d2040d5d5cb7ae940cdd`.
-- #641 / PR #642 refreshed K-CASE-008 after auditing the real MarkReg producer closure. The full PostgreSQL-backed cross-repository acceptance was rerun against the then-current Core boundary. Squash merge: `95033e3e947c3ce255cba6d2e51f7abd4bb6c1d0`.
-- #643 and #645 were then closed by PR #644, which replaced coarse whole-monorepo SHA equality with conservative dependency-path-aware freshness classification. Squash merge/current Knowledge baseline: `f2feb27de36d10b3b462238eeeccbff9eb349333`.
+PR #642 merged as `95033e3e947c3ce255cba6d2e51f7abd4bb6c1d0`. It refreshed the K-CASE-008 Core producer pin only after checking the actual MarkReg producer boundary and reran the full PostgreSQL-backed cross-repository acceptance.
 
-### Dependency-path-aware Core freshness
+Those pin-only changes exposed a monorepo-level maintenance problem: exact whole-Core-main equality made Knowledge acceptance stale whenever unrelated Core lanes merged, even when no consumed boundary changed.
 
-The four Core-coupled Knowledge acceptance workflows now share `scripts/core-drift-gate.mjs` and named dependency profiles:
+### Dependency-path-aware Core freshness — PR #644
 
-- `core-intake`;
-- `managed-ai`;
-- `markreg-contract`;
-- `k-case-008`.
+PR #644 merged as `f2feb27de36d10b3b462238eeeccbff9eb349333` and replaced whole-monorepo SHA equality with a conservative dependency-aware freshness classifier shared by four real acceptance workflows:
 
-The classifier has four states:
+1. `core-intake`;
+2. `managed-ai`;
+3. `markreg-contract`;
+4. `k-case-008`.
 
-- `NO_DRIFT`: current Core main equals the audited baseline;
-- `IRRELEVANT_DRIFT`: the complete baseline-to-current path diff is proven to remain inside an explicitly audited isolated surface;
-- `RELEVANT_DRIFT`: at least one changed path may affect the tested boundary;
-- `UNKNOWN_DRIFT`: ancestry or complete comparison cannot be proven safely.
+The classifier states are:
 
-`RELEVANT_DRIFT` and `UNKNOWN_DRIFT` fail closed. `IRRELEVANT_DRIFT` does not waive acceptance: the workflow still checks out and tests the resolved current Core main. Scheduled workflows never mutate their audited baselines automatically.
+- `NO_DRIFT`;
+- `IRRELEVANT_DRIFT`;
+- `RELEVANT_DRIFT`;
+- `UNKNOWN_DRIFT`.
 
-The shared default remains conservative. Shared contracts, persistence, migrations, lockfiles, workspace/build configuration and unlisted paths are relevant by default. Profile-specific isolation exists only where the actual build/test closure was reviewed.
+`RELEVANT_DRIFT` and `UNKNOWN_DRIFT` fail closed. `IRRELEVANT_DRIFT` is allowed only for explicitly audited isolated paths. Passing classification never substitutes for the downstream real acceptance: the workflow checks out the classified current Core ref and runs the actual HTTP/PostgreSQL/contract acceptance against it.
 
-See [`CORE_DEPENDENCY_DRIFT_GATES.md`](../operations/CORE_DEPENDENCY_DRIFT_GATES.md) for the operational contract.
+Shared contracts, persistence, migrations, lockfiles, workspace/package-manager/build configuration, and every unlisted path remain relevant by default.
 
-### Exact-head cross-repository acceptance
+### Shared-contract audit and narrow UI/test isolation — PR #650
 
-The final PR #644 head `8a4970a48279e7dff7e6f91b02d0c3d0f6e3c230` passed all triggered PR workflows before merge, including:
+PR #650 merged as `0e1068d3de9c32151dac0a7acd64d7ca13536056`, closing #648 and #649.
 
-- real Knowledge -> Core Intake HTTP acceptance with Core PostgreSQL bootstrap and durable content acceptance;
-- real Knowledge -> Core Managed AI + Capability V2 localhost HTTP acceptance;
-- MarkReg Knowledge Case wire-contract and authoritative Formal Matter invariant acceptance;
-- full K-CASE-008 PostgreSQL-backed MarkReg -> Knowledge live service acceptance with fail-closed auth, real promotion, durable replay and one durable completed producer action;
-- `autoformat`;
-- `validate (22)` through format, lint, typecheck, tests and build;
-- `validate (24)` through format, lint, typecheck, tests and build;
-- zero unresolved review threads or blocking review submissions.
+All four audited Core baselines are now intentionally retained at:
 
-The final Core main audited immediately before merge was `0ff0d806fbb632584f2aefba41134a771ba02b6e`.
+`bb26e9c5abc73d05e886001df3b2a8e53606e63f`
+
+That baseline was advanced only after explicit review of the intervening shared-contract change. The classifier then gained two narrow evidence-backed exemptions:
+
+- `apps/markreg-web/**` as a presentation/UI surface outside all four Knowledge acceptance closures;
+- exact path `tests/e2e/order-journey-real-runtime.spec.ts` after direct review showed the only change was a rendered heading assertion.
+
+The exact-path rule is implemented as exact equality rather than a prefix match; similarly prefixed files remain relevant. `tests/e2e/**` is not generally exempt.
+
+At final PR head `ae93b381d0dbd4ba9694daaf8ae5d88cfb5f92d6`, the freshness logs classified the audited drift from baseline to Core `4cf727456ed0d5e128419e241c13bfdc2d02802f` as `IRRELEVANT_DRIFT`, and all four substantive acceptances ran against that current Core SHA:
+
+- Core Intake: real authenticated Knowledge -> Core HTTP intake plus PostgreSQL persistence acceptance;
+- Managed AI: real Knowledge -> Core Managed AI / Capability V2 localhost HTTP acceptance;
+- MarkReg Contract: Formal Matter / Knowledge Case contract and invariant audit;
+- K-CASE-008: real MarkReg producer + Knowledge Admin + PostgreSQL acceptance including auth isolation, promotion, replay and durable completed producer action.
+
+Required `autoformat`, `validate (22)`, and `validate (24)` were also green at the same exact Knowledge PR head, with zero unresolved review threads or blocking reviews.
+
+After that acceptance completed, Core main advanced to `b8d3284fd3ae633b628b55744d0c00e746fb3f5c` through MGSN-only work. That later SHA was not part of the #650 substantive acceptance run and must not be described as such. The new classifier is specifically designed so later proven-isolated lane drift can be classified without mutating the audited baseline while still requiring a real acceptance whenever the workflow is next triggered.
 
 ## Active gates
 
-### 1. #573 — CNIPA authenticated trademark judgment acquisition
+### 1. #429 — repository governance
 
-Phase 1 deterministic contracts, Phase 2 operator-assisted authenticated runtime, Phase 3 manual-only readiness support and visible authenticated UI/business-behavior observations are implemented.
+Active ruleset `Protect main` (ID `21618188`) currently targets the default branch with active enforcement, no bypass actors, deletion protection, non-fast-forward protection, PR-required changes, review-thread resolution, and strict required checks:
 
-The remaining facts are still blocked on stronger authenticated raw/source-response evidence:
+- `autoformat`;
+- `validate (22)`;
+- `validate (24)`.
 
-- raw list -> detail source identifiers and the provisional identity rule;
-- page 11 / >100 behavior; the observed query did not exceed 100 results, so page 11 remains `NOT_TESTED`;
-- backend date-window cap, partitionability and coverage implications; the visible UI's 30-day selector limit is not proof of a backend limit;
-- authenticated raw response schema/version freeze.
-
-`CNIPA_JUDGMENT_SCHEMA_STATUS` therefore remains `OPERATOR_SUPPLIED_UNVERIFIED`. Coverage remains `UNKNOWN` or `PARTIAL` as applicable and must not be promoted to `COMPLETE` without evidence.
-
-Do not add CAPTCHA/SSO bypass, stealth/evasion, token export or an anonymous parallel CNIPA service. No additional generic CNIPA framework is justified before a permitted evidence path exists.
-
-### 2. #468 — Expert Shared Communication live slice
-
-Knowledge already owns the Expert task/source contracts, durable replay, fail-closed operator workbench and Core consumer seams. It must not create a second SMTP/Gmail/Graph platform.
-
-Core issue `yoomarks/markorbit#305` remains the external owner of production Shared Communication activation.
-
-A 2026-09-01 audit found a dormant Core branch `feat/305-managed-communication-gmail-runtime` at `449aa38134c3423f45604cadcd50fee75e151844`. The draft contains substantial Core-side work: fail-closed production configuration, Gmail OAuth/send, PostgreSQL account/send/thread/exact-evidence wiring, durable provider-thread resolution, inbound polling and exact-evidence admission.
-
-That branch is not acceptance evidence. At audit time it had no PR and had diverged from current Core: 52 commits behind and 3 commits ahead, with merge base `66900f176d27020e2d7560f9750fa2abfb7f8ca1`.
-
-Before Knowledge can run K-EXP-004, Core still must reconstruct/rebase that work on current main, pass exact-head durability/reconciliation acceptance, and prove one real authorized provider/account send -> reply -> immutable exact evidence path. Knowledge can then run the cross-repository Expert task -> Core send -> real reply -> `ExpertSourceRecordV1` import acceptance with duplicate-safe replay.
-
-### 3. #429 — repository and ADK live governance
-
-Repository baseline protection is active through ruleset `Protect main` / id `21618188`:
-
-- pull request required;
-- deletion blocked;
-- non-fast-forward/force-push blocked;
-- review-thread resolution required;
-- strict required checks `autoformat`, `validate (22)`, `validate (24)`;
-- no bypass actors.
-
-One independent-review policy question remains open in the current ruleset:
+The independent-review gap remains exact and unresolved:
 
 - `required_approving_review_count = 0`;
 - `require_code_owner_review = false`;
 - `require_last_push_approval = false`.
 
-`.github/CODEOWNERS` already assigns repository and workflow ownership to `@yoomarks @whalemarks`. Enabling an approving/Code Owner requirement would change the current autonomous merge operating model, so it is an explicit repository-administration decision rather than a silent code change.
+Do not mark #429 complete merely because PR-only and CI protection are active. The protected ADK live Environment / secret scope and authorized non-public durable evidence retention also remain repository-owner/admin verification boundaries.
 
-The ADK live workflow already uses `environment: adk-live` and exact-main-SHA authorization. The connected engineering API cannot verify protected-environment approval settings or secret values. Successful ADK evidence also still requires authorized non-public durable retention beyond the temporary Actions artifact window.
+### 2. #573 — CNIPA authenticated trademark judgment acquisition
 
-### 4. #405 — ADK-06 live 3x2 paid-provider acceptance
+Phase 1 deterministic contracts, Phase 2 operator-assisted authenticated runtime, the manual Phase 3 readiness harness, transport corrections, offline response assessment support, and manual authenticated UI observation support are merged.
 
-Repository-controlled runtime and evidence safeguards are implemented, but no live acceptance has occurred.
+The strongest current evidence is authenticated visible UI/business behavior plus sanitized transport facts. On 2026-09-01 the authorized operator confirmed, without exposing real query values, matching visible registration-number results across all three judgment libraries, visible row -> detail correspondence, party-name matching with visible role labels, and the ordinary UI blocking a date span over 30 days.
 
-A 2026-09-01 Actions audit returned zero `workflow_dispatch` runs on `main`. Therefore there is no valid six-cell DeepSeek/OpenAI live execution evidence, regardless of deterministic CI or skipped owner-command workflow activity.
+Those observations do not verify raw HTTP response schema, raw list -> detail source identifiers, source field semantics, backend-only pagination/date caps, partitionability, exhaustive coverage, or an application-controlled authenticated source-response path.
 
-Final acceptance still requires an explicitly authorized run from the exact current main with `confirm_live_provider_calls=true`, the required live secrets, the DeepSeek off-peak gate, all 6 cells `EXECUTED`, 12 unique finalized RawArtifact receipts, no unresolved in-flight delivery, encrypted evidence packaging and authorized non-public durable retention tracked by #429.
+Therefore:
 
-Do not spend provider credits or close #405 from fake, skipped, partial or stale-main evidence.
+- `CNIPA_JUDGMENT_SCHEMA_STATUS` remains `OPERATOR_SUPPLIED_UNVERIFIED`;
+- page 11 / >100 remains `NOT_TESTED` because the observed result set did not exceed 100;
+- the visible 30-day selector limit is not evidence of the backend cap;
+- coverage must remain `UNKNOWN` or `PARTIAL` as applicable;
+- no stealth, CAPTCHA bypass, token export/forging, proxy/fingerprint evasion, or other access-control circumvention is authorized.
+
+No additional generic CNIPA framework is justified until stronger permitted authenticated raw/source-response evidence exists.
+
+### 3. #468 — Expert Shared Communication live slice
+
+Knowledge already owns the consumer seams and must not create a second mailbox platform:
+
+- outbound Expert sends call Core `/internal/v1/managed-communication/sends` with stable task idempotency and persist durable send/thread receipt identity;
+- inbound reply import reads Core `/internal/v1/managed-communication/thread-resolutions` and fails closed unless the reply carries immutable Core exact-evidence identity, SHA-256 and matching provider provenance;
+- Knowledge persists the resulting `ExpertSourceRecordV1` without storing provider credentials.
+
+Core issue `yoomarks/markorbit#305` remains the external production/live owner.
+
+Core PR #482, `Core: wire durable Managed Communication production bootstrap`, is a meaningful new provider-neutral bootstrap step. Its current head at this checkpoint is `4093031de1532e9fa5fbdd31d0449e20681ee4eb`. The PR wires PostgreSQL account/foundation/send-claim/thread/exact-evidence stores into Capability Engine production startup, adds authenticated inbound observation + exact raw evidence ingestion, and intentionally does not expose outbound `/sends` unless an explicit real `ManagedCommunicationProviderSenderV1` is injected and dispatch is separately authorized.
+
+#482 is not yet accepted by Knowledge and is not evidence that #305 is complete. At this checkpoint, its exact-head Managed Communication Durable Foundation, Managed Communication Outbound, Capability Production Runtime, and main validation runs are still stopping at the formatting gate because `services/capability-engine/src/managed-communication-bootstrap.ts` fails Prettier. The subsequent build/lint/typecheck/PostgreSQL Managed Communication acceptance therefore has not yet executed on that head.
+
+A separate old branch named `feat/305-managed-communication-gmail-runtime` is not a real provider unlock: its latest commit `449aa38134c3423f45604cadcd50fee75e151844` changes only `services/capability-engine/src/main.ts` by 22 added lines and contains no Gmail provider sender or credential adapter. Do not treat the branch name as provider evidence.
+
+Once #482 itself passes exact-head Core acceptance and merges, the next legitimate Knowledge-owned step is a cross-repository provider-neutral production-bootstrap acceptance proving Core durable inbound/thread/exact-evidence behavior reaches the existing Knowledge Expert importer. Final #468 closure still requires the #305 real-provider vertical slice: exactly-once Knowledge Expert send -> real provider receipt/thread -> actual reply -> immutable Core exact evidence -> Knowledge `ExpertSourceRecordV1` import -> replay without duplicate send/import.
+
+### 4. #405 — ADK-06 real paid-provider acceptance
+
+Repository implementation remains ready for the frozen 3 assignments x 2 providers DeepSeek/OpenAI pilot, but deterministic/fake CI is not final evidence.
+
+Final acceptance still requires explicit owner authorization, exact-current-main dispatch, real provider credentials, permitted DeepSeek timing, all six cells executed, twelve unique finalized RawArtifact receipts, encrypted evidence packaging, and authorized non-public durable retention outside temporary GitHub Actions artifact retention.
+
+Do not spend provider credits automatically and do not close #405 from fake, skipped, partial, stale-main, or non-retained evidence.
 
 ## Current work order
 
-1. Keep #429 at the repository-administration boundary: decide the intended independent approving/Code Owner policy, verify `adk-live` environment governance, and preserve durable evidence retention requirements.
-2. Advance #573 only when a permitted authenticated evidence path can prove the remaining raw/source-response facts; do not infer them from UI behavior.
-3. Keep #468 blocked on Core #305. When Core lands and live-accepts one provider runtime, run the existing Knowledge consumer slice rather than building a duplicate communication stack.
-4. Keep #405 manual and explicitly authorized. Repository code readiness is not live-provider acceptance.
-5. Add new Knowledge product/provider breadth only when a concrete, evidence-backed acquisition or staging gap is identified.
+1. Keep the v0.1 Knowledge backbone frozen; do not create replacement frameworks to manufacture activity.
+2. Track Core #482 to exact-head green and merge. Only then add the Knowledge-owned provider-neutral production-bootstrap cross-repo acceptance; keep real provider/live closure on Core #305.
+3. Advance #573 only from new permitted authenticated source-response evidence; preserve `UNKNOWN`/`PARTIAL` when evidence is insufficient.
+4. Close #429 only after independent review enforcement and the remaining protected live-secret/evidence-retention administration are verified.
+5. Run #405 only through its explicit paid-provider owner authorization path.
+6. Continue source/product breadth only when a concrete evidence-backed gap exists.
 
 ## Historical-document rule
 
-Do not rewrite earlier acceptance records to make them describe later work:
+Do not rewrite earlier acceptance records to make them appear to describe later work:
 
 - `KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md`;
 - `KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md`;
 - `KNOWLEDGE_CURRENT_STATE_2026-08-29.md`.
 
-This file is the 2026-09-01 current-state checkpoint. Future material changes should create a newer dated checkpoint and leave this evidence intact.
+This file is the 2026-09-01 current-state checkpoint. Future phase closeouts should add a newer dated checkpoint and update issue state rather than silently mutating historical acceptance evidence.
