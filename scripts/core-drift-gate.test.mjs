@@ -43,13 +43,21 @@ test('Capability Engine drift is relevant for Managed AI', () => {
 });
 
 test('shared contracts drift is relevant for every profile', () => {
-  for (const profileName of ['managed-ai', 'markreg-contract', 'k-case-008']) {
+  for (const profileName of ['core-intake', 'managed-ai', 'markreg-contract', 'k-case-008']) {
     const result = classify({
       profileName,
       changedPaths: ['packages/contracts/src/index.ts']
     });
     assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
   }
+});
+
+test('Core receiver drift is relevant for Core Intake', () => {
+  const result = classify({
+    profileName: 'core-intake',
+    changedPaths: ['services/core/src/index.ts']
+  });
+  assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
 });
 
 test('MarkReg drift is relevant for MarkReg and K-CASE profiles', () => {
