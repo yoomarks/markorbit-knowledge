@@ -10,7 +10,14 @@ export const CORE_DRIFT_STATES = Object.freeze({
   UNKNOWN_DRIFT: "UNKNOWN_DRIFT",
 });
 
-const PROVEN_MONOREPO_ISOLATED_PREFIXES = Object.freeze(["apps/lite-web/", "services/mgsn/"]);
+const PROVEN_MONOREPO_ISOLATED_PREFIXES = Object.freeze([
+  "apps/lite-web/",
+  "apps/markreg-web/",
+  "services/mgsn/",
+]);
+const PROVEN_MONOREPO_ISOLATED_EXACT_PATHS = Object.freeze([
+  "tests/e2e/order-journey-real-runtime.spec.ts",
+]);
 const PROVEN_NON_CAPABILITY_PREFIXES = Object.freeze([
   ...PROVEN_MONOREPO_ISOLATED_PREFIXES,
   "services/capability-engine/",
@@ -24,19 +31,28 @@ const PROVEN_MANAGED_AI_ISOLATED_PREFIXES = Object.freeze([
   "services/markreg/",
 ]);
 
+const profile = (isolatedPrefixes) =>
+  Object.freeze({
+    isolatedPrefixes,
+    isolatedExactPaths: PROVEN_MONOREPO_ISOLATED_EXACT_PATHS,
+  });
+
 export const CORE_DRIFT_PROFILES = Object.freeze({
-  "core-intake": Object.freeze({ isolatedPrefixes: PROVEN_CORE_INTAKE_ISOLATED_PREFIXES }),
-  "managed-ai": Object.freeze({ isolatedPrefixes: PROVEN_MANAGED_AI_ISOLATED_PREFIXES }),
-  "markreg-contract": Object.freeze({ isolatedPrefixes: PROVEN_NON_CAPABILITY_PREFIXES }),
-  "k-case-008": Object.freeze({ isolatedPrefixes: PROVEN_NON_CAPABILITY_PREFIXES }),
+  "core-intake": profile(PROVEN_CORE_INTAKE_ISOLATED_PREFIXES),
+  "managed-ai": profile(PROVEN_MANAGED_AI_ISOLATED_PREFIXES),
+  "markreg-contract": profile(PROVEN_NON_CAPABILITY_PREFIXES),
+  "k-case-008": profile(PROVEN_NON_CAPABILITY_PREFIXES),
 });
 
 const SHA_40 = /^[0-9a-f]{40}$/i;
 const MAX_CHANGED_PATHS = 5000;
 const MAX_GIT_OUTPUT_BYTES = 4 * 1024 * 1024;
 
-function isProvenIsolatedPath(filePath, profile) {
-  return profile.isolatedPrefixes.some((prefix) => filePath.startsWith(prefix));
+function isProvenIsolatedPath(filePath, driftProfile) {
+  return (
+    driftProfile.isolatedExactPaths.includes(filePath) ||
+    driftProfile.isolatedPrefixes.some((prefix) => filePath.startsWith(prefix))
+  );
 }
 
 export function classifyCoreDrift({
@@ -47,8 +63,8 @@ export function classifyCoreDrift({
   comparisonComplete = true,
   changedPaths = [],
 }) {
-  const profile = CORE_DRIFT_PROFILES[profileName];
-  if (!profile) throw new Error(`Unknown Core drift profile: ${profileName}`);
+  const driftProfile = CORE_DRIFT_PROFILES[profileName];
+  if (!driftProfile) throw new Error(`Unknown Core drift profile: ${profileName}`);
   if (!SHA_40.test(baseline) || !SHA_40.test(current)) {
     return { state: CORE_DRIFT_STATES.UNKNOWN_DRIFT, relevantPaths: [], isolatedPaths: [] };
   }
@@ -63,7 +79,7 @@ export function classifyCoreDrift({
   const isolatedPaths = [];
   const relevantPaths = [];
   for (const filePath of uniquePaths) {
-    if (isProvenIsolatedPath(filePath, profile)) isolatedPaths.push(filePath);
+    if (isProvenIsolatedPath(filePath, driftProfile)) isolatedPaths.push(filePath);
     else relevantPaths.push(filePath);
   }
 

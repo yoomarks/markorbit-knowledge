@@ -24,10 +24,19 @@ A monorepo-wide `current main == baseline` check is unnecessarily coarse: unrela
 
 The classifier is intentionally default-relevant. It does not attempt to maintain a fragile exhaustive list of all shared dependencies. A path is isolated only after exact file-level review plus acceptance/build-closure evidence establishes that the profile does not consume it.
 
-The common lane-isolated prefixes established during #643/#645 are:
+The common lane/UI-isolated prefixes established during #643/#645 and #649 are:
 
 - `apps/lite-web/**`;
+- `apps/markreg-web/**`;
 - `services/mgsn/**`.
+
+One exact root integration-test file is also isolated after direct review:
+
+- `tests/e2e/order-journey-real-runtime.spec.ts`.
+
+`apps/markreg-web/**` is isolated only because all four Knowledge acceptance profiles exercise service/contract/runtime boundaries and none builds or imports the MarkReg Web application. The evidence that established this rule was Core `bb26e9c5abc73d05e886001df3b2a8e53606e63f -> da756b292bfe46458fef141857179f7bdc4e7069`, whose complete diff contained only five MarkReg Web files and no MarkReg service, shared-contract, persistence, migration, Core receiver, Capability Engine, or Knowledge Case producer changes.
+
+The exact root E2E file was reviewed separately at Core `e1aa6decced4033f9005f327f88f32c22a8bcd67`: its only change updated the rendered Formal Matter heading assertion from `formal-matter` to `Trademark Matter`. It is not built or executed by any of the four Knowledge cross-repository acceptance workflows. This does **not** isolate the `tests/e2e/**` directory generally.
 
 Additional profile-specific isolation is intentionally narrow:
 
@@ -44,6 +53,7 @@ Why:
 - Managed AI builds and exercises `@markorbit/capability-engine...`; Capability Engine therefore remains relevant, while MarkReg is outside that closure.
 - MarkReg Contract inspects the MarkReg Formal Matter/contract boundary; Capability Engine is outside that closure.
 - K-CASE builds and exercises the MarkReg producer/PostgreSQL closure; Capability Engine is outside that closure.
+- MarkReg Web is a presentation application outside all four acceptance closures; `services/markreg/**` remains relevant for the MarkReg/K-CASE profiles even though `apps/markreg-web/**` is isolated.
 
 Shared contracts, persistence, migrations, lockfiles, workspace/package-manager/build configuration and every unlisted or unknown path remain relevant by default. A commit title is never sufficient evidence for isolation.
 

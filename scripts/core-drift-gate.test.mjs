@@ -28,6 +28,40 @@ test("proven Lite Web-only drift is IRRELEVANT_DRIFT", () => {
   assert.deepEqual(result.relevantPaths, []);
 });
 
+test("proven MarkReg Web-only drift is IRRELEVANT_DRIFT for every profile", () => {
+  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+    const result = classify({
+      profileName,
+      changedPaths: [
+        "apps/markreg-web/src/WorkspaceHome.tsx",
+        "apps/markreg-web/src/api/formal-matter.ts",
+      ],
+    });
+    assert.equal(result.state, CORE_DRIFT_STATES.IRRELEVANT_DRIFT);
+    assert.deepEqual(result.relevantPaths, []);
+  }
+});
+
+test("audited Order journey heading assertion drift is isolated for every profile", () => {
+  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+    const result = classify({
+      profileName,
+      changedPaths: ["tests/e2e/order-journey-real-runtime.spec.ts"],
+    });
+    assert.equal(result.state, CORE_DRIFT_STATES.IRRELEVANT_DRIFT);
+    assert.deepEqual(result.relevantPaths, []);
+  }
+});
+
+test("exact-path isolation does not exempt similarly prefixed files", () => {
+  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+    const filePath = "tests/e2e/order-journey-real-runtime.spec.ts.backup";
+    const result = classify({ profileName, changedPaths: [filePath] });
+    assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
+    assert.deepEqual(result.relevantPaths, [filePath]);
+  }
+});
+
 test("proven MGSN service-only drift is IRRELEVANT_DRIFT", () => {
   const result = classify({
     changedPaths: [
@@ -120,6 +154,17 @@ test("mixed isolated and shared drift remains RELEVANT_DRIFT", () => {
   });
   assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
   assert.deepEqual(result.relevantPaths, ["pnpm-lock.yaml"]);
+});
+
+test("mixed MarkReg Web and shared-contract drift remains RELEVANT_DRIFT", () => {
+  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+    const result = classify({
+      profileName,
+      changedPaths: ["apps/markreg-web/src/WorkspaceHome.tsx", "packages/contracts/package.json"],
+    });
+    assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
+    assert.deepEqual(result.relevantPaths, ["packages/contracts/package.json"]);
+  }
 });
 
 test("non-ancestor history fails closed as UNKNOWN_DRIFT", () => {
