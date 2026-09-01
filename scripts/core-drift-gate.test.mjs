@@ -59,6 +59,20 @@ test("Capability Engine-only drift is isolated from non-Capability acceptance pr
   }
 });
 
+test("MarkReg-only drift is isolated from Core Intake and Managed AI", () => {
+  for (const profileName of ["core-intake", "managed-ai"]) {
+    const result = classify({
+      profileName,
+      changedPaths: [
+        "services/markreg/src/formal-matter-evidence-read.ts",
+        "services/markreg/src/main.ts",
+      ],
+    });
+    assert.equal(result.state, CORE_DRIFT_STATES.IRRELEVANT_DRIFT);
+    assert.deepEqual(result.relevantPaths, []);
+  }
+});
+
 test("shared contracts drift is relevant for every profile", () => {
   for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
     const result = classify({
