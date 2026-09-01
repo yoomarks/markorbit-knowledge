@@ -10,13 +10,17 @@ export const CORE_DRIFT_STATES = Object.freeze({
   UNKNOWN_DRIFT: 'UNKNOWN_DRIFT'
 });
 
-const PROVEN_ISOLATED_PREFIXES = Object.freeze(['apps/lite-web/', 'services/mgsn/']);
+const PROVEN_MONOREPO_ISOLATED_PREFIXES = Object.freeze(['apps/lite-web/', 'services/mgsn/']);
+const PROVEN_NON_CAPABILITY_PREFIXES = Object.freeze([
+  ...PROVEN_MONOREPO_ISOLATED_PREFIXES,
+  'services/capability-engine/'
+]);
 
 export const CORE_DRIFT_PROFILES = Object.freeze({
-  'core-intake': Object.freeze({ isolatedPrefixes: PROVEN_ISOLATED_PREFIXES }),
-  'managed-ai': Object.freeze({ isolatedPrefixes: PROVEN_ISOLATED_PREFIXES }),
-  'markreg-contract': Object.freeze({ isolatedPrefixes: PROVEN_ISOLATED_PREFIXES }),
-  'k-case-008': Object.freeze({ isolatedPrefixes: PROVEN_ISOLATED_PREFIXES })
+  'core-intake': Object.freeze({ isolatedPrefixes: PROVEN_NON_CAPABILITY_PREFIXES }),
+  'managed-ai': Object.freeze({ isolatedPrefixes: PROVEN_MONOREPO_ISOLATED_PREFIXES }),
+  'markreg-contract': Object.freeze({ isolatedPrefixes: PROVEN_NON_CAPABILITY_PREFIXES }),
+  'k-case-008': Object.freeze({ isolatedPrefixes: PROVEN_NON_CAPABILITY_PREFIXES })
 });
 
 const SHA_40 = /^[0-9a-f]{40}$/i;
