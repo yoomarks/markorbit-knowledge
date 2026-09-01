@@ -23,13 +23,7 @@ describe("CNIPA official frontend static request contract", () => {
       httpClientSuccessReturn: "axiosResponse.data",
       featureResultRepresents: "AXIOS_RESPONSE_DATA_JSON_BODY",
       applicationCodeAccess: "axiosResponse.data.code",
-      sharedDetailViewConsumedFields: [
-        "title",
-        "source",
-        "sendNoStr",
-        "fileContent",
-        "returnDate",
-      ],
+      sharedDetailViewConsumedFields: ["title", "source", "sendNoStr", "fileContent", "returnDate"],
     });
     expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
       "RAW_HTTP_RESPONSE_ENVELOPE_OR_SCHEMA",
