@@ -11,6 +11,7 @@ export type CnipaFrontendStaticContractSpec = {
   fixedListRequestFields: Readonly<Record<string, number>>;
   detailRowIdField: string;
   frontendUsesRowFieldAsDetailQueryId: true;
+  frontendConsumedListFields: readonly string[];
   frontendListItemsAccess: "data.list";
   frontendListTotalAccess: "data.total";
   frontendDetailAccess: "data";
@@ -28,12 +29,21 @@ export type CnipaFrontendStaticContractEvidence = {
   httpClientSuccessReturn: "axiosResponse.data";
   featureResultRepresents: "AXIOS_RESPONSE_DATA_JSON_BODY";
   applicationCodeAccess: "axiosResponse.data.code";
+  sharedDetailViewConsumedFields: readonly [
+    "title",
+    "source",
+    "sendNoStr",
+    "fileContent",
+    "returnDate",
+  ];
   byDocumentKind: Readonly<Record<CnipaDocumentKind, CnipaFrontendStaticContractSpec>>;
   doesNotVerify: readonly [
     "RAW_HTTP_RESPONSE_ENVELOPE_OR_SCHEMA",
+    "LIVE_SOURCE_FIELD_CONFORMANCE",
     "BUSINESS_SUCCESS_SEMANTICS",
     "REAL_LIST_TO_DETAIL_IDENTITY",
     "PARTY_ROLE_SEMANTICS",
+    "NORMALIZED_FIELD_SEMANTICS",
     "BACKEND_PAGINATION_OR_DATE_LIMITS",
     "AUTHENTICATED_403_SEMANTICS",
     "COVERAGE_COMPLETENESS",
@@ -43,8 +53,9 @@ export type CnipaFrontendStaticContractEvidence = {
 /**
  * Evidence extracted from operator-retrieved official CNIPA portal static application code.
  * This freezes frontend request construction and client expectations only. The HTTP wrapper
- * returns Axios `response.data`, so feature-level `data.*` access describes the JSON-body shape
- * the client expects, not authenticated proof that the live service currently conforms to it.
+ * returns Axios `response.data`, so feature-level `data.*` access and consumed field names
+ * describe the JSON-body shape the client expects, not authenticated proof that the live
+ * service currently conforms to it or that those fields are safe normalized semantics.
  */
 export const CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE = {
   status: CNIPA_FRONTEND_STATIC_CONTRACT_STATUS,
@@ -54,6 +65,7 @@ export const CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE = {
   httpClientSuccessReturn: "axiosResponse.data",
   featureResultRepresents: "AXIOS_RESPONSE_DATA_JSON_BODY",
   applicationCodeAccess: "axiosResponse.data.code",
+  sharedDetailViewConsumedFields: ["title", "source", "sendNoStr", "fileContent", "returnDate"],
   byDocumentKind: {
     REGISTRATION_EXAMINATION: {
       listRequestFields: [
@@ -68,6 +80,13 @@ export const CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE = {
       fixedListRequestFields: {},
       detailRowIdField: "adjuOpenId",
       frontendUsesRowFieldAsDetailQueryId: true,
+      frontendConsumedListFields: [
+        "adjuOpenId",
+        "regNo",
+        "tmName",
+        "applicantCnName",
+        "returnDateStr",
+      ],
       frontendListItemsAccess: "data.list",
       frontendListTotalAccess: "data.total",
       frontendDetailAccess: "data",
@@ -93,6 +112,14 @@ export const CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE = {
       fixedListRequestFields: { openFlag: 1 },
       detailRowIdField: "adjuOpenId",
       frontendUsesRowFieldAsDetailQueryId: true,
+      frontendConsumedListFields: [
+        "adjuOpenId",
+        "regNo",
+        "tmName",
+        "objenderCnName",
+        "objeperCnName",
+        "returnDateStr",
+      ],
       frontendListItemsAccess: "data.list",
       frontendListTotalAccess: "data.total",
       frontendDetailAccess: "data",
@@ -119,6 +146,14 @@ export const CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE = {
       fixedListRequestFields: { openFlag: 1 },
       detailRowIdField: "pubId",
       frontendUsesRowFieldAsDetailQueryId: true,
+      frontendConsumedListFields: [
+        "pubId",
+        "regNo",
+        "tmName",
+        "applicantName",
+        "respondentName",
+        "judgeDate",
+      ],
       frontendListItemsAccess: "data.list",
       frontendListTotalAccess: "data.total",
       frontendDetailAccess: "data",
@@ -133,9 +168,11 @@ export const CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE = {
   },
   doesNotVerify: [
     "RAW_HTTP_RESPONSE_ENVELOPE_OR_SCHEMA",
+    "LIVE_SOURCE_FIELD_CONFORMANCE",
     "BUSINESS_SUCCESS_SEMANTICS",
     "REAL_LIST_TO_DETAIL_IDENTITY",
     "PARTY_ROLE_SEMANTICS",
+    "NORMALIZED_FIELD_SEMANTICS",
     "BACKEND_PAGINATION_OR_DATE_LIMITS",
     "AUTHENTICATED_403_SEMANTICS",
     "COVERAGE_COMPLETENESS",
