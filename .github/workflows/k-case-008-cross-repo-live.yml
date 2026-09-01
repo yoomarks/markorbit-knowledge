@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/k-case-008-cross-repo-live.yml"
       - ".github/workflows/markreg-core-contract-drift.yml"
+      - "scripts/core-drift-gate.mjs"
+      - "scripts/core-drift-gate.test.mjs"
       - "apps/admin/vitest.e2e.config.ts"
       - "apps/admin/src/app/api/internal/case-candidates/**"
       - "apps/admin/src/server/case-candidate-intake.ts"
@@ -24,7 +26,7 @@ permissions:
   contents: read
 
 env:
-  CORE_REF: 92e6adbfacfd26024c2ce2391cc941a084194c7e
+  CORE_REF: a7c9109c37ece83c77c15c37f6c1b88d3ac156bb
   MARKREG_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/markorbit_kcase008
   MARKREG_MIGRATION_NAMESPACE: markreg_kcase008
   MO_INTERNAL_SERVICE_SECRET: markorbit-k-case-008-shared-secret-0001
@@ -36,18 +38,31 @@ env:
 jobs:
   core-ref-freshness:
     runs-on: ubuntu-24.04
+    outputs:
+      core_ref_to_test: ${{ steps.classify.outputs.core_ref_to_test }}
+      drift_state: ${{ steps.classify.outputs.drift_state }}
     steps:
-      - name: Require exact audited Core main
-        shell: bash
-        run: |
-          current_core_ref="$(git ls-remote https://github.com/yoomarks/markorbit.git refs/heads/main | awk '{print $1}')"
-          test -n "$current_core_ref"
-          echo "Current Core main: $current_core_ref"
-          echo "Pinned Core ref:    $CORE_REF"
-          if [ "$current_core_ref" != "$CORE_REF" ]; then
-            echo "::error::K-CASE-008 Core pin is stale; audit the new main before rerunning LIVE acceptance."
-            exit 1
-          fi
+      - name: Checkout Knowledge
+        uses: actions/checkout@v4
+      - name: Checkout Core history for drift classification
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+          path: .core-drift/markorbit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Classify Core dependency drift
+        id: classify
+        run: >-
+          node scripts/core-drift-gate.mjs
+          --repo .core-drift/markorbit
+          --baseline "$CORE_REF"
+          --profile k-case-008
+          --github-output "$GITHUB_OUTPUT"
 
   k-case-008-live:
     needs: core-ref-freshness
@@ -70,11 +85,11 @@ jobs:
     steps:
       - name: Checkout Knowledge
         uses: actions/checkout@v4
-      - name: Checkout exact Core producer
+      - name: Checkout classified current Core producer
         uses: actions/checkout@v4
         with:
           repository: yoomarks/markorbit
-          ref: ${{ env.CORE_REF }}
+          ref: ${{ needs.core-ref-freshness.outputs.core_ref_to_test }}
           path: .e2e/markorbit-core
       - uses: pnpm/action-setup@v4
         with:
