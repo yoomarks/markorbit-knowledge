@@ -3,13 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { LocalEvidenceBundle } from "../src/evidence-bundle";
-import {
-  runManualFixturePipelineWithManifest,
-} from "../src/manual-fixture-manifest-runner";
-import {
-  consumeReadyPackageToVault,
-  verifyVaultConsumption,
-} from "../src/obsidian-vault-consumer";
+import { runManualFixturePipelineWithManifest } from "../src/manual-fixture-manifest-runner";
+import { consumeReadyPackageToVault, verifyVaultConsumption } from "../src/obsidian-vault-consumer";
 import { prepareReadyPackage } from "../src/ready-package";
 
 const directories: string[] = [];
@@ -49,8 +44,7 @@ function readBundle(path: string): LocalEvidenceBundle {
 }
 
 afterEach(() => {
-  for (const value of directories.splice(0))
-    rmSync(value, { recursive: true, force: true });
+  for (const value of directories.splice(0)) rmSync(value, { recursive: true, force: true });
 });
 
 describe("K-MULTI-001 multilingual acquisition, staging, and delivery", () => {
@@ -83,31 +77,21 @@ describe("K-MULTI-001 multilingual acquisition, staging, and delivery", () => {
           file.sizeBytes === inputBytes.byteLength,
       );
       expect(rawEvidence).toBeDefined();
-      if (!rawEvidence)
-        throw new Error(`Missing RawArtifact evidence for ${language}`);
-      const rawBytes = readFileSync(
-        join(summary.output.rootDirectory, rawEvidence.path),
-      );
+      if (!rawEvidence) throw new Error(`Missing RawArtifact evidence for ${language}`);
+      const rawBytes = readFileSync(join(summary.output.rootDirectory, rawEvidence.path));
       expect(Buffer.compare(rawBytes, inputBytes)).toBe(0);
 
       const stagingEvidence = bundle.files.find(
-        (file) =>
-          file.role === "STAGING_CAS" && file.sha256 === summary.output.sha256,
+        (file) => file.role === "STAGING_CAS" && file.sha256 === summary.output.sha256,
       );
       expect(stagingEvidence).toBeDefined();
-      if (!stagingEvidence)
-        throw new Error(`Missing staging evidence for ${language}`);
-      const stagedBytes = readFileSync(
-        join(summary.output.rootDirectory, stagingEvidence.path),
-      );
+      if (!stagingEvidence) throw new Error(`Missing staging evidence for ${language}`);
+      const stagedBytes = readFileSync(join(summary.output.rootDirectory, stagingEvidence.path));
       const stagedText = stagedBytes.toString("utf8");
       expect(stagedText).toContain(text);
       expect(stagedText.endsWith(text)).toBe(true);
 
-      prepareReadyPackage(
-        summary.output.rootDirectory,
-        "2026-09-02T00:01:00.000Z",
-      );
+      prepareReadyPackage(summary.output.rootDirectory, "2026-09-02T00:01:00.000Z");
       const consumed = consumeReadyPackageToVault(
         summary.output.rootDirectory,
         vaultDirectory,
@@ -118,14 +102,12 @@ describe("K-MULTI-001 multilingual acquisition, staging, and delivery", () => {
       const deliveredBytes = readFileSync(consumed.absoluteTargetPath);
       expect(Buffer.compare(deliveredBytes, stagedBytes)).toBe(0);
       expect(deliveredBytes.toString("utf8")).toContain(text);
-      expect(
-        verifyVaultConsumption(summary.output.rootDirectory, vaultDirectory)
-          .status,
-      ).toBe("REPLAYED");
-      expect(
-        consumeReadyPackageToVault(summary.output.rootDirectory, vaultDirectory)
-          .status,
-      ).toBe("REPLAYED");
+      expect(verifyVaultConsumption(summary.output.rootDirectory, vaultDirectory).status).toBe(
+        "REPLAYED",
+      );
+      expect(consumeReadyPackageToVault(summary.output.rootDirectory, vaultDirectory).status).toBe(
+        "REPLAYED",
+      );
     },
     30_000,
   );
