@@ -31,12 +31,12 @@ The common lane-isolated prefixes established during #643/#645 are:
 
 Additional profile-specific isolation is intentionally narrow:
 
-| Profile | Additional proven isolated service prefixes |
-| --- | --- |
-| `core-intake` | `services/capability-engine/**`, `services/markreg/**` |
-| `managed-ai` | `services/markreg/**` |
-| `markreg-contract` | `services/capability-engine/**` |
-| `k-case-008` | `services/capability-engine/**` |
+| Profile            | Additional proven isolated service prefixes            |
+| ------------------ | ------------------------------------------------------ |
+| `core-intake`      | `services/capability-engine/**`, `services/markreg/**` |
+| `managed-ai`       | `services/markreg/**`                                  |
+| `markreg-contract` | `services/capability-engine/**`                        |
+| `k-case-008`       | `services/capability-engine/**`                        |
 
 Why:
 
