@@ -40,6 +40,7 @@ const profile = (isolatedPrefixes) =>
 export const CORE_DRIFT_PROFILES = Object.freeze({
   "core-intake": profile(PROVEN_CORE_INTAKE_ISOLATED_PREFIXES),
   "managed-ai": profile(PROVEN_MANAGED_AI_ISOLATED_PREFIXES),
+  "managed-communication": profile(PROVEN_MANAGED_AI_ISOLATED_PREFIXES),
   "markreg-contract": profile(PROVEN_NON_CAPABILITY_PREFIXES),
   "k-case-008": profile(PROVEN_NON_CAPABILITY_PREFIXES),
 });
