@@ -1,12 +1,13 @@
 # CNIPA Phase 3 manual authenticated live acceptance
 
-Status: operator-only acceptance harness. The Playwright-authenticated live path is currently blocked by an observed CNIPA access-control gate; do not execute or bypass it. Use the ordinary-Chrome NetLog evidence workflow for currently available transport evidence and official frontend static-code review for request-construction/client-expectation evidence.
+Status: operator-only acceptance harness. The Playwright-authenticated live path is currently blocked by an observed CNIPA access-control gate; do not execute or bypass it. Use ordinary-Chrome NetLog evidence for transport facts, official frontend static-code review for request-construction/client-expectation facts, and the offline Response-only bundle workflow for bounded authenticated business-response structure evidence.
 
 Parent issue: #573  
 Implementation issue: #576  
 Official frontend static-contract issue: #624  
 Frontend client-expectations issue: #627  
-Frontend consumed-fields issue: #630
+Frontend consumed-fields issue: #630  
+Offline authenticated response-bundle issue: #633
 
 ## Safety boundary
 
@@ -14,7 +15,7 @@ The Phase 3 harness exists only to collect controlled authenticated evidence nee
 
 It does **not** solve CAPTCHA, automate SSO, forge/extract tokens, add stealth/evasion behavior, rotate proxies, bypass backend limits, attach automation to an ordinary logged-in browser, copy/replay cookies or bearer tokens, or create a public scraping endpoint.
 
-The harness must never be invoked by normal PR CI or converted into an automatic scheduled/live workflow. Both probe plans and evidence output directories must be absolute paths outside the repository working tree.
+The harness must never be invoked by normal PR CI or converted into an automatic scheduled/live workflow. Probe plans, raw evidence and assessment output must remain outside the repository working tree.
 
 ## Current authentication gate
 
@@ -26,7 +27,13 @@ A/B testing on 2026-09-01 established the current operational boundary:
 
 Do **not** respond by changing browser fingerprints/UA, adding stealth behavior, exporting or copying cookies/tokens, attaching automation to the ordinary logged-in browser, rotating proxies, or otherwise circumventing CNIPA access controls.
 
-While this gate remains, use `docs/operations/CNIPA_OFFLINE_NETLOG_EVIDENCE.md` and ordinary Chrome `chrome://net-export/` for bounded transport evidence. The authenticated live harness below remains implemented for a future site-permitted session path, but it is not currently an executable acceptance route.
+While this gate remains:
+
+- use `docs/operations/CNIPA_OFFLINE_NETLOG_EVIDENCE.md` for bounded transport/status evidence;
+- use `CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE` for request-construction and client-consumption expectations established from operator-retrieved official frontend static code;
+- use `docs/operations/CNIPA_OFFLINE_RESPONSE_BUNDLE.md` for the permitted current authenticated business-response evidence path. That workflow saves only selected DevTools **Response** JSON bodies manually in ordinary authorized Chrome and assesses them offline. It does not use HAR, request headers, cookies, tokens, browser profiles or automated request replay.
+
+The authenticated Playwright live harness below remains implemented for a future site-permitted session path, but it is not currently an executable acceptance route.
 
 ## Observed transport boundary
 
@@ -62,9 +69,7 @@ The feature pages also expose which source fields they consume from those expect
 - review list consumes `pubId`, `regNo`, `tmName`, `applicantName`, `respondentName`, `judgeDate`;
 - all three detail route components pass their returned business `data` object into the same `documentView`, which consumes `title`, `source`, `sendNoStr`, `fileContent`, and optional `returnDate`.
 
-These are **static frontend-consumption expectations**, not authenticated source-field verification or normalized Knowledge mappings. They are useful as a future live-decoder checklist, but they do not prove that the current service returns these fields, that values are populated/correct, that real list/detail ids are consistent, or that a displayed source field has the same semantic meaning as a normalized Knowledge field. The configurable live response decoder therefore remains untouched.
-
-This is a **static client expectation**, not an authenticated live server-response observation. It supports an expected JSON-body envelope but does not prove that the current authenticated service actually returns that envelope, that `code`/`data` have the expected business semantics, or that any real response is non-empty. `CNIPA_JUDGMENT_SCHEMA_STATUS` remains `OPERATOR_SUPPLIED_UNVERIFIED`.
+These are **static frontend-consumption expectations**, not authenticated source-field verification or normalized Knowledge mappings. They are useful as a live-response checklist, but they do not prove that the current service returns these fields, that values are populated/correct, that real list/detail ids are consistent, or that a displayed source field has the same semantic meaning as a normalized Knowledge field. The configurable live response decoder therefore remains untouched.
 
 The official UI also provides additional semantic intent and client constraints:
 
@@ -76,7 +81,23 @@ The official UI also provides additional semantic intent and client constraints:
 
 These labels and controls are frontend intent only. They do **not** live-verify party roles, establish that the backend enforces a 30-day date limit, establish a backend page-size/result cap, prove page 11 / >100 behavior, or prove coverage completeness. Likewise, the observed `adjuOpenId` / `pubId` route flow establishes the frontend's intended row-field-to-detail-id mapping but not consistency of real list/detail records.
 
-This evidence is represented by `CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE`, separately from the live schema/coverage state.
+This evidence is represented by `CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE`, separately from the live schema/coverage state. `CNIPA_JUDGMENT_SCHEMA_STATUS` remains `OPERATOR_SUPPLIED_UNVERIFIED`.
+
+## Current Response-only business evidence path
+
+The current permitted way to inspect authenticated business-response shape is `docs/operations/CNIPA_OFFLINE_RESPONSE_BUNDLE.md`.
+
+The operator manually saves only selected DevTools **Response** JSON bodies from ordinary authorized Chrome into an external local directory and prepares a small descriptor containing only already-established non-secret transport metadata. The offline assessor then:
+
+- performs zero browser/network/CNIPA requests;
+- validates the frozen document kind/surface/POST/path contract;
+- rejects credential-like descriptor fields and unsafe response paths;
+- reads response files only locally, with bounded file/bundle sizes;
+- records SHA-256/byte count/JSON validity and structural expected-field observations;
+- does not copy raw response field values, unknown response fields, request values, cookies, headers, credentials or browser/session data into the manifest;
+- never promotes production schema status, normalized semantics or coverage automatically.
+
+A `CONFORMS_STATIC_EXPECTED_SHAPE` result proves only that the operator-saved response body matched the already-observed frontend-consumed shape at that observation. It does not prove request-input provenance, real list/detail identity, party-role semantics, backend limits, authenticated 403 meaning or coverage completeness.
 
 ## 1. Future authenticated browser-session preparation
 
@@ -124,7 +145,7 @@ The harness accepts only the three frozen observed list/detail endpoint paths al
 
 Detail probes require the observed `id` query key. Additional non-credential query keys may be included only after their exact names are established by a separate permitted evidence source; the current allowlisted NetLog summary does not prove their absence. Do not invent parameter names.
 
-Official frontend static code now establishes the request **field names** listed above, fixed `openFlag: 1` for opposition/review list construction, frontend-consumed expected result fields, UI role intent, an intended row-field-to-detail-id flow, a 30-day-difference date-picker constraint and pagination defaults. None of those facts establishes live source-field conformance, normalized field semantics, live party-role meaning, backend date/pagination limits, business-result behavior or current server conformance to the expected response envelope. The production candidate request builder therefore continues to execute registration-number queries only; party-name/date-range modes remain fail-closed until their execution semantics are validated by a permitted evidence source.
+Official frontend static code establishes the request **field names** listed above, fixed `openFlag: 1` for opposition/review list construction, frontend-consumed expected result fields, UI role intent, an intended row-field-to-detail-id flow, a 30-day-difference date-picker constraint and pagination defaults. None of those facts establishes normalized field semantics, live party-role meaning, backend date/pagination limits, business-result behavior or complete current server conformance. The production candidate request builder therefore continues to execute registration-number queries only; party-name/date-range modes remain fail-closed until their execution semantics are validated by permitted evidence.
 
 ## 3. Local plan validation
 
@@ -151,7 +172,7 @@ pnpm.cmd --filter @markorbit/worker cnipa:acceptance:live -- `
 
 The explicit `--execute-live-cnipa` switch and external `--output` directory are mandatory. The existing executor applies bounded request count, minimum request interval, response-size limit, same-run cache and fail-closed session handling.
 
-## 5. Evidence format
+## 5. Future live evidence format
 
 For an authorized future live run, each non-empty source response is written byte-for-byte to the external evidence directory. `manifest.json` records:
 
@@ -165,7 +186,7 @@ For an authorized future live run, each non-empty source response is written byt
 
 The manifest does not duplicate registration numbers, party-name values or other request payload values. The external probe plan remains the controlled mapping between a probe id and its authorized case input.
 
-Do not upload the browser profile, storage state, plan, raw NetLog or live response evidence to a public issue/PR or commit them to Git. Do not commit the retrieved minified frontend bundle; record only the bounded public request-contract/client-expectation facts needed by the runtime and tests.
+Do not upload the browser profile, storage state, plan, raw NetLog, raw Response bundle or live response evidence to a public issue/PR or commit them to Git. Do not commit the retrieved minified frontend bundle; record only the bounded public contract/client-expectation facts needed by the runtime and tests.
 
 The harness itself does not decide verification; evidence must be reviewed before changing #573 or promoting the schema status.
 
@@ -174,7 +195,7 @@ The harness itself does not decide verification; evidence must be reviewed befor
 The following still require evidence before schema/coverage promotion:
 
 1. one real registration-number result across all three document libraries;
-2. actual authenticated HTTP JSON response conformance and live source-record fields, despite the statically observed client envelope and consumed-field expectations;
+2. actual authenticated JSON response conformance and live source-record fields, using bounded Response-only evidence while Playwright remains blocked;
 3. real list -> detail request/response identity consistency, despite the frontend's intended `adjuOpenId` / `pubId` -> query `id` flow;
 4. real party-name business behavior and party-role semantics, despite the statically observed UI role intent;
 5. page 11 / >100 business-result behavior and backend pagination limits, despite frontend page defaults and controls;
@@ -182,4 +203,4 @@ The following still require evidence before schema/coverage promotion:
 7. authenticated 403 semantics when a supported authenticated execution path exists;
 8. resulting coverage classification.
 
-Ordinary-Chrome Default-mode NetLog can support transport/status observations, and official frontend static code can support request-construction/client/source-field expectations, but neither establishes the live server business/schema facts above. Until separate permitted evidence supports them, keep schema status `OPERATOR_SUPPLIED_UNVERIFIED` and coverage `UNKNOWN` or `PARTIAL` as applicable.
+Ordinary-Chrome Default-mode NetLog supports transport/status observations, official frontend static code supports request-construction/client/source-field expectations, and the Response-only workflow can support bounded authenticated response-structure observations. None of those evidence sources alone proves all remaining business/semantic/coverage facts. Until separate permitted evidence supports them, keep schema status `OPERATOR_SUPPLIED_UNVERIFIED` and coverage `UNKNOWN` or `PARTIAL` as applicable.

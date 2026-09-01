@@ -8,6 +8,7 @@
     "cnipa:session:login": "tsx src/cnipa-session-login.ts",
     "cnipa:acceptance:live": "tsx src/run-cnipa-live-acceptance.ts",
     "cnipa:evidence:sanitize-netlog": "tsx src/run-cnipa-offline-netlog-evidence.ts",
+    "cnipa:evidence:assess-response-bundle": "tsx src/run-cnipa-offline-response-bundle.ts",
     "adk:library:bootstrap": "tsx src/run-adk-assignment-library-bootstrap.ts",
     "adk:candidate:promote": "tsx src/run-adk-candidate-promotion.ts",
     "adk:grounded:prepare": "tsx src/prepare-adk-grounded-execution.ts",
