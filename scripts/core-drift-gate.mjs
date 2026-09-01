@@ -15,10 +15,18 @@ const PROVEN_NON_CAPABILITY_PREFIXES = Object.freeze([
   ...PROVEN_MONOREPO_ISOLATED_PREFIXES,
   "services/capability-engine/",
 ]);
+const PROVEN_CORE_INTAKE_ISOLATED_PREFIXES = Object.freeze([
+  ...PROVEN_NON_CAPABILITY_PREFIXES,
+  "services/markreg/",
+]);
+const PROVEN_MANAGED_AI_ISOLATED_PREFIXES = Object.freeze([
+  ...PROVEN_MONOREPO_ISOLATED_PREFIXES,
+  "services/markreg/",
+]);
 
 export const CORE_DRIFT_PROFILES = Object.freeze({
-  "core-intake": Object.freeze({ isolatedPrefixes: PROVEN_NON_CAPABILITY_PREFIXES }),
-  "managed-ai": Object.freeze({ isolatedPrefixes: PROVEN_MONOREPO_ISOLATED_PREFIXES }),
+  "core-intake": Object.freeze({ isolatedPrefixes: PROVEN_CORE_INTAKE_ISOLATED_PREFIXES }),
+  "managed-ai": Object.freeze({ isolatedPrefixes: PROVEN_MANAGED_AI_ISOLATED_PREFIXES }),
   "markreg-contract": Object.freeze({ isolatedPrefixes: PROVEN_NON_CAPABILITY_PREFIXES }),
   "k-case-008": Object.freeze({ isolatedPrefixes: PROVEN_NON_CAPABILITY_PREFIXES }),
 });
