@@ -30,9 +30,7 @@ describe("CNIPA official frontend static request contract", () => {
     expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
       "REAL_LIST_TO_DETAIL_IDENTITY",
     );
-    expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
-      "PARTY_ROLE_SEMANTICS",
-    );
+    expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain("PARTY_ROLE_SEMANTICS");
     expect(CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.doesNotVerify).toContain(
       "BACKEND_PAGINATION_OR_DATE_LIMITS",
     );
@@ -102,8 +100,7 @@ describe("CNIPA official frontend static request contract", () => {
   it("records UI role intent and UI pagination/date constraints without promoting backend semantics", () => {
     const registration =
       CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.REGISTRATION_EXAMINATION;
-    const opposition =
-      CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.OPPOSITION_DECISION;
+    const opposition = CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.OPPOSITION_DECISION;
     const review = CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind.REVIEW_ADJUDICATION;
 
     expect(registration.frontendUiPartyRoleIntentByField).toEqual({

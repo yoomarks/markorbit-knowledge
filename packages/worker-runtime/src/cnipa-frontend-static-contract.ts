@@ -4,10 +4,7 @@ export const CNIPA_FRONTEND_STATIC_CONTRACT_STATUS =
   "OFFICIAL_FRONTEND_STATIC_CODE_OBSERVED" as const;
 
 export type CnipaFrontendUiPartyRoleIntent =
-  | "APPLICANT"
-  | "OPPOSER"
-  | "OPPOSED_PARTY"
-  | "RESPONDENT";
+  "APPLICANT" | "OPPOSER" | "OPPOSED_PARTY" | "RESPONDENT";
 
 export type CnipaFrontendStaticContractSpec = {
   listRequestFields: readonly string[];
