@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  CORE_REF: 98ea145d682cb2cc59ef164ac473f27a34109a1b
+  CORE_REF: 6a33f3d9f0a68102cd08a538944af2e3f50ac549
 
 jobs:
   core-ref-freshness:
