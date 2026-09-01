@@ -5,7 +5,8 @@ Status: operator-only acceptance harness. The Playwright-authenticated live path
 Parent issue: #573  
 Implementation issue: #576  
 Official frontend static-contract issue: #624  
-Frontend client-expectations issue: #627
+Frontend client-expectations issue: #627  
+Frontend consumed-fields issue: #630
 
 ## Safety boundary
 
@@ -54,7 +55,16 @@ The public frontend configuration sets the application API base path to `/toas-p
 
 Further inspection of the same bundle establishes the response-access chain used by those features. The shared Axios success interceptor returns Axios `response.data`, and the judgment request helper is that same client. Therefore the feature result represents the Axios-parsed HTTP JSON body: list pages expect that body to expose `data.list` and `data.total`, while detail pages expect the body to expose `data`. The wrapper also inspects application-level `response.data.code` before returning successful data.
 
-This is a **static client expectation**, not an authenticated live server-response observation. It supports an expected JSON-body envelope but does not prove that the current authenticated service actually returns that envelope, that `code`/`data` have the expected business semantics, or that any real response is non-empty. The configurable live response decoder therefore remains untouched and `CNIPA_JUDGMENT_SCHEMA_STATUS` remains `OPERATOR_SUPPLIED_UNVERIFIED`.
+The feature pages also expose which source fields they consume from those expected result objects:
+
+- registration list consumes `adjuOpenId`, `regNo`, `tmName`, `applicantCnName`, `returnDateStr`;
+- opposition list consumes `adjuOpenId`, `regNo`, `tmName`, `objenderCnName`, `objeperCnName`, `returnDateStr`;
+- review list consumes `pubId`, `regNo`, `tmName`, `applicantName`, `respondentName`, `judgeDate`;
+- all three detail route components pass their returned business `data` object into the same `documentView`, which consumes `title`, `source`, `sendNoStr`, `fileContent`, and optional `returnDate`.
+
+These are **static frontend-consumption expectations**, not authenticated source-field verification or normalized Knowledge mappings. They are useful as a future live-decoder checklist, but they do not prove that the current service returns these fields, that values are populated/correct, that real list/detail ids are consistent, or that a displayed source field has the same semantic meaning as a normalized Knowledge field. The configurable live response decoder therefore remains untouched.
+
+This is a **static client expectation**, not an authenticated live server-response observation. It supports an expected JSON-body envelope but does not prove that the current authenticated service actually returns that envelope, that `code`/`data` have the expected business semantics, or that any real response is non-empty. `CNIPA_JUDGMENT_SCHEMA_STATUS` remains `OPERATOR_SUPPLIED_UNVERIFIED`.
 
 The official UI also provides additional semantic intent and client constraints:
 
@@ -114,7 +124,7 @@ The harness accepts only the three frozen observed list/detail endpoint paths al
 
 Detail probes require the observed `id` query key. Additional non-credential query keys may be included only after their exact names are established by a separate permitted evidence source; the current allowlisted NetLog summary does not prove their absence. Do not invent parameter names.
 
-Official frontend static code now establishes the request **field names** listed above and fixed `openFlag: 1` for opposition/review list construction. The same static code establishes UI role intent, an intended row-field-to-detail-id flow, a 30-day-difference date-picker constraint and pagination defaults. None of those facts establishes live party-role meaning, backend date/pagination limits, business-result behavior or current server conformance to the expected response envelope. The production candidate request builder therefore continues to execute registration-number queries only; party-name/date-range modes remain fail-closed until their execution semantics are validated by a permitted evidence source.
+Official frontend static code now establishes the request **field names** listed above, fixed `openFlag: 1` for opposition/review list construction, frontend-consumed expected result fields, UI role intent, an intended row-field-to-detail-id flow, a 30-day-difference date-picker constraint and pagination defaults. None of those facts establishes live source-field conformance, normalized field semantics, live party-role meaning, backend date/pagination limits, business-result behavior or current server conformance to the expected response envelope. The production candidate request builder therefore continues to execute registration-number queries only; party-name/date-range modes remain fail-closed until their execution semantics are validated by a permitted evidence source.
 
 ## 3. Local plan validation
 
@@ -164,7 +174,7 @@ The harness itself does not decide verification; evidence must be reviewed befor
 The following still require evidence before schema/coverage promotion:
 
 1. one real registration-number result across all three document libraries;
-2. actual authenticated HTTP JSON response conformance and source-record id field, despite the statically observed client envelope expectation;
+2. actual authenticated HTTP JSON response conformance and live source-record fields, despite the statically observed client envelope and consumed-field expectations;
 3. real list -> detail request/response identity consistency, despite the frontend's intended `adjuOpenId` / `pubId` -> query `id` flow;
 4. real party-name business behavior and party-role semantics, despite the statically observed UI role intent;
 5. page 11 / >100 business-result behavior and backend pagination limits, despite frontend page defaults and controls;
@@ -172,4 +182,4 @@ The following still require evidence before schema/coverage promotion:
 7. authenticated 403 semantics when a supported authenticated execution path exists;
 8. resulting coverage classification.
 
-Ordinary-Chrome Default-mode NetLog can support transport/status observations, and official frontend static code can support request-construction/client expectations, but neither establishes the live server business/schema facts above. Until separate permitted evidence supports them, keep schema status `OPERATOR_SUPPLIED_UNVERIFIED` and coverage `UNKNOWN` or `PARTIAL` as applicable.
+Ordinary-Chrome Default-mode NetLog can support transport/status observations, and official frontend static code can support request-construction/client/source-field expectations, but neither establishes the live server business/schema facts above. Until separate permitted evidence supports them, keep schema status `OPERATOR_SUPPLIED_UNVERIFIED` and coverage `UNKNOWN` or `PARTIAL` as applicable.
