@@ -1,13 +1,20 @@
 import { createHash } from "node:crypto";
+import { CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE } from "./cnipa-frontend-static-contract";
 
 export const CNIPA_JUDGMENT_SCHEMA_STATUS = "OPERATOR_SUPPLIED_UNVERIFIED" as const;
 export const CNIPA_JUDGMENT_SCHEMA_REVISION = "candidate-2026-08-29" as const;
 
 export type CnipaDocumentKind =
-  "REGISTRATION_EXAMINATION" | "OPPOSITION_DECISION" | "REVIEW_ADJUDICATION";
+  | "REGISTRATION_EXAMINATION"
+  | "OPPOSITION_DECISION"
+  | "REVIEW_ADJUDICATION";
 
 export type CnipaPartyRole =
-  "APPLICANT" | "RESPONDENT" | "OPPOSER" | "OPPOSED_PARTY" | "UNVERIFIED";
+  | "APPLICANT"
+  | "RESPONDENT"
+  | "OPPOSER"
+  | "OPPOSED_PARTY"
+  | "UNVERIFIED";
 
 export type CnipaCoverageStatus = "COMPLETE" | "PARTIAL" | "UNKNOWN";
 
@@ -37,7 +44,9 @@ export type CnipaDateRangeQuery = {
 };
 
 export type CnipaTrademarkJudgmentQuery =
-  CnipaRegistrationNumberQuery | CnipaPartyNameQuery | CnipaDateRangeQuery;
+  | CnipaRegistrationNumberQuery
+  | CnipaPartyNameQuery
+  | CnipaDateRangeQuery;
 
 export type CnipaCandidateEndpointSpec = {
   documentKind: CnipaDocumentKind;
@@ -49,8 +58,9 @@ export type CnipaCandidateEndpointSpec = {
 
 /**
  * Ordinary-Chrome NetLog evidence verifies only the transport host/path/method
- * surface represented by these paths. Payload fields, response envelopes,
- * identity mapping, party semantics, pagination and coverage remain unverified.
+ * surface represented by these paths. Official frontend static code separately
+ * verifies request construction expectations; authenticated server response
+ * envelopes, identity mapping, party semantics, pagination and coverage remain unverified.
  */
 export const CNIPA_CANDIDATE_ENDPOINTS: Readonly<
   Record<CnipaDocumentKind, CnipaCandidateEndpointSpec>
@@ -93,7 +103,11 @@ export type CnipaAuthenticatedRequest = {
   jsonBody?: Readonly<Record<string, string | number>>;
 };
 
-export type CnipaSessionSecurityState = "OK" | "REAUTH_REQUIRED" | "ACCESS_DENIED" | "RATE_LIMITED";
+export type CnipaSessionSecurityState =
+  | "OK"
+  | "REAUTH_REQUIRED"
+  | "ACCESS_DENIED"
+  | "RATE_LIMITED";
 
 /**
  * A sealed browser/session execution result. Implementations may use cookies,
@@ -288,8 +302,10 @@ export function resolveCnipaDocumentKinds(
 }
 
 /**
- * Only registration-number request parameters have been supplied by the operator.
- * Party/date parameter names are intentionally not guessed before live validation.
+ * Official frontend static code establishes the request field names and the fixed
+ * `openFlag: 1` used by opposition/review list requests. This runtime still emits
+ * only registration-number queries automatically; party/date field semantics remain
+ * fail-closed until permitted live behavior evidence verifies them.
  */
 export function buildCnipaCandidateListRequest(
   documentKind: CnipaDocumentKind,
@@ -299,7 +315,7 @@ export function buildCnipaCandidateListRequest(
   if (query.mode !== "REGISTRATION_NUMBER") {
     throw new CnipaAcquisitionError(
       "CNIPA_SCHEMA_UNVERIFIED",
-      `${query.mode} request parameter names are not yet authenticated-live-verified`,
+      `${query.mode} request semantics are not yet authenticated-live-verified`,
       false,
     );
   }
@@ -309,6 +325,8 @@ export function buildCnipaCandidateListRequest(
     documentKind,
     surface: "LIST",
     jsonBody: {
+      ...CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind[documentKind]
+        .fixedListRequestFields,
       pageIndex: 1,
       pageSize: 10,
       regNo: query.registrationNumber,
