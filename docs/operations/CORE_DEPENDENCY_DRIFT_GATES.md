@@ -34,35 +34,38 @@ One exact root integration-test file is also isolated after direct review:
 
 - `tests/e2e/order-journey-real-runtime.spec.ts`.
 
-`apps/markreg-web/**` is isolated only because all four Knowledge acceptance profiles exercise service/contract/runtime boundaries and none builds or imports the MarkReg Web application. The evidence that established this rule was Core `bb26e9c5abc73d05e886001df3b2a8e53606e63f -> da756b292bfe46458fef141857179f7bdc4e7069`, whose complete diff contained only five MarkReg Web files and no MarkReg service, shared-contract, persistence, migration, Core receiver, Capability Engine, or Knowledge Case producer changes.
+`apps/markreg-web/**` is isolated only because the Knowledge acceptance profiles exercise service/contract/runtime boundaries and none builds or imports the MarkReg Web application. The evidence that established this rule was Core `bb26e9c5abc73d05e886001df3b2a8e53606e63f -> da756b292bfe46458fef141857179f7bdc4e7069`, whose complete diff contained only five MarkReg Web files and no MarkReg service, shared-contract, persistence, migration, Core receiver, Capability Engine, or Knowledge Case producer changes.
 
-The exact root E2E file was reviewed separately at Core `e1aa6decced4033f9005f327f88f32c22a8bcd67`: its only change updated the rendered Formal Matter heading assertion from `formal-matter` to `Trademark Matter`. It is not built or executed by any of the four Knowledge cross-repository acceptance workflows. This does **not** isolate the `tests/e2e/**` directory generally.
+The exact root E2E file was reviewed separately at Core `e1aa6decced4033f9005f327f88f32c22a8bcd67`: its only change updated the rendered Formal Matter heading assertion from `formal-matter` to `Trademark Matter`. It is not built or executed by any of the Knowledge cross-repository acceptance workflows. This does **not** isolate the `tests/e2e/**` directory generally.
 
 Additional profile-specific isolation is intentionally narrow:
 
-| Profile            | Additional proven isolated service prefixes            |
-| ------------------ | ------------------------------------------------------ |
-| `core-intake`      | `services/capability-engine/**`, `services/markreg/**` |
-| `managed-ai`       | `services/markreg/**`                                  |
-| `markreg-contract` | `services/capability-engine/**`                        |
-| `k-case-008`       | `services/capability-engine/**`                        |
+| Profile                 | Additional proven isolated service prefixes            |
+| ----------------------- | ------------------------------------------------------ |
+| `core-intake`           | `services/capability-engine/**`, `services/markreg/**` |
+| `managed-ai`            | `services/markreg/**`                                  |
+| `managed-communication` | `services/markreg/**`                                  |
+| `markreg-contract`      | `services/capability-engine/**`                        |
+| `k-case-008`            | `services/capability-engine/**`                        |
 
 Why:
 
 - Core Intake builds and exercises the Core receiver/PostgreSQL intake closure; it does not build Capability Engine or MarkReg.
 - Managed AI builds and exercises `@markorbit/capability-engine...`; Capability Engine therefore remains relevant, while MarkReg is outside that closure.
+- Managed Communication starts the real Capability Engine production entrypoint, runs its PostgreSQL Managed Communication bootstrap, and consumes the live thread/exact-evidence HTTP boundary from Knowledge. Capability Engine, shared contracts, persistence, migrations, lockfiles, and build/workspace configuration therefore remain relevant; MarkReg is outside that closure.
 - MarkReg Contract inspects the MarkReg Formal Matter/contract boundary; Capability Engine is outside that closure.
 - K-CASE builds and exercises the MarkReg producer/PostgreSQL closure; Capability Engine is outside that closure.
-- MarkReg Web is a presentation application outside all four acceptance closures; `services/markreg/**` remains relevant for the MarkReg/K-CASE profiles even though `apps/markreg-web/**` is isolated.
+- MarkReg Web is a presentation application outside these acceptance closures; `services/markreg/**` remains relevant for the MarkReg/K-CASE profiles even though `apps/markreg-web/**` is isolated.
 
 Shared contracts, persistence, migrations, lockfiles, workspace/package-manager/build configuration and every unlisted or unknown path remain relevant by default. A commit title is never sufficient evidence for isolation.
 
 ## Profiles
 
-The shared helper exposes four named profiles:
+The shared helper exposes five named profiles:
 
 - `core-intake`;
 - `managed-ai`;
+- `managed-communication`;
 - `markreg-contract`;
 - `k-case-008`.
 
@@ -80,7 +83,7 @@ Each freshness job:
 6. fails on `RELEVANT_DRIFT` or `UNKNOWN_DRIFT`;
 7. runs the existing real acceptance against `core_ref_to_test` for `NO_DRIFT` or `IRRELEVANT_DRIFT`.
 
-The real Core Intake PostgreSQL receiver E2E, Managed AI/Capability V2 HTTP E2E, MarkReg invariant audit, and K-CASE PostgreSQL acceptance remain the compatibility evidence. Path classification is only a conservative freshness precondition; it is never a substitute for those tests and never authorizes a relevant Core change.
+The real Core Intake PostgreSQL receiver E2E, Managed AI/Capability V2 HTTP E2E, Managed Communication production-bootstrap PostgreSQL/Expert-import E2E, MarkReg invariant audit, and K-CASE PostgreSQL acceptance remain the compatibility evidence. Path classification is only a conservative freshness precondition; it is never a substitute for those tests and never authorizes a relevant Core change.
 
 ## Baseline updates
 
