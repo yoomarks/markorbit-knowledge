@@ -30,7 +30,13 @@ The common lane/UI-isolated prefixes established during #643/#645 and #649 are:
 - `apps/markreg-web/**`;
 - `services/mgsn/**`.
 
+One exact root integration-test file is also isolated after direct review:
+
+- `tests/e2e/order-journey-real-runtime.spec.ts`.
+
 `apps/markreg-web/**` is isolated only because all four Knowledge acceptance profiles exercise service/contract/runtime boundaries and none builds or imports the MarkReg Web application. The evidence that established this rule was Core `bb26e9c5abc73d05e886001df3b2a8e53606e63f -> da756b292bfe46458fef141857179f7bdc4e7069`, whose complete diff contained only five MarkReg Web files and no MarkReg service, shared-contract, persistence, migration, Core receiver, Capability Engine, or Knowledge Case producer changes.
+
+The exact root E2E file was reviewed separately at Core `e1aa6decced4033f9005f327f88f32c22a8bcd67`: its only change updated the rendered Formal Matter heading assertion from `formal-matter` to `Trademark Matter`. It is not built or executed by any of the four Knowledge cross-repository acceptance workflows. This does **not** isolate the `tests/e2e/**` directory generally.
 
 Additional profile-specific isolation is intentionally narrow:
 
