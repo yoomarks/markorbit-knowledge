@@ -4,6 +4,13 @@ import { CORE_DRIFT_STATES, classifyCoreDrift } from "./core-drift-gate.mjs";
 
 const baseline = "1111111111111111111111111111111111111111";
 const current = "2222222222222222222222222222222222222222";
+const allProfiles = [
+  "core-intake",
+  "managed-ai",
+  "managed-communication",
+  "markreg-contract",
+  "k-case-008",
+];
 
 function classify(overrides = {}) {
   return classifyCoreDrift({
@@ -29,7 +36,7 @@ test("proven Lite Web-only drift is IRRELEVANT_DRIFT", () => {
 });
 
 test("proven MarkReg Web-only drift is IRRELEVANT_DRIFT for every profile", () => {
-  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+  for (const profileName of allProfiles) {
     const result = classify({
       profileName,
       changedPaths: [
@@ -43,7 +50,7 @@ test("proven MarkReg Web-only drift is IRRELEVANT_DRIFT for every profile", () =
 });
 
 test("audited Order journey heading assertion drift is isolated for every profile", () => {
-  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+  for (const profileName of allProfiles) {
     const result = classify({
       profileName,
       changedPaths: ["tests/e2e/order-journey-real-runtime.spec.ts"],
@@ -54,7 +61,7 @@ test("audited Order journey heading assertion drift is isolated for every profil
 });
 
 test("exact-path isolation does not exempt similarly prefixed files", () => {
-  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+  for (const profileName of allProfiles) {
     const filePath = "tests/e2e/order-journey-real-runtime.spec.ts.backup";
     const result = classify({ profileName, changedPaths: [filePath] });
     assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
@@ -73,10 +80,15 @@ test("proven MGSN service-only drift is IRRELEVANT_DRIFT", () => {
   assert.deepEqual(result.relevantPaths, []);
 });
 
-test("Capability Engine drift is relevant for Managed AI", () => {
-  const result = classify({ changedPaths: ["services/capability-engine/src/index.ts"] });
-  assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
-  assert.deepEqual(result.relevantPaths, ["services/capability-engine/src/index.ts"]);
+test("Capability Engine drift is relevant for Capability acceptance profiles", () => {
+  for (const profileName of ["managed-ai", "managed-communication"]) {
+    const result = classify({
+      profileName,
+      changedPaths: ["services/capability-engine/src/index.ts"],
+    });
+    assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
+    assert.deepEqual(result.relevantPaths, ["services/capability-engine/src/index.ts"]);
+  }
 });
 
 test("Capability Engine-only drift is isolated from non-Capability acceptance profiles", () => {
@@ -93,8 +105,8 @@ test("Capability Engine-only drift is isolated from non-Capability acceptance pr
   }
 });
 
-test("MarkReg-only drift is isolated from Core Intake and Managed AI", () => {
-  for (const profileName of ["core-intake", "managed-ai"]) {
+test("MarkReg-only drift is isolated from Core Intake and Capability acceptance profiles", () => {
+  for (const profileName of ["core-intake", "managed-ai", "managed-communication"]) {
     const result = classify({
       profileName,
       changedPaths: [
@@ -108,7 +120,7 @@ test("MarkReg-only drift is isolated from Core Intake and Managed AI", () => {
 });
 
 test("shared contracts drift is relevant for every profile", () => {
-  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+  for (const profileName of allProfiles) {
     const result = classify({
       profileName,
       changedPaths: ["packages/contracts/src/index.ts"],
@@ -135,16 +147,15 @@ test("MarkReg drift is relevant for MarkReg and K-CASE profiles", () => {
   }
 });
 
-test("persistence and migration drift is relevant for K-CASE", () => {
-  for (const filePath of [
-    "packages/persistence/src/index.ts",
-    "infrastructure/persistence/migrations/9999_example.sql",
-  ]) {
-    const result = classify({
-      profileName: "k-case-008",
-      changedPaths: [filePath],
-    });
-    assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
+test("persistence and migration drift is relevant for K-CASE and Managed Communication", () => {
+  for (const profileName of ["k-case-008", "managed-communication"]) {
+    for (const filePath of [
+      "packages/persistence/src/index.ts",
+      "infrastructure/persistence/migrations/9999_example.sql",
+    ]) {
+      const result = classify({ profileName, changedPaths: [filePath] });
+      assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
+    }
   }
 });
 
@@ -157,7 +168,7 @@ test("mixed isolated and shared drift remains RELEVANT_DRIFT", () => {
 });
 
 test("mixed MarkReg Web and shared-contract drift remains RELEVANT_DRIFT", () => {
-  for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
+  for (const profileName of allProfiles) {
     const result = classify({
       profileName,
       changedPaths: ["apps/markreg-web/src/WorkspaceHome.tsx", "packages/contracts/package.json"],
