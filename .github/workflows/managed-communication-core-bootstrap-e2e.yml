@@ -144,7 +144,7 @@ jobs:
           MO_MANAGED_COMMUNICATION_PROVIDER: ${{ env.CORE_PROVIDER }}
           MO_MANAGED_COMMUNICATION_PROVIDER_ACCOUNT_REF: ${{ env.CORE_PROVIDER_ACCOUNT_REF }}
         run: |
-          pnpm --filter @markorbit/capability-engine start > "$RUNNER_TEMP/managed-communication-core-first.log" 2>&1 &
+          node services/capability-engine/dist/main.js > "$RUNNER_TEMP/managed-communication-core-first.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/managed-communication-core.pid"
           for attempt in $(seq 1 30); do
             status=$(curl -sS -o /dev/null -w '%{http_code}' \
@@ -203,7 +203,7 @@ jobs:
           MO_MANAGED_COMMUNICATION_PROVIDER: ${{ env.CORE_PROVIDER }}
           MO_MANAGED_COMMUNICATION_PROVIDER_ACCOUNT_REF: ${{ env.CORE_PROVIDER_ACCOUNT_REF }}
         run: |
-          pnpm --filter @markorbit/capability-engine start > "$RUNNER_TEMP/managed-communication-core-restart.log" 2>&1 &
+          node services/capability-engine/dist/main.js > "$RUNNER_TEMP/managed-communication-core-restart.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/managed-communication-core.pid"
           for attempt in $(seq 1 30); do
             status=$(curl -sS -o /dev/null -w '%{http_code}' \
