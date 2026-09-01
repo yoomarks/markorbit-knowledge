@@ -151,10 +151,7 @@ test("mixed MarkReg Web and shared-contract drift remains RELEVANT_DRIFT", () =>
   for (const profileName of ["core-intake", "managed-ai", "markreg-contract", "k-case-008"]) {
     const result = classify({
       profileName,
-      changedPaths: [
-        "apps/markreg-web/src/WorkspaceHome.tsx",
-        "packages/contracts/package.json",
-      ],
+      changedPaths: ["apps/markreg-web/src/WorkspaceHome.tsx", "packages/contracts/package.json"],
     });
     assert.equal(result.state, CORE_DRIFT_STATES.RELEVANT_DRIFT);
     assert.deepEqual(result.relevantPaths, ["packages/contracts/package.json"]);
