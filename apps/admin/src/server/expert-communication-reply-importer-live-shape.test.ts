@@ -140,9 +140,7 @@ describe("CoreExpertReplyImporter live Core thread shape", () => {
     expect(first.sourceRecord.communication.messageRefs).toEqual([
       "commmsg_inbound_live_shape_001",
     ]);
-    expect(first.sourceRecord.rawAnswerArtifactRefs).toEqual([
-      "commevidence_live_shape_001",
-    ]);
+    expect(first.sourceRecord.rawAnswerArtifactRefs).toEqual(["commevidence_live_shape_001"]);
 
     const replay = await importer.importReply(task.taskId);
     expect(replay.sourceRecord).toEqual(first.sourceRecord);
