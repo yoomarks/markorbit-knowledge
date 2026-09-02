@@ -11,12 +11,14 @@ import {
   type SourceType,
 } from "@markorbit/contracts";
 import {
+  DEFAULT_WORKSPACE,
   RegistryValidationError,
   assertSourceFilterValue,
   type CreateSourceInput,
   type SourceListFilters,
   type SourceListResult,
 } from "@markorbit/persistence";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
   listSourceCollectionHealth,
@@ -183,9 +185,15 @@ function withLatestAssessments(result: SourceListResult, scopeSources: SourceDef
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
+    const assertedWorkspaceId =
+      url.searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(
+      request,
+      assertedWorkspaceId,
+    );
     const filters: SourceListFilters = {
       q: url.searchParams.get("q") ?? undefined,
-      workspaceId: url.searchParams.get("workspaceId") ?? undefined,
+      workspaceId,
       sourceType: enumValue(SOURCE_TYPES, url.searchParams.get("sourceType"), "sourceType") as
         SourceType | undefined,
       category: enumValue(SOURCE_CATEGORIES, url.searchParams.get("category"), "category") as
