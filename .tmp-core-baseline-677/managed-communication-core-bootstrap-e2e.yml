@@ -1,0 +1,277 @@
+name: Managed Communication Core Bootstrap E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/managed-communication-core-bootstrap-e2e.yml"
+      - "scripts/core-drift-gate.mjs"
+      - "scripts/core-drift-gate.test.mjs"
+      - "apps/admin/vitest.e2e.config.ts"
+      - "apps/admin/src/server/e2e/managed-communication-core-bootstrap.e2e.ts"
+      - "apps/admin/src/server/expert-communication-reply-importer.ts"
+      - "packages/contracts/src/expert-source-v1.ts"
+      - "packages/persistence/src/expert-source-registry.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+env:
+  CORE_REF: 0098c36de84c3c5b01c34521528dbb0e1f101bf0
+  CORE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/markorbit_managed_communication_e2e
+  CORE_INTERNAL_SECRET: markorbit-managed-communication-e2e-secret-32-bytes
+  CORE_WORKSPACE_ID: workspace:knowledge-managed-communication-e2e
+  CORE_ACCOUNT_REF: account:knowledge-managed-communication-e2e
+  CORE_PROVIDER: PROVIDER_NEUTRAL_E2E
+  CORE_PROVIDER_ACCOUNT_REF: provider-account:knowledge-managed-communication-e2e
+
+jobs:
+  core-ref-freshness:
+    runs-on: ubuntu-24.04
+    outputs:
+      core_ref_to_test: ${{ steps.classify.outputs.core_ref_to_test }}
+      drift_state: ${{ steps.classify.outputs.drift_state }}
+    steps:
+      - name: Checkout Knowledge
+        uses: actions/checkout@v4
+      - name: Checkout Core history for drift classification
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+          path: .core-drift/markorbit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Classify Core dependency drift
+        id: classify
+        run: >-
+          node scripts/core-drift-gate.mjs
+          --repo .core-drift/markorbit
+          --baseline "$CORE_REF"
+          --profile managed-communication
+          --github-output "$GITHUB_OUTPUT"
+
+  managed-communication-bootstrap-e2e:
+    needs: core-ref-freshness
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: markorbit_managed_communication_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d markorbit_managed_communication_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout Knowledge
+        uses: actions/checkout@v4
+      - name: Checkout classified current Core
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: ${{ needs.core-ref-freshness.outputs.core_ref_to_test }}
+          path: .e2e/markorbit-core
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Knowledge dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Core dependencies
+        working-directory: .e2e/markorbit-core
+        run: pnpm install --frozen-lockfile
+      - name: Build Capability Engine dependency closure
+        working-directory: .e2e/markorbit-core
+        run: pnpm exec turbo run build --filter=@markorbit/capability-engine...
+      - name: Migrate Capability Engine PostgreSQL schema
+        working-directory: .e2e/markorbit-core
+        env:
+          NODE_ENV: test
+          DATABASE_URL: ${{ env.CORE_DATABASE_URL }}
+          DB_MIGRATION_NAMESPACE: knowledge_managed_communication_e2e
+          DB_APPLICATION_NAME: knowledge-managed-communication-e2e-migrate
+        run: |
+          node --input-type=module <<'NODE'
+          import path from 'node:path';
+          import {
+            loadMigrationsForOwner,
+            ManagedDatabase,
+            migrate,
+            parseDatabaseConfig,
+          } from './packages/persistence/dist/index.js';
+
+          const config = parseDatabaseConfig(process.env);
+          const database = new ManagedDatabase(config);
+          await database.start();
+          try {
+            const migrations = await loadMigrationsForOwner(
+              path.resolve('infrastructure/persistence/migrations'),
+              path.resolve('infrastructure/persistence/migration-owners.json'),
+              '@markorbit/capability-engine',
+            );
+            await migrate(database.getPool(), config.migrationNamespace, migrations);
+          } finally {
+            await database.close();
+          }
+          NODE
+      - name: Start real Capability Engine production entrypoint
+        working-directory: .e2e/markorbit-core
+        env:
+          NODE_ENV: test
+          PORT: 4103
+          CAPABILITY_ENGINE_DATABASE_URL: ${{ env.CORE_DATABASE_URL }}
+          CAPABILITY_ENGINE_MIGRATION_NAMESPACE: knowledge_managed_communication_e2e
+          DB_APPLICATION_NAME: knowledge-managed-communication-e2e-runtime-first
+          MO_INTERNAL_SERVICE_SECRET: ${{ env.CORE_INTERNAL_SECRET }}
+          MO_MANAGED_COMMUNICATION_RUNTIME_ENABLED: "1"
+          MO_MANAGED_COMMUNICATION_PROVIDER_DISPATCH_AUTHORIZED: "0"
+          MO_MANAGED_COMMUNICATION_WORKSPACE_ID: ${{ env.CORE_WORKSPACE_ID }}
+          MO_MANAGED_COMMUNICATION_ACCOUNT_REF: ${{ env.CORE_ACCOUNT_REF }}
+          MO_MANAGED_COMMUNICATION_PROVIDER: ${{ env.CORE_PROVIDER }}
+          MO_MANAGED_COMMUNICATION_PROVIDER_ACCOUNT_REF: ${{ env.CORE_PROVIDER_ACCOUNT_REF }}
+        run: |
+          node services/capability-engine/dist/main.js > "$RUNNER_TEMP/managed-communication-core-first.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/managed-communication-core.pid"
+          for attempt in $(seq 1 30); do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -X POST \
+              -H 'content-type: application/json' \
+              -H "x-markorbit-workspace-id: $MO_MANAGED_COMMUNICATION_WORKSPACE_ID" \
+              -H 'idempotency-key: readiness-probe' \
+              --data '{}' \
+              'http://127.0.0.1:4103/internal/v1/managed-communication/observations' || true)
+            if [ "$status" = "401" ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/managed-communication-core-first.log"
+          exit 1
+      - name: Seed live Core evidence and import into Knowledge
+        working-directory: apps/admin
+        env:
+          MARKORBIT_E2E_COMM_PHASE: seed
+          MARKORBIT_CORE_COMMUNICATION_URL: http://127.0.0.1:4103
+          MARKORBIT_CORE_INTERNAL_SECRET: ${{ env.CORE_INTERNAL_SECRET }}
+          MARKORBIT_E2E_COMM_WORKSPACE_ID: ${{ env.CORE_WORKSPACE_ID }}
+          MARKORBIT_E2E_COMM_ACCOUNT_REF: ${{ env.CORE_ACCOUNT_REF }}
+          MARKORBIT_E2E_COMM_PROVIDER: ${{ env.CORE_PROVIDER }}
+          MARKORBIT_E2E_EXPERT_SQLITE_PATH: ${{ runner.temp }}/managed-communication-expert.sqlite
+        run: >-
+          pnpm exec vitest run
+          --config vitest.e2e.config.ts
+          src/server/e2e/managed-communication-core-bootstrap.e2e.ts
+      - name: Stop first Capability Engine process
+        run: |
+          pid="$(cat "$RUNNER_TEMP/managed-communication-core.pid")"
+          kill "$pid"
+          for attempt in $(seq 1 30); do
+            if ! kill -0 "$pid" 2>/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Capability Engine did not stop after SIGTERM" >&2
+          exit 1
+      - name: Restart real Capability Engine on the same PostgreSQL state
+        working-directory: .e2e/markorbit-core
+        env:
+          NODE_ENV: test
+          PORT: 4103
+          CAPABILITY_ENGINE_DATABASE_URL: ${{ env.CORE_DATABASE_URL }}
+          CAPABILITY_ENGINE_MIGRATION_NAMESPACE: knowledge_managed_communication_e2e
+          DB_APPLICATION_NAME: knowledge-managed-communication-e2e-runtime-restart
+          MO_INTERNAL_SERVICE_SECRET: ${{ env.CORE_INTERNAL_SECRET }}
+          MO_MANAGED_COMMUNICATION_RUNTIME_ENABLED: "1"
+          MO_MANAGED_COMMUNICATION_PROVIDER_DISPATCH_AUTHORIZED: "0"
+          MO_MANAGED_COMMUNICATION_WORKSPACE_ID: ${{ env.CORE_WORKSPACE_ID }}
+          MO_MANAGED_COMMUNICATION_ACCOUNT_REF: ${{ env.CORE_ACCOUNT_REF }}
+          MO_MANAGED_COMMUNICATION_PROVIDER: ${{ env.CORE_PROVIDER }}
+          MO_MANAGED_COMMUNICATION_PROVIDER_ACCOUNT_REF: ${{ env.CORE_PROVIDER_ACCOUNT_REF }}
+        run: |
+          node services/capability-engine/dist/main.js > "$RUNNER_TEMP/managed-communication-core-restart.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/managed-communication-core.pid"
+          for attempt in $(seq 1 30); do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -X POST \
+              -H 'content-type: application/json' \
+              -H "x-markorbit-workspace-id: $MO_MANAGED_COMMUNICATION_WORKSPACE_ID" \
+              -H 'idempotency-key: readiness-probe-restart' \
+              --data '{}' \
+              'http://127.0.0.1:4103/internal/v1/managed-communication/observations' || true)
+            if [ "$status" = "401" ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/managed-communication-core-restart.log"
+          exit 1
+      - name: Replay after Core restart and prove Knowledge idempotency
+        working-directory: apps/admin
+        env:
+          MARKORBIT_E2E_COMM_PHASE: restart-replay
+          MARKORBIT_CORE_COMMUNICATION_URL: http://127.0.0.1:4103
+          MARKORBIT_CORE_INTERNAL_SECRET: ${{ env.CORE_INTERNAL_SECRET }}
+          MARKORBIT_E2E_COMM_WORKSPACE_ID: ${{ env.CORE_WORKSPACE_ID }}
+          MARKORBIT_E2E_COMM_ACCOUNT_REF: ${{ env.CORE_ACCOUNT_REF }}
+          MARKORBIT_E2E_COMM_PROVIDER: ${{ env.CORE_PROVIDER }}
+          MARKORBIT_E2E_EXPERT_SQLITE_PATH: ${{ runner.temp }}/managed-communication-expert.sqlite
+        run: >-
+          pnpm exec vitest run
+          --config vitest.e2e.config.ts
+          src/server/e2e/managed-communication-core-bootstrap.e2e.ts
+      - name: Assert Core durable rows remain singular
+        working-directory: .e2e/markorbit-core
+        env:
+          NODE_ENV: test
+          DATABASE_URL: ${{ env.CORE_DATABASE_URL }}
+          DB_MIGRATION_NAMESPACE: knowledge_managed_communication_e2e
+          DB_APPLICATION_NAME: knowledge-managed-communication-e2e-assert
+        run: |
+          node --input-type=module <<'NODE'
+          import { ManagedDatabase, parseDatabaseConfig } from './packages/persistence/dist/index.js';
+
+          const database = new ManagedDatabase(parseDatabaseConfig(process.env));
+          await database.start();
+          try {
+            for (const table of [
+              'capability_communication_accounts',
+              'capability_communication_messages',
+              'capability_communication_exact_evidence',
+            ]) {
+              const result = await database.getPool().query(`SELECT count(*)::int AS count FROM ${table}`);
+              if (result.rows[0]?.count !== 1) {
+                throw new Error(`${table} expected one durable row, got ${result.rows[0]?.count}`);
+              }
+            }
+          } finally {
+            await database.close();
+          }
+          NODE
+      - name: Capability Engine logs
+        if: always()
+        run: |
+          echo '--- first process ---'
+          cat "$RUNNER_TEMP/managed-communication-core-first.log" || true
+          echo '--- restarted process ---'
+          cat "$RUNNER_TEMP/managed-communication-core-restart.log" || true
+      - name: Stop Capability Engine
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/managed-communication-core.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/managed-communication-core.pid")" 2>/dev/null || true
+          fi
