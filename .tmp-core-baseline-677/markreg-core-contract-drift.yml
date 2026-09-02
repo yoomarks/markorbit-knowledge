@@ -1,0 +1,104 @@
+name: MarkReg Core Contract Drift
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 3 * * *"
+  pull_request:
+    paths:
+      - ".github/workflows/markreg-core-contract-drift.yml"
+      - "scripts/core-drift-gate.mjs"
+      - "scripts/core-drift-gate.test.mjs"
+      - "packages/contracts/src/case-candidate-v1.ts"
+      - "packages/contracts/src/case-candidate-wire-schema-v1.test.ts"
+      - "packages/contracts/schemas/case-candidate-v1.schema.json"
+      - "packages/worker-runtime/src/markreg-source-resolver.ts"
+      - "packages/worker-runtime/src/markreg-source-resolver.test.ts"
+
+permissions:
+  contents: read
+
+env:
+  CORE_REF: cd8affb797123343c87d055b763229dd6fb99231
+
+jobs:
+  core-ref-freshness:
+    runs-on: ubuntu-24.04
+    outputs:
+      core_ref_to_test: ${{ steps.classify.outputs.core_ref_to_test }}
+      drift_state: ${{ steps.classify.outputs.drift_state }}
+    steps:
+      - name: Checkout Knowledge
+        uses: actions/checkout@v4
+      - name: Checkout Core history for drift classification
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+          path: .core-drift/markorbit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Classify Core dependency drift
+        id: classify
+        run: >-
+          node scripts/core-drift-gate.mjs
+          --repo .core-drift/markorbit
+          --baseline "$CORE_REF"
+          --profile markreg-contract
+          --github-output "$GITHUB_OUTPUT"
+
+  markreg-contract:
+    needs: core-ref-freshness
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Knowledge
+        uses: actions/checkout@v4
+      - name: Checkout classified current Core
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: ${{ needs.core-ref-freshness.outputs.core_ref_to_test }}
+          path: .e2e/markorbit-core
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Knowledge dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Prove Knowledge Case candidate wire contract
+        run: >-
+          pnpm --filter @markorbit/contracts exec vitest run
+          src/case-candidate-wire-schema-v1.test.ts
+      - name: Assert authoritative MarkReg Formal Matter invariants
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const contracts = fs.readFileSync('.e2e/markorbit-core/packages/contracts/src/index.ts', 'utf8');
+          const formalMatter = fs.readFileSync('.e2e/markorbit-core/services/markreg/src/formal-matter.ts', 'utf8');
+
+          const checks = [
+            [contracts.includes('export type FormalMatterId = `formal-matter_${string}`;'), 'FormalMatterId prefix contract changed'],
+            [contracts.includes('formalMatterId: FormalMatterId;'), 'FormalMatter identity field changed'],
+            [contracts.includes('workspaceId: string;'), 'FormalMatter workspace boundary changed'],
+            [contracts.includes('version: 1;'), 'FormalMatter version contract changed'],
+            [contracts.includes('snapshotSha256: string;'), 'FormalMatter snapshot SHA contract changed'],
+            [formalMatter.includes('findById(workspaceId: string, id: string)'), 'MarkReg workspace-scoped source read contract changed'],
+            [formalMatter.includes("'AUTHENTICATION_REQUIRED'"), 'MarkReg authentication failure boundary changed'],
+            [formalMatter.includes("'WORKSPACE_MISMATCH'"), 'MarkReg workspace isolation boundary changed'],
+            [formalMatter.includes("'PERMISSION_DENIED'"), 'MarkReg authorization boundary changed'],
+          ];
+
+          const failed = checks.filter(([ok]) => !ok).map(([, message]) => message);
+          if (failed.length) {
+            for (const message of failed) console.error(`::error::${message}`);
+            process.exit(1);
+          }
+          console.log('MarkReg Formal Matter invariants match the audited Knowledge Case boundary.');
+          NODE
