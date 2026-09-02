@@ -38,7 +38,7 @@ concurrency:
 jobs:
   live-smoke:
     if: ${{ inputs.confirm_live_tavily_call == true }}
-    environment: TAVILY_API_KEY
+    environment: TAVILY
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
