@@ -3,7 +3,7 @@
 Status: current operator path for visible CNIPA business-behavior evidence when ordinary Chrome works but DevTools and the Playwright session path are unavailable.
 
 Parent issue: #573  
-Implementation issue: #636
+Implementation issues: #636, #675
 
 ## Purpose
 
@@ -14,7 +14,8 @@ Use it to answer bounded Phase 3 questions that remain observable without DevToo
 - does one real registration number produce a visible result in each of the three judgment libraries;
 - does a real party-name query produce a visible matching row under the expected UI role label;
 - does selecting a visible list row open a detail document that visibly corresponds to that row;
-- when the ordinary UI exposes more than 100 results, can the operator navigate to page 11 and obtain visible rows;
+- what visible result-window ceiling, pagination boundary and ordering behavior the ordinary UI exposes;
+- whether a one-calendar-day date window can still saturate that visible result ceiling;
 - does the ordinary date picker prevent selecting a date pair whose difference exceeds 30 days.
 
 ## Safety boundary
@@ -74,21 +75,33 @@ Use one library/role combination that can reasonably produce a result. Record on
 
 This can support **live UI business behavior and role-label intent**. It does not prove raw source-field semantics or authorize production party-name execution by itself.
 
-## Observation C — page 11 / more than 100 visible results
+## Observation C — visible result-window ceiling and ordering
 
-Use only a normal UI query that naturally exposes more than 100 results. Do not weaken or bypass any site limit.
+Use only normal authorized UI queries. Do not weaken or bypass any site limit and do not manufacture high-volume requests solely to stress the service.
 
 Record:
 
-- `uiIndicatesOver100Results`: whether the ordinary UI indicates more than 100 results;
+- `visibleTotalReported`: the total count visibly reported by the UI, or `null` when not tested;
+- `visiblePageCount`: the number of pages visibly exposed by normal pagination, or `null`;
 - `page11ControlAvailable`: whether page 11 can be reached through the normal pagination UI;
-- `page11Loaded`: whether page 11 loads successfully;
-- `page11HasVisibleRows`: whether page 11 contains visible result rows;
-- `uiStopsBeforePage11`: whether the UI visibly prevents navigating that far.
+- `uiStopsAtVisible100`: whether the UI reports 100 results / 10 pages and exposes no page 11 when the visible window is saturated;
+- `singleDayWindowSaturatedAt100`: whether an authorized one-calendar-day date query still reports the 100-result visible ceiling;
+- `resultOrdering`: `LATEST_DATE_FIRST`, `OTHER`, or `NOT_TESTED` based only on visible ordering;
+- `backendCapInferred`: always `false` for manual UI evidence.
 
-A successful page 11 observation proves only visible UI/business behavior for that query. It does not establish that the backend has no other result cap or that collection coverage is complete.
+### Accepted 2026-09-02 observation
 
-If no authorized ordinary query naturally produces more than 100 results, report `NOT_TESTED`; do not manufacture broad requests solely to stress the service.
+Authorized ordinary-Chrome observation established the following current UI/business behavior for the three judgment libraries:
+
+- the saturated UI reports exactly 100 visible results and 10 pages;
+- no page-11 control is exposed;
+- broad date windows can remain at 100;
+- reducing the date range to a single calendar day can still remain at 100;
+- visible results were observed ordered by newest date first.
+
+This proves a **visible 100-row result window**. It does **not** prove that the authenticated backend API has a hard total/result cap of 100, what its real `data.total` value is, whether additional server-side pages exist, or that the visible 100 rows are exhaustive.
+
+Because one-day windows can still saturate, date partitioning alone cannot establish complete daily coverage. See `docs/operations/CNIPA_ACQUISITION_INTENTS.md`: date acquisition is `DATE_RECENCY_DISCOVERY`, a partial fresh-signal feed rather than a complete daily mirror.
 
 ## Observation D — visible date-picker constraint
 
@@ -136,11 +149,13 @@ Copy only this structure back into the engineering conversation. Do not replace 
     "roleLabelObserved": null
   },
   "pagination": {
-    "uiIndicatesOver100Results": null,
+    "visibleTotalReported": null,
+    "visiblePageCount": null,
     "page11ControlAvailable": null,
-    "page11Loaded": null,
-    "page11HasVisibleRows": null,
-    "uiStopsBeforePage11": null
+    "uiStopsAtVisible100": null,
+    "singleDayWindowSaturatedAt100": null,
+    "resultOrdering": "NOT_TESTED",
+    "backendCapInferred": false
   },
   "dateUi": {
     "over30DaySelectionBlocked": null,
@@ -160,7 +175,9 @@ Manual UI evidence may support these bounded statements:
 - `PARTY_NAME_UI_BEHAVIOR_OBSERVED`;
 - `UI_ROLE_LABEL_AND_VISIBLE_MATCH_OBSERVED`;
 - `UI_DETAIL_CORRESPONDENCE_OBSERVED`;
-- `UI_PAGE_11_BEHAVIOR_OBSERVED`;
+- `UI_VISIBLE_100_ROW_CEILING_OBSERVED`;
+- `UI_SINGLE_DAY_SATURATION_OBSERVED`;
+- `UI_LATEST_FIRST_ORDERING_OBSERVED`;
 - `UI_DATE_PICKER_CONSTRAINT_OBSERVED`.
 
 It must **not** be promoted into any of the following without a separate permitted evidence source:
@@ -168,6 +185,7 @@ It must **not** be promoted into any of the following without a separate permitt
 - authenticated raw HTTP JSON schema/source-field conformance;
 - real source-record ID or list -> detail identifier consistency;
 - backend-only pagination/result/date limits;
+- authenticated backend hard-cap semantics or real `data.total` semantics;
 - normalized Knowledge party-role/source-field semantics;
 - authenticated 403 meaning;
 - exhaustive coverage or `COMPLETE` coverage;
@@ -177,4 +195,4 @@ It must **not** be promoted into any of the following without a separate permitt
 
 Because the current ordinary-Chrome CNIPA path does not provide usable DevTools and the Playwright session is blocked by the observed access-control gate, raw authenticated response/schema validation remains externally blocked.
 
-Do not turn that blocker into a request for sensitive NetLog capture, session extraction or browser automation. Keep the remaining schema/source-ID acceptance items open until a site-permitted source-response channel exists.
+Do not turn that blocker into a request for sensitive NetLog capture, session extraction or browser automation. Keep the remaining schema/source-ID/backend-cap acceptance items open until a site-permitted source-response channel exists.
