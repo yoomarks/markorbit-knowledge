@@ -13,14 +13,9 @@ describe("CNIPA acquisition intent policy", () => {
       mode: "REGISTRATION_NUMBER",
       registrationNumber: "12345678",
     });
-    const policy = assertCnipaAcquisitionIntent(
-      query,
-      "REGISTRATION_NUMBER_TARGETED",
-    );
+    const policy = assertCnipaAcquisitionIntent(query, "REGISTRATION_NUMBER_TARGETED");
 
-    expect(expectedCnipaAcquisitionIntent(query)).toBe(
-      "REGISTRATION_NUMBER_TARGETED",
-    );
+    expect(expectedCnipaAcquisitionIntent(query)).toBe("REGISTRATION_NUMBER_TARGETED");
     expect(policy).toMatchObject({
       compatibleQueryMode: "REGISTRATION_NUMBER",
       productPurpose: "KNOWN_MARK_EVIDENCE_FOLLOW_UP",
@@ -48,9 +43,9 @@ describe("CNIPA acquisition intent policy", () => {
       populationCompleteClaimAllowed: false,
       sourceTruthAuthority: "CNIPA_EVIDENCE_ONLY",
     });
-    expect(
-      CNIPA_ACQUISITION_INTENT_POLICIES.DATE_RECENCY_DISCOVERY.notes.join(" "),
-    ).toContain("100-visible-result");
+    expect(CNIPA_ACQUISITION_INTENT_POLICIES.DATE_RECENCY_DISCOVERY.notes.join(" ")).toContain(
+      "100-visible-result",
+    );
   });
 
   it("fails closed when a product intent is paired with the wrong query mode", () => {
@@ -93,9 +88,7 @@ describe("CNIPA acquisition intent policy", () => {
     expect(completeRecency).toThrow(/100-visible-result source window/);
     expect(completePopulation).toThrow(/complete CNIPA population coverage/);
 
-    expect(() =>
-      assertCnipaIntentCoverageClaim("DATE_RECENCY_DISCOVERY", "PARTIAL"),
-    ).not.toThrow();
+    expect(() => assertCnipaIntentCoverageClaim("DATE_RECENCY_DISCOVERY", "PARTIAL")).not.toThrow();
     expect(() =>
       assertCnipaIntentCoverageClaim("REGISTRATION_NUMBER_TARGETED", "UNKNOWN"),
     ).not.toThrow();

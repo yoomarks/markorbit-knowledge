@@ -5,9 +5,7 @@ import {
 
 export const CNIPA_ACQUISITION_INTENT_POLICY_REVISION = "2026-09-02" as const;
 
-export type CnipaAcquisitionIntent =
-  | "DATE_RECENCY_DISCOVERY"
-  | "REGISTRATION_NUMBER_TARGETED";
+export type CnipaAcquisitionIntent = "DATE_RECENCY_DISCOVERY" | "REGISTRATION_NUMBER_TARGETED";
 
 export type CnipaAcquisitionIntentPolicy = {
   acquisitionIntent: CnipaAcquisitionIntent;
@@ -88,10 +86,7 @@ export function assertCnipaIntentCoverageClaim(
   coverageStatus: "COMPLETE" | "PARTIAL" | "UNKNOWN",
 ): void {
   const policy = CNIPA_ACQUISITION_INTENT_POLICIES[acquisitionIntent];
-  if (
-    acquisitionIntent === "DATE_RECENCY_DISCOVERY" &&
-    coverageStatus === "COMPLETE"
-  ) {
+  if (acquisitionIntent === "DATE_RECENCY_DISCOVERY" && coverageStatus === "COMPLETE") {
     throw new CnipaAcquisitionError(
       "CNIPA_COVERAGE_UNKNOWN",
       "DATE_RECENCY_DISCOVERY cannot claim COMPLETE coverage under the observed 100-visible-result source window",
