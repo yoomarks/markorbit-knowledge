@@ -52,9 +52,9 @@ This policy freeze does **not** enable any new CNIPA request.
 
 ## Product routing summary
 
-| Intent | Query key | Primary value | Coverage interpretation |
-| --- | --- | --- | --- |
-| `DATE_RECENCY_DISCOVERY` | Date window | Fresh leads, newest decisions, content/material signals | Partial recency feed; never daily completeness |
-| `REGISTRATION_NUMBER_TARGETED` | Known registration/application number | Client-mark monitoring and evidence follow-up | Target-object evidence only; not population completeness |
+| Intent                         | Query key                             | Primary value                                           | Coverage interpretation                                  |
+| ------------------------------ | ------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------- |
+| `DATE_RECENCY_DISCOVERY`       | Date window                           | Fresh leads, newest decisions, content/material signals | Partial recency feed; never daily completeness           |
+| `REGISTRATION_NUMBER_TARGETED` | Known registration/application number | Client-mark monitoring and evidence follow-up           | Target-object evidence only; not population completeness |
 
 The two modes may use the same CNIPA source adapter/evidence pipeline after their request semantics are verified, but their purpose, scheduling, coverage and downstream interpretation remain distinct.
