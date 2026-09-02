@@ -80,8 +80,9 @@ describe("multilingual acquisition, staging, and delivery", () => {
 
       const stagedPath = join(
         summary.output.casDirectory,
+        "sha256",
         summary.output.sha256.slice(0, 2),
-        summary.output.sha256,
+        `${summary.output.sha256}.md`,
       );
       const stagedBytes = readFileSync(stagedPath);
       expect(stagedBytes.equals(inputBytes)).toBe(true);
