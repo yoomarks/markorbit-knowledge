@@ -15,7 +15,9 @@ Official frontend static-contract issue: #624
 Frontend client-expectations issue: #627  
 Frontend consumed-fields issue: #630  
 Offline authenticated response-bundle issue: #633  
-Manual UI observation issue: #636
+Manual UI observation issue: #636  
+Acquisition-intent issue: #673  
+Visible-window evidence issue: #675
 
 ## Safety boundary
 
@@ -42,6 +44,7 @@ Consequences:
 - use `docs/operations/CNIPA_OFFLINE_NETLOG_EVIDENCE.md` for transport evidence;
 - use `CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE` for static request/client expectations;
 - use `docs/operations/CNIPA_MANUAL_UI_OBSERVATION.md` for current visible business-behavior evidence;
+- use `docs/operations/CNIPA_ACQUISITION_INTENTS.md` for the frozen distinction between recency discovery and targeted known-mark follow-up;
 - retain `docs/operations/CNIPA_OFFLINE_RESPONSE_BUNDLE.md` as an implemented safe capability for a future environment/session where selected Response JSON can legitimately be saved without extracting authentication material.
 
 ## Observed transport boundary
@@ -89,12 +92,30 @@ That workflow uses only normal visible site controls and returns no real registr
 - one real registration-number search across all three judgment libraries;
 - one real party-name query and visible UI role/match behavior;
 - visible row -> detail correspondence;
-- page 11 / >100 UI behavior when an ordinary authorized query naturally exposes that range;
+- the visible result-window ceiling, page count and ordering behavior;
+- whether one-day date windows can still saturate the visible ceiling;
 - the visible >30-day date-picker restriction.
 
-Manual UI evidence can promote only bounded statements such as `REGISTRATION_NUMBER_UI_BEHAVIOR_OBSERVED`, `PARTY_NAME_UI_BEHAVIOR_OBSERVED`, `UI_DETAIL_CORRESPONDENCE_OBSERVED` and `UI_PAGE_11_BEHAVIOR_OBSERVED`.
+Manual UI evidence can promote only bounded statements such as `REGISTRATION_NUMBER_UI_BEHAVIOR_OBSERVED`, `PARTY_NAME_UI_BEHAVIOR_OBSERVED`, `UI_DETAIL_CORRESPONDENCE_OBSERVED`, `UI_VISIBLE_100_ROW_CEILING_OBSERVED`, `UI_SINGLE_DAY_SATURATION_OBSERVED`, `UI_LATEST_FIRST_ORDERING_OBSERVED` and `UI_DATE_PICKER_CONSTRAINT_OBSERVED`.
 
 It does **not** verify raw JSON/source fields, real sourceRecordId identity, backend-only caps, authenticated 403 meaning or complete coverage.
+
+## Accepted visible-window observation — 2026-09-02
+
+Authorized ordinary-Chrome observation now establishes the following current UI/business behavior across the three judgment libraries:
+
+- a saturated result set is visibly reported as exactly 100 results / 10 pages;
+- no page-11 control is exposed;
+- the UI does not display a greater underlying total when saturated;
+- date-window queries can remain at the 100-row ceiling as the window is narrowed;
+- a one-calendar-day query can still remain saturated at 100;
+- visible results were observed ordered by newest date first.
+
+This replaces the earlier `page 11 / >100 = NOT_TESTED` UI status. The **UI cap is now observed**.
+
+It does not establish the corresponding backend semantics. In particular, this evidence does not prove that the authenticated API hard-caps `data.total` or retrievable rows at 100, whether an unexposed page 11 exists server-side, or what the true result population is.
+
+The single-day saturation also proves that date partitioning alone cannot establish complete daily coverage. Per #673/#674, `DATE_RECENCY_DISCOVERY` is therefore a partial fresh-signal acquisition intent, while `REGISTRATION_NUMBER_TARGETED` is a separate target-object evidence-follow-up intent for known marks. Neither intent authorizes a CNIPA population `COMPLETE` claim.
 
 ## Offline Response-only capability — implemented but currently input-blocked
 
@@ -139,19 +160,20 @@ Do not execute this while the current Playwright access-control gate remains.
 
 The remaining items are now split by evidence availability.
 
-### Still observable through ordinary UI
+### Already established through ordinary UI
 
-1. one real registration-number search across all three document libraries;
+1. one real registration-number search across all three document libraries at visible UI/business-behavior level;
 2. one real party-name query and visible role/match behavior;
 3. visible list-row -> detail correspondence, explicitly **not** sourceRecordId verification;
-4. page 11 / >100 visible UI behavior when a suitable ordinary query exists;
-5. visible >30-day date-picker behavior.
+4. visible 100-result / 10-page ceiling with no page-11 control;
+5. visible one-day date-window saturation at 100 and newest-date-first ordering;
+6. visible >30-day date-picker restriction.
 
 ### Still blocked on a permitted raw/source-response channel
 
 1. authenticated JSON response conformance and current live source fields;
 2. real list -> detail source-record identifier consistency (`adjuOpenId` / `pubId` -> query `id` -> response identity);
-3. backend-only pagination/result caps beyond what the UI exposes;
+3. backend-only pagination/result-cap semantics, including real `data.total` behavior behind the observed 100-row UI ceiling;
 4. backend date-window behavior beyond the UI restriction;
 5. authenticated 403 business/security semantics through a supported authenticated execution path;
 6. final schema-version promotion and coverage classification.
