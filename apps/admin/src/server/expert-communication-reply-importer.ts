@@ -250,9 +250,7 @@ function parseMessage(value: unknown, accountRef: string, threadRef: string): Th
     required(exactEvidence.provider, "exactEvidence.provider", 120) !==
       required(providerObservation.provider, "providerObservation.provider", 120) ||
     required(exactEvidence.providerMessageId, "exactEvidence.providerMessageId") !==
-      required(providerObservation.providerMessageId, "providerObservation.providerMessageId") ||
-    timestamp(exactEvidence.observedAt, "exactEvidence.observedAt") !==
-      timestamp(providerObservation.observedAt, "providerObservation.observedAt")
+      required(providerObservation.providerMessageId, "providerObservation.providerMessageId")
   ) {
     throw new RegistryError(
       "EXPERT_COMMUNICATION_REPLY_INVALID",
