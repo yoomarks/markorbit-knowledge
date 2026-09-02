@@ -22,6 +22,35 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Reaccept audited Core baseline
+        run: |
+          old='c589f9fda775d50c832181b584f9f8293a8c2de6'
+          new='0e7b20fc1fe9d473a75ff67c13a126d6dda4befb'
+          files=(
+            .github/workflows/core-intake-e2e.yml
+            .github/workflows/managed-ai-core-http-e2e.yml
+            .github/workflows/managed-communication-core-bootstrap-e2e.yml
+            .github/workflows/markreg-core-contract-drift.yml
+            .github/workflows/k-case-008-cross-repo-live.yml
+          )
+          changed=0
+          for file in "${files[@]}"; do
+            if grep -Fq "CORE_REF: $old" "$file"; then
+              sed -i "s/CORE_REF: $old/CORE_REF: $new/" "$file"
+              changed=1
+            elif grep -Fq "CORE_REF: $new" "$file"; then
+              :
+            else
+              echo "Unexpected CORE_REF in $file" >&2
+              exit 1
+            fi
+          done
+          if [ "$changed" -eq 0 ]; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${files[@]}"
+          git commit -m "chore: reaccept audited Core baseline"
+          git push origin HEAD:${{ github.head_ref }}
       - name: Apply Prettier
         run: |
           # Keep business surfaces and shared ingestion-control helpers formatting-clean,
