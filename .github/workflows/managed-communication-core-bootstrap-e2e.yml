@@ -177,7 +177,7 @@ jobs:
           src/server/e2e/managed-communication-core-bootstrap.e2e.ts
       - name: Stop first Capability Engine process
         run: |
-          pid="$(cat "$RUNNER_TEMP/managed-communication-core.pid")
+          pid="$(cat "$RUNNER_TEMP/managed-communication-core.pid")"
           kill "$pid"
           for attempt in $(seq 1 30); do
             if ! kill -0 "$pid" 2>/dev/null; then
