@@ -55,7 +55,7 @@ function normalizedBody(value: string): string {
 
 function markdownBody(value: string): string {
   expect(value.startsWith("---\nmarkorbit:\n")).toBe(true);
-  const boundary = "\n---\n\n";
+  const boundary = "\n---\n";
   const bodyStart = value.indexOf(boundary);
   expect(bodyStart).toBeGreaterThan(0);
   return value.slice(bodyStart + boundary.length);
