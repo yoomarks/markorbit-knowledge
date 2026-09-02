@@ -25,7 +25,7 @@ jobs:
       - name: Stage audited Core baseline blobs
         run: |
           old='cd8affb797123343c87d055b763229dd6fb99231'
-          new='0098c36de84c3c5b01c34521528dbb0e1f101bf0'
+          new='af2e898b5a76ca6b8d5f6e1ddc45590dc48fd5a9'
           files=(
             .github/workflows/core-intake-e2e.yml
             .github/workflows/managed-ai-core-http-e2e.yml
