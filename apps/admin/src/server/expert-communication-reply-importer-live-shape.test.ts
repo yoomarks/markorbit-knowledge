@@ -99,7 +99,7 @@ function resolution() {
           provider: "GMAIL",
           providerMessageId: "provider-inbound-001",
           providerThreadId: "provider-thread-001",
-          observedAt: "2026-09-02T10:04:08.457Z",
+          observedAt: "2026-09-02T10:04:07.123Z",
         },
         exactEvidence: {
           schemaVersion: 1,
