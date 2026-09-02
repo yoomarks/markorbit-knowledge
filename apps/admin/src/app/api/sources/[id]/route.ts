@@ -4,6 +4,10 @@ import {
   RegistryValidationError,
   type UpdateSourceInput,
 } from "@markorbit/persistence";
+import {
+  assertAdminBrowserResourceWorkspace,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getSourceRepository } from "@/server/source-registry";
 
@@ -12,11 +16,13 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const source = getSourceRepository().getById(id);
     if (!source) throw new RegistryNotFoundError(id);
+    const { principal } = await resolveAdminBrowserApiReadAccess(request, source.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, source.workspaceId);
     return NextResponse.json({ source });
   } catch (error) {
     return apiError(error);
