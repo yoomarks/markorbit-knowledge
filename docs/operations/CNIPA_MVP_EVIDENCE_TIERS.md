@@ -10,15 +10,33 @@ The MVP does not require backend-only facts to be invented or promoted beyond th
 
 ## Evidence tiers
 
-| Evidence area | MVP status | Accepted meaning |
-| --- | --- | --- |
-| `ENDPOINT_TRANSPORT` | `VERIFIED` | Permitted transport evidence verifies the current official host, list/detail paths, POST methods, and the detail query key `id`. |
-| `FRONTEND_CONTRACT` | `VERIFIED_FROM_SAVED_OFFICIAL_FRONTEND` | Operator-supplied saved official frontend pages/static resources verify the current request models, frontend reads of `data.list` / `data.total`, current list record fields used by the UI, and detail fields read by the shared detail component. |
-| `UI_BEHAVIOR` | `VERIFIED_FROM_AUTHENTICATED_ORDINARY_UI` | Authorized ordinary-browser observations verify the current visible registration-number, party/role, row-to-detail, visible-window, date-picker, and ordering behavior recorded in the Phase 3 runbooks. |
-| `LIST_DETAIL_ROUTING` | `FRONTEND_VERIFIED` | The saved official frontend routes registration examination and opposition records with `adjuOpenId`, review records with `pubId`, and calls the corresponding `queryInfo?id=...` detail endpoint. |
-| `RAW_RESPONSE_SCHEMA` | `UNVERIFIED` | No permitted authenticated raw response body has been captured to prove the live backend envelope/field values independently of the frontend implementation. |
-| `BACKEND_TOTAL_SEMANTICS` | `UNVERIFIED` | `data.total` is a frontend-consumed field, but its live backend meaning beyond the visible UI behavior is not established. |
-| `BACKEND_HARD_CAP` | `UNVERIFIED` | The UI visibly caps at 100 rows / 10 pages, but this does not prove the backend population or API itself is hard-capped at 100. |
+### `ENDPOINT_TRANSPORT = VERIFIED`
+
+Permitted transport evidence verifies the current official host, list/detail paths, POST methods, and the detail query key `id`.
+
+### `FRONTEND_CONTRACT = VERIFIED_FROM_SAVED_OFFICIAL_FRONTEND`
+
+Operator-supplied saved official frontend pages/static resources verify the current request models, frontend reads of `data.list` / `data.total`, current list record fields used by the UI, and detail fields read by the shared detail component.
+
+### `UI_BEHAVIOR = VERIFIED_FROM_AUTHENTICATED_ORDINARY_UI`
+
+Authorized ordinary-browser observations verify the current visible registration-number, party/role, row-to-detail, visible-window, date-picker, and ordering behavior recorded in the Phase 3 runbooks.
+
+### `LIST_DETAIL_ROUTING = FRONTEND_VERIFIED`
+
+The saved official frontend routes registration examination and opposition records with `adjuOpenId`, review records with `pubId`, and calls the corresponding `queryInfo?id=...` detail endpoint.
+
+### `RAW_RESPONSE_SCHEMA = UNVERIFIED`
+
+No permitted authenticated raw response body has been captured to prove the live backend envelope/field values independently of the frontend implementation.
+
+### `BACKEND_TOTAL_SEMANTICS = UNVERIFIED`
+
+`data.total` is a frontend-consumed field, but its live backend meaning beyond the visible UI behavior is not established.
+
+### `BACKEND_HARD_CAP = UNVERIFIED`
+
+The UI visibly caps at 100 rows / 10 pages, but this does not prove the backend population or API itself is hard-capped at 100.
 
 `CNIPA_JUDGMENT_SCHEMA_STATUS` therefore remains `OPERATOR_SUPPLIED_UNVERIFIED`. This closeout policy does not rename that status to `VERIFIED` and does not treat saved frontend code as authenticated raw backend response evidence.
 
