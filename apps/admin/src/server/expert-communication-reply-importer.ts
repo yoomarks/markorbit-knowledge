@@ -221,7 +221,7 @@ function parseMessage(value: unknown, accountRef: string, threadRef: string): Th
     };
   });
   const providerObservation = object(raw.providerObservation, "providerObservation");
-  const base = {
+  const base: ThreadMessage = {
     messageId: required(raw.messageId, "messageId"),
     direction: raw.direction,
     participants,
