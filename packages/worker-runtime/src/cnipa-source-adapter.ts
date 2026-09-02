@@ -21,6 +21,7 @@ import {
 } from "./cnipa-trademark-judgment";
 
 export * from "./cnipa-trademark-judgment";
+export * from "./cnipa-acquisition-intent";
 
 export type CnipaSourceAdapterOptions = {
   maxDetailRequestsPerRun?: number;
