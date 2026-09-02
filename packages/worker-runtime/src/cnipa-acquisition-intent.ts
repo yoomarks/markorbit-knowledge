@@ -12,9 +12,7 @@ export type CnipaAcquisitionIntent =
 export type CnipaAcquisitionIntentPolicy = {
   acquisitionIntent: CnipaAcquisitionIntent;
   compatibleQueryMode: "DATE_RANGE" | "REGISTRATION_NUMBER";
-  productPurpose:
-    | "LATEST_SIGNAL_DISCOVERY"
-    | "KNOWN_MARK_EVIDENCE_FOLLOW_UP";
+  productPurpose: "LATEST_SIGNAL_DISCOVERY" | "KNOWN_MARK_EVIDENCE_FOLLOW_UP";
   coverageScope: "RECENCY_WINDOW" | "TARGET_OBJECT";
   currentCoverageCeiling: "PARTIAL" | "UNKNOWN";
   populationCompleteClaimAllowed: false;
@@ -90,7 +88,10 @@ export function assertCnipaIntentCoverageClaim(
   coverageStatus: "COMPLETE" | "PARTIAL" | "UNKNOWN",
 ): void {
   const policy = CNIPA_ACQUISITION_INTENT_POLICIES[acquisitionIntent];
-  if (acquisitionIntent === "DATE_RECENCY_DISCOVERY" && coverageStatus === "COMPLETE") {
+  if (
+    acquisitionIntent === "DATE_RECENCY_DISCOVERY" &&
+    coverageStatus === "COMPLETE"
+  ) {
     throw new CnipaAcquisitionError(
       "CNIPA_COVERAGE_UNKNOWN",
       "DATE_RECENCY_DISCOVERY cannot claim COMPLETE coverage under the observed 100-visible-result source window",
