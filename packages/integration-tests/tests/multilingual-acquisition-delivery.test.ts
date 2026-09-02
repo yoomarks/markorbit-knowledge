@@ -1,26 +1,16 @@
 import { createHash } from "node:crypto";
-import {
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { exportEvidenceBundle } from "../src/evidence-bundle";
 import { runManualFixturePipeline } from "../src/manual-fixture-runner";
-import {
-  consumeReadyPackageToVault,
-  verifyVaultConsumption,
-} from "../src/obsidian-vault-consumer";
+import { consumeReadyPackageToVault, verifyVaultConsumption } from "../src/obsidian-vault-consumer";
 import { prepareReadyPackage } from "../src/ready-package";
 import { writeRunEvidenceManifest } from "../src/run-evidence-manifest";
 
 const roots: string[] = [];
-const sha256 = (value: Uint8Array | string) =>
-  createHash("sha256").update(value).digest("hex");
+const sha256 = (value: Uint8Array | string) => createHash("sha256").update(value).digest("hex");
 
 const fixtures = [
   {
@@ -148,21 +138,13 @@ describe("multilingual acquisition, staging, and delivery", () => {
       expect(ready.manifest.stagingSha256).toBe(sha256(stagedBytes));
 
       const vault = directory(`markorbit-multilingual-vault-${fixture.language}-`);
-      const consumed = consumeReadyPackageToVault(
-        outputRoot,
-        vault,
-        "2026-09-02T01:04:00.000Z",
-      );
+      const consumed = consumeReadyPackageToVault(outputRoot, vault, "2026-09-02T01:04:00.000Z");
       const vaultBytes = readFileSync(join(vault, summary.output.targetPath));
       expect(vaultBytes.equals(stagedBytes)).toBe(true);
       expect(vaultBytes.toString("utf8")).toBe(fixture.text);
       expect(verifyVaultConsumption(outputRoot, vault).packageId).toBe(consumed.packageId);
 
-      const replay = consumeReadyPackageToVault(
-        outputRoot,
-        vault,
-        "2026-09-02T01:05:00.000Z",
-      );
+      const replay = consumeReadyPackageToVault(outputRoot, vault, "2026-09-02T01:05:00.000Z");
       expect(replay.status).toBe("REPLAYED");
       expect(readFileSync(join(vault, summary.output.targetPath)).equals(stagedBytes)).toBe(true);
     },
