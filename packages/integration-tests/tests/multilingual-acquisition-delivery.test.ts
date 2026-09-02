@@ -48,6 +48,19 @@ function filesRecursively(root: string): string[] {
   });
 }
 
+function normalizedBody(value: string): string {
+  const normalized = value.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+  return normalized.endsWith("\n") ? normalized : `${normalized}\n`;
+}
+
+function markdownBody(value: string): string {
+  expect(value.startsWith("---\nmarkorbit:\n")).toBe(true);
+  const boundary = "\n---\n\n";
+  const bodyStart = value.indexOf(boundary);
+  expect(bodyStart).toBeGreaterThan(0);
+  return value.slice(bodyStart + boundary.length);
+}
+
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -85,10 +98,11 @@ describe("multilingual acquisition, staging, and delivery", () => {
         `${summary.output.sha256}.md`,
       );
       const stagedBytes = readFileSync(stagedPath);
-      expect(stagedBytes.equals(inputBytes)).toBe(true);
-      expect(stagedBytes.toString("utf8")).toBe(fixture.text);
-      expect(summary.output.sizeBytes).toBe(inputBytes.byteLength);
-      expect(summary.output.sha256).toBe(sha256(inputBytes));
+      const stagedText = stagedBytes.toString("utf8");
+      expect(markdownBody(stagedText)).toBe(normalizedBody(fixture.text));
+      expect(stagedText).toContain(`  inputSha256: ${JSON.stringify(sha256(inputBytes))}\n`);
+      expect(summary.output.sizeBytes).toBe(stagedBytes.byteLength);
+      expect(summary.output.sha256).toBe(sha256(stagedBytes));
 
       writeRunEvidenceManifest(outputRoot, {
         generatedAt: "2026-09-02T01:01:00.000Z",
@@ -141,8 +155,10 @@ describe("multilingual acquisition, staging, and delivery", () => {
       const vault = directory(`markorbit-multilingual-vault-${fixture.language}-`);
       const consumed = consumeReadyPackageToVault(outputRoot, vault, "2026-09-02T01:04:00.000Z");
       const vaultBytes = readFileSync(join(vault, summary.output.targetPath));
+      const vaultText = vaultBytes.toString("utf8");
       expect(vaultBytes.equals(stagedBytes)).toBe(true);
-      expect(vaultBytes.toString("utf8")).toBe(fixture.text);
+      expect(vaultText).toBe(stagedText);
+      expect(markdownBody(vaultText)).toBe(normalizedBody(fixture.text));
       expect(verifyVaultConsumption(outputRoot, vault).packageId).toBe(consumed.packageId);
 
       const replay = consumeReadyPackageToVault(outputRoot, vault, "2026-09-02T01:05:00.000Z");
