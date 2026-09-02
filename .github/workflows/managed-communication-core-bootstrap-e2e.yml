@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 env:
-  CORE_REF: af2e898b5a76ca6b8d5f6e1ddc45590dc48fd5a9
+  CORE_REF: d92f683db2da09e66493f486f80dde26c7c0c454
   CORE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/markorbit_managed_communication_e2e
   CORE_INTERNAL_SECRET: markorbit-managed-communication-e2e-secret-32-bytes
   CORE_WORKSPACE_ID: workspace:knowledge-managed-communication-e2e
@@ -177,7 +177,7 @@ jobs:
           src/server/e2e/managed-communication-core-bootstrap.e2e.ts
       - name: Stop first Capability Engine process
         run: |
-          pid="$(cat "$RUNNER_TEMP/managed-communication-core.pid")"
+          pid="$(cat "$RUNNER_TEMP/managed-communication-core.pid")
           kill "$pid"
           for attempt in $(seq 1 30); do
             if ! kill -0 "$pid" 2>/dev/null; then
