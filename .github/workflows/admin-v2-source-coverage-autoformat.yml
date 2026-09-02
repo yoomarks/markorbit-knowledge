@@ -22,38 +22,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Stage audited Core baseline blobs
-        run: |
-          old='6c5b478d60e8b403fdb62171eaefaf19bc7b1c06'
-          new='cd8affb797123343c87d055b763229dd6fb99231'
-          files=(
-            .github/workflows/core-intake-e2e.yml
-            .github/workflows/managed-ai-core-http-e2e.yml
-            .github/workflows/managed-communication-core-bootstrap-e2e.yml
-            .github/workflows/markreg-core-contract-drift.yml
-            .github/workflows/k-case-008-cross-repo-live.yml
-          )
-          tmp='.tmp-core-baseline-677'
-          rm -rf "$tmp"
-          mkdir -p "$tmp"
-          for file in "${files[@]}"; do
-            out="$tmp/$(basename "$file")"
-            cp "$file" "$out"
-            if grep -Fq "CORE_REF: $old" "$out"; then
-              sed -i "s/CORE_REF: $old/CORE_REF: $new/" "$out"
-            elif grep -Fq "CORE_REF: $new" "$out"; then
-              :
-            else
-              echo "Unexpected CORE_REF in $file" >&2
-              exit 1
-            fi
-          done
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$tmp"
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "chore: stage audited Core baseline blobs"
-          git push origin HEAD:${{ github.head_ref }}
       - name: Apply Prettier
         run: |
           # Keep business surfaces and shared ingestion-control helpers formatting-clean,
