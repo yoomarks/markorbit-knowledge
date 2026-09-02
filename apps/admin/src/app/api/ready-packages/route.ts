@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { getReadyPackageRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
@@ -9,9 +9,12 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const search = new URL(request.url).searchParams;
-    const workspaceId = search.get("workspaceId")?.trim();
+    const assertedWorkspaceId = search.get("workspaceId")?.trim();
     const conversionRunId = search.get("conversionRunId")?.trim();
-    if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(
+      request,
+      assertedWorkspaceId,
+    );
 
     const repository = getReadyPackageRepository();
     if (!conversionRunId) {
