@@ -34,7 +34,7 @@ type ThreadMessage = {
   participants: { role: string; address: string }[];
   attachments: { attachmentRef: string; sha256: string }[];
   occurredAt: string;
-  exactEvidence: { evidenceRef: string; sha256: string };
+  exactEvidence?: { evidenceRef: string; sha256: string };
 };
 
 function required(value: unknown, field: string, max = 500): string {
@@ -221,6 +221,16 @@ function parseMessage(value: unknown, accountRef: string, threadRef: string): Th
     };
   });
   const providerObservation = object(raw.providerObservation, "providerObservation");
+  const base = {
+    messageId: required(raw.messageId, "messageId"),
+    direction: raw.direction,
+    participants,
+    attachments,
+    occurredAt: timestamp(raw.occurredAt, "occurredAt"),
+  };
+  if (raw.direction === "OUTBOUND") {
+    return base;
+  }
   const exactEvidence = object(raw.exactEvidence, "exactEvidence");
   if (exactEvidence.schemaVersion !== 1) {
     throw new RegistryError(
@@ -256,11 +266,7 @@ function parseMessage(value: unknown, accountRef: string, threadRef: string): Th
     );
   }
   return {
-    messageId: required(raw.messageId, "messageId"),
-    direction: raw.direction,
-    participants,
-    attachments,
-    occurredAt: timestamp(raw.occurredAt, "occurredAt"),
+    ...base,
     exactEvidence: { evidenceRef, sha256: evidenceSha256 },
   };
 }
@@ -398,6 +404,12 @@ export class CoreExpertReplyImporter {
       throw new RegistryError(
         "EXPERT_REPLY_NOT_OBSERVED",
         `No inbound Expert reply has been observed on thread ${task.communicationThreadRef}.`,
+      );
+    }
+    if (!inbound.exactEvidence) {
+      throw new RegistryError(
+        "EXPERT_COMMUNICATION_EXACT_EVIDENCE_REQUIRED",
+        "Inbound Expert reply must retain Core exact provider evidence.",
       );
     }
     verifyIdentity(inbound, expert, route.sender);
