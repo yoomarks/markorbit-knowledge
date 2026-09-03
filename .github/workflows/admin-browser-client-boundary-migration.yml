@@ -44,11 +44,17 @@ jobs:
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/representative-activation-wave.tsx \
+            apps/admin/src/components/sources/source-assessment-panel.tsx \
+            apps/admin/src/components/sources/source-detail-workbench.tsx \
+            apps/admin/src/components/sources/source-editor.tsx \
+            apps/admin/src/components/sources/source-graph-panel.tsx \
             apps/admin/src/components/sources/source-intelligence-manual-sla.tsx \
             apps/admin/src/components/sources/source-intelligence-policy-scopes.tsx \
             apps/admin/src/components/sources/source-intelligence-review-ownership.tsx \
             apps/admin/src/components/sources/source-intelligence-review-queue.tsx \
             apps/admin/src/components/sources/source-intelligence-workbench.tsx \
+            apps/admin/src/components/sources/source-plans-panel.tsx \
+            apps/admin/src/components/sources/source-related-recommendations.tsx \
             apps/admin/src/lib/admin-v2/source-smart-review-ui.tsx \
             apps/admin/src/server/admin-browser-api-route-boundary.test.ts \
             apps/admin/src/server/source-intelligence-browser-access.ts
@@ -76,11 +82,17 @@ jobs:
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/representative-activation-wave.tsx \
+            apps/admin/src/components/sources/source-assessment-panel.tsx \
+            apps/admin/src/components/sources/source-detail-workbench.tsx \
+            apps/admin/src/components/sources/source-editor.tsx \
+            apps/admin/src/components/sources/source-graph-panel.tsx \
             apps/admin/src/components/sources/source-intelligence-manual-sla.tsx \
             apps/admin/src/components/sources/source-intelligence-policy-scopes.tsx \
             apps/admin/src/components/sources/source-intelligence-review-ownership.tsx \
             apps/admin/src/components/sources/source-intelligence-review-queue.tsx \
             apps/admin/src/components/sources/source-intelligence-workbench.tsx \
+            apps/admin/src/components/sources/source-plans-panel.tsx \
+            apps/admin/src/components/sources/source-related-recommendations.tsx \
             apps/admin/src/lib/admin-v2/source-smart-review-ui.tsx \
             apps/admin/src/server/admin-browser-api-route-boundary.test.ts \
             apps/admin/src/server/source-intelligence-browser-access.ts
