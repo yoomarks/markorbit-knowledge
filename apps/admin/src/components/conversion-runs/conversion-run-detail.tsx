@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { ConversionExecutionEvent, ConversionRun } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 type Record = { run: ConversionRun; events: ConversionExecutionEvent[] };
 export function ConversionRunDetail({ runId }: { runId: string }) {
   const [record, setRecord] = useState<Record | null>(null);
@@ -19,12 +20,12 @@ export function ConversionRunDetail({ runId }: { runId: string }) {
   }, [runId]);
   async function cancel() {
     if (!record || !confirm("Cancel this PENDING ConversionRun?")) return;
+    const headers = await adminBrowserMutationHeaders({ "Content-Type": "application/json" });
     const res = await fetch(`/api/conversion-runs/${runId}/cancel`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         workspaceId: record.run.workspaceId,
-        actor: { type: "ADMIN", id: "local-admin" },
         message: "Cancelled by admin",
       }),
     });
