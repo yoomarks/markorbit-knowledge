@@ -78,3 +78,23 @@ migrate({
   headerCount: 1,
   removals: [["          reviewer: \"admin-console\",\n", 1, "browser reviewer"]],
 });
+
+migrate({
+  path: "apps/admin/src/components/sources/representative-activation-wave.tsx",
+  importAnchor: i18nAnchor,
+  headerCount: 1,
+});
+
+migrate({
+  path: "apps/admin/src/components/sources/radar-review-evidence.tsx",
+  importAnchor: i18nAnchor,
+  headerCount: 1,
+  removals: [["          reviewer: \"radar-review-console\",\n", 1, "browser reviewer"]],
+});
+
+migrate({
+  path: "apps/admin/src/components/sources/radar-collection-authorization.tsx",
+  importAnchor: i18nAnchor,
+  headerCount: 1,
+  removals: [[', requestedBy: "radar-collection-console"', 1, "browser requestedBy"]],
+});
