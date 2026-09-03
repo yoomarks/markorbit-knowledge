@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 
 type CoverageItem = {
@@ -126,7 +127,7 @@ export function SourceCountryAnalysis({ workspaceId }: { workspaceId: string }) 
     try {
       const response = await fetch("/api/sources/coverage/analysis", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ workspaceId, jurisdiction, locale }),
       });
       if (!response.ok) {
