@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import type { RetrievalQualityRemediationActionCode } from "@markorbit/persistence/retrieval-quality-remediation";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
   executeFoundationalRetrievalQualityRemediation,
@@ -29,18 +33,28 @@ function actionCode(value: unknown): RetrievalQualityRemediationActionCode {
 
 function queryScope(request: Request) {
   const search = new URL(request.url).searchParams;
-  const workspaceId = search.get("workspaceId")?.trim() ?? "";
+  const assertedWorkspaceId = search.get("workspaceId")?.trim() || undefined;
   const jurisdiction = search.get("jurisdiction")?.trim() ?? "";
   const targetId = search.get("targetId")?.trim() ?? "";
-  if (!workspaceId) throw new RegistryValidationError("workspaceId is required");
   if (!jurisdiction) throw new RegistryValidationError("jurisdiction is required");
   if (!targetId) throw new RegistryValidationError("targetId is required");
-  return { workspaceId, jurisdiction, targetId };
+  return { assertedWorkspaceId, jurisdiction, targetId };
 }
 
 export async function GET(request: Request) {
   try {
-    return NextResponse.json(listFoundationalRetrievalQualityRemediation(queryScope(request)));
+    const scope = queryScope(request);
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(
+      request,
+      scope.assertedWorkspaceId,
+    );
+    return NextResponse.json(
+      listFoundationalRetrievalQualityRemediation({
+        workspaceId,
+        jurisdiction: scope.jurisdiction,
+        targetId: scope.targetId,
+      }),
+    );
   } catch (error) {
     return apiError(error);
   }
@@ -49,16 +63,22 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const scope = queryScope(request);
+    const { principal, workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      scope.assertedWorkspaceId,
+    );
     const body = requireRecord(await readJson(request));
     if (body.approved !== true) {
       throw new RegistryValidationError("approved=true is required for M17 remediation execution");
     }
     return NextResponse.json(
       executeFoundationalRetrievalQualityRemediation({
-        ...scope,
+        workspaceId,
+        jurisdiction: scope.jurisdiction,
+        targetId: scope.targetId,
         stagingDocumentId: typeof body.stagingDocumentId === "string" ? body.stagingDocumentId : "",
         actionCode: actionCode(body.actionCode),
-        actorId: typeof body.actorId === "string" ? body.actorId : "",
+        actorId: principal.userId,
         idempotencyKey: typeof body.idempotencyKey === "string" ? body.idempotencyKey : "",
         approved: true,
       }),
