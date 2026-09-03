@@ -20,19 +20,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ inten
     const { intentId } = await context.params;
     const database = getRegistryDatabase();
     const stored = new SqliteFoundationalActionIntentRepository(database).getById(intentId);
-    const { principal } = await resolveAdminBrowserApiMutationAccess(
-      request,
-      stored?.workspaceId,
-    );
+    const { principal } = await resolveAdminBrowserApiMutationAccess(request, stored?.workspaceId);
     if (stored) assertAdminBrowserResourceWorkspace(principal, stored.workspaceId);
 
     const payload = (await request.json()) as Record<string, unknown>;
     const operation = typeof payload.operation === "string" ? payload.operation.trim() : "";
     if (operation === "APPROVE") {
-      return NextResponse.json(approveFoundationalActionIntent(database, intentId, principal.userId));
+      return NextResponse.json(
+        approveFoundationalActionIntent(database, intentId, principal.userId),
+      );
     }
     if (operation === "CANCEL") {
-      return NextResponse.json(cancelFoundationalActionIntent(database, intentId, principal.userId));
+      return NextResponse.json(
+        cancelFoundationalActionIntent(database, intentId, principal.userId),
+      );
     }
     throw new RegistryValidationError("operation must be APPROVE or CANCEL");
   } catch (error) {

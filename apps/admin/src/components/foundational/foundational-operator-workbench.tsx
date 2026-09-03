@@ -284,7 +284,9 @@ export function FoundationalOperatorWorkbench({
             {actions.map((action) => {
               const intent = latestIntentForAction(intents, action.targetId, action.actionCode);
               const execution = intent ? executionForIntent(executions, intent.intentId) : null;
-              const outcome = execution ? outcomeForExecution(outcomes, execution.executionId) : null;
+              const outcome = execution
+                ? outcomeForExecution(outcomes, execution.executionId)
+                : null;
               const phase = foundationalOperatorPhase(intent, execution, outcome);
               const armed = intent?.intentId === armedIntentId;
               const liveStatus = outcome?.runStatus ?? execution?.runStatusAtDispatch ?? null;
