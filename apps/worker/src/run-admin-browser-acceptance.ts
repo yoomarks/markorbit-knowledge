@@ -437,12 +437,19 @@ async function assertRealMutation(page: Page): Promise<void> {
     response.status() >= 200 && response.status() < 300,
     `Worker mutation failed: ${response.status()}`,
   );
+  const credentialPanel = page.locator("section").filter({ hasText: "一次性 Worker 凭证" });
+  await credentialPanel.getByText("一次性 Worker 凭证", { exact: true }).waitFor();
+  const credential = (await credentialPanel.locator("code").textContent())?.trim();
+  assert.ok(
+    credential && credential.length >= 20,
+    "one-time Worker credential must be visibly rendered",
+  );
+  await page.getByRole("button", { name: "关闭凭证提示" }).click();
   await page.waitForURL((url) => /^\/workers\/wrk_[0-9A-HJKMNP-TV-Z]{26}$/.test(url.pathname));
-  await page.getByText("一次性 Worker 凭证", { exact: true }).waitFor();
   assert.equal(
     await page.getByLabel("显示名称").inputValue(),
     "Browser Acceptance Worker",
-    "saved Worker name must remain visible after navigation",
+    "saved Worker name must remain visible after credential handoff",
   );
 }
 

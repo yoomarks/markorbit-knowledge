@@ -92,6 +92,8 @@ export function WorkerEditor({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [oneTimeCredential, setOneTimeCredential] = useState<string | null>(null);
+  const [createdWorkerId, setCreatedWorkerId] = useState<string | null>(null);
+  const activeWorkerId = workerId ?? createdWorkerId;
 
   useEffect(() => {
     if (!workerId) return;
@@ -176,17 +178,20 @@ export function WorkerEditor({
     setSuccess(null);
     try {
       const workerPayload = payload();
-      const response = await fetch(workerId ? `/api/workers/${workerId}` : "/api/workers", {
-        method: workerId ? "PATCH" : "POST",
-        headers: await adminBrowserWorkspaceMutationHeaders(workspaceId, {
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify(
-          workerId
-            ? { ...workerPayload, expectedUpdatedAt: view?.worker.updatedAt }
-            : workerPayload,
-        ),
-      });
+      const response = await fetch(
+        activeWorkerId ? `/api/workers/${activeWorkerId}` : "/api/workers",
+        {
+          method: activeWorkerId ? "PATCH" : "POST",
+          headers: await adminBrowserWorkspaceMutationHeaders(workspaceId, {
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify(
+            activeWorkerId
+              ? { ...workerPayload, expectedUpdatedAt: view?.worker.updatedAt }
+              : workerPayload,
+          ),
+        },
+      );
       const body = (await response.json()) as
         WorkerCreationResult | { view?: WorkerRuntimeView; error?: { message?: string } };
       if (!response.ok || !("view" in body) || !body.view) {
@@ -195,9 +200,9 @@ export function WorkerEditor({
       }
       setView(body.view);
       setValues(fromWorker(body.view.worker));
-      if (!workerId && "credential" in body) {
+      if (!activeWorkerId && "credential" in body) {
+        setCreatedWorkerId(body.view.worker.id);
         setOneTimeCredential(body.credential);
-        router.replace(`/workers/${body.view.worker.id}`);
       } else {
         setSuccess("Worker 已保存。");
       }
@@ -274,7 +279,10 @@ export function WorkerEditor({
             </div>
             <button
               type="button"
-              onClick={() => setOneTimeCredential(null)}
+              onClick={() => {
+                setOneTimeCredential(null);
+                if (createdWorkerId) router.replace(`/workers/${createdWorkerId}`);
+              }}
               className="rounded-lg p-2 text-amber-800 hover:bg-amber-100"
               aria-label="关闭凭证提示"
             >
