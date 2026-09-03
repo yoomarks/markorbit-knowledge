@@ -8,6 +8,7 @@ import {
   serializeSourceIntelligencePolicyAuditExportJsonV2,
 } from "@markorbit/worker-runtime";
 import { apiError } from "@/server/api-errors";
+import { resolveSourceIntelligenceBrowserReadAccess } from "@/server/source-intelligence-browser-access";
 import { getSourceIntelligenceReviewService } from "@/server/source-intelligence-review-service";
 
 export const runtime = "nodejs";
@@ -37,11 +38,13 @@ export async function GET(request: Request) {
     if (format !== "json" && format !== "csv") {
       throw new RegistryValidationError("format must be json or csv");
     }
+    const sourceIds = csvValues(url.searchParams.get("sourceIds"));
+    await resolveSourceIntelligenceBrowserReadAccess(request, sourceIds);
     const auditExport = getSourceIntelligenceReviewService().policyAuditExport({
       scopes: csvValues(url.searchParams.get("scopes")) as SourceIntelligencePolicyAuditScope[],
       actions: csvValues(url.searchParams.get("actions")) as SourceIntelligencePolicyAuditAction[],
       actorLabels: csvValues(url.searchParams.get("actorLabels")),
-      sourceIds: csvValues(url.searchParams.get("sourceIds")),
+      sourceIds,
       cohortIds: csvValues(url.searchParams.get("cohortIds")),
       occurredFromInclusive: url.searchParams.get("occurredFromInclusive"),
       occurredToExclusive: url.searchParams.get("occurredToExclusive"),
