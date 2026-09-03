@@ -1,0 +1,73 @@
+name: Admin Browser Acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/admin/**"
+      - "apps/worker/src/run-admin-browser-acceptance*.ts"
+      - "packages/contracts/**"
+      - "packages/persistence/**"
+      - "scripts/admin-browser-calibration-core-auth-stub.mjs"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/admin-browser-acceptance.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-browser-acceptance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chromium-critical-path:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate browser acceptance code
+        run: |
+          pnpm exec prettier --check \
+            apps/admin/src/components/admin-shell.tsx \
+            apps/admin/src/components/knowledge/knowledge-browser.tsx \
+            apps/admin/src/lib/use-modal-dialog.ts \
+            apps/worker/src/run-admin-browser-acceptance.ts \
+            apps/worker/src/run-admin-browser-acceptance-edge.ts \
+            .github/workflows/admin-browser-acceptance.yml
+          pnpm --filter @markorbit/admin typecheck
+          pnpm --filter @markorbit/worker typecheck
+
+      - name: Install Chromium
+        run: pnpm --filter @markorbit/worker exec playwright-core install --with-deps chromium
+
+      - name: Run critical Admin browser journey
+        env:
+          MARKORBIT_ADMIN_BROWSER_ACCEPTANCE_ARTIFACTS: ${{ runner.temp }}/admin-browser-acceptance
+        run: pnpm --filter @markorbit/worker exec tsx src/run-admin-browser-acceptance.ts
+
+      - name: Run evidence, accessibility and CSRF probes
+        env:
+          MARKORBIT_ADMIN_BROWSER_ACCEPTANCE_EDGE_ARTIFACTS: ${{ runner.temp }}/admin-browser-acceptance-edge
+        run: pnpm --filter @markorbit/worker exec tsx src/run-admin-browser-acceptance-edge.ts
+
+      - name: Upload browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-browser-acceptance-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/admin-browser-acceptance
+            ${{ runner.temp }}/admin-browser-acceptance-edge
