@@ -228,9 +228,9 @@ async function prepareSource(baseUrl, source) {
   }
   if (
     review?.source?.connector?.connectorId !== "crawl4ai-web" ||
-    review?.source?.connector?.version !== "1.1.0"
+    review?.source?.connector?.version !== "1.2.0"
   ) {
-    throw new Error(`${source.key} is not using crawl4ai-web@1.1.0`);
+    throw new Error(`${source.key} is not using crawl4ai-web@1.2.0`);
   }
   if (review?.plan?.status !== "PAUSED") {
     throw new Error(`${source.key} acceptance crossed the collection authorization boundary`);
@@ -312,7 +312,7 @@ async function createCalibrationWorker(baseUrl) {
       connectorBindings: [
         {
           connectorId: "crawl4ai-web",
-          version: "1.1.0",
+          version: "1.2.0",
           capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT"],
         },
       ],
@@ -453,9 +453,9 @@ async function collectAndAssess(baseUrl, prepared, timeoutMs) {
     }
     if (
       artifact.collector?.connectorId !== "crawl4ai-web" ||
-      artifact.collector?.connectorVersion !== "1.1.0"
+      artifact.collector?.connectorVersion !== "1.2.0"
     ) {
-      throw new Error(`${prepared.source.key} artifact collector drifted from crawl4ai-web@1.1.0`);
+      throw new Error(`${prepared.source.key} artifact collector drifted from crawl4ai-web@1.2.0`);
     }
     kinds.add(artifact.artifactKind);
     if (artifact.artifactKind === "HTML") htmlArtifacts.push(artifact);
@@ -496,7 +496,7 @@ async function collectAndAssess(baseUrl, prepared, timeoutMs) {
     sourceId: prepared.sourceId,
     planId: prepared.planId,
     runId,
-    connector: "crawl4ai-web@1.1.0",
+    connector: "crawl4ai-web@1.2.0",
     collectionPolicy: {
       explicitlyAuthorized: true,
       isolatedCalibrationOnly: true,
