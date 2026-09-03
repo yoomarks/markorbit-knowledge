@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
+import { resolveOperatorServiceReadAccess } from "@/server/operator-service-api-access";
 import { getRetrievalIndexRepository, getStagingContentRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
@@ -11,8 +12,12 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(request: Request, context: RouteContext) {
   try {
     const search = new URL(request.url).searchParams;
-    const workspaceId = search.get("workspaceId")?.trim();
-    if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+    const assertedWorkspaceId = search.get("workspaceId")?.trim();
+    if (!assertedWorkspaceId) {
+      throw new RegistryValidationError("workspaceId query parameter is required");
+    }
+    const principal = resolveOperatorServiceReadAccess(request, assertedWorkspaceId);
+    const workspaceId = principal.workspaceId;
     const versionRaw = search.get("version")?.trim();
     let artifactVersion: number | undefined;
     if (versionRaw) {
