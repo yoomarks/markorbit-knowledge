@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { AUTHORITY_LEVELS, type AuthorityLevel } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
+import { resolveOperatorServiceReadAccess } from "@/server/operator-service-api-access";
 import { getRetrievalIndexRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
@@ -10,10 +11,13 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const search = new URL(request.url).searchParams;
-    const workspaceId = search.get("workspaceId")?.trim();
+    const assertedWorkspaceId = search.get("workspaceId")?.trim();
     const query = search.get("q")?.trim();
-    if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+    if (!assertedWorkspaceId) {
+      throw new RegistryValidationError("workspaceId query parameter is required");
+    }
     if (!query) throw new RegistryValidationError("q query parameter is required");
+    const principal = resolveOperatorServiceReadAccess(request, assertedWorkspaceId);
 
     const authorityRaw = search.get("authorityLevel")?.trim();
     let authorityLevel: AuthorityLevel | undefined;
@@ -34,7 +38,7 @@ export async function GET(request: Request) {
     }
 
     const result = getRetrievalIndexRepository().search({
-      workspaceId,
+      workspaceId: principal.workspaceId,
       query,
       sourceId: search.get("sourceId")?.trim() || undefined,
       jurisdiction: search.get("jurisdiction")?.trim() || undefined,
