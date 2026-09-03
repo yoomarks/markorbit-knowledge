@@ -10,6 +10,7 @@ import {
   type CollectionRunStatus,
 } from "@markorbit/contracts";
 import type { ExecutionRunListResult } from "@markorbit/persistence/execution-ledger";
+import { adminBrowserWorkspaceHeaders } from "@/lib/admin-browser-api-client";
 
 const PAGE_SIZE = 20;
 
@@ -52,7 +53,7 @@ function StatusBadge({ status }: { status: CollectionRunStatus }) {
   );
 }
 
-export function RunList() {
+export function RunList({ workspaceId }: { workspaceId: string }) {
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [offset, setOffset] = useState(0);
   const [result, setResult] = useState<ExecutionRunListResult | null>(null);
@@ -69,7 +70,10 @@ export function RunList() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/runs?${query}`, { signal: controller.signal })
+    fetch(`/api/runs?${query}`, {
+      headers: adminBrowserWorkspaceHeaders(workspaceId),
+      signal: controller.signal,
+    })
       .then(async (response) => {
         const body = (await response.json()) as
           ExecutionRunListResult | { error?: { message?: string } };
@@ -87,7 +91,7 @@ export function RunList() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [query]);
+  }, [query, workspaceId]);
 
   function beginRequest() {
     setLoading(true);

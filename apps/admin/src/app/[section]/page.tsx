@@ -139,7 +139,7 @@ function CollectionPlansPage() {
           </Link>
         }
       />
-      <PlanList />
+      <PlanList workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );
 }
@@ -151,7 +151,7 @@ function RunsPage() {
         title="Execution Runs"
         description="高级控制面：查看 CollectionRun 与 Job 的不可变派发快照。PENDING 表示待领取，LEASED 表示已保留但尚未执行。"
       />
-      <RunList />
+      <RunList workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );
 }
@@ -184,7 +184,7 @@ function WorkersPage() {
           </Link>
         }
       />
-      <WorkerList />
+      <WorkerList workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );
 }
@@ -205,7 +205,7 @@ function ConnectorsPage() {
           </Link>
         }
       />
-      <ConnectorList />
+      <ConnectorList workspaceId={DEFAULT_WORKSPACE.id} />
     </>
   );
 }

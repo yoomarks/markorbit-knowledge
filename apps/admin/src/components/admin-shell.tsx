@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, ChevronDown, Menu, Orbit, Search, X } from "lucide-react";
-import { useState } from "react";
-import { modules, primaryModuleOrder, systemModuleOrder, type ModuleKey } from "@/lib/modules";
+import { useCallback, useRef, useState } from "react";
 import { useAdminI18n } from "@/lib/i18n";
+import { modules, primaryModuleOrder, systemModuleOrder, type ModuleKey } from "@/lib/modules";
+import { useModalDialog } from "@/lib/use-modal-dialog";
 
 const bilingualLabels: Record<ModuleKey, { zh: string; en: string }> = {
   dashboard: { zh: "总览", en: "Overview" },
@@ -95,15 +96,30 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const systemActive = systemModuleOrder.some((key) => isModuleActive(pathname, key));
   const [advancedOpen, setAdvancedOpen] = useState(systemActive);
+  const mobileNavRef = useRef<HTMLElement>(null);
+  const mobileNavCloseRef = useRef<HTMLButtonElement>(null);
+  const closeMobileNav = useCallback(() => setOpen(false), []);
   const zh = locale === "zh-CN";
+
+  useModalDialog({
+    open,
+    dialogRef: mobileNavRef,
+    initialFocusRef: mobileNavCloseRef,
+    onClose: closeMobileNav,
+  });
 
   return (
     <div className="min-h-screen bg-[#f4f7fb] lg:grid lg:grid-cols-[238px_1fr]">
       <aside
+        ref={mobileNavRef}
+        id="admin-mobile-navigation"
+        role={open ? "dialog" : undefined}
+        aria-modal={open ? "true" : undefined}
+        aria-label={zh ? "主导航" : "Main navigation"}
+        tabIndex={open ? -1 : undefined}
         className={`fixed inset-y-0 left-0 z-40 w-[238px] border-r border-slate-200 bg-white transition-transform lg:static lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
-        aria-label={zh ? "主导航" : "Main navigation"}
       >
         <div className="flex h-[72px] items-center justify-between border-b border-slate-200 px-4">
           <Link href="/dashboard" className="flex items-center gap-3">
@@ -118,10 +134,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </span>
           </Link>
           <button
+            ref={mobileNavCloseRef}
             type="button"
             className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
             aria-label={t("shell.closeNav")}
-            onClick={() => setOpen(false)}
+            onClick={closeMobileNav}
           >
             <X size={18} />
           </button>
@@ -136,7 +153,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               keys={primaryModuleOrder}
               pathname={pathname}
               locale={locale}
-              onNavigate={() => setOpen(false)}
+              onNavigate={closeMobileNav}
             />
           </div>
 
@@ -160,7 +177,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 keys={systemModuleOrder}
                 pathname={pathname}
                 locale={locale}
-                onNavigate={() => setOpen(false)}
+                onNavigate={closeMobileNav}
               />
             </div>
           ) : null}
@@ -178,6 +195,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             type="button"
             className="rounded-lg border border-slate-200 p-2 text-slate-600 lg:hidden"
             aria-label={t("shell.openNav")}
+            aria-expanded={open}
+            aria-controls="admin-mobile-navigation"
             onClick={() => setOpen(true)}
           >
             <Menu size={19} />
@@ -241,7 +260,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           type="button"
           className="fixed inset-0 z-30 bg-slate-950/35 lg:hidden"
           aria-label={t("shell.closeOverlay")}
-          onClick={() => setOpen(false)}
+          onClick={closeMobileNav}
         />
       ) : null}
     </div>

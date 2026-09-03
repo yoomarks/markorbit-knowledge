@@ -12,6 +12,7 @@ import {
   type CollectionPlanStatus,
 } from "@markorbit/contracts";
 import type { CollectionPlanListResult } from "@markorbit/persistence/collection-plans";
+import { adminBrowserWorkspaceHeaders } from "@/lib/admin-browser-api-client";
 
 const PAGE_SIZE = 20;
 
@@ -67,7 +68,7 @@ function StatusBadge({ status }: { status: CollectionPlanStatus }) {
   );
 }
 
-export function PlanList() {
+export function PlanList({ workspaceId }: { workspaceId: string }) {
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [offset, setOffset] = useState(0);
   const [result, setResult] = useState<CollectionPlanListResult | null>(null);
@@ -84,7 +85,10 @@ export function PlanList() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/plans?${query}`, { signal: controller.signal })
+    fetch(`/api/plans?${query}`, {
+      headers: adminBrowserWorkspaceHeaders(workspaceId),
+      signal: controller.signal,
+    })
       .then(async (response) => {
         const body = (await response.json()) as
           CollectionPlanListResult | { error?: { message?: string } };
@@ -104,7 +108,7 @@ export function PlanList() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [query]);
+  }, [query, workspaceId]);
 
   function beginRequest() {
     setLoading(true);
