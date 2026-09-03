@@ -17,8 +17,8 @@ export async function GET(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const record = getExecutionLedgerRepository().getById(id);
     if (!record) throw new ExecutionRunNotFoundError(id);
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, record.run.workspaceId);
-    assertAdminBrowserResourceWorkspace(workspaceId, record.run.workspaceId);
+    const { principal } = await resolveAdminBrowserApiReadAccess(request, record.run.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, record.run.workspaceId);
     return NextResponse.json({ run: record });
   } catch (error) {
     return apiError(error);
