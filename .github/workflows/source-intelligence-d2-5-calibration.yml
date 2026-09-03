@@ -236,7 +236,7 @@ jobs:
 
       - name: Install Crawl4AI runtime
         run: |
-          python -m pip install --disable-pip-check -r workers/crawl4ai/requirements.txt
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
           crawl4ai-setup
           crawl4ai-doctor
 
