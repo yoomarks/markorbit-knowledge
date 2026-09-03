@@ -364,7 +364,7 @@ async function navigateThroughBusinessSurfaces(page: Page): Promise<void> {
   }
 }
 
-async function waitForKnowledgeRefresh(page: Page, action: () => Promise<void>): Promise<void> {
+async function waitForKnowledgeRefresh(page: Page, action: () => Promise<unknown>): Promise<void> {
   const responsePromise = page.waitForResponse(
     (response) =>
       response.request().method() === "GET" &&
@@ -439,7 +439,11 @@ async function assertRealMutation(page: Page): Promise<void> {
   );
   await page.waitForURL((url) => /^\/workers\/wrk_[0-9A-HJKMNP-TV-Z]{26}$/.test(url.pathname));
   await page.getByText("一次性 Worker 凭证", { exact: true }).waitFor();
-  await page.getByDisplayValue("Browser Acceptance Worker").waitFor();
+  assert.equal(
+    await page.getByLabel("显示名称").inputValue(),
+    "Browser Acceptance Worker",
+    "saved Worker name must remain visible after navigation",
+  );
 }
 
 async function assertMobileNavigation(page: Page): Promise<void> {
