@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type EligibleArtifact = {
   id: string;
@@ -104,9 +105,10 @@ export function ConversionDispatch() {
     if (!selectedArtifact || !selectedProfile) return;
     setMessage("Creating durable PENDING ConversionRun…");
     setError(null);
+    const headers = await adminBrowserMutationHeaders({ "Content-Type": "application/json" });
     const res = await fetch("/api/conversion-runs", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         workspaceId,
         rawArtifactId: selectedArtifact.id,
@@ -116,7 +118,6 @@ export function ConversionDispatch() {
           targetPathTemplate: selectedProfile.targetPathTemplate,
         },
         trigger: "MANUAL",
-        actor: { type: "ADMIN", id: "local-admin" },
         idempotencyKey,
       }),
     });
