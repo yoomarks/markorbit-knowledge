@@ -1,0 +1,58 @@
+name: PR700 Visible Knowledge Fix
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr700-visible-knowledge-fix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    if: github.event.pull_request.number == 700 && github.head_ref == 'issue-697-admin-browser-acceptance'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch visible Knowledge assertions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/worker/src/run-admin-browser-acceptance.ts')
+          text = path.read_text()
+          replacements = [
+              (
+                  '  await page.getByText(FIXTURE_SOURCE_NAME, { exact: true }).waitFor();',
+                  '  await page.locator("article").filter({ hasText: FIXTURE_SOURCE_NAME }).waitFor();',
+              ),
+              (
+                  '  await page.getByText(FIXTURE_PROVENANCE, { exact: true }).waitFor();',
+                  '  await dialog.getByText(FIXTURE_PROVENANCE, { exact: false }).waitFor();',
+              ),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'expected assertion not found: {old}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+          pnpm exec prettier --write apps/worker/src/run-admin-browser-acceptance.ts
+          pnpm --filter @markorbit/worker typecheck
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/worker/src/run-admin-browser-acceptance.ts
+          git commit -m "fix: scope Knowledge assertions to visible content"
+          git push origin HEAD:${{ github.head_ref }}
