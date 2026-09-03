@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     if (!isConversionWorkerCapability(body)) {
       throw new RegistryValidationError("Invalid Conversion Worker capability");
     }
-    resolveOperatorServiceMutationAccess(request, body.workspaceId);
+    resolveOperatorServiceMutationAccess(request);
     return NextResponse.json(
       { record: getConversionRuntimeRepository().registerCapability(body) },
       { status: 201 },
