@@ -4,17 +4,25 @@ import {
   JOB_TYPES,
   RUN_TRIGGER_TYPES,
   type CollectionRunStatus,
-  type ExecutionActor,
   type JobType,
   type RunTriggerType,
 } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { CollectionPlanNotFoundError } from "@markorbit/persistence/collection-plans";
 import {
   assertExecutionRunFilterValues,
   type ExecutionRunListFilters,
 } from "@markorbit/persistence/execution-ledger";
+import {
+  assertAdminBrowserResourceWorkspace,
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
-import { getExecutionLedgerRepository } from "@/server/source-registry";
+import {
+  getCollectionPlanRepository,
+  getExecutionLedgerRepository,
+} from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,9 +51,11 @@ function integerValue(value: string | null, field: string): number | undefined {
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
+    const assertedWorkspaceId = url.searchParams.get("workspaceId") ?? undefined;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const filters: ExecutionRunListFilters = {
       q: url.searchParams.get("q") ?? undefined,
-      workspaceId: url.searchParams.get("workspaceId") ?? undefined,
+      workspaceId,
       sourceId: url.searchParams.get("sourceId") ?? undefined,
       planId: url.searchParams.get("planId") ?? undefined,
       connectorId: url.searchParams.get("connectorId") ?? undefined,
@@ -71,16 +81,23 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
-    const allowed = new Set(["planId", "requestedBy"]);
+    const allowed = new Set(["planId"]);
     if (Object.keys(body).some((key) => !allowed.has(key))) {
       throw new RegistryValidationError("Unknown manual dispatch field");
     }
     if (typeof body.planId !== "string") {
       throw new RegistryValidationError("planId is required");
     }
+    const plan = getCollectionPlanRepository().getById(body.planId);
+    if (!plan) throw new CollectionPlanNotFoundError(body.planId);
+    const { principal, workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      plan.plan.workspaceId,
+    );
+    assertAdminBrowserResourceWorkspace(workspaceId, plan.plan.workspaceId);
     const result = getExecutionLedgerRepository().dispatchManual({
       planId: body.planId,
-      requestedBy: body.requestedBy as ExecutionActor | undefined,
+      requestedBy: { actorType: "LOCAL_ADMIN", actorId: principal.userId },
       idempotencyKey: request.headers.get("Idempotency-Key") ?? undefined,
     });
     return NextResponse.json(result, { status: result.replayed ? 200 : 201 });
