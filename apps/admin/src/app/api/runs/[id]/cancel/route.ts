@@ -18,11 +18,11 @@ export async function POST(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const existing = getExecutionLedgerRepository().getById(id);
     if (!existing) throw new ExecutionRunNotFoundError(id);
-    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+    const { principal } = await resolveAdminBrowserApiMutationAccess(
       request,
       existing.run.workspaceId,
     );
-    assertAdminBrowserResourceWorkspace(workspaceId, existing.run.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, existing.run.workspaceId);
     const body = requireRecord(await readJson(request));
     const allowed = new Set(["expectedUpdatedAt", "reason"]);
     if (Object.keys(body).some((key) => !allowed.has(key))) {
