@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { parseDiscoveryImport } from "@/server/discovery-import-parser";
 
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    await resolveAdminBrowserApiReadAccess(request, DEFAULT_WORKSPACE.id);
     const form = await request.formData();
     const value = form.get("file");
     if (!(value instanceof File)) {
