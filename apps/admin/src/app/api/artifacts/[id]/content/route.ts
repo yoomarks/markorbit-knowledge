@@ -1,5 +1,10 @@
 import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
+import { RawArtifactNotFoundError } from "@markorbit/persistence/raw-artifacts";
+import {
+  assertAdminBrowserResourceWorkspace,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { getRawArtifactRepository } from "@/server/source-registry";
 
@@ -12,10 +17,19 @@ function dispositionFilename(value: string): string {
   return value.replace(/["\\\r\n]/g, "_");
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const content = getRawArtifactRepository().contentPath(id);
+    const repository = getRawArtifactRepository();
+    const artifact = repository.getArtifact(id);
+    if (!artifact) throw new RawArtifactNotFoundError(id);
+    const { principal } = await resolveAdminBrowserApiReadAccess(
+      request,
+      artifact.artifact.workspaceId,
+    );
+    assertAdminBrowserResourceWorkspace(principal, artifact.artifact.workspaceId);
+
+    const content = repository.contentPath(id);
     const stream = Readable.toWeb(createReadStream(content.path)) as ReadableStream<Uint8Array>;
     return new Response(stream, {
       headers: {
