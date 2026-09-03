@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { SOURCE_COMPATIBILITY_REPROBE_EXECUTION_VERSION } from "@markorbit/persistence/source-compatibility-reprobe-executions";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { listCompatibilityReprobeExecutionHistory } from "@/server/source-compatibility-reprobe-execution-history";
 import { getRegistryDatabase } from "@/server/source-registry";
@@ -20,8 +21,8 @@ function optionalLimit(value: string | null): number | undefined {
 export async function GET(request: Request) {
   try {
     const search = new URL(request.url).searchParams;
-    const workspaceId = search.get("workspaceId")?.trim();
-    if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+    const assertedWorkspaceId = search.get("workspaceId")?.trim() || undefined;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const items = listCompatibilityReprobeExecutionHistory(getRegistryDatabase(), {
       workspaceId,
       jurisdiction: search.get("jurisdiction")?.trim() || undefined,
