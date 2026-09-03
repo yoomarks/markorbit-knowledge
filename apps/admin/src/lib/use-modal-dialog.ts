@@ -41,13 +41,15 @@ export function useModalDialog({
     if (!open) return;
     const dialog = dialogRef.current;
     if (!dialog) return;
+    const activeDialog: HTMLElement = dialog;
 
     returnFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    const focusTarget = initialFocusRef?.current ?? focusableElements(dialog)[0] ?? dialog;
+    const focusTarget =
+      initialFocusRef?.current ?? focusableElements(activeDialog)[0] ?? activeDialog;
     window.requestAnimationFrame(() => focusTarget.focus());
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -58,19 +60,19 @@ export function useModalDialog({
       }
       if (event.key !== "Tab") return;
 
-      const focusable = focusableElements(dialog);
+      const focusable = focusableElements(activeDialog);
       if (focusable.length === 0) {
         event.preventDefault();
-        dialog.focus();
+        activeDialog.focus();
         return;
       }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       const active = document.activeElement;
-      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+      if (event.shiftKey && (active === first || !activeDialog.contains(active))) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+      } else if (!event.shiftKey && (active === last || !activeDialog.contains(active))) {
         event.preventDefault();
         first.focus();
       }
