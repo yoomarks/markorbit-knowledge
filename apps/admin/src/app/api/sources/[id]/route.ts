@@ -6,6 +6,7 @@ import {
 } from "@markorbit/persistence";
 import {
   assertAdminBrowserResourceWorkspace,
+  resolveAdminBrowserApiMutationAccess,
   resolveAdminBrowserApiReadAccess,
 } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
@@ -32,6 +33,11 @@ export async function GET(request: Request, context: RouteContext) {
 export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const existing = getSourceRepository().getById(id);
+    if (!existing) throw new RegistryNotFoundError(id);
+    const { principal } = await resolveAdminBrowserApiMutationAccess(request, existing.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, existing.workspaceId);
+
     const body = requireRecord(await readJson(request));
     const expectedUpdatedAt = body.expectedUpdatedAt;
     if (typeof expectedUpdatedAt !== "string") {
