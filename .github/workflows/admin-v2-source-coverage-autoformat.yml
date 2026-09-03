@@ -39,12 +39,16 @@ jobs:
             apps/admin/src/app/api/foundational/compatibility-reprobe-executions/route.ts \
             apps/admin/src/app/api/foundational/conversion-recovery/route.ts \
             apps/admin/src/app/api/foundational/remediation-queue/route.ts \
+            apps/admin/src/app/api/foundational/retrieval-quality-remediation/route.ts \
+            apps/admin/src/app/api/foundational/verified-canonical-reindex/route.ts \
             apps/admin/src/app/api/knowledge/[id]/graph/route.ts \
             apps/admin/src/app/api/knowledge/[id]/relationships/route.ts \
             apps/admin/src/app/api/knowledge/[id]/route.ts \
             apps/admin/src/app/api/knowledge/route.ts \
             apps/admin/src/app/api/operations/readiness/route.ts \
             apps/admin/src/app/api/ready-packages/route.ts \
+            apps/admin/src/app/api/retrieval/relevance-audit/route.ts \
+            apps/admin/src/app/api/source-supply-health/route.ts \
             apps/admin/src/app/api/sources/route.ts \
             apps/admin/src/app/knowledge/[id]/page.tsx \
             apps/admin/src/components/discovery/discovery-workspace.tsx \
@@ -53,6 +57,8 @@ jobs:
             apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
             apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
             apps/admin/src/components/foundational/foundational-operator-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-retrieval-quality-remediation-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-verified-canonical-reindex-workbench.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
             apps/admin/src/components/knowledge/content-reader-model.ts \
@@ -61,6 +67,7 @@ jobs:
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
             apps/admin/src/components/sources/source-failure-root-causes.tsx \
+            apps/admin/src/server/admin-browser-api-route-boundary.test.ts \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/production-conversion-worker-service.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
@@ -85,12 +92,16 @@ jobs:
             apps/admin/src/app/api/foundational/compatibility-reprobe-executions/route.ts \
             apps/admin/src/app/api/foundational/conversion-recovery/route.ts \
             apps/admin/src/app/api/foundational/remediation-queue/route.ts \
+            apps/admin/src/app/api/foundational/retrieval-quality-remediation/route.ts \
+            apps/admin/src/app/api/foundational/verified-canonical-reindex/route.ts \
             apps/admin/src/app/api/knowledge/[id]/graph/route.ts \
             apps/admin/src/app/api/knowledge/[id]/relationships/route.ts \
             apps/admin/src/app/api/knowledge/[id]/route.ts \
             apps/admin/src/app/api/knowledge/route.ts \
             apps/admin/src/app/api/operations/readiness/route.ts \
             apps/admin/src/app/api/ready-packages/route.ts \
+            apps/admin/src/app/api/retrieval/relevance-audit/route.ts \
+            apps/admin/src/app/api/source-supply-health/route.ts \
             apps/admin/src/app/api/sources/route.ts \
             apps/admin/src/app/knowledge/[id]/page.tsx \
             apps/admin/src/components/discovery/discovery-workspace.tsx \
@@ -99,6 +110,8 @@ jobs:
             apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
             apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
             apps/admin/src/components/foundational/foundational-operator-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-retrieval-quality-remediation-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-verified-canonical-reindex-workbench.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
             apps/admin/src/components/knowledge/content-reader-model.ts \
@@ -107,6 +120,7 @@ jobs:
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
             apps/admin/src/components/sources/source-failure-root-causes.tsx \
+            apps/admin/src/server/admin-browser-api-route-boundary.test.ts \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/production-conversion-worker-service.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
