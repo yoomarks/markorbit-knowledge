@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Play, RefreshCw, XCircle } from "lucide-react";
 import type { VaultImportExecutionV1, VaultImportIntentV1 } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type Overview = {
   rootConfigured: boolean;
@@ -97,7 +98,7 @@ export function VaultImportExecutionControl({ workspaceId }: { workspaceId: stri
         `/api/workspaces/${encodeURIComponent(workspaceId)}/vault-import-executions`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({ importIntentId }),
         },
       );
