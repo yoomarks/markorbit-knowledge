@@ -244,12 +244,14 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
                 value={q}
                 onChange={(event) => resetPage(() => setQ(event.target.value))}
                 placeholder={copy.search}
+                aria-label={copy.search}
                 className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-3 text-sm"
               />
             </label>
             <select
               value={sourceId}
               onChange={(event) => resetPage(() => setSourceId(event.target.value))}
+              aria-label={copy.source}
               className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
             >
               <option value="">{copy.allSources}</option>
@@ -262,6 +264,7 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
             <select
               value={jurisdiction}
               onChange={(event) => resetPage(() => setJurisdiction(event.target.value))}
+              aria-label={copy.jurisdiction}
               className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
             >
               <option value="">{copy.allJurisdictions}</option>
@@ -274,6 +277,7 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
             <select
               value={artifactKind}
               onChange={(event) => resetPage(() => setArtifactKind(event.target.value))}
+              aria-label={copy.type}
               className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
             >
               <option value="">{copy.allTypes}</option>
@@ -286,6 +290,7 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
             <select
               value={status}
               onChange={(event) => resetPage(() => setStatus(event.target.value))}
+              aria-label={copy.validation}
               className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
             >
               <option value="">{copy.allStatus}</option>
@@ -307,13 +312,27 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
         </div>
 
         {error ? (
-          <div className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-800">
+          <div
+            role="alert"
+            className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-800"
+          >
             {error}
           </div>
         ) : null}
 
+        {!loading && !error && result ? (
+          <p role="status" aria-live="polite" className="sr-only">
+            {zh ? `已载入 ${result.total} 条知识资料。` : `Loaded ${result.total} knowledge assets.`}
+          </p>
+        ) : null}
+
         {loading ? (
-          <div className="p-12 text-center text-sm text-slate-500">
+          <div
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            className="p-12 text-center text-sm text-slate-500"
+          >
             <Loader2 className="mx-auto mb-3 animate-spin" size={22} />
             {locale === "zh-CN" ? "正在读取知识资料…" : "Loading knowledge…"}
           </div>
@@ -439,7 +458,10 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
                 <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
                   Knowledge
                 </p>
-                <h2 id="knowledge-detail-title" className="mt-1 truncate font-semibold text-slate-950">
+                <h2
+                  id="knowledge-detail-title"
+                  className="mt-1 truncate font-semibold text-slate-950"
+                >
                   {detail?.title ?? (zh ? "正在读取…" : "Loading…")}
                 </h2>
               </div>
@@ -455,7 +477,12 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
             </div>
 
             {detailLoading || !detail ? (
-              <div className="p-12 text-center text-sm text-slate-500">
+              <div
+                role="status"
+                aria-live="polite"
+                aria-busy="true"
+                className="p-12 text-center text-sm text-slate-500"
+              >
                 <Loader2 className="mx-auto mb-3 animate-spin" size={22} />
                 {locale === "zh-CN" ? "正在读取资料…" : "Loading document…"}
               </div>
