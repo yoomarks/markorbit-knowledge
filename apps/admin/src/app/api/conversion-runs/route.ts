@@ -4,23 +4,15 @@ import {
   resolveAdminBrowserApiReadAccess,
 } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
-import {
-  parseDispatchRequest,
-  parseListFilters,
-} from "@/server/conversion-run-api-validation";
+import { parseDispatchRequest, parseListFilters } from "@/server/conversion-run-api-validation";
 import { getConversionRunLedgerRepository } from "@/server/source-registry";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const filters = parseListFilters(new URL(request.url));
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(
-      request,
-      filters.workspaceId,
-    );
-    return NextResponse.json(
-      getConversionRunLedgerRepository().list({ ...filters, workspaceId }),
-    );
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, filters.workspaceId);
+    return NextResponse.json(getConversionRunLedgerRepository().list({ ...filters, workspaceId }));
   } catch (error) {
     return apiError(error);
   }

@@ -337,11 +337,14 @@ export function DiscoveryWorkspace() {
     setMessage(null);
     setError(null);
     try {
-      const response = await discoveryMutationFetch(`/api/discovery/candidates/${candidateId}/review`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision }),
-      });
+      const response = await discoveryMutationFetch(
+        `/api/discovery/candidates/${candidateId}/review`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ decision }),
+        },
+      );
       if (!response.ok) throw new Error(await readError(response));
       setMessage(
         decision === "ACCEPTED"
