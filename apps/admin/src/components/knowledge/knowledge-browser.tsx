@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   ChevronLeft,
@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
+import { useModalDialog } from "@/lib/use-modal-dialog";
 
 type KnowledgeItem = {
   id: string;
@@ -144,6 +145,19 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<KnowledgeDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const detailDialogRef = useRef<HTMLElement>(null);
+  const detailCloseRef = useRef<HTMLButtonElement>(null);
+  const closeDetail = useCallback(() => {
+    setSelectedId(null);
+    setDetail(null);
+  }, []);
+
+  useModalDialog({
+    open: Boolean(selectedId),
+    dialogRef: detailDialogRef,
+    initialFocusRef: detailCloseRef,
+    onClose: closeDetail,
+  });
 
   const query = useMemo(() => {
     const params = new URLSearchParams({
@@ -410,27 +424,29 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
             type="button"
             className="absolute inset-0 cursor-default"
             aria-label={copy.close}
-            onClick={() => {
-              setSelectedId(null);
-              setDetail(null);
-            }}
+            onClick={closeDetail}
           />
-          <aside className="relative z-10 h-full w-full max-w-3xl overflow-y-auto bg-white shadow-2xl">
+          <aside
+            ref={detailDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="knowledge-detail-title"
+            tabIndex={-1}
+            className="relative z-10 h-full w-full max-w-3xl overflow-y-auto bg-white shadow-2xl"
+          >
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-5 py-4 backdrop-blur">
               <div className="min-w-0">
                 <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
                   Knowledge
                 </p>
-                <h2 className="mt-1 truncate font-semibold text-slate-950">
+                <h2 id="knowledge-detail-title" className="mt-1 truncate font-semibold text-slate-950">
                   {detail?.title ?? (zh ? "正在读取…" : "Loading…")}
                 </h2>
               </div>
               <button
+                ref={detailCloseRef}
                 type="button"
-                onClick={() => {
-                  setSelectedId(null);
-                  setDetail(null);
-                }}
+                onClick={closeDetail}
                 className="rounded-xl border border-slate-200 p-2 text-slate-600"
                 aria-label={copy.close}
               >
