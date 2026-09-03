@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getCoverageAnalysisCapabilityService } from "@/server/coverage-analysis-capability-service";
 
@@ -18,8 +22,9 @@ function requiredString(value: unknown, field: string): string {
   return normalized;
 }
 
-export function GET() {
+export async function GET(request: Request) {
   try {
+    await resolveAdminBrowserApiReadAccess(request);
     return NextResponse.json(getCoverageAnalysisCapabilityService().status());
   } catch (error) {
     return apiError(error);
@@ -29,8 +34,13 @@ export function GET() {
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
+    const assertedWorkspaceId = optionalString(body.workspaceId, "workspaceId");
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
     const result = await getCoverageAnalysisCapabilityService().analyze({
-      workspaceId: optionalString(body.workspaceId, "workspaceId"),
+      workspaceId,
       jurisdiction: requiredString(body.jurisdiction, "jurisdiction"),
       locale: optionalString(body.locale, "locale"),
       objective: optionalString(body.objective, "objective"),
