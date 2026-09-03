@@ -8,6 +8,13 @@ const API_ROOT = fileURLToPath(new URL("../app/api/", import.meta.url));
 const HTTP_METHOD_PATTERN =
   /export\s+(?:async\s+function|const)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/g;
 
+type ApiBoundary =
+  | "browser-session"
+  | "operator-service"
+  | "worker-machine"
+  | "internal-service"
+  | "service-authenticated";
+
 const BROWSER_BOUNDARY_PATTERNS = [
   /\bresolveAdminBrowserApiReadAccess\b/,
   /\bresolveAdminBrowserApiMutationAccess\b/,
@@ -32,7 +39,7 @@ const SERVICE_AUTH_PATTERNS = [
   /\bauthenticate[A-Z][A-Za-z0-9]*Request\b/,
 ] as const;
 
-const EXPLICIT_MIXED_METHOD_BOUNDARIES = new Map<string, string>([
+const EXPLICIT_MIXED_METHOD_BOUNDARIES = new Map<string, ApiBoundary>([
   ["ready-packages/[id]/core-intake#GET", "browser-session"],
   ["ready-packages/[id]/core-intake#POST", "operator-service"],
 ]);
@@ -68,8 +75,8 @@ function matchesAny(source: string, patterns: readonly RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(source));
 }
 
-function sourceBoundaryCandidates(route: string, source: string): string[] {
-  const boundaries = new Set<string>();
+function sourceBoundaryCandidates(route: string, source: string): ApiBoundary[] {
+  const boundaries = new Set<ApiBoundary>();
 
   if (matchesAny(source, BROWSER_BOUNDARY_PATTERNS)) boundaries.add("browser-session");
   if (matchesAny(source, OPERATOR_BOUNDARY_PATTERNS)) boundaries.add("operator-service");
@@ -107,7 +114,13 @@ test("every Admin API HTTP method has an explicit security-boundary classificati
     for (const method of methods) {
       const key = `${route}#${method}`;
       const explicitMixedBoundary = EXPLICIT_MIXED_METHOD_BOUNDARIES.get(key);
-      if (explicitMixedBoundary) continue;
+      if (explicitMixedBoundary) {
+        assert.ok(
+          candidates.includes(explicitMixedBoundary),
+          `${key} is declared ${explicitMixedBoundary} but its route source does not expose that boundary`,
+        );
+        continue;
+      }
 
       if (EXPLICIT_PUBLIC_READ_ONLY_METHODS.has(key)) {
         assert.ok(
