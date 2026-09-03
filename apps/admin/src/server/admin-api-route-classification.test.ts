@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const API_ROOT = fileURLToPath(new URL("../app/api/", import.meta.url));
-const HTTP_METHOD_PATTERN = /export\s+(?:async\s+function|const)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/g;
+const HTTP_METHOD_PATTERN =
+  /export\s+(?:async\s+function|const)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/g;
 
 const BROWSER_BOUNDARY_PATTERNS = [
   /\bresolveAdminBrowserApiReadAccess\b/,
@@ -54,7 +55,9 @@ function routeFiles(directory: string): string[] {
 }
 
 function routeName(file: string): string {
-  return relative(API_ROOT, file).replaceAll("\\", "/").replace(/\/route\.ts$/, "");
+  return relative(API_ROOT, file)
+    .replaceAll("\\", "/")
+    .replace(/\/route\.ts$/, "");
 }
 
 function exportedMethods(source: string): string[] {

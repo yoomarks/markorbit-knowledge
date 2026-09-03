@@ -5,7 +5,10 @@ import {
   assertOperatorServiceResourceWorkspace,
   resolveOperatorServiceReadAccess,
 } from "@/server/operator-service-api-access";
-import { getExecutionLedgerRepository, getWorkerExecutionRepository } from "@/server/source-registry";
+import {
+  getExecutionLedgerRepository,
+  getWorkerExecutionRepository,
+} from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
