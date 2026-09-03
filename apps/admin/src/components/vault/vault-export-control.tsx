@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileOutput, RefreshCw } from "lucide-react";
 import type { VaultBindingV1, VaultExportRunV1 } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type FilesystemReadiness = {
   configured: boolean;
@@ -113,7 +114,7 @@ export function VaultExportControl({ workspaceId }: { workspaceId: string }) {
         `/api/workspaces/${encodeURIComponent(workspaceId)}/vault-exports`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({ stagingDocumentId: selected }),
         },
       );
