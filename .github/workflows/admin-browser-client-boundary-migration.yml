@@ -26,6 +26,8 @@ jobs:
         run: |
           node scripts/apply-admin-browser-client-boundary.mjs
           pnpm exec prettier --write \
+            apps/admin/src/app/api/discovery/collection-authorization/route.ts \
+            apps/admin/src/app/api/source-coverage/activation-wave/route.ts \
             apps/admin/src/app/api/source-intelligence/route.ts \
             apps/admin/src/app/api/source-intelligence/reviews/route.ts \
             apps/admin/src/app/api/source-intelligence/reviews/assignment-health/route.ts \
@@ -39,6 +41,9 @@ jobs:
             apps/admin/src/app/api/source-intelligence/reviews/policy-resolution/route.ts \
             apps/admin/src/app/api/source-intelligence/reviews/policy-scopes/route.ts \
             apps/admin/src/components/overview/overview-workbench.tsx \
+            apps/admin/src/components/sources/radar-collection-authorization.tsx \
+            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/sources/representative-activation-wave.tsx \
             apps/admin/src/components/sources/source-intelligence-manual-sla.tsx \
             apps/admin/src/components/sources/source-intelligence-policy-scopes.tsx \
             apps/admin/src/components/sources/source-intelligence-review-ownership.tsx \
@@ -53,6 +58,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            apps/admin/src/app/api/discovery/collection-authorization/route.ts \
+            apps/admin/src/app/api/source-coverage/activation-wave/route.ts \
             apps/admin/src/app/api/source-intelligence/route.ts \
             apps/admin/src/app/api/source-intelligence/reviews/route.ts \
             apps/admin/src/app/api/source-intelligence/reviews/assignment-health/route.ts \
@@ -66,6 +73,9 @@ jobs:
             apps/admin/src/app/api/source-intelligence/reviews/policy-resolution/route.ts \
             apps/admin/src/app/api/source-intelligence/reviews/policy-scopes/route.ts \
             apps/admin/src/components/overview/overview-workbench.tsx \
+            apps/admin/src/components/sources/radar-collection-authorization.tsx \
+            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/sources/representative-activation-wave.tsx \
             apps/admin/src/components/sources/source-intelligence-manual-sla.tsx \
             apps/admin/src/components/sources/source-intelligence-policy-scopes.tsx \
             apps/admin/src/components/sources/source-intelligence-review-ownership.tsx \
