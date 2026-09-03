@@ -50,12 +50,8 @@ function sourceSummary(source: SourceDefinition | null) {
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const assertedWorkspaceId =
-      url.searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(
-      request,
-      assertedWorkspaceId,
-    );
+    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const q = url.searchParams.get("q")?.trim().toLowerCase() || "";
     const sourceId = url.searchParams.get("sourceId")?.trim() || undefined;
     const jurisdiction = url.searchParams.get("jurisdiction")?.trim().toUpperCase() || "";

@@ -10,10 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const assertedWorkspaceId = new URL(request.url).searchParams.get("workspaceId")?.trim();
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(
-      request,
-      assertedWorkspaceId,
-    );
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const repository = new SqliteOperationsReadinessRepository(getRegistryDatabase());
     return NextResponse.json(repository.inspect(workspaceId));
   } catch (error) {

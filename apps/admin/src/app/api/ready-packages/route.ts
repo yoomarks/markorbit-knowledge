@@ -11,10 +11,7 @@ export async function GET(request: Request) {
     const search = new URL(request.url).searchParams;
     const assertedWorkspaceId = search.get("workspaceId")?.trim();
     const conversionRunId = search.get("conversionRunId")?.trim();
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(
-      request,
-      assertedWorkspaceId,
-    );
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
 
     const repository = getReadyPackageRepository();
     if (!conversionRunId) {

@@ -16,10 +16,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const { id } = await context.params;
     const assertedWorkspaceId =
       new URL(request.url).searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(
-      request,
-      assertedWorkspaceId,
-    );
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const staging = getStagingContentRepository();
     const record = staging.getDocument(id, workspaceId);
     if (!record)

@@ -188,12 +188,8 @@ function withLatestAssessments(result: SourceListResult, scopeSources: SourceDef
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const assertedWorkspaceId =
-      url.searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(
-      request,
-      assertedWorkspaceId,
-    );
+    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const filters: SourceListFilters = {
       q: url.searchParams.get("q") ?? undefined,
       workspaceId,
