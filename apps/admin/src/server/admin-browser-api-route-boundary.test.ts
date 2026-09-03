@@ -11,6 +11,15 @@ function routeSource(path: string): string {
 }
 
 const workspaceScopedReadRoutes = [
+  "artifacts",
+  "artifacts/[id]",
+  "artifacts/[id]/content",
+  "artifacts/[id]/lineage",
+  "artifacts/sessions/[id]",
+  "connectors",
+  "connectors/[connectorId]/[version]",
+  "connectors/[connectorId]/versions",
+  "connectors/compatible",
   "knowledge",
   "knowledge/[id]",
   "knowledge/[id]/graph",
@@ -27,6 +36,9 @@ const workspaceScopedReadRoutes = [
 ] as const;
 
 const workspaceScopedMutationRoutes = [
+  "connectors",
+  "connectors/[connectorId]/[version]/status",
+  "manual-uploads",
   "sources",
   "sources/[id]",
   "sources/[id]/archive",
@@ -37,7 +49,11 @@ const workspaceScopedMutationRoutes = [
   "sources/[id]/recommendations",
 ] as const;
 
-const sourceResourceRoutes = [
+const resourceWorkspaceRoutes = [
+  "artifacts/[id]",
+  "artifacts/[id]/content",
+  "artifacts/[id]/lineage",
+  "artifacts/sessions/[id]",
   "sources/[id]",
   "sources/[id]/archive",
   "sources/[id]/assessment",
@@ -69,12 +85,12 @@ test("Admin browser mutation routes use canonical mutation access", () => {
   }
 });
 
-test("Source resource routes bind canonical principals to the resource workspace", () => {
-  for (const route of sourceResourceRoutes) {
+test("Workspace resource routes bind canonical principals to durable resource workspace", () => {
+  for (const route of resourceWorkspaceRoutes) {
     assert.match(
       routeSource(route),
       new RegExp(`\\b${RESOURCE_WORKSPACE_ASSERTION}\\b`),
-      `${route} must assert the source resource workspace`,
+      `${route} must assert the durable resource workspace`,
     );
   }
 });
