@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
 import { queueSourceCoverageGapForDiscovery } from "@markorbit/persistence/source-coverage-discovery-intake";
+import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getSourceDiscoveryRepository, getSourceRepository } from "@/server/source-registry";
 
@@ -13,14 +14,20 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = requireRecord(await readJson(request));
-    const workspaceId =
+    const assertedWorkspaceId =
       body.workspaceId === undefined
-        ? DEFAULT_WORKSPACE.id
+        ? undefined
         : typeof body.workspaceId === "string" && body.workspaceId.trim()
           ? body.workspaceId.trim()
           : null;
-    if (!workspaceId) throw new RegistryValidationError("workspaceId must be a non-empty string");
+    if (assertedWorkspaceId === null) {
+      throw new RegistryValidationError("workspaceId must be a non-empty string");
+    }
 
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
     const result = queueSourceCoverageGapForDiscovery(
       { workspaceId, targetId: id },
       {
