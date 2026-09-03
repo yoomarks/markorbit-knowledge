@@ -6,6 +6,7 @@ import {
   listConversionRecoveryCases,
   type ConversionRecoveryState,
 } from "@/server/conversion-failure-recovery";
+import { resolveOperatorServiceReadAccess } from "@/server/operator-service-api-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,8 +23,9 @@ function integerParam(value: string | null, field: string, minimum: number): num
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const workspaceId = url.searchParams.get("workspaceId")?.trim() ?? "";
-    if (!workspaceId) throw new RegistryValidationError("workspaceId is required");
+    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim() ?? "";
+    if (!assertedWorkspaceId) throw new RegistryValidationError("workspaceId is required");
+    const principal = resolveOperatorServiceReadAccess(request, assertedWorkspaceId);
     const stateValue = url.searchParams.get("state")?.trim();
     let state: ConversionRecoveryState | undefined;
     if (stateValue) {
@@ -34,7 +36,7 @@ export async function GET(request: Request) {
     }
     return NextResponse.json(
       listConversionRecoveryCases({
-        workspaceId,
+        workspaceId: principal.workspaceId,
         state,
         limit: integerParam(url.searchParams.get("limit"), "limit", 1),
         offset: integerParam(url.searchParams.get("offset"), "offset", 0),
