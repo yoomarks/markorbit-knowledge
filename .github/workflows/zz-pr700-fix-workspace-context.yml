@@ -1,0 +1,132 @@
+name: PR700 Browser Workspace Context Fix
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr700-workspace-context-fix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    if: github.event.pull_request.number == 700 && github.head_ref == 'issue-697-admin-browser-acceptance'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch explicit browser workspace context
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, count=1):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'pattern not found in {path}: {old[:120]}')
+              p.write_text(text.replace(old, new, count))
+
+          # Client header helpers: workspace scope is explicit and independent of CSRF.
+          p = Path('apps/admin/src/lib/admin-browser-api-client.ts')
+          text = p.read_text()
+          marker = '''export async function adminBrowserMutationHeaders(\n'''
+          helper = '''const ADMIN_WORKSPACE_HEADER = "x-markorbit-workspace-id";\n\nfunction normalizedWorkspaceId(workspaceId: string): string {\n  const normalized = workspaceId.trim();\n  if (!normalized) throw new Error("Admin browser workspace context is required");\n  return normalized;\n}\n\nexport function adminBrowserWorkspaceHeaders(\n  workspaceId: string,\n  initialHeaders: HeadersInit = {},\n): Headers {\n  const headers = new Headers(initialHeaders);\n  headers.set(ADMIN_WORKSPACE_HEADER, normalizedWorkspaceId(workspaceId));\n  return headers;\n}\n\n'''
+          if marker not in text:
+              raise SystemExit('mutation helper marker not found')
+          text = text.replace(marker, helper + marker, 1)
+          text += '''\nexport async function adminBrowserWorkspaceMutationHeaders(\n  workspaceId: string,\n  initialHeaders: HeadersInit = {},\n): Promise<Headers> {\n  const headers = await adminBrowserMutationHeaders(initialHeaders);\n  headers.set(ADMIN_WORKSPACE_HEADER, normalizedWorkspaceId(workspaceId));\n  return headers;\n}\n'''
+          p.write_text(text)
+
+          # Bind the existing explicit Admin workspace from the server surface.
+          page = 'apps/admin/src/app/[section]/page.tsx'
+          replace(page, '<PlanList />', '<PlanList workspaceId={DEFAULT_WORKSPACE.id} />')
+          replace(page, '<RunList />', '<RunList workspaceId={DEFAULT_WORKSPACE.id} />')
+          replace(page, '<WorkerList />', '<WorkerList workspaceId={DEFAULT_WORKSPACE.id} />')
+          replace(page, '<ConnectorList />', '<ConnectorList workspaceId={DEFAULT_WORKSPACE.id} />')
+
+          # Plans read scope.
+          path = 'apps/admin/src/components/plans/plan-list.tsx'
+          replace(path, 'import type { CollectionPlanListResult } from "@markorbit/persistence/collection-plans";\n', 'import type { CollectionPlanListResult } from "@markorbit/persistence/collection-plans";\nimport { adminBrowserWorkspaceHeaders } from "@/lib/admin-browser-api-client";\n')
+          replace(path, 'export function PlanList() {', 'export function PlanList({ workspaceId }: { workspaceId: string }) {')
+          replace(path, 'fetch(`/api/plans?${query}`, { signal: controller.signal })', 'fetch(`/api/plans?${query}`, {\n      headers: adminBrowserWorkspaceHeaders(workspaceId),\n      signal: controller.signal,\n    })')
+          replace(path, '  }, [query]);', '  }, [query, workspaceId]);')
+
+          # Runs read scope.
+          path = 'apps/admin/src/components/runs/run-list.tsx'
+          replace(path, 'import type { ExecutionRunListResult } from "@markorbit/persistence/execution-ledger";\n', 'import type { ExecutionRunListResult } from "@markorbit/persistence/execution-ledger";\nimport { adminBrowserWorkspaceHeaders } from "@/lib/admin-browser-api-client";\n')
+          replace(path, 'export function RunList() {', 'export function RunList({ workspaceId }: { workspaceId: string }) {')
+          replace(path, 'fetch(`/api/runs?${query}`, { signal: controller.signal })', 'fetch(`/api/runs?${query}`, {\n      headers: adminBrowserWorkspaceHeaders(workspaceId),\n      signal: controller.signal,\n    })')
+          replace(path, '  }, [query]);', '  }, [query, workspaceId]);')
+
+          # Connectors read scope.
+          path = 'apps/admin/src/components/connectors/connector-list.tsx'
+          replace(path, 'import type { ConnectorListResult } from "@markorbit/persistence/connectors";\n', 'import type { ConnectorListResult } from "@markorbit/persistence/connectors";\nimport { adminBrowserWorkspaceHeaders } from "@/lib/admin-browser-api-client";\n')
+          replace(path, 'export function ConnectorList() {', 'export function ConnectorList({ workspaceId }: { workspaceId: string }) {')
+          replace(path, 'fetch(`/api/connectors?${query}`, { signal: controller.signal })', 'fetch(`/api/connectors?${query}`, {\n      headers: adminBrowserWorkspaceHeaders(workspaceId),\n      signal: controller.signal,\n    })')
+          replace(path, '  }, [query]);', '  }, [query, workspaceId]);')
+
+          # Workers list: reads and reap mutation all stay in the explicit workspace.
+          path = 'apps/admin/src/components/workers/worker-list.tsx'
+          replace(path, 'import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";', 'import {\n  adminBrowserWorkspaceHeaders,\n  adminBrowserWorkspaceMutationHeaders,\n} from "@/lib/admin-browser-api-client";')
+          replace(path, 'export function WorkerList() {', 'export function WorkerList({ workspaceId }: { workspaceId: string }) {')
+          replace(path, 'fetch(`/api/workers?${query}`, { signal: controller.signal })', 'fetch(`/api/workers?${query}`, {\n      headers: adminBrowserWorkspaceHeaders(workspaceId),\n      signal: controller.signal,\n    })')
+          replace(path, '  }, [query]);', '  }, [query, workspaceId]);')
+          replace(path, 'headers: await adminBrowserMutationHeaders(),', 'headers: await adminBrowserWorkspaceMutationHeaders(workspaceId),')
+          replace(path, 'const refreshed = await fetch(`/api/workers?${query}`);', 'const refreshed = await fetch(`/api/workers?${query}`, {\n        headers: adminBrowserWorkspaceHeaders(workspaceId),\n      });')
+
+          # Worker editor: detail read and every mutation use the same explicit workspace.
+          path = 'apps/admin/src/components/workers/worker-editor.tsx'
+          replace(path, 'import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";', 'import {\n  adminBrowserWorkspaceHeaders,\n  adminBrowserWorkspaceMutationHeaders,\n} from "@/lib/admin-browser-api-client";')
+          replace(path, 'export function WorkerEditor({ workerId }: { workerId?: string }) {', 'export function WorkerEditor({\n  workerId,\n  workspaceId,\n}: {\n  workerId?: string;\n  workspaceId: string;\n}) {')
+          replace(path, 'fetch(`/api/workers/${workerId}`, { signal: controller.signal })', 'fetch(`/api/workers/${workerId}`, {\n      headers: adminBrowserWorkspaceHeaders(workspaceId),\n      signal: controller.signal,\n    })')
+          replace(path, '  }, [workerId]);', '  }, [workerId, workspaceId]);')
+          replace(path, 'headers: await adminBrowserMutationHeaders({ "Content-Type": "application/json" }),', 'headers: await adminBrowserWorkspaceMutationHeaders(workspaceId, {\n          "Content-Type": "application/json",\n        }),')
+          replace(path, 'headers: await adminBrowserMutationHeaders(),', 'headers: await adminBrowserWorkspaceMutationHeaders(workspaceId),')
+
+          # Dedicated worker pages use the same server-side workspace binding as the section page.
+          path = 'apps/admin/src/app/workers/new/page.tsx'
+          replace(path, 'import { AdminShell } from "@/components/admin-shell";', 'import { DEFAULT_WORKSPACE } from "@markorbit/persistence";\nimport { AdminShell } from "@/components/admin-shell";')
+          replace(path, '<WorkerEditor />', '<WorkerEditor workspaceId={DEFAULT_WORKSPACE.id} />')
+
+          path = 'apps/admin/src/app/workers/[id]/page.tsx'
+          replace(path, 'import { AdminShell } from "@/components/admin-shell";', 'import { DEFAULT_WORKSPACE } from "@markorbit/persistence";\nimport { AdminShell } from "@/components/admin-shell";')
+          replace(path, '<WorkerEditor workerId={id} />', '<WorkerEditor workerId={id} workspaceId={DEFAULT_WORKSPACE.id} />')
+          PY
+          pnpm exec prettier --write \
+            apps/admin/src/lib/admin-browser-api-client.ts \
+            apps/admin/src/app/[section]/page.tsx \
+            apps/admin/src/components/plans/plan-list.tsx \
+            apps/admin/src/components/runs/run-list.tsx \
+            apps/admin/src/components/connectors/connector-list.tsx \
+            apps/admin/src/components/workers/worker-list.tsx \
+            apps/admin/src/components/workers/worker-editor.tsx \
+            apps/admin/src/app/workers/new/page.tsx \
+            apps/admin/src/app/workers/[id]/page.tsx
+          pnpm --filter @markorbit/admin typecheck
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/admin/src/lib/admin-browser-api-client.ts \
+            apps/admin/src/app/[section]/page.tsx \
+            apps/admin/src/components/plans/plan-list.tsx \
+            apps/admin/src/components/runs/run-list.tsx \
+            apps/admin/src/components/connectors/connector-list.tsx \
+            apps/admin/src/components/workers/worker-list.tsx \
+            apps/admin/src/components/workers/worker-editor.tsx \
+            apps/admin/src/app/workers/new/page.tsx \
+            apps/admin/src/app/workers/[id]/page.tsx
+          git commit -m "fix: carry explicit workspace through Admin browser APIs"
+          git push origin HEAD:${{ github.head_ref }}
