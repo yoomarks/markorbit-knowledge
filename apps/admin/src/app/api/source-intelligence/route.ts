@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { buildSourceIntelligenceCrossSourceObservationSummaryV2 } from "@markorbit/worker-runtime";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
+import {
+  resolveSourceIntelligenceBrowserMutationAccess,
+  resolveSourceIntelligenceBrowserReadAccess,
+} from "@/server/source-intelligence-browser-access";
 import { SourceIntelligenceService } from "@/server/source-intelligence-service";
 import {
   getRawArtifactRepository,
@@ -106,6 +110,7 @@ export async function GET(request: Request) {
     const historyLimit = historyLimitValue(url.searchParams.get("historyLimit"));
     const intelligence = service();
     if (sourceId) {
+      await resolveSourceIntelligenceBrowserReadAccess(request, [sourceId]);
       return NextResponse.json({
         assessment:
           protocolVersion === "2.0"
@@ -116,6 +121,7 @@ export async function GET(request: Request) {
     }
     if (sourceIds) {
       const ids = sourceIdsValue(sourceIds);
+      await resolveSourceIntelligenceBrowserReadAccess(request, ids);
       if (includeHistory) {
         const items = ids.map((id) => ({
           sourceId: id,
@@ -152,6 +158,7 @@ export async function POST(request: Request) {
     const body = requireRecord(await readJson(request));
     const sourceId = typeof body.sourceId === "string" ? body.sourceId.trim() : "";
     if (!sourceId) throw new RegistryValidationError("sourceId is required");
+    await resolveSourceIntelligenceBrowserMutationAccess(request, [sourceId]);
     const protocolVersion = requestedProtocolVersion(body.protocolVersion);
     return NextResponse.json({
       assessment:
