@@ -322,7 +322,9 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
 
         {!loading && !error && result ? (
           <p role="status" aria-live="polite" className="sr-only">
-            {zh ? `已载入 ${result.total} 条知识资料。` : `Loaded ${result.total} knowledge assets.`}
+            {zh
+              ? `已载入 ${result.total} 条知识资料。`
+              : `Loaded ${result.total} knowledge assets.`}
           </p>
         ) : null}
 

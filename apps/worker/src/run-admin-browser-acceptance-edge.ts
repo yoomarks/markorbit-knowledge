@@ -382,7 +382,10 @@ async function main(): Promise<void> {
         1,
         "Type filter must have an accessible name",
       );
-      await page.getByRole("status").filter({ hasText: /Loaded 1|已载入 1/ }).waitFor();
+      await page
+        .getByRole("status")
+        .filter({ hasText: /Loaded 1|已载入 1/ })
+        .waitFor();
 
       await page.getByRole("button", { name: /View document|查看资料/ }).click();
       const dialog = page.getByRole("dialog");
@@ -417,7 +420,10 @@ async function main(): Promise<void> {
         });
       });
       await page.getByRole("button", { name: /Refresh|刷新/ }).click();
-      await page.getByRole("alert").filter({ hasText: "Browser acceptance forced failure" }).waitFor();
+      await page
+        .getByRole("alert")
+        .filter({ hasText: "Browser acceptance forced failure" })
+        .waitFor();
       await page.unroute("**/api/knowledge?**");
 
       await page.goto(`${ADMIN_ORIGIN}/workers/new`);

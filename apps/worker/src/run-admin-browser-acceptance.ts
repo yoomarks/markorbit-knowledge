@@ -281,7 +281,9 @@ function seedFixture(databasePath: string, artifactStore: string, stagingStore: 
 }
 
 function attachPageDiagnostics(page: Page, logPath: string, label: string): void {
-  page.on("console", (message) => appendDiagnostic(logPath, `${label}.console ${message.type()} ${message.text()}`));
+  page.on("console", (message) =>
+    appendDiagnostic(logPath, `${label}.console ${message.type()} ${message.text()}`),
+  );
   page.on("pageerror", (error) => appendDiagnostic(logPath, `${label}.pageerror ${error.message}`));
   page.on("requestfailed", (request) =>
     appendDiagnostic(
@@ -291,9 +293,10 @@ function attachPageDiagnostics(page: Page, logPath: string, label: string): void
   );
 }
 
-async function authenticatedContext(
-  viewport: { width: number; height: number },
-): Promise<BrowserContext> {
+async function authenticatedContext(viewport: {
+  width: number;
+  height: number;
+}): Promise<BrowserContext> {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport });
   context.on("close", () => void browser.close());
@@ -430,7 +433,10 @@ async function assertRealMutation(page: Page): Promise<void> {
   );
   await page.getByRole("button", { name: "保存 Worker" }).click();
   const response = await responsePromise;
-  assert.ok(response.status() >= 200 && response.status() < 300, `Worker mutation failed: ${response.status()}`);
+  assert.ok(
+    response.status() >= 200 && response.status() < 300,
+    `Worker mutation failed: ${response.status()}`,
+  );
   await page.waitForURL((url) => /^\/workers\/wrk_[0-9A-HJKMNP-TV-Z]{26}$/.test(url.pathname));
   await page.getByText("一次性 Worker 凭证", { exact: true }).waitFor();
   await page.getByDisplayValue("Browser Acceptance Worker").waitFor();
@@ -444,7 +450,9 @@ async function assertMobileNavigation(page: Page): Promise<void> {
   await dialog.waitFor();
   assert.equal(await menu.getAttribute("aria-expanded"), "true");
   assert.ok(
-    await dialog.getByRole("button", { name: /Close|关闭/ }).evaluate((element) => element === document.activeElement),
+    await dialog
+      .getByRole("button", { name: /Close|关闭/ })
+      .evaluate((element) => element === document.activeElement),
     "mobile navigation must focus its close control",
   );
 
