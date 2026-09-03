@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { listFoundationalCollectionOutcomes } from "@/server/foundational-collection-outcomes";
 import { getRegistryDatabase } from "@/server/source-registry";
@@ -25,8 +26,10 @@ function optionalLimit(value: string | null): number | undefined {
 export async function GET(request: Request) {
   try {
     const search = new URL(request.url).searchParams;
+    const assertedWorkspaceId = required(search.get("workspaceId"), "workspaceId");
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const result = listFoundationalCollectionOutcomes(getRegistryDatabase(), {
-      workspaceId: required(search.get("workspaceId"), "workspaceId"),
+      workspaceId,
       jurisdiction: required(search.get("jurisdiction"), "jurisdiction"),
       targetId: search.get("targetId")?.trim() || undefined,
       limit: optionalLimit(search.get("limit")),
