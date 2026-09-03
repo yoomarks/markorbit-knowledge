@@ -383,7 +383,7 @@ async function assertKnowledgeJourney(page: Page): Promise<void> {
   await initialResponse;
   await page.getByText(FIXTURE_TITLE, { exact: true }).waitFor();
 
-  const search = page.locator('input[type="text"]').first();
+  const search = page.getByRole("textbox", { name: /Search|搜索/ });
   await waitForKnowledgeRefresh(page, () => search.fill("Browser Acceptance"));
   const filters = page.locator("select");
   assert.equal(await filters.count(), 4, "Knowledge Browser filter set must remain stable");
