@@ -10,6 +10,7 @@ import {
   type WorkerRuntimeView,
 } from "@markorbit/contracts";
 import type { WorkerListResult } from "@markorbit/persistence/workers";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 const PAGE_SIZE = 20;
 
@@ -105,7 +106,10 @@ export function WorkerList() {
   async function reapExpired() {
     beginRequest();
     try {
-      const response = await fetch("/api/leases/reap", { method: "POST" });
+      const response = await fetch("/api/leases/reap", {
+        method: "POST",
+        headers: await adminBrowserMutationHeaders(),
+      });
       const body = (await response.json()) as { reaped?: number; error?: { message?: string } };
       if (!response.ok) throw new Error(body.error?.message ?? "Unable to reap leases");
       setNotice(`已回收 ${body.reaped ?? 0} 个过期租约。`);
