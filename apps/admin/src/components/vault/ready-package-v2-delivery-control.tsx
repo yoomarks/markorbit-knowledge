@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { History, RefreshCw, Send, ShieldAlert, Snowflake, Stethoscope } from "lucide-react";
 import type { ReadyPackageV2 } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type DeliveryStage =
   | "NOT_PREPARED"
@@ -220,7 +221,7 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
         `/api/workspaces/${encodeURIComponent(workspaceId)}/ready-package-v2-deliveries`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({ action: actionName, readyPackageId }),
         },
       );
