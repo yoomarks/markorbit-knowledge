@@ -25,7 +25,7 @@ permissions:
   contents: read
 
 env:
-  CORE_REF: bfae1f9cbd4687fc649186ed4217ae30be3b592e
+  CORE_REF: 21214e22707f80eb2256284ccd48a7c40ea2fda6
   CORE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/markorbit_core_e2e
   CORE_INTERNAL_SECRET: markorbit-core-intake-e2e-secret-32-bytes
   CORE_WORKSPACE_ID: 01900000-0000-7000-8000-830000000001
