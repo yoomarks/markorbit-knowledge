@@ -18,7 +18,10 @@ import {
   type SourceListFilters,
   type SourceListResult,
 } from "@markorbit/persistence";
-import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
   listSourceCollectionHealth,
@@ -229,7 +232,18 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
-    const source = getSourceRepository().create(body as CreateSourceInput);
+    const assertedWorkspaceId =
+      typeof body.workspaceId === "string" && body.workspaceId.trim()
+        ? body.workspaceId.trim()
+        : DEFAULT_WORKSPACE.id;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
+    const source = getSourceRepository().create({
+      ...(body as CreateSourceInput),
+      workspaceId,
+    });
     return NextResponse.json({ source }, { status: 201 });
   } catch (error) {
     return apiError(error);
