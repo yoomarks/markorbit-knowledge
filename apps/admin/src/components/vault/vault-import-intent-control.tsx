@@ -7,6 +7,7 @@ import type {
   VaultImportIntentV1,
   VaultInspectionRunV1,
 } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type InspectionOverview = {
   binding: VaultBindingV1 | null;
@@ -134,7 +135,7 @@ export function VaultImportIntentControl({ workspaceId }: { workspaceId: string 
         `/api/workspaces/${encodeURIComponent(workspaceId)}/vault-import-intents`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({
             inspectionRunId: latest.id,
             vaultRelativePath,
