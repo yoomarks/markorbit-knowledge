@@ -5,6 +5,8 @@ on:
     paths:
       - "config/source-intelligence-d2-5-cohort.json"
       - "scripts/source-intelligence-d2-5-calibration.mjs"
+      - "scripts/source-intelligence-calibration.mjs"
+      - "scripts/source-intelligence-evidence-calibration.mjs"
       - "scripts/admin-browser-calibration-core-auth-stub.mjs"
       - "scripts/admin-browser-calibration-fetch.mjs"
       - "packages/contracts/src/source-intelligence-v2.ts"
@@ -88,6 +90,8 @@ jobs:
       - name: Validate D2.5 harness
         run: |
           node --check scripts/source-intelligence-d2-5-calibration.mjs
+          node --check scripts/source-intelligence-calibration.mjs
+          node --check scripts/source-intelligence-evidence-calibration.mjs
           node --check scripts/admin-browser-calibration-core-auth-stub.mjs
           node --check scripts/admin-browser-calibration-fetch.mjs
           node -e 'const fs=require("node:fs"); const x=JSON.parse(fs.readFileSync("config/source-intelligence-d2-5-cohort.json","utf8")); if(x.version!=="1.0"||!Array.isArray(x.sources)||x.sources.length<10) process.exit(1)'
@@ -232,13 +236,15 @@ jobs:
 
       - name: Install Crawl4AI runtime
         run: |
-          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          python -m pip install --disable-pip-check -r workers/crawl4ai/requirements.txt
           crawl4ai-setup
           crawl4ai-doctor
 
       - name: Validate D2.5 harness
         run: |
           node --check scripts/source-intelligence-d2-5-calibration.mjs
+          node --check scripts/source-intelligence-calibration.mjs
+          node --check scripts/source-intelligence-evidence-calibration.mjs
           node --check scripts/admin-browser-calibration-core-auth-stub.mjs
           node --check scripts/admin-browser-calibration-fetch.mjs
 
@@ -309,7 +315,7 @@ jobs:
           const successful = report.results.filter((item) => item.status === 'SUCCESS');
           if (successful.length < Number(process.env.EVIDENCE_MIN_SUCCESS)) throw new Error('Insufficient evidence calibration successes');
           for (const item of successful) {
-            if (item.connector !== 'crawl4ai-web@1.1.0') throw new Error(`${item.key} connector drift`);
+            if (item.connector !== 'crawl4ai-web@1.2.0') throw new Error(`${item.key} connector drift`);
             if (item.beforeDualAxis?.evidenceMaturity?.stage !== 'UNOBSERVED') throw new Error(`${item.key} baseline was not UNOBSERVED`);
             if (!item.invariants?.evidenceMaturityAdvanced) throw new Error(`${item.key} maturity did not advance`);
             if (!item.invariants?.sourceSignalsStable) throw new Error(`${item.key} Source Value signals changed during bounded evidence-only calibration`);
