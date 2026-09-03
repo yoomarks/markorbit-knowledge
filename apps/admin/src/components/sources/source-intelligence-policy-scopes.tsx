@@ -8,6 +8,7 @@ import type {
   SourceIntelligencePolicyScopeAndCohortsV2,
 } from "@markorbit/contracts";
 import type { SourceListResult } from "@markorbit/persistence";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 const SOURCE_LIMIT = 100;
 
@@ -158,7 +159,7 @@ export function SourceIntelligencePolicyScopes() {
     try {
       const response = await fetch("/api/source-intelligence/reviews/policy-scopes", {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           protocolVersion: "2.0",
           ...(editingCohortId ? { cohortId: editingCohortId } : {}),
@@ -168,7 +169,6 @@ export function SourceIntelligencePolicyScopes() {
           enabled,
           claimTargetHours: parseTarget(claimTarget, "领取目标"),
           reviewTargetHours: parseTarget(reviewTarget, "复核目标"),
-          actor: operator,
           expectedUpdatedAt: editingCohort?.updatedAt ?? null,
         }),
       });
@@ -198,13 +198,12 @@ export function SourceIntelligencePolicyScopes() {
     try {
       const response = await fetch("/api/source-intelligence/reviews/policy-scopes", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           protocolVersion: "2.0",
           cohortId: membershipCohortId,
           sourceId: membershipSourceId,
           action: present ? "REMOVED" : "ADDED",
-          actor: operator,
           expectedPresent: present,
         }),
       });

@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type CandidateRecord = {
   candidate: {
@@ -231,11 +232,10 @@ export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
     try {
       const response = await fetch("/api/discovery/reviews", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           candidateIds: [candidateId],
           decision,
-          reviewer: "admin-console",
           startCollection: decision === "ACCEPTED",
         }),
       });

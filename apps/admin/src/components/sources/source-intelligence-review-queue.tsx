@@ -18,6 +18,7 @@ import type {
   SourceIntelligenceObservationReviewStatus,
 } from "@markorbit/contracts";
 import type { SourceListResult } from "@markorbit/persistence";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 const COHORT_LIMIT = 100;
 type StatusFilter = "ALL" | SourceIntelligenceObservationReviewStatus;
@@ -145,14 +146,13 @@ export function SourceIntelligenceReviewQueue() {
     try {
       const response = await fetch("/api/source-intelligence/reviews", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           protocolVersion: "2.0",
           sourceId: item.sourceId,
           observationKey: item.observationKey,
           status,
           note: notes[item.observationKey] ?? "",
-          reviewer: "admin-console",
         }),
       });
       const body = (await response.json()) as { error?: { message?: string } };

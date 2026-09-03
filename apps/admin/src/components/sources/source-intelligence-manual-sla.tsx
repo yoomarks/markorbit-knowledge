@@ -19,6 +19,7 @@ import type {
   SourceIntelligenceManualSlaState,
 } from "@markorbit/contracts";
 import type { SourceListResult } from "@markorbit/persistence";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 const COHORT_LIMIT = 100;
 
@@ -173,10 +174,9 @@ export function SourceIntelligenceManualSla() {
     try {
       const response = await fetch("/api/source-intelligence/reviews/manual-sla", {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           protocolVersion: "2.0",
-          actor: operator,
           claimTargetHours: parseTarget(claimTarget, "领取目标"),
           reviewTargetHours: parseTarget(reviewTarget, "复核目标"),
           expectedUpdatedAt: snapshot.manualSla?.policy?.updatedAt ?? null,
@@ -206,13 +206,12 @@ export function SourceIntelligenceManualSla() {
     try {
       const response = await fetch("/api/source-intelligence/reviews/manual-sla", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           protocolVersion: "2.0",
           sourceId: item.sourceId,
           observationKey: item.observationKey,
           action,
-          actor: operator,
           note: notes[item.observationKey] ?? "",
           expectedEscalated: item.escalated,
         }),

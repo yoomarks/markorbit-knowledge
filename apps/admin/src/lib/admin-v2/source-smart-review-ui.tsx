@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Check, ExternalLink, Loader2, RefreshCw, RotateCcw, Sparkles, X } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { intakeT, type IntakeMessageKey, type IntakeMessageParams } from "@/lib/intake-i18n";
 
 type CandidateStatus = "DISCOVERED" | "REVIEWED" | "ACCEPTED" | "REJECTED";
@@ -198,7 +199,7 @@ export function SourceSmartReviewUi() {
         .map((record) => record.candidate.candidateId);
       const capabilityResponse = await fetch("/api/capabilities/page-value", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ action: "LATEST", candidateIds: pendingIds }),
       });
       if (!capabilityResponse.ok) throw new Error(await responseError(capabilityResponse));
@@ -294,7 +295,7 @@ export function SourceSmartReviewUi() {
     try {
       const response = await fetch("/api/capabilities/page-value", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           action: "SCREEN",
           candidateIds,
@@ -333,11 +334,10 @@ export function SourceSmartReviewUi() {
     try {
       const response = await fetch("/api/discovery/reviews", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           candidateIds: ids,
           decision,
-          reviewer: "admin-console",
           ...(note ? { note } : {}),
           startCollection: decision === "ACCEPTED",
         }),
@@ -397,7 +397,7 @@ export function SourceSmartReviewUi() {
     try {
       const response = await fetch("/api/discovery", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           locator: record.candidate.locator,
           maxDepth: 1,
@@ -424,10 +424,9 @@ export function SourceSmartReviewUi() {
     try {
       const response = await fetch("/api/discovery/reviews/reopen", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           candidateId,
-          reviewer: "admin-console",
           note: "restore:manual",
         }),
       });
