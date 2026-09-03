@@ -7,6 +7,9 @@ const MUTATION_ACCESS = "resolveAdminBrowserApiMutationAccess";
 const RESOURCE_WORKSPACE_ASSERTION = "assertAdminBrowserResourceWorkspace";
 const SOURCE_INTELLIGENCE_READ_ACCESS = "resolveSourceIntelligenceBrowserReadAccess";
 const SOURCE_INTELLIGENCE_MUTATION_ACCESS = "resolveSourceIntelligenceBrowserMutationAccess";
+const EXPERT_READ_ACCESS = "resolveExpertReadPrincipal";
+const EXPERT_MUTATION_ACCESS = "resolveExpertMutationPrincipal";
+const EXPERT_RESOURCE_ASSERTION = "authorizeExpertTaskWorkspace";
 
 function routeSource(path: string): string {
   return readFileSync(new URL(`../app/api/${path}/route.ts`, import.meta.url), "utf8");
@@ -51,6 +54,7 @@ const workspaceScopedReadRoutes = [
   "knowledge/[id]",
   "knowledge/[id]/graph",
   "knowledge/[id]/relationships",
+  "knowledge/search",
   "operations/readiness",
   "plans",
   "plans/[id]",
@@ -166,6 +170,10 @@ const sourceIntelligenceMutationRoutes = [
   "source-intelligence/reviews/policy-scopes",
 ] as const;
 
+const expertReadRoutes = ["expert-tasks", "expert-tasks/[id]", "expert-sources"] as const;
+const expertMutationRoutes = ["expert-tasks", "expert-tasks/[id]"] as const;
+const expertResourceRoutes = ["expert-tasks/[id]"] as const;
+
 const resourceWorkspaceRoutes = [
   "artifacts/[id]",
   "artifacts/[id]/content",
@@ -223,6 +231,16 @@ const serverDerivedIdentityRoutes = [
     route: "discovery/reviews/reopen",
     pattern: /reviewer:\s*principal\.userId/,
     forbidden: /reviewer:\s*(?:body\.|"admin-console")/,
+  },
+  {
+    route: "expert-tasks",
+    pattern: /requestedBy:\s*principal\.userId/,
+    forbidden: /requestedBy:\s*body\./,
+  },
+  {
+    route: "expert-tasks/[id]",
+    pattern: /requiredString\(body,\s*"question"\),\s*principal\.userId/s,
+    forbidden: /createFollowUp\([^)]*body\.(?:requestedBy|actor|reviewer)/s,
   },
   {
     route: "foundational/action-intents",
@@ -320,6 +338,39 @@ test("Source Intelligence successor delegates to canonical access and durable So
   assert.match(source, new RegExp(`\\b${RESOURCE_WORKSPACE_ASSERTION}\\b`));
   assert.match(source, /getSourceRepository/);
   assert.match(source, /DEFAULT_WORKSPACE\.id/);
+});
+
+test("Expert browser routes use the governed dual browser/internal successor", () => {
+  for (const route of expertReadRoutes) {
+    assert.match(
+      routeSource(route),
+      new RegExp(`\\b${EXPERT_READ_ACCESS}\\b`),
+      `${route} must resolve governed Expert read access`,
+    );
+  }
+  for (const route of expertMutationRoutes) {
+    assert.match(
+      routeSource(route),
+      new RegExp(`\\b${EXPERT_MUTATION_ACCESS}\\b`),
+      `${route} must resolve governed Expert mutation access`,
+    );
+  }
+  for (const route of expertResourceRoutes) {
+    assert.match(
+      routeSource(route),
+      new RegExp(`\\b${EXPERT_RESOURCE_ASSERTION}\\b`),
+      `${route} must assert its durable Expert task workspace`,
+    );
+  }
+});
+
+test("Expert successor preserves internal auth but browser access uses Workspace Principal and CSRF", () => {
+  const source = serverSource("expert-api-access");
+  assert.match(source, /authenticateCaseProducerRequest/);
+  assert.match(source, /resolveAdminBrowserWorkspacePrincipal/);
+  assert.match(source, /validateAdminBrowserMutation/);
+  assert.match(source, /SqliteExpertTaskWorkspaceBindingRepository/);
+  assert.match(source, /READ_ONLY Workspace Principals cannot mutate Expert tasks/);
 });
 
 test("Workspace resource routes bind canonical principals to durable resource workspace", () => {
