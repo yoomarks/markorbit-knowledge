@@ -29,7 +29,16 @@ jobs:
           # collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
             apps/admin/src/app/api/conversion-profiles/route.ts \
+            apps/admin/src/app/api/conversion-recovery/[id]/retry/route.ts \
             apps/admin/src/app/api/conversion-runs/route.ts \
+            apps/admin/src/app/api/foundational/action-executions/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/[intentId]/execute/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/[intentId]/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/route.ts \
+            apps/admin/src/app/api/foundational/collection-outcomes/route.ts \
+            apps/admin/src/app/api/foundational/compatibility-reprobe-executions/route.ts \
+            apps/admin/src/app/api/foundational/conversion-recovery/route.ts \
+            apps/admin/src/app/api/foundational/remediation-queue/route.ts \
             apps/admin/src/app/api/knowledge/[id]/graph/route.ts \
             apps/admin/src/app/api/knowledge/[id]/relationships/route.ts \
             apps/admin/src/app/api/knowledge/[id]/route.ts \
@@ -39,6 +48,11 @@ jobs:
             apps/admin/src/app/api/sources/route.ts \
             apps/admin/src/app/knowledge/[id]/page.tsx \
             apps/admin/src/components/discovery/discovery-workspace.tsx \
+            apps/admin/src/components/foundational/foundational-compatibility-reprobe-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-conversion-recovery-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/components/foundational/foundational-operator-workbench.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
             apps/admin/src/components/knowledge/content-reader-model.ts \
@@ -47,8 +61,6 @@ jobs:
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
             apps/admin/src/components/sources/source-failure-root-causes.tsx \
-            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
-            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/production-conversion-worker-service.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
@@ -63,7 +75,16 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             apps/admin/src/app/api/conversion-profiles/route.ts \
+            apps/admin/src/app/api/conversion-recovery/[id]/retry/route.ts \
             apps/admin/src/app/api/conversion-runs/route.ts \
+            apps/admin/src/app/api/foundational/action-executions/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/[intentId]/execute/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/[intentId]/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/route.ts \
+            apps/admin/src/app/api/foundational/collection-outcomes/route.ts \
+            apps/admin/src/app/api/foundational/compatibility-reprobe-executions/route.ts \
+            apps/admin/src/app/api/foundational/conversion-recovery/route.ts \
+            apps/admin/src/app/api/foundational/remediation-queue/route.ts \
             apps/admin/src/app/api/knowledge/[id]/graph/route.ts \
             apps/admin/src/app/api/knowledge/[id]/relationships/route.ts \
             apps/admin/src/app/api/knowledge/[id]/route.ts \
@@ -73,6 +94,11 @@ jobs:
             apps/admin/src/app/api/sources/route.ts \
             apps/admin/src/app/knowledge/[id]/page.tsx \
             apps/admin/src/components/discovery/discovery-workspace.tsx \
+            apps/admin/src/components/foundational/foundational-compatibility-reprobe-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-conversion-recovery-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/components/foundational/foundational-operator-workbench.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
             apps/admin/src/components/knowledge/content-reader-model.ts \
@@ -81,8 +107,6 @@ jobs:
             apps/admin/src/components/sources/radar-review-evidence.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
             apps/admin/src/components/sources/source-failure-root-causes.tsx \
-            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
-            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/production-conversion-worker-service.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
