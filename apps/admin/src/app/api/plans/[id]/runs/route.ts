@@ -21,8 +21,8 @@ export async function GET(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const plan = getCollectionPlanRepository().getById(id);
     if (!plan) throw new CollectionPlanNotFoundError(id);
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, plan.plan.workspaceId);
-    assertAdminBrowserResourceWorkspace(workspaceId, plan.plan.workspaceId);
+    const { principal } = await resolveAdminBrowserApiReadAccess(request, plan.plan.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, plan.plan.workspaceId);
     const url = new URL(request.url);
     const rawLimit = url.searchParams.get("limit");
     const limit = rawLimit ? Number(rawLimit) : 20;
