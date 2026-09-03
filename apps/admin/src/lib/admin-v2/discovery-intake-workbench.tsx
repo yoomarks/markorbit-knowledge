@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { SOURCE_CATEGORIES, type SourceCategory } from "@markorbit/contracts";
 import { PageHeading } from "@/components/page-heading";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 import { intakeT, type IntakeMessageKey, type IntakeMessageParams } from "@/lib/intake-i18n";
 
@@ -129,7 +130,7 @@ export function DiscoveryIntakeUi() {
     try {
       const response = await fetch("/api/discovery/batch", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           locators: inputs,
           maxDepth,
