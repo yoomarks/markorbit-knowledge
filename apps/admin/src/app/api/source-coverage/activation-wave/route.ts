@@ -41,7 +41,10 @@ export async function POST(request: Request) {
     if (!assertedWorkspaceId) {
       throw new RegistryValidationError("workspaceId must be a non-empty string");
     }
-    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(request, assertedWorkspaceId);
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
     const result = queueRepresentativeActivationWave(workspaceId);
     return NextResponse.json(result, { status: result.intake.queued > 0 ? 201 : 200 });
   } catch (error) {
