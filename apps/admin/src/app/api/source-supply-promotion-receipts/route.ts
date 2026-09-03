@@ -8,6 +8,10 @@ import {
   type SourceSupplyPromotionReceiptStatus,
 } from "@markorbit/persistence/source-supply-promotion-receipts";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
+import {
+  resolveOperatorServiceMutationAccess,
+  resolveOperatorServiceReadAccess,
+} from "@/server/operator-service-api-access";
 import { getExecutionLedgerRepository, getRegistryDatabase } from "@/server/source-registry";
 
 export const runtime = "nodejs";
@@ -42,15 +46,18 @@ function optionalStatus(value: string | null): SourceSupplyPromotionReceiptStatu
 export async function GET(request: Request) {
   try {
     const search = new URL(request.url).searchParams;
-    const workspaceId = search.get("workspaceId")?.trim();
-    if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+    const assertedWorkspaceId = search.get("workspaceId")?.trim();
+    if (!assertedWorkspaceId) {
+      throw new RegistryValidationError("workspaceId query parameter is required");
+    }
+    const principal = resolveOperatorServiceReadAccess(request, assertedWorkspaceId);
     const database = getRegistryDatabase();
     const ledgerExists = database
       .prepare("SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = ?")
       .get("source_supply_promotion_receipts");
     const items = ledgerExists
       ? new SqliteSourceSupplyPromotionReceiptLedger(database).list({
-          workspaceId,
+          workspaceId: principal.workspaceId,
           jurisdiction: search.get("jurisdiction")?.trim() || undefined,
           targetId: search.get("targetId")?.trim() || undefined,
           status: optionalStatus(search.get("status")),
@@ -60,7 +67,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       version: SOURCE_SUPPLY_PROMOTION_RECEIPT_VERSION,
       objectType: "SOURCE_SUPPLY_PROMOTION_RECEIPT_LIST",
-      workspaceId,
+      workspaceId: principal.workspaceId,
       items,
     });
   } catch (error) {
@@ -81,11 +88,12 @@ export async function POST(request: Request) {
     if (Object.keys(body).some((key) => !allowed.has(key))) {
       throw new RegistryValidationError("Unknown source supply promotion receipt field");
     }
-    const workspaceId = requiredString(body.workspaceId, "workspaceId");
+    const assertedWorkspaceId = requiredString(body.workspaceId, "workspaceId");
+    const principal = resolveOperatorServiceMutationAccess(request, assertedWorkspaceId);
+    const workspaceId = principal.workspaceId;
     const jurisdiction = requiredString(body.jurisdiction, "jurisdiction").toUpperCase();
     const targetId = requiredString(body.targetId, "targetId");
     const collectionRunId = requiredString(body.collectionRunId, "collectionRunId");
-    const operatorActor = requiredString(body.operatorActor, "operatorActor");
     const execution = getExecutionLedgerRepository().getById(collectionRunId);
     if (!execution) {
       throw new RegistryValidationError(`CollectionRun ${collectionRunId} was not found`);
@@ -119,7 +127,7 @@ export async function POST(request: Request) {
       sourceId: execution.run.sourceId,
       planId: execution.run.planId,
       collectionRunId: execution.run.id,
-      operatorActor,
+      operatorActor: principal.userId,
       idempotencyKey: request.headers.get("Idempotency-Key") ?? undefined,
       dispatchedAt: execution.run.requestedAt,
     });
