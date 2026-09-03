@@ -16,6 +16,7 @@ import {
 import type { SourceCompatibilityReprobeExecution } from "@markorbit/persistence/source-compatibility-reprobe-executions";
 import type { FoundationalActionIntent } from "@markorbit/worker-runtime/foundational-action-intent";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import type { FoundationalAdvancedJurisdiction } from "./foundational-advanced-capabilities";
 import {
   compatibilityReprobeExecutionForIntent,
@@ -26,8 +27,6 @@ import {
   listControlledCompatibilityReprobeActions,
 } from "./foundational-compatibility-reprobe-state";
 
-type ActorField = "requester" | "reviewer" | "executor";
-type Actors = Record<ActorField, string>;
 type IntentListEnvelope = { items?: FoundationalActionIntent[] };
 type ExecutionListEnvelope = { items?: SourceCompatibilityReprobeExecution[] };
 type ErrorEnvelope = { error?: { message?: string } };
@@ -39,14 +38,13 @@ type Props = {
   onSnapshotRefresh: () => Promise<void>;
 };
 
-const DEFAULT_ACTORS: Actors = {
-  requester: "operator:local-admin",
-  reviewer: "reviewer:local-admin",
-  executor: "operator:local-admin",
-};
-
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", ...init });
+  const requestInit: RequestInit = { cache: "no-store", ...init };
+  const method = init?.method?.toUpperCase() ?? "GET";
+  if (method !== "GET" && method !== "HEAD") {
+    requestInit.headers = await adminBrowserMutationHeaders(init?.headers);
+  }
+  const response = await fetch(url, requestInit);
   let payload: unknown = null;
   try {
     payload = await response.json();
@@ -99,7 +97,7 @@ export function FoundationalCompatibilityReprobeWorkbench({
   const actions = useMemo(() => listControlledCompatibilityReprobeActions(snapshot), [snapshot]);
   const [intents, setIntents] = useState<FoundationalActionIntent[]>([]);
   const [executions, setExecutions] = useState<SourceCompatibilityReprobeExecution[]>([]);
-  const [actors, setActors] = useState<Actors>(DEFAULT_ACTORS);
+  const [executorActorId, setExecutorActorId] = useState("operator:local-admin");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +167,6 @@ export function FoundationalCompatibilityReprobeWorkbench({
           jurisdiction,
           targetId,
           actionCode: "REPROBE_SOURCE_COMPATIBILITY",
-          requestedByActorId: actors.requester,
           idempotencyKey,
           topK: snapshot.topK ?? 5,
         }),
@@ -181,12 +178,11 @@ export function FoundationalCompatibilityReprobeWorkbench({
     intentId: string,
     operation: "APPROVE" | "CANCEL",
   ): Promise<void> {
-    const actorId = operation === "APPROVE" ? actors.reviewer : actors.requester;
     await mutate(`${operation}:${intentId}`, () =>
       requestJson(`/api/foundational/action-intents/${encodeURIComponent(intentId)}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ operation, actorId }),
+        body: JSON.stringify({ operation }),
       }),
     );
   }
@@ -194,7 +190,7 @@ export function FoundationalCompatibilityReprobeWorkbench({
   async function copyCommand(intentId: string): Promise<void> {
     const command = compatibilityReprobeWorkerCommand({
       intentId,
-      executedByActorId: actors.executor,
+      executedByActorId: executorActorId,
     });
     try {
       await navigator.clipboard.writeText(command);
@@ -203,10 +199,6 @@ export function FoundationalCompatibilityReprobeWorkbench({
     } catch {
       setError("Unable to copy the Worker command. Select and copy it manually.");
     }
-  }
-
-  function updateActor(field: ActorField, value: string): void {
-    setActors((current) => ({ ...current, [field]: value }));
   }
 
   return (
@@ -240,27 +232,30 @@ export function FoundationalCompatibilityReprobeWorkbench({
       </div>
 
       <div className="space-y-5 p-5">
-        <div className="grid gap-3 lg:grid-cols-3">
-          {(
-            [
-              ["requester", "Request actor", "Creates re-probe approval intent"],
-              ["reviewer", "Approval actor", "Approves or rejects the re-probe"],
-              ["executor", "Worker execution actor", "Embedded in the controlled Worker command"],
-            ] as const
-          ).map(([field, label, help]) => (
-            <label key={field} className="block rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {label}
-              </span>
-              <input
-                value={actors[field]}
-                onChange={(event) => updateActor(field, event.target.value)}
-                className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
-                spellCheck={false}
-              />
-              <span className="mt-1 block text-xs text-slate-500">{help}</span>
-            </label>
-          ))}
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Browser mutation identity
+            </span>
+            <p className="mt-2 text-sm leading-5 text-slate-700">
+              Request, approval and cancellation actors come from the authenticated Workspace
+              Principal. Browser-supplied actor fields are not accepted.
+            </p>
+          </div>
+          <label className="block rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Worker execution actor
+            </span>
+            <input
+              value={executorActorId}
+              onChange={(event) => setExecutorActorId(event.target.value)}
+              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
+              spellCheck={false}
+            />
+            <span className="mt-1 block text-xs text-slate-500">
+              Embedded only in the controlled Worker command; it is not a browser API identity.
+            </span>
+          </label>
         </div>
 
         {error ? (
@@ -299,7 +294,7 @@ export function FoundationalCompatibilityReprobeWorkbench({
               const command = intent
                 ? compatibilityReprobeWorkerCommand({
                     intentId: intent.intentId,
-                    executedByActorId: actors.executor,
+                    executedByActorId: executorActorId,
                   })
                 : null;
 
@@ -333,7 +328,7 @@ export function FoundationalCompatibilityReprobeWorkbench({
                       <div className="flex flex-wrap items-center gap-3">
                         <button
                           type="button"
-                          disabled={busy !== null || !actors.requester.trim()}
+                          disabled={busy !== null}
                           onClick={() => void createIntent(action.targetId)}
                           className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3.5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -356,7 +351,7 @@ export function FoundationalCompatibilityReprobeWorkbench({
                       <div className="flex flex-wrap items-center gap-3">
                         <button
                           type="button"
-                          disabled={busy !== null || !actors.reviewer.trim()}
+                          disabled={busy !== null}
                           onClick={() => void transitionIntent(intent.intentId, "APPROVE")}
                           className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-3.5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -364,7 +359,7 @@ export function FoundationalCompatibilityReprobeWorkbench({
                         </button>
                         <button
                           type="button"
-                          disabled={busy !== null || !actors.requester.trim()}
+                          disabled={busy !== null}
                           onClick={() => void transitionIntent(intent.intentId, "CANCEL")}
                           className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -393,7 +388,7 @@ export function FoundationalCompatibilityReprobeWorkbench({
                         </div>
                         <button
                           type="button"
-                          disabled={!actors.executor.trim()}
+                          disabled={!executorActorId.trim()}
                           onClick={() => void copyCommand(intent.intentId)}
                           className="inline-flex items-center gap-2 rounded-xl border border-blue-300 bg-white px-3.5 py-2 text-sm font-semibold text-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
                         >
