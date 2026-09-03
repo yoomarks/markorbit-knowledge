@@ -13,6 +13,10 @@ import { SqliteSourceCompatibilityObservationRepository } from "@markorbit/persi
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { buildFoundationalRemediationQueueSnapshot } from "@/server/foundational-remediation-queue";
 import {
+  resolveOperatorServiceMutationAccess,
+  resolveOperatorServiceReadAccess,
+} from "@/server/operator-service-api-access";
+import {
   loadProductionValidationWave,
   resolveProductionValidationWorkspaceId,
 } from "@/server/production-validation-wave";
@@ -144,6 +148,7 @@ export async function GET(request: Request) {
     const resolvedWorkspaceId = resolveProductionValidationWorkspaceId(
       url.searchParams.get("workspaceId"),
     );
+    resolveOperatorServiceReadAccess(request, resolvedWorkspaceId);
     const current = inspectCurrentWave(resolvedWorkspaceId);
     const scorecardSnapshots = new SqliteProductionValidationScorecardSnapshotRepository(
       getRegistryDatabase(),
@@ -163,6 +168,7 @@ export async function POST(request: Request) {
     const body = requireRecord(await readJson(request));
     const manifest = loadProductionValidationWave();
     const resolvedWorkspaceId = resolveProductionValidationWorkspaceId(body.workspaceId);
+    resolveOperatorServiceMutationAccess(request, resolvedWorkspaceId);
     if (body.action === SCORECARD_CAPTURE_ACTION) {
       const idempotencyKey = request.headers.get("Idempotency-Key")?.trim();
       if (!idempotencyKey) {
