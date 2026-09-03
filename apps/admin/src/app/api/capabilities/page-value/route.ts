@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getPageValueCapabilityService } from "@/server/page-value-capability-service";
 
@@ -18,8 +22,9 @@ function candidateIds(value: unknown): string[] {
   });
 }
 
-export function GET() {
+export async function GET(request: Request) {
   try {
+    await resolveAdminBrowserApiReadAccess(request, DEFAULT_WORKSPACE.id);
     return NextResponse.json({ status: getPageValueCapabilityService().status() });
   } catch (error) {
     return apiError(error);
@@ -28,6 +33,7 @@ export function GET() {
 
 export async function POST(request: Request) {
   try {
+    await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const body = requireRecord(await readJson(request));
     const service = getPageValueCapabilityService();
     const ids = candidateIds(body.candidateIds);
