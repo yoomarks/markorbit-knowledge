@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { RegistryNotFoundError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  assertAdminBrowserResourceWorkspace,
+  resolveAdminBrowserApiMutationAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getDiscoveryWorkflowService } from "@/server/discovery-service";
-import { getSourceDiscoveryRepository } from "@/server/source-registry";
+import { getSourceDiscoveryRepository, getSourceRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +40,11 @@ function optionalStringArray(value: unknown, field: string): string[] | undefine
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const source = getSourceRepository().getById(id);
+    if (!source) throw new RegistryNotFoundError(id);
+    const { principal } = await resolveAdminBrowserApiMutationAccess(request, source.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, source.workspaceId);
+
     const body = requireRecord(await readJson(request));
     const result = await getDiscoveryWorkflowService().expandSource(id, {
       maxDepth: optionalInteger(body.maxDepth, "maxDepth"),
