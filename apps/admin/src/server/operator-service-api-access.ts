@@ -17,6 +17,13 @@ function assertWorkspace(
   }
 }
 
+export function assertOperatorServiceResourceWorkspace(
+  principal: CaseProducerWorkspacePrincipalV1,
+  resourceWorkspaceId: string,
+): void {
+  assertWorkspace(principal, resourceWorkspaceId);
+}
+
 export function resolveOperatorServiceReadAccess(
   request: Request,
   assertedWorkspaceId?: string | null,
