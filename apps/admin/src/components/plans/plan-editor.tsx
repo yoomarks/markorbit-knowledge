@@ -15,6 +15,7 @@ import {
 } from "@markorbit/contracts";
 import type { SourceListResult } from "@markorbit/persistence";
 import type { CollectionPlanRegistryRecord } from "@markorbit/persistence/collection-plans";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type Values = {
   sourceId: string;
@@ -246,7 +247,7 @@ export function PlanEditor({ planId }: { planId?: string }) {
       const requestPayload = payload();
       const response = await fetch(planId ? `/api/plans/${planId}` : "/api/plans", {
         method: planId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(
           planId
             ? { ...requestPayload, expectedUpdatedAt: record?.plan.updatedAt }
@@ -290,7 +291,7 @@ export function PlanEditor({ planId }: { planId?: string }) {
     try {
       const response = await fetch(`/api/plans/${record.plan.id}/status`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ status, expectedUpdatedAt: record.plan.updatedAt }),
       });
       const body = (await response.json()) as {
