@@ -11,6 +11,10 @@ import {
 } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
 import type { CreateConverterManifestInput } from "@markorbit/persistence/converters";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getConverterRegistryRepository } from "@/server/source-registry";
 
@@ -26,6 +30,7 @@ function integer(value: string | null, fallback: number): number {
 
 export async function GET(request: Request) {
   try {
+    await resolveAdminBrowserApiReadAccess(request);
     const params = new URL(request.url).searchParams;
     const runtimeValue = params.get("runtime") ?? undefined;
     const status = params.get("status") ?? undefined;
@@ -58,6 +63,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await resolveAdminBrowserApiMutationAccess(request);
     const body = requireRecord(await readJson(request));
     const record = getConverterRegistryRepository().createManifest(
       body as CreateConverterManifestInput,
