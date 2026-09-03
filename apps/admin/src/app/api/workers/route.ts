@@ -13,6 +13,10 @@ import {
   type CreateWorkerInput,
   type WorkerListFilters,
 } from "@markorbit/persistence/workers";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getWorkerRegistryRepository } from "@/server/source-registry";
 
@@ -41,9 +45,11 @@ function integerValue(value: string | null, field: string): number | undefined {
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
+    const assertedWorkspaceId = url.searchParams.get("workspaceId") ?? undefined;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const filters: WorkerListFilters = {
       q: url.searchParams.get("q") ?? undefined,
-      workspaceId: url.searchParams.get("workspaceId") ?? undefined,
+      workspaceId,
       desiredState: enumValue(
         WORKER_DESIRED_STATES,
         url.searchParams.get("desiredState"),
@@ -72,7 +78,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
-    const result = getWorkerRegistryRepository().create(body as CreateWorkerInput);
+    const assertedWorkspaceId =
+      typeof body.workspaceId === "string" ? body.workspaceId : undefined;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
+    const result = getWorkerRegistryRepository().create({
+      ...(body as CreateWorkerInput),
+      workspaceId,
+    });
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     return apiError(error);
