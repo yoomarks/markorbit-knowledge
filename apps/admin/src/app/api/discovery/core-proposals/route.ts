@@ -4,6 +4,7 @@ import { CORE_DISCOVERY_PROPOSAL_VERSION, CORE_DISCOVERY_PROPOSER } from "@marko
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getCoreDiscoveryProposalService } from "@/server/core-discovery-proposal-service";
+import { resolveOperatorServiceMutationAccess } from "@/server/operator-service-api-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ function optionalString(value: unknown, field: string): string | undefined {
 
 export async function POST(request: Request) {
   try {
+    resolveOperatorServiceMutationAccess(request);
     const body = requireRecord(await readJson(request));
     if (body.version !== CORE_DISCOVERY_PROPOSAL_VERSION) {
       throw new RegistryValidationError(`version must be ${CORE_DISCOVERY_PROPOSAL_VERSION}`);
