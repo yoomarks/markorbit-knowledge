@@ -14,7 +14,10 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const { id, readyPackageId } = await context.params;
     const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, id);
-    const exported = getConfiguredReadyPackageV2Service().exportContent(workspaceId, readyPackageId);
+    const exported = getConfiguredReadyPackageV2Service().exportContent(
+      workspaceId,
+      readyPackageId,
+    );
     return new Response(serializeReadyPackageContentExportV2(exported), {
       status: 200,
       headers: {

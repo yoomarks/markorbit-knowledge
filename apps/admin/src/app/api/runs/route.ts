@@ -90,7 +90,10 @@ export async function POST(request: Request) {
     }
     const plan = getCollectionPlanRepository().getById(body.planId);
     if (!plan) throw new CollectionPlanNotFoundError(body.planId);
-    const { principal } = await resolveAdminBrowserApiMutationAccess(request, plan.plan.workspaceId);
+    const { principal } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      plan.plan.workspaceId,
+    );
     assertAdminBrowserResourceWorkspace(principal, plan.plan.workspaceId);
     const result = getExecutionLedgerRepository().dispatchManual({
       planId: body.planId,

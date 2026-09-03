@@ -78,8 +78,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
-    const assertedWorkspaceId =
-      typeof body.workspaceId === "string" ? body.workspaceId : undefined;
+    const assertedWorkspaceId = typeof body.workspaceId === "string" ? body.workspaceId : undefined;
     const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
       request,
       assertedWorkspaceId,

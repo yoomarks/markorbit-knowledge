@@ -27,7 +27,9 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, id);
-    return NextResponse.json(getConfiguredCanonicalDownstreamPromotionService().overview(workspaceId));
+    return NextResponse.json(
+      getConfiguredCanonicalDownstreamPromotionService().overview(workspaceId),
+    );
   } catch (error) {
     return apiError(error);
   }
