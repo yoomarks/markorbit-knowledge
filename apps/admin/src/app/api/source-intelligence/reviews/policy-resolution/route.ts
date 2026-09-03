@@ -1,5 +1,6 @@
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
+import { resolveSourceIntelligenceBrowserReadAccess } from "@/server/source-intelligence-browser-access";
 import { getSourceIntelligenceReviewService } from "@/server/source-intelligence-review-service";
 
 export const runtime = "nodejs";
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
     }
     const sourceIds = csvValues(url.searchParams.get("sourceIds"));
     if (!sourceIds.length) throw new RegistryValidationError("sourceIds is required");
+    await resolveSourceIntelligenceBrowserReadAccess(request, sourceIds);
     const asOf = url.searchParams.get("asOf");
     if (!asOf) throw new RegistryValidationError("asOf is required");
     return Response.json({
