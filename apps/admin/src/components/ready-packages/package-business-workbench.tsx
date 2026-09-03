@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { ReadyPackage } from "@markorbit/contracts";
 import type { SourceListResult } from "@markorbit/persistence";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 import {
   isCoreContentActionable,
@@ -238,7 +239,7 @@ export function PackageBusinessWorkbench({ workspaceId }: { workspaceId: string 
         `/api/ready-packages/${encodeURIComponent(item.readyPackage.id)}/${target}`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({
             workspaceId,
             expectedDigest: item.readyPackage.evidence.digest,
