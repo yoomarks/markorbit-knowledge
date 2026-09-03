@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Archive, CheckCircle2, RefreshCw, Save } from "lucide-react";
 import type { VaultBindingV1 } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type FilesystemReadiness = {
   configured: boolean;
@@ -118,7 +119,7 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
         `/api/workspaces/${encodeURIComponent(workspaceId)}/vault-binding`,
         {
           method: "PUT",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({
             name,
             relativeRoot,
@@ -150,7 +151,7 @@ export function VaultBindingControl({ workspaceId }: { workspaceId: string }) {
         `/api/workspaces/${encodeURIComponent(workspaceId)}/vault-binding`,
         {
           method: "PATCH",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({ status: nextStatus, expectedRevision: binding.revision }),
         },
       );

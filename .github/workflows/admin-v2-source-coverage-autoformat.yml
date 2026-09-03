@@ -25,19 +25,115 @@ jobs:
       - name: Apply Prettier
         run: |
           # Keep business surfaces and shared ingestion-control helpers formatting-clean,
-          # including production staging and the bulk collection-to-Knowledge P0 acceptance path.
+          # including production staging, browser API boundaries and the bulk
+          # collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
+            apps/admin/src/app/api/changes/evidence/feed/route.ts \
+            apps/admin/src/app/api/conversion-profiles/route.ts \
+            apps/admin/src/app/api/conversion-recovery/[id]/retry/route.ts \
+            apps/admin/src/app/api/conversion-recovery/route.ts \
+            apps/admin/src/app/api/conversion-runs/route.ts \
+            apps/admin/src/app/api/conversion-runtime/capabilities/route.ts \
+            apps/admin/src/app/api/foundational/action-executions/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/[intentId]/execute/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/[intentId]/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/route.ts \
+            apps/admin/src/app/api/foundational/collection-outcomes/route.ts \
+            apps/admin/src/app/api/foundational/compatibility-reprobe-executions/route.ts \
+            apps/admin/src/app/api/foundational/conversion-recovery/route.ts \
+            apps/admin/src/app/api/foundational/remediation-queue/route.ts \
+            apps/admin/src/app/api/foundational/retrieval-quality-remediation/route.ts \
+            apps/admin/src/app/api/foundational/verified-canonical-reindex/route.ts \
+            apps/admin/src/app/api/knowledge/[id]/graph/route.ts \
+            apps/admin/src/app/api/knowledge/[id]/relationships/route.ts \
+            apps/admin/src/app/api/knowledge/[id]/route.ts \
+            apps/admin/src/app/api/knowledge/route.ts \
+            apps/admin/src/app/api/leases/reap/route.ts \
+            apps/admin/src/app/api/operations/readiness/route.ts \
+            apps/admin/src/app/api/plans/[id]/route.ts \
+            apps/admin/src/app/api/plans/[id]/runs/route.ts \
+            apps/admin/src/app/api/plans/[id]/status/route.ts \
+            apps/admin/src/app/api/plans/route.ts \
+            apps/admin/src/app/api/raw-artifacts/[id]/authorize-conversion/route.ts \
+            apps/admin/src/app/api/raw-artifacts/[id]/source-graph/route.ts \
+            apps/admin/src/app/api/ready-packages/[id]/core-content/submit/route.ts \
+            apps/admin/src/app/api/ready-packages/[id]/core-intake/route.ts \
+            apps/admin/src/app/api/ready-packages/[id]/core-intake/submit/route.ts \
+            apps/admin/src/app/api/ready-packages/[id]/route.ts \
+            apps/admin/src/app/api/ready-packages/route.ts \
+            apps/admin/src/app/api/retrieval/audit/route.ts \
+            apps/admin/src/app/api/retrieval/documents/[id]/route.ts \
+            apps/admin/src/app/api/retrieval/relevance-audit/route.ts \
+            apps/admin/src/app/api/retrieval/remediation/executions/route.ts \
+            apps/admin/src/app/api/retrieval/remediation/route.ts \
+            apps/admin/src/app/api/retrieval/search/route.ts \
+            apps/admin/src/app/api/runs/[id]/cancel/route.ts \
+            apps/admin/src/app/api/runs/[id]/executions/route.ts \
+            apps/admin/src/app/api/runs/[id]/route.ts \
+            apps/admin/src/app/api/runs/route.ts \
+            apps/admin/src/app/api/source-coverage/[id]/discovery/route.ts \
+            apps/admin/src/app/api/source-coverage/[id]/route.ts \
+            apps/admin/src/app/api/source-coverage/discovery/route.ts \
+            apps/admin/src/app/api/source-coverage/route.ts \
+            apps/admin/src/app/api/source-supply-health/route.ts \
+            apps/admin/src/app/api/source-supply-promotion-receipts/[receiptId]/reconcile/route.ts \
+            apps/admin/src/app/api/source-supply-promotion-receipts/route.ts \
+            apps/admin/src/app/api/sources/route.ts \
+            apps/admin/src/app/api/workers/[id]/leases/route.ts \
+            apps/admin/src/app/api/workers/[id]/rotate-credential/route.ts \
+            apps/admin/src/app/api/workers/[id]/route.ts \
+            apps/admin/src/app/api/workers/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/canonical-downstream-documents/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/core-binding/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/ready-package-v2-deliveries/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/ready-packages-v2/[readyPackageId]/content-export/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/ready-packages-v2/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-binding/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-exports/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-import-executions/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-import-intents/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-inspections/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-origin-staging-finalizations/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-origin-staging-verifications/route.ts \
             apps/admin/src/app/knowledge/[id]/page.tsx \
+            apps/admin/src/components/discovery/discovery-workspace.tsx \
+            apps/admin/src/components/foundational/foundational-compatibility-reprobe-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-conversion-recovery-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/components/foundational/foundational-operator-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-retrieval-quality-remediation-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-verified-canonical-reindex-workbench.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
             apps/admin/src/components/knowledge/content-reader-model.ts \
             apps/admin/src/components/knowledge/content-reader.tsx \
-            apps/admin/src/components/sources/source-country-coverage.tsx \
-            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/plans/plan-editor.tsx \
+            apps/admin/src/components/plans/plan-runs-panel.tsx \
+            apps/admin/src/components/ready-packages/package-business-workbench.tsx \
+            apps/admin/src/components/ready-packages/ready-package-delivery-workbench.tsx \
+            apps/admin/src/components/runs/run-detail.tsx \
+            apps/admin/src/components/runs/run-list.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
+            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/sources/source-country-analysis.tsx \
+            apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/source-failure-root-causes.tsx \
-            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
-            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/components/vault/canonical-downstream-promotion-control.tsx \
+            apps/admin/src/components/vault/ready-package-v2-control.tsx \
+            apps/admin/src/components/vault/ready-package-v2-delivery-control.tsx \
+            apps/admin/src/components/vault/vault-binding-control.tsx \
+            apps/admin/src/components/vault/vault-export-control.tsx \
+            apps/admin/src/components/vault/vault-import-execution-control.tsx \
+            apps/admin/src/components/vault/vault-import-intent-control.tsx \
+            apps/admin/src/components/vault/vault-inspection-control.tsx \
+            apps/admin/src/components/vault/vault-origin-staging-verification-control.tsx \
+            apps/admin/src/components/workers/worker-editor.tsx \
+            apps/admin/src/components/workers/worker-list.tsx \
+            apps/admin/src/server/admin-api-route-classification.test.ts \
+            apps/admin/src/server/admin-browser-api-route-boundary.test.ts \
+            apps/admin/src/server/admin-browser-client-mutation-boundary.test.ts \
+            apps/admin/src/server/operator-service-api-access.ts \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/production-conversion-worker-service.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \
@@ -51,17 +147,112 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            apps/admin/src/app/api/changes/evidence/feed/route.ts \
+            apps/admin/src/app/api/conversion-profiles/route.ts \
+            apps/admin/src/app/api/conversion-recovery/[id]/retry/route.ts \
+            apps/admin/src/app/api/conversion-recovery/route.ts \
+            apps/admin/src/app/api/conversion-runs/route.ts \
+            apps/admin/src/app/api/conversion-runtime/capabilities/route.ts \
+            apps/admin/src/app/api/foundational/action-executions/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/[intentId]/execute/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/[intentId]/route.ts \
+            apps/admin/src/app/api/foundational/action-intents/route.ts \
+            apps/admin/src/app/api/foundational/collection-outcomes/route.ts \
+            apps/admin/src/app/api/foundational/compatibility-reprobe-executions/route.ts \
+            apps/admin/src/app/api/foundational/conversion-recovery/route.ts \
+            apps/admin/src/app/api/foundational/remediation-queue/route.ts \
+            apps/admin/src/app/api/foundational/retrieval-quality-remediation/route.ts \
+            apps/admin/src/app/api/foundational/verified-canonical-reindex/route.ts \
+            apps/admin/src/app/api/knowledge/[id]/graph/route.ts \
+            apps/admin/src/app/api/knowledge/[id]/relationships/route.ts \
+            apps/admin/src/app/api/knowledge/[id]/route.ts \
+            apps/admin/src/app/api/knowledge/route.ts \
+            apps/admin/src/app/api/leases/reap/route.ts \
+            apps/admin/src/app/api/operations/readiness/route.ts \
+            apps/admin/src/app/api/plans/[id]/route.ts \
+            apps/admin/src/app/api/plans/[id]/runs/route.ts \
+            apps/admin/src/app/api/plans/[id]/status/route.ts \
+            apps/admin/src/app/api/plans/route.ts \
+            apps/admin/src/app/api/raw-artifacts/[id]/authorize-conversion/route.ts \
+            apps/admin/src/app/api/raw-artifacts/[id]/source-graph/route.ts \
+            apps/admin/src/app/api/ready-packages/[id]/core-content/submit/route.ts \
+            apps/admin/src/app/api/ready-packages/[id]/core-intake/route.ts \
+            apps/admin/src/app/api/ready-packages/[id]/core-intake/submit/route.ts \
+            apps/admin/src/app/api/ready-packages/[id]/route.ts \
+            apps/admin/src/app/api/ready-packages/route.ts \
+            apps/admin/src/app/api/retrieval/audit/route.ts \
+            apps/admin/src/app/api/retrieval/documents/[id]/route.ts \
+            apps/admin/src/app/api/retrieval/relevance-audit/route.ts \
+            apps/admin/src/app/api/retrieval/remediation/executions/route.ts \
+            apps/admin/src/app/api/retrieval/remediation/route.ts \
+            apps/admin/src/app/api/retrieval/search/route.ts \
+            apps/admin/src/app/api/runs/[id]/cancel/route.ts \
+            apps/admin/src/app/api/runs/[id]/executions/route.ts \
+            apps/admin/src/app/api/runs/[id]/route.ts \
+            apps/admin/src/app/api/runs/route.ts \
+            apps/admin/src/app/api/source-coverage/[id]/discovery/route.ts \
+            apps/admin/src/app/api/source-coverage/[id]/route.ts \
+            apps/admin/src/app/api/source-coverage/discovery/route.ts \
+            apps/admin/src/app/api/source-coverage/route.ts \
+            apps/admin/src/app/api/source-supply-health/route.ts \
+            apps/admin/src/app/api/source-supply-promotion-receipts/[receiptId]/reconcile/route.ts \
+            apps/admin/src/app/api/source-supply-promotion-receipts/route.ts \
+            apps/admin/src/app/api/sources/route.ts \
+            apps/admin/src/app/api/workers/[id]/leases/route.ts \
+            apps/admin/src/app/api/workers/[id]/rotate-credential/route.ts \
+            apps/admin/src/app/api/workers/[id]/route.ts \
+            apps/admin/src/app/api/workers/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/canonical-downstream-documents/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/core-binding/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/ready-package-v2-deliveries/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/ready-packages-v2/[readyPackageId]/content-export/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/ready-packages-v2/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-binding/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-exports/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-import-executions/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-import-intents/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-inspections/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-origin-staging-finalizations/route.ts \
+            apps/admin/src/app/api/workspaces/[id]/vault-origin-staging-verifications/route.ts \
             apps/admin/src/app/knowledge/[id]/page.tsx \
+            apps/admin/src/components/discovery/discovery-workspace.tsx \
+            apps/admin/src/components/foundational/foundational-compatibility-reprobe-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-conversion-recovery-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
+            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/components/foundational/foundational-operator-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-retrieval-quality-remediation-workbench.tsx \
+            apps/admin/src/components/foundational/foundational-verified-canonical-reindex-workbench.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
             apps/admin/src/components/knowledge/content-reader-model.ts \
             apps/admin/src/components/knowledge/content-reader.tsx \
-            apps/admin/src/components/sources/source-country-coverage.tsx \
-            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/plans/plan-editor.tsx \
+            apps/admin/src/components/plans/plan-runs-panel.tsx \
+            apps/admin/src/components/ready-packages/package-business-workbench.tsx \
+            apps/admin/src/components/ready-packages/ready-package-delivery-workbench.tsx \
+            apps/admin/src/components/runs/run-detail.tsx \
+            apps/admin/src/components/runs/run-list.tsx \
             apps/admin/src/components/sources/radar-collection-authorization.tsx \
+            apps/admin/src/components/sources/radar-review-evidence.tsx \
+            apps/admin/src/components/sources/source-country-analysis.tsx \
+            apps/admin/src/components/sources/source-country-coverage.tsx \
             apps/admin/src/components/sources/source-failure-root-causes.tsx \
-            apps/admin/src/components/foundational/foundational-health-dashboard.tsx \
-            apps/admin/src/components/foundational/foundational-health-dashboard-v2.tsx \
+            apps/admin/src/components/vault/canonical-downstream-promotion-control.tsx \
+            apps/admin/src/components/vault/ready-package-v2-control.tsx \
+            apps/admin/src/components/vault/ready-package-v2-delivery-control.tsx \
+            apps/admin/src/components/vault/vault-binding-control.tsx \
+            apps/admin/src/components/vault/vault-export-control.tsx \
+            apps/admin/src/components/vault/vault-import-execution-control.tsx \
+            apps/admin/src/components/vault/vault-import-intent-control.tsx \
+            apps/admin/src/components/vault/vault-inspection-control.tsx \
+            apps/admin/src/components/vault/vault-origin-staging-verification-control.tsx \
+            apps/admin/src/components/workers/worker-editor.tsx \
+            apps/admin/src/components/workers/worker-list.tsx \
+            apps/admin/src/server/admin-api-route-classification.test.ts \
+            apps/admin/src/server/admin-browser-api-route-boundary.test.ts \
+            apps/admin/src/server/admin-browser-client-mutation-boundary.test.ts \
+            apps/admin/src/server/operator-service-api-access.ts \
             apps/admin/src/server/m3-converter-bootstrap.ts \
             apps/admin/src/server/production-conversion-worker-service.ts \
             apps/admin/src/server/raw-artifact-auto-conversion.ts \

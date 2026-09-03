@@ -15,6 +15,10 @@ import {
   type CollectionPlanListFilters,
   type CreateCollectionPlanInput,
 } from "@markorbit/persistence/collection-plans";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getCollectionPlanRepository } from "@/server/source-registry";
 
@@ -45,9 +49,11 @@ function integerValue(value: string | null, field: string): number | undefined {
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
+    const assertedWorkspaceId = url.searchParams.get("workspaceId") ?? undefined;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const filters: CollectionPlanListFilters = {
       q: url.searchParams.get("q") ?? undefined,
-      workspaceId: url.searchParams.get("workspaceId") ?? undefined,
+      workspaceId,
       sourceId: url.searchParams.get("sourceId") ?? undefined,
       status: enumValue(COLLECTION_PLAN_STATUSES, url.searchParams.get("status"), "status") as
         CollectionPlanStatus | undefined,
@@ -77,7 +83,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
-    const plan = getCollectionPlanRepository().create(body as CreateCollectionPlanInput);
+    const assertedWorkspaceId = typeof body.workspaceId === "string" ? body.workspaceId : undefined;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
+    const plan = getCollectionPlanRepository().create({
+      ...(body as CreateCollectionPlanInput),
+      workspaceId,
+    });
     return NextResponse.json({ plan }, { status: 201 });
   } catch (error) {
     return apiError(error);

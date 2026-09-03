@@ -7,9 +7,17 @@ import {
   type ReadyPackageCoreIntakeSubmission,
 } from "@markorbit/persistence/ready-package-core-intake-submissions";
 import { createCoreIntakeRequestPreview } from "@markorbit/worker-runtime";
+import {
+  assertAdminBrowserResourceWorkspace,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { coreContentTransportReadiness } from "@/server/core-content-http-transport";
 import { coreIntakeTransportReadiness } from "@/server/core-intake-http-transport";
+import {
+  assertOperatorServiceResourceWorkspace,
+  resolveOperatorServiceMutationAccess,
+} from "@/server/operator-service-api-access";
 import { recordReadyPackageCoreIntakeAcknowledgment } from "@/server/ready-package-core-intake-handoff";
 import { getReadyPackageRepository, getRegistryDatabase } from "@/server/source-registry";
 
@@ -46,14 +54,22 @@ function submissionStatusView(submission: ReadyPackageCoreIntakeSubmission) {
 
 export async function GET(request: Request, context: RouteContext) {
   try {
-    const workspaceId = new URL(request.url).searchParams.get("workspaceId")?.trim();
-    if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+    const assertedWorkspaceId = new URL(request.url).searchParams.get("workspaceId")?.trim();
+    if (!assertedWorkspaceId) {
+      throw new RegistryValidationError("workspaceId query parameter is required");
+    }
+    const { principal, workspaceId } = await resolveAdminBrowserApiReadAccess(
+      request,
+      assertedWorkspaceId,
+    );
     const { id } = await context.params;
     const database = getRegistryDatabase();
     const repository = getReadyPackageRepository();
     const readyPackage = repository.getById(id, workspaceId);
-    if (!readyPackage)
+    if (!readyPackage) {
       throw new RegistryError("READY_PACKAGE_NOT_FOUND", `ReadyPackage ${id} was not found`);
+    }
+    assertAdminBrowserResourceWorkspace(principal, readyPackage.workspaceId);
     const binding = new SqliteCoreWorkspaceBindingRepository(database).getByKnowledgeWorkspaceId(
       workspaceId,
     );
@@ -169,9 +185,9 @@ export async function GET(request: Request, context: RouteContext) {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const body = (await request.json()) as PostBody;
-    const workspaceId = body.workspaceId?.trim();
+    const assertedWorkspaceId = body.workspaceId?.trim();
     const expectedDigest = body.expectedDigest?.trim();
-    if (!workspaceId) throw new RegistryValidationError("workspaceId is required");
+    if (!assertedWorkspaceId) throw new RegistryValidationError("workspaceId is required");
     if (!expectedDigest) throw new RegistryValidationError("expectedDigest is required");
     if (body.acknowledge !== true) {
       throw new RegistryValidationError("acknowledge=true is required");
@@ -180,17 +196,24 @@ export async function POST(request: Request, context: RouteContext) {
       throw new RegistryValidationError("coreIntakeResult is required");
     }
 
+    const principal = resolveOperatorServiceMutationAccess(request, assertedWorkspaceId);
     const { id } = await context.params;
+    const readyPackages = getReadyPackageRepository();
+    const readyPackage = readyPackages.getById(id, principal.workspaceId);
+    if (!readyPackage) {
+      throw new RegistryError("READY_PACKAGE_NOT_FOUND", `ReadyPackage ${id} was not found`);
+    }
+    assertOperatorServiceResourceWorkspace(principal, readyPackage.workspaceId);
     return NextResponse.json(
       recordReadyPackageCoreIntakeAcknowledgment(
         {
-          workspaceId,
+          workspaceId: principal.workspaceId,
           readyPackageId: id,
           expectedDigest,
           acknowledge: true,
           coreIntakeResult: body.coreIntakeResult,
         },
-        getReadyPackageRepository(),
+        readyPackages,
       ),
     );
   } catch (error) {

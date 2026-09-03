@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
+import { resolveSourceIntelligenceBrowserReadAccess } from "@/server/source-intelligence-browser-access";
 import { getSourceIntelligenceReviewService } from "@/server/source-intelligence-review-service";
 
 export const runtime = "nodejs";
@@ -35,15 +36,14 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     requireV2(url.searchParams.get("protocolVersion"));
-    const assignmentHealth = getSourceIntelligenceReviewService().assignmentHealth(
-      sourceIdsValue(url.searchParams.get("sourceIds")),
-      {
-        ownershipEventLimit: optionalInteger(
-          url.searchParams.get("ownershipEventLimit"),
-          "ownershipEventLimit",
-        ),
-      },
-    );
+    const sourceIds = sourceIdsValue(url.searchParams.get("sourceIds"));
+    await resolveSourceIntelligenceBrowserReadAccess(request, sourceIds);
+    const assignmentHealth = getSourceIntelligenceReviewService().assignmentHealth(sourceIds, {
+      ownershipEventLimit: optionalInteger(
+        url.searchParams.get("ownershipEventLimit"),
+        "ownershipEventLimit",
+      ),
+    });
     return NextResponse.json({ assignmentHealth });
   } catch (error) {
     return apiError(error);

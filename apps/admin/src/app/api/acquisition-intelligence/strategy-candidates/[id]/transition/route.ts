@@ -3,6 +3,7 @@ import { ACQUISITION_PROMOTION_STAGES, type AcquisitionPromotionStage } from "@m
 import { RegistryValidationError } from "@markorbit/persistence";
 import { SqliteAcquisitionStrategyGovernanceRepository } from "@markorbit/persistence/acquisition-strategy-governance";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
+import { resolveOperatorServiceMutationAccess } from "@/server/operator-service-api-access";
 import { getRegistryDatabase } from "@/server/source-registry";
 
 export const runtime = "nodejs";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const principal = resolveOperatorServiceMutationAccess(request);
     const { id } = await context.params;
     const body = requireRecord(await readJson(request));
     if (
@@ -17,12 +19,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       !ACQUISITION_PROMOTION_STAGES.includes(body.toStage as AcquisitionPromotionStage)
     ) {
       throw new RegistryValidationError("toStage must be a valid acquisition promotion stage");
-    }
-    if (body.actorType !== "HUMAN" && body.actorType !== "SYSTEM") {
-      throw new RegistryValidationError("actorType must be HUMAN or SYSTEM");
-    }
-    if (typeof body.actorId !== "string" || !body.actorId.trim()) {
-      throw new RegistryValidationError("actorId is required");
     }
     if (typeof body.rationale !== "string" || !body.rationale.trim()) {
       throw new RegistryValidationError("rationale is required");
@@ -38,8 +34,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         candidateId: id,
         toStage: body.toStage as AcquisitionPromotionStage,
         actor: {
-          actorType: body.actorType,
-          actorId: body.actorId,
+          actorType: "HUMAN",
+          actorId: principal.userId,
         },
         evidenceRefs,
         rationale: body.rationale,

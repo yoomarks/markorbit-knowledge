@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { FOUNDATIONAL_ACTION_INTENT_PROTOCOL_VERSION } from "@markorbit/worker-runtime/foundational-action-intent";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import {
   createFoundationalActionIntent,
@@ -30,8 +34,8 @@ function optionalLimit(value: string | null): number | undefined {
 export async function GET(request: Request) {
   try {
     const search = new URL(request.url).searchParams;
-    const workspaceId = search.get("workspaceId")?.trim();
-    if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+    const assertedWorkspaceId = search.get("workspaceId")?.trim() || undefined;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const items = listFoundationalActionIntents(getRegistryDatabase(), {
       workspaceId,
       jurisdiction: search.get("jurisdiction")?.trim() || undefined,
@@ -55,16 +59,21 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as Record<string, unknown>;
+    const assertedWorkspaceId = requiredString(payload.workspaceId, "workspaceId");
+    const { principal, workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
     const topK = payload.topK === undefined ? undefined : Number(payload.topK);
     if (topK !== undefined && (!Number.isSafeInteger(topK) || topK <= 0 || topK > 20)) {
       throw new RegistryValidationError("topK must be an integer between 1 and 20");
     }
     const intent = createFoundationalActionIntent(getRegistryDatabase(), {
-      workspaceId: requiredString(payload.workspaceId, "workspaceId"),
+      workspaceId,
       jurisdiction: requiredString(payload.jurisdiction, "jurisdiction"),
       targetId: requiredString(payload.targetId, "targetId"),
       actionCode: requiredString(payload.actionCode, "actionCode"),
-      requestedByActorId: requiredString(payload.requestedByActorId, "requestedByActorId"),
+      requestedByActorId: principal.userId,
       idempotencyKey: requiredString(payload.idempotencyKey, "idempotencyKey"),
       topK,
     });

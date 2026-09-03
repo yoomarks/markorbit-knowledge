@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { CONVERTER_STATUSES, type ConverterStatus } from "@markorbit/contracts";
 import type { ConverterRegistryRecord } from "@markorbit/persistence/converters";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 export function ConverterDetail({
   converterId,
@@ -73,11 +74,14 @@ export function ConverterDetail({
     setError(null);
     setMessage(null);
     try {
+      const headers = await adminBrowserMutationHeaders({
+        "content-type": "application/json",
+      });
       const response = await fetch(
         `/api/converters/${encodeURIComponent(converterId)}/${encodeURIComponent(version)}/status`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers,
           body: JSON.stringify({ status }),
         },
       );

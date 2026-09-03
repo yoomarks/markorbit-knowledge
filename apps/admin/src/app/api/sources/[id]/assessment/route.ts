@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { RegistryNotFoundError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  assertAdminBrowserResourceWorkspace,
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getSourceAssessmentCapabilityService } from "@/server/source-assessment-capability-service";
+import { getSourceRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,9 +20,19 @@ function optionalString(value: unknown, field: string): string | undefined {
   return value.trim() || undefined;
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+function requireSource(id: string) {
+  const source = getSourceRepository().getById(id);
+  if (!source) throw new RegistryNotFoundError(id);
+  return source;
+}
+
+export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const source = requireSource(id);
+    const { principal } = await resolveAdminBrowserApiReadAccess(request, source.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, source.workspaceId);
+
     const service = getSourceAssessmentCapabilityService();
     const latest = service.latest(id);
     return NextResponse.json({
@@ -39,6 +55,10 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const source = requireSource(id);
+    const { principal } = await resolveAdminBrowserApiMutationAccess(request, source.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, source.workspaceId);
+
     const body = requireRecord(await readJson(request));
     const result = await getSourceAssessmentCapabilityService().assess({
       sourceId: id,

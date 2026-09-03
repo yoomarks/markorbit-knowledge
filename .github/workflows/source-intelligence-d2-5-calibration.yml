@@ -5,6 +5,10 @@ on:
     paths:
       - "config/source-intelligence-d2-5-cohort.json"
       - "scripts/source-intelligence-d2-5-calibration.mjs"
+      - "scripts/source-intelligence-calibration.mjs"
+      - "scripts/source-intelligence-evidence-calibration.mjs"
+      - "scripts/admin-browser-calibration-core-auth-stub.mjs"
+      - "scripts/admin-browser-calibration-fetch.mjs"
       - "packages/contracts/src/source-intelligence-v2.ts"
       - "packages/worker-runtime/src/source-intelligence-evaluator.ts"
       - "packages/worker-runtime/tests/source-intelligence-d2-5.test.ts"
@@ -33,6 +37,15 @@ on:
 permissions:
   contents: read
 
+env:
+  MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+  MARKORBIT_CORE_AUTH_URL: http://127.0.0.1:4109
+  MARKORBIT_ADMIN_ORIGINS: http://127.0.0.1:3000
+  MARKORBIT_CALIBRATION_SESSION_ID: ses_d2_5_isolated_calibration
+  MARKORBIT_CALIBRATION_USER_ID: usr_d2_5_isolated_calibration
+  MARKORBIT_CALIBRATION_WORKSPACE_ID: wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV
+  MARKORBIT_CALIBRATION_MEMBERSHIP_ID: mem_d2_5_isolated_calibration
+
 concurrency:
   group: source-intelligence-d2-5-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -42,7 +55,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
       VALUE_LIMIT: ${{ inputs.value_limit || '12' }}
       VALUE_MIN_SUCCESS: ${{ inputs.value_min_success || '8' }}
     steps:
@@ -55,10 +67,22 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - name: Configure isolated state
+      - name: Configure isolated state and auth
         run: |
-          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-d2-5-value.sqlite" >> "$GITHUB_ENV"
-          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-d2-5-value-artifacts" >> "$GITHUB_ENV"
+          AUTH_SECRET="$(openssl rand -hex 32)"
+          CSRF_SECRET="$(openssl rand -hex 32)"
+          SESSION_TOKEN="$(openssl rand -hex 24)"
+          echo "::add-mask::$AUTH_SECRET"
+          echo "::add-mask::$CSRF_SECRET"
+          echo "::add-mask::$SESSION_TOKEN"
+          {
+            echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-d2-5-value.sqlite"
+            echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-d2-5-value-artifacts"
+            echo "MARKORBIT_CORE_INTERNAL_SECRET=$AUTH_SECRET"
+            echo "MO_INTERNAL_SERVICE_SECRET=$AUTH_SECRET"
+            echo "MARKORBIT_ADMIN_CSRF_SECRET=$CSRF_SECRET"
+            echo "MARKORBIT_CALIBRATION_SESSION_TOKEN=$SESSION_TOKEN"
+          } >> "$GITHUB_ENV"
 
       - name: Install workspace
         run: pnpm install --frozen-lockfile
@@ -66,25 +90,52 @@ jobs:
       - name: Validate D2.5 harness
         run: |
           node --check scripts/source-intelligence-d2-5-calibration.mjs
+          node --check scripts/source-intelligence-calibration.mjs
+          node --check scripts/source-intelligence-evidence-calibration.mjs
+          node --check scripts/admin-browser-calibration-core-auth-stub.mjs
+          node --check scripts/admin-browser-calibration-fetch.mjs
           node -e 'const fs=require("node:fs"); const x=JSON.parse(fs.readFileSync("config/source-intelligence-d2-5-cohort.json","utf8")); if(x.version!=="1.0"||!Array.isArray(x.sources)||x.sources.length<10) process.exit(1)'
 
       - name: Build control plane
         run: pnpm --filter @markorbit/admin build
 
-      - name: Start isolated control plane
+      - name: Start isolated authenticated control plane
         run: |
+          node scripts/admin-browser-calibration-core-auth-stub.mjs > "$RUNNER_TEMP/core-auth-value.log" 2>&1 &
+          echo "CORE_AUTH_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail "$MARKORBIT_CORE_AUTH_URL/health" > /dev/null; then
+              break
+            fi
+            if [ "$attempt" = "30" ]; then
+              cat "$RUNNER_TEMP/core-auth-value.log"
+              exit 1
+            fi
+            sleep 1
+          done
+
           pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin-value.log" 2>&1 &
           echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
           for attempt in $(seq 1 60); do
-            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
-              exit 0
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/dashboard" > /dev/null; then
+              break
+            fi
+            if [ "$attempt" = "60" ]; then
+              cat "$RUNNER_TEMP/admin-value.log"
+              exit 1
             fi
             sleep 2
           done
-          cat "$RUNNER_TEMP/admin-value.log"
-          exit 1
+
+          node --input-type=module <<'NODE'
+          import './scripts/admin-browser-calibration-fetch.mjs';
+          const response = await fetch(`${process.env.MARKORBIT_CONTROL_PLANE_URL}/api/discovery`);
+          if (!response.ok) throw new Error(`authenticated discovery probe failed: ${response.status} ${await response.text()}`);
+          NODE
 
       - name: Run wider real-source Source Value calibration
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/admin-browser-calibration-fetch.mjs
         run: |
           node scripts/source-intelligence-d2-5-calibration.mjs \
             --mode value \
@@ -127,6 +178,7 @@ jobs:
         if: always()
         run: |
           if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+          if [ -n "${CORE_AUTH_PID:-}" ]; then kill "$CORE_AUTH_PID" 2>/dev/null || true; fi
 
       - name: Upload Source Value calibration evidence
         if: always()
@@ -136,6 +188,7 @@ jobs:
           path: |
             ${{ runner.temp }}/source-intelligence-d2-5-value.json
             ${{ runner.temp }}/admin-value.log
+            ${{ runner.temp }}/core-auth-value.log
           if-no-files-found: ignore
           retention-days: 14
 
@@ -143,7 +196,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
-      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
       MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
       EVIDENCE_KEYS: ${{ inputs.evidence_keys || 'uspto-trademarks,finnegan,inta' }}
       EVIDENCE_MIN_SUCCESS: ${{ inputs.evidence_min_success || '2' }}
@@ -160,12 +212,24 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Configure isolated state
+      - name: Configure isolated state and auth
         run: |
-          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-d2-5-evidence.sqlite" >> "$GITHUB_ENV"
-          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-d2-5-evidence-artifacts" >> "$GITHUB_ENV"
-          echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
-          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+          AUTH_SECRET="$(openssl rand -hex 32)"
+          CSRF_SECRET="$(openssl rand -hex 32)"
+          SESSION_TOKEN="$(openssl rand -hex 24)"
+          echo "::add-mask::$AUTH_SECRET"
+          echo "::add-mask::$CSRF_SECRET"
+          echo "::add-mask::$SESSION_TOKEN"
+          {
+            echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/markorbit-d2-5-evidence.sqlite"
+            echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/markorbit-d2-5-evidence-artifacts"
+            echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE"
+            echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py"
+            echo "MARKORBIT_CORE_INTERNAL_SECRET=$AUTH_SECRET"
+            echo "MO_INTERNAL_SERVICE_SECRET=$AUTH_SECRET"
+            echo "MARKORBIT_ADMIN_CSRF_SECRET=$CSRF_SECRET"
+            echo "MARKORBIT_CALIBRATION_SESSION_TOKEN=$SESSION_TOKEN"
+          } >> "$GITHUB_ENV"
 
       - name: Install workspace
         run: pnpm install --frozen-lockfile
@@ -177,27 +241,54 @@ jobs:
           crawl4ai-doctor
 
       - name: Validate D2.5 harness
-        run: node --check scripts/source-intelligence-d2-5-calibration.mjs
+        run: |
+          node --check scripts/source-intelligence-d2-5-calibration.mjs
+          node --check scripts/source-intelligence-calibration.mjs
+          node --check scripts/source-intelligence-evidence-calibration.mjs
+          node --check scripts/admin-browser-calibration-core-auth-stub.mjs
+          node --check scripts/admin-browser-calibration-fetch.mjs
 
       - name: Build control plane
         run: pnpm --filter @markorbit/admin build
 
-      - name: Start isolated control plane
+      - name: Start isolated authenticated control plane
         run: |
+          node scripts/admin-browser-calibration-core-auth-stub.mjs > "$RUNNER_TEMP/core-auth-evidence.log" 2>&1 &
+          echo "CORE_AUTH_PID=$!" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail "$MARKORBIT_CORE_AUTH_URL/health" > /dev/null; then
+              break
+            fi
+            if [ "$attempt" = "30" ]; then
+              cat "$RUNNER_TEMP/core-auth-evidence.log"
+              exit 1
+            fi
+            sleep 1
+          done
+
           pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin-evidence.log" 2>&1 &
           echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
           for attempt in $(seq 1 60); do
-            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
-              exit 0
+            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/dashboard" > /dev/null; then
+              break
+            fi
+            if [ "$attempt" = "60" ]; then
+              cat "$RUNNER_TEMP/admin-evidence.log"
+              exit 1
             fi
             sleep 2
           done
-          cat "$RUNNER_TEMP/admin-evidence.log"
-          exit 1
+
+          node --input-type=module <<'NODE'
+          import './scripts/admin-browser-calibration-fetch.mjs';
+          const response = await fetch(`${process.env.MARKORBIT_CONTROL_PLANE_URL}/api/discovery`);
+          if (!response.ok) throw new Error(`authenticated discovery probe failed: ${response.status} ${await response.text()}`);
+          NODE
 
       - name: Run bounded Evidence Maturity progression
         env:
           NODE_ENV: test
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/admin-browser-calibration-fetch.mjs
           MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
           MARKORBIT_CRAWL4AI_PYTHON: python
         run: |
@@ -224,7 +315,7 @@ jobs:
           const successful = report.results.filter((item) => item.status === 'SUCCESS');
           if (successful.length < Number(process.env.EVIDENCE_MIN_SUCCESS)) throw new Error('Insufficient evidence calibration successes');
           for (const item of successful) {
-            if (item.connector !== 'crawl4ai-web@1.1.0') throw new Error(`${item.key} connector drift`);
+            if (item.connector !== 'crawl4ai-web@1.2.0') throw new Error(`${item.key} connector drift`);
             if (item.beforeDualAxis?.evidenceMaturity?.stage !== 'UNOBSERVED') throw new Error(`${item.key} baseline was not UNOBSERVED`);
             if (!item.invariants?.evidenceMaturityAdvanced) throw new Error(`${item.key} maturity did not advance`);
             if (!item.invariants?.sourceSignalsStable) throw new Error(`${item.key} Source Value signals changed during bounded evidence-only calibration`);
@@ -240,6 +331,7 @@ jobs:
         if: always()
         run: |
           if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+          if [ -n "${CORE_AUTH_PID:-}" ]; then kill "$CORE_AUTH_PID" 2>/dev/null || true; fi
 
       - name: Upload Evidence Maturity calibration evidence
         if: always()
@@ -249,5 +341,6 @@ jobs:
           path: |
             ${{ runner.temp }}/source-intelligence-d2-5-evidence.json
             ${{ runner.temp }}/admin-evidence.log
+            ${{ runner.temp }}/core-auth-evidence.log
           if-no-files-found: ignore
           retention-days: 14

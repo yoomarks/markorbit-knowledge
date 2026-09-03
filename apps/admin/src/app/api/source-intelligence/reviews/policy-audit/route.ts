@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
+import { resolveSourceIntelligenceBrowserReadAccess } from "@/server/source-intelligence-browser-access";
 import { getSourceIntelligenceReviewService } from "@/server/source-intelligence-review-service";
 
 export const runtime = "nodejs";
@@ -33,8 +34,10 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     requireV2(url.searchParams.get("protocolVersion"));
+    const sourceIds = sourceIdsValue(url.searchParams.get("sourceIds"));
+    await resolveSourceIntelligenceBrowserReadAccess(request, sourceIds);
     const policyAudit = getSourceIntelligenceReviewService().policyAudit(
-      sourceIdsValue(url.searchParams.get("sourceIds")),
+      sourceIds,
       optionalInteger(url.searchParams.get("eventLimit"), "eventLimit"),
     );
     return NextResponse.json({ policyAudit });

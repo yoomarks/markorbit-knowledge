@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getDiscoveryWorkflowService } from "@/server/discovery-service";
 
@@ -10,6 +11,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
   try {
+    const { principal } = await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const { id } = await context.params;
     const body = requireRecord(await readJson(request));
     if (body.decision !== "ACCEPTED" && body.decision !== "REJECTED") {
@@ -18,14 +20,11 @@ export async function POST(request: Request, context: RouteContext) {
     if (body.note !== undefined && typeof body.note !== "string") {
       throw new RegistryValidationError("note must be a string");
     }
-    if (body.reviewer !== undefined && typeof body.reviewer !== "string") {
-      throw new RegistryValidationError("reviewer must be a string");
-    }
 
     const result = getDiscoveryWorkflowService().review(id, {
       decision: body.decision,
       note: typeof body.note === "string" ? body.note : undefined,
-      reviewer: typeof body.reviewer === "string" ? body.reviewer : "admin-console",
+      reviewer: principal.userId,
     });
     return NextResponse.json(result);
   } catch (error) {

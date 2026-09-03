@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
   getConfiguredReadyPackageV2DeliveryService,
@@ -26,10 +30,11 @@ function requestBody(value: unknown): { action: Action; readyPackageId: string }
   return { action: body.action, readyPackageId: body.readyPackageId };
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
-    return NextResponse.json(getConfiguredReadyPackageV2DeliveryService().overview(id));
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, id);
+    return NextResponse.json(getConfiguredReadyPackageV2DeliveryService().overview(workspaceId));
   } catch (error) {
     return apiError(error);
   }
@@ -38,12 +43,13 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(request, id);
     const body = requestBody(await readJson(request));
     const service = getConfiguredReadyPackageV2DeliveryService();
     const result =
       body.action === "PREPARE"
-        ? service.prepare(id, body.readyPackageId)
-        : await service.submit(id, body.readyPackageId);
+        ? service.prepare(workspaceId, body.readyPackageId)
+        : await service.submit(workspaceId, body.readyPackageId);
     return NextResponse.json(
       {
         submission: readyPackageV2DeliverySubmissionView(result.submission),

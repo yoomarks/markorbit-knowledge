@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getConfiguredVaultImportIntentService } from "@/server/vault-import-intent-service";
 
@@ -27,10 +31,11 @@ function requestBody(value: unknown) {
   };
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
-    return NextResponse.json(getConfiguredVaultImportIntentService().overview(id));
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, id);
+    return NextResponse.json(getConfiguredVaultImportIntentService().overview(workspaceId));
   } catch (error) {
     return apiError(error);
   }
@@ -39,8 +44,9 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(request, id);
     const result = getConfiguredVaultImportIntentService().review(
-      id,
+      workspaceId,
       requestBody(await readJson(request)),
     );
     return NextResponse.json(result, { status: result.replayed ? 200 : 201 });

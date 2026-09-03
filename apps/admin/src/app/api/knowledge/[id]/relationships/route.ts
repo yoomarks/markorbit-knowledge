@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { ContentObjectRefV1 } from "@markorbit/contracts";
 import { DEFAULT_WORKSPACE, RegistryError } from "@markorbit/persistence";
 import { SqliteContentRelationshipRepository } from "@markorbit/persistence/content-relationships";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { buildKnowledgeReaderRelationships } from "@/server/knowledge-reader-relationships";
 import {
@@ -17,8 +18,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
-    const workspaceId =
+    const assertedWorkspaceId =
       new URL(request.url).searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const staging = getStagingContentRepository();
     const record = staging.getDocument(id, workspaceId);
     if (!record) {

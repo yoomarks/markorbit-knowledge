@@ -5,6 +5,7 @@ import {
   evaluateSourceCoverage,
   getSourceCoverageTarget,
 } from "@markorbit/persistence/source-coverage";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { getSourceRepository } from "@/server/source-registry";
 
@@ -24,8 +25,9 @@ export async function GET(request: Request, context: RouteContext) {
       );
     }
 
-    const workspaceId = new URL(request.url).searchParams.get("workspaceId")?.trim();
-    if (!workspaceId) return NextResponse.json({ target });
+    const assertedWorkspaceId = new URL(request.url).searchParams.get("workspaceId")?.trim();
+    if (!assertedWorkspaceId) return NextResponse.json({ target });
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
 
     const repository = getSourceRepository();
     const sources: SourceDefinition[] = [];

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import type { VaultBindingStatus } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { SqliteVaultBindingRepository } from "@markorbit/persistence/vault-bindings";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { obsidianVaultFilesystemReadiness } from "@/server/obsidian-vault-readiness";
 import { getRegistryDatabase } from "@/server/source-registry";
@@ -27,12 +31,13 @@ function requiredRevision(value: unknown): number {
   return revision;
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, id);
     const repository = new SqliteVaultBindingRepository(getRegistryDatabase());
     return NextResponse.json({
-      binding: repository.getByWorkspaceId(id),
+      binding: repository.getByWorkspaceId(workspaceId),
       filesystem: obsidianVaultFilesystemReadiness(),
     });
   } catch (error) {
@@ -48,10 +53,11 @@ export async function PUT(request: Request, context: RouteContext) {
     if (!name.trim()) throw new RegistryValidationError("name is required");
     if (!relativeRoot.trim()) throw new RegistryValidationError("relativeRoot is required");
     const { id } = await context.params;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(request, id);
     const repository = new SqliteVaultBindingRepository(getRegistryDatabase());
     return NextResponse.json({
       binding: repository.configure({
-        workspaceId: id,
+        workspaceId,
         name,
         relativeRoot,
         expectedRevision: optionalRevision(body.expectedRevision),
@@ -71,9 +77,10 @@ export async function PATCH(request: Request, context: RouteContext) {
       throw new RegistryValidationError("status must be ACTIVE or DISABLED");
     }
     const { id } = await context.params;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(request, id);
     const repository = new SqliteVaultBindingRepository(getRegistryDatabase());
     return NextResponse.json({
-      binding: repository.setStatus(id, status, requiredRevision(body.expectedRevision)),
+      binding: repository.setStatus(workspaceId, status, requiredRevision(body.expectedRevision)),
       filesystem: obsidianVaultFilesystemReadiness(),
     });
   } catch (error) {

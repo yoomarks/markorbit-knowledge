@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import type { SourceIntelligenceObservationOwnershipAction } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
+import {
+  resolveSourceIntelligenceBrowserMutationAccess,
+  resolveSourceIntelligenceBrowserReadAccess,
+} from "@/server/source-intelligence-browser-access";
 import { getSourceIntelligenceReviewService } from "@/server/source-intelligence-review-service";
 
 export const runtime = "nodejs";
@@ -41,6 +45,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     requireV2(url.searchParams.get("protocolVersion"));
     const sourceIds = sourceIdsValue(url.searchParams.get("sourceIds"));
+    await resolveSourceIntelligenceBrowserReadAccess(request, sourceIds);
     const eventLimit = optionalInteger(
       url.searchParams.get("ownershipEventLimit"),
       "ownershipEventLimit",
@@ -62,11 +67,9 @@ export async function POST(request: Request) {
     const sourceId = typeof body.sourceId === "string" ? body.sourceId.trim() : "";
     const observationKey =
       typeof body.observationKey === "string" ? body.observationKey.trim() : "";
-    const actor = typeof body.actor === "string" ? body.actor.trim() : "";
     const action = body.action as SourceIntelligenceObservationOwnershipAction;
     if (!sourceId) throw new RegistryValidationError("sourceId is required");
     if (!observationKey) throw new RegistryValidationError("observationKey is required");
-    if (!actor) throw new RegistryValidationError("actor is required");
     if (!OWNERSHIP_ACTIONS.has(action)) {
       throw new RegistryValidationError("action must be CLAIMED, TRANSFERRED, or RELEASED");
     }
@@ -80,11 +83,12 @@ export async function POST(request: Request) {
       throw new RegistryValidationError("expectedOwner must be supplied as a string or null");
     }
 
+    const { principal } = await resolveSourceIntelligenceBrowserMutationAccess(request, [sourceId]);
     const result = getSourceIntelligenceReviewService().changeOwnership({
       sourceId,
       observationKey,
       action,
-      actor,
+      actor: principal.userId,
       ...(typeof body.owner === "string" ? { owner: body.owner } : {}),
       expectedOwner: body.expectedOwner as string | null,
     });

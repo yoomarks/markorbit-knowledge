@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
 import { ingestManualUpload } from "@/server/manual-upload-service";
+import { resolveOperatorServiceMutationAccess } from "@/server/operator-service-api-access";
 import { handoffFinalizedRawArtifact } from "@/server/raw-artifact-finalize-handoff";
 
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ function requiredHeader(request: Request, name: string, max = 200): string {
 export async function POST(request: Request) {
   try {
     const workspaceId = requiredHeader(request, "x-markorbit-workspace-id", 80);
-    const actorId = requiredHeader(request, "x-markorbit-admin-actor-id", 200);
+    const principal = resolveOperatorServiceMutationAccess(request, workspaceId);
     const idempotencyKey = requiredHeader(request, "idempotency-key", 128);
     const form = await request.formData();
     const value = form.get("file");
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
     }
     const result = await ingestManualUpload({
       workspaceId,
-      actor: { actorType: "LOCAL_ADMIN", actorId },
+      actor: { actorType: "LOCAL_ADMIN", actorId: principal.userId },
       idempotencyKey,
       file: value,
     });

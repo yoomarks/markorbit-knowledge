@@ -8,6 +8,7 @@ import type {
   ExecutionRunRecord,
   ManualDispatchResult,
 } from "@markorbit/persistence/execution-ledger";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 export function PlanRunsPanel({ planId }: { planId: string }) {
   const [plan, setPlan] = useState<CollectionPlanRegistryRecord | null>(null);
@@ -67,14 +68,11 @@ export function PlanRunsPanel({ planId }: { planId: string }) {
       const idempotencyKey = `manual-${plan.plan.id}-${crypto.randomUUID()}`;
       const response = await fetch("/api/runs", {
         method: "POST",
-        headers: {
+        headers: await adminBrowserMutationHeaders({
           "Content-Type": "application/json",
           "Idempotency-Key": idempotencyKey,
-        },
-        body: JSON.stringify({
-          planId: plan.plan.id,
-          requestedBy: { actorType: "LOCAL_ADMIN", actorId: "local-admin" },
         }),
+        body: JSON.stringify({ planId: plan.plan.id }),
       });
       const body = (await response.json()) as
         ManualDispatchResult | { error?: { message?: string } };

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
+import { resolveOperatorServiceReadAccess } from "@/server/operator-service-api-access";
 import { getDocumentChangeFeedRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
@@ -22,6 +23,7 @@ export async function GET(request: Request, context: RouteContext) {
     const search = new URL(request.url).searchParams;
     const workspaceId = search.get("workspaceId")?.trim();
     if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+    resolveOperatorServiceReadAccess(request, workspaceId);
 
     const toVersion = positiveVersion(search.get("toVersion"), "toVersion");
     const fromRaw = search.get("fromVersion")?.trim();

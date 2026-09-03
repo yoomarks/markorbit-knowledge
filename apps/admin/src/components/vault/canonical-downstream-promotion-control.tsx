@@ -8,6 +8,7 @@ import type {
   VaultOriginStagingFinalizationV1,
   VaultOriginStagingVerificationEvidenceV1,
 } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type Candidate = {
   staging: VaultOriginStagingDocumentV1;
@@ -97,7 +98,7 @@ export function CanonicalDownstreamPromotionControl({ workspaceId }: { workspace
         `/api/workspaces/${encodeURIComponent(workspaceId)}/canonical-downstream-documents`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({ vaultStagingDocumentId }),
         },
       );

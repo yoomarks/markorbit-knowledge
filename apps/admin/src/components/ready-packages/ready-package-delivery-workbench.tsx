@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, PackageCheck, RefreshCw, Send } from "lucide-react";
 import type { ReadyPackage } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import {
   coreContentActionRequiresOutboundTransport,
   coreIntakeActionRequiresOutboundTransport,
@@ -273,7 +274,7 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
         `/api/ready-packages/${encodeURIComponent(selected.id)}/core-intake/submit`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({
             workspaceId,
             expectedDigest: selected.evidence.digest,
@@ -321,7 +322,7 @@ export function ReadyPackageDeliveryWorkbench({ workspaceId }: { workspaceId: st
         `/api/ready-packages/${encodeURIComponent(selected.id)}/core-content/submit`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({
             workspaceId,
             expectedDigest: selected.evidence.digest,

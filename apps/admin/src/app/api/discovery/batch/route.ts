@@ -5,7 +5,8 @@ import {
   type AuthorityLevel,
   type SourceCategory,
 } from "@markorbit/contracts";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
   runDiscoveryImportBatch,
@@ -92,6 +93,7 @@ function importEntries(value: unknown): DiscoveryImportEntry[] | undefined {
 
 export async function POST(request: Request) {
   try {
+    await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const body = requireRecord(await readJson(request));
     const entries = importEntries(body.entries);
     const maxDepth = optionalInteger(body.maxDepth, "maxDepth");

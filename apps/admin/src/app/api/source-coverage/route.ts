@@ -14,6 +14,7 @@ import {
   listSourceCoverageTargets,
   summarizeSourceCoverage,
 } from "@markorbit/persistence/source-coverage";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { listAllWorkspaceSources } from "@/server/source-pagination";
 import { getSourceRepository } from "@/server/source-registry";
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
       "catalogState",
     );
     const jurisdiction = search.get("jurisdiction")?.trim() || undefined;
-    const workspaceId = search.get("workspaceId")?.trim() || undefined;
+    const assertedWorkspaceId = search.get("workspaceId")?.trim() || undefined;
 
     const targets = listSourceCoverageTargets({
       jurisdiction,
@@ -67,7 +68,8 @@ export async function GET(request: Request) {
       summary: summarizeSourceCoverage(targets),
     };
 
-    if (workspaceId) {
+    if (assertedWorkspaceId) {
+      const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
       const sources = listAllWorkspaceSources(getSourceRepository(), workspaceId);
       response.registration = evaluateSourceCoverage(sources, targets);
       response.workspaceId = workspaceId;

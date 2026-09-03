@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { converterAccepts, mimePatternMatches } from "@markorbit/contracts";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import { RawArtifactNotFoundError } from "@markorbit/persistence/raw-artifacts";
+import {
+  assertAdminBrowserResourceWorkspace,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { getConverterRegistryRepository, getRawArtifactRepository } from "@/server/source-registry";
 export const runtime = "nodejs";
@@ -10,16 +14,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const url = new URL(request.url);
-    const workspaceId = url.searchParams.get("workspaceId")?.trim();
-    if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim();
+    if (!assertedWorkspaceId) {
+      throw new RegistryValidationError("workspaceId query parameter is required");
+    }
     const view = getRawArtifactRepository().getArtifact(id);
     if (!view) throw new RawArtifactNotFoundError(id);
     const artifact = view.artifact;
-    if (artifact.workspaceId !== workspaceId)
-      throw new RegistryConflictError(
-        "RAW_ARTIFACT_WORKSPACE_MISMATCH",
-        "RawArtifact belongs to another Workspace",
-      );
+    const { principal, workspaceId } = await resolveAdminBrowserApiReadAccess(
+      request,
+      assertedWorkspaceId,
+    );
+    assertAdminBrowserResourceWorkspace(principal, artifact.workspaceId);
     if (artifact.status !== "READY_FOR_CONVERSION")
       throw new RegistryConflictError(
         "CONVERSION_ARTIFACT_NOT_AVAILABLE",

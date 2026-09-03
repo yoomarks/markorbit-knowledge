@@ -16,6 +16,7 @@ import type { FoundationalActionExecution } from "@markorbit/worker-runtime/foun
 import type { FoundationalActionIntent } from "@markorbit/worker-runtime/foundational-action-intent";
 import type { FoundationalCollectionOutcome } from "@markorbit/worker-runtime/foundational-collection-outcome";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import {
   executionForIntent,
   foundationalOperatorPhase,
@@ -27,7 +28,6 @@ import {
 } from "./foundational-operator-state";
 
 type Jurisdiction = "US" | "WO";
-type ActorField = "requester" | "reviewer" | "executor";
 
 type Props = {
   workspaceId: string;
@@ -36,20 +36,18 @@ type Props = {
   onSnapshotRefresh: () => Promise<void>;
 };
 
-type Actors = Record<ActorField, string>;
 type IntentListEnvelope = { items?: FoundationalActionIntent[] };
 type ExecutionListEnvelope = { items?: FoundationalActionExecution[] };
 type OutcomeListEnvelope = { items?: FoundationalCollectionOutcome[] };
 type ErrorEnvelope = { error?: { message?: string } };
 
-const DEFAULT_ACTORS: Actors = {
-  requester: "operator:local-admin",
-  reviewer: "reviewer:local-admin",
-  executor: "operator:local-admin",
-};
-
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", ...init });
+  const method = (init?.method ?? "GET").toUpperCase();
+  const headers =
+    method === "GET" || method === "HEAD"
+      ? init?.headers
+      : await adminBrowserMutationHeaders(init?.headers ?? {});
+  const response = await fetch(url, { cache: "no-store", ...init, headers });
   let payload: unknown = null;
   try {
     payload = await response.json();
@@ -121,7 +119,6 @@ export function FoundationalOperatorWorkbench({
   const [intents, setIntents] = useState<FoundationalActionIntent[]>([]);
   const [executions, setExecutions] = useState<FoundationalActionExecution[]>([]);
   const [outcomes, setOutcomes] = useState<FoundationalCollectionOutcome[]>([]);
-  const [actors, setActors] = useState<Actors>(DEFAULT_ACTORS);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -191,7 +188,6 @@ export function FoundationalOperatorWorkbench({
           jurisdiction,
           targetId,
           actionCode: "DISPATCH_GOVERNED_COLLECTION",
-          requestedByActorId: actors.requester,
           idempotencyKey,
           topK: snapshot.topK ?? 5,
         }),
@@ -203,12 +199,11 @@ export function FoundationalOperatorWorkbench({
     intentId: string,
     operation: "APPROVE" | "CANCEL",
   ): Promise<void> {
-    const actorId = operation === "APPROVE" ? actors.reviewer : actors.requester;
     await mutate(`${operation}:${intentId}`, () =>
       requestJson(`/api/foundational/action-intents/${encodeURIComponent(intentId)}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ operation, actorId }),
+        body: JSON.stringify({ operation }),
       }),
     );
   }
@@ -219,7 +214,6 @@ export function FoundationalOperatorWorkbench({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          executedByActorId: actors.executor,
           idempotencyKey: operatorExecutionIdempotencyKey(intentId),
           execute: true,
         }),
@@ -227,10 +221,6 @@ export function FoundationalOperatorWorkbench({
     );
     setArmedIntentId(null);
     setAcknowledged(false);
-  }
-
-  function updateActor(field: ActorField, value: string): void {
-    setActors((current) => ({ ...current, [field]: value }));
   }
 
   return (
@@ -249,7 +239,8 @@ export function FoundationalOperatorWorkbench({
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
             这里只开放 COLLECT 单目标派发。M26 会读取 exact CollectionRun 结果：运行中禁止重复派发；
             FAILED / CANCELLED 需要创建新的 approval intent；COMPLETED 但仍处于 COLLECT
-            时要求再次人工复核。
+            时要求再次人工复核。所有 requester / reviewer / executor 身份均来自当前认证 Workspace
+            Principal，浏览器不能覆盖。
           </p>
         </div>
         <button
@@ -264,29 +255,6 @@ export function FoundationalOperatorWorkbench({
       </div>
 
       <div className="space-y-5 p-5">
-        <div className="grid gap-3 lg:grid-cols-3">
-          {(
-            [
-              ["requester", "Request actor", "Creates approval intent"],
-              ["reviewer", "Approval actor", "Approves pending intent"],
-              ["executor", "Execution actor", "Performs explicit dispatch"],
-            ] as const
-          ).map(([field, label, help]) => (
-            <label key={field} className="block rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {label}
-              </span>
-              <input
-                value={actors[field]}
-                onChange={(event) => updateActor(field, event.target.value)}
-                className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
-                spellCheck={false}
-              />
-              <span className="mt-1 block text-xs text-slate-500">{help}</span>
-            </label>
-          ))}
-        </div>
-
         {error ? (
           <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900">
             <AlertTriangle className="mt-0.5 shrink-0" size={17} aria-hidden="true" />
@@ -356,7 +324,7 @@ export function FoundationalOperatorWorkbench({
                       <div className="flex flex-wrap items-center gap-3">
                         <button
                           type="button"
-                          disabled={busy !== null || !actors.requester.trim()}
+                          disabled={busy !== null}
                           onClick={() => void createIntent(action.targetId)}
                           className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3.5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -378,7 +346,7 @@ export function FoundationalOperatorWorkbench({
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            disabled={busy !== null || !actors.reviewer.trim()}
+                            disabled={busy !== null}
                             onClick={() => void transitionIntent(intent.intentId, "APPROVE")}
                             className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
                           >
@@ -386,7 +354,7 @@ export function FoundationalOperatorWorkbench({
                           </button>
                           <button
                             type="button"
-                            disabled={busy !== null || !actors.requester.trim()}
+                            disabled={busy !== null}
                             onClick={() => void transitionIntent(intent.intentId, "CANCEL")}
                             className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
                           >
@@ -407,7 +375,7 @@ export function FoundationalOperatorWorkbench({
                           {!armed ? (
                             <button
                               type="button"
-                              disabled={busy !== null || !actors.executor.trim()}
+                              disabled={busy !== null}
                               onClick={() => {
                                 setArmedIntentId(intent.intentId);
                                 setAcknowledged(false);
@@ -513,7 +481,7 @@ export function FoundationalOperatorWorkbench({
                         </div>
                         <button
                           type="button"
-                          disabled={busy !== null || !actors.requester.trim()}
+                          disabled={busy !== null}
                           onClick={() => void createIntent(action.targetId)}
                           className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-rose-700 px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
                         >
@@ -535,7 +503,7 @@ export function FoundationalOperatorWorkbench({
                         </div>
                         <button
                           type="button"
-                          disabled={busy !== null || !actors.requester.trim()}
+                          disabled={busy !== null}
                           onClick={() => void createIntent(action.targetId)}
                           className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-amber-700 px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
                         >

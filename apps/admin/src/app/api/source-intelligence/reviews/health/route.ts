@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
+import { resolveSourceIntelligenceBrowserReadAccess } from "@/server/source-intelligence-browser-access";
 import { getSourceIntelligenceReviewService } from "@/server/source-intelligence-review-service";
 
 export const runtime = "nodejs";
@@ -35,16 +36,15 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     requireV2(url.searchParams.get("protocolVersion"));
-    const health = getSourceIntelligenceReviewService().health(
-      sourceIdsValue(url.searchParams.get("sourceIds")),
-      {
-        historyLimit: optionalInteger(url.searchParams.get("historyLimit"), "historyLimit"),
-        reviewEventLimit: optionalInteger(
-          url.searchParams.get("reviewEventLimit"),
-          "reviewEventLimit",
-        ),
-      },
-    );
+    const sourceIds = sourceIdsValue(url.searchParams.get("sourceIds"));
+    await resolveSourceIntelligenceBrowserReadAccess(request, sourceIds);
+    const health = getSourceIntelligenceReviewService().health(sourceIds, {
+      historyLimit: optionalInteger(url.searchParams.get("historyLimit"), "historyLimit"),
+      reviewEventLimit: optionalInteger(
+        url.searchParams.get("reviewEventLimit"),
+        "reviewEventLimit",
+      ),
+    });
     return NextResponse.json({ health });
   } catch (error) {
     return apiError(error);

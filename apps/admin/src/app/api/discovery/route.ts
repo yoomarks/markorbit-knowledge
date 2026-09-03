@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import type { SourceCandidateStatus } from "@markorbit/contracts";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getDiscoveryWorkflowService } from "@/server/discovery-service";
 
@@ -64,6 +68,7 @@ function optionalStringArray(value: unknown, field: string): string[] | undefine
 
 export async function GET(request: Request) {
   try {
+    await resolveAdminBrowserApiReadAccess(request, DEFAULT_WORKSPACE.id);
     const params = new URL(request.url).searchParams;
     return NextResponse.json(
       getDiscoveryWorkflowService().overview({
@@ -81,6 +86,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const body = requireRecord(await readJson(request));
     if (typeof body.locator !== "string") {
       throw new RegistryValidationError("locator is required");

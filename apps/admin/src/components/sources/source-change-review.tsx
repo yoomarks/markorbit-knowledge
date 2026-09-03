@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExternalLink, Loader2, RefreshCw, RotateCcw, Sparkles } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 
 type Observation = {
@@ -130,7 +131,7 @@ export function SourceChangeReview() {
         `/api/discovery/changes/${encodeURIComponent(candidateId)}/significance`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({ locale }),
         },
       );
@@ -157,10 +158,9 @@ export function SourceChangeReview() {
     try {
       const response = await fetch("/api/discovery/reviews/reopen", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           candidateId,
-          reviewer: "admin-console",
           note: "Objective rescan detected a changed fingerprint; explicitly reopened for review.",
         }),
       });

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, RefreshCw, RotateCcw, ShieldCheck } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { listControlledVerifiedCanonicalReindexActions } from "./foundational-operator-state";
 
 type Jurisdiction = "US" | "WO";
@@ -49,7 +50,12 @@ type ReindexSnapshot = {
 type ErrorEnvelope = { error?: { message?: string } };
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", ...init });
+  const requestInit: RequestInit = { cache: "no-store", ...init };
+  const method = init?.method?.toUpperCase() ?? "GET";
+  if (method !== "GET" && method !== "HEAD") {
+    requestInit.headers = await adminBrowserMutationHeaders(init?.headers);
+  }
+  const response = await fetch(url, requestInit);
   let payload: unknown = null;
   try {
     payload = await response.json();

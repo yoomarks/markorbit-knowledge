@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Ban, Clock3 } from "lucide-react";
 import type { ExecutionRunRecord } from "@markorbit/persistence/execution-ledger";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 export function RunDetail({ runId }: { runId: string }) {
   const [record, setRecord] = useState<ExecutionRunRecord | null>(null);
@@ -46,7 +47,7 @@ export function RunDetail({ runId }: { runId: string }) {
     try {
       const response = await fetch(`/api/runs/${record.run.id}/cancel`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           expectedUpdatedAt: record.run.updatedAt,
           ...(reason.trim() ? { reason: reason.trim() } : {}),

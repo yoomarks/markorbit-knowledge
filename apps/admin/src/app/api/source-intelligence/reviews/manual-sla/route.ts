@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
-import { apiError } from "@/server/api-errors";
+import { apiError, readJson, requireRecord } from "@/server/api-errors";
+import {
+  resolveSourceIntelligenceBrowserMutationAccess,
+  resolveSourceIntelligenceBrowserReadAccess,
+} from "@/server/source-intelligence-browser-access";
 import { getSourceIntelligenceReviewService } from "@/server/source-intelligence-review-service";
 
 export const runtime = "nodejs";
@@ -55,8 +59,10 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     requireV2(url.searchParams.get("protocolVersion"));
+    const sourceIds = sourceIdsValue(url.searchParams.get("sourceIds"));
+    await resolveSourceIntelligenceBrowserReadAccess(request, sourceIds);
     const manualSla = getSourceIntelligenceReviewService().manualSla(
-      sourceIdsValue(url.searchParams.get("sourceIds")),
+      sourceIds,
       optionalInteger(url.searchParams.get("escalationEventLimit"), "escalationEventLimit"),
     );
     return NextResponse.json({ manualSla });
@@ -67,10 +73,11 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, unknown>;
+    const body = requireRecord(await readJson(request));
     requireV2(body.protocolVersion);
+    const { principal } = await resolveSourceIntelligenceBrowserMutationAccess(request);
     const policy = getSourceIntelligenceReviewService().updateManualSlaPolicy({
-      actor: requiredString(body.actor, "actor"),
+      actor: principal.userId,
       claimTargetHours: nullableTarget(body.claimTargetHours, "claimTargetHours"),
       reviewTargetHours: nullableTarget(body.reviewTargetHours, "reviewTargetHours"),
       expectedUpdatedAt: nullableString(body.expectedUpdatedAt, "expectedUpdatedAt"),
@@ -83,7 +90,7 @@ export async function PUT(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, unknown>;
+    const body = requireRecord(await readJson(request));
     requireV2(body.protocolVersion);
     if (body.action !== "ESCALATED" && body.action !== "CLEARED") {
       throw new RegistryValidationError("action must be ESCALATED or CLEARED");
@@ -91,11 +98,13 @@ export async function POST(request: Request) {
     if (typeof body.expectedEscalated !== "boolean") {
       throw new RegistryValidationError("expectedEscalated must be a boolean");
     }
+    const sourceId = requiredString(body.sourceId, "sourceId");
+    const { principal } = await resolveSourceIntelligenceBrowserMutationAccess(request, [sourceId]);
     const result = getSourceIntelligenceReviewService().changeManualEscalation({
-      sourceId: requiredString(body.sourceId, "sourceId"),
+      sourceId,
       observationKey: requiredString(body.observationKey, "observationKey"),
       action: body.action,
-      actor: requiredString(body.actor, "actor"),
+      actor: principal.userId,
       ...(typeof body.note === "string" ? { note: body.note } : {}),
       expectedEscalated: body.expectedEscalated,
     });

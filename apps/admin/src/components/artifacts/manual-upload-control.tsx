@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { CheckCircle2, FileUp, LoaderCircle } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type ManualUploadPolicy = {
   maxBytes: number;
@@ -166,16 +167,17 @@ export function ManualUploadControl({ workspaceId }: { workspaceId: string }) {
         activeIntent?.fingerprint === fingerprint ? activeIntent : uploadIntent(fingerprint);
       setActiveIntent(intent);
 
+      const headers = await adminBrowserMutationHeaders({
+        "content-type": mimeType,
+        "idempotency-key": intent.idempotencyKey,
+        "x-markorbit-workspace-id": workspaceId,
+        "x-markorbit-filename": encodeURIComponent(file.name),
+        "x-markorbit-content-size": String(file.size),
+        "x-markorbit-content-sha256": contentSha256,
+      });
       const response = await fetch("/api/manual-uploads", {
         method: "POST",
-        headers: {
-          "content-type": mimeType,
-          "idempotency-key": intent.idempotencyKey,
-          "x-markorbit-workspace-id": workspaceId,
-          "x-markorbit-filename": encodeURIComponent(file.name),
-          "x-markorbit-content-size": String(file.size),
-          "x-markorbit-content-sha256": contentSha256,
-        },
+        headers,
         body: file,
       });
       const body = (await response.json()) as ManualUploadResponse | unknown;

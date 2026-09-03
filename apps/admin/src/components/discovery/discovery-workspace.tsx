@@ -21,6 +21,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { PageHeading } from "../page-heading";
 
 type CandidateStatus = "DISCOVERED" | "REVIEWED" | "ACCEPTED" | "REJECTED";
@@ -149,6 +150,11 @@ async function readError(response: Response): Promise<string> {
   } catch {
     return `Request failed (${response.status})`;
   }
+}
+
+async function discoveryMutationFetch(url: string, init: RequestInit): Promise<Response> {
+  const headers = await adminBrowserMutationHeaders(init.headers ?? {});
+  return fetch(url, { ...init, headers });
 }
 
 function shortTime(value: string): string {
@@ -298,7 +304,7 @@ export function DiscoveryWorkspace() {
     setMessage(null);
     setError(null);
     try {
-      const response = await fetch("/api/discovery", {
+      const response = await discoveryMutationFetch("/api/discovery", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -331,11 +337,14 @@ export function DiscoveryWorkspace() {
     setMessage(null);
     setError(null);
     try {
-      const response = await fetch(`/api/discovery/candidates/${candidateId}/review`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision, reviewer: "admin-console" }),
-      });
+      const response = await discoveryMutationFetch(
+        `/api/discovery/candidates/${candidateId}/review`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ decision }),
+        },
+      );
       if (!response.ok) throw new Error(await readError(response));
       setMessage(
         decision === "ACCEPTED"
@@ -355,12 +364,12 @@ export function DiscoveryWorkspace() {
     setMessage(null);
     setError(null);
     try {
-      const response = await fetch(
+      const response = await discoveryMutationFetch(
         `/api/discovery/candidates/${candidateId}/authorize-collection`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ requestedBy: "admin-console" }),
+          body: JSON.stringify({}),
         },
       );
       if (!response.ok) throw new Error(await readError(response));

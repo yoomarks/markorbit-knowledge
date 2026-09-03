@@ -6,20 +6,27 @@ import {
   SqliteSourceSupplyPromotionReceiptLedger,
 } from "@markorbit/persistence/source-supply-promotion-receipts";
 import { apiError } from "@/server/api-errors";
+import {
+  assertOperatorServiceResourceWorkspace,
+  resolveOperatorServiceMutationAccess,
+} from "@/server/operator-service-api-access";
 import { getRegistryDatabase } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(_request: Request, context: { params: Promise<{ receiptId: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ receiptId: string }> }) {
   try {
+    const principal = resolveOperatorServiceMutationAccess(request);
     const { receiptId } = await context.params;
     if (!receiptId?.trim()) throw new RegistryValidationError("receiptId is required");
     const database = getRegistryDatabase();
     const ledger = new SqliteSourceSupplyPromotionReceiptLedger(database);
     const current = ledger.getById(receiptId.trim());
-    if (!current)
+    if (!current) {
       throw new RegistryValidationError(`Supply promotion receipt ${receiptId} was not found`);
+    }
+    assertOperatorServiceResourceWorkspace(principal, current.workspaceId);
     if (current.status === "PROVEN") {
       return NextResponse.json({ receipt: current, replayed: true });
     }

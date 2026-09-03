@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getDiscoveryCollectionService } from "@/server/discovery-collection-service";
 import { reviewDiscoveryCandidatesBatch } from "@/server/discovery-review-batch-service";
@@ -23,13 +24,11 @@ function candidateIds(value: unknown): string[] {
 
 export async function POST(request: Request) {
   try {
+    const { principal } = await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const body = requireRecord(await readJson(request));
     const ids = candidateIds(body.candidateIds);
     if (body.decision !== "ACCEPTED" && body.decision !== "REJECTED") {
       throw new RegistryValidationError("decision must be ACCEPTED or REJECTED");
-    }
-    if (body.reviewer !== undefined && typeof body.reviewer !== "string") {
-      throw new RegistryValidationError("reviewer must be a string");
     }
     if (body.note !== undefined && typeof body.note !== "string") {
       throw new RegistryValidationError("note must be a string");
@@ -38,15 +37,11 @@ export async function POST(request: Request) {
       throw new RegistryValidationError("startCollection must be a boolean");
     }
 
-    const reviewer =
-      typeof body.reviewer === "string" && body.reviewer.trim()
-        ? body.reviewer.trim()
-        : "admin-console";
     const result = reviewDiscoveryCandidatesBatch(
       {
         candidateIds: ids,
         decision: body.decision,
-        reviewer,
+        reviewer: principal.userId,
         note: typeof body.note === "string" ? body.note : undefined,
         startCollection: body.decision === "ACCEPTED" && body.startCollection !== false,
       },

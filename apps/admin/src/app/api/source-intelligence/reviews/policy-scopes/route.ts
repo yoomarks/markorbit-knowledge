@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
-import { apiError } from "@/server/api-errors";
+import { apiError, readJson, requireRecord } from "@/server/api-errors";
+import {
+  resolveSourceIntelligenceBrowserMutationAccess,
+  resolveSourceIntelligenceBrowserReadAccess,
+} from "@/server/source-intelligence-browser-access";
 import { getSourceIntelligenceReviewService } from "@/server/source-intelligence-review-service";
 
 export const runtime = "nodejs";
@@ -59,9 +63,9 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     requireV2(url.searchParams.get("protocolVersion"));
-    const policyScopes = getSourceIntelligenceReviewService().policyScopes(
-      sourceIdsValue(url.searchParams.get("sourceIds")),
-    );
+    const sourceIds = sourceIdsValue(url.searchParams.get("sourceIds"));
+    await resolveSourceIntelligenceBrowserReadAccess(request, sourceIds);
+    const policyScopes = getSourceIntelligenceReviewService().policyScopes(sourceIds);
     return NextResponse.json({ policyScopes });
   } catch (error) {
     return apiError(error);
@@ -70,11 +74,12 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, unknown>;
+    const body = requireRecord(await readJson(request));
     requireV2(body.protocolVersion);
     if (typeof body.enabled !== "boolean") {
       throw new RegistryValidationError("enabled must be a boolean");
     }
+    const { principal } = await resolveSourceIntelligenceBrowserMutationAccess(request);
     const cohort = getSourceIntelligenceReviewService().updatePolicyCohort({
       ...(typeof body.cohortId === "string" ? { cohortId: body.cohortId } : {}),
       name: requiredString(body.name, "name"),
@@ -85,7 +90,7 @@ export async function PUT(request: Request) {
       enabled: body.enabled,
       claimTargetHours: nullableTarget(body.claimTargetHours, "claimTargetHours"),
       reviewTargetHours: nullableTarget(body.reviewTargetHours, "reviewTargetHours"),
-      actor: requiredString(body.actor, "actor"),
+      actor: principal.userId,
       expectedUpdatedAt: nullableString(body.expectedUpdatedAt, "expectedUpdatedAt"),
     });
     return NextResponse.json({ cohort });
@@ -96,7 +101,7 @@ export async function PUT(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, unknown>;
+    const body = requireRecord(await readJson(request));
     requireV2(body.protocolVersion);
     if (body.action !== "ADDED" && body.action !== "REMOVED") {
       throw new RegistryValidationError("action must be ADDED or REMOVED");
@@ -104,11 +109,13 @@ export async function POST(request: Request) {
     if (typeof body.expectedPresent !== "boolean") {
       throw new RegistryValidationError("expectedPresent must be a boolean");
     }
+    const sourceId = requiredString(body.sourceId, "sourceId");
+    const { principal } = await resolveSourceIntelligenceBrowserMutationAccess(request, [sourceId]);
     const membership = getSourceIntelligenceReviewService().changePolicyCohortMembership({
       cohortId: requiredString(body.cohortId, "cohortId"),
-      sourceId: requiredString(body.sourceId, "sourceId"),
+      sourceId,
       action: body.action,
-      actor: requiredString(body.actor, "actor"),
+      actor: principal.userId,
       expectedPresent: body.expectedPresent,
     });
     return NextResponse.json({ membership });

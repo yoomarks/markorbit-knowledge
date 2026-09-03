@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getChangeSignificanceCapabilityService } from "@/server/change-significance-capability-service";
 
@@ -14,9 +18,10 @@ function optionalString(value: unknown, field: string): string | undefined {
   return value.trim() || undefined;
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     await context.params;
+    await resolveAdminBrowserApiReadAccess(request, DEFAULT_WORKSPACE.id);
     return NextResponse.json(getChangeSignificanceCapabilityService().status());
   } catch (error) {
     return apiError(error);
@@ -26,6 +31,7 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { candidateId } = await context.params;
+    await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const body = requireRecord(await readJson(request));
     const result = await getChangeSignificanceCapabilityService().assess({
       candidateId,

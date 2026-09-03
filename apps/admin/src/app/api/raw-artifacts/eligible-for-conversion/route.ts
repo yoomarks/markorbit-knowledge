@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isRawArtifact } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { getRawArtifactRepository } from "@/server/source-registry";
 export const runtime = "nodejs";
@@ -8,8 +9,11 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const workspaceId = url.searchParams.get("workspaceId")?.trim();
-    if (!workspaceId) throw new RegistryValidationError("workspaceId query parameter is required");
+    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim();
+    if (!assertedWorkspaceId) {
+      throw new RegistryValidationError("workspaceId query parameter is required");
+    }
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const result = getRawArtifactRepository().list({
       workspaceId,
       status: "READY_FOR_CONVERSION",

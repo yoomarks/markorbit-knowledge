@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, PackageCheck, RefreshCw, ShieldCheck } from "lucide-react";
 import type { CanonicalDownstreamDocumentV1, ReadyPackageV2 } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type Overview = {
   candidates: CanonicalDownstreamDocumentV1[];
@@ -86,7 +87,7 @@ export function ReadyPackageV2Control({ workspaceId }: { workspaceId: string }) 
         `/api/workspaces/${encodeURIComponent(workspaceId)}/ready-packages-v2`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({ canonicalDocumentId }),
         },
       );

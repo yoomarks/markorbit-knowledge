@@ -16,6 +16,7 @@ import type {
   ConversionProfileListResult,
   ConverterListResult,
 } from "@markorbit/persistence/converters";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 const WORKSPACE_ID = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const PAGE_SIZE = 20;
@@ -156,9 +157,11 @@ export function ConverterControl() {
   async function request(url: string, init: RequestInit) {
     setError(null);
     setMessage(null);
+    const headers = await adminBrowserMutationHeaders(init.headers ?? {});
+    if (!headers.has("content-type")) headers.set("content-type", "application/json");
     const response = await fetch(url, {
       ...init,
-      headers: { "content-type": "application/json", ...init.headers },
+      headers,
     });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error?.message ?? "Request failed");

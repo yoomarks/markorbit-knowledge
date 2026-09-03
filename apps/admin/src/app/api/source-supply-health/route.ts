@@ -9,8 +9,9 @@ import {
   type SourceCoverageTier,
   type SourceSupplyHealthState,
 } from "@markorbit/contracts";
-import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
 import { SqliteOperationalSupplyHealthRepository } from "@markorbit/persistence/source-compatibility-supply-health";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { SourceIntelligenceService } from "@/server/source-intelligence-service";
 import { enrichSourceSupplyHealthWithEvidenceMaturity } from "@/server/source-supply-evidence-maturity";
@@ -50,7 +51,8 @@ function intelligenceService(): SourceIntelligenceService {
 export async function GET(request: Request) {
   try {
     const search = new URL(request.url).searchParams;
-    const workspaceId = search.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const assertedWorkspaceId = search.get("workspaceId")?.trim() || undefined;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const jurisdiction = search.get("jurisdiction")?.trim() || undefined;
     const targetId = search.get("targetId")?.trim() || undefined;
     const family = enumFilter<SourceCoverageFamily>(

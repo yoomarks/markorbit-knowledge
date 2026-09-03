@@ -280,10 +280,10 @@ async function calibrateSource(baseUrl, source) {
   }
   if (
     review?.source?.connector?.connectorId !== "crawl4ai-web" ||
-    review?.source?.connector?.version !== "1.1.0"
+    review?.source?.connector?.version !== "1.2.0"
   ) {
     throw new Error(
-      `Calibration Source is not on crawl4ai-web@1.1.0: ${JSON.stringify(review?.source?.connector)}`,
+      `Calibration Source is not on crawl4ai-web@1.2.0: ${JSON.stringify(review?.source?.connector)}`,
     );
   }
   if (review?.plan?.status !== "PAUSED") {

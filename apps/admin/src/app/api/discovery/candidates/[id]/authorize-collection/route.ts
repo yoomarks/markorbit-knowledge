@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { RegistryValidationError } from "@markorbit/persistence";
-import { apiError, readJson, requireRecord } from "@/server/api-errors";
+import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
+import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
+import { apiError } from "@/server/api-errors";
 import { getDiscoveryCollectionService } from "@/server/discovery-collection-service";
 
 export const runtime = "nodejs";
@@ -10,14 +11,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
   try {
+    const { principal } = await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const { id } = await context.params;
-    const body = requireRecord(await readJson(request));
-    if (body.requestedBy !== undefined && typeof body.requestedBy !== "string") {
-      throw new RegistryValidationError("requestedBy must be a string");
-    }
-
     const result = getDiscoveryCollectionService().authorizeAndDispatch(id, {
-      requestedBy: typeof body.requestedBy === "string" ? body.requestedBy : "admin-console",
+      requestedBy: principal.userId,
     });
     return NextResponse.json(result, { status: result.replayed ? 200 : 201 });
   } catch (error) {

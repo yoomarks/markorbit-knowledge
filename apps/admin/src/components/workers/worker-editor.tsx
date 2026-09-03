@@ -16,6 +16,7 @@ import type {
   CredentialRotationResult,
   WorkerCreationResult,
 } from "@markorbit/persistence/workers";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type EditorValues = {
   displayName: string;
@@ -165,7 +166,7 @@ export function WorkerEditor({ workerId }: { workerId?: string }) {
       const workerPayload = payload();
       const response = await fetch(workerId ? `/api/workers/${workerId}` : "/api/workers", {
         method: workerId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(
           workerId
             ? { ...workerPayload, expectedUpdatedAt: view?.worker.updatedAt }
@@ -201,6 +202,7 @@ export function WorkerEditor({ workerId }: { workerId?: string }) {
     try {
       const response = await fetch(`/api/workers/${view.worker.id}/rotate-credential`, {
         method: "POST",
+        headers: await adminBrowserMutationHeaders(),
       });
       const body = (await response.json()) as
         CredentialRotationResult | { error?: { message?: string } };

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { ExecutionRunNotFoundError } from "@markorbit/persistence/execution-ledger";
+import {
+  assertAdminBrowserResourceWorkspace,
+  resolveAdminBrowserApiMutationAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getExecutionLedgerRepository } from "@/server/source-registry";
 
@@ -11,6 +16,13 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const existing = getExecutionLedgerRepository().getById(id);
+    if (!existing) throw new ExecutionRunNotFoundError(id);
+    const { principal } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      existing.run.workspaceId,
+    );
+    assertAdminBrowserResourceWorkspace(principal, existing.run.workspaceId);
     const body = requireRecord(await readJson(request));
     const allowed = new Set(["expectedUpdatedAt", "reason"]);
     if (Object.keys(body).some((key) => !allowed.has(key))) {

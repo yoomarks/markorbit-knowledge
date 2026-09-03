@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { ingestManualUpload, manualUploadMaxBytes } from "@/server/manual-upload-ingestion";
 
@@ -102,9 +103,14 @@ export function GET() {
 
 export async function POST(request: Request) {
   try {
+    const assertedWorkspaceId = requiredHeader(request, "x-markorbit-workspace-id");
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
     const maxBytes = manualUploadMaxBytes();
     const result = await ingestManualUpload({
-      workspaceId: requiredHeader(request, "x-markorbit-workspace-id"),
+      workspaceId,
       originalName: decodedFilename(request),
       mimeType: requiredHeader(request, "content-type"),
       expectedSizeBytes: expectedSize(request),

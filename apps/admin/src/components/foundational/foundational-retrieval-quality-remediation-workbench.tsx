@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, RefreshCw, ShieldCheck, Wrench } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { listControlledQualityRemediationActions } from "./foundational-operator-state";
 
 type Jurisdiction = "US" | "WO";
@@ -59,7 +60,12 @@ type QualitySnapshot = {
 type ErrorEnvelope = { error?: { message?: string } };
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", ...init });
+  const requestInit: RequestInit = { cache: "no-store", ...init };
+  const method = init?.method?.toUpperCase() ?? "GET";
+  if (method !== "GET" && method !== "HEAD") {
+    requestInit.headers = await adminBrowserMutationHeaders(init?.headers);
+  }
+  const response = await fetch(url, requestInit);
   let payload: unknown = null;
   try {
     payload = await response.json();
@@ -122,7 +128,6 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
 }: Props) {
   const actions = useMemo(() => listControlledQualityRemediationActions(snapshot), [snapshot]);
   const [snapshots, setSnapshots] = useState<Record<string, QualitySnapshot>>({});
-  const [actorId, setActorId] = useState("operator:local-admin");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -187,7 +192,6 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
         body: JSON.stringify({
           stagingDocumentId,
           actionCode,
-          actorId,
           idempotencyKey: executionKey(stagingDocumentId, actionCode),
           approved: true,
         }),
@@ -230,12 +234,9 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            value={actorId}
-            onChange={(event) => setActorId(event.target.value)}
-            aria-label="M17 actor ID"
-            className="w-56 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-          />
+          <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            M17 actor · authenticated Workspace Principal
+          </span>
           <button
             type="button"
             disabled={loading || busy !== null}
@@ -365,7 +366,7 @@ export function FoundationalRetrievalQualityRemediationWorkbench({
                                   {action.disposition === "M17_EXECUTABLE" ? (
                                     <button
                                       type="button"
-                                      disabled={busy !== null || actorId.trim().length === 0}
+                                      disabled={busy !== null}
                                       onClick={() =>
                                         void executeM17(
                                           readinessAction.targetId,

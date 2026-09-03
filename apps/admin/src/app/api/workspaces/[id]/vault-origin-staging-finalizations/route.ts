@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getConfiguredVaultOriginStagingVerificationService } from "@/server/vault-origin-staging-verification-service";
 
@@ -30,10 +31,11 @@ function requestBody(value: unknown): { vaultStagingDocumentId: string; idempote
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(request, id);
     const body = requestBody(await readJson(request));
     return NextResponse.json(
       getConfiguredVaultOriginStagingVerificationService().finalize(
-        id,
+        workspaceId,
         body.vaultStagingDocumentId,
         body.idempotencyKey,
       ),

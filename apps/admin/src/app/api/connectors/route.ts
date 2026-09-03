@@ -19,6 +19,10 @@ import {
   type ConnectorListFilters,
   type CreateConnectorManifestInput,
 } from "@markorbit/persistence/connectors";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getConnectorRepository } from "@/server/source-registry";
 
@@ -48,6 +52,7 @@ function integerValue(value: string | null, field: string): number | undefined {
 
 export async function GET(request: Request) {
   try {
+    await resolveAdminBrowserApiReadAccess(request);
     const url = new URL(request.url);
     const filters: ConnectorListFilters = {
       q: url.searchParams.get("q") ?? undefined,
@@ -81,6 +86,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await resolveAdminBrowserApiMutationAccess(request);
     const body = requireRecord(await readJson(request));
     const connector = getConnectorRepository().create(body as CreateConnectorManifestInput);
     return NextResponse.json({ connector }, { status: 201 });

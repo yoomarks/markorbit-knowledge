@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { CollectionPlanNotFoundError } from "@markorbit/persistence/collection-plans";
+import {
+  assertAdminBrowserResourceWorkspace,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
-import { getExecutionLedgerRepository } from "@/server/source-registry";
+import {
+  getCollectionPlanRepository,
+  getExecutionLedgerRepository,
+} from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +19,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    const plan = getCollectionPlanRepository().getById(id);
+    if (!plan) throw new CollectionPlanNotFoundError(id);
+    const { principal } = await resolveAdminBrowserApiReadAccess(request, plan.plan.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, plan.plan.workspaceId);
     const url = new URL(request.url);
     const rawLimit = url.searchParams.get("limit");
     const limit = rawLimit ? Number(rawLimit) : 20;

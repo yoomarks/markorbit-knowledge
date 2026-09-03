@@ -18,6 +18,7 @@ import type {
   SourceIntelligenceObservationOwnershipQueueV2,
 } from "@markorbit/contracts";
 import type { SourceListResult } from "@markorbit/persistence";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 const COHORT_LIMIT = 100;
 type OwnershipView = "TEAM" | "MINE" | "UNASSIGNED";
@@ -149,13 +150,12 @@ export function SourceIntelligenceReviewOwnership() {
     try {
       const response = await fetch("/api/source-intelligence/reviews/ownership", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           protocolVersion: "2.0",
           sourceId: item.sourceId,
           observationKey: item.observationKey,
           action,
-          actor,
           ...(owner?.trim() ? { owner: owner.trim() } : {}),
           expectedOwner: item.owner,
         }),

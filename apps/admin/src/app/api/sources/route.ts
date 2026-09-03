@@ -11,12 +11,17 @@ import {
   type SourceType,
 } from "@markorbit/contracts";
 import {
+  DEFAULT_WORKSPACE,
   RegistryValidationError,
   assertSourceFilterValue,
   type CreateSourceInput,
   type SourceListFilters,
   type SourceListResult,
 } from "@markorbit/persistence";
+import {
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+} from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
   listSourceCollectionHealth,
@@ -183,9 +188,11 @@ function withLatestAssessments(result: SourceListResult, scopeSources: SourceDef
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
+    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const filters: SourceListFilters = {
       q: url.searchParams.get("q") ?? undefined,
-      workspaceId: url.searchParams.get("workspaceId") ?? undefined,
+      workspaceId,
       sourceType: enumValue(SOURCE_TYPES, url.searchParams.get("sourceType"), "sourceType") as
         SourceType | undefined,
       category: enumValue(SOURCE_CATEGORIES, url.searchParams.get("category"), "category") as
@@ -221,7 +228,18 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
-    const source = getSourceRepository().create(body as CreateSourceInput);
+    const assertedWorkspaceId =
+      typeof body.workspaceId === "string" && body.workspaceId.trim()
+        ? body.workspaceId.trim()
+        : DEFAULT_WORKSPACE.id;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
+    const source = getSourceRepository().create({
+      ...(body as CreateSourceInput),
+      workspaceId,
+    });
     return NextResponse.json({ source }, { status: 201 });
   } catch (error) {
     return apiError(error);

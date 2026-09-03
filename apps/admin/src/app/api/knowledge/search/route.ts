@@ -5,7 +5,8 @@ import {
   type ArtifactKind,
   type SourceDefinition,
 } from "@markorbit/contracts";
-import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import {
   composeKnowledgeHybridSearch,
@@ -59,10 +60,11 @@ function sourceSummary(source: SourceDefinition | null) {
     : null;
 }
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const workspaceId = url.searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim() || undefined;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const q = url.searchParams.get("q")?.trim() || "";
     if (!q) throw new RegistryValidationError("Knowledge search query is required");
 
