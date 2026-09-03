@@ -17,11 +17,11 @@ export async function POST(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const existing = getWorkerRegistryRepository().getById(id);
     if (!existing) throw new WorkerNotFoundError(id);
-    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+    const { principal } = await resolveAdminBrowserApiMutationAccess(
       request,
       existing.worker.workspaceId,
     );
-    assertAdminBrowserResourceWorkspace(workspaceId, existing.worker.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, existing.worker.workspaceId);
     return NextResponse.json(getWorkerRegistryRepository().rotateCredential(id));
   } catch (error) {
     return apiError(error);
