@@ -391,14 +391,14 @@ async function assertKnowledgeJourney(page: Page): Promise<void> {
   await waitForKnowledgeRefresh(page, () => filters.nth(1).selectOption("NL"));
   await waitForKnowledgeRefresh(page, () => filters.nth(2).selectOption("HTML"));
   await waitForKnowledgeRefresh(page, () => filters.nth(3).selectOption("READY"));
-  await page.getByText(FIXTURE_SOURCE_NAME, { exact: true }).waitFor();
+  await page.locator("article").filter({ hasText: FIXTURE_SOURCE_NAME }).waitFor();
 
   const trigger = page.getByRole("button", { name: /View document|查看资料/ });
   await trigger.click();
   const dialog = page.getByRole("dialog");
   await dialog.waitFor();
   await page.getByText(FIXTURE_CONTENT_MARKER, { exact: false }).waitFor();
-  await page.getByText(FIXTURE_PROVENANCE, { exact: true }).waitFor();
+  await dialog.getByText(FIXTURE_PROVENANCE, { exact: false }).waitFor();
   assert.equal(await dialog.getAttribute("aria-modal"), "true");
 
   const closeButton = dialog.getByRole("button", { name: /Close|关闭/ });
