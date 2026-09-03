@@ -6,6 +6,7 @@ import {
   type ArtifactStatus,
 } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { getRawArtifactRepository } from "@/server/source-registry";
 
@@ -30,8 +31,10 @@ export async function GET(request: Request) {
     if (status && !ARTIFACT_STATUSES.includes(status as ArtifactStatus)) {
       throw new RegistryValidationError("Unknown status filter");
     }
+    const assertedWorkspaceId = params.get("workspaceId") ?? undefined;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const result = getRawArtifactRepository().list({
-      workspaceId: params.get("workspaceId") ?? undefined,
+      workspaceId,
       sourceId: params.get("sourceId") ?? undefined,
       runId: params.get("runId") ?? undefined,
       executionAttemptId: params.get("executionAttemptId") ?? undefined,
