@@ -29,6 +29,13 @@ const workspaceScopedReadRoutes = [
   "converters/[converterId]/versions",
   "discovery",
   "discovery/import-preview",
+  "foundational/action-executions",
+  "foundational/action-intents",
+  "foundational/action-intents/[intentId]/execute",
+  "foundational/collection-outcomes",
+  "foundational/compatibility-reprobe-executions",
+  "foundational/conversion-recovery",
+  "foundational/remediation-queue",
   "knowledge",
   "knowledge/[id]",
   "knowledge/[id]/graph",
@@ -52,6 +59,7 @@ const workspaceScopedMutationRoutes = [
   "conversion-profiles",
   "conversion-profiles/[id]",
   "conversion-profiles/[id]/status",
+  "conversion-recovery/[id]/retry",
   "conversion-runs",
   "conversion-runs/[id]/cancel",
   "converters",
@@ -60,6 +68,9 @@ const workspaceScopedMutationRoutes = [
   "discovery/batch",
   "discovery/candidates/[id]/authorize-collection",
   "discovery/candidates/[id]/review",
+  "foundational/action-intents",
+  "foundational/action-intents/[intentId]",
+  "foundational/action-intents/[intentId]/execute",
   "manual-uploads",
   "sources",
   "sources/[id]",
@@ -78,6 +89,9 @@ const resourceWorkspaceRoutes = [
   "artifacts/sessions/[id]",
   "conversion-profiles/[id]",
   "conversion-profiles/[id]/status",
+  "conversion-recovery/[id]/retry",
+  "foundational/action-intents/[intentId]",
+  "foundational/action-intents/[intentId]/execute",
   "raw-artifacts/[id]/compatible-conversion-profiles",
   "sources/[id]",
   "sources/[id]/archive",
@@ -102,6 +116,26 @@ const serverDerivedIdentityRoutes = [
     route: "discovery/candidates/[id]/authorize-collection",
     pattern: /requestedBy:\s*principal\.userId/,
     forbidden: /requestedBy:\s*(?:body\.|"admin-console")/,
+  },
+  {
+    route: "foundational/action-intents",
+    pattern: /requestedByActorId:\s*principal\.userId/,
+    forbidden: /requestedByActorId:\s*(?:payload\.|body\.)/,
+  },
+  {
+    route: "foundational/action-intents/[intentId]",
+    pattern: /(?:approve|cancel)FoundationalActionIntent\([^)]*principal\.userId\)/s,
+    forbidden: /actorId\s*=\s*typeof\s+payload\.actorId/,
+  },
+  {
+    route: "foundational/action-intents/[intentId]/execute",
+    pattern: /executedByActorId:\s*principal\.userId/,
+    forbidden: /executedByActorId:\s*(?:payload\.|body\.)/,
+  },
+  {
+    route: "conversion-recovery/[id]/retry",
+    pattern: /actorId:\s*principal\.userId/,
+    forbidden: /actorId:\s*(?:payload\.|body\.)/,
   },
 ] as const;
 
@@ -143,7 +177,7 @@ test("Browser mutations with durable actor fields derive actor identity from pri
   }
 });
 
-test("Discovery reviewer and requestedBy identities are server-derived", () => {
+test("Browser mutation identity fields are server-derived", () => {
   for (const { route, pattern, forbidden } of serverDerivedIdentityRoutes) {
     const source = routeSource(route);
     assert.match(source, pattern, `${route} must derive mutation identity from principal.userId`);
