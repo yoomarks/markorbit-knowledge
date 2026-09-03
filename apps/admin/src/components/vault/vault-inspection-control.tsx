@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, RefreshCw, ScanSearch } from "lucide-react";
 import type { VaultBindingV1, VaultInspectionRunV1 } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type FilesystemReadiness = { configured: boolean; issueCode: string | null };
 type Overview = {
@@ -100,7 +101,7 @@ export function VaultInspectionControl({ workspaceId }: { workspaceId: string })
     try {
       const response = await fetch(
         `/api/workspaces/${encodeURIComponent(workspaceId)}/vault-inspections`,
-        { method: "POST" },
+        { method: "POST", headers: await adminBrowserMutationHeaders() },
       );
       const body = (await response.json()) as { run?: VaultInspectionRunV1 } | ApiError;
       if (!response.ok) throw new Error(readError(body, "Vault inspection failed"));
