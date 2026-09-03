@@ -25,8 +25,16 @@ jobs:
       - name: Apply Prettier
         run: |
           # Keep business surfaces and shared ingestion-control helpers formatting-clean,
-          # including production staging and the bulk collection-to-Knowledge P0 acceptance path.
+          # including production staging, browser API boundaries and the bulk
+          # collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
+            apps/admin/src/app/api/knowledge/[id]/graph/route.ts \
+            apps/admin/src/app/api/knowledge/[id]/relationships/route.ts \
+            apps/admin/src/app/api/knowledge/[id]/route.ts \
+            apps/admin/src/app/api/knowledge/route.ts \
+            apps/admin/src/app/api/operations/readiness/route.ts \
+            apps/admin/src/app/api/ready-packages/route.ts \
+            apps/admin/src/app/api/sources/route.ts \
             apps/admin/src/app/knowledge/[id]/page.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
@@ -51,6 +59,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            apps/admin/src/app/api/knowledge/[id]/graph/route.ts \
+            apps/admin/src/app/api/knowledge/[id]/relationships/route.ts \
+            apps/admin/src/app/api/knowledge/[id]/route.ts \
+            apps/admin/src/app/api/knowledge/route.ts \
+            apps/admin/src/app/api/operations/readiness/route.ts \
+            apps/admin/src/app/api/ready-packages/route.ts \
+            apps/admin/src/app/api/sources/route.ts \
             apps/admin/src/app/knowledge/[id]/page.tsx \
             apps/admin/src/components/knowledge/content-reader-index.tsx \
             apps/admin/src/components/knowledge/content-reader-model.test.ts \
