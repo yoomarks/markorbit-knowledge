@@ -7,6 +7,7 @@ import type {
   VaultOriginStagingFinalizationV1,
   VaultOriginStagingVerificationEvidenceV1,
 } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 
 type Overview = {
   documents: VaultOriginStagingDocumentV1[];
@@ -115,7 +116,7 @@ export function VaultOriginStagingVerificationControl({ workspaceId }: { workspa
         `/api/workspaces/${encodeURIComponent(workspaceId)}/${endpoint}`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({
             vaultStagingDocumentId: documentId,
             idempotencyKey: `k11-${action}:${documentId}`,
