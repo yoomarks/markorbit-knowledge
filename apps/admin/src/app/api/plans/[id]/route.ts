@@ -22,8 +22,8 @@ export async function GET(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const plan = getCollectionPlanRepository().getById(id);
     if (!plan) throw new CollectionPlanNotFoundError(id);
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, plan.plan.workspaceId);
-    assertAdminBrowserResourceWorkspace(workspaceId, plan.plan.workspaceId);
+    const { principal } = await resolveAdminBrowserApiReadAccess(request, plan.plan.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, plan.plan.workspaceId);
     return NextResponse.json({ plan });
   } catch (error) {
     return apiError(error);
@@ -35,11 +35,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const existing = getCollectionPlanRepository().getById(id);
     if (!existing) throw new CollectionPlanNotFoundError(id);
-    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+    const { principal } = await resolveAdminBrowserApiMutationAccess(
       request,
       existing.plan.workspaceId,
     );
-    assertAdminBrowserResourceWorkspace(workspaceId, existing.plan.workspaceId);
+    assertAdminBrowserResourceWorkspace(principal, existing.plan.workspaceId);
     const body = requireRecord(await readJson(request));
     const expectedUpdatedAt = body.expectedUpdatedAt;
     if (typeof expectedUpdatedAt !== "string") {
