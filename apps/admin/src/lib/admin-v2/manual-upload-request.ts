@@ -1,3 +1,4 @@
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { sha256Hex } from "@/lib/admin-v2/manual-upload-client";
 
 const MIME_BY_EXTENSION: Record<string, string> = {
@@ -63,7 +64,7 @@ export async function uploadManualSource(input: {
   const mimeType = resolvedSourceFileMime(input.file);
   const bytes = await input.file.arrayBuffer();
   const contentSha256 = await sha256Hex(bytes);
-  const headers: Record<string, string> = {
+  const headers = await adminBrowserMutationHeaders({
     "content-type": mimeType,
     "idempotency-key": input.idempotencyKey,
     "x-markorbit-workspace-id": input.workspaceId,
@@ -71,16 +72,19 @@ export async function uploadManualSource(input: {
     "x-markorbit-content-size": String(input.file.size),
     "x-markorbit-content-sha256": contentSha256,
     "x-markorbit-source-name": encodeURIComponent(input.sourceName.trim()),
-  };
+  });
   if (input.jurisdictions.trim()) {
-    headers["x-markorbit-jurisdictions"] = encodeURIComponent(
-      input.jurisdictions.trim().toUpperCase(),
+    headers.set(
+      "x-markorbit-jurisdictions",
+      encodeURIComponent(input.jurisdictions.trim().toUpperCase()),
     );
   }
   if (input.languages.trim()) {
-    headers["x-markorbit-languages"] = encodeURIComponent(input.languages.trim());
+    headers.set("x-markorbit-languages", encodeURIComponent(input.languages.trim()));
   }
-  if (input.relatedSourceId) headers["x-markorbit-related-source-id"] = input.relatedSourceId;
+  if (input.relatedSourceId) {
+    headers.set("x-markorbit-related-source-id", input.relatedSourceId);
+  }
 
   const response = await fetch("/api/manual-uploads", {
     method: "POST",
