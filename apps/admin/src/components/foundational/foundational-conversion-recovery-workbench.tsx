@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ExternalLink, RefreshCw, RotateCcw, ShieldCheck } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import {
   conversionRecoveryStateAllowsOperatorRetry,
   listControlledConversionRecoveryActions,
@@ -52,7 +53,12 @@ type RecoverySnapshot = {
 type ErrorEnvelope = { error?: { message?: string } };
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", ...init });
+  const requestInit: RequestInit = { cache: "no-store", ...init };
+  const method = init?.method?.toUpperCase() ?? "GET";
+  if (method !== "GET" && method !== "HEAD") {
+    requestInit.headers = await adminBrowserMutationHeaders(init?.headers);
+  }
+  const response = await fetch(url, requestInit);
   let payload: unknown = null;
   try {
     payload = await response.json();
@@ -112,7 +118,6 @@ export function FoundationalConversionRecoveryWorkbench({
 }: Props) {
   const actions = useMemo(() => listControlledConversionRecoveryActions(snapshot), [snapshot]);
   const [recoveries, setRecoveries] = useState<Record<string, RecoverySnapshot>>({});
-  const [actorId, setActorId] = useState("operator:local-admin");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -165,14 +170,11 @@ export function FoundationalConversionRecoveryWorkbench({
   }, [actions, jurisdiction, workspaceId]);
 
   async function retry(targetId: string, recoveryCaseId: string): Promise<void> {
-    if (!actorId.trim()) return;
     setBusy(recoveryCaseId);
     setError(null);
     try {
       await requestJson(`/api/conversion-recovery/${encodeURIComponent(recoveryCaseId)}/retry`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceId, actorId: actorId.trim() }),
       });
       await onSnapshotRefresh();
       const updated = await requestJson<RecoverySnapshot>(
@@ -219,20 +221,15 @@ export function FoundationalConversionRecoveryWorkbench({
       </div>
 
       <div className="space-y-4 p-5">
-        <label className="block max-w-xl rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="max-w-xl rounded-xl border border-slate-200 bg-slate-50 p-3">
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Retry actor
           </span>
-          <input
-            value={actorId}
-            onChange={(event) => setActorId(event.target.value)}
-            className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
-            spellCheck={false}
-          />
-          <span className="mt-1 block text-xs text-slate-500">
-            Passed unchanged to the existing M11 operator-retry endpoint.
-          </span>
-        </label>
+          <p className="mt-2 text-sm leading-5 text-slate-700">
+            Derived from the authenticated Workspace Principal. Browser-supplied actor and workspace
+            fields are not accepted by the retry endpoint.
+          </p>
+        </div>
 
         {error ? (
           <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900">
@@ -340,7 +337,7 @@ export function FoundationalConversionRecoveryWorkbench({
                             {retryable ? (
                               <button
                                 type="button"
-                                disabled={busy !== null || !actorId.trim()}
+                                disabled={busy !== null}
                                 onClick={() => void retry(action.targetId, item.id)}
                                 className="inline-flex items-center gap-2 rounded-xl bg-violet-700 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                               >
