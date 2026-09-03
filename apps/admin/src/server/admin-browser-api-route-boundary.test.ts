@@ -27,6 +27,8 @@ const workspaceScopedReadRoutes = [
   "converters",
   "converters/[converterId]/[version]",
   "converters/[converterId]/versions",
+  "discovery",
+  "discovery/import-preview",
   "knowledge",
   "knowledge/[id]",
   "knowledge/[id]/graph",
@@ -54,6 +56,10 @@ const workspaceScopedMutationRoutes = [
   "conversion-runs/[id]/cancel",
   "converters",
   "converters/[converterId]/[version]/status",
+  "discovery",
+  "discovery/batch",
+  "discovery/candidates/[id]/authorize-collection",
+  "discovery/candidates/[id]/review",
   "manual-uploads",
   "sources",
   "sources/[id]",
@@ -85,6 +91,19 @@ const resourceWorkspaceRoutes = [
 ] as const;
 
 const serverDerivedActorRoutes = ["conversion-runs", "conversion-runs/[id]/cancel"] as const;
+
+const serverDerivedIdentityRoutes = [
+  {
+    route: "discovery/candidates/[id]/review",
+    pattern: /reviewer:\s*principal\.userId/,
+    forbidden: /reviewer:\s*(?:body\.|"admin-console")/,
+  },
+  {
+    route: "discovery/candidates/[id]/authorize-collection",
+    pattern: /requestedBy:\s*principal\.userId/,
+    forbidden: /requestedBy:\s*(?:body\.|"admin-console")/,
+  },
+] as const;
 
 test("Admin browser workspace-scoped read routes use canonical read access", () => {
   for (const route of workspaceScopedReadRoutes) {
@@ -121,5 +140,13 @@ test("Browser mutations with durable actor fields derive actor identity from pri
     const source = routeSource(route);
     assert.match(source, /actor:\s*\{\s*type:\s*"ADMIN",\s*id:\s*principal\.userId\s*\}/s);
     assert.doesNotMatch(source, /local-admin/);
+  }
+});
+
+test("Discovery reviewer and requestedBy identities are server-derived", () => {
+  for (const { route, pattern, forbidden } of serverDerivedIdentityRoutes) {
+    const source = routeSource(route);
+    assert.match(source, pattern, `${route} must derive mutation identity from principal.userId`);
+    assert.doesNotMatch(source, forbidden, `${route} must not trust browser-supplied identity`);
   }
 });
