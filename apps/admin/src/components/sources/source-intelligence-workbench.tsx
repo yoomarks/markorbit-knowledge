@@ -10,6 +10,7 @@ import type {
   SourceValuePriorityBand,
 } from "@markorbit/contracts";
 import type { SourceListResult } from "@markorbit/persistence";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import {
   compareDualAxisAssessments,
   countDualAxisAssessments,
@@ -158,7 +159,7 @@ export function SourceIntelligenceWorkbench() {
     try {
       const response = await fetch("/api/source-intelligence", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ sourceId, protocolVersion: "2.0" }),
       });
       const body = (await response.json()) as {
