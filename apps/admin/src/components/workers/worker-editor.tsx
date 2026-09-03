@@ -16,7 +16,10 @@ import type {
   CredentialRotationResult,
   WorkerCreationResult,
 } from "@markorbit/persistence/workers";
-import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
+import {
+  adminBrowserWorkspaceHeaders,
+  adminBrowserWorkspaceMutationHeaders,
+} from "@/lib/admin-browser-api-client";
 
 type EditorValues = {
   displayName: string;
@@ -74,7 +77,13 @@ function optionLabel(value: string): string {
     .join(" ");
 }
 
-export function WorkerEditor({ workerId }: { workerId?: string }) {
+export function WorkerEditor({
+  workerId,
+  workspaceId,
+}: {
+  workerId?: string;
+  workspaceId: string;
+}) {
   const router = useRouter();
   const [values, setValues] = useState<EditorValues>(emptyValues);
   const [view, setView] = useState<WorkerRuntimeView | null>(null);
@@ -87,7 +96,10 @@ export function WorkerEditor({ workerId }: { workerId?: string }) {
   useEffect(() => {
     if (!workerId) return;
     const controller = new AbortController();
-    fetch(`/api/workers/${workerId}`, { signal: controller.signal })
+    fetch(`/api/workers/${workerId}`, {
+      headers: adminBrowserWorkspaceHeaders(workspaceId),
+      signal: controller.signal,
+    })
       .then(async (response) => {
         const body = (await response.json()) as {
           view?: WorkerRuntimeView;
@@ -107,7 +119,7 @@ export function WorkerEditor({ workerId }: { workerId?: string }) {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [workerId]);
+  }, [workerId, workspaceId]);
 
   function set<K extends keyof EditorValues>(key: K, value: EditorValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -166,7 +178,9 @@ export function WorkerEditor({ workerId }: { workerId?: string }) {
       const workerPayload = payload();
       const response = await fetch(workerId ? `/api/workers/${workerId}` : "/api/workers", {
         method: workerId ? "PATCH" : "POST",
-        headers: await adminBrowserMutationHeaders({ "Content-Type": "application/json" }),
+        headers: await adminBrowserWorkspaceMutationHeaders(workspaceId, {
+          "Content-Type": "application/json",
+        }),
         body: JSON.stringify(
           workerId
             ? { ...workerPayload, expectedUpdatedAt: view?.worker.updatedAt }
@@ -202,7 +216,7 @@ export function WorkerEditor({ workerId }: { workerId?: string }) {
     try {
       const response = await fetch(`/api/workers/${view.worker.id}/rotate-credential`, {
         method: "POST",
-        headers: await adminBrowserMutationHeaders(),
+        headers: await adminBrowserWorkspaceMutationHeaders(workspaceId),
       });
       const body = (await response.json()) as
         CredentialRotationResult | { error?: { message?: string } };

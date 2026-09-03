@@ -10,7 +10,10 @@ import {
   type WorkerRuntimeView,
 } from "@markorbit/contracts";
 import type { WorkerListResult } from "@markorbit/persistence/workers";
-import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
+import {
+  adminBrowserWorkspaceHeaders,
+  adminBrowserWorkspaceMutationHeaders,
+} from "@/lib/admin-browser-api-client";
 
 const PAGE_SIZE = 20;
 
@@ -54,7 +57,7 @@ function StatusBadge({ status }: { status: WorkerRuntimeView["effectiveStatus"] 
   );
 }
 
-export function WorkerList() {
+export function WorkerList({ workspaceId }: { workspaceId: string }) {
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [offset, setOffset] = useState(0);
   const [result, setResult] = useState<WorkerListResult | null>(null);
@@ -72,7 +75,10 @@ export function WorkerList() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/workers?${query}`, { signal: controller.signal })
+    fetch(`/api/workers?${query}`, {
+      headers: adminBrowserWorkspaceHeaders(workspaceId),
+      signal: controller.signal,
+    })
       .then(async (response) => {
         const body = (await response.json()) as WorkerListResult | { error?: { message?: string } };
         if (!response.ok) {
@@ -89,7 +95,7 @@ export function WorkerList() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [query]);
+  }, [query, workspaceId]);
 
   function beginRequest() {
     setLoading(true);
@@ -108,12 +114,14 @@ export function WorkerList() {
     try {
       const response = await fetch("/api/leases/reap", {
         method: "POST",
-        headers: await adminBrowserMutationHeaders(),
+        headers: await adminBrowserWorkspaceMutationHeaders(workspaceId),
       });
       const body = (await response.json()) as { reaped?: number; error?: { message?: string } };
       if (!response.ok) throw new Error(body.error?.message ?? "Unable to reap leases");
       setNotice(`已回收 ${body.reaped ?? 0} 个过期租约。`);
-      const refreshed = await fetch(`/api/workers?${query}`);
+      const refreshed = await fetch(`/api/workers?${query}`, {
+        headers: adminBrowserWorkspaceHeaders(workspaceId),
+      });
       setResult((await refreshed.json()) as WorkerListResult);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to reap leases");

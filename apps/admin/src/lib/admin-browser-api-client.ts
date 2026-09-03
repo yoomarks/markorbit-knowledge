@@ -8,6 +8,23 @@ function sessionErrorMessage(body: AdminSessionResponse, fallback: string): stri
   return typeof message === "string" && message.trim() ? message : fallback;
 }
 
+const ADMIN_WORKSPACE_HEADER = "x-markorbit-workspace-id";
+
+function normalizedWorkspaceId(workspaceId: string): string {
+  const normalized = workspaceId.trim();
+  if (!normalized) throw new Error("Admin browser workspace context is required");
+  return normalized;
+}
+
+export function adminBrowserWorkspaceHeaders(
+  workspaceId: string,
+  initialHeaders: HeadersInit = {},
+): Headers {
+  const headers = new Headers(initialHeaders);
+  headers.set(ADMIN_WORKSPACE_HEADER, normalizedWorkspaceId(workspaceId));
+  return headers;
+}
+
 export async function adminBrowserMutationHeaders(
   initialHeaders: HeadersInit = {},
 ): Promise<Headers> {
@@ -22,5 +39,14 @@ export async function adminBrowserMutationHeaders(
 
   const headers = new Headers(initialHeaders);
   headers.set("x-markorbit-csrf-token", body.csrfToken);
+  return headers;
+}
+
+export async function adminBrowserWorkspaceMutationHeaders(
+  workspaceId: string,
+  initialHeaders: HeadersInit = {},
+): Promise<Headers> {
+  const headers = await adminBrowserMutationHeaders(initialHeaders);
+  headers.set(ADMIN_WORKSPACE_HEADER, normalizedWorkspaceId(workspaceId));
   return headers;
 }

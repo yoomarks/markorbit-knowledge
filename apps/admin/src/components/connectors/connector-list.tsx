@@ -11,6 +11,7 @@ import {
   type ConnectorStatus,
 } from "@markorbit/contracts";
 import type { ConnectorListResult } from "@markorbit/persistence/connectors";
+import { adminBrowserWorkspaceHeaders } from "@/lib/admin-browser-api-client";
 
 const PAGE_SIZE = 20;
 
@@ -51,7 +52,7 @@ function StatusBadge({ status }: { status: ConnectorStatus }) {
   );
 }
 
-export function ConnectorList() {
+export function ConnectorList({ workspaceId }: { workspaceId: string }) {
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [offset, setOffset] = useState(0);
   const [result, setResult] = useState<ConnectorListResult | null>(null);
@@ -68,7 +69,10 @@ export function ConnectorList() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/connectors?${query}`, { signal: controller.signal })
+    fetch(`/api/connectors?${query}`, {
+      headers: adminBrowserWorkspaceHeaders(workspaceId),
+      signal: controller.signal,
+    })
       .then(async (response) => {
         const body = (await response.json()) as
           ConnectorListResult | { error?: { message?: string } };
@@ -88,7 +92,7 @@ export function ConnectorList() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [query]);
+  }, [query, workspaceId]);
 
   function beginRequest() {
     setLoading(true);
