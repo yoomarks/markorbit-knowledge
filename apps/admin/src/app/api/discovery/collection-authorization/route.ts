@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getDiscoveryCollectionService } from "@/server/discovery-collection-service";
 
@@ -12,13 +13,11 @@ export async function POST(request: Request) {
     if (typeof body.candidateId !== "string" || !body.candidateId.trim()) {
       throw new RegistryValidationError("candidateId is required");
     }
-    if (body.requestedBy !== undefined && typeof body.requestedBy !== "string") {
-      throw new RegistryValidationError("requestedBy must be a string");
-    }
 
+    const { principal } = await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const candidateId = body.candidateId.trim();
     const result = getDiscoveryCollectionService().authorizeAndDispatch(candidateId, {
-      requestedBy: typeof body.requestedBy === "string" ? body.requestedBy : undefined,
+      requestedBy: principal.userId,
     });
 
     return NextResponse.json({
