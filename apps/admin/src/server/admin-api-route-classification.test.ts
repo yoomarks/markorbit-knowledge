@@ -79,7 +79,13 @@ function isExported(node: { modifiers?: ts.NodeArray<ts.ModifierLike> }): boolea
 }
 
 function exportedMethods(source: string, file: string): ExportedMethod[] {
-  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const sourceFile = ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
   const methods: ExportedMethod[] = [];
 
   for (const node of sourceFile.statements) {
@@ -92,7 +98,8 @@ function exportedMethods(source: string, file: string): ExportedMethod[] {
     for (const declaration of node.declarationList.declarations) {
       if (!ts.isIdentifier(declaration.name)) continue;
       const method = declaration.name.text;
-      if (HTTP_METHODS.has(method)) methods.push({ method, source: declaration.getText(sourceFile) });
+      if (HTTP_METHODS.has(method))
+        methods.push({ method, source: declaration.getText(sourceFile) });
     }
   }
 
@@ -116,7 +123,8 @@ function methodBoundaryCandidates(
   if (route.startsWith("worker/v1/")) {
     boundaries.add("worker-machine");
     assert.ok(
-      matchesAny(methodSource, SERVICE_AUTH_PATTERNS) || matchesAny(routeSource, SERVICE_AUTH_PATTERNS),
+      matchesAny(methodSource, SERVICE_AUTH_PATTERNS) ||
+        matchesAny(routeSource, SERVICE_AUTH_PATTERNS),
       `${route} is a worker-machine route but has no recognizable worker credential/auth boundary`,
     );
   } else if (route.startsWith("internal/")) {
@@ -165,7 +173,11 @@ test("every Admin API HTTP method has an explicit security-boundary classificati
           method === "GET" || method === "HEAD" || method === "OPTIONS",
           `${key} is marked public/read-only but is a mutating method`,
         );
-        assert.deepEqual(candidates, [], `${key} is public/read-only and must not imply another boundary`);
+        assert.deepEqual(
+          candidates,
+          [],
+          `${key} is public/read-only and must not imply another boundary`,
+        );
         continue;
       }
 
