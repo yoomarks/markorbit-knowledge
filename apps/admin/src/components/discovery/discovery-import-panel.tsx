@@ -9,6 +9,7 @@ import {
   type AuthorityLevel,
   type SourceCategory,
 } from "@markorbit/contracts";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 
 type ImportRow = {
@@ -253,9 +254,12 @@ export function DiscoveryImportPanel() {
     setError(null);
     setResult(null);
     try {
+      const headers = await adminBrowserMutationHeaders({
+        "content-type": "application/json",
+      });
       const response = await fetch("/api/discovery/batch", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers,
         body: JSON.stringify({
           entries: selectedRows.map((row) => ({
             locator: row.locator,
