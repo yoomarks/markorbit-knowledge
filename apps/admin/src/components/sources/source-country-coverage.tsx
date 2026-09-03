@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Send,
 } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 
 type CoverageTarget = {
@@ -104,7 +105,7 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
           `/api/source-coverage/${encodeURIComponent(targetId)}/discovery`,
           {
             method: "POST",
-            headers: { "content-type": "application/json" },
+            headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
             body: JSON.stringify({ workspaceId }),
           },
         );
@@ -133,7 +134,7 @@ export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) 
       try {
         const response = await fetch("/api/source-coverage/discovery", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({ workspaceId, targetIds }),
         });
         if (!response.ok) throw new Error(await readError(response));
