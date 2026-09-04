@@ -169,10 +169,7 @@ export function OperatorInbox({ workspaceId }: { workspaceId: string }) {
       ) : (
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {state.categories.map((category) => (
-            <div
-              key={category.category}
-              className="rounded-xl border border-slate-200 p-3.5"
-            >
+            <div key={category.category} className="rounded-xl border border-slate-200 p-3.5">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-slate-800">
                   {labels[category.category]}
@@ -207,9 +204,7 @@ export function OperatorInbox({ workspaceId }: { workspaceId: string }) {
                     </Link>
                   ))}
                   {category.count > 2 ? (
-                    <p className="text-[11px] text-slate-400">
-                      另有 {category.count - 2} 项
-                    </p>
+                    <p className="text-[11px] text-slate-400">另有 {category.count - 2} 项</p>
                   ) : null}
                 </div>
               )}
