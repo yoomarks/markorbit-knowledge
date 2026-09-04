@@ -281,13 +281,7 @@ async function ensureWorker(
 
 async function dispatch(baseUrl: string, planId: string): Promise<string> {
   const result = await requestJson(baseUrl, "/api/runs", {
-    ...jsonPost({
-      planId,
-      requestedBy: {
-        actorType: "LOCAL_ADMIN",
-        actorId: "bootstrap-uspto-golden-source",
-      },
-    }),
+    ...jsonPost({ planId }),
     headers: {
       "content-type": "application/json",
       "Idempotency-Key": `bootstrap-uspto-${SOURCE_SLUG}-${new Date().toISOString().slice(0, 10)}`,
