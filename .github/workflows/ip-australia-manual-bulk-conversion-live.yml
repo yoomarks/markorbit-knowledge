@@ -164,7 +164,7 @@ jobs:
       - name: Dispatch full collection
         run: |
           node <<'NODE'
-          const fs=require('node:fs'); fs.writeFileSync(process.env.RUNNER_TEMP+'/dispatch-request.json',JSON.stringify({planId:process.env.MARKORBIT_IP_AU_PLAN_ID,requestedBy:{actorType:'SYSTEM',actorId:'github-actions-bulk-conversion-live'}}));
+          const fs=require('node:fs'); fs.writeFileSync(process.env.RUNNER_TEMP+'/dispatch-request.json',JSON.stringify({planId:process.env.MARKORBIT_IP_AU_PLAN_ID}));
           NODE
           bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/runs" -H 'content-type: application/json' -H 'Idempotency-Key: ip-au-manual-bulk-conversion-live' --data-binary "@$RUNNER_TEMP/dispatch-request.json" > "$RUNNER_TEMP/dispatch.json"
           node <<'NODE'
