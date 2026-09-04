@@ -289,6 +289,14 @@ function normalizeLimit(value?: number): number {
   return Math.min(value, MAX_SEARCH_LIMIT);
 }
 
+function normalizeOffset(value?: number): number {
+  if (value === undefined) return 0;
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new RegistryValidationError("retrieval offset must be a non-negative integer");
+  }
+  return value;
+}
+
 function rowDocument(row: Record<string, unknown>): RetrievalDocument {
   return {
     protocolVersion: RETRIEVAL_PROTOCOL_VERSION,
@@ -592,6 +600,7 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
     if (!workspaceId) throw new RegistryValidationError("workspaceId is required");
     if (!query) throw new RegistryValidationError("retrieval query is required");
     const limit = normalizeLimit(request.limit);
+    const offset = normalizeOffset(request.offset);
     const match = ftsQuery(query);
     const clauses = ["retrieval_chunks_fts MATCH ?", "d.workspace_id = ?", "d.is_current = 1"];
     const values: SQLInputValue[] = [match, workspaceId];
@@ -622,9 +631,9 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
          JOIN retrieval_documents d ON d.staging_document_id = c.staging_document_id
          WHERE ${where}
          ORDER BY rank ASC, d.artifact_version DESC, c.ordinal ASC
-         LIMIT ?`,
+         LIMIT ? OFFSET ?`,
       )
-      .all(...values, limit) as Record<string, unknown>[];
+      .all(...values, limit, offset) as Record<string, unknown>[];
     const count = this.database
       .prepare(
         `SELECT COUNT(*) AS count
