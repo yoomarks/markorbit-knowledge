@@ -151,5 +151,60 @@ describe("readOperatorInbox", () => {
     const ids = result.categories.flatMap((category) => category.items.map((item) => item.id));
     expect(ids.filter((id) => id === "dcev_created")).toHaveLength(1);
     expect(ids.filter((id) => id === "dcev_updated")).toHaveLength(1);
+    expect(
+      result.categories.find((category) => category.category === "NEW_MATERIAL")?.items[0]?.href,
+    ).toBe("/knowledge/stg_1");
+  });
+
+  it("links durable incidents and V2 delivery items to their governed record surfaces", () => {
+    const deps = dependencies();
+    vi.mocked(deps.runs.list).mockReturnValue({
+      items: [
+        {
+          run: {
+            id: "run_failed_1",
+            sourceSnapshot: { name: "Example source" },
+            updatedAt: "2026-09-04T10:10:00.000Z",
+          },
+        },
+      ],
+      total: 1,
+      limit: 100,
+      offset: 0,
+      summary: {},
+    } as unknown as ReturnType<ExecutionLedgerRepository["list"]>);
+    vi.mocked(deps.vaultInspection.list).mockReturnValue([
+      {
+        id: "vinsp_1",
+        observedAt: "2026-09-04T10:20:00.000Z",
+        candidates: [
+          {
+            classification: "CONFLICT",
+            vaultRelativePath: "folder/evidence.md",
+          },
+        ],
+      },
+    ] as unknown as ReturnType<VaultInspectionRunRepository["list"]>);
+    vi.mocked(deps.readyPackages.list).mockReturnValue([
+      {
+        id: "rdp_v2_1",
+        evidence: { canonicalDocumentId: "canonical_1" },
+        createdAt: "2026-09-04T10:30:00.000Z",
+      },
+    ] as unknown as ReturnType<ReadyPackageV2RegistryRepository["list"]>);
+
+    const result = readOperatorInbox(workspaceId, deps, "2026-09-04T11:00:00.000Z");
+
+    expect(
+      result.categories.find((category) => category.category === "ACQUISITION_FAILED")?.items[0]
+        ?.href,
+    ).toBe("/runs/run_failed_1");
+    expect(
+      result.categories.find((category) => category.category === "VAULT_CONFLICT")?.items[0]?.href,
+    ).toBe("/vault?inspectionId=vinsp_1&path=folder%2Fevidence.md");
+    expect(
+      result.categories.find((category) => category.category === "READY_FOR_DELIVERY")?.items[0]
+        ?.href,
+    ).toBe("/vault?readyPackageId=rdp_v2_1");
   });
 });
