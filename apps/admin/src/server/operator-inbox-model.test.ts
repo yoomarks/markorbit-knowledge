@@ -25,25 +25,14 @@ function evidence(
 function snapshot(): OperatorInboxSnapshot {
   return {
     workspaceId,
-    acquisitionFailures: [
-      { ...evidence("run_failed", "2026-09-04T08:00:00.000Z"), category: "ACQUISITION_FAILED" },
-    ],
-    sourceHealth: [
-      {
-        ...evidence("source_degraded", "2026-09-04T07:00:00.000Z"),
-        category: "SOURCE_STALE_DEGRADED",
-      },
-    ],
+    acquisitionFailures: [evidence("run_failed", "2026-09-04T08:00:00.000Z")],
+    sourceHealth: [evidence("source_degraded", "2026-09-04T07:00:00.000Z")],
     changeEvidence: [
       { ...evidence("change_created", "2026-09-04T10:00:00.000Z"), changeKind: "CREATED" },
       { ...evidence("change_updated", "2026-09-04T09:00:00.000Z"), changeKind: "UPDATED" },
     ],
-    needsReview: [
-      { ...evidence("vault_import", "2026-09-04T06:00:00.000Z"), category: "NEEDS_REVIEW" },
-    ],
-    vaultConflicts: [
-      { ...evidence("vault_conflict", "2026-09-04T05:00:00.000Z"), category: "VAULT_CONFLICT" },
-    ],
+    needsReview: [evidence("vault_import", "2026-09-04T06:00:00.000Z")],
+    vaultConflicts: [evidence("vault_conflict", "2026-09-04T05:00:00.000Z")],
     deliveries: [
       { ...evidence("delivery_ready", "2026-09-04T04:00:00.000Z"), state: "READY" },
       { ...evidence("delivery_review", "2026-09-04T03:00:00.000Z"), state: "NEEDS_REVIEW" },
@@ -60,15 +49,18 @@ describe("deriveOperatorInbox", () => {
       result.categories.map((category) => [category.category, category.count]),
     );
 
+    expect(counts.ACQUISITION_FAILED).toBe(1);
+    expect(counts.SOURCE_STALE_DEGRADED).toBe(1);
     expect(counts.NEW_MATERIAL).toBe(1);
     expect(counts.MATERIAL_CHANGE).toBe(1);
     expect(counts.READY_FOR_DELIVERY).toBe(1);
     expect(counts.DELIVERY_BLOCKED).toBe(1);
     expect(counts.NEEDS_REVIEW).toBe(2);
+    expect(counts.VAULT_CONFLICT).toBe(1);
     expect(result.categories.flatMap((category) => category.items).map((item) => item.objectId)).not.toContain(
       "delivery_done",
     );
-    expect(result.total).toBe(8);
+    expect(result.total).toBe(9);
   });
 
   it("orders deterministically and reports partial evidence without inventing counts", () => {
