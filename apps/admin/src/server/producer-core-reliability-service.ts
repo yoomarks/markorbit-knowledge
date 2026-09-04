@@ -46,13 +46,7 @@ export type ProducerCoreReliabilityDeliveryDetail = {
     readyPackageId: string;
     coreWorkspaceId: string;
     requestSha256: string;
-    state: ReadyPackageV2DeliverySubmission["state"];
-    transportAttempts: number;
-    lastTransportAttemptedAt: string | null;
-    resultStatus: "RECEIVED" | "ACCEPTED" | "REJECTED" | null;
-    resultRecordedAt: string | null;
     createdAt: string;
-    updatedAt: string;
   };
   reconciliation: ProducerCoreReliabilityDeliveryProjection;
   auditEvents: ReadyPackageV2DeliveryAuditEvent[];
@@ -261,13 +255,7 @@ export function getProducerCoreReliabilityDeliveryDetail(
       readyPackageId: submission.readyPackageId,
       coreWorkspaceId: submission.coreWorkspaceId,
       requestSha256: submission.requestSha256,
-      state: submission.state,
-      transportAttempts: submission.transportAttempts,
-      lastTransportAttemptedAt: submission.lastTransportAttemptedAt ?? null,
-      resultStatus: submission.result?.status ?? null,
-      resultRecordedAt: submission.result?.recordedAt ?? null,
       createdAt: submission.createdAt,
-      updatedAt: submission.updatedAt,
     },
     reconciliation,
     auditEvents,
