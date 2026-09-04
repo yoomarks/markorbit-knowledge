@@ -11,6 +11,7 @@ import {
 import { RegistryValidationError } from "./index";
 
 export const KNOWLEDGE_BROWSER_QUERY_VERSION = "1.0" as const;
+export const KNOWLEDGE_QUERY_READ_MODEL_VERSION = "2.0" as const;
 
 export type KnowledgeBrowserQueryV1 = {
   workspaceId: string;
@@ -22,6 +23,8 @@ export type KnowledgeBrowserQueryV1 = {
   offset?: number;
   limit?: number;
 };
+
+export type KnowledgeQueryReadModelV2 = KnowledgeBrowserQueryV1;
 
 export type KnowledgeBrowserSourceOption = {
   id: string;
@@ -83,6 +86,8 @@ export type KnowledgeBrowserQueryResultV1 = {
     artifactKinds: ArtifactKind[];
   };
 };
+
+export type KnowledgeQueryReadModelResultV2 = KnowledgeBrowserQueryResultV1;
 
 type BrowserRow = {
   staging_json: string;
@@ -255,17 +260,34 @@ function artifactSummary(artifact: RawArtifact | null): KnowledgeBrowserItem["ar
     : null;
 }
 
+function rowItem(row: BrowserRow): KnowledgeBrowserItem {
+  const descriptor = parseStaging(row.staging_json);
+  const source = parseSource(row.source_json);
+  const artifact = parseArtifact(row.artifact_json);
+  return {
+    id: descriptor.id,
+    title: descriptor.title || artifact?.originalName || descriptor.targetPath,
+    targetPath: descriptor.targetPath,
+    outputFormat: descriptor.outputFormat,
+    sizeBytes: descriptor.sizeBytes,
+    status: descriptor.status,
+    validation: descriptor.validation,
+    generatedAt: descriptor.generatedAt,
+    updatedAt: row.updated_at,
+    source: sourceSummary(source),
+    artifact: artifactSummary(artifact),
+  };
+}
+
 /**
- * Executes the Knowledge Browser semantics over the complete workspace corpus.
- *
- * `total`, `summary`, and `artifactKinds` use the same active document filters as the item query.
- * Source and jurisdiction options intentionally describe the complete workspace source catalog so
- * operators can change filters even when the current match set is empty.
+ * Complete workspace-scoped corpus read model. Corpus membership, provenance projection,
+ * exact counts/facets and deterministic generatedAt/id ordering live here; retrieval owns
+ * full-text relevance order separately.
  */
-export function queryKnowledgeBrowser(
+export function queryKnowledgeReadModel(
   database: DatabaseSync,
-  input: KnowledgeBrowserQueryV1,
-): KnowledgeBrowserQueryResultV1 {
+  input: KnowledgeQueryReadModelV2,
+): KnowledgeQueryReadModelResultV2 {
   const query = normalizeQuery(input);
   const where = filteredWhere(query);
 
@@ -317,30 +339,10 @@ export function queryKnowledgeBrowser(
        ORDER BY a.artifact_kind ASC`,
     )
     .all(...where.values) as KindRow[];
-  const artifactKinds = kindRows.map((row) => row.artifact_kind as ArtifactKind);
-
-  const items = rows.map((row): KnowledgeBrowserItem => {
-    const descriptor = parseStaging(row.staging_json);
-    const source = parseSource(row.source_json);
-    const artifact = parseArtifact(row.artifact_json);
-    return {
-      id: descriptor.id,
-      title: descriptor.title || artifact?.originalName || descriptor.targetPath,
-      targetPath: descriptor.targetPath,
-      outputFormat: descriptor.outputFormat,
-      sizeBytes: descriptor.sizeBytes,
-      status: descriptor.status,
-      validation: descriptor.validation,
-      generatedAt: descriptor.generatedAt,
-      updatedAt: row.updated_at,
-      source: sourceSummary(source),
-      artifact: artifactSummary(artifact),
-    };
-  });
 
   return {
     version: KNOWLEDGE_BROWSER_QUERY_VERSION,
-    items,
+    items: rows.map(rowItem),
     total: summary.total,
     offset: query.offset,
     limit: query.limit,
@@ -351,6 +353,51 @@ export function queryKnowledgeBrowser(
       blocked: summary.blocked,
       archived: summary.archived,
     },
-    filters: { sources, jurisdictions, artifactKinds },
+    filters: {
+      sources,
+      jurisdictions,
+      artifactKinds: kindRows.map((row) => row.artifact_kind as ArtifactKind),
+    },
   };
+}
+
+/** Compatibility name retained for existing Browser callers. */
+export function queryKnowledgeBrowser(
+  database: DatabaseSync,
+  input: KnowledgeBrowserQueryV1,
+): KnowledgeBrowserQueryResultV1 {
+  return queryKnowledgeReadModel(database, input);
+}
+
+/**
+ * Resolves retrieval candidate IDs through the same workspace/structured corpus membership truth.
+ * `q` is intentionally excluded: retrieval already owns textual relevance. The caller may restore
+ * retrieval order after resolution.
+ */
+export function queryKnowledgeReadModelItemsByIds(
+  database: DatabaseSync,
+  input: Omit<KnowledgeQueryReadModelV2, "q" | "offset" | "limit">,
+  stagingDocumentIds: readonly string[],
+): KnowledgeBrowserItem[] {
+  const ids = [...new Set(stagingDocumentIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) return [];
+  if (ids.length > 50) {
+    throw new RegistryValidationError("read-model candidate batches are limited to 50 IDs");
+  }
+  const query = normalizeQuery({ ...input, offset: 0, limit: 50 });
+  const where = filteredWhere(query);
+  const placeholders = ids.map(() => "?").join(", ");
+  const rows = database
+    .prepare(
+      `SELECT s.document_json AS staging_json,
+              s.updated_at,
+              src.document_json AS source_json,
+              a.document_json AS artifact_json
+       ${JOIN_SQL}
+       ${where.sql}
+       AND s.id IN (${placeholders})
+       ORDER BY json_extract(s.document_json, '$.generatedAt') DESC, s.id DESC`,
+    )
+    .all(...where.values, ...ids) as BrowserRow[];
+  return rows.map(rowItem);
 }
