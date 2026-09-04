@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { composeKnowledgeHybridSearch } from "./knowledge-hybrid-search";
+import {
+  collectCompleteKnowledgeSearch,
+  composeKnowledgeHybridSearch,
+} from "./knowledge-hybrid-search";
 
 type Item = { id: string; title: string };
 
@@ -14,6 +17,38 @@ function fullText(item: Item, score: number, snippet = item.title) {
     },
   };
 }
+
+describe("collectCompleteKnowledgeSearch", () => {
+  it("collects a 175-item result through bounded 50-item pages", () => {
+    const corpus = Array.from({ length: 175 }, (_, index) => ({
+      id: `doc-${String(index).padStart(3, "0")}`,
+      title: `Document ${index}`,
+    }));
+    const offsets: number[] = [];
+
+    const result = collectCompleteKnowledgeSearch((offset) => {
+      offsets.push(offset);
+      return { items: corpus.slice(offset, offset + 50), total: corpus.length };
+    });
+
+    expect(offsets).toEqual([0, 50, 100, 150]);
+    expect(result).toHaveLength(175);
+    expect(result[150]?.id).toBe("doc-150");
+    expect(result.at(-1)?.id).toBe("doc-174");
+  });
+
+  it("stops defensively on an empty page instead of looping forever", () => {
+    let calls = 0;
+    const result = collectCompleteKnowledgeSearch((offset) => {
+      calls += 1;
+      if (offset === 0) return { items: [{ id: "doc-a" }], total: 3 };
+      return { items: [], total: 3 };
+    });
+
+    expect(result).toEqual([{ id: "doc-a" }]);
+    expect(calls).toBe(2);
+  });
+});
 
 describe("composeKnowledgeHybridSearch", () => {
   it("preserves FTS order, deduplicates documents, and appends metadata-only matches deterministically", () => {
