@@ -148,9 +148,7 @@ describe("readOperatorInbox", () => {
 
     expect(categoryCount(result, "NEW_MATERIAL")).toBe(1);
     expect(categoryCount(result, "MATERIAL_CHANGE")).toBe(1);
-    const ids = result.categories.flatMap((category) =>
-      category.items.map((item) => item.id),
-    );
+    const ids = result.categories.flatMap((category) => category.items.map((item) => item.id));
     expect(ids.filter((id) => id === "dcev_created")).toHaveLength(1);
     expect(ids.filter((id) => id === "dcev_updated")).toHaveLength(1);
   });

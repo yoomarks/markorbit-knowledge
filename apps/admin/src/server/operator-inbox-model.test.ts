@@ -7,10 +7,7 @@ import {
 
 const workspaceId = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 
-function evidence(
-  id: string,
-  occurredAt: string,
-): Omit<OperatorInboxEvidenceItem, "category"> {
+function evidence(id: string, occurredAt: string): Omit<OperatorInboxEvidenceItem, "category"> {
   return {
     id,
     objectType: "TEST_EVIDENCE",

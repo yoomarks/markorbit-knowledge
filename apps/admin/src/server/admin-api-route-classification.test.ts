@@ -1,86 +1,204 @@
-import { describe, expect, it } from "vitest";
-import {
-  deriveOperatorInbox,
-  type OperatorInboxEvidenceItem,
-  type OperatorInboxSnapshot,
-} from "./operator-inbox-model";
+import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
+import { relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
+import * as ts from "typescript";
 
-const workspaceId = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
+const API_ROOT = fileURLToPath(new URL("../app/api/", import.meta.url));
+const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 
-function evidence(id: string, occurredAt: string): Omit<OperatorInboxEvidenceItem, "category"> {
-  return {
-    id,
-    objectType: "TEST_EVIDENCE",
-    objectId: id,
-    title: id,
-    reason: `reason:${id}`,
-    occurredAt,
-    href: `/dashboard?evidence=${id}`,
-  };
+type ApiBoundary =
+  | "browser-session"
+  | "operator-service"
+  | "worker-machine"
+  | "internal-service"
+  | "service-authenticated";
+
+type ExportedMethod = {
+  method: string;
+  source: string;
+};
+
+const BROWSER_BOUNDARY_PATTERNS = [
+  /\bresolveAdminBrowserApiReadAccess\b/,
+  /\bresolveAdminBrowserApiMutationAccess\b/,
+  /\bresolveSourceIntelligenceBrowserReadAccess\b/,
+  /\bresolveSourceIntelligenceBrowserMutationAccess\b/,
+  /\bresolveExpertReadPrincipal\b/,
+  /\bresolveExpertMutationPrincipal\b/,
+] as const;
+
+const OPERATOR_BOUNDARY_PATTERNS = [
+  /\bresolveOperatorServiceReadAccess\b/,
+  /\bresolveOperatorServiceMutationAccess\b/,
+] as const;
+
+const SERVICE_AUTH_PATTERNS = [
+  /\bauthorizeCaseProducerRequest\b/,
+  /\bauthenticateCaseProducerRequest\b/,
+  /\bbearerCredential\b/,
+  /\bverifyCredential\b/,
+  /\bverifySignature\b/,
+  /\bauthorize[A-Z][A-Za-z0-9]*Request\b/,
+  /\bauthenticate[A-Z][A-Za-z0-9]*Request\b/,
+] as const;
+
+// Same HTTP method can intentionally support a public static view and a canonical browser view
+// when a workspace assertion is supplied. Keep these cases explicit instead of letting a
+// file-level auth import hide the public branch.
+const EXPLICIT_CONDITIONAL_PUBLIC_READ_ONLY_METHODS = new Set([
+  "source-coverage#GET",
+  "source-coverage/[id]#GET",
+]);
+
+// Methods that intentionally expose only non-sensitive static/read-only policy data.
+const EXPLICIT_PUBLIC_READ_ONLY_METHODS = new Set(["manual-uploads#GET"]);
+
+function routeFiles(directory: string): string[] {
+  const files: string[] = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...routeFiles(path));
+    } else if (entry.isFile() && entry.name === "route.ts") {
+      files.push(path);
+    }
+  }
+  return files;
 }
 
-function snapshot(): OperatorInboxSnapshot {
-  return {
-    workspaceId,
-    acquisitionFailures: [evidence("run_failed", "2026-09-04T08:00:00.000Z")],
-    sourceHealth: [evidence("source_degraded", "2026-09-04T07:00:00.000Z")],
-    changeEvidence: [
-      { ...evidence("change_created", "2026-09-04T10:00:00.000Z"), changeKind: "CREATED" },
-      { ...evidence("change_updated", "2026-09-04T09:00:00.000Z"), changeKind: "UPDATED" },
-    ],
-    needsReview: [evidence("vault_import", "2026-09-04T06:00:00.000Z")],
-    vaultConflicts: [evidence("vault_conflict", "2026-09-04T05:00:00.000Z")],
-    deliveries: [
-      { ...evidence("delivery_ready", "2026-09-04T04:00:00.000Z"), state: "READY" },
-      { ...evidence("delivery_review", "2026-09-04T03:00:00.000Z"), state: "NEEDS_REVIEW" },
-      { ...evidence("delivery_blocked", "2026-09-04T02:00:00.000Z"), state: "BLOCKED" },
-      { ...evidence("delivery_done", "2026-09-04T01:00:00.000Z"), state: "DELIVERED" },
-    ],
-  };
+function routeName(file: string): string {
+  return relative(API_ROOT, file)
+    .replaceAll("\\", "/")
+    .replace(/\/route\.ts$/, "");
 }
 
-describe("deriveOperatorInbox", () => {
-  it("keeps new material and changed material exclusive and partitions delivery states", () => {
-    const result = deriveOperatorInbox(snapshot(), "2026-09-04T11:00:00.000Z");
-    const counts = Object.fromEntries(
-      result.categories.map((category) => [category.category, category.count]),
+function isExported(node: { modifiers?: ts.NodeArray<ts.ModifierLike> }): boolean {
+  return node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) ?? false;
+}
+
+function exportedMethods(source: string, file: string): ExportedMethod[] {
+  const sourceFile = ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const methods: ExportedMethod[] = [];
+
+  for (const node of sourceFile.statements) {
+    if (ts.isFunctionDeclaration(node) && isExported(node) && node.name) {
+      const method = node.name.text;
+      if (HTTP_METHODS.has(method)) methods.push({ method, source: node.getText(sourceFile) });
+      continue;
+    }
+    if (!ts.isVariableStatement(node) || !isExported(node)) continue;
+    for (const declaration of node.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name)) continue;
+      const method = declaration.name.text;
+      if (HTTP_METHODS.has(method))
+        methods.push({ method, source: declaration.getText(sourceFile) });
+    }
+  }
+
+  return methods;
+}
+
+function matchesAny(source: string, patterns: readonly RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(source));
+}
+
+function methodBoundaryCandidates(
+  route: string,
+  methodSource: string,
+  routeSource: string,
+): ApiBoundary[] {
+  const boundaries = new Set<ApiBoundary>();
+
+  if (matchesAny(methodSource, BROWSER_BOUNDARY_PATTERNS)) boundaries.add("browser-session");
+  if (matchesAny(methodSource, OPERATOR_BOUNDARY_PATTERNS)) boundaries.add("operator-service");
+
+  if (route.startsWith("worker/v1/")) {
+    boundaries.add("worker-machine");
+    assert.ok(
+      matchesAny(methodSource, SERVICE_AUTH_PATTERNS) ||
+        matchesAny(routeSource, SERVICE_AUTH_PATTERNS),
+      `${route} is a worker-machine route but has no recognizable worker credential/auth boundary`,
     );
+  } else if (route.startsWith("internal/")) {
+    boundaries.add("internal-service");
+    assert.ok(
+      matchesAny(methodSource, SERVICE_AUTH_PATTERNS) ||
+        matchesAny(routeSource, SERVICE_AUTH_PATTERNS) ||
+        matchesAny(methodSource, OPERATOR_BOUNDARY_PATTERNS),
+      `${route} is an internal-service route but has no recognizable server-side auth boundary`,
+    );
+  } else if (matchesAny(methodSource, SERVICE_AUTH_PATTERNS)) {
+    boundaries.add("service-authenticated");
+  }
 
-    expect(counts.ACQUISITION_FAILED).toBe(1);
-    expect(counts.SOURCE_STALE_DEGRADED).toBe(1);
-    expect(counts.NEW_MATERIAL).toBe(1);
-    expect(counts.MATERIAL_CHANGE).toBe(1);
-    expect(counts.READY_FOR_DELIVERY).toBe(1);
-    expect(counts.DELIVERY_BLOCKED).toBe(1);
-    expect(counts.NEEDS_REVIEW).toBe(2);
-    expect(counts.VAULT_CONFLICT).toBe(1);
-    expect(
-      result.categories.flatMap((category) => category.items).map((item) => item.objectId),
-    ).not.toContain("delivery_done");
-    expect(result.total).toBe(9);
-  });
+  return [...boundaries];
+}
 
-  it("orders deterministically and reports partial evidence without inventing counts", () => {
-    const input = snapshot();
-    input.changeEvidence.push({
-      ...evidence("change_same_time_b", "2026-09-04T10:00:00.000Z"),
-      changeKind: "CREATED",
-    });
-    input.changeEvidence.push({
-      ...evidence("change_same_time_a", "2026-09-04T10:00:00.000Z"),
-      changeKind: "CREATED",
-    });
-    input.unavailableEvidence = ["vault", "runs", "vault"];
+test("every Admin API HTTP method has an explicit security-boundary classification", () => {
+  const unclassified: string[] = [];
+  const ambiguous: string[] = [];
 
-    const result = deriveOperatorInbox(input, "2026-09-04T11:00:00.000Z");
-    const created = result.categories.find((category) => category.category === "NEW_MATERIAL")!;
+  for (const file of routeFiles(API_ROOT)) {
+    const route = routeName(file);
+    const source = readFileSync(file, "utf8");
+    const methods = exportedMethods(source, file);
+    assert.ok(methods.length > 0, `${route} must export at least one HTTP method`);
 
-    expect(created.items.map((item) => item.id)).toEqual([
-      "change_created",
-      "change_same_time_a",
-      "change_same_time_b",
-    ]);
-    expect(result.evidenceState).toBe("PARTIAL");
-    expect(result.unavailableEvidence).toEqual(["runs", "vault"]);
-  });
+    for (const { method, source: methodSource } of methods) {
+      const key = `${route}#${method}`;
+      const candidates = methodBoundaryCandidates(route, methodSource, source);
+
+      if (EXPLICIT_CONDITIONAL_PUBLIC_READ_ONLY_METHODS.has(key)) {
+        assert.ok(
+          method === "GET" || method === "HEAD" || method === "OPTIONS",
+          `${key} has a public branch but is a mutating method`,
+        );
+        assert.ok(
+          candidates.includes("browser-session"),
+          `${key} must use canonical browser access when it returns workspace-scoped data`,
+        );
+        continue;
+      }
+
+      if (EXPLICIT_PUBLIC_READ_ONLY_METHODS.has(key)) {
+        assert.ok(
+          method === "GET" || method === "HEAD" || method === "OPTIONS",
+          `${key} is marked public/read-only but is a mutating method`,
+        );
+        assert.deepEqual(
+          candidates,
+          [],
+          `${key} is public/read-only and must not imply another boundary`,
+        );
+        continue;
+      }
+
+      if (candidates.length === 0) {
+        unclassified.push(key);
+      } else if (candidates.length > 1) {
+        ambiguous.push(`${key} => ${candidates.join(", ")}`);
+      }
+    }
+  }
+
+  assert.deepEqual(
+    unclassified,
+    [],
+    `Unclassified Admin API methods:\n${unclassified.map((item) => `- ${item}`).join("\n")}`,
+  );
+  assert.deepEqual(
+    ambiguous,
+    [],
+    `Ambiguous Admin API methods require a single method-local boundary:\n${ambiguous
+      .map((item) => `- ${item}`)
+      .join("\n")}`,
+  );
 });
