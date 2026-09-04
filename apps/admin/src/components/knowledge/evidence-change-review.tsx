@@ -212,7 +212,6 @@ export function EvidenceChangeReview({
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const response = await fetch(
         `/api/knowledge/${encodeURIComponent(documentId)}/change-review?workspaceId=${encodeURIComponent(workspaceId)}`,
@@ -257,7 +256,10 @@ export function EvidenceChangeReview({
         </div>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => {
+            setLoading(true);
+            void load();
+          }}
           disabled={loading}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 disabled:opacity-40"
         >
