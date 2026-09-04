@@ -1,0 +1,66 @@
+name: Issue 715 IP Australia Verifier Patch
+
+on:
+  push:
+    branches:
+      - fix/715-live-evidence-admin-auth
+    paths:
+      - .github/workflows/issue-715-ip-au-verifier-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/715-live-evidence-admin-auth
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Apply verifier auth patch
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('apps/worker/src/verify-ip-australia-manual-bulk-conversion.ts')
+          s = p.read_text()
+          old = '''async function getJson(path: string): Promise<Json> {\n  const response = await fetch(`${baseUrl()}${path}`);'''
+          new = '''async function getJson(path: string, init: RequestInit = {}): Promise<Json> {\n  const response = await fetch(`${baseUrl()}${path}`, init);'''
+          if old not in s:
+              raise SystemExit('getJson anchor not found')
+          s = s.replace(old, new, 1)
+
+          anchor = '''async function listConversionRuns(workspaceId: string, sourceId: string): Promise<Json[]> {'''
+          helper = '''function operatorServiceReadHeaders(workspaceId: string): Record<string, string> {\n  const internalSecret = requiredString(\n    process.env.MO_INTERNAL_SERVICE_SECRET,\n    "MO_INTERNAL_SERVICE_SECRET",\n  );\n  const sessionId = requiredString(\n    process.env.MARKORBIT_CALIBRATION_SESSION_ID,\n    "MARKORBIT_CALIBRATION_SESSION_ID",\n  );\n  const userId = requiredString(\n    process.env.MARKORBIT_CALIBRATION_USER_ID,\n    "MARKORBIT_CALIBRATION_USER_ID",\n  );\n  const membershipId = requiredString(\n    process.env.MARKORBIT_CALIBRATION_MEMBERSHIP_ID,\n    "MARKORBIT_CALIBRATION_MEMBERSHIP_ID",\n  );\n  const principal = Buffer.from(\n    JSON.stringify({\n      schemaVersion: 1,\n      principal: {\n        kind: "WORKSPACE",\n        sessionId,\n        userId,\n        workspaceId,\n        membershipId,\n        role: "READ_ONLY",\n        permissions: ["matter:read"],\n        sessionExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),\n      },\n    }),\n    "utf8",\n  ).toString("base64url");\n  return {\n    "x-markorbit-internal-authorization": internalSecret,\n    "x-markorbit-principal": principal,\n  };\n}\n\n'''
+          if anchor not in s:
+              raise SystemExit('listConversionRuns anchor not found')
+          s = s.replace(anchor, helper + anchor, 1)
+
+          old_retrieval = '''    const payload = await getJson(\n      `/api/retrieval/search?workspaceId=${encodeURIComponent(workspaceId)}` +\n        `&sourceId=${encodeURIComponent(sourceId)}&q=${encodeURIComponent(query)}&limit=10`,\n    );'''
+          new_retrieval = '''    const payload = await getJson(\n      `/api/retrieval/search?workspaceId=${encodeURIComponent(workspaceId)}` +\n        `&sourceId=${encodeURIComponent(sourceId)}&q=${encodeURIComponent(query)}&limit=10`,\n      { headers: operatorServiceReadHeaders(workspaceId) },\n    );'''
+          if old_retrieval not in s:
+              raise SystemExit('retrieval anchor not found')
+          s = s.replace(old_retrieval, new_retrieval, 1)
+          p.write_text(s)
+          PY
+      - name: Install and verify
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec prettier --write apps/worker/src/verify-ip-australia-manual-bulk-conversion.ts
+          pnpm --filter @markorbit/worker typecheck
+      - name: Commit product patch and remove temporary workflow
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/worker/src/verify-ip-australia-manual-bulk-conversion.ts
+          git commit -m "fix: authenticate IP Australia retrieval verifier"
+          git rm .github/workflows/issue-715-ip-au-verifier-patch.yml
+          git commit -m "ci: remove temporary verifier patch workflow"
+          git push origin HEAD:fix/715-live-evidence-admin-auth
