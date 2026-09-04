@@ -1,27 +1,38 @@
 import { NextResponse } from "next/server";
-import { ARTIFACT_KINDS, type ArtifactKind, type SourceDefinition } from "@markorbit/contracts";
+import {
+  ARTIFACT_KINDS,
+  CONVERSION_STAGING_DOCUMENT_STATUSES,
+  type ArtifactKind,
+  type StagingDocumentDescriptor,
+} from "@markorbit/contracts";
 import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { queryKnowledgeBrowser } from "@markorbit/persistence/knowledge-browser-query";
 import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
-import {
-  getRawArtifactRepository,
-  getSourceRepository,
-  getStagingContentRepository,
-} from "@/server/source-registry";
+import { getRegistryDatabase } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_SCAN = 100;
 const DEFAULT_LIMIT = 25;
+const MAX_LIMIT = 50;
 
-function integerParam(value: string | null, fallback: number, max: number): number {
-  if (!value) return fallback;
+function offsetParam(value: string | null): number {
+  if (!value) return 0;
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new RegistryValidationError("Pagination values must be non-negative integers");
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new RegistryValidationError("offset must be a non-negative safe integer");
   }
-  return Math.min(parsed, max);
+  return parsed;
+}
+
+function limitParam(value: string | null): number {
+  if (!value) return DEFAULT_LIMIT;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0 || parsed > MAX_LIMIT) {
+    throw new RegistryValidationError(`limit must be an integer between 1 and ${MAX_LIMIT}`);
+  }
+  return parsed;
 }
 
 function artifactKind(value: string | null): ArtifactKind | undefined {
@@ -32,19 +43,14 @@ function artifactKind(value: string | null): ArtifactKind | undefined {
   return value as ArtifactKind;
 }
 
-function sourceSummary(source: SourceDefinition | null) {
-  return source
-    ? {
-        id: source.id,
-        name: source.name,
-        sourceType: source.sourceType,
-        category: source.category,
-        authorityLevel: source.authorityLevel,
-        jurisdictions: source.jurisdictions,
-        languages: source.languages,
-        canonicalUri: source.canonicalUri ?? null,
-      }
-    : null;
+function stagingStatus(value: string | null): StagingDocumentDescriptor["status"] | undefined {
+  if (!value) return undefined;
+  if (
+    !CONVERSION_STAGING_DOCUMENT_STATUSES.includes(value as StagingDocumentDescriptor["status"])
+  ) {
+    throw new RegistryValidationError(`Unsupported staging status ${value}`);
+  }
+  return value as StagingDocumentDescriptor["status"];
 }
 
 export async function GET(request: Request) {
@@ -52,105 +58,19 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
     const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
-    const q = url.searchParams.get("q")?.trim().toLowerCase() || "";
-    const sourceId = url.searchParams.get("sourceId")?.trim() || undefined;
-    const jurisdiction = url.searchParams.get("jurisdiction")?.trim().toUpperCase() || "";
-    const requestedKind = artifactKind(url.searchParams.get("artifactKind"));
-    const status = url.searchParams.get("status")?.trim() || "";
-    const offset = integerParam(url.searchParams.get("offset"), 0, MAX_SCAN);
-    const limit = integerParam(url.searchParams.get("limit"), DEFAULT_LIMIT, 50) || DEFAULT_LIMIT;
 
-    const staging = getStagingContentRepository();
-    const sources = getSourceRepository();
-    const artifacts = getRawArtifactRepository();
-    const documents = staging.listDocuments({
-      workspaceId,
-      ...(sourceId ? { sourceId } : {}),
-      limit: MAX_SCAN,
-      offset: 0,
-    });
-
-    const enriched = documents.items
-      .map((record) => {
-        const descriptor = record.descriptor;
-        const source = sources.getById(descriptor.sourceId);
-        const artifactView = artifacts.getArtifact(descriptor.rawArtifactId);
-        const artifact = artifactView?.artifact ?? null;
-        return {
-          id: descriptor.id,
-          title: descriptor.title || artifact?.originalName || descriptor.targetPath,
-          targetPath: descriptor.targetPath,
-          outputFormat: descriptor.outputFormat,
-          sizeBytes: descriptor.sizeBytes,
-          status: descriptor.status,
-          validation: descriptor.validation,
-          generatedAt: descriptor.generatedAt,
-          updatedAt: record.updatedAt,
-          source: sourceSummary(source),
-          artifact: artifact
-            ? {
-                id: artifact.id,
-                originalName: artifact.originalName,
-                artifactKind: artifact.artifactKind,
-                mimeType: artifact.mimeType,
-                version: artifact.version,
-                sizeBytes: artifact.sizeBytes,
-                capturedAt: artifact.capturedAt,
-                publishedAt: artifact.publishedAt ?? null,
-                canonicalUri: artifact.canonicalUri ?? null,
-                sourceUri: artifact.provenance.sourceUri,
-                status: artifact.status,
-              }
-            : null,
-        };
-      })
-      .filter((item) => {
-        if (status && item.status !== status) return false;
-        if (requestedKind && item.artifact?.artifactKind !== requestedKind) return false;
-        if (jurisdiction && !item.source?.jurisdictions.includes(jurisdiction)) return false;
-        if (q) {
-          const haystack = [
-            item.title,
-            item.targetPath,
-            item.source?.name ?? "",
-            item.artifact?.originalName ?? "",
-            item.artifact?.sourceUri ?? "",
-          ]
-            .join("\n")
-            .toLowerCase();
-          if (!haystack.includes(q)) return false;
-        }
-        return true;
-      })
-      .sort((left, right) => Date.parse(right.generatedAt) - Date.parse(left.generatedAt));
-
-    const page = enriched.slice(offset, offset + limit);
-    const sourceOptions = sources.list({ workspaceId, limit: 100 }).items.map((source) => ({
-      id: source.id,
-      name: source.name,
-      jurisdictions: source.jurisdictions,
-    }));
-    const jurisdictions = [
-      ...new Set(sourceOptions.flatMap((source) => source.jurisdictions)),
-    ].sort();
-    const kinds = [
-      ...new Set(enriched.map((item) => item.artifact?.artifactKind).filter(Boolean)),
-    ].sort();
-
-    return NextResponse.json({
-      items: page,
-      total: enriched.length,
-      offset,
-      limit,
-      summary: {
-        total: enriched.length,
-        ready: enriched.filter((item) => item.status === "READY").length,
-        generated: enriched.filter((item) => item.status === "GENERATED").length,
-        blocked: enriched.filter((item) => item.status === "BLOCKED").length,
-        archived: enriched.filter((item) => item.status === "ARCHIVED").length,
-      },
-      filters: { sources: sourceOptions, jurisdictions, artifactKinds: kinds },
-    });
+    return NextResponse.json(
+      queryKnowledgeBrowser(getRegistryDatabase(), {
+        workspaceId,
+        q: url.searchParams.get("q")?.trim() || undefined,
+        sourceId: url.searchParams.get("sourceId")?.trim() || undefined,
+        jurisdiction: url.searchParams.get("jurisdiction")?.trim() || undefined,
+        artifactKind: artifactKind(url.searchParams.get("artifactKind")),
+        status: stagingStatus(url.searchParams.get("status")),
+        offset: offsetParam(url.searchParams.get("offset")),
+        limit: limitParam(url.searchParams.get("limit")),
+      }),
+    );
   } catch (error) {
     return apiError(error);
   }
