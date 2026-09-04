@@ -4,11 +4,13 @@ import {
   CONVERSION_STAGING_DOCUMENT_STATUSES,
   RETRIEVAL_INDEX_MODE,
   type ArtifactKind,
-  type SourceDefinition,
   type StagingDocumentDescriptor,
 } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
-import { queryKnowledgeBrowser } from "@markorbit/persistence/knowledge-browser-query";
+import {
+  queryKnowledgeReadModel,
+  queryKnowledgeReadModelItemsByIds,
+} from "@markorbit/persistence/knowledge-browser-query";
 import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import {
@@ -16,13 +18,7 @@ import {
   composeKnowledgeHybridSearch,
   KNOWLEDGE_HYBRID_SEARCH_MODE,
 } from "@/server/knowledge-hybrid-search";
-import {
-  getRawArtifactRepository,
-  getRegistryDatabase,
-  getRetrievalIndexRepository,
-  getSourceRepository,
-  getStagingContentRepository,
-} from "@/server/source-registry";
+import { getRegistryDatabase, getRetrievalIndexRepository } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,19 +63,12 @@ function stagingStatus(value: string | null): StagingDocumentDescriptor["status"
   return value as StagingDocumentDescriptor["status"];
 }
 
-function sourceSummary(source: SourceDefinition | null) {
-  return source
-    ? {
-        id: source.id,
-        name: source.name,
-        sourceType: source.sourceType,
-        category: source.category,
-        authorityLevel: source.authorityLevel,
-        jurisdictions: source.jurisdictions,
-        languages: source.languages,
-        canonicalUri: source.canonicalUri ?? null,
-      }
-    : null;
+function batches<T>(values: readonly T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size));
+  }
+  return result;
 }
 
 export async function GET(request: Request) {
@@ -98,66 +87,23 @@ export async function GET(request: Request) {
     const limit = limitParam(url.searchParams.get("limit"));
 
     const database = getRegistryDatabase();
-    const staging = getStagingContentRepository();
-    const sources = getSourceRepository();
-    const artifacts = getRawArtifactRepository();
     const retrieval = getRetrievalIndexRepository();
+    const structuredQuery = {
+      workspaceId,
+      ...(sourceId ? { sourceId } : {}),
+      ...(jurisdiction ? { jurisdiction } : {}),
+      ...(requestedKind ? { artifactKind: requestedKind } : {}),
+      ...(status ? { status } : {}),
+    };
 
     const metadataMatches = collectCompleteKnowledgeSearch((metadataOffset) =>
-      queryKnowledgeBrowser(database, {
-        workspaceId,
+      queryKnowledgeReadModel(database, {
+        ...structuredQuery,
         q,
-        ...(sourceId ? { sourceId } : {}),
-        ...(jurisdiction ? { jurisdiction } : {}),
-        ...(requestedKind ? { artifactKind: requestedKind } : {}),
-        ...(status ? { status } : {}),
         offset: metadataOffset,
         limit: SEARCH_PAGE_SIZE,
       }),
     );
-
-    const enrich = (documentId: string) => {
-      const record = staging.getDocument(documentId, workspaceId);
-      if (!record) return null;
-      const descriptor = record.descriptor;
-      const source = sources.getById(descriptor.sourceId);
-      const artifactView = artifacts.getArtifact(descriptor.rawArtifactId);
-      const artifact = artifactView?.artifact ?? null;
-      return {
-        id: descriptor.id,
-        title: descriptor.title || artifact?.originalName || descriptor.targetPath,
-        targetPath: descriptor.targetPath,
-        outputFormat: descriptor.outputFormat,
-        sizeBytes: descriptor.sizeBytes,
-        status: descriptor.status,
-        validation: descriptor.validation,
-        generatedAt: descriptor.generatedAt,
-        updatedAt: record.updatedAt,
-        source: sourceSummary(source),
-        artifact: artifact
-          ? {
-              id: artifact.id,
-              originalName: artifact.originalName,
-              artifactKind: artifact.artifactKind,
-              mimeType: artifact.mimeType,
-              version: artifact.version,
-              sizeBytes: artifact.sizeBytes,
-              capturedAt: artifact.capturedAt,
-              publishedAt: artifact.publishedAt ?? null,
-              canonicalUri: artifact.canonicalUri ?? null,
-              sourceUri: artifact.provenance.sourceUri,
-              status: artifact.status,
-            }
-          : null,
-      };
-    };
-
-    const passesStructuredFilters = (item: NonNullable<ReturnType<typeof enrich>>) => {
-      if (status && item.status !== status) return false;
-      if (requestedKind && item.artifact?.artifactKind !== requestedKind) return false;
-      if (jurisdiction && !item.source?.jurisdictions.includes(jurisdiction)) return false;
-      return true;
-    };
 
     const fullTextHits = collectCompleteKnowledgeSearch((fullTextOffset) =>
       retrieval.search({
@@ -170,27 +116,37 @@ export async function GET(request: Request) {
       }),
     );
 
-    const fullTextCandidates = fullTextHits
-      .map((hit) => {
-        const item = enrich(hit.document.stagingDocumentId);
-        if (!item || !passesStructuredFilters(item)) return null;
-        return {
-          item,
-          evidence: {
-            indexMode: RETRIEVAL_INDEX_MODE,
-            score: hit.score,
-            snippet: hit.snippet,
-            headingPath: hit.chunk.headingPath,
-          },
-        };
-      })
-      .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null);
+    const resolvedItems = new Map(
+      batches(
+        fullTextHits.map((hit) => hit.document.stagingDocumentId),
+        SEARCH_PAGE_SIZE,
+      )
+        .flatMap((ids) => queryKnowledgeReadModelItemsByIds(database, structuredQuery, ids))
+        .map((item) => [item.id, item] as const),
+    );
+
+    const fullTextCandidates = fullTextHits.flatMap((hit) => {
+      const item = resolvedItems.get(hit.document.stagingDocumentId);
+      return item
+        ? [
+            {
+              item,
+              evidence: {
+                indexMode: RETRIEVAL_INDEX_MODE,
+                score: hit.score,
+                snippet: hit.snippet,
+                headingPath: hit.chunk.headingPath,
+              },
+            },
+          ]
+        : [];
+    });
 
     const composed = composeKnowledgeHybridSearch(fullTextCandidates, metadataMatches);
     const page = composed.slice(offset, offset + limit);
-    const facetResult = queryKnowledgeBrowser(database, {
-      workspaceId,
-      ...(sourceId ? { sourceId } : {}),
+    const facetResult = queryKnowledgeReadModel(database, {
+      ...structuredQuery,
+      q,
       offset: 0,
       limit: 1,
     });

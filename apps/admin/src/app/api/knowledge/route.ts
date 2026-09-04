@@ -6,7 +6,7 @@ import {
   type StagingDocumentDescriptor,
 } from "@markorbit/contracts";
 import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
-import { queryKnowledgeBrowser } from "@markorbit/persistence/knowledge-browser-query";
+import { queryKnowledgeReadModel } from "@markorbit/persistence/knowledge-browser-query";
 import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { getRegistryDatabase } from "@/server/source-registry";
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
 
     return NextResponse.json(
-      queryKnowledgeBrowser(getRegistryDatabase(), {
+      queryKnowledgeReadModel(getRegistryDatabase(), {
         workspaceId,
         q: url.searchParams.get("q")?.trim() || undefined,
         sourceId: url.searchParams.get("sourceId")?.trim() || undefined,
