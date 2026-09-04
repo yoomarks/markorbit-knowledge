@@ -22,22 +22,20 @@ export type OperatorInboxEvidenceItem = {
   href: string;
 };
 
+export type OperatorInboxUncategorizedEvidenceItem = Omit<OperatorInboxEvidenceItem, "category">;
+
 export type OperatorInboxSnapshot = {
   workspaceId: string;
-  acquisitionFailures: OperatorInboxEvidenceItem[];
-  sourceHealth: OperatorInboxEvidenceItem[];
+  acquisitionFailures: OperatorInboxUncategorizedEvidenceItem[];
+  sourceHealth: OperatorInboxUncategorizedEvidenceItem[];
   changeEvidence: Array<
-    Omit<OperatorInboxEvidenceItem, "category"> & { changeKind: "CREATED" | "UPDATED" }
+    OperatorInboxUncategorizedEvidenceItem & { changeKind: "CREATED" | "UPDATED" }
   >;
-  needsReview: OperatorInboxEvidenceItem[];
-  vaultConflicts: OperatorInboxEvidenceItem[];
+  needsReview: OperatorInboxUncategorizedEvidenceItem[];
+  vaultConflicts: OperatorInboxUncategorizedEvidenceItem[];
   deliveries: Array<
-    Omit<OperatorInboxEvidenceItem, "category"> & {
-      state:
-        | "READY"
-        | "NEEDS_REVIEW"
-        | "BLOCKED"
-        | "DELIVERED";
+    OperatorInboxUncategorizedEvidenceItem & {
+      state: "READY" | "NEEDS_REVIEW" | "BLOCKED" | "DELIVERED";
     }
   >;
   unavailableEvidence?: string[];
@@ -67,7 +65,7 @@ function sortItems(items: OperatorInboxEvidenceItem[]): OperatorInboxEvidenceIte
 
 function withCategory(
   category: OperatorInboxCategory,
-  item: Omit<OperatorInboxEvidenceItem, "category">,
+  item: OperatorInboxUncategorizedEvidenceItem,
 ): OperatorInboxEvidenceItem {
   return { ...item, category };
 }
