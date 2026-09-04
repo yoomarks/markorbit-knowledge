@@ -23,9 +23,7 @@ export type EvidenceHistoryRow = {
   sourceUri: string;
 };
 
-export function buildEvidenceHistoryRows(
-  evidence: DocumentChangeEvidence[],
-): EvidenceHistoryRow[] {
+export function buildEvidenceHistoryRows(evidence: DocumentChangeEvidence[]): EvidenceHistoryRow[] {
   return [...evidence]
     .sort((left, right) => right.sequence - left.sequence)
     .map((item) => ({
