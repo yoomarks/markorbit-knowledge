@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { History, RefreshCw, Send, ShieldAlert, Snowflake, Stethoscope } from "lucide-react";
 import type { ReadyPackageV2 } from "@markorbit/contracts";
 import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
@@ -174,12 +174,32 @@ async function loadOverview(workspaceId: string): Promise<Overview> {
   return body as Overview;
 }
 
+function subscribeLocationSearch(): () => void {
+  return () => undefined;
+}
+
+function readLocationSearch(): string {
+  return window.location.search;
+}
+
+function readServerLocationSearch(): string {
+  return "";
+}
+
 export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: string }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [focusReadyPackageId, setFocusReadyPackageId] = useState<string | null>(null);
+  const locationSearch = useSyncExternalStore(
+    subscribeLocationSearch,
+    readLocationSearch,
+    readServerLocationSearch,
+  );
+  const focusReadyPackageId = useMemo(
+    () => new URLSearchParams(locationSearch).get("readyPackageId")?.trim() || null,
+    [locationSearch],
+  );
 
   function applyLoaded(value: Overview) {
     setOverview(value);
@@ -196,13 +216,6 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    const readyPackageId = new URLSearchParams(window.location.search)
-      .get("readyPackageId")
-      ?.trim();
-    setFocusReadyPackageId(readyPackageId || null);
-  }, []);
 
   useEffect(() => {
     let active = true;
