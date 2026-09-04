@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { History, RefreshCw, Send, ShieldAlert, Snowflake, Stethoscope } from "lucide-react";
 import type { ReadyPackageV2 } from "@markorbit/contracts";
 import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
@@ -174,11 +174,32 @@ async function loadOverview(workspaceId: string): Promise<Overview> {
   return body as Overview;
 }
 
+function subscribeLocationSearch(): () => void {
+  return () => undefined;
+}
+
+function readLocationSearch(): string {
+  return window.location.search;
+}
+
+function readServerLocationSearch(): string {
+  return "";
+}
+
 export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: string }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const locationSearch = useSyncExternalStore(
+    subscribeLocationSearch,
+    readLocationSearch,
+    readServerLocationSearch,
+  );
+  const focusReadyPackageId = useMemo(
+    () => new URLSearchParams(locationSearch).get("readyPackageId")?.trim() || null,
+    [locationSearch],
+  );
 
   function applyLoaded(value: Overview) {
     setOverview(value);
@@ -247,6 +268,11 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
     }
   }
 
+  const visibleItems = focusReadyPackageId
+    ? (overview?.items.filter((item) => item.readyPackage.id === focusReadyPackageId) ?? [])
+    : (overview?.items ?? []);
+  const focusMissing = Boolean(focusReadyPackageId && overview && visibleItems.length === 0);
+
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -282,6 +308,24 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
         </div>
       </div>
 
+      {focusReadyPackageId ? (
+        <div
+          className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+            focusMissing
+              ? "border-rose-200 bg-rose-50 text-rose-800"
+              : "border-sky-200 bg-sky-50 text-sky-800"
+          }`}
+        >
+          <p className="font-semibold">Operator Inbox delivery focus</p>
+          <p className="mt-1 break-all text-xs">{focusReadyPackageId}</p>
+          {focusMissing ? (
+            <p className="mt-1 text-xs">
+              指定 ReadyPackage V2 不在当前 Workspace delivery evidence 中；未回退显示其他记录。
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {error ? (
         <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
           {error}
@@ -289,19 +333,23 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
       ) : null}
 
       <div className="mt-6 space-y-3 border-t border-slate-100 pt-5">
-        {!overview?.items.length ? (
+        {!visibleItems.length ? (
           <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
-            {loading ? "加载中…" : "尚无 ReadyPackage V2 可进入 delivery foundation。"}
+            {loading
+              ? "加载中…"
+              : focusReadyPackageId
+                ? "没有与 Operator Inbox 深链完全匹配的 ReadyPackage V2 delivery record。"
+                : "尚无 ReadyPackage V2 可进入 delivery foundation。"}
           </div>
         ) : null}
 
-        {overview?.items.map((item) => {
+        {visibleItems.map((item) => {
           const submission = item.submission;
           const diagnosis = item.diagnosis;
           const preparing = acting === `${item.readyPackage.id}:PREPARE`;
           const submitting = acting === `${item.readyPackage.id}:SUBMIT`;
           const canPrepare =
-            item.stage === "NOT_PREPARED" && overview.currentCoreWorkspaceId !== null;
+            item.stage === "NOT_PREPARED" && overview?.currentCoreWorkspaceId !== null;
           const canSubmit =
             item.stage === "LOCAL_FINALIZATION_REQUIRED" ||
             ((item.stage === "SAFE_TO_SUBMIT" ||
@@ -428,7 +476,7 @@ export function ReadyPackageV2DeliveryControl({ workspaceId }: { workspaceId: st
                     </>
                   ) : (
                     <p className="mt-3 text-xs text-slate-500">
-                      当前 Core Workspace：{overview.currentCoreWorkspaceId ?? "未绑定"}
+                      当前 Core Workspace：{overview?.currentCoreWorkspaceId ?? "未绑定"}
                     </p>
                   )}
                   {!item.outboundTransport.configured &&
