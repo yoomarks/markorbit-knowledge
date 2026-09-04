@@ -223,7 +223,7 @@ Normal pull-request validation covers formatting, lint, typecheck, tests and bui
 - [Collection Scheduler V1](docs/architecture/COLLECTION_SCHEDULER_V1.md)
 - [Document Extraction Production Hardening V1](docs/architecture/DOCUMENT_EXTRACTION_PRODUCTION_HARDENING_V1.md)
 - [Conversion Control v1](docs/architecture/CONVERSION_CONTROL_V1.md)
-- [Conversion Execution Protocol v1](docs/architecture/CONVERSION_EXECUTION_V1.md)
+- [Conversion Execution Protocol v1](docs/architecture/CONVERSION_EXECUTION_PROTOCOL_V1.md)
 - [Conversion Runtime Protocol v1](docs/architecture/CONVERSION_RUNTIME_PROTOCOL_V1.md)
 - [Obsidian Vault Binding V1](docs/architecture/OBSIDIAN_VAULT_BINDING_V1.md)
 - [Obsidian Vault Export V1](docs/architecture/OBSIDIAN_VAULT_EXPORT_V1.md)
