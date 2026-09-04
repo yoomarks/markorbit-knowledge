@@ -122,7 +122,11 @@ function fixture(): DatabaseSync {
 describe("Knowledge Query Read Model V2", () => {
   it("keeps the Browser compatibility API on the canonical corpus truth", () => {
     const database = fixture();
-    const input = { workspaceId: WORKSPACE_A, q: "alpha", status: "READY" as const };
+    const input = {
+      workspaceId: WORKSPACE_A,
+      q: "alpha",
+      status: "READY" as const,
+    };
 
     const canonical = queryKnowledgeReadModel(database, input);
     const browser = queryKnowledgeBrowser(database, input);
@@ -148,19 +152,26 @@ describe("Knowledge Query Read Model V2", () => {
       { workspaceId: WORKSPACE_A, status: "READY" },
       candidateIds,
     );
+    const workspaceB = queryKnowledgeReadModelItemsByIds(
+      database,
+      { workspaceId: WORKSPACE_B },
+      candidateIds,
+    );
 
-    expect(ready.map((item) => item.id)).toEqual(["std_01ARZ3NDEKTSV4RRFFQ69G5FAV"]);
-    expect(
-      queryKnowledgeReadModelItemsByIds(database, { workspaceId: WORKSPACE_B }, candidateIds).map(
-        (item) => item.id,
-      ),
-    ).toEqual(["std_01ARZ3NDEKTSV4RRFFQ69G5FAX"]);
+    expect(ready.map((item) => item.id)).toEqual([
+      "std_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    ]);
+    expect(workspaceB.map((item) => item.id)).toEqual([
+      "std_01ARZ3NDEKTSV4RRFFQ69G5FAX",
+    ]);
     database.close();
   });
 
   it("uses stable generatedAt/id corpus ordering independently of retrieval order", () => {
     const database = fixture();
-    const result = queryKnowledgeReadModel(database, { workspaceId: WORKSPACE_A });
+    const result = queryKnowledgeReadModel(database, {
+      workspaceId: WORKSPACE_A,
+    });
 
     expect(result.items.map((item) => item.id)).toEqual([
       "std_01ARZ3NDEKTSV4RRFFQ69G5FAV",
