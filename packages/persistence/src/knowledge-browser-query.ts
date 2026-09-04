@@ -107,10 +107,14 @@ function parseStaging(value: string): StagingDocumentDescriptor {
   try {
     parsed = JSON.parse(value);
   } catch (error) {
-    throw new RegistryValidationError("Persisted staging document is invalid JSON", { cause: error });
+    throw new RegistryValidationError("Persisted staging document is invalid JSON", {
+      cause: error,
+    });
   }
   if (!isStagingDocumentDescriptor(parsed)) {
-    throw new RegistryValidationError("Persisted staging document no longer satisfies its contract");
+    throw new RegistryValidationError(
+      "Persisted staging document no longer satisfies its contract",
+    );
   }
   return parsed;
 }
@@ -143,7 +147,10 @@ function parseArtifact(value: string | null): RawArtifact | null {
   return parsed;
 }
 
-function normalizeQuery(query: KnowledgeBrowserQueryV1): Required<Pick<KnowledgeBrowserQueryV1, "workspaceId" | "offset" | "limit">> & KnowledgeBrowserQueryV1 {
+function normalizeQuery(
+  query: KnowledgeBrowserQueryV1,
+): Required<Pick<KnowledgeBrowserQueryV1, "workspaceId" | "offset" | "limit">> &
+  KnowledgeBrowserQueryV1 {
   const workspaceId = query.workspaceId.trim();
   if (!workspaceId) throw new RegistryValidationError("workspaceId is required");
   const offset = query.offset ?? 0;
@@ -297,9 +304,7 @@ export function queryKnowledgeBrowser(
     .all(query.workspaceId) as SourceRow[];
   const sourceDocuments = sourceRows.map((row) => parseSource(row.document_json));
   const sources = sourceDocuments.flatMap((source): KnowledgeBrowserSourceOption[] =>
-    source
-      ? [{ id: source.id, name: source.name, jurisdictions: source.jurisdictions }]
-      : [],
+    source ? [{ id: source.id, name: source.name, jurisdictions: source.jurisdictions }] : [],
   );
   const jurisdictions = [...new Set(sources.flatMap((source) => source.jurisdictions))].sort();
 

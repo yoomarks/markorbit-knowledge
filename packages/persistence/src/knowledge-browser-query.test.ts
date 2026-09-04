@@ -14,8 +14,16 @@ const SOURCE_CN = "src_01ARZ3NDEKTSV4RRFFQ69G5FAA";
 const SOURCE_US = "src_01ARZ3NDEKTSV4RRFFQ69G5FAB";
 const SHA = "a".repeat(64);
 
+const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
 function id(prefix: "art" | "std" | "cvr", index: number): string {
-  return `${prefix}_01ARZ3NDEKTSV4RRFFQ${index.toString(32).toUpperCase().padStart(6, "0")}`;
+  let value = index + 1;
+  let encoded = "";
+  for (let position = 0; position < 26; position += 1) {
+    encoded = CROCKFORD[value & 31] + encoded;
+    value = Math.floor(value / 32);
+  }
+  return `${prefix}_${encoded}`;
 }
 
 function source(
@@ -100,7 +108,10 @@ function staging(
     frontmatterSummary: { fieldCount: 0, fields: [] },
     converter: { converterId: "html-to-markdown", version: "1.0.0" },
     generatedAt,
-    validation: { outcome: "PASS", checks: [], warnings: [] },
+    validation:
+      status === "BLOCKED"
+        ? { outcome: "FAIL", checks: [{ code: "TEST_BLOCKED", status: "FAIL" }], warnings: [] }
+        : { outcome: "PASS", checks: [], warnings: [] },
     status,
   };
 }
@@ -140,7 +151,13 @@ function insertSource(db: DatabaseSync, value: SourceDefinition): void {
   db.prepare(
     `INSERT INTO source_definitions (id, workspace_id, name, jurisdictions_json, document_json)
      VALUES (?, ?, ?, ?, ?)`,
-  ).run(value.id, value.workspaceId, value.name, JSON.stringify(value.jurisdictions), JSON.stringify(value));
+  ).run(
+    value.id,
+    value.workspaceId,
+    value.name,
+    JSON.stringify(value.jurisdictions),
+    JSON.stringify(value),
+  );
 }
 
 function insertDocument(
@@ -176,7 +193,11 @@ function seed(db: DatabaseSync, count = 125): void {
     const status = index % 5 === 0 ? "BLOCKED" : index % 3 === 0 ? "READY" : "GENERATED";
     const kind: ArtifactKind = index % 4 === 0 ? "PDF" : "HTML";
     const name = index === 124 ? "beyond-one-hundred-needle.pdf" : `artifact-${index}`;
-    insertDocument(db, staging(index, sourceId, WORKSPACE, status), artifact(index, sourceId, WORKSPACE, kind, name));
+    insertDocument(
+      db,
+      staging(index, sourceId, WORKSPACE, status),
+      artifact(index, sourceId, WORKSPACE, kind, name),
+    );
   }
 }
 
@@ -184,7 +205,10 @@ describe("queryKnowledgeBrowser", () => {
   it("searches and counts a match beyond the old 100-record prefix", () => {
     const db = database();
     seed(db);
-    const result = queryKnowledgeBrowser(db, { workspaceId: WORKSPACE, q: "beyond-one-hundred-needle" });
+    const result = queryKnowledgeBrowser(db, {
+      workspaceId: WORKSPACE,
+      q: "beyond-one-hundred-needle",
+    });
     expect(result.total).toBe(1);
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.artifact?.originalName).toBe("beyond-one-hundred-needle.pdf");
@@ -251,7 +275,11 @@ describe("queryKnowledgeBrowser", () => {
     const before = queryKnowledgeBrowser(db, { workspaceId: WORKSPACE, offset: 100, limit: 25 });
     expect(before.total).toBe(101);
     expect(before.items).toHaveLength(1);
-    insertDocument(db, staging(125, SOURCE_CN, WORKSPACE, "READY"), artifact(125, SOURCE_CN, WORKSPACE, "PDF"));
+    insertDocument(
+      db,
+      staging(125, SOURCE_CN, WORKSPACE, "READY"),
+      artifact(125, SOURCE_CN, WORKSPACE, "PDF"),
+    );
     const after = queryKnowledgeBrowser(db, { workspaceId: WORKSPACE, offset: 100, limit: 25 });
     expect(after.total).toBe(102);
     expect(after.items).toHaveLength(2);
@@ -262,8 +290,15 @@ describe("queryKnowledgeBrowser", () => {
     seed(db, 3);
     const otherSource = "src_01ARZ3NDEKTSV4RRFFQ69G5FAC";
     insertSource(db, source(otherSource, OTHER_WORKSPACE, "Other", ["GB"]));
-    insertDocument(db, staging(126, otherSource, OTHER_WORKSPACE, "READY", "Secret other workspace"), artifact(126, otherSource, OTHER_WORKSPACE, "PDF"));
-    const result = queryKnowledgeBrowser(db, { workspaceId: WORKSPACE, q: "secret other workspace" });
+    insertDocument(
+      db,
+      staging(126, otherSource, OTHER_WORKSPACE, "READY", "Secret other workspace"),
+      artifact(126, otherSource, OTHER_WORKSPACE, "PDF"),
+    );
+    const result = queryKnowledgeBrowser(db, {
+      workspaceId: WORKSPACE,
+      q: "secret other workspace",
+    });
     expect(result.total).toBe(0);
     expect(result.filters.jurisdictions).not.toContain("GB");
   });
