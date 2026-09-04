@@ -208,7 +208,7 @@ function readyPackageItem(
       title: readyPackage.evidence.canonicalDocumentId,
       reason,
       occurredAt,
-      href: `/packages?readyPackageId=${encodeURIComponent(readyPackage.id)}`,
+      href: `/vault?readyPackageId=${encodeURIComponent(readyPackage.id)}`,
     }),
     state,
   };
