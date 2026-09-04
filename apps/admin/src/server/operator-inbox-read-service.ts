@@ -1,8 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { DocumentChangeEvidence, ReadyPackageV2 } from "@markorbit/contracts";
-import {
-  SqliteDocumentChangeEvidenceRepository,
-} from "@markorbit/persistence/document-change-evidence";
+import { SqliteDocumentChangeEvidenceRepository } from "@markorbit/persistence/document-change-evidence";
 import type { ExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
 import {
   diagnoseReadyPackageV2Delivery,
@@ -79,7 +77,7 @@ function collectFailedRuns(
           title: run.sourceSnapshot.name,
           reason: `Collection run ${run.id} failed`,
           occurredAt: run.updatedAt,
-          href: `/runs?workspaceId=${encodeURIComponent(workspaceId)}&status=FAILED&sourceId=${encodeURIComponent(run.sourceId)}`,
+          href: `/runs/${encodeURIComponent(run.id)}`,
         }),
       ),
     );
@@ -97,7 +95,9 @@ function collectSourceHealth(
     .filter(
       (item) =>
         item.registrationState === "REGISTERED" &&
-        (item.state === "DEGRADED" || item.state === "BLOCKED" || item.freshness.state === "STALE"),
+        (item.state === "DEGRADED" ||
+          item.state === "BLOCKED" ||
+          item.freshness.state === "STALE"),
     )
     .map((item) =>
       evidence({
@@ -111,7 +111,9 @@ function collectSourceHealth(
             : `Source freshness is ${item.freshness.state.toLowerCase()}`,
         occurredAt:
           item.latestRun?.updatedAt ?? item.acquisition.latestArtifactAt ?? result.observedAt,
-        href: `/dashboard?workspaceId=${encodeURIComponent(workspaceId)}&sourceHealth=${encodeURIComponent(item.targetId)}`,
+        href: item.sourceIds[0]
+          ? `/sources/${encodeURIComponent(item.sourceIds[0])}`
+          : "/sources",
       }),
     );
 }
@@ -140,7 +142,7 @@ function collectChangeEvidence(
                 ? item.dimensions.join(", ")
                 : "Indexed evidence changed",
           occurredAt: item.observedAt,
-          href: `/knowledge/${encodeURIComponent(item.after.stagingDocumentId)}?workspaceId=${encodeURIComponent(workspaceId)}`,
+          href: `/knowledge/${encodeURIComponent(item.after.stagingDocumentId)}`,
         }),
         changeKind: item.changeKind,
       });
@@ -171,7 +173,7 @@ function collectVault(
       title: candidate.vaultRelativePath,
       reason: `Vault inspection classified this path as ${candidate.classification}`,
       occurredAt: latest.observedAt,
-      href: `/knowledge?workspaceId=${encodeURIComponent(workspaceId)}&vaultInspection=${encodeURIComponent(latest.id)}&vaultPath=${encodeURIComponent(candidate.vaultRelativePath)}`,
+      href: `/vault?inspectionId=${encodeURIComponent(latest.id)}&path=${encodeURIComponent(candidate.vaultRelativePath)}`,
     });
     if (candidate.classification === "CONFLICT") vaultConflicts.push(item);
     else needsReview.push(item);
@@ -179,7 +181,9 @@ function collectVault(
   return { needsReview, vaultConflicts };
 }
 
-function deliveryState(diagnosis: ReadyPackageV2DeliveryDiagnosis): "READY" | "NEEDS_REVIEW" | "BLOCKED" | "DELIVERED" {
+function deliveryState(
+  diagnosis: ReadyPackageV2DeliveryDiagnosis,
+): "READY" | "NEEDS_REVIEW" | "BLOCKED" | "DELIVERED" {
   switch (diagnosis.state) {
     case "SAFE_TO_SUBMIT":
       return "READY";
@@ -209,7 +213,7 @@ function readyPackageItem(
       title: readyPackage.evidence.canonicalDocumentId,
       reason,
       occurredAt,
-      href: `/knowledge?workspaceId=${encodeURIComponent(workspaceId)}&readyPackageId=${encodeURIComponent(readyPackage.id)}`,
+      href: `/packages?readyPackageId=${encodeURIComponent(readyPackage.id)}`,
     }),
     state,
   };
@@ -221,6 +225,7 @@ function collectDeliveries(
   deliveries: ReadyPackageV2DeliverySubmissionRepository,
 ): { items: OperatorInboxSnapshot["deliveries"]; bounded: boolean } {
   const packages = readyPackages.list(workspaceId, PAGE_SIZE);
+  let bounded = packages.length === PAGE_SIZE;
   const items = packages.map((readyPackage) => {
     const submission = deliveries.getByReadyPackage(workspaceId, readyPackage.id);
     if (!submission) {
@@ -232,10 +237,13 @@ function collectDeliveries(
         readyPackage.createdAt,
       );
     }
-    const diagnosis = diagnoseReadyPackageV2Delivery(
-      submission,
-      deliveries.listAuditEvents(workspaceId, submission.submissionId, PAGE_SIZE),
+    const auditEvents = deliveries.listAuditEvents(
+      workspaceId,
+      submission.submissionId,
+      PAGE_SIZE,
     );
+    if (auditEvents.length === PAGE_SIZE) bounded = true;
+    const diagnosis = diagnoseReadyPackageV2Delivery(submission, auditEvents);
     return readyPackageItem(
       workspaceId,
       readyPackage,
@@ -244,7 +252,7 @@ function collectDeliveries(
       submission.updatedAt,
     );
   });
-  return { items, bounded: packages.length === PAGE_SIZE };
+  return { items, bounded };
 }
 
 export function createOperatorInboxReadDependencies(
@@ -304,7 +312,11 @@ export function readOperatorInbox(
     unavailable.push("vault-inspection");
   }
   try {
-    const delivery = collectDeliveries(workspaceId, dependencies.readyPackages, dependencies.deliveries);
+    const delivery = collectDeliveries(
+      workspaceId,
+      dependencies.readyPackages,
+      dependencies.deliveries,
+    );
     snapshot.deliveries = delivery.items;
     if (delivery.bounded) unavailable.push("ready-package-delivery:bounded");
   } catch {
