@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AlertTriangle, RefreshCw, ScanSearch } from "lucide-react";
 import type { VaultBindingV1, VaultInspectionRunV1 } from "@markorbit/contracts";
 import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
@@ -50,12 +50,34 @@ function shortHash(value?: string): string {
   return `${value.slice(0, 10)}…${value.slice(-8)}`;
 }
 
+function subscribeLocationSearch(): () => void {
+  return () => undefined;
+}
+
+function readLocationSearch(): string {
+  return window.location.search;
+}
+
+function readServerLocationSearch(): string {
+  return "";
+}
+
 export function VaultInspectionControl({ workspaceId }: { workspaceId: string }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [inboxFocus, setInboxFocus] = useState<InboxFocus | null>(null);
+  const locationSearch = useSyncExternalStore(
+    subscribeLocationSearch,
+    readLocationSearch,
+    readServerLocationSearch,
+  );
+  const inboxFocus = useMemo<InboxFocus | null>(() => {
+    const parameters = new URLSearchParams(locationSearch);
+    const inspectionId = parameters.get("inspectionId")?.trim();
+    const path = parameters.get("path")?.trim();
+    return inspectionId && path ? { inspectionId, path } : null;
+  }, [locationSearch]);
 
   async function refresh() {
     setLoading(true);
@@ -72,13 +94,6 @@ export function VaultInspectionControl({ workspaceId }: { workspaceId: string })
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    const parameters = new URLSearchParams(window.location.search);
-    const inspectionId = parameters.get("inspectionId")?.trim();
-    const path = parameters.get("path")?.trim();
-    setInboxFocus(inspectionId && path ? { inspectionId, path } : null);
-  }, []);
 
   useEffect(() => {
     let active = true;
