@@ -1,0 +1,145 @@
+name: Issue 715 Live Evidence Auth Patch
+
+on:
+  push:
+    branches: [fix/715-live-evidence-admin-auth]
+    paths:
+      - .github/workflows/issue-715-live-evidence-auth-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/715-live-evidence-admin-auth
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Patch affected live workflows
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+
+          files = [
+              Path('.github/workflows/uspto-fee-schedule-phase2-live.yml'),
+              Path('.github/workflows/uspto-official-fee-phase2-live.yml'),
+              Path('.github/workflows/uspto-fee-normalization-phase2-live.yml'),
+              Path('.github/workflows/ip-australia-manual-bulk-conversion-live.yml'),
+          ]
+          shared_paths = [
+              'scripts/admin-browser-calibration-core-auth-stub.mjs',
+              'scripts/ci-admin-auth-configure.sh',
+              'scripts/ci-admin-auth-stub-start.sh',
+              'scripts/ci-admin-control-plane-ready.sh',
+              'scripts/ci-admin-api-curl.sh',
+          ]
+
+          configure_step = '''      - name: Configure isolated Admin auth\n        run: bash scripts/ci-admin-auth-configure.sh\n\n'''
+          stub_step = '''      - name: Start isolated Core auth stub\n        run: bash scripts/ci-admin-auth-stub-start.sh\n\n'''
+          start_step = '''      - name: Start isolated control plane\n        run: |\n          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &\n          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"\n          bash scripts/ci-admin-control-plane-ready.sh\n'''
+
+          for path in files:
+              text = path.read_text()
+
+              # Ensure shared auth helpers themselves retrigger every affected live workflow.
+              lines = text.splitlines()
+              paths_index = next(i for i, line in enumerate(lines) if line.strip() == 'paths:')
+              insert_at = paths_index + 1
+              while insert_at < len(lines) and (lines[insert_at].startswith('      - ') or not lines[insert_at].strip()):
+                  insert_at += 1
+              existing = '\n'.join(lines)
+              additions = [f'      - {item}' for item in shared_paths if item not in existing]
+              if additions:
+                  lines[insert_at:insert_at] = additions
+              text = '\n'.join(lines) + '\n'
+
+              if 'Configure isolated Admin auth' not in text:
+                  match = re.search(r'^      - name: Install(?: workspace| and build).*$', text, re.M)
+                  if not match:
+                      raise RuntimeError(f'install step not found in {path}')
+                  text = text[:match.start()] + configure_step + text[match.start():]
+
+              if 'Start isolated Core auth stub' not in text:
+                  marker = '      - name: Start isolated control plane\n'
+                  if marker not in text:
+                      raise RuntimeError(f'control plane step not found in {path}')
+                  text = text.replace(marker, stub_step + marker, 1)
+
+              pattern = re.compile(
+                  r'^      - name: Start isolated control plane\n        run: \|\n.*?(?=^      - name:)',
+                  re.M | re.S,
+              )
+              text, count = pattern.subn(start_step + '\n', text, count=1)
+              if count != 1:
+                  raise RuntimeError(f'failed to replace readiness step in {path}: {count}')
+
+              rewritten = []
+              for line in text.splitlines():
+                  if 'MARKORBIT_CONTROL_PLANE_URL' in line and 'curl ' in line and 'ci-admin-api-curl.sh' not in line:
+                      line = line.replace('curl ', 'bash scripts/ci-admin-api-curl.sh ', 1)
+                  rewritten.append(line)
+              text = '\n'.join(rewritten) + '\n'
+
+              # Auth helper itself performs readiness; no anonymous Admin API curl may remain.
+              anonymous = [
+                  line for line in text.splitlines()
+                  if 'MARKORBIT_CONTROL_PLANE_URL' in line and 'curl ' in line and 'ci-admin-api-curl.sh' not in line
+              ]
+              if anonymous:
+                  raise RuntimeError(f'anonymous control-plane curl remains in {path}: {anonymous}')
+
+              # Best-effort cleanup of the auth stub anywhere the admin process is already cleaned up.
+              admin_cleanup = 'if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi'
+              auth_cleanup = 'if [ -n "${AUTH_STUB_PID:-}" ]; then kill "$AUTH_STUB_PID" 2>/dev/null || true; fi'
+              if admin_cleanup in text and auth_cleanup not in text:
+                  text = text.replace(admin_cleanup, auth_cleanup + '\n          ' + admin_cleanup)
+
+              path.write_text(text)
+          PY
+
+      - name: Format and validate patch
+        run: |
+          pnpm exec prettier --write \
+            .github/workflows/uspto-fee-schedule-phase2-live.yml \
+            .github/workflows/uspto-official-fee-phase2-live.yml \
+            .github/workflows/uspto-fee-normalization-phase2-live.yml \
+            .github/workflows/ip-australia-manual-bulk-conversion-live.yml
+          bash -n scripts/ci-admin-auth-configure.sh
+          bash -n scripts/ci-admin-auth-stub-start.sh
+          bash -n scripts/ci-admin-control-plane-ready.sh
+          bash -n scripts/ci-admin-api-curl.sh
+          node --check scripts/admin-browser-calibration-core-auth-stub.mjs
+          if grep -nE 'curl .*MARKORBIT_CONTROL_PLANE_URL' \
+            .github/workflows/uspto-fee-schedule-phase2-live.yml \
+            .github/workflows/uspto-official-fee-phase2-live.yml \
+            .github/workflows/uspto-fee-normalization-phase2-live.yml \
+            .github/workflows/ip-australia-manual-bulk-conversion-live.yml; then
+            echo 'anonymous control-plane curl remains' >&2
+            exit 1
+          fi
+
+      - name: Commit patch and remove workflow
+        run: |
+          rm .github/workflows/issue-715-live-evidence-auth-patch.yml
+          git config user.name markorbit-automation
+          git config user.email actions@users.noreply.github.com
+          git add \
+            .github/workflows/uspto-fee-schedule-phase2-live.yml \
+            .github/workflows/uspto-official-fee-phase2-live.yml \
+            .github/workflows/uspto-fee-normalization-phase2-live.yml \
+            .github/workflows/ip-australia-manual-bulk-conversion-live.yml \
+            .github/workflows/issue-715-live-evidence-auth-patch.yml
+          git commit -m 'ci: authenticate live evidence control-plane access (#715)'
+          git push origin HEAD:fix/715-live-evidence-admin-auth
