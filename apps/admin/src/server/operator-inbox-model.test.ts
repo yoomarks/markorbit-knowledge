@@ -57,9 +57,9 @@ describe("deriveOperatorInbox", () => {
     expect(counts.DELIVERY_BLOCKED).toBe(1);
     expect(counts.NEEDS_REVIEW).toBe(2);
     expect(counts.VAULT_CONFLICT).toBe(1);
-    expect(result.categories.flatMap((category) => category.items).map((item) => item.objectId)).not.toContain(
-      "delivery_done",
-    );
+    expect(
+      result.categories.flatMap((category) => category.items).map((item) => item.objectId),
+    ).not.toContain("delivery_done");
     expect(result.total).toBe(9);
   });
 
