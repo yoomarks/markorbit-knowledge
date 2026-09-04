@@ -6,6 +6,11 @@ on:
     branches: [main]
     paths:
       - .github/workflows/uspto-official-fee-phase2-live.yml
+      - scripts/admin-browser-calibration-core-auth-stub.mjs
+      - scripts/ci-admin-auth-configure.sh
+      - scripts/ci-admin-auth-stub-start.sh
+      - scripts/ci-admin-control-plane-ready.sh
+      - scripts/ci-admin-api-curl.sh
       - apps/worker/src/bootstrap-uspto.ts
       - apps/worker/src/verify-uspto-exact-page-pipeline.ts
       - apps/admin/src/server/uspto-official-fee-live-evidence.test.ts
@@ -65,6 +70,9 @@ jobs:
           echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
           echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
 
+      - name: Configure isolated Admin auth
+        run: bash scripts/ci-admin-auth-configure.sh
+
       - name: Install workspace
         run: pnpm install --frozen-lockfile
 
@@ -77,18 +85,14 @@ jobs:
       - name: Build control plane
         run: pnpm --filter @markorbit/admin build
 
+      - name: Start isolated Core auth stub
+        run: bash scripts/ci-admin-auth-stub-start.sh
+
       - name: Start isolated control plane
         run: |
           pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
           echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
-          for attempt in $(seq 1 60); do
-            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-          cat "$RUNNER_TEMP/admin.log"
-          exit 1
+          bash scripts/ci-admin-control-plane-ready.sh
 
       - name: Bootstrap exact canonical fee page and dispatch collection
         run: |
@@ -165,6 +169,7 @@ jobs:
         run: |
           if [ -n "${WORKER_PID:-}" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
           if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+          if [ -n "${AUTH_STUB_PID:-}" ]; then kill "$AUTH_STUB_PID" 2>/dev/null || true; fi
 
       - name: Upload Phase 2 evidence
         if: always()
@@ -178,5 +183,6 @@ jobs:
             ${{ runner.temp }}/phase2-retrieval-evaluation.txt
             ${{ runner.temp }}/admin.log
             ${{ runner.temp }}/worker.log
+            ${{ runner.temp }}/admin-auth-stub.log
           if-no-files-found: warn
           retention-days: 30
