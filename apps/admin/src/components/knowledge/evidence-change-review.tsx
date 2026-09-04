@@ -23,6 +23,18 @@ async function readError(response: Response): Promise<string> {
   }
 }
 
+async function fetchChangeReview(
+  documentId: string,
+  workspaceId: string,
+): Promise<ChangeReviewResponse> {
+  const response = await fetch(
+    `/api/knowledge/${encodeURIComponent(documentId)}/change-review?workspaceId=${encodeURIComponent(workspaceId)}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) throw new Error(await readError(response));
+  return (await response.json()) as ChangeReviewResponse;
+}
+
 function shortHash(value: string | null | undefined): string {
   if (!value) return "—";
   return value.length > 20 ? `${value.slice(0, 10)}…${value.slice(-8)}` : value;
@@ -213,12 +225,7 @@ export function EvidenceChangeReview({
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch(
-        `/api/knowledge/${encodeURIComponent(documentId)}/change-review?workspaceId=${encodeURIComponent(workspaceId)}`,
-        { cache: "no-store" },
-      );
-      if (!response.ok) throw new Error(await readError(response));
-      setState((await response.json()) as ChangeReviewResponse);
+      setState(await fetchChangeReview(documentId, workspaceId));
       setError(null);
     } catch (requestError) {
       setError(
@@ -230,8 +237,26 @@ export function EvidenceChangeReview({
   }, [documentId, workspaceId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    void fetchChangeReview(documentId, workspaceId)
+      .then((nextState) => {
+        if (!active) return;
+        setState(nextState);
+        setError(null);
+      })
+      .catch((requestError: unknown) => {
+        if (!active) return;
+        setError(
+          requestError instanceof Error ? requestError.message : "Unable to load change evidence",
+        );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [documentId, workspaceId]);
 
   const evidence = useMemo(
     () => [...(state?.evidence ?? [])].sort((left, right) => right.sequence - left.sequence),
