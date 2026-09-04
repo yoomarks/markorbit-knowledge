@@ -5,10 +5,7 @@ import {
   createOperatorInboxReadDependencies,
   readOperatorInbox,
 } from "@/server/operator-inbox-read-service";
-import {
-  getExecutionLedgerRepository,
-  getRegistryDatabase,
-} from "@/server/source-registry";
+import { getExecutionLedgerRepository, getRegistryDatabase } from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
