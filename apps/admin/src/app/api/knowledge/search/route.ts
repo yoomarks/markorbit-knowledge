@@ -12,6 +12,7 @@ import { queryKnowledgeBrowser } from "@markorbit/persistence/knowledge-browser-
 import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import {
+  collectCompleteKnowledgeSearch,
   composeKnowledgeHybridSearch,
   KNOWLEDGE_HYBRID_SEARCH_MODE,
 } from "@/server/knowledge-hybrid-search";
@@ -102,11 +103,8 @@ export async function GET(request: Request) {
     const artifacts = getRawArtifactRepository();
     const retrieval = getRetrievalIndexRepository();
 
-    const metadataMatches = [];
-    let metadataOffset = 0;
-    let metadataTotal = 0;
-    do {
-      const page = queryKnowledgeBrowser(database, {
+    const metadataMatches = collectCompleteKnowledgeSearch((metadataOffset) =>
+      queryKnowledgeBrowser(database, {
         workspaceId,
         q,
         ...(sourceId ? { sourceId } : {}),
@@ -115,12 +113,8 @@ export async function GET(request: Request) {
         ...(status ? { status } : {}),
         offset: metadataOffset,
         limit: SEARCH_PAGE_SIZE,
-      });
-      metadataMatches.push(...page.items);
-      metadataTotal = page.total;
-      metadataOffset += page.items.length;
-      if (page.items.length === 0) break;
-    } while (metadataOffset < metadataTotal);
+      }),
+    );
 
     const enrich = (documentId: string) => {
       const record = staging.getDocument(documentId, workspaceId);
@@ -165,23 +159,16 @@ export async function GET(request: Request) {
       return true;
     };
 
-    const fullTextHits = [];
-    let fullTextOffset = 0;
-    let fullTextTotal = 0;
-    do {
-      const page = retrieval.search({
+    const fullTextHits = collectCompleteKnowledgeSearch((fullTextOffset) =>
+      retrieval.search({
         workspaceId,
         query: q,
         ...(sourceId ? { sourceId } : {}),
         ...(jurisdiction ? { jurisdiction } : {}),
         limit: SEARCH_PAGE_SIZE,
         offset: fullTextOffset,
-      });
-      fullTextHits.push(...page.items);
-      fullTextTotal = page.total;
-      fullTextOffset += page.items.length;
-      if (page.items.length === 0) break;
-    } while (fullTextOffset < fullTextTotal);
+      }),
+    );
 
     const fullTextCandidates = fullTextHits
       .map((hit) => {
