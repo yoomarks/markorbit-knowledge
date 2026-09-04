@@ -29,10 +29,10 @@ function retrieval(chunks: RetrievalChunk[]) {
 
 function evidenceReader() {
   return {
-    feed: vi.fn(
-      (_request: DocumentChangeEvidenceFeedRequest) =>
-        ({ items: [], nextCursor: null }) as unknown as DocumentChangeEvidenceFeedResult,
-    ),
+    feed: vi.fn((request: DocumentChangeEvidenceFeedRequest) => {
+      void request;
+      return { items: [], nextCursor: null } as unknown as DocumentChangeEvidenceFeedResult;
+    }),
   };
 }
 
