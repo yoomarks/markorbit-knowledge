@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DocumentChangeEvidence, SourceSupplyHealthRecord } from "@markorbit/contracts";
+import type { DocumentChangeEvidence } from "@markorbit/contracts";
 import type { ExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
 import type { ReadyPackageV2DeliverySubmissionRepository } from "@markorbit/persistence/ready-package-v2-deliveries";
 import type { ReadyPackageV2RegistryRepository } from "@markorbit/persistence/ready-packages-v2";
@@ -139,13 +139,18 @@ describe("readOperatorInbox", () => {
       observedAt: "2026-09-04T10:30:00.000Z",
       after,
     } as unknown as DocumentChangeEvidence;
-    vi.mocked(deps.changeEvidence.feed).mockReturnValue({ items: [created, updated], nextCursor: null });
+    vi.mocked(deps.changeEvidence.feed).mockReturnValue({
+      items: [created, updated],
+      nextCursor: null,
+    });
 
     const result = readOperatorInbox(workspaceId, deps, "2026-09-04T11:00:00.000Z");
 
     expect(categoryCount(result, "NEW_MATERIAL")).toBe(1);
     expect(categoryCount(result, "MATERIAL_CHANGE")).toBe(1);
-    const ids = result.categories.flatMap((category) => category.items.map((item) => item.id));
+    const ids = result.categories.flatMap((category) =>
+      category.items.map((item) => item.id),
+    );
     expect(ids.filter((id) => id === "dcev_created")).toHaveLength(1);
     expect(ids.filter((id) => id === "dcev_updated")).toHaveLength(1);
   });
