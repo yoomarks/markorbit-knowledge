@@ -7,7 +7,12 @@ old = '''function id(prefix: "art" | "std" | "cvr", index: number): string {\n  
 new = '''const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";\n\nfunction id(prefix: "art" | "std" | "cvr", index: number): string {\n  let value = index + 1;\n  let encoded = "";\n  for (let position = 0; position < 26; position += 1) {\n    encoded = CROCKFORD[value & 31] + encoded;\n    value = Math.floor(value / 32);\n  }\n  return `${prefix}_${encoded}`;\n}\n'''
 if text.count(old) != 1:
     raise SystemExit('test id helper match failed')
-TEST.write_text(text.replace(old, new, 1))
+text = text.replace(old, new, 1)
+validation_old = '    validation: { outcome: "PASS", checks: [], warnings: [] },'
+validation_new = '''    validation:\n      status === "BLOCKED"\n        ? { outcome: "FAIL", checks: [{ code: "TEST_BLOCKED", status: "FAIL" }], warnings: [] }\n        : { outcome: "PASS", checks: [], warnings: [] },'''
+if text.count(validation_old) != 1:
+    raise SystemExit('test validation fixture match failed')
+TEST.write_text(text.replace(validation_old, validation_new, 1))
 
 package_path = Path('packages/persistence/package.json')
 package = json.loads(package_path.read_text())
