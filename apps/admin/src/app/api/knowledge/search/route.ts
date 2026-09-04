@@ -1,19 +1,24 @@
 import { NextResponse } from "next/server";
 import {
   ARTIFACT_KINDS,
+  CONVERSION_STAGING_DOCUMENT_STATUSES,
   RETRIEVAL_INDEX_MODE,
   type ArtifactKind,
   type SourceDefinition,
+  type StagingDocumentDescriptor,
 } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
+import { queryKnowledgeBrowser } from "@markorbit/persistence/knowledge-browser-query";
 import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import {
+  collectCompleteKnowledgeSearch,
   composeKnowledgeHybridSearch,
   KNOWLEDGE_HYBRID_SEARCH_MODE,
 } from "@/server/knowledge-hybrid-search";
 import {
   getRawArtifactRepository,
+  getRegistryDatabase,
   getRetrievalIndexRepository,
   getSourceRepository,
   getStagingContentRepository,
@@ -22,19 +27,26 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_SCAN = 100;
-const MAX_FTS_HITS = 50;
+const SEARCH_PAGE_SIZE = 50;
 const DEFAULT_LIMIT = 25;
+const MAX_LIMIT = 50;
 
-type SearchTruncationReason = "METADATA_SCAN_LIMIT" | "FULL_TEXT_HIT_LIMIT";
-
-function integerParam(value: string | null, fallback: number, max: number): number {
-  if (!value) return fallback;
+function offsetParam(value: string | null): number {
+  if (!value) return 0;
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new RegistryValidationError("Pagination values must be non-negative integers");
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new RegistryValidationError("offset must be a non-negative safe integer");
   }
-  return Math.min(parsed, max);
+  return parsed;
+}
+
+function limitParam(value: string | null): number {
+  if (!value) return DEFAULT_LIMIT;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0 || parsed > MAX_LIMIT) {
+    throw new RegistryValidationError(`limit must be an integer between 1 and ${MAX_LIMIT}`);
+  }
+  return parsed;
 }
 
 function artifactKind(value: string | null): ArtifactKind | undefined {
@@ -43,6 +55,16 @@ function artifactKind(value: string | null): ArtifactKind | undefined {
     throw new RegistryValidationError(`Unsupported artifact kind ${value}`);
   }
   return value as ArtifactKind;
+}
+
+function stagingStatus(value: string | null): StagingDocumentDescriptor["status"] | undefined {
+  if (!value) return undefined;
+  if (
+    !CONVERSION_STAGING_DOCUMENT_STATUSES.includes(value as StagingDocumentDescriptor["status"])
+  ) {
+    throw new RegistryValidationError(`Unsupported staging status ${value}`);
+  }
+  return value as StagingDocumentDescriptor["status"];
 }
 
 function sourceSummary(source: SourceDefinition | null) {
@@ -69,23 +91,30 @@ export async function GET(request: Request) {
     if (!q) throw new RegistryValidationError("Knowledge search query is required");
 
     const sourceId = url.searchParams.get("sourceId")?.trim() || undefined;
-    const jurisdiction = url.searchParams.get("jurisdiction")?.trim().toUpperCase() || "";
+    const jurisdiction = url.searchParams.get("jurisdiction")?.trim().toUpperCase() || undefined;
     const requestedKind = artifactKind(url.searchParams.get("artifactKind"));
-    const status = url.searchParams.get("status")?.trim() || "";
-    const offset = integerParam(url.searchParams.get("offset"), 0, MAX_SCAN);
-    const limit = integerParam(url.searchParams.get("limit"), DEFAULT_LIMIT, 50) || DEFAULT_LIMIT;
+    const status = stagingStatus(url.searchParams.get("status"));
+    const offset = offsetParam(url.searchParams.get("offset"));
+    const limit = limitParam(url.searchParams.get("limit"));
 
+    const database = getRegistryDatabase();
     const staging = getStagingContentRepository();
     const sources = getSourceRepository();
     const artifacts = getRawArtifactRepository();
     const retrieval = getRetrievalIndexRepository();
 
-    const documents = staging.listDocuments({
-      workspaceId,
-      ...(sourceId ? { sourceId } : {}),
-      limit: MAX_SCAN,
-      offset: 0,
-    });
+    const metadataMatches = collectCompleteKnowledgeSearch((metadataOffset) =>
+      queryKnowledgeBrowser(database, {
+        workspaceId,
+        q,
+        ...(sourceId ? { sourceId } : {}),
+        ...(jurisdiction ? { jurisdiction } : {}),
+        ...(requestedKind ? { artifactKind: requestedKind } : {}),
+        ...(status ? { status } : {}),
+        offset: metadataOffset,
+        limit: SEARCH_PAGE_SIZE,
+      }),
+    );
 
     const enrich = (documentId: string) => {
       const record = staging.getDocument(documentId, workspaceId);
@@ -130,34 +159,18 @@ export async function GET(request: Request) {
       return true;
     };
 
-    const normalizedQuery = q.toLocaleLowerCase();
-    const allScanned = documents.items
-      .map((record) => enrich(record.descriptor.id))
-      .filter((item): item is NonNullable<typeof item> => item !== null);
+    const fullTextHits = collectCompleteKnowledgeSearch((fullTextOffset) =>
+      retrieval.search({
+        workspaceId,
+        query: q,
+        ...(sourceId ? { sourceId } : {}),
+        ...(jurisdiction ? { jurisdiction } : {}),
+        limit: SEARCH_PAGE_SIZE,
+        offset: fullTextOffset,
+      }),
+    );
 
-    const metadataMatches = allScanned.filter((item) => {
-      if (!passesStructuredFilters(item)) return false;
-      const haystack = [
-        item.title,
-        item.targetPath,
-        item.source?.name ?? "",
-        item.artifact?.originalName ?? "",
-        item.artifact?.sourceUri ?? "",
-      ]
-        .join("\n")
-        .toLocaleLowerCase();
-      return haystack.includes(normalizedQuery);
-    });
-
-    const fullTextResult = retrieval.search({
-      workspaceId,
-      query: q,
-      ...(sourceId ? { sourceId } : {}),
-      ...(jurisdiction ? { jurisdiction } : {}),
-      limit: MAX_FTS_HITS,
-    });
-
-    const fullTextCandidates = fullTextResult.items
+    const fullTextCandidates = fullTextHits
       .map((hit) => {
         const item = enrich(hit.document.stagingDocumentId);
         if (!item || !passesStructuredFilters(item)) return null;
@@ -175,22 +188,12 @@ export async function GET(request: Request) {
 
     const composed = composeKnowledgeHybridSearch(fullTextCandidates, metadataMatches);
     const page = composed.slice(offset, offset + limit);
-    const sourceOptions = sources.list({ workspaceId, limit: 100 }).items.map((source) => ({
-      id: source.id,
-      name: source.name,
-      jurisdictions: source.jurisdictions,
-    }));
-    const jurisdictions = [
-      ...new Set(sourceOptions.flatMap((source) => source.jurisdictions)),
-    ].sort();
-    const kinds = [
-      ...new Set(allScanned.map((item) => item.artifact?.artifactKind).filter(Boolean)),
-    ].sort();
-    const truncationReasons: SearchTruncationReason[] = [];
-    if (documents.total > documents.items.length) truncationReasons.push("METADATA_SCAN_LIMIT");
-    if (fullTextResult.total > fullTextResult.items.length) {
-      truncationReasons.push("FULL_TEXT_HIT_LIMIT");
-    }
+    const facetResult = queryKnowledgeBrowser(database, {
+      workspaceId,
+      ...(sourceId ? { sourceId } : {}),
+      offset: 0,
+      limit: 1,
+    });
 
     return NextResponse.json({
       search: {
@@ -199,9 +202,8 @@ export async function GET(request: Request) {
         graphNavigation: "OBJECTIVE_LOCAL_1_2_HOP",
         graphAffectsRank: false,
         vectorSearch: false,
-        truncated: truncationReasons.length > 0,
-        truncationReasons,
-        limits: { metadataScan: MAX_SCAN, fullTextHits: MAX_FTS_HITS },
+        complete: true,
+        pageSizes: { metadata: SEARCH_PAGE_SIZE, fullText: SEARCH_PAGE_SIZE },
       },
       query: q,
       items: page,
@@ -215,7 +217,7 @@ export async function GET(request: Request) {
         blocked: composed.filter((item) => item.status === "BLOCKED").length,
         archived: composed.filter((item) => item.status === "ARCHIVED").length,
       },
-      filters: { sources: sourceOptions, jurisdictions, artifactKinds: kinds },
+      filters: facetResult.filters,
     });
   } catch (error) {
     return apiError(error);

@@ -121,6 +121,42 @@ describe("retrieval index", () => {
     expect(legacySearch.total).toBe(0);
   });
 
+  it("pages through FTS hits beyond the 50-hit retrieval window without changing the exact total", () => {
+    const repository = new SqliteRetrievalIndexRepository(
+      new DatabaseSync(":memory:"),
+      () => new Date("2026-08-09T00:00:00.000Z"),
+    );
+    const body = Array.from(
+      { length: 75 },
+      (_, index) =>
+        `## Complete search section ${index}\n\nComplete search needle evidence for section ${index}.`,
+    ).join("\n\n");
+    indexVersion(repository, 1, body);
+
+    const first = repository.search({
+      workspaceId,
+      query: "complete search needle",
+      limit: 50,
+    });
+    const second = repository.search({
+      workspaceId,
+      query: "complete search needle",
+      limit: 50,
+      offset: 50,
+    });
+
+    expect(first.total).toBe(75);
+    expect(first.items).toHaveLength(50);
+    expect(second.total).toBe(75);
+    expect(second.items).toHaveLength(25);
+    expect(new Set(first.items.map((item) => item.chunk.chunkId)).size).toBe(50);
+    expect(
+      second.items.every(
+        (item) => !first.items.some((firstItem) => firstItem.chunk.chunkId === item.chunk.chunkId),
+      ),
+    ).toBe(true);
+  });
+
   it("is idempotent for the same verified staging evidence and rejects digest drift", () => {
     const repository = new SqliteRetrievalIndexRepository(new DatabaseSync(":memory:"));
     const markdown = canonicalMarkdown("# USPTO\n\nOfficial trademark maintenance guidance.");

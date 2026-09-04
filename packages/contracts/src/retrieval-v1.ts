@@ -53,6 +53,7 @@ export type RetrievalSearchRequest = {
   language?: string;
   authorityLevel?: AuthorityLevel;
   limit?: number;
+  offset?: number;
 };
 
 export type RetrievalSearchHit = {

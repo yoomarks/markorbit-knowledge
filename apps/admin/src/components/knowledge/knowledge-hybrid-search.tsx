@@ -38,9 +38,8 @@ type SearchResponse = {
     graphNavigation: "OBJECTIVE_LOCAL_1_2_HOP";
     graphAffectsRank: false;
     vectorSearch: false;
-    truncated: boolean;
-    truncationReasons: Array<"METADATA_SCAN_LIMIT" | "FULL_TEXT_HIT_LIMIT">;
-    limits: { metadataScan: number; fullTextHits: number };
+    complete: true;
+    pageSizes: { metadata: number; fullText: number };
   };
   query: string;
   items: SearchItem[];
@@ -199,17 +198,9 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
               <span>
                 {result.total} {zh ? "个去重后的内容结果" : "deduplicated content results"}
               </span>
-              {result.search.truncated ? (
-                <span
-                  title={result.search.truncationReasons.join(", ")}
-                  className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800"
-                >
-                  {zh ? "候选窗口已截断" : "Candidate window truncated"}
-                </span>
-              ) : null}
             </div>
             <span className="font-mono text-[10px] text-slate-400">
-              {result.search.mode} · graph rank = off · vector = off
+              {result.search.mode} · complete · graph rank = off · vector = off
             </span>
           </div>
           <div className="divide-y divide-slate-100">
