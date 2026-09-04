@@ -1,9 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import {
-  CONVERSION_EXECUTION_VERSION,
-  type StagingDocumentDescriptor,
-} from "@markorbit/contracts";
+import { CONVERSION_EXECUTION_VERSION, type StagingDocumentDescriptor } from "@markorbit/contracts";
 import {
   queryKnowledgeBrowser,
   queryKnowledgeReadModel,
@@ -133,9 +130,7 @@ describe("Knowledge Query Read Model V2", () => {
 
     expect(browser).toEqual(canonical);
     expect(canonical.total).toBe(1);
-    expect(canonical.items.map((item) => item.id)).toEqual([
-      "std_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-    ]);
+    expect(canonical.items.map((item) => item.id)).toEqual(["std_01ARZ3NDEKTSV4RRFFQ69G5FAV"]);
     database.close();
   });
 
@@ -158,12 +153,8 @@ describe("Knowledge Query Read Model V2", () => {
       candidateIds,
     );
 
-    expect(ready.map((item) => item.id)).toEqual([
-      "std_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-    ]);
-    expect(workspaceB.map((item) => item.id)).toEqual([
-      "std_01ARZ3NDEKTSV4RRFFQ69G5FAX",
-    ]);
+    expect(ready.map((item) => item.id)).toEqual(["std_01ARZ3NDEKTSV4RRFFQ69G5FAV"]);
+    expect(workspaceB.map((item) => item.id)).toEqual(["std_01ARZ3NDEKTSV4RRFFQ69G5FAX"]);
     database.close();
   });
 
