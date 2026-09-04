@@ -17,11 +17,7 @@ async function readError(response: Response): Promise<string> {
       error?: { message?: string };
       message?: string;
     };
-    return (
-      body.error?.message ??
-      body.message ??
-      `Request failed (${response.status})`
-    );
+    return body.error?.message ?? body.message ?? `Request failed (${response.status})`;
   } catch {
     return `Request failed (${response.status})`;
   }
@@ -29,9 +25,7 @@ async function readError(response: Response): Promise<string> {
 
 function shortHash(value: string | null | undefined): string {
   if (!value) return "—";
-  return value.length > 20
-    ? `${value.slice(0, 10)}…${value.slice(-8)}`
-    : value;
+  return value.length > 20 ? `${value.slice(0, 10)}…${value.slice(-8)}` : value;
 }
 
 function excerpt(value: string | null, limit = 800): string {
@@ -42,9 +36,7 @@ function excerpt(value: string | null, limit = 800): string {
 function evidenceTime(value: string | null | undefined): string {
   if (!value) return "—";
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : parsed.toLocaleString("zh-CN", { hour12: false });
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString("zh-CN", { hour12: false });
 }
 
 function RawArtifactEvidence({
@@ -83,17 +75,13 @@ function ChangeEvidenceCard({ evidence }: { evidence: DocumentChangeEvidence }) 
             <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
               {evidence.changeKind}
             </span>
-            <span className="text-xs text-slate-500">
-              v{evidence.after.artifactVersion}
-            </span>
+            <span className="text-xs text-slate-500">v{evidence.after.artifactVersion}</span>
             {evidence.before ? (
               <span className="text-xs text-slate-500">
                 from v{evidence.before.artifactVersion}
               </span>
             ) : (
-              <span className="text-xs text-slate-500">
-                first durable version
-              </span>
+              <span className="text-xs text-slate-500">first durable version</span>
             )}
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-900">
@@ -102,9 +90,7 @@ function ChangeEvidenceCard({ evidence }: { evidence: DocumentChangeEvidence }) 
               : "No objective change dimension"}
           </p>
         </div>
-        <time className="text-xs text-slate-500">
-          {evidenceTime(evidence.observedAt)}
-        </time>
+        <time className="text-xs text-slate-500">{evidenceTime(evidence.observedAt)}</time>
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -112,58 +98,32 @@ function ChangeEvidenceCard({ evidence }: { evidence: DocumentChangeEvidence }) 
           title="Previous raw evidence"
           evidence={evidence.rawArtifacts.before}
         />
-        <RawArtifactEvidence
-          title="Current raw evidence"
-          evidence={evidence.rawArtifacts.after}
-        />
+        <RawArtifactEvidence title="Current raw evidence" evidence={evidence.rawArtifacts.after} />
       </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600">
-          <p className="font-semibold text-slate-800">
-            Previous normalized version
-          </p>
-          <p className="mt-2 break-all">
-            Staging {evidence.before?.stagingDocumentId ?? "—"}
-          </p>
-          <p className="mt-1">
-            content {shortHash(evidence.before?.contentSha256)}
-          </p>
-          <p className="mt-1 break-all">
-            source {evidence.before?.sourceUri ?? "—"}
-          </p>
+          <p className="font-semibold text-slate-800">Previous normalized version</p>
+          <p className="mt-2 break-all">Staging {evidence.before?.stagingDocumentId ?? "—"}</p>
+          <p className="mt-1">content {shortHash(evidence.before?.contentSha256)}</p>
+          <p className="mt-1 break-all">source {evidence.before?.sourceUri ?? "—"}</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600">
-          <p className="font-semibold text-slate-800">
-            Current normalized version
-          </p>
-          <p className="mt-2 break-all">
-            Staging {evidence.after.stagingDocumentId}
-          </p>
-          <p className="mt-1">
-            content {shortHash(evidence.after.contentSha256)}
-          </p>
+          <p className="font-semibold text-slate-800">Current normalized version</p>
+          <p className="mt-2 break-all">Staging {evidence.after.stagingDocumentId}</p>
+          <p className="mt-1">content {shortHash(evidence.after.contentSha256)}</p>
           <p className="mt-1 break-all">source {evidence.after.sourceUri}</p>
         </div>
       </div>
 
       {evidence.metadataChanges.length ? (
         <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-slate-800">
-            Metadata changes
-          </p>
+          <p className="text-xs font-semibold text-slate-800">Metadata changes</p>
           <div className="mt-2 space-y-2">
             {evidence.metadataChanges.map((change) => (
-              <div
-                key={change.field}
-                className="grid gap-1 text-xs md:grid-cols-[140px_1fr_1fr]"
-              >
-                <span className="font-medium text-slate-600">
-                  {change.field}
-                </span>
-                <span className="break-words text-rose-700">
-                  − {JSON.stringify(change.before)}
-                </span>
+              <div key={change.field} className="grid gap-1 text-xs md:grid-cols-[140px_1fr_1fr]">
+                <span className="font-medium text-slate-600">{change.field}</span>
+                <span className="break-words text-rose-700">− {JSON.stringify(change.before)}</span>
                 <span className="break-words text-emerald-700">
                   + {JSON.stringify(change.after)}
                 </span>
@@ -179,9 +139,7 @@ function ChangeEvidenceCard({ evidence }: { evidence: DocumentChangeEvidence }) 
             <p className="font-semibold text-slate-800">Links removed</p>
             <div className="mt-2 space-y-1 text-rose-700">
               {evidence.links.removed.length ? (
-                evidence.links.removed.map((link) => (
-                  <p key={link}>− {link}</p>
-                ))
+                evidence.links.removed.map((link) => <p key={link}>− {link}</p>)
               ) : (
                 <p>—</p>
               )}
@@ -191,9 +149,7 @@ function ChangeEvidenceCard({ evidence }: { evidence: DocumentChangeEvidence }) 
             <p className="font-semibold text-slate-800">Links added</p>
             <div className="mt-2 space-y-1 text-emerald-700">
               {evidence.links.added.length ? (
-                evidence.links.added.map((link) => (
-                  <p key={link}>+ {link}</p>
-                ))
+                evidence.links.added.map((link) => <p key={link}>+ {link}</p>)
               ) : (
                 <p>—</p>
               )}
@@ -204,9 +160,7 @@ function ChangeEvidenceCard({ evidence }: { evidence: DocumentChangeEvidence }) 
 
       {changedSections.length ? (
         <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-slate-800">
-            Bounded text / structure diff
-          </p>
+          <p className="text-xs font-semibold text-slate-800">Bounded text / structure diff</p>
           <div className="mt-3 space-y-3">
             {changedSections.slice(0, 20).map((section, index) => (
               <div
@@ -239,8 +193,8 @@ function ChangeEvidenceCard({ evidence }: { evidence: DocumentChangeEvidence }) 
       ) : null}
 
       <p className="mt-4 text-[11px] leading-5 text-slate-500">
-        Objective evidence only. This view does not assess legal significance,
-        case materiality, or recommended action.
+        Objective evidence only. This view does not assess legal significance, case materiality, or
+        recommended action.
       </p>
     </article>
   );
@@ -269,9 +223,7 @@ export function EvidenceChangeReview({
       setError(null);
     } catch (requestError) {
       setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to load change evidence",
+        requestError instanceof Error ? requestError.message : "Unable to load change evidence",
       );
     } finally {
       setLoading(false);
@@ -283,10 +235,7 @@ export function EvidenceChangeReview({
   }, [load]);
 
   const evidence = useMemo(
-    () =>
-      [...(state?.evidence ?? [])].sort(
-        (left, right) => right.sequence - left.sequence,
-      ),
+    () => [...(state?.evidence ?? [])].sort((left, right) => right.sequence - left.sequence),
     [state?.evidence],
   );
 
@@ -302,9 +251,8 @@ export function EvidenceChangeReview({
             <h2 className="font-semibold">Evidence Change Review</h2>
           </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            Compare durable Knowledge versions using immutable lineage, hashes,
-            source identity, metadata, links and bounded text / structure
-            changes.
+            Compare durable Knowledge versions using immutable lineage, hashes, source identity,
+            metadata, links and bounded text / structure changes.
           </p>
         </div>
         <button
@@ -313,22 +261,14 @@ export function EvidenceChangeReview({
           disabled={loading}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 disabled:opacity-40"
         >
-          <RefreshCw
-            size={16}
-            className={loading ? "animate-spin" : ""}
-            aria-hidden="true"
-          />
+          <RefreshCw size={16} className={loading ? "animate-spin" : ""} aria-hidden="true" />
           刷新
         </button>
       </div>
 
       {error ? (
         <div className="mt-5 flex gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-          <AlertTriangle
-            className="mt-0.5 shrink-0"
-            size={18}
-            aria-hidden="true"
-          />
+          <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
           <span>{error}</span>
         </div>
       ) : null}
