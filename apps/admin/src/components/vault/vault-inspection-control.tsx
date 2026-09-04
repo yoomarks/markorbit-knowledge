@@ -125,9 +125,7 @@ export function VaultInspectionControl({ workspaceId }: { workspaceId: string })
   const latest = overview?.recentRuns[0] ?? null;
   const displayedRun = useMemo(() => {
     if (!inboxFocus) return latest;
-    return (
-      overview?.recentRuns.find((run) => run.id === inboxFocus.inspectionId) ?? null
-    );
+    return overview?.recentRuns.find((run) => run.id === inboxFocus.inspectionId) ?? null;
   }, [inboxFocus, latest, overview?.recentRuns]);
   const visibleCandidates = useMemo(() => {
     const candidates = displayedRun?.candidates ?? [];
