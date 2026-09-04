@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { RegistryError } from "@markorbit/persistence";
 import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
-import { buildDocumentChangeEvidenceFeed } from "@/server/document-change-evidence-feed-service";
-import { getRegistryDatabase, getStagingContentRepository } from "@/server/source-registry";
+import { buildDocumentChangeEvidenceFeedForStaging } from "@/server/document-change-evidence-feed-service";
+import {
+  getRegistryDatabase,
+  getRetrievalIndexRepository,
+  getStagingContentRepository,
+} from "@/server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,16 +34,21 @@ export async function GET(request: Request, context: RouteContext) {
       );
     }
 
-    const feed = buildDocumentChangeEvidenceFeed(getRegistryDatabase(), {
-      workspaceId,
-      documentId: id,
-      limit: 25,
-    });
+    const result = buildDocumentChangeEvidenceFeedForStaging(
+      getRegistryDatabase(),
+      getRetrievalIndexRepository(),
+      {
+        workspaceId,
+        stagingDocumentId: id,
+        limit: 25,
+      },
+    );
     return NextResponse.json({
       workspaceId,
-      documentId: id,
-      evidence: feed.items,
-      complete: feed.nextCursor === null,
+      stagingDocumentId: id,
+      documentId: result.documentId,
+      evidence: result.feed.items,
+      complete: result.feed.nextCursor === null,
     });
   } catch (error) {
     return apiError(error);
