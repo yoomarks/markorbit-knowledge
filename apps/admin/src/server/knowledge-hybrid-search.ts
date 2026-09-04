@@ -24,6 +24,35 @@ export type KnowledgeHybridSearchItem<T extends { id: string }> = T & {
   searchMatch: KnowledgeHybridSearchMatch;
 };
 
+export type KnowledgeSearchPage<T> = {
+  items: T[];
+  total: number;
+};
+
+/**
+ * Consume a bounded persistence page size without turning that page size into
+ * a correctness ceiling. Readers must report an exact total for the same
+ * stable query; an empty page ends the loop defensively if the corpus changes
+ * while the request is in flight.
+ */
+export function collectCompleteKnowledgeSearch<T>(
+  readPage: (offset: number) => KnowledgeSearchPage<T>,
+): T[] {
+  const items: T[] = [];
+  let offset = 0;
+  let total = 0;
+
+  do {
+    const page = readPage(offset);
+    total = page.total;
+    items.push(...page.items);
+    offset += page.items.length;
+    if (page.items.length === 0) break;
+  } while (offset < total);
+
+  return items;
+}
+
 /**
  * Compose the two search channels that Knowledge actually has today.
  *
