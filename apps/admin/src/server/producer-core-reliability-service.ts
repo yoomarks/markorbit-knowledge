@@ -12,14 +12,13 @@ import {
   type ProducerCoreReliabilityQueryV1,
   type ProducerCoreReliabilityScorecardV1,
 } from "@markorbit/persistence/producer-core-reliability-scorecard";
-import { ensureReadyPackageV2DeliveryAuditRegistry } from "@markorbit/persistence/ready-package-v2-deliveries";
 import {
   ensureReadyPackageV2DeliverySubmissionRegistry,
+  type ReadyPackageV2DeliveryAuditEvent,
   type ReadyPackageV2DeliverySubmission,
 } from "@markorbit/persistence/ready-package-v2-deliveries";
 import { ensureReadyPackageV2Registry } from "@markorbit/persistence/ready-packages-v2";
 import { ensureVaultOriginStagingVerification } from "@markorbit/persistence/vault-origin-staging-verification";
-import type { ReadyPackageV2DeliveryAuditEvent } from "@markorbit/persistence/ready-package-v2-deliveries";
 import { getRegistryDatabase } from "./source-registry";
 
 type JsonRow = { value: string };
@@ -100,7 +99,6 @@ function ensureDurableEvidenceTables(database: DatabaseSync): void {
   ensureCanonicalDownstreamDocumentRegistry(database);
   ensureReadyPackageV2Registry(database);
   ensureReadyPackageV2DeliverySubmissionRegistry(database);
-  ensureReadyPackageV2DeliveryAuditRegistry(database);
 }
 
 export function getProducerCoreReliabilityScorecard(
