@@ -38,7 +38,6 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({
       workspaceId,
       documentId: id,
-      currentArtifactVersion: document.descriptor.artifactVersion,
       evidence: feed.items,
       complete: feed.nextCursor === null,
     });
