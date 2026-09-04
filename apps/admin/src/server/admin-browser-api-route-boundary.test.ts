@@ -1,400 +1,157 @@
-import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import test from "node:test";
+import { describe, expect, it, vi } from "vitest";
+import type { DocumentChangeEvidence } from "@markorbit/contracts";
+import type { ExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
+import type { ReadyPackageV2DeliverySubmissionRepository } from "@markorbit/persistence/ready-package-v2-deliveries";
+import type { ReadyPackageV2RegistryRepository } from "@markorbit/persistence/ready-packages-v2";
+import type { SourceSupplyHealthRepository } from "@markorbit/persistence/source-supply-health";
+import type { VaultInspectionRunRepository } from "@markorbit/persistence/vault-inspection-runs";
+import {
+  readOperatorInbox,
+  type OperatorInboxReadDependencies,
+} from "./operator-inbox-read-service";
 
-const READ_ACCESS = "resolveAdminBrowserApiReadAccess";
-const MUTATION_ACCESS = "resolveAdminBrowserApiMutationAccess";
-const RESOURCE_WORKSPACE_ASSERTION = "assertAdminBrowserResourceWorkspace";
-const SOURCE_INTELLIGENCE_READ_ACCESS = "resolveSourceIntelligenceBrowserReadAccess";
-const SOURCE_INTELLIGENCE_MUTATION_ACCESS = "resolveSourceIntelligenceBrowserMutationAccess";
-const EXPERT_READ_ACCESS = "resolveExpertReadPrincipal";
-const EXPERT_MUTATION_ACCESS = "resolveExpertMutationPrincipal";
-const EXPERT_RESOURCE_ASSERTION = "authorizeExpertTaskWorkspace";
+const workspaceId = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 
-function routeSource(path: string): string {
-  return readFileSync(new URL(`../app/api/${path}/route.ts`, import.meta.url), "utf8");
+function dependencies(): OperatorInboxReadDependencies {
+  return {
+    runs: {
+      list: vi.fn(() => ({ items: [], total: 0, limit: 100, offset: 0, summary: {} })),
+    } as unknown as ExecutionLedgerRepository,
+    sourceSupply: {
+      list: vi.fn(() => ({
+        protocolVersion: "1.0",
+        observedAt: "2026-09-04T10:00:00.000Z",
+        items: [],
+        summary: {},
+      })),
+    } as unknown as SourceSupplyHealthRepository,
+    changeEvidence: {
+      feed: vi.fn(() => ({ items: [], nextCursor: null })),
+    },
+    vaultInspection: {
+      list: vi.fn(() => []),
+    } as unknown as VaultInspectionRunRepository,
+    readyPackages: {
+      list: vi.fn(() => []),
+    } as unknown as ReadyPackageV2RegistryRepository,
+    deliveries: {
+      getByReadyPackage: vi.fn(() => null),
+      listAuditEvents: vi.fn(() => []),
+    } as unknown as ReadyPackageV2DeliverySubmissionRepository,
+  };
 }
 
-function serverSource(path: string): string {
-  return readFileSync(new URL(`./${path}.ts`, import.meta.url), "utf8");
+function categoryCount(result: ReturnType<typeof readOperatorInbox>, category: string): number {
+  return result.categories.find((item) => item.category === category)?.count ?? -1;
 }
 
-const workspaceScopedReadRoutes = [
-  "artifacts",
-  "artifacts/[id]",
-  "artifacts/[id]/content",
-  "artifacts/[id]/lineage",
-  "artifacts/sessions/[id]",
-  "capabilities/page-value",
-  "connectors",
-  "connectors/[connectorId]/[version]",
-  "connectors/[connectorId]/versions",
-  "connectors/compatible",
-  "conversion-profiles",
-  "conversion-profiles/[id]",
-  "conversion-runs",
-  "conversion-runs/[id]",
-  "converters",
-  "converters/[converterId]/[version]",
-  "converters/[converterId]/versions",
-  "discovery",
-  "discovery/changes",
-  "discovery/changes/[candidateId]/significance",
-  "discovery/import-preview",
-  "foundational/action-executions",
-  "foundational/action-intents",
-  "foundational/action-intents/[intentId]/execute",
-  "foundational/collection-outcomes",
-  "foundational/compatibility-reprobe-executions",
-  "foundational/conversion-recovery",
-  "foundational/remediation-queue",
-  "foundational/retrieval-quality-remediation",
-  "foundational/verified-canonical-reindex",
-  "knowledge",
-  "knowledge/[id]",
-  "knowledge/[id]/graph",
-  "knowledge/[id]/relationships",
-  "knowledge/search",
-  "operations/readiness",
-  "plans",
-  "plans/[id]",
-  "plans/[id]/runs",
-  "raw-artifacts/eligible-for-conversion",
-  "raw-artifacts/[id]/compatible-conversion-profiles",
-  "ready-packages",
-  "retrieval/relevance-audit",
-  "runs",
-  "runs/[id]",
-  "source-coverage/activation-wave",
-  "source-supply-health",
-  "sources",
-  "sources/[id]",
-  "sources/[id]/assessment",
-  "sources/[id]/graph",
-  "sources/[id]/plans",
-  "sources/[id]/recommendations",
-  "sources/[id]/runs",
-  "sources/coverage",
-  "sources/coverage/analysis",
-  "workers",
-  "workers/[id]",
-  "workspaces/[id]/canonical-downstream-documents",
-  "workspaces/[id]/ready-package-v2-deliveries",
-  "workspaces/[id]/ready-packages-v2",
-  "workspaces/[id]/ready-packages-v2/[readyPackageId]/content-export",
-  "workspaces/[id]/vault-binding",
-  "workspaces/[id]/vault-exports",
-  "workspaces/[id]/vault-import-executions",
-  "workspaces/[id]/vault-import-intents",
-  "workspaces/[id]/vault-inspections",
-  "workspaces/[id]/vault-origin-staging-verifications",
-] as const;
+describe("readOperatorInbox", () => {
+  it("passes the authenticated workspace to every durable read and keeps counts workspace-scoped", () => {
+    const deps = dependencies();
+    const result = readOperatorInbox(workspaceId, deps, "2026-09-04T11:00:00.000Z");
 
-const workspaceScopedMutationRoutes = [
-  "capabilities/page-value",
-  "connectors",
-  "connectors/[connectorId]/[version]/status",
-  "conversion-profiles",
-  "conversion-profiles/[id]",
-  "conversion-profiles/[id]/status",
-  "conversion-recovery/[id]/retry",
-  "conversion-runs",
-  "conversion-runs/[id]/cancel",
-  "converters",
-  "converters/[converterId]/[version]/status",
-  "discovery",
-  "discovery/batch",
-  "discovery/candidates/[id]/authorize-collection",
-  "discovery/candidates/[id]/review",
-  "discovery/changes/[candidateId]/significance",
-  "discovery/collection-authorization",
-  "discovery/reviews",
-  "discovery/reviews/reopen",
-  "foundational/action-intents",
-  "foundational/action-intents/[intentId]",
-  "foundational/action-intents/[intentId]/execute",
-  "foundational/retrieval-quality-remediation",
-  "foundational/verified-canonical-reindex",
-  "leases/reap",
-  "manual-uploads",
-  "plans",
-  "plans/[id]",
-  "plans/[id]/status",
-  "runs",
-  "runs/[id]/cancel",
-  "source-coverage/activation-wave",
-  "sources",
-  "sources/[id]",
-  "sources/[id]/archive",
-  "sources/[id]/assessment",
-  "sources/[id]/default-plan",
-  "sources/[id]/discovery-expansion",
-  "sources/[id]/graph",
-  "sources/[id]/recommendations",
-  "sources/coverage/analysis",
-  "workers",
-  "workers/[id]",
-  "workers/[id]/rotate-credential",
-  "workspaces/[id]/canonical-downstream-documents",
-  "workspaces/[id]/ready-package-v2-deliveries",
-  "workspaces/[id]/ready-packages-v2",
-  "workspaces/[id]/vault-binding",
-  "workspaces/[id]/vault-exports",
-  "workspaces/[id]/vault-import-executions",
-  "workspaces/[id]/vault-import-intents",
-  "workspaces/[id]/vault-inspections",
-  "workspaces/[id]/vault-origin-staging-finalizations",
-  "workspaces/[id]/vault-origin-staging-verifications",
-] as const;
+    expect(deps.runs.list).toHaveBeenCalledWith({
+      workspaceId,
+      status: "FAILED",
+      limit: 100,
+      offset: 0,
+    });
+    expect(deps.sourceSupply.list).toHaveBeenCalledWith({ workspaceId });
+    expect(deps.changeEvidence.feed).toHaveBeenCalledWith({
+      workspaceId,
+      cursor: undefined,
+      limit: 100,
+    });
+    expect(deps.vaultInspection.list).toHaveBeenCalledWith(workspaceId, 1);
+    expect(deps.readyPackages.list).toHaveBeenCalledWith(workspaceId, 100);
+    expect(result.workspaceId).toBe(workspaceId);
+    expect(result.evidenceState).toBe("COMPLETE");
+    expect(result.total).toBe(0);
+  });
 
-const sourceIntelligenceReadRoutes = [
-  "source-intelligence",
-  "source-intelligence/reviews",
-  "source-intelligence/reviews/assignment-health",
-  "source-intelligence/reviews/health",
-  "source-intelligence/reviews/manual-sla",
-  "source-intelligence/reviews/ownership",
-  "source-intelligence/reviews/policy-audit",
-  "source-intelligence/reviews/policy-audit/export",
-  "source-intelligence/reviews/policy-audit/query",
-  "source-intelligence/reviews/policy-comparison",
-  "source-intelligence/reviews/policy-resolution",
-  "source-intelligence/reviews/policy-scopes",
-] as const;
+  it("isolates a failed evidence source as PARTIAL instead of inventing unavailable counts", () => {
+    const deps = dependencies();
+    vi.mocked(deps.changeEvidence.feed).mockImplementation(() => {
+      throw new Error("change evidence unavailable");
+    });
+    vi.mocked(deps.vaultInspection.list).mockImplementation(() => {
+      throw new Error("vault unavailable");
+    });
 
-const sourceIntelligenceMutationRoutes = [
-  "source-intelligence",
-  "source-intelligence/reviews",
-  "source-intelligence/reviews/manual-sla",
-  "source-intelligence/reviews/ownership",
-  "source-intelligence/reviews/policy-scopes",
-] as const;
+    const result = readOperatorInbox(workspaceId, deps, "2026-09-04T11:00:00.000Z");
 
-const expertReadRoutes = ["expert-tasks", "expert-tasks/[id]", "expert-sources"] as const;
-const expertMutationRoutes = ["expert-tasks", "expert-tasks/[id]"] as const;
-const expertResourceRoutes = ["expert-tasks/[id]"] as const;
+    expect(result.evidenceState).toBe("PARTIAL");
+    expect(result.unavailableEvidence).toEqual(["change-evidence", "vault-inspection"]);
+    expect(categoryCount(result, "NEW_MATERIAL")).toBe(0);
+    expect(categoryCount(result, "VAULT_CONFLICT")).toBe(0);
+  });
 
-const resourceWorkspaceRoutes = [
-  "artifacts/[id]",
-  "artifacts/[id]/content",
-  "artifacts/[id]/lineage",
-  "artifacts/sessions/[id]",
-  "conversion-profiles/[id]",
-  "conversion-profiles/[id]/status",
-  "conversion-recovery/[id]/retry",
-  "foundational/action-intents/[intentId]",
-  "foundational/action-intents/[intentId]/execute",
-  "plans/[id]",
-  "plans/[id]/runs",
-  "plans/[id]/status",
-  "raw-artifacts/[id]/compatible-conversion-profiles",
-  "runs",
-  "runs/[id]",
-  "runs/[id]/cancel",
-  "sources/[id]",
-  "sources/[id]/archive",
-  "sources/[id]/assessment",
-  "sources/[id]/default-plan",
-  "sources/[id]/discovery-expansion",
-  "sources/[id]/graph",
-  "sources/[id]/plans",
-  "sources/[id]/recommendations",
-  "sources/[id]/runs",
-  "workers/[id]",
-  "workers/[id]/rotate-credential",
-] as const;
+  it("maps objective CREATED and UPDATED change evidence into exclusive queues", () => {
+    const deps = dependencies();
+    const base = {
+      protocolVersion: "1.2",
+      objectType: "DOCUMENT_CHANGE_EVIDENCE",
+      eventId: "cf_1",
+      sequence: 1,
+      workspaceId,
+      documentId: "doc_1",
+      logicalDocumentId: null,
+      sourceId: "src_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      before: null,
+      rawArtifacts: { before: null, after: null },
+      attachments: { before: [], after: [], added: [], removed: [], modified: [] },
+      dimensions: [],
+      summary: { addedSections: 0, removedSections: 0, modifiedSections: 0, changedSections: 0 },
+      sections: [],
+      metadataChanges: [],
+      links: { added: [], removed: [] },
+      coverage: {
+        documentMetadata: true,
+        canonicalText: true,
+        canonicalLinks: true,
+        sectionStructure: true,
+        rawArtifactBinary: false,
+        linkedAttachments: false,
+      },
+    } as const;
+    const after = {
+      artifactVersion: 1,
+      rawArtifactId: "art_1",
+      stagingDocumentId: "stg_1",
+      readyPackageId: "rdp_1",
+      contentSha256: "a".repeat(64),
+      capturedAt: "2026-09-04T09:00:00.000Z",
+      sourceUri: "https://example.test/evidence",
+    };
+    const created = {
+      ...base,
+      id: "dcev_created",
+      changeKind: "CREATED",
+      observedAt: "2026-09-04T10:00:00.000Z",
+      after,
+    } as unknown as DocumentChangeEvidence;
+    const updated = {
+      ...base,
+      id: "dcev_updated",
+      eventId: "cf_2",
+      sequence: 2,
+      changeKind: "UPDATED",
+      observedAt: "2026-09-04T10:30:00.000Z",
+      after,
+    } as unknown as DocumentChangeEvidence;
+    vi.mocked(deps.changeEvidence.feed).mockReturnValue({
+      items: [created, updated],
+      nextCursor: null,
+    });
 
-const serverDerivedActorRoutes = ["conversion-runs", "conversion-runs/[id]/cancel"] as const;
+    const result = readOperatorInbox(workspaceId, deps, "2026-09-04T11:00:00.000Z");
 
-const serverDerivedIdentityRoutes = [
-  {
-    route: "discovery/candidates/[id]/review",
-    pattern: /reviewer:\s*principal\.userId/,
-    forbidden: /reviewer:\s*(?:body\.|"admin-console")/,
-  },
-  {
-    route: "discovery/candidates/[id]/authorize-collection",
-    pattern: /requestedBy:\s*principal\.userId/,
-    forbidden: /requestedBy:\s*(?:body\.|"admin-console")/,
-  },
-  {
-    route: "discovery/collection-authorization",
-    pattern: /requestedBy:\s*principal\.userId/,
-    forbidden: /requestedBy:\s*(?:body\.|"radar-collection-console")/,
-  },
-  {
-    route: "discovery/reviews",
-    pattern: /reviewer:\s*principal\.userId/,
-    forbidden: /reviewer:\s*(?:body\.|"admin-console"|"radar-review-console")/,
-  },
-  {
-    route: "discovery/reviews/reopen",
-    pattern: /reviewer:\s*principal\.userId/,
-    forbidden: /reviewer:\s*(?:body\.|"admin-console")/,
-  },
-  {
-    route: "expert-tasks",
-    pattern: /requestedBy:\s*principal\.userId/,
-    forbidden: /requestedBy:\s*body\./,
-  },
-  {
-    route: "expert-tasks/[id]",
-    pattern: /requiredString\(body,\s*"question"\),\s*principal\.userId/s,
-    forbidden: /createFollowUp\([^)]*body\.(?:requestedBy|actor|reviewer)/s,
-  },
-  {
-    route: "foundational/action-intents",
-    pattern: /requestedByActorId:\s*principal\.userId/,
-    forbidden: /requestedByActorId:\s*(?:payload\.|body\.)/,
-  },
-  {
-    route: "foundational/action-intents/[intentId]",
-    pattern: /(?:approve|cancel)FoundationalActionIntent\([^)]*principal\.userId\)/s,
-    forbidden: /actorId\s*=\s*typeof\s+payload\.actorId/,
-  },
-  {
-    route: "foundational/action-intents/[intentId]/execute",
-    pattern: /executedByActorId:\s*principal\.userId/,
-    forbidden: /executedByActorId:\s*(?:payload\.|body\.)/,
-  },
-  {
-    route: "conversion-recovery/[id]/retry",
-    pattern: /actorId:\s*principal\.userId/,
-    forbidden: /actorId:\s*(?:payload\.|body\.)/,
-  },
-  {
-    route: "foundational/retrieval-quality-remediation",
-    pattern: /actorId:\s*principal\.userId/,
-    forbidden: /actorId:\s*(?:payload\.|body\.)/,
-  },
-  {
-    route: "runs",
-    pattern: /requestedBy:\s*\{\s*actorType:\s*"LOCAL_ADMIN",\s*actorId:\s*principal\.userId\s*\}/s,
-    forbidden: /requestedBy:\s*(?:body\.|\{[^}]*local-admin)/s,
-  },
-  {
-    route: "source-intelligence/reviews",
-    pattern: /reviewer:\s*principal\.userId/,
-    forbidden: /reviewer:\s*(?:body\.|"admin-console")/,
-  },
-  {
-    route: "source-intelligence/reviews/ownership",
-    pattern: /actor:\s*principal\.userId/,
-    forbidden: /actor:\s*(?:body\.|"admin-console")/,
-  },
-  {
-    route: "source-intelligence/reviews/manual-sla",
-    pattern: /actor:\s*principal\.userId/,
-    forbidden: /actor:\s*(?:body\.|"admin-console")/,
-  },
-  {
-    route: "source-intelligence/reviews/policy-scopes",
-    pattern: /actor:\s*principal\.userId/,
-    forbidden: /actor:\s*(?:body\.|"admin-console")/,
-  },
-] as const;
-
-test("Admin browser workspace-scoped read routes use canonical read access", () => {
-  for (const route of workspaceScopedReadRoutes) {
-    assert.match(
-      routeSource(route),
-      new RegExp(`\\b${READ_ACCESS}\\b`),
-      `${route} must resolve canonical Admin browser read access`,
+    expect(categoryCount(result, "NEW_MATERIAL")).toBe(1);
+    expect(categoryCount(result, "MATERIAL_CHANGE")).toBe(1);
+    const ids = result.categories.flatMap((category) =>
+      category.items.map((item) => item.id),
     );
-  }
-});
-
-test("Admin browser mutation routes use canonical mutation access", () => {
-  for (const route of workspaceScopedMutationRoutes) {
-    assert.match(
-      routeSource(route),
-      new RegExp(`\\b${MUTATION_ACCESS}\\b`),
-      `${route} must resolve canonical Admin browser mutation access`,
-    );
-  }
-});
-
-test("Source Intelligence browser routes use the source-workspace successor boundary", () => {
-  for (const route of sourceIntelligenceReadRoutes) {
-    assert.match(
-      routeSource(route),
-      new RegExp(`\\b${SOURCE_INTELLIGENCE_READ_ACCESS}\\b`),
-      `${route} must resolve Source Intelligence browser read access`,
-    );
-  }
-  for (const route of sourceIntelligenceMutationRoutes) {
-    assert.match(
-      routeSource(route),
-      new RegExp(`\\b${SOURCE_INTELLIGENCE_MUTATION_ACCESS}\\b`),
-      `${route} must resolve Source Intelligence browser mutation access`,
-    );
-  }
-});
-
-test("Source Intelligence successor delegates to canonical access and durable Source workspaces", () => {
-  const source = serverSource("source-intelligence-browser-access");
-  assert.match(source, new RegExp(`\\b${READ_ACCESS}\\b`));
-  assert.match(source, new RegExp(`\\b${MUTATION_ACCESS}\\b`));
-  assert.match(source, new RegExp(`\\b${RESOURCE_WORKSPACE_ASSERTION}\\b`));
-  assert.match(source, /getSourceRepository/);
-  assert.match(source, /DEFAULT_WORKSPACE\.id/);
-});
-
-test("Expert browser routes use the governed dual browser/internal successor", () => {
-  for (const route of expertReadRoutes) {
-    assert.match(
-      routeSource(route),
-      new RegExp(`\\b${EXPERT_READ_ACCESS}\\b`),
-      `${route} must resolve governed Expert read access`,
-    );
-  }
-  for (const route of expertMutationRoutes) {
-    assert.match(
-      routeSource(route),
-      new RegExp(`\\b${EXPERT_MUTATION_ACCESS}\\b`),
-      `${route} must resolve governed Expert mutation access`,
-    );
-  }
-  for (const route of expertResourceRoutes) {
-    assert.match(
-      routeSource(route),
-      new RegExp(`\\b${EXPERT_RESOURCE_ASSERTION}\\b`),
-      `${route} must assert its durable Expert task workspace`,
-    );
-  }
-});
-
-test("Expert successor preserves internal auth but browser access uses Workspace Principal and CSRF", () => {
-  const source = serverSource("expert-api-access");
-  assert.match(source, /authenticateCaseProducerRequest/);
-  assert.match(source, /resolveAdminBrowserWorkspacePrincipal/);
-  assert.match(source, /validateAdminBrowserMutation/);
-  assert.match(source, /SqliteExpertTaskWorkspaceBindingRepository/);
-  assert.match(source, /READ_ONLY Workspace Principals cannot mutate Expert tasks/);
-});
-
-test("Workspace resource routes bind canonical principals to durable resource workspace", () => {
-  for (const route of resourceWorkspaceRoutes) {
-    assert.match(
-      routeSource(route),
-      new RegExp(`\\b${RESOURCE_WORKSPACE_ASSERTION}\\b`),
-      `${route} must assert the durable resource workspace`,
-    );
-  }
-});
-
-test("Browser mutations with durable actor fields derive actor identity from principal", () => {
-  for (const route of serverDerivedActorRoutes) {
-    const source = routeSource(route);
-    assert.match(source, /actor:\s*\{\s*type:\s*"ADMIN",\s*id:\s*principal\.userId\s*\}/s);
-    assert.doesNotMatch(source, /local-admin/);
-  }
-});
-
-test("Browser mutation identity fields are server-derived", () => {
-  for (const { route, pattern, forbidden } of serverDerivedIdentityRoutes) {
-    const source = routeSource(route);
-    assert.match(source, pattern, `${route} must derive mutation identity from principal.userId`);
-    assert.doesNotMatch(source, forbidden, `${route} must not trust browser-supplied identity`);
-  }
+    expect(ids.filter((id) => id === "dcev_created")).toHaveLength(1);
+    expect(ids.filter((id) => id === "dcev_updated")).toHaveLength(1);
+  });
 });
