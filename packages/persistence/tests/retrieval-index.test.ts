@@ -150,7 +150,11 @@ describe("retrieval index", () => {
     expect(second.total).toBe(75);
     expect(second.items).toHaveLength(25);
     expect(new Set(first.items.map((item) => item.chunk.chunkId)).size).toBe(50);
-    expect(second.items.every((item) => !first.items.some((firstItem) => firstItem.chunk.chunkId === item.chunk.chunkId))).toBe(true);
+    expect(
+      second.items.every(
+        (item) => !first.items.some((firstItem) => firstItem.chunk.chunkId === item.chunk.chunkId),
+      ),
+    ).toBe(true);
   });
 
   it("is idempotent for the same verified staging evidence and rejects digest drift", () => {
