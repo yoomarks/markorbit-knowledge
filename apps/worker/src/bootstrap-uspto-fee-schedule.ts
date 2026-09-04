@@ -260,10 +260,7 @@ async function ensureWorker(
 
 async function dispatch(baseUrl: string, planId: string): Promise<string> {
   const result = await requestJson(baseUrl, "/api/runs", {
-    ...jsonPost({
-      planId,
-      requestedBy: { actorType: "LOCAL_ADMIN", actorId: "phase2-uspto-fee-schedule" },
-    }),
+    ...jsonPost({ planId }),
     headers: {
       "content-type": "application/json",
       "Idempotency-Key": `phase2-uspto-fee-schedule-${Date.now()}`,

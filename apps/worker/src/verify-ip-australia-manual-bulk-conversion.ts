@@ -64,8 +64,8 @@ function pollMs(): number {
   return value;
 }
 
-async function getJson(path: string): Promise<Json> {
-  const response = await fetch(`${baseUrl()}${path}`);
+async function getJson(path: string, init: RequestInit = {}): Promise<Json> {
+  const response = await fetch(`${baseUrl()}${path}`, init);
   const body = (await response.json()) as unknown;
   if (!response.ok) {
     throw new Error(`${path} returned HTTP ${response.status}: ${JSON.stringify(body)}`);
@@ -73,6 +73,45 @@ async function getJson(path: string): Promise<Json> {
   const parsed = record(body);
   if (!parsed) throw new Error(`${path} did not return a JSON object`);
   return parsed;
+}
+
+function operatorServiceReadHeaders(workspaceId: string): Record<string, string> {
+  const internalSecret = requiredString(
+    process.env.MO_INTERNAL_SERVICE_SECRET,
+    "MO_INTERNAL_SERVICE_SECRET",
+  );
+  const sessionId = requiredString(
+    process.env.MARKORBIT_CALIBRATION_SESSION_ID,
+    "MARKORBIT_CALIBRATION_SESSION_ID",
+  );
+  const userId = requiredString(
+    process.env.MARKORBIT_CALIBRATION_USER_ID,
+    "MARKORBIT_CALIBRATION_USER_ID",
+  );
+  const membershipId = requiredString(
+    process.env.MARKORBIT_CALIBRATION_MEMBERSHIP_ID,
+    "MARKORBIT_CALIBRATION_MEMBERSHIP_ID",
+  );
+  const principal = Buffer.from(
+    JSON.stringify({
+      schemaVersion: 1,
+      principal: {
+        kind: "WORKSPACE",
+        sessionId,
+        userId,
+        workspaceId,
+        membershipId,
+        role: "READ_ONLY",
+        permissions: ["matter:read"],
+        sessionExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      },
+    }),
+    "utf8",
+  ).toString("base64url");
+  return {
+    "x-markorbit-internal-authorization": internalSecret,
+    "x-markorbit-principal": principal,
+  };
 }
 
 async function listConversionRuns(workspaceId: string, sourceId: string): Promise<Json[]> {
@@ -326,6 +365,7 @@ async function verifyRetrieval(
     const payload = await getJson(
       `/api/retrieval/search?workspaceId=${encodeURIComponent(workspaceId)}` +
         `&sourceId=${encodeURIComponent(sourceId)}&q=${encodeURIComponent(query)}&limit=10`,
+      { headers: operatorServiceReadHeaders(workspaceId) },
     );
     const total = Number(payload.total);
     const items = array(payload.items)
