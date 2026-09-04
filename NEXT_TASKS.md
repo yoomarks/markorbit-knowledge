@@ -1,130 +1,87 @@
 # MarkOrbit Knowledge — Next Tasks
 
-**Canonical direction:** Web / AI / Expert / Case four-pillar Knowledge strategy  
-**Checkpoint:** 2026-08-31  
-**Verified Knowledge main before this docs branch:** `4968975fd20042f3c6fa65e5808fd0d618ba69e4`  
-**Latest audited MarkOrbit/Core main:** `03d6260fdb33fdf697462af34433a9bdfb9cfd8e`
+**Canonical direction:** Evidence Supply Workbench inside the existing Acquisition & Knowledge Staging Control Plane boundary  
+**Checkpoint:** 2026-09-04  
 
-This is the short execution pointer. `docs/project/CURRENT_STATE.md` contains the fuller engineering checkpoint. Re-verify live GitHub state before protected, cross-repository or paid execution.
+This is the short execution pointer. Re-verify live GitHub state before protected, cross-repository, authenticated-source or paid execution.
 
-## Completed / frozen in the current stage
+## Phase 3 direction
 
-### Retrieval quality
+Knowledge has completed the prior infrastructure/correctness closeout through the Knowledge Browser completeness work in #696/#702. The next stage does **not** expand Knowledge into MarkOrbit Core semantic/business-intelligence responsibilities.
 
-The old post-#546 P0 is complete through real evidence-backed regression work:
+The product emphasis now shifts from proving that evidence can safely enter the system to making durable evidence fast to find, inspect, compare, review and deliver:
 
-- #604 — versioned representative retrieval regression corpus;
-- #605 — metadata/filter vs lexical vs lexical+relationship comparator;
-- #607 — real frozen Phase 2 USPTO live-corpus variant benchmark with exact document/chunk lineage;
-- no blended relevance score and no synthetic vector/provider metrics.
+- complete and trustworthy browse/search corpus semantics;
+- one corpus-truth read model across operator surfaces;
+- durable-truth operator work queues;
+- objective evidence change review;
+- evidence inspection, provenance and version lineage;
+- factual source coverage/freshness visibility.
 
-Do not reopen “build a real frozen corpus/query runner” as a new task; it is already implemented.
+## Immediate P1 execution order
 
-### K-FED four-source retrieval
+### P1-0 — Roadmap/current-state truth refresh (#703)
 
-- #608 — WEB / AI / EXPERT / CASE federated read surface merged;
-- WEB and AI reuse verified canonical retrieval and are classified from objective URI evidence (`http(s)` and `ai+markorbit:`);
-- Expert remains native provenance-bearing Expert source evidence scoped by durable workspace task bindings;
-- Case exposes promoted CaseCandidate descriptors, not dossier body content;
-- results remain grouped by family with no cross-family blended score;
-- #610 — repository-level acceptance proved all four families against real SQLite repositories and proved A/B workspace isolation.
+Refresh project docs against live repository truth and record this Phase 3 execution direction. Preserve external/operator gates rather than manufacturing code work around them.
 
-### Case
+### P1-1 — Hybrid Search completeness (#704)
 
-- K-CASE cross-repository promotion/intake/collection acceptance is established;
-- #603 refreshed the audited Core pin at its checkpoint;
-- do not treat direct Case → Core ReadyPackage delivery as the K-CASE-008 terminal objective;
-- do not chase later Core commits unless an actual drift/compatibility check requires a new pin.
+`GET /api/knowledge/search` still uses bounded candidate windows (`MAX_SCAN = 100`, `MAX_FTS_HITS = 50`). Remove the bounded-candidate correctness ceiling rather than increasing it. Do not present a bounded composed candidate count as an exact total.
 
-### Evidence security
+### P1-2 — Knowledge Query Read Model V2 (#705)
 
-- #606 sanitizes retained bootstrap evidence before artifact upload so runner-local worker credential fields are null/redacted;
-- never expose historical ephemeral runner-local credential values.
+Unify Browser and Search corpus membership/filter/facet/order semantics so workspace, source, jurisdiction, artifact kind, status, time, counts and pagination do not drift across two truth paths. Retrieval/ranking may remain a separate layer.
 
-### Relationship / graph
+### P1-3 — Operator Inbox (#706)
 
-- graph/relation repositories and read models exist;
-- the real Phase 2 corpus currently has no trustworthy live relationship-edge evidence;
-- relationship contribution/noise may therefore legitimately remain null;
-- do not invent edges merely to produce positive graph lift.
+Build one workspace-scoped daily work queue derived only from durable Source/Run/Artifact/Staging/Vault/ReadyPackage evidence. Initial categories include acquisition failure, stale/degraded source, new material, changed evidence, review-needed, Vault conflict, ready-to-deliver and delivery-blocked/reconciliation work.
 
-## Active P0 gates
+### P1-4 — Evidence Change Review (#707)
 
-There is no separate unblocked internal P0 coding issue at this checkpoint. The active queue consists of real external/operator gates.
+Make objective previous/current version changes reviewable with immutable RawArtifact and normalized-document lineage. Show text/structure/metadata differences without legal-significance scoring or recommendation.
 
-### P0-1 — Repository governance (#429)
+## External / operator gates that remain real
 
-The active `Protect main` ruleset already blocks deletion/non-fast-forward updates and requires strict `autoformat`, `validate (22)` and `validate (24)` checks plus review-thread resolution.
+### Repository governance (#429)
 
-Current exact governance gap:
+Repository-admin governance remains separate from code work. Do not weaken exact-SHA, review or evidence-retention controls to make live acceptance easier.
 
-- `required_approving_review_count = 0`;
-- `require_code_owner_review = false`.
+### ADK-06 live 3×2 acceptance (#405)
 
-Required action is a GitHub repository-admin change, not a code workaround. After #405 succeeds, durable non-public evidence archive closeout also remains required.
+Run only with explicit paid/live authorization, current exact Knowledge main SHA, real DeepSeek/OpenAI credentials, protected execution controls, evidence passphrase and authorized durable non-public evidence retention.
 
-### P0-2 — Expert real live vertical slice (#468)
+### CNIPA backend-only evidence debt (#691)
 
-Knowledge-side contracts, persistence, retrieval and consumer seams exist, but do not assume the reusable production Shared Communication capability is complete.
+The bounded CNIPA MVP is already closed. Remaining backend-only source-identity/schema/pagination/coverage facts require a legitimate permitted authenticated raw/source-response channel. Do not bypass CAPTCHA/SSO, anti-debug protections, or extract/replay session credentials.
 
-Before execution:
+## P2 product/UX backlog
 
-- re-audit exact current Core/shared Communication capability;
-- require a legitimate deployed sender/account;
-- send one existing Expert task exactly once;
-- preserve durable send/thread identity;
-- import one real same-thread reply with immutable raw provenance and attachment lineage where present;
-- prove replay creates no duplicate send or source record;
-- keep delivery uncertainty fail closed.
+After the P1 correctness and work-loop sequence above:
 
-Do not build a Knowledge-local generic email/provider transport.
+1. Evidence Inspector V2 — make Reader the central Content / Changes / Provenance / Relations / History surface.
+2. Search UX V2 — URL-persisted filters, status/artifact/date facets, chips, pagination, back-navigation state and saved views.
+3. Source Coverage Board — jurisdiction/authority/source-family freshness, last success/change and `COMPLETE | PARTIAL | UNKNOWN` boundaries.
+4. Workspace-aware Knowledge navigation — remove product-page dependence on `DEFAULT_WORKSPACE` and make workspace a real navigation context.
+5. Progressive disclosure — keep retrieval/debug evidence available while moving implementation details such as FTS/BM25 scores out of the primary operator hierarchy.
 
-### P0-3 — CNIPA authenticated live validation (#573)
+## Engineering trigger rule
 
-Architecture/runtime readiness is implemented. Remaining work is operator-assisted live evidence:
+Start a new Knowledge coding task when at least one of these is true **and** it has concrete acceptance criteria:
 
-- authorized human login/CAPTCHA completion;
-- one real registration-number probe across the three candidate libraries;
-- one real party-name/role-mapping probe;
-- validate list → detail source identity;
-- probe >100/page-11 behavior and record `PARTIAL`/`UNKNOWN` when exhaustive coverage cannot be proven;
-- freeze endpoint/schema facts only after authenticated evidence.
-
-Never automate CAPTCHA solving or bypass SSO/access controls.
-
-### P0-4 — ADK-06 live 3×2 acceptance (#405)
-
-Do not execute merely to keep development moving.
-
-Run only when all gates are genuinely ready:
-
-- explicit paid/live authorization;
-- DeepSeek/OpenAI credentials;
-- exact current Knowledge main SHA;
-- protected execution/approval controls;
-- evidence passphrase;
-- authorized durable non-public archive destination.
-
-Final acceptance remains 3 assignments × 2 real providers = 6 durable executed cells with exact RawArtifact lineage and no unresolved delivery uncertainty.
-
-## Internal engineering trigger rule
-
-Start a new Knowledge coding task only when at least one of these is true:
-
-1. a live/production run exposes a reproducible acquisition, lineage, retrieval, isolation or interoperability defect;
-2. a frozen regression corpus shows a measurable quality regression;
+1. a live/production path exposes a reproducible acquisition, lineage, retrieval, isolation or interoperability defect;
+2. a frozen regression corpus exposes a measurable quality/correctness regression;
 3. a cross-repository contract drift check proves compatibility work is required;
-4. an explicit product requirement introduces a new evidence-supply capability that still belongs inside Knowledge.
+4. a product requirement introduces a new evidence-supply capability that still belongs inside Knowledge;
+5. an observed operator-throughput, review-usability, coverage-truth or evidence-inspection gap prevents efficient use of already-durable Knowledge evidence.
 
-If none is true, do not manufacture framework work.
+This broader trigger does not authorize speculative framework work.
 
 ## Do not start merely to keep coding
 
-- another generic retrieval framework;
-- another K-FED abstraction after #608/#610 without an observed defect;
+- another generic retrieval framework unrelated to #704/#705;
 - blended cross-channel relevance/truth scoring;
 - synthetic vector/provider metrics;
-- fabricated graph edges or relationship lift;
+- fabricated graph edges or graph lift;
 - Knowledge-local generic AI provider transport;
 - Knowledge-local generic mailbox/provider platform;
 - fake live Expert communication evidence;
@@ -136,4 +93,4 @@ If none is true, do not manufacture framework work.
 
 ## Operating rule
 
-**抓大放小.** Prefer exact lineage, real source flows, measurable retrieval quality and durable cross-system evidence over additional framework surface.
+**抓大放小.** Prefer complete corpus truth, exact lineage, real source flows, objective changes, measurable operator throughput and durable cross-system evidence over additional framework surface.
