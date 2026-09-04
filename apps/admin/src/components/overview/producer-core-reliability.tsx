@@ -259,7 +259,8 @@ export function ProducerCoreReliability({ workspaceId }: Props) {
                       <th className="pb-2 pr-4 font-semibold">Submission</th>
                       <th className="pb-2 pr-4 font-semibold">ReadyPackage</th>
                       <th className="pb-2 pr-4 font-semibold">Result</th>
-                      <th className="pb-2 font-semibold">Attempts</th>
+                      <th className="pb-2 pr-4 font-semibold">Attempts</th>
+                      <th className="pb-2 font-semibold">Evidence</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-600">
@@ -269,7 +270,18 @@ export function ProducerCoreReliability({ workspaceId }: Props) {
                         <td className="py-2 pr-4 font-mono">{item.submissionId}</td>
                         <td className="py-2 pr-4 font-mono">{item.readyPackageId}</td>
                         <td className="py-2 pr-4">{item.resultStatus ?? "—"}</td>
-                        <td className="py-2">{item.attemptCount}</td>
+                        <td className="py-2 pr-4">{item.attemptCount}</td>
+                        <td className="py-2">
+                          <a
+                            href={`/api/knowledge/reliability/deliveries/${encodeURIComponent(item.submissionId)}?workspaceId=${encodeURIComponent(workspaceId)}&to=${encodeURIComponent(scorecard.window.to)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`${zh ? "查看证据" : "Inspect evidence"} ${item.submissionId}`}
+                            className="font-semibold text-blue-600 hover:text-blue-700"
+                          >
+                            {zh ? "证据" : "Evidence"}
+                          </a>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -298,6 +310,7 @@ export function ProducerCoreReliability({ workspaceId }: Props) {
                       <th className="pb-2 pr-4 font-semibold">Promoted</th>
                       <th className="pb-2 pr-4 font-semibold">Ready</th>
                       <th className="pb-2 pr-4 font-semibold">Prepared</th>
+                      <th className="pb-2 pr-4 font-semibold">Attempted</th>
                       <th className="pb-2 pr-4 font-semibold">Delivered</th>
                       <th className="pb-2 font-semibold">Promoted → Ready</th>
                     </tr>
@@ -309,6 +322,7 @@ export function ProducerCoreReliability({ workspaceId }: Props) {
                         <td className="py-2 pr-4">{item.promoted}</td>
                         <td className="py-2 pr-4">{item.readyPackageCreated}</td>
                         <td className="py-2 pr-4">{item.deliveryPrepared}</td>
+                        <td className="py-2 pr-4">{item.deliveryAttempted}</td>
                         <td className="py-2 pr-4">{item.delivered}</td>
                         <td className="py-2">{latencyLabel(item.promotedToReadyPackageLatency)}</td>
                       </tr>

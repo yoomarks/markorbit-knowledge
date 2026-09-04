@@ -49,11 +49,7 @@ export type ProducerCoreReliabilityDeliveryDetail = {
     state: ReadyPackageV2DeliverySubmission["state"];
     transportAttempts: number;
     lastTransportAttemptedAt: string | null;
-    resultStatus: ReadyPackageV2DeliverySubmission["result"] extends infer Result
-      ? Result extends { status: infer Status }
-        ? Status | null
-        : string | null
-      : string | null;
+    resultStatus: "RECEIVED" | "ACCEPTED" | "REJECTED" | null;
     resultRecordedAt: string | null;
     createdAt: string;
     updatedAt: string;
