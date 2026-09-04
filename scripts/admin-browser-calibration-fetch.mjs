@@ -87,6 +87,7 @@ function operatorPrincipalHeader() {
 
 function isOperatorOnlyPath(pathname) {
   return (
+    pathname === "/api/conversion-runtime/capabilities" ||
     /^\/api\/raw-artifacts\/[^/]+\/source-graph$/.test(pathname) ||
     /^\/api\/runs\/[^/]+\/executions$/.test(pathname)
   );
