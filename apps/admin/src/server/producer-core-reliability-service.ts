@@ -9,6 +9,8 @@ import type {
 import { ensureCanonicalDownstreamDocumentRegistry } from "@markorbit/persistence/canonical-downstream-documents";
 import {
   buildProducerCoreReliabilityScorecard,
+  projectReadyPackageV2DeliveryAsOf,
+  type ProducerCoreReliabilityDeliveryProjection,
   type ProducerCoreReliabilityQueryV1,
   type ProducerCoreReliabilityScorecardV1,
 } from "@markorbit/persistence/producer-core-reliability-scorecard";
@@ -34,6 +36,30 @@ type AuditRow = {
   issue_code: string | null;
   http_status: number | null;
   result_status: ReadyPackageV2DeliveryAuditEvent["resultStatus"] | null;
+};
+
+export type ProducerCoreReliabilityDeliveryDetail = {
+  workspaceId: string;
+  asOf: string;
+  submission: {
+    submissionId: string;
+    readyPackageId: string;
+    coreWorkspaceId: string;
+    requestSha256: string;
+    state: ReadyPackageV2DeliverySubmission["state"];
+    transportAttempts: number;
+    lastTransportAttemptedAt: string | null;
+    resultStatus: ReadyPackageV2DeliverySubmission["result"] extends infer Result
+      ? Result extends { status: infer Status }
+        ? Status | null
+        : string | null
+      : string | null;
+    resultRecordedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+  reconciliation: ProducerCoreReliabilityDeliveryProjection;
+  auditEvents: ReadyPackageV2DeliveryAuditEvent[];
 };
 
 function parseJsonRows<T>(rows: JsonRow[], label: string): T[] {
@@ -65,6 +91,22 @@ function selectJsonBefore<T>(
   return parseJsonRows<T>(rows, label);
 }
 
+function mapAuditRow(row: AuditRow): ReadyPackageV2DeliveryAuditEvent {
+  return {
+    workspaceId: row.workspace_id,
+    submissionId: row.submission_id,
+    readyPackageId: row.ready_package_id,
+    sequence: row.sequence,
+    type: row.event_type,
+    requestSha256: row.request_sha256,
+    recordedAt: row.recorded_at,
+    ...(row.attempt_number === null ? {} : { attemptNumber: row.attempt_number }),
+    ...(row.issue_code === null ? {} : { issueCode: row.issue_code }),
+    ...(row.http_status === null ? {} : { httpStatus: row.http_status }),
+    ...(row.result_status === null ? {} : { resultStatus: row.result_status }),
+  };
+}
+
 function selectAuditBefore(
   database: DatabaseSync,
   workspaceId: string,
@@ -79,19 +121,25 @@ function selectAuditBefore(
        ORDER BY submission_id ASC, sequence ASC`,
     )
     .all(workspaceId, to) as AuditRow[];
-  return rows.map((row) => ({
-    workspaceId: row.workspace_id,
-    submissionId: row.submission_id,
-    readyPackageId: row.ready_package_id,
-    sequence: row.sequence,
-    type: row.event_type,
-    requestSha256: row.request_sha256,
-    recordedAt: row.recorded_at,
-    ...(row.attempt_number === null ? {} : { attemptNumber: row.attempt_number }),
-    ...(row.issue_code === null ? {} : { issueCode: row.issue_code }),
-    ...(row.http_status === null ? {} : { httpStatus: row.http_status }),
-    ...(row.result_status === null ? {} : { resultStatus: row.result_status }),
-  }));
+  return rows.map(mapAuditRow);
+}
+
+function selectSubmissionAuditBefore(
+  database: DatabaseSync,
+  workspaceId: string,
+  submissionId: string,
+  to: string,
+): ReadyPackageV2DeliveryAuditEvent[] {
+  const rows = database
+    .prepare(
+      `SELECT workspace_id, submission_id, ready_package_id, sequence, event_type,
+              request_sha256, recorded_at, attempt_number, issue_code, http_status, result_status
+       FROM ready_package_v2_delivery_audit_events
+       WHERE workspace_id = ? AND submission_id = ? AND recorded_at < ?
+       ORDER BY sequence ASC`,
+    )
+    .all(workspaceId, submissionId, to) as AuditRow[];
+  return rows.map(mapAuditRow);
 }
 
 function ensureDurableEvidenceTables(database: DatabaseSync): void {
@@ -180,4 +228,52 @@ export function getProducerCoreReliabilityScorecard(
       auditEvents: auditBySubmission.get(submission.submissionId) ?? [],
     })),
   });
+}
+
+export function getProducerCoreReliabilityDeliveryDetail(
+  workspaceIdValue: string,
+  submissionIdValue: string,
+  asOf: string,
+  database: DatabaseSync = getRegistryDatabase(),
+): ProducerCoreReliabilityDeliveryDetail | null {
+  ensureDurableEvidenceTables(database);
+  const workspaceId = workspaceIdValue.trim();
+  const submissionId = submissionIdValue.trim();
+  if (!workspaceId || !submissionId || Number.isNaN(Date.parse(asOf))) return null;
+
+  const row = database
+    .prepare(
+      `SELECT document_json AS value
+       FROM ready_package_v2_delivery_submissions
+       WHERE workspace_id = ? AND submission_id = ? AND created_at < ?`,
+    )
+    .get(workspaceId, submissionId, asOf) as JsonRow | undefined;
+  if (!row) return null;
+
+  const [submission] = parseJsonRows<ReadyPackageV2DeliverySubmission>(
+    [row],
+    "ReadyPackage V2 delivery submission",
+  );
+  const auditEvents = selectSubmissionAuditBefore(database, workspaceId, submissionId, asOf);
+  const reconciliation = projectReadyPackageV2DeliveryAsOf({ submission, auditEvents }, asOf);
+
+  return {
+    workspaceId,
+    asOf,
+    submission: {
+      submissionId: submission.submissionId,
+      readyPackageId: submission.readyPackageId,
+      coreWorkspaceId: submission.coreWorkspaceId,
+      requestSha256: submission.requestSha256,
+      state: submission.state,
+      transportAttempts: submission.transportAttempts,
+      lastTransportAttemptedAt: submission.lastTransportAttemptedAt ?? null,
+      resultStatus: submission.result?.status ?? null,
+      resultRecordedAt: submission.result?.recordedAt ?? null,
+      createdAt: submission.createdAt,
+      updatedAt: submission.updatedAt,
+    },
+    reconciliation,
+    auditEvents,
+  };
 }
