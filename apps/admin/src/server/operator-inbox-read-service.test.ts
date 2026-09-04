@@ -154,6 +154,9 @@ describe("readOperatorInbox", () => {
     expect(
       result.categories.find((category) => category.category === "NEW_MATERIAL")?.items[0]?.href,
     ).toBe("/knowledge/stg_1");
+    expect(
+      result.categories.find((category) => category.category === "MATERIAL_CHANGE")?.items[0]?.href,
+    ).toBe("/knowledge/stg_1#evidence-change-review");
   });
 
   it("links durable incidents and V2 delivery items to their governed record surfaces", () => {

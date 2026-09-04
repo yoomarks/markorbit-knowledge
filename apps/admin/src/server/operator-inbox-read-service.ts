@@ -124,6 +124,7 @@ function collectChangeEvidence(
     const page = repository.feed({ workspaceId, cursor, limit: PAGE_SIZE });
     for (const item of page.items) {
       if (item.changeKind === "UNCHANGED") continue;
+      const knowledgeHref = `/knowledge/${encodeURIComponent(item.after.stagingDocumentId)}`;
       result.push({
         ...evidence({
           id: item.id,
@@ -137,7 +138,10 @@ function collectChangeEvidence(
                 ? item.dimensions.join(", ")
                 : "Indexed evidence changed",
           occurredAt: item.observedAt,
-          href: `/knowledge/${encodeURIComponent(item.after.stagingDocumentId)}`,
+          href:
+            item.changeKind === "UPDATED"
+              ? `${knowledgeHref}#evidence-change-review`
+              : knowledgeHref,
         }),
         changeKind: item.changeKind,
       });
