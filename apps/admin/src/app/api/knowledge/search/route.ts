@@ -10,7 +10,7 @@ import { RegistryValidationError } from "@markorbit/persistence";
 import {
   queryKnowledgeReadModel,
   queryKnowledgeReadModelItemsByIds,
-} from "@markorbit/persistence/knowledge-query-read-model";
+} from "@markorbit/persistence/knowledge-browser-query";
 import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import {
