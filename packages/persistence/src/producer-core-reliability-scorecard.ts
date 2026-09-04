@@ -79,6 +79,7 @@ export type ProducerCoreReliabilityBindingCohort = {
   promoted: number;
   readyPackageCreated: number;
   deliveryPrepared: number;
+  deliveryAttempted: number;
   delivered: number;
   consumerRejected: number;
   outcomeUnknown: number;
@@ -421,7 +422,21 @@ function bindingForDelivery(
   delivery: ProducerCoreReliabilityDeliveryEvidence,
   readyPackagesById: Map<string, ReadyPackageV2>,
 ): string | null {
-  return readyPackagesById.get(delivery.submission.readyPackageId)?.evidence.origin.binding.bindingId ?? null;
+  return (
+    readyPackagesById.get(delivery.submission.readyPackageId)?.evidence.origin.binding.bindingId ??
+    null
+  );
+}
+
+function firstTransportAttemptInWindow(
+  delivery: ProducerCoreReliabilityDeliveryEvidence,
+  window: { from: number; to: number },
+): boolean {
+  const firstAttempt = delivery.auditEvents
+    .filter((event) => event.type === "TRANSPORT_ATTEMPT_STARTED")
+    .slice()
+    .sort((left, right) => left.sequence - right.sequence)[0];
+  return firstAttempt ? inWindow(firstAttempt.recordedAt, window) : false;
 }
 
 function buildBindingCohorts(
@@ -433,7 +448,8 @@ function buildBindingCohorts(
 ): ProducerCoreReliabilityBindingCohort[] {
   const bindingIds = new Set<string>();
   for (const document of canonicalDocuments) bindingIds.add(document.origin.binding.bindingId);
-  for (const readyPackage of readyPackages) bindingIds.add(readyPackage.evidence.origin.binding.bindingId);
+  for (const readyPackage of readyPackages)
+    bindingIds.add(readyPackage.evidence.origin.binding.bindingId);
 
   const readyPackagesById = new Map(readyPackages.map((item) => [item.id, item]));
   const packagesByCanonical = new Map<string, ReadyPackageV2>();
@@ -456,6 +472,9 @@ function buildBindingCohorts(
       const bindingDeliveries = deliveries.filter(
         (delivery) => bindingForDelivery(delivery, readyPackagesById) === bindingId,
       );
+      const attemptedBindingDeliveries = bindingDeliveries.filter((delivery) =>
+        firstTransportAttemptInWindow(delivery, window),
+      );
       const promotedToReadySamples = documents
         .filter((document) => inWindow(document.promotedAt, window))
         .map((document) => {
@@ -467,7 +486,7 @@ function buildBindingCohorts(
       let delivered = 0;
       let consumerRejected = 0;
       let outcomeUnknown = 0;
-      for (const delivery of bindingDeliveries) {
+      for (const delivery of attemptedBindingDeliveries) {
         const projection = projections.get(delivery.submission.submissionId);
         if (!projection) continue;
         if (projection.state === "DELIVERED") delivered += 1;
@@ -478,11 +497,13 @@ function buildBindingCohorts(
       return {
         bindingId,
         promoted: documents.filter((document) => inWindow(document.promotedAt, window)).length,
-        readyPackageCreated: bindingPackages.filter((item) => inWindow(item.createdAt, window)).length,
+        readyPackageCreated: bindingPackages.filter((item) => inWindow(item.createdAt, window))
+          .length,
         deliveryPrepared: bindingDeliveries.filter((delivery) => {
           const projection = projections.get(delivery.submission.submissionId);
           return projection?.preparedAt ? inWindow(projection.preparedAt, window) : false;
         }).length,
+        deliveryAttempted: attemptedBindingDeliveries.length,
         delivered,
         consumerRejected,
         outcomeUnknown,
@@ -501,30 +522,42 @@ export function buildProducerCoreReliabilityScorecard(
 
   const stagingDocuments = evidence.stagingDocuments.filter(
     (item) =>
-      matchesWorkspace(item, workspaceId) && (!bindingId || item.binding.bindingId === bindingId),
+      matchesWorkspace(item, workspaceId) &&
+      beforeTo(item.importedAt, window) &&
+      (!bindingId || item.binding.bindingId === bindingId),
   );
   const stagingById = new Map(stagingDocuments.map((item) => [item.id, item]));
   const verifications = evidence.verifications.filter(
-    (item) => matchesWorkspace(item, workspaceId) && stagingById.has(item.vaultStagingDocumentId),
+    (item) =>
+      matchesWorkspace(item, workspaceId) &&
+      beforeTo(item.createdAt, window) &&
+      stagingById.has(item.vaultStagingDocumentId),
   );
   const verificationIds = new Set(verifications.map((item) => item.id));
   const finalizations = evidence.finalizations.filter(
-    (item) => matchesWorkspace(item, workspaceId) && verificationIds.has(item.verificationId),
+    (item) =>
+      matchesWorkspace(item, workspaceId) &&
+      beforeTo(item.finalizedAt, window) &&
+      verificationIds.has(item.verificationId),
   );
   const canonicalDocuments = evidence.canonicalDocuments.filter(
     (item) =>
       matchesWorkspace(item, workspaceId) &&
+      beforeTo(item.promotedAt, window) &&
       (!bindingId || item.origin.binding.bindingId === bindingId),
   );
   const readyPackages = evidence.readyPackages.filter(
     (item) =>
       matchesWorkspace(item, workspaceId) &&
+      beforeTo(item.createdAt, window) &&
       (!bindingId || item.evidence.origin.binding.bindingId === bindingId),
   );
   const readyPackagesById = new Map(readyPackages.map((item) => [item.id, item]));
   const deliveries = evidence.deliveries.filter(
     (item) =>
-      item.submission.workspaceId === workspaceId && readyPackagesById.has(item.submission.readyPackageId),
+      item.submission.workspaceId === workspaceId &&
+      beforeTo(item.submission.createdAt, window) &&
+      readyPackagesById.has(item.submission.readyPackageId),
   );
 
   const projections = new Map<string, ProducerCoreReliabilityDeliveryProjection>();
@@ -569,13 +602,9 @@ export function buildProducerCoreReliabilityScorecard(
     return projections.get(delivery.submission.submissionId)?.preparedAt !== null;
   }).length;
 
-  const attemptedDeliveries = deliveries.filter((delivery) => {
-    const firstAttempt = delivery.auditEvents
-      .filter((event) => event.type === "TRANSPORT_ATTEMPT_STARTED")
-      .slice()
-      .sort((left, right) => left.sequence - right.sequence)[0];
-    return firstAttempt ? inWindow(firstAttempt.recordedAt, window) : false;
-  });
+  const attemptedDeliveries = deliveries.filter((delivery) =>
+    firstTransportAttemptInWindow(delivery, window),
+  );
 
   const deliveryStates = deliveryStateRecord();
   const resultStatus = { RECEIVED: 0, ACCEPTED: 0, REJECTED: 0, noDurableResult: 0 };
@@ -606,10 +635,16 @@ export function buildProducerCoreReliabilityScorecard(
     deliveryStates.EVIDENCE_INCONSISTENT;
 
   const observedToImported = canonicalDocuments
-    .filter((item) => inWindow(item.origin.observedAt, window) && beforeTo(item.origin.importedAt, window))
+    .filter(
+      (item) =>
+        inWindow(item.origin.observedAt, window) && beforeTo(item.origin.importedAt, window),
+    )
     .map((item) => durationMs(item.origin.observedAt, item.origin.importedAt));
   const importedToVerified = canonicalDocuments
-    .filter((item) => inWindow(item.origin.importedAt, window) && beforeTo(item.origin.verifiedAt, window))
+    .filter(
+      (item) =>
+        inWindow(item.origin.importedAt, window) && beforeTo(item.origin.verifiedAt, window),
+    )
     .map((item) => durationMs(item.origin.importedAt, item.origin.verifiedAt));
   const verifiedToPromoted = canonicalDocuments
     .filter((item) => inWindow(item.origin.verifiedAt, window) && beforeTo(item.promotedAt, window))
@@ -630,7 +665,8 @@ export function buildProducerCoreReliabilityScorecard(
     const delivery = deliveryByReadyPackageId.get(readyPackage.id);
     if (!delivery) return null;
     const projection = projections.get(delivery.submission.submissionId);
-    if (!projection?.resultRecordedAt || !beforeTo(projection.resultRecordedAt, window)) return null;
+    if (!projection?.resultRecordedAt || !beforeTo(projection.resultRecordedAt, window))
+      return null;
     return durationMs(readyPackage.createdAt, projection.resultRecordedAt);
   });
 
@@ -679,7 +715,8 @@ export function buildProducerCoreReliabilityScorecard(
       latencyCohortAnchor: "START_EVENT_IN_WINDOW_END_BEFORE_WINDOW_TO",
     },
     funnel: {
-      observed: canonicalDocuments.filter((item) => inWindow(item.origin.observedAt, window)).length,
+      observed: canonicalDocuments.filter((item) => inWindow(item.origin.observedAt, window))
+        .length,
       imported: stagingDocuments.filter((item) => inWindow(item.importedAt, window)).length,
       verified: verifications.filter((item) => inWindow(item.createdAt, window)).length,
       verificationPass: verifications.filter(
@@ -709,10 +746,7 @@ export function buildProducerCoreReliabilityScorecard(
         canonicalFromVerifiedByCutoff,
         verifiedFinalizations.length,
       ),
-      canonicalPromotionToReadyPackage: rate(
-        readyFromPromotedByCutoff,
-        promotedCanonical.length,
-      ),
+      canonicalPromotionToReadyPackage: rate(readyFromPromotedByCutoff, promotedCanonical.length),
       readyPackageToDeliveryPrepared: rate(preparedFromReadyByCutoff, readyPackageCohort.length),
       attemptedDeliveryKnownResult: rate(knownResultCount, attemptedDeliveries.length),
       attemptedDeliveryDeliveredSuccess: rate(deliveredSuccessCount, attemptedDeliveries.length),

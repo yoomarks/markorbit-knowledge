@@ -22,7 +22,9 @@ const BINDING = "vbd_scorecard";
 const SHA = "a".repeat(64);
 const REQUEST_SHA = "b".repeat(64);
 
-function origin(overrides: Partial<CanonicalDownstreamVaultImportOriginV1> = {}): CanonicalDownstreamVaultImportOriginV1 {
+function origin(
+  overrides: Partial<CanonicalDownstreamVaultImportOriginV1> = {},
+): CanonicalDownstreamVaultImportOriginV1 {
   return {
     kind: "VAULT_IMPORT",
     inspectionRunId: "vin_1",
@@ -44,7 +46,9 @@ function origin(overrides: Partial<CanonicalDownstreamVaultImportOriginV1> = {})
   };
 }
 
-function staging(overrides: Partial<VaultOriginStagingDocumentV1> = {}): VaultOriginStagingDocumentV1 {
+function staging(
+  overrides: Partial<VaultOriginStagingDocumentV1> = {},
+): VaultOriginStagingDocumentV1 {
   return {
     contractVersion: "1.0",
     objectType: "VAULT_ORIGIN_STAGING_DOCUMENT",
@@ -105,7 +109,9 @@ function finalization(
   };
 }
 
-function canonical(overrides: Partial<CanonicalDownstreamDocumentV1> = {}): CanonicalDownstreamDocumentV1 {
+function canonical(
+  overrides: Partial<CanonicalDownstreamDocumentV1> = {},
+): CanonicalDownstreamDocumentV1 {
   return {
     contractVersion: "1.0",
     objectType: "CANONICAL_DOWNSTREAM_DOCUMENT",
@@ -147,7 +153,9 @@ function readyPackage(overrides: Partial<ReadyPackageV2> = {}): ReadyPackageV2 {
   };
 }
 
-function submission(overrides: Partial<ReadyPackageV2DeliverySubmission> = {}): ReadyPackageV2DeliverySubmission {
+function submission(
+  overrides: Partial<ReadyPackageV2DeliverySubmission> = {},
+): ReadyPackageV2DeliverySubmission {
   return {
     submissionId: "rvd_1",
     workspaceId: WORKSPACE,
@@ -184,11 +192,15 @@ function audit(
   };
 }
 
-function delivery(events: ReadyPackageV2DeliveryAuditEvent[]): ProducerCoreReliabilityDeliveryEvidence {
+function delivery(
+  events: ReadyPackageV2DeliveryAuditEvent[],
+): ProducerCoreReliabilityDeliveryEvidence {
   return { submission: submission(), auditEvents: events };
 }
 
-function baseEvidence(events: ReadyPackageV2DeliveryAuditEvent[] = []): ProducerCoreReliabilityEvidenceV1 {
+function baseEvidence(
+  events: ReadyPackageV2DeliveryAuditEvent[] = [],
+): ProducerCoreReliabilityEvidenceV1 {
   return {
     stagingDocuments: [staging()],
     verifications: [verification()],
@@ -397,5 +409,67 @@ describe("Producer/Core reliability scorecard", () => {
     expect(scorecard.filters.bindingId).toBe(BINDING);
     expect(scorecard.funnel.imported).toBe(1);
     expect(scorecard.cohorts.byBinding.map((item) => item.bindingId)).toEqual([BINDING]);
+  });
+
+  it("excludes evidence that first becomes durable after the historical cutoff", () => {
+    const evidence = baseEvidence();
+    evidence.canonicalDocuments = [canonical({ promotedAt: "2026-09-03T00:30:00.000Z" })];
+    evidence.readyPackages = [readyPackage({ createdAt: "2026-09-03T00:40:00.000Z" })];
+    evidence.deliveries = [
+      delivery([
+        audit(1, "PREPARED", "2026-09-03T00:50:00.000Z"),
+        audit(2, "TRANSPORT_ATTEMPT_STARTED", "2026-09-03T01:00:00.000Z", {
+          attemptNumber: 1,
+        }),
+      ]),
+    ];
+
+    const scorecard = buildProducerCoreReliabilityScorecard(
+      { workspaceId: WORKSPACE, window: WINDOW },
+      evidence,
+    );
+
+    expect(scorecard.funnel.observed).toBe(0);
+    expect(scorecard.funnel.promoted).toBe(0);
+    expect(scorecard.funnel.readyPackageCreated).toBe(0);
+    expect(scorecard.funnel.deliveryPrepared).toBe(0);
+    expect(scorecard.delivery.attemptedCohortSize).toBe(0);
+    expect(scorecard.cohorts.byBinding).toEqual([]);
+  });
+
+  it("anchors binding delivery outcomes to the same first-attempt window as the top-level cohort", () => {
+    const events = [
+      audit(1, "PREPARED", "2026-09-01T00:50:00.000Z"),
+      audit(2, "TRANSPORT_ATTEMPT_STARTED", "2026-09-01T00:55:00.000Z", {
+        attemptNumber: 1,
+      }),
+      audit(3, "TRANSPORT_RESULT_RECORDED", "2026-09-01T01:05:00.000Z", {
+        attemptNumber: 1,
+        resultStatus: "ACCEPTED",
+      }),
+      audit(4, "FINALIZED", "2026-09-01T01:06:00.000Z", {
+        attemptNumber: 1,
+        resultStatus: "ACCEPTED",
+      }),
+    ];
+    const scorecard = buildProducerCoreReliabilityScorecard(
+      {
+        workspaceId: WORKSPACE,
+        window: {
+          from: "2026-09-01T01:00:00.000Z",
+          to: "2026-09-02T00:00:00.000Z",
+        },
+      },
+      baseEvidence(events),
+    );
+
+    expect(scorecard.delivery.attemptedCohortSize).toBe(0);
+    expect(scorecard.cohorts.byBinding[0]).toMatchObject({
+      bindingId: BINDING,
+      deliveryAttempted: 0,
+      delivered: 0,
+      consumerRejected: 0,
+      outcomeUnknown: 0,
+    });
   });
 });

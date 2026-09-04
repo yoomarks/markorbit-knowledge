@@ -30,15 +30,7 @@ function latencyLabel(value: ProducerCoreReliabilityLatencyDistribution): string
   return `P50 ${duration(value.p50Ms)} · P95 ${duration(value.p95Ms)} · n=${value.sampleSize}`;
 }
 
-function Metric({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-}) {
+function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
@@ -135,7 +127,10 @@ export function ProducerCoreReliability({ workspaceId }: Props) {
       </div>
 
       {error ? (
-        <div role="alert" className="flex items-center gap-2 border-b border-rose-100 bg-rose-50 px-5 py-3 text-xs text-rose-700">
+        <div
+          role="alert"
+          className="flex items-center gap-2 border-b border-rose-100 bg-rose-50 px-5 py-3 text-xs text-rose-700"
+        >
           <AlertTriangle size={14} aria-hidden="true" />
           {zh ? "可靠性数据加载失败：" : "Reliability load failed: "}
           {error}
@@ -194,7 +189,8 @@ export function ProducerCoreReliability({ workspaceId }: Props) {
               ))}
             </div>
             <p className="mt-2 text-[10px] leading-4 text-slate-400">
-              * {zh
+              *{" "}
+              {zh
                 ? "Observed 来自 canonical origin preservation，属于明确标注的部分历史覆盖，不等同于全量 acquisition event。"
                 : "Observed comes from canonical origin preservation and is explicitly partial historical coverage, not a complete acquisition-event count."}
             </p>
@@ -228,15 +224,21 @@ export function ProducerCoreReliability({ workspaceId }: Props) {
               <dl className="mt-3 space-y-2 text-[11px]">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500">Verified → Promoted</dt>
-                  <dd className="font-medium text-slate-700">{latencyLabel(latency.verifiedToPromoted)}</dd>
+                  <dd className="font-medium text-slate-700">
+                    {latencyLabel(latency.verifiedToPromoted)}
+                  </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500">Promoted → ReadyPackage</dt>
-                  <dd className="font-medium text-slate-700">{latencyLabel(latency.promotedToReadyPackage)}</dd>
+                  <dd className="font-medium text-slate-700">
+                    {latencyLabel(latency.promotedToReadyPackage)}
+                  </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500">ReadyPackage → Result</dt>
-                  <dd className="font-medium text-slate-700">{latencyLabel(latency.readyPackageToDeliveryResult)}</dd>
+                  <dd className="font-medium text-slate-700">
+                    {latencyLabel(latency.readyPackageToDeliveryResult)}
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -245,7 +247,9 @@ export function ProducerCoreReliability({ workspaceId }: Props) {
           {reconciliation.length > 0 ? (
             <details className="border-b border-slate-100 px-5 py-4">
               <summary className="cursor-pointer text-xs font-semibold text-amber-700">
-                {zh ? `查看 ${reconciliation.length} 个需关注的 durable delivery records` : `Inspect ${reconciliation.length} durable delivery records requiring attention`}
+                {zh
+                  ? `查看 ${reconciliation.length} 个需关注的 durable delivery records`
+                  : `Inspect ${reconciliation.length} durable delivery records requiring attention`}
               </summary>
               <div className="mt-3 overflow-x-auto">
                 <table className="min-w-full text-left text-[11px]">
@@ -275,7 +279,9 @@ export function ProducerCoreReliability({ workspaceId }: Props) {
           ) : (
             <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3 text-xs text-emerald-700">
               <CheckCircle2 size={14} aria-hidden="true" />
-              {zh ? "当前窗口没有需要协调的 delivery evidence。" : "No delivery evidence requires reconciliation in this window."}
+              {zh
+                ? "当前窗口没有需要协调的 delivery evidence。"
+                : "No delivery evidence requires reconciliation in this window."}
             </div>
           )}
 
