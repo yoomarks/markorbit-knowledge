@@ -1,54 +1,53 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ExternalLink, FileText, Loader2 } from "lucide-react";
-import { useAdminI18n } from "@/lib/i18n";
-import { buildKnowledgeReaderModel, type KnowledgeReaderBlock } from "./content-reader-model";
+import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, ArrowRight, Inbox, Loader2, RefreshCw } from "lucide-react";
 
-type KnowledgeReaderDetail = {
+type OperatorInboxCategory =
+  | "ACQUISITION_FAILED"
+  | "SOURCE_STALE_DEGRADED"
+  | "NEW_MATERIAL"
+  | "MATERIAL_CHANGE"
+  | "NEEDS_REVIEW"
+  | "VAULT_CONFLICT"
+  | "READY_FOR_DELIVERY"
+  | "DELIVERY_BLOCKED";
+
+type OperatorInboxItem = {
+  category: OperatorInboxCategory;
   id: string;
+  objectType: string;
+  objectId: string;
   title: string;
-  content: string;
-  targetPath: string;
-  outputFormat: string;
-  status: "GENERATED" | "READY" | "BLOCKED" | "ARCHIVED";
-  validation: { outcome: string; warnings: string[] };
-  generatedAt: string;
-  createdAt: string;
-  updatedAt: string;
-  source: {
-    id: string;
-    name: string;
-    sourceType: string;
-    category: string;
-    authorityLevel: string;
-    jurisdictions: string[];
-    languages: string[];
-    canonicalUri: string | null;
-    entrypoints: Array<{ uri: string; label?: string }>;
-  } | null;
-  artifact: {
-    id: string;
-    originalName: string;
-    artifactKind: string;
-    mimeType: string;
-    version: number;
-    sizeBytes: number;
-    capturedAt: string;
-    publishedAt: string | null;
-    canonicalUri: string | null;
-    sourceUri: string;
-    status: string;
-    contentHash: { algorithm: string; value: string };
-  } | null;
+  reason: string;
+  occurredAt: string;
+  href: string;
 };
 
-function formatBytes(value: number): string {
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KiB`;
-  return `${(value / 1024 / 1024).toFixed(1)} MiB`;
-}
+type OperatorInboxResponse = {
+  workspaceId: string;
+  generatedAt: string;
+  evidenceState: "COMPLETE" | "PARTIAL";
+  unavailableEvidence: string[];
+  total: number;
+  categories: Array<{
+    category: OperatorInboxCategory;
+    count: number;
+    items: OperatorInboxItem[];
+  }>;
+};
+
+const labels: Record<OperatorInboxCategory, string> = {
+  ACQUISITION_FAILED: "采集失败",
+  SOURCE_STALE_DEGRADED: "来源需关注",
+  NEW_MATERIAL: "新增材料",
+  MATERIAL_CHANGE: "材料变更",
+  NEEDS_REVIEW: "待复核",
+  VAULT_CONFLICT: "Vault 冲突",
+  READY_FOR_DELIVERY: "可交付",
+  DELIVERY_BLOCKED: "交付阻塞",
+};
 
 async function readError(response: Response): Promise<string> {
   try {
@@ -59,270 +58,165 @@ async function readError(response: Response): Promise<string> {
   }
 }
 
-function ReaderBlock({ block }: { block: KnowledgeReaderBlock }) {
-  if (block.kind === "heading") {
-    if (block.level === 1)
-      return (
-        <h1 className="mt-8 text-3xl font-semibold tracking-tight text-slate-950">{block.text}</h1>
-      );
-    if (block.level === 2)
-      return (
-        <h2 className="mt-8 text-2xl font-semibold tracking-tight text-slate-950">{block.text}</h2>
-      );
-    return <h3 className="mt-6 text-lg font-semibold text-slate-900">{block.text}</h3>;
-  }
-  if (block.kind === "bullet") {
-    return (
-      <ul className="my-5 list-disc space-y-2 pl-6 text-[15px] leading-7 text-slate-700">
-        {block.items.map((item, index) => (
-          <li key={`${index}:${item}`}>{item}</li>
-        ))}
-      </ul>
-    );
-  }
-  if (block.kind === "quote") {
-    return (
-      <blockquote className="my-5 border-l-4 border-emerald-200 bg-emerald-50/60 px-4 py-3 text-[15px] leading-7 text-slate-700">
-        {block.text}
-      </blockquote>
-    );
-  }
-  if (block.kind === "divider") return <hr className="my-8 border-slate-200" />;
-  return <p className="my-4 text-[15px] leading-8 text-slate-700">{block.text}</p>;
-}
-
-export function ContentReader({
-  documentId,
-  workspaceId,
-}: {
-  documentId: string;
-  workspaceId: string;
-}) {
-  const { locale } = useAdminI18n();
-  const zh = locale === "zh-CN";
-  const [detail, setDetail] = useState<KnowledgeReaderDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function OperatorInbox({ workspaceId }: { workspaceId: string }) {
+  const [state, setState] = useState<OperatorInboxResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/operator-inbox?workspaceId=${encodeURIComponent(workspaceId)}`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) throw new Error(await readError(response));
+      setState((await response.json()) as OperatorInboxResponse);
+      setError(null);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "Unable to load Operator Inbox",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [workspaceId]);
 
   useEffect(() => {
-    let active = true;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(
-          `/api/knowledge/${encodeURIComponent(documentId)}?workspaceId=${encodeURIComponent(workspaceId)}`,
-          { cache: "no-store" },
-        );
-        if (!response.ok) throw new Error(await readError(response));
-        const value = (await response.json()) as KnowledgeReaderDetail;
-        if (active) {
-          setDetail(value);
-          setError(null);
-        }
-      } catch (requestError) {
-        if (active)
-          setError(
-            requestError instanceof Error ? requestError.message : "Unable to load document",
-          );
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [documentId, workspaceId]);
+    const timer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(timer);
+  }, [refresh]);
 
-  const model = useMemo(
-    () => (detail ? buildKnowledgeReaderModel(detail.content) : null),
-    [detail],
-  );
-
-  if (loading) {
+  if (loading && !state) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-14 text-center text-sm text-slate-500">
-        <Loader2 className="mx-auto mb-3 animate-spin" size={22} />
-        {zh ? "正在打开内容阅读器…" : "Opening content reader…"}
-      </div>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+          <Loader2 size={17} className="animate-spin" aria-hidden="true" />
+          正在读取 Operator Inbox…
+        </div>
+      </section>
     );
   }
 
-  if (error || !detail || !model) {
+  if (error && !state) {
     return (
-      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6">
-        <p className="font-semibold text-rose-900">
-          {zh ? "无法读取资料" : "Unable to read document"}
-        </p>
-        <p className="mt-2 text-sm text-rose-700">{error ?? "Document not available"}</p>
-        <Link href="/knowledge" className="mt-4 inline-flex text-sm font-semibold text-rose-900">
-          ← {zh ? "返回知识库" : "Back to Knowledge"}
-        </Link>
-      </div>
-    );
-  }
-
-  const sourceUrl =
-    detail.source?.canonicalUri ?? detail.artifact?.canonicalUri ?? detail.artifact?.sourceUri;
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
-        <Link
-          href="/knowledge"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-950"
-        >
-          <ArrowLeft size={16} /> {zh ? "返回知识库" : "Back to Knowledge"}
-        </Link>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-          {detail.status}
-        </span>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="min-w-0 rounded-2xl border border-slate-200 bg-white px-6 py-7 sm:px-9 sm:py-9">
-          <header className="border-b border-slate-100 pb-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Knowledge · Content Reader
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-              {detail.title}
-            </h1>
-            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500">
-              <span>{detail.source?.name ?? (zh ? "未知来源" : "Unknown source")}</span>
-              <span>{detail.source?.jurisdictions.join(", ") || "—"}</span>
-              <span>{detail.artifact?.artifactKind ?? detail.outputFormat}</span>
-              <span>v{detail.artifact?.version ?? 1}</span>
+      <section className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 font-semibold text-rose-800">
+              <AlertTriangle size={17} aria-hidden="true" />
+              Operator Inbox 暂时不可用
             </div>
-          </header>
-
-          <div className="mx-auto max-w-3xl pt-2">
-            {model.blocks.length ? (
-              model.blocks.map((block, index) => <ReaderBlock key={index} block={block} />)
-            ) : (
-              <p className="py-10 text-sm text-slate-500">
-                {zh ? "正文为空" : "No readable body content"}
-              </p>
-            )}
+            <p className="mt-1 text-sm text-rose-700">{error}</p>
           </div>
-        </article>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700"
+          >
+            <RefreshCw size={14} aria-hidden="true" />
+            重试
+          </button>
+        </div>
+      </section>
+    );
+  }
 
-        <aside className="space-y-4 xl:sticky xl:top-5 xl:self-start">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-slate-950">
-              {zh ? "来源与证据" : "Source & evidence"}
-            </h2>
-            <dl className="mt-4 space-y-3 text-xs">
-              <div>
-                <dt className="text-slate-400">{zh ? "来源" : "Source"}</dt>
-                <dd className="mt-1 font-medium text-slate-800">{detail.source?.name ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">{zh ? "来源类型" : "Source type"}</dt>
-                <dd className="mt-1 text-slate-700">{detail.source?.sourceType ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">{zh ? "分类" : "Category"}</dt>
-                <dd className="mt-1 text-slate-700">{detail.source?.category ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">{zh ? "权限级别" : "Authority level"}</dt>
-                <dd className="mt-1 text-slate-700">{detail.source?.authorityLevel ?? "—"}</dd>
-              </div>
-            </dl>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {detail.source ? (
-                <Link
-                  href={`/sources/${detail.source.id}`}
-                  className="text-xs font-semibold text-emerald-700"
-                >
-                  {zh ? "来源详情" : "Source detail"} →
-                </Link>
-              ) : null}
-              {sourceUrl ? (
-                <a
-                  href={sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"
-                >
-                  {zh ? "原始来源" : "Original source"} <ExternalLink size={11} />
-                </a>
-              ) : null}
-            </div>
-          </section>
+  if (!state) return null;
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-slate-950">
-              {zh ? "原始证据" : "Original evidence"}
-            </h2>
-            <div className="mt-4 flex items-start gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">
-                <FileText size={16} />
-              </span>
-              <div className="min-w-0">
-                <p className="break-words text-xs font-medium text-slate-800">
-                  {detail.artifact?.originalName ?? "—"}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {detail.artifact
-                    ? `${detail.artifact.mimeType} · ${formatBytes(detail.artifact.sizeBytes)}`
-                    : "—"}
-                </p>
-              </div>
-            </div>
-            {detail.artifact ? (
-              <a
-                href={`/api/artifacts/${encodeURIComponent(detail.artifact.id)}/content`}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"
-              >
-                {zh ? "打开原始文件" : "Open original file"} <ExternalLink size={11} />
-              </a>
-            ) : null}
-          </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-slate-950">
-              {zh ? "验证与溯源" : "Validation & provenance"}
-            </h2>
-            <dl className="mt-4 space-y-3 text-xs">
-              <div>
-                <dt className="text-slate-400">{zh ? "验证结果" : "Validation"}</dt>
-                <dd className="mt-1 text-slate-700">{detail.validation.outcome}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">{zh ? "采集时间" : "Captured"}</dt>
-                <dd className="mt-1 text-slate-700">
-                  {detail.artifact?.capturedAt
-                    ? new Date(detail.artifact.capturedAt).toLocaleString(locale)
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">{zh ? "发布时间" : "Published"}</dt>
-                <dd className="mt-1 text-slate-700">
-                  {detail.artifact?.publishedAt
-                    ? new Date(detail.artifact.publishedAt).toLocaleString(locale)
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">SHA-256</dt>
-                <dd className="mt-1 break-all font-mono text-[10px] leading-4 text-slate-600">
-                  {detail.artifact?.contentHash?.value ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">Knowledge ID</dt>
-                <dd className="mt-1 break-all font-mono text-[10px] leading-4 text-slate-600">
-                  {detail.id}
-                </dd>
-              </div>
-            </dl>
-          </section>
-        </aside>
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Inbox size={19} className="text-slate-700" aria-hidden="true" />
+            <h2 className="text-base font-semibold text-slate-950">Operator Inbox</h2>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+              {state.total}
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            从持久化 Knowledge 证据派生的今日工作入口，不保存组件内工作流状态。
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} aria-hidden="true" />
+          刷新
+        </button>
       </div>
-    </div>
+
+      {state.evidenceState === "PARTIAL" ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-800">
+          <div className="flex items-center gap-2 font-semibold">
+            <AlertTriangle size={16} aria-hidden="true" />
+            部分证据不可用
+          </div>
+          <p className="mt-1 text-xs text-amber-700">
+            当前计数不代表缺失来源为 0：{state.unavailableEvidence.join("、")}
+          </p>
+        </div>
+      ) : null}
+
+      {state.total === 0 ? (
+        <div className="mt-4 rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+          当前没有需要处理的持久化工作项。
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {state.categories.map((category) => (
+            <div
+              key={category.category}
+              className="rounded-xl border border-slate-200 p-3.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-slate-800">
+                  {labels[category.category]}
+                </h3>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                  {category.count}
+                </span>
+              </div>
+              {category.items.length === 0 ? (
+                <p className="mt-3 text-xs text-slate-400">无待处理项</p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {category.items.slice(0, 2).map((item) => (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      className="group block rounded-lg bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="line-clamp-1 text-xs font-semibold text-slate-800">
+                          {item.title}
+                        </span>
+                        <ArrowRight
+                          size={13}
+                          className="mt-0.5 shrink-0 text-slate-400 group-hover:text-slate-700"
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">
+                        {item.reason}
+                      </p>
+                    </Link>
+                  ))}
+                  {category.count > 2 ? (
+                    <p className="text-[11px] text-slate-400">
+                      另有 {category.count - 2} 项
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
