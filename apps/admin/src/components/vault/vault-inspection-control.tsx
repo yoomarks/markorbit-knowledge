@@ -12,6 +12,7 @@ type Overview = {
   recentRuns: VaultInspectionRunV1[];
 };
 type ApiError = { error?: { message?: string } };
+type InboxFocus = { inspectionId: string; path: string };
 
 function readError(body: unknown, fallback: string): string {
   if (
@@ -54,6 +55,7 @@ export function VaultInspectionControl({ workspaceId }: { workspaceId: string })
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inboxFocus, setInboxFocus] = useState<InboxFocus | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -70,6 +72,13 @@ export function VaultInspectionControl({ workspaceId }: { workspaceId: string })
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const parameters = new URLSearchParams(window.location.search);
+    const inspectionId = parameters.get("inspectionId")?.trim();
+    const path = parameters.get("path")?.trim();
+    setInboxFocus(inspectionId && path ? { inspectionId, path } : null);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -114,11 +123,23 @@ export function VaultInspectionControl({ workspaceId }: { workspaceId: string })
   }
 
   const latest = overview?.recentRuns[0] ?? null;
+  const displayedRun = useMemo(() => {
+    if (!inboxFocus) return latest;
+    return (
+      overview?.recentRuns.find((run) => run.id === inboxFocus.inspectionId) ?? null
+    );
+  }, [inboxFocus, latest, overview?.recentRuns]);
+  const visibleCandidates = useMemo(() => {
+    const candidates = displayedRun?.candidates ?? [];
+    if (!inboxFocus) return candidates;
+    return candidates.filter((candidate) => candidate.vaultRelativePath === inboxFocus.path);
+  }, [displayedRun, inboxFocus]);
+  const focusMissing = Boolean(inboxFocus && (!displayedRun || visibleCandidates.length === 0));
   const counts = useMemo(() => {
     const result = { UNCHANGED: 0, IMPORT_CANDIDATE: 0, CONFLICT: 0, MISSING: 0 };
-    for (const candidate of latest?.candidates ?? []) result[candidate.classification] += 1;
+    for (const candidate of displayedRun?.candidates ?? []) result[candidate.classification] += 1;
     return result;
-  }, [latest]);
+  }, [displayedRun]);
   const canInspect = Boolean(
     overview?.binding?.status === "ACTIVE" && overview?.filesystem.configured,
   );
@@ -165,6 +186,26 @@ export function VaultInspectionControl({ workspaceId }: { workspaceId: string })
         </div>
       ) : null}
 
+      {inboxFocus ? (
+        <div
+          className={`mt-5 rounded-xl border px-4 py-3 text-sm ${
+            focusMissing
+              ? "border-rose-200 bg-rose-50 text-rose-800"
+              : "border-sky-200 bg-sky-50 text-sky-800"
+          }`}
+        >
+          <p className="font-semibold">Operator Inbox evidence focus</p>
+          <p className="mt-1 break-all text-xs">
+            {inboxFocus.inspectionId} · {inboxFocus.path}
+          </p>
+          {focusMissing ? (
+            <p className="mt-1 text-xs">
+              指定的持久化 inspection/path 当前不在最近证据窗口中；未回退显示其他记录。
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Summary label="Unchanged" value={String(counts.UNCHANGED)} />
         <Summary label="Import candidates" value={String(counts.IMPORT_CANDIDATE)} />
@@ -183,22 +224,28 @@ export function VaultInspectionControl({ workspaceId }: { workspaceId: string })
 
       <div className="mt-7 border-t border-slate-100 pt-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-slate-900">Latest inspection evidence</h3>
+          <h3 className="text-sm font-semibold text-slate-900">
+            {inboxFocus ? "Focused inspection evidence" : "Latest inspection evidence"}
+          </h3>
           <span className="text-xs text-slate-500">
-            {latest
-              ? `${latest.id} · ${new Date(latest.observedAt).toLocaleString("zh-CN")}`
-              : "尚未执行只读扫描"}
+            {displayedRun
+              ? `${displayedRun.id} · ${new Date(displayedRun.observedAt).toLocaleString("zh-CN")}`
+              : inboxFocus
+                ? "指定 inspection 不在最近证据窗口中"
+                : "尚未执行只读扫描"}
           </span>
         </div>
         <div className="mt-3 space-y-3">
-          {!latest?.candidates.length ? (
+          {!visibleCandidates.length ? (
             <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
-              {latest
-                ? "本次扫描没有发现 Markdown 候选或已管理缺失项。"
-                : "执行一次显式只读扫描后显示证据。"}
+              {inboxFocus
+                ? "没有与 Operator Inbox 深链完全匹配的 Vault inspection candidate。"
+                : displayedRun
+                  ? "本次扫描没有发现 Markdown 候选或已管理缺失项。"
+                  : "执行一次显式只读扫描后显示证据。"}
             </div>
           ) : null}
-          {latest?.candidates.map((candidate) => (
+          {visibleCandidates.map((candidate) => (
             <div
               key={candidate.vaultRelativePath}
               className="rounded-xl border border-slate-200 p-4"
