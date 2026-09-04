@@ -31,9 +31,10 @@ export type KnowledgeSearchPage<T> = {
 
 /**
  * Consume a bounded persistence page size without turning that page size into
- * a correctness ceiling. Readers must report an exact total for the same
- * stable query; an empty page ends the loop defensively if the corpus changes
- * while the request is in flight.
+ * a correctness ceiling. Page size remains a caller-controlled transport
+ * detail. Readers must report an exact total for the same stable query; an
+ * empty page ends the loop defensively if the corpus changes while the request
+ * is in flight.
  */
 export function collectCompleteKnowledgeSearch<T>(
   readPage: (offset: number) => KnowledgeSearchPage<T>,
