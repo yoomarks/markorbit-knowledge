@@ -32,11 +32,10 @@ import {
 const PAGE_SIZE = 100;
 
 interface ChangeEvidenceReader {
-  feed(request: {
-    workspaceId: string;
-    cursor?: string;
-    limit?: number;
-  }): { items: DocumentChangeEvidence[]; nextCursor: string | null };
+  feed(request: { workspaceId: string; cursor?: string; limit?: number }): {
+    items: DocumentChangeEvidence[];
+    nextCursor: string | null;
+  };
 }
 
 export type OperatorInboxReadDependencies = {
@@ -95,9 +94,7 @@ function collectSourceHealth(
     .filter(
       (item) =>
         item.registrationState === "REGISTERED" &&
-        (item.state === "DEGRADED" ||
-          item.state === "BLOCKED" ||
-          item.freshness.state === "STALE"),
+        (item.state === "DEGRADED" || item.state === "BLOCKED" || item.freshness.state === "STALE"),
     )
     .map((item) =>
       evidence({
@@ -111,9 +108,7 @@ function collectSourceHealth(
             : `Source freshness is ${item.freshness.state.toLowerCase()}`,
         occurredAt:
           item.latestRun?.updatedAt ?? item.acquisition.latestArtifactAt ?? result.observedAt,
-        href: item.sourceIds[0]
-          ? `/sources/${encodeURIComponent(item.sourceIds[0])}`
-          : "/sources",
+        href: item.sourceIds[0] ? `/sources/${encodeURIComponent(item.sourceIds[0])}` : "/sources",
       }),
     );
 }
@@ -237,11 +232,7 @@ function collectDeliveries(
         readyPackage.createdAt,
       );
     }
-    const auditEvents = deliveries.listAuditEvents(
-      workspaceId,
-      submission.submissionId,
-      PAGE_SIZE,
-    );
+    const auditEvents = deliveries.listAuditEvents(workspaceId, submission.submissionId, PAGE_SIZE);
     if (auditEvents.length === PAGE_SIZE) bounded = true;
     const diagnosis = diagnoseReadyPackageV2Delivery(submission, auditEvents);
     return readyPackageItem(
