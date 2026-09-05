@@ -105,8 +105,7 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const state = useMemo(() => readKnowledgeSearchState(searchParams), [searchParams]);
-  const latestQueryRef = useRef(searchParams.toString());
-  latestQueryRef.current = searchParams.toString();
+  const pendingQueryRef = useRef<string | null>(null);
   const queryTimerRef = useRef<number | null>(null);
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -114,11 +113,18 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
 
   const replaceSearchState = useCallback(
     (patch: Partial<KnowledgeSearchState>, resetOffset = true) => {
-      const query = patchKnowledgeSearchQuery(latestQueryRef.current, patch, resetOffset);
-      latestQueryRef.current = query;
+      const pendingQuery = pendingQueryRef.current;
+      const effectivePatch =
+        pendingQuery !== null && patch.q === undefined ? { ...patch, q: pendingQuery } : patch;
+      if (pendingQuery !== null) {
+        if (queryTimerRef.current !== null) window.clearTimeout(queryTimerRef.current);
+        queryTimerRef.current = null;
+        pendingQueryRef.current = null;
+      }
+      const query = patchKnowledgeSearchQuery(searchParams.toString(), effectivePatch, resetOffset);
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     },
-    [pathname, router],
+    [pathname, router, searchParams],
   );
 
   useEffect(
@@ -130,9 +136,13 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
 
   const scheduleQueryUpdate = useCallback(
     (value: string) => {
+      const nextQuery = value.trim();
+      pendingQueryRef.current = nextQuery;
       if (queryTimerRef.current !== null) window.clearTimeout(queryTimerRef.current);
       queryTimerRef.current = window.setTimeout(() => {
-        replaceSearchState({ q: value.trim() });
+        pendingQueryRef.current = null;
+        queryTimerRef.current = null;
+        replaceSearchState({ q: nextQuery });
       }, 250);
     },
     [replaceSearchState],
