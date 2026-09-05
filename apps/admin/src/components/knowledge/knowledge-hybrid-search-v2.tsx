@@ -235,7 +235,9 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
 
   const sourceUrl = (item: SearchItem) =>
     item.artifact?.canonicalUri ?? item.artifact?.sourceUri ?? item.source?.canonicalUri ?? null;
-  const range = result ? knowledgeSearchRange(result.total, result.offset, result.items.length) : null;
+  const range = result
+    ? knowledgeSearchRange(result.total, result.offset, result.items.length)
+    : null;
   const hasPrevious = Boolean(result && result.offset > 0);
   const hasNext = Boolean(result && result.offset + result.items.length < result.total);
 
@@ -442,8 +444,9 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                         ))}
                       </div>
                       <p className="mt-1 text-xs text-slate-500">
-                        {item.source?.name ?? "—"} · {item.artifact?.originalName ?? item.targetPath} ·{" "}
-                        {item.status} · {new Date(item.generatedAt).toLocaleDateString(zh ? "zh-CN" : "en-US")}
+                        {item.source?.name ?? "—"} ·{" "}
+                        {item.artifact?.originalName ?? item.targetPath} · {item.status} ·{" "}
+                        {new Date(item.generatedAt).toLocaleDateString(zh ? "zh-CN" : "en-US")}
                       </p>
                       {item.searchMatch.fullText ? (
                         <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
@@ -515,10 +518,7 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
               type="button"
               disabled={!hasNext}
               onClick={() =>
-                replaceSearchState(
-                  { offset: state.offset + KNOWLEDGE_SEARCH_PAGE_LIMIT },
-                  false,
-                )
+                replaceSearchState({ offset: state.offset + KNOWLEDGE_SEARCH_PAGE_LIMIT }, false)
               }
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
