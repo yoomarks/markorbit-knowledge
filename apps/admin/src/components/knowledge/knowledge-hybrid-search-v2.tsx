@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   ChevronLeft,
@@ -105,12 +105,10 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const state = useMemo(() => readKnowledgeSearchState(searchParams), [searchParams]);
-  const [queryDraft, setQueryDraft] = useState(state.q);
+  const queryTimerRef = useRef<number | null>(null);
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => setQueryDraft(state.q), [state.q]);
 
   const replaceSearchState = useCallback(
     (patch: Partial<KnowledgeSearchState>, resetOffset = true) => {
@@ -120,12 +118,22 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
     [pathname, router, searchParams],
   );
 
-  useEffect(() => {
-    const normalized = queryDraft.trim();
-    if (normalized === state.q) return;
-    const timer = window.setTimeout(() => replaceSearchState({ q: normalized }), 250);
-    return () => window.clearTimeout(timer);
-  }, [queryDraft, replaceSearchState, state.q]);
+  useEffect(
+    () => () => {
+      if (queryTimerRef.current !== null) window.clearTimeout(queryTimerRef.current);
+    },
+    [],
+  );
+
+  const scheduleQueryUpdate = useCallback(
+    (value: string) => {
+      if (queryTimerRef.current !== null) window.clearTimeout(queryTimerRef.current);
+      queryTimerRef.current = window.setTimeout(() => {
+        replaceSearchState({ q: value.trim() });
+      }, 250);
+    },
+    [replaceSearchState],
+  );
 
   const query = useMemo(
     () => buildKnowledgeSearchApiQuery(workspaceId, state),
@@ -133,11 +141,7 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
   );
 
   useEffect(() => {
-    if (!query) {
-      setLoading(false);
-      setError(null);
-      return;
-    }
+    if (!query) return;
     let active = true;
     const load = async () => {
       setLoading(true);
@@ -217,7 +221,7 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
     });
 
   const resetSearch = () => {
-    setQueryDraft("");
+    if (queryTimerRef.current !== null) window.clearTimeout(queryTimerRef.current);
     replaceSearchState({
       q: "",
       sourceId: "",
@@ -231,9 +235,7 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
 
   const sourceUrl = (item: SearchItem) =>
     item.artifact?.canonicalUri ?? item.artifact?.sourceUri ?? item.source?.canonicalUri ?? null;
-  const range = result
-    ? knowledgeSearchRange(result.total, result.offset, result.items.length)
-    : null;
+  const range = result ? knowledgeSearchRange(result.total, result.offset, result.items.length) : null;
   const hasPrevious = Boolean(result && result.offset > 0);
   const hasNext = Boolean(result && result.offset + result.items.length < result.total);
 
@@ -260,8 +262,9 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
           <label className="relative">
             <Search className="absolute left-3 top-3 text-slate-400" size={17} />
             <input
-              value={queryDraft}
-              onChange={(event) => setQueryDraft(event.target.value)}
+              key={state.q}
+              defaultValue={state.q}
+              onChange={(event) => scheduleQueryUpdate(event.target.value)}
               placeholder={
                 zh
                   ? "搜索标题、来源、文件名或正文内容"
@@ -439,9 +442,8 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                         ))}
                       </div>
                       <p className="mt-1 text-xs text-slate-500">
-                        {item.source?.name ?? "—"} ·{" "}
-                        {item.artifact?.originalName ?? item.targetPath} · {item.status} ·{" "}
-                        {new Date(item.generatedAt).toLocaleDateString(zh ? "zh-CN" : "en-US")}
+                        {item.source?.name ?? "—"} · {item.artifact?.originalName ?? item.targetPath} ·{" "}
+                        {item.status} · {new Date(item.generatedAt).toLocaleDateString(zh ? "zh-CN" : "en-US")}
                       </p>
                       {item.searchMatch.fullText ? (
                         <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
@@ -513,7 +515,10 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
               type="button"
               disabled={!hasNext}
               onClick={() =>
-                replaceSearchState({ offset: state.offset + KNOWLEDGE_SEARCH_PAGE_LIMIT }, false)
+                replaceSearchState(
+                  { offset: state.offset + KNOWLEDGE_SEARCH_PAGE_LIMIT },
+                  false,
+                )
               }
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
