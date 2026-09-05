@@ -448,7 +448,7 @@ export class SqliteEvidenceSupplyHealthRepository implements EvidenceSupplyHealt
       const sourceIds = health?.sourceIds ?? registration.sourceIds;
       const sourceStatuses = sourceIds
         .map((sourceId) => sourceById.get(sourceId)?.status)
-        .filter((status): status is string => Boolean(status));
+        .filter((status): status is NonNullable<SourceDefinition["status"]> => Boolean(status));
       const supplyState = health?.state ?? "BLOCKED";
       const gaps = health?.gaps ?? ["SOURCE_UNREGISTERED"];
       const coverage = deriveCoverage({
