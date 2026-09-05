@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AdminShell } from "@/components/admin-shell";
 import { KnowledgeWorkspaceBoundary } from "@/components/knowledge/knowledge-workspace";
 import { KnowledgeReaderSurface } from "@/components/knowledge/knowledge-workspace-surfaces";
@@ -12,9 +13,11 @@ export default async function KnowledgeContentReaderPage({
   const { id } = await params;
   return (
     <AdminShell>
-      <KnowledgeWorkspaceBoundary>
-        <KnowledgeReaderSurface documentId={id} />
-      </KnowledgeWorkspaceBoundary>
+      <Suspense fallback={null}>
+        <KnowledgeWorkspaceBoundary>
+          <KnowledgeReaderSurface documentId={id} />
+        </KnowledgeWorkspaceBoundary>
+      </Suspense>
     </AdminShell>
   );
 }
