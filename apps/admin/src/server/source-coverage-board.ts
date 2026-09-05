@@ -1,4 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
+import type {
+  EvidenceSupplyHealthRecordV1,
+  EvidenceSupplyHealthState,
+} from "@markorbit/contracts";
+import { SqliteEvidenceSupplyHealthRepository } from "@markorbit/persistence/evidence-supply-health";
 import { SqliteOperationalSupplyHealthRepository } from "@markorbit/persistence/source-compatibility-supply-health";
 import {
   evaluateSourceCoverage,
@@ -63,6 +68,7 @@ export type SourceCoverageBoardRow = {
     freshness: string;
     gaps: string[];
   };
+  evidenceSupplyHealth: EvidenceSupplyHealthRecordV1;
   limitationNote: string | null;
 };
 
@@ -76,6 +82,10 @@ export type SourceCoverageBoard = {
     partial: number;
     unknown: number;
     requiringAttention: number;
+    stale: number;
+    blocked: number;
+    recentChanges30d: number;
+    byHealthState: Record<EvidenceSupplyHealthState, number>;
   };
 };
 
@@ -152,6 +162,10 @@ export function getSourceCoverageBoard(workspaceId: string): SourceCoverageBoard
   const targets = listSourceCoverageTargets().filter((target) => target.catalogState !== "RETIRED");
   const healthResult = new SqliteOperationalSupplyHealthRepository(database).list({ workspaceId });
   const healthByTarget = new Map(healthResult.items.map((health) => [health.targetId, health]));
+  const situationResult = new SqliteEvidenceSupplyHealthRepository(database).list({ workspaceId });
+  const situationByTarget = new Map(
+    situationResult.items.map((situation) => [situation.targetId, situation]),
+  );
   const sourceById = new Map(sources.map((source) => [source.id, source]));
   const latestArtifacts = loadLatestArtifacts(database, workspaceId);
   const latestChanges = loadLatestChanges(database, workspaceId);
@@ -168,6 +182,10 @@ export function getSourceCoverageBoard(workspaceId: string): SourceCoverageBoard
       .map((sourceId) => sourceById.get(sourceId))
       .filter((source) => source !== undefined);
     const health = healthByTarget.get(target.id);
+    const situation = situationByTarget.get(target.id);
+    if (!situation) {
+      throw new Error(`Evidence Supply Health projection missing target ${target.id}`);
+    }
     const artifact = latestForSources(registration.sourceIds, latestArtifacts);
     const change = latestForSources(registration.sourceIds, latestChanges);
     const boundary = deriveSourceCoverageBoundary({
@@ -191,8 +209,8 @@ export function getSourceCoverageBoard(workspaceId: string): SourceCoverageBoard
       coverageTier: target.coverageTier,
       catalogState: target.catalogState,
       canonicalUri: target.canonicalUri,
-      coverageStatus: boundary.status,
-      coverageReasons: boundary.reasons,
+      coverageStatus: situation.coverage.state,
+      coverageReasons: situation.coverage.reasons,
       sources: registeredSources.map((source) => ({
         id: source.id,
         name: source.name,
@@ -202,7 +220,8 @@ export function getSourceCoverageBoard(workspaceId: string): SourceCoverageBoard
         mode: target.acquisition.mode,
         expectedArtifactKinds: [...target.acquisition.expectedArtifactKinds],
         observedArtifactKinds: [...(health?.acquisition.artifactKinds ?? [])],
-        missingExpectedArtifactKinds: boundary.missingExpectedArtifactKinds,
+        missingExpectedArtifactKinds:
+          situation.coverage.missingExpectedArtifactKinds ?? boundary.missingExpectedArtifactKinds,
         latestSuccessfulAt: health?.acquisition.latestArtifactAt ?? null,
         latestArtifactId: artifact?.artifactId ?? null,
         renderJavascriptHint: target.acquisition.renderJavascriptHint,
@@ -226,6 +245,7 @@ export function getSourceCoverageBoard(workspaceId: string): SourceCoverageBoard
         freshness: health?.freshness.state ?? "UNOBSERVED",
         gaps: [...(health?.gaps ?? ["SOURCE_UNREGISTERED"])],
       },
+      evidenceSupplyHealth: situation,
       limitationNote: target.notes?.trim() || null,
     } satisfies SourceCoverageBoardRow;
   });
@@ -244,14 +264,18 @@ export function getSourceCoverageBoard(workspaceId: string): SourceCoverageBoard
 
   return {
     workspaceId,
-    observedAt: healthResult.observedAt,
+    observedAt: situationResult.observedAt,
     rows,
     summary: {
       total: rows.length,
       complete,
       partial,
       unknown,
-      requiringAttention: partial + unknown,
+      requiringAttention: situationResult.summary.requiringAttention,
+      stale: situationResult.summary.stale,
+      blocked: situationResult.summary.blocked,
+      recentChanges30d: situationResult.summary.recentChanges30d,
+      byHealthState: situationResult.summary.byState,
     },
   };
 }
