@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import type { ContentObjectRefV1 } from "@markorbit/contracts";
-import { DEFAULT_WORKSPACE, RegistryError } from "@markorbit/persistence";
+import { RegistryError } from "@markorbit/persistence";
 import { SqliteContentRelationshipRepository } from "@markorbit/persistence/content-relationships";
-import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
+import { knowledgeWorkspaceHref } from "@/lib/knowledge-workspace-model";
 import { apiError } from "@/server/api-errors";
 import {
   buildKnowledgeReaderGraph,
   type KnowledgeReaderGraphDepth,
 } from "@/server/knowledge-reader-graph";
+import { resolveKnowledgeWorkspaceReadAccess } from "@/server/knowledge-workspace-access";
 import {
   getRawArtifactRepository,
   getRegistryDatabase,
@@ -28,9 +29,7 @@ function graphDepth(request: Request): KnowledgeReaderGraphDepth {
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
-    const assertedWorkspaceId =
-      new URL(request.url).searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
+    const { workspaceId } = await resolveKnowledgeWorkspaceReadAccess(request);
     const depth = graphDepth(request);
     const staging = getStagingContentRepository();
     const record = staging.getDocument(id, workspaceId);
@@ -66,9 +65,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
           ...(source?.name ? { sourceName: source.name } : {}),
           ...(artifact ? { version: artifact.version } : {}),
           ...(source?.jurisdictions ? { jurisdictions: source.jurisdictions } : {}),
-          ...(workspaceId === DEFAULT_WORKSPACE.id
-            ? { readerHref: `/knowledge/${encodeURIComponent(neighbor.objectId)}` }
-            : {}),
+          readerHref: knowledgeWorkspaceHref(
+            `/knowledge/${encodeURIComponent(neighbor.objectId)}`,
+            workspaceId,
+          ),
         };
       },
     });

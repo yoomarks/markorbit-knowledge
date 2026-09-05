@@ -5,10 +5,10 @@ import {
   type ArtifactKind,
   type StagingDocumentDescriptor,
 } from "@markorbit/contracts";
-import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
 import { queryKnowledgeReadModel } from "@markorbit/persistence/knowledge-browser-query";
-import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
+import { resolveKnowledgeWorkspaceReadAccess } from "@/server/knowledge-workspace-access";
 import { getRegistryDatabase } from "@/server/source-registry";
 
 export const runtime = "nodejs";
@@ -56,8 +56,7 @@ function stagingStatus(value: string | null): StagingDocumentDescriptor["status"
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
+    const { workspaceId } = await resolveKnowledgeWorkspaceReadAccess(request);
 
     return NextResponse.json(
       queryKnowledgeReadModel(getRegistryDatabase(), {

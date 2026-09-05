@@ -11,7 +11,6 @@ import {
   queryKnowledgeReadModel,
   queryKnowledgeReadModelItemsByIds,
 } from "@markorbit/persistence/knowledge-browser-query";
-import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import {
   collectCompleteKnowledgeSearch,
@@ -22,6 +21,7 @@ import {
   filterKnowledgeSearchByGeneratedDate,
   readKnowledgeSearchDateRange,
 } from "@/server/knowledge-search-date-filter";
+import { resolveKnowledgeWorkspaceReadAccess } from "@/server/knowledge-workspace-access";
 import { getRegistryDatabase, getRetrievalIndexRepository } from "@/server/source-registry";
 
 const SEARCH_PAGE_SIZE = 50;
@@ -75,8 +75,7 @@ function batches<T>(values: readonly T[], size: number): T[][] {
 export async function handleKnowledgeSearchGet(request: Request) {
   try {
     const url = new URL(request.url);
-    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim() || undefined;
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
+    const { workspaceId } = await resolveKnowledgeWorkspaceReadAccess(request);
     const q = url.searchParams.get("q")?.trim() || "";
     if (!q) throw new RegistryValidationError("Knowledge search query is required");
 

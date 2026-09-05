@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowLeft, ExternalLink, FileText, Loader2 } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
+import { knowledgeWorkspaceHref } from "@/lib/knowledge-workspace-model";
 import { buildKnowledgeReaderModel, type KnowledgeReaderBlock } from "./content-reader-model";
 
 type KnowledgeReaderDetail = {
@@ -155,7 +156,10 @@ export function ContentReader({
           {zh ? "无法读取资料" : "Unable to read document"}
         </p>
         <p className="mt-2 text-sm text-rose-700">{error ?? "Document not available"}</p>
-        <Link href="/knowledge" className="mt-4 inline-flex text-sm font-semibold text-rose-900">
+        <Link
+          href={knowledgeWorkspaceHref("/knowledge", workspaceId)}
+          className="mt-4 inline-flex text-sm font-semibold text-rose-900"
+        >
           ← {zh ? "返回知识库" : "Back to Knowledge"}
         </Link>
       </div>
@@ -168,7 +172,7 @@ export function ContentReader({
     <div id="inspector-content" className="space-y-5 scroll-mt-5">
       <div className="flex items-center justify-between gap-4">
         <Link
-          href="/knowledge"
+          href={knowledgeWorkspaceHref("/knowledge", workspaceId)}
           className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-950"
         >
           <ArrowLeft size={16} /> {zh ? "返回知识库" : "Back to Knowledge"}

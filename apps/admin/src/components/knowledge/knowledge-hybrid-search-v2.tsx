@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
+import { knowledgeWorkspaceHref } from "@/lib/knowledge-workspace-model";
 import {
   buildKnowledgeSearchApiQuery,
   knowledgeSearchRange,
@@ -483,7 +484,10 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       <Link
-                        href={`/knowledge/${encodeURIComponent(item.id)}`}
+                        href={knowledgeWorkspaceHref(
+                          `/knowledge/${encodeURIComponent(item.id)}`,
+                          workspaceId,
+                        )}
                         className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3.5 py-2 text-xs font-semibold text-white"
                       >
                         <BookOpen size={14} /> {zh ? "检查证据" : "Inspect evidence"}
@@ -499,7 +503,10 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                         </a>
                       ) : null}
                       <Link
-                        href={`/knowledge/${encodeURIComponent(item.id)}#knowledge-graph`}
+                        href={knowledgeWorkspaceHref(
+                          `/knowledge/${encodeURIComponent(item.id)}#knowledge-graph`,
+                          workspaceId,
+                        )}
                         className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700"
                       >
                         <Network size={14} /> {zh ? "继续调查" : "Continue with graph"}
