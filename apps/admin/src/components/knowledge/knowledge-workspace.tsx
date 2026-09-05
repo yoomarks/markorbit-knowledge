@@ -90,8 +90,7 @@ export function KnowledgeWorkspaceBoundary({ children }: { children: ReactNode }
   }, [zh]);
 
   const selection = useMemo(
-    () =>
-      session ? selectKnowledgeWorkspace(session.workspaces, requestedWorkspaceId) : null,
+    () => (session ? selectKnowledgeWorkspace(session.workspaces, requestedWorkspaceId) : null),
     [requestedWorkspaceId, session],
   );
   const currentHref = useMemo(() => {
@@ -124,7 +123,7 @@ export function KnowledgeWorkspaceBoundary({ children }: { children: ReactNode }
     };
   }, [selection, session]);
 
-  if (loading || selection?.kind === "SELECTED" && selection.needsExplicitUrl) {
+  if (loading || (selection?.kind === "SELECTED" && selection.needsExplicitUrl)) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
         <Loader2 className="mx-auto mb-3 animate-spin" size={20} />

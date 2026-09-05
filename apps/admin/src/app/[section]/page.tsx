@@ -11,7 +11,11 @@ import { CorePageHeading } from "@/components/core-page-heading";
 import { DiscoveryIntake } from "@/components/discovery/discovery-intake";
 import { FoundationalOperatorPanel } from "@/components/foundational/foundational-operator-panel";
 import { FoundationalRemediationConsole } from "@/components/foundational/foundational-remediation-console";
-import { KnowledgeBrowser } from "@/components/knowledge/knowledge-browser";
+import { KnowledgeWorkspaceBoundary } from "@/components/knowledge/knowledge-workspace";
+import {
+  KnowledgeBrowseSurface,
+  KnowledgeSearchEntryLink,
+} from "@/components/knowledge/knowledge-workspace-surfaces";
 import { OverviewWorkbench } from "@/components/overview/overview-workbench";
 import { PageHeading } from "@/components/page-heading";
 import { PlanList } from "@/components/plans/plan-list";
@@ -71,15 +75,12 @@ function KnowledgePage() {
   return (
     <>
       <CorePageHeading page="knowledge" />
-      <div className="mb-4 flex justify-end">
-        <Link
-          href="/knowledge/search"
-          className="inline-flex items-center rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800"
-        >
-          混合搜索 / Hybrid Search
-        </Link>
-      </div>
-      <KnowledgeBrowser workspaceId={DEFAULT_WORKSPACE.id} />
+      <KnowledgeWorkspaceBoundary>
+        <div className="mb-4 flex justify-end">
+          <KnowledgeSearchEntryLink />
+        </div>
+        <KnowledgeBrowseSurface />
+      </KnowledgeWorkspaceBoundary>
     </>
   );
 }
