@@ -402,12 +402,11 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
             </button>
             <button
               type="button"
-              disabled={loading || state.offset + KNOWLEDGE_BROWSER_PAGE_LIMIT >= (result?.total ?? 0)}
+              disabled={
+                loading || state.offset + KNOWLEDGE_BROWSER_PAGE_LIMIT >= (result?.total ?? 0)
+              }
               onClick={() =>
-                replaceBrowserState(
-                  { offset: state.offset + KNOWLEDGE_BROWSER_PAGE_LIMIT },
-                  false,
-                )
+                replaceBrowserState({ offset: state.offset + KNOWLEDGE_BROWSER_PAGE_LIMIT }, false)
               }
               className="rounded-lg border border-slate-300 p-2 disabled:opacity-40"
               aria-label="Next page"

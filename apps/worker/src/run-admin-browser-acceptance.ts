@@ -448,7 +448,9 @@ async function assertSearchRoundTrip(page: Page): Promise<void> {
   assertWorkspaceUrl(inspectUrl, `/knowledge/${STAGING_ID}`);
   const returnTo = inspectUrl.searchParams.get("returnTo");
   assert.ok(returnTo?.includes("/knowledge/search"));
-  assert.ok(returnTo?.includes("q=Browser+Acceptance") || returnTo?.includes("q=Browser%20Acceptance"));
+  assert.ok(
+    returnTo?.includes("q=Browser+Acceptance") || returnTo?.includes("q=Browser%20Acceptance"),
+  );
   assert.ok(returnTo?.includes("status=READY"));
 
   await inspectLink.click();
@@ -519,7 +521,10 @@ async function assertInboxRoundTrip(page: Page): Promise<void> {
     assert.ok(href, "Inbox item must expose an evidence deep link");
     const evidenceUrl = new URL(href, ADMIN_ORIGIN);
     assertWorkspaceUrl(evidenceUrl, `/knowledge/${STAGING_ID}`);
-    assert.equal(evidenceUrl.searchParams.get("returnTo"), `/dashboard?workspaceId=${WORKSPACE_ID}`);
+    assert.equal(
+      evidenceUrl.searchParams.get("returnTo"),
+      `/dashboard?workspaceId=${WORKSPACE_ID}`,
+    );
 
     await itemLink.click();
     await page.waitForURL((url) => url.pathname === `/knowledge/${STAGING_ID}`);
