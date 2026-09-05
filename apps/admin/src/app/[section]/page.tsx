@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import { AdminShell } from "@/components/admin-shell";
 import { ArtifactList } from "@/components/artifacts/artifact-list";
@@ -75,12 +76,14 @@ function KnowledgePage() {
   return (
     <>
       <CorePageHeading page="knowledge" />
-      <KnowledgeWorkspaceBoundary>
-        <div className="mb-4 flex justify-end">
-          <KnowledgeSearchEntryLink />
-        </div>
-        <KnowledgeBrowseSurface />
-      </KnowledgeWorkspaceBoundary>
+      <Suspense fallback={null}>
+        <KnowledgeWorkspaceBoundary>
+          <div className="mb-4 flex justify-end">
+            <KnowledgeSearchEntryLink />
+          </div>
+          <KnowledgeBrowseSurface />
+        </KnowledgeWorkspaceBoundary>
+      </Suspense>
     </>
   );
 }
