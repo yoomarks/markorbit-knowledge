@@ -16,7 +16,10 @@ import {
   X,
 } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
-import { knowledgeWorkspaceHref } from "@/lib/knowledge-workspace-model";
+import {
+  knowledgeEvidenceContextHref,
+  knowledgeLocationHref,
+} from "@/lib/knowledge-navigation-model";
 import {
   buildKnowledgeSearchApiQuery,
   knowledgeSearchRange,
@@ -254,6 +257,7 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
     : null;
   const hasPrevious = Boolean(result && result.offset > 0);
   const hasNext = Boolean(result && result.offset + result.items.length < result.total);
+  const returnHref = knowledgeLocationHref(pathname, searchParams.toString());
 
   return (
     <div className="space-y-5">
@@ -497,9 +501,10 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       <Link
-                        href={knowledgeWorkspaceHref(
+                        href={knowledgeEvidenceContextHref(
                           `/knowledge/${encodeURIComponent(item.id)}`,
                           workspaceId,
+                          returnHref,
                         )}
                         className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3.5 py-2 text-xs font-semibold text-white"
                       >
@@ -516,9 +521,10 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                         </a>
                       ) : null}
                       <Link
-                        href={knowledgeWorkspaceHref(
+                        href={knowledgeEvidenceContextHref(
                           `/knowledge/${encodeURIComponent(item.id)}#knowledge-graph`,
                           workspaceId,
+                          returnHref,
                         )}
                         className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700"
                       >
