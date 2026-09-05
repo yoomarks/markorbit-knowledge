@@ -7,13 +7,14 @@ export type KnowledgeBrowserState = {
   artifactKind: string;
   status: string;
   offset: number;
+  selectedId: string;
 };
 
 type SearchParamsReader = {
   get(name: string): string | null;
 };
 
-const STRING_KEYS = ["q", "sourceId", "jurisdiction", "artifactKind", "status"] as const;
+const FILTER_KEYS = ["q", "sourceId", "jurisdiction", "artifactKind", "status"] as const;
 
 function normalizedOffset(value: string | null): number {
   if (!value) return 0;
@@ -29,6 +30,7 @@ export function readKnowledgeBrowserState(searchParams: SearchParamsReader): Kno
     artifactKind: searchParams.get("artifactKind")?.trim() ?? "",
     status: searchParams.get("status")?.trim() ?? "",
     offset: normalizedOffset(searchParams.get("offset")),
+    selectedId: searchParams.get("selected")?.trim() ?? "",
   };
 }
 
@@ -40,8 +42,9 @@ export function patchKnowledgeBrowserQuery(
   const params = new URLSearchParams(currentQuery);
   const next = { ...readKnowledgeBrowserState(params), ...patch };
   if (resetOffset && patch.offset === undefined) next.offset = 0;
+  if ((resetOffset || patch.offset !== undefined) && patch.selectedId === undefined) next.selectedId = "";
 
-  for (const key of STRING_KEYS) {
+  for (const key of FILTER_KEYS) {
     const value = next[key].trim();
     if (value) params.set(key, value);
     else params.delete(key);
@@ -49,6 +52,9 @@ export function patchKnowledgeBrowserQuery(
 
   if (next.offset > 0) params.set("offset", String(next.offset));
   else params.delete("offset");
+
+  if (next.selectedId) params.set("selected", next.selectedId);
+  else params.delete("selected");
 
   return params.toString();
 }
@@ -63,7 +69,7 @@ export function buildKnowledgeBrowserApiQuery(
     offset: String(state.offset),
     limit: String(limit),
   });
-  for (const key of STRING_KEYS) {
+  for (const key of FILTER_KEYS) {
     const value = state[key].trim();
     if (value) params.set(key, value);
   }
