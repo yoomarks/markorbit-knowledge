@@ -1,0 +1,45 @@
+name: Issue 725 Fix Browser Assertion Once
+
+on:
+  push:
+    branches: [issue-725-evidence-workspace]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: issue-725-evidence-workspace
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Align provenance assertion with Evidence Inspector
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/worker/src/run-admin-browser-acceptance.ts')
+          text = path.read_text()
+          old = '  await page.getByText(FIXTURE_PROVENANCE, { exact: false }).first().waitFor();'
+          new = '''  const originalSource = page.getByRole("link", { name: /Original source|原始来源/ });
+          await originalSource.waitFor();
+          assert.equal(await originalSource.getAttribute("href"), FIXTURE_PROVENANCE);'''
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one provenance text assertion, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          PY
+          pnpm exec prettier --write apps/worker/src/run-admin-browser-acceptance.ts
+          rm .github/workflows/issue-725-fix-browser-assertion-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/worker/src/run-admin-browser-acceptance.ts .github/workflows/issue-725-fix-browser-assertion-once.yml
+          git commit -m "test: verify #725 provenance link target"
+          git push
