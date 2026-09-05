@@ -1,0 +1,34 @@
+name: Issue 726 Fix Source Status Once
+
+on:
+  push:
+    branches: [issue-726-evidence-supply-health]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: issue-726-evidence-supply-health
+      - name: Fix source status narrowing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/persistence/src/evidence-supply-health.ts')
+          text = path.read_text()
+          old = '.filter((status): status is string => Boolean(status));'
+          new = '.filter((status): status is NonNullable<SourceDefinition["status"]> => Boolean(status));'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one source-status predicate, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          PY
+          rm .github/workflows/issue-726-fix-source-status-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/persistence/src/evidence-supply-health.ts .github/workflows/issue-726-fix-source-status-once.yml
+          git commit -m "fix: narrow #726 source status facts"
+          git push
