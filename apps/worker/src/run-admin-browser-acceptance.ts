@@ -416,7 +416,9 @@ async function assertBrowseRoundTrip(page: Page): Promise<void> {
   await inspectLink.click();
   await page.waitForURL((url) => url.pathname === `/knowledge/${STAGING_ID}`);
   await page.getByText(FIXTURE_CONTENT_MARKER, { exact: false }).waitFor();
-  await page.getByText(FIXTURE_PROVENANCE, { exact: false }).first().waitFor();
+  const originalSource = page.getByRole("link", { name: /Original source|原始来源/ });
+  await originalSource.waitFor();
+  assert.equal(await originalSource.getAttribute("href"), FIXTURE_PROVENANCE);
 
   await clickEvidenceReturn(page);
   await page.waitForURL((url) => url.pathname === "/knowledge");
