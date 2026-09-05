@@ -21,45 +21,51 @@ leaving them as an active P1 queue:
 - #709 made Reader the central Evidence Inspector surface;
 - #711 added factual source coverage/freshness visibility;
 - #712 made Knowledge navigation workspace-aware;
-- #713 moved retrieval/debug implementation detail behind progressive disclosure.
+- #713 moved retrieval/debug implementation detail behind progressive disclosure;
+- #725 unified Browser/Search/Inbox navigation around the canonical Evidence
+  Inspector while preserving URL-addressable work context.
 
 The next stage does **not** add another retrieval stack, another detail shell, or
-MarkOrbit Core semantic/business-intelligence logic. The product goal is to turn
-the completed primitives into one continuous evidence-supply workflow, then make
-supply health explainable, then freeze reproducible multi-document evidence
-contexts for downstream use.
+MarkOrbit Core semantic/business-intelligence logic. The current delivery step is
+to make evidence-supply health objective and explainable, then freeze
+reproducible multi-document evidence contexts for downstream use.
 
 ## Immediate Phase 4 execution order
 
-### P0 — Evidence Workspace (#725)
+### Completed P0 — Evidence Workspace (#725)
 
-Unify Browser, Search, Operator Inbox and the existing Reader/Inspector into one
-continuous workspace navigation model.
+The application-architecture consolidation is now merged. Browser, Search and
+Operator Inbox use the canonical Evidence Inspector, useful work context is
+URL-addressable, explicit return navigation restores the originating workflow,
+and workspace mismatches continue to fail closed.
+
+Do not reopen this lane for cosmetic consolidation; only revisit it for a proven
+workflow-context or isolation regression.
+
+### Current P1 — Explainable Evidence Supply Health (#726)
+
+Compose existing durable Source, Run, Scheduler, Artifact, Change, Coverage and
+retrieval/staging facts into one deterministic, versioned evidence-supply
+condition model.
 
 Required outcomes:
 
-- query, filters, pagination and useful selection state survive evidence review;
-- Browser/Search/Inbox open the same canonical Evidence Inspector experience;
-- explicit deep links and back/forward navigation restore the originating work
-  context;
-- workspace mismatches fail closed;
-- Content, Changes, Provenance, Relations and History remain reachable without
-  duplicating evidence truth or a second Reader.
+- keep `COMPLETE | PARTIAL | UNKNOWN` coverage independent from operational
+  health;
+- expose `HEALTHY | DEGRADED | STALE | BLOCKED | PARTIAL | UNKNOWN` as explicit,
+  reason-coded states rather than an opaque score;
+- expose last successful acquisition, configured cadence, next scheduled check,
+  30-day terminal-run reliability, pipeline latency and 7d/30d objective change
+  activity;
+- reuse existing durable stores and deterministic percentile logic rather than
+  creating a second health engine or persistence truth;
+- present the Source Coverage surface as an Evidence Supply Situation Room with
+  drill-through evidence.
 
-This task is application-architecture consolidation. It does not change search
-ranking, corpus truth, evidence mutation rules or Core responsibilities.
+Do not create a hidden trust score, legal-quality score, semantic completeness
+inference or AI-generated health narrative.
 
-### P1 — Explainable Evidence Supply Health (#726)
-
-Compose existing durable Source, Run, Scheduler, Artifact, Change, Coverage and
-delivery facts into one deterministic evidence-supply condition model.
-
-Keep `COMPLETE | PARTIAL | UNKNOWN` coverage independent from operational health.
-Expose factual freshness, reliability, latency and change signals with explicit
-reason codes and drill-through evidence. Do not create a hidden trust score,
-legal-quality score or AI-generated health narrative.
-
-### P1/P2 — Immutable Evidence Sets / Review Packages (#727)
+### Next P1/P2 — Immutable Evidence Sets / Review Packages (#727)
 
 Add a general workspace-scoped `Evidence Set V1` that freezes exact document,
 RawArtifact, version and digest lineage selected by an operator.
@@ -76,13 +82,13 @@ legal/business significance, recommendations and user-facing intelligence.
 
 Execute in this order unless a proven production defect requires interruption:
 
-1. #725 Evidence Workspace;
-2. #726 Evidence Supply Health;
-3. #727 Evidence Sets / Review Packages.
+1. #725 Evidence Workspace — completed;
+2. #726 Evidence Supply Health — current;
+3. #727 Evidence Sets / Review Packages — next.
 
-Do not open additional broad Knowledge product lanes while these three are active
-unless a concrete correctness, security, evidence-integrity or cross-repository
-contract defect cannot be contained inside them.
+Do not open additional broad Knowledge product lanes while #726 and #727 are
+active unless a concrete correctness, security, evidence-integrity or
+cross-repository contract defect cannot be contained inside them.
 
 ## External/operator gates that remain real
 
