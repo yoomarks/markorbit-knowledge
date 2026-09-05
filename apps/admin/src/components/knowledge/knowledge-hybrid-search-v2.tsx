@@ -181,10 +181,16 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
   const sourceName = sourceOptions.find((source) => source.id === state.sourceId)?.name;
   const activeFilters = [
     state.sourceId
-      ? { key: "sourceId" as const, label: `${zh ? "来源" : "Source"}: ${sourceName ?? state.sourceId}` }
+      ? {
+          key: "sourceId" as const,
+          label: `${zh ? "来源" : "Source"}: ${sourceName ?? state.sourceId}`,
+        }
       : null,
     state.jurisdiction
-      ? { key: "jurisdiction" as const, label: `${zh ? "地区" : "Jurisdiction"}: ${state.jurisdiction}` }
+      ? {
+          key: "jurisdiction" as const,
+          label: `${zh ? "地区" : "Jurisdiction"}: ${state.jurisdiction}`,
+        }
       : null,
     state.status
       ? { key: "status" as const, label: `${zh ? "状态" : "Status"}: ${state.status}` }
@@ -225,7 +231,9 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
 
   const sourceUrl = (item: SearchItem) =>
     item.artifact?.canonicalUri ?? item.artifact?.sourceUri ?? item.source?.canonicalUri ?? null;
-  const range = result ? knowledgeSearchRange(result.total, result.offset, result.items.length) : null;
+  const range = result
+    ? knowledgeSearchRange(result.total, result.offset, result.items.length)
+    : null;
   const hasPrevious = Boolean(result && result.offset > 0);
   const hasNext = Boolean(result && result.offset + result.items.length < result.total);
 
@@ -420,12 +428,19 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                             key={channel}
                             className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
                           >
-                            {channel === "FULL_TEXT" ? (zh ? "全文" : "Full text") : zh ? "元数据" : "Metadata"}
+                            {channel === "FULL_TEXT"
+                              ? zh
+                                ? "全文"
+                                : "Full text"
+                              : zh
+                                ? "元数据"
+                                : "Metadata"}
                           </span>
                         ))}
                       </div>
                       <p className="mt-1 text-xs text-slate-500">
-                        {item.source?.name ?? "—"} · {item.artifact?.originalName ?? item.targetPath} · {item.status} ·{" "}
+                        {item.source?.name ?? "—"} ·{" "}
+                        {item.artifact?.originalName ?? item.targetPath} · {item.status} ·{" "}
                         {new Date(item.generatedAt).toLocaleDateString(zh ? "zh-CN" : "en-US")}
                       </p>
                       {item.searchMatch.fullText ? (
@@ -498,10 +513,7 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
               type="button"
               disabled={!hasNext}
               onClick={() =>
-                replaceSearchState(
-                  { offset: state.offset + KNOWLEDGE_SEARCH_PAGE_LIMIT },
-                  false,
-                )
+                replaceSearchState({ offset: state.offset + KNOWLEDGE_SEARCH_PAGE_LIMIT }, false)
               }
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
             >

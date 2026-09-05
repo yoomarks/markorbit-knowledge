@@ -27,10 +27,9 @@ describe("Knowledge Hybrid Search URL state", () => {
   });
 
   it("resets pagination when a facet changes and preserves unrelated URL state", () => {
-    const query = patchKnowledgeSearchQuery(
-      "q=alpha&sourceId=src-1&offset=50&view=search",
-      { status: "READY" },
-    );
+    const query = patchKnowledgeSearchQuery("q=alpha&sourceId=src-1&offset=50&view=search", {
+      status: "READY",
+    });
     const params = new URLSearchParams(query);
 
     expect(params.get("q")).toBe("alpha");

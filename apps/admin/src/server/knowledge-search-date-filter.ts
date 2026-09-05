@@ -12,14 +12,20 @@ type SearchParamsReader = {
   get(name: string): string | null;
 };
 
-function parseDateOnly(value: string | null, field: string): { value?: string; timestamp?: number } {
+function parseDateOnly(
+  value: string | null,
+  field: string,
+): { value?: string; timestamp?: number } {
   const normalized = value?.trim();
   if (!normalized) return {};
   if (!DATE_ONLY.test(normalized)) {
     throw new RegistryValidationError(`${field} must use YYYY-MM-DD`);
   }
   const timestamp = Date.parse(`${normalized}T00:00:00.000Z`);
-  if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== normalized) {
+  if (
+    !Number.isFinite(timestamp) ||
+    new Date(timestamp).toISOString().slice(0, 10) !== normalized
+  ) {
     throw new RegistryValidationError(`${field} must be a valid UTC calendar date`);
   }
   return { value: normalized, timestamp };
