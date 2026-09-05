@@ -27,40 +27,20 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           path = Path("apps/admin/src/components/knowledge/knowledge-hybrid-search-v2.tsx")
-          text = path.read_text()
-          old = '''  const state = useMemo(() => readKnowledgeSearchState(searchParams), [searchParams]);
-          const queryTimerRef = useRef<number | null>(null);
-          const [result, setResult] = useState<SearchResponse | null>(null);
-          '''
-          new = '''  const state = useMemo(() => readKnowledgeSearchState(searchParams), [searchParams]);
-          const latestQueryRef = useRef(searchParams.toString());
-          latestQueryRef.current = searchParams.toString();
-          const queryTimerRef = useRef<number | null>(null);
-          const [result, setResult] = useState<SearchResponse | null>(null);
-          '''
-          if old not in text:
-              raise SystemExit("state anchor not found")
-          text = text.replace(old, new, 1)
-          old = '''  const replaceSearchState = useCallback(
-            (patch: Partial<KnowledgeSearchState>, resetOffset = true) => {
-              const query = patchKnowledgeSearchQuery(searchParams.toString(), patch, resetOffset);
-              router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-            },
-            [pathname, router, searchParams],
-          );
-          '''
-          new = '''  const replaceSearchState = useCallback(
-            (patch: Partial<KnowledgeSearchState>, resetOffset = true) => {
-              const query = patchKnowledgeSearchQuery(latestQueryRef.current, patch, resetOffset);
-              latestQueryRef.current = query;
-              router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-            },
-            [pathname, router],
-          );
-          '''
-          if old not in text:
-              raise SystemExit("replaceSearchState anchor not found")
-          path.write_text(text.replace(old, new, 1))
+          lines = path.read_text().splitlines()
+          state_anchor = "  const state = useMemo(() => readKnowledgeSearchState(searchParams), [searchParams]);"
+          state_index = lines.index(state_anchor)
+          lines[state_index + 1:state_index + 1] = [
+              "  const latestQueryRef = useRef(searchParams.toString());",
+              "  latestQueryRef.current = searchParams.toString();",
+          ]
+          query_line = "      const query = patchKnowledgeSearchQuery(searchParams.toString(), patch, resetOffset);"
+          query_index = lines.index(query_line)
+          lines[query_index] = "      const query = patchKnowledgeSearchQuery(latestQueryRef.current, patch, resetOffset);"
+          lines.insert(query_index + 1, "      latestQueryRef.current = query;")
+          deps_line = "    [pathname, router, searchParams],"
+          lines[lines.index(deps_line)] = "    [pathname, router],"
+          path.write_text("\n".join(lines) + "\n")
           PY
           pnpm exec prettier --write apps/admin/src/components/knowledge/knowledge-hybrid-search-v2.tsx
           git config user.name "github-actions[bot]"
