@@ -105,6 +105,8 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const state = useMemo(() => readKnowledgeSearchState(searchParams), [searchParams]);
+  const latestQueryRef = useRef(searchParams.toString());
+  latestQueryRef.current = searchParams.toString();
   const queryTimerRef = useRef<number | null>(null);
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -112,10 +114,11 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
 
   const replaceSearchState = useCallback(
     (patch: Partial<KnowledgeSearchState>, resetOffset = true) => {
-      const query = patchKnowledgeSearchQuery(searchParams.toString(), patch, resetOffset);
+      const query = patchKnowledgeSearchQuery(latestQueryRef.current, patch, resetOffset);
+      latestQueryRef.current = query;
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     },
-    [pathname, router, searchParams],
+    [pathname, router],
   );
 
   useEffect(
