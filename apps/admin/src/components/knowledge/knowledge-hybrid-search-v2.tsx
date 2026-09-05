@@ -403,6 +403,13 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
         </section>
       ) : result?.items.length ? (
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          {!result.search.complete ? (
+            <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-xs leading-5 text-amber-900">
+              {zh
+                ? "结果集存在截断或部分覆盖；以下数量仅代表已知候选，不应解读为完整结果。"
+                : "The result set is truncated or partial. Counts below represent known candidates, not complete results."}
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 text-xs text-slate-500">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-slate-700">
@@ -422,7 +429,7 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
             </div>
             <details className="relative">
               <summary className="cursor-pointer list-none rounded-lg px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100">
-                {zh ? "检索详情" : "Retrieval details"}
+                {zh ? "工程检索详情" : "Engineering retrieval details"}
               </summary>
               <div className="absolute right-0 z-10 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-3 text-[10px] leading-5 text-slate-500 shadow-lg">
                 <div>{result.search.mode}</div>
@@ -436,51 +443,57 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
           <div className="divide-y divide-slate-100">
             {result.items.map((item) => {
               const externalUrl = sourceUrl(item);
+              const jurisdictions = item.source?.jurisdictions.join(", ") || "—";
+              const matchReason = item.searchMatch.fullText
+                ? zh
+                  ? "正文内容命中"
+                  : "Matched indexed document content"
+                : zh
+                  ? "标题或来源元数据命中"
+                  : "Matched title or source metadata";
               return (
                 <article key={item.id} className="p-5 sm:p-6">
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="font-semibold text-slate-950">{item.title}</h2>
-                        {item.searchMatch.channels.map((channel) => (
-                          <span
-                            key={channel}
-                            className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
-                          >
-                            {channel === "FULL_TEXT"
-                              ? zh
-                                ? "全文"
-                                : "Full text"
-                              : zh
-                                ? "元数据"
-                                : "Metadata"}
-                          </span>
-                        ))}
-                      </div>
+                      <h2 className="font-semibold text-slate-950">{item.title}</h2>
                       <p className="mt-1 text-xs text-slate-500">
-                        {item.source?.name ?? "—"} ·{" "}
-                        {item.artifact?.originalName ?? item.targetPath} · {item.status} ·{" "}
+                        {item.source?.name ?? "—"} · {jurisdictions} · {item.status} ·{" "}
                         {new Date(item.generatedAt).toLocaleDateString(zh ? "zh-CN" : "en-US")}
+                      </p>
+                      <p className="mt-2 text-xs font-medium text-slate-700">{matchReason}</p>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        {zh ? "证据载体" : "Evidence"}:{" "}
+                        {item.artifact?.originalName ?? item.targetPath}
                       </p>
                       {item.searchMatch.fullText ? (
                         <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
                           <p className="text-xs leading-5 text-slate-700">
                             {item.searchMatch.fullText.snippet}
                           </p>
-                          <details className="mt-2 text-[10px] text-emerald-800">
-                            <summary className="cursor-pointer font-semibold">
-                              {zh ? "匹配依据" : "Match evidence"}
-                            </summary>
-                            <div className="mt-1 leading-5">
-                              <div>{item.searchMatch.fullText.indexMode}</div>
-                              <div>score {item.searchMatch.fullText.score.toFixed(4)}</div>
-                              {item.searchMatch.fullText.headingPath.length ? (
-                                <div>{item.searchMatch.fullText.headingPath.join(" › ")}</div>
-                              ) : null}
-                            </div>
-                          </details>
+                          {item.searchMatch.fullText.headingPath.length ? (
+                            <p className="mt-2 text-[10px] font-medium text-emerald-800">
+                              {item.searchMatch.fullText.headingPath.join(" › ")}
+                            </p>
+                          ) : null}
                         </div>
                       ) : null}
+                      <details className="mt-3 text-[10px] text-slate-500">
+                        <summary className="cursor-pointer font-semibold text-slate-600">
+                          {zh ? "工程检索证据" : "Engineering retrieval evidence"}
+                        </summary>
+                        <div className="mt-1 space-y-0.5 leading-5">
+                          <div>
+                            {zh ? "匹配通道" : "Match channels"}:{" "}
+                            {item.searchMatch.channels.join(" + ")}
+                          </div>
+                          {item.searchMatch.fullText ? (
+                            <>
+                              <div>{item.searchMatch.fullText.indexMode}</div>
+                              <div>score {item.searchMatch.fullText.score.toFixed(4)}</div>
+                            </>
+                          ) : null}
+                        </div>
+                      </details>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       <Link
