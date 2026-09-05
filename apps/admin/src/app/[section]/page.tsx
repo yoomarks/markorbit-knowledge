@@ -61,6 +61,14 @@ function SourcesPage() {
   return (
     <>
       <CorePageHeading page="sources" sourceCreateAction />
+      <div className="mb-4 flex justify-end">
+        <Link
+          href="/source-coverage"
+          className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-blue-300 hover:text-blue-700"
+        >
+          Source Coverage Board
+        </Link>
+      </div>
       <div className="space-y-6">
         <SourceSmartReview />
         <SourceCountryCoverage workspaceId={DEFAULT_WORKSPACE.id} />
