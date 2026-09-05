@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentChangeEvidence } from "@markorbit/contracts";
-import { buildEvidenceHistoryRows } from "./evidence-change-review";
-import { EVIDENCE_INSPECTOR_SECTIONS } from "./evidence-inspector";
+import {
+  buildEvidenceHistoryRows,
+  EVIDENCE_INSPECTOR_SECTIONS,
+} from "./evidence-inspector-model";
 
 function evidence(
   sequence: number,

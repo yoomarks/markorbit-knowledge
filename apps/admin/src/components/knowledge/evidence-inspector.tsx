@@ -1,10 +1,6 @@
-export const EVIDENCE_INSPECTOR_SECTIONS = [
-  { id: "inspector-content", label: "Content" },
-  { id: "evidence-change-review", label: "Changes" },
-  { id: "inspector-provenance", label: "Provenance" },
-  { id: "inspector-relations", label: "Relations" },
-  { id: "inspector-history", label: "History" },
-] as const;
+import { EVIDENCE_INSPECTOR_SECTIONS } from "./evidence-inspector-model";
+
+export { EVIDENCE_INSPECTOR_SECTIONS } from "./evidence-inspector-model";
 
 export function EvidenceInspector() {
   return (

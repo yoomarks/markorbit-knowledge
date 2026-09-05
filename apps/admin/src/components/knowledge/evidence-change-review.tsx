@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Clock3, FileDiff, Loader2, RefreshCw } from "lucide-react";
 import type { DocumentChangeEvidence } from "@markorbit/contracts";
+import { buildEvidenceHistoryRows } from "./evidence-inspector-model";
+
+export { buildEvidenceHistoryRows, type EvidenceHistoryRow } from "./evidence-inspector-model";
 
 type ChangeReviewResponse = {
   workspaceId: string;
@@ -10,34 +13,6 @@ type ChangeReviewResponse = {
   evidence: DocumentChangeEvidence[];
   complete: boolean;
 };
-
-export type EvidenceHistoryRow = {
-  evidenceId: string;
-  sequence: number;
-  changeKind: DocumentChangeEvidence["changeKind"];
-  observedAt: string;
-  documentId: string;
-  stagingDocumentId: string;
-  rawArtifactId: string;
-  artifactVersion: number;
-  sourceUri: string;
-};
-
-export function buildEvidenceHistoryRows(evidence: DocumentChangeEvidence[]): EvidenceHistoryRow[] {
-  return [...evidence]
-    .sort((left, right) => right.sequence - left.sequence)
-    .map((item) => ({
-      evidenceId: item.id,
-      sequence: item.sequence,
-      changeKind: item.changeKind,
-      observedAt: item.observedAt,
-      documentId: item.documentId,
-      stagingDocumentId: item.after.stagingDocumentId,
-      rawArtifactId: item.after.rawArtifactId,
-      artifactVersion: item.after.artifactVersion,
-      sourceUri: item.after.sourceUri,
-    }));
-}
 
 async function readError(response: Response): Promise<string> {
   try {
