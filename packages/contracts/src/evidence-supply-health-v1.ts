@@ -88,10 +88,12 @@ export type EvidenceSupplyReliabilityFacts = {
 export type EvidenceSupplyLatencyFacts = {
   windowDays: number;
   publicationToCapture: EvidenceSupplyLatencyDistribution;
-  captureToRetrievalReady: EvidenceSupplyLatencyDistribution;
+  captureToNormalized: EvidenceSupplyLatencyDistribution;
+  normalizedToRetrievalReady: EvidenceSupplyLatencyDistribution;
   basis: {
     publication: "RETRIEVAL_DOCUMENT_PUBLISHED_AT";
     capture: "RETRIEVAL_DOCUMENT_CAPTURED_AT";
+    normalized: "STAGING_DOCUMENT_CREATED_AT";
     retrievalReady: "RETRIEVAL_DOCUMENT_INDEXED_AT";
   };
 };
