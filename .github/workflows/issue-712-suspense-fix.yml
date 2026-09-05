@@ -1,0 +1,66 @@
+name: Issue 712 suspense fix
+
+on:
+  push:
+    branches: [issue-712-workspace-aware-knowledge]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: issue-712-workspace-aware-knowledge
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Add suspense boundary to static Knowledge entry
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("apps/admin/src/app/[section]/page.tsx")
+          text = path.read_text()
+          needle = 'import { notFound, redirect } from "next/navigation";\n'
+          if 'import { Suspense } from "react";' not in text:
+              if needle not in text:
+                  raise SystemExit("navigation import not found")
+              text = text.replace(needle, needle + 'import { Suspense } from "react";\n', 1)
+          old = '''      <KnowledgeWorkspaceBoundary>
+                <div className="mb-4 flex justify-end">
+                  <KnowledgeSearchEntryLink />
+                </div>
+                <KnowledgeBrowseSurface />
+              </KnowledgeWorkspaceBoundary>'''
+          new = '''      <Suspense fallback={null}>
+                <KnowledgeWorkspaceBoundary>
+                  <div className="mb-4 flex justify-end">
+                    <KnowledgeSearchEntryLink />
+                  </div>
+                  <KnowledgeBrowseSurface />
+                </KnowledgeWorkspaceBoundary>
+              </Suspense>'''
+          if old not in text:
+              raise SystemExit("Knowledge workspace block not found")
+          path.write_text(text.replace(old, new, 1))
+      - name: Format touched pages
+        run: >-
+          pnpm exec prettier --write
+          'apps/admin/src/app/[section]/page.tsx'
+          apps/admin/src/app/knowledge/search/page.tsx
+          'apps/admin/src/app/knowledge/[id]/page.tsx'
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/issue-712-suspense-fix.yml
+          git add apps/admin/src/app
+          git commit -m "fix(admin): wrap Knowledge workspace routing in suspense"
+          git push origin HEAD:issue-712-workspace-aware-knowledge
