@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, FileDiff, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Clock3, FileDiff, Loader2, RefreshCw } from "lucide-react";
 import type { DocumentChangeEvidence } from "@markorbit/contracts";
+import { buildEvidenceHistoryRows } from "./evidence-inspector-model";
+
+export { buildEvidenceHistoryRows, type EvidenceHistoryRow } from "./evidence-inspector-model";
 
 type ChangeReviewResponse = {
   workspaceId: string;
@@ -262,65 +265,150 @@ export function EvidenceChangeReview({
     () => [...(state?.evidence ?? [])].sort((left, right) => right.sequence - left.sequence),
     [state?.evidence],
   );
+  const history = useMemo(() => buildEvidenceHistoryRows(state?.evidence ?? []), [state?.evidence]);
 
   return (
-    <section
-      id="evidence-change-review"
-      className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-slate-950">
-            <FileDiff size={19} aria-hidden="true" />
-            <h2 className="font-semibold">Evidence Change Review</h2>
-          </div>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            Compare durable Knowledge versions using immutable lineage, hashes, source identity,
-            metadata, links and bounded text / structure changes.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setLoading(true);
-            void load();
-          }}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 disabled:opacity-40"
-        >
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} aria-hidden="true" />
-          刷新
-        </button>
-      </div>
-
-      {error ? (
-        <div className="mt-5 flex gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-          <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
-          <span>{error}</span>
-        </div>
-      ) : null}
-
-      {loading && !state ? (
-        <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
-          <Loader2 className="mx-auto mb-3 animate-spin" size={20} />
-          正在读取持久化变更证据…
-        </div>
-      ) : evidence.length === 0 ? (
-        <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
-          当前文档没有可比较的持久化变更证据。首个版本或未发生客观变化时这是正常状态。
-        </div>
-      ) : (
-        <div className="mt-5 space-y-4">
-          {!state?.complete ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-              当前只显示最近 25 条持久化证据；没有把截断结果表示为完整历史。
+    <div className="space-y-5">
+      <section
+        id="evidence-change-review"
+        className="scroll-mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-slate-950">
+              <FileDiff size={19} aria-hidden="true" />
+              <h2 className="font-semibold">Evidence Change Review</h2>
             </div>
-          ) : null}
-          {evidence.map((item) => (
-            <ChangeEvidenceCard key={item.id} evidence={item} />
-          ))}
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+              Compare durable Knowledge versions using immutable lineage, hashes, source identity,
+              metadata, links and bounded text / structure changes.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true);
+              void load();
+            }}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 disabled:opacity-40"
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} aria-hidden="true" />
+            刷新
+          </button>
         </div>
-      )}
-    </section>
+
+        {error ? (
+          <div className="mt-5 flex gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+            <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+        ) : null}
+
+        {loading && !state ? (
+          <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+            <Loader2 className="mx-auto mb-3 animate-spin" size={20} />
+            正在读取持久化变更证据…
+          </div>
+        ) : evidence.length === 0 ? (
+          <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+            当前文档没有可比较的持久化变更证据。首个版本或未发生客观变化时这是正常状态。
+          </div>
+        ) : (
+          <div className="mt-5 space-y-4">
+            {!state?.complete ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                当前只显示最近 25 条持久化证据；没有把截断结果表示为完整历史。
+              </div>
+            ) : null}
+            {evidence.map((item) => (
+              <ChangeEvidenceCard key={item.id} evidence={item} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section
+        id="inspector-history"
+        className="scroll-mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
+      >
+        <div className="flex items-center gap-2 text-slate-950">
+          <Clock3 size={19} aria-hidden="true" />
+          <h2 className="font-semibold">Durable Evidence History</h2>
+        </div>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+          Objective evidence events in durable sequence order. Identities are shown exactly and are
+          not converted into legal significance or recommended action.
+        </p>
+        {state?.documentId ? (
+          <p className="mt-3 break-all font-mono text-[10px] leading-4 text-slate-500">
+            Durable document {state.documentId}
+          </p>
+        ) : null}
+
+        {loading && !state ? (
+          <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+            Loading durable history…
+          </div>
+        ) : error && !state ? (
+          <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+            Durable history is unavailable because change evidence could not be loaded.
+          </div>
+        ) : history.length === 0 ? (
+          <div className="mt-5 rounded-xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+            No durable change-history events are available for this document.
+          </div>
+        ) : (
+          <div className="mt-5 overflow-hidden rounded-xl border border-slate-200">
+            {!state?.complete ? (
+              <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                Partial history: only the bounded recent evidence window is shown.
+              </div>
+            ) : null}
+            <div className="divide-y divide-slate-100">
+              {history.map((item) => (
+                <article key={item.evidenceId} className="grid gap-3 p-4 md:grid-cols-[110px_1fr]">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">#{item.sequence}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">{item.changeKind}</p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      {evidenceTime(item.observedAt)}
+                    </p>
+                  </div>
+                  <dl className="grid gap-x-4 gap-y-2 text-xs sm:grid-cols-2">
+                    <div>
+                      <dt className="text-slate-400">Version</dt>
+                      <dd className="mt-1 text-slate-700">v{item.artifactVersion}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Evidence ID</dt>
+                      <dd className="mt-1 break-all font-mono text-[10px] text-slate-600">
+                        {item.evidenceId}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Staging document</dt>
+                      <dd className="mt-1 break-all font-mono text-[10px] text-slate-600">
+                        {item.stagingDocumentId}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">RawArtifact</dt>
+                      <dd className="mt-1 break-all font-mono text-[10px] text-slate-600">
+                        {item.rawArtifactId}
+                      </dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-slate-400">Source URI</dt>
+                      <dd className="mt-1 break-all text-slate-600">{item.sourceUri}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

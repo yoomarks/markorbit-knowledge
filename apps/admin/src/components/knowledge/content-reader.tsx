@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ExternalLink, FileText, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ExternalLink, FileText, Loader2 } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
 import { buildKnowledgeReaderModel, type KnowledgeReaderBlock } from "./content-reader-model";
 
@@ -165,7 +165,7 @@ export function ContentReader({
   const sourceUrl =
     detail.source?.canonicalUri ?? detail.artifact?.canonicalUri ?? detail.artifact?.sourceUri;
   return (
-    <div className="space-y-5">
+    <div id="inspector-content" className="space-y-5 scroll-mt-5">
       <div className="flex items-center justify-between gap-4">
         <Link
           href="/knowledge"
@@ -177,6 +177,20 @@ export function ContentReader({
           {detail.status}
         </span>
       </div>
+
+      {detail.status === "BLOCKED" ? (
+        <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
+          <div>
+            <p className="font-semibold">{zh ? "证据当前处于阻断状态" : "Evidence is blocked"}</p>
+            <p className="mt-1 text-xs leading-5 text-amber-800">
+              {zh
+                ? "此状态来自当前 Knowledge 记录；Inspector 不推断法律意义，也不会自动建议操作。"
+                : "This is the current Knowledge record state. Inspector does not infer legal significance or recommend action."}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <article className="min-w-0 rounded-2xl border border-slate-200 bg-white px-6 py-7 sm:px-9 sm:py-9">
@@ -217,6 +231,12 @@ export function ContentReader({
                 <dd className="mt-1 font-medium text-slate-800">{detail.source?.name ?? "—"}</dd>
               </div>
               <div>
+                <dt className="text-slate-400">Source ID</dt>
+                <dd className="mt-1 break-all font-mono text-[10px] leading-4 text-slate-600">
+                  {detail.source?.id ?? "—"}
+                </dd>
+              </div>
+              <div>
                 <dt className="text-slate-400">{zh ? "来源类型" : "Source type"}</dt>
                 <dd className="mt-1 text-slate-700">{detail.source?.sourceType ?? "—"}</dd>
               </div>
@@ -255,34 +275,43 @@ export function ContentReader({
             <h2 className="text-sm font-semibold text-slate-950">
               {zh ? "原始证据" : "Original evidence"}
             </h2>
-            <div className="mt-4 flex items-start gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">
-                <FileText size={16} />
-              </span>
-              <div className="min-w-0">
-                <p className="break-words text-xs font-medium text-slate-800">
-                  {detail.artifact?.originalName ?? "—"}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {detail.artifact
-                    ? `${detail.artifact.mimeType} · ${formatBytes(detail.artifact.sizeBytes)}`
-                    : "—"}
-                </p>
-              </div>
-            </div>
             {detail.artifact ? (
-              <a
-                href={`/api/artifacts/${encodeURIComponent(detail.artifact.id)}/content`}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"
-              >
-                {zh ? "打开原始文件" : "Open original file"} <ExternalLink size={11} />
-              </a>
-            ) : null}
+              <>
+                <div className="mt-4 flex items-start gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500">
+                    <FileText size={16} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="break-words text-xs font-medium text-slate-800">
+                      {detail.artifact.originalName}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {detail.artifact.mimeType} · {formatBytes(detail.artifact.sizeBytes)}
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={`/api/artifacts/${encodeURIComponent(detail.artifact.id)}/content`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"
+                >
+                  {zh ? "打开原始文件" : "Open original file"} <ExternalLink size={11} />
+                </a>
+              </>
+            ) : (
+              <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-500">
+                {zh
+                  ? "当前 Knowledge 文档没有可显示的原始 Artifact 证据。"
+                  : "No original Artifact evidence is available for this Knowledge document."}
+              </div>
+            )}
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+          <section
+            id="inspector-provenance"
+            className="scroll-mt-5 rounded-2xl border border-slate-200 bg-white p-5"
+          >
             <h2 className="text-sm font-semibold text-slate-950">
               {zh ? "验证与溯源" : "Validation & provenance"}
             </h2>
@@ -290,6 +319,22 @@ export function ContentReader({
               <div>
                 <dt className="text-slate-400">{zh ? "验证结果" : "Validation"}</dt>
                 <dd className="mt-1 text-slate-700">{detail.validation.outcome}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">Knowledge ID</dt>
+                <dd className="mt-1 break-all font-mono text-[10px] leading-4 text-slate-600">
+                  {detail.id}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">Artifact ID</dt>
+                <dd className="mt-1 break-all font-mono text-[10px] leading-4 text-slate-600">
+                  {detail.artifact?.id ?? "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">{zh ? "版本" : "Version"}</dt>
+                <dd className="mt-1 text-slate-700">{detail.artifact?.version ?? "—"}</dd>
               </div>
               <div>
                 <dt className="text-slate-400">{zh ? "采集时间" : "Captured"}</dt>
@@ -311,12 +356,6 @@ export function ContentReader({
                 <dt className="text-slate-400">SHA-256</dt>
                 <dd className="mt-1 break-all font-mono text-[10px] leading-4 text-slate-600">
                   {detail.artifact?.contentHash?.value ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-400">Knowledge ID</dt>
-                <dd className="mt-1 break-all font-mono text-[10px] leading-4 text-slate-600">
-                  {detail.id}
                 </dd>
               </div>
             </dl>
