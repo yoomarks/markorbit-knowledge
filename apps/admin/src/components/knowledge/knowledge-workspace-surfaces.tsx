@@ -61,7 +61,10 @@ function EvidenceWorkspaceReturn({ workspaceId }: { workspaceId: string }) {
           <ArrowLeft size={16} /> 返回上一页 / Back
         </button>
       )}
-      <Link href={fallback} className="text-xs font-semibold text-emerald-700 hover:text-emerald-900">
+      <Link
+        href={fallback}
+        className="text-xs font-semibold text-emerald-700 hover:text-emerald-900"
+      >
         Knowledge Home
       </Link>
     </div>

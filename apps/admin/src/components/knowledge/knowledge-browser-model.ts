@@ -42,7 +42,8 @@ export function patchKnowledgeBrowserQuery(
   const params = new URLSearchParams(currentQuery);
   const next = { ...readKnowledgeBrowserState(params), ...patch };
   if (resetOffset && patch.offset === undefined) next.offset = 0;
-  if ((resetOffset || patch.offset !== undefined) && patch.selectedId === undefined) next.selectedId = "";
+  if ((resetOffset || patch.offset !== undefined) && patch.selectedId === undefined)
+    next.selectedId = "";
 
   for (const key of FILTER_KEYS) {
     const value = next[key].trim();
