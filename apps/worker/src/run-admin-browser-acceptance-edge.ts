@@ -387,12 +387,13 @@ async function main(): Promise<void> {
         .filter({ hasText: /Loaded 1|已载入 1/ })
         .waitFor();
 
-      await page.getByRole("button", { name: /View document|查看资料/ }).click();
-      const dialog = page.getByRole("dialog");
-      await dialog.waitFor();
-      const originalEvidence = dialog.getByRole("link", {
+      const inspectEvidence = page.getByRole("link", { name: /Inspect evidence|检查证据/ }).first();
+      await inspectEvidence.click();
+      await page.waitForURL((url) => url.pathname === `/knowledge/${STAGING_ID}`);
+      const originalEvidence = page.getByRole("link", {
         name: /Open original file|打开原始文件/,
       });
+      await originalEvidence.waitFor();
       assert.equal(
         await originalEvidence.getAttribute("href"),
         `/api/artifacts/${ARTIFACT_ID}/content`,
@@ -409,8 +410,8 @@ async function main(): Promise<void> {
       const downloadedPath = await download.path();
       assert.ok(downloadedPath, "Original evidence download must produce local bytes");
       assert.match(readFileSync(downloadedPath, "utf8"), new RegExp(RAW_MARKER));
-      await page.keyboard.press("Escape");
-      await dialog.waitFor({ state: "detached" });
+      await page.getByRole("link", { name: /Back to work context|返回工作上下文/ }).click();
+      await page.waitForURL((url) => url.pathname === "/knowledge");
 
       await page.route("**/api/knowledge?**", async (route) => {
         await route.fulfill({
