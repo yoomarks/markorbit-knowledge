@@ -32,13 +32,13 @@ Repository package version: **0.1.0**.
 
 The v0.1 control-plane trunk became **freeze-ready** on 2026-08-12. That decision remains the architectural baseline, but it is no longer the complete description of the repository.
 
-The current post-freeze phase is **Evidence Supply Workbench**. The acquisition/control-plane backbone remains the architectural boundary, while product emphasis has shifted toward complete and trustworthy browse/search corpus semantics, durable-truth operator work queues, objective evidence change review, evidence inspection, and factual source coverage/freshness visibility.
+The current post-freeze product direction is **Evidence Supply Workbench**. The acquisition/control-plane backbone remains the architectural boundary. Phase 3 completed the evidence-workbench foundations: complete Browser/Hybrid Search corpus semantics, one Knowledge Query Read Model V2, a durable-truth Operator Inbox, objective Evidence Change Review, a central Evidence Inspector, factual source coverage/freshness visibility, workspace-aware navigation, and progressive disclosure of retrieval/debug metadata.
 
 The 2026-08-23 closeout remains a historical acceptance baseline. Since then, the repository has consolidated production Worker/Scheduler execution onto the durable Worker Protocol / Execution Ledger path, removed obsolete semantic-scoring and in-memory execution scaffolds, completed evidence-backed retrieval regression and four-family federated read acceptance, and removed the Knowledge Browser 100-record correctness ceiling through #696/#702 rather than creating parallel runtimes.
 
 The current cross-repository acceptance suite covers Core Intake, Managed AI + Capability V2, provider-neutral Managed Communication production bootstrap, MarkReg contract invariants and K-CASE-008. Core may advance independently; the dependency-aware freshness classifier fails closed on relevant or unknown drift and can test current Core without baseline churn when later drift is confined to an already-proven isolated surface.
 
-The immediate internal P1 queue is #704 Hybrid Search completeness, #705 unified Knowledge Query Read Model V2, #706 Operator Inbox, and #707 Evidence Change Review. The genuine external/operator gates remain repository governance #429, explicitly authorized ADK-06 paid/live acceptance #405, and CNIPA backend-only source-identity/schema/pagination/coverage evidence debt #691. Closed CNIPA MVP #573 is no longer an active gate, and Knowledge must not manufacture code work around unavailable authenticated evidence or paid-provider authorization.
+Phase 4 now focuses on composing those completed primitives into a continuous product workflow rather than adding more framework surface. The execution order is #725 **Evidence Workspace** (preserve Browse/Search/Inbox context through one canonical evidence-detail experience), #726 **Evidence Supply Health** (explainable factual supply condition), then #727 **Immutable Evidence Sets / Review Packages** (freeze reproducible multi-document evidence contexts for governed downstream use). The genuine external/operator gates remain explicitly authorized ADK-06 paid/live acceptance #405, repository governance/live-evidence retention #429, and CNIPA backend-only source-identity/schema/pagination/coverage evidence debt #691. Knowledge must not manufacture code work around unavailable authenticated evidence or paid-provider authorization.
 
 See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READINESS_2026-08-12.md) for the frozen baseline, [Post-freeze Production Validation Closeout](docs/release/KNOWLEDGE_POST_FREEZE_PRODUCTION_VALIDATION_CLOSEOUT_2026-08-23.md) for the historical post-freeze checkpoint, [Knowledge Current State 2026-08-29](docs/release/KNOWLEDGE_CURRENT_STATE_2026-08-29.md), [Knowledge Current State 2026-09-01](docs/release/KNOWLEDGE_CURRENT_STATE_2026-09-01.md), and [Knowledge Current State 2026-09-02](docs/release/KNOWLEDGE_CURRENT_STATE_2026-09-02.md) for prior checkpoints, and [NEXT_TASKS.md](NEXT_TASKS.md) for the current execution pointer.
 
@@ -89,6 +89,11 @@ See [Knowledge v0.1 Release Readiness](docs/release/KNOWLEDGE_V0_1_RELEASE_READI
 ### Product and operations
 
 - real Admin surfaces for Sources, Plans, Runs, Workers, Raw Artifacts, Conversion, Vault and Ready Packages;
+- complete workspace-scoped Knowledge Browser and Hybrid Search corpus semantics backed by one query-truth model;
+- durable-truth Operator Inbox derived from persisted evidence rather than component workflow state;
+- Evidence Inspector with Content, objective Changes, Provenance, Relations and History-oriented evidence navigation;
+- factual Source Coverage Board with explicit `COMPLETE | PARTIAL | UNKNOWN` boundaries and freshness/change visibility;
+- workspace-aware Knowledge navigation and progressively disclosed retrieval/debug implementation evidence;
 - governed Manual Upload Admin control;
 - real execution and delivery evidence timelines;
 - Workspace-scoped Operations Readiness derived from durable Source, Worker, Run, Scheduler, Conversion and ReadyPackage V2 evidence;
