@@ -1,0 +1,150 @@
+name: Issue 726 Enrich Run Facts Once
+
+on:
+  push:
+    branches: [issue-726-evidence-supply-health]
+
+permissions:
+  contents: write
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: issue-726-evidence-supply-health
+      - name: Enrich evidence supply run facts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/persistence/src/evidence-supply-health.ts')
+          text = path.read_text()
+
+          old_reliability = '''function reliabilityFacts(
+            sourceIds: readonly string[],
+            runs: readonly RunFact[],
+          ): EvidenceSupplyReliabilityFacts {
+            const relevant = runs.filter((run) => sourceIds.includes(run.sourceId));
+            const completed = relevant.filter((run) => run.status === "COMPLETED");
+            const failed = relevant.filter((run) => run.status === "FAILED");
+            const cancelled = relevant.filter((run) => run.status === "CANCELLED");
+            const attemptedOutcome = completed.length + failed.length;
+            return {
+              windowDays: RELIABILITY_WINDOW_DAYS,
+              attempts: relevant.length,
+              completed: completed.length,
+              failed: failed.length,
+              cancelled: cancelled.length,
+              successRate: attemptedOutcome === 0 ? null : completed.length / attemptedOutcome,
+              lastCompletedAt: latest(completed.map((run) => run.updatedAt)),
+              lastFailedAt: latest(failed.map((run) => run.updatedAt)),
+            };
+          }'''
+          new_reliability = '''function reliabilityFacts(
+            sourceIds: readonly string[],
+            runs: readonly RunFact[],
+          ): EvidenceSupplyReliabilityFacts {
+            const relevant = runs
+              .filter((run) => sourceIds.includes(run.sourceId))
+              .slice()
+              .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt));
+            const completed = relevant.filter((run) => run.status === "COMPLETED");
+            const failed = relevant.filter((run) => run.status === "FAILED");
+            const cancelled = relevant.filter((run) => run.status === "CANCELLED");
+            const attemptedOutcome = completed.length + failed.length;
+            const latestTerminal = relevant.at(-1) ?? null;
+            return {
+              windowDays: RELIABILITY_WINDOW_DAYS,
+              attempts: relevant.length,
+              completed: completed.length,
+              failed: failed.length,
+              cancelled: cancelled.length,
+              successRate: attemptedOutcome === 0 ? null : completed.length / attemptedOutcome,
+              lastCompletedAt: latest(completed.map((run) => run.updatedAt)),
+              lastFailedAt: latest(failed.map((run) => run.updatedAt)),
+              latestTerminalStatus: latestTerminal?.status ?? null,
+              latestTerminalAt: latestTerminal?.updatedAt ?? null,
+              unrecoveredFailure: latestTerminal?.status === "FAILED",
+            };
+          }'''
+          if text.count(old_reliability) != 1:
+              raise SystemExit(f'reliability block count={text.count(old_reliability)}')
+          text = text.replace(old_reliability, new_reliability)
+
+          old_state = '''export function deriveEvidenceSupplyHealthState(input: {
+            coverage: EvidenceSupplyCoverageFacts["state"];
+            supplyState: "READY" | "DEGRADED" | "BLOCKED";
+            freshness: SourceSupplyFreshnessState;
+            schedulerErrorCount: number;
+          }): EvidenceSupplyHealthState {
+            if (input.coverage === "UNKNOWN") return "UNKNOWN";
+            if (input.supplyState === "BLOCKED") return "BLOCKED";
+            if (input.freshness === "STALE") return "STALE";
+            if (input.coverage === "PARTIAL") return "PARTIAL";
+            if (input.supplyState === "DEGRADED" || input.schedulerErrorCount > 0) return "DEGRADED";
+            return "HEALTHY";
+          }'''
+          new_state = '''export function deriveEvidenceSupplyHealthState(input: {
+            coverage: EvidenceSupplyCoverageFacts["state"];
+            supplyState: "READY" | "DEGRADED" | "BLOCKED";
+            freshness: SourceSupplyFreshnessState;
+            schedulerErrorCount: number;
+            unrecoveredFailure: boolean;
+          }): EvidenceSupplyHealthState {
+            if (input.coverage === "UNKNOWN") return "UNKNOWN";
+            if (input.supplyState === "BLOCKED") return "BLOCKED";
+            if (input.freshness === "STALE") return "STALE";
+            if (input.coverage === "PARTIAL") return "PARTIAL";
+            if (
+              input.supplyState === "DEGRADED" ||
+              input.schedulerErrorCount > 0 ||
+              input.unrecoveredFailure
+            ) {
+              return "DEGRADED";
+            }
+            return "HEALTHY";
+          }'''
+          if text.count(old_state) != 1:
+              raise SystemExit(f'state block count={text.count(old_state)}')
+          text = text.replace(old_state, new_state)
+
+          old_reason = '''  if (input.reliability.failed > 0) reasons.add("RECENT_ACQUISITION_FAILURES");
+            return [...reasons].sort();'''
+          new_reason = '''  if (input.reliability.failed > 0) reasons.add("RECENT_ACQUISITION_FAILURES");
+            if (input.reliability.unrecoveredFailure) reasons.add("UNRECOVERED_ACQUISITION_FAILURE");
+            return [...reasons].sort();'''
+          if text.count(old_reason) != 1:
+              raise SystemExit(f'reason insertion count={text.count(old_reason)}')
+          text = text.replace(old_reason, new_reason)
+
+          old_state_call = '''        freshness: freshnessState,
+                schedulerErrorCount: schedule.schedulerErrorCount,
+              });'''
+          new_state_call = '''        freshness: freshnessState,
+                schedulerErrorCount: schedule.schedulerErrorCount,
+                unrecoveredFailure: reliability.unrecoveredFailure,
+              });'''
+          if text.count(old_state_call) != 1:
+              raise SystemExit(f'state call count={text.count(old_state_call)}')
+          text = text.replace(old_state_call, new_state_call)
+
+          old_record = '''        schedule,
+                reliability,
+                latency: latencyFacts(sourceIds, latencies),'''
+          new_record = '''        schedule,
+                currentRun: health?.latestRun ?? null,
+                reliability,
+                latency: latencyFacts(sourceIds, latencies),'''
+          if text.count(old_record) != 1:
+              raise SystemExit(f'record insertion count={text.count(old_record)}')
+          text = text.replace(old_record, new_record)
+
+          path.write_text(text)
+          PY
+          rm .github/workflows/issue-726-enrich-run-facts-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/persistence/src/evidence-supply-health.ts .github/workflows/issue-726-enrich-run-facts-once.yml
+          git commit -m "feat: expose #726 current run condition"
+          git push
