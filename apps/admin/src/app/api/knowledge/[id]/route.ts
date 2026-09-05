@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { DEFAULT_WORKSPACE, RegistryError } from "@markorbit/persistence";
-import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
+import { RegistryError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
+import { resolveKnowledgeWorkspaceReadAccess } from "@/server/knowledge-workspace-access";
 import {
   getRawArtifactRepository,
   getSourceRepository,
@@ -14,9 +14,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
-    const assertedWorkspaceId =
-      new URL(request.url).searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
-    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
+    const { workspaceId } = await resolveKnowledgeWorkspaceReadAccess(request);
     const staging = getStagingContentRepository();
     const record = staging.getDocument(id, workspaceId);
     if (!record)
