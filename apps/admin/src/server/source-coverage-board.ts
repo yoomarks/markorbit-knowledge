@@ -10,7 +10,6 @@ import {
   listSourceCoverageTargets,
 } from "@markorbit/persistence/source-coverage";
 import {
-  deriveSourceCoverageBoundary,
   latestEvidenceTimestamp,
   type SourceCoverageBoundaryStatus,
 } from "@/lib/source-coverage-board-model";
@@ -188,16 +187,6 @@ export function getSourceCoverageBoard(workspaceId: string): SourceCoverageBoard
     }
     const artifact = latestForSources(registration.sourceIds, latestArtifacts);
     const change = latestForSources(registration.sourceIds, latestChanges);
-    const boundary = deriveSourceCoverageBoundary({
-      registrationState: registration.state,
-      sourceStatuses: registeredSources.map((source) => source.status),
-      supplyState: health?.state ?? "BLOCKED",
-      gaps: [...(health?.gaps ?? ["SOURCE_UNREGISTERED"])],
-      acquisitionArtifactCount: health?.acquisition.artifactCount ?? 0,
-      observedArtifactKinds: [...(health?.acquisition.artifactKinds ?? [])],
-      expectedArtifactKinds: [...target.acquisition.expectedArtifactKinds],
-      knownLimitation: Boolean(target.notes?.trim()),
-    });
 
     return {
       targetId: target.id,
@@ -220,8 +209,7 @@ export function getSourceCoverageBoard(workspaceId: string): SourceCoverageBoard
         mode: target.acquisition.mode,
         expectedArtifactKinds: [...target.acquisition.expectedArtifactKinds],
         observedArtifactKinds: [...(health?.acquisition.artifactKinds ?? [])],
-        missingExpectedArtifactKinds:
-          situation.coverage.missingExpectedArtifactKinds ?? boundary.missingExpectedArtifactKinds,
+        missingExpectedArtifactKinds: situation.coverage.missingExpectedArtifactKinds,
         latestSuccessfulAt: health?.acquisition.latestArtifactAt ?? null,
         latestArtifactId: artifact?.artifactId ?? null,
         renderJavascriptHint: target.acquisition.renderJavascriptHint,
