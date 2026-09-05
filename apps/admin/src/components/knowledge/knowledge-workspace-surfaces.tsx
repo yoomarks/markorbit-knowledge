@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { resolveKnowledgeReturnHref } from "@/lib/knowledge-navigation-model";
 import { knowledgeWorkspaceHref } from "@/lib/knowledge-workspace-model";
 import { ContentLocalGraph } from "./content-local-graph";
 import { ContentReader } from "./content-reader";
@@ -33,10 +36,43 @@ export function KnowledgeSearchSurface() {
   return <KnowledgeHybridSearch workspaceId={workspaceId} />;
 }
 
+function EvidenceWorkspaceReturn({ workspaceId }: { workspaceId: string }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
+  const fallback = knowledgeWorkspaceHref("/knowledge", workspaceId);
+  const resolvedReturn = resolveKnowledgeReturnHref(returnTo, workspaceId);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      {returnTo ? (
+        <Link
+          href={resolvedReturn}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-950"
+        >
+          <ArrowLeft size={16} /> 返回工作上下文 / Back to work context
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-950"
+        >
+          <ArrowLeft size={16} /> 返回上一页 / Back
+        </button>
+      )}
+      <Link href={fallback} className="text-xs font-semibold text-emerald-700 hover:text-emerald-900">
+        Knowledge Home
+      </Link>
+    </div>
+  );
+}
+
 export function KnowledgeReaderSurface({ documentId }: { documentId: string }) {
   const { workspaceId } = useKnowledgeWorkspace();
   return (
     <div className="space-y-5">
+      <EvidenceWorkspaceReturn workspaceId={workspaceId} />
       <EvidenceInspector />
       <ContentReader documentId={documentId} workspaceId={workspaceId} />
       <EvidenceChangeReview documentId={documentId} workspaceId={workspaceId} />

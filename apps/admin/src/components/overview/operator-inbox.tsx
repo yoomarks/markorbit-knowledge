@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, ArrowRight, Inbox, Loader2, RefreshCw } from "lucide-react";
+import { knowledgeEvidenceContextHref } from "@/lib/knowledge-navigation-model";
+import { knowledgeWorkspaceHref } from "@/lib/knowledge-workspace-model";
 
 type OperatorInboxCategory =
   | "ACQUISITION_FAILED"
@@ -86,6 +88,18 @@ export function OperatorInbox({ workspaceId }: { workspaceId: string }) {
     const timer = window.setTimeout(() => void refresh(), 0);
     return () => window.clearTimeout(timer);
   }, [refresh]);
+
+  const itemHref = useCallback(
+    (item: OperatorInboxItem) => {
+      if (!item.href.startsWith("/knowledge/")) return item.href;
+      return knowledgeEvidenceContextHref(
+        item.href,
+        workspaceId,
+        knowledgeWorkspaceHref("/dashboard", workspaceId),
+      );
+    },
+    [workspaceId],
+  );
 
   if (loading && !state) {
     return (
@@ -185,7 +199,7 @@ export function OperatorInbox({ workspaceId }: { workspaceId: string }) {
                   {category.items.slice(0, 2).map((item) => (
                     <Link
                       key={item.id}
-                      href={item.href}
+                      href={itemHref(item)}
                       className="group block rounded-lg bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100"
                     >
                       <div className="flex items-start justify-between gap-2">
