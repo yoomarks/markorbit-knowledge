@@ -458,13 +458,11 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                       <h2 className="font-semibold text-slate-950">{item.title}</h2>
                       <p className="mt-1 text-xs text-slate-500">
                         {item.source?.name ?? "—"} · {jurisdictions} · {item.status} ·{" "}
-                        {new Date(item.generatedAt).toLocaleDateString(
-                          zh ? "zh-CN" : "en-US",
-                        )}
+                        {new Date(item.generatedAt).toLocaleDateString(zh ? "zh-CN" : "en-US")}
                       </p>
                       <p className="mt-2 text-xs font-medium text-slate-700">{matchReason}</p>
                       <p className="mt-1 text-[11px] text-slate-400">
-                        {zh ? "证据载体" : "Evidence"}: {" "}
+                        {zh ? "证据载体" : "Evidence"}:{" "}
                         {item.artifact?.originalName ?? item.targetPath}
                       </p>
                       {item.searchMatch.fullText ? (
@@ -485,7 +483,7 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                         </summary>
                         <div className="mt-1 space-y-0.5 leading-5">
                           <div>
-                            {zh ? "匹配通道" : "Match channels"}: {" "}
+                            {zh ? "匹配通道" : "Match channels"}:{" "}
                             {item.searchMatch.channels.join(" + ")}
                           </div>
                           {item.searchMatch.fullText ? (
