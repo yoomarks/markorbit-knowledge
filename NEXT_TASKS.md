@@ -4,124 +4,131 @@
 
 **Boundary:** existing Acquisition & Knowledge Staging Control Plane
 
-**Checkpoint:** 2026-09-04
+**Checkpoint:** 2026-09-06
 
 Re-verify live GitHub state before protected, cross-repository,
 authenticated-source, or paid execution.
 
-## Phase 3 direction
+## Phase 4 direction
 
-Knowledge has completed the prior infrastructure and correctness closeout through
-Knowledge Browser completeness in #696/#702. The next stage does **not** expand
-Knowledge into MarkOrbit Core semantic or business-intelligence responsibilities.
+Knowledge has completed the Phase 3 evidence-workbench foundations rather than
+leaving them as an active P1 queue:
 
-The product emphasis now shifts from proving that evidence can safely enter the
-system to making durable evidence fast to find, inspect, compare, review, and
-deliver:
+- #704 removed the bounded Hybrid Search correctness ceiling;
+- #705 unified Browser/Search corpus truth through Knowledge Query Read Model V2;
+- #706 added the durable-truth Operator Inbox;
+- #707 added objective Evidence Change Review;
+- #709 made Reader the central Evidence Inspector surface;
+- #711 added factual source coverage/freshness visibility;
+- #712 made Knowledge navigation workspace-aware;
+- #713 moved retrieval/debug implementation detail behind progressive disclosure.
 
-- complete and trustworthy browse/search corpus semantics;
-- one corpus-truth read model across operator surfaces;
-- durable-truth operator work queues;
-- objective evidence change review;
-- evidence inspection, provenance, and version lineage;
-- factual source coverage and freshness visibility.
+The next stage does **not** add another retrieval stack, another detail shell, or
+MarkOrbit Core semantic/business-intelligence logic. The product goal is to turn
+the completed primitives into one continuous evidence-supply workflow, then make
+supply health explainable, then freeze reproducible multi-document evidence
+contexts for downstream use.
 
-## Immediate P1 execution order
+## Immediate Phase 4 execution order
 
-### P1-0 — Roadmap/current-state truth refresh (#703)
+### P0 — Evidence Workspace (#725)
 
-Refresh project docs against live repository truth and record the Phase 3
-execution direction. Preserve external/operator gates rather than manufacturing
-code work around them.
+Unify Browser, Search, Operator Inbox and the existing Reader/Inspector into one
+continuous workspace navigation model.
 
-### P1-1 — Hybrid Search completeness (#704)
+Required outcomes:
 
-`GET /api/knowledge/search` still uses bounded candidate windows:
-`MAX_SCAN = 100` and `MAX_FTS_HITS = 50`. Remove the bounded-candidate
-correctness ceiling rather than increasing it. Do not present a bounded composed
-candidate count as an exact total.
+- query, filters, pagination and useful selection state survive evidence review;
+- Browser/Search/Inbox open the same canonical Evidence Inspector experience;
+- explicit deep links and back/forward navigation restore the originating work
+  context;
+- workspace mismatches fail closed;
+- Content, Changes, Provenance, Relations and History remain reachable without
+  duplicating evidence truth or a second Reader.
 
-### P1-2 — Knowledge Query Read Model V2 (#705)
+This task is application-architecture consolidation. It does not change search
+ranking, corpus truth, evidence mutation rules or Core responsibilities.
 
-Unify Browser and Search corpus membership, filter, facet, order, count, and
-pagination semantics. Workspace, source, jurisdiction, artifact kind, status,
-and time semantics must not drift across two truth paths. Retrieval and ranking
-may remain a separate layer.
+### P1 — Explainable Evidence Supply Health (#726)
 
-### P1-3 — Operator Inbox (#706)
+Compose existing durable Source, Run, Scheduler, Artifact, Change, Coverage and
+delivery facts into one deterministic evidence-supply condition model.
 
-Build one workspace-scoped daily work queue derived only from durable Source,
-Run, Artifact, Staging, Vault, and ReadyPackage evidence.
+Keep `COMPLETE | PARTIAL | UNKNOWN` coverage independent from operational health.
+Expose factual freshness, reliability, latency and change signals with explicit
+reason codes and drill-through evidence. Do not create a hidden trust score,
+legal-quality score or AI-generated health narrative.
 
-Initial categories include acquisition failure, stale/degraded source, new
-material, changed evidence, review-needed, Vault conflict, ready-to-deliver, and
-delivery-blocked or reconciliation work.
+### P1/P2 — Immutable Evidence Sets / Review Packages (#727)
 
-### P1-4 — Evidence Change Review (#707)
+Add a general workspace-scoped `Evidence Set V1` that freezes exact document,
+RawArtifact, version and digest lineage selected by an operator.
 
-Make objective previous/current version changes reviewable with immutable
-RawArtifact and normalized-document lineage. Show text, structure, and metadata
-differences without legal-significance scoring or recommendation.
+A frozen set must remain reproducible after the live corpus changes, report
+objective newer-version drift separately, and expose a governed downstream
+read/export contract that Core can reference without reconstructing the original
+context from a moving corpus.
+
+Knowledge owns context identity and lineage; Core owns semantic synthesis,
+legal/business significance, recommendations and user-facing intelligence.
+
+## Phase 4 dependency rule
+
+Execute in this order unless a proven production defect requires interruption:
+
+1. #725 Evidence Workspace;
+2. #726 Evidence Supply Health;
+3. #727 Evidence Sets / Review Packages.
+
+Do not open additional broad Knowledge product lanes while these three are active
+unless a concrete correctness, security, evidence-integrity or cross-repository
+contract defect cannot be contained inside them.
 
 ## External/operator gates that remain real
 
-### Repository governance (#429)
-
-Repository-admin governance remains separate from code work. Do not weaken
-exact-SHA, review, or evidence-retention controls to make live acceptance easier.
-
 ### ADK-06 live 3×2 acceptance (#405)
 
-Run only with explicit paid/live authorization, the current exact Knowledge main
-SHA, real DeepSeek/OpenAI credentials, protected execution controls, an evidence
-passphrase, and authorized durable non-public evidence retention.
+The paid/live provider acceptance remains an explicit operator gate. Run only
+with fresh owner authorization, the exact current Knowledge main SHA, protected
+execution controls, real provider credentials and authorized durable non-public
+evidence retention. Phase 4 product work does not authorize or substitute for
+that live run.
+
+### Repository governance / live evidence retention (#429)
+
+Repository governance remains separate from product work. Preserve protected
+main, workflow review, protected live credentials, exact-SHA execution and
+durable non-public live-evidence retention requirements. Do not weaken these
+controls to simplify Phase 4 development.
 
 ### CNIPA backend-only evidence debt (#691)
 
-The bounded CNIPA MVP is already closed. Remaining backend-only source identity,
-schema, pagination, and coverage facts require a legitimate permitted
-authenticated raw/source-response channel.
-
-Do not bypass CAPTCHA/SSO, anti-debug protections, or extract/replay session
-credentials.
-
-## P2 product/UX backlog
-
-After the P1 correctness and work-loop sequence above:
-
-1. Evidence Inspector V2 — make Reader the central Content, Changes, Provenance,
-   Relations, and History surface.
-2. Search UX V2 — URL-persisted filters, facets, chips, pagination,
-   back-navigation state, and saved views.
-3. Source Coverage Board — jurisdiction/authority/source-family freshness, last
-   success/change, and `COMPLETE | PARTIAL | UNKNOWN` boundaries.
-4. Workspace-aware Knowledge navigation — remove product-page dependence on
-   `DEFAULT_WORKSPACE` and make workspace a real navigation context.
-5. Progressive disclosure — keep retrieval/debug evidence available while
-   moving FTS/BM25 implementation details out of the primary operator hierarchy.
+The bounded CNIPA MVP remains complete while backend-only source identity,
+schema, pagination and population-coverage facts stay explicitly unverified.
+Advance #691 only when a legitimate permitted authenticated raw/source-response
+channel exists. Do not bypass CAPTCHA/SSO, anti-debug protections, or extract or
+replay session credentials.
 
 ## Engineering trigger rule
 
-Start a new Knowledge coding task when at least one of these is true **and** it
-has concrete acceptance criteria:
+Start or interrupt a Knowledge coding task only when at least one of these is
+true **and** it has concrete acceptance criteria:
 
-1. A live/production path exposes a reproducible acquisition, lineage,
-   retrieval, isolation, or interoperability defect.
-2. A frozen regression corpus exposes a measurable quality or correctness
-   regression.
-3. A cross-repository contract drift check proves compatibility work is
-   required.
-4. A product requirement introduces a new evidence-supply capability that still
-   belongs inside Knowledge.
-5. An observed operator-throughput, review-usability, coverage-truth, or
-   evidence-inspection gap prevents efficient use of already-durable Knowledge
-   evidence.
+1. a live/production path exposes a reproducible acquisition, lineage,
+   retrieval, isolation or interoperability defect;
+2. a frozen regression corpus exposes a measurable correctness regression;
+3. a cross-repository contract drift check proves compatibility work is
+   required;
+4. an accepted product requirement introduces a new evidence-supply capability
+   that still belongs inside Knowledge;
+5. an observed operator-throughput, review-usability, coverage-truth or
+   evidence-inspection gap prevents efficient use of already-durable evidence.
 
-This broader trigger does not authorize speculative framework work.
+This rule does not authorize speculative framework work.
 
 ## Do not start merely to keep coding
 
-- another generic retrieval framework unrelated to #704/#705;
+- another generic retrieval/search framework;
 - blended cross-channel relevance/truth scoring;
 - synthetic vector/provider metrics;
 - fabricated graph edges or graph lift;
@@ -132,10 +139,12 @@ This broader trigger does not authorize speculative framework work.
 - speculative Case ontology/framework expansion;
 - broad Web extraction expansion without a concrete production gap;
 - autonomous CNIPA auth/CAPTCHA bypass;
-- paid/live #405 for roadmap optics.
+- paid/live #405 for roadmap optics;
+- a second Evidence Inspector, review package runtime or delivery engine when the
+  existing durable contracts can be reused.
 
 ## Operating rule
 
-**抓大放小.** Prefer complete corpus truth, exact lineage, real source flows,
-objective changes, measurable operator throughput, and durable cross-system
-evidence over additional framework surface.
+**抓大放小.** Prefer continuous operator context, complete corpus truth, exact
+lineage, factual supply health, reproducible evidence contexts and durable
+cross-system evidence over additional framework surface.
