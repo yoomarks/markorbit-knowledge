@@ -1,4 +1,7 @@
-import type { SourceSupplyFreshnessState } from "./source-supply-health-v1";
+import type {
+  SourceSupplyFreshnessState,
+  SourceSupplyLatestRun,
+} from "./source-supply-health-v1";
 
 export const EVIDENCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.0" as const;
 
@@ -40,6 +43,7 @@ export type EvidenceSupplyHealthReasonCode =
   | "KNOWN_LIMITATION"
   | "SCHEDULER_ERROR"
   | "RECENT_ACQUISITION_FAILURES"
+  | "UNRECOVERED_ACQUISITION_FAILURE"
   | `SUPPLY_GAP:${string}`
   | `EXPECTED_ARTIFACT_KIND_MISSING:${string}`
   | `SCHEDULER_ERROR:${string}`;
@@ -83,6 +87,9 @@ export type EvidenceSupplyReliabilityFacts = {
   successRate: number | null;
   lastCompletedAt: string | null;
   lastFailedAt: string | null;
+  latestTerminalStatus: "COMPLETED" | "FAILED" | "CANCELLED" | null;
+  latestTerminalAt: string | null;
+  unrecoveredFailure: boolean;
 };
 
 export type EvidenceSupplyLatencyFacts = {
@@ -120,6 +127,7 @@ export type EvidenceSupplyHealthRecordV1 = {
   coverage: EvidenceSupplyCoverageFacts;
   freshness: EvidenceSupplyFreshnessFacts;
   schedule: EvidenceSupplyScheduleFacts;
+  currentRun: SourceSupplyLatestRun;
   reliability: EvidenceSupplyReliabilityFacts;
   latency: EvidenceSupplyLatencyFacts;
   changeActivity: EvidenceSupplyChangeActivityFacts;
