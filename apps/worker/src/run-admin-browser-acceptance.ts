@@ -375,11 +375,24 @@ async function waitForKnowledgeRefresh(page: Page, action: () => Promise<unknown
   await responsePromise;
 }
 
-async function assertKnowledgeJourney(page: Page): Promise<void> {
+function assertWorkspaceUrl(url: URL, pathname: string): void {
+  assert.equal(url.pathname, pathname);
+  assert.equal(url.searchParams.get("workspaceId"), WORKSPACE_ID);
+}
+
+async function clickEvidenceReturn(page: Page): Promise<void> {
+  const returnLink = page.getByRole("link", {
+    name: /Back to work context|返回工作上下文/,
+  });
+  await returnLink.waitFor();
+  await returnLink.click();
+}
+
+async function assertBrowseRoundTrip(page: Page): Promise<void> {
   const initialResponse = page.waitForResponse(
     (response) => response.url().includes("/api/knowledge?") && response.status() === 200,
   );
-  await page.goto(`${ADMIN_ORIGIN}/knowledge`);
+  await page.goto(`${ADMIN_ORIGIN}/knowledge?workspaceId=${encodeURIComponent(WORKSPACE_ID)}`);
   await initialResponse;
   await page.getByText(FIXTURE_TITLE, { exact: true }).waitFor();
 
@@ -393,35 +406,137 @@ async function assertKnowledgeJourney(page: Page): Promise<void> {
   await waitForKnowledgeRefresh(page, () => filters.nth(3).selectOption("READY"));
   await page.locator("article").filter({ hasText: FIXTURE_SOURCE_NAME }).waitFor();
 
-  const trigger = page.getByRole("button", { name: /View document|查看资料/ });
-  await trigger.click();
-  const dialog = page.getByRole("dialog");
-  await dialog.waitFor();
-  await page.getByText(FIXTURE_CONTENT_MARKER, { exact: false }).waitFor();
-  await dialog.getByText(FIXTURE_PROVENANCE, { exact: false }).waitFor();
-  assert.equal(await dialog.getAttribute("aria-modal"), "true");
+  const inspectLink = page.getByRole("link", { name: /Inspect evidence|检查证据/ }).first();
+  const inspectHref = await inspectLink.getAttribute("href");
+  assert.ok(inspectHref, "Browser inspect link must expose a deep link");
+  const inspectUrl = new URL(inspectHref, ADMIN_ORIGIN);
+  assertWorkspaceUrl(inspectUrl, `/knowledge/${STAGING_ID}`);
+  assert.ok(inspectUrl.searchParams.get("returnTo")?.includes("Browser+Acceptance"));
 
-  const closeButton = dialog.getByRole("button", { name: /Close|关闭/ });
-  assert.ok(
-    await closeButton.evaluate((element) => element === document.activeElement),
-    "Knowledge dialog must place initial focus on its close control",
+  await inspectLink.click();
+  await page.waitForURL((url) => url.pathname === `/knowledge/${STAGING_ID}`);
+  await page.getByText(FIXTURE_CONTENT_MARKER, { exact: false }).waitFor();
+  await page.getByText(FIXTURE_PROVENANCE, { exact: false }).first().waitFor();
+
+  await clickEvidenceReturn(page);
+  await page.waitForURL((url) => url.pathname === "/knowledge");
+  const returned = new URL(page.url());
+  assertWorkspaceUrl(returned, "/knowledge");
+  assert.equal(returned.searchParams.get("q"), "Browser Acceptance");
+  assert.equal(returned.searchParams.get("sourceId"), SOURCE_ID);
+  assert.equal(returned.searchParams.get("jurisdiction"), "NL");
+  assert.equal(returned.searchParams.get("artifactKind"), "HTML");
+  assert.equal(returned.searchParams.get("status"), "READY");
+  assert.equal(returned.searchParams.get("selected"), STAGING_ID);
+  await page.getByText(FIXTURE_TITLE, { exact: true }).waitFor();
+}
+
+async function assertSearchRoundTrip(page: Page): Promise<void> {
+  const searchResponse = page.waitForResponse(
+    (response) => response.url().includes("/api/knowledge/search?") && response.status() === 200,
   );
-  await page.keyboard.press("Shift+Tab");
-  assert.ok(
-    await dialog.evaluate((element) => element.contains(document.activeElement)),
-    "Knowledge dialog must trap reverse-tab focus",
+  await page.goto(
+    `${ADMIN_ORIGIN}/knowledge/search?workspaceId=${encodeURIComponent(WORKSPACE_ID)}&q=${encodeURIComponent("Browser Acceptance")}&status=READY`,
   );
-  await page.keyboard.press("Tab");
-  assert.ok(
-    await dialog.evaluate((element) => element.contains(document.activeElement)),
-    "Knowledge dialog must trap forward-tab focus",
+  await searchResponse;
+  await page.getByText(FIXTURE_TITLE, { exact: true }).waitFor();
+
+  const inspectLink = page.getByRole("link", { name: /Inspect evidence|检查证据/ }).first();
+  const inspectHref = await inspectLink.getAttribute("href");
+  assert.ok(inspectHref, "Search inspect link must expose a deep link");
+  const inspectUrl = new URL(inspectHref, ADMIN_ORIGIN);
+  assertWorkspaceUrl(inspectUrl, `/knowledge/${STAGING_ID}`);
+  const returnTo = inspectUrl.searchParams.get("returnTo");
+  assert.ok(returnTo?.includes("/knowledge/search"));
+  assert.ok(returnTo?.includes("q=Browser+Acceptance") || returnTo?.includes("q=Browser%20Acceptance"));
+  assert.ok(returnTo?.includes("status=READY"));
+
+  await inspectLink.click();
+  await page.waitForURL((url) => url.pathname === `/knowledge/${STAGING_ID}`);
+  await page.getByText(FIXTURE_CONTENT_MARKER, { exact: false }).waitFor();
+  await clickEvidenceReturn(page);
+  await page.waitForURL((url) => url.pathname === "/knowledge/search");
+
+  const returned = new URL(page.url());
+  assertWorkspaceUrl(returned, "/knowledge/search");
+  assert.equal(returned.searchParams.get("q"), "Browser Acceptance");
+  assert.equal(returned.searchParams.get("status"), "READY");
+  await page.getByText(FIXTURE_TITLE, { exact: true }).waitFor();
+}
+
+async function assertDirectDeepLinkRestoration(page: Page): Promise<void> {
+  const returnTo = `/knowledge/search?workspaceId=${encodeURIComponent(WORKSPACE_ID)}&q=${encodeURIComponent("Browser Acceptance")}&status=READY`;
+  await page.goto(
+    `${ADMIN_ORIGIN}/knowledge/${STAGING_ID}?workspaceId=${encodeURIComponent(WORKSPACE_ID)}&returnTo=${encodeURIComponent(returnTo)}`,
   );
-  await page.keyboard.press("Escape");
-  await dialog.waitFor({ state: "detached" });
-  assert.ok(
-    await trigger.evaluate((element) => element === document.activeElement),
-    "Knowledge dialog must return focus to its trigger",
-  );
+  await page.getByText(FIXTURE_CONTENT_MARKER, { exact: false }).waitFor();
+  await clickEvidenceReturn(page);
+  await page.waitForURL((url) => url.pathname === "/knowledge/search");
+  const returned = new URL(page.url());
+  assertWorkspaceUrl(returned, "/knowledge/search");
+  assert.equal(returned.searchParams.get("q"), "Browser Acceptance");
+  assert.equal(returned.searchParams.get("status"), "READY");
+}
+
+async function assertInboxRoundTrip(page: Page): Promise<void> {
+  const inboxPattern = "**/api/operator-inbox?**";
+  await page.route(inboxPattern, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        workspaceId: WORKSPACE_ID,
+        generatedAt: FIXED_TIME,
+        evidenceState: "COMPLETE",
+        unavailableEvidence: [],
+        total: 1,
+        categories: [
+          {
+            category: "NEW_MATERIAL",
+            count: 1,
+            items: [
+              {
+                category: "NEW_MATERIAL",
+                id: "browser-acceptance-inbox-item",
+                objectType: "STAGING_DOCUMENT",
+                objectId: STAGING_ID,
+                title: FIXTURE_TITLE,
+                reason: "New indexed material is available",
+                occurredAt: FIXED_TIME,
+                href: `/knowledge/${STAGING_ID}`,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+  });
+  try {
+    await page.goto(`${ADMIN_ORIGIN}/dashboard?workspaceId=${encodeURIComponent(WORKSPACE_ID)}`);
+    const itemLink = page.getByRole("link", { name: new RegExp(FIXTURE_TITLE) }).first();
+    await itemLink.waitFor();
+    const href = await itemLink.getAttribute("href");
+    assert.ok(href, "Inbox item must expose an evidence deep link");
+    const evidenceUrl = new URL(href, ADMIN_ORIGIN);
+    assertWorkspaceUrl(evidenceUrl, `/knowledge/${STAGING_ID}`);
+    assert.equal(evidenceUrl.searchParams.get("returnTo"), `/dashboard?workspaceId=${WORKSPACE_ID}`);
+
+    await itemLink.click();
+    await page.waitForURL((url) => url.pathname === `/knowledge/${STAGING_ID}`);
+    await page.getByText(FIXTURE_CONTENT_MARKER, { exact: false }).waitFor();
+    await clickEvidenceReturn(page);
+    await page.waitForURL((url) => url.pathname === "/dashboard");
+    assertWorkspaceUrl(new URL(page.url()), "/dashboard");
+  } finally {
+    await page.unroute(inboxPattern);
+  }
+}
+
+async function assertKnowledgeJourney(page: Page): Promise<void> {
+  await assertBrowseRoundTrip(page);
+  await assertSearchRoundTrip(page);
+  await assertDirectDeepLinkRestoration(page);
+  await assertInboxRoundTrip(page);
 }
 
 async function assertRealMutation(page: Page): Promise<void> {
@@ -617,6 +732,7 @@ async function main(): Promise<void> {
             canonicalAdminSession: true,
             unauthenticatedFailClosed: true,
             workspaceMismatchFailClosed: true,
+            evidenceWorkspaceRoundTrips: ["BROWSE", "SEARCH", "INBOX", "DIRECT_DEEP_LINK"],
             realMutation: "worker-create",
             paidProviderCalls: false,
           },
