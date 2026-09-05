@@ -1,0 +1,70 @@
+name: Search UX V2 State Race Fix
+
+on:
+  push:
+    branches: [issue-710-search-ux-v2]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: issue-710-search-ux-v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Preserve the latest URL state across debounced query updates
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("apps/admin/src/components/knowledge/knowledge-hybrid-search-v2.tsx")
+          text = path.read_text()
+          old = '''  const state = useMemo(() => readKnowledgeSearchState(searchParams), [searchParams]);
+          const queryTimerRef = useRef<number | null>(null);
+          const [result, setResult] = useState<SearchResponse | null>(null);
+          '''
+          new = '''  const state = useMemo(() => readKnowledgeSearchState(searchParams), [searchParams]);
+          const latestQueryRef = useRef(searchParams.toString());
+          latestQueryRef.current = searchParams.toString();
+          const queryTimerRef = useRef<number | null>(null);
+          const [result, setResult] = useState<SearchResponse | null>(null);
+          '''
+          if old not in text:
+              raise SystemExit("state anchor not found")
+          text = text.replace(old, new, 1)
+          old = '''  const replaceSearchState = useCallback(
+            (patch: Partial<KnowledgeSearchState>, resetOffset = true) => {
+              const query = patchKnowledgeSearchQuery(searchParams.toString(), patch, resetOffset);
+              router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+            },
+            [pathname, router, searchParams],
+          );
+          '''
+          new = '''  const replaceSearchState = useCallback(
+            (patch: Partial<KnowledgeSearchState>, resetOffset = true) => {
+              const query = patchKnowledgeSearchQuery(latestQueryRef.current, patch, resetOffset);
+              latestQueryRef.current = query;
+              router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+            },
+            [pathname, router],
+          );
+          '''
+          if old not in text:
+              raise SystemExit("replaceSearchState anchor not found")
+          path.write_text(text.replace(old, new, 1))
+          PY
+          pnpm exec prettier --write apps/admin/src/components/knowledge/knowledge-hybrid-search-v2.tsx
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/admin/src/components/knowledge/knowledge-hybrid-search-v2.tsx
+          git commit -m "fix: preserve latest Search URL state during debounce (#710)"
+          git push origin HEAD:issue-710-search-ux-v2
