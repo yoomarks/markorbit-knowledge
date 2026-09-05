@@ -26,32 +26,13 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path('apps/worker/src/run-admin-browser-acceptance-edge.ts')
+
+          path = Path("apps/worker/src/run-admin-browser-acceptance-edge.ts")
           text = path.read_text()
-          old = '''      await page.getByRole("button", { name: /View document|查看资料/ }).click();
-          const dialog = page.getByRole("dialog");
-          await dialog.waitFor();
-          const originalEvidence = dialog.getByRole("link", {
-            name: /Open original file|打开原始文件/,
-          });
-          assert.equal(
-            await originalEvidence.getAttribute("href"),
-            `/api/artifacts/${ARTIFACT_ID}/content`,
-            "Original evidence link must target the canonical authenticated content route",
-          );
-          const downloadPromise = page.waitForEvent("download");
-          await originalEvidence.click();
-          const download = await downloadPromise;
-          assert.equal(
-            download.suggestedFilename(),
-            "browser-acceptance-original-evidence.html",
-            "Original evidence download must retain its governed filename",
-          );
-          const downloadedPath = await download.path();
-          assert.ok(downloadedPath, "Original evidence download must produce local bytes");
-          assert.match(readFileSync(downloadedPath, "utf8"), new RegExp(RAW_MARKER));
-          await page.keyboard.press("Escape");
-          await dialog.waitFor({ state: "detached" });'''
+          start_marker = '      await page.getByRole("button", { name: /View document|查看资料/ }).click();'
+          end_marker = '      await dialog.waitFor({ state: "detached" });'
+          start = text.index(start_marker)
+          end = text.index(end_marker, start) + len(end_marker)
           new = '''      const inspectEvidence = page
             .getByRole("link", { name: /Inspect evidence|检查证据/ })
             .first();
@@ -81,9 +62,7 @@ jobs:
             .getByRole("link", { name: /Back to work context|返回工作上下文/ })
             .click();
           await page.waitForURL((url) => url.pathname === "/knowledge");'''
-          if text.count(old) != 1:
-              raise SystemExit(f'expected exactly one legacy detail-modal block, found {text.count(old)}')
-          path.write_text(text.replace(old, new))
+          path.write_text(text[:start] + new + text[end:])
           PY
           pnpm exec prettier --write apps/worker/src/run-admin-browser-acceptance-edge.ts
           rm .github/workflows/issue-725-fix-edge-acceptance-once.yml
