@@ -14,6 +14,7 @@ describe("deriveEvidenceSupplyHealthState", () => {
         supplyState: "BLOCKED",
         freshness: "UNOBSERVED",
         schedulerErrorCount: 0,
+        unrecoveredFailure: true,
       }),
     ).toBe("UNKNOWN");
   });
@@ -25,6 +26,7 @@ describe("deriveEvidenceSupplyHealthState", () => {
         supplyState: "BLOCKED",
         freshness: "STALE",
         schedulerErrorCount: 1,
+        unrecoveredFailure: true,
       }),
     ).toBe("BLOCKED");
     expect(
@@ -33,6 +35,7 @@ describe("deriveEvidenceSupplyHealthState", () => {
         supplyState: "READY",
         freshness: "STALE",
         schedulerErrorCount: 1,
+        unrecoveredFailure: true,
       }),
     ).toBe("STALE");
     expect(
@@ -41,17 +44,19 @@ describe("deriveEvidenceSupplyHealthState", () => {
         supplyState: "READY",
         freshness: "FRESH",
         schedulerErrorCount: 1,
+        unrecoveredFailure: true,
       }),
     ).toBe("PARTIAL");
   });
 
-  it("uses current supply or scheduler degradation without opaque scoring", () => {
+  it("uses current supply, scheduler or unrecovered failure without opaque scoring", () => {
     expect(
       deriveEvidenceSupplyHealthState({
         coverage: "COMPLETE",
         supplyState: "DEGRADED",
         freshness: "FRESH",
         schedulerErrorCount: 0,
+        unrecoveredFailure: false,
       }),
     ).toBe("DEGRADED");
     expect(
@@ -60,6 +65,7 @@ describe("deriveEvidenceSupplyHealthState", () => {
         supplyState: "READY",
         freshness: "FRESH",
         schedulerErrorCount: 1,
+        unrecoveredFailure: false,
       }),
     ).toBe("DEGRADED");
     expect(
@@ -68,6 +74,16 @@ describe("deriveEvidenceSupplyHealthState", () => {
         supplyState: "READY",
         freshness: "FRESH",
         schedulerErrorCount: 0,
+        unrecoveredFailure: true,
+      }),
+    ).toBe("DEGRADED");
+    expect(
+      deriveEvidenceSupplyHealthState({
+        coverage: "COMPLETE",
+        supplyState: "READY",
+        freshness: "FRESH",
+        schedulerErrorCount: 0,
+        unrecoveredFailure: false,
       }),
     ).toBe("HEALTHY");
   });
@@ -94,7 +110,13 @@ describe("SqliteEvidenceSupplyHealthRepository", () => {
         objectType: "EVIDENCE_SUPPLY_HEALTH",
         state: "UNKNOWN",
         coverage: { state: "UNKNOWN" },
-        reliability: { windowDays: 30, attempts: 0 },
+        currentRun: null,
+        reliability: {
+          windowDays: 30,
+          attempts: 0,
+          latestTerminalStatus: null,
+          unrecoveredFailure: false,
+        },
         changeActivity: { updates7d: 0, updates30d: 0 },
       });
     } finally {
