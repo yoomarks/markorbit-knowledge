@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { deriveSourceCoverageBoundary, latestEvidenceTimestamp } from "./source-coverage-board-model";
+import {
+  deriveSourceCoverageBoundary,
+  latestEvidenceTimestamp,
+} from "./source-coverage-board-model";
 
 const completeInput = {
   registrationState: "REGISTERED" as const,

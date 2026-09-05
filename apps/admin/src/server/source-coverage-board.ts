@@ -81,11 +81,16 @@ export type SourceCoverageBoard = {
 
 function tableExists(database: DatabaseSync, tableName: string): boolean {
   return Boolean(
-    database.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(tableName),
+    database
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(tableName),
   );
 }
 
-function loadLatestArtifacts(database: DatabaseSync, workspaceId: string): Map<string, LatestArtifactEvidence> {
+function loadLatestArtifacts(
+  database: DatabaseSync,
+  workspaceId: string,
+): Map<string, LatestArtifactEvidence> {
   if (!tableExists(database, "raw_artifacts")) return new Map();
   const rows = database
     .prepare(
@@ -102,7 +107,10 @@ function loadLatestArtifacts(database: DatabaseSync, workspaceId: string): Map<s
   return new Map(rows.map((row) => [row.sourceId, row]));
 }
 
-function loadLatestChanges(database: DatabaseSync, workspaceId: string): Map<string, LatestChangeEvidence> {
+function loadLatestChanges(
+  database: DatabaseSync,
+  workspaceId: string,
+): Map<string, LatestChangeEvidence> {
   if (!tableExists(database, "document_change_events")) return new Map();
   const rows = database
     .prepare(
@@ -148,7 +156,10 @@ export function getSourceCoverageBoard(workspaceId: string): SourceCoverageBoard
   const latestArtifacts = loadLatestArtifacts(database, workspaceId);
   const latestChanges = loadLatestChanges(database, workspaceId);
   const registrations = new Map(
-    evaluateSourceCoverage(sources, targets).map((registration) => [registration.targetId, registration]),
+    evaluateSourceCoverage(sources, targets).map((registration) => [
+      registration.targetId,
+      registration,
+    ]),
   );
 
   const rows = targets.map((target) => {
