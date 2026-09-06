@@ -57,6 +57,33 @@ function normalizedAnchor(value: string): string {
   return value.replace(/\s+/gu, " ").trim().toLowerCase();
 }
 
+type DiagnosticChunk = {
+  ordinal: number;
+  chunkId: string;
+  contentSha256: string;
+  headingPath: readonly string[];
+  text: string;
+};
+
+function boundedChunkDiagnostics(chunks: readonly DiagnosticChunk[], anchor: string): string {
+  const tokens = [...new Set(anchor.split(/\s+/u).filter((token) => token.length >= 5))];
+  const lexical = chunks.filter((chunk) => {
+    const visible = normalizeVisibleText([...chunk.headingPath, chunk.text].join(" "));
+    return tokens.some((token) => visible.includes(token));
+  });
+  const fallback = [...chunks.slice(0, 6), ...chunks.slice(-6)].filter(
+    (chunk, index, selected) => selected.findIndex((candidate) => candidate.chunkId === chunk.chunkId) === index,
+  );
+  const selected = (lexical.length > 0 ? lexical : fallback).slice(0, 12);
+  return selected
+    .map((chunk) => {
+      const heading = normalizeVisibleText(chunk.headingPath.join(" > ")).slice(0, 120);
+      const snippet = normalizeVisibleText(chunk.text).slice(0, 180);
+      return `ordinal=${chunk.ordinal},chunkId=${chunk.chunkId},sha256=${chunk.contentSha256},heading=${JSON.stringify(heading)},snippet=${JSON.stringify(snippet)}`;
+    })
+    .join(" | ");
+}
+
 export function matchedUsptoMarkFormatAnchors(text: string, anchors: readonly string[]): string[] {
   const normalized = normalizeVisibleText(text);
   return anchors.filter((anchor) => normalized.includes(normalizedAnchor(anchor)));
@@ -225,7 +252,7 @@ function collectFactBindings(
     if (occurrences.length > 1) {
       throw new RegistryConflictError(
         "USPTO_MARK_FORMAT_FACT_EVIDENCE_AMBIGUOUS",
-        `Expected one exact passage for ${sourceKey}/${query.factId}; found ${occurrences.length}`,
+        `Expected one exact passage for ${sourceKey}/${query.factId}; found ${occurrences.length}; chunks: ${boundedChunkDiagnostics(chunks, anchor)}`,
       );
     }
     if (occurrences.length === 1) {
@@ -243,7 +270,7 @@ function collectFactBindings(
     if (headingMatches.length !== 1) {
       throw new RegistryConflictError(
         "USPTO_MARK_FORMAT_FACT_EVIDENCE_AMBIGUOUS",
-        `Expected one exact passage for ${sourceKey}/${query.factId}; found ${headingMatches.length}`,
+        `Expected one exact passage for ${sourceKey}/${query.factId}; found ${headingMatches.length}; chunks: ${boundedChunkDiagnostics(chunks, anchor)}`,
       );
     }
     return [{ query, document: hit.document, chunk: headingMatches[0]! }];
