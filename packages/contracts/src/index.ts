@@ -21,6 +21,7 @@ export * from "./global-reference-source-v1";
 export * from "./source-supply-health-v1";
 export * from "./evidence-supply-health-v1";
 export * from "./evidence-set-v1";
+export * from "./control-plane-evidence-supply-health-owner-v1";
 export * from "./source-compatibility-v1";
 export * from "./acquisition-intelligence-v1";
 export * from "./acquisition-intelligence-learning-v1";
