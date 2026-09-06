@@ -22,7 +22,7 @@ import {
   initializeRegistry,
 } from "./index";
 
-const MIGRATION_ID = "0030_evidence_sets_v1";
+const MIGRATION_ID = "0032_evidence_sets_v1";
 const MAX_MEMBERS = 100;
 const MAX_TITLE = 200;
 const MAX_NOTE = 1_000;
