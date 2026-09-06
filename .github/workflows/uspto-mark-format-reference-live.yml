@@ -215,8 +215,6 @@ jobs:
         with:
           name: uspto-mark-format-reference-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/bootstrap-drawings-specimens.json
-            ${{ runner.temp }}/bootstrap-mark-drawings.json
             ${{ runner.temp }}/conversion-drawings-specimens.json
             ${{ runner.temp }}/conversion-mark-drawings.json
             ${{ runner.temp }}/conversion-dispatch-drawings-specimens.json

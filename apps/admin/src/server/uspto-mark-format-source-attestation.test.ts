@@ -7,8 +7,10 @@ import {
   observeUsptoMarkFormatHttp,
   type UsptoMarkFormatAttestationDependencies,
 } from "./uspto-mark-format-source-attestation";
+import { USPTO_MARK_DRAWING_STRATEGY_SOURCE_V1 } from "./uspto-mark-drawing-strategy-source";
 
 const SOURCE = USPTO_MARK_FORMAT_REFERENCE_PROFILE_V1.sources[1];
+const FROZEN = USPTO_MARK_DRAWING_STRATEGY_SOURCE_V1;
 const WORKSPACE_ID = "wsp_test";
 const SOURCE_ID = "src_test";
 const BODY = `<html><body>${SOURCE.requiredAnchors.join(". ")}. Last updated on: Jan 18, 2025 12:00 AM EST</body></html>`;
@@ -40,22 +42,40 @@ function dependencies(
     publishedAt: null,
     contentSha256: "a".repeat(64),
     keywords: [],
-    chunkCount: SOURCE.evidenceQueries.length,
+    chunkCount: 2,
     indexedAt: "2026-09-05T12:05:00.000Z",
     isCurrent: true,
   } as const;
-  const chunks = SOURCE.evidenceQueries.map((query, index) => ({
-    protocolVersion: "1.0" as const,
-    objectType: "RETRIEVAL_CHUNK" as const,
-    chunkId: `rch_${query.factId.toLowerCase()}`,
-    documentId: document.documentId,
-    stagingDocumentId: document.stagingDocumentId,
-    artifactVersion: 1,
-    ordinal: index + 1,
-    headingPath: ["Drawing of your trademark"],
-    text: `${query.passageAnchor}.`,
-    contentSha256: String.fromCharCode(98 + index).repeat(64),
-  }));
+  const definitions = FROZEN.chunks.find((chunk) => chunk.role === "DRAWING_TYPE_DEFINITIONS")!;
+  const protection = FROZEN.chunks.find(
+    (chunk) => chunk.role === "PROTECTION_SCOPE_AND_SPECIAL_FORM_REQUIRED",
+  )!;
+  const chunks = [
+    {
+      protocolVersion: "1.0" as const,
+      objectType: "RETRIEVAL_CHUNK" as const,
+      chunkId: definitions.chunkId,
+      documentId: document.documentId,
+      stagingDocumentId: document.stagingDocumentId,
+      artifactVersion: 1,
+      ordinal: definitions.ordinal,
+      headingPath: [...definitions.headingPath],
+      text: `${SOURCE.evidenceQueries[0].passageAnchor}.`,
+      contentSha256: definitions.chunkContentSha256,
+    },
+    {
+      protocolVersion: "1.0" as const,
+      objectType: "RETRIEVAL_CHUNK" as const,
+      chunkId: protection.chunkId,
+      documentId: document.documentId,
+      stagingDocumentId: document.stagingDocumentId,
+      artifactVersion: 1,
+      ordinal: protection.ordinal,
+      headingPath: [...protection.headingPath],
+      text: `${SOURCE.evidenceQueries[1].passageAnchor}. ${SOURCE.evidenceQueries[2].passageAnchor}.`,
+      contentSha256: protection.chunkContentSha256,
+    },
+  ];
 
   return {
     sources: {
@@ -154,7 +174,26 @@ describe("USPTO mark-format source attestation", () => {
     );
   });
 
-  it("fails closed when a fact passage is missing or ambiguously duplicated", async () => {
+  it("reuses the exact #734 frozen chunks for mark-drawing facts", async () => {
+    const evidence = await attestUsptoMarkFormatSource({
+      workspaceId: WORKSPACE_ID,
+      sourceId: SOURCE_ID,
+      sourceKey: "MARK_DRAWINGS",
+      dependencies: dependencies(),
+      now: new Date("2026-09-06T12:00:00.000Z"),
+    });
+    const definitions = FROZEN.chunks.find((chunk) => chunk.role === "DRAWING_TYPE_DEFINITIONS")!;
+    const protection = FROZEN.chunks.find(
+      (chunk) => chunk.role === "PROTECTION_SCOPE_AND_SPECIAL_FORM_REQUIRED",
+    )!;
+    expect(evidence.chunks.map((chunk) => chunk.chunkId)).toEqual([
+      definitions.chunkId,
+      definitions.chunkId,
+      protection.chunkId,
+    ]);
+  });
+
+  it("fails closed when a #734 frozen chunk is missing or its digest drifts", async () => {
     const missing = dependencies();
     const original = missing.retrieval.listChunks("stg_test", WORKSPACE_ID);
     missing.retrieval.listChunks = () => original.slice(1);
@@ -166,20 +205,23 @@ describe("USPTO mark-format source attestation", () => {
         dependencies: missing,
         now: new Date("2026-09-06T12:00:00.000Z"),
       }),
-    ).rejects.toMatchObject({ code: "USPTO_MARK_FORMAT_FACT_EVIDENCE_AMBIGUOUS" });
+    ).rejects.toMatchObject({ code: "USPTO_MARK_FORMAT_FROZEN_CHUNK_MISSING" });
 
-    const duplicate = dependencies();
-    const chunks = duplicate.retrieval.listChunks("stg_test", WORKSPACE_ID);
-    duplicate.retrieval.listChunks = () => [...chunks, { ...chunks[0]!, chunkId: "rch_duplicate" }];
+    const drift = dependencies();
+    const chunks = drift.retrieval.listChunks("stg_test", WORKSPACE_ID);
+    drift.retrieval.listChunks = () => [
+      { ...chunks[0]!, contentSha256: "f".repeat(64) },
+      ...chunks.slice(1),
+    ];
     await expect(
       attestUsptoMarkFormatSource({
         workspaceId: WORKSPACE_ID,
         sourceId: SOURCE_ID,
         sourceKey: "MARK_DRAWINGS",
-        dependencies: duplicate,
+        dependencies: drift,
         now: new Date("2026-09-06T12:00:00.000Z"),
       }),
-    ).rejects.toMatchObject({ code: "USPTO_MARK_FORMAT_FACT_EVIDENCE_AMBIGUOUS" });
+    ).rejects.toMatchObject({ code: "USPTO_MARK_FORMAT_FROZEN_CHUNK_DRIFT" });
   });
 
   it("fails closed when the exact RawArtifact is missing", async () => {

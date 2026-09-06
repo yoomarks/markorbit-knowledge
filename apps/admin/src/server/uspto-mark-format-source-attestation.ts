@@ -13,6 +13,7 @@ import {
 import type { RawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import type { RetrievalIndexRepository } from "@markorbit/persistence/retrieval-index";
 import type { StagingContentRegistryRepository } from "@markorbit/persistence/staging-content";
+import { USPTO_MARK_DRAWING_STRATEGY_SOURCE_V1 } from "./uspto-mark-drawing-strategy-source";
 
 type FetchLike = (
   input: string,
@@ -199,6 +200,35 @@ function collectFactBindings(
 
   const chunks = dependencies.retrieval.listChunks(hit.document.stagingDocumentId, workspaceId);
   return expected.evidenceQueries.map((query) => {
+    if (sourceKey === "MARK_DRAWINGS") {
+      const role =
+        query.factId === "DRAWING_TYPE_AFFECTS_PROTECTION"
+          ? "PROTECTION_SCOPE_AND_SPECIAL_FORM_REQUIRED"
+          : "DRAWING_TYPE_DEFINITIONS";
+      const frozen = USPTO_MARK_DRAWING_STRATEGY_SOURCE_V1.chunks.find(
+        (candidate) => candidate.role === role,
+      );
+      if (!frozen) {
+        throw new RegistryConflictError(
+          "USPTO_MARK_FORMAT_FROZEN_CHUNK_CONTRACT_MISSING",
+          `#734 does not freeze ${role} for ${query.factId}`,
+        );
+      }
+      const chunk = chunks.find((candidate) => candidate.chunkId === frozen.chunkId);
+      if (!chunk) {
+        throw new RegistryConflictError(
+          "USPTO_MARK_FORMAT_FROZEN_CHUNK_MISSING",
+          `Frozen #734 chunk ${frozen.chunkId} is missing for ${sourceKey}/${query.factId}`,
+        );
+      }
+      if (chunk.contentSha256 !== frozen.chunkContentSha256) {
+        throw new RegistryConflictError(
+          "USPTO_MARK_FORMAT_FROZEN_CHUNK_DRIFT",
+          `Frozen #734 chunk ${frozen.chunkId} digest drifted for ${sourceKey}/${query.factId}`,
+        );
+      }
+      return { query, document: hit.document, chunk };
+    }
     const matches = chunks.filter((chunk) =>
       normalizeVisibleText(chunk.text).includes(normalizedAnchor(query.passageAnchor)),
     );
