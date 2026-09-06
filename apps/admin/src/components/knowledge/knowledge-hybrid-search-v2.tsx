@@ -28,6 +28,7 @@ import {
   readKnowledgeSearchState,
   type KnowledgeSearchState,
 } from "./knowledge-hybrid-search-model";
+import { EvidenceSetSelectionBar } from "./evidence-set-selection-bar";
 
 type SearchItem = {
   id: string;
@@ -114,6 +115,11 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{ workspaceId: string; ids: string[] }>({
+    workspaceId,
+    ids: [],
+  });
+  const selectedIds = selection.workspaceId === workspaceId ? selection.ids : [];
 
   const replaceSearchState = useCallback(
     (patch: Partial<KnowledgeSearchState>, resetOffset = true) => {
@@ -248,6 +254,13 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
       generatedFrom: "",
       generatedTo: "",
     });
+  };
+
+  const toggleSelected = (itemId: string) => {
+    const ids = selectedIds.includes(itemId)
+      ? selectedIds.filter((id) => id !== itemId)
+      : [...selectedIds, itemId];
+    setSelection({ workspaceId, ids });
   };
 
   const sourceUrl = (item: SearchItem) =>
@@ -390,6 +403,12 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
         ) : null}
       </section>
 
+      <EvidenceSetSelectionBar
+        workspaceId={workspaceId}
+        selectedIds={selectedIds}
+        onClear={() => setSelection({ workspaceId, ids: [] })}
+      />
+
       {!state.q ? (
         <section className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-sm text-slate-500">
           {zh
@@ -500,6 +519,14 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                       </details>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(item.id)}
+                          onChange={() => toggleSelected(item.id)}
+                        />
+                        {zh ? "选入集合" : "Select"}
+                      </label>
                       <Link
                         href={knowledgeEvidenceContextHref(
                           `/knowledge/${encodeURIComponent(item.id)}`,

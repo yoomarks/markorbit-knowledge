@@ -10,6 +10,9 @@ import { ContentReader } from "./content-reader";
 import { ContentRelationshipPanel } from "./content-relationship-panel";
 import { EvidenceChangeReview } from "./evidence-change-review";
 import { EvidenceInspector } from "./evidence-inspector";
+import { EvidenceSetList } from "./evidence-set-list";
+import { EvidenceSetReviewPackage } from "./evidence-set-review-package";
+import { EvidenceSetSelectionBar } from "./evidence-set-selection-bar";
 import { KnowledgeBrowser } from "./knowledge-browser";
 import { KnowledgeHybridSearch } from "./knowledge-hybrid-search";
 import { useKnowledgeWorkspace } from "./knowledge-workspace";
@@ -26,6 +29,18 @@ export function KnowledgeSearchEntryLink() {
   );
 }
 
+export function KnowledgeEvidenceSetsEntryLink() {
+  const { workspaceId } = useKnowledgeWorkspace();
+  return (
+    <Link
+      href={knowledgeWorkspaceHref("/knowledge/evidence-sets", workspaceId)}
+      className="inline-flex items-center rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-800"
+    >
+      Evidence Sets / Review Packages
+    </Link>
+  );
+}
+
 export function KnowledgeBrowseSurface() {
   const { workspaceId } = useKnowledgeWorkspace();
   return <KnowledgeBrowser workspaceId={workspaceId} />;
@@ -34,6 +49,16 @@ export function KnowledgeBrowseSurface() {
 export function KnowledgeSearchSurface() {
   const { workspaceId } = useKnowledgeWorkspace();
   return <KnowledgeHybridSearch workspaceId={workspaceId} />;
+}
+
+export function EvidenceSetListSurface() {
+  const { workspaceId } = useKnowledgeWorkspace();
+  return <EvidenceSetList workspaceId={workspaceId} />;
+}
+
+export function EvidenceSetReviewSurface({ evidenceSetId }: { evidenceSetId: string }) {
+  const { workspaceId } = useKnowledgeWorkspace();
+  return <EvidenceSetReviewPackage workspaceId={workspaceId} evidenceSetId={evidenceSetId} />;
 }
 
 function EvidenceWorkspaceReturn({ workspaceId }: { workspaceId: string }) {
@@ -77,6 +102,14 @@ export function KnowledgeReaderSurface({ documentId }: { documentId: string }) {
     <div className="space-y-5">
       <EvidenceWorkspaceReturn workspaceId={workspaceId} />
       <EvidenceInspector />
+      <details className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4">
+        <summary className="cursor-pointer text-xs font-semibold text-indigo-800">
+          Freeze current evidence into an Evidence Set
+        </summary>
+        <div className="mt-3">
+          <EvidenceSetSelectionBar workspaceId={workspaceId} selectedIds={[documentId]} />
+        </div>
+      </details>
       <ContentReader documentId={documentId} workspaceId={workspaceId} />
       <EvidenceChangeReview documentId={documentId} workspaceId={workspaceId} />
       <section id="inspector-relations" className="space-y-5 scroll-mt-5">

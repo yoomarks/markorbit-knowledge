@@ -24,6 +24,7 @@ import {
   readKnowledgeBrowserState,
   type KnowledgeBrowserState,
 } from "./knowledge-browser-model";
+import { EvidenceSetSelectionBar } from "./evidence-set-selection-bar";
 
 type KnowledgeItem = {
   id: string;
@@ -126,6 +127,11 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
   const [result, setResult] = useState<KnowledgeListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{ workspaceId: string; ids: string[] }>({
+    workspaceId,
+    ids: [],
+  });
+  const selectedIds = selection.workspaceId === workspaceId ? selection.ids : [];
 
   const replaceBrowserState = useCallback(
     (patch: Partial<KnowledgeBrowserState>, resetOffset = true) => {
@@ -169,6 +175,13 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
     return () => window.clearTimeout(timer);
   }, [result?.items, state.selectedId]);
 
+  const toggleSelected = (itemId: string) => {
+    const ids = selectedIds.includes(itemId)
+      ? selectedIds.filter((id) => id !== itemId)
+      : [...selectedIds, itemId];
+    setSelection({ workspaceId, ids });
+  };
+
   const totalPages = Math.max(1, Math.ceil((result?.total ?? 0) / KNOWLEDGE_BROWSER_PAGE_LIMIT));
   const currentPage = Math.floor(state.offset / KNOWLEDGE_BROWSER_PAGE_LIMIT) + 1;
 
@@ -200,6 +213,12 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
           </div>
         ))}
       </div>
+
+      <EvidenceSetSelectionBar
+        workspaceId={workspaceId}
+        selectedIds={selectedIds}
+        onClear={() => setSelection({ workspaceId, ids: [] })}
+      />
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 p-4 sm:p-5">
@@ -350,7 +369,15 @@ export function KnowledgeBrowser({ workspaceId }: { workspaceId: string }) {
                       </p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <label className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(item.id)}
+                        onChange={() => toggleSelected(item.id)}
+                      />
+                      {zh ? "选入集合" : "Select"}
+                    </label>
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone(item.status)}`}
                     >
