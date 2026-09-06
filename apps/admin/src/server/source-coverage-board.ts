@@ -1,8 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type {
-  EvidenceSupplyHealthRecordV1,
-  EvidenceSupplyHealthState,
-} from "@markorbit/contracts";
+import type { EvidenceSupplyHealthRecordV1, EvidenceSupplyHealthState } from "@markorbit/contracts";
 import { SqliteEvidenceSupplyHealthRepository } from "@markorbit/persistence/evidence-supply-health";
 import { SqliteOperationalSupplyHealthRepository } from "@markorbit/persistence/source-compatibility-supply-health";
 import {
