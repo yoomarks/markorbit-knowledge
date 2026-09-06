@@ -6,6 +6,10 @@ function envText(name: string, fallback: string): string {
   return value || fallback;
 }
 
+function envOptional(name: string): string | null {
+  return process.env[name]?.trim() || null;
+}
+
 function envInteger(name: string, fallback: number, minimum: number, maximum: number): number {
   const raw = process.env[name]?.trim();
   if (!raw) return fallback;
@@ -28,6 +32,10 @@ const INCLUDE_PATTERN = envText(
 );
 const MAX_DEPTH = envInteger("MARKORBIT_USPTO_MAX_DEPTH", 1, 0, 5);
 const MAX_ITEMS = envInteger("MARKORBIT_USPTO_MAX_ITEMS", 8, 1, 100);
+const REFERENCE_PROFILE = envOptional("MARKORBIT_USPTO_REFERENCE_PROFILE");
+const SOURCE_VERSION = envOptional("MARKORBIT_USPTO_SOURCE_VERSION");
+const SOURCE_LAST_UPDATED = envOptional("MARKORBIT_USPTO_SOURCE_LAST_UPDATED");
+const SOURCE_PURPOSE = envOptional("MARKORBIT_USPTO_SOURCE_PURPOSE");
 
 function validateUsptoBoundary(uri: string, label: string): void {
   let parsed: URL;
@@ -50,6 +58,14 @@ validateUsptoBoundary(CANONICAL_URI, "MARKORBIT_USPTO_CANONICAL_URI");
 if (!INCLUDE_PATTERN.startsWith("https://") || !INCLUDE_PATTERN.includes("uspto.gov/trademark")) {
   throw new Error(
     "MARKORBIT_USPTO_INCLUDE_PATTERN must remain inside the USPTO trademark boundary",
+  );
+}
+if (
+  (REFERENCE_PROFILE || SOURCE_VERSION || SOURCE_LAST_UPDATED) &&
+  !(REFERENCE_PROFILE && SOURCE_VERSION && SOURCE_LAST_UPDATED)
+) {
+  throw new Error(
+    "MARKORBIT_USPTO_REFERENCE_PROFILE, MARKORBIT_USPTO_SOURCE_VERSION and MARKORBIT_USPTO_SOURCE_LAST_UPDATED must be supplied together",
   );
 }
 
@@ -163,7 +179,19 @@ async function ensureSource(baseUrl: string): Promise<string> {
   const existing = await requestJson(baseUrl, "/api/sources?q=USPTO&limit=100");
   for (const candidate of items(existing.body)) {
     const source = record(candidate);
-    if (source?.slug === SOURCE_SLUG) return identifier(source.id, "source.id");
+    if (source?.slug !== SOURCE_SLUG) continue;
+    if (REFERENCE_PROFILE) {
+      const extensions = record(source.extensions);
+      if (
+        source.canonicalUri !== CANONICAL_URI ||
+        extensions?.["x-markorbit-reference-profile"] !== REFERENCE_PROFILE ||
+        extensions?.["x-markorbit-source-version"] !== SOURCE_VERSION ||
+        extensions?.["x-markorbit-source-last-updated"] !== SOURCE_LAST_UPDATED
+      ) {
+        throw new Error(`Existing ${SOURCE_SLUG} Source reference identity drifted`);
+      }
+    }
+    return identifier(source.id, "source.id");
   }
 
   const created = await requestJson(
@@ -186,6 +214,14 @@ async function ensureSource(baseUrl: string): Promise<string> {
       extensions: {
         "x-markorbit-golden-source": true,
         "x-markorbit-source-owner": "United States Patent and Trademark Office",
+        ...(REFERENCE_PROFILE
+          ? {
+              "x-markorbit-reference-profile": REFERENCE_PROFILE,
+              "x-markorbit-source-version": SOURCE_VERSION!,
+              "x-markorbit-source-last-updated": SOURCE_LAST_UPDATED!,
+            }
+          : {}),
+        ...(SOURCE_PURPOSE ? { "x-markorbit-purpose": SOURCE_PURPOSE } : {}),
       },
     }),
   );
@@ -228,7 +264,9 @@ async function ensurePlan(baseUrl: string, sourceId: string): Promise<string> {
       output: { artifactKinds: ["HTML", "MARKDOWN"] },
       extensions: {
         "x-markorbit-golden-source": true,
-        "x-markorbit-purpose": "first-production-evidence-loop",
+        "x-markorbit-purpose": SOURCE_PURPOSE ?? "first-production-evidence-loop",
+        ...(REFERENCE_PROFILE ? { "x-markorbit-reference-profile": REFERENCE_PROFILE } : {}),
+        ...(SOURCE_VERSION ? { "x-markorbit-source-version": SOURCE_VERSION } : {}),
       },
     }),
   );
