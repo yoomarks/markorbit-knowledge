@@ -1,0 +1,227 @@
+name: USPTO Mark Format Reference Live Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/uspto-mark-format-reference-live.yml
+      - apps/worker/src/bootstrap-uspto.ts
+      - apps/worker/src/bootstrap-uspto-conversion.ts
+      - apps/worker/src/verify-uspto-exact-page-pipeline.ts
+      - apps/admin/src/server/uspto-mark-format-source-attestation.ts
+      - apps/admin/src/server/uspto-mark-format-source-attestation.test.ts
+      - apps/admin/src/server/uspto-mark-format-live-evidence.test.ts
+      - packages/contracts/src/uspto-mark-format-reference-v1.ts
+      - packages/contracts/tests/uspto-mark-format-reference-v1.test.ts
+      - apps/worker/package.json
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uspto-mark-format-reference-live-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  live-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+      MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
+      MARKORBIT_GOLDEN_SOURCE_TIMEOUT_MS: "420000"
+      MARKORBIT_GOLDEN_PIPELINE_TIMEOUT_MS: "420000"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure isolated evidence stores
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/uspto-mark-format-reference.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/uspto-mark-format-reference-artifacts" >> "$GITHUB_ENV"
+          echo "MARKORBIT_STAGING_STORE_PATH=$RUNNER_TEMP/uspto-mark-format-reference-staging" >> "$GITHUB_ENV"
+          echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+
+      - name: Configure isolated Admin auth
+        run: bash scripts/ci-admin-auth-configure.sh
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated Core auth stub
+        run: bash scripts/ci-admin-auth-stub-start.sh
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          bash scripts/ci-admin-control-plane-ready.sh
+
+      - name: Bootstrap exact USPTO mark-format sources and dispatch collection
+        run: |
+          MARKORBIT_USPTO_SOURCE_SLUG=uspto-mark-format-drawings-and-specimens-v1 \
+          MARKORBIT_USPTO_SOURCE_NAME="USPTO Mark Format - Drawings and Specimens" \
+          MARKORBIT_USPTO_PLAN_NAME="USPTO Mark Format - Drawings and Specimens - Exact Page" \
+          MARKORBIT_USPTO_WORKER_LABEL=uspto-mark-format-reference-v1 \
+          MARKORBIT_USPTO_CANONICAL_URI=https://www.uspto.gov/trademarks/basics/drawings-and-specimens \
+          MARKORBIT_USPTO_ENTRYPOINT_LABEL="Drawings and specimens" \
+          MARKORBIT_USPTO_INCLUDE_PATTERN=https://www.uspto.gov/trademarks/basics/drawings-and-specimens \
+          MARKORBIT_USPTO_MAX_DEPTH=0 MARKORBIT_USPTO_MAX_ITEMS=1 \
+          MARKORBIT_USPTO_REFERENCE_PROFILE=uspto-mark-format-reference-v1 \
+          MARKORBIT_USPTO_SOURCE_VERSION=2023-11-30 \
+          MARKORBIT_USPTO_SOURCE_LAST_UPDATED=2023-11-30 \
+          MARKORBIT_USPTO_SOURCE_PURPOSE=mark-format-source-evidence \
+            pnpm --filter @markorbit/worker bootstrap:uspto -- --dispatch > "$RUNNER_TEMP/bootstrap-drawings-specimens.json"
+          MARKORBIT_USPTO_SOURCE_SLUG=uspto-mark-format-mark-drawings-v1 \
+          MARKORBIT_USPTO_SOURCE_NAME="USPTO Mark Format - Mark Drawings" \
+          MARKORBIT_USPTO_PLAN_NAME="USPTO Mark Format - Mark Drawings - Exact Page" \
+          MARKORBIT_USPTO_WORKER_LABEL=uspto-mark-format-reference-v1 \
+          MARKORBIT_USPTO_CANONICAL_URI=https://www.uspto.gov/trademarks/basics/mark-drawings-trademarks \
+          MARKORBIT_USPTO_ENTRYPOINT_LABEL="Drawing of your trademark" \
+          MARKORBIT_USPTO_INCLUDE_PATTERN=https://www.uspto.gov/trademarks/basics/mark-drawings-trademarks \
+          MARKORBIT_USPTO_MAX_DEPTH=0 MARKORBIT_USPTO_MAX_ITEMS=1 \
+          MARKORBIT_USPTO_REFERENCE_PROFILE=uspto-mark-format-reference-v1 \
+          MARKORBIT_USPTO_SOURCE_VERSION=2025-01-18 \
+          MARKORBIT_USPTO_SOURCE_LAST_UPDATED=2025-01-18 \
+          MARKORBIT_USPTO_SOURCE_PURPOSE=mark-format-source-evidence \
+            pnpm --filter @markorbit/worker bootstrap:uspto -- --dispatch > "$RUNNER_TEMP/bootstrap-mark-drawings.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          function read(name) {
+            const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/' + name, 'utf8');
+            return JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          }
+          const first = read('bootstrap-drawings-specimens.json');
+          const second = read('bootstrap-mark-drawings.json');
+          if (!first.sourceId || !first.runId || !first.workerId || !first.workerCredential) throw new Error('First mark-format bootstrap is incomplete');
+          if (!second.sourceId || !second.runId || second.workerId !== first.workerId) throw new Error('Second mark-format bootstrap did not reuse the governed worker');
+          process.stdout.write(`::add-mask::${first.workerCredential}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `MARKORBIT_WORKER_ID=${first.workerId}\nMARKORBIT_WORKER_CREDENTIAL=${first.workerCredential}\n` +
+            `MARKORBIT_USPTO_MARK_FORMAT_DRAWINGS_SPECIMENS_SOURCE_ID=${first.sourceId}\n` +
+            `MARKORBIT_USPTO_MARK_FORMAT_DRAWINGS_SPECIMENS_RUN_ID=${first.runId}\n` +
+            `MARKORBIT_USPTO_MARK_FORMAT_MARK_DRAWINGS_SOURCE_ID=${second.sourceId}\n` +
+            `MARKORBIT_USPTO_MARK_FORMAT_MARK_DRAWINGS_RUN_ID=${second.runId}\n`);
+          NODE
+      - name: Provision production conversion for both Sources
+        run: |
+          MARKORBIT_SOURCE_ID="$MARKORBIT_USPTO_MARK_FORMAT_DRAWINGS_SPECIMENS_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion > "$RUNNER_TEMP/conversion-drawings-specimens.json"
+          MARKORBIT_SOURCE_ID="$MARKORBIT_USPTO_MARK_FORMAT_MARK_DRAWINGS_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion > "$RUNNER_TEMP/conversion-mark-drawings.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          function read(name) {
+            const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/' + name, 'utf8');
+            return JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          }
+          const first = read('conversion-drawings-specimens.json');
+          const second = read('conversion-mark-drawings.json');
+          if (first.sourceId !== process.env.MARKORBIT_USPTO_MARK_FORMAT_DRAWINGS_SPECIMENS_SOURCE_ID) throw new Error('Drawings/specimens conversion source drift');
+          if (second.sourceId !== process.env.MARKORBIT_USPTO_MARK_FORMAT_MARK_DRAWINGS_SOURCE_ID) throw new Error('Mark drawings conversion source drift');
+          if (!first.workspaceId || first.workspaceId !== second.workspaceId) throw new Error('Conversion workspace mismatch');
+          if (!Number.isInteger(first.capabilityRevision) || first.capabilityRevision !== second.capabilityRevision) throw new Error('Conversion capability mismatch');
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `MARKORBIT_WORKSPACE_ID=${first.workspaceId}\nMARKORBIT_CONVERSION_ENABLED=1\n` +
+            `MARKORBIT_CONVERSION_CAPABILITY_REVISION=${first.capabilityRevision}\n`);
+          NODE
+
+      - name: Start production Worker with bounded CI egress exception
+        env:
+          NODE_ENV: test
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
+          MARKORBIT_CRAWL4AI_PYTHON: python
+          MARKORBIT_WORKER_POLL_INTERVAL_MS: "500"
+          MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "15000"
+          MARKORBIT_WORKER_MAX_ACQUISITION_MS: "360000"
+          MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS: "300"
+        run: |
+          pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker.log" 2>&1 &
+          echo "WORKER_PID=$!" >> "$GITHUB_ENV"
+      - name: Verify both live collections and immutable RawArtifact evidence
+        run: |
+          pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_USPTO_MARK_FORMAT_DRAWINGS_SPECIMENS_RUN_ID"
+          pnpm --filter @markorbit/worker verify:uspto -- "$MARKORBIT_USPTO_MARK_FORMAT_MARK_DRAWINGS_RUN_ID"
+
+      - name: Dispatch both acquired Markdown artifacts through production conversion
+        run: |
+          MARKORBIT_SOURCE_ID="$MARKORBIT_USPTO_MARK_FORMAT_DRAWINGS_SPECIMENS_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/conversion-dispatch-drawings-specimens.json"
+          MARKORBIT_SOURCE_ID="$MARKORBIT_USPTO_MARK_FORMAT_MARK_DRAWINGS_SOURCE_ID" \
+            pnpm --filter @markorbit/worker bootstrap:uspto-conversion -- --dispatch-latest > "$RUNNER_TEMP/conversion-dispatch-mark-drawings.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          function read(name) {
+            const raw = fs.readFileSync(process.env.RUNNER_TEMP + '/' + name, 'utf8');
+            return JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+          }
+          const first = read('conversion-dispatch-drawings-specimens.json');
+          const second = read('conversion-dispatch-mark-drawings.json');
+          if (!first.conversionRunId || !second.conversionRunId) throw new Error('Missing mark-format conversion run');
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `MARKORBIT_USPTO_MARK_FORMAT_DRAWINGS_SPECIMENS_CONVERSION_RUN_ID=${first.conversionRunId}\n` +
+            `MARKORBIT_USPTO_MARK_FORMAT_MARK_DRAWINGS_CONVERSION_RUN_ID=${second.conversionRunId}\n`);
+          NODE
+
+      - name: Verify both exact-page conversion, Staging and ReadyPackage chains
+        run: |
+          pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- \
+            "$MARKORBIT_USPTO_MARK_FORMAT_DRAWINGS_SPECIMENS_SOURCE_ID" \
+            "$MARKORBIT_USPTO_MARK_FORMAT_DRAWINGS_SPECIMENS_CONVERSION_RUN_ID"
+          pnpm --filter @markorbit/worker verify:uspto-exact-page-pipeline -- \
+            "$MARKORBIT_USPTO_MARK_FORMAT_MARK_DRAWINGS_SOURCE_ID" \
+            "$MARKORBIT_USPTO_MARK_FORMAT_MARK_DRAWINGS_CONVERSION_RUN_ID"
+      - name: Attest exact retrieval lineage and emit #903 handoff
+        env:
+          MARKORBIT_USPTO_MARK_FORMAT_LIVE_EVIDENCE: "1"
+        run: |
+          set -o pipefail
+          pnpm --filter @markorbit/admin exec vitest run src/server/uspto-mark-format-live-evidence.test.ts --reporter=verbose \
+            | tee "$RUNNER_TEMP/uspto-mark-format-handoff.txt"
+
+      - name: Stop local processes
+        if: always()
+        run: |
+          if [ -n "${WORKER_PID:-}" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+          if [ -n "${AUTH_STUB_PID:-}" ]; then kill "$AUTH_STUB_PID" 2>/dev/null || true; fi
+
+      - name: Upload USPTO mark-format evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uspto-mark-format-reference-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/conversion-drawings-specimens.json
+            ${{ runner.temp }}/conversion-mark-drawings.json
+            ${{ runner.temp }}/conversion-dispatch-drawings-specimens.json
+            ${{ runner.temp }}/conversion-dispatch-mark-drawings.json
+            ${{ runner.temp }}/uspto-mark-format-handoff.txt
+            ${{ runner.temp }}/admin.log
+            ${{ runner.temp }}/worker.log
+            ${{ runner.temp }}/admin-auth-stub.log
+          if-no-files-found: warn
+          retention-days: 30
