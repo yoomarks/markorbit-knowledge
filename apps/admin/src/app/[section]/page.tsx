@@ -15,6 +15,7 @@ import { FoundationalRemediationConsole } from "@/components/foundational/founda
 import { KnowledgeWorkspaceBoundary } from "@/components/knowledge/knowledge-workspace";
 import {
   KnowledgeBrowseSurface,
+  KnowledgeEvidenceSetsEntryLink,
   KnowledgeSearchEntryLink,
 } from "@/components/knowledge/knowledge-workspace-surfaces";
 import { OverviewWorkbench } from "@/components/overview/overview-workbench";
@@ -86,7 +87,8 @@ function KnowledgePage() {
       <CorePageHeading page="knowledge" />
       <Suspense fallback={null}>
         <KnowledgeWorkspaceBoundary>
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex flex-wrap justify-end gap-2">
+            <KnowledgeEvidenceSetsEntryLink />
             <KnowledgeSearchEntryLink />
           </div>
           <KnowledgeBrowseSurface />

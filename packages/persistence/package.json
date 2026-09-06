@@ -66,6 +66,7 @@
     "./source-compatibility-reprobe-execution-query": "./src/source-compatibility-reprobe-execution-query.ts",
     "./source-supply-health": "./src/source-supply-health.ts",
     "./evidence-supply-health": "./src/evidence-supply-health.ts",
+    "./evidence-sets": "./src/evidence-set-registry.ts",
     "./source-supply-promotion-receipts": "./src/source-supply-promotion-receipts.ts",
     "./operations-readiness": "./src/operations-readiness.ts",
     "./source-intelligence": "./src/source-intelligence-registry.ts",
