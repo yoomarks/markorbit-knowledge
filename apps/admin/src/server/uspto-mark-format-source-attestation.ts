@@ -67,21 +67,38 @@ type DiagnosticChunk = {
 
 function boundedChunkDiagnostics(chunks: readonly DiagnosticChunk[], anchor: string): string {
   const tokens = [...new Set(anchor.split(/\s+/u).filter((token) => token.length >= 5))];
-  const lexical = chunks.filter((chunk) => {
-    const visible = normalizeVisibleText([...chunk.headingPath, chunk.text].join(" "));
-    return tokens.some((token) => visible.includes(token));
-  });
+  const visibleByChunk = chunks.map((chunk) => ({
+    chunk,
+    visible: normalizeVisibleText([...chunk.headingPath, chunk.text].join(" ")),
+  }));
+  const terms = tokens
+    .map((token) => ({
+      token,
+      count: visibleByChunk.filter(({ visible }) => visible.includes(token)).length,
+    }))
+    .filter(({ count }) => count > 0)
+    .sort((left, right) => left.count - right.count || left.token.localeCompare(right.token))
+    .slice(0, 3)
+    .map(({ token }) => token);
+  const allTerms = visibleByChunk.filter(
+    ({ visible }) => terms.length > 0 && terms.every((term) => visible.includes(term)),
+  );
+  const anyTerm = visibleByChunk.filter(({ visible }) =>
+    terms.some((term) => visible.includes(term)),
+  );
+  const lexical = (allTerms.length > 0 ? allTerms : anyTerm).map(({ chunk }) => chunk);
   const fallback = [...chunks.slice(0, 6), ...chunks.slice(-6)].filter(
-    (chunk, index, selected) => selected.findIndex((candidate) => candidate.chunkId === chunk.chunkId) === index,
+    (chunk, index, selected) =>
+      selected.findIndex((candidate) => candidate.chunkId === chunk.chunkId) === index,
   );
   const selected = (lexical.length > 0 ? lexical : fallback).slice(0, 12);
-  return selected
+  return `terms=${terms.join(",")}; ${selected
     .map((chunk) => {
       const heading = normalizeVisibleText(chunk.headingPath.join(" > ")).slice(0, 120);
-      const snippet = normalizeVisibleText(chunk.text).slice(0, 180);
+      const snippet = normalizeVisibleText(chunk.text).slice(0, 220);
       return `ordinal=${chunk.ordinal},chunkId=${chunk.chunkId},sha256=${chunk.contentSha256},heading=${JSON.stringify(heading)},snippet=${JSON.stringify(snippet)}`;
     })
-    .join(" | ");
+    .join(" | ")}`;
 }
 
 export function matchedUsptoMarkFormatAnchors(text: string, anchors: readonly string[]): string[] {
