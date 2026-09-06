@@ -88,12 +88,12 @@ export const USPTO_MARK_FORMAT_REFERENCE_PROFILE_V1 = {
           factId: "STANDARD_CHARACTER_TEXT_ONLY",
           queryText:
             "standard character drawing is text only without a particular font style size or color",
-          passageAnchor: "a standard character drawing shows a trademark in text only",
+          passageAnchor: "standard character drawing shows a trademark in text only",
         },
         {
           factId: "SPECIAL_FORM_STYLIZED_DESIGN_COLOR",
           queryText: "special form drawing covers stylization design graphics logos or color",
-          passageAnchor: "a special form drawing shows a trademark with stylization",
+          passageAnchor: "special form drawing shows a trademark with stylization",
         },
         {
           factId: "DRAWING_TYPE_AFFECTS_PROTECTION",

@@ -58,6 +58,15 @@ describe("USPTO mark-format governed reference V1", () => {
     expect(JSON.stringify(USPTO_MARK_FORMAT_REFERENCE_PROFILE_V1)).not.toContain("fee-information");
   });
 
+  it("keeps core mark-drawing fact passages aligned with proven transport anchors", () => {
+    const source = USPTO_MARK_FORMAT_REFERENCE_PROFILE_V1.sources[1];
+    const factIds = new Set(["STANDARD_CHARACTER_TEXT_ONLY", "SPECIAL_FORM_STYLIZED_DESIGN_COLOR"]);
+    for (const query of source.evidenceQueries.filter((candidate) =>
+      factIds.has(candidate.factId),
+    )) {
+      expect(source.requiredAnchors).toContain(query.passageAnchor);
+    }
+  });
   it("accepts exact recent browser plus HTTP evidence as CURRENT", () => {
     expect(assessUsptoMarkFormatSourceEvidenceV1(evidence(), NOW)).toEqual({
       protocolVersion: "1.0",
