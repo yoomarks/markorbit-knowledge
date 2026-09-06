@@ -1,9 +1,6 @@
 "use client";
 
-import type {
-  EvidenceSupplyHealthRecordV1,
-  EvidenceSupplyHealthState,
-} from "@markorbit/contracts";
+import type { EvidenceSupplyHealthRecordV1, EvidenceSupplyHealthState } from "@markorbit/contracts";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Activity, Building2, ExternalLink, FileStack, Loader2, RefreshCw } from "lucide-react";
@@ -177,7 +174,9 @@ function Board({ workspaceId }: { workspaceId: string }) {
       setError(null);
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "Unable to load evidence supply health",
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to load evidence supply health",
       );
     } finally {
       setLoading(false);
@@ -405,7 +404,9 @@ function Board({ workspaceId }: { workspaceId: string }) {
                                 title={source.name}
                               >
                                 {source.name}{" "}
-                                <span className="text-[10px] text-slate-400">· {source.status}</span>
+                                <span className="text-[10px] text-slate-400">
+                                  · {source.status}
+                                </span>
                               </Link>
                             ))}
                           </div>
@@ -463,7 +464,8 @@ function Board({ workspaceId }: { workspaceId: string }) {
                           {formatPercent(supply.reliability.successRate)}
                         </p>
                         <p className="mt-1 text-[11px] text-slate-600">
-                          failed {supply.reliability.failed} · cancelled {supply.reliability.cancelled}
+                          failed {supply.reliability.failed} · cancelled{" "}
+                          {supply.reliability.cancelled}
                         </p>
                         <p className="mt-1 text-[10px] text-slate-400">
                           {zh ? "最后失败" : "Last failed"} ·{" "}
@@ -535,7 +537,9 @@ function Board({ workspaceId }: { workspaceId: string }) {
 
       {!loading && grouped.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500">
-          {zh ? "当前筛选没有 Evidence Supply Health 行。" : "No health rows match the current filters."}
+          {zh
+            ? "当前筛选没有 Evidence Supply Health 行。"
+            : "No health rows match the current filters."}
         </div>
       ) : null}
     </div>

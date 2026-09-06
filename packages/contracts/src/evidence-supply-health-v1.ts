@@ -1,7 +1,4 @@
-import type {
-  SourceSupplyFreshnessState,
-  SourceSupplyLatestRun,
-} from "./source-supply-health-v1";
+import type { SourceSupplyFreshnessState, SourceSupplyLatestRun } from "./source-supply-health-v1";
 
 export const EVIDENCE_SUPPLY_HEALTH_PROTOCOL_VERSION = "1.0" as const;
 

@@ -115,9 +115,11 @@ function earliest(values: Array<string | null | undefined>): string | null {
 
 function loadSources(database: DatabaseSync, workspaceId: string): SourceDefinition[] {
   if (!tableExists(database, "source_definitions")) return [];
-  return (database.prepare("SELECT document_json FROM source_definitions").all() as Array<{
-    document_json: string;
-  }>)
+  return (
+    database.prepare("SELECT document_json FROM source_definitions").all() as Array<{
+      document_json: string;
+    }>
+  )
     .map((row) => JSON.parse(row.document_json) as unknown)
     .filter(isSourceDefinition)
     .filter((source) => source.workspaceId === workspaceId);
@@ -125,15 +127,20 @@ function loadSources(database: DatabaseSync, workspaceId: string): SourceDefinit
 
 function loadPlans(database: DatabaseSync, workspaceId: string): CollectionPlan[] {
   if (!tableExists(database, "collection_plans")) return [];
-  return (database.prepare("SELECT document_json FROM collection_plans").all() as Array<{
-    document_json: string;
-  }>)
+  return (
+    database.prepare("SELECT document_json FROM collection_plans").all() as Array<{
+      document_json: string;
+    }>
+  )
     .map((row) => JSON.parse(row.document_json) as unknown)
     .filter(isCollectionPlan)
     .filter((plan) => plan.workspaceId === workspaceId);
 }
 
-function loadSchedulerStates(database: DatabaseSync, workspaceId: string): Map<string, SchedulerStateRow> {
+function loadSchedulerStates(
+  database: DatabaseSync,
+  workspaceId: string,
+): Map<string, SchedulerStateRow> {
   if (!tableExists(database, "collection_schedule_states")) return new Map();
   const rows = database
     .prepare(
@@ -163,7 +170,11 @@ function loadRunFacts(database: DatabaseSync, workspaceId: string, from: string)
     .all(workspaceId, from) as RunFact[];
 }
 
-function loadLatencyFacts(database: DatabaseSync, workspaceId: string, from: string): LatencyFact[] {
+function loadLatencyFacts(
+  database: DatabaseSync,
+  workspaceId: string,
+  from: string,
+): LatencyFact[] {
   if (!tableExists(database, "retrieval_documents")) return [];
   const normalizedColumn = tableExists(database, "staging_documents")
     ? "s.created_at AS normalizedAt"
@@ -439,7 +450,9 @@ export class SqliteEvidenceSupplyHealthRepository implements EvidenceSupplyHealt
 
     const sources = loadSources(this.database, workspaceId);
     const sourceById = new Map(sources.map((source) => [source.id, source]));
-    const targets = listSourceCoverageTargets().filter((target) => target.catalogState !== "RETIRED");
+    const targets = listSourceCoverageTargets().filter(
+      (target) => target.catalogState !== "RETIRED",
+    );
     const registrations = new Map(
       evaluateSourceCoverage(sources, targets).map((registration) => [
         registration.targetId,
