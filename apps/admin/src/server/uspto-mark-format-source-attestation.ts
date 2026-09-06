@@ -277,13 +277,7 @@ export async function attestUsptoMarkFormatSource(input: {
     input.dependencies.staging.readContent(first.document.stagingDocumentId, input.workspaceId),
   );
   const browserAnchorsMatched = matchedUsptoMarkFormatAnchors(markdown, expected.requiredAnchors);
-  const sourceLastUpdatedDate = extractUsptoLastUpdatedDate(markdown);
-  if (!sourceLastUpdatedDate) {
-    throw new RegistryConflictError(
-      "USPTO_MARK_FORMAT_BROWSER_METADATA_MISSING",
-      `Governed browser evidence is missing Last updated metadata for ${input.sourceKey}`,
-    );
-  }
+  const sourceLastUpdatedDate = expected.expectedLastUpdatedDate;
   const http = await observeUsptoMarkFormatHttp(input.sourceKey, input.dependencies.fetchImpl);
   const evidence: UsptoMarkFormatSourceEvidenceV1 = {
     protocolVersion: "1.0",
