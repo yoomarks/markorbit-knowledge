@@ -134,7 +134,7 @@ describe("USPTO mark-format governed reference V1", () => {
     );
   });
 
-  it("requires every bounded fact query exactly once", () => {
+  it("requires every bounded fact and permits multi-chunk passage lineage", () => {
     const source = USPTO_MARK_FORMAT_REFERENCE_PROFILE_V1.sources[1];
     const missing = assessUsptoMarkFormatSourceEvidenceV1(
       evidence("MARK_DRAWINGS", { chunks: evidence("MARK_DRAWINGS").chunks.slice(1) }),
@@ -143,11 +143,22 @@ describe("USPTO mark-format governed reference V1", () => {
     expect(missing.state).toBe("UNVERIFIED");
     expect(missing.reasonCodes).toContain("FACT_BINDING_MISSING");
 
-    const duplicateBinding = evidence("MARK_DRAWINGS").chunks[0];
-    const duplicate = assessUsptoMarkFormatSourceEvidenceV1(
+    const base = evidence("MARK_DRAWINGS");
+    const first = base.chunks[0]!;
+    const spanning = assessUsptoMarkFormatSourceEvidenceV1(
       evidence("MARK_DRAWINGS", {
-        chunks: [...evidence("MARK_DRAWINGS").chunks, duplicateBinding],
+        chunks: [
+          ...base.chunks,
+          { ...first, chunkId: "rch_test_span", chunkContentSha256: "d".repeat(64) },
+        ],
       }),
+      NOW,
+    );
+    expect(spanning.state).toBe("CURRENT");
+    expect(spanning.reasonCodes).toEqual([]);
+
+    const duplicate = assessUsptoMarkFormatSourceEvidenceV1(
+      evidence("MARK_DRAWINGS", { chunks: [...base.chunks, first] }),
       NOW,
     );
     expect(duplicate.state).toBe("UNVERIFIED");

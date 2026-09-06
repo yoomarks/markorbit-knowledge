@@ -229,10 +229,11 @@ export function assessUsptoMarkFormatSourceEvidenceV1(
     if (!hasAllAnchors(evidence.httpAnchorsMatched, source.requiredAnchors)) {
       reasonCodes.push("HTTP_ANCHOR_DRIFT");
     }
-    const seenFactIds = new Set<UsptoMarkFormatFactId>();
+    const seenBindings = new Set<string>();
     for (const binding of evidence.chunks) {
-      if (seenFactIds.has(binding.factId)) reasonCodes.push("FACT_BINDING_DUPLICATE");
-      seenFactIds.add(binding.factId);
+      const bindingKey = `${binding.factId}:${binding.chunkId}`;
+      if (seenBindings.has(bindingKey)) reasonCodes.push("FACT_BINDING_DUPLICATE");
+      seenBindings.add(bindingKey);
     }
     for (const query of source.evidenceQueries) {
       const binding = evidence.chunks.find(

@@ -13,7 +13,6 @@ import {
 import type { RawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import type { RetrievalIndexRepository } from "@markorbit/persistence/retrieval-index";
 import type { StagingContentRegistryRepository } from "@markorbit/persistence/staging-content";
-import { USPTO_MARK_DRAWING_STRATEGY_SOURCE_V1 } from "./uspto-mark-drawing-strategy-source";
 
 type FetchLike = (
   input: string,
@@ -198,47 +197,56 @@ function collectFactBindings(
     );
   }
 
-  const chunks = dependencies.retrieval.listChunks(hit.document.stagingDocumentId, workspaceId);
-  return expected.evidenceQueries.map((query) => {
-    if (sourceKey === "MARK_DRAWINGS") {
-      const role =
-        query.factId === "DRAWING_TYPE_AFFECTS_PROTECTION"
-          ? "PROTECTION_SCOPE_AND_SPECIAL_FORM_REQUIRED"
-          : "DRAWING_TYPE_DEFINITIONS";
-      const frozen = USPTO_MARK_DRAWING_STRATEGY_SOURCE_V1.chunks.find(
-        (candidate) => candidate.role === role,
-      );
-      if (!frozen) {
-        throw new RegistryConflictError(
-          "USPTO_MARK_FORMAT_FROZEN_CHUNK_CONTRACT_MISSING",
-          `#734 does not freeze ${role} for ${query.factId}`,
-        );
-      }
-      const chunk = chunks.find((candidate) => candidate.chunkId === frozen.chunkId);
-      if (!chunk) {
-        throw new RegistryConflictError(
-          "USPTO_MARK_FORMAT_FROZEN_CHUNK_MISSING",
-          `Frozen #734 chunk ${frozen.chunkId} is missing for ${sourceKey}/${query.factId}`,
-        );
-      }
-      if (chunk.contentSha256 !== frozen.chunkContentSha256) {
-        throw new RegistryConflictError(
-          "USPTO_MARK_FORMAT_FROZEN_CHUNK_DRIFT",
-          `Frozen #734 chunk ${frozen.chunkId} digest drifted for ${sourceKey}/${query.factId}`,
-        );
-      }
-      return { query, document: hit.document, chunk };
+  const chunks = dependencies.retrieval
+    .listChunks(hit.document.stagingDocumentId, workspaceId)
+    .slice()
+    .sort((left, right) => left.ordinal - right.ordinal);
+  const segments: Array<{ chunk: (typeof chunks)[number]; start: number; end: number }> = [];
+  let stream = "";
+  for (const chunk of chunks) {
+    const text = normalizeVisibleText(chunk.text);
+    if (!text) continue;
+    if (stream) stream += " ";
+    const start = stream.length;
+    stream += text;
+    segments.push({ chunk, start, end: stream.length });
+  }
+
+  return expected.evidenceQueries.flatMap((query) => {
+    const anchor = normalizedAnchor(query.passageAnchor);
+    const occurrences: number[] = [];
+    for (
+      let offset = stream.indexOf(anchor);
+      offset >= 0;
+      offset = stream.indexOf(anchor, offset + 1)
+    ) {
+      occurrences.push(offset);
     }
-    const matches = chunks.filter((chunk) =>
-      normalizeVisibleText(chunk.text).includes(normalizedAnchor(query.passageAnchor)),
-    );
-    if (matches.length !== 1) {
+    if (occurrences.length > 1) {
       throw new RegistryConflictError(
         "USPTO_MARK_FORMAT_FACT_EVIDENCE_AMBIGUOUS",
-        `Expected one exact chunk for ${sourceKey}/${query.factId}; found ${matches.length}`,
+        `Expected one exact passage for ${sourceKey}/${query.factId}; found ${occurrences.length}`,
       );
     }
-    return { query, document: hit.document, chunk: matches[0]! };
+    if (occurrences.length === 1) {
+      const start = occurrences[0]!;
+      const end = start + anchor.length;
+      const matched = segments.filter((segment) => segment.start < end && segment.end > start);
+      if (matched.length > 0) {
+        return matched.map(({ chunk }) => ({ query, document: hit.document, chunk }));
+      }
+    }
+
+    const headingMatches = chunks.filter((chunk) =>
+      normalizeVisibleText([...chunk.headingPath, chunk.text].join(" ")).includes(anchor),
+    );
+    if (headingMatches.length !== 1) {
+      throw new RegistryConflictError(
+        "USPTO_MARK_FORMAT_FACT_EVIDENCE_AMBIGUOUS",
+        `Expected one exact passage for ${sourceKey}/${query.factId}; found ${headingMatches.length}`,
+      );
+    }
+    return [{ query, document: hit.document, chunk: headingMatches[0]! }];
   });
 }
 export async function attestUsptoMarkFormatSource(input: {

@@ -52,7 +52,13 @@ liveDescribe("live USPTO mark-format governed reference evidence", () => {
       expect(assessment.reasonCodes).toEqual([]);
       expect(item.documentContentSha256).toMatch(/^[a-f0-9]{64}$/u);
       expect(item.httpBodySha256).toMatch(/^[a-f0-9]{64}$/u);
-      expect(item.chunks.length).toBe(3);
+      const source = USPTO_MARK_FORMAT_REFERENCE_PROFILE_V1.sources.find(
+        (candidate) => candidate.sourceKey === item.sourceKey,
+      )!;
+      expect(item.chunks.length).toBeGreaterThanOrEqual(source.evidenceQueries.length);
+      expect(new Set(item.chunks.map((chunk) => chunk.factId))).toEqual(
+        new Set(source.evidenceQueries.map((query) => query.factId)),
+      );
       for (const chunk of item.chunks) {
         expect(chunk.chunkId.length).toBeGreaterThan(0);
         expect(chunk.chunkContentSha256).toMatch(/^[a-f0-9]{64}$/u);
