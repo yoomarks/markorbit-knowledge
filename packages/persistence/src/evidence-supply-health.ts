@@ -16,13 +16,13 @@ import {
   type SourceDefinition,
   type SourceSupplyFreshnessState,
 } from "@markorbit/contracts";
+import { summarizeProducerCoreLatency } from "./producer-core-reliability-scorecard";
 import { SqliteOperationalSupplyHealthRepository } from "./source-compatibility-supply-health";
 import {
   evaluateSourceCoverage,
   listSourceCoverageTargets,
   type SourceCoverageRegistration,
 } from "./source-coverage-catalog";
-import { summarizeProducerCoreLatency } from "./producer-core-reliability-scorecard";
 
 const RELIABILITY_WINDOW_DAYS = 30;
 const LATENCY_WINDOW_DAYS = 30;
@@ -46,9 +46,11 @@ type SchedulerStateRow = {
   lastErrorAt: string | null;
 };
 
+type TerminalRunStatus = "COMPLETED" | "FAILED" | "CANCELLED";
+
 type RunFact = {
   sourceId: string;
-  status: "COMPLETED" | "FAILED" | "CANCELLED";
+  status: TerminalRunStatus;
   updatedAt: string;
 };
 
@@ -297,11 +299,16 @@ function reliabilityFacts(
   sourceIds: readonly string[],
   runs: readonly RunFact[],
 ): EvidenceSupplyReliabilityFacts {
-  const relevant = runs.filter((run) => sourceIds.includes(run.sourceId));
+  const relevant = runs
+    .filter((run) => sourceIds.includes(run.sourceId))
+    .slice()
+    .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt));
   const completed = relevant.filter((run) => run.status === "COMPLETED");
   const failed = relevant.filter((run) => run.status === "FAILED");
   const cancelled = relevant.filter((run) => run.status === "CANCELLED");
   const attemptedOutcome = completed.length + failed.length;
+  const latestTerminal = relevant.at(-1) ?? null;
+
   return {
     windowDays: RELIABILITY_WINDOW_DAYS,
     attempts: relevant.length,
@@ -311,6 +318,9 @@ function reliabilityFacts(
     successRate: attemptedOutcome === 0 ? null : completed.length / attemptedOutcome,
     lastCompletedAt: latest(completed.map((run) => run.updatedAt)),
     lastFailedAt: latest(failed.map((run) => run.updatedAt)),
+    latestTerminalStatus: latestTerminal?.status ?? null,
+    latestTerminalAt: latestTerminal?.updatedAt ?? null,
+    unrecoveredFailure: latestTerminal?.status === "FAILED",
   };
 }
 
@@ -357,12 +367,19 @@ export function deriveEvidenceSupplyHealthState(input: {
   supplyState: "READY" | "DEGRADED" | "BLOCKED";
   freshness: SourceSupplyFreshnessState;
   schedulerErrorCount: number;
+  unrecoveredFailure: boolean;
 }): EvidenceSupplyHealthState {
   if (input.coverage === "UNKNOWN") return "UNKNOWN";
   if (input.supplyState === "BLOCKED") return "BLOCKED";
   if (input.freshness === "STALE") return "STALE";
   if (input.coverage === "PARTIAL") return "PARTIAL";
-  if (input.supplyState === "DEGRADED" || input.schedulerErrorCount > 0) return "DEGRADED";
+  if (
+    input.supplyState === "DEGRADED" ||
+    input.schedulerErrorCount > 0 ||
+    input.unrecoveredFailure
+  ) {
+    return "DEGRADED";
+  }
   return "HEALTHY";
 }
 
@@ -395,6 +412,7 @@ function reasonCodes(input: {
     }
   }
   if (input.reliability.failed > 0) reasons.add("RECENT_ACQUISITION_FAILURES");
+  if (input.reliability.unrecoveredFailure) reasons.add("UNRECOVERED_ACQUISITION_FAILURE");
   return [...reasons].sort();
 }
 
@@ -469,6 +487,7 @@ export class SqliteEvidenceSupplyHealthRepository implements EvidenceSupplyHealt
         supplyState,
         freshness: freshnessState,
         schedulerErrorCount: schedule.schedulerErrorCount,
+        unrecoveredFailure: reliability.unrecoveredFailure,
       });
 
       return {
@@ -494,6 +513,7 @@ export class SqliteEvidenceSupplyHealthRepository implements EvidenceSupplyHealt
           maxAgeHours: health?.freshness.maxAgeHours ?? null,
         },
         schedule,
+        currentRun: health?.latestRun ?? null,
         reliability,
         latency: latencyFacts(sourceIds, latencies),
         changeActivity: changeFacts(sourceIds, changes, sevenDayStart),
