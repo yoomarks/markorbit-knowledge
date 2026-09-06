@@ -62,6 +62,7 @@ liveDescribe("live USPTO mark-format governed reference evidence", () => {
       for (const chunk of item.chunks) {
         expect(chunk.chunkId.length).toBeGreaterThan(0);
         expect(chunk.chunkContentSha256).toMatch(/^[a-f0-9]{64}$/u);
+        expect(chunk.ordinal).toBeGreaterThan(0);
       }
     }
     const factIds = new Set(evidence.flatMap((item) => item.chunks.map((chunk) => chunk.factId)));
@@ -89,6 +90,7 @@ liveDescribe("live USPTO mark-format governed reference evidence", () => {
             documentContentSha256: item.documentContentSha256,
             capturedAt: item.capturedAt,
             indexedAt: item.indexedAt,
+            httpBodySha256: item.httpBodySha256,
             chunks: item.chunks,
           })),
         },

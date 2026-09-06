@@ -155,6 +155,7 @@ export type UsptoMarkFormatChunkLineageV1 = {
   queryText: string;
   chunkId: string;
   chunkContentSha256: string;
+  ordinal: number;
 };
 
 export type UsptoMarkFormatSourceEvidenceV1 = {
@@ -230,16 +231,47 @@ export function assessUsptoMarkFormatSourceEvidenceV1(
       reasonCodes.push("HTTP_ANCHOR_DRIFT");
     }
     const seenBindings = new Set<string>();
+    const chunksById = new Map<string, { ordinal: number; sha256: string }>();
+    const chunksByOrdinal = new Map<number, { chunkId: string; sha256: string }>();
     for (const binding of evidence.chunks) {
       const bindingKey = `${binding.factId}:${binding.chunkId}`;
       if (seenBindings.has(bindingKey)) reasonCodes.push("FACT_BINDING_DUPLICATE");
       seenBindings.add(bindingKey);
+      const expectedQuery = source.evidenceQueries.find((query) => query.factId === binding.factId);
+      if (!expectedQuery || binding.queryText !== expectedQuery.queryText) {
+        reasonCodes.push("FACT_BINDING_QUERY_INVALID");
+      }
+      const byId = chunksById.get(binding.chunkId);
+      const byOrdinal = chunksByOrdinal.get(binding.ordinal);
+      if (
+        (byId &&
+          (byId.ordinal !== binding.ordinal || byId.sha256 !== binding.chunkContentSha256)) ||
+        (byOrdinal &&
+          (byOrdinal.chunkId !== binding.chunkId ||
+            byOrdinal.sha256 !== binding.chunkContentSha256))
+      ) {
+        reasonCodes.push("CHUNK_LINEAGE_INVALID");
+      }
+      chunksById.set(binding.chunkId, {
+        ordinal: binding.ordinal,
+        sha256: binding.chunkContentSha256,
+      });
+      chunksByOrdinal.set(binding.ordinal, {
+        chunkId: binding.chunkId,
+        sha256: binding.chunkContentSha256,
+      });
     }
     for (const query of source.evidenceQueries) {
-      const binding = evidence.chunks.find(
+      const bindings = evidence.chunks.filter(
         (chunk) => chunk.factId === query.factId && chunk.queryText === query.queryText,
       );
-      if (!binding) reasonCodes.push("FACT_BINDING_MISSING");
+      if (bindings.length === 0) reasonCodes.push("FACT_BINDING_MISSING");
+      for (let index = 1; index < bindings.length; index += 1) {
+        if (bindings[index]!.ordinal !== bindings[index - 1]!.ordinal + 1) {
+          reasonCodes.push("FACT_BINDING_ORDER_INVALID");
+          break;
+        }
+      }
     }
   }
   const identityFields = [
@@ -260,7 +292,11 @@ export function assessUsptoMarkFormatSourceEvidenceV1(
   if (
     evidence.chunks.length < 1 ||
     evidence.chunks.some(
-      (chunk) => !nonEmpty(chunk.chunkId) || !SHA256.test(chunk.chunkContentSha256),
+      (chunk) =>
+        !nonEmpty(chunk.chunkId) ||
+        !SHA256.test(chunk.chunkContentSha256) ||
+        !Number.isSafeInteger(chunk.ordinal) ||
+        chunk.ordinal < 1,
     )
   ) {
     reasonCodes.push("CHUNK_LINEAGE_INVALID");
@@ -287,6 +323,8 @@ export function assessUsptoMarkFormatSourceEvidenceV1(
       "CHUNK_LINEAGE_INVALID",
       "FACT_BINDING_MISSING",
       "FACT_BINDING_DUPLICATE",
+      "FACT_BINDING_QUERY_INVALID",
+      "FACT_BINDING_ORDER_INVALID",
       "CAPTURE_TIME_INVALID",
     ].includes(code),
   );

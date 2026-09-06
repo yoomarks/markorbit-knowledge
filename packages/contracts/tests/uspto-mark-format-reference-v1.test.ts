@@ -35,6 +35,7 @@ function evidence(
       queryText: query.queryText,
       chunkId: `rch_test_${index}`,
       chunkContentSha256: "b".repeat(64),
+      ordinal: index + 1,
     })),
     capturedAt: "2026-09-05T12:00:00.000Z",
     indexedAt: "2026-09-05T12:05:00.000Z",
@@ -128,6 +129,7 @@ describe("USPTO mark-format governed reference V1", () => {
             queryText: "application include depiction trademark drawing",
             chunkId: "",
             chunkContentSha256: "also-bad",
+            ordinal: 0,
           },
         ],
       }),
@@ -157,8 +159,14 @@ describe("USPTO mark-format governed reference V1", () => {
     const spanning = assessUsptoMarkFormatSourceEvidenceV1(
       evidence("MARK_DRAWINGS", {
         chunks: [
-          ...base.chunks,
-          { ...first, chunkId: "rch_test_span", chunkContentSha256: "d".repeat(64) },
+          first,
+          {
+            ...first,
+            chunkId: "rch_test_span",
+            chunkContentSha256: "d".repeat(64),
+            ordinal: 2,
+          },
+          ...base.chunks.slice(1).map((chunk) => ({ ...chunk, ordinal: chunk.ordinal + 1 })),
         ],
       }),
       NOW,
@@ -173,6 +181,39 @@ describe("USPTO mark-format governed reference V1", () => {
     expect(duplicate.state).toBe("UNVERIFIED");
     expect(duplicate.reasonCodes).toContain("FACT_BINDING_DUPLICATE");
     expect(source.evidenceQueries).toHaveLength(3);
+  });
+
+  it("fails closed when multi-chunk fact lineage is out of order or internally inconsistent", () => {
+    const base = evidence("MARK_DRAWINGS");
+    const first = base.chunks[0]!;
+    const nonAdjacent = assessUsptoMarkFormatSourceEvidenceV1(
+      evidence("MARK_DRAWINGS", {
+        chunks: [
+          first,
+          { ...first, chunkId: "rch_gap", chunkContentSha256: "d".repeat(64), ordinal: 3 },
+          ...base.chunks.slice(1).map((chunk) => ({ ...chunk, ordinal: chunk.ordinal + 2 })),
+        ],
+      }),
+      NOW,
+    );
+    expect(nonAdjacent.state).toBe("UNVERIFIED");
+    expect(nonAdjacent.reasonCodes).toContain("FACT_BINDING_ORDER_INVALID");
+
+    const conflictingOrdinal = assessUsptoMarkFormatSourceEvidenceV1(
+      evidence("MARK_DRAWINGS", {
+        chunks: [
+          ...base.chunks,
+          {
+            ...first,
+            chunkId: "rch_conflict",
+            chunkContentSha256: "d".repeat(64),
+          },
+        ],
+      }),
+      NOW,
+    );
+    expect(conflictingOrdinal.state).toBe("UNVERIFIED");
+    expect(conflictingOrdinal.reasonCodes).toContain("CHUNK_LINEAGE_INVALID");
   });
 
   it("keeps Knowledge on source evidence and out of recommendation/filing authority", () => {

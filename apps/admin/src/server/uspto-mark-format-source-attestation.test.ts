@@ -207,9 +207,115 @@ describe("USPTO mark-format source attestation", () => {
       (chunk) => chunk.factId === "STANDARD_CHARACTER_TEXT_ONLY",
     );
     expect(firstFact.map((chunk) => chunk.chunkId)).toEqual(["rch_first_a", "rch_first_b"]);
+    expect(firstFact.map((chunk) => chunk.ordinal)).toEqual([1, 2]);
+    expect(firstFact.map((chunk) => chunk.chunkContentSha256)).toEqual([
+      "b".repeat(64),
+      "c".repeat(64),
+    ]);
     expect(new Set(evidence.chunks.map((chunk) => chunk.factId))).toEqual(
       new Set(SOURCE.evidenceQueries.map((query) => query.factId)),
     );
+  });
+
+  it("binds passages wholly inside one chunk and across more than two adjacent chunks", async () => {
+    const single = await attestUsptoMarkFormatSource({
+      workspaceId: WORKSPACE_ID,
+      sourceId: SOURCE_ID,
+      sourceKey: "MARK_DRAWINGS",
+      dependencies: dependencies(),
+      now: new Date("2026-09-06T12:00:00.000Z"),
+    });
+    expect(
+      single.chunks.filter((chunk) => chunk.factId === "SPECIAL_FORM_STYLIZED_DESIGN_COLOR"),
+    ).toEqual([expect.objectContaining({ chunkId: "rch_second", ordinal: 3 })]);
+
+    const spanning = dependencies();
+    const original = spanning.retrieval.listChunks("stg_test", WORKSPACE_ID);
+    spanning.retrieval.listChunks = () => [
+      {
+        ...original[0]!,
+        chunkId: "rch_span_a",
+        ordinal: 1,
+        text: "**standard character",
+      },
+      {
+        ...original[1]!,
+        chunkId: "rch_span_b",
+        ordinal: 2,
+        text: "drawing** shows a",
+      },
+      {
+        ...original[1]!,
+        chunkId: "rch_span_c",
+        ordinal: 3,
+        text: "[trademark](https://example.test/mark) in text only",
+      },
+      { ...original[2]!, ordinal: 4 },
+      { ...original[3]!, ordinal: 5 },
+    ];
+    const evidence = await attestUsptoMarkFormatSource({
+      workspaceId: WORKSPACE_ID,
+      sourceId: SOURCE_ID,
+      sourceKey: "MARK_DRAWINGS",
+      dependencies: spanning,
+      now: new Date("2026-09-06T12:00:00.000Z"),
+    });
+    expect(
+      evidence.chunks
+        .filter((chunk) => chunk.factId === "STANDARD_CHARACTER_TEXT_ONLY")
+        .map((chunk) => chunk.chunkId),
+    ).toEqual(["rch_span_a", "rch_span_b", "rch_span_c"]);
+  });
+
+  it("matches normalized visible text through Markdown emphasis and links", async () => {
+    const markdown = dependencies();
+    const chunks = markdown.retrieval.listChunks("stg_test", WORKSPACE_ID);
+    markdown.retrieval.listChunks = () => [
+      {
+        ...chunks[0]!,
+        chunkId: "rch_markdown",
+        ordinal: 1,
+        text: "1. A **standard character drawing** shows a [trademark](https://example.test/mark) in text only (without a design).",
+      },
+      { ...chunks[2]!, ordinal: 2 },
+      { ...chunks[3]!, ordinal: 3 },
+    ];
+    const evidence = await attestUsptoMarkFormatSource({
+      workspaceId: WORKSPACE_ID,
+      sourceId: SOURCE_ID,
+      sourceKey: "MARK_DRAWINGS",
+      dependencies: markdown,
+      now: new Date("2026-09-06T12:00:00.000Z"),
+    });
+    expect(
+      evidence.chunks.find((chunk) => chunk.factId === "STANDARD_CHARACTER_TEXT_ONLY"),
+    ).toEqual(expect.objectContaining({ chunkId: "rch_markdown", ordinal: 1 }));
+  });
+
+  it("uses heading metadata only as a deterministic second-stage passage prefix", async () => {
+    const heading = dependencies();
+    const chunks = heading.retrieval.listChunks("stg_test", WORKSPACE_ID);
+    heading.retrieval.listChunks = () => [
+      {
+        ...chunks[0]!,
+        chunkId: "rch_heading_text",
+        ordinal: 1,
+        headingPath: ["Standard character drawing"],
+        text: "shows a **trademark** in text only",
+      },
+      { ...chunks[2]!, ordinal: 2 },
+      { ...chunks[3]!, ordinal: 3 },
+    ];
+    const evidence = await attestUsptoMarkFormatSource({
+      workspaceId: WORKSPACE_ID,
+      sourceId: SOURCE_ID,
+      sourceKey: "MARK_DRAWINGS",
+      dependencies: heading,
+      now: new Date("2026-09-06T12:00:00.000Z"),
+    });
+    expect(
+      evidence.chunks.find((chunk) => chunk.factId === "STANDARD_CHARACTER_TEXT_ONLY"),
+    ).toEqual(expect.objectContaining({ chunkId: "rch_heading_text", ordinal: 1 }));
   });
 
   it("fails closed when an exact fact passage is missing or duplicated", async () => {
@@ -224,7 +330,7 @@ describe("USPTO mark-format source attestation", () => {
         dependencies: missing,
         now: new Date("2026-09-06T12:00:00.000Z"),
       }),
-    ).rejects.toMatchObject({ code: "USPTO_MARK_FORMAT_FACT_EVIDENCE_AMBIGUOUS" });
+    ).rejects.toMatchObject({ code: "USPTO_MARK_FORMAT_FACT_EVIDENCE_MISSING" });
 
     const duplicate = dependencies();
     const chunks = duplicate.retrieval.listChunks("stg_test", WORKSPACE_ID);
@@ -241,6 +347,62 @@ describe("USPTO mark-format source attestation", () => {
         now: new Date("2026-09-06T12:00:00.000Z"),
       }),
     ).rejects.toMatchObject({ code: "USPTO_MARK_FORMAT_FACT_EVIDENCE_AMBIGUOUS" });
+  });
+
+  it("does not join non-adjacent chunks or select navigation noise", async () => {
+    const nonAdjacent = dependencies();
+    const chunks = nonAdjacent.retrieval.listChunks("stg_test", WORKSPACE_ID);
+    nonAdjacent.retrieval.listChunks = () => [
+      chunks[0]!,
+      { ...chunks[1]!, ordinal: 3 },
+      { ...chunks[2]!, ordinal: 4 },
+      { ...chunks[3]!, ordinal: 5 },
+    ];
+    await expect(
+      attestUsptoMarkFormatSource({
+        workspaceId: WORKSPACE_ID,
+        sourceId: SOURCE_ID,
+        sourceKey: "MARK_DRAWINGS",
+        dependencies: nonAdjacent,
+        now: new Date("2026-09-06T12:00:00.000Z"),
+      }),
+    ).rejects.toMatchObject({ code: "USPTO_MARK_FORMAT_FACT_EVIDENCE_MISSING" });
+
+    const noisy = dependencies();
+    const original = noisy.retrieval.listChunks("stg_test", WORKSPACE_ID);
+    noisy.retrieval.listChunks = () => [
+      {
+        ...original[0]!,
+        chunkId: "rch_navigation",
+        ordinal: 1,
+        headingPath: ["Navigation"],
+        text: "Standard character information, drawing examples, and text-only help links.",
+      },
+      ...original.map((chunk) => ({ ...chunk, ordinal: chunk.ordinal + 1 })),
+    ];
+    const evidence = await attestUsptoMarkFormatSource({
+      workspaceId: WORKSPACE_ID,
+      sourceId: SOURCE_ID,
+      sourceKey: "MARK_DRAWINGS",
+      dependencies: noisy,
+      now: new Date("2026-09-06T12:00:00.000Z"),
+    });
+    expect(evidence.chunks.some((chunk) => chunk.chunkId === "rch_navigation")).toBe(false);
+  });
+
+  it("fails closed when retrieval chunk identity is duplicated", async () => {
+    const duplicate = dependencies();
+    const chunks = duplicate.retrieval.listChunks("stg_test", WORKSPACE_ID);
+    duplicate.retrieval.listChunks = () => [...chunks, { ...chunks[0]!, ordinal: 5 }];
+    await expect(
+      attestUsptoMarkFormatSource({
+        workspaceId: WORKSPACE_ID,
+        sourceId: SOURCE_ID,
+        sourceKey: "MARK_DRAWINGS",
+        dependencies: duplicate,
+        now: new Date("2026-09-06T12:00:00.000Z"),
+      }),
+    ).rejects.toMatchObject({ code: "USPTO_MARK_FORMAT_CHUNK_LINEAGE_INVALID" });
   });
 
   it("fails closed when the exact RawArtifact is missing", async () => {

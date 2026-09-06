@@ -41,20 +41,30 @@ const MONTHS: Record<string, string> = {
 };
 function normalizeVisibleText(value: string): string {
   return value
+    .normalize("NFKC")
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/giu, " ")
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu, " ")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/gu, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/gu, "$1")
+    .replace(/\[([^\]]+)\]\[[^\]]*\]/gu, "$1")
+    .replace(/([*_~`]+)(.*?)\1/gu, "$2")
+    .replace(/\\([\\`*_[\]{}()#+.!<>~-])/gu, "$1")
     .replace(/<[^>]+>/gu, " ")
     .replace(/&nbsp;|&#160;/giu, " ")
     .replace(/&amp;/giu, "&")
     .replace(/&quot;/giu, '"')
     .replace(/&#39;|&apos;/giu, "'")
+    .replace(/&#(\d+);/gu, (_match, value: string) => String.fromCodePoint(Number(value)))
+    .replace(/&#x([\da-f]+);/giu, (_match, value: string) =>
+      String.fromCodePoint(Number.parseInt(value, 16)),
+    )
     .replace(/\s+/gu, " ")
     .trim()
     .toLowerCase();
 }
 
 function normalizedAnchor(value: string): string {
-  return value.replace(/\s+/gu, " ").trim().toLowerCase();
+  return normalizeVisibleText(value);
 }
 
 type DiagnosticChunk = {
@@ -207,6 +217,95 @@ function requiredSource(
   }
   return { source, expected };
 }
+
+type FactBindingChunk = ReturnType<RetrievalIndexRepository["listChunks"]>[number];
+type PassageMatch = { chunks: FactBindingChunk[] };
+
+function exactPassageMatches(
+  chunks: readonly FactBindingChunk[],
+  anchor: string,
+  includeHeading: boolean,
+): PassageMatch[] {
+  const matches: PassageMatch[] = [];
+  let run: FactBindingChunk[] = [];
+
+  const searchRun = () => {
+    if (run.length === 0) return;
+    const rawSegments: Array<{ chunk: FactBindingChunk; text: string }> = [];
+    if (includeHeading) {
+      rawSegments.push({ chunk: run[0]!, text: run[0]!.headingPath.join(" ") });
+    }
+    rawSegments.push(...run.map((chunk) => ({ chunk, text: chunk.text })));
+    const marker = (index: number) => `\uE000${index}\uE001`;
+    const tagged = rawSegments.map((segment, index) => `${marker(index)}${segment.text}`).join(" ");
+    const normalizedTagged = normalizeVisibleText(tagged);
+    const normalizedSegments = Array.from({ length: rawSegments.length }, () => "");
+    let segmentIndex: number | null = null;
+    for (const part of normalizedTagged.split(/(\uE000\d+\uE001)/u)) {
+      const boundary = /^\uE000(\d+)\uE001$/u.exec(part);
+      if (boundary) {
+        segmentIndex = Number(boundary[1]);
+      } else if (segmentIndex !== null) {
+        normalizedSegments[segmentIndex] += part;
+      }
+    }
+    let stream = "";
+    const segments: Array<{ chunk: FactBindingChunk; start: number; end: number }> = [];
+    for (let index = 0; index < rawSegments.length; index += 1) {
+      const text = normalizeVisibleText(normalizedSegments[index]!);
+      if (!text) continue;
+      if (stream) stream += " ";
+      const start = stream.length;
+      stream += text;
+      segments.push({ chunk: rawSegments[index]!.chunk, start, end: stream.length });
+    }
+    for (
+      let offset = stream.indexOf(anchor);
+      offset >= 0;
+      offset = stream.indexOf(anchor, offset + 1)
+    ) {
+      const end = offset + anchor.length;
+      const matched = segments
+        .filter((segment) => segment.start < end && segment.end > offset)
+        .map((segment) => segment.chunk)
+        .filter(
+          (chunk, index, selected) =>
+            selected.findIndex((candidate) => candidate.chunkId === chunk.chunkId) === index,
+        );
+      if (matched.length > 0) matches.push({ chunks: matched });
+    }
+  };
+
+  for (const chunk of chunks) {
+    const previous = run.at(-1);
+    const sameSection =
+      !includeHeading ||
+      !previous ||
+      JSON.stringify(previous.headingPath) === JSON.stringify(chunk.headingPath);
+    if (previous && (chunk.ordinal !== previous.ordinal + 1 || !sameSection)) {
+      searchRun();
+      run = [];
+    }
+    if (!normalizeVisibleText(chunk.text)) {
+      searchRun();
+      run = [];
+      continue;
+    }
+    run.push(chunk);
+  }
+  searchRun();
+  return matches;
+}
+
+function exactPassageChunks(
+  chunks: readonly FactBindingChunk[],
+  anchor: string,
+): FactBindingChunk[][] {
+  const textMatches = exactPassageMatches(chunks, anchor, false);
+  if (textMatches.length > 0) return textMatches.map((match) => match.chunks);
+  return exactPassageMatches(chunks, anchor, true).map((match) => match.chunks);
+}
+
 function collectFactBindings(
   dependencies: UsptoMarkFormatAttestationDependencies,
   workspaceId: string,
@@ -245,52 +344,45 @@ function collectFactBindings(
     .listChunks(hit.document.stagingDocumentId, workspaceId)
     .slice()
     .sort((left, right) => left.ordinal - right.ordinal);
-  const segments: Array<{ chunk: (typeof chunks)[number]; start: number; end: number }> = [];
-  let stream = "";
+  const chunkIds = new Set<string>();
+  const ordinals = new Set<number>();
   for (const chunk of chunks) {
-    const text = normalizeVisibleText(chunk.text);
-    if (!text) continue;
-    if (stream) stream += " ";
-    const start = stream.length;
-    stream += text;
-    segments.push({ chunk, start, end: stream.length });
+    if (
+      chunk.documentId !== hit.document.documentId ||
+      chunk.stagingDocumentId !== hit.document.stagingDocumentId ||
+      chunk.artifactVersion !== hit.document.artifactVersion ||
+      !Number.isSafeInteger(chunk.ordinal) ||
+      chunk.ordinal < 1 ||
+      !chunk.chunkId.trim() ||
+      chunkIds.has(chunk.chunkId) ||
+      ordinals.has(chunk.ordinal) ||
+      !/^[a-f0-9]{64}$/u.test(chunk.contentSha256)
+    ) {
+      throw new RegistryConflictError(
+        "USPTO_MARK_FORMAT_CHUNK_LINEAGE_INVALID",
+        `Retrieval chunks for ${sourceKey} do not preserve unique exact document lineage`,
+      );
+    }
+    chunkIds.add(chunk.chunkId);
+    ordinals.add(chunk.ordinal);
   }
 
   return expected.evidenceQueries.flatMap((query) => {
     const anchor = normalizedAnchor(query.passageAnchor);
-    const occurrences: number[] = [];
-    for (
-      let offset = stream.indexOf(anchor);
-      offset >= 0;
-      offset = stream.indexOf(anchor, offset + 1)
-    ) {
-      occurrences.push(offset);
-    }
-    if (occurrences.length > 1) {
+    const matches = exactPassageChunks(chunks, anchor);
+    if (matches.length === 0) {
       throw new RegistryConflictError(
-        "USPTO_MARK_FORMAT_FACT_EVIDENCE_AMBIGUOUS",
-        `Expected one exact passage for ${sourceKey}/${query.factId}; found ${occurrences.length}; chunks: ${boundedChunkDiagnostics(chunks, anchor)}`,
+        "USPTO_MARK_FORMAT_FACT_EVIDENCE_MISSING",
+        `Expected one exact passage for ${sourceKey}/${query.factId}; found 0; chunks: ${boundedChunkDiagnostics(chunks, anchor)}`,
       );
     }
-    if (occurrences.length === 1) {
-      const start = occurrences[0]!;
-      const end = start + anchor.length;
-      const matched = segments.filter((segment) => segment.start < end && segment.end > start);
-      if (matched.length > 0) {
-        return matched.map(({ chunk }) => ({ query, document: hit.document, chunk }));
-      }
-    }
-
-    const headingMatches = chunks.filter((chunk) =>
-      normalizeVisibleText([...chunk.headingPath, chunk.text].join(" ")).includes(anchor),
-    );
-    if (headingMatches.length !== 1) {
+    if (matches.length > 1) {
       throw new RegistryConflictError(
         "USPTO_MARK_FORMAT_FACT_EVIDENCE_AMBIGUOUS",
-        `Expected one exact passage for ${sourceKey}/${query.factId}; found ${headingMatches.length}; chunks: ${boundedChunkDiagnostics(chunks, anchor)}`,
+        `Expected one exact passage for ${sourceKey}/${query.factId}; found ${matches.length}; chunks: ${boundedChunkDiagnostics(chunks, anchor)}`,
       );
     }
-    return [{ query, document: hit.document, chunk: headingMatches[0]! }];
+    return matches[0]!.map((chunk) => ({ query, document: hit.document, chunk }));
   });
 }
 export async function attestUsptoMarkFormatSource(input: {
@@ -381,6 +473,7 @@ export async function attestUsptoMarkFormatSource(input: {
       queryText: query.queryText,
       chunkId: chunk.chunkId,
       chunkContentSha256: chunk.contentSha256,
+      ordinal: chunk.ordinal,
     })),
     capturedAt: first.document.capturedAt,
     indexedAt: first.document.indexedAt,
