@@ -52,7 +52,7 @@
       },
       "includePatterns": ["https://www.wipo.int/*madrid*", "https://www.wipo.int/*trademark*"],
       "maxPages": 330,
-      "maxDepth": 3,
+      "maxDepth": 4,
       "rateLimitPerMinute": 30,
       "renderJavascript": false
     },
@@ -96,12 +96,12 @@
       "sourceClass": "OFFICIAL_AUTHORITY",
       "jurisdictions": ["KR"],
       "languages": ["en"],
-      "baseUrl": "https://www.kipo.go.kr/en/HtmlApp?c=9300010&catmenu=ek04_01_01",
+      "baseUrl": "https://www.kipo.go.kr/en/HtmlApp?c=93000&catmenu=ek04_01_01",
       "discovery": {
         "mode": "LINK_CRAWL"
       },
       "maxPages": 230,
-      "maxDepth": 3,
+      "maxDepth": 4,
       "rateLimitPerMinute": 18,
       "renderJavascript": false,
       "includePatterns": ["https://www.kipo.go.kr/en/*"]
@@ -146,7 +146,7 @@
         "https://ised-isde.canada.ca/site/canadian-intellectual-property-office/en/trademarks*"
       ],
       "maxPages": 280,
-      "maxDepth": 3,
+      "maxDepth": 4,
       "rateLimitPerMinute": 24,
       "renderJavascript": false
     },
@@ -197,7 +197,7 @@
       },
       "includePatterns": ["https://www.gov.br/inpi/pt-br/*marcas*"],
       "maxPages": 250,
-      "maxDepth": 3,
+      "maxDepth": 4,
       "rateLimitPerMinute": 24,
       "renderJavascript": false
     },
@@ -214,7 +214,7 @@
       },
       "includePatterns": ["https://www.moet.gov.ae/*trademark*"],
       "maxPages": 230,
-      "maxDepth": 3,
+      "maxDepth": 4,
       "rateLimitPerMinute": 18,
       "renderJavascript": false
     },

@@ -26,6 +26,9 @@ describe("official-core web acquisition capacity", () => {
       JSON.parse(readFileSync(manifestPath, "utf8")),
     );
     expect(parsed.sources).toHaveLength(13);
+    expect(parsed.sources.find((source) => source.key === "kipo")?.baseUrl).toBe(
+      "https://www.kipo.go.kr/en/HtmlApp?c=93000&catmenu=ek04_01_01",
+    );
     const reachableBudget = parsed.sources.reduce(
       (sum, source) => sum + Math.min(source.maxPages, source.rateLimitPerMinute * 14),
       0,
