@@ -212,11 +212,13 @@ export class SubprocessCrawl4AiRunner implements Crawl4AiProcessRunner {
 
   async run(request: Crawl4AiRunnerRequest, timeoutMs: number): Promise<Crawl4AiRunnerResponse> {
     return await new Promise<Crawl4AiRunnerResponse>((resolvePromise, rejectPromise) => {
+      const useProcessGroup = process.platform !== "win32";
       const child = spawn(this.pythonExecutable, [this.scriptPath], {
         cwd: this.cwd,
         env: safeEnvironment(),
         stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
+        detached: useProcessGroup,
       });
       const stdout: Buffer[] = [];
       const stderr: Buffer[] = [];
@@ -228,6 +230,14 @@ export class SubprocessCrawl4AiRunner implements Crawl4AiProcessRunner {
       const terminate = (error: CollectionAcquisitionError) => {
         if (terminalError) return;
         terminalError = error;
+        if (useProcessGroup && child.pid) {
+          try {
+            process.kill(-child.pid, "SIGKILL");
+            return;
+          } catch {
+            // Fall through to the direct-child kill if the process group already exited.
+          }
+        }
         child.kill("SIGKILL");
       };
 

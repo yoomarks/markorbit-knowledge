@@ -28,6 +28,7 @@ type CampaignSourceResult = {
   sourceKey: string;
   sourceId: string;
   runId: string | null;
+  conversionProfileId: string;
 };
 
 type CampaignResult = {
@@ -56,6 +57,7 @@ type CampaignVerification = {
   currentRetrievalDocuments: number;
   conversionRuns: Record<string, number>;
   conversionFailureCodes: Record<string, number>;
+  backgroundConversionRuns: Record<string, number>;
   sources: Array<{
     sourceKey: string;
     runStatus: string;
@@ -64,6 +66,7 @@ type CampaignVerification = {
     retrievalDocuments: number;
     conversionRuns: Record<string, number>;
     conversionFailureCodes: Record<string, number>;
+    backgroundConversionRuns: Record<string, number>;
   }>;
 };
 function placeholders(values: readonly string[]): string {
@@ -134,14 +137,18 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
   const markdownBySource = countMap(markdownRows);
   const rawMarkdownBySource = countMap(rawMarkdownRows);
   const retrievalBySource = countMap(retrievalRows);
+  const profileIds = campaign.sources.map((source) => source.conversionProfileId);
+  if (profileIds.some((id) => !id)) {
+    throw new Error("Campaign result does not contain one conversion profile per source");
+  }
   const conversionStatusRows = database
     .prepare(
       `SELECT source_id, status, COUNT(*) AS count
        FROM conversion_runs
-       WHERE source_id IN (${placeholders(sourceIds)})
+       WHERE conversion_profile_id IN (${placeholders(profileIds)})
        GROUP BY source_id, status`,
     )
-    .all(...sourceIds) as unknown as ConversionStatusRow[];
+    .all(...profileIds) as unknown as ConversionStatusRow[];
   const conversionRuns: Record<string, number> = {};
   const conversionBySource = new Map<string, Record<string, number>>();
   for (const row of conversionStatusRows) {
@@ -150,21 +157,38 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
     increment(perSource, row.status, Number(row.count));
     conversionBySource.set(row.source_id, perSource);
   }
+  const backgroundStatusRows = database
+    .prepare(
+      `SELECT source_id, status, COUNT(*) AS count
+       FROM conversion_runs
+       WHERE source_id IN (${placeholders(sourceIds)})
+         AND conversion_profile_id NOT IN (${placeholders(profileIds)})
+       GROUP BY source_id, status`,
+    )
+    .all(...sourceIds, ...profileIds) as unknown as ConversionStatusRow[];
+  const backgroundConversionRuns: Record<string, number> = {};
+  const backgroundBySource = new Map<string, Record<string, number>>();
+  for (const row of backgroundStatusRows) {
+    increment(backgroundConversionRuns, row.status, Number(row.count));
+    const perSource = backgroundBySource.get(row.source_id) ?? {};
+    increment(perSource, row.status, Number(row.count));
+    backgroundBySource.set(row.source_id, perSource);
+  }
   const failedAttemptRows = database
     .prepare(
       `SELECT r.source_id, a.document_json
        FROM conversion_attempts a
        JOIN conversion_runs r ON r.id = a.conversion_run_id
-       WHERE r.source_id IN (${placeholders(sourceIds)}) AND a.status = 'FAILED'`,
+       WHERE r.conversion_profile_id IN (${placeholders(profileIds)}) AND a.status = 'FAILED'`,
     )
-    .all(...sourceIds) as unknown as AttemptDocumentRow[];
+    .all(...profileIds) as unknown as AttemptDocumentRow[];
   const conversionFailureCodes: Record<string, number> = {};
   const failuresBySource = new Map<string, Record<string, number>>();
   for (const row of failedAttemptRows) {
     const code = conversionFailureCode(row.document_json);
     increment(conversionFailureCodes, code);
     const perSource = failuresBySource.get(row.source_id) ?? {};
-    increment(perSource, code);
+    increment(perSource, code, 1);
     failuresBySource.set(row.source_id, perSource);
   }
 
@@ -177,6 +201,7 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
     retrievalDocuments: retrievalBySource.get(source.sourceId) ?? 0,
     conversionRuns: conversionBySource.get(source.sourceId) ?? {},
     conversionFailureCodes: failuresBySource.get(source.sourceId) ?? {},
+    backgroundConversionRuns: backgroundBySource.get(source.sourceId) ?? {},
   }));
   const statuses = sources.map((source) => source.runStatus);
   return {
@@ -200,6 +225,7 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
     ),
     conversionRuns,
     conversionFailureCodes,
+    backgroundConversionRuns,
     sources,
   };
 }
