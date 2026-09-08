@@ -266,6 +266,8 @@ describe("bulk campaign orchestration", () => {
       (call) => call.method === "POST" && call.url.endsWith("/api/conversion-profiles"),
     );
     expect(profilePost?.body).toMatchObject({ autoConvert: true, outputFormat: "MARKDOWN" });
+    const runPost = calls.find((call) => call.method === "POST" && call.url.endsWith("/api/runs"));
+    expect(runPost?.body).toEqual({ planId: "pln_TEST0000000000000000000001" });
   });
 });
 

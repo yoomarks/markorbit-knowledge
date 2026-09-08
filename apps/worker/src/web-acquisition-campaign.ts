@@ -344,7 +344,7 @@ export async function discoverWebAcquisitionInventory(
   const robotsUrl = new URL("/robots.txt", base.origin).toString();
   const errors: string[] = [];
   let robotsStatus: number | null = null;
-  let sitemapUrls = [...(source.discovery.sitemapUrls ?? [])];
+  const sitemapUrls = [...(source.discovery.sitemapUrls ?? [])];
 
   if (source.discovery.mode === "EXACT_URL_LIST") {
     const selected = selectedUrls(source, source.discovery.exactUrls ?? []);
@@ -1015,10 +1015,7 @@ async function dispatchCampaignPlan(
   const response = await client.request(
     "/api/runs",
     jsonPost(
-      {
-        planId,
-        requestedBy: { actorType: "LOCAL_ADMIN", actorId: "bulk-web-acquisition-v1" },
-      },
+      { planId },
       { "Idempotency-Key": `bulk-web:${manifest.campaignId}:${sourceKey}:${runKey}` },
     ),
     manifest.workspaceId,
