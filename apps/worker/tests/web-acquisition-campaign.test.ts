@@ -458,6 +458,7 @@ describe("repeat campaign inventory refresh", () => {
     expect(sourcePatch?.body).toMatchObject({
       expectedUpdatedAt: "2026-09-08T00:00:00.000Z",
       entrypoints: [{ uri: "https://example.com/trademarks/new-guide" }],
+      extensions: { "x-markorbit-source-config-sha256": expect.any(String) },
     });
     const planPatch = calls.find(
       (call) => call.method === "PATCH" && call.url.includes("/api/plans/"),
@@ -465,6 +466,7 @@ describe("repeat campaign inventory refresh", () => {
     expect(planPatch?.body).toMatchObject({
       expectedUpdatedAt: "2026-09-08T00:00:00.000Z",
       policy: { maxItems: 1, maxDepth: 0 },
+      extensions: { "x-markorbit-plan-policy-sha256": expect.any(String) },
     });
   });
 });

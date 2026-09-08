@@ -267,6 +267,9 @@ function robotsSitemaps(text: string): string[] {
 function inventoryHash(urls: readonly string[]): string {
   return createHash("sha256").update(urls.join("\n"), "utf8").digest("hex");
 }
+function stableObjectHash(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
+}
 function patternRegex(pattern: string): RegExp {
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/gu, "\\$&");
   return new RegExp(`^${escaped.replaceAll("*", ".*")}$`, "u");
@@ -659,6 +662,10 @@ async function ensureCampaignSource(
     "x-markorbit-source-class": source.sourceClass,
     "x-markorbit-discovery-mode": inventory.modeUsed,
     "x-markorbit-inventory-sha256": inventory.inventorySha256,
+    "x-markorbit-source-config-sha256": stableObjectHash({
+      renderJavascript: source.renderJavascript === true,
+      maxDepth: inventory.modeUsed === "LINK_CRAWL" ? source.maxDepth : 0,
+    }),
     "x-markorbit-inventory-count": inventory.selectedUrls.length,
   };
   const connectorConfig = {
@@ -691,7 +698,11 @@ async function ensureCampaignSource(
       throw new Error(`Existing Source ${slug} drifted from the governed campaign identity`);
     }
     const sourceId = requiredString(candidate.id, "source.id");
-    if (extensions?.["x-markorbit-inventory-sha256"] !== inventory.inventorySha256) {
+    if (
+      extensions?.["x-markorbit-inventory-sha256"] !== inventory.inventorySha256 ||
+      extensions?.["x-markorbit-source-config-sha256"] !==
+        campaignExtensions["x-markorbit-source-config-sha256"]
+    ) {
       await client.request(
         `/api/sources/${encodeURIComponent(sourceId)}`,
         jsonPatch({
@@ -762,10 +773,12 @@ async function ensureCampaignPlan(
     retry: { maxAttempts: 2, backoffSeconds: 10 },
     locale: source.languages[0],
   };
+  const planPolicySha256 = stableObjectHash(policy);
   const extensions = {
     "x-markorbit-campaign-id": manifest.campaignId,
     "x-markorbit-campaign-source-key": source.key,
     "x-markorbit-inventory-sha256": inventory.inventorySha256,
+    "x-markorbit-plan-policy-sha256": planPolicySha256,
     "x-markorbit-discovery-mode": inventory.modeUsed,
   };
   const listed = await client.request(
@@ -778,7 +791,10 @@ async function ensureCampaignPlan(
     if (plan?.name !== name) continue;
     const currentExtensions = record(plan.extensions);
     const planId = requiredString(plan.id, "plan.id");
-    if (currentExtensions?.["x-markorbit-inventory-sha256"] !== inventory.inventorySha256) {
+    if (
+      currentExtensions?.["x-markorbit-inventory-sha256"] !== inventory.inventorySha256 ||
+      currentExtensions?.["x-markorbit-plan-policy-sha256"] !== planPolicySha256
+    ) {
       await client.request(
         `/api/plans/${encodeURIComponent(planId)}`,
         jsonPatch({

@@ -16,8 +16,8 @@
         "mode": "LINK_CRAWL"
       },
       "includePatterns": ["https://sbj.cnipa.gov.cn/sbj/*"],
-      "maxPages": 200,
-      "maxDepth": 2,
+      "maxPages": 280,
+      "maxDepth": 3,
       "rateLimitPerMinute": 24,
       "renderJavascript": false
     },
@@ -34,7 +34,7 @@
       },
       "includePatterns": ["https://www.uspto.gov/trademarks", "https://www.uspto.gov/trademarks/*"],
       "excludePatterns": ["*test*", "*clone*", "*/2021-*", "*/2022-*", "*/2023-*"],
-      "maxPages": 200,
+      "maxPages": 360,
       "maxDepth": 2,
       "rateLimitPerMinute": 30,
       "renderJavascript": false
@@ -51,8 +51,8 @@
         "maxSitemaps": 30
       },
       "includePatterns": ["https://www.wipo.int/*madrid*", "https://www.wipo.int/*trademark*"],
-      "maxPages": 200,
-      "maxDepth": 2,
+      "maxPages": 330,
+      "maxDepth": 3,
       "rateLimitPerMinute": 30,
       "renderJavascript": false
     },
@@ -68,8 +68,8 @@
         "maxSitemaps": 30
       },
       "includePatterns": ["https://www.euipo.europa.eu/en/trade-marks*"],
-      "maxPages": 200,
-      "maxDepth": 2,
+      "maxPages": 280,
+      "maxDepth": 3,
       "rateLimitPerMinute": 30,
       "renderJavascript": false
     },
@@ -86,7 +86,7 @@
       },
       "includePatterns": ["https://www.jpo.go.jp/e/system/trademark*"],
       "maxPages": 200,
-      "maxDepth": 2,
+      "maxDepth": 3,
       "rateLimitPerMinute": 24,
       "renderJavascript": false
     },
@@ -100,8 +100,8 @@
       "discovery": {
         "mode": "LINK_CRAWL"
       },
-      "maxPages": 200,
-      "maxDepth": 2,
+      "maxPages": 230,
+      "maxDepth": 3,
       "rateLimitPerMinute": 18,
       "renderJavascript": false,
       "includePatterns": ["https://www.kipo.go.kr/en/*"]
@@ -145,8 +145,8 @@
       "includePatterns": [
         "https://ised-isde.canada.ca/site/canadian-intellectual-property-office/en/trademarks*"
       ],
-      "maxPages": 200,
-      "maxDepth": 2,
+      "maxPages": 280,
+      "maxDepth": 3,
       "rateLimitPerMinute": 24,
       "renderJavascript": false
     },
@@ -162,8 +162,8 @@
         "maxSitemaps": 30
       },
       "includePatterns": ["https://www.ipaustralia.gov.au/trade-marks*"],
-      "maxPages": 200,
-      "maxDepth": 2,
+      "maxPages": 250,
+      "maxDepth": 3,
       "rateLimitPerMinute": 24,
       "renderJavascript": false
     },
@@ -180,7 +180,7 @@
       },
       "includePatterns": ["https://ipindia.gov.in/*trademark*"],
       "maxPages": 200,
-      "maxDepth": 2,
+      "maxDepth": 3,
       "rateLimitPerMinute": 18,
       "renderJavascript": false
     },
@@ -196,8 +196,8 @@
         "maxSitemaps": 30
       },
       "includePatterns": ["https://www.gov.br/inpi/pt-br/*marcas*"],
-      "maxPages": 200,
-      "maxDepth": 2,
+      "maxPages": 250,
+      "maxDepth": 3,
       "rateLimitPerMinute": 24,
       "renderJavascript": false
     },
@@ -213,8 +213,8 @@
         "maxSitemaps": 20
       },
       "includePatterns": ["https://www.moet.gov.ae/*trademark*"],
-      "maxPages": 200,
-      "maxDepth": 2,
+      "maxPages": 230,
+      "maxDepth": 3,
       "rateLimitPerMinute": 18,
       "renderJavascript": false
     },

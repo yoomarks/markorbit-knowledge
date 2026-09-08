@@ -25,6 +25,9 @@ function database(): DatabaseSync {
     CREATE TABLE conversion_attempts (
       conversion_run_id TEXT NOT NULL, document_json TEXT NOT NULL, status TEXT NOT NULL
     );
+    CREATE TABLE execution_attempts (
+      run_id TEXT NOT NULL, document_json TEXT NOT NULL, status TEXT NOT NULL
+    );
   `);
   return db;
 }
@@ -55,6 +58,13 @@ describe("Bulk Web campaign verification", () => {
   it("scopes acquisition and conversion evidence to the dispatched campaign run", () => {
     const db = database();
     db.prepare("INSERT INTO collection_runs VALUES ('run-current', 'src-1', 'COMPLETED')").run();
+    db.prepare("INSERT INTO collection_runs VALUES ('run-old', 'src-1', 'FAILED')").run();
+    db.prepare("INSERT INTO execution_attempts VALUES ('run-current', ?, 'FAILED')").run(
+      JSON.stringify({ failure: { code: "CURRENT_COLLECTION_FAIL" } }),
+    );
+    db.prepare("INSERT INTO execution_attempts VALUES ('run-old', ?, 'FAILED')").run(
+      JSON.stringify({ failure: { code: "HIST_COLLECTION_FAIL" } }),
+    );
     insertRaw(db, "raw-current-1", "run-current", "https://example.com/current-1");
     insertRaw(db, "raw-current-2", "run-current", "https://example.com/current-2");
     for (let index = 0; index < 5; index += 1) {
@@ -96,6 +106,7 @@ describe("Bulk Web campaign verification", () => {
     expect(observed.currentRetrievalDocuments).toBe(1);
     expect(observed.conversionRuns).toEqual({ FAILED: 1 });
     expect(observed.conversionFailureCodes).toEqual({ CURRENT_FAIL: 1 });
+    expect(observed.collectionFailureCodes).toEqual({ CURRENT_COLLECTION_FAIL: 1 });
     expect(observed.backgroundConversionRuns).toEqual({ COMPLETED: 1 });
     expect(observed.sources[0]).toMatchObject({
       markdownPages: 2,
@@ -103,6 +114,7 @@ describe("Bulk Web campaign verification", () => {
       retrievalDocuments: 1,
       conversionRuns: { FAILED: 1 },
       conversionFailureCodes: { CURRENT_FAIL: 1 },
+      collectionFailureCodes: { CURRENT_COLLECTION_FAIL: 1 },
       backgroundConversionRuns: { COMPLETED: 1 },
     });
   });

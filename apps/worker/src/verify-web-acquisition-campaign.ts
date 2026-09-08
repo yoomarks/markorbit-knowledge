@@ -58,6 +58,7 @@ export type CampaignVerification = {
   currentRetrievalDocuments: number;
   conversionRuns: Record<string, number>;
   conversionFailureCodes: Record<string, number>;
+  collectionFailureCodes: Record<string, number>;
   backgroundConversionRuns: Record<string, number>;
   sources: Array<{
     sourceKey: string;
@@ -67,6 +68,7 @@ export type CampaignVerification = {
     retrievalDocuments: number;
     conversionRuns: Record<string, number>;
     conversionFailureCodes: Record<string, number>;
+    collectionFailureCodes: Record<string, number>;
     backgroundConversionRuns: Record<string, number>;
   }>;
 };
@@ -83,7 +85,7 @@ function increment(target: Record<string, number>, key: string, value = 1): void
   target[key] = (target[key] ?? 0) + value;
 }
 
-function conversionFailureCode(documentJson: string): string {
+function attemptFailureCode(documentJson: string): string {
   try {
     const parsed = JSON.parse(documentJson) as { failure?: { code?: unknown } };
     return typeof parsed.failure?.code === "string" && parsed.failure.code
@@ -197,11 +199,29 @@ export function observeWebAcquisitionCampaign(
   const conversionFailureCodes: Record<string, number> = {};
   const failuresBySource = new Map<string, Record<string, number>>();
   for (const row of failedAttemptRows) {
-    const code = conversionFailureCode(row.document_json);
+    const code = attemptFailureCode(row.document_json);
     increment(conversionFailureCodes, code);
     const perSource = failuresBySource.get(row.source_id) ?? {};
     increment(perSource, code, 1);
     failuresBySource.set(row.source_id, perSource);
+  }
+
+  const failedCollectionAttemptRows = database
+    .prepare(
+      `SELECT r.source_id, a.document_json
+       FROM execution_attempts a
+       JOIN collection_runs r ON r.id = a.run_id
+       WHERE a.run_id IN (${placeholders(runIds)}) AND a.status = 'FAILED'`,
+    )
+    .all(...runIds) as unknown as AttemptDocumentRow[];
+  const collectionFailureCodes: Record<string, number> = {};
+  const collectionFailuresBySource = new Map<string, Record<string, number>>();
+  for (const row of failedCollectionAttemptRows) {
+    const code = attemptFailureCode(row.document_json);
+    increment(collectionFailureCodes, code);
+    const perSource = collectionFailuresBySource.get(row.source_id) ?? {};
+    increment(perSource, code);
+    collectionFailuresBySource.set(row.source_id, perSource);
   }
 
   const terminal = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
@@ -213,6 +233,7 @@ export function observeWebAcquisitionCampaign(
     retrievalDocuments: retrievalBySource.get(source.sourceId) ?? 0,
     conversionRuns: conversionBySource.get(source.sourceId) ?? {},
     conversionFailureCodes: failuresBySource.get(source.sourceId) ?? {},
+    collectionFailureCodes: collectionFailuresBySource.get(source.sourceId) ?? {},
     backgroundConversionRuns: backgroundBySource.get(source.sourceId) ?? {},
   }));
   const statuses = sources.map((source) => source.runStatus);
@@ -237,6 +258,7 @@ export function observeWebAcquisitionCampaign(
     ),
     conversionRuns,
     conversionFailureCodes,
+    collectionFailureCodes,
     backgroundConversionRuns,
     sources,
   };
