@@ -11,6 +11,8 @@ on:
       - apps/worker/src/verify-web-acquisition-campaign.ts
       - apps/worker/tests/web-acquisition-campaign.test.ts
       - apps/worker/package.json
+      - apps/admin/src/server/source-registry.ts
+      - apps/admin/src/server/source-registry.test.ts
       - config/web-acquisition-official-core-v1.json
       - workers/crawl4ai/**
 
@@ -28,6 +30,7 @@ jobs:
     env:
       MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
       MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
+      MARKORBIT_WORKER_MAX_LEASE_LIFETIME_MS: "1800000"
     steps:
       - uses: actions/checkout@v4
 

@@ -487,26 +487,33 @@ async def _crawl_concurrently(
                 redirected_raw if isinstance(redirected_raw, str) and redirected_raw else source_url
             )
             if not redirect_host_in_scope(seed_host, host_of(final_url)):
-                raise SafetyError(
+                last_error = SafetyError(
                     "CROSS_DOMAIN_REDIRECT_BLOCKED",
                     "Crawl result redirected outside the authorized source host",
                 )
+                continue
             await assert_public_dns(final_url)
 
             for kind in request["output_kinds"]:
                 content = _content_for_kind(page_result, kind)
                 if not content:
                     continue
-                manifest, total_bytes = _write_artifact(
-                    request["output_directory"],
-                    len(artifacts) + 1,
-                    final_url,
-                    kind,
-                    content,
-                    request["max_artifact_bytes"],
-                    total_bytes,
-                    request["max_total_bytes"],
-                )
+                try:
+                    manifest, total_bytes = _write_artifact(
+                        request["output_directory"],
+                        len(artifacts) + 1,
+                        final_url,
+                        kind,
+                        content,
+                        request["max_artifact_bytes"],
+                        total_bytes,
+                        request["max_total_bytes"],
+                    )
+                except SafetyError as exc:
+                    if exc.code != "ARTIFACT_TOO_LARGE":
+                        raise
+                    last_error = exc
+                    continue
                 manifest["sourceUri"] = source_url
                 manifest["canonicalUri"] = final_url
                 artifacts.append(manifest)
@@ -746,26 +753,33 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
                             final_raw if isinstance(final_raw, str) else current_url
                         )
                         if not redirect_host_in_scope(seed_host, host_of(final_url)):
-                            raise SafetyError(
+                            last_error = SafetyError(
                                 "CROSS_DOMAIN_REDIRECT_BLOCKED",
                                 "Crawl result redirected outside the authorized source host",
                             )
+                            continue
                         await assert_public_dns(final_url)
 
                         for kind in request["output_kinds"]:
                             content = _content_for_kind(page_result, kind)
                             if not content:
                                 continue
-                            manifest, total_bytes = _write_artifact(
-                                request["output_directory"],
-                                len(artifacts) + 1,
-                                final_url,
-                                kind,
-                                content,
-                                request["max_artifact_bytes"],
-                                total_bytes,
-                                request["max_total_bytes"],
-                            )
+                            try:
+                                manifest, total_bytes = _write_artifact(
+                                    request["output_directory"],
+                                    len(artifacts) + 1,
+                                    final_url,
+                                    kind,
+                                    content,
+                                    request["max_artifact_bytes"],
+                                    total_bytes,
+                                    request["max_total_bytes"],
+                                )
+                            except SafetyError as exc:
+                                if exc.code != "ARTIFACT_TOO_LARGE":
+                                    raise
+                                last_error = exc
+                                continue
                             manifest["sourceUri"] = current_url
                             manifest["canonicalUri"] = final_url
                             artifacts.append(manifest)
