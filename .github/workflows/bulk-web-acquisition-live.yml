@@ -103,25 +103,27 @@ jobs:
           echo "MARKORBIT_WORKER_CREDENTIAL=$credential" >> "$GITHUB_ENV"
           rm -f "$RUNNER_TEMP/worker-credential.txt"
 
-      - name: Start six governed collection and conversion Workers
+      - name: Run six governed Workers and verify real RawArtifact to Retrieval throughput
         env:
           NODE_ENV: test
           MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
           MARKORBIT_CRAWL4AI_PYTHON: python
           MARKORBIT_WORKER_POLL_INTERVAL_MS: "250"
           MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "15000"
-          MARKORBIT_WORKER_MAX_ACQUISITION_MS: "1200000"
+          MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: "840000"
           MARKORBIT_CONVERSION_ENABLED: "1"
           MARKORBIT_CONVERSION_CAPABILITY_REVISION: "1"
           MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS: "300"
         run: |
           : > "$RUNNER_TEMP/worker-pids"
+          cleanup_workers() {
+            while read -r pid; do kill "$pid" 2>/dev/null || true; done < "$RUNNER_TEMP/worker-pids"
+          }
+          trap cleanup_workers EXIT TERM INT
           for index in $(seq 1 6); do
             pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker-${index}.log" 2>&1 &
             echo "$!" >> "$RUNNER_TEMP/worker-pids"
           done
-      - name: Verify real RawArtifact to Retrieval throughput
-        run: |
           pnpm --filter @markorbit/worker verify:campaign:web -- \
             --result="$RUNNER_TEMP/campaign-result.json" \
             --timeout-seconds=2700 \

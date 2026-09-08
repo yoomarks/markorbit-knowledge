@@ -38,6 +38,8 @@ type CampaignResult = {
 
 type CountRow = { source_id: string; count: number };
 type StatusRow = { id: string; source_id: string; status: string };
+type ConversionStatusRow = { source_id: string; status: string; count: number };
+type AttemptDocumentRow = { source_id: string; document_json: string };
 
 type CampaignVerification = {
   campaignId: string;
@@ -49,13 +51,19 @@ type CampaignVerification = {
   cancelledRuns: number;
   domainsWithPages: number;
   markdownPages: number;
+  rawMarkdownArtifacts: number;
+  duplicateMarkdownArtifacts: number;
   currentRetrievalDocuments: number;
   conversionRuns: Record<string, number>;
+  conversionFailureCodes: Record<string, number>;
   sources: Array<{
     sourceKey: string;
     runStatus: string;
     markdownPages: number;
+    rawMarkdownArtifacts: number;
     retrievalDocuments: number;
+    conversionRuns: Record<string, number>;
+    conversionFailureCodes: Record<string, number>;
   }>;
 };
 function placeholders(values: readonly string[]): string {
@@ -65,6 +73,21 @@ function placeholders(values: readonly string[]): string {
 
 function countMap(rows: readonly CountRow[]): Map<string, number> {
   return new Map(rows.map((row) => [row.source_id, Number(row.count)]));
+}
+
+function increment(target: Record<string, number>, key: string, value = 1): void {
+  target[key] = (target[key] ?? 0) + value;
+}
+
+function conversionFailureCode(documentJson: string): string {
+  try {
+    const parsed = JSON.parse(documentJson) as { failure?: { code?: unknown } };
+    return typeof parsed.failure?.code === "string" && parsed.failure.code
+      ? parsed.failure.code
+      : "UNKNOWN";
+  } catch {
+    return "MALFORMED_ATTEMPT_DOCUMENT";
+  }
 }
 
 function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVerification {
@@ -92,6 +115,14 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
        GROUP BY source_id`,
     )
     .all(...sourceIds) as unknown as CountRow[];
+  const rawMarkdownRows = database
+    .prepare(
+      `SELECT source_id, COUNT(*) AS count
+       FROM raw_artifacts
+       WHERE source_id IN (${placeholders(sourceIds)}) AND artifact_kind = 'MARKDOWN'
+       GROUP BY source_id`,
+    )
+    .all(...sourceIds) as unknown as CountRow[];
   const retrievalRows = database
     .prepare(
       `SELECT source_id, COUNT(*) AS count
@@ -101,25 +132,51 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
     )
     .all(...sourceIds) as unknown as CountRow[];
   const markdownBySource = countMap(markdownRows);
+  const rawMarkdownBySource = countMap(rawMarkdownRows);
   const retrievalBySource = countMap(retrievalRows);
-  const conversionRows = database
+  const conversionStatusRows = database
     .prepare(
-      `SELECT status, COUNT(*) AS count
+      `SELECT source_id, status, COUNT(*) AS count
        FROM conversion_runs
        WHERE source_id IN (${placeholders(sourceIds)})
-       GROUP BY status`,
+       GROUP BY source_id, status`,
     )
-    .all(...sourceIds) as unknown as Array<{ status: string; count: number }>;
-  const conversionRuns = Object.fromEntries(
-    conversionRows.map((row) => [row.status, Number(row.count)]),
-  );
+    .all(...sourceIds) as unknown as ConversionStatusRow[];
+  const conversionRuns: Record<string, number> = {};
+  const conversionBySource = new Map<string, Record<string, number>>();
+  for (const row of conversionStatusRows) {
+    increment(conversionRuns, row.status, Number(row.count));
+    const perSource = conversionBySource.get(row.source_id) ?? {};
+    increment(perSource, row.status, Number(row.count));
+    conversionBySource.set(row.source_id, perSource);
+  }
+  const failedAttemptRows = database
+    .prepare(
+      `SELECT r.source_id, a.document_json
+       FROM conversion_attempts a
+       JOIN conversion_runs r ON r.id = a.conversion_run_id
+       WHERE r.source_id IN (${placeholders(sourceIds)}) AND a.status = 'FAILED'`,
+    )
+    .all(...sourceIds) as unknown as AttemptDocumentRow[];
+  const conversionFailureCodes: Record<string, number> = {};
+  const failuresBySource = new Map<string, Record<string, number>>();
+  for (const row of failedAttemptRows) {
+    const code = conversionFailureCode(row.document_json);
+    increment(conversionFailureCodes, code);
+    const perSource = failuresBySource.get(row.source_id) ?? {};
+    increment(perSource, code);
+    failuresBySource.set(row.source_id, perSource);
+  }
 
   const terminal = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
   const sources = campaign.sources.map((source) => ({
     sourceKey: source.sourceKey,
     runStatus: runBySource.get(source.sourceId)?.status ?? "MISSING",
     markdownPages: markdownBySource.get(source.sourceId) ?? 0,
+    rawMarkdownArtifacts: rawMarkdownBySource.get(source.sourceId) ?? 0,
     retrievalDocuments: retrievalBySource.get(source.sourceId) ?? 0,
+    conversionRuns: conversionBySource.get(source.sourceId) ?? {},
+    conversionFailureCodes: failuresBySource.get(source.sourceId) ?? {},
   }));
   const statuses = sources.map((source) => source.runStatus);
   return {
@@ -132,11 +189,17 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
     cancelledRuns: statuses.filter((status) => status === "CANCELLED").length,
     domainsWithPages: sources.filter((source) => source.markdownPages > 0).length,
     markdownPages: sources.reduce((total, source) => total + source.markdownPages, 0),
+    rawMarkdownArtifacts: sources.reduce((total, source) => total + source.rawMarkdownArtifacts, 0),
+    duplicateMarkdownArtifacts: sources.reduce(
+      (total, source) => total + Math.max(0, source.rawMarkdownArtifacts - source.markdownPages),
+      0,
+    ),
     currentRetrievalDocuments: sources.reduce(
       (total, source) => total + source.retrievalDocuments,
       0,
     ),
     conversionRuns,
+    conversionFailureCodes,
     sources,
   };
 }
