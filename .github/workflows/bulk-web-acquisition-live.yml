@@ -1,0 +1,153 @@
+name: Bulk Web Acquisition Live
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/bulk-web-acquisition-live.yml
+      - apps/worker/src/web-acquisition-campaign.ts
+      - apps/worker/src/run-web-acquisition-campaign.ts
+      - apps/worker/src/verify-web-acquisition-campaign.ts
+      - apps/worker/tests/web-acquisition-campaign.test.ts
+      - apps/worker/package.json
+      - config/web-acquisition-official-core-v1.json
+      - workers/crawl4ai/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bulk-web-acquisition-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  official-core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      MARKORBIT_CONTROL_PLANE_URL: http://127.0.0.1:3000
+      MARKORBIT_ARTIFACT_MAX_BYTES: "16777216"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure isolated campaign state
+        run: |
+          echo "MARKORBIT_KNOWLEDGE_DB_PATH=$RUNNER_TEMP/bulk-web.sqlite" >> "$GITHUB_ENV"
+          echo "MARKORBIT_ARTIFACT_STORE_PATH=$RUNNER_TEMP/bulk-web-artifacts" >> "$GITHUB_ENV"
+          echo "MARKORBIT_STAGING_STORE_PATH=$RUNNER_TEMP/bulk-web-staging" >> "$GITHUB_ENV"
+          echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
+      - name: Configure isolated Admin auth
+        run: bash scripts/ci-admin-auth-configure.sh
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Crawl4AI runtime
+        run: |
+          python -m pip install --disable-pip-version-check -r workers/crawl4ai/requirements.txt
+          crawl4ai-setup
+          crawl4ai-doctor
+
+      - name: Build control plane
+        run: pnpm --filter @markorbit/admin build
+
+      - name: Start isolated Core auth stub
+        run: bash scripts/ci-admin-auth-stub-start.sh
+
+      - name: Start isolated control plane
+        run: |
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
+          echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
+          bash scripts/ci-admin-control-plane-ready.sh
+      - name: Discover, register and dispatch official core campaign
+        run: |
+          pnpm --filter @markorbit/worker campaign:web -- \
+            --manifest=config/web-acquisition-official-core-v1.json \
+            --dispatch \
+            --run-key="gha-${GITHUB_RUN_ID}" \
+            --output="$RUNNER_TEMP/campaign-result.json" \
+            --credential-output="$RUNNER_TEMP/worker-credential.txt" \
+            > "$RUNNER_TEMP/campaign.stdout"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const result = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/campaign-result.json', 'utf8'));
+          if (result.campaignId !== 'official-core-v1') throw new Error('Campaign identity drift');
+          if (!Array.isArray(result.sources) || result.sources.length !== 13) throw new Error('Expected 13 campaign sources');
+          if (result.sources.some((source) => !source.sourceId || !source.planId || !source.runId)) {
+            throw new Error('Campaign did not dispatch every governed source');
+          }
+          if (!result.workerId) throw new Error('Campaign worker is missing');
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            `MARKORBIT_WORKER_ID=${result.workerId}\nMARKORBIT_WORKSPACE_ID=${result.workspaceId}\n`);
+          NODE
+      - name: Load one-time Worker credential without retaining it
+        run: |
+          credential="$(cat "$RUNNER_TEMP/worker-credential.txt")"
+          if [ -z "$credential" ]; then echo "Missing Worker credential" >&2; exit 1; fi
+          echo "::add-mask::$credential"
+          echo "MARKORBIT_WORKER_CREDENTIAL=$credential" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/worker-credential.txt"
+
+      - name: Start six governed collection and conversion Workers
+        env:
+          NODE_ENV: test
+          MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
+          MARKORBIT_CRAWL4AI_PYTHON: python
+          MARKORBIT_WORKER_POLL_INTERVAL_MS: "250"
+          MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "15000"
+          MARKORBIT_WORKER_MAX_ACQUISITION_MS: "1200000"
+          MARKORBIT_CONVERSION_ENABLED: "1"
+          MARKORBIT_CONVERSION_CAPABILITY_REVISION: "1"
+          MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS: "300"
+        run: |
+          : > "$RUNNER_TEMP/worker-pids"
+          for index in $(seq 1 6); do
+            pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker-${index}.log" 2>&1 &
+            echo "$!" >> "$RUNNER_TEMP/worker-pids"
+          done
+      - name: Verify real RawArtifact to Retrieval throughput
+        run: |
+          pnpm --filter @markorbit/worker verify:campaign:web -- \
+            --result="$RUNNER_TEMP/campaign-result.json" \
+            --timeout-seconds=2700 \
+            --min-pages=1000 \
+            --min-domains=10 \
+            --output="$RUNNER_TEMP/campaign-verification.json"
+
+      - name: Stop local processes
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/worker-pids" ]; then
+            while read -r pid; do kill "$pid" 2>/dev/null || true; done < "$RUNNER_TEMP/worker-pids"
+          fi
+          if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+          if [ -n "${AUTH_STUB_PID:-}" ]; then kill "$AUTH_STUB_PID" 2>/dev/null || true; fi
+
+      - name: Upload sanitized campaign evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bulk-web-official-core-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/campaign-result.json
+            ${{ runner.temp }}/campaign-verification.json
+            ${{ runner.temp }}/campaign.stdout
+            ${{ runner.temp }}/admin.log
+            ${{ runner.temp }}/worker-*.log

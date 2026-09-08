@@ -1,0 +1,243 @@
+{
+  "version": "1.0",
+  "campaignId": "official-core-v1",
+  "name": "Official Trademark Authorities — Core 13",
+  "workspaceId": "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "globalConcurrency": 6,
+  "sources": [
+    {
+      "key": "cnipa",
+      "name": "CNIPA Trademark Office",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["CN"],
+      "languages": ["zh-CN"],
+      "baseUrl": "https://sbj.cnipa.gov.cn/",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 20
+      },
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 24,
+      "renderJavascript": false
+    },
+    {
+      "key": "uspto",
+      "name": "USPTO Trademarks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["US"],
+      "languages": ["en-US"],
+      "baseUrl": "https://www.uspto.gov/trademarks",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 30
+      },
+      "includePatterns": ["https://www.uspto.gov/trademarks", "https://www.uspto.gov/trademarks/*"],
+      "excludePatterns": ["*test*", "*clone*", "*/2021-*", "*/2022-*", "*/2023-*"],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 30,
+      "renderJavascript": false
+    },
+    {
+      "key": "wipo",
+      "name": "WIPO Madrid System",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["WO"],
+      "languages": ["en"],
+      "baseUrl": "https://www.wipo.int/en/web/madrid-system/",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 30
+      },
+      "includePatterns": ["https://www.wipo.int/*madrid*", "https://www.wipo.int/*trademark*"],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 30,
+      "renderJavascript": false
+    },
+    {
+      "key": "euipo",
+      "name": "EUIPO Trade Marks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["EU"],
+      "languages": ["en"],
+      "baseUrl": "https://www.euipo.europa.eu/en/trade-marks",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 30
+      },
+      "includePatterns": ["https://www.euipo.europa.eu/en/trade-marks*"],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 30,
+      "renderJavascript": false
+    },
+    {
+      "key": "jpo",
+      "name": "Japan Patent Office — Trademarks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["JP"],
+      "languages": ["en"],
+      "baseUrl": "https://www.jpo.go.jp/e/system/trademark/gaiyo/trademark.html",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 20
+      },
+      "includePatterns": ["https://www.jpo.go.jp/e/system/trademark*"],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 24,
+      "renderJavascript": false
+    },
+    {
+      "key": "kipo",
+      "name": "Korean Intellectual Property Office — Trademarks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["KR"],
+      "languages": ["en"],
+      "baseUrl": "https://www.kipo.go.kr/en/HtmlApp?c=9300010&catmenu=ek04_01_01",
+      "discovery": {
+        "mode": "LINK_CRAWL"
+      },
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 18,
+      "renderJavascript": false,
+      "includePatterns": ["https://www.kipo.go.kr/en/*"]
+    },
+    {
+      "key": "ukipo",
+      "name": "UK Intellectual Property Office — Trade Marks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["GB"],
+      "languages": ["en-GB"],
+      "baseUrl": "https://www.gov.uk/how-to-register-a-trade-mark",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 30
+      },
+      "includePatterns": [
+        "https://www.gov.uk/how-to-register-a-trade-mark*",
+        "https://www.gov.uk/government/organisations/intellectual-property-office*",
+        "https://www.gov.uk/government/collections/intellectual-property-trade-marks*",
+        "https://www.gov.uk/government/publications/manual-of-trade-marks-practice*",
+        "https://www.gov.uk/government/publications/*trade-mark*",
+        "https://www.gov.uk/government/guidance/*trade-mark*"
+      ],
+      "excludePatterns": ["*employment-tribunal*"],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 30,
+      "renderJavascript": false
+    },
+    {
+      "key": "cipo",
+      "name": "Canadian Intellectual Property Office — Trademarks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["CA"],
+      "languages": ["en-CA"],
+      "baseUrl": "https://ised-isde.canada.ca/site/canadian-intellectual-property-office/en/trademarks",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 30
+      },
+      "includePatterns": [
+        "https://ised-isde.canada.ca/site/canadian-intellectual-property-office/en/trademarks*"
+      ],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 24,
+      "renderJavascript": false
+    },
+    {
+      "key": "ip-australia",
+      "name": "IP Australia — Trade Marks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["AU"],
+      "languages": ["en-AU"],
+      "baseUrl": "https://www.ipaustralia.gov.au/trade-marks",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 30
+      },
+      "includePatterns": ["https://www.ipaustralia.gov.au/trade-marks*"],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 24,
+      "renderJavascript": false
+    },
+    {
+      "key": "ip-india",
+      "name": "IP India — Trade Marks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["IN"],
+      "languages": ["en-IN"],
+      "baseUrl": "https://ipindia.gov.in/basics-of-trademarks",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 20
+      },
+      "includePatterns": ["https://ipindia.gov.in/*trademark*"],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 18,
+      "renderJavascript": false
+    },
+    {
+      "key": "inpi-br",
+      "name": "Brazil INPI — Marcas",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["BR"],
+      "languages": ["pt-BR"],
+      "baseUrl": "https://www.gov.br/inpi/pt-br/servicos/marcas",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 30
+      },
+      "includePatterns": ["https://www.gov.br/inpi/pt-br/*marcas*"],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 24,
+      "renderJavascript": false
+    },
+    {
+      "key": "uae-moet",
+      "name": "UAE Ministry of Economy and Tourism — Trademarks",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["AE"],
+      "languages": ["en"],
+      "baseUrl": "https://www.moet.gov.ae/en/w/trademark-services-1",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 20
+      },
+      "includePatterns": ["https://www.moet.gov.ae/*trademark*"],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 18,
+      "renderJavascript": false
+    },
+    {
+      "key": "oapi",
+      "name": "OAPI",
+      "sourceClass": "OFFICIAL_AUTHORITY",
+      "jurisdictions": ["CI"],
+      "languages": ["fr"],
+      "baseUrl": "https://oapi.int/oapi/",
+      "discovery": {
+        "mode": "SITEMAP",
+        "maxSitemaps": 20
+      },
+      "includePatterns": [
+        "https://oapi.int/*marque*",
+        "https://oapi.int/*trademark*",
+        "https://oapi.int/oapi/*"
+      ],
+      "maxPages": 200,
+      "maxDepth": 2,
+      "rateLimitPerMinute": 18,
+      "renderJavascript": false
+    }
+  ]
+}
