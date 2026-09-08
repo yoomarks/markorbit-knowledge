@@ -130,6 +130,7 @@ async function main(): Promise<void> {
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
+    artifactIngestionConcurrency: config.artifactIngestionConcurrency,
     onBackgroundError(error) {
       log("worker.background.error", { message: errorMessage(error) });
     },
@@ -238,6 +239,7 @@ async function main(): Promise<void> {
     cnipaAuthenticatedRuntimeEnabled: Boolean(cnipaAcquirer),
     localFolderRootIds: Object.keys(config.localFolderRoots),
     maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
+    artifactIngestionConcurrency: config.artifactIngestionConcurrency,
     crawl4AiMaxConcurrency: config.crawl4AiMaxConcurrency,
     collectionEnabled: config.collectionEnabled,
     conversionEnabled: config.conversionEnabled,

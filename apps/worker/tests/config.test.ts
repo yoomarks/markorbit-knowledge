@@ -21,6 +21,7 @@ describe("loadWorkerProcessConfig", () => {
     expect(config.pollIntervalMs).toBe(2_000);
     expect(config.keepAliveIntervalMs).toBe(30_000);
     expect(config.maxCollectionRuntimeMs).toBe(12 * 60_000);
+    expect(config.artifactIngestionConcurrency).toBe(4);
     expect(config.crawl4AiMaxConcurrency).toBe(4);
     expect(config.collectionEnabled).toBe(true);
     expect(config.collectionProvider).toBe("crawl4ai");
@@ -268,6 +269,13 @@ describe("loadWorkerProcessConfig", () => {
     expect(() =>
       loadWorkerProcessConfig(env({ MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: "900000" })),
     ).toThrow(/MAX_COLLECTION_RUNTIME/);
+    expect(
+      loadWorkerProcessConfig(env({ MARKORBIT_ARTIFACT_INGESTION_CONCURRENCY: "8" }))
+        .artifactIngestionConcurrency,
+    ).toBe(8);
+    expect(() =>
+      loadWorkerProcessConfig(env({ MARKORBIT_ARTIFACT_INGESTION_CONCURRENCY: "17" })),
+    ).toThrow(/ARTIFACT_INGESTION_CONCURRENCY/);
     expect(
       loadWorkerProcessConfig(env({ MARKORBIT_CRAWL4AI_MAX_CONCURRENCY: "8" }))
         .crawl4AiMaxConcurrency,

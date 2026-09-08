@@ -20,6 +20,7 @@ export type WorkerProcessConfig = {
   pollIntervalMs: number;
   keepAliveIntervalMs: number;
   maxCollectionRuntimeMs: number;
+  artifactIngestionConcurrency: number;
   crawl4AiMaxConcurrency: number;
   errorBackoffMinMs: number;
   errorBackoffMaxMs: number;
@@ -365,6 +366,13 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
       12 * 60_000,
       30_000,
       14 * 60_000,
+    ),
+    artifactIngestionConcurrency: integer(
+      env,
+      "MARKORBIT_ARTIFACT_INGESTION_CONCURRENCY",
+      4,
+      1,
+      16,
     ),
     crawl4AiMaxConcurrency: integer(
       env,
