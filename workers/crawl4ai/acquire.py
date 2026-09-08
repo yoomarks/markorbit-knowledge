@@ -34,6 +34,7 @@ MAX_START_URLS = 500
 MAX_DEPTH = 5
 MAX_ITEMS = 500
 MAX_RATE_LIMIT_PER_MINUTE = 600
+MAX_CONCURRENCY = 8
 MAX_TIMEOUT_SECONDS = 300
 MAX_PATTERNS_PER_LIST = 100
 MAX_PATTERN_LENGTH = 500
@@ -119,6 +120,9 @@ def _parse_request(payload: Any) -> dict[str, Any]:
         "rate_limit_per_minute": _require_int(
             payload.get("rateLimitPerMinute"), "rateLimitPerMinute", 1, MAX_RATE_LIMIT_PER_MINUTE
         ),
+        "max_concurrency": _require_int(
+            payload.get("maxConcurrency"), "maxConcurrency", 1, MAX_CONCURRENCY
+        ),
         "timeout_seconds": _require_int(payload.get("timeoutSeconds"), "timeoutSeconds", 1, MAX_TIMEOUT_SECONDS),
         "include_patterns": _require_patterns(payload.get("includePatterns"), "includePatterns"),
         "exclude_patterns": _require_patterns(payload.get("excludePatterns"), "excludePatterns"),
@@ -155,13 +159,15 @@ class RateGate:
     def __init__(self, per_minute: int) -> None:
         self._interval = 60.0 / float(per_minute)
         self._last_started = 0.0
+        self._lock = asyncio.Lock()
 
     async def wait(self) -> None:
-        now = time.monotonic()
-        delay = self._interval - (now - self._last_started)
-        if delay > 0:
-            await asyncio.sleep(delay)
-        self._last_started = time.monotonic()
+        async with self._lock:
+            now = time.monotonic()
+            delay = self._interval - (now - self._last_started)
+            if delay > 0:
+                await asyncio.sleep(delay)
+            self._last_started = time.monotonic()
 
 
 def _markdown_text(result: Any) -> str:
@@ -189,7 +195,7 @@ def _content_for_kind(result: Any, kind: str) -> bytes:
         return html.encode("utf-8") if isinstance(html, str) else b""
     if kind == "MARKDOWN":
         markdown = _markdown_text(result)
-        return markdown.encode("utf-8") if markdown else b""
+        return markdown.encode("utf-8") if markdown.strip() else b""
     return b""
 
 
@@ -319,12 +325,250 @@ def _bind_attachment_manifest(
     _merge_parent_canonical_uris(manifest, attachment_parents.get(attachment_url, set()))
 
 
+async def _crawl_concurrently(
+    request: dict[str, Any],
+    crawler: Any,
+    run_config: Any,
+    proxy_server: str | None,
+    dispatcher: Any,
+    rate_gate_for_url: Any,
+) -> dict[str, Any]:
+    artifacts: list[dict[str, Any]] = []
+    total_bytes = 0
+    items_attempted = 0
+    pages_attempted = 0
+    attachments_attempted = 0
+    attachment_hashes: set[str] = set()
+    attachment_parents: dict[str, set[str]] = {}
+    attachment_manifests_by_url: dict[str, dict[str, Any]] = {}
+    attachment_manifests_by_digest: dict[str, dict[str, Any]] = {}
+    seen: set[str] = set()
+    queue: deque[tuple[str, int, str]] = deque()
+    last_error: SafetyError | None = None
+
+    for seed_url in request["start_urls"]:
+        normalized = normalize_http_url(seed_url)
+        queue.append((normalized, 0, host_of(normalized)))
+
+    while queue and items_attempted < request["max_items"]:
+        frontier_size = len(queue)
+        page_batch: list[tuple[str, int, str]] = []
+
+        for _ in range(frontier_size):
+            if items_attempted >= request["max_items"]:
+                break
+            raw_url, depth, seed_host = queue.popleft()
+            try:
+                current_url = normalize_http_url(raw_url)
+            except SafetyError:
+                continue
+            if current_url in seen:
+                continue
+            if not crawl_host_in_scope(seed_host, host_of(current_url)):
+                continue
+            if depth > 0 and not url_allowed_by_patterns(
+                current_url, request["include_patterns"], request["exclude_patterns"]
+            ):
+                continue
+
+            attachment_kind = attachment_kind_for_url(current_url)
+            seen.add(current_url)
+            if attachment_kind is None:
+                await assert_public_dns(current_url)
+                items_attempted += 1
+                pages_attempted += 1
+                page_batch.append((current_url, depth, seed_host))
+                continue
+
+            if (
+                not request["fetch_attachments"]
+                or attachment_kind not in request["output_kinds"]
+            ):
+                continue
+            await assert_public_dns(current_url)
+            await rate_gate_for_url(current_url).wait()
+            items_attempted += 1
+            attachments_attempted += 1
+            try:
+                attachment = await download_attachment(
+                    current_url,
+                    seed_host=seed_host,
+                    proxy_server=proxy_server,
+                    locale=request["locale"],
+                    timeout_seconds=request["timeout_seconds"],
+                    max_bytes=min(
+                        request["max_artifact_bytes"],
+                        request["max_total_bytes"] - total_bytes,
+                    ),
+                )
+            except SafetyError as exc:
+                last_error = exc
+                continue
+            if attachment.artifact_kind not in request["output_kinds"]:
+                continue
+            digest = hashlib.sha256(attachment.content).hexdigest()
+            if digest in attachment_hashes:
+                existing = attachment_manifests_by_digest.get(digest)
+                if existing is not None:
+                    _bind_attachment_manifest(
+                        current_url,
+                        existing,
+                        attachment_parents,
+                        attachment_manifests_by_url,
+                    )
+                continue
+            attachment_hashes.add(digest)
+            manifest, total_bytes = _write_attachment_artifact(
+                request["output_directory"],
+                len(artifacts) + 1,
+                attachment,
+                request["max_artifact_bytes"],
+                total_bytes,
+                request["max_total_bytes"],
+            )
+            _bind_attachment_manifest(
+                current_url,
+                manifest,
+                attachment_parents,
+                attachment_manifests_by_url,
+            )
+            attachment_manifests_by_digest[digest] = manifest
+            artifacts.append(manifest)
+
+        if not page_batch:
+            continue
+
+        batch_urls = [url for url, _, _ in page_batch]
+        batch_context = {url: (depth, seed_host) for url, depth, seed_host in page_batch}
+        try:
+            batch_result = await crawler.arun_many(
+                urls=batch_urls,
+                config=run_config,
+                dispatcher=dispatcher,
+            )
+        except Exception as exc:
+            last_error = SafetyError(
+                "CRAWL4AI_FETCH_FAILED",
+                f"Crawl4AI batch failed: {type(exc).__name__}",
+                retryable=True,
+            )
+            continue
+
+        results = batch_result if isinstance(batch_result, list) else list(batch_result)
+        returned_urls: set[str] = set()
+        for page_result in results:
+            source_raw = getattr(page_result, "url", None)
+            if not isinstance(source_raw, str):
+                raise SafetyError(
+                    "CRAWL4AI_BATCH_RESULT_INVALID",
+                    "Crawl4AI batch result did not include its requested URL",
+                )
+            source_url = normalize_http_url(source_raw)
+            context = batch_context.get(source_url)
+            if context is None:
+                raise SafetyError(
+                    "CRAWL4AI_BATCH_RESULT_UNBOUND",
+                    "Crawl4AI batch result could not be bound to a requested URL",
+                )
+            returned_urls.add(source_url)
+            depth, seed_host = context
+
+            if not getattr(page_result, "success", False):
+                error_message = getattr(page_result, "error_message", None)
+                last_error = SafetyError(
+                    "CRAWL4AI_FETCH_FAILED",
+                    str(error_message or f"Crawl4AI reported failure for {source_url}"),
+                    retryable=True,
+                )
+                continue
+
+            redirected_raw = getattr(page_result, "redirected_url", None)
+            final_url = normalize_http_url(
+                redirected_raw if isinstance(redirected_raw, str) and redirected_raw else source_url
+            )
+            if not redirect_host_in_scope(seed_host, host_of(final_url)):
+                raise SafetyError(
+                    "CROSS_DOMAIN_REDIRECT_BLOCKED",
+                    "Crawl result redirected outside the authorized source host",
+                )
+            await assert_public_dns(final_url)
+
+            for kind in request["output_kinds"]:
+                content = _content_for_kind(page_result, kind)
+                if not content:
+                    continue
+                manifest, total_bytes = _write_artifact(
+                    request["output_directory"],
+                    len(artifacts) + 1,
+                    final_url,
+                    kind,
+                    content,
+                    request["max_artifact_bytes"],
+                    total_bytes,
+                    request["max_total_bytes"],
+                )
+                manifest["sourceUri"] = source_url
+                manifest["canonicalUri"] = final_url
+                artifacts.append(manifest)
+
+            if depth >= request["max_depth"]:
+                continue
+            for href in _extract_internal_links(page_result):
+                try:
+                    candidate = normalize_http_url(href)
+                except SafetyError:
+                    continue
+                if not crawl_host_in_scope(seed_host, host_of(candidate)):
+                    continue
+                if not url_allowed_by_patterns(
+                    candidate,
+                    request["include_patterns"],
+                    request["exclude_patterns"],
+                ):
+                    continue
+                if attachment_kind_for_url(candidate) is not None:
+                    _record_attachment_parent(
+                        candidate,
+                        final_url,
+                        attachment_parents,
+                        attachment_manifests_by_url,
+                    )
+                if candidate not in seen:
+                    queue.append((candidate, depth + 1, seed_host))
+
+        missing_urls = set(batch_context).difference(returned_urls)
+        if missing_urls:
+            last_error = SafetyError(
+                "CRAWL4AI_FETCH_FAILED",
+                f"Crawl4AI batch returned no result for {len(missing_urls)} requested URLs",
+                retryable=True,
+            )
+
+    if not artifacts:
+        if last_error is not None:
+            raise last_error
+        raise SafetyError(
+            "NO_ARTIFACTS_PRODUCED",
+            "Crawl4AI completed without producing artifact bytes",
+        )
+
+    return {
+        "protocolVersion": PROTOCOL_VERSION,
+        "ok": True,
+        "artifacts": artifacts,
+        "pagesAttempted": pages_attempted,
+        "attachmentsAttempted": attachments_attempted,
+        "totalBytes": total_bytes,
+    }
+
+
 async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
     proxy_config = _proxy_configuration(request["require_egress_proxy"])
     proxy_server = proxy_config["server"] if proxy_config else None
 
     with contextlib.redirect_stdout(sys.stderr):
         from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
+        from crawl4ai.async_dispatcher import RateLimiter, SemaphoreDispatcher
 
     headers = {}
     if request["locale"]:
@@ -347,6 +591,41 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
         exclude_social_media_links=True,
         verbose=False,
     )
+
+    if request["max_concurrency"] > 1:
+        rate_gates: dict[str, RateGate] = {}
+
+        def rate_gate_for_url(url: str) -> RateGate:
+            rate_host = host_of(url)
+            rate_key = rate_host[4:] if rate_host.startswith("www.") else rate_host
+            gate = rate_gates.get(rate_key)
+            if gate is None:
+                gate = RateGate(request["rate_limit_per_minute"])
+                rate_gates[rate_key] = gate
+            return gate
+
+        class SharedRateLimiter(RateLimiter):
+            async def wait_if_needed(self, url: str) -> None:
+                await rate_gate_for_url(url).wait()
+
+            def update_delay(self, url: str, status_code: int) -> bool:
+                return True
+
+        dispatcher = SemaphoreDispatcher(
+            semaphore_count=request["max_concurrency"],
+            max_session_permit=request["max_concurrency"],
+            rate_limiter=SharedRateLimiter(),
+        )
+        with contextlib.redirect_stdout(sys.stderr):
+            async with AsyncWebCrawler(config=browser_config) as crawler:
+                return await _crawl_concurrently(
+                    request,
+                    crawler,
+                    run_config,
+                    proxy_server,
+                    dispatcher,
+                    rate_gate_for_url,
+                )
 
     artifacts: list[dict[str, Any]] = []
     total_bytes = 0

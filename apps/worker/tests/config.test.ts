@@ -21,6 +21,7 @@ describe("loadWorkerProcessConfig", () => {
     expect(config.pollIntervalMs).toBe(2_000);
     expect(config.keepAliveIntervalMs).toBe(30_000);
     expect(config.maxCollectionRuntimeMs).toBe(12 * 60_000);
+    expect(config.crawl4AiMaxConcurrency).toBe(4);
     expect(config.collectionEnabled).toBe(true);
     expect(config.collectionProvider).toBe("crawl4ai");
     expect(config.requireEgressProxy).toBe(true);
@@ -145,12 +146,16 @@ describe("loadWorkerProcessConfig", () => {
         MARKORBIT_WORKSPACE_ID: "wsp_01H00000000000000000000000",
         MARKORBIT_CONVERSION_CAPABILITY_REVISION: "7",
         MARKORBIT_CONVERSION_LEASE_DURATION_SECONDS: "240",
+        MARKORBIT_CONVERSION_SUPPORTED_CONVERTERS: "builtin-markdown-staging@1.0.0",
       }),
     );
     expect(config.conversionEnabled).toBe(true);
     expect(config.workspaceId).toBe("wsp_01H00000000000000000000000");
     expect(config.conversionCapabilityRevision).toBe(7);
     expect(config.conversionLeaseDurationSeconds).toBe(240);
+    expect(config.conversionSupportedConverters).toEqual([
+      { converterId: "builtin-markdown-staging", version: "1.0.0" },
+    ]);
 
     expect(() => loadWorkerProcessConfig(env({ MARKORBIT_CONVERSION_ENABLED: "true" }))).toThrow(
       /MARKORBIT_WORKSPACE_ID/,
@@ -263,6 +268,26 @@ describe("loadWorkerProcessConfig", () => {
     expect(() =>
       loadWorkerProcessConfig(env({ MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: "900000" })),
     ).toThrow(/MAX_COLLECTION_RUNTIME/);
+    expect(
+      loadWorkerProcessConfig(env({ MARKORBIT_CRAWL4AI_MAX_CONCURRENCY: "8" }))
+        .crawl4AiMaxConcurrency,
+    ).toBe(8);
+    expect(() => loadWorkerProcessConfig(env({ MARKORBIT_CRAWL4AI_MAX_CONCURRENCY: "9" }))).toThrow(
+      /CRAWL4AI_MAX_CONCURRENCY/,
+    );
+    expect(() =>
+      loadWorkerProcessConfig(
+        env({ MARKORBIT_CONVERSION_SUPPORTED_CONVERTERS: "builtin-markdown-staging" }),
+      ),
+    ).toThrow(/converterId@version/);
+    expect(() =>
+      loadWorkerProcessConfig(
+        env({
+          MARKORBIT_CONVERSION_SUPPORTED_CONVERTERS:
+            "builtin-markdown-staging@1.0.0,builtin-markdown-staging@1.0.0",
+        }),
+      ),
+    ).toThrow(/duplicate converter refs/);
     expect(() =>
       loadWorkerProcessConfig(env({ MARKORBIT_GITHUB_MAX_TREE_ENTRIES: "100001" })),
     ).toThrow(/GITHUB_MAX_TREE_ENTRIES/);

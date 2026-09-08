@@ -41,9 +41,11 @@ function context(): ArtifactBackedExecutionContext {
 describe("Crawl4AiSubprocessAcquirer", () => {
   it("maps a governed plan and verifies sidecar bytes", async () => {
     let seenMaxDepth = -1;
+    let seenMaxConcurrency = -1;
     const runner: Crawl4AiProcessRunner = {
       async run(request) {
         seenMaxDepth = request.maxDepth;
+        seenMaxConcurrency = request.maxConcurrency;
         const content = new TextEncoder().encode("<html>official</html>");
         const sha256 = createHash("sha256").update(content).digest("hex");
         await writeFile(join(request.outputDirectory, "page.html"), content);
@@ -70,6 +72,7 @@ describe("Crawl4AiSubprocessAcquirer", () => {
     const acquirer = new Crawl4AiSubprocessAcquirer({ runner, requireEgressProxy: false });
     const artifacts = await acquirer.acquire(context());
     expect(seenMaxDepth).toBe(1);
+    expect(seenMaxConcurrency).toBe(4);
     expect(artifacts).toHaveLength(1);
     expect(new TextDecoder().decode(artifacts[0]?.content)).toContain("official");
   });

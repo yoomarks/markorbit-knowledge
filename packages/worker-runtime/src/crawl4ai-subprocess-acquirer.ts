@@ -4,6 +4,7 @@ import { mkdtemp, readFile, realpath, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import {
+  CRAWL4AI_MAX_CONCURRENCY,
   CRAWL4AI_MAX_DEPTH,
   CRAWL4AI_MAX_ITEMS,
   CRAWL4AI_MAX_LOCALE_LENGTH,
@@ -46,6 +47,7 @@ export type Crawl4AiRunnerRequest = {
   outputKinds: ArtifactKind[];
   maxDepth: number;
   maxItems: number;
+  maxConcurrency: number;
   renderJavascript: boolean;
   fetchAttachments: boolean;
   respectRobots: boolean;
@@ -328,6 +330,7 @@ export type Crawl4AiSubprocessAcquirerOptions = {
   maxTotalBytes?: number;
   maxDepth?: number;
   maxItems?: number;
+  maxConcurrency?: number;
   maxProcessTimeoutMs?: number;
   subprocess?: Crawl4AiSubprocessRunnerOptions;
 };
@@ -588,6 +591,7 @@ export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
   private readonly maxTotalBytes: number;
   private readonly maxDepth: number;
   private readonly maxItems: number;
+  private readonly maxConcurrency: number;
   private readonly maxProcessTimeoutMs: number;
 
   constructor(options: Crawl4AiSubprocessAcquirerOptions = {}) {
@@ -598,6 +602,14 @@ export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
     this.maxTotalBytes = options.maxTotalBytes ?? 64 * 1024 * 1024;
     this.maxDepth = Math.min(options.maxDepth ?? CRAWL4AI_MAX_DEPTH, CRAWL4AI_MAX_DEPTH);
     this.maxItems = Math.min(options.maxItems ?? CRAWL4AI_MAX_ITEMS, CRAWL4AI_MAX_ITEMS);
+    this.maxConcurrency = options.maxConcurrency ?? 4;
+    if (
+      !Number.isInteger(this.maxConcurrency) ||
+      this.maxConcurrency < 1 ||
+      this.maxConcurrency > CRAWL4AI_MAX_CONCURRENCY
+    ) {
+      throw new Error("CRAWL4AI_MAX_CONCURRENCY_INVALID");
+    }
     this.maxProcessTimeoutMs = options.maxProcessTimeoutMs ?? 30 * 60 * 1000;
   }
 
@@ -625,6 +637,7 @@ export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
         // artifact executor decides whether a new immutable version is necessary.
         maxDepth: context.job.jobType === "PAGE_UPDATE_CHECK" ? 0 : policy.maxDepth,
         maxItems: policy.maxItems,
+        maxConcurrency: this.maxConcurrency,
         renderJavascript: policy.renderJavascript,
         fetchAttachments: policy.fetchAttachments,
         respectRobots: policy.respectRobots,

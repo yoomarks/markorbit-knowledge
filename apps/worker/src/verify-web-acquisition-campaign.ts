@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 
 function argument(name: string): string | undefined {
   const prefix = `${name}=`;
@@ -31,7 +32,7 @@ type CampaignSourceResult = {
   conversionProfileId: string;
 };
 
-type CampaignResult = {
+export type CampaignResult = {
   campaignId: string;
   workspaceId: string;
   sources: CampaignSourceResult[];
@@ -42,7 +43,7 @@ type StatusRow = { id: string; source_id: string; status: string };
 type ConversionStatusRow = { source_id: string; status: string; count: number };
 type AttemptDocumentRow = { source_id: string; document_json: string };
 
-type CampaignVerification = {
+export type CampaignVerification = {
   campaignId: string;
   workspaceId: string;
   observedAt: string;
@@ -93,7 +94,10 @@ function conversionFailureCode(documentJson: string): string {
   }
 }
 
-function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVerification {
+export function observeWebAcquisitionCampaign(
+  database: DatabaseSync,
+  campaign: CampaignResult,
+): CampaignVerification {
   const sourceIds = campaign.sources.map((source) => source.sourceId);
   const runIds = campaign.sources
     .map((source) => source.runId)
@@ -112,28 +116,29 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
     .prepare(
       `SELECT source_id, COUNT(DISTINCT canonical_uri) AS count
        FROM raw_artifacts
-       WHERE source_id IN (${placeholders(sourceIds)})
+       WHERE run_id IN (${placeholders(runIds)})
          AND artifact_kind = 'MARKDOWN'
          AND canonical_uri IS NOT NULL
        GROUP BY source_id`,
     )
-    .all(...sourceIds) as unknown as CountRow[];
+    .all(...runIds) as unknown as CountRow[];
   const rawMarkdownRows = database
     .prepare(
       `SELECT source_id, COUNT(*) AS count
        FROM raw_artifacts
-       WHERE source_id IN (${placeholders(sourceIds)}) AND artifact_kind = 'MARKDOWN'
+       WHERE run_id IN (${placeholders(runIds)}) AND artifact_kind = 'MARKDOWN'
        GROUP BY source_id`,
     )
-    .all(...sourceIds) as unknown as CountRow[];
+    .all(...runIds) as unknown as CountRow[];
   const retrievalRows = database
     .prepare(
-      `SELECT source_id, COUNT(*) AS count
-       FROM retrieval_documents
-       WHERE source_id IN (${placeholders(sourceIds)}) AND is_current = 1
-       GROUP BY source_id`,
+      `SELECT d.source_id, COUNT(*) AS count
+       FROM retrieval_documents d
+       JOIN raw_artifacts a ON a.id = d.raw_artifact_id
+       WHERE a.run_id IN (${placeholders(runIds)}) AND d.is_current = 1
+       GROUP BY d.source_id`,
     )
-    .all(...sourceIds) as unknown as CountRow[];
+    .all(...runIds) as unknown as CountRow[];
   const markdownBySource = countMap(markdownRows);
   const rawMarkdownBySource = countMap(rawMarkdownRows);
   const retrievalBySource = countMap(retrievalRows);
@@ -143,12 +148,14 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
   }
   const conversionStatusRows = database
     .prepare(
-      `SELECT source_id, status, COUNT(*) AS count
-       FROM conversion_runs
-       WHERE conversion_profile_id IN (${placeholders(profileIds)})
-       GROUP BY source_id, status`,
+      `SELECT r.source_id, r.status, COUNT(*) AS count
+       FROM conversion_runs r
+       JOIN raw_artifacts a ON a.id = r.raw_artifact_id
+       WHERE r.conversion_profile_id IN (${placeholders(profileIds)})
+         AND a.run_id IN (${placeholders(runIds)})
+       GROUP BY r.source_id, r.status`,
     )
-    .all(...profileIds) as unknown as ConversionStatusRow[];
+    .all(...profileIds, ...runIds) as unknown as ConversionStatusRow[];
   const conversionRuns: Record<string, number> = {};
   const conversionBySource = new Map<string, Record<string, number>>();
   for (const row of conversionStatusRows) {
@@ -159,13 +166,15 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
   }
   const backgroundStatusRows = database
     .prepare(
-      `SELECT source_id, status, COUNT(*) AS count
-       FROM conversion_runs
-       WHERE source_id IN (${placeholders(sourceIds)})
-         AND conversion_profile_id NOT IN (${placeholders(profileIds)})
-       GROUP BY source_id, status`,
+      `SELECT r.source_id, r.status, COUNT(*) AS count
+       FROM conversion_runs r
+       JOIN raw_artifacts a ON a.id = r.raw_artifact_id
+       WHERE r.source_id IN (${placeholders(sourceIds)})
+         AND r.conversion_profile_id NOT IN (${placeholders(profileIds)})
+         AND a.run_id IN (${placeholders(runIds)})
+       GROUP BY r.source_id, r.status`,
     )
-    .all(...sourceIds, ...profileIds) as unknown as ConversionStatusRow[];
+    .all(...sourceIds, ...profileIds, ...runIds) as unknown as ConversionStatusRow[];
   const backgroundConversionRuns: Record<string, number> = {};
   const backgroundBySource = new Map<string, Record<string, number>>();
   for (const row of backgroundStatusRows) {
@@ -179,9 +188,12 @@ function observe(database: DatabaseSync, campaign: CampaignResult): CampaignVeri
       `SELECT r.source_id, a.document_json
        FROM conversion_attempts a
        JOIN conversion_runs r ON r.id = a.conversion_run_id
-       WHERE r.conversion_profile_id IN (${placeholders(profileIds)}) AND a.status = 'FAILED'`,
+       JOIN raw_artifacts raw ON raw.id = r.raw_artifact_id
+       WHERE r.conversion_profile_id IN (${placeholders(profileIds)})
+         AND raw.run_id IN (${placeholders(runIds)})
+         AND a.status = 'FAILED'`,
     )
-    .all(...profileIds) as unknown as AttemptDocumentRow[];
+    .all(...profileIds, ...runIds) as unknown as AttemptDocumentRow[];
   const conversionFailureCodes: Record<string, number> = {};
   const failuresBySource = new Map<string, Record<string, number>>();
   for (const row of failedAttemptRows) {
@@ -253,7 +265,7 @@ async function main(): Promise<void> {
 
   try {
     while (Date.now() < deadline) {
-      last = observe(database, campaign);
+      last = observeWebAcquisitionCampaign(database, campaign);
       const runsSettled = last.terminalRuns === campaign.sources.length;
       const conversionsSettled = activeConversionCount(last) === 0;
       const accepted =
@@ -291,9 +303,14 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  process.stderr.write(
-    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
-  );
-  process.exitCode = 1;
-});
+const invokedAsScript =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+
+if (invokedAsScript) {
+  main().catch((error) => {
+    process.stderr.write(
+      `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+    );
+    process.exitCode = 1;
+  });
+}

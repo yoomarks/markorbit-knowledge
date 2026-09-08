@@ -77,6 +77,7 @@ async function main(): Promise<void> {
       : null;
   const crawl4AiAcquirer = new Crawl4AiSubprocessAcquirer({
     requireEgressProxy: config.requireEgressProxy,
+    maxConcurrency: config.crawl4AiMaxConcurrency,
     maxProcessTimeoutMs: config.maxCollectionRuntimeMs,
   });
   const crawl4AiWithOptionalUnlock = (() => {
@@ -202,6 +203,7 @@ async function main(): Promise<void> {
           {
             capabilityRevision: config.conversionCapabilityRevision,
             requestedLeaseDurationSeconds: config.conversionLeaseDurationSeconds,
+            supportedConverters: config.conversionSupportedConverters,
             onResult(result) {
               if (!result) {
                 log("worker.conversion.failed");
@@ -236,6 +238,7 @@ async function main(): Promise<void> {
     cnipaAuthenticatedRuntimeEnabled: Boolean(cnipaAcquirer),
     localFolderRootIds: Object.keys(config.localFolderRoots),
     maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
+    crawl4AiMaxConcurrency: config.crawl4AiMaxConcurrency,
     collectionEnabled: config.collectionEnabled,
     conversionEnabled: config.conversionEnabled,
     acquisitionLearningEnabled: Boolean(acquisitionIntelligenceClient),

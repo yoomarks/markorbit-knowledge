@@ -125,7 +125,7 @@ jobs:
             echo "$!" >> "$RUNNER_TEMP/worker-pids"
           done
           for index in $(seq 1 4); do
-            MARKORBIT_COLLECTION_ENABLED=0 pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker-conversion-${index}.log" 2>&1 &
+            MARKORBIT_COLLECTION_ENABLED=0 MARKORBIT_CONVERSION_SUPPORTED_CONVERTERS=builtin-markdown-staging@1.0.0 pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker-conversion-${index}.log" 2>&1 &
             echo "$!" >> "$RUNNER_TEMP/worker-pids"
           done
           pnpm --filter @markorbit/worker verify:campaign:web -- \

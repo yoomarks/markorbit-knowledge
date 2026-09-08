@@ -1,3 +1,4 @@
+import { CRAWL4AI_MAX_CONCURRENCY, type RuntimeConverterRef } from "@markorbit/contracts";
 import {
   parseApiEndpointBindings,
   parseLocalFolderRoots,
@@ -19,6 +20,7 @@ export type WorkerProcessConfig = {
   pollIntervalMs: number;
   keepAliveIntervalMs: number;
   maxCollectionRuntimeMs: number;
+  crawl4AiMaxConcurrency: number;
   errorBackoffMinMs: number;
   errorBackoffMaxMs: number;
   collectionEnabled: boolean;
@@ -42,6 +44,7 @@ export type WorkerProcessConfig = {
   githubMaxDepth: number;
   conversionEnabled: boolean;
   workspaceId?: string;
+  conversionSupportedConverters?: RuntimeConverterRef[];
   conversionCapabilityRevision: number;
   conversionLeaseDurationSeconds: number;
 };
@@ -74,6 +77,29 @@ function enabled(env: NodeJS.ProcessEnv, key: string, fallback = false): boolean
   if (["1", "true", "yes", "on"].includes(raw)) return true;
   if (["0", "false", "no", "off"].includes(raw)) return false;
   throw new Error(`${key} must be a boolean value`);
+}
+
+function runtimeConverterRefs(
+  env: NodeJS.ProcessEnv,
+  key: string,
+): RuntimeConverterRef[] | undefined {
+  const raw = env[key]?.trim();
+  if (!raw) return undefined;
+  const refs = raw.split(",").map((item) => item.trim());
+  if (refs.some((item) => !item)) throw new Error(`${key} contains an empty converter ref`);
+  const seen = new Set<string>();
+  return refs.map((item) => {
+    const separator = item.lastIndexOf("@");
+    const converterId = separator > 0 ? item.slice(0, separator) : "";
+    const version = separator > 0 ? item.slice(separator + 1) : "";
+    if (!converterId || !version || converterId.length > 128 || version.length > 64) {
+      throw new Error(`${key} must contain converterId@version values`);
+    }
+    const identity = `${converterId}@${version}`;
+    if (seen.has(identity)) throw new Error(`${key} contains duplicate converter refs`);
+    seen.add(identity);
+    return { converterId, version };
+  });
 }
 
 function normalizedControlPlaneUrl(value: string): string {
@@ -305,6 +331,10 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
   const collectionEnabled = enabled(env, "MARKORBIT_COLLECTION_ENABLED", true);
   const conversionEnabled = enabled(env, "MARKORBIT_CONVERSION_ENABLED", false);
   const workspaceId = env.MARKORBIT_WORKSPACE_ID?.trim() || undefined;
+  const conversionSupportedConverters = runtimeConverterRefs(
+    env,
+    "MARKORBIT_CONVERSION_SUPPORTED_CONVERTERS",
+  );
   if (!collectionEnabled && !conversionEnabled) {
     throw new Error(
       "At least one Worker mode must be enabled: MARKORBIT_COLLECTION_ENABLED or MARKORBIT_CONVERSION_ENABLED",
@@ -335,6 +365,13 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
       12 * 60_000,
       30_000,
       14 * 60_000,
+    ),
+    crawl4AiMaxConcurrency: integer(
+      env,
+      "MARKORBIT_CRAWL4AI_MAX_CONCURRENCY",
+      4,
+      1,
+      CRAWL4AI_MAX_CONCURRENCY,
     ),
     errorBackoffMinMs,
     errorBackoffMaxMs,
@@ -371,6 +408,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     githubMaxDepth,
     conversionEnabled,
     ...(workspaceId ? { workspaceId } : {}),
+    ...(conversionSupportedConverters ? { conversionSupportedConverters } : {}),
     conversionCapabilityRevision: integer(
       env,
       "MARKORBIT_CONVERSION_CAPABILITY_REVISION",
