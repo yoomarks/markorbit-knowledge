@@ -21,6 +21,7 @@ export type WorkerProcessConfig = {
   maxCollectionRuntimeMs: number;
   errorBackoffMinMs: number;
   errorBackoffMaxMs: number;
+  collectionEnabled: boolean;
   collectionProvider: WorkerCollectionProvider;
   acquisitionLearningProfileId?: string;
   requireEgressProxy: boolean;
@@ -301,8 +302,14 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     errorBackoffMinMs,
     300_000,
   );
+  const collectionEnabled = enabled(env, "MARKORBIT_COLLECTION_ENABLED", true);
   const conversionEnabled = enabled(env, "MARKORBIT_CONVERSION_ENABLED", false);
   const workspaceId = env.MARKORBIT_WORKSPACE_ID?.trim() || undefined;
+  if (!collectionEnabled && !conversionEnabled) {
+    throw new Error(
+      "At least one Worker mode must be enabled: MARKORBIT_COLLECTION_ENABLED or MARKORBIT_CONVERSION_ENABLED",
+    );
+  }
   if (conversionEnabled && !workspaceId) {
     throw new Error("MARKORBIT_WORKSPACE_ID is required when production conversion is enabled");
   }
@@ -331,6 +338,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     ),
     errorBackoffMinMs,
     errorBackoffMaxMs,
+    collectionEnabled,
     collectionProvider: provider,
     ...(acquisitionLearningProfileId ? { acquisitionLearningProfileId } : {}),
     requireEgressProxy,

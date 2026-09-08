@@ -21,6 +21,7 @@ describe("loadWorkerProcessConfig", () => {
     expect(config.pollIntervalMs).toBe(2_000);
     expect(config.keepAliveIntervalMs).toBe(30_000);
     expect(config.maxCollectionRuntimeMs).toBe(12 * 60_000);
+    expect(config.collectionEnabled).toBe(true);
     expect(config.collectionProvider).toBe("crawl4ai");
     expect(config.requireEgressProxy).toBe(true);
     expect(config.localFolderRoots).toEqual({});
@@ -154,6 +155,27 @@ describe("loadWorkerProcessConfig", () => {
     expect(() => loadWorkerProcessConfig(env({ MARKORBIT_CONVERSION_ENABLED: "true" }))).toThrow(
       /MARKORBIT_WORKSPACE_ID/,
     );
+  });
+
+  it("supports an explicit conversion-only Worker mode", () => {
+    const config = loadWorkerProcessConfig(
+      env({
+        MARKORBIT_COLLECTION_ENABLED: "0",
+        MARKORBIT_CONVERSION_ENABLED: "1",
+        MARKORBIT_WORKSPACE_ID: "wsp_01H00000000000000000000000",
+      }),
+    );
+    expect(config.collectionEnabled).toBe(false);
+    expect(config.conversionEnabled).toBe(true);
+
+    expect(() =>
+      loadWorkerProcessConfig(
+        env({
+          MARKORBIT_COLLECTION_ENABLED: "0",
+          MARKORBIT_CONVERSION_ENABLED: "0",
+        }),
+      ),
+    ).toThrow(/At least one Worker mode/);
   });
 
   it("allows direct Crawl4AI egress only outside production and does not impose it on other providers", () => {

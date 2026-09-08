@@ -236,6 +236,7 @@ async function main(): Promise<void> {
     cnipaAuthenticatedRuntimeEnabled: Boolean(cnipaAcquirer),
     localFolderRootIds: Object.keys(config.localFolderRoots),
     maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
+    collectionEnabled: config.collectionEnabled,
     conversionEnabled: config.conversionEnabled,
     acquisitionLearningEnabled: Boolean(acquisitionIntelligenceClient),
     acquisitionLearningProfileId: learningProfile?.profileId ?? null,
@@ -243,7 +244,9 @@ async function main(): Promise<void> {
 
   while (!stopping) {
     try {
-      const collectionProcessed = await collectionRuntime.runOnce();
+      const collectionProcessed = config.collectionEnabled
+        ? await collectionRuntime.runOnce()
+        : false;
       const conversionProcessed =
         !collectionProcessed && conversionRuntime ? await conversionRuntime.runOnce() : false;
       consecutiveFailures = 0;

@@ -103,7 +103,7 @@ jobs:
           echo "MARKORBIT_WORKER_CREDENTIAL=$credential" >> "$GITHUB_ENV"
           rm -f "$RUNNER_TEMP/worker-credential.txt"
 
-      - name: Run six governed Workers and verify real RawArtifact to Retrieval throughput
+      - name: Run six governed collectors plus four conversion consumers and verify throughput
         env:
           NODE_ENV: test
           MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY: "0"
@@ -122,6 +122,10 @@ jobs:
           trap cleanup_workers EXIT TERM INT
           for index in $(seq 1 6); do
             pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker-${index}.log" 2>&1 &
+            echo "$!" >> "$RUNNER_TEMP/worker-pids"
+          done
+          for index in $(seq 1 4); do
+            MARKORBIT_COLLECTION_ENABLED=0 pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker-conversion-${index}.log" 2>&1 &
             echo "$!" >> "$RUNNER_TEMP/worker-pids"
           done
           pnpm --filter @markorbit/worker verify:campaign:web -- \
