@@ -67,6 +67,13 @@ export interface CollectionArtifactAcquirer {
   acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]>;
 }
 
+export type ArtifactBackedCollectionExecutorOptions = {
+  ingestionConcurrency?: number;
+};
+
+const DEFAULT_ARTIFACT_INGESTION_CONCURRENCY = 4;
+const MAX_ARTIFACT_INGESTION_CONCURRENCY = 16;
+
 export interface ArtifactBackedExecutionClient {
   start(
     context: ArtifactBackedExecutionContext,
@@ -262,6 +269,38 @@ function orderedForLineage(artifacts: AcquiredCollectionArtifact[]): AcquiredCol
   return [...parents, ...children];
 }
 
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  operation: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  let hasError = false;
+  let firstError: unknown;
+
+  const worker = async () => {
+    while (!hasError) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= items.length) return;
+      try {
+        results[index] = await operation(items[index] as T, index);
+      } catch (error) {
+        if (!hasError) {
+          hasError = true;
+          firstError = error;
+        }
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  if (hasError) throw firstError;
+  return results;
+}
+
 function resolveParentArtifactIds(
   artifact: AcquiredCollectionArtifact,
   identities: Map<string, Set<string>>,
@@ -296,10 +335,23 @@ function resolveParentArtifactIds(
  * Connector implementation is injected through CollectionArtifactAcquirer.
  */
 export class ArtifactBackedCollectionExecutor {
+  private readonly ingestionConcurrency: number;
+
   constructor(
     private readonly acquirer: CollectionArtifactAcquirer,
     private readonly client: ArtifactBackedExecutionClient,
-  ) {}
+    options: ArtifactBackedCollectionExecutorOptions = {},
+  ) {
+    this.ingestionConcurrency =
+      options.ingestionConcurrency ?? DEFAULT_ARTIFACT_INGESTION_CONCURRENCY;
+    if (
+      !Number.isInteger(this.ingestionConcurrency) ||
+      this.ingestionConcurrency < 1 ||
+      this.ingestionConcurrency > MAX_ARTIFACT_INGESTION_CONCURRENCY
+    ) {
+      throw new Error("artifact ingestion concurrency must be an integer from 1 to 16");
+    }
+  }
 
   async execute(context: ArtifactBackedExecutionContext): Promise<ExecutionReceipt | null> {
     if (!context.leaseToken) {
@@ -344,27 +396,44 @@ export class ArtifactBackedCollectionExecutor {
 
       const receipts: ArtifactIngestionReceipt[] = [];
       let bytesPrepared = 0;
-      const ordered = orderedForLineage(selection.changed);
-      for (const [index, artifact] of ordered.entries()) {
-        const parentArtifactIds = resolveParentArtifactIds(
-          artifact,
-          selection.knownArtifactIdsByCanonicalUri,
+      const ordered = orderedForLineage(selection.changed).map((artifact, index) => ({
+        artifact,
+        index,
+      }));
+      const layers = [
+        ordered.filter(({ artifact }) => !isLineageChild(artifact)),
+        ordered.filter(({ artifact }) => isLineageChild(artifact)),
+      ];
+
+      for (const layer of layers) {
+        const finalizedLayer = await mapWithConcurrency(
+          layer,
+          this.ingestionConcurrency,
+          async ({ artifact, index }) => {
+            const parentArtifactIds = resolveParentArtifactIds(
+              artifact,
+              selection.knownArtifactIdsByCanonicalUri,
+            );
+            const descriptor = descriptorFor(artifact, parentArtifactIds);
+            const session = await this.client.createArtifactSession(
+              context,
+              descriptor,
+              `${prefix}-artifact-${index + 1}`,
+            );
+            await this.client.uploadArtifactContent(context, session.id, artifact.content);
+            const finalized = await this.client.finalizeArtifact(context, session.id);
+            return { artifact, finalized };
+          },
         );
-        const descriptor = descriptorFor(artifact, parentArtifactIds);
-        const session = await this.client.createArtifactSession(
-          context,
-          descriptor,
-          `${prefix}-artifact-${index + 1}`,
-        );
-        await this.client.uploadArtifactContent(context, session.id, artifact.content);
-        const finalized = await this.client.finalizeArtifact(context, session.id);
-        receipts.push(finalized);
-        addArtifactIdentity(
-          selection.knownArtifactIdsByCanonicalUri,
-          artifact.canonicalUri,
-          finalized.artifactId,
-        );
-        bytesPrepared += artifact.content.byteLength;
+        for (const { artifact, finalized } of finalizedLayer) {
+          receipts.push(finalized);
+          addArtifactIdentity(
+            selection.knownArtifactIdsByCanonicalUri,
+            artifact.canonicalUri,
+            finalized.artifactId,
+          );
+          bytesPrepared += artifact.content.byteLength;
+        }
       }
 
       await this.client.verifying(context, `${prefix}-verifying`);

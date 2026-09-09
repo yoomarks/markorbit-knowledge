@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from acquire import (
+    MAX_CONCURRENCY,
     MAX_DEPTH,
     MAX_ITEMS,
     MAX_LOCALE_LENGTH,
@@ -33,6 +34,7 @@ class PolicyBoundsTests(unittest.TestCase):
             "fetchAttachments": False,
             "respectRobots": True,
             "rateLimitPerMinute": 30,
+            "maxConcurrency": 4,
             "timeoutSeconds": 30,
             "includePatterns": [],
             "excludePatterns": [],
@@ -58,6 +60,7 @@ class PolicyBoundsTests(unittest.TestCase):
                     "maxDepth": MAX_DEPTH,
                     "maxItems": MAX_ITEMS,
                     "rateLimitPerMinute": MAX_RATE_LIMIT_PER_MINUTE,
+                    "maxConcurrency": MAX_CONCURRENCY,
                     "timeoutSeconds": MAX_TIMEOUT_SECONDS,
                     "includePatterns": [f"/i/{i}" for i in range(MAX_PATTERNS_PER_LIST)],
                     "excludePatterns": ["/" + "x" * (MAX_PATTERN_LENGTH - 1)],
@@ -66,11 +69,13 @@ class PolicyBoundsTests(unittest.TestCase):
             parsed = _parse_request(payload)
         self.assertEqual(parsed["max_depth"], MAX_DEPTH)
         self.assertEqual(parsed["max_items"], MAX_ITEMS)
+        self.assertEqual(parsed["max_concurrency"], MAX_CONCURRENCY)
 
     def test_rejects_each_protocol_overflow(self) -> None:
         self.assert_invalid(maxDepth=MAX_DEPTH + 1)
         self.assert_invalid(maxItems=MAX_ITEMS + 1)
         self.assert_invalid(rateLimitPerMinute=MAX_RATE_LIMIT_PER_MINUTE + 1)
+        self.assert_invalid(maxConcurrency=MAX_CONCURRENCY + 1)
         self.assert_invalid(timeoutSeconds=MAX_TIMEOUT_SECONDS + 1)
         self.assert_invalid(includePatterns=[f"/i/{i}" for i in range(MAX_PATTERNS_PER_LIST + 1)])
         self.assert_invalid(excludePatterns=[f"/e/{i}" for i in range(MAX_PATTERNS_PER_LIST + 1)])

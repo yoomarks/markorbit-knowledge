@@ -38,7 +38,14 @@ export type ProductionConversionRunContext = {
 
 export type ProductionConversionHttpOptions = {
   fetchImpl?: typeof fetch;
+  maxAttempts?: number;
+  baseDelayMs?: number;
+  sleep?: (delayMs: number) => Promise<void>;
 };
+
+const DEFAULT_CONTROL_PLANE_MAX_ATTEMPTS = 3;
+const DEFAULT_CONTROL_PLANE_RETRY_BASE_DELAY_MS = 250;
+const RETRYABLE_CONTROL_PLANE_STATUSES = new Set([429, 502, 503, 504]);
 
 function encodeBase32(value: bigint, length: number): string {
   let output = "";
@@ -102,6 +109,9 @@ export class HttpProductionConversionClient
 {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly retryMaxAttempts: number;
+  private readonly retryBaseDelayMs: number;
+  private readonly sleep: (delayMs: number) => Promise<void>;
 
   constructor(
     controlPlaneUrl: string,
@@ -111,10 +121,54 @@ export class HttpProductionConversionClient
   ) {
     this.baseUrl = normalizedBaseUrl(controlPlaneUrl);
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.retryMaxAttempts = options.maxAttempts ?? DEFAULT_CONTROL_PLANE_MAX_ATTEMPTS;
+    this.retryBaseDelayMs = options.baseDelayMs ?? DEFAULT_CONTROL_PLANE_RETRY_BASE_DELAY_MS;
+    this.sleep =
+      options.sleep ?? ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
+    if (
+      !Number.isInteger(this.retryMaxAttempts) ||
+      this.retryMaxAttempts < 1 ||
+      this.retryMaxAttempts > 5
+    ) {
+      throw new Error("PRODUCTION_CONVERSION_RETRY_ATTEMPTS_INVALID");
+    }
+    if (
+      !Number.isFinite(this.retryBaseDelayMs) ||
+      this.retryBaseDelayMs < 0 ||
+      this.retryBaseDelayMs > 5_000
+    ) {
+      throw new Error("PRODUCTION_CONVERSION_RETRY_DELAY_INVALID");
+    }
+  }
+
+  private retryDelayMs(attempt: number): number {
+    return Math.min(this.retryBaseDelayMs * 2 ** (attempt - 1), 2_000);
+  }
+
+  private async fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+    for (let attempt = 1; attempt <= this.retryMaxAttempts; attempt += 1) {
+      let response: Response;
+      try {
+        response = await this.fetchImpl(url, init);
+      } catch (error) {
+        if (attempt === this.retryMaxAttempts) throw error;
+        await this.sleep(this.retryDelayMs(attempt));
+        continue;
+      }
+      if (!RETRYABLE_CONTROL_PLANE_STATUSES.has(response.status)) return response;
+      try {
+        await response.body?.cancel();
+      } catch {
+        // The transient response is intentionally discarded before retry.
+      }
+      if (attempt === this.retryMaxAttempts) return response;
+      await this.sleep(this.retryDelayMs(attempt));
+    }
+    throw new Error("PRODUCTION_CONVERSION_RETRY_LOOP_EXHAUSTED");
   }
 
   async claim(request: ConversionClaimRequest): Promise<ProductionConversionClaimEnvelope> {
-    const response = await this.fetchImpl(`${this.baseUrl}/api/worker/v1/conversion/claim`, {
+    const response = await this.fetchWithRetry(`${this.baseUrl}/api/worker/v1/conversion/claim`, {
       method: "POST",
       headers: this.jsonHeaders(),
       body: JSON.stringify(request),
@@ -129,7 +183,7 @@ export class HttpProductionConversionClient
   }
 
   async runContext(conversionRunId: string): Promise<ProductionConversionRunContext> {
-    const response = await this.fetchImpl(
+    const response = await this.fetchWithRetry(
       `${this.baseUrl}/api/worker/v1/conversion/run/${encodeURIComponent(conversionRunId)}?workerId=${encodeURIComponent(this.workerId)}`,
       { headers: this.authHeaders() },
     );
@@ -164,7 +218,7 @@ export class HttpProductionConversionClient
     evidence: ProductionStagingUploadEvidence,
     idempotencyKey: string,
   ): Promise<ProductionStagingCommitResult> {
-    const response = await this.fetchImpl(`${this.baseUrl}/api/worker/v1/conversion/output`, {
+    const response = await this.fetchWithRetry(`${this.baseUrl}/api/worker/v1/conversion/output`, {
       method: "POST",
       headers: {
         ...this.authHeaders(),
@@ -290,7 +344,7 @@ export class HttpProductionConversionClient
       | ConversionOutputReadyReport
       | ConversionFailedReport,
   ): Promise<void> {
-    const response = await this.fetchImpl(`${this.baseUrl}/api/worker/v1/conversion/report`, {
+    const response = await this.fetchWithRetry(`${this.baseUrl}/api/worker/v1/conversion/report`, {
       method: "POST",
       headers: this.jsonHeaders(),
       body: JSON.stringify(report),

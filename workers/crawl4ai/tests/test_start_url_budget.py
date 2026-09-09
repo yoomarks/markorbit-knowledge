@@ -24,6 +24,7 @@ class StartUrlBudgetTests(unittest.TestCase):
             "fetchAttachments": False,
             "respectRobots": True,
             "rateLimitPerMinute": 30,
+            "maxConcurrency": 4,
             "timeoutSeconds": 30,
             "includePatterns": [],
             "excludePatterns": [],

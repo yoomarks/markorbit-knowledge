@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Job } from "@markorbit/contracts";
@@ -40,9 +41,11 @@ function context(): ArtifactBackedExecutionContext {
 describe("Crawl4AiSubprocessAcquirer", () => {
   it("maps a governed plan and verifies sidecar bytes", async () => {
     let seenMaxDepth = -1;
+    let seenMaxConcurrency = -1;
     const runner: Crawl4AiProcessRunner = {
       async run(request) {
         seenMaxDepth = request.maxDepth;
+        seenMaxConcurrency = request.maxConcurrency;
         const content = new TextEncoder().encode("<html>official</html>");
         const sha256 = createHash("sha256").update(content).digest("hex");
         await writeFile(join(request.outputDirectory, "page.html"), content);
@@ -69,6 +72,7 @@ describe("Crawl4AiSubprocessAcquirer", () => {
     const acquirer = new Crawl4AiSubprocessAcquirer({ runner, requireEgressProxy: false });
     const artifacts = await acquirer.acquire(context());
     expect(seenMaxDepth).toBe(1);
+    expect(seenMaxConcurrency).toBe(4);
     expect(artifacts).toHaveLength(1);
     expect(new TextDecoder().decode(artifacts[0]?.content)).toContain("official");
   });
@@ -223,4 +227,39 @@ describe("Crawl4AiSubprocessAcquirer", () => {
       retryable: false,
     });
   });
+
+  it.skipIf(process.platform === "win32")(
+    "kills the whole subprocess group on timeout so descendant pipes cannot hang the Worker",
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), "markorbit-crawl4ai-timeout-test-"));
+      const scriptPath = join(root, "hold-pipe.mjs");
+      await writeFile(
+        scriptPath,
+        [
+          'import { spawn } from "node:child_process";',
+          'spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: ["ignore", "inherit", "inherit"] });',
+          "setInterval(() => {}, 1000);",
+        ].join("\n"),
+        "utf8",
+      );
+      try {
+        const acquirer = new Crawl4AiSubprocessAcquirer({
+          requireEgressProxy: false,
+          maxProcessTimeoutMs: 100,
+          subprocess: {
+            pythonExecutable: process.execPath,
+            scriptPath,
+            cwd: root,
+          },
+        });
+        await expect(acquirer.acquire(context())).rejects.toMatchObject({
+          code: "CRAWL4AI_TIMEOUT",
+          retryable: true,
+        });
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+    5_000,
+  );
 });
