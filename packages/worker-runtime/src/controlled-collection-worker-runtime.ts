@@ -24,6 +24,7 @@ export type ControlledCollectionCompletion = {
 export type ControlledCollectionWorkerOptions = {
   runtimeVersion?: string;
   keepAliveIntervalMs?: number;
+  artifactIngestionConcurrency?: number;
   onBackgroundError?: (error: unknown) => void;
   onCompleted?: (completion: ControlledCollectionCompletion) => void | Promise<void>;
 };
@@ -43,6 +44,7 @@ export type ControlledCollectionWorkerOptions = {
 export class ControlledCollectionWorkerRuntime {
   private readonly runtimeVersion: string;
   private readonly keepAliveIntervalMs: number;
+  private readonly artifactIngestionConcurrency?: number;
   private readonly onBackgroundError?: (error: unknown) => void;
   private readonly onCompleted?: (
     completion: ControlledCollectionCompletion,
@@ -58,6 +60,7 @@ export class ControlledCollectionWorkerRuntime {
     if (!Number.isInteger(this.keepAliveIntervalMs) || this.keepAliveIntervalMs < 1_000) {
       throw new Error("keepAliveIntervalMs must be an integer greater than or equal to 1000");
     }
+    this.artifactIngestionConcurrency = options.artifactIngestionConcurrency;
     this.onBackgroundError = options.onBackgroundError;
     this.onCompleted = options.onCompleted;
   }
@@ -92,7 +95,11 @@ export class ControlledCollectionWorkerRuntime {
 
     await this.client.heartbeat(this.runtimeVersion, [claim.lease.id]);
     const stopKeepAlive = this.startKeepAlive(claim.lease, claim.leaseToken);
-    const executor = new ArtifactBackedCollectionExecutor(this.acquirer, this.client);
+    const executor = new ArtifactBackedCollectionExecutor(this.acquirer, this.client, {
+      ...(this.artifactIngestionConcurrency === undefined
+        ? {}
+        : { ingestionConcurrency: this.artifactIngestionConcurrency }),
+    });
     const context: ArtifactBackedExecutionContext = {
       workerId: this.client.workerId,
       job: claim.job,

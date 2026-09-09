@@ -149,6 +149,20 @@ function artifactMaxBytes(): number | undefined {
   return parsed;
 }
 
+export function workerMaxLeaseLifetimeMs(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): number | undefined {
+  const configured = env.MARKORBIT_WORKER_MAX_LEASE_LIFETIME_MS?.trim();
+  if (!configured) return undefined;
+  const parsed = Number(configured);
+  if (!Number.isSafeInteger(parsed) || parsed < 120_000 || parsed > 3_600_000) {
+    throw new RegistryValidationError(
+      "MARKORBIT_WORKER_MAX_LEASE_LIFETIME_MS must be an integer from 120000 to 3600000 milliseconds",
+    );
+  }
+  return parsed;
+}
+
 function getRegistries() {
   if (!globalRegistry.markorbitRegistries) {
     const databasePath = process.env.MARKORBIT_KNOWLEDGE_DB_PATH ?? defaultDatabasePath();
@@ -163,6 +177,7 @@ function getRegistries() {
     const retrievalBase = new SqliteRetrievalIndexRepository(database);
     const changeFeed = new SqliteDocumentChangeFeedRepository(database);
     const retrieval = new ChangeAwareRetrievalIndexRepository(retrievalBase, changeFeed);
+    const maxLeaseLifetimeMs = workerMaxLeaseLifetimeMs();
     ensureM3CanonicalDocumentConverters(converters);
     globalRegistry.markorbitRegistries = {
       database,
@@ -175,7 +190,14 @@ function getRegistries() {
       connectors: new SqliteConnectorRepository(database),
       plans: new SqliteCollectionPlanRepository(database),
       runs: new SqliteExecutionLedgerRepository(database),
-      workers: new SqliteWorkerRegistryRepository(database),
+      workers: new SqliteWorkerRegistryRepository(
+        database,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        maxLeaseLifetimeMs === undefined ? {} : { maxLeaseLifetimeMs },
+      ),
       executions: new SqliteWorkerExecutionRepository(database),
       converters,
       conversionRuns: new SqliteConversionRunLedgerRepository(database),

@@ -29,6 +29,7 @@ import {
 export type ProductionConversionWorkerRuntimeOptions = {
   capabilityRevision?: number;
   requestedLeaseDurationSeconds?: number;
+  supportedConverters?: readonly RuntimeConverterRef[];
   onResult?: (result: ProductionMarkdownStagingResult | null) => void;
 };
 
@@ -41,11 +42,15 @@ const PRODUCTION_SUPPORTED_CONVERTERS = [
   PRODUCTION_OCR_MARKDOWN_CONVERTER,
 ] as const;
 
-function supportsConverter(converter: RuntimeConverterRef): boolean {
+function isProductionSupportedConverter(converter: RuntimeConverterRef): boolean {
   return PRODUCTION_SUPPORTED_CONVERTERS.some(
     (supported) =>
       supported.converterId === converter.converterId && supported.version === converter.version,
   );
+}
+
+function sameConverter(left: RuntimeConverterRef, right: RuntimeConverterRef): boolean {
+  return left.converterId === right.converterId && left.version === right.version;
 }
 
 function assertClaimed(result: ConversionClaimResult): asserts result is ConversionClaimResult & {
@@ -71,6 +76,7 @@ function assertClaimed(result: ConversionClaimResult): asserts result is Convers
 export class ProductionConversionWorkerRuntime {
   private readonly capabilityRevision: number;
   private readonly requestedLeaseDurationSeconds: number;
+  private readonly supportedConverters: readonly RuntimeConverterRef[];
   private readonly markdownExecutor = new ProductionMarkdownStagingExecutor();
   private readonly documentExecutor = new ProductionDocumentNormalizationExecutor();
   private readonly localExtractionExecutor = new ProductionLocalDocumentExtractionExecutor();
@@ -82,6 +88,21 @@ export class ProductionConversionWorkerRuntime {
   ) {
     this.capabilityRevision = options.capabilityRevision ?? 1;
     this.requestedLeaseDurationSeconds = options.requestedLeaseDurationSeconds ?? 300;
+    const requestedConverters = options.supportedConverters ?? PRODUCTION_SUPPORTED_CONVERTERS;
+    if (requestedConverters.length === 0) {
+      throw new Error("PRODUCTION_CONVERSION_SUPPORTED_CONVERTERS_EMPTY");
+    }
+    if (requestedConverters.some((converter) => !isProductionSupportedConverter(converter))) {
+      throw new Error("PRODUCTION_CONVERSION_SUPPORTED_CONVERTER_INVALID");
+    }
+    if (
+      new Set(
+        requestedConverters.map((converter) => `${converter.converterId}@${converter.version}`),
+      ).size !== requestedConverters.length
+    ) {
+      throw new Error("PRODUCTION_CONVERSION_SUPPORTED_CONVERTER_DUPLICATE");
+    }
+    this.supportedConverters = requestedConverters.map((converter) => ({ ...converter }));
     if (!Number.isInteger(this.capabilityRevision) || this.capabilityRevision <= 0) {
       throw new Error("PRODUCTION_CONVERSION_CAPABILITY_REVISION_INVALID");
     }
@@ -101,10 +122,11 @@ export class ProductionConversionWorkerRuntime {
     assertClaimed(claimed.result);
 
     const summary = claimed.result.executionSummary;
+    const claimedConverter = claimed.result.converter;
     if (
       claimed.result.workspaceId !== this.workspaceId ||
       claimed.result.workerId !== this.client.workerId ||
-      !supportsConverter(claimed.result.converter)
+      !this.supportedConverters.some((converter) => sameConverter(converter, claimedConverter))
     ) {
       throw new Error("PRODUCTION_CONVERSION_CLAIM_SCOPE_MISMATCH");
     }
@@ -167,7 +189,7 @@ export class ProductionConversionWorkerRuntime {
       workerId: this.client.workerId,
       workerCredentialId: `worker-ref:${this.client.workerId}`,
       capabilityRevision: this.capabilityRevision,
-      supportedConverters: PRODUCTION_SUPPORTED_CONVERTERS.map((converter) => ({
+      supportedConverters: this.supportedConverters.map((converter) => ({
         converterId: converter.converterId,
         versions: [converter.version],
       })),

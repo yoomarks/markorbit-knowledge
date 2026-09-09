@@ -25,6 +25,8 @@
     "bootstrap:uspto-fee-schedule": "tsx src/bootstrap-uspto-fee-schedule.ts",
     "bootstrap:uspto-conversion": "tsx src/bootstrap-uspto-conversion.ts",
     "bootstrap:coverage": "tsx src/bootstrap-source-coverage.ts",
+    "campaign:web": "tsx src/run-web-acquisition-campaign.ts",
+    "verify:campaign:web": "tsx src/verify-web-acquisition-campaign.ts",
     "audit:golden-corpora": "tsx src/audit-golden-corpora.ts",
     "discover:country-index": "tsx src/discover-country-index-public.ts",
     "discover:tavily": "tsx src/discover-tavily-public.ts",
