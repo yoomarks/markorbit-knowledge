@@ -261,6 +261,12 @@ describe("bulk campaign orchestration", () => {
     expect(sourcePost?.body).toMatchObject({
       category: "LAW_FIRM",
       authorityLevel: "PROFESSIONAL",
+      extensions: {
+        "x-markorbit-discovered-count": 1,
+        "x-markorbit-excluded-count": 0,
+        "x-markorbit-duplicate-count": 0,
+        "x-markorbit-inventory-error-count": 0,
+      },
     });
     const planPost = calls.find(
       (call) => call.method === "POST" && call.url.endsWith("/api/plans"),
@@ -462,7 +468,13 @@ describe("repeat campaign inventory refresh", () => {
     expect(sourcePatch?.body).toMatchObject({
       expectedUpdatedAt: "2026-09-08T00:00:00.000Z",
       entrypoints: [{ uri: "https://example.com/trademarks/new-guide" }],
-      extensions: { "x-markorbit-source-config-sha256": expect.any(String) },
+      extensions: {
+        "x-markorbit-source-config-sha256": expect.any(String),
+        "x-markorbit-discovered-count": 1,
+        "x-markorbit-excluded-count": 0,
+        "x-markorbit-duplicate-count": 0,
+        "x-markorbit-inventory-error-count": 0,
+      },
     });
     const planPatch = calls.find(
       (call) => call.method === "PATCH" && call.url.includes("/api/plans/"),
