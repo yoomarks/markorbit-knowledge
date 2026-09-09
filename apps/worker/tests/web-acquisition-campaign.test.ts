@@ -262,6 +262,10 @@ describe("bulk campaign orchestration", () => {
       category: "LAW_FIRM",
       authorityLevel: "PROFESSIONAL",
     });
+    const planPost = calls.find(
+      (call) => call.method === "POST" && call.url.endsWith("/api/plans"),
+    );
+    expect(planPost?.body).toMatchObject({ output: { artifactKinds: ["MARKDOWN"] } });
     const profilePost = calls.find(
       (call) => call.method === "POST" && call.url.endsWith("/api/conversion-profiles"),
     );
@@ -466,7 +470,11 @@ describe("repeat campaign inventory refresh", () => {
     expect(planPatch?.body).toMatchObject({
       expectedUpdatedAt: "2026-09-08T00:00:00.000Z",
       policy: { maxItems: 1, maxDepth: 0 },
-      extensions: { "x-markorbit-plan-policy-sha256": expect.any(String) },
+      output: { artifactKinds: ["MARKDOWN"] },
+      extensions: {
+        "x-markorbit-plan-policy-sha256": expect.any(String),
+        "x-markorbit-plan-output-sha256": expect.any(String),
+      },
     });
   });
 });

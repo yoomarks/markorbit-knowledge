@@ -773,12 +773,15 @@ async function ensureCampaignPlan(
     retry: { maxAttempts: 2, backoffSeconds: 10 },
     locale: source.languages[0],
   };
+  const output = { artifactKinds: ["MARKDOWN"] };
   const planPolicySha256 = stableObjectHash(policy);
+  const planOutputSha256 = stableObjectHash(output);
   const extensions = {
     "x-markorbit-campaign-id": manifest.campaignId,
     "x-markorbit-campaign-source-key": source.key,
     "x-markorbit-inventory-sha256": inventory.inventorySha256,
     "x-markorbit-plan-policy-sha256": planPolicySha256,
+    "x-markorbit-plan-output-sha256": planOutputSha256,
     "x-markorbit-discovery-mode": inventory.modeUsed,
   };
   const listed = await client.request(
@@ -793,7 +796,8 @@ async function ensureCampaignPlan(
     const planId = requiredString(plan.id, "plan.id");
     if (
       currentExtensions?.["x-markorbit-inventory-sha256"] !== inventory.inventorySha256 ||
-      currentExtensions?.["x-markorbit-plan-policy-sha256"] !== planPolicySha256
+      currentExtensions?.["x-markorbit-plan-policy-sha256"] !== planPolicySha256 ||
+      currentExtensions?.["x-markorbit-plan-output-sha256"] !== planOutputSha256
     ) {
       await client.request(
         `/api/plans/${encodeURIComponent(planId)}`,
@@ -802,7 +806,7 @@ async function ensureCampaignPlan(
           schedule: { mode: "MANUAL" },
           priority: source.sourceClass === "OFFICIAL_AUTHORITY" ? "HIGH" : "NORMAL",
           policy,
-          output: { artifactKinds: ["HTML", "MARKDOWN"] },
+          output,
           extensions: { ...currentExtensions, ...extensions },
         }),
         manifest.workspaceId,
@@ -820,7 +824,7 @@ async function ensureCampaignPlan(
       schedule: { mode: "MANUAL" },
       priority: source.sourceClass === "OFFICIAL_AUTHORITY" ? "HIGH" : "NORMAL",
       policy,
-      output: { artifactKinds: ["HTML", "MARKDOWN"] },
+      output,
       extensions,
     }),
     manifest.workspaceId,
