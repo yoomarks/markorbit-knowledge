@@ -125,7 +125,7 @@ jobs:
           }
           trap cleanup_workers EXIT TERM INT
           for index in $(seq 1 6); do
-            pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker-${index}.log" 2>&1 &
+            MARKORBIT_CONVERSION_ENABLED=0 pnpm --filter @markorbit/worker start > "$RUNNER_TEMP/worker-${index}.log" 2>&1 &
             echo "$!" >> "$RUNNER_TEMP/worker-pids"
           done
           for index in $(seq 1 4); do
