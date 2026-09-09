@@ -667,6 +667,10 @@ async function ensureCampaignSource(
       maxDepth: inventory.modeUsed === "LINK_CRAWL" ? source.maxDepth : 0,
     }),
     "x-markorbit-inventory-count": inventory.selectedUrls.length,
+    "x-markorbit-discovered-count": inventory.discoveredCount,
+    "x-markorbit-excluded-count": inventory.excludedCount,
+    "x-markorbit-duplicate-count": inventory.duplicateCount,
+    "x-markorbit-inventory-error-count": inventory.errors.length,
   };
   const connectorConfig = {
     renderJavascript: source.renderJavascript === true,
@@ -698,11 +702,7 @@ async function ensureCampaignSource(
       throw new Error(`Existing Source ${slug} drifted from the governed campaign identity`);
     }
     const sourceId = requiredString(candidate.id, "source.id");
-    if (
-      extensions?.["x-markorbit-inventory-sha256"] !== inventory.inventorySha256 ||
-      extensions?.["x-markorbit-source-config-sha256"] !==
-        campaignExtensions["x-markorbit-source-config-sha256"]
-    ) {
+    if (Object.entries(campaignExtensions).some(([key, value]) => extensions?.[key] !== value)) {
       await client.request(
         `/api/sources/${encodeURIComponent(sourceId)}`,
         jsonPatch({
