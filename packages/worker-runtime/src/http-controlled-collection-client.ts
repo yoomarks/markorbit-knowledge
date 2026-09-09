@@ -13,6 +13,7 @@ import {
   type Job,
   type JobLease,
 } from "@markorbit/contracts";
+import { CollectionAcquisitionError } from "./artifact-backed-collection-executor";
 import type {
   ArtifactBackedExecutionClient,
   ArtifactBackedExecutionContext,
@@ -36,6 +37,20 @@ export class WorkerControlPlaneHttpError extends Error {
   }
 }
 
+export type WorkerControlPlaneRetryOptions = {
+  maxAttempts?: number;
+  baseDelayMs?: number;
+  sleep?: (delayMs: number) => Promise<void>;
+};
+
+const DEFAULT_CONTROL_PLANE_MAX_ATTEMPTS = 3;
+const DEFAULT_CONTROL_PLANE_RETRY_BASE_DELAY_MS = 250;
+const RETRYABLE_CONTROL_PLANE_STATUSES = new Set([429, 502, 503, 504]);
+
+function isRetryableControlPlaneStatus(status: number): boolean {
+  return RETRYABLE_CONTROL_PLANE_STATUSES.has(status);
+}
+
 function normalizedBaseUrl(value: string): string {
   const url = new URL(value);
   if (url.protocol !== "http:" && url.protocol !== "https:") {
@@ -53,17 +68,39 @@ function record(value: unknown): Record<string, unknown> | null {
 export class HttpControlledCollectionClient implements ArtifactBackedExecutionClient {
   readonly workerId: string;
   private readonly baseUrl: string;
+  private readonly retryMaxAttempts: number;
+  private readonly retryBaseDelayMs: number;
+  private readonly sleep: (delayMs: number) => Promise<void>;
 
   constructor(
     baseUrl: string,
     workerId: string,
     private readonly credential: string,
     private readonly fetcher: typeof fetch = fetch,
+    options: WorkerControlPlaneRetryOptions = {},
   ) {
     this.baseUrl = normalizedBaseUrl(baseUrl);
     this.workerId = workerId.trim();
     if (!this.workerId) throw new Error("workerId is required");
     if (!credential.trim()) throw new Error("worker credential is required");
+    this.retryMaxAttempts = options.maxAttempts ?? DEFAULT_CONTROL_PLANE_MAX_ATTEMPTS;
+    this.retryBaseDelayMs = options.baseDelayMs ?? DEFAULT_CONTROL_PLANE_RETRY_BASE_DELAY_MS;
+    this.sleep =
+      options.sleep ?? ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
+    if (
+      !Number.isInteger(this.retryMaxAttempts) ||
+      this.retryMaxAttempts < 1 ||
+      this.retryMaxAttempts > 5
+    ) {
+      throw new Error("control-plane retry maxAttempts must be an integer from 1 to 5");
+    }
+    if (
+      !Number.isFinite(this.retryBaseDelayMs) ||
+      this.retryBaseDelayMs < 0 ||
+      this.retryBaseDelayMs > 5_000
+    ) {
+      throw new Error("control-plane retry baseDelayMs must be between 0 and 5000");
+    }
   }
 
   private authorizationHeaders(leaseToken?: string): HeadersInit {
@@ -73,19 +110,69 @@ export class HttpControlledCollectionClient implements ArtifactBackedExecutionCl
     };
   }
 
+  private retryDelayMs(attempt: number): number {
+    return Math.min(this.retryBaseDelayMs * 2 ** (attempt - 1), 2_000);
+  }
+
+  private async fetchWithRetry(
+    url: string,
+    init: RequestInit,
+    allowRetry: boolean,
+  ): Promise<Response> {
+    for (let attempt = 1; attempt <= this.retryMaxAttempts; attempt += 1) {
+      let response: Response;
+      try {
+        response = await this.fetcher(url, init);
+      } catch (error) {
+        if (!allowRetry) throw error;
+        if (attempt === this.retryMaxAttempts) {
+          const detail = error instanceof Error ? error.message : String(error);
+          throw new CollectionAcquisitionError(
+            "CONTROL_PLANE_TRANSPORT_FAILED",
+            `Worker control-plane transport failed after ${attempt} attempt(s): ${detail}`,
+            true,
+          );
+        }
+        await this.sleep(this.retryDelayMs(attempt));
+        continue;
+      }
+
+      if (!allowRetry || !isRetryableControlPlaneStatus(response.status)) return response;
+      try {
+        await response.body?.cancel();
+      } catch {
+        // The response is already being discarded before a bounded retry.
+      }
+      if (attempt === this.retryMaxAttempts) {
+        throw new CollectionAcquisitionError(
+          "CONTROL_PLANE_TRANSIENT_HTTP_FAILED",
+          `Worker control-plane remained unavailable with HTTP ${response.status} after ${attempt} attempt(s)`,
+          true,
+        );
+      }
+      await this.sleep(this.retryDelayMs(attempt));
+    }
+    throw new Error("control-plane retry loop exhausted unexpectedly");
+  }
+
   private async jsonRequest(
     path: string,
     body: Record<string, unknown>,
     leaseToken?: string,
+    allowRetry = true,
   ): Promise<unknown> {
-    const response = await this.fetcher(`${this.baseUrl}${path}`, {
-      method: "POST",
-      headers: {
-        ...this.authorizationHeaders(leaseToken),
-        "content-type": "application/json",
+    const response = await this.fetchWithRetry(
+      `${this.baseUrl}${path}`,
+      {
+        method: "POST",
+        headers: {
+          ...this.authorizationHeaders(leaseToken),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+      allowRetry,
+    );
     if (!response.ok) {
       let message = `Worker control-plane request failed (${response.status})`;
       try {
@@ -112,7 +199,7 @@ export class HttpControlledCollectionClient implements ArtifactBackedExecutionCl
 
   async claim(): Promise<ControlledWorkerClaim> {
     const payload = record(
-      await this.jsonRequest("/api/worker/v1/claim", { workerId: this.workerId }),
+      await this.jsonRequest("/api/worker/v1/claim", { workerId: this.workerId }, undefined, false),
     );
     if (!payload) throw new Error("Worker claim response must be an object");
     const job = payload.job === null ? null : isJob(payload.job) ? payload.job : undefined;
@@ -236,7 +323,7 @@ export class HttpControlledCollectionClient implements ArtifactBackedExecutionCl
     sessionId: string,
     content: Uint8Array,
   ): Promise<void> {
-    const response = await this.fetcher(
+    const response = await this.fetchWithRetry(
       `${this.baseUrl}/api/worker/v1/artifacts/sessions/${sessionId}/content`,
       {
         method: "PUT",
@@ -248,6 +335,7 @@ export class HttpControlledCollectionClient implements ArtifactBackedExecutionCl
         },
         body: Buffer.from(content),
       },
+      true,
     );
     if (!response.ok) {
       throw new WorkerControlPlaneHttpError(
@@ -261,7 +349,7 @@ export class HttpControlledCollectionClient implements ArtifactBackedExecutionCl
     context: ArtifactBackedExecutionContext,
     sessionId: string,
   ): Promise<ArtifactIngestionReceipt> {
-    const response = await this.fetcher(
+    const response = await this.fetchWithRetry(
       `${this.baseUrl}/api/worker/v1/artifacts/sessions/${sessionId}/finalize`,
       {
         method: "POST",
@@ -271,6 +359,7 @@ export class HttpControlledCollectionClient implements ArtifactBackedExecutionCl
           "x-lease-id": context.lease.id,
         },
       },
+      true,
     );
     if (!response.ok) {
       throw new WorkerControlPlaneHttpError(
