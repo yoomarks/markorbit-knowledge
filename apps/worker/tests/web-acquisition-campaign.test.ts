@@ -4,6 +4,7 @@ import {
   discoverWebAcquisitionInventory,
   parseWebAcquisitionCampaignManifest,
   runWebAcquisitionCampaign,
+  selectWebAcquisitionBatch,
   type WebAcquisitionCampaignManifestV1,
 } from "../src/web-acquisition-campaign";
 
@@ -390,6 +391,17 @@ describe("bounded sitemap ordering", () => {
       "https://example.com/trademarks/apply",
     ]);
     expect(inventory.eligibleCount).toBe(3);
+  });
+});
+
+describe("catalog batch exhaustion", () => {
+  it("does not fall back to the first discovery batch after the durable catalog is exhausted", () => {
+    const discoveredFirstBatch = [
+      "https://example.com/trademarks/a",
+      "https://example.com/trademarks/b",
+    ];
+    expect(selectWebAcquisitionBatch(discoveredFirstBatch, [])).toEqual([]);
+    expect(selectWebAcquisitionBatch(discoveredFirstBatch, null)).toEqual(discoveredFirstBatch);
   });
 });
 

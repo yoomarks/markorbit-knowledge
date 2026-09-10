@@ -531,6 +531,13 @@ function publicInventory(inventory: WebAcquisitionInventoryInternal): WebAcquisi
   return publicView;
 }
 
+export function selectWebAcquisitionBatch(
+  discoveredBatch: readonly string[],
+  catalogBatch: readonly string[] | null,
+): string[] {
+  return catalogBatch === null ? [...discoveredBatch] : [...catalogBatch];
+}
+
 function classMetadata(source: WebAcquisitionCampaignSourceV1) {
   return source.sourceClass === "OFFICIAL_AUTHORITY"
     ? { category: "OFFICIAL_AUTHORITY", authorityLevel: "PRIMARY_OFFICIAL", tag: "official" }
@@ -706,6 +713,7 @@ async function ensureCampaignSource(
   manifest: WebAcquisitionCampaignManifestV1,
   source: WebAcquisitionCampaignSourceV1,
   inventory: WebAcquisitionInventoryV1,
+  preserveExistingBatch = false,
 ): Promise<string> {
   const slug = sourceSlug(manifest.campaignId, source.key);
   const metadata = classMetadata(source);
@@ -763,6 +771,7 @@ async function ensureCampaignSource(
       throw new Error(`Existing Source ${slug} drifted from the governed campaign identity`);
     }
     const sourceId = requiredString(candidate.id, "source.id");
+    if (preserveExistingBatch) return sourceId;
     const connectorNeedsUpgrade =
       candidateConnector?.connectorId !== CAMPAIGN_CONNECTOR_ID ||
       candidateConnector?.version !== CAMPAIGN_CONNECTOR_VERSION;
@@ -789,6 +798,9 @@ async function ensureCampaignSource(
     return sourceId;
   }
 
+  if (preserveExistingBatch) {
+    throw new Error(`No existing Source ${slug} is available for an exhausted URL catalog`);
+  }
   const created = await client.request(
     "/api/sources",
     jsonPost({
@@ -819,6 +831,7 @@ async function ensureCampaignPlan(
   source: WebAcquisitionCampaignSourceV1,
   inventory: WebAcquisitionInventoryV1,
   sourceId: string,
+  preserveExistingBatch = false,
 ): Promise<string> {
   const name = planName(manifest.campaignId, source.key);
   const includePatterns =
@@ -863,6 +876,7 @@ async function ensureCampaignPlan(
     if (plan?.name !== name) continue;
     const currentExtensions = record(plan.extensions);
     const planId = requiredString(plan.id, "plan.id");
+    if (preserveExistingBatch) return planId;
     if (Object.entries(extensions).some(([key, value]) => currentExtensions?.[key] !== value)) {
       await client.request(
         `/api/plans/${encodeURIComponent(planId)}`,
@@ -880,6 +894,9 @@ async function ensureCampaignPlan(
     return planId;
   }
 
+  if (preserveExistingBatch) {
+    throw new Error(`No existing initial plan ${name} is available for an exhausted URL catalog`);
+  }
   const created = await client.request(
     "/api/plans",
     jsonPost({
@@ -904,6 +921,7 @@ async function ensureCampaignRefreshPlan(
   source: WebAcquisitionCampaignSourceV1,
   inventory: WebAcquisitionInventoryV1,
   sourceId: string,
+  preserveExistingBatch = false,
 ): Promise<string> {
   const name = refreshPlanName(manifest.campaignId, source.key);
   const refreshIntervalSeconds =
@@ -949,6 +967,7 @@ async function ensureCampaignRefreshPlan(
     if (plan?.name !== name) continue;
     const currentExtensions = record(plan.extensions);
     const planId = requiredString(plan.id, "refreshPlan.id");
+    if (preserveExistingBatch) return planId;
     const currentSchedule = record(plan.schedule);
     const adaptiveWasEnabled = currentExtensions?.["x-markorbit-adaptive-refresh-cadence"] === true;
     const baselineChanged =
@@ -988,6 +1007,9 @@ async function ensureCampaignRefreshPlan(
     return planId;
   }
 
+  if (preserveExistingBatch) {
+    throw new Error(`No existing refresh plan ${name} is available for an exhausted URL catalog`);
+  }
   const created = await client.request(
     "/api/plans",
     jsonPost({
@@ -1339,22 +1361,37 @@ export async function runWebAcquisitionCampaign(
         : discoveredInventory.selectedUrls;
       const inventory: WebAcquisitionInventoryInternal = {
         ...discoveredInventory,
-        selectedUrls: nextBatch.length > 0 ? nextBatch : discoveredInventory.selectedUrls,
+        selectedUrls: urlCatalog ? nextBatch : discoveredInventory.selectedUrls,
       };
-      const sourceId = await ensureCampaignSource(client, manifest, source, inventory);
+      const preserveExistingBatch = Boolean(urlCatalog && inventory.selectedUrls.length === 0);
+      const sourceId = await ensureCampaignSource(
+        client,
+        manifest,
+        source,
+        inventory,
+        preserveExistingBatch,
+      );
       urlCatalog?.bindSource({
         workspaceId: manifest.workspaceId,
         campaignId: manifest.campaignId,
         sourceKey: source.key,
         sourceId,
       });
-      const planId = await ensureCampaignPlan(client, manifest, source, inventory, sourceId);
+      const planId = await ensureCampaignPlan(
+        client,
+        manifest,
+        source,
+        inventory,
+        sourceId,
+        preserveExistingBatch,
+      );
       const refreshPlanId = await ensureCampaignRefreshPlan(
         client,
         manifest,
         source,
         inventory,
         sourceId,
+        preserveExistingBatch,
       );
       const conversionProfileId = await ensureCampaignConversionProfile(
         client,
@@ -1374,13 +1411,15 @@ export async function runWebAcquisitionCampaign(
     },
   );
 
-  const preparedWorker = await ensureCampaignWorker(client, manifest, options.dispatch === true);
-  const worker = options.dispatch ? preparedWorker : null;
-  if (options.dispatch) {
+  const dispatchable = prepared.filter((item) => item.inventory.selectedUrls.length > 0);
+  const shouldDispatch = options.dispatch === true && dispatchable.length > 0;
+  const preparedWorker = await ensureCampaignWorker(client, manifest, shouldDispatch);
+  const worker = shouldDispatch ? preparedWorker : null;
+  if (shouldDispatch) {
     if (!worker) throw new Error("Campaign Worker provisioning did not return a Worker");
     await ensureCampaignConversionCapability(client, manifest, worker.workerId);
     const runKey = options.runKey?.trim() || new Date().toISOString().slice(0, 10);
-    await mapWithLimit(prepared, manifest.globalConcurrency, async (item) => {
+    await mapWithLimit(dispatchable, manifest.globalConcurrency, async (item) => {
       item.runId = await dispatchCampaignPlan(
         client,
         manifest,
@@ -1409,7 +1448,7 @@ export async function runWebAcquisitionCampaign(
     workspaceId: manifest.workspaceId,
     workerId: worker?.workerId ?? null,
     workerCredential: worker?.credential ?? null,
-    recommendedWorkerProcesses: options.dispatch ? manifest.globalConcurrency : 0,
+    recommendedWorkerProcesses: shouldDispatch ? manifest.globalConcurrency : 0,
     sources: prepared,
   };
 }
