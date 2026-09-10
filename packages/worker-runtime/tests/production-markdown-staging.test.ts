@@ -149,6 +149,23 @@ describe("production Markdown staging converter", () => {
     expect(markdown).not.toContain("\n---\n\n---\n");
   });
 
+  it("treats a leading Markdown thematic rule as body instead of source frontmatter", () => {
+    const sourceText = "---\n# Hero\n\nBody paragraph.\n---\n\nMore content.\n";
+    const source = new TextEncoder().encode(sourceText);
+    const sourceSha = createHash("sha256").update(source).digest("hex");
+    const thematicContext = context();
+    thematicContext.inputGrant.expectedBytes = source.byteLength;
+    thematicContext.inputGrant.expectedSha256 = sourceSha;
+    thematicContext.documentMetadata.inputSha256 = sourceSha;
+
+    const markdown = new TextDecoder().decode(
+      convertProductionMarkdownToStaging(thematicContext, source),
+    );
+    expect(markdown).toContain(
+      `${canonicalMarkdownFrontmatter(thematicContext.documentMetadata)}${sourceText}`,
+    );
+  });
+
   it("rejects MIME, size, digest, metadata and exact Converter mismatches", () => {
     const wrongMime = context();
     wrongMime.inputGrant.expectedMime = "text/html";

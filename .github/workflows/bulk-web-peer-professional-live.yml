@@ -12,6 +12,8 @@ on:
       - apps/worker/src/verify-web-acquisition-campaign.ts
       - apps/worker/tests/web-acquisition-peer-professional.test.ts
       - apps/worker/package.json
+      - packages/worker-runtime/src/production-markdown-staging.ts
+      - packages/worker-runtime/tests/production-markdown-staging.test.ts
       - workers/crawl4ai/**
 
 permissions:
