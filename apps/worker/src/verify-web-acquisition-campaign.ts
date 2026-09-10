@@ -42,6 +42,7 @@ type CountRow = { source_id: string; count: number };
 type StatusRow = { id: string; source_id: string; status: string };
 type ConversionStatusRow = { source_id: string; status: string; count: number };
 type AttemptDocumentRow = { source_id: string; document_json: string };
+type VerificationDocumentRow = { source_id: string; document_json: string };
 
 export type CampaignVerification = {
   campaignId: string;
@@ -58,6 +59,7 @@ export type CampaignVerification = {
   currentRetrievalDocuments: number;
   conversionRuns: Record<string, number>;
   conversionFailureCodes: Record<string, number>;
+  stagingVerificationFailureCodes: Record<string, number>;
   collectionFailureCodes: Record<string, number>;
   backgroundConversionRuns: Record<string, number>;
   sources: Array<{
@@ -68,6 +70,7 @@ export type CampaignVerification = {
     retrievalDocuments: number;
     conversionRuns: Record<string, number>;
     conversionFailureCodes: Record<string, number>;
+    stagingVerificationFailureCodes: Record<string, number>;
     collectionFailureCodes: Record<string, number>;
     backgroundConversionRuns: Record<string, number>;
   }>;
@@ -93,6 +96,23 @@ function attemptFailureCode(documentJson: string): string {
       : "UNKNOWN";
   } catch {
     return "MALFORMED_ATTEMPT_DOCUMENT";
+  }
+}
+
+function stagingVerificationFailureCodes(documentJson: string): string[] {
+  try {
+    const parsed = JSON.parse(documentJson) as {
+      checks?: Array<{ code?: unknown; status?: unknown }>;
+    };
+    if (!Array.isArray(parsed.checks)) return ["MALFORMED_STAGING_VERIFICATION_EVIDENCE"];
+    const codes = parsed.checks
+      .filter((check) => check?.status === "FAIL")
+      .map((check) =>
+        typeof check.code === "string" && check.code ? check.code : "UNKNOWN_STAGING_CHECK",
+      );
+    return codes.length > 0 ? codes : ["UNKNOWN_STAGING_VERIFICATION_FAILURE"];
+  } catch {
+    return ["MALFORMED_STAGING_VERIFICATION_EVIDENCE"];
   }
 }
 
@@ -206,6 +226,28 @@ export function observeWebAcquisitionCampaign(
     failuresBySource.set(row.source_id, perSource);
   }
 
+  const failedVerificationRows = database
+    .prepare(
+      `SELECT r.source_id, v.document_json
+       FROM staging_document_verifications v
+       JOIN conversion_runs r ON r.id = v.conversion_run_id
+       JOIN raw_artifacts raw ON raw.id = r.raw_artifact_id
+       WHERE r.conversion_profile_id IN (${placeholders(profileIds)})
+         AND raw.run_id IN (${placeholders(runIds)})
+         AND v.outcome = 'FAIL'`,
+    )
+    .all(...profileIds, ...runIds) as unknown as VerificationDocumentRow[];
+  const stagingVerificationFailureCodeCounts: Record<string, number> = {};
+  const stagingFailuresBySource = new Map<string, Record<string, number>>();
+  for (const row of failedVerificationRows) {
+    const perSource = stagingFailuresBySource.get(row.source_id) ?? {};
+    for (const code of stagingVerificationFailureCodes(row.document_json)) {
+      increment(stagingVerificationFailureCodeCounts, code);
+      increment(perSource, code);
+    }
+    stagingFailuresBySource.set(row.source_id, perSource);
+  }
+
   const failedCollectionAttemptRows = database
     .prepare(
       `SELECT r.source_id, a.document_json
@@ -233,6 +275,7 @@ export function observeWebAcquisitionCampaign(
     retrievalDocuments: retrievalBySource.get(source.sourceId) ?? 0,
     conversionRuns: conversionBySource.get(source.sourceId) ?? {},
     conversionFailureCodes: failuresBySource.get(source.sourceId) ?? {},
+    stagingVerificationFailureCodes: stagingFailuresBySource.get(source.sourceId) ?? {},
     collectionFailureCodes: collectionFailuresBySource.get(source.sourceId) ?? {},
     backgroundConversionRuns: backgroundBySource.get(source.sourceId) ?? {},
   }));
@@ -258,6 +301,7 @@ export function observeWebAcquisitionCampaign(
     ),
     conversionRuns,
     conversionFailureCodes,
+    stagingVerificationFailureCodes: stagingVerificationFailureCodeCounts,
     collectionFailureCodes,
     backgroundConversionRuns,
     sources,
