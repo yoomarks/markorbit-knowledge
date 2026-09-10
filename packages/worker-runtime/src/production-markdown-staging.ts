@@ -168,16 +168,40 @@ type LeadingFrontmatter = {
   body: string;
 };
 
+function isMergeableSourceFrontmatter(yaml: string): boolean {
+  let fields = 0;
+  for (const line of yaml.split("\n")) {
+    if (!line.trim() || line.trimStart().startsWith("#")) continue;
+    const indent = line.length - line.trimStart().length;
+    if (indent % 2 !== 0 || indent > 4) return false;
+    if (!/^[A-Za-z0-9_.-]+:(?:\s.*)?$/u.test(line.trim())) return false;
+    fields += 1;
+  }
+  return fields > 0;
+}
+
+function startsLikeSourceFrontmatter(value: string): boolean {
+  for (const line of value.split("\n")) {
+    if (!line.trim() || line.trimStart().startsWith("#")) continue;
+    return /^[A-Za-z0-9_.-]+:(?:\s.*)?$/u.test(line.trim());
+  }
+  return false;
+}
+
 function splitLeadingFrontmatter(markdown: string): LeadingFrontmatter {
   if (!markdown.startsWith("---\n")) return { yaml: null, body: markdown };
   const closing = markdown.indexOf("\n---\n", 4);
   if (closing < 0) {
-    throw new Error("MARKDOWN_STAGING_FRONTMATTER_UNTERMINATED");
+    if (startsLikeSourceFrontmatter(markdown.slice(4))) {
+      throw new Error("MARKDOWN_STAGING_FRONTMATTER_UNTERMINATED");
+    }
+    return { yaml: null, body: markdown };
   }
   const yaml = markdown.slice(4, closing);
   if (/^markorbit\s*:/mu.test(yaml)) {
     throw new Error("MARKDOWN_STAGING_RESERVED_FRONTMATTER_CONFLICT");
   }
+  if (!isMergeableSourceFrontmatter(yaml)) return { yaml: null, body: markdown };
   return { yaml, body: markdown.slice(closing + 5).replace(/^\n/, "") };
 }
 
