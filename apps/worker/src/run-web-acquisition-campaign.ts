@@ -5,6 +5,10 @@ import {
   parseWebAcquisitionCampaignManifest,
   runWebAcquisitionCampaign,
 } from "./web-acquisition-campaign";
+import {
+  OFFICIAL_SCALE_DOMAIN_COUNT,
+  buildOfficialScaleCampaignManifest,
+} from "./web-acquisition-official-scale-campaign";
 
 function argument(name: string): string | undefined {
   const prefix = `${name}=`;
@@ -26,10 +30,19 @@ async function writeJson(path: string, value: unknown): Promise<void> {
 
 async function main(): Promise<void> {
   const manifestPath = argument("--manifest");
-  if (!manifestPath) throw new Error("--manifest=<path> is required");
+  const officialScale = process.argv.includes("--official-scale");
+  if (Boolean(manifestPath) === officialScale) {
+    throw new Error("Provide exactly one of --manifest=<path> or --official-scale");
+  }
   const invocationRoot = process.env.INIT_CWD?.trim() || process.cwd();
-  const raw = await readFile(resolve(invocationRoot, manifestPath), "utf8");
-  const manifest = parseWebAcquisitionCampaignManifest(JSON.parse(raw));
+  const manifest = officialScale
+    ? buildOfficialScaleCampaignManifest(
+        argument("--workspace") ?? "",
+        Number(argument("--domain-count") ?? OFFICIAL_SCALE_DOMAIN_COUNT),
+      )
+    : parseWebAcquisitionCampaignManifest(
+        JSON.parse(await readFile(resolve(invocationRoot, manifestPath!), "utf8")),
+      );
   const outputPath = argument("--output");
   const credentialOutput = argument("--credential-output");
   const discoverOnly = process.argv.includes("--discover-only");

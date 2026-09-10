@@ -1238,35 +1238,37 @@ export async function runWebAcquisitionCampaign(
   const inventories = await mapWithLimit(manifest.sources, manifest.globalConcurrency, (source) =>
     discoverWebAcquisitionInventory(source, fetchImpl),
   );
-  const prepared: WebAcquisitionCampaignResultV1["sources"] = [];
-  for (let index = 0; index < manifest.sources.length; index += 1) {
-    const source = manifest.sources[index]!;
-    const inventory = inventories[index]!;
-    const sourceId = await ensureCampaignSource(client, manifest, source, inventory);
-    const planId = await ensureCampaignPlan(client, manifest, source, inventory, sourceId);
-    const refreshPlanId = await ensureCampaignRefreshPlan(
-      client,
-      manifest,
-      source,
-      inventory,
-      sourceId,
-    );
-    const conversionProfileId = await ensureCampaignConversionProfile(
-      client,
-      manifest,
-      source,
-      sourceId,
-    );
-    prepared.push({
-      sourceKey: source.key,
-      sourceId,
-      planId,
-      refreshPlanId,
-      runId: null,
-      conversionProfileId,
-      inventory,
-    });
-  }
+  const prepared = await mapWithLimit(
+    manifest.sources,
+    manifest.globalConcurrency,
+    async (source, index): Promise<WebAcquisitionCampaignResultV1["sources"][number]> => {
+      const inventory = inventories[index]!;
+      const sourceId = await ensureCampaignSource(client, manifest, source, inventory);
+      const planId = await ensureCampaignPlan(client, manifest, source, inventory, sourceId);
+      const refreshPlanId = await ensureCampaignRefreshPlan(
+        client,
+        manifest,
+        source,
+        inventory,
+        sourceId,
+      );
+      const conversionProfileId = await ensureCampaignConversionProfile(
+        client,
+        manifest,
+        source,
+        sourceId,
+      );
+      return {
+        sourceKey: source.key,
+        sourceId,
+        planId,
+        refreshPlanId,
+        runId: null,
+        conversionProfileId,
+        inventory,
+      };
+    },
+  );
 
   const preparedWorker = await ensureCampaignWorker(client, manifest, options.dispatch === true);
   const worker = options.dispatch ? preparedWorker : null;
