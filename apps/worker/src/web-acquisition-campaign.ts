@@ -2,8 +2,12 @@ import { createHash } from "node:crypto";
 
 export const WEB_ACQUISITION_CAMPAIGN_VERSION = "1.0" as const;
 export const CAMPAIGN_CONNECTOR_ID = "crawl4ai-web";
-export const CAMPAIGN_CONNECTOR_VERSION = "1.2.0";
+export const CAMPAIGN_CONNECTOR_VERSION = "1.3.0";
 export const CAMPAIGN_MAX_START_URLS = 500;
+const DEFAULT_REFRESH_INTERVAL_SECONDS: Record<WebAcquisitionSourceClass, number> = {
+  OFFICIAL_AUTHORITY: 86_400,
+  PEER_PROFESSIONAL: 604_800,
+};
 
 export type WebAcquisitionSourceClass = "OFFICIAL_AUTHORITY" | "PEER_PROFESSIONAL";
 export type WebAcquisitionDiscoveryMode = "SITEMAP" | "LINK_CRAWL" | "EXACT_URL_LIST";
@@ -27,6 +31,7 @@ export type WebAcquisitionCampaignSourceV1 = {
   maxPages: number;
   maxDepth: number;
   rateLimitPerMinute: number;
+  refreshIntervalSeconds?: number;
   renderJavascript?: boolean;
 };
 export type WebAcquisitionCampaignManifestV1 = {
@@ -64,6 +69,7 @@ export type WebAcquisitionCampaignResultV1 = {
     sourceKey: string;
     sourceId: string;
     planId: string;
+    refreshPlanId: string;
     runId: string | null;
     conversionProfileId: string;
     inventory: WebAcquisitionInventoryV1;
@@ -186,6 +192,7 @@ export function parseWebAcquisitionCampaignManifest(
       requiredString(value.baseUrl, `sources[${index}].baseUrl`),
     );
     const mode = discoveryMode(discovery.mode, `sources[${index}].discovery.mode`);
+    const parsedSourceClass = sourceClass(value.sourceClass, `sources[${index}].sourceClass`);
     const exactUrls = stringArray(discovery.exactUrls, `sources[${index}].discovery.exactUrls`);
     if (mode === "EXACT_URL_LIST" && exactUrls.length === 0) {
       throw new Error(`sources[${index}] EXACT_URL_LIST requires exactUrls`);
@@ -193,7 +200,7 @@ export function parseWebAcquisitionCampaignManifest(
     return {
       key,
       name: requiredString(value.name, `sources[${index}].name`),
-      sourceClass: sourceClass(value.sourceClass, `sources[${index}].sourceClass`),
+      sourceClass: parsedSourceClass,
       jurisdictions: stringArray(value.jurisdictions, `sources[${index}].jurisdictions`),
       languages: stringArray(value.languages, `sources[${index}].languages`),
       baseUrl,
@@ -218,6 +225,12 @@ export function parseWebAcquisitionCampaignManifest(
         `sources[${index}].rateLimitPerMinute`,
         1,
         600,
+      ),
+      refreshIntervalSeconds: integer(
+        value.refreshIntervalSeconds ?? DEFAULT_REFRESH_INTERVAL_SECONDS[parsedSourceClass],
+        `sources[${index}].refreshIntervalSeconds`,
+        300,
+        2_592_000,
       ),
       renderJavascript: value.renderJavascript === true,
     };
@@ -498,6 +511,10 @@ function planName(campaignId: string, key: string): string {
   return `Bulk Web ${campaignId} — ${key}`;
 }
 
+function refreshPlanName(campaignId: string, key: string): string {
+  return `Bulk Web ${campaignId} Refresh — ${key}`;
+}
+
 function jsonPost(body: unknown, headers: Record<string, string> = {}): RequestInit {
   return {
     method: "POST",
@@ -609,8 +626,14 @@ async function ensureCampaignConnector(
       version: CAMPAIGN_CONNECTOR_VERSION,
       sourceTypes: ["WEB"],
       runtime: "PYTHON",
-      capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT", "FETCH_ATTACHMENTS"],
-      supportedJobTypes: ["WEB_CRAWL"],
+      capabilities: [
+        "COLLECT",
+        "CHECK_UPDATE",
+        "DEEP_CRAWL",
+        "RENDER_JAVASCRIPT",
+        "FETCH_ATTACHMENTS",
+      ],
+      supportedJobTypes: ["WEB_CRAWL", "PAGE_UPDATE_CHECK"],
       configurationSchema: {
         type: "object",
         additionalProperties: false,
@@ -691,10 +714,12 @@ async function ensureCampaignSource(
     const candidate = record(item);
     if (candidate?.slug !== slug) continue;
     const extensions = record(candidate.extensions);
+    const candidateConnector = record(candidate.connector);
     if (
       candidate.canonicalUri !== source.baseUrl ||
       candidate.category !== metadata.category ||
       candidate.authorityLevel !== metadata.authorityLevel ||
+      (candidateConnector !== null && candidateConnector.connectorId !== CAMPAIGN_CONNECTOR_ID) ||
       extensions?.["x-markorbit-campaign-id"] !== manifest.campaignId ||
       extensions?.["x-markorbit-campaign-source-key"] !== source.key ||
       extensions?.["x-markorbit-source-class"] !== source.sourceClass
@@ -702,7 +727,13 @@ async function ensureCampaignSource(
       throw new Error(`Existing Source ${slug} drifted from the governed campaign identity`);
     }
     const sourceId = requiredString(candidate.id, "source.id");
-    if (Object.entries(campaignExtensions).some(([key, value]) => extensions?.[key] !== value)) {
+    const connectorNeedsUpgrade =
+      candidateConnector?.connectorId !== CAMPAIGN_CONNECTOR_ID ||
+      candidateConnector?.version !== CAMPAIGN_CONNECTOR_VERSION;
+    if (
+      connectorNeedsUpgrade ||
+      Object.entries(campaignExtensions).some(([key, value]) => extensions?.[key] !== value)
+    ) {
       await client.request(
         `/api/sources/${encodeURIComponent(sourceId)}`,
         jsonPatch({
@@ -710,6 +741,7 @@ async function ensureCampaignSource(
           name: source.name,
           jurisdictions: source.jurisdictions,
           languages: source.languages,
+          connector: { connectorId: CAMPAIGN_CONNECTOR_ID, version: CAMPAIGN_CONNECTOR_VERSION },
           connectorConfig,
           entrypoints,
           tags,
@@ -779,6 +811,7 @@ async function ensureCampaignPlan(
   const extensions = {
     "x-markorbit-campaign-id": manifest.campaignId,
     "x-markorbit-campaign-source-key": source.key,
+    "x-markorbit-plan-role": "INITIAL_COLLECTION",
     "x-markorbit-inventory-sha256": inventory.inventorySha256,
     "x-markorbit-plan-policy-sha256": planPolicySha256,
     "x-markorbit-plan-output-sha256": planOutputSha256,
@@ -794,11 +827,7 @@ async function ensureCampaignPlan(
     if (plan?.name !== name) continue;
     const currentExtensions = record(plan.extensions);
     const planId = requiredString(plan.id, "plan.id");
-    if (
-      currentExtensions?.["x-markorbit-inventory-sha256"] !== inventory.inventorySha256 ||
-      currentExtensions?.["x-markorbit-plan-policy-sha256"] !== planPolicySha256 ||
-      currentExtensions?.["x-markorbit-plan-output-sha256"] !== planOutputSha256
-    ) {
+    if (Object.entries(extensions).some(([key, value]) => currentExtensions?.[key] !== value)) {
       await client.request(
         `/api/plans/${encodeURIComponent(planId)}`,
         jsonPatch({
@@ -832,6 +861,92 @@ async function ensureCampaignPlan(
   const createdRecord = record(record(created.body)?.plan);
   return requiredString(record(createdRecord?.plan)?.id, "plan.id");
 }
+
+async function ensureCampaignRefreshPlan(
+  client: CampaignControlPlaneClient,
+  manifest: WebAcquisitionCampaignManifestV1,
+  source: WebAcquisitionCampaignSourceV1,
+  inventory: WebAcquisitionInventoryV1,
+  sourceId: string,
+): Promise<string> {
+  const name = refreshPlanName(manifest.campaignId, source.key);
+  const refreshIntervalSeconds =
+    source.refreshIntervalSeconds ?? DEFAULT_REFRESH_INTERVAL_SECONDS[source.sourceClass];
+  const includePatterns =
+    source.includePatterns && source.includePatterns.length > 0
+      ? source.includePatterns
+      : [`${source.baseUrl.replace(/\/$/u, "")}*`];
+  const linkCrawlRefresh = inventory.modeUsed === "LINK_CRAWL";
+  const policy = {
+    includePatterns,
+    excludePatterns: source.excludePatterns ?? [],
+    maxDepth: linkCrawlRefresh ? source.maxDepth : 0,
+    maxItems: linkCrawlRefresh ? source.maxPages : inventory.selectedUrls.length,
+    renderJavascript: source.renderJavascript === true,
+    fetchAttachments: false,
+    respectRobots: true,
+    rateLimitPerMinute: source.rateLimitPerMinute,
+    timeoutSeconds: 60,
+    retry: { maxAttempts: 2, backoffSeconds: 10 },
+    locale: source.languages[0],
+  };
+  const output = { artifactKinds: ["MARKDOWN"] };
+  const planPolicySha256 = stableObjectHash(policy);
+  const planOutputSha256 = stableObjectHash(output);
+  const extensions = {
+    "x-markorbit-campaign-id": manifest.campaignId,
+    "x-markorbit-campaign-source-key": source.key,
+    "x-markorbit-plan-role": "REFRESH_WATCH",
+    "x-markorbit-inventory-sha256": inventory.inventorySha256,
+    "x-markorbit-plan-policy-sha256": planPolicySha256,
+    "x-markorbit-plan-output-sha256": planOutputSha256,
+    "x-markorbit-refresh-interval-seconds": refreshIntervalSeconds,
+  };
+  const listed = await client.request(
+    `/api/plans?sourceId=${encodeURIComponent(sourceId)}&limit=100`,
+    {},
+    manifest.workspaceId,
+  );
+  for (const item of array(record(listed.body)?.items)) {
+    const plan = record(record(item)?.plan);
+    if (plan?.name !== name) continue;
+    const currentExtensions = record(plan.extensions);
+    const planId = requiredString(plan.id, "refreshPlan.id");
+    if (Object.entries(extensions).some(([key, value]) => currentExtensions?.[key] !== value)) {
+      await client.request(
+        `/api/plans/${encodeURIComponent(planId)}`,
+        jsonPatch({
+          expectedUpdatedAt: requiredString(plan.updatedAt, "refreshPlan.updatedAt"),
+          schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: refreshIntervalSeconds },
+          priority: source.sourceClass === "OFFICIAL_AUTHORITY" ? "HIGH" : "NORMAL",
+          policy,
+          output,
+          extensions: { ...currentExtensions, ...extensions },
+        }),
+        manifest.workspaceId,
+      );
+    }
+    return planId;
+  }
+
+  const created = await client.request(
+    "/api/plans",
+    jsonPost({
+      sourceId,
+      name,
+      status: "ACTIVE",
+      schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: refreshIntervalSeconds },
+      priority: source.sourceClass === "OFFICIAL_AUTHORITY" ? "HIGH" : "NORMAL",
+      policy,
+      output,
+      extensions,
+    }),
+    manifest.workspaceId,
+  );
+  const createdRecord = record(record(created.body)?.plan);
+  return requiredString(record(createdRecord?.plan)?.id, "refreshPlan.id");
+}
+
 const MARKDOWN_CONVERTER = { converterId: "builtin-markdown-staging", version: "1.0.0" } as const;
 
 async function ensureMarkdownConverter(
@@ -935,7 +1050,8 @@ function capabilityId(): string {
 async function ensureCampaignWorker(
   client: CampaignControlPlaneClient,
   manifest: WebAcquisitionCampaignManifestV1,
-): Promise<{ workerId: string; credential: string | null }> {
+  createIfMissing: boolean,
+): Promise<{ workerId: string; credential: string | null } | null> {
   const label = `bulk-web-${manifest.campaignId}`;
   const listed = await client.request(
     `/api/workers?label=${encodeURIComponent(label)}&limit=100`,
@@ -945,25 +1061,67 @@ async function ensureCampaignWorker(
   for (const item of array(record(listed.body)?.items)) {
     const worker = record(record(item)?.worker);
     if (!worker) continue;
-    if (Number(worker.maxConcurrency) < manifest.globalConcurrency) {
+    if (createIfMissing && Number(worker.maxConcurrency) < manifest.globalConcurrency) {
       throw new Error(
         `Existing campaign Worker concurrency is below ${manifest.globalConcurrency}`,
       );
     }
+    const desiredBinding = {
+      connectorId: CAMPAIGN_CONNECTOR_ID,
+      version: CAMPAIGN_CONNECTOR_VERSION,
+      capabilities: [
+        "COLLECT",
+        "CHECK_UPDATE",
+        "DEEP_CRAWL",
+        "RENDER_JAVASCRIPT",
+        "FETCH_ATTACHMENTS",
+      ],
+    };
+    const currentJobTypes = array(worker.supportedJobTypes);
+    const currentBindings = array(worker.connectorBindings);
+    const currentCampaignBinding = currentBindings
+      .map((binding) => record(binding))
+      .find((binding) => binding?.connectorId === CAMPAIGN_CONNECTOR_ID);
+    const bindingCapabilities = array(currentCampaignBinding?.capabilities);
+    const needsRefreshUpgrade =
+      !currentJobTypes.includes("PAGE_UPDATE_CHECK") ||
+      currentCampaignBinding?.version !== CAMPAIGN_CONNECTOR_VERSION ||
+      !bindingCapabilities.includes("CHECK_UPDATE");
+    if (needsRefreshUpgrade) {
+      const otherBindings = currentBindings.filter(
+        (binding) => record(binding)?.connectorId !== CAMPAIGN_CONNECTOR_ID,
+      );
+      await client.request(
+        `/api/workers/${encodeURIComponent(requiredString(worker.id, "worker.id"))}`,
+        jsonPatch({
+          expectedUpdatedAt: requiredString(worker.updatedAt, "worker.updatedAt"),
+          supportedJobTypes: [...new Set([...currentJobTypes, "WEB_CRAWL", "PAGE_UPDATE_CHECK"])],
+          connectorBindings: [...otherBindings, desiredBinding],
+        }),
+        manifest.workspaceId,
+      );
+    }
     return { workerId: requiredString(worker.id, "worker.id"), credential: null };
   }
+  if (!createIfMissing) return null;
   const created = await client.request(
     "/api/workers",
     jsonPost({
       displayName: `Bulk Web Acquisition — ${manifest.name}`,
       desiredState: "ACTIVE",
       runtime: { runtimeId: "crawl4ai-worker", version: "1.0.0" },
-      supportedJobTypes: ["WEB_CRAWL"],
+      supportedJobTypes: ["WEB_CRAWL", "PAGE_UPDATE_CHECK"],
       connectorBindings: [
         {
           connectorId: CAMPAIGN_CONNECTOR_ID,
           version: CAMPAIGN_CONNECTOR_VERSION,
-          capabilities: ["COLLECT", "DEEP_CRAWL", "RENDER_JAVASCRIPT", "FETCH_ATTACHMENTS"],
+          capabilities: [
+            "COLLECT",
+            "CHECK_UPDATE",
+            "DEEP_CRAWL",
+            "RENDER_JAVASCRIPT",
+            "FETCH_ATTACHMENTS",
+          ],
         },
       ],
       maxConcurrency: manifest.globalConcurrency,
@@ -1086,6 +1244,13 @@ export async function runWebAcquisitionCampaign(
     const inventory = inventories[index]!;
     const sourceId = await ensureCampaignSource(client, manifest, source, inventory);
     const planId = await ensureCampaignPlan(client, manifest, source, inventory, sourceId);
+    const refreshPlanId = await ensureCampaignRefreshPlan(
+      client,
+      manifest,
+      source,
+      inventory,
+      sourceId,
+    );
     const conversionProfileId = await ensureCampaignConversionProfile(
       client,
       manifest,
@@ -1096,15 +1261,17 @@ export async function runWebAcquisitionCampaign(
       sourceKey: source.key,
       sourceId,
       planId,
+      refreshPlanId,
       runId: null,
       conversionProfileId,
       inventory,
     });
   }
 
-  let worker: { workerId: string; credential: string | null } | null = null;
+  const preparedWorker = await ensureCampaignWorker(client, manifest, options.dispatch === true);
+  const worker = options.dispatch ? preparedWorker : null;
   if (options.dispatch) {
-    worker = await ensureCampaignWorker(client, manifest);
+    if (!worker) throw new Error("Campaign Worker provisioning did not return a Worker");
     await ensureCampaignConversionCapability(client, manifest, worker.workerId);
     const runKey = options.runKey?.trim() || new Date().toISOString().slice(0, 10);
     await mapWithLimit(prepared, manifest.globalConcurrency, async (item) => {

@@ -337,6 +337,9 @@ export type Crawl4AiSubprocessAcquirerOptions = {
 
 function startUrls(context: ArtifactBackedExecutionContext): string[] {
   const entrypoints = context.job.sourceSnapshot.entrypoints.map((item) => item.uri);
+  if (context.job.jobType === "PAGE_UPDATE_CHECK" && entrypoints.length > 0) {
+    return [...new Set(entrypoints)].filter((item) => item.length > 0);
+  }
   const values = context.job.sourceSnapshot.canonicalUri
     ? [...entrypoints, context.job.sourceSnapshot.canonicalUri]
     : entrypoints;

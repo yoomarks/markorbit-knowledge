@@ -22,6 +22,11 @@ type RunRow = {
 type CountRow = { count: number };
 type StatusCountRow = { status: string; count: number };
 type FailureCountRow = { code: string | null; count: number };
+type ChangeAccountingRow = {
+  receipts: number;
+  observed: number | null;
+  changed: number | null;
+};
 
 export type WebAcquisitionCampaignProgress = {
   campaignId: string;
@@ -47,8 +52,8 @@ export type WebAcquisitionCampaignProgress = {
     duplicateDiscovery: number | null;
     unmaterialized: number | null;
     failed: null;
-    changed: null;
-    unchanged: null;
+    changed: number | null;
+    unchanged: number | null;
     detailedInventorySources: number;
     totalSources: number;
   };
@@ -66,7 +71,9 @@ export type WebAcquisitionCampaignProgress = {
   };
   refreshAccounting: {
     failedUrlAccountingAvailable: false;
-    changedUnchangedAvailable: false;
+    changedUnchangedAvailable: boolean;
+    accountedSources: number;
+    totalSources: number;
     note: string;
   };
   sourceClasses: Record<
@@ -96,6 +103,8 @@ export type WebAcquisitionCampaignProgress = {
     rawArtifactsCreated: number;
     normalizedDocumentsCreated: number;
     currentRetrievalDocuments: number;
+    changedUrls: number | null;
+    unchangedUrls: number | null;
     conversionRuns: Record<string, number>;
     collectionFailureCodes: Record<string, number>;
     conversionFailureCodes: Record<string, number>;
@@ -172,6 +181,32 @@ function collectionFailures(database: DatabaseSync, runId: string): Record<strin
   );
 }
 
+function changeAccounting(
+  database: DatabaseSync,
+  runId: string,
+): { changed: number; unchanged: number } | null {
+  const row = database
+    .prepare(
+      `SELECT COUNT(*) AS receipts,
+              SUM(CAST(json_extract(document_json, '$.receipt.itemsObserved') AS INTEGER)) AS observed,
+              SUM(
+                CASE
+                  WHEN json_extract(document_json, '$.receipt.metadataOnly') = 1 THEN 0
+                  ELSE COALESCE(json_array_length(json_extract(document_json, '$.receipt.artifactReceiptIds')), 0)
+                END
+              ) AS changed
+       FROM execution_attempts
+       WHERE run_id = ? AND status = 'COMPLETED'
+         AND json_type(document_json, '$.receipt.itemsObserved') IN ('integer', 'real')`,
+    )
+    .get(runId) as ChangeAccountingRow;
+  if (Number(row.receipts) === 0) return null;
+  const observed = Number(row.observed ?? 0);
+  const changed = Number(row.changed ?? 0);
+  if (changed > observed) return null;
+  return { changed, unchanged: observed - changed };
+}
+
 function conversionFailures(
   database: DatabaseSync,
   runId: string,
@@ -239,6 +274,17 @@ export function readWebAcquisitionCampaignProgress(
          FROM collection_runs
          WHERE workspace_id = ? AND source_id = ?
            AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-campaign-id') = ?
+           AND COALESCE(json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-plan-role'), 'INITIAL_COLLECTION') <> 'REFRESH_WATCH'
+         ORDER BY created_at DESC, id DESC LIMIT 1`,
+      )
+      .get(input.workspaceId, row.id, campaignId) as RunRow | undefined;
+    const refreshRun = database
+      .prepare(
+        `SELECT id, status, requested_at, updated_at
+         FROM collection_runs
+         WHERE workspace_id = ? AND source_id = ?
+           AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-campaign-id') = ?
+           AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-plan-role') = 'REFRESH_WATCH'
          ORDER BY created_at DESC, id DESC LIMIT 1`,
       )
       .get(input.workspaceId, row.id, campaignId) as RunRow | undefined;
@@ -246,6 +292,8 @@ export function readWebAcquisitionCampaignProgress(
     let fetchedUrls = 0;
     let rawArtifactsCreated = 0;
     let normalizedDocumentsCreated = 0;
+    let changedUrls: number | null = null;
+    let unchangedUrls: number | null = null;
     const currentRetrievalDocuments = count(
       database,
       `SELECT COUNT(*) AS count FROM retrieval_documents
@@ -285,6 +333,13 @@ export function readWebAcquisitionCampaignProgress(
       collectionFailureCodes = collectionFailures(database, run.id);
       conversionFailureCodes = conversionFailures(database, run.id, conversionProfileName);
     }
+    if (refreshRun?.status === "COMPLETED") {
+      const accounting = changeAccounting(database, refreshRun.id);
+      if (accounting) {
+        changedUrls = accounting.changed;
+        unchangedUrls = accounting.unchanged;
+      }
+    }
     sources.push({
       sourceId: row.id,
       sourceKey,
@@ -303,6 +358,8 @@ export function readWebAcquisitionCampaignProgress(
       rawArtifactsCreated,
       normalizedDocumentsCreated,
       currentRetrievalDocuments,
+      changedUrls,
+      unchangedUrls,
       conversionRuns,
       collectionFailureCodes,
       conversionFailureCodes,
@@ -324,6 +381,16 @@ export function readWebAcquisitionCampaignProgress(
     (sum, source) => sum + source.normalizedDocumentsCreated,
     0,
   );
+  const refreshAccounted = sources.filter(
+    (source) => source.changedUrls !== null && source.unchangedUrls !== null,
+  );
+  const allRefreshAccounted = sources.length > 0 && refreshAccounted.length === sources.length;
+  const totalChanged = allRefreshAccounted
+    ? refreshAccounted.reduce((sum, source) => sum + (source.changedUrls ?? 0), 0)
+    : null;
+  const totalUnchanged = allRefreshAccounted
+    ? refreshAccounted.reduce((sum, source) => sum + (source.unchangedUrls ?? 0), 0)
+    : null;
   const conversionRuns: Record<string, number> = {};
   const collectionFailureCodes: Record<string, number> = {};
   const conversionFailureCodes: Record<string, number> = {};
@@ -392,8 +459,8 @@ export function readWebAcquisitionCampaignProgress(
         : null,
       unmaterialized: remaining,
       failed: null,
-      changed: null,
-      unchanged: null,
+      changed: totalChanged,
+      unchanged: totalUnchanged,
       detailedInventorySources: detailed.length,
       totalSources: sources.length,
     },
@@ -412,8 +479,12 @@ export function readWebAcquisitionCampaignProgress(
     },
     refreshAccounting: {
       failedUrlAccountingAvailable: false,
-      changedUnchangedAvailable: false,
-      note: "Per-URL failures and changed/unchanged accounting require structured incremental execution evidence and are not inferred from domain-level failure or artifact counts.",
+      changedUnchangedAvailable: allRefreshAccounted,
+      accountedSources: refreshAccounted.length,
+      totalSources: sources.length,
+      note: allRefreshAccounted
+        ? "Changed/unchanged counts come from existing Worker receipt facts (items observed versus immutable artifact receipts); per-URL failure accounting remains unavailable."
+        : "Changed/unchanged totals stay unavailable until every campaign source has a completed refresh receipt; per-source evidence is exposed when present.",
     },
     sourceClasses,
     sources,

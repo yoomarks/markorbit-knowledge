@@ -61,6 +61,7 @@ describe("web acquisition campaign manifest", () => {
   it("validates bounded manifest limits and unique source keys", () => {
     const parsed = parseWebAcquisitionCampaignManifest(manifest());
     expect(parsed.sources[0]?.maxPages).toBe(10);
+    expect(parsed.sources[0]?.refreshIntervalSeconds).toBe(86_400);
     expect(() =>
       parseWebAcquisitionCampaignManifest({
         ...manifest(),
@@ -165,7 +166,7 @@ function controlPlaneFetch(calls: ControlPlaneCall[]): typeof fetch {
         { status: 200 },
       );
     }
-    if (url.includes("/api/connectors/crawl4ai-web/1.2.0")) return Response.json({});
+    if (url.includes("/api/connectors/crawl4ai-web/1.3.0")) return Response.json({});
     if (url.includes("/api/converters?") && method === "GET") {
       return Response.json({
         items: [{ manifest: { converterId: "builtin-markdown-staging", version: "1.0.0" } }],
@@ -177,8 +178,15 @@ function controlPlaneFetch(calls: ControlPlaneCall[]): typeof fetch {
     }
     if (url.includes("/api/plans?") && method === "GET") return Response.json({ items: [] });
     if (url.endsWith("/api/plans") && method === "POST") {
+      const refresh = typeof body?.name === "string" && body.name.includes(" Refresh — ");
       return Response.json(
-        { plan: { plan: { id: "pln_TEST0000000000000000000001" } } },
+        {
+          plan: {
+            plan: {
+              id: refresh ? "pln_TEST0000000000000000000002" : "pln_TEST0000000000000000000001",
+            },
+          },
+        },
         { status: 201 },
       );
     }
@@ -249,6 +257,7 @@ describe("bulk campaign orchestration", () => {
       sourceKey: "peer",
       sourceId: "src_TEST0000000000000000000001",
       planId: "pln_TEST0000000000000000000001",
+      refreshPlanId: "pln_TEST0000000000000000000002",
       runId: "run_TEST0000000000000000000001",
       conversionProfileId: "cvp_TEST0000000000000000000001",
     });
@@ -268,16 +277,74 @@ describe("bulk campaign orchestration", () => {
         "x-markorbit-inventory-error-count": 0,
       },
     });
-    const planPost = calls.find(
+    const planPosts = calls.filter(
       (call) => call.method === "POST" && call.url.endsWith("/api/plans"),
     );
-    expect(planPost?.body).toMatchObject({ output: { artifactKinds: ["MARKDOWN"] } });
+    expect(planPosts).toHaveLength(2);
+    const initialPlanPost = planPosts.find((call) =>
+      JSON.stringify(call.body).includes('"x-markorbit-plan-role":"INITIAL_COLLECTION"'),
+    );
+    const refreshPlanPost = planPosts.find((call) =>
+      JSON.stringify(call.body).includes('"x-markorbit-plan-role":"REFRESH_WATCH"'),
+    );
+    expect(initialPlanPost?.body).toMatchObject({
+      schedule: { mode: "MANUAL" },
+      output: { artifactKinds: ["MARKDOWN"] },
+    });
+    expect(refreshPlanPost?.body).toMatchObject({
+      schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 604_800 },
+      policy: { maxDepth: 0, maxItems: 1 },
+      output: { artifactKinds: ["MARKDOWN"] },
+    });
+    const workerPost = calls.find(
+      (call) => call.method === "POST" && call.url.endsWith("/api/workers"),
+    );
+    expect(workerPost?.body).toMatchObject({
+      supportedJobTypes: ["WEB_CRAWL", "PAGE_UPDATE_CHECK"],
+      connectorBindings: [
+        {
+          connectorId: "crawl4ai-web",
+          version: "1.3.0",
+          capabilities: expect.arrayContaining(["COLLECT", "CHECK_UPDATE"]),
+        },
+      ],
+    });
     const profilePost = calls.find(
       (call) => call.method === "POST" && call.url.endsWith("/api/conversion-profiles"),
     );
     expect(profilePost?.body).toMatchObject({ autoConvert: true, outputFormat: "MARKDOWN" });
     const runPost = calls.find((call) => call.method === "POST" && call.url.endsWith("/api/runs"));
     expect(runPost?.body).toEqual({ planId: "pln_TEST0000000000000000000001" });
+  });
+
+  it("re-crawls governed link-crawl coverage while keeping sitemap refreshes depth-zero", async () => {
+    const calls: ControlPlaneCall[] = [];
+    const linkManifest = manifest({
+      sources: [
+        {
+          ...manifest().sources[0]!,
+          discovery: { mode: "LINK_CRAWL" },
+          maxPages: 7,
+          maxDepth: 3,
+        },
+      ],
+    });
+
+    const result = await runWebAcquisitionCampaign(linkManifest, {
+      controlPlaneUrl: "http://control.test",
+      dispatch: false,
+      fetchImpl: controlPlaneFetch(calls),
+    });
+
+    expect(result.sources[0]?.inventory.modeUsed).toBe("LINK_CRAWL");
+    const refreshPlanPost = calls
+      .filter((call) => call.method === "POST" && call.url.endsWith("/api/plans"))
+      .find((call) =>
+        JSON.stringify(call.body).includes('"x-markorbit-plan-role":"REFRESH_WATCH"'),
+      );
+    expect(refreshPlanPost?.body).toMatchObject({
+      policy: { maxDepth: 3, maxItems: 7, fetchAttachments: false },
+    });
   });
 });
 
@@ -388,7 +455,7 @@ describe("repeat campaign inventory refresh", () => {
           { status: 200 },
         );
       }
-      if (url.includes("/api/connectors/crawl4ai-web/1.2.0")) return Response.json({});
+      if (url.includes("/api/connectors/crawl4ai-web/1.3.0")) return Response.json({});
       if (url.includes("/api/converters?") && method === "GET") {
         return Response.json({
           items: [{ manifest: { converterId: "builtin-markdown-staging", version: "1.0.0" } }],
@@ -403,6 +470,7 @@ describe("repeat campaign inventory refresh", () => {
               canonicalUri: "https://example.com/trademarks",
               category: "OFFICIAL_AUTHORITY",
               authorityLevel: "PRIMARY_OFFICIAL",
+              connector: { connectorId: "crawl4ai-web", version: "1.2.0" },
               updatedAt: "2026-09-08T00:00:00.000Z",
               extensions: {
                 "x-markorbit-campaign-id": "test-wave",
@@ -428,11 +496,22 @@ describe("repeat campaign inventory refresh", () => {
                 extensions: { "x-markorbit-inventory-sha256": "old-inventory" },
               },
             },
+            {
+              plan: {
+                id: "pln_TEST0000000000000000000002",
+                name: "Bulk Web test-wave Refresh — example",
+                updatedAt: "2026-09-08T00:00:00.000Z",
+                extensions: { "x-markorbit-inventory-sha256": "old-inventory" },
+              },
+            },
           ],
         });
       }
       if (url.endsWith("/api/plans/pln_TEST0000000000000000000001") && method === "PATCH") {
         return Response.json({ plan: { plan: { id: "pln_TEST0000000000000000000001" } } });
+      }
+      if (url.endsWith("/api/plans/pln_TEST0000000000000000000002") && method === "PATCH") {
+        return Response.json({ plan: { plan: { id: "pln_TEST0000000000000000000002" } } });
       }
       if (url.includes("/api/conversion-profiles?") && method === "GET") {
         return Response.json({
@@ -445,6 +524,30 @@ describe("repeat campaign inventory refresh", () => {
           ],
         });
       }
+      if (url.includes("/api/workers?label=") && method === "GET") {
+        return Response.json({
+          items: [
+            {
+              worker: {
+                id: "wrk_TEST0000000000000000000001",
+                updatedAt: "2026-09-08T00:00:00.000Z",
+                maxConcurrency: 1,
+                supportedJobTypes: ["WEB_CRAWL"],
+                connectorBindings: [
+                  {
+                    connectorId: "crawl4ai-web",
+                    version: "1.2.0",
+                    capabilities: ["COLLECT", "DEEP_CRAWL"],
+                  },
+                ],
+              },
+            },
+          ],
+        });
+      }
+      if (url.endsWith("/api/workers/wrk_TEST0000000000000000000001") && method === "PATCH") {
+        return Response.json({ view: { worker: { id: "wrk_TEST0000000000000000000001" } } });
+      }
       throw new Error(`unexpected ${method} ${url}`);
     }) as typeof fetch;
 
@@ -456,6 +559,7 @@ describe("repeat campaign inventory refresh", () => {
 
     expect(result.sources[0]?.sourceId).toBe("src_TEST0000000000000000000001");
     expect(result.sources[0]?.planId).toBe("pln_TEST0000000000000000000001");
+    expect(result.sources[0]?.refreshPlanId).toBe("pln_TEST0000000000000000000002");
     expect(calls.some((call) => call.method === "POST" && call.url.endsWith("/api/sources"))).toBe(
       false,
     );
@@ -467,6 +571,7 @@ describe("repeat campaign inventory refresh", () => {
     );
     expect(sourcePatch?.body).toMatchObject({
       expectedUpdatedAt: "2026-09-08T00:00:00.000Z",
+      connector: { connectorId: "crawl4ai-web", version: "1.3.0" },
       entrypoints: [{ uri: "https://example.com/trademarks/new-guide" }],
       extensions: {
         "x-markorbit-source-config-sha256": expect.any(String),
@@ -476,17 +581,41 @@ describe("repeat campaign inventory refresh", () => {
         "x-markorbit-inventory-error-count": 0,
       },
     });
-    const planPatch = calls.find(
+    const planPatches = calls.filter(
       (call) => call.method === "PATCH" && call.url.includes("/api/plans/"),
     );
-    expect(planPatch?.body).toMatchObject({
+    expect(planPatches).toHaveLength(2);
+    const initialPatch = planPatches.find((call) => call.url.endsWith("0000000001"));
+    const refreshPatch = planPatches.find((call) => call.url.endsWith("0000000002"));
+    expect(initialPatch?.body).toMatchObject({
       expectedUpdatedAt: "2026-09-08T00:00:00.000Z",
+      schedule: { mode: "MANUAL" },
       policy: { maxItems: 1, maxDepth: 0 },
       output: { artifactKinds: ["MARKDOWN"] },
       extensions: {
+        "x-markorbit-plan-role": "INITIAL_COLLECTION",
         "x-markorbit-plan-policy-sha256": expect.any(String),
         "x-markorbit-plan-output-sha256": expect.any(String),
       },
+    });
+    expect(refreshPatch?.body).toMatchObject({
+      schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 86_400 },
+      policy: { maxItems: 1, maxDepth: 0 },
+      extensions: { "x-markorbit-plan-role": "REFRESH_WATCH" },
+    });
+    const workerPatch = calls.find(
+      (call) => call.method === "PATCH" && call.url.includes("/api/workers/"),
+    );
+    expect(workerPatch?.body).toMatchObject({
+      expectedUpdatedAt: "2026-09-08T00:00:00.000Z",
+      supportedJobTypes: ["WEB_CRAWL", "PAGE_UPDATE_CHECK"],
+      connectorBindings: [
+        {
+          connectorId: "crawl4ai-web",
+          version: "1.3.0",
+          capabilities: expect.arrayContaining(["COLLECT", "CHECK_UPDATE"]),
+        },
+      ],
     });
   });
 });
