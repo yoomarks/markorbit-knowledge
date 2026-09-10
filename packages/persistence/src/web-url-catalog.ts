@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { initializeRegistry, RegistryValidationError } from "./index";
 
 const MIGRATION_ID = "1031_web_url_catalog";
+const CLASSIFICATION_MIGRATION_ID = "1032_web_url_catalog_candidate_classification";
 
 export type WebUrlCatalogStatus = "DISCOVERED" | "QUEUED" | "FETCHED" | "FAILED" | "COLD";
 
@@ -64,6 +65,31 @@ function ensureMigration(database: DatabaseSync): void {
   }
 }
 
+function ensureCandidateClassificationMigration(database: DatabaseSync): void {
+  const applied = database
+    .prepare("SELECT id FROM schema_migrations WHERE id = ?")
+    .get(CLASSIFICATION_MIGRATION_ID);
+  if (applied) return;
+  database.exec("BEGIN IMMEDIATE;");
+  try {
+    database.exec(`
+      ALTER TABLE web_url_catalog ADD COLUMN collection_eligible INTEGER NOT NULL DEFAULT 1
+        CHECK (collection_eligible IN (0, 1));
+      ALTER TABLE web_url_catalog ADD COLUMN temperature TEXT NOT NULL DEFAULT 'HOT'
+        CHECK (temperature IN ('HOT', 'WARM', 'COLD'));
+      CREATE INDEX IF NOT EXISTS idx_web_url_catalog_eligible_queue
+        ON web_url_catalog(workspace_id, campaign_id, source_key, collection_eligible, status, discovery_rank);
+    `);
+    database
+      .prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)")
+      .run(CLASSIFICATION_MIGRATION_ID, new Date().toISOString());
+    database.exec("COMMIT;");
+  } catch (error) {
+    database.exec("ROLLBACK;");
+    throw error;
+  }
+}
+
 function normalizeUrl(value: string): string {
   const normalized = value.trim();
   if (!normalized) throw new RegistryValidationError("canonicalUrl is required");
@@ -80,6 +106,7 @@ export class SqliteWebUrlCatalogRepository {
     private readonly clock: () => Date = () => new Date(),
   ) {
     ensureMigration(database);
+    ensureCandidateClassificationMigration(database);
   }
 
   upsertDiscovered(input: {
@@ -89,19 +116,34 @@ export class SqliteWebUrlCatalogRepository {
     sourceId?: string | null;
     discoveryMode: string;
     urls: readonly string[];
+    eligibleUrls?: readonly string[];
   }): { discovered: number; inserted: number } {
     const now = this.clock().toISOString();
     const unique = [...new Set(input.urls.map(normalizeUrl))];
+    const eligible = new Set((input.eligibleUrls ?? unique).map(normalizeUrl));
+    const catalog = new Set(unique);
+    for (const url of eligible) {
+      if (!catalog.has(url)) {
+        throw new RegistryValidationError("eligibleUrls must be a subset of urls");
+      }
+    }
     const statement = this.database.prepare(`
       INSERT INTO web_url_catalog (
         workspace_id, campaign_id, source_key, source_id, canonical_url,
-        discovery_mode, discovery_rank, status, first_discovered_at, last_discovered_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'DISCOVERED', ?, ?)
+        discovery_mode, discovery_rank, status, first_discovered_at, last_discovered_at,
+        collection_eligible, temperature
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'DISCOVERED', ?, ?, ?, ?)
       ON CONFLICT(workspace_id, campaign_id, source_key, canonical_url) DO UPDATE SET
         source_id = COALESCE(excluded.source_id, web_url_catalog.source_id),
         discovery_mode = excluded.discovery_mode,
         discovery_rank = excluded.discovery_rank,
-        last_discovered_at = excluded.last_discovered_at
+        status = CASE
+          WHEN web_url_catalog.status IN ('QUEUED','FETCHED','FAILED') THEN web_url_catalog.status
+          ELSE 'DISCOVERED'
+        END,
+        last_discovered_at = excluded.last_discovered_at,
+        collection_eligible = excluded.collection_eligible,
+        temperature = excluded.temperature
     `);
     const countStatement = this.database.prepare(
       `SELECT COUNT(*) AS count FROM web_url_catalog
@@ -123,6 +165,8 @@ export class SqliteWebUrlCatalogRepository {
           index,
           now,
           now,
+          eligible.has(url) ? 1 : 0,
+          eligible.has(url) ? "HOT" : "COLD",
         );
       });
       this.database.exec("COMMIT;");
@@ -253,7 +297,7 @@ export class SqliteWebUrlCatalogRepository {
       SELECT canonical_url
       FROM web_url_catalog
       WHERE workspace_id = ? AND campaign_id = ? AND source_key = ?
-        AND status = 'DISCOVERED'
+        AND status = 'DISCOVERED' AND collection_eligible = 1
       ORDER BY discovery_rank ASC, canonical_url ASC
       LIMIT ?
     `,

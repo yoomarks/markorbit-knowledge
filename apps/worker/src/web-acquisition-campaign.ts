@@ -56,15 +56,18 @@ export type WebAcquisitionInventoryV1 = {
   sitemapUrls: string[];
   discoveredCount: number;
   selectedUrls: string[];
+  catalogCount: number;
   eligibleCount: number;
   excludedCount: number;
   duplicateCount: number;
   errors: string[];
   inventorySha256: string;
+  eligibleInventorySha256: string;
 };
 
 type WebAcquisitionInventoryInternal = WebAcquisitionInventoryV1 & {
   catalogUrls: string[];
+  eligibleUrls: string[];
 };
 
 export type WebAcquisitionCampaignResultV1 = {
@@ -343,34 +346,38 @@ async function fetchText(
 function selectedUrls(
   source: WebAcquisitionCampaignSourceV1,
   discovered: readonly string[],
-): { batchUrls: string[]; catalogUrls: string[]; excludedCount: number; duplicateCount: number } {
+): {
+  batchUrls: string[];
+  catalogUrls: string[];
+  eligibleUrls: string[];
+  excludedCount: number;
+  duplicateCount: number;
+} {
   const canonical = discovered.map(canonicalizeCampaignUrl);
-  const unique = [...new Set(canonical)];
-  const filtered = unique.filter((raw) => {
-    const url = assertPublicHttpUrl(raw);
-    return (
-      allowedPageHost(source, url) &&
-      matchesPatterns(raw, source.includePatterns ?? [], source.excludePatterns ?? [])
-    );
-  });
-  filtered.sort((left, right) => {
+  const ranked = [...new Set(canonical)];
+  ranked.sort((left, right) => {
     const leftUrl = new URL(left);
     const rightUrl = new URL(right);
     const leftDepth = leftUrl.pathname.split("/").filter(Boolean).length;
     const rightDepth = rightUrl.pathname.split("/").filter(Boolean).length;
     if (leftDepth !== rightDepth) return leftDepth - rightDepth;
-    if (leftUrl.pathname.length !== rightUrl.pathname.length) {
+    if (leftUrl.pathname.length !== rightUrl.pathname.length)
       return leftUrl.pathname.length - rightUrl.pathname.length;
-    }
     return left.localeCompare(right);
   });
+  const catalogUrls = ranked.filter((raw) => allowedPageHost(source, assertPublicHttpUrl(raw)));
+  const eligibleUrls = catalogUrls.filter((raw) =>
+    matchesPatterns(raw, source.includePatterns ?? [], source.excludePatterns ?? []),
+  );
   return {
-    batchUrls: filtered.slice(0, source.maxPages),
-    catalogUrls: filtered,
-    excludedCount: unique.length - filtered.length,
-    duplicateCount: canonical.length - unique.length,
+    batchUrls: eligibleUrls.slice(0, source.maxPages),
+    catalogUrls,
+    eligibleUrls,
+    excludedCount: ranked.length - eligibleUrls.length,
+    duplicateCount: canonical.length - ranked.length,
   };
 }
+
 export async function discoverWebAcquisitionInventory(
   source: WebAcquisitionCampaignSourceV1,
   fetchImpl: FetchLike = fetch,
@@ -395,12 +402,15 @@ export async function discoverWebAcquisitionInventory(
       sitemapUrls: [],
       discoveredCount: (source.discovery.exactUrls ?? []).length,
       selectedUrls: selected.batchUrls,
-      eligibleCount: selected.catalogUrls.length,
+      catalogCount: selected.catalogUrls.length,
+      eligibleCount: selected.eligibleUrls.length,
       catalogUrls: selected.catalogUrls,
+      eligibleUrls: selected.eligibleUrls,
       excludedCount: selected.excludedCount,
       duplicateCount: selected.duplicateCount,
       errors,
       inventorySha256: inventoryHash(selected.catalogUrls),
+      eligibleInventorySha256: inventoryHash(selected.eligibleUrls),
     };
   }
 
@@ -476,18 +486,22 @@ export async function discoverWebAcquisitionInventory(
       sitemapUrls: [...visitedSitemaps],
       discoveredCount: discovered.length,
       selectedUrls: selected.batchUrls,
-      eligibleCount: selected.catalogUrls.length,
+      catalogCount: selected.catalogUrls.length,
+      eligibleCount: selected.eligibleUrls.length,
       catalogUrls: selected.catalogUrls,
+      eligibleUrls: selected.eligibleUrls,
       excludedCount: selected.excludedCount,
       duplicateCount: selected.duplicateCount,
       errors,
       inventorySha256: inventoryHash(selected.catalogUrls),
+      eligibleInventorySha256: inventoryHash(selected.eligibleUrls),
     };
   }
   const selected = selectedUrls(source, discovered);
   if (selected.batchUrls.length === 0) {
     errors.push("sitemap-approved-empty:fallback-link-crawl");
     const fallback = selectedUrls(source, [source.baseUrl]);
+    const fallbackCatalogUrls = [...new Set([...selected.catalogUrls, ...fallback.catalogUrls])];
     return {
       sourceKey: source.key,
       baseUrl: source.baseUrl,
@@ -498,12 +512,15 @@ export async function discoverWebAcquisitionInventory(
       sitemapUrls: [...visitedSitemaps],
       discoveredCount: discovered.length,
       selectedUrls: fallback.batchUrls,
-      eligibleCount: fallback.catalogUrls.length,
-      catalogUrls: fallback.catalogUrls,
+      catalogCount: fallbackCatalogUrls.length,
+      eligibleCount: fallback.eligibleUrls.length,
+      catalogUrls: fallbackCatalogUrls,
+      eligibleUrls: fallback.eligibleUrls,
       excludedCount: selected.excludedCount,
       duplicateCount: selected.duplicateCount,
       errors,
-      inventorySha256: inventoryHash(fallback.catalogUrls),
+      inventorySha256: inventoryHash(fallbackCatalogUrls),
+      eligibleInventorySha256: inventoryHash(fallback.eligibleUrls),
     };
   }
   return {
@@ -516,18 +533,22 @@ export async function discoverWebAcquisitionInventory(
     sitemapUrls: [...visitedSitemaps],
     discoveredCount: discovered.length,
     selectedUrls: selected.batchUrls,
-    eligibleCount: selected.catalogUrls.length,
+    catalogCount: selected.catalogUrls.length,
+    eligibleCount: selected.eligibleUrls.length,
     catalogUrls: selected.catalogUrls,
+    eligibleUrls: selected.eligibleUrls,
     excludedCount: selected.excludedCount,
     duplicateCount: selected.duplicateCount,
     errors,
     inventorySha256: inventoryHash(selected.catalogUrls),
+    eligibleInventorySha256: inventoryHash(selected.eligibleUrls),
   };
 }
 
 function publicInventory(inventory: WebAcquisitionInventoryInternal): WebAcquisitionInventoryV1 {
-  const { catalogUrls, ...publicView } = inventory;
+  const { catalogUrls, eligibleUrls, ...publicView } = inventory;
   void catalogUrls;
+  void eligibleUrls;
   return publicView;
 }
 
@@ -732,7 +753,9 @@ async function ensureCampaignSource(
       renderJavascript: source.renderJavascript === true,
       maxDepth: inventory.modeUsed === "LINK_CRAWL" ? source.maxDepth : 0,
     }),
-    "x-markorbit-inventory-count": inventory.eligibleCount,
+    "x-markorbit-inventory-count": inventory.catalogCount,
+    "x-markorbit-eligible-count": inventory.eligibleCount,
+    "x-markorbit-eligible-inventory-sha256": inventory.eligibleInventorySha256,
     "x-markorbit-batch-count": inventory.selectedUrls.length,
     "x-markorbit-discovered-count": inventory.discoveredCount,
     "x-markorbit-excluded-count": inventory.excludedCount,
@@ -1344,6 +1367,7 @@ export async function runWebAcquisitionCampaign(
           sourceKey: source.key,
           discoveryMode: discoveredInventory.modeUsed,
           urls: discoveredInventory.catalogUrls,
+          eligibleUrls: discoveredInventory.eligibleUrls,
         });
         urlCatalog.reconcile({
           workspaceId: manifest.workspaceId,

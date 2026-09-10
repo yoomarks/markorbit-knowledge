@@ -406,7 +406,7 @@ describe("catalog batch exhaustion", () => {
 });
 
 describe("durable sitemap inventory vs batch budget", () => {
-  it("keeps the full eligible inventory while selecting only one bounded batch", async () => {
+  it("keeps the full safe sitemap catalog while selecting only one bounded eligible batch", async () => {
     const source = { ...manifest().sources[0]!, maxPages: 2 };
     const fetchImpl = (async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -427,8 +427,32 @@ describe("durable sitemap inventory vs batch budget", () => {
     }) as typeof fetch;
 
     const inventory = await discoverWebAcquisitionInventory(source, fetchImpl);
+    expect(inventory.catalogCount).toBe(3);
     expect(inventory.eligibleCount).toBe(3);
     expect(inventory.selectedUrls).toHaveLength(2);
+  });
+
+  it("retains safe non-matching sitemap URLs in the catalog without queueing them", async () => {
+    const source = {
+      ...manifest().sources[0]!,
+      includePatterns: ["https://example.com/trademarks/hot*"],
+    };
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/robots.txt"))
+        return new Response("Sitemap: https://example.com/sitemap.xml\n", { status: 200 });
+      if (url.endsWith("/sitemap.xml"))
+        return new Response(
+          "<urlset><url><loc>https://example.com/trademarks/hot-guide</loc></url>" +
+            "<url><loc>https://example.com/patents/cold-guide</loc></url></urlset>",
+          { status: 200 },
+        );
+      throw new Error(`unexpected ${url}`);
+    }) as typeof fetch;
+    const inventory = await discoverWebAcquisitionInventory(source, fetchImpl);
+    expect(inventory.catalogCount).toBe(2);
+    expect(inventory.eligibleCount).toBe(1);
+    expect(inventory.selectedUrls).toEqual(["https://example.com/trademarks/hot-guide"]);
   });
 });
 

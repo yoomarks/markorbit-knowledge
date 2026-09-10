@@ -37,6 +37,30 @@ describe("web URL catalog", () => {
     expect(repo.counts(scope)).toEqual({ DISCOVERED: 900, QUEUED: 100 });
     database.close();
   });
+  it("keeps non-eligible discovered URLs cold while queueing only eligible URLs", () => {
+    const { database, repo } = repository();
+    const hot = "https://www.uspto.gov/trademarks/apply";
+    const cold = "https://www.uspto.gov/patents/search";
+    repo.upsertDiscovered({
+      ...scope,
+      discoveryMode: "SITEMAP",
+      urls: [hot, cold],
+      eligibleUrls: [hot],
+    });
+    expect(repo.counts(scope)).toEqual({ DISCOVERED: 2 });
+    const classified = database
+      .prepare(
+        "SELECT canonical_url, collection_eligible, temperature FROM web_url_catalog ORDER BY canonical_url",
+      )
+      .all();
+    expect(classified).toEqual([
+      { canonical_url: cold, collection_eligible: 0, temperature: "COLD" },
+      { canonical_url: hot, collection_eligible: 1, temperature: "HOT" },
+    ]);
+    expect(repo.nextBatch({ ...scope, limit: 100 })).toEqual([hot]);
+    database.close();
+  });
+
   it("only queues URLs after a run exists and releases failed runs", () => {
     const { database, repo } = repository();
     const urls = ["https://www.uspto.gov/trademarks/a", "https://www.uspto.gov/trademarks/b"];
