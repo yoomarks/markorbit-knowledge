@@ -8,13 +8,68 @@ import type {
 export const OFFICIAL_SCALE_CAMPAIGN_ID = "official-scale-60-v1";
 export const OFFICIAL_SCALE_DOMAIN_COUNT = 60;
 
-const FAMILY_PRIORITY = new Map([
-  ["PORTAL", 0],
-  ["FILING", 1],
-  ["FEES", 2],
-  ["LEGAL_TEXTS", 3],
-  ["EXAMINATION_MANUAL", 4],
-]);
+const OFFICIAL_SCALE_TARGET_IDS = [
+  "ae-moet-trademarks",
+  "al-dppi-industrial-property-portal",
+  "am-aipo-trademark-portal",
+  "ao-iapi-portal",
+  "ar-inpi-trademark-portal",
+  "at-patentamt-trademarks",
+  "au-ipaustralia-trademarks",
+  "az-copat-trademark-portal",
+  "ba-ipr-trademark-portal",
+  "bd-dpdt-trademarks",
+  "be-boip-trademark-portal",
+  "bg-bpo-trademarks",
+  "bh-moic-trademarks",
+  "bn-bruipo-portal",
+  "bo-senapi-portal",
+  "br-inpi-trademarks",
+  "by-ncip-trademark-portal",
+  "ca-cipo-trademarks",
+  "cd-industry-ministry-portal",
+  "ch-ipi-trademarks",
+  "ci-oapi-portal",
+  "cl-inapi-trademarks",
+  "cn-cnipa-trademark-portal",
+  "co-sic-trademarks",
+  "cr-rpi-portal",
+  "cu-ocpi-portal",
+  "cy-ip-trademarks",
+  "cz-upv-trademarks",
+  "de-dpma-trademarks",
+  "dk-dkpto-trademarks",
+  "do-onapi-portal",
+  "dz-inapi-trademark-portal",
+  "ec-senadi-portal",
+  "ee-epa-trademarks",
+  "eg-eipa-operational-ip-portal",
+  "es-oepm-trademarks",
+  "et-eipa-portal",
+  "eu-euipo-trademarks-root",
+  "fi-prh-trademarks",
+  "fr-inpi-trademark-portal",
+  "gb-ukipo-register-trademark",
+  "ge-sakpatenti-trademark-portal",
+  "gh-rgd-industrial-property-portal",
+  "gr-obi-trademarks",
+  "gt-rpi-portal",
+  "hk-ipd-trademark-portal",
+  "hn-digepih-ip-portal",
+  "hr-dziv-trademarks",
+  "hu-hipo-trademarks",
+  "id-djki-trademarks",
+  "ie-ipoi-trademarks",
+  "il-ilpo-trademark-portal",
+  "in-ipindia-trademarks",
+  "iq-moim-industrial-property-platform",
+  "is-isipo-trademarks",
+  "it-uibm-trademarks",
+  "jm-jipo-portal",
+  "jo-ippd-trademarks",
+  "jp-jpo-trademark-procedures",
+  "ke-kipi-trademark-portal",
+] as const;
 
 function eligible(target: SourceCoverageTarget): boolean {
   return (
@@ -27,19 +82,6 @@ function eligible(target: SourceCoverageTarget): boolean {
     target.canonicalUri.startsWith("https://")
   );
 }
-function familyRank(target: SourceCoverageTarget): number {
-  return FAMILY_PRIORITY.get(target.family) ?? 100;
-}
-
-function candidateOrder(left: SourceCoverageTarget, right: SourceCoverageTarget): number {
-  return (
-    familyRank(left) - familyRank(right) ||
-    left.jurisdiction.localeCompare(right.jurisdiction) ||
-    left.canonicalUri.localeCompare(right.canonicalUri) ||
-    left.id.localeCompare(right.id)
-  );
-}
-
 function sourceFromTarget(target: SourceCoverageTarget): WebAcquisitionCampaignSourceV1 {
   const canonicalUrl = new URL(target.canonicalUri);
   return {
@@ -64,24 +106,26 @@ export function buildOfficialScaleCampaignManifest(
 ): WebAcquisitionCampaignManifestV1 {
   const normalizedWorkspaceId = workspaceId.trim();
   if (!normalizedWorkspaceId) throw new Error("Official scale campaign workspaceId is required");
-  if (!Number.isInteger(domainCount) || domainCount < 50 || domainCount > 100) {
-    throw new Error("Official scale campaign domainCount must be an integer in 50..100");
+  if (domainCount !== OFFICIAL_SCALE_DOMAIN_COUNT) {
+    throw new Error(
+      `Official scale campaign v1 must contain exactly ${OFFICIAL_SCALE_DOMAIN_COUNT} domains`,
+    );
   }
 
-  const selected: SourceCoverageTarget[] = [];
-  const jurisdictions = new Set<string>();
-  const hosts = new Set<string>();
-  for (const target of [...SOURCE_COVERAGE_TARGETS.filter(eligible)].sort(candidateOrder)) {
-    const host = new URL(target.canonicalUri).hostname.toLowerCase();
-    if (jurisdictions.has(target.jurisdiction) || hosts.has(host)) continue;
-    selected.push(target);
-    jurisdictions.add(target.jurisdiction);
-    hosts.add(host);
-    if (selected.length === domainCount) break;
-  }
-
-  if (selected.length !== domainCount) {
-    throw new Error(`Only ${selected.length} eligible governed official domains are available`);
+  const targetsById = new Map(SOURCE_COVERAGE_TARGETS.map((target) => [target.id, target]));
+  const selected = OFFICIAL_SCALE_TARGET_IDS.slice(0, domainCount).map((targetId) => {
+    const target = targetsById.get(targetId);
+    if (!target || !eligible(target)) {
+      throw new Error(`Governed official scale target ${targetId} is unavailable or ineligible`);
+    }
+    return target;
+  });
+  const jurisdictions = new Set(selected.map((target) => target.jurisdiction));
+  const hosts = new Set(
+    selected.map((target) => new URL(target.canonicalUri).hostname.toLowerCase()),
+  );
+  if (jurisdictions.size !== selected.length || hosts.size !== selected.length) {
+    throw new Error("Pinned official scale cohort must keep unique jurisdictions and hosts");
   }
 
   return {

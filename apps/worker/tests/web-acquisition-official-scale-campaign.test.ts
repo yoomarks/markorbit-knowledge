@@ -21,6 +21,8 @@ describe("official 50+ domain campaign builder", () => {
       OFFICIAL_SCALE_DOMAIN_COUNT,
     );
     expect(first.globalConcurrency).toBe(8);
+    expect(first.sources[0]?.key).toBe("ae-moet-trademarks");
+    expect(first.sources.at(-1)?.key).toBe("ke-kipi-trademark-portal");
   });
 
   it("keeps every scale source on one exact governed official URL", () => {
@@ -38,9 +40,9 @@ describe("official 50+ domain campaign builder", () => {
     }
   });
 
-  it("fails closed without a workspace or outside the governed 50..100 scale envelope", () => {
+  it("fails closed without a workspace or when the v1 cohort size drifts", () => {
     expect(() => buildOfficialScaleCampaignManifest(" ")).toThrow(/workspaceId is required/);
-    expect(() => buildOfficialScaleCampaignManifest(WORKSPACE, 49)).toThrow(/50\.\.100/);
-    expect(() => buildOfficialScaleCampaignManifest(WORKSPACE, 101)).toThrow(/50\.\.100/);
+    expect(() => buildOfficialScaleCampaignManifest(WORKSPACE, 59)).toThrow(/exactly 60/);
+    expect(() => buildOfficialScaleCampaignManifest(WORKSPACE, 61)).toThrow(/exactly 60/);
   });
 });
