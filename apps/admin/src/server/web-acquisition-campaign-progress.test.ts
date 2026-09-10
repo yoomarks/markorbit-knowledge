@@ -48,6 +48,12 @@ function campaignRunDocument(campaignId: string, role?: "INITIAL_COLLECTION" | "
         "x-markorbit-campaign-id": campaignId,
         ...(role ? { "x-markorbit-plan-role": role } : {}),
       },
+      ...(role === "REFRESH_WATCH"
+        ? {
+            schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 86_400 },
+            policy: { fetchAttachments: false },
+          }
+        : {}),
     },
   });
 }

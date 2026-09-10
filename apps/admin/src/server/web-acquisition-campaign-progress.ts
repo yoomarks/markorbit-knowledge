@@ -285,6 +285,8 @@ export function readWebAcquisitionCampaignProgress(
          WHERE workspace_id = ? AND source_id = ?
            AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-campaign-id') = ?
            AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-plan-role') = 'REFRESH_WATCH'
+           AND json_extract(document_json, '$.planSnapshot.schedule.mode') = 'CHANGE_WATCH'
+           AND json_extract(document_json, '$.planSnapshot.policy.fetchAttachments') = 0
          ORDER BY created_at DESC, id DESC LIMIT 1`,
       )
       .get(input.workspaceId, row.id, campaignId) as RunRow | undefined;
