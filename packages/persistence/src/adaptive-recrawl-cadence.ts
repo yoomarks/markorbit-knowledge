@@ -87,10 +87,7 @@ export function recommendAdaptiveRecrawlCadence(input: {
   const evidenceRuns = Math.max(0, Math.trunc(input.evidenceRuns));
   const metadataOnlyRuns = Math.min(evidenceRuns, Math.max(0, Math.trunc(input.metadataOnlyRuns)));
   const noChangeRatePercent = percentage(metadataOnlyRuns, evidenceRuns);
-  const currentIntervalSeconds = Math.min(
-    policy.maximumIntervalSeconds,
-    Math.max(policy.minimumIntervalSeconds, Math.trunc(input.currentIntervalSeconds)),
-  );
+  const currentIntervalSeconds = Math.trunc(input.currentIntervalSeconds);
   const base = {
     currentIntervalSeconds,
     recommendedIntervalSeconds: currentIntervalSeconds,
@@ -113,6 +110,18 @@ export function recommendAdaptiveRecrawlCadence(input: {
     if (input.observedAt.getTime() < cooldownUntil.getTime()) {
       return { ...base, decision: "COOLDOWN", cooldownUntil: cooldownUntil.toISOString() };
     }
+  }
+
+  const boundedIntervalSeconds = Math.min(
+    policy.maximumIntervalSeconds,
+    Math.max(policy.minimumIntervalSeconds, currentIntervalSeconds),
+  );
+  if (boundedIntervalSeconds !== currentIntervalSeconds) {
+    return {
+      ...base,
+      decision: "AT_BOUND",
+      recommendedIntervalSeconds: boundedIntervalSeconds,
+    };
   }
 
   if (noChangeRatePercent <= policy.fasterAtOrBelowNoChangePercent) {

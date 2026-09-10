@@ -149,6 +149,36 @@ describe("adaptive recrawl cadence policy", () => {
     });
   });
 
+  it("keeps an out-of-bound cadence unchanged while evidence is insufficient", () => {
+    const result = recommendAdaptiveRecrawlCadence({
+      sourceClass: "OFFICIAL_AUTHORITY",
+      currentIntervalSeconds: 3_600,
+      evidenceRuns: 5,
+      metadataOnlyRuns: 5,
+      observedAt,
+    });
+    expect(result).toMatchObject({
+      decision: "INSUFFICIENT_EVIDENCE",
+      currentIntervalSeconds: 3_600,
+      recommendedIntervalSeconds: 3_600,
+    });
+  });
+
+  it("normalizes an out-of-bound cadence only after evidence is sufficient", () => {
+    const result = recommendAdaptiveRecrawlCadence({
+      sourceClass: "OFFICIAL_AUTHORITY",
+      currentIntervalSeconds: 3_600,
+      evidenceRuns: 6,
+      metadataOnlyRuns: 6,
+      observedAt,
+    });
+    expect(result).toMatchObject({
+      decision: "AT_BOUND",
+      currentIntervalSeconds: 3_600,
+      recommendedIntervalSeconds: 21_600,
+    });
+  });
+
   it("uses cooldown hysteresis to prevent schedule thrash", () => {
     const result = recommendAdaptiveRecrawlCadence({
       sourceClass: "OFFICIAL_AUTHORITY",
