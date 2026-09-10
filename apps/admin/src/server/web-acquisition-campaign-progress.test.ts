@@ -41,9 +41,20 @@ function database(): DatabaseSync {
   return db;
 }
 
-function campaignRunDocument(campaignId: string) {
+function campaignRunDocument(campaignId: string, role?: "INITIAL_COLLECTION" | "REFRESH_WATCH") {
   return JSON.stringify({
-    planSnapshot: { extensions: { "x-markorbit-campaign-id": campaignId } },
+    planSnapshot: {
+      extensions: {
+        "x-markorbit-campaign-id": campaignId,
+        ...(role ? { "x-markorbit-plan-role": role } : {}),
+      },
+      ...(role === "REFRESH_WATCH"
+        ? {
+            schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 86_400 },
+            policy: { fetchAttachments: false },
+          }
+        : {}),
+    },
   });
 }
 
@@ -254,6 +265,96 @@ describe("web acquisition campaign progress", () => {
       expect(progress.throughput.finiteInventoryEstimate).toBe(true);
       expect(progress.refreshAccounting.failedUrlAccountingAvailable).toBe(false);
       expect(progress.refreshAccounting.changedUnchangedAvailable).toBe(false);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("keeps initial collection progress stable while exposing latest structured refresh accounting", () => {
+    const db = database();
+    try {
+      db.prepare("INSERT INTO source_definitions VALUES (?, ?, ?, ?, ?, ?)").run(
+        "src_refresh",
+        WORKSPACE,
+        "campaign-refresh-wave-official",
+        "Refresh Official",
+        "WEB",
+        sourceDocument({
+          campaignId: "refresh-wave",
+          sourceKey: "official",
+          sourceClass: "OFFICIAL_AUTHORITY",
+          selected: 2,
+          discovered: 2,
+          excluded: 0,
+          duplicates: 0,
+          errors: 0,
+        }),
+      );
+      const insertRun = db.prepare("INSERT INTO collection_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+      insertRun.run(
+        "run_initial",
+        WORKSPACE,
+        "src_refresh",
+        "COMPLETED",
+        "2026-09-09T10:00:00.000Z",
+        "2026-09-09T10:02:00.000Z",
+        "2026-09-09T10:00:00.000Z",
+        campaignRunDocument("refresh-wave", "INITIAL_COLLECTION"),
+      );
+      insertRun.run(
+        "run_refresh",
+        WORKSPACE,
+        "src_refresh",
+        "COMPLETED",
+        "2026-09-10T10:00:00.000Z",
+        "2026-09-10T10:01:00.000Z",
+        "2026-09-10T10:00:00.000Z",
+        campaignRunDocument("refresh-wave", "REFRESH_WATCH"),
+      );
+      const insertArtifact = db.prepare("INSERT INTO raw_artifacts VALUES (?, ?, ?, ?)");
+      insertArtifact.run(
+        "art_initial_one",
+        "run_initial",
+        "MARKDOWN",
+        "https://official.example/one",
+      );
+      insertArtifact.run(
+        "art_initial_two",
+        "run_initial",
+        "MARKDOWN",
+        "https://official.example/two",
+      );
+      db.prepare("INSERT INTO execution_attempts VALUES (?, ?, ?)").run(
+        "run_refresh",
+        "COMPLETED",
+        JSON.stringify({
+          receipt: {
+            itemsObserved: 2,
+            metadataOnly: false,
+            artifactReceiptIds: ["air_refresh_changed"],
+          },
+        }),
+      );
+
+      const progress = readWebAcquisitionCampaignProgress(db, {
+        workspaceId: WORKSPACE,
+        campaignId: "refresh-wave",
+        observedAt: "2026-09-10T10:02:00.000Z",
+      });
+
+      expect(progress.sources[0]).toMatchObject({
+        runId: "run_initial",
+        runStatus: "COMPLETED",
+        fetchedUrls: 2,
+        changedUrls: 1,
+        unchangedUrls: 1,
+      });
+      expect(progress.urls).toMatchObject({ fetched: 2, changed: 1, unchanged: 1 });
+      expect(progress.refreshAccounting).toMatchObject({
+        changedUnchangedAvailable: true,
+        accountedSources: 1,
+        totalSources: 1,
+      });
     } finally {
       db.close();
     }

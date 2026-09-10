@@ -30,6 +30,7 @@ function context(
             ? { mode: "CHANGE_WATCH", pollIntervalSeconds: 300 }
             : { mode: "INTERVAL", intervalSeconds: 3600 },
         output: { artifactKinds: ["HTML"] },
+        policy: { fetchAttachments: false },
       },
     },
   } as unknown as ArtifactBackedExecutionContext;
@@ -128,8 +129,9 @@ describe("ArtifactBackedCollectionExecutor change-watch incrementality", () => {
     const receipt = await executor.execute(context("PAGE_UPDATE_CHECK"));
 
     expect(receipt).toMatchObject({
-      itemsObserved: 1,
+      itemsObserved: 2,
       metadataOnly: false,
+      artifactReceiptIds: ["receipt-session-1"],
     });
     expect(receipt?.summary).toContain("skipped 1 unchanged artifact");
     expect(fixture.created).toEqual(["https://example.com/two"]);

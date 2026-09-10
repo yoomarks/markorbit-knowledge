@@ -166,6 +166,13 @@ function isChangeWatch(context: ArtifactBackedExecutionContext): boolean {
   return context.job.jobType === "PAGE_UPDATE_CHECK" || schedule?.mode === "CHANGE_WATCH";
 }
 
+function reportsAllObservedPages(context: ArtifactBackedExecutionContext): boolean {
+  return (
+    context.job.jobType === "PAGE_UPDATE_CHECK" &&
+    context.job.planSnapshot.policy?.fetchAttachments === false
+  );
+}
+
 function addArtifactIdentity(
   identities: Map<string, Set<string>>,
   canonicalUri: string | undefined,
@@ -444,7 +451,9 @@ export class ArtifactBackedCollectionExecutor {
       const receipt: ExecutionReceipt = {
         executor: this.acquirer.executor,
         outputKinds: [...new Set(selection.changed.map((artifact) => artifact.artifactKind))],
-        itemsObserved: selection.changed.length,
+        itemsObserved: reportsAllObservedPages(context)
+          ? acquired.length
+          : selection.changed.length,
         bytesPrepared,
         metadataOnly: false,
         artifactReceiptIds: receipts.map((item) => item.id),
@@ -461,7 +470,7 @@ export class ArtifactBackedCollectionExecutor {
         const receipt: ExecutionReceipt = {
           executor: this.acquirer.executor,
           outputKinds: [...context.job.planSnapshot.output.artifactKinds],
-          itemsObserved: 0,
+          itemsObserved: reportsAllObservedPages(context) ? 1 : 0,
           bytesPrepared: 0,
           metadataOnly: true,
           summary: `HTTP change watch confirmed no modification for ${error.canonicalUri}; no response body or RawArtifact upload was required.`,
