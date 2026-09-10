@@ -7,7 +7,12 @@ import {
 } from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError, bearerCredential, leaseToken, readJson, requireRecord } from "./api-errors";
-import { getWorkerExecutionRepository } from "./source-registry";
+import { applyAdaptiveRecrawlAfterCompletion } from "./adaptive-recrawl-completion";
+import {
+  getCollectionPlanRepository,
+  getRegistryDatabase,
+  getWorkerExecutionRepository,
+} from "./source-registry";
 
 export type WorkerExecutionOperation = "start" | "uploading" | "verifying" | "complete" | "fail";
 
@@ -72,12 +77,16 @@ export async function handleWorkerExecution(
       if (!isExecutionReceipt(body.receipt)) {
         throw new RegistryValidationError("receipt must satisfy Worker Execution Protocol v1");
       }
-      return NextResponse.json(
-        repository.complete(workerId, credential, leaseId, token, {
-          receipt: body.receipt as ExecutionReceipt,
-          idempotencyKey,
-        }),
-      );
+      const transition = repository.complete(workerId, credential, leaseId, token, {
+        receipt: body.receipt as ExecutionReceipt,
+        idempotencyKey,
+      });
+      applyAdaptiveRecrawlAfterCompletion({
+        database: getRegistryDatabase(),
+        plans: getCollectionPlanRepository(),
+        transition,
+      });
+      return NextResponse.json(transition);
     }
 
     assertOnlyKeys(body, ["workerId", "idempotencyKey", "code", "message", "retryable"]);

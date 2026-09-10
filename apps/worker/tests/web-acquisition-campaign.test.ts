@@ -62,6 +62,13 @@ describe("web acquisition campaign manifest", () => {
     const parsed = parseWebAcquisitionCampaignManifest(manifest());
     expect(parsed.sources[0]?.maxPages).toBe(10);
     expect(parsed.sources[0]?.refreshIntervalSeconds).toBe(86_400);
+    expect(parsed.sources[0]?.adaptiveRefreshCadence).toBe(false);
+    expect(() =>
+      parseWebAcquisitionCampaignManifest({
+        ...manifest(),
+        sources: [{ ...manifest().sources[0], adaptiveRefreshCadence: "yes" }],
+      }),
+    ).toThrow(/adaptiveRefreshCadence.*boolean/);
     expect(() =>
       parseWebAcquisitionCampaignManifest({
         ...manifest(),
@@ -501,7 +508,13 @@ describe("repeat campaign inventory refresh", () => {
                 id: "pln_TEST0000000000000000000002",
                 name: "Bulk Web test-wave Refresh — example",
                 updatedAt: "2026-09-08T00:00:00.000Z",
-                extensions: { "x-markorbit-inventory-sha256": "old-inventory" },
+                schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 172_800 },
+                extensions: {
+                  "x-markorbit-inventory-sha256": "old-inventory",
+                  "x-markorbit-refresh-interval-seconds": 86_400,
+                  "x-markorbit-adaptive-refresh-cadence": true,
+                  "x-markorbit-adaptive-cadence-current-seconds": 172_800,
+                },
               },
             },
           ],
@@ -551,11 +564,16 @@ describe("repeat campaign inventory refresh", () => {
       throw new Error(`unexpected ${method} ${url}`);
     }) as typeof fetch;
 
-    const result = await runWebAcquisitionCampaign(manifest(), {
-      controlPlaneUrl: "http://control.test",
-      dispatch: false,
-      fetchImpl,
-    });
+    const result = await runWebAcquisitionCampaign(
+      manifest({
+        sources: [{ ...manifest().sources[0]!, adaptiveRefreshCadence: true }],
+      }),
+      {
+        controlPlaneUrl: "http://control.test",
+        dispatch: false,
+        fetchImpl,
+      },
+    );
 
     expect(result.sources[0]?.sourceId).toBe("src_TEST0000000000000000000001");
     expect(result.sources[0]?.planId).toBe("pln_TEST0000000000000000000001");
@@ -599,9 +617,13 @@ describe("repeat campaign inventory refresh", () => {
       },
     });
     expect(refreshPatch?.body).toMatchObject({
-      schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 86_400 },
+      schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 172_800 },
       policy: { maxItems: 1, maxDepth: 0 },
-      extensions: { "x-markorbit-plan-role": "REFRESH_WATCH" },
+      extensions: {
+        "x-markorbit-plan-role": "REFRESH_WATCH",
+        "x-markorbit-refresh-interval-seconds": 86_400,
+        "x-markorbit-adaptive-refresh-cadence": true,
+      },
     });
     const workerPatch = calls.find(
       (call) => call.method === "PATCH" && call.url.includes("/api/workers/"),

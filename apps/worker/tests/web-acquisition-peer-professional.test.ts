@@ -39,6 +39,7 @@ describe("peer-professional web acquisition cohort", () => {
       expect(source.maxDepth).toBeLessThanOrEqual(2);
       expect(source.rateLimitPerMinute).toBeLessThanOrEqual(12);
       expect(source.refreshIntervalSeconds).toBe(7 * 24 * 60 * 60);
+      expect(source.adaptiveRefreshCadence).toBe(true);
       expect(source.renderJavascript).toBe(false);
       expect(source.jurisdictions.length).toBeGreaterThan(0);
       expect(source.languages).toContain("en");

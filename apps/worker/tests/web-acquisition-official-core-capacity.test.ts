@@ -36,6 +36,7 @@ describe("official-core web acquisition capacity", () => {
     expect(reachableBudget).toBeGreaterThanOrEqual(3_000);
     for (const source of parsed.sources) {
       expect(source.maxPages).toBeLessThanOrEqual(source.rateLimitPerMinute * 14);
+      expect(source.adaptiveRefreshCadence).toBe(true);
       if (fallbackDepth3.has(source.key)) expect(source.maxDepth).toBeGreaterThanOrEqual(3);
     }
   });

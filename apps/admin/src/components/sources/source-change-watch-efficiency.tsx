@@ -53,6 +53,7 @@ export function SourceChangeWatchEfficiency() {
                 <th className="pb-2 font-medium">304</th>
                 <th className="pb-2 font-medium">SHA same</th>
                 <th className="pb-2 font-medium">Validators</th>
+                <th className="pb-2 font-medium">Adaptive cadence</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -69,6 +70,22 @@ export function SourceChangeWatchEfficiency() {
                   <td className="py-2.5 text-slate-700">{source.http304NoBodyRuns}</td>
                   <td className="py-2.5 text-slate-700">{source.bodyComparedNoChangeRuns}</td>
                   <td className="py-2.5 text-slate-700">{source.activeValidatorEndpoints}</td>
+                  <td className="py-2.5 text-slate-700">
+                    {source.adaptiveCadence ? (
+                      <div>
+                        <p>{formatAdaptiveCadence(source.adaptiveCadence)}</p>
+                        <p className="mt-0.5 text-[10px] text-slate-400">
+                          {source.adaptiveCadence.lastDecision ?? "Not evaluated"}
+                          {source.adaptiveCadence.noChangeRatePercent !== null &&
+                          source.adaptiveCadence.evidenceRuns !== null
+                            ? ` · ${source.adaptiveCadence.noChangeRatePercent}% no-change / ${source.adaptiveCadence.evidenceRuns} runs`
+                            : ""}
+                        </p>
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -77,6 +94,22 @@ export function SourceChangeWatchEfficiency() {
       ) : null}
     </section>
   );
+}
+
+function formatInterval(seconds: number): string {
+  if (seconds % 86_400 === 0) return `${seconds / 86_400}d`;
+  if (seconds % 3_600 === 0) return `${seconds / 3_600}h`;
+  return `${seconds}s`;
+}
+
+function formatAdaptiveCadence(source: {
+  currentIntervalSeconds: number;
+  baselineIntervalSeconds: number | null;
+}): string {
+  const current = formatInterval(source.currentIntervalSeconds);
+  return source.baselineIntervalSeconds === null
+    ? current
+    : `${current} / baseline ${formatInterval(source.baselineIntervalSeconds)}`;
 }
 
 function Metric({ label, value, note }: { label: string; value: number; note?: string }) {

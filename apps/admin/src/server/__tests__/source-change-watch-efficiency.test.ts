@@ -10,6 +10,15 @@ function database(): DatabaseSync {
       workspace_id TEXT NOT NULL,
       name TEXT NOT NULL
     ) STRICT;
+    CREATE TABLE collection_plans (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      schedule_mode TEXT NOT NULL,
+      document_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    ) STRICT;
     CREATE TABLE jobs (
       id TEXT PRIMARY KEY,
       workspace_id TEXT NOT NULL,
@@ -44,6 +53,28 @@ function database(): DatabaseSync {
     "src_b",
     "wsp_test",
     "Beta Office",
+  );
+  db.prepare(
+    `INSERT INTO collection_plans
+       (id, workspace_id, source_id, status, schedule_mode, document_json, updated_at)
+     VALUES (?, ?, ?, 'ACTIVE', 'CHANGE_WATCH', ?, ?)`,
+  ).run(
+    "pln_adaptive",
+    "wsp_test",
+    "src_a",
+    JSON.stringify({
+      schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 172800 },
+      extensions: {
+        "x-markorbit-adaptive-refresh-cadence": true,
+        "x-markorbit-refresh-interval-seconds": 86400,
+        "x-markorbit-adaptive-cadence-last-decision": "SLOWER",
+        "x-markorbit-adaptive-cadence-last-evaluated-at": "2026-08-18T11:00:00.000Z",
+        "x-markorbit-adaptive-cadence-last-changed-at": "2026-08-18T11:00:00.000Z",
+        "x-markorbit-adaptive-cadence-evidence-runs": 8,
+        "x-markorbit-adaptive-cadence-no-change-rate-percent": 100,
+      },
+    }),
+    "2026-08-18T11:00:00.000Z",
   );
   return db;
 }
@@ -178,6 +209,15 @@ describe("listSourceChangeWatchEfficiency", () => {
       activeValidatorEndpoints: 2,
       latestCompletedAt: "2026-08-18T11:00:00.000Z",
       latestValidatorAt: "2026-08-18T11:10:00.000Z",
+      adaptiveCadence: {
+        currentIntervalSeconds: 172800,
+        baselineIntervalSeconds: 86400,
+        lastDecision: "SLOWER",
+        lastEvaluatedAt: "2026-08-18T11:00:00.000Z",
+        lastChangedAt: "2026-08-18T11:00:00.000Z",
+        evidenceRuns: 8,
+        noChangeRatePercent: 100,
+      },
     });
     db.close();
   });

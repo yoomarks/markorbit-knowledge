@@ -19,6 +19,7 @@
       "maxPages": 280,
       "maxDepth": 3,
       "rateLimitPerMinute": 24,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -37,6 +38,7 @@
       "maxPages": 360,
       "maxDepth": 2,
       "rateLimitPerMinute": 30,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -54,6 +56,7 @@
       "maxPages": 330,
       "maxDepth": 4,
       "rateLimitPerMinute": 30,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -71,6 +74,7 @@
       "maxPages": 280,
       "maxDepth": 3,
       "rateLimitPerMinute": 30,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -88,6 +92,7 @@
       "maxPages": 200,
       "maxDepth": 3,
       "rateLimitPerMinute": 24,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -103,6 +108,7 @@
       "maxPages": 230,
       "maxDepth": 4,
       "rateLimitPerMinute": 18,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false,
       "includePatterns": ["https://www.kipo.go.kr/en/*"]
     },
@@ -129,6 +135,7 @@
       "maxPages": 200,
       "maxDepth": 2,
       "rateLimitPerMinute": 30,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -148,6 +155,7 @@
       "maxPages": 280,
       "maxDepth": 4,
       "rateLimitPerMinute": 24,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -165,6 +173,7 @@
       "maxPages": 250,
       "maxDepth": 3,
       "rateLimitPerMinute": 24,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -182,6 +191,7 @@
       "maxPages": 200,
       "maxDepth": 3,
       "rateLimitPerMinute": 18,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -199,6 +209,7 @@
       "maxPages": 250,
       "maxDepth": 4,
       "rateLimitPerMinute": 24,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -216,6 +227,7 @@
       "maxPages": 230,
       "maxDepth": 4,
       "rateLimitPerMinute": 18,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     },
     {
@@ -237,6 +249,7 @@
       "maxPages": 200,
       "maxDepth": 2,
       "rateLimitPerMinute": 18,
+      "adaptiveRefreshCadence": true,
       "renderJavascript": false
     }
   ]
