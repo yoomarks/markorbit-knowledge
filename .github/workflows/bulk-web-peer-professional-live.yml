@@ -138,6 +138,21 @@ jobs:
             --min-pages=150 \
             --min-domains=6 \
             --output="$RUNNER_TEMP/campaign-verification.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const verification = JSON.parse(
+            fs.readFileSync(process.env.RUNNER_TEMP + '/campaign-verification.json', 'utf8'),
+          );
+          if ((verification.conversionRuns?.FAILED ?? 0) !== 0) {
+            throw new Error(`Peer cohort has failed conversions: ${verification.conversionRuns.FAILED}`);
+          }
+          if (Object.keys(verification.conversionFailureCodes ?? {}).length !== 0) {
+            throw new Error('Peer cohort has conversion failure codes');
+          }
+          if (Object.keys(verification.stagingVerificationFailureCodes ?? {}).length !== 0) {
+            throw new Error('Peer cohort has staging verification failures');
+          }
+          NODE
 
       - name: Stop local processes
         if: always()
