@@ -187,6 +187,36 @@ function scalar(value: string): { value: Scalar; type: FrontmatterValueType } | 
   return null;
 }
 
+export function containsForbiddenYamlSyntax(raw: string): boolean {
+  let quote: '"' | "'" | null = null;
+  for (let index = 0; index < raw.length; index += 1) {
+    const character = raw[index];
+    if (quote !== null) {
+      if (quote === '"' && character === "\\") {
+        index += 1;
+        continue;
+      }
+      if (character === quote) {
+        if (quote === "'" && raw[index + 1] === "'") {
+          index += 1;
+          continue;
+        }
+        quote = null;
+      }
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    const tokenBoundary = index === 0 || /\s/u.test(raw[index - 1]);
+    if (!tokenBoundary) continue;
+    if (character === "&" || character === "*" || character === "!") return true;
+    if (raw.startsWith("<<:", index)) return true;
+  }
+  return false;
+}
+
 function parseFrontmatter(text: string): ParseResult {
   if (!text.startsWith("---\n")) {
     return {
@@ -215,7 +245,7 @@ function parseFrontmatter(text: string): ParseResult {
       body,
     };
   }
-  if (/(^|\s)(?:&|\*|!|<<:)/m.test(raw)) {
+  if (containsForbiddenYamlSyntax(raw)) {
     return {
       ok: false,
       code: "FRONTMATTER_PARSE_VALID",

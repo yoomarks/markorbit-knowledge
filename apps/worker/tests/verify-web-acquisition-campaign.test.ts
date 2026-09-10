@@ -25,6 +25,9 @@ function database(): DatabaseSync {
     CREATE TABLE conversion_attempts (
       conversion_run_id TEXT NOT NULL, document_json TEXT NOT NULL, status TEXT NOT NULL
     );
+    CREATE TABLE staging_document_verifications (
+      conversion_run_id TEXT NOT NULL, outcome TEXT NOT NULL, document_json TEXT NOT NULL
+    );
     CREATE TABLE execution_attempts (
       run_id TEXT NOT NULL, document_json TEXT NOT NULL, status TEXT NOT NULL
     );
@@ -80,6 +83,9 @@ describe("Bulk Web campaign verification", () => {
     db.prepare("INSERT INTO conversion_attempts VALUES ('conv-current', ?, 'FAILED')").run(
       JSON.stringify({ failure: { code: "CURRENT_FAIL" } }),
     );
+    db.prepare("INSERT INTO staging_document_verifications VALUES ('conv-current', 'FAIL', ?)").run(
+      JSON.stringify({ checks: [{ code: "MARKDOWN_BODY_PRESENT", status: "FAIL" }] }),
+    );
     for (let index = 0; index < 3; index += 1) {
       db.prepare(
         "INSERT INTO conversion_runs VALUES (?, 'src-1', 'FAILED', 'profile-current', ?)",
@@ -89,6 +95,9 @@ describe("Bulk Web campaign verification", () => {
         JSON.stringify({ failure: { code: "HIST_FAIL" } }),
       );
     }
+    db.prepare("INSERT INTO staging_document_verifications VALUES ('conv-old-0', 'FAIL', ?)").run(
+      JSON.stringify({ checks: [{ code: "HIST_STAGING_FAIL", status: "FAIL" }] }),
+    );
     db.prepare(
       "INSERT INTO conversion_runs VALUES ('bg-current', 'src-1', 'COMPLETED', 'profile-background', 'raw-current-1')",
     ).run();
@@ -106,6 +115,7 @@ describe("Bulk Web campaign verification", () => {
     expect(observed.currentRetrievalDocuments).toBe(1);
     expect(observed.conversionRuns).toEqual({ FAILED: 1 });
     expect(observed.conversionFailureCodes).toEqual({ CURRENT_FAIL: 1 });
+    expect(observed.stagingVerificationFailureCodes).toEqual({ MARKDOWN_BODY_PRESENT: 1 });
     expect(observed.collectionFailureCodes).toEqual({ CURRENT_COLLECTION_FAIL: 1 });
     expect(observed.backgroundConversionRuns).toEqual({ COMPLETED: 1 });
     expect(observed.sources[0]).toMatchObject({
@@ -114,6 +124,7 @@ describe("Bulk Web campaign verification", () => {
       retrievalDocuments: 1,
       conversionRuns: { FAILED: 1 },
       conversionFailureCodes: { CURRENT_FAIL: 1 },
+      stagingVerificationFailureCodes: { MARKDOWN_BODY_PRESENT: 1 },
       collectionFailureCodes: { CURRENT_COLLECTION_FAIL: 1 },
       backgroundConversionRuns: { COMPLETED: 1 },
     });
