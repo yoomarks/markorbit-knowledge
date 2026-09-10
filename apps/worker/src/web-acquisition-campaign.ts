@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { DatabaseSync } from "node:sqlite";
+import { SqliteWebUrlCatalogRepository } from "@markorbit/persistence/web-url-catalog";
 
 export const WEB_ACQUISITION_CAMPAIGN_VERSION = "1.0" as const;
 export const CAMPAIGN_CONNECTOR_ID = "crawl4ai-web";
@@ -54,10 +56,15 @@ export type WebAcquisitionInventoryV1 = {
   sitemapUrls: string[];
   discoveredCount: number;
   selectedUrls: string[];
+  eligibleCount: number;
   excludedCount: number;
   duplicateCount: number;
   errors: string[];
   inventorySha256: string;
+};
+
+type WebAcquisitionInventoryInternal = WebAcquisitionInventoryV1 & {
+  catalogUrls: string[];
 };
 
 export type WebAcquisitionCampaignResultV1 = {
@@ -336,7 +343,7 @@ async function fetchText(
 function selectedUrls(
   source: WebAcquisitionCampaignSourceV1,
   discovered: readonly string[],
-): { urls: string[]; excludedCount: number; duplicateCount: number } {
+): { batchUrls: string[]; catalogUrls: string[]; excludedCount: number; duplicateCount: number } {
   const canonical = discovered.map(canonicalizeCampaignUrl);
   const unique = [...new Set(canonical)];
   const filtered = unique.filter((raw) => {
@@ -358,7 +365,8 @@ function selectedUrls(
     return left.localeCompare(right);
   });
   return {
-    urls: filtered.slice(0, source.maxPages),
+    batchUrls: filtered.slice(0, source.maxPages),
+    catalogUrls: filtered,
     excludedCount: unique.length - filtered.length,
     duplicateCount: canonical.length - unique.length,
   };
@@ -366,7 +374,7 @@ function selectedUrls(
 export async function discoverWebAcquisitionInventory(
   source: WebAcquisitionCampaignSourceV1,
   fetchImpl: FetchLike = fetch,
-): Promise<WebAcquisitionInventoryV1> {
+): Promise<WebAcquisitionInventoryInternal> {
   const base = new URL(source.baseUrl);
   const robotsUrl = new URL("/robots.txt", base.origin).toString();
   const errors: string[] = [];
@@ -375,7 +383,8 @@ export async function discoverWebAcquisitionInventory(
 
   if (source.discovery.mode === "EXACT_URL_LIST") {
     const selected = selectedUrls(source, source.discovery.exactUrls ?? []);
-    if (selected.urls.length === 0) throw new Error(`${source.key} exact URL inventory is empty`);
+    if (selected.batchUrls.length === 0)
+      throw new Error(`${source.key} exact URL inventory is empty`);
     return {
       sourceKey: source.key,
       baseUrl: source.baseUrl,
@@ -385,11 +394,13 @@ export async function discoverWebAcquisitionInventory(
       robotsStatus,
       sitemapUrls: [],
       discoveredCount: (source.discovery.exactUrls ?? []).length,
-      selectedUrls: selected.urls,
+      selectedUrls: selected.batchUrls,
+      eligibleCount: selected.catalogUrls.length,
+      catalogUrls: selected.catalogUrls,
       excludedCount: selected.excludedCount,
       duplicateCount: selected.duplicateCount,
       errors,
-      inventorySha256: inventoryHash(selected.urls),
+      inventorySha256: inventoryHash(selected.catalogUrls),
     };
   }
 
@@ -464,15 +475,17 @@ export async function discoverWebAcquisitionInventory(
       robotsStatus,
       sitemapUrls: [...visitedSitemaps],
       discoveredCount: discovered.length,
-      selectedUrls: selected.urls,
+      selectedUrls: selected.batchUrls,
+      eligibleCount: selected.catalogUrls.length,
+      catalogUrls: selected.catalogUrls,
       excludedCount: selected.excludedCount,
       duplicateCount: selected.duplicateCount,
       errors,
-      inventorySha256: inventoryHash(selected.urls),
+      inventorySha256: inventoryHash(selected.catalogUrls),
     };
   }
   const selected = selectedUrls(source, discovered);
-  if (selected.urls.length === 0) {
+  if (selected.batchUrls.length === 0) {
     errors.push("sitemap-approved-empty:fallback-link-crawl");
     const fallback = selectedUrls(source, [source.baseUrl]);
     return {
@@ -484,11 +497,13 @@ export async function discoverWebAcquisitionInventory(
       robotsStatus,
       sitemapUrls: [...visitedSitemaps],
       discoveredCount: discovered.length,
-      selectedUrls: fallback.urls,
+      selectedUrls: fallback.batchUrls,
+      eligibleCount: fallback.catalogUrls.length,
+      catalogUrls: fallback.catalogUrls,
       excludedCount: selected.excludedCount,
       duplicateCount: selected.duplicateCount,
       errors,
-      inventorySha256: inventoryHash(fallback.urls),
+      inventorySha256: inventoryHash(fallback.catalogUrls),
     };
   }
   return {
@@ -500,12 +515,20 @@ export async function discoverWebAcquisitionInventory(
     robotsStatus,
     sitemapUrls: [...visitedSitemaps],
     discoveredCount: discovered.length,
-    selectedUrls: selected.urls,
+    selectedUrls: selected.batchUrls,
+    eligibleCount: selected.catalogUrls.length,
+    catalogUrls: selected.catalogUrls,
     excludedCount: selected.excludedCount,
     duplicateCount: selected.duplicateCount,
     errors,
-    inventorySha256: inventoryHash(selected.urls),
+    inventorySha256: inventoryHash(selected.catalogUrls),
   };
+}
+
+function publicInventory(inventory: WebAcquisitionInventoryInternal): WebAcquisitionInventoryV1 {
+  const { catalogUrls, ...publicView } = inventory;
+  void catalogUrls;
+  return publicView;
 }
 
 function classMetadata(source: WebAcquisitionCampaignSourceV1) {
@@ -696,11 +719,13 @@ async function ensureCampaignSource(
     "x-markorbit-source-class": source.sourceClass,
     "x-markorbit-discovery-mode": inventory.modeUsed,
     "x-markorbit-inventory-sha256": inventory.inventorySha256,
+    "x-markorbit-batch-sha256": inventoryHash(inventory.selectedUrls),
     "x-markorbit-source-config-sha256": stableObjectHash({
       renderJavascript: source.renderJavascript === true,
       maxDepth: inventory.modeUsed === "LINK_CRAWL" ? source.maxDepth : 0,
     }),
-    "x-markorbit-inventory-count": inventory.selectedUrls.length,
+    "x-markorbit-inventory-count": inventory.eligibleCount,
+    "x-markorbit-batch-count": inventory.selectedUrls.length,
     "x-markorbit-discovered-count": inventory.discoveredCount,
     "x-markorbit-excluded-count": inventory.excludedCount,
     "x-markorbit-duplicate-count": inventory.duplicateCount,
@@ -1223,12 +1248,15 @@ async function dispatchCampaignPlan(
   sourceKey: string,
   planId: string,
   runKey: string,
+  batchSha256: string,
 ): Promise<string> {
   const response = await client.request(
     "/api/runs",
     jsonPost(
       { planId },
-      { "Idempotency-Key": `bulk-web:${manifest.campaignId}:${sourceKey}:${runKey}` },
+      {
+        "Idempotency-Key": `bulk-web:${manifest.campaignId}:${sourceKey}:${runKey}:${batchSha256.slice(0, 16)}`,
+      },
     ),
     manifest.workspaceId,
   );
@@ -1269,6 +1297,16 @@ export async function runWebAcquisitionCampaign(
   await ensureCampaignConnector(client, manifest.workspaceId);
   await ensureMarkdownConverter(client, manifest.workspaceId);
 
+  const catalogDatabasePath = process.env.MARKORBIT_KNOWLEDGE_DB_PATH?.trim();
+  const catalogDatabase = catalogDatabasePath
+    ? new DatabaseSync(catalogDatabasePath, { timeout: 5000 })
+    : null;
+  if (catalogDatabase) {
+    catalogDatabase.exec("PRAGMA foreign_keys = ON;");
+    catalogDatabase.exec("PRAGMA journal_mode = WAL;");
+  }
+  const urlCatalog = catalogDatabase ? new SqliteWebUrlCatalogRepository(catalogDatabase) : null;
+
   const inventories = await mapWithLimit(manifest.sources, manifest.globalConcurrency, (source) =>
     discoverWebAcquisitionInventory(source, fetchImpl),
   );
@@ -1276,8 +1314,40 @@ export async function runWebAcquisitionCampaign(
     manifest.sources,
     manifest.globalConcurrency,
     async (source, index): Promise<WebAcquisitionCampaignResultV1["sources"][number]> => {
-      const inventory = inventories[index]!;
+      const discoveredInventory = inventories[index]!;
+      if (urlCatalog) {
+        urlCatalog.upsertDiscovered({
+          workspaceId: manifest.workspaceId,
+          campaignId: manifest.campaignId,
+          sourceKey: source.key,
+          discoveryMode: discoveredInventory.modeUsed,
+          urls: discoveredInventory.catalogUrls,
+        });
+        urlCatalog.reconcile({
+          workspaceId: manifest.workspaceId,
+          campaignId: manifest.campaignId,
+          sourceKey: source.key,
+        });
+      }
+      const nextBatch = urlCatalog
+        ? urlCatalog.nextBatch({
+            workspaceId: manifest.workspaceId,
+            campaignId: manifest.campaignId,
+            sourceKey: source.key,
+            limit: source.maxPages,
+          })
+        : discoveredInventory.selectedUrls;
+      const inventory: WebAcquisitionInventoryInternal = {
+        ...discoveredInventory,
+        selectedUrls: nextBatch.length > 0 ? nextBatch : discoveredInventory.selectedUrls,
+      };
       const sourceId = await ensureCampaignSource(client, manifest, source, inventory);
+      urlCatalog?.bindSource({
+        workspaceId: manifest.workspaceId,
+        campaignId: manifest.campaignId,
+        sourceKey: source.key,
+        sourceId,
+      });
       const planId = await ensureCampaignPlan(client, manifest, source, inventory, sourceId);
       const refreshPlanId = await ensureCampaignRefreshPlan(
         client,
@@ -1299,7 +1369,7 @@ export async function runWebAcquisitionCampaign(
         refreshPlanId,
         runId: null,
         conversionProfileId,
-        inventory,
+        inventory: publicInventory(inventory),
       };
     },
   );
@@ -1317,10 +1387,22 @@ export async function runWebAcquisitionCampaign(
         item.sourceKey,
         item.planId,
         runKey,
+        inventoryHash(item.inventory.selectedUrls),
       );
+      if (urlCatalog) {
+        urlCatalog.markQueued({
+          workspaceId: manifest.workspaceId,
+          campaignId: manifest.campaignId,
+          sourceKey: item.sourceKey,
+          runId: item.runId,
+          urls: item.inventory.selectedUrls,
+        });
+      }
       return item.runId;
     });
   }
+
+  catalogDatabase?.close();
 
   return {
     campaignId: manifest.campaignId,

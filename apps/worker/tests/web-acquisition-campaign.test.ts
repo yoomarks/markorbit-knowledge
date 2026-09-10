@@ -111,6 +111,7 @@ describe("sitemap-first discovery", () => {
     const inventory = await discoverWebAcquisitionInventory(manifest().sources[0]!, fetchImpl);
     expect(inventory.modeUsed).toBe("SITEMAP");
     expect(inventory.selectedUrls).toEqual(["https://example.com/trademarks/apply"]);
+    expect(inventory.eligibleCount).toBe(1);
     expect(inventory.duplicateCount).toBe(1);
     expect(inventory.excludedCount).toBe(1);
   });
@@ -282,6 +283,8 @@ describe("bulk campaign orchestration", () => {
         "x-markorbit-excluded-count": 0,
         "x-markorbit-duplicate-count": 0,
         "x-markorbit-inventory-error-count": 0,
+        "x-markorbit-batch-count": 1,
+        "x-markorbit-batch-sha256": expect.stringMatching(/^[a-f0-9]{64}$/u),
       },
     });
     const planPosts = calls.filter(
@@ -322,6 +325,9 @@ describe("bulk campaign orchestration", () => {
     expect(profilePost?.body).toMatchObject({ autoConvert: true, outputFormat: "MARKDOWN" });
     const runPost = calls.find((call) => call.method === "POST" && call.url.endsWith("/api/runs"));
     expect(runPost?.body).toEqual({ planId: "pln_TEST0000000000000000000001" });
+    expect(runPost?.headers["idempotency-key"]).toMatch(
+      /^bulk-web:test-wave:peer:acceptance-1:[a-f0-9]{16}$/u,
+    );
   });
 
   it("re-crawls governed link-crawl coverage while keeping sitemap refreshes depth-zero", async () => {
@@ -383,6 +389,34 @@ describe("bounded sitemap ordering", () => {
       "https://example.com/trademarks",
       "https://example.com/trademarks/apply",
     ]);
+    expect(inventory.eligibleCount).toBe(3);
+  });
+});
+
+describe("durable sitemap inventory vs batch budget", () => {
+  it("keeps the full eligible inventory while selecting only one bounded batch", async () => {
+    const source = { ...manifest().sources[0]!, maxPages: 2 };
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/robots.txt")) {
+        return new Response("Sitemap: https://example.com/sitemap.xml\n", { status: 200 });
+      }
+      if (url.endsWith("/sitemap.xml")) {
+        return new Response(
+          "<urlset>" +
+            "<url><loc>https://example.com/trademarks/a</loc></url>" +
+            "<url><loc>https://example.com/trademarks/b</loc></url>" +
+            "<url><loc>https://example.com/trademarks/c</loc></url>" +
+            "</urlset>",
+          { status: 200 },
+        );
+      }
+      throw new Error(`unexpected ${url}`);
+    }) as typeof fetch;
+
+    const inventory = await discoverWebAcquisitionInventory(source, fetchImpl);
+    expect(inventory.eligibleCount).toBe(3);
+    expect(inventory.selectedUrls).toHaveLength(2);
   });
 });
 

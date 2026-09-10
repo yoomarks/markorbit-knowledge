@@ -119,7 +119,8 @@
     "./document-change-evidence": "./src/document-change-evidence.ts",
     "./local-pipeline-adapter": "./src/local-pipeline-adapter.ts",
     "./conversion-pipeline-inspection": "./src/conversion-pipeline-inspection.ts",
-    "./source-coverage-verification-audit": "./src/source-coverage-verification-audit.ts"
+    "./source-coverage-verification-audit": "./src/source-coverage-verification-audit.ts",
+    "./web-url-catalog": "./src/web-url-catalog.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
