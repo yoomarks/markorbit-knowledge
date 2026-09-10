@@ -125,7 +125,7 @@ jobs:
       - name: Dispatch first full collection
         run: |
           node <<'NODE'
-          const fs=require('node:fs'); fs.writeFileSync(process.env.RUNNER_TEMP+'/first-dispatch-request.json',JSON.stringify({planId:process.env.MARKORBIT_IP_AU_PLAN_ID,requestedBy:{actorType:'SYSTEM',actorId:'github-actions-live'}}));
+          const fs=require('node:fs'); fs.writeFileSync(process.env.RUNNER_TEMP+'/first-dispatch-request.json',JSON.stringify({planId:process.env.MARKORBIT_IP_AU_PLAN_ID}));
           NODE
           bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/runs" -H 'content-type: application/json' -H 'Idempotency-Key: ip-au-manual-rawartifact-first' --data-binary "@$RUNNER_TEMP/first-dispatch-request.json" > "$RUNNER_TEMP/first-dispatch.json"
           node <<'NODE'
@@ -173,7 +173,7 @@ jobs:
       - name: Dispatch explicit change-watch execution
         run: |
           node <<'NODE'
-          const fs=require('node:fs'); fs.writeFileSync(process.env.RUNNER_TEMP+'/second-dispatch-request.json',JSON.stringify({planId:process.env.MARKORBIT_IP_AU_PLAN_ID,requestedBy:{actorType:'SYSTEM',actorId:'github-actions-live-change-watch'}}));
+          const fs=require('node:fs'); fs.writeFileSync(process.env.RUNNER_TEMP+'/second-dispatch-request.json',JSON.stringify({planId:process.env.MARKORBIT_IP_AU_PLAN_ID}));
           NODE
           bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/runs" -H 'content-type: application/json' -H 'Idempotency-Key: ip-au-manual-rawartifact-second' --data-binary "@$RUNNER_TEMP/second-dispatch-request.json" > "$RUNNER_TEMP/second-dispatch.json"
           node <<'NODE'
