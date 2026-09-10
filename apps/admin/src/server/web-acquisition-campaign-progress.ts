@@ -19,10 +19,15 @@ type RunRow = {
   requested_at: string;
   updated_at: string;
 };
-type CountRow = { count: number };
-type StatusCountRow = { status: string; count: number };
-type FailureCountRow = { code: string | null; count: number };
-type ChangeAccountingRow = {
+type CountBySourceRow = { source_id: string; count: number };
+type RunBySourceRow = RunRow & { source_id: string };
+type RawStatsRow = { run_id: string; fetched: number; total: number };
+type ProfileCountRow = { run_id: string; profile_name: string | null; count: number };
+type ProfileStatusRow = ProfileCountRow & { status: string };
+type RunFailureRow = { run_id: string; code: string | null; count: number };
+type ProfileFailureRow = RunFailureRow & { profile_name: string | null };
+type ChangeAccountingByRunRow = {
+  run_id: string;
   receipts: number;
   observed: number | null;
   changed: number | null;
@@ -127,8 +132,9 @@ function extensionString(extensions: JsonRecord | null, key: string): string | n
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function count(database: DatabaseSync, sql: string, ...values: string[]): number {
-  return Number((database.prepare(sql).get(...values) as CountRow).count);
+function placeholders(values: readonly string[]): string {
+  if (values.length === 0) throw new Error("Expected at least one identifier");
+  return values.map(() => "?").join(",");
 }
 
 function increment(target: Record<string, number>, key: string, value: number): void {
@@ -141,90 +147,6 @@ function earlier(current: string | null, candidate: string): string {
 
 function later(current: string | null, candidate: string): string {
   return current === null || Date.parse(candidate) > Date.parse(current) ? candidate : current;
-}
-
-function statusCounts(
-  database: DatabaseSync,
-  runId: string,
-  conversionProfileName: string,
-): Record<string, number> {
-  const rows = database
-    .prepare(
-      `SELECT r.status, COUNT(*) AS count
-       FROM conversion_runs r
-       JOIN raw_artifacts a ON a.id = r.raw_artifact_id
-       WHERE a.run_id = ?
-         AND json_extract(r.document_json, '$.conversionProfileSnapshot.name') = ?
-       GROUP BY r.status`,
-    )
-    .all(runId, conversionProfileName) as unknown as StatusCountRow[];
-  return Object.fromEntries(rows.map((row) => [row.status, Number(row.count)]));
-}
-
-function failureCounts(
-  database: DatabaseSync,
-  sql: string,
-  ...values: string[]
-): Record<string, number> {
-  const rows = database.prepare(sql).all(...values) as unknown as FailureCountRow[];
-  return Object.fromEntries(rows.map((row) => [row.code ?? "UNKNOWN", Number(row.count)]));
-}
-
-function collectionFailures(database: DatabaseSync, runId: string): Record<string, number> {
-  return failureCounts(
-    database,
-    `SELECT json_extract(document_json, '$.failure.code') AS code, COUNT(*) AS count
-     FROM execution_attempts
-     WHERE run_id = ? AND status = 'FAILED'
-     GROUP BY code`,
-    runId,
-  );
-}
-
-function changeAccounting(
-  database: DatabaseSync,
-  runId: string,
-): { changed: number; unchanged: number } | null {
-  const row = database
-    .prepare(
-      `SELECT COUNT(*) AS receipts,
-              SUM(CAST(json_extract(document_json, '$.receipt.itemsObserved') AS INTEGER)) AS observed,
-              SUM(
-                CASE
-                  WHEN json_extract(document_json, '$.receipt.metadataOnly') = 1 THEN 0
-                  ELSE COALESCE(json_array_length(json_extract(document_json, '$.receipt.artifactReceiptIds')), 0)
-                END
-              ) AS changed
-       FROM execution_attempts
-       WHERE run_id = ? AND status = 'COMPLETED'
-         AND json_type(document_json, '$.receipt.itemsObserved') IN ('integer', 'real')`,
-    )
-    .get(runId) as ChangeAccountingRow;
-  if (Number(row.receipts) === 0) return null;
-  const observed = Number(row.observed ?? 0);
-  const changed = Number(row.changed ?? 0);
-  if (changed > observed) return null;
-  return { changed, unchanged: observed - changed };
-}
-
-function conversionFailures(
-  database: DatabaseSync,
-  runId: string,
-  conversionProfileName: string,
-): Record<string, number> {
-  return failureCounts(
-    database,
-    `SELECT json_extract(a.document_json, '$.failure.code') AS code, COUNT(*) AS count
-     FROM conversion_attempts a
-     JOIN conversion_runs r ON r.id = a.conversion_run_id
-     JOIN raw_artifacts raw ON raw.id = r.raw_artifact_id
-     WHERE raw.run_id = ?
-       AND json_extract(r.document_json, '$.conversionProfileSnapshot.name') = ?
-       AND a.status = 'FAILED'
-     GROUP BY code`,
-    runId,
-    conversionProfileName,
-  );
 }
 
 function blockedFailure(codes: Record<string, number>): boolean {
@@ -251,123 +173,265 @@ export function readWebAcquisitionCampaignProgress(
     )
     .all(input.workspaceId, `campaign-${campaignId}-%`) as unknown as SourceRow[];
 
+  const campaignSources = sourceRows.flatMap((row) => {
+    const source = record(JSON.parse(row.document_json));
+    const extensions = record(source?.extensions);
+    if (extensionString(extensions, "x-markorbit-campaign-id") !== campaignId) return [];
+    const sourceKey = extensionString(extensions, "x-markorbit-campaign-source-key") ?? row.id;
+    return [
+      {
+        row,
+        sourceKey,
+        sourceClass: extensionString(extensions, "x-markorbit-source-class") ?? "UNKNOWN",
+        discoveryMode: extensionString(extensions, "x-markorbit-discovery-mode") ?? "UNKNOWN",
+        conversionProfileName: `Bulk Web ${campaignId} Markdown Auto — ${sourceKey}`,
+        selectedUrls: extensionNumber(extensions, "x-markorbit-inventory-count") ?? 0,
+        discoveredUrls: extensionNumber(extensions, "x-markorbit-discovered-count"),
+        excludedUrls: extensionNumber(extensions, "x-markorbit-excluded-count"),
+        duplicateDiscoveryUrls: extensionNumber(extensions, "x-markorbit-duplicate-count"),
+        inventoryErrorCount: extensionNumber(extensions, "x-markorbit-inventory-error-count"),
+      },
+    ];
+  });
+  const sourceIds = campaignSources.map(({ row }) => row.id);
+  const initialRunBySource = new Map<string, RunRow>();
+  const refreshRunBySource = new Map<string, RunRow>();
+  const retrievalBySource = new Map<string, number>();
+  if (sourceIds.length > 0) {
+    const initialRows = database
+      .prepare(
+        `
+      WITH ranked AS (
+        SELECT id, source_id, status, requested_at, updated_at,
+               ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY created_at DESC, id DESC) AS rn
+        FROM collection_runs
+        WHERE workspace_id = ? AND source_id IN (${placeholders(sourceIds)})
+          AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-campaign-id') = ?
+          AND COALESCE(json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-plan-role'), 'INITIAL_COLLECTION') <> 'REFRESH_WATCH'
+      )
+      SELECT id, source_id, status, requested_at, updated_at FROM ranked WHERE rn = 1
+    `,
+      )
+      .all(input.workspaceId, ...sourceIds, campaignId) as unknown as RunBySourceRow[];
+    for (const run of initialRows) initialRunBySource.set(run.source_id, run);
+
+    const refreshRows = database
+      .prepare(
+        `
+      WITH ranked AS (
+        SELECT id, source_id, status, requested_at, updated_at,
+               ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY created_at DESC, id DESC) AS rn
+        FROM collection_runs
+        WHERE workspace_id = ? AND source_id IN (${placeholders(sourceIds)})
+          AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-campaign-id') = ?
+          AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-plan-role') = 'REFRESH_WATCH'
+          AND json_extract(document_json, '$.planSnapshot.schedule.mode') = 'CHANGE_WATCH'
+          AND json_extract(document_json, '$.planSnapshot.policy.fetchAttachments') = 0
+      )
+      SELECT id, source_id, status, requested_at, updated_at FROM ranked WHERE rn = 1
+    `,
+      )
+      .all(input.workspaceId, ...sourceIds, campaignId) as unknown as RunBySourceRow[];
+    for (const run of refreshRows) refreshRunBySource.set(run.source_id, run);
+    const wanted = JSON.stringify(
+      campaignSources.map(({ row, sourceKey }) => ({
+        sourceId: row.id,
+        prefix: `sources/web/${campaignId}/${sourceKey}/`,
+      })),
+    );
+    const retrievalRows = database
+      .prepare(
+        `
+      WITH wanted AS (
+        SELECT json_extract(value, '$.sourceId') AS source_id,
+               json_extract(value, '$.prefix') AS prefix
+        FROM json_each(?)
+      )
+      SELECT d.source_id, COUNT(*) AS count
+      FROM retrieval_documents d
+      JOIN wanted w ON w.source_id = d.source_id
+      WHERE d.is_current = 1 AND d.target_path LIKE w.prefix || '%'
+      GROUP BY d.source_id
+    `,
+      )
+      .all(wanted) as unknown as CountBySourceRow[];
+    for (const row of retrievalRows) retrievalBySource.set(row.source_id, Number(row.count));
+  }
+
+  const initialRuns = [...initialRunBySource.values()];
+  const initialRunIds = initialRuns.map((run) => run.id);
+  const expectedProfileByRun = new Map<string, string>();
+  for (const source of campaignSources) {
+    const run = initialRunBySource.get(source.row.id);
+    if (run) expectedProfileByRun.set(run.id, source.conversionProfileName);
+  }
+  const rawStatsByRun = new Map<string, { fetched: number; total: number }>();
+  const normalizedByRun = new Map<string, number>();
+  const conversionStatusByRun = new Map<string, Record<string, number>>();
+  const collectionFailuresByRun = new Map<string, Record<string, number>>();
+  const conversionFailuresByRun = new Map<string, Record<string, number>>();
+  if (initialRunIds.length > 0) {
+    const rawRows = database
+      .prepare(
+        `
+      SELECT run_id,
+             COUNT(DISTINCT CASE WHEN artifact_kind = 'MARKDOWN' AND canonical_uri IS NOT NULL THEN canonical_uri END) AS fetched,
+             COUNT(*) AS total
+      FROM raw_artifacts WHERE run_id IN (${placeholders(initialRunIds)}) GROUP BY run_id
+    `,
+      )
+      .all(...initialRunIds) as unknown as RawStatsRow[];
+    for (const row of rawRows)
+      rawStatsByRun.set(row.run_id, { fetched: Number(row.fetched), total: Number(row.total) });
+
+    const normalizedRows = database
+      .prepare(
+        `
+      SELECT a.run_id,
+             json_extract(r.document_json, '$.conversionProfileSnapshot.name') AS profile_name,
+             COUNT(*) AS count
+      FROM staging_documents s
+      JOIN raw_artifacts a ON a.id = s.raw_artifact_id
+      JOIN conversion_runs r ON r.id = s.conversion_run_id
+      WHERE a.run_id IN (${placeholders(initialRunIds)})
+      GROUP BY a.run_id, profile_name
+    `,
+      )
+      .all(...initialRunIds) as unknown as ProfileCountRow[];
+    for (const row of normalizedRows) {
+      if (row.profile_name === expectedProfileByRun.get(row.run_id))
+        normalizedByRun.set(row.run_id, Number(row.count));
+    }
+
+    const statusRows = database
+      .prepare(
+        `
+      SELECT a.run_id,
+             json_extract(r.document_json, '$.conversionProfileSnapshot.name') AS profile_name,
+             r.status, COUNT(*) AS count
+      FROM conversion_runs r
+      JOIN raw_artifacts a ON a.id = r.raw_artifact_id
+      WHERE a.run_id IN (${placeholders(initialRunIds)})
+      GROUP BY a.run_id, profile_name, r.status
+    `,
+      )
+      .all(...initialRunIds) as unknown as ProfileStatusRow[];
+    for (const row of statusRows) {
+      if (row.profile_name !== expectedProfileByRun.get(row.run_id)) continue;
+      const bucket = conversionStatusByRun.get(row.run_id) ?? {};
+      increment(bucket, row.status, Number(row.count));
+      conversionStatusByRun.set(row.run_id, bucket);
+    }
+
+    const collectionRows = database
+      .prepare(
+        `
+      SELECT run_id, json_extract(document_json, '$.failure.code') AS code, COUNT(*) AS count
+      FROM execution_attempts
+      WHERE run_id IN (${placeholders(initialRunIds)}) AND status = 'FAILED'
+      GROUP BY run_id, code
+    `,
+      )
+      .all(...initialRunIds) as unknown as RunFailureRow[];
+    for (const row of collectionRows) {
+      const bucket = collectionFailuresByRun.get(row.run_id) ?? {};
+      increment(bucket, row.code ?? "UNKNOWN", Number(row.count));
+      collectionFailuresByRun.set(row.run_id, bucket);
+    }
+
+    const failureRows = database
+      .prepare(
+        `
+      SELECT raw.run_id,
+             json_extract(r.document_json, '$.conversionProfileSnapshot.name') AS profile_name,
+             json_extract(a.document_json, '$.failure.code') AS code,
+             COUNT(*) AS count
+      FROM conversion_attempts a
+      JOIN conversion_runs r ON r.id = a.conversion_run_id
+      JOIN raw_artifacts raw ON raw.id = r.raw_artifact_id
+      WHERE raw.run_id IN (${placeholders(initialRunIds)}) AND a.status = 'FAILED'
+      GROUP BY raw.run_id, profile_name, code
+    `,
+      )
+      .all(...initialRunIds) as unknown as ProfileFailureRow[];
+    for (const row of failureRows) {
+      if (row.profile_name !== expectedProfileByRun.get(row.run_id)) continue;
+      const bucket = conversionFailuresByRun.get(row.run_id) ?? {};
+      increment(bucket, row.code ?? "UNKNOWN", Number(row.count));
+      conversionFailuresByRun.set(row.run_id, bucket);
+    }
+  }
+  const completedRefreshRunIds = [...refreshRunBySource.values()]
+    .filter((run) => run.status === "COMPLETED")
+    .map((run) => run.id);
+  const refreshAccountingByRun = new Map<string, { changed: number; unchanged: number }>();
+  if (completedRefreshRunIds.length > 0) {
+    const accountingRows = database
+      .prepare(
+        `
+      SELECT run_id,
+             COUNT(*) AS receipts,
+             SUM(CAST(json_extract(document_json, '$.receipt.itemsObserved') AS INTEGER)) AS observed,
+             SUM(CASE
+               WHEN json_extract(document_json, '$.receipt.metadataOnly') = 1 THEN 0
+               ELSE COALESCE(json_array_length(json_extract(document_json, '$.receipt.artifactReceiptIds')), 0)
+             END) AS changed
+      FROM execution_attempts
+      WHERE run_id IN (${placeholders(completedRefreshRunIds)}) AND status = 'COMPLETED'
+        AND json_type(document_json, '$.receipt.itemsObserved') IN ('integer', 'real')
+      GROUP BY run_id
+    `,
+      )
+      .all(...completedRefreshRunIds) as unknown as ChangeAccountingByRunRow[];
+    for (const row of accountingRows) {
+      const receipts = Number(row.receipts);
+      const observed = Number(row.observed ?? 0);
+      const changed = Number(row.changed ?? 0);
+      if (receipts > 0 && changed <= observed) {
+        refreshAccountingByRun.set(row.run_id, { changed, unchanged: observed - changed });
+      }
+    }
+  }
+
   const sources: WebAcquisitionCampaignProgress["sources"] = [];
   let earliestRequestedAt: string | null = null;
   let latestRunUpdatedAt: string | null = null;
-
-  for (const row of sourceRows) {
-    const source = record(JSON.parse(row.document_json));
-    const extensions = record(source?.extensions);
-    if (extensionString(extensions, "x-markorbit-campaign-id") !== campaignId) continue;
-    const sourceKey = extensionString(extensions, "x-markorbit-campaign-source-key") ?? row.id;
-    const sourceClass = extensionString(extensions, "x-markorbit-source-class") ?? "UNKNOWN";
-    const discoveryMode = extensionString(extensions, "x-markorbit-discovery-mode") ?? "UNKNOWN";
-    const conversionProfileName = `Bulk Web ${campaignId} Markdown Auto — ${sourceKey}`;
-    const selectedUrls = extensionNumber(extensions, "x-markorbit-inventory-count") ?? 0;
-    const discoveredUrls = extensionNumber(extensions, "x-markorbit-discovered-count");
-    const excludedUrls = extensionNumber(extensions, "x-markorbit-excluded-count");
-    const duplicateDiscoveryUrls = extensionNumber(extensions, "x-markorbit-duplicate-count");
-    const inventoryErrorCount = extensionNumber(extensions, "x-markorbit-inventory-error-count");
-    const run = database
-      .prepare(
-        `SELECT id, status, requested_at, updated_at
-         FROM collection_runs
-         WHERE workspace_id = ? AND source_id = ?
-           AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-campaign-id') = ?
-           AND COALESCE(json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-plan-role'), 'INITIAL_COLLECTION') <> 'REFRESH_WATCH'
-         ORDER BY created_at DESC, id DESC LIMIT 1`,
-      )
-      .get(input.workspaceId, row.id, campaignId) as RunRow | undefined;
-    const refreshRun = database
-      .prepare(
-        `SELECT id, status, requested_at, updated_at
-         FROM collection_runs
-         WHERE workspace_id = ? AND source_id = ?
-           AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-campaign-id') = ?
-           AND json_extract(document_json, '$.planSnapshot.extensions.x-markorbit-plan-role') = 'REFRESH_WATCH'
-           AND json_extract(document_json, '$.planSnapshot.schedule.mode') = 'CHANGE_WATCH'
-           AND json_extract(document_json, '$.planSnapshot.policy.fetchAttachments') = 0
-         ORDER BY created_at DESC, id DESC LIMIT 1`,
-      )
-      .get(input.workspaceId, row.id, campaignId) as RunRow | undefined;
-
-    let fetchedUrls = 0;
-    let rawArtifactsCreated = 0;
-    let normalizedDocumentsCreated = 0;
-    let changedUrls: number | null = null;
-    let unchangedUrls: number | null = null;
-    const currentRetrievalDocuments = count(
-      database,
-      `SELECT COUNT(*) AS count FROM retrieval_documents
-       WHERE source_id = ? AND is_current = 1 AND target_path LIKE ?`,
-      row.id,
-      `sources/web/${campaignId}/${sourceKey}/%`,
-    );
-    let conversionRuns: Record<string, number> = {};
-    let collectionFailureCodes: Record<string, number> = {};
-    let conversionFailureCodes: Record<string, number> = {};
+  for (const source of campaignSources) {
+    const run = initialRunBySource.get(source.row.id);
+    const refreshRun = refreshRunBySource.get(source.row.id);
     if (run) {
       earliestRequestedAt = earlier(earliestRequestedAt, run.requested_at);
       latestRunUpdatedAt = later(latestRunUpdatedAt, run.updated_at);
-      fetchedUrls = count(
-        database,
-        `SELECT COUNT(DISTINCT canonical_uri) AS count FROM raw_artifacts
-         WHERE run_id = ? AND artifact_kind = 'MARKDOWN' AND canonical_uri IS NOT NULL`,
-        run.id,
-      );
-      rawArtifactsCreated = count(
-        database,
-        "SELECT COUNT(*) AS count FROM raw_artifacts WHERE run_id = ?",
-        run.id,
-      );
-      normalizedDocumentsCreated = count(
-        database,
-        `SELECT COUNT(*) AS count
-         FROM staging_documents s
-         JOIN raw_artifacts a ON a.id = s.raw_artifact_id
-         JOIN conversion_runs r ON r.id = s.conversion_run_id
-         WHERE a.run_id = ?
-           AND json_extract(r.document_json, '$.conversionProfileSnapshot.name') = ?`,
-        run.id,
-        conversionProfileName,
-      );
-      conversionRuns = statusCounts(database, run.id, conversionProfileName);
-      collectionFailureCodes = collectionFailures(database, run.id);
-      conversionFailureCodes = conversionFailures(database, run.id, conversionProfileName);
     }
-    if (refreshRun?.status === "COMPLETED") {
-      const accounting = changeAccounting(database, refreshRun.id);
-      if (accounting) {
-        changedUrls = accounting.changed;
-        unchangedUrls = accounting.unchanged;
-      }
-    }
+    const rawStats = run ? rawStatsByRun.get(run.id) : undefined;
+    const collectionFailureCodes = run ? (collectionFailuresByRun.get(run.id) ?? {}) : {};
+    const accounting =
+      refreshRun?.status === "COMPLETED" ? refreshAccountingByRun.get(refreshRun.id) : undefined;
     sources.push({
-      sourceId: row.id,
-      sourceKey,
-      sourceName: row.name,
-      sourceClass,
-      discoveryMode,
+      sourceId: source.row.id,
+      sourceKey: source.sourceKey,
+      sourceName: source.row.name,
+      sourceClass: source.sourceClass,
+      discoveryMode: source.discoveryMode,
       runId: run?.id ?? null,
       runStatus: run?.status ?? "NOT_DISPATCHED",
       blocked: run?.status === "FAILED" && blockedFailure(collectionFailureCodes),
-      selectedUrls,
-      discoveredUrls,
-      excludedUrls,
-      duplicateDiscoveryUrls,
-      inventoryErrorCount,
-      fetchedUrls,
-      rawArtifactsCreated,
-      normalizedDocumentsCreated,
-      currentRetrievalDocuments,
-      changedUrls,
-      unchangedUrls,
-      conversionRuns,
+      selectedUrls: source.selectedUrls,
+      discoveredUrls: source.discoveredUrls,
+      excludedUrls: source.excludedUrls,
+      duplicateDiscoveryUrls: source.duplicateDiscoveryUrls,
+      inventoryErrorCount: source.inventoryErrorCount,
+      fetchedUrls: rawStats?.fetched ?? 0,
+      rawArtifactsCreated: rawStats?.total ?? 0,
+      normalizedDocumentsCreated: run ? (normalizedByRun.get(run.id) ?? 0) : 0,
+      currentRetrievalDocuments: retrievalBySource.get(source.row.id) ?? 0,
+      changedUrls: accounting?.changed ?? null,
+      unchangedUrls: accounting?.unchanged ?? null,
+      conversionRuns: run ? (conversionStatusByRun.get(run.id) ?? {}) : {},
       collectionFailureCodes,
-      conversionFailureCodes,
+      conversionFailureCodes: run ? (conversionFailuresByRun.get(run.id) ?? {}) : {},
     });
   }
-
   const detailed = sources.filter(
     (source) =>
       source.discoveredUrls !== null &&
