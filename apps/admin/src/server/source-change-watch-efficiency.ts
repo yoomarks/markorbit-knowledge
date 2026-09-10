@@ -1,6 +1,16 @@
 import type { DatabaseSync } from "node:sqlite";
 import { RegistryValidationError } from "@markorbit/persistence";
 
+export type AdaptiveRecrawlCadenceStatus = {
+  currentIntervalSeconds: number;
+  baselineIntervalSeconds: number | null;
+  lastDecision: string | null;
+  lastEvaluatedAt: string | null;
+  lastChangedAt: string | null;
+  evidenceRuns: number | null;
+  noChangeRatePercent: number | null;
+};
+
 export type SourceChangeWatchEfficiency = {
   sourceId: string;
   sourceName: string;
@@ -13,6 +23,7 @@ export type SourceChangeWatchEfficiency = {
   activeValidatorEndpoints: number;
   latestCompletedAt: string | null;
   latestValidatorAt: string | null;
+  adaptiveCadence: AdaptiveRecrawlCadenceStatus | null;
 };
 
 export type SourceChangeWatchEfficiencySummary = {
@@ -137,6 +148,51 @@ export function listSourceChangeWatchEfficiency(
     }
   }
 
+  const adaptiveBySource = new Map<string, AdaptiveRecrawlCadenceStatus>();
+  if (tableExists(database, "collection_plans")) {
+    const rows = database
+      .prepare(
+        `SELECT source_id AS sourceId,
+                CAST(json_extract(document_json, '$.schedule.pollIntervalSeconds') AS INTEGER) AS currentIntervalSeconds,
+                CAST(json_extract(document_json, '$.extensions.x-markorbit-refresh-interval-seconds') AS INTEGER) AS baselineIntervalSeconds,
+                json_extract(document_json, '$.extensions.x-markorbit-adaptive-cadence-last-decision') AS lastDecision,
+                json_extract(document_json, '$.extensions.x-markorbit-adaptive-cadence-last-evaluated-at') AS lastEvaluatedAt,
+                json_extract(document_json, '$.extensions.x-markorbit-adaptive-cadence-last-changed-at') AS lastChangedAt,
+                CAST(json_extract(document_json, '$.extensions.x-markorbit-adaptive-cadence-evidence-runs') AS INTEGER) AS evidenceRuns,
+                CAST(json_extract(document_json, '$.extensions.x-markorbit-adaptive-cadence-no-change-rate-percent') AS REAL) AS adaptiveNoChangeRatePercent
+         FROM collection_plans
+         WHERE workspace_id = ?
+           AND status = 'ACTIVE'
+           AND schedule_mode = 'CHANGE_WATCH'
+           AND json_extract(document_json, '$.extensions.x-markorbit-adaptive-refresh-cadence') = 1
+         ORDER BY updated_at DESC, id DESC`,
+      )
+      .all(normalizedWorkspaceId) as Array<{
+      sourceId: string;
+      currentIntervalSeconds: number;
+      baselineIntervalSeconds: number | null;
+      lastDecision: string | null;
+      lastEvaluatedAt: string | null;
+      lastChangedAt: string | null;
+      evidenceRuns: number | null;
+      adaptiveNoChangeRatePercent: number | null;
+    }>;
+    for (const row of rows) {
+      if (adaptiveBySource.has(row.sourceId)) continue;
+      adaptiveBySource.set(row.sourceId, {
+        currentIntervalSeconds: Number(row.currentIntervalSeconds),
+        baselineIntervalSeconds:
+          row.baselineIntervalSeconds === null ? null : Number(row.baselineIntervalSeconds),
+        lastDecision: row.lastDecision,
+        lastEvaluatedAt: row.lastEvaluatedAt,
+        lastChangedAt: row.lastChangedAt,
+        evidenceRuns: row.evidenceRuns === null ? null : Number(row.evidenceRuns),
+        noChangeRatePercent:
+          row.adaptiveNoChangeRatePercent === null ? null : Number(row.adaptiveNoChangeRatePercent),
+      });
+    }
+  }
+
   if (!hasExecutionEvidence) return summary;
 
   const sinceAt = new Date(observedAt.getTime() - windowHours * 60 * 60 * 1_000).toISOString();
@@ -224,6 +280,7 @@ export function listSourceChangeWatchEfficiency(
       activeValidatorEndpoints: validators?.activeValidatorEndpoints ?? 0,
       latestCompletedAt: row.latestCompletedAt,
       latestValidatorAt: validators?.latestValidatorAt ?? null,
+      adaptiveCadence: adaptiveBySource.get(row.sourceId) ?? null,
     };
   });
 

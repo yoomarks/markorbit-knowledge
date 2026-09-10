@@ -179,6 +179,34 @@ describe("Collection scheduler runtime", () => {
     database.close();
   });
 
+  it("reanchors the same plan when a change-watch cadence is updated", () => {
+    const { database, sources, plans, scheduler, setNow } = repositories();
+    const source = sources.create(sourceInput());
+    const created = plans.create(
+      planInput(source.id, {
+        schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 600 },
+      }),
+    );
+    scheduler.tick();
+    const before = scheduler.getState(created.plan.id);
+    expect(before.nextDueAt).toBe("2026-08-12T00:10:00.000Z");
+
+    const updated = plans.update(
+      created.plan.id,
+      { schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 1_200 } },
+      created.plan.updatedAt,
+    );
+    expect(updated.plan.id).toBe(created.plan.id);
+    expect(updated.plan.sourceId).toBe(source.id);
+
+    setNow("2026-08-12T00:01:00.000Z");
+    scheduler.tick();
+    const after = scheduler.getState(created.plan.id);
+    expect(after.scheduleFingerprint).not.toBe(before.scheduleFingerprint);
+    expect(after.nextDueAt).toBe("2026-08-12T00:21:00.000Z");
+    database.close();
+  });
+
   it("respects pause/resume and performs only one catch-up after resuming", () => {
     const { database, sources, plans, scheduler, runs, setNow } = repositories();
     const source = sources.create(sourceInput());

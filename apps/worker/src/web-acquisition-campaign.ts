@@ -32,6 +32,7 @@ export type WebAcquisitionCampaignSourceV1 = {
   maxDepth: number;
   rateLimitPerMinute: number;
   refreshIntervalSeconds?: number;
+  adaptiveRefreshCadence?: boolean;
   renderJavascript?: boolean;
 };
 export type WebAcquisitionCampaignManifestV1 = {
@@ -104,6 +105,12 @@ function integer(value: unknown, field: string, minimum: number, maximum: number
 
 function stringArray(value: unknown, field: string): string[] {
   return array(value).map((item, index) => requiredString(item, `${field}[${index}]`));
+}
+
+function optionalBoolean(value: unknown, field: string): boolean {
+  if (value === undefined) return false;
+  if (typeof value !== "boolean") throw new Error(`${field} must be a boolean`);
+  return value;
 }
 
 function campaignSlug(value: string): string {
@@ -231,6 +238,10 @@ export function parseWebAcquisitionCampaignManifest(
         `sources[${index}].refreshIntervalSeconds`,
         300,
         2_592_000,
+      ),
+      adaptiveRefreshCadence: optionalBoolean(
+        value.adaptiveRefreshCadence,
+        `sources[${index}].adaptiveRefreshCadence`,
       ),
       renderJavascript: value.renderJavascript === true,
     };
@@ -901,6 +912,7 @@ async function ensureCampaignRefreshPlan(
     "x-markorbit-plan-policy-sha256": planPolicySha256,
     "x-markorbit-plan-output-sha256": planOutputSha256,
     "x-markorbit-refresh-interval-seconds": refreshIntervalSeconds,
+    "x-markorbit-adaptive-refresh-cadence": source.adaptiveRefreshCadence === true,
   };
   const listed = await client.request(
     `/api/plans?sourceId=${encodeURIComponent(sourceId)}&limit=100`,
@@ -912,12 +924,34 @@ async function ensureCampaignRefreshPlan(
     if (plan?.name !== name) continue;
     const currentExtensions = record(plan.extensions);
     const planId = requiredString(plan.id, "refreshPlan.id");
-    if (Object.entries(extensions).some(([key, value]) => currentExtensions?.[key] !== value)) {
+    const currentSchedule = record(plan.schedule);
+    const adaptiveWasEnabled = currentExtensions?.["x-markorbit-adaptive-refresh-cadence"] === true;
+    const baselineChanged =
+      currentExtensions?.["x-markorbit-refresh-interval-seconds"] !== refreshIntervalSeconds;
+    const preserveAdaptiveSchedule =
+      source.adaptiveRefreshCadence === true &&
+      adaptiveWasEnabled &&
+      !baselineChanged &&
+      currentSchedule?.mode === "CHANGE_WATCH" &&
+      Number.isInteger(currentSchedule.pollIntervalSeconds);
+    const effectiveRefreshIntervalSeconds = preserveAdaptiveSchedule
+      ? Number(currentSchedule.pollIntervalSeconds)
+      : refreshIntervalSeconds;
+    const scheduleChanged =
+      currentSchedule?.mode !== "CHANGE_WATCH" ||
+      currentSchedule?.pollIntervalSeconds !== effectiveRefreshIntervalSeconds;
+    if (
+      scheduleChanged ||
+      Object.entries(extensions).some(([key, value]) => currentExtensions?.[key] !== value)
+    ) {
       await client.request(
         `/api/plans/${encodeURIComponent(planId)}`,
         jsonPatch({
           expectedUpdatedAt: requiredString(plan.updatedAt, "refreshPlan.updatedAt"),
-          schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: refreshIntervalSeconds },
+          schedule: {
+            mode: "CHANGE_WATCH",
+            pollIntervalSeconds: effectiveRefreshIntervalSeconds,
+          },
           priority: source.sourceClass === "OFFICIAL_AUTHORITY" ? "HIGH" : "NORMAL",
           policy,
           output,
