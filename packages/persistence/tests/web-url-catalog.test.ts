@@ -74,7 +74,8 @@ describe("web URL catalog", () => {
     const { database, repo } = repository();
     const url = "https://www.uspto.gov/trademarks/apply";
     repo.upsertDiscovered({ ...scope, discoveryMode: "SITEMAP", urls: [url] });
-    repo.bindSource({ ...scope, sourceId: "src_USPTO" });
+    expect(repo.bindSource({ ...scope, sourceId: "src_USPTO" })).toBe(1);
+    expect(repo.bindSource({ ...scope, sourceId: "src_USPTO" })).toBe(0);
     database.exec(`
       CREATE TABLE raw_artifacts (
         id TEXT PRIMARY KEY, source_id TEXT NOT NULL, canonical_uri TEXT,

@@ -148,9 +148,10 @@ export class SqliteWebUrlCatalogRepository {
       UPDATE web_url_catalog
       SET source_id = ?
       WHERE workspace_id = ? AND campaign_id = ? AND source_key = ?
+        AND (source_id IS NULL OR source_id <> ?)
     `,
       )
-      .run(input.sourceId, input.workspaceId, input.campaignId, input.sourceKey);
+      .run(input.sourceId, input.workspaceId, input.campaignId, input.sourceKey, input.sourceId);
     return Number(result.changes);
   }
 
