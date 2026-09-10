@@ -166,6 +166,36 @@ describe("production Markdown staging converter", () => {
     );
   });
 
+  it("preserves a lone leading thematic rule when no closing delimiter exists", () => {
+    const sourceText = "---\n# Hero\n\nBody paragraph without another thematic rule.\n";
+    const source = new TextEncoder().encode(sourceText);
+    const sourceSha = createHash("sha256").update(source).digest("hex");
+    const thematicContext = context();
+    thematicContext.inputGrant.expectedBytes = source.byteLength;
+    thematicContext.inputGrant.expectedSha256 = sourceSha;
+    thematicContext.documentMetadata.inputSha256 = sourceSha;
+
+    const markdown = new TextDecoder().decode(
+      convertProductionMarkdownToStaging(thematicContext, source),
+    );
+    expect(markdown).toContain(
+      `${canonicalMarkdownFrontmatter(thematicContext.documentMetadata)}${sourceText}`,
+    );
+  });
+
+  it("still rejects unterminated source frontmatter", () => {
+    const source = new TextEncoder().encode('---\ntitle: "Unclosed"\nclassification: "INTERNAL"\n');
+    const sourceSha = createHash("sha256").update(source).digest("hex");
+    const frontmatterContext = context();
+    frontmatterContext.inputGrant.expectedBytes = source.byteLength;
+    frontmatterContext.inputGrant.expectedSha256 = sourceSha;
+    frontmatterContext.documentMetadata.inputSha256 = sourceSha;
+
+    expect(() => convertProductionMarkdownToStaging(frontmatterContext, source)).toThrow(
+      "MARKDOWN_STAGING_FRONTMATTER_UNTERMINATED",
+    );
+  });
+
   it("rejects MIME, size, digest, metadata and exact Converter mismatches", () => {
     const wrongMime = context();
     wrongMime.inputGrant.expectedMime = "text/html";
