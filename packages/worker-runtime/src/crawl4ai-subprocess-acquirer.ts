@@ -74,6 +74,17 @@ export type Crawl4AiArtifactManifest = {
   sha256: string;
 };
 
+export type Crawl4AiAcquisitionDiagnostics = {
+  pagesAttempted: number;
+  pagesSucceeded: number;
+  pagesFailed: number;
+  redirects: number;
+  internalLinksDiscovered: number;
+  maxDepthObserved: number;
+  attachmentsAttempted: number;
+  httpStatusCounts: Record<string, number>;
+};
+
 export type Crawl4AiRunnerResponse =
   | {
       protocolVersion: typeof PROTOCOL_VERSION;
@@ -81,6 +92,7 @@ export type Crawl4AiRunnerResponse =
       artifacts: Crawl4AiArtifactManifest[];
       pagesAttempted: number;
       totalBytes: number;
+      diagnostics?: Crawl4AiAcquisitionDiagnostics;
     }
   | {
       protocolVersion: typeof PROTOCOL_VERSION;
@@ -126,6 +138,30 @@ function redact(value: string): string {
   const proxy = process.env.MARKORBIT_CRAWL4AI_EGRESS_PROXY;
   if (!proxy) return value;
   return value.split(proxy).join("[REDACTED_EGRESS_PROXY]");
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function isCrawl4AiDiagnostics(value: unknown): value is Crawl4AiAcquisitionDiagnostics {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const diagnostic = value as Record<string, unknown>;
+  const scalarKeys = [
+    "pagesAttempted",
+    "pagesSucceeded",
+    "pagesFailed",
+    "redirects",
+    "internalLinksDiscovered",
+    "maxDepthObserved",
+    "attachmentsAttempted",
+  ] as const;
+  if (!scalarKeys.every((key) => isNonNegativeInteger(diagnostic[key]))) return false;
+  const statuses = diagnostic.httpStatusCounts;
+  if (typeof statuses !== "object" || statuses === null || Array.isArray(statuses)) return false;
+  return Object.entries(statuses).every(
+    ([status, count]) => /^\d{3}$/u.test(status) && isNonNegativeInteger(count),
+  );
 }
 
 function parseRunnerResponse(stdout: string): Crawl4AiRunnerResponse {
@@ -189,6 +225,13 @@ function parseRunnerResponse(stdout: string): Crawl4AiRunnerResponse {
     throw new CollectionAcquisitionError(
       "CRAWL4AI_PROTOCOL_INVALID",
       "Crawl4AI subprocess did not return an artifact manifest",
+      true,
+    );
+  }
+  if (record.diagnostics !== undefined && !isCrawl4AiDiagnostics(record.diagnostics)) {
+    throw new CollectionAcquisitionError(
+      "CRAWL4AI_PROTOCOL_INVALID",
+      "Crawl4AI subprocess returned invalid acquisition diagnostics",
       true,
     );
   }
@@ -582,6 +625,8 @@ async function readManifestArtifact(
  * authoritative Node/control-plane operations in ArtifactBackedCollectionExecutor.
  */
 export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
+  private lastDiagnostics: Crawl4AiAcquisitionDiagnostics | null = null;
+
   readonly executor: ExecutionExecutor = {
     executorId: "crawl4ai-python",
     version: "1.0.0",
@@ -616,7 +661,14 @@ export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
     this.maxProcessTimeoutMs = options.maxProcessTimeoutMs ?? 30 * 60 * 1000;
   }
 
+  getDiagnostics(): Crawl4AiAcquisitionDiagnostics | null {
+    return this.lastDiagnostics
+      ? { ...this.lastDiagnostics, httpStatusCounts: { ...this.lastDiagnostics.httpStatusCounts } }
+      : null;
+  }
+
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
+    this.lastDiagnostics = null;
     assertSupportedJob(context, this.maxDepth, this.maxItems);
     if (this.requireEgressProxy && !process.env.MARKORBIT_CRAWL4AI_EGRESS_PROXY) {
       throw new CollectionAcquisitionError(
@@ -665,6 +717,7 @@ export class Crawl4AiSubprocessAcquirer implements CollectionArtifactAcquirer {
           response.error.retryable,
         );
       }
+      this.lastDiagnostics = response.diagnostics ?? null;
       if (response.artifacts.length === 0) {
         throw new CollectionAcquisitionError(
           "NO_ARTIFACTS_PRODUCED",

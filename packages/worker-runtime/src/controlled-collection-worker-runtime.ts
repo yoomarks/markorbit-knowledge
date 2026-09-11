@@ -21,12 +21,20 @@ export type ControlledCollectionCompletion = {
   finishedAt: string;
 };
 
+export type ControlledCollectionFailure = {
+  context: ArtifactBackedExecutionContext;
+  error: unknown;
+  startedAt: string;
+  finishedAt: string;
+};
+
 export type ControlledCollectionWorkerOptions = {
   runtimeVersion?: string;
   keepAliveIntervalMs?: number;
   artifactIngestionConcurrency?: number;
   onBackgroundError?: (error: unknown) => void;
   onCompleted?: (completion: ControlledCollectionCompletion) => void | Promise<void>;
+  onFailed?: (failure: ControlledCollectionFailure) => void | Promise<void>;
 };
 
 /**
@@ -49,6 +57,7 @@ export class ControlledCollectionWorkerRuntime {
   private readonly onCompleted?: (
     completion: ControlledCollectionCompletion,
   ) => void | Promise<void>;
+  private readonly onFailed?: (failure: ControlledCollectionFailure) => void | Promise<void>;
 
   constructor(
     private readonly client: ControlledCollectionWorkerClient,
@@ -63,6 +72,7 @@ export class ControlledCollectionWorkerRuntime {
     this.artifactIngestionConcurrency = options.artifactIngestionConcurrency;
     this.onBackgroundError = options.onBackgroundError;
     this.onCompleted = options.onCompleted;
+    this.onFailed = options.onFailed;
   }
 
   private startKeepAlive(lease: JobLease, leaseToken: string): () => void {
@@ -118,6 +128,16 @@ export class ControlledCollectionWorkerRuntime {
         }
       }
       return true;
+    } catch (error) {
+      const finishedAt = new Date().toISOString();
+      if (this.onFailed) {
+        try {
+          await this.onFailed({ context, error, startedAt, finishedAt });
+        } catch (observerError) {
+          this.onBackgroundError?.(observerError);
+        }
+      }
+      throw error;
     } finally {
       stopKeepAlive();
       try {

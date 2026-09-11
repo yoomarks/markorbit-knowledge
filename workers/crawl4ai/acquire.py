@@ -337,6 +337,12 @@ async def _crawl_concurrently(
     total_bytes = 0
     items_attempted = 0
     pages_attempted = 0
+    pages_succeeded = 0
+    pages_failed = 0
+    redirects = 0
+    internal_links_discovered = 0
+    max_depth_observed = 0
+    http_status_counts: dict[str, int] = {}
     attachments_attempted = 0
     attachment_hashes: set[str] = set()
     attachment_parents: dict[str, set[str]] = {}
@@ -377,6 +383,7 @@ async def _crawl_concurrently(
                 await assert_public_dns(current_url)
                 items_attempted += 1
                 pages_attempted += 1
+                max_depth_observed = max(max_depth_observed, depth)
                 page_batch.append((current_url, depth, seed_host))
                 continue
 
@@ -447,6 +454,7 @@ async def _crawl_concurrently(
                 dispatcher=dispatcher,
             )
         except Exception as exc:
+            pages_failed += len(page_batch)
             last_error = SafetyError(
                 "CRAWL4AI_FETCH_FAILED",
                 f"Crawl4AI batch failed: {type(exc).__name__}",
@@ -472,8 +480,13 @@ async def _crawl_concurrently(
                 )
             returned_urls.add(source_url)
             depth, seed_host = context
+            status_code = getattr(page_result, "status_code", None)
+            if isinstance(status_code, int):
+                status_key = str(status_code)
+                http_status_counts[status_key] = http_status_counts.get(status_key, 0) + 1
 
             if not getattr(page_result, "success", False):
+                pages_failed += 1
                 error_message = getattr(page_result, "error_message", None)
                 last_error = SafetyError(
                     "CRAWL4AI_FETCH_FAILED",
@@ -486,13 +499,17 @@ async def _crawl_concurrently(
             final_url = normalize_http_url(
                 redirected_raw if isinstance(redirected_raw, str) and redirected_raw else source_url
             )
+            if final_url != source_url:
+                redirects += 1
             if not redirect_host_in_scope(seed_host, host_of(final_url)):
+                pages_failed += 1
                 last_error = SafetyError(
                     "CROSS_DOMAIN_REDIRECT_BLOCKED",
                     "Crawl result redirected outside the authorized source host",
                 )
                 continue
             await assert_public_dns(final_url)
+            pages_succeeded += 1
 
             for kind in request["output_kinds"]:
                 content = _content_for_kind(page_result, kind)
@@ -533,6 +550,7 @@ async def _crawl_concurrently(
                     request["exclude_patterns"],
                 ):
                     continue
+                internal_links_discovered += 1
                 if attachment_kind_for_url(candidate) is not None:
                     _record_attachment_parent(
                         candidate,
@@ -545,6 +563,7 @@ async def _crawl_concurrently(
 
         missing_urls = set(batch_context).difference(returned_urls)
         if missing_urls:
+            pages_failed += len(missing_urls)
             last_error = SafetyError(
                 "CRAWL4AI_FETCH_FAILED",
                 f"Crawl4AI batch returned no result for {len(missing_urls)} requested URLs",
@@ -566,6 +585,16 @@ async def _crawl_concurrently(
         "pagesAttempted": pages_attempted,
         "attachmentsAttempted": attachments_attempted,
         "totalBytes": total_bytes,
+        "diagnostics": {
+            "pagesAttempted": pages_attempted,
+            "pagesSucceeded": pages_succeeded,
+            "pagesFailed": pages_failed,
+            "redirects": redirects,
+            "internalLinksDiscovered": internal_links_discovered,
+            "maxDepthObserved": max_depth_observed,
+            "attachmentsAttempted": attachments_attempted,
+            "httpStatusCounts": http_status_counts,
+        },
     }
 
 
@@ -638,6 +667,12 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
     total_bytes = 0
     items_attempted = 0
     pages_attempted = 0
+    pages_succeeded = 0
+    pages_failed = 0
+    redirects = 0
+    internal_links_discovered = 0
+    max_depth_observed = 0
+    http_status_counts: dict[str, int] = {}
     attachments_attempted = 0
     attachment_hashes: set[str] = set()
     attachment_parents: dict[str, set[str]] = {}
@@ -726,10 +761,12 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
                     await rate_gate.wait()
                     items_attempted += 1
                     pages_attempted += 1
+                    max_depth_observed = max(max_depth_observed, depth)
 
                     try:
                         result = await crawler.arun(url=current_url, config=run_config)
                     except Exception as exc:
+                        pages_failed += 1
                         last_error = SafetyError(
                             "CRAWL4AI_FETCH_FAILED",
                             f"Crawl4AI failed to fetch {current_url}: {type(exc).__name__}",
@@ -739,7 +776,12 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
 
                     results = result if isinstance(result, list) else [result]
                     for page_result in results:
+                        status_code = getattr(page_result, "status_code", None)
+                        if isinstance(status_code, int):
+                            status_key = str(status_code)
+                            http_status_counts[status_key] = http_status_counts.get(status_key, 0) + 1
                         if not getattr(page_result, "success", False):
+                            pages_failed += 1
                             error_message = getattr(page_result, "error_message", None)
                             last_error = SafetyError(
                                 "CRAWL4AI_FETCH_FAILED",
@@ -752,13 +794,17 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
                         final_url = normalize_http_url(
                             final_raw if isinstance(final_raw, str) else current_url
                         )
+                        if final_url != current_url:
+                            redirects += 1
                         if not redirect_host_in_scope(seed_host, host_of(final_url)):
+                            pages_failed += 1
                             last_error = SafetyError(
                                 "CROSS_DOMAIN_REDIRECT_BLOCKED",
                                 "Crawl result redirected outside the authorized source host",
                             )
                             continue
                         await assert_public_dns(final_url)
+                        pages_succeeded += 1
 
                         for kind in request["output_kinds"]:
                             content = _content_for_kind(page_result, kind)
@@ -798,6 +844,7 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
                                     request["exclude_patterns"],
                                 ):
                                     continue
+                                internal_links_discovered += 1
                                 if attachment_kind_for_url(candidate) is not None:
                                     _record_attachment_parent(
                                         candidate,
@@ -820,6 +867,16 @@ async def _crawl(request: dict[str, Any]) -> dict[str, Any]:
         "pagesAttempted": pages_attempted,
         "attachmentsAttempted": attachments_attempted,
         "totalBytes": total_bytes,
+        "diagnostics": {
+            "pagesAttempted": pages_attempted,
+            "pagesSucceeded": pages_succeeded,
+            "pagesFailed": pages_failed,
+            "redirects": redirects,
+            "internalLinksDiscovered": internal_links_discovered,
+            "maxDepthObserved": max_depth_observed,
+            "attachmentsAttempted": attachments_attempted,
+            "httpStatusCounts": http_status_counts,
+        },
     }
 
 
