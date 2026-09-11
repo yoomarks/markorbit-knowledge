@@ -192,6 +192,8 @@ function surfacePrimitive(surface: AcquisitionDiscoverySurface) {
       return "SITEMAP_ENUMERATION" as const;
     case "INDEX_PAGE":
       return "INDEX_TREE_ENUMERATION" as const;
+    case "LINK_GRAPH":
+      return "LINK_GRAPH_ENUMERATION" as const;
     case "COUNTRY_INDEX":
       return "COUNTRY_INDEX_ENUMERATION" as const;
     case "TOC":

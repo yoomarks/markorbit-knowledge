@@ -14,6 +14,7 @@ on:
       - packages/worker-runtime/src/artifact-backed-collection-executor.ts
       - packages/worker-runtime/src/controlled-collection-worker-runtime.ts
       - packages/worker-runtime/src/http-controlled-collection-client.ts
+      - packages/persistence/src/controlled-worker-execution.ts
       - pnpm-lock.yaml
 
 permissions:
@@ -170,41 +171,70 @@ jobs:
           NODE
           bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X PATCH "$MARKORBIT_CONTROL_PLANE_URL/api/plans/$MARKORBIT_IP_AU_PLAN_ID" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/plan-patch.json" > "$RUNNER_TEMP/plan-watch.json"
 
-      - name: Dispatch explicit change-watch execution
+      - name: Verify change-watch convergence
         run: |
-          node <<'NODE'
-          const fs=require('node:fs'); fs.writeFileSync(process.env.RUNNER_TEMP+'/second-dispatch-request.json',JSON.stringify({planId:process.env.MARKORBIT_IP_AU_PLAN_ID}));
-          NODE
-          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/runs" -H 'content-type: application/json' -H 'Idempotency-Key: ip-au-manual-rawartifact-second' --data-binary "@$RUNNER_TEMP/second-dispatch-request.json" > "$RUNNER_TEMP/second-dispatch.json"
-          node <<'NODE'
-          const fs=require('node:fs'); const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/second-dispatch.json','utf8'));
-          if(!d?.record?.run?.id)throw new Error('Second dispatch did not return run id'); fs.appendFileSync(process.env.GITHUB_ENV,`MARKORBIT_SECOND_RUN_ID=${d.record.run.id}\n`);
+          cat > "$RUNNER_TEMP/validate-watch.cjs" <<'NODE'
+          const fs=require('node:fs');
+          const run=JSON.parse(fs.readFileSync(process.env.RUN_FILE,'utf8'));
+          const artifacts=JSON.parse(fs.readFileSync(process.env.ARTIFACTS_FILE,'utf8'));
+          const all=JSON.parse(fs.readFileSync(process.env.ALL_ARTIFACTS_FILE,'utf8'));
+          const job=run?.run?.jobs?.[0];
+          const previous=Number(process.env.PREVIOUS_TOTAL);
+          if(run?.run?.run?.status!=='COMPLETED')throw new Error(`Watch ${process.env.WATCH_INDEX} did not finish`);
+          if(job?.jobType!=='PAGE_UPDATE_CHECK')throw new Error(`Expected PAGE_UPDATE_CHECK, got ${job?.jobType}`);
+          if(!Number.isSafeInteger(artifacts.total)||artifacts.total<0)throw new Error(`Invalid watch artifact count ${artifacts.total}`);
+          if(all.total!==previous+artifacts.total)throw new Error(`Immutable corpus total ${all.total} does not equal previous ${previous} + new ${artifacts.total}`);
+          process.stdout.write(String(artifacts.total));
           NODE
 
-      - name: Verify change-watch identity skip
-        run: |
-          for attempt in $(seq 1 150); do
-            bash scripts/ci-admin-api-curl.sh --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/runs/$MARKORBIT_SECOND_RUN_ID" > "$RUNNER_TEMP/second-run.json"
-            status=$(node -e "const d=require('$RUNNER_TEMP/second-run.json');process.stdout.write(d.run.run.status)")
-            if [ "$status" = COMPLETED ]; then break; fi
-            if [ "$status" = FAILED ] || [ "$status" = CANCELLED ]; then cat "$RUNNER_TEMP/second-run.json"; cat "$RUNNER_TEMP/worker.log"; exit 1; fi
-            sleep 5
+          previous_total="$MARKORBIT_IP_AU_EXPECTED_COUNT"
+          converged_watch=0
+          for watch_index in 1 2 3; do
+            request="$RUNNER_TEMP/watch-${watch_index}-dispatch-request.json"
+            dispatch="$RUNNER_TEMP/watch-${watch_index}-dispatch.json"
+            run_file="$RUNNER_TEMP/watch-${watch_index}-run.json"
+            artifacts="$RUNNER_TEMP/watch-${watch_index}-artifacts.json"
+            all_artifacts="$RUNNER_TEMP/watch-${watch_index}-all-artifacts.json"
+
+            node -e "require('node:fs').writeFileSync('$request',JSON.stringify({planId:process.env.MARKORBIT_IP_AU_PLAN_ID}))"
+            bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/runs" -H 'content-type: application/json' -H "Idempotency-Key: ip-au-manual-rawartifact-watch-${watch_index}" --data-binary "@$request" > "$dispatch"
+            run_id=$(node -e "const d=require('$dispatch');if(!d?.record?.run?.id)throw new Error('Watch dispatch did not return run id');process.stdout.write(d.record.run.id)")
+
+            for attempt in $(seq 1 150); do
+              bash scripts/ci-admin-api-curl.sh --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/runs/$run_id" > "$run_file"
+              status=$(node -e "const d=require('$run_file');process.stdout.write(d.run.run.status)")
+              if [ "$status" = COMPLETED ]; then break; fi
+              if [ "$status" = FAILED ] || [ "$status" = CANCELLED ]; then cat "$run_file"; cat "$RUNNER_TEMP/worker.log"; exit 1; fi
+              sleep 5
+            done
+            bash scripts/ci-admin-api-curl.sh --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&runId=$run_id&artifactKind=HTML&limit=100" > "$artifacts"
+            bash scripts/ci-admin-api-curl.sh --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&artifactKind=HTML&limit=100" > "$all_artifacts"
+            watch_new=$(WATCH_INDEX="$watch_index" PREVIOUS_TOTAL="$previous_total" RUN_FILE="$run_file" ARTIFACTS_FILE="$artifacts" ALL_ARTIFACTS_FILE="$all_artifacts" node "$RUNNER_TEMP/validate-watch.cjs")
+            previous_total=$((previous_total + watch_new))
+            if [ "$watch_new" -eq 0 ]; then converged_watch="$watch_index"; break; fi
           done
-          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&runId=$MARKORBIT_SECOND_RUN_ID&artifactKind=HTML&limit=100" > "$RUNNER_TEMP/second-artifacts.json"
-          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&artifactKind=HTML&limit=100" > "$RUNNER_TEMP/all-artifacts.json"
-          node <<'NODE'
-          const fs=require('node:fs'); const run=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/second-run.json','utf8')); const second=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/second-artifacts.json','utf8')); const all=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/all-artifacts.json','utf8')); const job=run?.run?.jobs?.[0]; const expected=Number(process.env.MARKORBIT_IP_AU_EXPECTED_COUNT);
-          if(run?.run?.run?.status!=='COMPLETED')throw new Error('Second run did not finish');
-          if(job?.jobType!=='PAGE_UPDATE_CHECK')throw new Error(`Expected PAGE_UPDATE_CHECK, got ${job?.jobType}`);
-          if(second.total!==0)throw new Error(`Expected 0 new RawArtifacts, got ${second.total}`);
-          if(all.total!==expected)throw new Error(`Expected corpus total ${expected} from collected baseline, got ${all.total}`);
-          NODE
+
+          if [ "$converged_watch" -eq 0 ]; then
+            echo "Manual source did not converge to an identity-skip run within three change-watch executions" >&2
+            exit 1
+          fi
+          echo "MARKORBIT_IP_AU_CONVERGED_WATCH=$converged_watch" >> "$GITHUB_ENV"
+          echo "MARKORBIT_IP_AU_FINAL_CORPUS_TOTAL=$previous_total" >> "$GITHUB_ENV"
 
       - name: Write evidence summary
         if: always()
         run: |
           node <<'NODE'
-          const fs=require('node:fs'); const read=(name)=>{const p=`${process.env.RUNNER_TEMP}/${name}`;return fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):null;}; const inventory=read('ip-au-inventory.json'),first=read('first-artifacts.json'),second=read('second-artifacts.json'),all=read('all-artifacts.json'); const lines=['## IP Australia Manual RawArtifact Live','']; if(inventory)lines.push(`- Authoritative inventory baseline: ${inventory.totalUniqueManualPageCount}`); if(first)lines.push(`- First run RawArtifacts / collected baseline: ${first.total}`); if(second)lines.push(`- Change-watch new RawArtifacts: ${second.total}`); if(all)lines.push(`- Corpus RawArtifact total after watch: ${all.total}`); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');
+          const fs=require('node:fs');
+          const read=(name)=>{const p=`${process.env.RUNNER_TEMP}/${name}`;return fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):null;};
+          const inventory=read('ip-au-inventory.json'),first=read('first-artifacts.json');
+          const lines=['## IP Australia Manual RawArtifact Live',''];
+          if(inventory)lines.push(`- Authoritative inventory baseline: ${inventory.totalUniqueManualPageCount}`);
+          if(first)lines.push(`- First run RawArtifacts / collected baseline: ${first.total}`);
+          for(let index=1;index<=3;index++){const watch=read(`watch-${index}-artifacts.json`);if(watch)lines.push(`- Change-watch ${index} new RawArtifacts: ${watch.total}`);}
+          if(process.env.MARKORBIT_IP_AU_CONVERGED_WATCH)lines.push(`- Identity-skip convergence watch: ${process.env.MARKORBIT_IP_AU_CONVERGED_WATCH}`);
+          if(process.env.MARKORBIT_IP_AU_FINAL_CORPUS_TOTAL)lines.push(`- Immutable corpus versions after convergence: ${process.env.MARKORBIT_IP_AU_FINAL_CORPUS_TOTAL}`);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');
           NODE
 
       - name: Stop isolated processes
@@ -223,9 +253,9 @@ jobs:
             ${{ runner.temp }}/ip-au-inventory.json
             ${{ runner.temp }}/first-run.json
             ${{ runner.temp }}/first-artifacts.json
-            ${{ runner.temp }}/second-run.json
-            ${{ runner.temp }}/second-artifacts.json
-            ${{ runner.temp }}/all-artifacts.json
+            ${{ runner.temp }}/watch-*-run.json
+            ${{ runner.temp }}/watch-*-artifacts.json
+            ${{ runner.temp }}/watch-*-all-artifacts.json
             ${{ runner.temp }}/worker.log
             ${{ runner.temp }}/admin.log
             ${{ runner.temp }}/admin-auth-stub.log

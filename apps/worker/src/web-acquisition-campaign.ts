@@ -191,6 +191,58 @@ function discoveryMode(value: unknown, field: string): WebAcquisitionDiscoveryMo
   throw new Error(`${field} must be SITEMAP, LINK_CRAWL or EXACT_URL_LIST`);
 }
 
+export function classifyWebAcquisitionLearning(input: {
+  mode: WebAcquisitionDiscoveryMode;
+  renderJavascript: boolean;
+}): { profileId: string; siteFamily: string; playbookId: string; playbookRevision: number } | null {
+  if (input.mode === "SITEMAP") {
+    return input.renderJavascript
+      ? {
+          profileId: "sitemap-rendered-web-v1",
+          siteFamily: "sitemap-rendered-web",
+          playbookId: "web-sitemap-rendered",
+          playbookRevision: 1,
+        }
+      : {
+          profileId: "sitemap-static-web-v1",
+          siteFamily: "sitemap-static-web",
+          playbookId: "web-sitemap-static",
+          playbookRevision: 1,
+        };
+  }
+  if (input.mode === "LINK_CRAWL") {
+    return input.renderJavascript
+      ? {
+          profileId: "link-graph-rendered-web-v1",
+          siteFamily: "link-graph-rendered-web",
+          playbookId: "web-link-graph-rendered",
+          playbookRevision: 1,
+        }
+      : {
+          profileId: "link-graph-static-web-v1",
+          siteFamily: "link-graph-static-web",
+          playbookId: "web-link-graph-static",
+          playbookRevision: 1,
+        };
+  }
+  if (input.mode === "EXACT_URL_LIST") {
+    return input.renderJavascript
+      ? {
+          profileId: "direct-entry-rendered-web-v1",
+          siteFamily: "direct-entry-rendered-web",
+          playbookId: "web-direct-entry-rendered",
+          playbookRevision: 1,
+        }
+      : {
+          profileId: "direct-entry-static-web-v1",
+          siteFamily: "direct-entry-static-web",
+          playbookId: "web-direct-entry-static",
+          playbookRevision: 1,
+        };
+  }
+  return null;
+}
+
 export function parseWebAcquisitionCampaignManifest(
   payload: unknown,
 ): WebAcquisitionCampaignManifestV1 {
@@ -742,11 +794,23 @@ async function ensureCampaignSource(
     uri,
     label: `${source.key} ${String(index + 1).padStart(3, "0")}`,
   }));
+  const learning = classifyWebAcquisitionLearning({
+    mode: inventory.modeUsed,
+    renderJavascript: source.renderJavascript === true,
+  });
   const campaignExtensions = {
     "x-markorbit-campaign-id": manifest.campaignId,
     "x-markorbit-campaign-source-key": source.key,
     "x-markorbit-source-class": source.sourceClass,
     "x-markorbit-discovery-mode": inventory.modeUsed,
+    ...(learning
+      ? {
+          "x-markorbit-acquisition-learning-profile": learning.profileId,
+          "x-markorbit-site-family": learning.siteFamily,
+          "x-markorbit-acquisition-playbook-id": learning.playbookId,
+          "x-markorbit-acquisition-playbook-revision": learning.playbookRevision,
+        }
+      : {}),
     "x-markorbit-inventory-sha256": inventory.inventorySha256,
     "x-markorbit-batch-sha256": inventoryHash(inventory.selectedUrls),
     "x-markorbit-source-config-sha256": stableObjectHash({
@@ -880,6 +944,10 @@ async function ensureCampaignPlan(
   const output = { artifactKinds: ["MARKDOWN"] };
   const planPolicySha256 = stableObjectHash(policy);
   const planOutputSha256 = stableObjectHash(output);
+  const learning = classifyWebAcquisitionLearning({
+    mode: inventory.modeUsed,
+    renderJavascript: source.renderJavascript === true,
+  });
   const extensions = {
     "x-markorbit-campaign-id": manifest.campaignId,
     "x-markorbit-campaign-source-key": source.key,
@@ -888,6 +956,14 @@ async function ensureCampaignPlan(
     "x-markorbit-plan-policy-sha256": planPolicySha256,
     "x-markorbit-plan-output-sha256": planOutputSha256,
     "x-markorbit-discovery-mode": inventory.modeUsed,
+    ...(learning
+      ? {
+          "x-markorbit-acquisition-learning-profile": learning.profileId,
+          "x-markorbit-site-family": learning.siteFamily,
+          "x-markorbit-acquisition-playbook-id": learning.playbookId,
+          "x-markorbit-acquisition-playbook-revision": learning.playbookRevision,
+        }
+      : {}),
   };
   const listed = await client.request(
     `/api/plans?sourceId=${encodeURIComponent(sourceId)}&limit=100`,
@@ -970,6 +1046,10 @@ async function ensureCampaignRefreshPlan(
   const output = { artifactKinds: ["MARKDOWN"] };
   const planPolicySha256 = stableObjectHash(policy);
   const planOutputSha256 = stableObjectHash(output);
+  const learning = classifyWebAcquisitionLearning({
+    mode: inventory.modeUsed,
+    renderJavascript: source.renderJavascript === true,
+  });
   const extensions = {
     "x-markorbit-campaign-id": manifest.campaignId,
     "x-markorbit-campaign-source-key": source.key,
@@ -977,8 +1057,17 @@ async function ensureCampaignRefreshPlan(
     "x-markorbit-inventory-sha256": inventory.inventorySha256,
     "x-markorbit-plan-policy-sha256": planPolicySha256,
     "x-markorbit-plan-output-sha256": planOutputSha256,
+    "x-markorbit-discovery-mode": inventory.modeUsed,
     "x-markorbit-refresh-interval-seconds": refreshIntervalSeconds,
     "x-markorbit-adaptive-refresh-cadence": source.adaptiveRefreshCadence === true,
+    ...(learning
+      ? {
+          "x-markorbit-acquisition-learning-profile": learning.profileId,
+          "x-markorbit-site-family": learning.siteFamily,
+          "x-markorbit-acquisition-playbook-id": learning.playbookId,
+          "x-markorbit-acquisition-playbook-revision": learning.playbookRevision,
+        }
+      : {}),
   };
   const listed = await client.request(
     `/api/plans?sourceId=${encodeURIComponent(sourceId)}&limit=100`,

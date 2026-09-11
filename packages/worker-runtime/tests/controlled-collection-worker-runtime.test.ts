@@ -167,4 +167,52 @@ describe("ControlledCollectionWorkerRuntime", () => {
     releaseAcquisition();
     await execution;
   });
+  it("reports terminal collection failure to the learning observer", async () => {
+    const job = {
+      id: "job_failure",
+      runId: "run_failure",
+      sourceId: "src_failure",
+      planSnapshot: { output: { artifactKinds: ["HTML"] } },
+    } as unknown as Job;
+    const lease = { id: "lse_failure" } as unknown as JobLease;
+    const failures: unknown[] = [];
+    const client: ControlledCollectionWorkerClient = {
+      workerId: "wrk_test",
+      async heartbeat() {},
+      async claim() {
+        return { job, lease, leaseToken: "mls_failure" };
+      },
+      async renewLease() {
+        return lease;
+      },
+      async start() {
+        return {} as ExecutionAttempt;
+      },
+      async uploading() {},
+      async createArtifactSession() {
+        return { id: "ais" } as ArtifactIngestionSession;
+      },
+      async uploadArtifactContent() {},
+      async finalizeArtifact() {
+        return { id: "air" } as ArtifactIngestionReceipt;
+      },
+      async verifying() {},
+      async complete() {},
+      async fail() {},
+    };
+    const acquirer: CollectionArtifactAcquirer = {
+      executor: { executorId: "test-acquirer", version: "1.0.0", mode: "PRODUCTION" },
+      async acquire() {
+        throw new Error("boom");
+      },
+    };
+    const runtime = new ControlledCollectionWorkerRuntime(client, acquirer, {
+      onFailed(failure) {
+        failures.push(failure);
+      },
+    });
+    await expect(runtime.runOnce()).rejects.toThrow("boom");
+    expect(failures).toHaveLength(1);
+    expect((failures[0] as { context: { job: Job } }).context.job.runId).toBe("run_failure");
+  });
 });

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   canonicalizeCampaignUrl,
+  classifyWebAcquisitionLearning,
   discoverWebAcquisitionInventory,
   parseWebAcquisitionCampaignManifest,
   runWebAcquisitionCampaign,
@@ -82,6 +83,27 @@ describe("web acquisition campaign manifest", () => {
         sources: [{ ...manifest().sources[0], maxPages: 501 }],
       }),
     ).toThrow(/1\.\.500/);
+  });
+
+  it("classifies every bulk-web discovery mode into a reusable learning family", () => {
+    expect(
+      classifyWebAcquisitionLearning({ mode: "SITEMAP", renderJavascript: false }),
+    ).toMatchObject({
+      profileId: "sitemap-static-web-v1",
+      siteFamily: "sitemap-static-web",
+    });
+    expect(
+      classifyWebAcquisitionLearning({ mode: "LINK_CRAWL", renderJavascript: true }),
+    ).toMatchObject({
+      profileId: "link-graph-rendered-web-v1",
+      siteFamily: "link-graph-rendered-web",
+    });
+    expect(
+      classifyWebAcquisitionLearning({ mode: "EXACT_URL_LIST", renderJavascript: false }),
+    ).toMatchObject({
+      profileId: "direct-entry-static-web-v1",
+      siteFamily: "direct-entry-static-web",
+    });
   });
 });
 
@@ -286,6 +308,10 @@ describe("bulk campaign orchestration", () => {
         "x-markorbit-inventory-error-count": 0,
         "x-markorbit-batch-count": 1,
         "x-markorbit-batch-sha256": expect.stringMatching(/^[a-f0-9]{64}$/u),
+        "x-markorbit-acquisition-learning-profile": "sitemap-static-web-v1",
+        "x-markorbit-site-family": "sitemap-static-web",
+        "x-markorbit-acquisition-playbook-id": "web-sitemap-static",
+        "x-markorbit-acquisition-playbook-revision": 1,
       },
     });
     const planPosts = calls.filter(
@@ -301,11 +327,21 @@ describe("bulk campaign orchestration", () => {
     expect(initialPlanPost?.body).toMatchObject({
       schedule: { mode: "MANUAL" },
       output: { artifactKinds: ["MARKDOWN"] },
+      extensions: {
+        "x-markorbit-acquisition-learning-profile": "sitemap-static-web-v1",
+        "x-markorbit-site-family": "sitemap-static-web",
+        "x-markorbit-acquisition-playbook-id": "web-sitemap-static",
+        "x-markorbit-acquisition-playbook-revision": 1,
+      },
     });
     expect(refreshPlanPost?.body).toMatchObject({
       schedule: { mode: "CHANGE_WATCH", pollIntervalSeconds: 604_800 },
       policy: { maxDepth: 0, maxItems: 1 },
       output: { artifactKinds: ["MARKDOWN"] },
+      extensions: {
+        "x-markorbit-acquisition-learning-profile": "sitemap-static-web-v1",
+        "x-markorbit-site-family": "sitemap-static-web",
+      },
     });
     const workerPost = calls.find(
       (call) => call.method === "POST" && call.url.endsWith("/api/workers"),

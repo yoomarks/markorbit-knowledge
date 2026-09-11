@@ -89,6 +89,26 @@ function successfulStaticRun(
   };
 }
 
+function successfulSitemapRun(
+  runId: string,
+  sourceId: string,
+  siteFamily: string,
+): AcquisitionRunEvidence {
+  return {
+    ...successfulStaticRun(runId, sourceId, 10),
+    siteFamily,
+    playbookId: "web-sitemap-static",
+    surfaceOutcomes: [
+      {
+        surface: "SITEMAP",
+        discovered: 100,
+        accepted: 100,
+        knownCorpus: 100,
+      },
+    ],
+  };
+}
+
 describe("AcquisitionStrategySelectionService", () => {
   it("transfers repeated playbook outcomes to a new structurally similar source", () => {
     const database = new DatabaseSync(":memory:");
@@ -130,6 +150,50 @@ describe("AcquisitionStrategySelectionService", () => {
         repository.latestStrategySelectionForSource(fingerprint.sourceId)?.selection
           .selectedPlaybookId,
       ).toBe("official-static-index-tree");
+    } finally {
+      database.close();
+    }
+  });
+
+  it("prefers site-family playbook history over unrelated global outcomes", () => {
+    const database = new DatabaseSync(":memory:");
+    try {
+      const repository = new SqliteAcquisitionIntelligenceRepository(database);
+      for (let index = 0; index < 3; index += 1) {
+        repository.recordLearningRun(
+          successfulSitemapRun(
+            `run_family_a_${index}`,
+            `source-family-a-${index}`,
+            "sitemap-static-web",
+          ),
+        );
+      }
+      for (let index = 0; index < 4; index += 1) {
+        repository.recordLearningRun(
+          successfulSitemapRun(
+            `run_family_b_${index}`,
+            `source-family-b-${index}`,
+            "other-sitemap-family",
+          ),
+        );
+      }
+      const fingerprint: SourceFingerprint = {
+        ...staticIndexFingerprint("source-new-sitemap-peer"),
+        siteFamily: "sitemap-static-web",
+        discoverySurfaces: ["SITEMAP"],
+      };
+      repository.saveFingerprint(fingerprint);
+
+      const result = new AcquisitionStrategySelectionService(database).selectAndRecord({
+        sourceId: fingerprint.sourceId,
+      });
+
+      expect(result.persisted.selection.selectedPlaybookId).toBe("web-sitemap-static");
+      expect(result.historyScope).toBe("SITE_FAMILY:sitemap-static-web+GLOBAL_FALLBACK");
+      expect(result.historiesApplied["web-sitemap-static@1"]).toMatchObject({
+        runs: 3,
+        successRate: 1,
+      });
     } finally {
       database.close();
     }

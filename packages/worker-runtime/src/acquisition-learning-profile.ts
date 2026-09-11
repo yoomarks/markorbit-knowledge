@@ -12,6 +12,7 @@ export type AcquisitionLearningProfile = {
   profileId: string;
   playbookId: string;
   playbookRevision: number;
+  siteFamily?: string;
   fingerprint: {
     architecture: AcquisitionArchitecture;
     discoverySurfaces: AcquisitionDiscoverySurface[];
@@ -94,6 +95,7 @@ export function buildSourceFingerprintFromAcquisitionProfile(input: {
     objectType: "SOURCE_FINGERPRINT",
     sourceId: input.sourceId,
     observedAt: input.observedAt,
+    ...(input.profile.siteFamily ? { siteFamily: input.profile.siteFamily } : {}),
     architecture: input.profile.fingerprint.architecture,
     discoverySurfaces: [...input.profile.fingerprint.discoverySurfaces],
     renderRequirement: input.profile.fingerprint.renderRequirement,
@@ -127,6 +129,7 @@ export function buildAcquisitionRunEvidenceFromProfile(input: {
     objectType: "ACQUISITION_RUN_EVIDENCE",
     runId: observation.runId,
     sourceId: observation.sourceId,
+    ...(profile.siteFamily ? { siteFamily: profile.siteFamily } : {}),
     playbookId: profile.playbookId,
     playbookRevision: profile.playbookRevision,
     startedAt: observation.startedAt,

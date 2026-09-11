@@ -718,7 +718,7 @@ export class SqliteWorkerExecutionRepository implements WorkerExecutionRepositor
       }
       if (completing) {
         this.assertReceiptMatchesJob(terminal.receipt, job);
-        this.assertArtifactEvidence(record.attempt.id, terminal.receipt);
+        this.assertArtifactEvidence(record.attempt.id, terminal.receipt, job);
       }
 
       const target: "COMPLETED" | "FAILED" = completing ? "COMPLETED" : "FAILED";
@@ -912,7 +912,11 @@ export class SqliteWorkerExecutionRepository implements WorkerExecutionRepositor
     }
   }
 
-  private assertArtifactEvidence(executionAttemptId: string, receipt: ExecutionReceipt): void {
+  private assertArtifactEvidence(
+    executionAttemptId: string,
+    receipt: ExecutionReceipt,
+    job: Job,
+  ): void {
     if (receipt.metadataOnly) return;
     const table = this.database
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'raw_artifacts'")
@@ -966,9 +970,14 @@ export class SqliteWorkerExecutionRepository implements WorkerExecutionRepositor
     const observedKinds = [...new Set(rows.map((row) => row.artifactKind))].sort();
     const declaredKinds = [...receipt.outputKinds].sort();
     const observedBytes = rows.reduce((sum, row) => sum + row.sizeBytes, 0);
+    const reportsAllObservedPages =
+      job.jobType === "PAGE_UPDATE_CHECK" && job.planSnapshot.policy.fetchAttachments === false;
+    const itemCountMismatch = reportsAllObservedPages
+      ? rows.length > receipt.itemsObserved
+      : rows.length !== receipt.itemsObserved;
     if (
       JSON.stringify(observedKinds) !== JSON.stringify(declaredKinds) ||
-      rows.length !== receipt.itemsObserved ||
+      itemCountMismatch ||
       observedBytes !== receipt.bytesPrepared
     ) {
       throw new RegistryConflictError(

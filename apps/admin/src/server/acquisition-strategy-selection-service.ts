@@ -17,6 +17,7 @@ export type AcquisitionStrategyAutoSelectionResult = {
   version: typeof ACQUISITION_STRATEGY_AUTO_SELECTION_VERSION;
   sourceId: string;
   fingerprintObservedAt: string;
+  historyScope: string;
   historiesApplied: Record<string, AcquisitionPlaybookHistory>;
   persisted: PersistedAcquisitionStrategySelection;
 };
@@ -47,12 +48,29 @@ export class AcquisitionStrategySelectionService {
       );
     }
 
+    let usedFamilyHistory = false;
     const historiesApplied = Object.fromEntries(
-      ACQUISITION_SEED_PLAYBOOKS.map((playbook) => [
-        `${playbook.id}@${playbook.revision}`,
-        this.repository.playbookHistory(playbook.id, playbook.revision),
-      ]),
+      ACQUISITION_SEED_PLAYBOOKS.map((playbook) => {
+        const globalHistory = this.repository.playbookHistory(playbook.id, playbook.revision);
+        if (!fingerprint.siteFamily) {
+          return [`${playbook.id}@${playbook.revision}`, globalHistory];
+        }
+        const familyHistory = this.repository.playbookHistory(
+          playbook.id,
+          playbook.revision,
+          fingerprint.siteFamily,
+        );
+        if (familyHistory.runs > 0) {
+          usedFamilyHistory = true;
+          return [`${playbook.id}@${playbook.revision}`, familyHistory];
+        }
+        return [`${playbook.id}@${playbook.revision}`, globalHistory];
+      }),
     );
+    const historyScope =
+      fingerprint.siteFamily && usedFamilyHistory
+        ? `SITE_FAMILY:${fingerprint.siteFamily}+GLOBAL_FALLBACK`
+        : "GLOBAL";
     const selection = selectAcquisitionPlaybook({
       fingerprint,
       playbooks: ACQUISITION_SEED_PLAYBOOKS,
@@ -64,6 +82,7 @@ export class AcquisitionStrategySelectionService {
       version: ACQUISITION_STRATEGY_AUTO_SELECTION_VERSION,
       sourceId,
       fingerprintObservedAt: fingerprint.observedAt,
+      historyScope,
       historiesApplied,
       persisted,
     };

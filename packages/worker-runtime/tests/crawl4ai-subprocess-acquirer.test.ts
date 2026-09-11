@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 import type { Job } from "@markorbit/contracts";
 import {
   Crawl4AiSubprocessAcquirer,
+  SubprocessCrawl4AiRunner,
   type Crawl4AiProcessRunner,
+  type Crawl4AiRunnerRequest,
 } from "../src/crawl4ai-subprocess-acquirer";
 import type { ArtifactBackedExecutionContext } from "../src/artifact-backed-collection-executor";
 
@@ -75,6 +77,96 @@ describe("Crawl4AiSubprocessAcquirer", () => {
     expect(seenMaxConcurrency).toBe(4);
     expect(artifacts).toHaveLength(1);
     expect(new TextDecoder().decode(artifacts[0]?.content)).toContain("official");
+  });
+
+  it("retains structured sidecar diagnostics for acquisition learning", async () => {
+    const runner: Crawl4AiProcessRunner = {
+      async run(request) {
+        const content = new TextEncoder().encode("<html>telemetry</html>");
+        const sha256 = createHash("sha256").update(content).digest("hex");
+        await writeFile(join(request.outputDirectory, "telemetry.html"), content);
+        return {
+          protocolVersion: "1.0",
+          ok: true,
+          pagesAttempted: 3,
+          totalBytes: content.byteLength,
+          diagnostics: {
+            pagesAttempted: 3,
+            pagesSucceeded: 2,
+            pagesFailed: 1,
+            redirects: 1,
+            internalLinksDiscovered: 7,
+            maxDepthObserved: 2,
+            attachmentsAttempted: 1,
+            httpStatusCounts: { "200": 2, "404": 1 },
+          },
+          artifacts: [
+            {
+              artifactKind: "HTML",
+              mimeType: "text/html",
+              originalName: "telemetry.html",
+              sourceUri: "https://example.com/trademarks",
+              canonicalUri: "https://example.com/trademarks",
+              fileName: "telemetry.html",
+              sizeBytes: content.byteLength,
+              sha256,
+            },
+          ],
+        };
+      },
+    };
+    const acquirer = new Crawl4AiSubprocessAcquirer({ runner, requireEgressProxy: false });
+    await acquirer.acquire(context());
+    expect(acquirer.getDiagnostics()).toEqual({
+      pagesAttempted: 3,
+      pagesSucceeded: 2,
+      pagesFailed: 1,
+      redirects: 1,
+      internalLinksDiscovered: 7,
+      maxDepthObserved: 2,
+      attachmentsAttempted: 1,
+      httpStatusCounts: { "200": 2, "404": 1 },
+    });
+  });
+
+  it("rejects malformed acquisition diagnostics from the sidecar protocol", async () => {
+    const root = await mkdtemp(join(tmpdir(), "markorbit-crawl4ai-diagnostics-test-"));
+    const scriptPath = join(root, "invalid-diagnostics.mjs");
+    try {
+      await writeFile(
+        scriptPath,
+        'process.stdout.write(JSON.stringify({protocolVersion:"1.0",ok:true,artifacts:[],pagesAttempted:1,totalBytes:0,diagnostics:{pagesAttempted:-1,pagesSucceeded:0,pagesFailed:1,redirects:0,internalLinksDiscovered:0,maxDepthObserved:0,attachmentsAttempted:0,httpStatusCounts:{"500":1}}}));',
+      );
+      const request: Crawl4AiRunnerRequest = {
+        protocolVersion: "1.0",
+        outputDirectory: root,
+        startUrls: ["https://example.com/trademarks"],
+        outputKinds: ["HTML"],
+        maxDepth: 0,
+        maxItems: 1,
+        maxConcurrency: 1,
+        renderJavascript: false,
+        fetchAttachments: false,
+        respectRobots: true,
+        rateLimitPerMinute: 1,
+        timeoutSeconds: 5,
+        includePatterns: [],
+        excludePatterns: [],
+        maxArtifactBytes: 1024,
+        maxTotalBytes: 1024,
+        requireEgressProxy: false,
+      };
+      const runner = new SubprocessCrawl4AiRunner({
+        pythonExecutable: process.execPath,
+        scriptPath,
+        cwd: root,
+      });
+      await expect(runner.run(request, 5_000)).rejects.toMatchObject({
+        code: "CRAWL4AI_PROTOCOL_INVALID",
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("polls only reviewed entrypoints for PAGE_UPDATE_CHECK instead of recursively crawling", async () => {

@@ -1,9 +1,12 @@
+import type { Job } from "@markorbit/contracts";
 import {
   ApiArtifactAcquirer,
   BrightDataFallbackAcquirer,
   BrightDataWebUnlockerClient,
   CollectionAcquisitionError,
   ControlledCollectionWorkerRuntime,
+  type ControlledCollectionCompletion,
+  type ControlledCollectionFailure,
   Crawl4AiSubprocessAcquirer,
   GitHubArtifactAcquirer,
   HttpAcquisitionIntelligenceClient,
@@ -19,11 +22,12 @@ import {
   defaultApiTransport,
 } from "@markorbit/worker-runtime";
 import { CnipaJudgmentArtifactAcquirer } from "@markorbit/worker-runtime/cnipa-artifact-acquirer";
-import { buildReceiptAcquisitionLearningObservation } from "./acquisition-learning-observation";
 import {
-  acquisitionLearningProfile,
-  defaultAcquisitionLearningProfileIdForProvider,
-} from "./acquisition-learning-profiles";
+  buildFailedAcquisitionLearningObservation,
+  buildReceiptAcquisitionLearningObservation,
+} from "./acquisition-learning-observation";
+import { acquisitionLearningProfileForJob } from "./acquisition-learning-job-profile";
+import { acquisitionLearningProfile } from "./acquisition-learning-profiles";
 import { CnipaPlaywrightSessionExecutorFactory } from "./cnipa-playwright-session-executor";
 import { loadWorkerProcessConfig } from "./config";
 import { buildIpAustraliaManualAcquisitionRunEvidence } from "./ip-australia-manual-acquisition-learning";
@@ -45,12 +49,9 @@ function log(event: string, fields: Record<string, unknown> = {}): void {
 
 async function main(): Promise<void> {
   const config = loadWorkerProcessConfig();
-  const learningProfileId =
-    config.acquisitionLearningProfileId ??
-    defaultAcquisitionLearningProfileIdForProvider(config.collectionProvider);
-  const learningProfile = acquisitionLearningProfile(learningProfileId);
-  if (learningProfileId && !learningProfile) {
-    throw new Error(`Unknown acquisition learning profile: ${learningProfileId}`);
+  const configuredLearningProfileId = config.acquisitionLearningProfileId;
+  if (configuredLearningProfileId && !acquisitionLearningProfile(configuredLearningProfileId)) {
+    throw new Error(`Unknown acquisition learning profile: ${configuredLearningProfileId}`);
   }
   const collectionClient = new HttpControlledCollectionClient(
     config.controlPlaneUrl,
@@ -93,13 +94,11 @@ async function main(): Promise<void> {
       maxRequestsPerRun: config.brightDataMaxRequestsPerRun,
     });
   })();
-  const acquisitionIntelligenceClient = learningProfile
-    ? new HttpAcquisitionIntelligenceClient(
-        config.controlPlaneUrl,
-        config.workerId,
-        config.workerCredential,
-      )
-    : null;
+  const acquisitionIntelligenceClient = new HttpAcquisitionIntelligenceClient(
+    config.controlPlaneUrl,
+    config.workerId,
+    config.workerCredential,
+  );
   const acquirer =
     config.collectionProvider === "local-folder"
       ? new LocalFolderArtifactAcquirer({
@@ -127,6 +126,103 @@ async function main(): Promise<void> {
                   throw new Error("CNIPA acquirer configuration is incomplete");
                 })())
               : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
+  const learningProfileForJob = (job: Job) =>
+    acquisitionLearningProfileForJob({
+      job,
+      ...(configuredLearningProfileId ? { configuredProfileId: configuredLearningProfileId } : {}),
+      collectionProvider: config.collectionProvider,
+    });
+
+  async function recordCompletedLearning(
+    completion: ControlledCollectionCompletion,
+  ): Promise<void> {
+    const profile = learningProfileForJob(completion.context.job);
+    if (!profile || !completion.receipt) return;
+    const observation = buildReceiptAcquisitionLearningObservation(
+      completion,
+      config.collectionProvider === "crawl4ai" ? crawl4AiAcquirer.getDiagnostics() : null,
+    );
+    if (!observation) return;
+    const evidence = ipAustraliaManualAcquirer
+      ? buildIpAustraliaManualAcquisitionRunEvidence({
+          job: completion.context.job,
+          receipt: completion.receipt,
+          diagnostics: ipAustraliaManualAcquirer.getDiagnostics(),
+          startedAt: completion.startedAt,
+          finishedAt: completion.finishedAt,
+          profile,
+        })
+      : buildAcquisitionRunEvidenceFromProfile({ profile, observation });
+    const fingerprint = buildSourceFingerprintFromAcquisitionProfile({
+      profile,
+      sourceId: completion.context.job.sourceId,
+      observedAt: completion.finishedAt,
+      evidenceRefs: evidence.evidenceRefs,
+      changeDetection: evidence.changeDetection,
+    });
+    const learned = await acquisitionIntelligenceClient.recordRun(evidence, fingerprint);
+    const manualDiagnostics = ipAustraliaManualAcquirer?.getDiagnostics();
+    log("worker.acquisition.learning.recorded", {
+      runId: learned.runId,
+      sourceId: learned.sourceId,
+      profileId: profile.profileId,
+      siteFamily: profile.siteFamily ?? null,
+      playbookId: profile.playbookId,
+      playbookRevision: profile.playbookRevision,
+      outcome: evidence.outcome,
+      executionAttemptId: learned.executionAttemptId,
+      replayed: learned.replayed,
+      fingerprintRecorded: learned.fingerprintRecorded,
+      lessonsRecorded: learned.lessonsRecorded,
+      playbookRuns: learned.playbookHistory.runs,
+      playbookSuccessRate: learned.playbookHistory.successRate,
+      playbookAverageCoverage: learned.playbookHistory.averageCoverage,
+      strategyCandidateId: learned.strategyCandidateId,
+      strategyCandidateStage: learned.strategyCandidateStage,
+      strategyCandidateEvidenceCount: learned.strategyCandidateEvidenceCount,
+      reevaluationRequestId: learned.reevaluationRequestId,
+      ...(manualDiagnostics
+        ? {
+            inventoryPageCount: manualDiagnostics.inventoryPageCount,
+            emittedArtifactCount: manualDiagnostics.emittedArtifactCount,
+            sourceGapCount: manualDiagnostics.sourceGaps.length,
+            sourceGapSamples: manualDiagnostics.sourceGaps.slice(0, 10).map((gap) => ({
+              uri: gap.uri,
+              status: gap.status,
+              reason: gap.reason,
+            })),
+          }
+        : {}),
+    });
+  }
+
+  async function recordFailedLearning(failure: ControlledCollectionFailure): Promise<void> {
+    const profile = learningProfileForJob(failure.context.job);
+    if (!profile) return;
+    const observation = buildFailedAcquisitionLearningObservation(failure);
+    const evidence = buildAcquisitionRunEvidenceFromProfile({ profile, observation });
+    const fingerprint = buildSourceFingerprintFromAcquisitionProfile({
+      profile,
+      sourceId: failure.context.job.sourceId,
+      observedAt: failure.finishedAt,
+      evidenceRefs: evidence.evidenceRefs,
+      changeDetection: evidence.changeDetection,
+    });
+    const learned = await acquisitionIntelligenceClient.recordRun(evidence, fingerprint);
+    log("worker.acquisition.learning.failure.recorded", {
+      runId: learned.runId,
+      sourceId: learned.sourceId,
+      profileId: profile.profileId,
+      siteFamily: profile.siteFamily ?? null,
+      playbookId: profile.playbookId,
+      playbookRevision: profile.playbookRevision,
+      outcome: evidence.outcome,
+      lessonsRecorded: learned.lessonsRecorded,
+      playbookRuns: learned.playbookHistory.runs,
+      playbookSuccessRate: learned.playbookHistory.successRate,
+    });
+  }
+
   const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
     runtimeVersion: config.runtimeVersion,
     keepAliveIntervalMs: config.keepAliveIntervalMs,
@@ -134,63 +230,8 @@ async function main(): Promise<void> {
     onBackgroundError(error) {
       log("worker.background.error", { message: errorMessage(error) });
     },
-    async onCompleted(completion) {
-      if (!learningProfile || !acquisitionIntelligenceClient || !completion.receipt) return;
-      const observation = buildReceiptAcquisitionLearningObservation(completion);
-      if (!observation) return;
-      const evidence = ipAustraliaManualAcquirer
-        ? buildIpAustraliaManualAcquisitionRunEvidence({
-            job: completion.context.job,
-            receipt: completion.receipt,
-            diagnostics: ipAustraliaManualAcquirer.getDiagnostics(),
-            startedAt: completion.startedAt,
-            finishedAt: completion.finishedAt,
-            profile: learningProfile,
-          })
-        : buildAcquisitionRunEvidenceFromProfile({
-            profile: learningProfile,
-            observation,
-          });
-      const fingerprint = buildSourceFingerprintFromAcquisitionProfile({
-        profile: learningProfile,
-        sourceId: completion.context.job.sourceId,
-        observedAt: completion.finishedAt,
-        evidenceRefs: evidence.evidenceRefs,
-        changeDetection: evidence.changeDetection,
-      });
-      const learned = await acquisitionIntelligenceClient.recordRun(evidence, fingerprint);
-      const diagnostics = ipAustraliaManualAcquirer?.getDiagnostics();
-      log("worker.acquisition.learning.recorded", {
-        runId: learned.runId,
-        sourceId: learned.sourceId,
-        profileId: learningProfile.profileId,
-        playbookId: learningProfile.playbookId,
-        playbookRevision: learningProfile.playbookRevision,
-        executionAttemptId: learned.executionAttemptId,
-        replayed: learned.replayed,
-        fingerprintRecorded: learned.fingerprintRecorded,
-        lessonsRecorded: learned.lessonsRecorded,
-        playbookRuns: learned.playbookHistory.runs,
-        playbookSuccessRate: learned.playbookHistory.successRate,
-        playbookAverageCoverage: learned.playbookHistory.averageCoverage,
-        strategyCandidateId: learned.strategyCandidateId,
-        strategyCandidateStage: learned.strategyCandidateStage,
-        strategyCandidateEvidenceCount: learned.strategyCandidateEvidenceCount,
-        reevaluationRequestId: learned.reevaluationRequestId,
-        ...(diagnostics
-          ? {
-              inventoryPageCount: diagnostics.inventoryPageCount,
-              emittedArtifactCount: diagnostics.emittedArtifactCount,
-              sourceGapCount: diagnostics.sourceGaps.length,
-              sourceGapSamples: diagnostics.sourceGaps.slice(0, 10).map((gap) => ({
-                uri: gap.uri,
-                status: gap.status,
-                reason: gap.reason,
-              })),
-            }
-          : {}),
-      });
-    },
+    onCompleted: recordCompletedLearning,
+    onFailed: recordFailedLearning,
   });
   const conversionRuntime =
     config.conversionEnabled && config.workspaceId
@@ -244,7 +285,10 @@ async function main(): Promise<void> {
     collectionEnabled: config.collectionEnabled,
     conversionEnabled: config.conversionEnabled,
     acquisitionLearningEnabled: Boolean(acquisitionIntelligenceClient),
-    acquisitionLearningProfileId: learningProfile?.profileId ?? null,
+    acquisitionLearningProfileId: configuredLearningProfileId ?? null,
+    acquisitionLearningProfileMode: configuredLearningProfileId
+      ? "configured-with-job-overrides"
+      : "job-derived",
   });
 
   while (!stopping) {

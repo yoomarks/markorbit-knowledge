@@ -326,18 +326,37 @@ export class SqliteAcquisitionIntelligenceRepository {
     return rows.map((row) => parseLesson(row.document_json));
   }
 
-  playbookHistory(playbookId: string, revision: number): AcquisitionPlaybookHistory {
-    const row = this.database
-      .prepare(
-        `SELECT
-           COUNT(*) AS runs,
-           AVG(CASE WHEN outcome = 'SUCCESS' THEN 1.0 ELSE 0.0 END) AS success_rate,
-           AVG(coverage_ratio) AS average_coverage,
-           AVG(duration_ms) AS average_duration_ms
-         FROM acquisition_run_evidence
-         WHERE playbook_id = ? AND playbook_revision = ?`,
-      )
-      .get(playbookId.trim(), revision) as Record<string, unknown>;
+  playbookHistory(
+    playbookId: string,
+    revision: number,
+    siteFamily?: string,
+  ): AcquisitionPlaybookHistory {
+    const normalizedFamily = siteFamily?.trim();
+    const statement = normalizedFamily
+      ? this.database.prepare(
+          `SELECT
+             COUNT(*) AS runs,
+             AVG(CASE WHEN outcome = 'SUCCESS' THEN 1.0 ELSE 0.0 END) AS success_rate,
+             AVG(coverage_ratio) AS average_coverage,
+             AVG(duration_ms) AS average_duration_ms
+           FROM acquisition_run_evidence
+           WHERE playbook_id = ? AND playbook_revision = ?
+             AND json_extract(document_json, '$.siteFamily') = ?`,
+        )
+      : this.database.prepare(
+          `SELECT
+             COUNT(*) AS runs,
+             AVG(CASE WHEN outcome = 'SUCCESS' THEN 1.0 ELSE 0.0 END) AS success_rate,
+             AVG(coverage_ratio) AS average_coverage,
+             AVG(duration_ms) AS average_duration_ms
+           FROM acquisition_run_evidence
+           WHERE playbook_id = ? AND playbook_revision = ?`,
+        );
+    const row = (
+      normalizedFamily
+        ? statement.get(playbookId.trim(), revision, normalizedFamily)
+        : statement.get(playbookId.trim(), revision)
+    ) as Record<string, unknown>;
     const runs = Number(row.runs ?? 0);
     return {
       runs,

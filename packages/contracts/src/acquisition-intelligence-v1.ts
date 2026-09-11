@@ -15,6 +15,8 @@ export const ACQUISITION_DISCOVERY_SURFACES = [
   "SITEMAP",
   "ROBOTS",
   "INDEX_PAGE",
+  "LINK_GRAPH",
+  "DIRECT_ENTRYPOINT",
   "TOC",
   "SEARCH_ENDPOINT",
   "API",
@@ -38,6 +40,7 @@ export type AcquisitionLocaleStructure = (typeof ACQUISITION_LOCALE_STRUCTURES)[
 export const ACQUISITION_PRIMITIVES = [
   "SITEMAP_ENUMERATION",
   "INDEX_TREE_ENUMERATION",
+  "LINK_GRAPH_ENUMERATION",
   "COUNTRY_INDEX_ENUMERATION",
   "TOC_GRAPH_ENUMERATION",
   "API_CATALOG_ENUMERATION",
@@ -83,6 +86,7 @@ export type SourceFingerprint = {
   objectType: "SOURCE_FINGERPRINT";
   sourceId: string;
   observedAt: string;
+  siteFamily?: string;
   architecture: AcquisitionArchitecture;
   discoverySurfaces: AcquisitionDiscoverySurface[];
   renderRequirement: AcquisitionRenderRequirement;
@@ -138,6 +142,7 @@ export type AcquisitionRunEvidence = {
   objectType: "ACQUISITION_RUN_EVIDENCE";
   runId: string;
   sourceId: string;
+  siteFamily?: string;
   playbookId: string;
   playbookRevision: number;
   startedAt: string;
@@ -265,6 +270,10 @@ export function isSourceFingerprint(value: unknown): value is SourceFingerprint 
     typeof value.sourceId === "string" &&
     typeof value.observedAt === "string" &&
     Number.isFinite(Date.parse(value.observedAt)) &&
+    (value.siteFamily === undefined ||
+      (typeof value.siteFamily === "string" &&
+        value.siteFamily.length > 0 &&
+        value.siteFamily.length <= 120)) &&
     typeof value.architecture === "string" &&
     ACQUISITION_ARCHITECTURES.includes(value.architecture as AcquisitionArchitecture) &&
     Array.isArray(value.discoverySurfaces) &&
@@ -303,6 +312,10 @@ export function isAcquisitionRunEvidence(value: unknown): value is AcquisitionRu
     value.objectType === "ACQUISITION_RUN_EVIDENCE" &&
     typeof value.runId === "string" &&
     typeof value.sourceId === "string" &&
+    (value.siteFamily === undefined ||
+      (typeof value.siteFamily === "string" &&
+        value.siteFamily.length > 0 &&
+        value.siteFamily.length <= 120)) &&
     typeof value.playbookId === "string" &&
     typeof value.playbookRevision === "number" &&
     Number.isInteger(value.playbookRevision) &&

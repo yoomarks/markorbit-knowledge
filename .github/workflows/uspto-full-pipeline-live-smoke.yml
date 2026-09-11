@@ -15,6 +15,11 @@ on:
       - apps/admin/src/server/acquisition-intelligence-worker-intake.ts
       - apps/admin/src/app/api/worker/v1/acquisition-intelligence/runs/route.ts
       - apps/worker/package.json
+      - scripts/admin-browser-calibration-core-auth-stub.mjs
+      - scripts/ci-admin-auth-configure.sh
+      - scripts/ci-admin-auth-stub-start.sh
+      - scripts/ci-admin-control-plane-ready.sh
+      - scripts/ci-admin-api-curl.sh
       - pnpm-lock.yaml
 
 permissions:
@@ -57,6 +62,9 @@ jobs:
           echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
           echo "MARKORBIT_CRAWL4AI_SCRIPT=$GITHUB_WORKSPACE/workers/crawl4ai/acquire.py" >> "$GITHUB_ENV"
 
+      - name: Configure isolated Admin auth
+        run: bash scripts/ci-admin-auth-configure.sh
+
       - name: Install workspace
         run: pnpm install --frozen-lockfile
 
@@ -69,22 +77,18 @@ jobs:
       - name: Build control plane
         run: pnpm --filter @markorbit/admin build
 
+      - name: Start isolated Core auth stub
+        run: bash scripts/ci-admin-auth-stub-start.sh
+
       - name: Start isolated control plane
         run: |
           pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
           echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
-          for attempt in $(seq 1 60); do
-            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" > /dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-          cat "$RUNNER_TEMP/admin.log"
-          exit 1
+          bash scripts/ci-admin-control-plane-ready.sh
 
       - name: Discover real USPTO trademark source
         run: |
-          curl --silent --show-error --fail-with-body --max-time 240 \
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body --max-time 240 \
             -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/discovery" \
             -H 'content-type: application/json' \
             --data '{"locator":"https://www.uspto.gov/trademarks","maxDepth":1,"maxCandidates":75,"maxFetches":20,"deniedUrlPatterns":["/login","/signin","/logout"]}' \
@@ -108,7 +112,7 @@ jobs:
       - name: Explicitly accept one discovery candidate in isolated smoke state
         run: |
           REVIEWER="${GITHUB_ACTOR:-github-actions}-live-smoke-explicit-review"
-          curl --silent --show-error --fail-with-body \
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body \
             -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/discovery/candidates/$MARKORBIT_DISCOVERY_CANDIDATE_ID/review" \
             -H 'content-type: application/json' \
             --data "{\"decision\":\"ACCEPTED\",\"reviewer\":\"$REVIEWER\",\"note\":\"Isolated live evidence smoke: explicit review transition only; not an automatic production acceptance policy.\"}" \
@@ -155,7 +159,7 @@ jobs:
           };
           fs.writeFileSync(process.env.RUNNER_TEMP + '/plan-patch.json', JSON.stringify(payload));
           NODE
-          curl --silent --show-error --fail-with-body \
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body \
             -X PATCH "$MARKORBIT_CONTROL_PLANE_URL/api/plans/$MARKORBIT_PLAN_ID" \
             -H 'content-type: application/json' \
             --data-binary "@$RUNNER_TEMP/plan-patch.json" \
@@ -180,7 +184,7 @@ jobs:
             "labels": ["production", "crawl4ai", "uspto-full-pipeline-smoke"]
           }
           JSON
-          curl --silent --show-error --fail-with-body \
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body \
             -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/workers" \
             -H 'content-type: application/json' \
             --data-binary "@$RUNNER_TEMP/worker-request.json" \
@@ -213,7 +217,7 @@ jobs:
 
       - name: Explicitly authorize collection execution
         run: |
-          curl --silent --show-error --fail-with-body \
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body \
             -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/discovery/candidates/$MARKORBIT_DISCOVERY_CANDIDATE_ID/authorize-collection" \
             -H 'content-type: application/json' \
             --data '{"requestedBy":"github-actions-live-smoke","idempotencyKey":"uspto-full-pipeline-live-smoke"}' \
@@ -294,6 +298,7 @@ jobs:
         run: |
           if [ -n "${WORKER_PID:-}" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
           if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+          if [ -n "${AUTH_STUB_PID:-}" ]; then kill "$AUTH_STUB_PID" 2>/dev/null || true; fi
 
       - name: Upload sanitized smoke logs
         if: always()
@@ -302,6 +307,7 @@ jobs:
           name: uspto-full-pipeline-live-smoke-logs
           path: |
             ${{ runner.temp }}/admin.log
+            ${{ runner.temp }}/admin-auth-stub.log
             ${{ runner.temp }}/worker.log
             ${{ runner.temp }}/discovery.json
             ${{ runner.temp }}/review.json
