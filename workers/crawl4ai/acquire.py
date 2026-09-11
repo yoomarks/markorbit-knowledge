@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import time
+import traceback
 from collections import deque
 from pathlib import Path
 from typing import Any
@@ -891,9 +892,14 @@ def main() -> int:
     except json.JSONDecodeError:
         response = _error("INVALID_REQUEST", "stdin must contain one JSON request")
     except Exception as exc:
+        traceback.print_exc(file=sys.stderr)
+        message = str(exc).strip() or type(exc).__name__
+        proxy = os.environ.get("MARKORBIT_CRAWL4AI_EGRESS_PROXY")
+        if proxy:
+            message = message.replace(proxy, "[REDACTED_EGRESS_PROXY]")
         response = _error(
             "CRAWL4AI_RUNTIME_FAILED",
-            f"Unexpected Crawl4AI runtime failure: {type(exc).__name__}",
+            f"Unexpected Crawl4AI runtime failure: {type(exc).__name__}: {message}",
             retryable=True,
         )
 

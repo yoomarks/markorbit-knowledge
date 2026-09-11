@@ -8,12 +8,9 @@ const scope = {
   sourceKey: "uspto",
 };
 
-function repository() {
+function repository(clock: () => Date = () => new Date("2026-09-11T00:00:00.000Z")) {
   const database = new DatabaseSync(":memory:");
-  const repo = new SqliteWebUrlCatalogRepository(
-    database,
-    () => new Date("2026-09-11T00:00:00.000Z"),
-  );
+  const repo = new SqliteWebUrlCatalogRepository(database, clock);
   return { database, repo };
 }
 
@@ -37,6 +34,23 @@ describe("web URL catalog", () => {
     expect(repo.counts(scope)).toEqual({ DISCOVERED: 900, QUEUED: 100 });
     database.close();
   });
+  it("does not rewrite unchanged catalog rows on repeated discovery", () => {
+    let observedAt = new Date("2026-09-11T00:00:00.000Z");
+    const { database, repo } = repository(() => observedAt);
+    const url = "https://www.uspto.gov/trademarks/apply";
+    repo.upsertDiscovered({ ...scope, discoveryMode: "SITEMAP", urls: [url] });
+    const first = database
+      .prepare("SELECT last_discovered_at FROM web_url_catalog WHERE canonical_url = ?")
+      .get(url) as { last_discovered_at: string };
+    observedAt = new Date("2026-09-11T01:00:00.000Z");
+    repo.upsertDiscovered({ ...scope, discoveryMode: "SITEMAP", urls: [url] });
+    const second = database
+      .prepare("SELECT last_discovered_at FROM web_url_catalog WHERE canonical_url = ?")
+      .get(url) as { last_discovered_at: string };
+    expect(second.last_discovered_at).toBe(first.last_discovered_at);
+    database.close();
+  });
+
   it("keeps non-eligible discovered URLs cold while queueing only eligible URLs", () => {
     const { database, repo } = repository();
     const hot = "https://www.uspto.gov/trademarks/apply";
@@ -58,6 +72,27 @@ describe("web URL catalog", () => {
       { canonical_url: hot, collection_eligible: 1, temperature: "HOT" },
     ]);
     expect(repo.nextBatch({ ...scope, limit: 100 })).toEqual([hot]);
+    database.close();
+  });
+
+  it("binds source identity only to eligible collection candidates", () => {
+    const { database, repo } = repository();
+    const hot = "https://www.uspto.gov/trademarks/apply";
+    const cold = "https://www.uspto.gov/patents/search";
+    repo.upsertDiscovered({
+      ...scope,
+      discoveryMode: "SITEMAP",
+      urls: [hot, cold],
+      eligibleUrls: [hot],
+    });
+    expect(repo.bindSource({ ...scope, sourceId: "src_USPTO" })).toBe(1);
+    const rows = database
+      .prepare("SELECT canonical_url, source_id FROM web_url_catalog ORDER BY canonical_url")
+      .all();
+    expect(rows).toEqual([
+      { canonical_url: cold, source_id: null },
+      { canonical_url: hot, source_id: "src_USPTO" },
+    ]);
     database.close();
   });
 

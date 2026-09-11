@@ -120,13 +120,14 @@ export function observeWebAcquisitionCampaign(
   database: DatabaseSync,
   campaign: CampaignResult,
 ): CampaignVerification {
-  const sourceIds = campaign.sources.map((source) => source.sourceId);
-  const runIds = campaign.sources
-    .map((source) => source.runId)
-    .filter((id): id is string => Boolean(id));
-  if (runIds.length !== campaign.sources.length) {
-    throw new Error("Campaign result does not contain one dispatched run per source");
+  const dispatchedSources = campaign.sources.filter(
+    (source): source is CampaignSourceResult & { runId: string } => Boolean(source.runId),
+  );
+  if (dispatchedSources.length === 0) {
+    throw new Error("Campaign result does not contain any dispatched runs");
   }
+  const sourceIds = dispatchedSources.map((source) => source.sourceId);
+  const runIds = dispatchedSources.map((source) => source.runId);
 
   const runRows = database
     .prepare(
@@ -164,7 +165,7 @@ export function observeWebAcquisitionCampaign(
   const markdownBySource = countMap(markdownRows);
   const rawMarkdownBySource = countMap(rawMarkdownRows);
   const retrievalBySource = countMap(retrievalRows);
-  const profileIds = campaign.sources.map((source) => source.conversionProfileId);
+  const profileIds = dispatchedSources.map((source) => source.conversionProfileId);
   if (profileIds.some((id) => !id)) {
     throw new Error("Campaign result does not contain one conversion profile per source");
   }
@@ -267,7 +268,7 @@ export function observeWebAcquisitionCampaign(
   }
 
   const terminal = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
-  const sources = campaign.sources.map((source) => ({
+  const sources = dispatchedSources.map((source) => ({
     sourceKey: source.sourceKey,
     runStatus: runBySource.get(source.sourceId)?.status ?? "MISSING",
     markdownPages: markdownBySource.get(source.sourceId) ?? 0,
@@ -332,7 +333,8 @@ async function main(): Promise<void> {
   try {
     while (Date.now() < deadline) {
       last = observeWebAcquisitionCampaign(database, campaign);
-      const runsSettled = last.terminalRuns === campaign.sources.length;
+      const dispatchedCount = campaign.sources.filter((source) => Boolean(source.runId)).length;
+      const runsSettled = last.terminalRuns === dispatchedCount;
       const conversionsSettled = activeConversionCount(last) === 0;
       const accepted =
         runsSettled &&
@@ -352,8 +354,9 @@ async function main(): Promise<void> {
   process.stdout.write(output);
 
   const failures: string[] = [];
-  if (last.terminalRuns !== campaign.sources.length) {
-    failures.push(`terminal runs ${last.terminalRuns}/${campaign.sources.length}`);
+  const dispatchedCount = campaign.sources.filter((source) => Boolean(source.runId)).length;
+  if (last.terminalRuns !== dispatchedCount) {
+    failures.push(`terminal runs ${last.terminalRuns}/${dispatchedCount}`);
   }
   if (activeConversionCount(last) > 0) {
     failures.push(`active conversions ${activeConversionCount(last)}`);

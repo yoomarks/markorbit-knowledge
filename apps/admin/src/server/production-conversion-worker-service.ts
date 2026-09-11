@@ -288,6 +288,99 @@ export function commitProductionStagingWithDependencies(
   };
 }
 
+export type ExpiredConversionLeaseReconciliationResult = {
+  status: "COMPLETED";
+  workspaceId: string;
+  inspected: number;
+  expiredBeforeStart: number;
+  failedStarted: number;
+  failed: number;
+};
+
+export type ExpiredConversionLeaseReconciliationDependencies = {
+  runtime: Pick<
+    ReturnType<typeof getConversionRuntimeRepository>,
+    "listLeases" | "getAttempt" | "expireBeforeStart"
+  >;
+  transitions: Pick<
+    ReturnType<typeof getConversionRuntimeTransitionRepository>,
+    "reconcileExpiredStartedLease"
+  >;
+};
+
+export function reconcileExpiredConversionLeasesWithDependencies(
+  dependencies: ExpiredConversionLeaseReconciliationDependencies,
+  workspaceId: string,
+  limit = 25,
+  now = new Date(),
+): ExpiredConversionLeaseReconciliationResult {
+  const { runtime, transitions } = dependencies;
+  const nowMs = now.getTime();
+  const result: ExpiredConversionLeaseReconciliationResult = {
+    status: "COMPLETED",
+    workspaceId,
+    inspected: 0,
+    expiredBeforeStart: 0,
+    failedStarted: 0,
+    failed: 0,
+  };
+  let leases;
+  try {
+    leases = runtime.listLeases({ workspaceId, status: "ACTIVE", limit }).items;
+  } catch {
+    result.failed += 1;
+    return result;
+  }
+  for (const lease of leases) {
+    if (Date.parse(lease.expiresAt) > nowMs) continue;
+    result.inspected += 1;
+    try {
+      const attempt = runtime.getAttempt(lease.conversionAttemptId);
+      if (!attempt) {
+        result.failed += 1;
+        continue;
+      }
+      if (attempt.status === "CLAIMED" && attempt.startedAt === undefined) {
+        runtime.expireBeforeStart(lease.id, {
+          workspaceId,
+          workerId: lease.workerId,
+          reconciliationCode: "CONVERSION_LEASE_EXPIRED_BEFORE_START",
+          evidence: { "x-auto-reconcile": true },
+        });
+        result.expiredBeforeStart += 1;
+        continue;
+      }
+      if (attempt.status === "STARTED" && attempt.startedAt !== undefined) {
+        transitions.reconcileExpiredStartedLease(lease.id, {
+          workspaceId,
+          reconcilerId: "conversion-worker-claim-reconciler",
+          idempotencyKey: `lease-expired:${lease.id}:${lease.generation}`,
+        });
+        result.failedStarted += 1;
+        continue;
+      }
+      result.failed += 1;
+    } catch {
+      result.failed += 1;
+    }
+  }
+  return result;
+}
+
+export function reconcileExpiredConversionLeases(
+  workspaceId: string,
+  limit = 25,
+): ExpiredConversionLeaseReconciliationResult {
+  return reconcileExpiredConversionLeasesWithDependencies(
+    {
+      runtime: getConversionRuntimeRepository(),
+      transitions: getConversionRuntimeTransitionRepository(),
+    },
+    workspaceId,
+    limit,
+  );
+}
+
 export class ProductionConversionWorkerService {
   claim(
     request: ConversionClaimRequest,
@@ -304,6 +397,8 @@ export class ProductionConversionWorkerService {
         "Worker credential belongs to another Workspace",
       );
     }
+
+    reconcileExpiredConversionLeases(request.workspaceId, 25);
 
     let reconciliation: AutomaticConversionRecoveryStatus;
     try {

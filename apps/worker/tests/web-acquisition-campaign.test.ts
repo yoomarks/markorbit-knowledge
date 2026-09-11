@@ -255,6 +255,67 @@ function controlPlaneFetch(calls: ControlPlaneCall[]): typeof fetch {
 }
 
 describe("bulk campaign orchestration", () => {
+  function resetError(): TypeError {
+    const cause = Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" });
+    return Object.assign(new TypeError("fetch failed"), { cause });
+  }
+
+  it("retries one transient GET reset without replaying mutations", async () => {
+    const calls: ControlPlaneCall[] = [];
+    const delegate = controlPlaneFetch(calls);
+    let sourceGets = 0;
+    const fetchImpl = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
+      const url = String(input);
+      const method = (init.method ?? "GET").toUpperCase();
+      if (url.includes("/api/sources?") && method === "GET") {
+        sourceGets += 1;
+        if (sourceGets === 1) throw resetError();
+      }
+      return delegate(input, init);
+    }) as typeof fetch;
+    const value = manifest({
+      sources: [{ ...manifest().sources[0]!, discovery: { mode: "LINK_CRAWL" } }],
+    });
+
+    const result = await runWebAcquisitionCampaign(value, {
+      controlPlaneUrl: "http://control.test",
+      dispatch: false,
+      fetchImpl,
+    });
+    expect(sourceGets).toBe(2);
+    expect(result.sources[0]?.sourceId).toBe("src_TEST0000000000000000000001");
+    expect(
+      calls.filter((call) => call.method === "POST" && call.url.endsWith("/api/sources")),
+    ).toHaveLength(1);
+  });
+
+  it("does not retry a mutating control-plane request after a network reset", async () => {
+    const calls: ControlPlaneCall[] = [];
+    const delegate = controlPlaneFetch(calls);
+    let sourcePosts = 0;
+    const fetchImpl = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
+      const url = String(input);
+      const method = (init.method ?? "GET").toUpperCase();
+      if (url.endsWith("/api/sources") && method === "POST") {
+        sourcePosts += 1;
+        throw resetError();
+      }
+      return delegate(input, init);
+    }) as typeof fetch;
+    const value = manifest({
+      sources: [{ ...manifest().sources[0]!, discovery: { mode: "LINK_CRAWL" } }],
+    });
+
+    await expect(
+      runWebAcquisitionCampaign(value, {
+        controlPlaneUrl: "http://control.test",
+        dispatch: false,
+        fetchImpl,
+      }),
+    ).rejects.toThrow(/POST \/api\/sources.*ECONNRESET/u);
+    expect(sourcePosts).toBe(1);
+  });
+
   it("creates governed peer Source/Plan, auto-conversion profile and dispatches one run", async () => {
     const calls: ControlPlaneCall[] = [];
     const peerManifest = manifest({

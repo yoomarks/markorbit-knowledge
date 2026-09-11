@@ -61,7 +61,7 @@ describe("conversion failure recovery", () => {
         message: "lease expired",
         retryable: false,
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       conversionFailureIsAutoRetryable({
         kind: "CONVERTER_ERROR",
