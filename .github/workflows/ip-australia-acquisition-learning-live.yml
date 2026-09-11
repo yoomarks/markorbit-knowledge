@@ -25,6 +25,11 @@ on:
       - packages/worker-runtime/src/http-controlled-collection-client.ts
       - packages/worker-runtime/tests/controlled-collection-completion-observer.test.ts
       - packages/worker-runtime/tests/http-acquisition-intelligence-client.test.ts
+      - scripts/admin-browser-calibration-core-auth-stub.mjs
+      - scripts/ci-admin-auth-configure.sh
+      - scripts/ci-admin-auth-stub-start.sh
+      - scripts/ci-admin-control-plane-ready.sh
+      - scripts/ci-admin-api-curl.sh
       - pnpm-lock.yaml
 
 permissions:
@@ -58,6 +63,9 @@ jobs:
           echo "MARKORBIT_STAGING_STORE_PATH=$RUNNER_TEMP/ip-au-acquisition-learning-staging" >> "$GITHUB_ENV"
           echo "MARKORBIT_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
 
+      - name: Configure isolated Admin auth
+        run: bash scripts/ci-admin-auth-configure.sh
+
       - name: Install and build
         run: |
           pnpm install --frozen-lockfile
@@ -76,30 +84,28 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_ENV,`MARKORBIT_IP_AU_EXPECTED_COUNT=${expected}\n`);
           NODE
 
+      - name: Start isolated Core auth stub
+        run: bash scripts/ci-admin-auth-stub-start.sh
+
       - name: Start isolated control plane
         run: |
           pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/admin.log" 2>&1 &
           echo "ADMIN_PID=$!" >> "$GITHUB_ENV"
-          for attempt in $(seq 1 60); do
-            if curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/connectors" >/dev/null; then exit 0; fi
-            sleep 2
-          done
-          cat "$RUNNER_TEMP/admin.log"
-          exit 1
+          bash scripts/ci-admin-control-plane-ready.sh
 
       - name: Register IP Australia connector
         run: |
           cat > "$RUNNER_TEMP/connector.json" <<'JSON'
           {"connectorId":"ip-australia-manual-http","displayName":"IP Australia Trade Marks Manual HTTP","version":"1.0.0","sourceTypes":["WEB"],"runtime":"NODE","capabilities":["COLLECT","WATCH"],"supportedJobTypes":["WEB_CRAWL","PAGE_UPDATE_CHECK"],"configurationSchema":{"type":"object","properties":{}},"secretSchema":{"type":"object","properties":{}},"outputArtifactKinds":["HTML"],"healthCheck":{"mode":"WORKER_PROBE","timeoutSeconds":30},"status":"ACTIVE","extensions":{"x-markorbit-source-specific-adapter":"ip-australia-trade-marks-manual"}}
           JSON
-          curl --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/connectors" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/connector.json" >/dev/null
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/connectors" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/connector.json" >/dev/null
 
       - name: Create governed Source
         run: |
           cat > "$RUNNER_TEMP/source.json" <<'JSON'
           {"name":"IP Australia Trade Marks Manual","slug":"ip-australia-trade-marks-manual-acquisition-learning-live","sourceType":"WEB","category":"OFFICIAL_GUIDANCE","authorityLevel":"PRIMARY_OFFICIAL","status":"ACTIVE","jurisdictions":["AU"],"languages":["en"],"connector":{"connectorId":"ip-australia-manual-http","version":"1.0.0"},"canonicalUri":"https://manuals.ipaustralia.gov.au/trademark","entrypoints":[{"uri":"https://manuals.ipaustralia.gov.au/trademark","label":"Trade Marks Manual"}],"tags":["ip-australia","trademark","manual","acquisition-learning-live"]}
           JSON
-          curl --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/sources" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/source.json" > "$RUNNER_TEMP/source-create.json"
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/sources" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/source.json" > "$RUNNER_TEMP/source-create.json"
           node <<'NODE'
           const fs=require('node:fs');
           const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/source-create.json','utf8'));
@@ -113,7 +119,7 @@ jobs:
           const fs=require('node:fs');
           fs.writeFileSync(process.env.RUNNER_TEMP+'/plan.json',JSON.stringify({sourceId:process.env.MARKORBIT_IP_AU_SOURCE_ID,name:'IP Australia Acquisition Learning Live',status:'ACTIVE',schedule:{mode:'MANUAL'},priority:'HIGH',policy:{includePatterns:['https://manuals.ipaustralia.gov.au/trademark*'],excludePatterns:[],maxDepth:1,maxItems:700,renderJavascript:false,fetchAttachments:false,respectRobots:true,rateLimitPerMinute:120,timeoutSeconds:60,retry:{maxAttempts:1,backoffSeconds:15},locale:'en-AU'},output:{artifactKinds:['HTML']},extensions:{'x-markorbit-acceptance':'ip-australia-acquisition-learning-live-v2'}}));
           NODE
-          curl --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/plans" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/plan.json" > "$RUNNER_TEMP/plan-create.json"
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/plans" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/plan.json" > "$RUNNER_TEMP/plan-create.json"
           node <<'NODE'
           const fs=require('node:fs');
           const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/plan-create.json','utf8'));
@@ -127,7 +133,7 @@ jobs:
           cat > "$RUNNER_TEMP/worker.json" <<'JSON'
           {"displayName":"IP Australia Acquisition Learning Live Worker","desiredState":"ACTIVE","runtime":{"runtimeId":"node-worker","version":"1.0.0"},"supportedJobTypes":["WEB_CRAWL","PAGE_UPDATE_CHECK"],"connectorBindings":[{"connectorId":"ip-australia-manual-http","version":"1.0.0","capabilities":["COLLECT","WATCH"]}],"maxConcurrency":1,"labels":["production","ip-australia","manual","acquisition-learning-live"]}
           JSON
-          curl --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/workers" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/worker.json" > "$RUNNER_TEMP/worker-create.secret.json"
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/workers" -H 'content-type: application/json' --data-binary "@$RUNNER_TEMP/worker.json" > "$RUNNER_TEMP/worker-create.secret.json"
           node <<'NODE'
           const fs=require('node:fs');
           const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/worker-create.secret.json','utf8'));
@@ -143,7 +149,7 @@ jobs:
           const fs=require('node:fs');
           fs.writeFileSync(process.env.RUNNER_TEMP+'/dispatch-request.json',JSON.stringify({planId:process.env.MARKORBIT_IP_AU_PLAN_ID,requestedBy:{actorType:'SYSTEM',actorId:'github-actions-acquisition-learning-live'}}));
           NODE
-          curl --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/runs" -H 'content-type: application/json' -H 'Idempotency-Key: ip-au-acquisition-learning-live' --data-binary "@$RUNNER_TEMP/dispatch-request.json" > "$RUNNER_TEMP/dispatch.json"
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail-with-body -X POST "$MARKORBIT_CONTROL_PLANE_URL/api/runs" -H 'content-type: application/json' -H 'Idempotency-Key: ip-au-acquisition-learning-live' --data-binary "@$RUNNER_TEMP/dispatch-request.json" > "$RUNNER_TEMP/dispatch.json"
           node <<'NODE'
           const fs=require('node:fs');
           const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/dispatch.json','utf8'));
@@ -165,14 +171,14 @@ jobs:
       - name: Verify collection resolves against authoritative inventory
         run: |
           for attempt in $(seq 1 180); do
-            curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/runs/$MARKORBIT_COLLECTION_RUN_ID" > "$RUNNER_TEMP/collection-run.json"
+            bash scripts/ci-admin-api-curl.sh --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/runs/$MARKORBIT_COLLECTION_RUN_ID" > "$RUNNER_TEMP/collection-run.json"
             status=$(node -e "const d=require('$RUNNER_TEMP/collection-run.json');process.stdout.write(d.run.run.status)")
             if [ "$status" = COMPLETED ]; then break; fi
             if [ "$status" = FAILED ] || [ "$status" = CANCELLED ]; then cat "$RUNNER_TEMP/collection-run.json"; cat "$RUNNER_TEMP/worker.log"; exit 1; fi
             sleep 5
           done
           node -e "const d=require('$RUNNER_TEMP/collection-run.json');if(d.run.run.status!=='COMPLETED')throw new Error('Collection run did not finish')"
-          curl --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&runId=$MARKORBIT_COLLECTION_RUN_ID&artifactKind=HTML&limit=100" > "$RUNNER_TEMP/collection-artifacts.json"
+          bash scripts/ci-admin-api-curl.sh --silent --show-error --fail "$MARKORBIT_CONTROL_PLANE_URL/api/artifacts?sourceId=$MARKORBIT_IP_AU_SOURCE_ID&runId=$MARKORBIT_COLLECTION_RUN_ID&artifactKind=HTML&limit=100" > "$RUNNER_TEMP/collection-artifacts.json"
           node <<'NODE'
           const fs=require('node:fs');
           const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/collection-artifacts.json','utf8'));
@@ -230,6 +236,7 @@ jobs:
         run: |
           if [ -n "${WORKER_PID:-}" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
           if [ -n "${ADMIN_PID:-}" ]; then kill "$ADMIN_PID" 2>/dev/null || true; fi
+          if [ -n "${AUTH_STUB_PID:-}" ]; then kill "$AUTH_STUB_PID" 2>/dev/null || true; fi
 
       - name: Upload sanitized evidence
         if: always()
@@ -245,5 +252,6 @@ jobs:
             ${{ runner.temp }}/acquisition-learning-verification.log
             ${{ runner.temp }}/worker.log
             ${{ runner.temp }}/admin.log
+            ${{ runner.temp }}/admin-auth-stub.log
           if-no-files-found: warn
           retention-days: 30
