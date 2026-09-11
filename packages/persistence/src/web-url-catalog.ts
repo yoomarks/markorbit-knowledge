@@ -144,6 +144,15 @@ export class SqliteWebUrlCatalogRepository {
         last_discovered_at = excluded.last_discovered_at,
         collection_eligible = excluded.collection_eligible,
         temperature = excluded.temperature
+      WHERE web_url_catalog.source_id IS NOT COALESCE(excluded.source_id, web_url_catalog.source_id)
+        OR web_url_catalog.discovery_mode <> excluded.discovery_mode
+        OR web_url_catalog.discovery_rank <> excluded.discovery_rank
+        OR web_url_catalog.status <> CASE
+          WHEN web_url_catalog.status IN ('QUEUED','FETCHED','FAILED') THEN web_url_catalog.status
+          ELSE 'DISCOVERED'
+        END
+        OR web_url_catalog.collection_eligible <> excluded.collection_eligible
+        OR web_url_catalog.temperature <> excluded.temperature
     `);
     const countStatement = this.database.prepare(
       `SELECT COUNT(*) AS count FROM web_url_catalog
@@ -192,6 +201,7 @@ export class SqliteWebUrlCatalogRepository {
       UPDATE web_url_catalog
       SET source_id = ?
       WHERE workspace_id = ? AND campaign_id = ? AND source_key = ?
+        AND collection_eligible = 1
         AND (source_id IS NULL OR source_id <> ?)
     `,
       )

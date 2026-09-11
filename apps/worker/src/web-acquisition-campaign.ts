@@ -704,7 +704,30 @@ class CampaignControlPlaneClient {
     for (const [key, value] of Object.entries(await this.headers(method, workspaceId))) {
       headers.set(key, value);
     }
-    const response = await this.fetchImpl(`${this.baseUrl}${path}`, { ...init, headers });
+    let response: Response | null = null;
+    const maxAttempts = method === "GET" || method === "HEAD" ? 2 : 1;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        response = await this.fetchImpl(`${this.baseUrl}${path}`, { ...init, headers });
+        break;
+      } catch (error) {
+        if (attempt < maxAttempts) {
+          await new Promise((resolveRetry) => setTimeout(resolveRetry, 50));
+          continue;
+        }
+        const cause =
+          error instanceof Error ? (error as Error & { cause?: unknown }).cause : undefined;
+        const causeRecord = record(cause);
+        const causeCode = typeof causeRecord?.code === "string" ? causeRecord.code : "UNKNOWN";
+        const causeMessage =
+          cause instanceof Error ? cause.message : String(cause ?? "unknown cause");
+        throw new Error(
+          `${method} ${path}: control-plane fetch failed (${causeCode}: ${causeMessage})`,
+          { cause: error },
+        );
+      }
+    }
+    if (!response) throw new Error(`${method} ${path}: control-plane fetch returned no response`);
     let body: unknown = null;
     try {
       body = await response.json();

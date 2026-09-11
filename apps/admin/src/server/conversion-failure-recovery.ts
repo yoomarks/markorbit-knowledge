@@ -215,6 +215,7 @@ function failureOrUnknown(run: ConversionRun): ConversionFailure {
 }
 
 export function conversionFailureIsAutoRetryable(failure: ConversionFailure): boolean {
+  if (failure.code === "LEASE_EXPIRED_DURING_CONVERSION") return false;
   if (failure.retryable) return true;
   if (["TIMEOUT", "WORKER_ERROR", "INPUT_UNAVAILABLE"].includes(failure.kind)) return true;
   if (failure.kind !== "CONVERTER_ERROR") return false;

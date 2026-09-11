@@ -129,4 +129,29 @@ describe("Bulk Web campaign verification", () => {
       backgroundConversionRuns: { COMPLETED: 1 },
     });
   });
+
+  it("verifies only sources dispatched in the current catalog batch", () => {
+    const db = database();
+    db.prepare("INSERT INTO collection_runs VALUES ('run-current', 'src-1', 'COMPLETED')").run();
+    insertRaw(db, "raw-current-1", "run-current", "https://example.com/current-1");
+    db.prepare("INSERT INTO retrieval_documents VALUES ('src-1', 'raw-current-1', 1)").run();
+    const partial: CampaignResult = {
+      ...campaign(),
+      sources: [
+        ...campaign().sources,
+        {
+          sourceKey: "source-two",
+          sourceId: "src-2",
+          runId: null,
+          conversionProfileId: "profile-two",
+        },
+      ],
+    };
+    const observed = observeWebAcquisitionCampaign(db, partial);
+    db.close();
+    expect(observed.terminalRuns).toBe(1);
+    expect(observed.completedRuns).toBe(1);
+    expect(observed.sources.map((source) => source.sourceKey)).toEqual(["source-one"]);
+    expect(observed.currentRetrievalDocuments).toBe(1);
+  });
 });
