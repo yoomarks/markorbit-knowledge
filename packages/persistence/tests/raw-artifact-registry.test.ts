@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { ExecutionReceipt } from "@markorbit/contracts";
 import { SqliteSourceRepository, listAppliedMigrations, openRegistryDatabase } from "../src/index";
 import { SqliteCollectionPlanRepository } from "../src/collection-plan-registry";
+import { SqliteConnectorRepository } from "../src/connector-registry";
 import { SqliteExecutionLedgerRepository } from "../src/execution-ledger";
 import { SqliteWorkerExecutionRepository } from "../src/controlled-worker-execution";
 import { SqliteWorkerRegistryRepository } from "../src/safe-worker-registry";
@@ -36,7 +37,7 @@ async function* oneChunk(value: Uint8Array): AsyncIterable<Uint8Array> {
   yield value;
 }
 
-function createEnvironment(databasePath = ":memory:") {
+function createEnvironment(databasePath = ":memory:", options: { changeWatch?: boolean } = {}) {
   const database = openRegistryDatabase(databasePath);
   const storageRoot = join(tmpdir(), `markorbit-artifacts-${randomUUID()}`);
   temporaryPaths.push(storageRoot);
@@ -47,6 +48,21 @@ function createEnvironment(databasePath = ":memory:") {
   const workers = new SqliteWorkerRegistryRepository(database, clock);
   const executions = new SqliteWorkerExecutionRepository(database, clock);
   const artifacts = new SqliteRawArtifactRepository(database, storageRoot, clock);
+  const connectorId = "artifact-fixture-http";
+  new SqliteConnectorRepository(database, clock).create({
+    connectorId,
+    displayName: "Artifact fixture HTTP",
+    version: "1.0.0",
+    sourceTypes: ["WEB"],
+    runtime: "NODE",
+    capabilities: ["COLLECT", "WATCH"],
+    supportedJobTypes: ["WEB_CRAWL", "PAGE_UPDATE_CHECK"],
+    configurationSchema: { type: "object", properties: {} },
+    secretSchema: { type: "object", properties: {} },
+    outputArtifactKinds: ["HTML"],
+    healthCheck: { mode: "WORKER_PROBE", timeoutSeconds: 30 },
+    status: "ACTIVE",
+  });
   const source = sources.create({
     workspaceId,
     name: "Artifact fixture source",
@@ -57,7 +73,7 @@ function createEnvironment(databasePath = ":memory:") {
     status: "ACTIVE",
     jurisdictions: ["US"],
     languages: ["en-US"],
-    connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
+    connector: { connectorId, version: "1.0.0" },
     connectorConfig: {},
     canonicalUri: "https://example.com/news",
     entrypoints: [{ uri: "https://example.com/news" }],
@@ -67,7 +83,9 @@ function createEnvironment(databasePath = ":memory:") {
     sourceId: source.id,
     name: "Artifact fixture plan",
     status: "ACTIVE",
-    schedule: { mode: "MANUAL" },
+    schedule: options.changeWatch
+      ? { mode: "CHANGE_WATCH", pollIntervalSeconds: 300 }
+      : { mode: "MANUAL" },
     priority: "NORMAL",
     policy: {
       includePatterns: [],
@@ -89,9 +107,13 @@ function createEnvironment(databasePath = ":memory:") {
     displayName: "Artifact fixture Worker",
     desiredState: "ACTIVE",
     runtime: { runtimeId: "fixture-worker", version: "1.0.0" },
-    supportedJobTypes: ["WEB_CRAWL"],
+    supportedJobTypes: options.changeWatch ? ["PAGE_UPDATE_CHECK"] : ["WEB_CRAWL"],
     connectorBindings: [
-      { connectorId: "crawl4ai-web", version: "1.0.0", capabilities: ["COLLECT"] },
+      {
+        connectorId,
+        version: "1.0.0",
+        capabilities: options.changeWatch ? ["COLLECT", "WATCH"] : ["COLLECT"],
+      },
     ],
     maxConcurrency: 1,
     labels: ["fixture"],
@@ -271,6 +293,38 @@ describe("RawArtifact ingestion registry", () => {
       env.claim.lease!.id,
       env.claim.leaseToken!,
       { idempotencyKey: "complete", receipt },
+    );
+    expect(completed.attempt.status).toBe("COMPLETED");
+    env.database.close();
+  });
+
+  it("allows change-watch receipts to report all observed pages while finalizing only changed artifacts", async () => {
+    const env = createEnvironment(":memory:", { changeWatch: true });
+    expect(env.claim.job?.jobType).toBe("PAGE_UPDATE_CHECK");
+    const bytes = new TextEncoder().encode("changed content evidence");
+    const finalized = await ingest(env, bytes, "changed-page");
+    env.executions.markVerifying(
+      env.worker.view.worker.id,
+      env.worker.credential,
+      env.claim.lease!.id,
+      env.claim.leaseToken!,
+      { idempotencyKey: "verifying-change-watch" },
+    );
+    const receipt: ExecutionReceipt = {
+      executor,
+      outputKinds: ["HTML"],
+      itemsObserved: 3,
+      bytesPrepared: bytes.length,
+      metadataOnly: false,
+      artifactReceiptIds: [finalized.receipt.id],
+      summary: "Observed three pages; finalized only the changed page.",
+    };
+    const completed = env.executions.complete(
+      env.worker.view.worker.id,
+      env.worker.credential,
+      env.claim.lease!.id,
+      env.claim.leaseToken!,
+      { idempotencyKey: "complete-change-watch", receipt },
     );
     expect(completed.attempt.status).toBe("COMPLETED");
     env.database.close();
