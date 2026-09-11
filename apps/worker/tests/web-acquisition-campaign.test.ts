@@ -797,6 +797,7 @@ describe("repeat campaign inventory refresh", () => {
     );
     expect(workerPatch?.body).toMatchObject({
       expectedUpdatedAt: "2026-09-08T00:00:00.000Z",
+      maxConcurrency: 2,
       supportedJobTypes: ["WEB_CRAWL", "PAGE_UPDATE_CHECK"],
       connectorBindings: [
         {
