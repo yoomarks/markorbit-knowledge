@@ -4,6 +4,7 @@ import {
   discoverWebAcquisitionInventory,
   parseWebAcquisitionCampaignManifest,
   runWebAcquisitionCampaign,
+  selectWebAcquisitionBatch,
   type WebAcquisitionCampaignManifestV1,
 } from "../src/web-acquisition-campaign";
 
@@ -111,6 +112,7 @@ describe("sitemap-first discovery", () => {
     const inventory = await discoverWebAcquisitionInventory(manifest().sources[0]!, fetchImpl);
     expect(inventory.modeUsed).toBe("SITEMAP");
     expect(inventory.selectedUrls).toEqual(["https://example.com/trademarks/apply"]);
+    expect(inventory.eligibleCount).toBe(1);
     expect(inventory.duplicateCount).toBe(1);
     expect(inventory.excludedCount).toBe(1);
   });
@@ -282,6 +284,8 @@ describe("bulk campaign orchestration", () => {
         "x-markorbit-excluded-count": 0,
         "x-markorbit-duplicate-count": 0,
         "x-markorbit-inventory-error-count": 0,
+        "x-markorbit-batch-count": 1,
+        "x-markorbit-batch-sha256": expect.stringMatching(/^[a-f0-9]{64}$/u),
       },
     });
     const planPosts = calls.filter(
@@ -322,6 +326,9 @@ describe("bulk campaign orchestration", () => {
     expect(profilePost?.body).toMatchObject({ autoConvert: true, outputFormat: "MARKDOWN" });
     const runPost = calls.find((call) => call.method === "POST" && call.url.endsWith("/api/runs"));
     expect(runPost?.body).toEqual({ planId: "pln_TEST0000000000000000000001" });
+    expect(runPost?.headers["idempotency-key"]).toMatch(
+      /^bulk-web:test-wave:peer:acceptance-1:[a-f0-9]{16}$/u,
+    );
   });
 
   it("re-crawls governed link-crawl coverage while keeping sitemap refreshes depth-zero", async () => {
@@ -383,6 +390,69 @@ describe("bounded sitemap ordering", () => {
       "https://example.com/trademarks",
       "https://example.com/trademarks/apply",
     ]);
+    expect(inventory.eligibleCount).toBe(3);
+  });
+});
+
+describe("catalog batch exhaustion", () => {
+  it("does not fall back to the first discovery batch after the durable catalog is exhausted", () => {
+    const discoveredFirstBatch = [
+      "https://example.com/trademarks/a",
+      "https://example.com/trademarks/b",
+    ];
+    expect(selectWebAcquisitionBatch(discoveredFirstBatch, [])).toEqual([]);
+    expect(selectWebAcquisitionBatch(discoveredFirstBatch, null)).toEqual(discoveredFirstBatch);
+  });
+});
+
+describe("durable sitemap inventory vs batch budget", () => {
+  it("keeps the full safe sitemap catalog while selecting only one bounded eligible batch", async () => {
+    const source = { ...manifest().sources[0]!, maxPages: 2 };
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/robots.txt")) {
+        return new Response("Sitemap: https://example.com/sitemap.xml\n", { status: 200 });
+      }
+      if (url.endsWith("/sitemap.xml")) {
+        return new Response(
+          "<urlset>" +
+            "<url><loc>https://example.com/trademarks/a</loc></url>" +
+            "<url><loc>https://example.com/trademarks/b</loc></url>" +
+            "<url><loc>https://example.com/trademarks/c</loc></url>" +
+            "</urlset>",
+          { status: 200 },
+        );
+      }
+      throw new Error(`unexpected ${url}`);
+    }) as typeof fetch;
+
+    const inventory = await discoverWebAcquisitionInventory(source, fetchImpl);
+    expect(inventory.catalogCount).toBe(3);
+    expect(inventory.eligibleCount).toBe(3);
+    expect(inventory.selectedUrls).toHaveLength(2);
+  });
+
+  it("retains safe non-matching sitemap URLs in the catalog without queueing them", async () => {
+    const source = {
+      ...manifest().sources[0]!,
+      includePatterns: ["https://example.com/trademarks/hot*"],
+    };
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/robots.txt"))
+        return new Response("Sitemap: https://example.com/sitemap.xml\n", { status: 200 });
+      if (url.endsWith("/sitemap.xml"))
+        return new Response(
+          "<urlset><url><loc>https://example.com/trademarks/hot-guide</loc></url>" +
+            "<url><loc>https://example.com/patents/cold-guide</loc></url></urlset>",
+          { status: 200 },
+        );
+      throw new Error(`unexpected ${url}`);
+    }) as typeof fetch;
+    const inventory = await discoverWebAcquisitionInventory(source, fetchImpl);
+    expect(inventory.catalogCount).toBe(2);
+    expect(inventory.eligibleCount).toBe(1);
+    expect(inventory.selectedUrls).toEqual(["https://example.com/trademarks/hot-guide"]);
   });
 });
 

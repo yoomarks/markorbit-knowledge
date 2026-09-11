@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { DatabaseSync } from "node:sqlite";
+import { SqliteWebUrlCatalogRepository } from "@markorbit/persistence/web-url-catalog";
 
 export const WEB_ACQUISITION_CAMPAIGN_VERSION = "1.0" as const;
 export const CAMPAIGN_CONNECTOR_ID = "crawl4ai-web";
@@ -54,10 +56,18 @@ export type WebAcquisitionInventoryV1 = {
   sitemapUrls: string[];
   discoveredCount: number;
   selectedUrls: string[];
+  catalogCount: number;
+  eligibleCount: number;
   excludedCount: number;
   duplicateCount: number;
   errors: string[];
   inventorySha256: string;
+  eligibleInventorySha256: string;
+};
+
+type WebAcquisitionInventoryInternal = WebAcquisitionInventoryV1 & {
+  catalogUrls: string[];
+  eligibleUrls: string[];
 };
 
 export type WebAcquisitionCampaignResultV1 = {
@@ -336,37 +346,42 @@ async function fetchText(
 function selectedUrls(
   source: WebAcquisitionCampaignSourceV1,
   discovered: readonly string[],
-): { urls: string[]; excludedCount: number; duplicateCount: number } {
+): {
+  batchUrls: string[];
+  catalogUrls: string[];
+  eligibleUrls: string[];
+  excludedCount: number;
+  duplicateCount: number;
+} {
   const canonical = discovered.map(canonicalizeCampaignUrl);
-  const unique = [...new Set(canonical)];
-  const filtered = unique.filter((raw) => {
-    const url = assertPublicHttpUrl(raw);
-    return (
-      allowedPageHost(source, url) &&
-      matchesPatterns(raw, source.includePatterns ?? [], source.excludePatterns ?? [])
-    );
-  });
-  filtered.sort((left, right) => {
+  const ranked = [...new Set(canonical)];
+  ranked.sort((left, right) => {
     const leftUrl = new URL(left);
     const rightUrl = new URL(right);
     const leftDepth = leftUrl.pathname.split("/").filter(Boolean).length;
     const rightDepth = rightUrl.pathname.split("/").filter(Boolean).length;
     if (leftDepth !== rightDepth) return leftDepth - rightDepth;
-    if (leftUrl.pathname.length !== rightUrl.pathname.length) {
+    if (leftUrl.pathname.length !== rightUrl.pathname.length)
       return leftUrl.pathname.length - rightUrl.pathname.length;
-    }
     return left.localeCompare(right);
   });
+  const catalogUrls = ranked.filter((raw) => allowedPageHost(source, assertPublicHttpUrl(raw)));
+  const eligibleUrls = catalogUrls.filter((raw) =>
+    matchesPatterns(raw, source.includePatterns ?? [], source.excludePatterns ?? []),
+  );
   return {
-    urls: filtered.slice(0, source.maxPages),
-    excludedCount: unique.length - filtered.length,
-    duplicateCount: canonical.length - unique.length,
+    batchUrls: eligibleUrls.slice(0, source.maxPages),
+    catalogUrls,
+    eligibleUrls,
+    excludedCount: ranked.length - eligibleUrls.length,
+    duplicateCount: canonical.length - ranked.length,
   };
 }
+
 export async function discoverWebAcquisitionInventory(
   source: WebAcquisitionCampaignSourceV1,
   fetchImpl: FetchLike = fetch,
-): Promise<WebAcquisitionInventoryV1> {
+): Promise<WebAcquisitionInventoryInternal> {
   const base = new URL(source.baseUrl);
   const robotsUrl = new URL("/robots.txt", base.origin).toString();
   const errors: string[] = [];
@@ -375,7 +390,8 @@ export async function discoverWebAcquisitionInventory(
 
   if (source.discovery.mode === "EXACT_URL_LIST") {
     const selected = selectedUrls(source, source.discovery.exactUrls ?? []);
-    if (selected.urls.length === 0) throw new Error(`${source.key} exact URL inventory is empty`);
+    if (selected.batchUrls.length === 0)
+      throw new Error(`${source.key} exact URL inventory is empty`);
     return {
       sourceKey: source.key,
       baseUrl: source.baseUrl,
@@ -385,11 +401,16 @@ export async function discoverWebAcquisitionInventory(
       robotsStatus,
       sitemapUrls: [],
       discoveredCount: (source.discovery.exactUrls ?? []).length,
-      selectedUrls: selected.urls,
+      selectedUrls: selected.batchUrls,
+      catalogCount: selected.catalogUrls.length,
+      eligibleCount: selected.eligibleUrls.length,
+      catalogUrls: selected.catalogUrls,
+      eligibleUrls: selected.eligibleUrls,
       excludedCount: selected.excludedCount,
       duplicateCount: selected.duplicateCount,
       errors,
-      inventorySha256: inventoryHash(selected.urls),
+      inventorySha256: inventoryHash(selected.catalogUrls),
+      eligibleInventorySha256: inventoryHash(selected.eligibleUrls),
     };
   }
 
@@ -464,17 +485,23 @@ export async function discoverWebAcquisitionInventory(
       robotsStatus,
       sitemapUrls: [...visitedSitemaps],
       discoveredCount: discovered.length,
-      selectedUrls: selected.urls,
+      selectedUrls: selected.batchUrls,
+      catalogCount: selected.catalogUrls.length,
+      eligibleCount: selected.eligibleUrls.length,
+      catalogUrls: selected.catalogUrls,
+      eligibleUrls: selected.eligibleUrls,
       excludedCount: selected.excludedCount,
       duplicateCount: selected.duplicateCount,
       errors,
-      inventorySha256: inventoryHash(selected.urls),
+      inventorySha256: inventoryHash(selected.catalogUrls),
+      eligibleInventorySha256: inventoryHash(selected.eligibleUrls),
     };
   }
   const selected = selectedUrls(source, discovered);
-  if (selected.urls.length === 0) {
+  if (selected.batchUrls.length === 0) {
     errors.push("sitemap-approved-empty:fallback-link-crawl");
     const fallback = selectedUrls(source, [source.baseUrl]);
+    const fallbackCatalogUrls = [...new Set([...selected.catalogUrls, ...fallback.catalogUrls])];
     return {
       sourceKey: source.key,
       baseUrl: source.baseUrl,
@@ -484,11 +511,16 @@ export async function discoverWebAcquisitionInventory(
       robotsStatus,
       sitemapUrls: [...visitedSitemaps],
       discoveredCount: discovered.length,
-      selectedUrls: fallback.urls,
+      selectedUrls: fallback.batchUrls,
+      catalogCount: fallbackCatalogUrls.length,
+      eligibleCount: fallback.eligibleUrls.length,
+      catalogUrls: fallbackCatalogUrls,
+      eligibleUrls: fallback.eligibleUrls,
       excludedCount: selected.excludedCount,
       duplicateCount: selected.duplicateCount,
       errors,
-      inventorySha256: inventoryHash(fallback.urls),
+      inventorySha256: inventoryHash(fallbackCatalogUrls),
+      eligibleInventorySha256: inventoryHash(fallback.eligibleUrls),
     };
   }
   return {
@@ -500,12 +532,31 @@ export async function discoverWebAcquisitionInventory(
     robotsStatus,
     sitemapUrls: [...visitedSitemaps],
     discoveredCount: discovered.length,
-    selectedUrls: selected.urls,
+    selectedUrls: selected.batchUrls,
+    catalogCount: selected.catalogUrls.length,
+    eligibleCount: selected.eligibleUrls.length,
+    catalogUrls: selected.catalogUrls,
+    eligibleUrls: selected.eligibleUrls,
     excludedCount: selected.excludedCount,
     duplicateCount: selected.duplicateCount,
     errors,
-    inventorySha256: inventoryHash(selected.urls),
+    inventorySha256: inventoryHash(selected.catalogUrls),
+    eligibleInventorySha256: inventoryHash(selected.eligibleUrls),
   };
+}
+
+function publicInventory(inventory: WebAcquisitionInventoryInternal): WebAcquisitionInventoryV1 {
+  const { catalogUrls, eligibleUrls, ...publicView } = inventory;
+  void catalogUrls;
+  void eligibleUrls;
+  return publicView;
+}
+
+export function selectWebAcquisitionBatch(
+  discoveredBatch: readonly string[],
+  catalogBatch: readonly string[] | null,
+): string[] {
+  return catalogBatch === null ? [...discoveredBatch] : [...catalogBatch];
 }
 
 function classMetadata(source: WebAcquisitionCampaignSourceV1) {
@@ -683,6 +734,7 @@ async function ensureCampaignSource(
   manifest: WebAcquisitionCampaignManifestV1,
   source: WebAcquisitionCampaignSourceV1,
   inventory: WebAcquisitionInventoryV1,
+  preserveExistingBatch = false,
 ): Promise<string> {
   const slug = sourceSlug(manifest.campaignId, source.key);
   const metadata = classMetadata(source);
@@ -696,11 +748,15 @@ async function ensureCampaignSource(
     "x-markorbit-source-class": source.sourceClass,
     "x-markorbit-discovery-mode": inventory.modeUsed,
     "x-markorbit-inventory-sha256": inventory.inventorySha256,
+    "x-markorbit-batch-sha256": inventoryHash(inventory.selectedUrls),
     "x-markorbit-source-config-sha256": stableObjectHash({
       renderJavascript: source.renderJavascript === true,
       maxDepth: inventory.modeUsed === "LINK_CRAWL" ? source.maxDepth : 0,
     }),
-    "x-markorbit-inventory-count": inventory.selectedUrls.length,
+    "x-markorbit-inventory-count": inventory.catalogCount,
+    "x-markorbit-eligible-count": inventory.eligibleCount,
+    "x-markorbit-eligible-inventory-sha256": inventory.eligibleInventorySha256,
+    "x-markorbit-batch-count": inventory.selectedUrls.length,
     "x-markorbit-discovered-count": inventory.discoveredCount,
     "x-markorbit-excluded-count": inventory.excludedCount,
     "x-markorbit-duplicate-count": inventory.duplicateCount,
@@ -738,6 +794,7 @@ async function ensureCampaignSource(
       throw new Error(`Existing Source ${slug} drifted from the governed campaign identity`);
     }
     const sourceId = requiredString(candidate.id, "source.id");
+    if (preserveExistingBatch) return sourceId;
     const connectorNeedsUpgrade =
       candidateConnector?.connectorId !== CAMPAIGN_CONNECTOR_ID ||
       candidateConnector?.version !== CAMPAIGN_CONNECTOR_VERSION;
@@ -764,6 +821,9 @@ async function ensureCampaignSource(
     return sourceId;
   }
 
+  if (preserveExistingBatch) {
+    throw new Error(`No existing Source ${slug} is available for an exhausted URL catalog`);
+  }
   const created = await client.request(
     "/api/sources",
     jsonPost({
@@ -794,6 +854,7 @@ async function ensureCampaignPlan(
   source: WebAcquisitionCampaignSourceV1,
   inventory: WebAcquisitionInventoryV1,
   sourceId: string,
+  preserveExistingBatch = false,
 ): Promise<string> {
   const name = planName(manifest.campaignId, source.key);
   const includePatterns =
@@ -838,6 +899,7 @@ async function ensureCampaignPlan(
     if (plan?.name !== name) continue;
     const currentExtensions = record(plan.extensions);
     const planId = requiredString(plan.id, "plan.id");
+    if (preserveExistingBatch) return planId;
     if (Object.entries(extensions).some(([key, value]) => currentExtensions?.[key] !== value)) {
       await client.request(
         `/api/plans/${encodeURIComponent(planId)}`,
@@ -855,6 +917,9 @@ async function ensureCampaignPlan(
     return planId;
   }
 
+  if (preserveExistingBatch) {
+    throw new Error(`No existing initial plan ${name} is available for an exhausted URL catalog`);
+  }
   const created = await client.request(
     "/api/plans",
     jsonPost({
@@ -879,6 +944,7 @@ async function ensureCampaignRefreshPlan(
   source: WebAcquisitionCampaignSourceV1,
   inventory: WebAcquisitionInventoryV1,
   sourceId: string,
+  preserveExistingBatch = false,
 ): Promise<string> {
   const name = refreshPlanName(manifest.campaignId, source.key);
   const refreshIntervalSeconds =
@@ -924,6 +990,7 @@ async function ensureCampaignRefreshPlan(
     if (plan?.name !== name) continue;
     const currentExtensions = record(plan.extensions);
     const planId = requiredString(plan.id, "refreshPlan.id");
+    if (preserveExistingBatch) return planId;
     const currentSchedule = record(plan.schedule);
     const adaptiveWasEnabled = currentExtensions?.["x-markorbit-adaptive-refresh-cadence"] === true;
     const baselineChanged =
@@ -963,6 +1030,9 @@ async function ensureCampaignRefreshPlan(
     return planId;
   }
 
+  if (preserveExistingBatch) {
+    throw new Error(`No existing refresh plan ${name} is available for an exhausted URL catalog`);
+  }
   const created = await client.request(
     "/api/plans",
     jsonPost({
@@ -1223,12 +1293,15 @@ async function dispatchCampaignPlan(
   sourceKey: string,
   planId: string,
   runKey: string,
+  batchSha256: string,
 ): Promise<string> {
   const response = await client.request(
     "/api/runs",
     jsonPost(
       { planId },
-      { "Idempotency-Key": `bulk-web:${manifest.campaignId}:${sourceKey}:${runKey}` },
+      {
+        "Idempotency-Key": `bulk-web:${manifest.campaignId}:${sourceKey}:${runKey}:${batchSha256.slice(0, 16)}`,
+      },
     ),
     manifest.workspaceId,
   );
@@ -1269,6 +1342,16 @@ export async function runWebAcquisitionCampaign(
   await ensureCampaignConnector(client, manifest.workspaceId);
   await ensureMarkdownConverter(client, manifest.workspaceId);
 
+  const catalogDatabasePath = process.env.MARKORBIT_KNOWLEDGE_DB_PATH?.trim();
+  const catalogDatabase = catalogDatabasePath
+    ? new DatabaseSync(catalogDatabasePath, { timeout: 5000 })
+    : null;
+  if (catalogDatabase) {
+    catalogDatabase.exec("PRAGMA foreign_keys = ON;");
+    catalogDatabase.exec("PRAGMA journal_mode = WAL;");
+  }
+  const urlCatalog = catalogDatabase ? new SqliteWebUrlCatalogRepository(catalogDatabase) : null;
+
   const inventories = await mapWithLimit(manifest.sources, manifest.globalConcurrency, (source) =>
     discoverWebAcquisitionInventory(source, fetchImpl),
   );
@@ -1276,15 +1359,63 @@ export async function runWebAcquisitionCampaign(
     manifest.sources,
     manifest.globalConcurrency,
     async (source, index): Promise<WebAcquisitionCampaignResultV1["sources"][number]> => {
-      const inventory = inventories[index]!;
-      const sourceId = await ensureCampaignSource(client, manifest, source, inventory);
-      const planId = await ensureCampaignPlan(client, manifest, source, inventory, sourceId);
+      const discoveredInventory = inventories[index]!;
+      if (urlCatalog) {
+        urlCatalog.upsertDiscovered({
+          workspaceId: manifest.workspaceId,
+          campaignId: manifest.campaignId,
+          sourceKey: source.key,
+          discoveryMode: discoveredInventory.modeUsed,
+          urls: discoveredInventory.catalogUrls,
+          eligibleUrls: discoveredInventory.eligibleUrls,
+        });
+        urlCatalog.reconcile({
+          workspaceId: manifest.workspaceId,
+          campaignId: manifest.campaignId,
+          sourceKey: source.key,
+        });
+      }
+      const nextBatch = urlCatalog
+        ? urlCatalog.nextBatch({
+            workspaceId: manifest.workspaceId,
+            campaignId: manifest.campaignId,
+            sourceKey: source.key,
+            limit: source.maxPages,
+          })
+        : discoveredInventory.selectedUrls;
+      const inventory: WebAcquisitionInventoryInternal = {
+        ...discoveredInventory,
+        selectedUrls: urlCatalog ? nextBatch : discoveredInventory.selectedUrls,
+      };
+      const preserveExistingBatch = Boolean(urlCatalog && inventory.selectedUrls.length === 0);
+      const sourceId = await ensureCampaignSource(
+        client,
+        manifest,
+        source,
+        inventory,
+        preserveExistingBatch,
+      );
+      urlCatalog?.bindSource({
+        workspaceId: manifest.workspaceId,
+        campaignId: manifest.campaignId,
+        sourceKey: source.key,
+        sourceId,
+      });
+      const planId = await ensureCampaignPlan(
+        client,
+        manifest,
+        source,
+        inventory,
+        sourceId,
+        preserveExistingBatch,
+      );
       const refreshPlanId = await ensureCampaignRefreshPlan(
         client,
         manifest,
         source,
         inventory,
         sourceId,
+        preserveExistingBatch,
       );
       const conversionProfileId = await ensureCampaignConversionProfile(
         client,
@@ -1299,35 +1430,49 @@ export async function runWebAcquisitionCampaign(
         refreshPlanId,
         runId: null,
         conversionProfileId,
-        inventory,
+        inventory: publicInventory(inventory),
       };
     },
   );
 
-  const preparedWorker = await ensureCampaignWorker(client, manifest, options.dispatch === true);
-  const worker = options.dispatch ? preparedWorker : null;
-  if (options.dispatch) {
+  const dispatchable = prepared.filter((item) => item.inventory.selectedUrls.length > 0);
+  const shouldDispatch = options.dispatch === true && dispatchable.length > 0;
+  const preparedWorker = await ensureCampaignWorker(client, manifest, shouldDispatch);
+  const worker = shouldDispatch ? preparedWorker : null;
+  if (shouldDispatch) {
     if (!worker) throw new Error("Campaign Worker provisioning did not return a Worker");
     await ensureCampaignConversionCapability(client, manifest, worker.workerId);
     const runKey = options.runKey?.trim() || new Date().toISOString().slice(0, 10);
-    await mapWithLimit(prepared, manifest.globalConcurrency, async (item) => {
+    await mapWithLimit(dispatchable, manifest.globalConcurrency, async (item) => {
       item.runId = await dispatchCampaignPlan(
         client,
         manifest,
         item.sourceKey,
         item.planId,
         runKey,
+        inventoryHash(item.inventory.selectedUrls),
       );
+      if (urlCatalog) {
+        urlCatalog.markQueued({
+          workspaceId: manifest.workspaceId,
+          campaignId: manifest.campaignId,
+          sourceKey: item.sourceKey,
+          runId: item.runId,
+          urls: item.inventory.selectedUrls,
+        });
+      }
       return item.runId;
     });
   }
+
+  catalogDatabase?.close();
 
   return {
     campaignId: manifest.campaignId,
     workspaceId: manifest.workspaceId,
     workerId: worker?.workerId ?? null,
     workerCredential: worker?.credential ?? null,
-    recommendedWorkerProcesses: options.dispatch ? manifest.globalConcurrency : 0,
+    recommendedWorkerProcesses: shouldDispatch ? manifest.globalConcurrency : 0,
     sources: prepared,
   };
 }
