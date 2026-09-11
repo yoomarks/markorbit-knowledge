@@ -39,7 +39,7 @@ describe("Crawl4AI change-watch entrypoint budget", () => {
         languages: ["en-US"],
         connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
         connectorConfig: {},
-        canonicalUri: "https://www.uspto.gov/trademarks",
+        canonicalUri: "https://www.uspto.gov/",
         entrypoints: [
           { uri: "https://www.uspto.gov/trademarks" },
           { uri: "https://www.uspto.gov/trademarks/fees" },

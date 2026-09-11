@@ -321,21 +321,19 @@ function assertCapability(
   }
 }
 
-function crawl4AiStartUrls(source: SourceDefinition): string[] {
-  return [
-    ...new Set(
-      [source.canonicalUri, ...source.entrypoints.map((entrypoint) => entrypoint.uri)].filter(
-        (uri): uri is string => Boolean(uri),
-      ),
-    ),
-  ];
+function crawl4AiChangeWatchStartUrls(source: SourceDefinition): string[] {
+  const entrypoints = [...new Set(source.entrypoints.map((entrypoint) => entrypoint.uri))].filter(
+    (uri) => uri.length > 0,
+  );
+  if (entrypoints.length > 0) return entrypoints;
+  return source.canonicalUri ? [source.canonicalUri] : [];
 }
 
 function validateCrawl4AiChangeWatch(plan: CollectionPlan, source: SourceDefinition): void {
   if (source.connector.connectorId !== "crawl4ai-web" || plan.schedule.mode !== "CHANGE_WATCH") {
     return;
   }
-  const watchedStartUrls = crawl4AiStartUrls(source);
+  const watchedStartUrls = crawl4AiChangeWatchStartUrls(source);
   if (watchedStartUrls.length <= plan.policy.maxItems) return;
   throw new RegistryConflictError(
     "COLLECTION_PLAN_CHANGE_WATCH_ENTRYPOINT_BUDGET_EXCEEDED",
