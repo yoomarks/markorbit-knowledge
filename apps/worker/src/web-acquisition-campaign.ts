@@ -1277,11 +1277,7 @@ async function ensureCampaignWorker(
   for (const item of array(record(listed.body)?.items)) {
     const worker = record(record(item)?.worker);
     if (!worker) continue;
-    if (createIfMissing && Number(worker.maxConcurrency) < manifest.globalConcurrency) {
-      throw new Error(
-        `Existing campaign Worker concurrency is below ${manifest.globalConcurrency}`,
-      );
-    }
+    const needsConcurrencyUpgrade = Number(worker.maxConcurrency) < manifest.globalConcurrency;
     const desiredBinding = {
       connectorId: CAMPAIGN_CONNECTOR_ID,
       version: CAMPAIGN_CONNECTOR_VERSION,
@@ -1303,7 +1299,7 @@ async function ensureCampaignWorker(
       !currentJobTypes.includes("PAGE_UPDATE_CHECK") ||
       currentCampaignBinding?.version !== CAMPAIGN_CONNECTOR_VERSION ||
       !bindingCapabilities.includes("CHECK_UPDATE");
-    if (needsRefreshUpgrade) {
+    if (needsRefreshUpgrade || needsConcurrencyUpgrade) {
       const otherBindings = currentBindings.filter(
         (binding) => record(binding)?.connectorId !== CAMPAIGN_CONNECTOR_ID,
       );
@@ -1313,6 +1309,7 @@ async function ensureCampaignWorker(
           expectedUpdatedAt: requiredString(worker.updatedAt, "worker.updatedAt"),
           supportedJobTypes: [...new Set([...currentJobTypes, "WEB_CRAWL", "PAGE_UPDATE_CHECK"])],
           connectorBindings: [...otherBindings, desiredBinding],
+          ...(needsConcurrencyUpgrade ? { maxConcurrency: manifest.globalConcurrency } : {}),
         }),
         manifest.workspaceId,
       );
