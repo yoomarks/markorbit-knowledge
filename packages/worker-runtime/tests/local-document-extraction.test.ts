@@ -120,7 +120,8 @@ describe("M3.5 local document extraction", () => {
     const runner = new SubprocessDocumentExtractionRunner({
       cwd: repositoryRoot,
       scriptPath: "workers/document_extraction/extract.py",
-      pythonExecutable: process.env.PYTHON ?? "python3",
+      pythonExecutable:
+        process.env.MARKORBIT_DOCUMENT_EXTRACTION_PYTHON ?? process.env.PYTHON ?? "python3",
     });
     const result = await runner.extract({
       artifactKind: "TEXT",

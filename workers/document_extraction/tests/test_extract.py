@@ -7,6 +7,7 @@ from pathlib import Path
 import stat
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 import sys
@@ -84,22 +85,14 @@ class DocumentExtractionTests(unittest.TestCase):
 
     def test_ocr_image_uses_fixed_engine_without_shell(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            image = root / "input.png"
+            image = Path(directory) / "input.png"
             image.write_bytes(b"fake image bytes")
-            engine = root / "fake-tesseract"
-            engine.write_text("#!/usr/bin/env python3\nprint('Recognized official notice')\n", encoding="utf-8")
-            engine.chmod(engine.stat().st_mode | stat.S_IXUSR)
-            previous = os.environ.get("MARKORBIT_TESSERACT_EXECUTABLE")
-            os.environ["MARKORBIT_TESSERACT_EXECUTABLE"] = str(engine)
-            try:
+            result = type("Result", (), {"stdout": "Recognized official notice\n"})()
+            with patch.object(extract, "_run_fixed", return_value=result) as run_fixed:
                 text = extract._ocr_image(image, ["en"], 10)
-            finally:
-                if previous is None:
-                    os.environ.pop("MARKORBIT_TESSERACT_EXECUTABLE", None)
-                else:
-                    os.environ["MARKORBIT_TESSERACT_EXECUTABLE"] = previous
             self.assertEqual(text, "Recognized official notice")
+            command = run_fixed.call_args.args[0]
+            self.assertEqual(command[1:], [str(image), "stdout", "-l", "eng", "--psm", "6"])
 
     def test_rich_inputs_fail_closed_on_complexity_and_archive_bombs(self) -> None:
         wide_csv = (",".join(f"c{index}" for index in range(extract.MAX_CSV_COLUMNS + 1)) + "\n").encode()
@@ -131,39 +124,43 @@ class DocumentExtractionTests(unittest.TestCase):
 
     def test_pdf_text_layer_uses_fixed_poppler_commands(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            pdf = root / "input.pdf"
+            pdf = Path(directory) / "input.pdf"
             pdf.write_bytes(b"%PDF-1.7\nsynthetic fixture")
-            pdfinfo = root / "fake-pdfinfo"
-            pdfinfo.write_text(
-                "#!/usr/bin/env python3\nprint('Pages: 2')\nprint('Encrypted: no')\n",
-                encoding="utf-8",
-            )
-            pdftotext = root / "fake-pdftotext"
-            pdftotext.write_text(
-                "#!/usr/bin/env python3\nprint('Official PDF text layer')\n",
-                encoding="utf-8",
-            )
-            pdfinfo.chmod(pdfinfo.stat().st_mode | stat.S_IXUSR)
-            pdftotext.chmod(pdftotext.stat().st_mode | stat.S_IXUSR)
-            previous_info = os.environ.get("MARKORBIT_PDFINFO_EXECUTABLE")
-            previous_text = os.environ.get("MARKORBIT_PDFTOTEXT_EXECUTABLE")
-            os.environ["MARKORBIT_PDFINFO_EXECUTABLE"] = str(pdfinfo)
-            os.environ["MARKORBIT_PDFTOTEXT_EXECUTABLE"] = str(pdftotext)
-            try:
+            responses = [
+                type("Result", (), {"stdout": "Pages: 2\nEncrypted: no\n"})(),
+                type("Result", (), {"stdout": "Official PDF text layer\n"})(),
+            ]
+            with patch.object(extract, "_run_fixed", side_effect=responses) as run_fixed:
                 body, method, pages = extract._pdf_text_extract(pdf, 10, 5)
-            finally:
-                if previous_info is None:
-                    os.environ.pop("MARKORBIT_PDFINFO_EXECUTABLE", None)
-                else:
-                    os.environ["MARKORBIT_PDFINFO_EXECUTABLE"] = previous_info
-                if previous_text is None:
-                    os.environ.pop("MARKORBIT_PDFTOTEXT_EXECUTABLE", None)
-                else:
-                    os.environ["MARKORBIT_PDFTOTEXT_EXECUTABLE"] = previous_text
-            self.assertEqual(body, "Official PDF text layer")
-            self.assertEqual(method, "PDFTOTEXT_TEXT_LAYER")
+            self.assertEqual(body, "## Pages 1-2\n\nOfficial PDF text layer")
+            self.assertEqual(method, "PDFTOTEXT_TEXT_LAYER_WINDOWED")
             self.assertEqual(pages, 2)
+            text_command = run_fixed.call_args_list[1].args[0]
+            self.assertEqual(text_command[1:5], ["-f", "1", "-l", "2"])
+
+    def test_large_pdf_text_layer_is_extracted_in_bounded_page_windows(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            pdf = Path(directory) / "input.pdf"
+            pdf.write_bytes(b"%PDF-1.7\nsynthetic fixture")
+            calls: list[list[str]] = []
+
+            def fake_run(command: list[str], _timeout: int, _code: str):
+                calls.append(command)
+                if command[0].endswith("pdfinfo") or command[0] == "pdfinfo":
+                    return type("Result", (), {"stdout": "Pages: 161\nEncrypted: no\n"})()
+                first = command[command.index("-f") + 1]
+                last = command[command.index("-l") + 1]
+                return type("Result", (), {"stdout": f"Text pages {first}-{last}\n"})()
+
+            with patch.object(extract, "_run_fixed", side_effect=fake_run):
+                body, method, pages = extract._pdf_text_extract(pdf, 10, 500)
+            self.assertEqual(method, "PDFTOTEXT_TEXT_LAYER_WINDOWED")
+            self.assertEqual(pages, 161)
+            self.assertIn("## Pages 1-80", body)
+            self.assertIn("## Pages 81-160", body)
+            self.assertIn("## Page 161", body)
+            text_calls = [call for call in calls if "-f" in call]
+            self.assertEqual(len(text_calls), 3)
 
     def test_main_writes_bounded_body_and_hash(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
