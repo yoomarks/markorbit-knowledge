@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import {
   TRADEMARK_ASSIGNMENT_LIBRARY_JURISDICTIONS,
@@ -97,7 +98,8 @@ async function main(): Promise<void> {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const invokedPath = process.argv[1];
+if (invokedPath && import.meta.url === pathToFileURL(invokedPath).href) {
   main().catch((error) => {
     process.stderr.write(
       `${JSON.stringify({

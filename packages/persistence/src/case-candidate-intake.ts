@@ -330,6 +330,42 @@ export class SqliteCaseCandidateIntakeRepository {
     return rows.map((row) => this.requireResult(row.candidate_id));
   }
 
+  listAll(limit = 100): CaseCandidateIntakeResultV1[] {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+      throw new RegistryValidationError("limit must be an integer between 1 and 500");
+    }
+    const rows = this.database
+      .prepare(
+        `SELECT candidate_id
+           FROM case_candidate_collection_tickets
+          ORDER BY updated_at DESC, candidate_id ASC
+          LIMIT ?`,
+      )
+      .all(limit) as { candidate_id: string }[];
+    return rows.map((row) => this.requireResult(row.candidate_id));
+  }
+
+  listAllForWorkspace(workspaceId: string, limit = 100): CaseCandidateIntakeResultV1[] {
+    const normalizedWorkspaceId = workspaceId.trim();
+    if (!normalizedWorkspaceId) {
+      throw new RegistryValidationError("workspaceId is required");
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+      throw new RegistryValidationError("limit must be an integer between 1 and 500");
+    }
+    const rows = this.database
+      .prepare(
+        `SELECT ticket.candidate_id
+           FROM case_candidate_collection_tickets ticket
+           JOIN case_candidates candidate ON candidate.candidate_id = ticket.candidate_id
+          WHERE json_extract(candidate.document_json, '$.accessScope.sourceWorkspaceId') = ?
+          ORDER BY ticket.updated_at DESC, ticket.candidate_id ASC
+          LIMIT ?`,
+      )
+      .all(normalizedWorkspaceId, limit) as { candidate_id: string }[];
+    return rows.map((row) => this.requireResult(row.candidate_id));
+  }
+
   recordSourceUnavailable(
     candidateId: string,
     input: { code: string; message: string; observedAt?: string },

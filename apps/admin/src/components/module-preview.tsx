@@ -10,6 +10,16 @@ const plannedActions: Record<Exclude<ModuleKey, "dashboard">, string[]> = {
     "维护 Include / Exclude Discovery Policy",
   ],
   sources: ["创建与分类数据源", "按国家、类型和状态筛选", "测试连接、预览采集和检查更新"],
+  questions: [
+    "Browse governed AI question libraries",
+    "Filter by jurisdiction and workflow",
+    "Inspect research prompts before execution",
+  ],
+  cases: [
+    "Inspect MarkReg-promoted Case Candidates",
+    "Trace evidence collection status and source availability",
+    "Review dossier lineage without duplicating MarkReg matter state",
+  ],
   experts: [
     "创建和审核待咨询的专家问题",
     "通过共享 Communication 能力发送并跟踪回复",
