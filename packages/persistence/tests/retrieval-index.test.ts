@@ -2,12 +2,42 @@ import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { CanonicalMarkdownMetadataV1 } from "@markorbit/contracts";
+import { DEFAULT_WORKSPACE, SqliteSourceRepository } from "../src/index";
 import { SqliteRetrievalIndexRepository } from "../src/retrieval-index";
+import { SqliteWorkspaceRepository } from "../src/workspace-registry";
 
 const encoder = new TextEncoder();
 const workspaceId = "wsp_01H00000000000000000000000";
 const sourceId = "src_01H00000000000000000000000";
 const documentId = "doc-uspto-maintenance";
+
+function createRepository() {
+  const database = new DatabaseSync(":memory:");
+  const workspaces = new SqliteWorkspaceRepository(database, undefined, () => workspaceId);
+  workspaces.create({ slug: "retrieval-test", name: "Retrieval Test" });
+  const sources = new SqliteSourceRepository(database, undefined, () => sourceId);
+  sources.create({
+    workspaceId,
+    name: "USPTO Trademark Maintenance",
+    slug: "uspto-maintenance",
+    sourceType: "WEB",
+    category: "OFFICIAL_GUIDANCE",
+    authorityLevel: "PRIMARY_OFFICIAL",
+    status: "ACTIVE",
+    jurisdictions: ["US"],
+    languages: ["en"],
+    connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
+    canonicalUri: "https://www.uspto.gov/trademarks/maintain",
+    entrypoints: [{ uri: "https://www.uspto.gov/trademarks/maintain" }],
+    tags: [],
+  });
+  return {
+    database,
+    workspaces,
+    sources,
+    repository: new SqliteRetrievalIndexRepository(database),
+  };
+}
 
 function metadata(version: number): CanonicalMarkdownMetadataV1 {
   return {
@@ -60,10 +90,7 @@ function indexVersion(repository: SqliteRetrievalIndexRepository, version: numbe
 
 describe("retrieval index", () => {
   it("chunks canonical Markdown, extracts lexical keywords and searches with BM25", () => {
-    const repository = new SqliteRetrievalIndexRepository(
-      new DatabaseSync(":memory:"),
-      () => new Date("2026-08-09T00:00:00.000Z"),
-    );
+    const { repository } = createRepository();
     const indexed = indexVersion(
       repository,
       1,
@@ -92,10 +119,7 @@ describe("retrieval index", () => {
   });
 
   it("keeps historical versions but searches only the current version", () => {
-    const repository = new SqliteRetrievalIndexRepository(
-      new DatabaseSync(":memory:"),
-      () => new Date("2026-08-09T00:00:00.000Z"),
-    );
+    const { repository } = createRepository();
     indexVersion(
       repository,
       1,
@@ -122,10 +146,7 @@ describe("retrieval index", () => {
   });
 
   it("pages through FTS hits beyond the 50-hit retrieval window without changing the exact total", () => {
-    const repository = new SqliteRetrievalIndexRepository(
-      new DatabaseSync(":memory:"),
-      () => new Date("2026-08-09T00:00:00.000Z"),
-    );
+    const { repository } = createRepository();
     const body = Array.from(
       { length: 75 },
       (_, index) =>
@@ -158,7 +179,7 @@ describe("retrieval index", () => {
   });
 
   it("is idempotent for the same verified staging evidence and rejects digest drift", () => {
-    const repository = new SqliteRetrievalIndexRepository(new DatabaseSync(":memory:"));
+    const { repository } = createRepository();
     const markdown = canonicalMarkdown("# USPTO\n\nOfficial trademark maintenance guidance.");
     const input = {
       metadata: metadata(1),
@@ -172,14 +193,110 @@ describe("retrieval index", () => {
     expect(repository.indexVerified(input).replayed).toBe(false);
     expect(repository.indexVerified(input).replayed).toBe(true);
 
-    try {
-      repository.indexVerified({
-        ...input,
-        contentSha256: "f".repeat(64),
-      });
-      throw new Error("expected digest mismatch");
-    } catch (error) {
-      expect(error).toMatchObject({ code: "RETRIEVAL_CONTENT_DIGEST_MISMATCH" });
-    }
+    expect(() =>
+      repository.indexVerified({ ...input, contentSha256: "f".repeat(64) }),
+    ).toThrowError(expect.objectContaining({ code: "RETRIEVAL_CONTENT_DIGEST_MISMATCH" }));
+  });
+
+  it("isolates workspaces and revokes archived sources and suspended workspaces", () => {
+    const database = new DatabaseSync(":memory:");
+    const workspaceA = new SqliteWorkspaceRepository(database, undefined, () => workspaceId).create(
+      { slug: "workspace-a", name: "Workspace A" },
+    );
+    const workspaceBId = "wsp_01H00000000000000000000001";
+    const sourceBId = "src_01H00000000000000000000001";
+    const workspaceBRepo = new SqliteWorkspaceRepository(database, undefined, () => workspaceBId);
+    const workspaceB = workspaceBRepo.create({ slug: "workspace-b", name: "Workspace B" });
+    const sourcesA = new SqliteSourceRepository(database, undefined, () => sourceId);
+    const sourceA = sourcesA.create({
+      workspaceId,
+      name: "A pricing",
+      slug: "a-pricing",
+      sourceType: "WEB",
+      category: "USER_PROVIDED",
+      authorityLevel: "UNKNOWN",
+      status: "ACTIVE",
+      jurisdictions: [],
+      languages: ["en"],
+      connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
+      canonicalUri: "https://a.example/pricing",
+      entrypoints: [{ uri: "https://a.example/pricing" }],
+      tags: [],
+    });
+    const sourcesB = new SqliteSourceRepository(database, undefined, () => sourceBId);
+    sourcesB.create({
+      workspaceId: workspaceBId,
+      name: "B pricing",
+      slug: "b-pricing",
+      sourceType: "WEB",
+      category: "USER_PROVIDED",
+      authorityLevel: "UNKNOWN",
+      status: "ACTIVE",
+      jurisdictions: [],
+      languages: ["en"],
+      connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
+      canonicalUri: "https://b.example/pricing",
+      entrypoints: [{ uri: "https://b.example/pricing" }],
+      tags: [],
+    });
+    const repository = new SqliteRetrievalIndexRepository(database);
+    const aMarkdown = canonicalMarkdown("# A pricing\n\nPrivate pricing marker for workspace A.");
+    repository.indexVerified({
+      metadata: metadata(1),
+      stagingDocumentId: "std_workspace_a",
+      readyPackageId: "rdp_workspace_a",
+      title: "A pricing",
+      targetPath: "A/pricing.md",
+      contentSha256: sha256(aMarkdown),
+      canonicalMarkdown: aMarkdown,
+    });
+    const bMetadata = {
+      ...metadata(1),
+      workspaceId: workspaceBId,
+      sourceId: sourceBId,
+      documentId: "doc-b-pricing",
+      rawArtifactId: "art_00000000000000000000000002",
+      logicalDocumentId: "doc-b-pricing",
+    };
+    const bMarkdown = canonicalMarkdown("# B pricing\n\nPrivate pricing marker for workspace B.");
+    repository.indexVerified({
+      metadata: bMetadata,
+      stagingDocumentId: "std_workspace_b",
+      readyPackageId: "rdp_workspace_b",
+      title: "B pricing",
+      targetPath: "B/pricing.md",
+      contentSha256: sha256(bMarkdown),
+      canonicalMarkdown: bMarkdown,
+    });
+
+    expect(
+      repository
+        .search({ workspaceId, query: "private pricing marker" })
+        .items.map((item) => item.document.workspaceId),
+    ).toEqual([workspaceId]);
+    expect(
+      repository
+        .search({ workspaceId: workspaceBId, query: "private pricing marker" })
+        .items.map((item) => item.document.workspaceId),
+    ).toEqual([workspaceBId]);
+
+    sourcesA.archive(sourceA.id, sourceA.updatedAt);
+    expect(repository.search({ workspaceId, query: "private pricing marker" }).total).toBe(0);
+    expect(repository.getDocument(workspaceId, documentId)).toBeNull();
+    expect(repository.getDocument(workspaceId, documentId, 1)).not.toBeNull();
+    expect(
+      repository.search({ workspaceId: workspaceBId, query: "private pricing marker" }).total,
+    ).toBe(1);
+
+    workspaceBRepo.updateStatus(workspaceB.id, "SUSPENDED", workspaceB.updatedAt);
+    expect(
+      repository.search({ workspaceId: workspaceBId, query: "private pricing marker" }).total,
+    ).toBe(0);
+    expect(repository.getDocument(workspaceBId, "doc-b-pricing")).toBeNull();
+    expect(
+      repository.search({ workspaceId: DEFAULT_WORKSPACE.id, query: "private pricing marker" })
+        .total,
+    ).toBe(0);
+    expect(workspaceA.status).toBe("ACTIVE");
   });
 });

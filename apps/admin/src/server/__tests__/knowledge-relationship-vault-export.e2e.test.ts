@@ -9,7 +9,11 @@ const workspaceId = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const roots: string[] = [];
 
 function resetProductionRegistry(): void {
-  delete (globalThis as typeof globalThis & { markorbitRegistries?: unknown }).markorbitRegistries;
+  const globalRegistry = globalThis as typeof globalThis & {
+    markorbitRegistries?: { database?: { close(): void } };
+  };
+  globalRegistry.markorbitRegistries?.database?.close();
+  delete globalRegistry.markorbitRegistries;
 }
 
 const relationships: ContentRelationshipReadRepository = {

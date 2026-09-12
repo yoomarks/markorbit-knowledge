@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, ExternalLink, Loader2, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 
 type CandidateStatus = "DISCOVERED" | "REVIEWED" | "ACCEPTED" | "REJECTED";
@@ -175,7 +176,7 @@ export function RadarReviewEvidence() {
     try {
       const response = await fetch("/api/discovery/reviews", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           candidateIds: [candidateId],
           decision,

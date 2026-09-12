@@ -21,7 +21,7 @@ const sharedMutationHeaderClients = [
   "components/ready-packages/package-business-workbench.tsx",
   "components/ready-packages/ready-package-delivery-workbench.tsx",
   "components/runs/run-detail.tsx",
-  "components/sources/manual-upload-control.tsx",
+  "components/artifacts/manual-upload-control.tsx",
   "components/sources/radar-collection-authorization.tsx",
   "components/sources/radar-review-evidence.tsx",
   "components/sources/representative-activation-wave.tsx",
@@ -58,8 +58,8 @@ test("Admin browser mutation clients use the canonical CSRF header helper", () =
   for (const path of sharedMutationHeaderClients) {
     assert.match(
       appSource(path),
-      /\badminBrowserMutationHeaders\b/,
-      `${path} must use adminBrowserMutationHeaders for browser mutations`,
+      /\b(?:adminBrowserMutationHeaders|adminBrowserWorkspaceMutationHeaders)\b/,
+      `${path} must use a canonical Admin browser mutation header helper`,
     );
   }
 });

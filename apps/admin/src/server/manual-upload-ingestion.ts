@@ -3,6 +3,7 @@ import type { ArtifactKind, RawArtifact, SourceDefinition } from "@markorbit/con
 import {
   RegistryConflictError,
   RegistryError,
+  assertWorkspaceActive,
   RegistryValidationError,
 } from "@markorbit/persistence";
 import { claimSpecificJob } from "@markorbit/persistence/targeted-worker-claim";
@@ -99,12 +100,7 @@ function normalizedWorkspaceId(value: string): string {
   if (!/^wsp_[0-9A-HJKMNP-TV-Z]{26}$/.test(workspaceId)) {
     throw new RegistryValidationError("A valid workspaceId is required for Manual Upload");
   }
-  const exists = getRegistryDatabase()
-    .prepare("SELECT 1 AS present FROM workspaces WHERE id = ?")
-    .get(workspaceId) as { present: number } | undefined;
-  if (!exists) {
-    throw new RegistryError("WORKSPACE_NOT_FOUND", `Workspace ${workspaceId} was not found`);
-  }
+  assertWorkspaceActive(getRegistryDatabase(), workspaceId);
   return workspaceId;
 }
 

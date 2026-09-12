@@ -602,7 +602,13 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
     const limit = normalizeLimit(request.limit);
     const offset = normalizeOffset(request.offset);
     const match = ftsQuery(query);
-    const clauses = ["retrieval_chunks_fts MATCH ?", "d.workspace_id = ?", "d.is_current = 1"];
+    const clauses = [
+      "retrieval_chunks_fts MATCH ?",
+      "d.workspace_id = ?",
+      "d.is_current = 1",
+      "EXISTS (SELECT 1 FROM workspaces w WHERE w.id = d.workspace_id AND json_extract(w.document_json, '$.status') = 'ACTIVE')",
+      "NOT EXISTS (SELECT 1 FROM source_definitions s WHERE s.id = d.source_id AND s.workspace_id = d.workspace_id AND s.status = 'ARCHIVED')",
+    ];
     const values: SQLInputValue[] = [match, workspaceId];
     if (request.sourceId?.trim()) {
       clauses.push("d.source_id = ?");
@@ -666,6 +672,10 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
   ): RetrievalDocument | null {
     const versionClause =
       artifactVersion === undefined ? "AND is_current = 1" : "AND artifact_version = ?";
+    const availabilityClause =
+      artifactVersion === undefined
+        ? "AND EXISTS (SELECT 1 FROM workspaces w WHERE w.id = retrieval_documents.workspace_id AND json_extract(w.document_json, '$.status') = 'ACTIVE') AND NOT EXISTS (SELECT 1 FROM source_definitions s WHERE s.id = retrieval_documents.source_id AND s.workspace_id = retrieval_documents.workspace_id AND s.status = 'ARCHIVED')"
+        : "";
     const values: SQLInputValue[] = [workspaceId, documentId];
     if (artifactVersion !== undefined) {
       if (!Number.isSafeInteger(artifactVersion) || artifactVersion <= 0) {
@@ -676,7 +686,7 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
     const row = this.database
       .prepare(
         `SELECT ${DOCUMENT_COLUMNS} FROM retrieval_documents
-         WHERE workspace_id = ? AND document_id = ? ${versionClause}
+         WHERE workspace_id = ? AND document_id = ? ${versionClause} ${availabilityClause}
          ORDER BY artifact_version DESC LIMIT 1`,
       )
       .get(...values) as Record<string, unknown> | undefined;

@@ -23,6 +23,9 @@ type ExportedMethod = {
 const BROWSER_BOUNDARY_PATTERNS = [
   /\bresolveAdminBrowserApiReadAccess\b/,
   /\bresolveAdminBrowserApiMutationAccess\b/,
+  /\bresolveAdminBrowserSession\b/,
+  /\bresolveKnowledgeWorkspaceReadAccess\b/,
+  /\bhandleKnowledgeSearchGet\b/,
   /\bresolveSourceIntelligenceBrowserReadAccess\b/,
   /\bresolveSourceIntelligenceBrowserMutationAccess\b/,
   /\bresolveExpertReadPrincipal\b/,
@@ -33,6 +36,8 @@ const OPERATOR_BOUNDARY_PATTERNS = [
   /\bresolveOperatorServiceReadAccess\b/,
   /\bresolveOperatorServiceMutationAccess\b/,
 ] as const;
+
+const WORKER_EXECUTION_DELEGATE_PATTERNS = [/\bhandleWorkerExecution\b/] as const;
 
 const SERVICE_AUTH_PATTERNS = [
   /\bauthorizeCaseProducerRequest\b/,
@@ -54,6 +59,10 @@ const EXPLICIT_CONDITIONAL_PUBLIC_READ_ONLY_METHODS = new Set([
 
 // Methods that intentionally expose only non-sensitive static/read-only policy data.
 const EXPLICIT_PUBLIC_READ_ONLY_METHODS = new Set(["manual-uploads#GET"]);
+
+// Retired endpoints may remain callable only to return a fixed terminal response.
+// They must expose no data and perform no mutation.
+const EXPLICIT_DISABLED_METHODS = new Set(["source-compatibility/observations#POST"]);
 
 function routeFiles(directory: string): string[] {
   const files: string[] = [];
@@ -124,7 +133,8 @@ function methodBoundaryCandidates(
     boundaries.add("worker-machine");
     assert.ok(
       matchesAny(methodSource, SERVICE_AUTH_PATTERNS) ||
-        matchesAny(routeSource, SERVICE_AUTH_PATTERNS),
+        matchesAny(routeSource, SERVICE_AUTH_PATTERNS) ||
+        matchesAny(methodSource, WORKER_EXECUTION_DELEGATE_PATTERNS),
       `${route} is a worker-machine route but has no recognizable worker credential/auth boundary`,
     );
   } else if (route.startsWith("internal/")) {
@@ -141,6 +151,18 @@ function methodBoundaryCandidates(
 
   return [...boundaries];
 }
+
+test("worker execution delegate keeps bearer credential enforcement server-side", () => {
+  const source = readFileSync(new URL("./worker-execution-api.ts", import.meta.url), "utf8");
+  assert.match(source, /\bbearerCredential\b/);
+  assert.match(source, /repository\.start\(workerId, credential/);
+  assert.match(source, /repository\.complete\(workerId, credential/);
+});
+
+test("Knowledge search delegate keeps canonical workspace read access server-side", () => {
+  const source = readFileSync(new URL("./knowledge-search-route.ts", import.meta.url), "utf8");
+  assert.match(source, /\bresolveKnowledgeWorkspaceReadAccess\b/);
+});
 
 test("every Admin API HTTP method has an explicit security-boundary classification", () => {
   const unclassified: string[] = [];
@@ -178,6 +200,12 @@ test("every Admin API HTTP method has an explicit security-boundary classificati
           [],
           `${key} is public/read-only and must not imply another boundary`,
         );
+        continue;
+      }
+
+      if (EXPLICIT_DISABLED_METHODS.has(key)) {
+        assert.deepEqual(candidates, [], `${key} is retired and must not imply an active boundary`);
+        assert.match(methodSource, /status:\s*410/, `${key} must remain a fixed terminal endpoint`);
         continue;
       }
 

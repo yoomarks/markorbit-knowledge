@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, Database, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 
 type EvidenceMaturity = {
@@ -146,7 +147,7 @@ export function SourceAssessmentPanel({ sourceId }: { sourceId: string }) {
     try {
       const response = await fetch(`/api/sources/${sourceId}/assessment`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ locale }),
       });
       if (!response.ok) {

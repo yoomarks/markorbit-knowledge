@@ -15,7 +15,9 @@ import {
   getCollectionPlanRepository,
   getExecutionLedgerRepository,
   getRawArtifactRepository,
+  getRegistryDatabase,
   getSourceRepository,
+  getWorkspaceRepository,
 } from "../source-registry";
 
 function sha256(value: Uint8Array): string {
@@ -47,6 +49,8 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  getRegistryDatabase().close();
+  delete (globalThis as typeof globalThis & { markorbitRegistries?: unknown }).markorbitRegistries;
   delete process.env.MARKORBIT_KNOWLEDGE_DB_PATH;
   delete process.env.MARKORBIT_ARTIFACT_STORE_PATH;
   delete process.env.MARKORBIT_STAGING_STORE_PATH;
@@ -323,6 +327,26 @@ describe("governed Manual Upload ingestion", () => {
     ).rejects.toMatchObject({
       code: "WORKSPACE_NOT_FOUND",
     });
+  });
+
+  it("rejects uploads when the Workspace is suspended", async () => {
+    const workspace = getWorkspaceRepository().create({
+      slug: "manual-suspended",
+      name: "Manual Suspended",
+    });
+    getWorkspaceRepository().updateStatus(workspace.id, "SUSPENDED", workspace.updatedAt);
+    const body = Buffer.from("blocked upload", "utf8");
+    await expect(
+      ingestManualUpload({
+        workspaceId: workspace.id,
+        originalName: "blocked.txt",
+        mimeType: "text/plain",
+        expectedSizeBytes: body.byteLength,
+        expectedSha256: sha256(body),
+        idempotencyKey: "manual-upload-suspended-1",
+        chunks: chunks(body),
+      }),
+    ).rejects.toMatchObject({ code: "WORKSPACE_NOT_ACTIVE" });
   });
 
   it("keeps simultaneous uploads bound to their own Source, Run and Job", async () => {

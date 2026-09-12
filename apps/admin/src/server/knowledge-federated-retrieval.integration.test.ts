@@ -8,17 +8,55 @@ import type {
   ExpertSourceRecordV1,
   KnowledgeFederatedRetrievalQueryV1,
 } from "@markorbit/contracts";
+import { SqliteSourceRepository } from "@markorbit/persistence";
 import { SqliteCaseCandidateIntakeRepository } from "@markorbit/persistence/case-candidate-intake";
 import { SqliteExpertSourceRepository } from "@markorbit/persistence/expert-sources";
 import { SqliteExpertSourceRetrievalRepository } from "@markorbit/persistence/expert-source-retrieval";
 import { SqliteExpertTaskWorkspaceBindingRepository } from "@markorbit/persistence/expert-task-workspace-bindings";
 import { SqliteRetrievalIndexRepository } from "@markorbit/persistence/retrieval-index";
+import { SqliteWorkspaceRepository } from "@markorbit/persistence/workspaces";
 import { KnowledgeFederatedCaseReader } from "./knowledge-federated-case-reader";
 import { retrieveKnowledgeFederated } from "./knowledge-federated-retrieval";
 
 const encoder = new TextEncoder();
 const WORKSPACE_A = "wsp_01H00000000000000000000000";
 const WORKSPACE_B = "wsp_01H00000000000000000000001";
+
+function registerCurrentRetrievalSources(database: DatabaseSync): void {
+  new SqliteWorkspaceRepository(database, undefined, () => WORKSPACE_A).create({
+    slug: "kfed-workspace-a",
+    name: "K-FED Workspace A",
+  });
+  new SqliteWorkspaceRepository(database, undefined, () => WORKSPACE_B).create({
+    slug: "kfed-workspace-b",
+    name: "K-FED Workspace B",
+  });
+
+  for (const fixture of [
+    { workspaceId: WORKSPACE_A, ordinal: 1, slug: "kfed-web-a" },
+    { workspaceId: WORKSPACE_A, ordinal: 2, slug: "kfed-ai-a" },
+    { workspaceId: WORKSPACE_B, ordinal: 3, slug: "kfed-web-b" },
+    { workspaceId: WORKSPACE_B, ordinal: 4, slug: "kfed-ai-b" },
+  ] as const) {
+    const sourceId = `src_${String(fixture.ordinal).padStart(26, "0")}`;
+    const uri = `https://example.com/${fixture.slug}`;
+    new SqliteSourceRepository(database, undefined, () => sourceId).create({
+      workspaceId: fixture.workspaceId,
+      name: fixture.slug,
+      slug: fixture.slug,
+      sourceType: "WEB",
+      category: "OFFICIAL_GUIDANCE",
+      authorityLevel: "PRIMARY_OFFICIAL",
+      status: "ACTIVE",
+      jurisdictions: ["US"],
+      languages: ["en"],
+      connector: { connectorId: "crawl4ai-web", version: "1.0.0" },
+      canonicalUri: uri,
+      entrypoints: [{ uri }],
+      tags: [],
+    });
+  }
+}
 
 function sha256(value: Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
@@ -193,6 +231,7 @@ function query(workspaceId: string): KnowledgeFederatedRetrievalQueryV1 {
 describe("K-FED repository integration", () => {
   it("federates real Web, AI, Expert and Case repositories without cross-workspace leakage", () => {
     const database = new DatabaseSync(":memory:");
+    registerCurrentRetrievalSources(database);
     const retrieval = new SqliteRetrievalIndexRepository(
       database,
       () => new Date("2026-08-31T08:20:00.000Z"),

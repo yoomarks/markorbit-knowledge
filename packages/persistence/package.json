@@ -37,6 +37,7 @@
     "./adaptive-recrawl-cadence": "./src/adaptive-recrawl-cadence.ts",
     "./collection-registry": "./src/collection-registry.ts",
     "./source-registry": "./src/source-registry.ts",
+    "./workspaces": "./src/workspace-registry.ts",
     "./source-registry-v2": "./src/source-registry-v2-registry.ts",
     "./source-discovery": "./src/source-discovery.ts",
     "./page-value-capability": "./src/page-value-capability-registry.ts",

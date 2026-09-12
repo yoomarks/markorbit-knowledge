@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExternalLink, Loader2, Play, RefreshCw } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 
 type CandidateRecord = {
@@ -115,7 +116,7 @@ export function RadarCollectionAuthorization() {
     try {
       const response = await fetch("/api/discovery/collection-authorization", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ candidateId, requestedBy: "radar-collection-console" }),
       });
       if (!response.ok) throw new Error(await responseError(response));

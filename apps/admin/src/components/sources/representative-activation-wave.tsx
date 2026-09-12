@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Globe2, Loader2, RefreshCw, Rocket, Send, ShieldCheck } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 
 type ActivationJurisdiction = {
@@ -101,7 +102,7 @@ export function RepresentativeActivationWave({ workspaceId }: { workspaceId: str
     try {
       const response = await fetch("/api/source-coverage/activation-wave", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ workspaceId }),
       });
       if (!response.ok) throw new Error(await readError(response));

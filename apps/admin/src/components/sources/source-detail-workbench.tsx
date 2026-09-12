@@ -19,6 +19,7 @@ import {
 import type { SourceDefinition } from "@markorbit/contracts";
 import type { CollectionPlanRegistryRecord } from "@markorbit/persistence/collection-plans";
 import type { ExecutionRunRecord } from "@markorbit/persistence/execution-ledger";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 import { SourceEditor } from "@/components/sources/source-editor";
 import { SourceGraphPanel } from "@/components/sources/source-graph-panel";
@@ -203,7 +204,7 @@ export function SourceDetailWorkbench({ sourceId }: { sourceId: string }) {
     try {
       const response = await fetch(`/api/sources/${sourceId}`, {
         method: "PATCH",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           status,
           expectedUpdatedAt: state.source.updatedAt,
@@ -243,7 +244,7 @@ export function SourceDetailWorkbench({ sourceId }: { sourceId: string }) {
     try {
       const response = await fetch(`/api/sources/${sourceId}/archive`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ expectedUpdatedAt: state.source.updatedAt }),
       });
       if (!response.ok) {
@@ -270,7 +271,7 @@ export function SourceDetailWorkbench({ sourceId }: { sourceId: string }) {
     try {
       const response = await fetch(`/api/sources/${sourceId}/discovery-expansion`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           maxDepth: 2,
           maxCandidates: 250,

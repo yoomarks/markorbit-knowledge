@@ -635,6 +635,24 @@ export function initializeRegistry(database: DatabaseSync): void {
     );
 }
 
+export function assertWorkspaceActive(database: DatabaseSync, workspaceId: string): Workspace {
+  const row = database
+    .prepare("SELECT document_json FROM workspaces WHERE id = ?")
+    .get(workspaceId.trim()) as { document_json: string } | undefined;
+  if (!row)
+    throw new RegistryError("WORKSPACE_NOT_FOUND", `Workspace ${workspaceId} was not found`);
+  const workspace = JSON.parse(row.document_json) as unknown;
+  if (!isWorkspace(workspace))
+    throw new RegistryValidationError("Persisted Workspace no longer satisfies Schema v1");
+  if (workspace.status !== "ACTIVE") {
+    throw new RegistryConflictError(
+      "WORKSPACE_NOT_ACTIVE",
+      `Workspace ${workspace.id} is ${workspace.status}`,
+    );
+  }
+  return workspace;
+}
+
 export function listAppliedMigrations(database: DatabaseSync): string[] {
   return database
     .prepare("SELECT id FROM schema_migrations ORDER BY id")
@@ -653,6 +671,7 @@ export class SqliteSourceRepository implements SourceRepository {
 
   create(input: CreateSourceInput): SourceDefinition {
     const source = normalizeCreateInput(input, this.idFactory(), this.clock().toISOString());
+    assertWorkspaceActive(this.database, source.workspaceId);
     validateConnectorBinding(this.database, source, true);
     validateConnectorAcquisitionBoundary(source);
     const row = sourceRow(source);
@@ -762,6 +781,10 @@ export class SqliteSourceRepository implements SourceRepository {
         "The source changed after it was loaded. Refresh before saving.",
       );
     }
+
+    const archiveOnly =
+      input.status === "ARCHIVED" && Object.keys(input).every((key) => key === "status");
+    if (!archiveOnly) assertWorkspaceActive(this.database, current.workspaceId);
 
     const next = applyUpdate(current, input, this.clock().toISOString());
     const bindingChanged =
