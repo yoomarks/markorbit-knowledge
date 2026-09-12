@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const READ_ACCESS = "resolveAdminBrowserApiReadAccess";
+const KNOWLEDGE_READ_ACCESS = "resolveKnowledgeWorkspaceReadAccess";
 const MUTATION_ACCESS = "resolveAdminBrowserApiMutationAccess";
 const RESOURCE_WORKSPACE_ASSERTION = "assertAdminBrowserResourceWorkspace";
 const SOURCE_INTELLIGENCE_READ_ACCESS = "resolveSourceIntelligenceBrowserReadAccess";
@@ -56,7 +57,6 @@ const workspaceScopedReadRoutes = [
   "knowledge/[id]",
   "knowledge/[id]/graph",
   "knowledge/[id]/relationships",
-  "knowledge/search",
   "operations/readiness",
   "plans",
   "plans/[id]",
@@ -298,12 +298,26 @@ const serverDerivedIdentityRoutes = [
 
 test("Admin browser workspace-scoped read routes use canonical read access", () => {
   for (const route of workspaceScopedReadRoutes) {
+    const expectedAccess = route.startsWith("knowledge") ? KNOWLEDGE_READ_ACCESS : READ_ACCESS;
     assert.match(
       routeSource(route),
-      new RegExp(`\\b${READ_ACCESS}\\b`),
-      `${route} must resolve canonical Admin browser read access`,
+      new RegExp(`\\b${expectedAccess}\\b`),
+      `${route} must resolve its canonical Admin browser read access`,
     );
   }
+});
+
+test("Knowledge read successor delegates to canonical Admin browser access", () => {
+  const source = serverSource("knowledge-workspace-access");
+  assert.match(source, new RegExp(`\\b${READ_ACCESS}\\b`));
+});
+
+test("Knowledge search route delegates to a canonical workspace-authorized handler", () => {
+  assert.match(routeSource("knowledge/search"), /\bhandleKnowledgeSearchGet\b/);
+  assert.match(
+    serverSource("knowledge-search-route"),
+    new RegExp(`\\b${KNOWLEDGE_READ_ACCESS}\\b`),
+  );
 });
 
 test("Admin browser mutation routes use canonical mutation access", () => {

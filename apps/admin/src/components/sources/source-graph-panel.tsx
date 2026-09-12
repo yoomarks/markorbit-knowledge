@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Network, RefreshCw } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import type {
   SourceDefinition,
   SourceGraphEdge,
@@ -102,7 +103,10 @@ export function SourceGraphPanel({ sourceId }: { sourceId: string }) {
     setProjecting(true);
     setError(null);
     try {
-      const response = await fetch(`/api/sources/${sourceId}/graph`, { method: "POST" });
+      const response = await fetch(`/api/sources/${sourceId}/graph`, {
+        method: "POST",
+        headers: await adminBrowserMutationHeaders(),
+      });
       const body = (await response.json()) as GraphResponse;
       if (!response.ok || !body.graph) {
         throw new Error(body.error?.message ?? "Unable to project Source Map");

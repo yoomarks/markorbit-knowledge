@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, ExternalLink, Loader2, Network, ShieldCheck, Sparkles } from "lucide-react";
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
 import { useAdminI18n } from "@/lib/i18n";
 
 type CapabilityStatus = {
@@ -87,7 +88,7 @@ export function SourceRelatedRecommendations({ sourceId }: { sourceId: string })
     try {
       const response = await fetch(`/api/sources/${sourceId}/recommendations`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ locale, maxResults: 12 }),
       });
       if (!response.ok) {

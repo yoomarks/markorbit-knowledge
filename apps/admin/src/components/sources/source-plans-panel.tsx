@@ -1,5 +1,7 @@
 "use client";
 
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CalendarClock, Plus } from "lucide-react";
@@ -62,7 +64,7 @@ export function SourcePlansPanel({ sourceId }: { sourceId: string }) {
     try {
       const response = await fetch(`/api/sources/${sourceId}/default-plan`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           planId: selected || null,
           expectedUpdatedAt: source.updatedAt,

@@ -12,7 +12,11 @@ function sha256(value: string): string {
 }
 
 function resetProductionRegistry(): void {
-  delete (globalThis as typeof globalThis & { markorbitRegistries?: unknown }).markorbitRegistries;
+  const globalRegistry = globalThis as typeof globalThis & {
+    markorbitRegistries?: { database?: { close(): void } };
+  };
+  globalRegistry.markorbitRegistries?.database?.close();
+  delete globalRegistry.markorbitRegistries;
 }
 
 afterEach(() => {

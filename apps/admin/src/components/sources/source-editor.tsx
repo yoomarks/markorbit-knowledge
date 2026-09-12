@@ -1,5 +1,7 @@
 "use client";
 
+import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -260,7 +262,7 @@ export function SourceEditor({ sourceId }: { sourceId?: string }) {
 
       const response = await fetch(sourceId ? `/api/sources/${sourceId}` : "/api/sources", {
         method: sourceId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(
           sourceId ? { ...payload, expectedUpdatedAt: source?.updatedAt } : payload,
         ),
@@ -297,7 +299,7 @@ export function SourceEditor({ sourceId }: { sourceId?: string }) {
     try {
       const response = await fetch(`/api/sources/${source.id}/archive`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await adminBrowserMutationHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ expectedUpdatedAt: source.updatedAt }),
       });
       const body = (await response.json()) as {
