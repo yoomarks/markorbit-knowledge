@@ -20,6 +20,8 @@ function serverSource(path: string): string {
 }
 
 const workspaceScopedReadRoutes = [
+  "ai-question-bank",
+  "case-evidence",
   "artifacts",
   "artifacts/[id]",
   "artifacts/[id]/content",

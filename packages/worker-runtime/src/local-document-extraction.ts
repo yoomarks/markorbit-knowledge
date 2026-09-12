@@ -35,6 +35,7 @@ export const LOCAL_DOCUMENT_EXTRACTION_LIMITS = {
   maximumOutputBodyBytes: 4_500_000,
   maximumCanonicalOutputBytes: PRODUCTION_MARKDOWN_STAGING_LIMITS.maximumOutputBytes,
   maximumPages: 80,
+  maximumPdfTextPages: 2000,
   timeoutSeconds: 180,
   maximumProtocolStdoutBytes: 256_000,
   maximumProtocolStderrBytes: 64_000,
@@ -277,10 +278,11 @@ export class SubprocessDocumentExtractionRunner implements LocalDocumentExtracti
       request.maxOutputBytes ?? LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumOutputBodyBytes,
       LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumOutputBodyBytes,
     );
-    const maxPages = Math.min(
-      request.maxPages ?? LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumPages,
-      LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumPages,
-    );
+    const governedMaximumPages =
+      request.mode === "PDF_TEXT"
+        ? LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumPdfTextPages
+        : LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumPages;
+    const maxPages = Math.min(request.maxPages ?? governedMaximumPages, governedMaximumPages);
     const timeoutSeconds = Math.min(
       request.timeoutSeconds ?? LOCAL_DOCUMENT_EXTRACTION_LIMITS.timeoutSeconds,
       LOCAL_DOCUMENT_EXTRACTION_LIMITS.timeoutSeconds,
@@ -675,7 +677,10 @@ export class ProductionLocalDocumentExtractionExecutor {
           LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumOutputBodyBytes,
           context.outputGrant.maximumBytes,
         ),
-        maxPages: LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumPages,
+        maxPages:
+          mode === "PDF_TEXT"
+            ? LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumPdfTextPages
+            : LOCAL_DOCUMENT_EXTRACTION_LIMITS.maximumPages,
         timeoutSeconds: LOCAL_DOCUMENT_EXTRACTION_LIMITS.timeoutSeconds,
       });
       const body = new TextDecoder("utf-8", { fatal: true }).decode(extracted.body);

@@ -30,6 +30,17 @@ export const modules = {
     description: "统一完成来源审批、启用、状态管理、重新扫描与国家资源覆盖检查。",
     icon: Database,
   },
+  questions: {
+    label: "AI Question Bank",
+    description: "Browse governed AI research assignments by jurisdiction and workflow.",
+    icon: MessagesSquare,
+  },
+  cases: {
+    label: "Case Evidence",
+    description:
+      "Inspect MarkReg-promoted Case Candidates, evidence collections and dossier lineage.",
+    icon: FileStack,
+  },
   experts: {
     label: "Expert Knowledge",
     description: "管理专家问题、回复证据、附件与后续追问，不进行专家评分或推荐。",
@@ -138,7 +149,9 @@ export const primaryModuleOrder: ModuleKey[] = [
   "dashboard",
   "discovery",
   "sources",
+  "questions",
   "experts",
+  "cases",
   "knowledge",
   "packages",
 ];

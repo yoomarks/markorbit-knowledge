@@ -27,6 +27,8 @@ PROTOCOL_VERSION = "1.0"
 MAX_INPUT_BYTES = 25_000_000
 DEFAULT_MAX_OUTPUT_BYTES = 8_000_000
 DEFAULT_MAX_PAGES = 80
+DEFAULT_MAX_PDF_TEXT_PAGES = 2000
+PDF_TEXT_WINDOW_PAGES = 80
 DEFAULT_TIMEOUT_SECONDS = 180
 MAX_ARCHIVE_MEMBERS = 4096
 MAX_ARCHIVE_MEMBER_BYTES = 16_000_000
@@ -598,29 +600,40 @@ def _pdf_text_extract(path: Path, timeout_seconds: int, max_pages: int) -> tuple
         raise ExtractionError("PDF_TEXT_PAGE_LIMIT_EXCEEDED", f"PDF exceeds the {max_pages}-page text extraction limit")
 
     pdftotext = os.environ.get("MARKORBIT_PDFTOTEXT_EXECUTABLE", "pdftotext")
-    completed = _run_fixed(
-        [
-            pdftotext,
-            "-f",
-            "1",
-            "-l",
-            str(pages),
-            "-layout",
-            "-enc",
-            "UTF-8",
-            str(path),
-            "-",
-        ],
-        timeout_seconds,
-        "PDF_TEXT_ENGINE",
-    )
-    markdown = _normalize_markdown(completed.stdout)
+    parts: list[str] = []
+    for first_page in range(1, pages + 1, PDF_TEXT_WINDOW_PAGES):
+        last_page = min(pages, first_page + PDF_TEXT_WINDOW_PAGES - 1)
+        completed = _run_fixed(
+            [
+                pdftotext,
+                "-f",
+                str(first_page),
+                "-l",
+                str(last_page),
+                "-layout",
+                "-enc",
+                "UTF-8",
+                str(path),
+                "-",
+            ],
+            timeout_seconds,
+            "PDF_TEXT_ENGINE",
+        )
+        text = _normalize_markdown(completed.stdout)
+        if text:
+            heading = (
+                f"## Page {first_page}"
+                if first_page == last_page
+                else f"## Pages {first_page}-{last_page}"
+            )
+            parts.append(f"{heading}\n\n{text}")
+    markdown = _normalize_markdown("\n\n".join(parts))
     if not markdown:
         raise ExtractionError(
             "PDF_TEXT_NO_EXTRACTABLE_TEXT",
             "PDF contains no extractable text layer; explicit OCR is required",
         )
-    return markdown, "PDFTOTEXT_TEXT_LAYER", pages
+    return markdown, "PDFTOTEXT_TEXT_LAYER_WINDOWED", pages
 
 
 def _ocr_image(path: Path, languages: list[str], timeout_seconds: int) -> str:
@@ -691,11 +704,14 @@ def main() -> int:
         if size <= 0 or size > MAX_INPUT_BYTES:
             raise ExtractionError("DOCUMENT_EXTRACTION_INPUT_SIZE_INVALID", "Extraction input size is outside governed limits")
         max_output = int(request.get("maxOutputBytes", DEFAULT_MAX_OUTPUT_BYTES))
-        max_pages = int(request.get("maxPages", DEFAULT_MAX_PAGES))
+        governed_page_limit = (
+            DEFAULT_MAX_PDF_TEXT_PAGES if request["mode"] == "PDF_TEXT" else DEFAULT_MAX_PAGES
+        )
+        max_pages = int(request.get("maxPages", governed_page_limit))
         timeout_seconds = int(request.get("timeoutSeconds", DEFAULT_TIMEOUT_SECONDS))
         if max_output <= 0 or max_output > DEFAULT_MAX_OUTPUT_BYTES:
             raise ExtractionError("DOCUMENT_EXTRACTION_PROTOCOL_INVALID", "maxOutputBytes is outside governed limits")
-        if max_pages <= 0 or max_pages > DEFAULT_MAX_PAGES:
+        if max_pages <= 0 or max_pages > governed_page_limit:
             raise ExtractionError("DOCUMENT_EXTRACTION_PROTOCOL_INVALID", "maxPages is outside governed limits")
         if timeout_seconds <= 0 or timeout_seconds > DEFAULT_TIMEOUT_SECONDS:
             raise ExtractionError("DOCUMENT_EXTRACTION_PROTOCOL_INVALID", "timeoutSeconds is outside governed limits")

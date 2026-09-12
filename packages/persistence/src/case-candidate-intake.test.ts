@@ -142,6 +142,8 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
     expect(waiting.sourceUnavailable?.retryable).toBe(true);
     expect(repository.getCandidate("case-candidate_01")).not.toBeNull();
     expect(repository.listPending()).toHaveLength(0);
+    expect(repository.listAll()).toHaveLength(1);
+    expect(repository.listAll()[0]?.intake.collectionState).toBe("WAITING_SOURCE");
 
     const restarted = new SqliteCaseCandidateIntakeRepository(database);
     expect(restarted.getIntake("case-candidate_01")).toEqual(waiting);
@@ -150,6 +152,31 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
     expect(requeued.collectionState).toBe("PENDING");
     expect(requeued.sourceUnavailable).toBeUndefined();
     expect(restarted.listPending()).toHaveLength(1);
+  });
+
+  it("applies workspace isolation before the inventory limit", () => {
+    const database = new DatabaseSync(":memory:");
+    const repository = new SqliteCaseCandidateIntakeRepository(database);
+    repository.acceptCandidate(candidate(), "2026-08-25T03:21:00.000Z");
+    repository.acceptCandidate(
+      candidate({
+        candidateId: "case-candidate_02",
+        sourceMatterId: "formal-matter_87654321",
+        sourceSnapshotSha256: "b".repeat(64),
+        idempotencyKey: "case-intake-002",
+        accessScope: { sourceWorkspaceId: "workspace:other", classification: "CONFIDENTIAL" },
+      }),
+      "2026-08-25T03:22:00.000Z",
+    );
+
+    expect(
+      repository.listAllForWorkspace("workspace:test", 1).map((item) => item.candidate.candidateId),
+    ).toEqual(["case-candidate_01"]);
+    expect(
+      repository
+        .listAllForWorkspace("workspace:other", 1)
+        .map((item) => item.candidate.candidateId),
+    ).toEqual(["case-candidate_02"]);
   });
 
   it("records collection completion durably and makes completion immutable", () => {
@@ -168,6 +195,7 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
       collectedAt: "2026-08-25T03:35:00.000Z",
     });
     expect(repository.listPending()).toHaveLength(0);
+    expect(repository.listAll()[0]?.intake.collectionState).toBe("COLLECTED");
 
     const restarted = new SqliteCaseCandidateIntakeRepository(database);
     expect(restarted.getIntake("case-candidate_01")).toEqual(completed);
