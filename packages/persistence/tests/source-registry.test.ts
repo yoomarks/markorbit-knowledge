@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { isSourceDefinition } from "@markorbit/contracts";
 import { SqliteConnectorRepository } from "../src/connector-registry";
+import { SqliteWorkspaceRepository } from "../src/workspace-registry";
 import {
   DEFAULT_WORKSPACE,
   RegistryConflictError,
@@ -96,6 +97,29 @@ describe("SQLite Source Registry", () => {
     const archived = repo.archive(updated.id, updated.updatedAt);
     expect(archived.status).toBe("ARCHIVED");
     expect(isSourceDefinition(repo.getById(created.id))).toBe(true);
+    database.close();
+  });
+
+  it("blocks source mutation in suspended workspaces but still permits archive-only revocation", () => {
+    const database = new DatabaseSync(":memory:");
+    const workspaces = new SqliteWorkspaceRepository(
+      database,
+      undefined,
+      () => "wsp_01H00000000000000000000041",
+    );
+    const workspace = workspaces.create({ slug: "suspended-source", name: "Suspended Source" });
+    const repo = new SqliteSourceRepository(database);
+    const created = repo.create(sourceInput({ workspaceId: workspace.id, slug: "private-source" }));
+    const suspended = workspaces.updateStatus(workspace.id, "SUSPENDED", workspace.updatedAt);
+    expect(suspended.status).toBe("SUSPENDED");
+    expect(() => repo.update(created.id, { name: "Blocked" }, created.updatedAt)).toThrowError(
+      expect.objectContaining({ code: "WORKSPACE_NOT_ACTIVE" }),
+    );
+    expect(() => repo.update(created.id, { status: "ACTIVE" }, created.updatedAt)).toThrowError(
+      expect.objectContaining({ code: "WORKSPACE_NOT_ACTIVE" }),
+    );
+    const archived = repo.archive(created.id, created.updatedAt);
+    expect(archived.status).toBe("ARCHIVED");
     database.close();
   });
 

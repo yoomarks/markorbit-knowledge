@@ -7,6 +7,10 @@ import {
   type SourceRepository,
 } from "@markorbit/persistence";
 import {
+  SqliteWorkspaceRepository,
+  type WorkspaceRepository,
+} from "@markorbit/persistence/workspaces";
+import {
   SqliteCollectionPlanRepository,
   type CollectionPlanRepository,
 } from "@markorbit/persistence/collection-plans";
@@ -96,6 +100,7 @@ import { ensureM3CanonicalDocumentConverters } from "./m3-converter-bootstrap";
 const globalRegistry = globalThis as typeof globalThis & {
   markorbitRegistries?: {
     database: DatabaseSync;
+    workspaces: WorkspaceRepository;
     sources: SourceRepository;
     discovery: SourceDiscoveryRepository;
     graph: SourceGraphRepository;
@@ -181,6 +186,7 @@ function getRegistries() {
     ensureM3CanonicalDocumentConverters(converters);
     globalRegistry.markorbitRegistries = {
       database,
+      workspaces: new SqliteWorkspaceRepository(database),
       sources: new SqliteSourceRepository(database),
       discovery: new SqliteSourceDiscoveryRepository(database),
       graph: new SqliteSourceGraphRepository(database),
@@ -243,6 +249,10 @@ export function withRegistryTransaction<T>(operation: () => T): T {
     database.exec("ROLLBACK;");
     throw error;
   }
+}
+
+export function getWorkspaceRepository(): WorkspaceRepository {
+  return getRegistries().workspaces;
 }
 
 export function getSourceRepository(): SourceRepository {
