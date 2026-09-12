@@ -147,6 +147,7 @@ describe("web URL catalog", () => {
       )
       .run("art_1", "src_USPTO", url, "a".repeat(64), "2026-09-11T01:00:00.000Z");
     expect(repo.reconcile(scope)).toEqual({ fetched: 1, released: 0, failed: 0 });
+    expect(repo.reconcile(scope)).toEqual({ fetched: 0, released: 0, failed: 0 });
     expect(repo.counts(scope)).toEqual({ FETCHED: 1 });
     expect(repo.nextBatch({ ...scope, limit: 100 })).toEqual([]);
     database.close();
