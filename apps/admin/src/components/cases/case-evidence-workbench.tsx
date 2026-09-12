@@ -76,7 +76,6 @@ export function CaseEvidenceWorkbench() {
   useEffect(() => {
     if (!workspaceId) return;
     let active = true;
-    setLoading(true);
     void fetch("/api/case-evidence", {
       cache: "no-store",
       credentials: "include",
@@ -118,7 +117,10 @@ export function CaseEvidenceWorkbench() {
           Workspace
           <select
             value={workspaceId}
-            onChange={(event) => setWorkspaceId(event.target.value)}
+            onChange={(event) => {
+              setLoading(true);
+              setWorkspaceId(event.target.value);
+            }}
             className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
           >
             {session.workspaces.map((workspace) => (

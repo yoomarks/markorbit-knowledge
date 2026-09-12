@@ -58,7 +58,6 @@ export function AiQuestionBankWorkbench() {
   useEffect(() => {
     if (!workspaceId) return;
     let active = true;
-    setLoading(true);
     void fetch("/api/ai-question-bank", {
       cache: "no-store",
       credentials: "include",
