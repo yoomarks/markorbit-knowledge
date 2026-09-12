@@ -251,6 +251,20 @@ export class SqliteWebUrlCatalogRepository {
             WHERE r.source_id = web_url_catalog.source_id
               AND r.canonical_uri = web_url_catalog.canonical_url
           )
+          AND (
+            status <> 'FETCHED'
+            OR last_fetched_at IS NOT (
+              SELECT MAX(r.created_at) FROM raw_artifacts r
+              WHERE r.source_id = web_url_catalog.source_id
+                AND r.canonical_uri = web_url_catalog.canonical_url
+            )
+            OR content_digest IS NOT (
+              SELECT r.content_digest FROM raw_artifacts r
+              WHERE r.source_id = web_url_catalog.source_id
+                AND r.canonical_uri = web_url_catalog.canonical_url
+              ORDER BY r.created_at DESC, r.id DESC LIMIT 1
+            )
+          )
       `,
         )
         .run(input.workspaceId, input.campaignId, input.sourceKey);
