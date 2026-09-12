@@ -42,6 +42,7 @@ import {
   getStagingVerificationRepository,
   getVerifiedStagingFinalizer,
   getWorkerRegistryRepository,
+  getWorkspaceRepository,
 } from "./source-registry";
 
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -68,6 +69,7 @@ export type ProductionStagingCommitResult = {
 
 export type ProductionStagingCommitDependencies = {
   workers: ReturnType<typeof getWorkerRegistryRepository>;
+  workspaces: ReturnType<typeof getWorkspaceRepository>;
   conversionRuns: ReturnType<typeof getConversionRunLedgerRepository>;
   artifacts: ReturnType<typeof getRawArtifactRepository>;
   sources: ReturnType<typeof getSourceRepository>;
@@ -151,6 +153,7 @@ function assertCanonicalMarkdown(content: Uint8Array, expectedFrontmatter: strin
 function productionStagingCommitDependencies(): ProductionStagingCommitDependencies {
   return {
     workers: getWorkerRegistryRepository(),
+    workspaces: getWorkspaceRepository(),
     conversionRuns: getConversionRunLedgerRepository(),
     artifacts: getRawArtifactRepository(),
     sources: getSourceRepository(),
@@ -178,11 +181,32 @@ export function commitProductionStagingWithDependencies(
     );
   }
 
+  const workspace = dependencies.workspaces.getById(input.workspaceId);
+  if (!workspace) {
+    throw new RegistryError("WORKSPACE_NOT_FOUND", `Workspace ${input.workspaceId} was not found`);
+  }
+  if (workspace.status !== "ACTIVE") {
+    throw new RegistryConflictError(
+      "WORKSPACE_NOT_ACTIVE",
+      `Workspace ${workspace.id} is ${workspace.status}`,
+    );
+  }
+
   const run = dependencies.conversionRuns.getById(input.conversionRunId, input.workspaceId);
   if (!run) {
     throw new RegistryError(
       "CONVERSION_RUN_NOT_FOUND",
       `ConversionRun ${input.conversionRunId} was not found`,
+    );
+  }
+  const source = dependencies.sources.getById(run.run.sourceId);
+  if (!source) {
+    throw new RegistryError("SOURCE_NOT_FOUND", `Source ${run.run.sourceId} was not found`);
+  }
+  if (source.status === "ARCHIVED") {
+    throw new RegistryConflictError(
+      "SOURCE_ARCHIVED",
+      `Source ${source.id} is archived and cannot produce current Knowledge`,
     );
   }
   const artifact = dependencies.artifacts.getArtifact(run.run.rawArtifactId);
@@ -191,10 +215,6 @@ export function commitProductionStagingWithDependencies(
       "RAW_ARTIFACT_NOT_FOUND",
       `RawArtifact ${run.run.rawArtifactId} was not found`,
     );
-  }
-  const source = dependencies.sources.getById(run.run.sourceId);
-  if (!source) {
-    throw new RegistryError("SOURCE_NOT_FOUND", `Source ${run.run.sourceId} was not found`);
   }
   const metadata = canonicalDocumentMetadata(run.run, artifact.artifact, source);
   assertCanonicalMarkdown(input.content, canonicalMarkdownFrontmatter(metadata));

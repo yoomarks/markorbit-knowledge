@@ -25,6 +25,7 @@ import { SqliteStagingVerificationRepository } from "@markorbit/persistence/stag
 import { ControlPlaneVerifiedStagingFinalizer } from "@markorbit/persistence/verified-staging-finalization";
 import { SqliteWorkerExecutionRepository } from "@markorbit/persistence/worker-execution";
 import { SqliteWorkerRegistryRepository } from "@markorbit/persistence/workers";
+import { SqliteWorkspaceRepository } from "@markorbit/persistence/workspaces";
 import { canonicalMarkdownFrontmatter } from "@markorbit/worker-runtime";
 import { canonicalDocumentMetadata } from "../canonical-document-metadata";
 import {
@@ -64,6 +65,7 @@ describe("Bulk conversion to Knowledge E2E", () => {
     const plans = new SqliteCollectionPlanRepository(database, clock);
     const collectionRuns = new SqliteExecutionLedgerRepository(database, clock);
     const workers = new SqliteWorkerRegistryRepository(database, clock);
+    const workspaces = new SqliteWorkspaceRepository(database, clock);
     const executions = new SqliteWorkerExecutionRepository(database, clock);
     const artifacts = new SqliteRawArtifactRepository(database, rawRoot, clock);
     const converters = new SqliteConverterRegistryRepository(database, clock);
@@ -237,6 +239,7 @@ describe("Bulk conversion to Knowledge E2E", () => {
 
     const dependencies = {
       workers,
+      workspaces,
       conversionRuns,
       artifacts,
       sources,
