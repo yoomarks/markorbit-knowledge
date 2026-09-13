@@ -7,6 +7,7 @@ import { KnowledgeFederatedCaseReader } from "@/server/knowledge-federated-case-
 import { retrieveKnowledgeFederated } from "@/server/knowledge-federated-retrieval";
 import { authorizeKnowledgeRelationshipRequest } from "@/server/knowledge-relationship-auth";
 import { getRegistryDatabase, getRetrievalIndexRepository } from "@/server/source-registry";
+import { searchWorkspaceRetrievalOverlay } from "@/server/workspace-retrieval-overlay";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +29,9 @@ export async function POST(request: Request) {
 
     const principal = authorizeKnowledgeRelationshipRequest(request, body.workspaceId);
     const result = retrieveKnowledgeFederated(body, {
-      canonical: getRetrievalIndexRepository(),
+      canonical: {
+        search: (input) => searchWorkspaceRetrievalOverlay(getRetrievalIndexRepository(), input),
+      },
       expert: getExpertSourceRetrievalRepository(),
       cases: new KnowledgeFederatedCaseReader(getRegistryDatabase()),
       expertTaskIds: listExpertTaskIdsForWorkspace(principal.workspaceId),

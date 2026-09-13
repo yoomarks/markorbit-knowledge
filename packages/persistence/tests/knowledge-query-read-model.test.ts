@@ -70,6 +70,13 @@ function fixture(): DatabaseSync {
       artifact_kind TEXT,
       document_json TEXT NOT NULL
     );
+    CREATE TABLE workspaces (id TEXT PRIMARY KEY, document_json TEXT NOT NULL);
+    CREATE TABLE retrieval_documents (
+      staging_document_id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      is_current INTEGER NOT NULL
+    );
   `);
   const insert = database.prepare(`
     INSERT INTO staging_documents
@@ -113,6 +120,17 @@ function fixture(): DatabaseSync {
       row.generatedAt,
     );
   }
+  database
+    .prepare("INSERT INTO workspaces (id, document_json) VALUES (?, ?)")
+    .run(WORKSPACE_A, JSON.stringify({ status: "ACTIVE" }));
+  database
+    .prepare("INSERT INTO workspaces (id, document_json) VALUES (?, ?)")
+    .run(WORKSPACE_B, JSON.stringify({ status: "ACTIVE" }));
+  const index = database.prepare(
+    "INSERT INTO retrieval_documents (staging_document_id, workspace_id, source_id, is_current) VALUES (?, ?, ?, 1)",
+  );
+  index.run(rows[0].id, WORKSPACE_A, SOURCE_ID);
+  index.run(rows[2].id, WORKSPACE_B, SOURCE_ID);
   return database;
 }
 
@@ -168,6 +186,24 @@ describe("Knowledge Query Read Model V2", () => {
       "std_01ARZ3NDEKTSV4RRFFQ69G5FAV",
       "std_01ARZ3NDEKTSV4RRFFQ69G5FAW",
     ]);
+    database.close();
+  });
+  it("projects only current retrievable Knowledge when currentOnly is requested", () => {
+    const database = fixture();
+    const active = queryKnowledgeReadModel(database, {
+      workspaceId: WORKSPACE_A,
+      q: "alpha",
+      currentOnly: true,
+    });
+    expect(active.items.map((item) => [item.workspaceId, item.id])).toEqual([
+      [WORKSPACE_A, "std_01ARZ3NDEKTSV4RRFFQ69G5FAV"],
+    ]);
+    database
+      .prepare("UPDATE workspaces SET document_json = ? WHERE id = ?")
+      .run(JSON.stringify({ status: "SUSPENDED" }), WORKSPACE_A);
+    expect(
+      queryKnowledgeReadModel(database, { workspaceId: WORKSPACE_A, currentOnly: true }).total,
+    ).toBe(0);
     database.close();
   });
 });

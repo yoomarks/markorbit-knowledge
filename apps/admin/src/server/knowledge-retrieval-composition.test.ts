@@ -4,6 +4,7 @@ import type {
   ContentObjectRefV1,
   KnowledgeRetrievalCompositionQueryV1,
 } from "@markorbit/contracts";
+import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import {
   KnowledgeVectorProviderUnavailableError,
   composeKnowledgeRetrieval,
@@ -156,6 +157,46 @@ describe("KG-010 retrieval composition", () => {
     });
     expect(JSON.stringify(result)).not.toContain('"blendedScore"');
     expect(JSON.stringify(result)).not.toContain('"relevanceScore"');
+  });
+
+  it("allows Global lexical evidence for a private Workspace but still rejects another private Workspace", async () => {
+    const globalDocument = {
+      ...document,
+      objectId: "doc:global",
+      workspaceId: DEFAULT_WORKSPACE.id,
+    };
+    const overlayLexical: KnowledgeLexicalRetrievalReader = {
+      search: () => [
+        {
+          content: globalDocument,
+          indexMode: "SQLITE_FTS5_BM25",
+          score: -1.5,
+          snippet: "global trademark assignment evidence",
+          headingPath: ["Global"],
+        },
+      ],
+    };
+    const result = await composeKnowledgeRetrieval(query, overlayLexical, {
+      listNeighbors: () => ({ items: [] }),
+    });
+    expect(result.items.map((item) => item.content.workspaceId)).toEqual([DEFAULT_WORKSPACE.id]);
+
+    const crossWorkspaceLexical: KnowledgeLexicalRetrievalReader = {
+      search: () => [
+        {
+          content: { ...document, workspaceId: "workspace-b" },
+          indexMode: "SQLITE_FTS5_BM25",
+          score: -1.5,
+          snippet: "private B evidence",
+          headingPath: [],
+        },
+      ],
+    };
+    await expect(
+      composeKnowledgeRetrieval(query, crossWorkspaceLexical, {
+        listNeighbors: () => ({ items: [] }),
+      }),
+    ).rejects.toThrow("LEXICAL retrieval returned invalid workspace content");
   });
 
   it("fails closed when vector retrieval is required but no provider exists", async () => {

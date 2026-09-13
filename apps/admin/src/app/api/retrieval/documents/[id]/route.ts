@@ -3,6 +3,7 @@ import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
 import { resolveOperatorServiceReadAccess } from "@/server/operator-service-api-access";
 import { getRetrievalIndexRepository, getStagingContentRepository } from "@/server/source-registry";
+import { resolveCurrentWorkspaceDocument } from "@/server/workspace-retrieval-overlay";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,15 @@ export async function GET(request: Request, context: RouteContext) {
 
     const { id } = await context.params;
     const retrieval = getRetrievalIndexRepository();
-    const document = retrieval.getDocument(workspaceId, id, artifactVersion);
+    const resolved =
+      artifactVersion === undefined
+        ? resolveCurrentWorkspaceDocument(retrieval, workspaceId, id)
+        : null;
+    const resolvedWorkspaceId = resolved?.workspaceId ?? workspaceId;
+    const document =
+      artifactVersion === undefined
+        ? (resolved?.document ?? null)
+        : retrieval.getDocument(workspaceId, id, artifactVersion);
     if (!document) {
       throw new RegistryError(
         "RETRIEVAL_DOCUMENT_NOT_FOUND",
@@ -38,10 +47,15 @@ export async function GET(request: Request, context: RouteContext) {
     }
     const bytes = getStagingContentRepository().readContent(
       document.stagingDocumentId,
-      workspaceId,
+      resolvedWorkspaceId,
     );
     const canonicalMarkdown = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    const result = retrieval.documentResult(workspaceId, id, canonicalMarkdown, artifactVersion);
+    const result = retrieval.documentResult(
+      resolvedWorkspaceId,
+      id,
+      canonicalMarkdown,
+      artifactVersion,
+    );
     if (!result) {
       throw new RegistryError(
         "RETRIEVAL_DOCUMENT_NOT_FOUND",

@@ -13,6 +13,7 @@ import {
   type KnowledgeLexicalRetrievalReader,
 } from "@/server/knowledge-retrieval-composition";
 import { getRegistryDatabase, getRetrievalIndexRepository } from "@/server/source-registry";
+import { searchWorkspaceRetrievalOverlay } from "@/server/workspace-retrieval-overlay";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,7 +38,11 @@ export async function POST(request: Request) {
     const retrieval = getRetrievalIndexRepository();
     const lexical: KnowledgeLexicalRetrievalReader = {
       search: ({ workspaceId, queryText, limit }) =>
-        retrieval.search({ workspaceId, query: queryText, limit }).items.map((hit) => {
+        searchWorkspaceRetrievalOverlay(retrieval, {
+          workspaceId,
+          query: queryText,
+          limit,
+        }).items.map((hit) => {
           const content: ContentObjectRefV1 = {
             protocolVersion: "1.0",
             objectType: "CONTENT_OBJECT_REF",

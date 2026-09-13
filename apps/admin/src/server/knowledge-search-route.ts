@@ -23,6 +23,10 @@ import {
 } from "@/server/knowledge-search-date-filter";
 import { resolveKnowledgeWorkspaceReadAccess } from "@/server/knowledge-workspace-access";
 import { getRegistryDatabase, getRetrievalIndexRepository } from "@/server/source-registry";
+import {
+  searchWorkspaceRetrievalOverlay,
+  workspaceRetrievalScopes,
+} from "@/server/workspace-retrieval-overlay";
 
 const SEARCH_PAGE_SIZE = 50;
 const DEFAULT_LIMIT = 25;
@@ -97,17 +101,22 @@ export async function handleKnowledgeSearchGet(request: Request) {
       ...(status ? { status } : {}),
     };
 
-    const metadataMatches = collectCompleteKnowledgeSearch((metadataOffset) =>
-      queryKnowledgeReadModel(database, {
-        ...structuredQuery,
-        q,
-        offset: metadataOffset,
-        limit: SEARCH_PAGE_SIZE,
-      }),
+    const scopes = workspaceRetrievalScopes(workspaceId);
+    const metadataMatches = scopes.flatMap((scope) =>
+      collectCompleteKnowledgeSearch((metadataOffset) =>
+        queryKnowledgeReadModel(database, {
+          ...structuredQuery,
+          workspaceId: scope,
+          ...(scope === workspaceId ? {} : { currentOnly: true }),
+          q,
+          offset: metadataOffset,
+          limit: SEARCH_PAGE_SIZE,
+        }),
+      ),
     );
 
     const fullTextHits = collectCompleteKnowledgeSearch((fullTextOffset) =>
-      retrieval.search({
+      searchWorkspaceRetrievalOverlay(retrieval, {
         workspaceId,
         query: q,
         ...(sourceId ? { sourceId } : {}),
@@ -117,14 +126,24 @@ export async function handleKnowledgeSearchGet(request: Request) {
       }),
     );
 
-    const resolvedItems = new Map(
-      batches(
-        fullTextHits.map((hit) => hit.document.stagingDocumentId),
-        SEARCH_PAGE_SIZE,
-      )
-        .flatMap((ids) => queryKnowledgeReadModelItemsByIds(database, structuredQuery, ids))
-        .map((item) => [item.id, item] as const),
-    );
+    const resolvedItems = new Map<
+      string,
+      ReturnType<typeof queryKnowledgeReadModelItemsByIds>[number]
+    >();
+    for (const scope of scopes) {
+      const ids = fullTextHits
+        .filter((hit) => hit.document.workspaceId === scope)
+        .map((hit) => hit.document.stagingDocumentId);
+      for (const batch of batches(ids, SEARCH_PAGE_SIZE)) {
+        for (const item of queryKnowledgeReadModelItemsByIds(
+          database,
+          { ...structuredQuery, workspaceId: scope, currentOnly: true },
+          batch,
+        )) {
+          resolvedItems.set(item.id, item);
+        }
+      }
+    }
 
     const fullTextCandidates = fullTextHits.flatMap((hit) => {
       const item = resolvedItems.get(hit.document.stagingDocumentId);
@@ -146,12 +165,33 @@ export async function handleKnowledgeSearchGet(request: Request) {
     const composed = composeKnowledgeHybridSearch(fullTextCandidates, metadataMatches);
     const filtered = filterKnowledgeSearchByGeneratedDate(composed, dateRange);
     const page = filtered.slice(offset, offset + limit);
-    const facetResult = queryKnowledgeReadModel(database, {
-      ...structuredQuery,
-      q,
-      offset: 0,
-      limit: 1,
-    });
+    const facetResults = scopes.map((scope) =>
+      queryKnowledgeReadModel(database, {
+        ...structuredQuery,
+        workspaceId: scope,
+        ...(scope === workspaceId ? {} : { currentOnly: true }),
+        q,
+        offset: 0,
+        limit: 1,
+      }),
+    );
+    const filters = {
+      sources: [
+        ...new Map(
+          facetResults
+            .flatMap((result) => result.filters.sources)
+            .map((source) => [source.id, source] as const),
+        ).values(),
+      ].sort(
+        (left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id),
+      ),
+      jurisdictions: [
+        ...new Set(facetResults.flatMap((result) => result.filters.jurisdictions)),
+      ].sort(),
+      artifactKinds: [
+        ...new Set(facetResults.flatMap((result) => result.filters.artifactKinds)),
+      ].sort(),
+    };
 
     return NextResponse.json({
       search: {
@@ -178,7 +218,7 @@ export async function handleKnowledgeSearchGet(request: Request) {
         archived: filtered.filter((item) => item.status === "ARCHIVED").length,
       },
       appliedFilters: dateRange,
-      filters: facetResult.filters,
+      filters,
     });
   } catch (error) {
     return apiError(error);

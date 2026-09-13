@@ -4,6 +4,7 @@ import { RegistryValidationError } from "@markorbit/persistence";
 import { apiError } from "@/server/api-errors";
 import { resolveOperatorServiceReadAccess } from "@/server/operator-service-api-access";
 import { getRetrievalIndexRepository } from "@/server/source-registry";
+import { searchWorkspaceRetrievalOverlay } from "@/server/workspace-retrieval-overlay";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
       }
     }
 
-    const result = getRetrievalIndexRepository().search({
+    const result = searchWorkspaceRetrievalOverlay(getRetrievalIndexRepository(), {
       workspaceId: principal.workspaceId,
       query,
       sourceId: search.get("sourceId")?.trim() || undefined,
