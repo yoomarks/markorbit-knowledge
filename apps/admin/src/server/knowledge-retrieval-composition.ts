@@ -11,7 +11,7 @@ import {
   type KnowledgeVectorEvidenceV1,
   type KnowledgeVectorProviderDescriptorV1,
 } from "@markorbit/contracts";
-import { RegistryValidationError } from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
 import type { ContentNeighborV1 } from "@markorbit/persistence/content-relationships";
 
 const DEFAULT_LIMIT = 20;
@@ -72,8 +72,16 @@ function identity(content: ContentObjectRefV1): string {
   return [content.workspaceId, content.objectKind, content.objectId].join("\u001f");
 }
 
-function validateContent(content: ContentObjectRefV1, workspaceId: string, channel: string): void {
-  if (!isContentObjectRefV1(content) || content.workspaceId !== workspaceId) {
+function validateContent(
+  content: ContentObjectRefV1,
+  workspaceId: string,
+  channel: string,
+  allowGlobal = false,
+): void {
+  const allowedWorkspace =
+    content.workspaceId === workspaceId ||
+    (allowGlobal && content.workspaceId === DEFAULT_WORKSPACE.id);
+  if (!isContentObjectRefV1(content) || !allowedWorkspace) {
     throw new RegistryValidationError(`${channel} retrieval returned invalid workspace content`);
   }
 }
@@ -164,8 +172,12 @@ export async function composeKnowledgeRetrieval(
     string,
     { content: ContentObjectRefV1; evidence: KnowledgeRetrievalEvidenceV1[] }
   >();
-  const add = (content: ContentObjectRefV1, evidence: KnowledgeRetrievalEvidenceV1) => {
-    validateContent(content, query.workspaceId, evidence.channel);
+  const add = (
+    content: ContentObjectRefV1,
+    evidence: KnowledgeRetrievalEvidenceV1,
+    allowGlobal = false,
+  ) => {
+    validateContent(content, query.workspaceId, evidence.channel, allowGlobal);
     const key = identity(content);
     const item = items.get(key) ?? { content: structuredClone(content), evidence: [] };
     item.evidence.push(structuredClone(evidence));
@@ -197,7 +209,7 @@ export async function composeKnowledgeRetrieval(
             indexedAt: hit.indexedAt!,
           }),
     };
-    add(hit.content, evidence);
+    add(hit.content, evidence, true);
   });
 
   const graphNeighbors = query.graphSeed

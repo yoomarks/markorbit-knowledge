@@ -20,6 +20,7 @@ export type KnowledgeBrowserQueryV1 = {
   jurisdiction?: string;
   artifactKind?: ArtifactKind;
   status?: StagingDocumentDescriptor["status"];
+  currentOnly?: boolean;
   offset?: number;
   limit?: number;
 };
@@ -34,6 +35,7 @@ export type KnowledgeBrowserSourceOption = {
 
 export type KnowledgeBrowserItem = {
   id: string;
+  workspaceId: string;
   title: string;
   targetPath: string;
   outputFormat: StagingDocumentDescriptor["outputFormat"];
@@ -202,6 +204,17 @@ function filteredWhere(query: ReturnType<typeof normalizeQuery>): {
     );
     values.push(query.jurisdiction);
   }
+  if (query.currentOnly) {
+    clauses.push(
+      "EXISTS (SELECT 1 FROM retrieval_documents rd WHERE rd.staging_document_id = s.id AND rd.workspace_id = s.workspace_id AND rd.is_current = 1)",
+    );
+    clauses.push(
+      "EXISTS (SELECT 1 FROM workspaces w WHERE w.id = s.workspace_id AND json_extract(w.document_json, '$.status') = 'ACTIVE')",
+    );
+    clauses.push(
+      "NOT EXISTS (SELECT 1 FROM source_definitions lifecycle_src WHERE lifecycle_src.id = s.source_id AND lifecycle_src.workspace_id = s.workspace_id AND json_extract(lifecycle_src.document_json, '$.status') = 'ARCHIVED')",
+    );
+  }
   if (query.q) {
     clauses.push(`(
       instr(lower(COALESCE(json_extract(s.document_json, '$.title'), '')), ?) > 0 OR
@@ -266,6 +279,7 @@ function rowItem(row: BrowserRow): KnowledgeBrowserItem {
   const artifact = parseArtifact(row.artifact_json);
   return {
     id: descriptor.id,
+    workspaceId: descriptor.workspaceId,
     title: descriptor.title || artifact?.originalName || descriptor.targetPath,
     targetPath: descriptor.targetPath,
     outputFormat: descriptor.outputFormat,
@@ -316,11 +330,16 @@ export function queryKnowledgeReadModel(
     )
     .get(...where.values) as SummaryRow;
 
+  const sourceAvailability = query.currentOnly
+    ? ` AND json_extract(document_json, '$.status') <> 'ARCHIVED'
+        AND EXISTS (SELECT 1 FROM retrieval_documents rd WHERE rd.workspace_id = source_definitions.workspace_id AND rd.source_id = source_definitions.id AND rd.is_current = 1)
+        AND EXISTS (SELECT 1 FROM workspaces w WHERE w.id = source_definitions.workspace_id AND json_extract(w.document_json, '$.status') = 'ACTIVE')`
+    : "";
   const sourceRows = database
     .prepare(
       `SELECT document_json
        FROM source_definitions
-       WHERE workspace_id = ?
+       WHERE workspace_id = ?${sourceAvailability}
        ORDER BY lower(name) ASC, id ASC`,
     )
     .all(query.workspaceId) as SourceRow[];
