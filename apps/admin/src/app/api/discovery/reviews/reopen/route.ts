@@ -10,8 +10,15 @@ export const dynamic = "force-dynamic";
 // Recovery is an explicit operator action. It never reopens accepted candidates.
 export async function POST(request: Request) {
   try {
-    const { principal } = await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const body = requireRecord(await readJson(request));
+    const assertedWorkspaceId =
+      typeof body.workspaceId === "string" && body.workspaceId.trim()
+        ? body.workspaceId.trim()
+        : DEFAULT_WORKSPACE.id;
+    const { principal, workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
     if (typeof body.candidateId !== "string" || !body.candidateId.trim()) {
       throw new RegistryValidationError("candidateId must be a non-empty string");
     }
@@ -21,6 +28,7 @@ export async function POST(request: Request) {
 
     const candidateId = body.candidateId.trim();
     const result = getDiscoveryWorkflowService().reopen(candidateId, {
+      workspaceId,
       reviewer: principal.userId,
       note: typeof body.note === "string" && body.note.trim() ? body.note.trim() : undefined,
     });

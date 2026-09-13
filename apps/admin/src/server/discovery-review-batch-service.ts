@@ -5,6 +5,7 @@ import type { DiscoveryWorkflowService } from "./discovery-service";
 export type DiscoveryBatchReviewDecision = "ACCEPTED" | "REJECTED";
 
 export type DiscoveryBatchReviewInput = {
+  workspaceId?: string;
   candidateIds: string[];
   decision: DiscoveryBatchReviewDecision;
   reviewer: string;
@@ -99,6 +100,7 @@ export function reviewDiscoveryCandidatesBatch(
   for (const candidateId of input.candidateIds) {
     try {
       const reviewed = dependencies.workflow.review(candidateId, {
+        workspaceId: input.workspaceId,
         decision: input.decision,
         reviewer: input.reviewer,
         note: input.note,

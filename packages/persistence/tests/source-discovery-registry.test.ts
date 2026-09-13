@@ -212,4 +212,69 @@ describe("SqliteSourceDiscoveryRepository", () => {
 
     database.close();
   });
+
+  it("isolates identical discovery locators across workspaces", () => {
+    const database = openRegistryDatabase(":memory:");
+    const repository = new SqliteSourceDiscoveryRepository(database);
+    const locator = "https://same.example.com/trademarks";
+    const seedA = repository.createSeed({
+      workspaceId: "wksp_A",
+      locator: "https://same.example.com/",
+    });
+    const seedB = repository.createSeed({
+      workspaceId: "wksp_B",
+      locator: "https://same.example.com/",
+    });
+    expect(seedA.seedId).not.toBe(seedB.seedId);
+
+    repository.createBatch({
+      batchId: "disc_A",
+      workspaceId: "wksp_A",
+      seeds: [{ seedId: seedA.seedId, locator: seedA.locator }],
+      createdAt: "2026-09-13T00:00:00.000Z",
+    });
+    repository.createBatch({
+      batchId: "disc_B",
+      workspaceId: "wksp_B",
+      seeds: [{ seedId: seedB.seedId, locator: seedB.locator }],
+      createdAt: "2026-09-13T00:00:01.000Z",
+    });
+    repository.completeBatch("disc_A", [
+      {
+        candidateId: "cand_A",
+        locator,
+        discoveredAt: "2026-09-13T00:00:02.000Z",
+        status: "DISCOVERED",
+      },
+    ]);
+    repository.completeBatch("disc_B", [
+      {
+        candidateId: "cand_B",
+        locator,
+        discoveredAt: "2026-09-13T00:00:03.000Z",
+        status: "DISCOVERED",
+      },
+    ]);
+
+    expect(repository.getCandidateByLocator(locator, "wksp_A")?.candidate.candidateId).toBe(
+      "cand_A",
+    );
+    expect(repository.getCandidateByLocator(locator, "wksp_B")?.candidate.candidateId).toBe(
+      "cand_B",
+    );
+    expect(
+      repository
+        .listCandidates({ workspaceId: "wksp_A" })
+        .items.map((item) => item.candidate.candidateId),
+    ).toEqual(["cand_A"]);
+    expect(
+      repository
+        .listCandidates({ workspaceId: "wksp_B" })
+        .items.map((item) => item.candidate.candidateId),
+    ).toEqual(["cand_B"]);
+    repository.reviewCandidate("cand_A", { decision: "REJECTED", reviewer: "workspace-a" });
+    expect(repository.getCandidate("cand_A")?.candidate.status).toBe("REJECTED");
+    expect(repository.getCandidate("cand_B")?.candidate.status).toBe("DISCOVERED");
+    database.close();
+  });
 });

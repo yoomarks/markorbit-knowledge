@@ -3,24 +3,42 @@ import { rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { ExecutionReceipt, SourceDiscoveryBatch } from "@markorbit/contracts";
+import {
+  CONVERSION_RUNTIME_VERSION,
+  type ConversionOutputReadyReport,
+  type ConversionStartedReport,
+  type ConversionWorkerCapability,
+  type ExecutionReceipt,
+  type SourceDiscoveryBatch,
+} from "@markorbit/contracts";
 import { openRegistryDatabase, SqliteSourceRepository } from "@markorbit/persistence";
 import { SqliteCollectionPlanRepository } from "@markorbit/persistence/collection-plans";
 import { SqliteConnectorRepository } from "@markorbit/persistence/connectors";
 import { SqliteConversionRunLedgerRepository } from "@markorbit/persistence/conversion-runs";
+import { SqliteConversionRuntimePersistenceRepository } from "@markorbit/persistence/conversion-runtime";
+import { SqliteConversionRuntimeTransitionRepository } from "@markorbit/persistence/conversion-runtime-transitions";
 import { SqliteConverterRegistryRepository } from "@markorbit/persistence/converters";
 import { SqliteExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
+import { SqliteReadyPackageRegistryRepository } from "@markorbit/persistence/ready-packages";
+import { SqliteRetrievalIndexRepository } from "@markorbit/persistence/retrieval-index";
+import { SqliteStagingContentRegistryRepository } from "@markorbit/persistence/staging-content";
+import { SqliteStagingVerificationRepository } from "@markorbit/persistence/staging-verification";
+import { ControlPlaneVerifiedStagingFinalizer } from "@markorbit/persistence/verified-staging-finalization";
 import { SqliteSourceDiscoveryRepository } from "@markorbit/persistence/source-discovery";
 import { SqliteSourceGraphRepository } from "@markorbit/persistence/source-graph";
 import { SqliteWorkerExecutionRepository } from "@markorbit/persistence/worker-execution";
 import { SqliteWorkerRegistryRepository } from "@markorbit/persistence/workers";
+import { SqliteWorkspaceRepository } from "@markorbit/persistence/workspaces";
+import { canonicalMarkdownFrontmatter } from "@markorbit/worker-runtime";
+import { canonicalDocumentMetadata } from "../canonical-document-metadata";
 import { CRAWL4AI_PRODUCTION_CONNECTOR } from "../crawl4ai-production-connector";
 import { runDiscoveryImportBatch } from "../discovery-batch-import-service";
 import { DiscoveryCollectionService } from "../discovery-collection-service";
 import { parseDiscoveryImport } from "../discovery-import-parser";
 import { reviewDiscoveryCandidatesBatch } from "../discovery-review-batch-service";
 import { DiscoveryWorkflowService } from "../discovery-service";
+import { commitProductionStagingWithDependencies } from "../production-conversion-worker-service";
 import { dispatchAutomaticConversionForArtifactWithDependencies } from "../raw-artifact-auto-conversion";
 
 const temporaryPaths: string[] = [];
@@ -77,8 +95,15 @@ describe("Bulk Source Pipeline E2E", () => {
 
     const database = openRegistryDatabase(":memory:");
     const storageRoot = join(tmpdir(), `markorbit-bulk-source-e2e-${randomUUID()}`);
-    temporaryPaths.push(storageRoot);
+    const stagingRoot = join(tmpdir(), `markorbit-bulk-source-staging-${randomUUID()}`);
+    temporaryPaths.push(storageRoot, stagingRoot);
     const clock = () => new Date("2026-08-17T04:00:00.000Z");
+    const workspaces = new SqliteWorkspaceRepository(database, clock);
+    const workspace = workspaces.create({
+      slug: `bulk-source-${randomUUID()}`,
+      name: "Bulk Source Private Workspace",
+    });
+    const workspaceId = workspace.id;
     const sources = new SqliteSourceRepository(database, clock);
     const plans = new SqliteCollectionPlanRepository(database, clock);
     const connectors = new SqliteConnectorRepository(database);
@@ -90,6 +115,17 @@ describe("Bulk Source Pipeline E2E", () => {
     const artifacts = new SqliteRawArtifactRepository(database, storageRoot, clock);
     const converters = new SqliteConverterRegistryRepository(database, clock);
     const conversionRuns = new SqliteConversionRunLedgerRepository(database, clock);
+    const runtime = new SqliteConversionRuntimePersistenceRepository(database, clock);
+    const transitions = new SqliteConversionRuntimeTransitionRepository(database, clock);
+    const staging = new SqliteStagingContentRegistryRepository(database, stagingRoot, clock);
+    const stagingVerification = new SqliteStagingVerificationRepository(database, staging, clock);
+    const stagingFinalizer = new ControlPlaneVerifiedStagingFinalizer(
+      staging,
+      stagingVerification,
+      transitions,
+    );
+    const readyPackages = new SqliteReadyPackageRegistryRepository(database, clock);
+    const retrieval = new SqliteRetrievalIndexRepository(database, clock);
     const candidateIds: string[] = [];
 
     const workflow = new DiscoveryWorkflowService({
@@ -137,6 +173,7 @@ describe("Bulk Source Pipeline E2E", () => {
       .map((row) => ({ locator: row.locator, intake: row.intake }));
     const imported = await runDiscoveryImportBatch(
       {
+        workspaceId,
         entries,
         maxDepth: 1,
         maxCandidates: 1,
@@ -157,6 +194,7 @@ describe("Bulk Source Pipeline E2E", () => {
 
     const reviewed = reviewDiscoveryCandidatesBatch(
       {
+        workspaceId,
         candidateIds,
         decision: "ACCEPTED",
         reviewer: "bulk-source-e2e",
@@ -172,7 +210,7 @@ describe("Bulk Source Pipeline E2E", () => {
       collectionDeferred: 0,
     });
 
-    const sourceList = sources.list({ sourceType: "WEB", limit: 100 });
+    const sourceList = sources.list({ workspaceId, sourceType: "WEB", limit: 100 });
     expect(sourceList.total).toBe(100);
     expect(
       sourceList.items.filter((source) => source.category === "OFFICIAL_AUTHORITY"),
@@ -191,7 +229,7 @@ describe("Bulk Source Pipeline E2E", () => {
     expect(dispatched.items.every((record) => record.run.status === "PENDING")).toBe(true);
     expect(dispatched.items.every((record) => record.jobs.length === 1)).toBe(true);
 
-    const workspaceId = sourceList.items[0]!.workspaceId;
+    expect(sourceList.items.every((source) => source.workspaceId === workspaceId)).toBe(true);
     const worker = workers.create({
       workspaceId,
       displayName: "Bulk Source E2E Worker",
@@ -309,7 +347,7 @@ describe("Bulk Source Pipeline E2E", () => {
 
       const artifactId = finalized.artifact.artifact.id;
       const conversion = dispatchAutomaticConversionForArtifactWithDependencies(
-        { database, artifacts, converters, conversionRuns, clock },
+        { database, artifacts, converters, workspaces, sources, conversionRuns, clock },
         artifactId,
         workspaceId,
       );
@@ -329,7 +367,7 @@ describe("Bulk Source Pipeline E2E", () => {
     expect(firstConversionRunId).not.toBeNull();
     // A finalize/recovery replay must converge on the original AUTO_PROFILE run, not enqueue #101.
     const replay = dispatchAutomaticConversionForArtifactWithDependencies(
-      { database, artifacts, converters, conversionRuns, clock },
+      { database, artifacts, converters, workspaces, sources, conversionRuns, clock },
       firstArtifactId!,
       workspaceId,
     );
@@ -351,6 +389,114 @@ describe("Bulk Source Pipeline E2E", () => {
     expect(pendingConversions.items.every((run) => run.trigger === "AUTO_PROFILE")).toBe(true);
     expect(pendingConversions.items.every((run) => run.status === "PENDING")).toBe(true);
     expect(workers.claim(worker.view.worker.id, worker.credential).job).toBeNull();
+
+    const capability: ConversionWorkerCapability = {
+      contractVersion: CONVERSION_RUNTIME_VERSION,
+      objectType: "CONVERSION_WORKER_CAPABILITY",
+      id: "cwc_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      workerId: worker.view.worker.id,
+      capabilityRevision: 1,
+      supportedConverters: [{ converterId: "builtin-html-markdown", versions: ["1.0.0"] }],
+      acceptedArtifactKinds: ["HTML"],
+      acceptedMimePatterns: ["text/html"],
+      supportedOutputFormats: ["MARKDOWN"],
+      runtime: { runtimeId: "website-knowledge-runtime", version: "1.0.0" },
+      createdAt: clock().toISOString(),
+    };
+    runtime.registerCapability(capability);
+    const claimed = runtime.claim({
+      contractVersion: CONVERSION_RUNTIME_VERSION,
+      objectType: "CONVERSION_CLAIM_REQUEST",
+      id: "ccr_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      workspaceId,
+      workerId: worker.view.worker.id,
+      workerCredentialId: "website-knowledge-worker-credential",
+      capabilityRevision: 1,
+      supportedConverters: capability.supportedConverters,
+      maxAcceptedWork: 1,
+      idempotencyKey: "website-knowledge-claim-1",
+      requestedLeaseDurationSeconds: 120,
+    }).result;
+    expect(claimed.result).toBe("CLAIMED");
+    const lease = claimed.lease!;
+    expect(conversionRunIds.has(lease.conversionRunId)).toBe(true);
+    const grant = claimed.stagingOutputUploadGrant!;
+    const run = conversionRuns.getById(lease.conversionRunId, workspaceId)!.run;
+    const reportBase = {
+      contractVersion: CONVERSION_RUNTIME_VERSION,
+      workspaceId,
+      workerId: worker.view.worker.id,
+      workerCredentialId: "website-knowledge-worker-credential",
+      conversionRunId: run.id,
+      conversionAttemptId: lease.conversionAttemptId,
+      conversionLeaseId: lease.id,
+      leaseGeneration: lease.generation,
+      leaseTokenReference: lease.tokenReference,
+      leaseTokenDigest: lease.tokenDigest,
+      occurredAt: clock().toISOString(),
+    } as const;
+    const startedReport: ConversionStartedReport = {
+      ...reportBase,
+      objectType: "CONVERSION_STARTED_REPORT",
+      id: "csr_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      idempotencyKey: "website-knowledge-start-1",
+      expectedCurrentStatus: "PENDING",
+      converter: run.converter,
+    };
+    expect(transitions.submitStarted(startedReport, worker.credential).run.status).toBe("RUNNING");
+    const rawArtifact = artifacts.getArtifact(run.rawArtifactId)!.artifact;
+    const source = sources.getById(run.sourceId)!;
+    const metadata = canonicalDocumentMetadata(run, rawArtifact, source);
+    const markdown = new TextEncoder().encode(
+      `${canonicalMarkdownFrontmatter(metadata)}\n# Private Website Knowledge\n\nOrbitWebsiteEvidence private workspace website content.\n`,
+    );
+    const outputReport: ConversionOutputReadyReport = {
+      ...reportBase,
+      objectType: "CONVERSION_OUTPUT_READY_REPORT",
+      id: "cor_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      idempotencyKey: "website-knowledge-output-1",
+      expectedCurrentStatus: "RUNNING",
+      output: {
+        uploadGrantId: grant.id,
+        targetPath: grant.normalizedTargetPath,
+        sha256: sha256(markdown),
+        sizeBytes: markdown.byteLength,
+        mediaType: "text/markdown",
+      },
+    };
+    expect(transitions.submitOutputReady(outputReport, worker.credential).run.status).toBe(
+      "VERIFYING",
+    );
+    const committed = commitProductionStagingWithDependencies(
+      {
+        workers,
+        workspaces,
+        conversionRuns,
+        artifacts,
+        sources,
+        staging,
+        stagingVerification,
+        stagingFinalizer,
+        readyPackages,
+        retrieval,
+      },
+      {
+        workspaceId,
+        workerId: worker.view.worker.id,
+        conversionRunId: run.id,
+        conversionAttemptId: lease.conversionAttemptId,
+        uploadGrantId: grant.id,
+        idempotencyKey: "website-knowledge-staging-1",
+        content: markdown,
+      },
+      worker.credential,
+    );
+    expect(committed.stagingStatus).toBe("READY");
+    expect(committed.readyPackageId).toBeTruthy();
+    const search = retrieval.search({ workspaceId, query: "OrbitWebsiteEvidence", limit: 10 });
+    expect(search.total).toBe(1);
+    expect(search.items[0]?.document.workspaceId).toBe(workspaceId);
+    expect(search.items[0]?.document.sourceId).toBe(source.id);
 
     database.close();
   }, 15_000);

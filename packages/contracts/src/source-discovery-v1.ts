@@ -57,6 +57,7 @@ export interface SourceDiscoveryConstraints {
 
 export interface SourceDiscoveryBatch {
   batchId: string;
+  workspaceId?: string;
   seeds: SourceDiscoverySeed[];
   createdAt: string;
   constraints?: SourceDiscoveryConstraints;

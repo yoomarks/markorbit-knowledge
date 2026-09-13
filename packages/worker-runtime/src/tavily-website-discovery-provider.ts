@@ -52,8 +52,9 @@ function host(value: string): string | null {
   return normalized ? new URL(normalized).hostname.toLowerCase() : null;
 }
 
-function candidateId(locator: string): string {
-  return `tavily-${createHash("sha256").update(locator).digest("hex").slice(0, 24)}`;
+function candidateId(locator: string, workspaceId?: string): string {
+  const identity = workspaceId?.trim() ? `${workspaceId}\u0000${locator}` : locator;
+  return `tavily-${createHash("sha256").update(identity).digest("hex").slice(0, 24)}`;
 }
 
 function queryForSeed(seed: SourceDiscoverySeed): string {
@@ -218,7 +219,7 @@ export class TavilyWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
         if (!locator || !allowedResult(locator, seed, batch) || candidates.has(locator)) continue;
         const discoveredAt = this.now().toISOString();
         candidates.set(locator, {
-          candidateId: candidateId(locator),
+          candidateId: candidateId(locator, batch.workspaceId),
           locator,
           ...(typeof result.title === "string" && result.title.trim()
             ? { title: result.title.trim().slice(0, 500) }

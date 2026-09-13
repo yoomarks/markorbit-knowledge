@@ -13,6 +13,7 @@ import type {
   CollectionPlan,
   SourceCategory,
   SourceDefinition,
+  SourceDiscoveryBatch,
   SourceDiscoveryConstraints,
   SourceDiscoveryLineage,
   SourceCandidateStatus,
@@ -90,6 +91,7 @@ export type DiscoveryIntakeDefaults = {
 };
 
 export type StartDiscoveryInput = {
+  workspaceId?: string;
   locator: string;
   maxDepth?: number;
   maxCandidates?: number;
@@ -112,6 +114,7 @@ export type ExpandSourceDiscoveryInput = Omit<
 >;
 
 export type ReviewDiscoveryCandidateInput = {
+  workspaceId?: string;
   decision: CandidateReviewDecision;
   note?: string;
   reviewer?: string;
@@ -124,6 +127,7 @@ export type ReviewDiscoveryCandidateResult = {
 };
 
 export type ReopenDiscoveryCandidateInput = {
+  workspaceId?: string;
   note?: string;
   reviewer?: string;
 };
@@ -300,10 +304,11 @@ function ensureAcceptedDiscoveryEntrypoint(
 function findWebsiteSourceByIdentity(
   sources: SourceRepository,
   identity: string,
+  workspaceId: string,
 ): SourceDefinition | null {
   let offset = 0;
   while (true) {
-    const page = sources.list({ sourceType: "WEB", limit: 100, offset });
+    const page = sources.list({ workspaceId, sourceType: "WEB", limit: 100, offset });
     const source =
       page.items.find(
         (item) => item.status !== "ARCHIVED" && sourceWebsiteIdentities(item).includes(identity),
@@ -363,6 +368,23 @@ function discoveryScanBudget(reviewCandidateLimit: number): number {
   return Math.min(500, Math.max(reviewCandidateLimit, reviewCandidateLimit * 3));
 }
 
+function discoveryBatchWorkspaceId(batch: SourceDiscoveryBatch): string {
+  return batch.workspaceId?.trim() || DEFAULT_WORKSPACE.id;
+}
+
+function assertDiscoveryWorkspace(
+  assertedWorkspaceId: string | undefined,
+  workspaceId: string,
+): void {
+  const asserted = assertedWorkspaceId?.trim();
+  if (asserted && asserted !== workspaceId) {
+    throw new RegistryConflictError(
+      "DISCOVERY_WORKSPACE_MISMATCH",
+      "Discovery candidate belongs to another Workspace",
+    );
+  }
+}
+
 async function withinDeadline<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -381,6 +403,7 @@ async function withinDeadline<T>(operation: Promise<T>, timeoutMs: number): Prom
 }
 
 export type DiscoveryOverviewInput = {
+  workspaceId?: string;
   candidateStatuses?: SourceCandidateStatus[];
   candidateLimit?: number;
   candidateOffset?: number;
@@ -392,10 +415,12 @@ export class DiscoveryWorkflowService {
   constructor(private readonly dependencies: DiscoveryServiceDependencies) {}
 
   overview(input: DiscoveryOverviewInput = {}) {
+    const workspaceId = input.workspaceId?.trim() || DEFAULT_WORKSPACE.id;
     return {
-      seeds: this.dependencies.discovery.listSeeds(),
-      batches: this.dependencies.discovery.listBatches(20),
+      seeds: this.dependencies.discovery.listSeeds(workspaceId),
+      batches: this.dependencies.discovery.listBatches(20, workspaceId),
       candidates: this.dependencies.discovery.listCandidates({
+        workspaceId,
         statuses: input.candidateStatuses,
         limit: input.candidateLimit ?? 100,
         offset: input.candidateOffset,
@@ -406,6 +431,7 @@ export class DiscoveryWorkflowService {
   }
 
   async start(input: StartDiscoveryInput) {
+    const workspaceId = input.workspaceId?.trim() || DEFAULT_WORKSPACE.id;
     const locator = normalizeSeedLocator(input.locator);
     const intake = normalizedIntakeDefaults(input.intake);
     const maxExpansionGeneration = boundedInteger(
@@ -430,9 +456,11 @@ export class DiscoveryWorkflowService {
     }
 
     const seed = this.dependencies.discovery.createSeed({
+      workspaceId,
       locator,
       metadata: {
         source: "admin-console",
+        workspaceId,
         discoveryGeneration: lineage.generation,
         ...(lineage.parentSourceId ? { parentSourceId: lineage.parentSourceId } : {}),
         ...(lineage.rootSourceId ? { rootSourceId: lineage.rootSourceId } : {}),
@@ -441,6 +469,7 @@ export class DiscoveryWorkflowService {
     });
     const batch = {
       batchId: `disc_${randomUUID().replaceAll("-", "")}`,
+      workspaceId,
       seeds: [{ seedId: seed.seedId, locator: seed.locator }],
       createdAt: new Date().toISOString(),
       constraints: {
@@ -548,12 +577,12 @@ export class DiscoveryWorkflowService {
       }
 
       const exactProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
-        DEFAULT_WORKSPACE.id,
+        workspaceId,
         seedOrigin,
       );
       const identitySource = exactProfile
         ? null
-        : findWebsiteSourceByIdentity(this.dependencies.sources, seedIdentity);
+        : findWebsiteSourceByIdentity(this.dependencies.sources, seedIdentity, workspaceId);
       const profile =
         exactProfile ??
         (identitySource ? this.dependencies.graph.getProfileBySourceId(identitySource.id) : null);
@@ -583,6 +612,7 @@ export class DiscoveryWorkflowService {
   }
 
   async startBatch(input: StartBatchDiscoveryInput) {
+    const workspaceId = input.workspaceId?.trim() || DEFAULT_WORKSPACE.id;
     if (
       !Array.isArray(input.locators) ||
       input.locators.length === 0 ||
@@ -595,6 +625,7 @@ export class DiscoveryWorkflowService {
     let sourceOffset = 0;
     while (true) {
       const page = this.dependencies.sources.list({
+        workspaceId,
         sourceType: "WEB",
         limit: 100,
         offset: sourceOffset,
@@ -651,10 +682,7 @@ export class DiscoveryWorkflowService {
       }
       seenIdentities.add(identity);
 
-      const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
-        DEFAULT_WORKSPACE.id,
-        origin,
-      );
+      const profile = this.dependencies.graph.getProfileByCanonicalOrigin(workspaceId, origin);
       const existingSourceId = profile?.sourceId ?? existingIdentities.get(identity);
       if (existingSourceId) {
         skippedExistingSource += 1;
@@ -750,6 +778,7 @@ export class DiscoveryWorkflowService {
       extensionString(source, "x-markorbit-discovery-root-source-id") ?? source.id;
     const result = await this.start({
       ...input,
+      workspaceId: source.workspaceId,
       locator: sourceExpansionLocator(source),
       maxExpansionGeneration,
       lineage: {
@@ -779,9 +808,18 @@ export class DiscoveryWorkflowService {
       );
     }
 
+    const batchRecord = this.dependencies.discovery.getBatch(current.batchId);
+    if (!batchRecord) {
+      throw new RegistryConflictError(
+        "DISCOVERY_BATCH_CONTEXT_MISSING",
+        `Discovery candidate ${candidateId} has no batch context`,
+      );
+    }
+    const workspaceId = discoveryBatchWorkspaceId(batchRecord.batch);
+    assertDiscoveryWorkspace(input.workspaceId, workspaceId);
     const candidateOrigin = websiteOrigin(current.candidate.locator);
     const profile = this.dependencies.graph.getProfileByCanonicalOrigin(
-      DEFAULT_WORKSPACE.id,
+      workspaceId,
       candidateOrigin,
     );
 
@@ -816,6 +854,8 @@ export class DiscoveryWorkflowService {
         `Discovery candidate ${candidateId} has no usable seed context`,
       );
     }
+    const workspaceId = discoveryBatchWorkspaceId(batchRecord.batch);
+    assertDiscoveryWorkspace(input.workspaceId, workspaceId);
     const seed = batchRecord.batch.seeds[0];
     if (!seed) {
       throw new RegistryConflictError(
@@ -830,17 +870,18 @@ export class DiscoveryWorkflowService {
     const candidateIdentity = websiteIdentity(current.candidate.locator);
     const isExternalCandidate = candidateIdentity !== seedIdentity;
     const seedProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
-      DEFAULT_WORKSPACE.id,
+      workspaceId,
       seedOrigin,
     );
     const targetOrigin = isExternalCandidate ? candidateOrigin : seedOrigin;
     const exactTargetProfile = this.dependencies.graph.getProfileByCanonicalOrigin(
-      DEFAULT_WORKSPACE.id,
+      workspaceId,
       targetOrigin,
     );
     const identitySource = findWebsiteSourceByIdentity(
       this.dependencies.sources,
       candidateIdentity,
+      workspaceId,
     );
     const identityProfile = identitySource
       ? this.dependencies.graph.getProfileBySourceId(identitySource.id)
@@ -937,6 +978,7 @@ export class DiscoveryWorkflowService {
       } else {
         const connector = ensureCrawl4AiProductionConnector(this.dependencies.connectors).manifest;
         const created = this.dependencies.sources.create({
+          workspaceId,
           name: websiteSourceName(targetLocator),
           slug: websiteSourceSlug(
             targetLocator,

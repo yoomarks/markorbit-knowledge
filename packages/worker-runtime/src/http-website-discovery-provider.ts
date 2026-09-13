@@ -166,8 +166,9 @@ function canDiscover(url: URL, seed: URL, constraints: SourceDiscoveryConstraint
   return isHostAllowed(url, seed, constraints) && !isDenied(url, constraints.deniedUrlPatterns);
 }
 
-function candidateId(locator: string): string {
-  return `cand_${createHash("sha256").update(locator).digest("hex").slice(0, 24)}`;
+function candidateId(locator: string, workspaceId?: string): string {
+  const identity = workspaceId?.trim() ? `${workspaceId}\u0000${locator}` : locator;
+  return `cand_${createHash("sha256").update(identity).digest("hex").slice(0, 24)}`;
 }
 
 function candidateKind(url: URL): "DOCUMENT" | "FEED" | "PAGE" {
@@ -368,7 +369,7 @@ export class HttpWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
         const kind = candidateKind(url);
         const robotsAllowed = !respectRobots || robotsAllows(robots, url);
         const candidate: SourceCandidate = {
-          candidateId: candidateId(locator),
+          candidateId: candidateId(locator, input.workspaceId),
           locator,
           discoveredAt: new Date().toISOString(),
           status: "DISCOVERED",
@@ -519,7 +520,7 @@ export class HttpWebsiteDiscoveryProvider implements SourceDiscoveryProvider {
       ) {
         const robotsAllowed = !respectRobots || robotsAllows(robots, seedUrl);
         candidates.push({
-          candidateId: candidateId(normalizedSeedLocator),
+          candidateId: candidateId(normalizedSeedLocator, input.workspaceId),
           locator: normalizedSeedLocator,
           discoveredAt: new Date().toISOString(),
           status: "DISCOVERED",

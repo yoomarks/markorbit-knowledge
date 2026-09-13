@@ -11,9 +11,16 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
   try {
-    const { principal } = await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const { id } = await context.params;
     const body = requireRecord(await readJson(request));
+    const assertedWorkspaceId =
+      typeof body.workspaceId === "string" && body.workspaceId.trim()
+        ? body.workspaceId.trim()
+        : DEFAULT_WORKSPACE.id;
+    const { principal, workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
     if (body.decision !== "ACCEPTED" && body.decision !== "REJECTED") {
       throw new RegistryValidationError("decision must be ACCEPTED or REJECTED");
     }
@@ -22,6 +29,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const result = getDiscoveryWorkflowService().review(id, {
+      workspaceId,
       decision: body.decision,
       note: typeof body.note === "string" ? body.note : undefined,
       reviewer: principal.userId,

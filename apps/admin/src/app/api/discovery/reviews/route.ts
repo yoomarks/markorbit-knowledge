@@ -24,8 +24,15 @@ function candidateIds(value: unknown): string[] {
 
 export async function POST(request: Request) {
   try {
-    const { principal } = await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const body = requireRecord(await readJson(request));
+    const assertedWorkspaceId =
+      typeof body.workspaceId === "string" && body.workspaceId.trim()
+        ? body.workspaceId.trim()
+        : DEFAULT_WORKSPACE.id;
+    const { principal, workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
     const ids = candidateIds(body.candidateIds);
     if (body.decision !== "ACCEPTED" && body.decision !== "REJECTED") {
       throw new RegistryValidationError("decision must be ACCEPTED or REJECTED");
@@ -39,6 +46,7 @@ export async function POST(request: Request) {
 
     const result = reviewDiscoveryCandidatesBatch(
       {
+        workspaceId,
         candidateIds: ids,
         decision: body.decision,
         reviewer: principal.userId,
