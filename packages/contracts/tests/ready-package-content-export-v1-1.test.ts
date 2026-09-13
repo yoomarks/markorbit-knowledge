@@ -106,4 +106,15 @@ describe("ReadyPackage Content Export V1.1", () => {
       }),
     ).toBe(false);
   });
+
+  it("accepts only the reserved Global public Workspace id outside wsp_* ids", () => {
+    const globalValue = { ...fixture(), knowledgeWorkspaceId: "global-public" };
+    expect(isReadyPackageContentExportV1_1(globalValue)).toBe(true);
+    expect(
+      JSON.parse(serializeReadyPackageContentExportV1_1(globalValue)).knowledgeWorkspaceId,
+    ).toBe("global-public");
+    expect(
+      isReadyPackageContentExportV1_1({ ...fixture(), knowledgeWorkspaceId: "global-foo" }),
+    ).toBe(false);
+  });
 });

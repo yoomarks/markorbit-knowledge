@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
+  Download,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -32,6 +33,9 @@ import { EvidenceSetSelectionBar } from "./evidence-set-selection-bar";
 
 type SearchItem = {
   id: string;
+  workspaceId: string;
+  brainReady: boolean;
+  readyPackageId: string | null;
   title: string;
   targetPath: string;
   status: "GENERATED" | "READY" | "BLOCKED" | "ARCHIVED";
@@ -467,6 +471,14 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
             {result.items.map((item) => {
               const externalUrl = sourceUrl(item);
               const jurisdictions = item.source?.jurisdictions.join(", ") || "—";
+              const scopeLabel =
+                item.workspaceId === workspaceId
+                  ? zh
+                    ? "Workspace 私有"
+                    : "Workspace private"
+                  : zh
+                    ? "Global 公共"
+                    : "Global public";
               const matchReason = item.searchMatch.fullText
                 ? zh
                   ? "正文内容命中"
@@ -481,7 +493,8 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                       <h2 className="font-semibold text-slate-950">{item.title}</h2>
                       <p className="mt-1 text-xs text-slate-500">
                         {item.source?.name ?? "—"} · {jurisdictions} · {item.status} ·{" "}
-                        {new Date(item.generatedAt).toLocaleDateString(zh ? "zh-CN" : "en-US")}
+                        {new Date(item.generatedAt).toLocaleDateString(zh ? "zh-CN" : "en-US")} ·{" "}
+                        {scopeLabel}
                       </p>
                       <p className="mt-2 text-xs font-medium text-slate-700">{matchReason}</p>
                       <p className="mt-1 text-[11px] text-slate-400">
@@ -537,6 +550,15 @@ export function KnowledgeHybridSearch({ workspaceId }: { workspaceId: string }) 
                       >
                         <BookOpen size={14} /> {zh ? "检查证据" : "Inspect evidence"}
                       </Link>
+                      {item.brainReady && item.readyPackageId ? (
+                        <a
+                          href={`/api/ready-packages/${encodeURIComponent(item.readyPackageId)}/brain-export?workspaceId=${encodeURIComponent(workspaceId)}&knowledgeWorkspaceId=${encodeURIComponent(item.workspaceId)}`}
+                          download={`${item.readyPackageId}-brain-ready.json`}
+                          className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800"
+                        >
+                          <Download size={14} /> {zh ? "导出给 Brain" : "Brain-ready export"}
+                        </a>
+                      ) : null}
                       {externalUrl ? (
                         <a
                           href={externalUrl}

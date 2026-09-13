@@ -229,6 +229,24 @@ function filteredWhere(query: ReturnType<typeof normalizeQuery>): {
   return { sql: `WHERE ${clauses.join(" AND ")}`, values };
 }
 
+export function currentKnowledgeReadyPackageId(
+  database: DatabaseSync,
+  workspaceId: string,
+  stagingDocumentId: string,
+): string | null {
+  const row = database
+    .prepare(
+      `SELECT rd.ready_package_id
+    FROM retrieval_documents rd
+    WHERE rd.workspace_id = ? AND rd.staging_document_id = ? AND rd.is_current = 1
+      AND EXISTS (SELECT 1 FROM workspaces w WHERE w.id = rd.workspace_id AND json_extract(w.document_json, '$.status') = 'ACTIVE')
+      AND EXISTS (SELECT 1 FROM source_definitions src WHERE src.id = rd.source_id AND src.workspace_id = rd.workspace_id AND json_extract(src.document_json, '$.status') <> 'ARCHIVED')
+    LIMIT 1`,
+    )
+    .get(workspaceId, stagingDocumentId) as { ready_package_id: string } | undefined;
+  return row?.ready_package_id ?? null;
+}
+
 const JOIN_SQL = `
   FROM staging_documents s
   LEFT JOIN source_definitions src
