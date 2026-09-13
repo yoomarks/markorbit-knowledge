@@ -210,7 +210,7 @@ describe("Bulk conversion to Knowledge E2E", () => {
         receipt,
       });
       const handoff = dispatchAutomaticConversionForArtifactWithDependencies(
-        { database, artifacts, converters, conversionRuns, clock },
+        { database, artifacts, converters, workspaces, sources, conversionRuns, clock },
         finalized.artifact.artifact.id,
         workspaceId,
       );

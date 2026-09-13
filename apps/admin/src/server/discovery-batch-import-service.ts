@@ -7,6 +7,7 @@ export type DiscoveryImportEntry = {
 };
 
 export type DiscoveryImportBatchInput = {
+  workspaceId?: string;
   entries: DiscoveryImportEntry[];
   maxDepth?: number;
   maxCandidates?: number;
@@ -72,6 +73,7 @@ export async function runDiscoveryImportBatch(
 
   for (const group of groups.values()) {
     const result = await dependencies.workflow.startBatch({
+      workspaceId: input.workspaceId,
       locators: group.locators,
       intake: group.intake,
       ...(input.maxDepth !== undefined ? { maxDepth: input.maxDepth } : {}),

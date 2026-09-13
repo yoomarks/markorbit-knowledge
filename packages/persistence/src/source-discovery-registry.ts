@@ -7,6 +7,7 @@ import type {
   SourceDiscoveryConstraints,
 } from "@markorbit/contracts";
 import {
+  DEFAULT_WORKSPACE,
   RegistryConflictError,
   RegistryError,
   RegistryValidationError,
@@ -15,6 +16,7 @@ import {
 
 const MIGRATION_ID = "1000_vnext_discovery_review_registry";
 const REVIEW_HISTORY_MIGRATION_ID = "1001_source_candidate_review_history";
+const WORKSPACE_SCOPE_MIGRATION_ID = "1132_discovery_workspace_scope";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
 
@@ -23,6 +25,7 @@ export type DiscoveryBatchStatus = "RUNNING" | "COMPLETED" | "FAILED";
 export type CandidateReviewDecision = "ACCEPTED" | "REJECTED";
 
 export type DiscoverySeedRecord = {
+  workspaceId: string;
   seedId: string;
   locator: string;
   metadata?: Record<string, unknown>;
@@ -68,6 +71,7 @@ export type ReopenCandidateInput = {
 };
 
 export type SourceCandidateRecord = {
+  workspaceId: string;
   batchId: string;
   candidate: SourceCandidate;
   firstSeenAt: string;
@@ -76,6 +80,7 @@ export type SourceCandidateRecord = {
 };
 
 export type SourceCandidateListFilters = {
+  workspaceId?: string;
   status?: SourceCandidateStatus;
   statuses?: SourceCandidateStatus[];
   batchId?: string;
@@ -102,18 +107,19 @@ export type ReviewCandidateInput = {
 
 export interface SourceDiscoveryRepository {
   createSeed(input: {
+    workspaceId?: string;
     seedId?: string;
     locator: string;
     metadata?: Record<string, unknown>;
   }): DiscoverySeedRecord;
-  listSeeds(): DiscoverySeedRecord[];
+  listSeeds(workspaceId?: string): DiscoverySeedRecord[];
   createBatch(batch: SourceDiscoveryBatch): DiscoveryBatchRecord;
   completeBatch(batchId: string, candidates: SourceCandidate[]): DiscoveryBatchRecord;
   failBatch(batchId: string, errorMessage: string): DiscoveryBatchRecord;
   getBatch(batchId: string): DiscoveryBatchRecord | null;
-  listBatches(limit?: number): DiscoveryBatchRecord[];
+  listBatches(limit?: number, workspaceId?: string): DiscoveryBatchRecord[];
   getCandidate(candidateId: string): SourceCandidateRecord | null;
-  getCandidateByLocator(locator: string): SourceCandidateRecord | null;
+  getCandidateByLocator(locator: string, workspaceId?: string): SourceCandidateRecord | null;
   listCandidates(filters?: SourceCandidateListFilters): SourceCandidateListResult;
   reviewCandidate(candidateId: string, input: ReviewCandidateInput): SourceCandidateRecord;
   reopenCandidate(candidateId: string, input?: ReopenCandidateInput): SourceCandidateRecord;
@@ -177,6 +183,7 @@ function parseJsonRecord(value: unknown): Record<string, unknown> | undefined {
 function parseSeed(row: Record<string, unknown>): DiscoverySeedRecord {
   const metadata = parseJsonRecord(row.metadata_json);
   return {
+    workspaceId: String(row.workspace_id ?? DEFAULT_WORKSPACE.id),
     seedId: String(row.seed_id),
     locator: String(row.locator),
     status: String(row.status) as DiscoverySeedStatus,
@@ -213,6 +220,7 @@ function parseCandidate(row: Record<string, unknown>): SourceCandidateRecord {
       }
     : undefined;
   return {
+    workspaceId: String(row.workspace_id ?? DEFAULT_WORKSPACE.id),
     batchId: String(row.last_batch_id),
     candidate,
     firstSeenAt: String(row.first_seen_at),
@@ -336,6 +344,88 @@ function ensureReviewHistoryMigration(database: DatabaseSync): void {
   }
 }
 
+function ensureDiscoveryWorkspaceScopeMigration(database: DatabaseSync): void {
+  if (
+    database
+      .prepare("SELECT id FROM schema_migrations WHERE id = ?")
+      .get(WORKSPACE_SCOPE_MIGRATION_ID)
+  ) {
+    return;
+  }
+  database.exec("PRAGMA foreign_keys = OFF;");
+  database.exec("BEGIN IMMEDIATE;");
+  try {
+    database.exec(`
+      CREATE TABLE discovery_seeds_next (
+        seed_id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        locator TEXT NOT NULL,
+        metadata_json TEXT,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE (workspace_id, locator)
+      ) STRICT;
+      INSERT INTO discovery_seeds_next
+        (seed_id, workspace_id, locator, metadata_json, status, created_at, updated_at)
+      SELECT seed_id,
+             COALESCE(json_extract(metadata_json, '$.workspaceId'), '${DEFAULT_WORKSPACE.id}'),
+             locator, metadata_json, status, created_at, updated_at
+      FROM discovery_seeds;
+
+      CREATE TABLE source_candidates_next (
+        candidate_id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        locator TEXT NOT NULL,
+        status TEXT NOT NULL,
+        document_json TEXT NOT NULL,
+        first_batch_id TEXT NOT NULL,
+        last_batch_id TEXT NOT NULL,
+        first_seen_at TEXT NOT NULL,
+        last_seen_at TEXT NOT NULL,
+        review_decision TEXT,
+        reviewed_at TEXT,
+        reviewer TEXT,
+        review_note TEXT,
+        accepted_source_id TEXT,
+        collection_plan_id TEXT,
+        UNIQUE (workspace_id, locator),
+        FOREIGN KEY (first_batch_id) REFERENCES discovery_batches(batch_id),
+        FOREIGN KEY (last_batch_id) REFERENCES discovery_batches(batch_id)
+      ) STRICT;
+      INSERT INTO source_candidates_next
+        (candidate_id, workspace_id, locator, status, document_json, first_batch_id, last_batch_id,
+         first_seen_at, last_seen_at, review_decision, reviewed_at, reviewer, review_note,
+         accepted_source_id, collection_plan_id)
+      SELECT c.candidate_id,
+             COALESCE(json_extract(b.document_json, '$.workspaceId'), '${DEFAULT_WORKSPACE.id}'),
+             c.locator, c.status, c.document_json, c.first_batch_id, c.last_batch_id,
+             c.first_seen_at, c.last_seen_at, c.review_decision, c.reviewed_at, c.reviewer,
+             c.review_note, c.accepted_source_id, c.collection_plan_id
+      FROM source_candidates c
+      LEFT JOIN discovery_batches b ON b.batch_id = c.last_batch_id;
+
+      DROP TABLE discovery_seeds;
+      ALTER TABLE discovery_seeds_next RENAME TO discovery_seeds;
+      DROP TABLE source_candidates;
+      ALTER TABLE source_candidates_next RENAME TO source_candidates;
+      CREATE INDEX idx_source_candidates_status_seen
+        ON source_candidates(workspace_id, status, last_seen_at DESC);
+      CREATE INDEX idx_source_candidates_batch
+        ON source_candidates(workspace_id, last_batch_id, last_seen_at DESC);
+    `);
+    database
+      .prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)")
+      .run(WORKSPACE_SCOPE_MIGRATION_ID, new Date().toISOString());
+    database.exec("COMMIT;");
+  } catch (error) {
+    database.exec("ROLLBACK;");
+    throw error;
+  } finally {
+    database.exec("PRAGMA foreign_keys = ON;");
+  }
+}
+
 export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepository {
   constructor(
     private readonly database: DatabaseSync,
@@ -343,17 +433,20 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
   ) {
     ensureDiscoveryMigration(database);
     ensureReviewHistoryMigration(database);
+    ensureDiscoveryWorkspaceScopeMigration(database);
   }
 
   createSeed(input: {
+    workspaceId?: string;
     seedId?: string;
     locator: string;
     metadata?: Record<string, unknown>;
   }): DiscoverySeedRecord {
+    const workspaceId = input.workspaceId?.trim() || DEFAULT_WORKSPACE.id;
     const locator = normalizeLocator(input.locator);
     const existing = this.database
-      .prepare("SELECT * FROM discovery_seeds WHERE locator = ?")
-      .get(locator) as Record<string, unknown> | undefined;
+      .prepare("SELECT * FROM discovery_seeds WHERE workspace_id = ? AND locator = ?")
+      .get(workspaceId, locator) as Record<string, unknown> | undefined;
     if (existing) return parseSeed(existing);
 
     const timestamp = this.clock().toISOString();
@@ -361,11 +454,12 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
     this.database
       .prepare(
         `INSERT INTO discovery_seeds (
-           seed_id, locator, metadata_json, status, created_at, updated_at
-         ) VALUES (?, ?, ?, 'ACTIVE', ?, ?)`,
+           seed_id, workspace_id, locator, metadata_json, status, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, 'ACTIVE', ?, ?)`,
       )
       .run(
         seedId,
+        workspaceId,
         locator,
         input.metadata ? JSON.stringify(input.metadata) : null,
         timestamp,
@@ -373,6 +467,7 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
       );
 
     return {
+      workspaceId,
       seedId,
       locator,
       status: "ACTIVE",
@@ -382,10 +477,17 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
     };
   }
 
-  listSeeds(): DiscoverySeedRecord[] {
-    return this.database
-      .prepare("SELECT * FROM discovery_seeds ORDER BY updated_at DESC, seed_id DESC")
-      .all()
+  listSeeds(workspaceId?: string): DiscoverySeedRecord[] {
+    const normalizedWorkspaceId = workspaceId?.trim();
+    const statement = normalizedWorkspaceId
+      ? this.database.prepare(
+          "SELECT * FROM discovery_seeds WHERE workspace_id = ? ORDER BY updated_at DESC, seed_id DESC",
+        )
+      : this.database.prepare(
+          "SELECT * FROM discovery_seeds ORDER BY updated_at DESC, seed_id DESC",
+        );
+    return statement
+      .all(...(normalizedWorkspaceId ? [normalizedWorkspaceId] : []))
       .map((row) => parseSeed(row as Record<string, unknown>));
   }
 
@@ -414,26 +516,30 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
       );
     }
 
+    const workspaceId = current.batch.workspaceId?.trim() || DEFAULT_WORKSPACE.id;
     const completedAt = this.clock().toISOString();
     this.database.exec("BEGIN IMMEDIATE;");
     try {
       for (const candidate of candidates) {
         const locator = normalizeLocator(candidate.locator);
         const existing = this.database
-          .prepare("SELECT * FROM source_candidates WHERE candidate_id = ? OR locator = ?")
-          .get(candidate.candidateId, locator) as Record<string, unknown> | undefined;
+          .prepare(
+            "SELECT * FROM source_candidates WHERE candidate_id = ? OR (workspace_id = ? AND locator = ?)",
+          )
+          .get(candidate.candidateId, workspaceId, locator) as Record<string, unknown> | undefined;
 
         if (!existing) {
           const normalized: SourceCandidate = { ...candidate, locator };
           this.database
             .prepare(
               `INSERT INTO source_candidates (
-                 candidate_id, locator, status, document_json, first_batch_id, last_batch_id,
+                 candidate_id, workspace_id, locator, status, document_json, first_batch_id, last_batch_id,
                  first_seen_at, last_seen_at
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             )
             .run(
               normalized.candidateId,
+              workspaceId,
               normalized.locator,
               normalized.status,
               JSON.stringify(normalized),
@@ -446,6 +552,12 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
         }
 
         const existingRecord = parseCandidate(existing);
+        if (existingRecord.workspaceId !== workspaceId) {
+          throw new RegistryConflictError(
+            "SOURCE_CANDIDATE_WORKSPACE_CONFLICT",
+            `Candidate ${candidate.candidateId} belongs to another Workspace`,
+          );
+        }
         const terminal =
           existingRecord.candidate.status === "ACCEPTED" ||
           existingRecord.candidate.status === "REJECTED";
@@ -456,7 +568,7 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
           .prepare(
             `UPDATE source_candidates
              SET status = ?, document_json = ?, last_batch_id = ?, last_seen_at = ?
-             WHERE candidate_id = ?`,
+             WHERE candidate_id = ? AND workspace_id = ?`,
           )
           .run(
             nextCandidate.status,
@@ -464,6 +576,7 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
             batchId,
             completedAt,
             existingRecord.candidate.candidateId,
+            workspaceId,
           );
       }
 
@@ -510,11 +623,21 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
     return row ? parseBatch(row) : null;
   }
 
-  listBatches(limit = 20): DiscoveryBatchRecord[] {
+  listBatches(limit = 20, workspaceId?: string): DiscoveryBatchRecord[] {
     const normalizedLimit = normalizeLimit(limit);
-    return this.database
-      .prepare("SELECT * FROM discovery_batches ORDER BY created_at DESC, batch_id DESC LIMIT ?")
-      .all(normalizedLimit)
+    const normalizedWorkspaceId = workspaceId?.trim();
+    const statement = normalizedWorkspaceId
+      ? this.database.prepare(
+          "SELECT * FROM discovery_batches WHERE COALESCE(json_extract(document_json, '$.workspaceId'), ?) = ? ORDER BY created_at DESC, batch_id DESC LIMIT ?",
+        )
+      : this.database.prepare(
+          "SELECT * FROM discovery_batches ORDER BY created_at DESC, batch_id DESC LIMIT ?",
+        );
+    return statement
+      .all(
+        ...(normalizedWorkspaceId ? [DEFAULT_WORKSPACE.id, normalizedWorkspaceId] : []),
+        normalizedLimit,
+      )
       .map((row) => parseBatch(row as Record<string, unknown>));
   }
 
@@ -525,11 +648,12 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
     return row ? parseCandidate(row) : null;
   }
 
-  getCandidateByLocator(locator: string): SourceCandidateRecord | null {
+  getCandidateByLocator(locator: string, workspaceId?: string): SourceCandidateRecord | null {
     const normalized = normalizeLocator(locator);
+    const normalizedWorkspaceId = workspaceId?.trim() || DEFAULT_WORKSPACE.id;
     const row = this.database
-      .prepare("SELECT * FROM source_candidates WHERE locator = ?")
-      .get(normalized) as Record<string, unknown> | undefined;
+      .prepare("SELECT * FROM source_candidates WHERE workspace_id = ? AND locator = ?")
+      .get(normalizedWorkspaceId, normalized) as Record<string, unknown> | undefined;
     return row ? parseCandidate(row) : null;
   }
 
@@ -539,6 +663,10 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
     const clauses: string[] = [];
     const values: SQLInputValue[] = [];
 
+    if (filters.workspaceId?.trim()) {
+      clauses.push("workspace_id = ?");
+      values.push(filters.workspaceId.trim());
+    }
     if (filters.status) {
       clauses.push("status = ?");
       values.push(filters.status);
@@ -567,9 +695,17 @@ export class SqliteSourceDiscoveryRepository implements SourceDiscoveryRepositor
     const totalRow = this.database
       .prepare(`SELECT COUNT(*) AS count FROM source_candidates ${where}`)
       .get(...values) as { count: number };
+    const summaryWorkspaceId = filters.workspaceId?.trim();
     const summaryRows = this.database
-      .prepare("SELECT status, COUNT(*) AS count FROM source_candidates GROUP BY status")
-      .all() as Array<{ status: SourceCandidateStatus; count: number }>;
+      .prepare(
+        summaryWorkspaceId
+          ? "SELECT status, COUNT(*) AS count FROM source_candidates WHERE workspace_id = ? GROUP BY status"
+          : "SELECT status, COUNT(*) AS count FROM source_candidates GROUP BY status",
+      )
+      .all(...(summaryWorkspaceId ? [summaryWorkspaceId] : [])) as Array<{
+      status: SourceCandidateStatus;
+      count: number;
+    }>;
     const summary: Record<SourceCandidateStatus, number> = {
       DISCOVERED: 0,
       REVIEWED: 0,

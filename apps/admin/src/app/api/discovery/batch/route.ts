@@ -93,8 +93,15 @@ function importEntries(value: unknown): DiscoveryImportEntry[] | undefined {
 
 export async function POST(request: Request) {
   try {
-    await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const body = requireRecord(await readJson(request));
+    const assertedWorkspaceId =
+      typeof body.workspaceId === "string" && body.workspaceId.trim()
+        ? body.workspaceId.trim()
+        : DEFAULT_WORKSPACE.id;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
     const entries = importEntries(body.entries);
     const maxDepth = optionalInteger(body.maxDepth, "maxDepth");
     const maxCandidates = optionalInteger(body.maxCandidates, "maxCandidates");
@@ -105,6 +112,7 @@ export async function POST(request: Request) {
     if (entries) {
       const result = await runDiscoveryImportBatch(
         {
+          workspaceId,
           entries,
           ...(maxDepth !== undefined ? { maxDepth } : {}),
           ...(maxCandidates !== undefined ? { maxCandidates } : {}),
@@ -120,6 +128,7 @@ export async function POST(request: Request) {
       throw new RegistryValidationError("locators must be an array of strings");
     }
     const result = await workflow.startBatch({
+      workspaceId,
       locators: body.locators,
       ...(maxDepth !== undefined ? { maxDepth } : {}),
       ...(maxCandidates !== undefined ? { maxCandidates } : {}),

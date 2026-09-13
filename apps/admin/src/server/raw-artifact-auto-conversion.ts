@@ -5,9 +5,15 @@ import {
   type ConversionProfile,
   type RawArtifact,
 } from "@markorbit/contracts";
-import { RegistryError, RegistryValidationError } from "@markorbit/persistence";
+import {
+  RegistryConflictError,
+  RegistryError,
+  RegistryValidationError,
+  type SourceRepository,
+} from "@markorbit/persistence";
 import type { ConversionRunLedgerRepository } from "@markorbit/persistence/conversion-runs";
 import type { ConverterRegistryRepository } from "@markorbit/persistence/converters";
+import type { WorkspaceRepository } from "@markorbit/persistence/workspaces";
 import { ensureM3CanonicalDocumentAutoProfiles } from "./m3-converter-bootstrap";
 import {
   authorizeRawArtifactForConversionWithDependencies,
@@ -18,6 +24,8 @@ import {
   getConverterRegistryRepository,
   getRawArtifactRepository,
   getRegistryDatabase,
+  getSourceRepository,
+  getWorkspaceRepository,
 } from "./source-registry";
 
 export type AutomaticConversionHandoffResult =
@@ -39,6 +47,8 @@ export type AutomaticConversionHandoffResult =
     };
 
 export type AutomaticConversionDependencies = ConversionAuthorizationDependencies & {
+  workspaces: WorkspaceRepository;
+  sources: SourceRepository;
   conversionRuns: ConversionRunLedgerRepository;
 };
 
@@ -68,6 +78,8 @@ function productionDependencies(): AutomaticConversionDependencies {
     database: getRegistryDatabase(),
     artifacts: getRawArtifactRepository(),
     converters: getConverterRegistryRepository(),
+    workspaces: getWorkspaceRepository(),
+    sources: getSourceRepository(),
     conversionRuns: getConversionRunLedgerRepository(),
   };
 }
@@ -134,6 +146,40 @@ function automaticIdempotencyKey(artifactId: string, profileId: string): string 
   return `auto-profile:${artifactId}:${profileId}`;
 }
 
+function assertAutomaticConversionAdmission(
+  dependencies: AutomaticConversionDependencies,
+  artifact: RawArtifact,
+  workspaceId: string,
+): void {
+  const workspace = dependencies.workspaces.getById(workspaceId);
+  if (!workspace) {
+    throw new RegistryError("WORKSPACE_NOT_FOUND", `Workspace ${workspaceId} was not found`);
+  }
+  if (workspace.status !== "ACTIVE") {
+    throw new RegistryConflictError(
+      "WORKSPACE_NOT_ACTIVE",
+      `Workspace ${workspace.id} is ${workspace.status}`,
+    );
+  }
+
+  const source = dependencies.sources.getById(artifact.sourceId);
+  if (!source) {
+    throw new RegistryError("SOURCE_NOT_FOUND", `Source ${artifact.sourceId} was not found`);
+  }
+  if (source.workspaceId !== workspaceId) {
+    throw new RegistryConflictError(
+      "SOURCE_WORKSPACE_MISMATCH",
+      "RawArtifact Source belongs to another Workspace",
+    );
+  }
+  if (source.status === "ARCHIVED") {
+    throw new RegistryConflictError(
+      "SOURCE_ARCHIVED",
+      `Source ${source.id} is archived and cannot enqueue current Knowledge conversion`,
+    );
+  }
+}
+
 export function dispatchAutomaticConversionForArtifactWithDependencies(
   dependencies: AutomaticConversionDependencies,
   artifactId: string,
@@ -162,6 +208,7 @@ export function dispatchAutomaticConversionForArtifactWithDependencies(
     };
   }
 
+  assertAutomaticConversionAdmission(dependencies, artifact, workspaceId);
   ensureM3CanonicalDocumentAutoProfiles(dependencies.converters, workspaceId);
   const profile = compatibleAutomaticProfile(workspaceId, artifact, dependencies.converters);
   if (!profile) {

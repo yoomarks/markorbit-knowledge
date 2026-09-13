@@ -68,10 +68,12 @@ function optionalStringArray(value: unknown, field: string): string[] | undefine
 
 export async function GET(request: Request) {
   try {
-    await resolveAdminBrowserApiReadAccess(request, DEFAULT_WORKSPACE.id);
     const params = new URL(request.url).searchParams;
+    const assertedWorkspaceId = params.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     return NextResponse.json(
       getDiscoveryWorkflowService().overview({
+        workspaceId,
         candidateStatuses: queryCandidateStatuses(params),
         candidateLimit: optionalQueryInteger(params.get("candidateLimit"), "candidateLimit"),
         candidateOffset: optionalQueryInteger(params.get("candidateOffset"), "candidateOffset"),
@@ -86,13 +88,21 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
     const body = requireRecord(await readJson(request));
+    const assertedWorkspaceId =
+      typeof body.workspaceId === "string" && body.workspaceId.trim()
+        ? body.workspaceId.trim()
+        : DEFAULT_WORKSPACE.id;
+    const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
+      request,
+      assertedWorkspaceId,
+    );
     if (typeof body.locator !== "string") {
       throw new RegistryValidationError("locator is required");
     }
 
     const result = await getDiscoveryWorkflowService().start({
+      workspaceId,
       locator: body.locator,
       maxDepth: optionalInteger(body.maxDepth, "maxDepth"),
       maxCandidates: optionalInteger(body.maxCandidates, "maxCandidates"),
