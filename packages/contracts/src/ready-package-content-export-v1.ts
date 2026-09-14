@@ -51,6 +51,7 @@ const IDS = {
   artifact: /^art_[0-9A-HJKMNP-TV-Z]{26}$/u,
   stagingDocument: /^std_[0-9A-HJKMNP-TV-Z]{26}$/u,
 } as const;
+const GLOBAL_PUBLIC_KNOWLEDGE_WORKSPACE_ID = "global-public";
 const SHA256 = /^[a-f0-9]{64}$/u;
 const MIME_TYPE = /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/iu;
 const CONVERTER_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -129,7 +130,8 @@ export function isReadyPackageContentExportV1(
     typeof value.readyPackageId === "string" &&
     IDS.readyPackage.test(value.readyPackageId) &&
     typeof value.knowledgeWorkspaceId === "string" &&
-    IDS.workspace.test(value.knowledgeWorkspaceId) &&
+    (IDS.workspace.test(value.knowledgeWorkspaceId) ||
+      value.knowledgeWorkspaceId === GLOBAL_PUBLIC_KNOWLEDGE_WORKSPACE_ID) &&
     typeof value.readyPackageDigest === "string" &&
     SHA256.test(value.readyPackageDigest) &&
     typeof provenance.sourceId === "string" &&

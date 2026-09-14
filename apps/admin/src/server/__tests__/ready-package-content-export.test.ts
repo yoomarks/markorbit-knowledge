@@ -177,6 +177,28 @@ describe("ReadyPackage Content Export V1.1 builder", () => {
     expect(handedOff.stagingDocument.content).toBe("# Canonical source\n\nFrozen body.\n");
   });
 
+  it("builds and serializes a current export for the reserved Global public Workspace", async () => {
+    const { readyPackage, repositories, stagingRecord, source } = fixture();
+    const workspaceId = "global-public";
+    readyPackage.workspaceId = workspaceId;
+    repositories.rawArtifacts.getArtifact(ARTIFACT_ID)!.artifact.workspaceId = workspaceId;
+    stagingRecord.descriptor.workspaceId = workspaceId;
+    source.workspaceId = workspaceId;
+    repositories.readyPackages.getById = (id, requestedWorkspaceId) =>
+      id === READY_PACKAGE_ID && requestedWorkspaceId === workspaceId ? readyPackage : null;
+    repositories.staging.getDocument = (id, requestedWorkspaceId) =>
+      id === STAGING_ID && requestedWorkspaceId === workspaceId ? stagingRecord : null;
+
+    const exported = await buildReadyPackageContentExportV1(
+      { workspaceId, readyPackageId: READY_PACKAGE_ID },
+      repositories,
+    );
+    expect(exported.knowledgeWorkspaceId).toBe(workspaceId);
+    expect(JSON.parse(serializeReadyPackageContentExportV1_1(exported)).knowledgeWorkspaceId).toBe(
+      workspaceId,
+    );
+  });
+
   it("freezes Global Reference governance from Source extensions and never from a live catalog lookup", async () => {
     const { repositories, source } = fixture();
     source.tags = ["global-reference-source"];

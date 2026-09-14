@@ -12,6 +12,7 @@ import {
   queryKnowledgeReadModelItemsByIds,
 } from "@markorbit/persistence/knowledge-browser-query";
 import { apiError } from "@/server/api-errors";
+import { projectBrainReadyItem } from "@/server/knowledge-brain-ready-export";
 import {
   collectCompleteKnowledgeSearch,
   composeKnowledgeHybridSearch,
@@ -165,6 +166,10 @@ export async function handleKnowledgeSearchGet(request: Request) {
     const composed = composeKnowledgeHybridSearch(fullTextCandidates, metadataMatches);
     const filtered = filterKnowledgeSearchByGeneratedDate(composed, dateRange);
     const page = filtered.slice(offset, offset + limit);
+    const projectedPage = page.map((item) => ({
+      ...item,
+      ...projectBrainReadyItem(database, item),
+    }));
     const facetResults = scopes.map((scope) =>
       queryKnowledgeReadModel(database, {
         ...structuredQuery,
@@ -206,7 +211,7 @@ export async function handleKnowledgeSearchGet(request: Request) {
         pageSizes: { metadata: SEARCH_PAGE_SIZE, fullText: SEARCH_PAGE_SIZE },
       },
       query: q,
-      items: page,
+      items: projectedPage,
       total: filtered.length,
       offset,
       limit,

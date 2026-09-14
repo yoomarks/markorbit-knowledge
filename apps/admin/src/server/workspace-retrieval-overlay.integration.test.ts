@@ -5,6 +5,7 @@ import type { CanonicalMarkdownMetadataV1 } from "@markorbit/contracts";
 import { DEFAULT_WORKSPACE, SqliteSourceRepository } from "@markorbit/persistence";
 import { SqliteRetrievalIndexRepository } from "@markorbit/persistence/retrieval-index";
 import { SqliteWorkspaceRepository } from "@markorbit/persistence/workspaces";
+import { isCurrentBrainReadyStaging } from "./knowledge-brain-ready-export";
 import {
   resolveCurrentWorkspaceDocument,
   searchWorkspaceRetrievalOverlay,
@@ -114,6 +115,17 @@ describe("workspace retrieval overlay repository integration", () => {
     index(retrieval, WORKSPACE_B, sourceB.id, 12, "doc-b-only");
     index(retrieval, DEFAULT_WORKSPACE.id, sourceGlobal.id, 13, "doc-shared");
 
+    expect(
+      isCurrentBrainReadyStaging(database, WORKSPACE_A, `std_${String(11).padStart(26, "0")}`),
+    ).toBe(true);
+    expect(
+      isCurrentBrainReadyStaging(
+        database,
+        DEFAULT_WORKSPACE.id,
+        `std_${String(13).padStart(26, "0")}`,
+      ),
+    ).toBe(true);
+
     const privateResult = searchWorkspaceRetrievalOverlay(retrieval, {
       workspaceId: WORKSPACE_A,
       query: "orbitoverlay",
@@ -143,6 +155,16 @@ describe("workspace retrieval overlay repository integration", () => {
 
     const workspaceA = workspaces.getById(WORKSPACE_A)!;
     workspaces.updateStatus(WORKSPACE_A, "SUSPENDED", workspaceA.updatedAt);
+    expect(
+      isCurrentBrainReadyStaging(database, WORKSPACE_A, `std_${String(11).padStart(26, "0")}`),
+    ).toBe(false);
+    expect(
+      isCurrentBrainReadyStaging(
+        database,
+        DEFAULT_WORKSPACE.id,
+        `std_${String(13).padStart(26, "0")}`,
+      ),
+    ).toBe(true);
     expect(resolveCurrentWorkspaceDocument(retrieval, WORKSPACE_A, "doc-shared")?.workspaceId).toBe(
       DEFAULT_WORKSPACE.id,
     );
@@ -155,6 +177,13 @@ describe("workspace retrieval overlay repository integration", () => {
     ).toEqual([DEFAULT_WORKSPACE.id]);
 
     new SqliteSourceRepository(database).archive(sourceGlobal.id, sourceGlobal.updatedAt);
+    expect(
+      isCurrentBrainReadyStaging(
+        database,
+        DEFAULT_WORKSPACE.id,
+        `std_${String(13).padStart(26, "0")}`,
+      ),
+    ).toBe(false);
     expect(
       searchWorkspaceRetrievalOverlay(retrieval, {
         workspaceId: WORKSPACE_A,
