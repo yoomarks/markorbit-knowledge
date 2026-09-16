@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -99,7 +100,12 @@ function statusTone(status: BusinessStatus): string {
   return "bg-slate-100 text-slate-600";
 }
 
-export function PackageBusinessWorkbench({ workspaceId }: { workspaceId: string }) {
+export function PackageBusinessWorkbench({
+  workspaceId: fallbackWorkspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [items, setItems] = useState<PackageView[]>([]);

@@ -10,6 +10,11 @@ function sessionErrorMessage(body: AdminSessionResponse, fallback: string): stri
 
 const ADMIN_WORKSPACE_HEADER = "x-markorbit-workspace-id";
 
+function browserWorkspaceIdFromLocation(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URL(window.location.href).searchParams.get("workspaceId")?.trim() || null;
+}
+
 function normalizedWorkspaceId(workspaceId: string): string {
   const normalized = workspaceId.trim();
   if (!normalized) throw new Error("Admin browser workspace context is required");
@@ -39,6 +44,8 @@ export async function adminBrowserMutationHeaders(
 
   const headers = new Headers(initialHeaders);
   headers.set("x-markorbit-csrf-token", body.csrfToken);
+  const workspaceId = browserWorkspaceIdFromLocation();
+  if (workspaceId) headers.set(ADMIN_WORKSPACE_HEADER, normalizedWorkspaceId(workspaceId));
   return headers;
 }
 

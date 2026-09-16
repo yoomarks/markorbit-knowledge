@@ -43,7 +43,8 @@ env:
   MARKORBIT_ADMIN_ORIGINS: http://127.0.0.1:3000
   MARKORBIT_CALIBRATION_SESSION_ID: ses_d2_5_isolated_calibration
   MARKORBIT_CALIBRATION_USER_ID: usr_d2_5_isolated_calibration
-  MARKORBIT_CALIBRATION_WORKSPACE_ID: wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV
+  MARKORBIT_CALIBRATION_WORKSPACE_ID: 44444444-4444-4444-8444-444444444444
+  MARKORBIT_CI_KNOWLEDGE_WORKSPACE_ID: wsp_01ARZ3NDEKTSV4RRFFQ69G5FB4
   MARKORBIT_CALIBRATION_MEMBERSHIP_ID: mem_d2_5_isolated_calibration
 
 concurrency:
@@ -101,6 +102,7 @@ jobs:
 
       - name: Start isolated authenticated control plane
         run: |
+          pnpm --filter @markorbit/worker exec tsx src/bootstrap-ci-admin-knowledge-workspace.ts
           node scripts/admin-browser-calibration-core-auth-stub.mjs > "$RUNNER_TEMP/core-auth-value.log" 2>&1 &
           echo "CORE_AUTH_PID=$!" >> "$GITHUB_ENV"
           for attempt in $(seq 1 30); do
@@ -253,6 +255,7 @@ jobs:
 
       - name: Start isolated authenticated control plane
         run: |
+          pnpm --filter @markorbit/worker exec tsx src/bootstrap-ci-admin-knowledge-workspace.ts
           node scripts/admin-browser-calibration-core-auth-stub.mjs > "$RUNNER_TEMP/core-auth-evidence.log" 2>&1 &
           echo "CORE_AUTH_PID=$!" >> "$GITHUB_ENV"
           for attempt in $(seq 1 30); do

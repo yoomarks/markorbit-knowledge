@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -47,7 +48,8 @@ function StatusIcon({ status }: { status: GlobalSupplyRadarStatus }) {
   return <CircleDashed size={15} aria-hidden="true" />;
 }
 
-export function GlobalSupplyRadar({ workspaceId }: Props) {
+export function GlobalSupplyRadar({ workspaceId: fallbackWorkspaceId }: Props) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [items, setItems] = useState<GlobalSupplyRadarCoverageItem[]>([]);

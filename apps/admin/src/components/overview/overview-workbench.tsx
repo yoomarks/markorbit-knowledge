@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -164,7 +165,8 @@ function statusTone(state: OperationsReadiness["state"]): string {
   return "bg-emerald-50 text-emerald-700";
 }
 
-export function OverviewWorkbench({ workspaceId }: { workspaceId: string }) {
+export function OverviewWorkbench({ workspaceId: fallbackWorkspaceId }: { workspaceId: string }) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [state, setState] = useState<DashboardState | null>(null);

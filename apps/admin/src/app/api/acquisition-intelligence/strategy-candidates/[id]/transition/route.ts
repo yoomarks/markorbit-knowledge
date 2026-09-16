@@ -35,7 +35,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         toStage: body.toStage as AcquisitionPromotionStage,
         actor: {
           actorType: "HUMAN",
-          actorId: principal.userId,
+          actorId: principal.principal.userId,
         },
         evidenceRefs,
         rationale: body.rationale,

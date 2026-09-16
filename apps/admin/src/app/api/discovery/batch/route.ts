@@ -5,7 +5,7 @@ import {
   type AuthorityLevel,
   type SourceCategory,
 } from "@markorbit/contracts";
-import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
 import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     const assertedWorkspaceId =
       typeof body.workspaceId === "string" && body.workspaceId.trim()
         ? body.workspaceId.trim()
-        : DEFAULT_WORKSPACE.id;
+        : undefined;
     const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
       request,
       assertedWorkspaceId,

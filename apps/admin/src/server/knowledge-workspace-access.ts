@@ -2,8 +2,8 @@ import { RegistryValidationError } from "@markorbit/persistence";
 import {
   resolveAdminBrowserApiReadAccess,
   type AdminBrowserApiAccess,
+  type AdminBrowserApiAccessOptions,
 } from "./admin-browser-api-access";
-import type { AdminBrowserSessionOptions } from "./admin-browser-session";
 
 export function requiredKnowledgeWorkspaceId(request: Request): string {
   const workspaceId = new URL(request.url).searchParams.get("workspaceId")?.trim();
@@ -15,7 +15,7 @@ export function requiredKnowledgeWorkspaceId(request: Request): string {
 
 export function resolveKnowledgeWorkspaceReadAccess(
   request: Request,
-  options: AdminBrowserSessionOptions = {},
+  options: AdminBrowserApiAccessOptions = {},
 ): Promise<AdminBrowserApiAccess> {
   return resolveAdminBrowserApiReadAccess(request, requiredKnowledgeWorkspaceId(request), options);
 }

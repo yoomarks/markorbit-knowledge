@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       sourceId: execution.run.sourceId,
       planId: execution.run.planId,
       collectionRunId: execution.run.id,
-      operatorActor: principal.userId,
+      operatorActor: principal.principal.userId,
       idempotencyKey: request.headers.get("Idempotency-Key") ?? undefined,
       dispatchedAt: execution.run.requestedAt,
     });

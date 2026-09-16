@@ -20,11 +20,9 @@ import {
   type RawArtifact,
   type StagingDocumentDescriptor,
 } from "@markorbit/contracts";
-import {
-  DEFAULT_WORKSPACE,
-  SqliteSourceRepository,
-  openRegistryDatabase,
-} from "@markorbit/persistence";
+import { SqliteSourceRepository, openRegistryDatabase } from "@markorbit/persistence";
+import { SqliteCoreWorkspaceBindingRepository } from "@markorbit/persistence/core-workspace-bindings";
+import { SqliteWorkspaceRepository } from "@markorbit/persistence/workspaces";
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import { SqliteStagingContentRegistryRepository } from "@markorbit/persistence/staging-content";
 import { chromium } from "playwright-core";
@@ -34,7 +32,8 @@ const ADMIN_PORT = 3318;
 const AUTH_PORT = 4318;
 const ADMIN_ORIGIN = `http://127.0.0.1:${ADMIN_PORT}`;
 const AUTH_ORIGIN = `http://127.0.0.1:${AUTH_PORT}`;
-const WORKSPACE_ID = DEFAULT_WORKSPACE.id;
+const CORE_WORKSPACE_ID = "33333333-3333-4333-8333-333333333333";
+const KNOWLEDGE_WORKSPACE_ID = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FB2";
 const SOURCE_ID = "src_01ARZ3NDEKTSV4RRFFQ69G5FB1";
 const ARTIFACT_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FB1";
 const STAGING_ID = "std_01ARZ3NDEKTSV4RRFFQ69G5FB1";
@@ -105,9 +104,15 @@ async function stopProcess(child: ChildProcess | null): Promise<void> {
 function seedFixture(databasePath: string, artifactStore: string, stagingStore: string): void {
   const database = openRegistryDatabase(databasePath);
   const clock = () => new Date(FIXED_TIME);
+  const workspaces = new SqliteWorkspaceRepository(database, clock, () => KNOWLEDGE_WORKSPACE_ID);
+  workspaces.create({ slug: "browser-acceptance-edge", name: "Browser Acceptance Edge Workspace" });
+  new SqliteCoreWorkspaceBindingRepository(database, clock).bind(
+    KNOWLEDGE_WORKSPACE_ID,
+    CORE_WORKSPACE_ID,
+  );
   const sources = new SqliteSourceRepository(database, clock, () => SOURCE_ID);
   sources.create({
-    workspaceId: WORKSPACE_ID,
+    workspaceId: KNOWLEDGE_WORKSPACE_ID,
     name: FIXTURE_SOURCE_NAME,
     slug: "browser-acceptance-evidence-source",
     sourceType: "WEB",
@@ -143,7 +148,7 @@ function seedFixture(databasePath: string, artifactStore: string, stagingStore: 
     schemaVersion: SCHEMA_V1_VERSION,
     objectType: "RAW_ARTIFACT",
     id: ARTIFACT_ID,
-    workspaceId: WORKSPACE_ID,
+    workspaceId: KNOWLEDGE_WORKSPACE_ID,
     sourceId: SOURCE_ID,
     version: 1,
     artifactKind: "HTML",
@@ -183,7 +188,7 @@ function seedFixture(databasePath: string, artifactStore: string, stagingStore: 
     contractVersion: CONVERSION_EXECUTION_VERSION,
     objectType: "STAGING_DOCUMENT_DESCRIPTOR",
     id: STAGING_ID,
-    workspaceId: WORKSPACE_ID,
+    workspaceId: KNOWLEDGE_WORKSPACE_ID,
     sourceId: SOURCE_ID,
     rawArtifactId: ARTIFACT_ID,
     conversionRunId: CONVERSION_RUN_ID,
@@ -230,7 +235,7 @@ function seedFixture(databasePath: string, artifactStore: string, stagingStore: 
     )
     .run(
       ARTIFACT_ID,
-      WORKSPACE_ID,
+      KNOWLEDGE_WORKSPACE_ID,
       SOURCE_ID,
       "run_01ARZ3NDEKTSV4RRFFQ69G5FB1",
       "job_browser_acceptance_edge",
@@ -262,7 +267,7 @@ function seedFixture(databasePath: string, artifactStore: string, stagingStore: 
     )
     .run(
       STAGING_ID,
-      WORKSPACE_ID,
+      KNOWLEDGE_WORKSPACE_ID,
       SOURCE_ID,
       ARTIFACT_ID,
       CONVERSION_RUN_ID,
@@ -307,7 +312,7 @@ async function main(): Promise<void> {
     MARKORBIT_CALIBRATION_SESSION_TOKEN: SESSION_TOKEN,
     MARKORBIT_CALIBRATION_SESSION_ID: "ses_browser_acceptance_edge",
     MARKORBIT_CALIBRATION_USER_ID: "usr_browser_acceptance_edge",
-    MARKORBIT_CALIBRATION_WORKSPACE_ID: WORKSPACE_ID,
+    MARKORBIT_CALIBRATION_WORKSPACE_ID: CORE_WORKSPACE_ID,
     MARKORBIT_CALIBRATION_MEMBERSHIP_ID: "mem_browser_acceptance_edge",
   };
 

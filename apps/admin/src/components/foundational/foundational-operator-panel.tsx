@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Eye, RefreshCw, ShieldCheck } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
@@ -77,7 +78,12 @@ async function requestSnapshot(
   return payload;
 }
 
-export function FoundationalOperatorPanel({ workspaceId }: { workspaceId: string }) {
+export function FoundationalOperatorPanel({
+  workspaceId: fallbackWorkspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const [jurisdiction, setJurisdiction] = useState<FoundationalAdvancedJurisdiction>("US");
   const [snapshot, setSnapshot] = useState<FoundationalRemediationQueueSnapshot | null>(null);
   const [loading, setLoading] = useState(true);

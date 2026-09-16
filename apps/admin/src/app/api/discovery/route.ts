@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SourceCandidateStatus } from "@markorbit/contracts";
-import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
 import {
   resolveAdminBrowserApiMutationAccess,
   resolveAdminBrowserApiReadAccess,
@@ -69,7 +69,7 @@ function optionalStringArray(value: unknown, field: string): string[] | undefine
 export async function GET(request: Request) {
   try {
     const params = new URL(request.url).searchParams;
-    const assertedWorkspaceId = params.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const assertedWorkspaceId = params.get("workspaceId")?.trim() || undefined;
     const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     return NextResponse.json(
       getDiscoveryWorkflowService().overview({
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     const assertedWorkspaceId =
       typeof body.workspaceId === "string" && body.workspaceId.trim()
         ? body.workspaceId.trim()
-        : DEFAULT_WORKSPACE.id;
+        : undefined;
     const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
       request,
       assertedWorkspaceId,

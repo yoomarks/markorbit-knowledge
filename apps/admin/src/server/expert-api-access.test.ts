@@ -20,7 +20,8 @@ import {
 const SECRET = "expert-api-test-secret";
 const CORE_SECRET = "0123456789abcdef0123456789abcdef";
 const CSRF_SECRET = "abcdef0123456789abcdef0123456789";
-const WORKSPACE_A = "11111111-1111-4111-8111-111111111111";
+const CORE_WORKSPACE_A = "11111111-1111-4111-8111-111111111111";
+const KNOWLEDGE_WORKSPACE_A = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FB1";
 
 type PrincipalInput = {
   role?: string;
@@ -81,7 +82,7 @@ function browserOptions(role: "REVIEWER" | "READ_ONLY") {
       kind: "WORKSPACE",
       sessionId: "session-browser",
       userId: "user-browser",
-      workspaceId: WORKSPACE_A,
+      workspaceId: CORE_WORKSPACE_A,
       membershipId: "membership-browser",
       role,
       permissions: ["workspace:read", "matter:read", "review:read"],
@@ -94,6 +95,29 @@ function browserOptions(role: "REVIEWER" | "READ_ONLY") {
     allowedOrigins: ["http://knowledge.test"],
     fetchImpl,
     now: new Date("2026-08-26T00:00:00.000Z"),
+    workspaceBindings: {
+      getByCoreWorkspaceId(coreWorkspaceId: string) {
+        return coreWorkspaceId === CORE_WORKSPACE_A
+          ? {
+              coreWorkspaceId,
+              knowledgeWorkspaceId: KNOWLEDGE_WORKSPACE_A,
+              createdAt: "2026-08-26T00:00:00.000Z",
+              updatedAt: "2026-08-26T00:00:00.000Z",
+            }
+          : null;
+      },
+      getByKnowledgeWorkspaceId(knowledgeWorkspaceId: string) {
+        return knowledgeWorkspaceId === KNOWLEDGE_WORKSPACE_A
+          ? {
+              coreWorkspaceId: CORE_WORKSPACE_A,
+              knowledgeWorkspaceId: KNOWLEDGE_WORKSPACE_A,
+              createdAt: "2026-08-26T00:00:00.000Z",
+              updatedAt: "2026-08-26T00:00:00.000Z",
+            }
+          : null;
+      },
+    },
+    assertKnowledgeWorkspaceActive: () => undefined,
   };
 }
 
@@ -106,7 +130,7 @@ function browserRequest(extra: HeadersInit = {}) {
     headers: {
       cookie: "mo_session=browser-token",
       origin: "http://knowledge.test",
-      "x-markorbit-workspace-id": WORKSPACE_A,
+      "x-markorbit-workspace-id": CORE_WORKSPACE_A,
       "x-markorbit-csrf-token": csrfToken,
       ...Object.fromEntries(new Headers(extra)),
     },
@@ -137,9 +161,9 @@ describe("Expert API access", () => {
     await expect(
       resolveExpertReadPrincipal(browserRequest(), browserOptions("REVIEWER")),
     ).resolves.toMatchObject({
-      userId: "user-browser",
-      workspaceId: WORKSPACE_A,
-      role: "REVIEWER",
+      coreWorkspaceId: CORE_WORKSPACE_A,
+      workspaceId: KNOWLEDGE_WORKSPACE_A,
+      principal: { userId: "user-browser", workspaceId: CORE_WORKSPACE_A, role: "REVIEWER" },
     });
     await expect(
       resolveExpertMutationPrincipal(browserRequest(), browserOptions("READ_ONLY")),

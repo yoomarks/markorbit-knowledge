@@ -7,6 +7,9 @@ set -euo pipefail
 : "${MARKORBIT_CORE_INTERNAL_SECRET:?MARKORBIT_CORE_INTERNAL_SECRET is required}"
 : "${MARKORBIT_CI_ADMIN_SESSION_TOKEN:?MARKORBIT_CI_ADMIN_SESSION_TOKEN is required}"
 : "${MARKORBIT_CI_ADMIN_WORKSPACE_ID:?MARKORBIT_CI_ADMIN_WORKSPACE_ID is required}"
+: "${MARKORBIT_CI_KNOWLEDGE_WORKSPACE_ID:?MARKORBIT_CI_KNOWLEDGE_WORKSPACE_ID is required}"
+
+pnpm --filter @markorbit/worker exec tsx src/bootstrap-ci-admin-knowledge-workspace.ts
 
 node scripts/admin-browser-calibration-core-auth-stub.mjs > "$RUNNER_TEMP/admin-auth-stub.log" 2>&1 &
 echo "AUTH_STUB_PID=$!" >> "$GITHUB_ENV"

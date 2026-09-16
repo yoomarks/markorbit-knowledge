@@ -1,3 +1,6 @@
+"use client";
+
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { CanonicalDownstreamPromotionControl } from "./canonical-downstream-promotion-control";
 import { ReadyPackageV2Control } from "./ready-package-v2-control";
 import { ReadyPackageV2DeliveryControl } from "./ready-package-v2-delivery-control";
@@ -8,7 +11,8 @@ import { VaultImportIntentControl } from "./vault-import-intent-control";
 import { VaultInspectionControl } from "./vault-inspection-control";
 import { VaultOriginStagingVerificationControl } from "./vault-origin-staging-verification-control";
 
-export function VaultWorkbench({ workspaceId }: { workspaceId: string }) {
+export function VaultWorkbench({ workspaceId: fallbackWorkspaceId }: { workspaceId: string }) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   return (
     <div className="space-y-6">
       <VaultBindingControl workspaceId={workspaceId} />

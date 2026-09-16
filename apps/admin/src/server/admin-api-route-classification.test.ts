@@ -35,6 +35,7 @@ const BROWSER_BOUNDARY_PATTERNS = [
 const OPERATOR_BOUNDARY_PATTERNS = [
   /\bresolveOperatorServiceReadAccess\b/,
   /\bresolveOperatorServiceMutationAccess\b/,
+  /\bauthenticateOperatorServicePrincipal\b/,
 ] as const;
 
 const WORKER_EXECUTION_DELEGATE_PATTERNS = [/\bhandleWorkerExecution\b/] as const;

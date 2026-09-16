@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
 import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getDiscoveryWorkflowService } from "@/server/discovery-service";
@@ -16,7 +16,7 @@ export async function POST(request: Request, context: RouteContext) {
     const assertedWorkspaceId =
       typeof body.workspaceId === "string" && body.workspaceId.trim()
         ? body.workspaceId.trim()
-        : DEFAULT_WORKSPACE.id;
+        : undefined;
     const { principal, workspaceId } = await resolveAdminBrowserApiMutationAccess(
       request,
       assertedWorkspaceId,

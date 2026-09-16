@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -70,7 +71,12 @@ function coverageTone(percent: number | null): string {
   return "bg-rose-50 text-rose-700";
 }
 
-export function SourceCountryCoverage({ workspaceId }: { workspaceId: string }) {
+export function SourceCountryCoverage({
+  workspaceId: fallbackWorkspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [result, setResult] = useState<CoverageResponse | null>(null);

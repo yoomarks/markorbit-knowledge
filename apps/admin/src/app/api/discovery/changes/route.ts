@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { CANDIDATE_OBSERVATION_DELTAS, type CandidateObservationDelta } from "@markorbit/contracts";
-import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
 import { resolveAdminBrowserApiReadAccess } from "@/server/admin-browser-api-access";
 import { apiError } from "@/server/api-errors";
 import { getSourceDiscoveryRepository } from "@/server/source-registry";
@@ -27,7 +27,7 @@ function readDelta(value: string | null): CandidateObservationDelta {
 
 export async function GET(request: Request) {
   try {
-    await resolveAdminBrowserApiReadAccess(request, DEFAULT_WORKSPACE.id);
+    await resolveAdminBrowserApiReadAccess(request);
     const url = new URL(request.url);
     const delta = readDelta(url.searchParams.get("delta"));
     const limit = readLimit(url.searchParams.get("limit"));

@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         workspaceId: principal.workspaceId,
         stagingDocumentId: typeof body.stagingDocumentId === "string" ? body.stagingDocumentId : "",
         actionCode: actionCode(body.actionCode),
-        actorId: principal.userId,
+        actorId: principal.principal.userId,
         idempotencyKey: typeof body.idempotencyKey === "string" ? body.idempotencyKey : "",
         approved: body.approved === true,
       }),

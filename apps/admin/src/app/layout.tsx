@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { AdminWorkspaceBoundary } from "@/components/admin-workspace";
 import { AdminI18nProvider } from "@/lib/i18n";
 import "./globals.css";
 
@@ -11,7 +13,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body>
-        <AdminI18nProvider>{children}</AdminI18nProvider>
+        <AdminI18nProvider>
+          <Suspense fallback={null}>
+            <AdminWorkspaceBoundary>{children}</AdminWorkspaceBoundary>
+          </Suspense>
+        </AdminI18nProvider>
       </body>
     </html>
   );

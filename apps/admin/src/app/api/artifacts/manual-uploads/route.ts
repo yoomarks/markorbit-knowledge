@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
     const result = await ingestManualUpload({
       workspaceId,
-      actor: { actorType: "LOCAL_ADMIN", actorId: principal.userId },
+      actor: { actorType: "LOCAL_ADMIN", actorId: principal.principal.userId },
       idempotencyKey,
       file: value,
     });

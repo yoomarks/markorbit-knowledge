@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Archive, ChevronLeft, ChevronRight, Search } from "lucide-react";
@@ -216,6 +217,7 @@ function StatusBadge({ status, zh }: { status: SourceDefinition["status"]; zh: b
 }
 
 export function SourceList() {
+  const workspaceId = useResolvedAdminWorkspaceId();
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [filters, setFilters] = useState<Filters>(initialFilters);
@@ -226,6 +228,7 @@ export function SourceList() {
 
   const query = useMemo(() => {
     const params = new URLSearchParams({
+      workspaceId,
       limit: String(PAGE_SIZE),
       offset: String(offset),
       hideLegacySystem: "true",
@@ -234,7 +237,7 @@ export function SourceList() {
       if (value.trim()) params.set(key, value.trim());
     }
     return params.toString();
-  }, [filters, offset]);
+  }, [filters, offset, workspaceId]);
 
   useEffect(() => {
     const controller = new AbortController();

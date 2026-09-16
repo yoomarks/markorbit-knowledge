@@ -11,7 +11,6 @@ import {
   type SourceType,
 } from "@markorbit/contracts";
 import {
-  DEFAULT_WORKSPACE,
   RegistryValidationError,
   assertSourceFilterValue,
   type CreateSourceInput,
@@ -188,7 +187,7 @@ function withLatestAssessments(result: SourceListResult, scopeSources: SourceDef
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim() || DEFAULT_WORKSPACE.id;
+    const assertedWorkspaceId = url.searchParams.get("workspaceId")?.trim() || undefined;
     const { workspaceId } = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId);
     const filters: SourceListFilters = {
       q: url.searchParams.get("q") ?? undefined,
@@ -231,7 +230,7 @@ export async function POST(request: Request) {
     const assertedWorkspaceId =
       typeof body.workspaceId === "string" && body.workspaceId.trim()
         ? body.workspaceId.trim()
-        : DEFAULT_WORKSPACE.id;
+        : undefined;
     const { workspaceId } = await resolveAdminBrowserApiMutationAccess(
       request,
       assertedWorkspaceId,

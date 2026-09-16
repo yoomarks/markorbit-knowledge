@@ -3,41 +3,61 @@ import {
   CaseProducerAccessError,
   type CaseProducerWorkspacePrincipalV1,
 } from "./case-producer-auth";
+import {
+  assertKnowledgeWorkspaceResource,
+  resolveKnowledgeWorkspaceAuthority,
+  type KnowledgeWorkspaceAuthority,
+  type KnowledgeWorkspaceAuthorityOptions,
+} from "./knowledge-workspace-authority";
 
-function assertWorkspace(
-  principal: CaseProducerWorkspacePrincipalV1,
-  assertedWorkspaceId?: string | null,
-): void {
-  if (assertedWorkspaceId && assertedWorkspaceId !== principal.workspaceId) {
-    throw new CaseProducerAccessError(
-      "WORKSPACE_MISMATCH",
-      403,
-      "Workspace Principal does not match the operator-service workspace assertion.",
-    );
-  }
+export type OperatorServiceAccess = KnowledgeWorkspaceAuthority;
+export type OperatorServiceAccessOptions = KnowledgeWorkspaceAuthorityOptions & {
+  internalServiceSecret?: string;
+};
+
+export function authenticateOperatorServicePrincipal(
+  request: Request,
+  options: OperatorServiceAccessOptions = {},
+): CaseProducerWorkspacePrincipalV1 {
+  return authenticateCaseProducerRequest(
+    request,
+    options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET,
+  );
 }
-
-export function assertOperatorServiceResourceWorkspace(
-  principal: CaseProducerWorkspacePrincipalV1,
-  resourceWorkspaceId: string,
-): void {
-  assertWorkspace(principal, resourceWorkspaceId);
-}
-
 export function resolveOperatorServiceReadAccess(
   request: Request,
   assertedWorkspaceId?: string | null,
-): CaseProducerWorkspacePrincipalV1 {
-  const principal = authenticateCaseProducerRequest(request);
-  assertWorkspace(principal, assertedWorkspaceId);
-  return principal;
+  options: OperatorServiceAccessOptions = {},
+): OperatorServiceAccess {
+  const principal = authenticateOperatorServicePrincipal(request, options);
+  return resolveKnowledgeWorkspaceAuthority(principal, assertedWorkspaceId, options);
 }
 
 export function resolveOperatorServiceMutationAccess(
   request: Request,
   assertedWorkspaceId?: string | null,
-): CaseProducerWorkspacePrincipalV1 {
-  const principal = resolveOperatorServiceReadAccess(request, assertedWorkspaceId);
+  options: OperatorServiceAccessOptions = {},
+): OperatorServiceAccess {
+  const access = resolveOperatorServiceReadAccess(request, assertedWorkspaceId, options);
+  if (access.principal.role === "READ_ONLY") {
+    throw new CaseProducerAccessError(
+      "PERMISSION_DENIED",
+      403,
+      "READ_ONLY Workspace Principals cannot mutate operator-service state.",
+    );
+  }
+  return access;
+}
+export function assertOperatorServiceResourceWorkspace(
+  access: OperatorServiceAccess,
+  resourceWorkspaceId: string,
+): void {
+  assertKnowledgeWorkspaceResource(access, resourceWorkspaceId);
+}
+
+export function assertOperatorServiceWritablePrincipal(
+  principal: CaseProducerWorkspacePrincipalV1,
+): void {
   if (principal.role === "READ_ONLY") {
     throw new CaseProducerAccessError(
       "PERMISSION_DENIED",
@@ -45,5 +65,4 @@ export function resolveOperatorServiceMutationAccess(
       "READ_ONLY Workspace Principals cannot mutate operator-service state.",
     );
   }
-  return principal;
 }

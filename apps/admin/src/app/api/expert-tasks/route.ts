@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         ...(typeof body.organizationRef === "string" && body.organizationRef.trim()
           ? { organizationRef: body.organizationRef }
           : {}),
-        requestedBy: principal.userId,
+        requestedBy: principal.principal.userId,
         accessClassification:
           body.accessClassification === "INTERNAL" ||
           body.accessClassification === "RESTRICTED" ||

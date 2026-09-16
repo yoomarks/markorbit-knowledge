@@ -1,3 +1,5 @@
+import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
+import { isCanonicalCoreWorkspaceId } from "@markorbit/persistence/core-workspace-bindings";
 import {
   CaseProducerAccessError,
   type CaseProducerWorkspacePrincipalV1,
@@ -8,57 +10,77 @@ import {
   validateAdminBrowserMutation,
   type AdminBrowserSessionOptions,
 } from "./admin-browser-session";
+import {
+  assertKnowledgeWorkspaceResource,
+  resolveCoreWorkspaceIdForKnowledgeWorkspace,
+  resolveKnowledgeWorkspaceAuthority,
+  type KnowledgeWorkspaceAuthority,
+  type KnowledgeWorkspaceAuthorityOptions,
+} from "./knowledge-workspace-authority";
 
-export type AdminBrowserApiAccess = {
-  principal: CaseProducerWorkspacePrincipalV1;
-  workspaceId: string;
-};
+export type AdminBrowserApiAccess = KnowledgeWorkspaceAuthority;
+export type AdminBrowserApiAccessOptions = AdminBrowserSessionOptions &
+  KnowledgeWorkspaceAuthorityOptions;
 
 function normalizedWorkspaceId(value: string | null | undefined): string | undefined {
   const normalized = value?.trim();
   return normalized || undefined;
 }
 
-function requestForWorkspaceResolution(request: Request, assertedWorkspaceId?: string): Request {
+function requestForWorkspaceResolution(
+  request: Request,
+  assertedWorkspaceId: string | undefined,
+  options: AdminBrowserApiAccessOptions,
+): Request {
   const headerWorkspaceId = normalizedWorkspaceId(request.headers.get(ADMIN_WORKSPACE_HEADER));
   const assertion = normalizedWorkspaceId(assertedWorkspaceId);
-  if (headerWorkspaceId && assertion && headerWorkspaceId !== assertion) {
+  const assertionCoreWorkspaceId = assertion
+    ? isCanonicalCoreWorkspaceId(assertion)
+      ? assertion.toLowerCase()
+      : assertion === DEFAULT_WORKSPACE.id || headerWorkspaceId
+        ? undefined
+        : resolveCoreWorkspaceIdForKnowledgeWorkspace(assertion, options)
+    : undefined;
+
+  if (
+    headerWorkspaceId &&
+    assertionCoreWorkspaceId &&
+    headerWorkspaceId.toLowerCase() !== assertionCoreWorkspaceId
+  ) {
     throw new CaseProducerAccessError(
       "WORKSPACE_MISMATCH",
       403,
-      "Workspace assertion does not match the requested Admin workspace.",
+      "Workspace assertion does not match the requested Core workspace.",
     );
   }
 
   const headers = new Headers(request.headers);
-  if (!headerWorkspaceId && assertion) headers.set(ADMIN_WORKSPACE_HEADER, assertion);
+  if (!headerWorkspaceId && assertionCoreWorkspaceId) {
+    headers.set(ADMIN_WORKSPACE_HEADER, assertionCoreWorkspaceId);
+  }
   return new Request(request.url, { method: request.method, headers });
 }
 
 export async function resolveAdminBrowserApiReadAccess(
   request: Request,
   assertedWorkspaceId?: string,
-  options: AdminBrowserSessionOptions = {},
+  options: AdminBrowserApiAccessOptions = {},
 ): Promise<AdminBrowserApiAccess> {
   const assertion = normalizedWorkspaceId(assertedWorkspaceId);
   const principal = await resolveAdminBrowserWorkspacePrincipal(
-    requestForWorkspaceResolution(request, assertion),
+    requestForWorkspaceResolution(request, assertion, options),
     options,
   );
-  if (assertion && principal.workspaceId !== assertion) {
-    throw new CaseProducerAccessError(
-      "WORKSPACE_MISMATCH",
-      403,
-      "Workspace Principal does not match the requested Admin workspace.",
-    );
-  }
-  return { principal, workspaceId: principal.workspaceId };
+  return resolveKnowledgeWorkspaceAuthority(principal, assertion, {
+    ...options,
+    allowExplicitGlobalPublicScope: true,
+  });
 }
 
 export async function resolveAdminBrowserApiMutationAccess(
   request: Request,
   assertedWorkspaceId?: string,
-  options: AdminBrowserSessionOptions = {},
+  options: AdminBrowserApiAccessOptions = {},
 ): Promise<AdminBrowserApiAccess> {
   const access = await resolveAdminBrowserApiReadAccess(request, assertedWorkspaceId, options);
   validateAdminBrowserMutation(request, access.principal, options);
@@ -75,12 +97,11 @@ export async function resolveAdminBrowserApiMutationAccess(
 export function assertAdminBrowserResourceWorkspace(
   principal: CaseProducerWorkspacePrincipalV1,
   resourceWorkspaceId: string,
+  options: AdminBrowserApiAccessOptions = {},
 ): void {
-  if (principal.workspaceId !== resourceWorkspaceId) {
-    throw new CaseProducerAccessError(
-      "WORKSPACE_MISMATCH",
-      403,
-      "Workspace Principal does not match the requested Admin resource.",
-    );
-  }
+  const authority = resolveKnowledgeWorkspaceAuthority(principal, resourceWorkspaceId, {
+    ...options,
+    allowExplicitGlobalPublicScope: true,
+  });
+  assertKnowledgeWorkspaceResource(authority, resourceWorkspaceId);
 }

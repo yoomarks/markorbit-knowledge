@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Activity, ChevronLeft, ChevronRight, Plus, Recycle, Search, Server } from "lucide-react";
@@ -57,7 +58,8 @@ function StatusBadge({ status }: { status: WorkerRuntimeView["effectiveStatus"] 
   );
 }
 
-export function WorkerList({ workspaceId }: { workspaceId: string }) {
+export function WorkerList({ workspaceId: fallbackWorkspaceId }: { workspaceId: string }) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [offset, setOffset] = useState(0);
   const [result, setResult] = useState<WorkerListResult | null>(null);

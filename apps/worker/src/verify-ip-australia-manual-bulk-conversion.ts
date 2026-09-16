@@ -75,6 +75,24 @@ async function getJson(path: string, init: RequestInit = {}): Promise<Json> {
   return parsed;
 }
 
+function coreWorkspaceId(): string {
+  return requiredString(
+    process.env.MARKORBIT_CALIBRATION_WORKSPACE_ID,
+    "MARKORBIT_CALIBRATION_WORKSPACE_ID",
+  );
+}
+
+function adminBrowserReadHeaders(): Record<string, string> {
+  const sessionToken = requiredString(
+    process.env.MARKORBIT_CALIBRATION_SESSION_TOKEN,
+    "MARKORBIT_CALIBRATION_SESSION_TOKEN",
+  );
+  return {
+    cookie: `mo_session=${sessionToken}`,
+    "x-markorbit-workspace-id": coreWorkspaceId(),
+  };
+}
+
 function operatorServiceReadHeaders(workspaceId: string): Record<string, string> {
   const internalSecret = requiredString(
     process.env.MO_INTERNAL_SERVICE_SECRET,
@@ -258,6 +276,7 @@ function verifyConversionRuns(runs: Json[], sourceId: string, expected: number):
 async function readyPackages(workspaceId: string): Promise<Json[]> {
   const payload = await getJson(
     `/api/ready-packages?workspaceId=${encodeURIComponent(workspaceId)}`,
+    { headers: adminBrowserReadHeaders() },
   );
   return array(payload.readyPackages)
     .map(record)
@@ -365,7 +384,7 @@ async function verifyRetrieval(
     const payload = await getJson(
       `/api/retrieval/search?workspaceId=${encodeURIComponent(workspaceId)}` +
         `&sourceId=${encodeURIComponent(sourceId)}&q=${encodeURIComponent(query)}&limit=10`,
-      { headers: operatorServiceReadHeaders(workspaceId) },
+      { headers: operatorServiceReadHeaders(coreWorkspaceId()) },
     );
     const total = Number(payload.total);
     const items = array(payload.items)
@@ -398,13 +417,25 @@ async function verifyCoreBoundary(
     const readyPackage = packages[index];
     const payload = await getJson(
       `/api/ready-packages/${encodeURIComponent(readyPackage.id)}/core-intake?workspaceId=${encodeURIComponent(workspaceId)}`,
+      { headers: adminBrowserReadHeaders() },
     );
     if (payload.readyPackageStatus !== "VERIFIED" || payload.transportStatus !== "NOT_SUBMITTED") {
       throw new Error(`ReadyPackage ${readyPackage.id} crossed the Core handoff boundary`);
     }
-    if (payload.coreWorkspaceBinding !== null || payload.coreIntakeRequestPreview !== null) {
+    const binding = record(payload.coreWorkspaceBinding);
+    const preview = record(payload.coreIntakeRequestPreview);
+    if (!binding || !preview) {
       throw new Error(
-        `ReadyPackage ${readyPackage.id} unexpectedly acquired a Core workspace binding or preview`,
+        `ReadyPackage ${readyPackage.id} is missing its canonical Core binding or preview`,
+      );
+    }
+    const coreWorkspaceId = requiredString(
+      binding.coreWorkspaceId,
+      "coreWorkspaceBinding.coreWorkspaceId",
+    );
+    if (binding.knowledgeWorkspaceId !== workspaceId || preview.workspaceId !== coreWorkspaceId) {
+      throw new Error(
+        `ReadyPackage ${readyPackage.id} lost Knowledge/Core workspace identity continuity`,
       );
     }
     if (payload.latestCoreIntakeSubmission !== null || payload.latestCoreIntakeReceipt !== null) {
