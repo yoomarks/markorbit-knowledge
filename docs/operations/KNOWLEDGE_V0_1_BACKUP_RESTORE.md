@@ -112,6 +112,26 @@ Verify at minimum:
 
 If V2 delivery was in an unknown-outcome state at backup time, preserve that state. Recovery must use the existing exact frozen-request semantics; restoring from backup does not authorize generation of a new request or a V2-to-V1 fallback.
 
+## Durable platform recovery evidence
+
+After a real backup/readback/restore drill completes, record its bounded result through `recordStorageRecoveryEvidence` from `@markorbit/persistence/storage-recovery-evidence`. This is the canonical ingestion seam used by Platform Operations; the portfolio itself remains read-only.
+
+Record only non-secret recovery facts:
+
+- backup completion timestamp and restore-drill completion timestamp;
+- SHA-256 of the non-secret backup manifest and total backed-up bytes;
+- measured restore throughput;
+- SQLite `integrity_check` result;
+- whether backup readback was verified;
+- whether restored registry reconciliation passed;
+- an opaque evidence reference such as `ops:recovery:20260917-01`.
+
+Do not store filesystem paths, private bucket names, signed URLs, credentials, tokens or decrypted private evidence in the recovery record. The latest completed drill is authoritative: a newer failed drill must not be hidden by an older successful drill.
+
+Platform Administration automatically derives backup age, restore-drill age and restore throughput from the latest durable record. Missing, stale or failed evidence remains `ATTENTION`; it never auto-authorizes a storage migration.
+
+`pnpm release:backup-restore-drill` is a synthetic release probe. It proves the code-level cold-copy contract, but **must not** be ingested as production recovery evidence for a real deployment.
+
 ## Upgrade rollback rule
 
 Before any migration-bearing production upgrade, take a verified backup using this runbook.
