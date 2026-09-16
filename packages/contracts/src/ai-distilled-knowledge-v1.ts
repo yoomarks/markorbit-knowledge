@@ -9,6 +9,7 @@ export const AI_KNOWLEDGE_PROVIDERS = ["DEEPSEEK", "OPENAI", "KIMI", "CLAUDE", "
 
 export type AiKnowledgeProvider = (typeof AI_KNOWLEDGE_PROVIDERS)[number];
 
+/** @deprecated Cognitive instruction ownership belongs to Brain/Method. Read for legacy compatibility only. */
 export type AiInstructionSetV1 = {
   protocolVersion: typeof AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION;
   objectType: typeof AI_INSTRUCTION_SET_OBJECT_TYPE;
@@ -24,6 +25,7 @@ export type AiInstructionSetV1 = {
   triggerEvidenceRefs: readonly string[];
 };
 
+/** @deprecated Research assignment ownership belongs to Brain/Method. Read for legacy compatibility only. */
 export type AiKnowledgeAssignmentV1 = {
   protocolVersion: typeof AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION;
   objectType: typeof AI_KNOWLEDGE_ASSIGNMENT_OBJECT_TYPE;
@@ -39,6 +41,7 @@ export type AiKnowledgeAssignmentV1 = {
   createdAt: string;
 };
 
+/** @deprecated New Knowledge writes should use AiAcquisitionEvidenceV1 for provider evidence. */
 export type AiResearchSubmissionV1 = {
   protocolVersion: typeof AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION;
   objectType: typeof AI_RESEARCH_SUBMISSION_OBJECT_TYPE;
@@ -55,6 +58,7 @@ export type AiResearchSubmissionV1 = {
   providerRequestId?: string;
 };
 
+/** @deprecated Distilled semantic artifacts belong to Brain/Method. Read for legacy compatibility only. */
 export type AiDistilledKnowledgeArtifactV1 = {
   protocolVersion: typeof AI_DISTILLED_KNOWLEDGE_PROTOCOL_VERSION;
   objectType: typeof AI_DISTILLED_KNOWLEDGE_ARTIFACT_OBJECT_TYPE;

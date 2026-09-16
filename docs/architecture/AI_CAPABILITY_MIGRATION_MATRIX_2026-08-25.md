@@ -1,3 +1,5 @@
+> **Superseded ownership note (2026-09-16):** The transport findings in this audit remain useful, but its statement that Knowledge owns prompt/instruction meaning and distilled semantic artifacts is superseded by `AI_EVIDENCE_PLANE_BOUNDARY_V1.md`. New Knowledge work is evidence/provenance only; cognitive ownership moves to Brain/Method.
+
 # AI Capability Migration Matrix — 2026-08-25
 
 Status: **K-CAP-AI-001 Knowledge-side audit complete / main-repo implementation handoff ready**

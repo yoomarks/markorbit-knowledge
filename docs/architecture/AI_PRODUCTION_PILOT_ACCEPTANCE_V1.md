@@ -1,3 +1,5 @@
+> **K0 boundary note (2026-09-16):** Issue #405 and this pilot are infrastructure-evidence acceptance only. They do not establish Knowledge ownership of research strategy, prompts, distillation, semantic conclusions or provider-quality comparison, and they do not authorize provider-surface expansion outside the frozen Evidence Plane seam.
+
 # AI Production Pilot Acceptance V1
 
 Status: **governed implementation acceptance defined; live provider evidence pending**
