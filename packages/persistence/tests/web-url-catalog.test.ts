@@ -152,4 +152,51 @@ describe("web URL catalog", () => {
     expect(repo.nextBatch({ ...scope, limit: 100 })).toEqual([]);
     database.close();
   });
+  it("fails closed when closeout still has in-flight frontier work", () => {
+    const { database, repo } = repository();
+    const url = "https://www.uspto.gov/trademarks/in-flight";
+    repo.upsertDiscovered({ ...scope, discoveryMode: "SITEMAP", urls: [url] });
+    repo.markQueued({ ...scope, runId: "run_live", urls: [url] });
+    expect(() => repo.closeCampaign(scope)).toThrowError(
+      expect.objectContaining({ code: "WEB_URL_CAMPAIGN_HAS_IN_FLIGHT_FRONTIER" }),
+    );
+    expect(repo.campaignState(scope)).toBe("ACTIVE");
+    database.close();
+  });
+
+  it("separates archived history from the active frontier before bounded prune", () => {
+    let observedAt = new Date("2026-09-11T00:00:00.000Z");
+    const { database, repo } = repository(() => observedAt);
+    const urls = [
+      "https://www.uspto.gov/trademarks/history-a",
+      "https://www.uspto.gov/trademarks/history-b",
+    ];
+    repo.upsertDiscovered({ ...scope, discoveryMode: "SITEMAP", urls });
+    expect(repo.closeCampaign(scope).state).toBe("CLOSED");
+    expect(() => repo.nextBatch({ ...scope, limit: 10 })).toThrowError(
+      expect.objectContaining({ code: "WEB_URL_CAMPAIGN_NOT_ACTIVE" }),
+    );
+    expect(repo.archiveCampaign(scope).state).toBe("ARCHIVED");
+    expect(repo.counts(scope)).toEqual({ COLD: 2 });
+    observedAt = new Date("2026-09-20T00:00:00.000Z");
+    expect(
+      repo.pruneArchived({ ...scope, before: new Date("2026-09-12T00:00:00.000Z"), limit: 1 }),
+    ).toEqual({ movedToHistory: 1, remaining: 1 });
+    expect(
+      repo.pruneArchived({ ...scope, before: new Date("2026-09-12T00:00:00.000Z"), limit: 10 }),
+    ).toEqual({ movedToHistory: 1, remaining: 0 });
+    const history = database
+      .prepare(
+        "SELECT canonical_url, status, temperature FROM web_url_catalog_history ORDER BY canonical_url",
+      )
+      .all();
+    expect(history).toEqual([
+      { canonical_url: urls[0], status: "COLD", temperature: "COLD" },
+      { canonical_url: urls[1], status: "COLD", temperature: "COLD" },
+    ]);
+    expect(() =>
+      repo.upsertDiscovered({ ...scope, discoveryMode: "SITEMAP", urls: [urls[0]!] }),
+    ).toThrowError(expect.objectContaining({ code: "WEB_URL_CAMPAIGN_NOT_ACTIVE" }));
+    database.close();
+  });
 });

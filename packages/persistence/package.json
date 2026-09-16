@@ -122,7 +122,10 @@
     "./local-pipeline-adapter": "./src/local-pipeline-adapter.ts",
     "./conversion-pipeline-inspection": "./src/conversion-pipeline-inspection.ts",
     "./source-coverage-verification-audit": "./src/source-coverage-verification-audit.ts",
-    "./web-url-catalog": "./src/web-url-catalog.ts"
+    "./web-url-catalog": "./src/web-url-catalog.ts",
+    "./retention-execution": "./src/retention-execution.ts",
+    "./platform-operations-portfolio": "./src/platform-operations-portfolio.ts",
+    "./storage-operating-envelope": "./src/storage-operating-envelope.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

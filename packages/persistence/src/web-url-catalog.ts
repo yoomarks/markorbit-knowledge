@@ -1,10 +1,12 @@
 import type { DatabaseSync } from "node:sqlite";
-import { initializeRegistry, RegistryValidationError } from "./index";
+import { initializeRegistry, RegistryConflictError, RegistryValidationError } from "./index";
 
 const MIGRATION_ID = "1031_web_url_catalog";
 const CLASSIFICATION_MIGRATION_ID = "1032_web_url_catalog_candidate_classification";
+const LIFECYCLE_MIGRATION_ID = "1141_web_url_catalog_lifecycle";
 
 export type WebUrlCatalogStatus = "DISCOVERED" | "QUEUED" | "FETCHED" | "FAILED" | "COLD";
+export type WebUrlCampaignState = "ACTIVE" | "CLOSED" | "ARCHIVED";
 
 export type WebUrlCatalogRow = {
   workspaceId: string;
@@ -90,6 +92,57 @@ function ensureCandidateClassificationMigration(database: DatabaseSync): void {
   }
 }
 
+function ensureLifecycleMigration(database: DatabaseSync): void {
+  const applied = database
+    .prepare("SELECT id FROM schema_migrations WHERE id = ?")
+    .get(LIFECYCLE_MIGRATION_ID);
+  if (applied) return;
+  database.exec("BEGIN IMMEDIATE;");
+  try {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS web_url_campaign_lifecycle (
+        workspace_id TEXT NOT NULL,
+        campaign_id TEXT NOT NULL,
+        source_key TEXT NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('ACTIVE','CLOSED','ARCHIVED')),
+        created_at TEXT NOT NULL,
+        closed_at TEXT,
+        archived_at TEXT,
+        PRIMARY KEY (workspace_id, campaign_id, source_key)
+      ) STRICT;
+      CREATE TABLE IF NOT EXISTS web_url_catalog_history (
+        workspace_id TEXT NOT NULL,
+        campaign_id TEXT NOT NULL,
+        source_key TEXT NOT NULL,
+        source_id TEXT,
+        canonical_url TEXT NOT NULL,
+        discovery_mode TEXT NOT NULL,
+        discovery_rank INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        first_discovered_at TEXT NOT NULL,
+        last_discovered_at TEXT NOT NULL,
+        queued_run_id TEXT,
+        last_fetched_at TEXT,
+        content_digest TEXT,
+        title TEXT,
+        summary TEXT,
+        collection_eligible INTEGER NOT NULL,
+        temperature TEXT NOT NULL,
+        archived_at TEXT NOT NULL,
+        PRIMARY KEY (workspace_id, campaign_id, source_key, canonical_url)
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS idx_web_url_catalog_history_scope
+        ON web_url_catalog_history(workspace_id, campaign_id, source_key, last_discovered_at);
+    `);
+    database
+      .prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)")
+      .run(LIFECYCLE_MIGRATION_ID, new Date().toISOString());
+    database.exec("COMMIT;");
+  } catch (error) {
+    database.exec("ROLLBACK;");
+    throw error;
+  }
+}
 function normalizeUrl(value: string): string {
   const normalized = value.trim();
   if (!normalized) throw new RegistryValidationError("canonicalUrl is required");
@@ -107,6 +160,205 @@ export class SqliteWebUrlCatalogRepository {
   ) {
     ensureMigration(database);
     ensureCandidateClassificationMigration(database);
+    ensureLifecycleMigration(database);
+  }
+
+  private scope(input: { workspaceId: string; campaignId: string; sourceKey: string }) {
+    return [input.workspaceId, input.campaignId, input.sourceKey] as const;
+  }
+
+  private ensureActiveCampaign(input: {
+    workspaceId: string;
+    campaignId: string;
+    sourceKey: string;
+  }): void {
+    const now = this.clock().toISOString();
+    this.database
+      .prepare(
+        `INSERT OR IGNORE INTO web_url_campaign_lifecycle
+         (workspace_id, campaign_id, source_key, state, created_at)
+         VALUES (?, ?, ?, 'ACTIVE', ?)`,
+      )
+      .run(...this.scope(input), now);
+    const state = this.campaignState(input);
+    if (state !== "ACTIVE") {
+      throw new RegistryConflictError(
+        "WEB_URL_CAMPAIGN_NOT_ACTIVE",
+        `Web URL campaign ${input.campaignId}/${input.sourceKey} is ${state}`,
+      );
+    }
+  }
+
+  campaignState(input: {
+    workspaceId: string;
+    campaignId: string;
+    sourceKey: string;
+  }): WebUrlCampaignState | null {
+    const row = this.database
+      .prepare(
+        `SELECT state FROM web_url_campaign_lifecycle
+         WHERE workspace_id = ? AND campaign_id = ? AND source_key = ?`,
+      )
+      .get(...this.scope(input)) as { state: WebUrlCampaignState } | undefined;
+    return row?.state ?? null;
+  }
+
+  closeCampaign(input: { workspaceId: string; campaignId: string; sourceKey: string }): {
+    state: "CLOSED";
+    counts: Record<string, number>;
+  } {
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      this.ensureActiveCampaign(input);
+      const queued = this.database
+        .prepare(
+          `SELECT COUNT(*) AS count FROM web_url_catalog
+           WHERE workspace_id = ? AND campaign_id = ? AND source_key = ? AND status = 'QUEUED'`,
+        )
+        .get(...this.scope(input)) as { count: number };
+      if (Number(queued.count) > 0) {
+        throw new RegistryConflictError(
+          "WEB_URL_CAMPAIGN_HAS_IN_FLIGHT_FRONTIER",
+          "Campaign cannot close while queued URLs are still in flight",
+          { queued: Number(queued.count) },
+        );
+      }
+      this.database
+        .prepare(
+          `UPDATE web_url_campaign_lifecycle SET state = 'CLOSED', closed_at = ?
+           WHERE workspace_id = ? AND campaign_id = ? AND source_key = ? AND state = 'ACTIVE'`,
+        )
+        .run(this.clock().toISOString(), ...this.scope(input));
+      const counts = this.counts(input);
+      this.database.exec("COMMIT;");
+      return { state: "CLOSED", counts };
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
+  }
+
+  archiveCampaign(input: { workspaceId: string; campaignId: string; sourceKey: string }): {
+    state: "ARCHIVED";
+    counts: Record<string, number>;
+  } {
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      if (this.campaignState(input) !== "CLOSED") {
+        throw new RegistryConflictError(
+          "WEB_URL_CAMPAIGN_NOT_CLOSED",
+          "Campaign must be CLOSED before it can be archived",
+        );
+      }
+      this.database
+        .prepare(
+          `UPDATE web_url_catalog
+           SET collection_eligible = 0, temperature = 'COLD',
+               status = CASE WHEN status = 'DISCOVERED' THEN 'COLD' ELSE status END
+           WHERE workspace_id = ? AND campaign_id = ? AND source_key = ?`,
+        )
+        .run(...this.scope(input));
+      this.database
+        .prepare(
+          `UPDATE web_url_campaign_lifecycle SET state = 'ARCHIVED', archived_at = ?
+           WHERE workspace_id = ? AND campaign_id = ? AND source_key = ? AND state = 'CLOSED'`,
+        )
+        .run(this.clock().toISOString(), ...this.scope(input));
+      this.database.exec("COMMIT;");
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
+    return { state: "ARCHIVED", counts: this.counts(input) };
+  }
+
+  pruneArchived(input: {
+    workspaceId: string;
+    campaignId: string;
+    sourceKey: string;
+    before: Date;
+    limit?: number;
+  }): { movedToHistory: number; remaining: number } {
+    if (!Number.isFinite(input.before.getTime())) {
+      throw new RegistryValidationError("before must be a valid Date");
+    }
+    const limit = input.limit ?? 500;
+    if (!Number.isSafeInteger(limit) || limit <= 0 || limit > 5_000) {
+      throw new RegistryValidationError("prune limit must be an integer in 1..5000");
+    }
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      if (this.campaignState(input) !== "ARCHIVED") {
+        throw new RegistryConflictError(
+          "WEB_URL_CAMPAIGN_NOT_ARCHIVED",
+          "Only ARCHIVED campaigns can be pruned from the active frontier",
+        );
+      }
+      const rows = this.database
+        .prepare(
+          `SELECT * FROM web_url_catalog
+           WHERE workspace_id = ? AND campaign_id = ? AND source_key = ?
+             AND last_discovered_at < ?
+           ORDER BY last_discovered_at ASC, canonical_url ASC LIMIT ?`,
+        )
+        .all(...this.scope(input), input.before.toISOString(), limit) as Array<
+        Record<string, unknown>
+      >;
+      const archivedAt = this.clock().toISOString();
+      const insert = this.database.prepare(`
+        INSERT OR IGNORE INTO web_url_catalog_history (
+          workspace_id, campaign_id, source_key, source_id, canonical_url,
+          discovery_mode, discovery_rank, status, first_discovered_at, last_discovered_at,
+          queued_run_id, last_fetched_at, content_digest, title, summary,
+          collection_eligible, temperature, archived_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const remove = this.database.prepare(`
+        DELETE FROM web_url_catalog
+        WHERE workspace_id = ? AND campaign_id = ? AND source_key = ? AND canonical_url = ?
+      `);
+      let movedToHistory = 0;
+      for (const row of rows) {
+        insert.run(
+          row.workspace_id as never,
+          row.campaign_id as never,
+          row.source_key as never,
+          row.source_id as never,
+          row.canonical_url as never,
+          row.discovery_mode as never,
+          row.discovery_rank as never,
+          row.status as never,
+          row.first_discovered_at as never,
+          row.last_discovered_at as never,
+          row.queued_run_id as never,
+          row.last_fetched_at as never,
+          row.content_digest as never,
+          row.title as never,
+          row.summary as never,
+          row.collection_eligible as never,
+          row.temperature as never,
+          archivedAt,
+        );
+        const removed = remove.run(
+          row.workspace_id as never,
+          row.campaign_id as never,
+          row.source_key as never,
+          row.canonical_url as never,
+        );
+        movedToHistory += Number(removed.changes);
+      }
+      const remaining = this.database
+        .prepare(
+          `SELECT COUNT(*) AS count FROM web_url_catalog
+           WHERE workspace_id = ? AND campaign_id = ? AND source_key = ?`,
+        )
+        .get(...this.scope(input)) as { count: number };
+      this.database.exec("COMMIT;");
+      return { movedToHistory, remaining: Number(remaining.count) };
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
   }
 
   upsertDiscovered(input: {
@@ -163,6 +415,7 @@ export class SqliteWebUrlCatalogRepository {
     };
     this.database.exec("BEGIN IMMEDIATE;");
     try {
+      this.ensureActiveCampaign(input);
       unique.forEach((url, index) => {
         statement.run(
           input.workspaceId,
@@ -195,18 +448,26 @@ export class SqliteWebUrlCatalogRepository {
     sourceKey: string;
     sourceId: string;
   }): number {
-    const result = this.database
-      .prepare(
-        `
-      UPDATE web_url_catalog
-      SET source_id = ?
-      WHERE workspace_id = ? AND campaign_id = ? AND source_key = ?
-        AND collection_eligible = 1
-        AND (source_id IS NULL OR source_id <> ?)
-    `,
-      )
-      .run(input.sourceId, input.workspaceId, input.campaignId, input.sourceKey, input.sourceId);
-    return Number(result.changes);
+    this.database.exec("BEGIN IMMEDIATE;");
+    try {
+      this.ensureActiveCampaign(input);
+      const result = this.database
+        .prepare(
+          `
+        UPDATE web_url_catalog
+        SET source_id = ?
+        WHERE workspace_id = ? AND campaign_id = ? AND source_key = ?
+          AND collection_eligible = 1
+          AND (source_id IS NULL OR source_id <> ?)
+      `,
+        )
+        .run(input.sourceId, input.workspaceId, input.campaignId, input.sourceKey, input.sourceId);
+      this.database.exec("COMMIT;");
+      return Number(result.changes);
+    } catch (error) {
+      this.database.exec("ROLLBACK;");
+      throw error;
+    }
   }
 
   reconcile(input: { workspaceId: string; campaignId: string; sourceKey: string }): {
@@ -312,6 +573,7 @@ export class SqliteWebUrlCatalogRepository {
     sourceKey: string;
     limit: number;
   }): string[] {
+    this.ensureActiveCampaign(input);
     if (!Number.isInteger(input.limit) || input.limit <= 0 || input.limit > 500) {
       throw new RegistryValidationError("batch limit must be an integer in 1..500");
     }
@@ -349,6 +611,7 @@ export class SqliteWebUrlCatalogRepository {
     let changes = 0;
     this.database.exec("BEGIN IMMEDIATE;");
     try {
+      this.ensureActiveCampaign(input);
       for (const url of input.urls) {
         changes += Number(
           statement.run(
