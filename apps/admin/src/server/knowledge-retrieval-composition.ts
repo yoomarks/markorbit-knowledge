@@ -1,4 +1,5 @@
 import {
+  KNOWLEDGE_RETRIEVAL_CORPUS_CAPABILITIES_V1,
   isContentEdgeV1,
   isContentObjectRefV1,
   isKnowledgeRetrievalCompositionQueryV1,
@@ -264,20 +265,44 @@ export async function composeKnowledgeRetrieval(
     workspaceId: query.workspaceId,
     queryText: query.queryText,
     channels: {
-      lexical: { available: true, count: lexicalHits.length },
+      lexical: {
+        available: true,
+        count: lexicalHits.length,
+        corpus: { ...KNOWLEDGE_RETRIEVAL_CORPUS_CAPABILITIES_V1.LEXICAL },
+      },
       graph: query.graphSeed
-        ? { available: true, count: graphNeighbors.length }
-        : { available: false, count: 0, reason: "NO_GRAPH_SEED" },
+        ? {
+            available: true,
+            count: graphNeighbors.length,
+            corpus: { ...KNOWLEDGE_RETRIEVAL_CORPUS_CAPABILITIES_V1.GRAPH },
+          }
+        : {
+            available: false,
+            count: 0,
+            reason: "NO_GRAPH_SEED",
+            corpus: { ...KNOWLEDGE_RETRIEVAL_CORPUS_CAPABILITIES_V1.GRAPH },
+          },
       vector:
         vectorMode === "DISABLED"
-          ? { available: false, count: 0, reason: "DISABLED" }
+          ? {
+              available: false,
+              count: 0,
+              reason: "DISABLED",
+              corpus: { ...KNOWLEDGE_RETRIEVAL_CORPUS_CAPABILITIES_V1.VECTOR },
+            }
           : vector
             ? {
                 available: true,
                 count: vectorHits.length,
                 provider: structuredClone(vector.descriptor),
+                corpus: { ...KNOWLEDGE_RETRIEVAL_CORPUS_CAPABILITIES_V1.VECTOR },
               }
-            : { available: false, count: 0, reason: "PROVIDER_UNAVAILABLE" },
+            : {
+                available: false,
+                count: 0,
+                reason: "PROVIDER_UNAVAILABLE",
+                corpus: { ...KNOWLEDGE_RETRIEVAL_CORPUS_CAPABILITIES_V1.VECTOR },
+              },
     },
     items: resultItems,
   };

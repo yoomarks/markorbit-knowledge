@@ -114,6 +114,7 @@ describe("KG-010 retrieval composition", () => {
       available: false,
       count: 0,
       reason: "PROVIDER_UNAVAILABLE",
+      corpus: { visibleCorpus: "EXACT_WORKSPACE", globalOverlay: "UNSUPPORTED" },
     });
   });
 
@@ -154,6 +155,7 @@ describe("KG-010 retrieval composition", () => {
       available: true,
       count: 2,
       provider: vector.descriptor,
+      corpus: { visibleCorpus: "EXACT_WORKSPACE", globalOverlay: "UNSUPPORTED" },
     });
     expect(JSON.stringify(result)).not.toContain('"blendedScore"');
     expect(JSON.stringify(result)).not.toContain('"relevanceScore"');

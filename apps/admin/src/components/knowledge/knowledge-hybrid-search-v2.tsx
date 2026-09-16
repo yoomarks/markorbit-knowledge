@@ -35,6 +35,7 @@ type SearchItem = {
   id: string;
   workspaceId: string;
   brainReady: boolean;
+  brainReadyReasonCodes: string[];
   readyPackageId: string | null;
   title: string;
   targetPath: string;

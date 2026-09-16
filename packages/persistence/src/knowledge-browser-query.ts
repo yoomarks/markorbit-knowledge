@@ -9,6 +9,7 @@ import {
   type StagingDocumentDescriptor,
 } from "@markorbit/contracts";
 import { RegistryValidationError } from "./index";
+import { projectCurrentGovernedKnowledge } from "./current-governed-knowledge";
 
 export const KNOWLEDGE_BROWSER_QUERY_VERSION = "1.0" as const;
 export const KNOWLEDGE_QUERY_READ_MODEL_VERSION = "2.0" as const;
@@ -234,17 +235,12 @@ export function currentKnowledgeReadyPackageId(
   workspaceId: string,
   stagingDocumentId: string,
 ): string | null {
-  const row = database
-    .prepare(
-      `SELECT rd.ready_package_id
-    FROM retrieval_documents rd
-    WHERE rd.workspace_id = ? AND rd.staging_document_id = ? AND rd.is_current = 1
-      AND EXISTS (SELECT 1 FROM workspaces w WHERE w.id = rd.workspace_id AND json_extract(w.document_json, '$.status') = 'ACTIVE')
-      AND EXISTS (SELECT 1 FROM source_definitions src WHERE src.id = rd.source_id AND src.workspace_id = rd.workspace_id AND json_extract(src.document_json, '$.status') <> 'ARCHIVED')
-    LIMIT 1`,
-    )
-    .get(workspaceId, stagingDocumentId) as { ready_package_id: string } | undefined;
-  return row?.ready_package_id ?? null;
+  const projection = projectCurrentGovernedKnowledge(database, {
+    workspaceId,
+    stagingDocumentId,
+    viewerWorkspaceId: workspaceId,
+  });
+  return projection.states.consumerAdmissible ? projection.readyPackageId : null;
 }
 
 const JOIN_SQL = `
