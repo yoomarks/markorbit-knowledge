@@ -23,6 +23,12 @@ Brain/Method owns research-question strategy, prompt and instruction meaning, sy
 
 Legacy ADK contracts and runtimes remain readable during migration. Their canonical ownership is frozen by `packages/contracts/src/ai-evidence-plane-owner-map-v1.ts`; compatibility code does not establish ongoing Knowledge ownership. New provider or AI runtime surfaces must enter through the evidence-only seam and be classified by that owner map.
 
+## Current governed Knowledge
+
+Knowledge consumer readiness is projected from one canonical state model: `CURRENT != VERIFIED != CONSUMER_ADMISSIBLE != DELIVERED`. ReadyPackage V1/V2, Brain-ready export, Core content delivery and retrieval channels are adapters; none is authority for Knowledge currentness.
+
+Lexical retrieval explicitly supports private Workspace + Global Public Knowledge overlay. Graph and vector retrieval remain exact-Workspace channels and must advertise that limitation rather than silently changing corpus membership. See `docs/architecture/CURRENT_GOVERNED_KNOWLEDGE.md`.
+
 ## Obsidian
 
 Obsidian is the default Knowledge Staging implementation. The durable integration boundary is Markdown, YAML properties, Wiki Links, attachments and file/Git history. Core protocols must not depend on an optional Obsidian community plugin.

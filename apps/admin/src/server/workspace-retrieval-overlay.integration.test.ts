@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { CanonicalMarkdownMetadataV1 } from "@markorbit/contracts";
 import { DEFAULT_WORKSPACE, SqliteSourceRepository } from "@markorbit/persistence";
+import { projectCurrentGovernedKnowledge } from "@markorbit/persistence/current-governed-knowledge";
 import { SqliteRetrievalIndexRepository } from "@markorbit/persistence/retrieval-index";
 import { SqliteWorkspaceRepository } from "@markorbit/persistence/workspaces";
 import { isCurrentBrainReadyStaging } from "./knowledge-brain-ready-export";
@@ -67,7 +68,50 @@ function metadata(
   };
 }
 
+function ensureGovernedProjectionFixture(database: DatabaseSync) {
+  database.exec(`
+    CREATE TABLE staging_documents (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      source_id TEXT NOT NULL
+    ) STRICT;
+    CREATE TABLE ready_packages (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      document_json TEXT NOT NULL
+    ) STRICT;
+  `);
+}
+
+function seedGovernedProjectionEvidence(
+  database: DatabaseSync,
+  workspaceId: string,
+  sourceId: string,
+  ordinal: number,
+) {
+  const id = String(ordinal).padStart(26, "0");
+  const stagingDocumentId = `std_${id}`;
+  const readyPackageId = `rdp_${id}`;
+  database
+    .prepare("INSERT INTO staging_documents (id, workspace_id, source_id) VALUES (?, ?, ?)")
+    .run(stagingDocumentId, workspaceId, sourceId);
+  database
+    .prepare("INSERT INTO ready_packages (id, workspace_id, document_json) VALUES (?, ?, ?)")
+    .run(
+      readyPackageId,
+      workspaceId,
+      JSON.stringify({
+        id: readyPackageId,
+        workspaceId,
+        status: "VERIFIED",
+        evidence: { stagingDocumentId, verificationOutcome: "PASS" },
+        createdAt: "2026-09-13T09:01:00.000Z",
+      }),
+    );
+}
+
 function index(
+  database: DatabaseSync,
   retrieval: SqliteRetrievalIndexRepository,
   workspaceId: string,
   sourceId: string,
@@ -86,6 +130,7 @@ function index(
     contentSha256: createHash("sha256").update(markdown).digest("hex"),
     canonicalMarkdown: markdown,
   });
+  seedGovernedProjectionEvidence(database, workspaceId, sourceId, ordinal);
 }
 
 describe("workspace retrieval overlay repository integration", () => {
@@ -110,10 +155,11 @@ describe("workspace retrieval overlay repository integration", () => {
       "overlay-global",
     );
 
+    ensureGovernedProjectionFixture(database);
     const retrieval = new SqliteRetrievalIndexRepository(database);
-    index(retrieval, WORKSPACE_A, sourceA.id, 11, "doc-shared");
-    index(retrieval, WORKSPACE_B, sourceB.id, 12, "doc-b-only");
-    index(retrieval, DEFAULT_WORKSPACE.id, sourceGlobal.id, 13, "doc-shared");
+    index(database, retrieval, WORKSPACE_A, sourceA.id, 11, "doc-shared");
+    index(database, retrieval, WORKSPACE_B, sourceB.id, 12, "doc-b-only");
+    index(database, retrieval, DEFAULT_WORKSPACE.id, sourceGlobal.id, 13, "doc-shared");
 
     expect(
       isCurrentBrainReadyStaging(database, WORKSPACE_A, `std_${String(11).padStart(26, "0")}`),
@@ -125,6 +171,16 @@ describe("workspace retrieval overlay repository integration", () => {
         `std_${String(13).padStart(26, "0")}`,
       ),
     ).toBe(true);
+    expect(
+      projectCurrentGovernedKnowledge(database, {
+        workspaceId: WORKSPACE_A,
+        stagingDocumentId: `std_${String(11).padStart(26, "0")}`,
+        viewerWorkspaceId: WORKSPACE_A,
+      }),
+    ).toMatchObject({
+      states: { current: true, verified: true, consumerAdmissible: true, delivered: false },
+      reasonCodes: [],
+    });
 
     const privateResult = searchWorkspaceRetrievalOverlay(retrieval, {
       workspaceId: WORKSPACE_A,
@@ -159,6 +215,16 @@ describe("workspace retrieval overlay repository integration", () => {
       isCurrentBrainReadyStaging(database, WORKSPACE_A, `std_${String(11).padStart(26, "0")}`),
     ).toBe(false);
     expect(
+      projectCurrentGovernedKnowledge(database, {
+        workspaceId: WORKSPACE_A,
+        stagingDocumentId: `std_${String(11).padStart(26, "0")}`,
+        viewerWorkspaceId: WORKSPACE_A,
+      }),
+    ).toMatchObject({
+      states: { current: true, verified: true, consumerAdmissible: false, delivered: false },
+      reasonCodes: ["WORKSPACE_INACTIVE"],
+    });
+    expect(
       isCurrentBrainReadyStaging(
         database,
         DEFAULT_WORKSPACE.id,
@@ -184,6 +250,16 @@ describe("workspace retrieval overlay repository integration", () => {
         `std_${String(13).padStart(26, "0")}`,
       ),
     ).toBe(false);
+    expect(
+      projectCurrentGovernedKnowledge(database, {
+        workspaceId: DEFAULT_WORKSPACE.id,
+        stagingDocumentId: `std_${String(13).padStart(26, "0")}`,
+        viewerWorkspaceId: DEFAULT_WORKSPACE.id,
+      }),
+    ).toMatchObject({
+      states: { current: true, verified: true, consumerAdmissible: false, delivered: false },
+      reasonCodes: ["SOURCE_ARCHIVED"],
+    });
     expect(
       searchWorkspaceRetrievalOverlay(retrieval, {
         workspaceId: WORKSPACE_A,

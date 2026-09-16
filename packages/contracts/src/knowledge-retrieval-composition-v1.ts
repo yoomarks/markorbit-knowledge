@@ -3,6 +3,7 @@ import {
   type ContentEdgeV1,
   type ContentObjectRefV1,
 } from "./content-relationship-v1";
+import type { KnowledgeRetrievalCorpusCapabilityV1 } from "./current-governed-knowledge-v1";
 
 export const KNOWLEDGE_RETRIEVAL_COMPOSITION_PROTOCOL_VERSION = "1.0" as const;
 export const KNOWLEDGE_VECTOR_MODES = ["DISABLED", "OPTIONAL", "REQUIRED"] as const;
@@ -65,17 +66,19 @@ export type KnowledgeRetrievalCompositionItemV1 = {
 };
 
 export type KnowledgeRetrievalChannelStatusV1 = {
-  lexical: { available: true; count: number };
+  lexical: { available: true; count: number; corpus?: KnowledgeRetrievalCorpusCapabilityV1 };
   graph: {
     available: boolean;
     count: number;
     reason?: "NO_GRAPH_SEED";
+    corpus?: KnowledgeRetrievalCorpusCapabilityV1;
   };
   vector: {
     available: boolean;
     count: number;
     reason?: "DISABLED" | "PROVIDER_UNAVAILABLE";
     provider?: KnowledgeVectorProviderDescriptorV1;
+    corpus?: KnowledgeRetrievalCorpusCapabilityV1;
   };
 };
 

@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ReadyPackage, ReadyPackageContentExportV1_1 } from "@markorbit/contracts";
+import type {
+  CurrentGovernedKnowledgeV1,
+  KnowledgeAdmissibilityReasonCode,
+  ReadyPackage,
+  ReadyPackageContentExportV1_1,
+} from "@markorbit/contracts";
 import { DEFAULT_WORKSPACE } from "@markorbit/persistence";
 import { buildBrainReadyPackageExport } from "./knowledge-brain-ready-export";
 
@@ -17,11 +22,35 @@ function readyPackage(workspaceId: string): ReadyPackage {
     createdAt: "2026-09-13T00:00:00.000Z",
   };
 }
+function governed(
+  workspaceId: string,
+  reasonCodes: readonly KnowledgeAdmissibilityReasonCode[] = [],
+): CurrentGovernedKnowledgeV1 {
+  const admissible = reasonCodes.length === 0;
+  return {
+    protocolVersion: "1.0",
+    objectType: "CURRENT_GOVERNED_KNOWLEDGE",
+    workspaceId,
+    stagingDocumentId: STAGING,
+    sourceId: "src_test",
+    readyPackageId: PACKAGE,
+    states: {
+      current: !reasonCodes.includes("CONTENT_NOT_CURRENT"),
+      verified: !reasonCodes.some((code) => code.startsWith("VERIFICATION_")),
+      consumerAdmissible: admissible,
+      delivered: false,
+    },
+    reasonCodes,
+  };
+}
 
 function exported(workspaceId: string) {
   return { knowledgeWorkspaceId: workspaceId } as ReadyPackageContentExportV1_1;
 }
-function dependencies(workspaceId: string, current = true) {
+function dependencies(
+  workspaceId: string,
+  reasonCodes: readonly KnowledgeAdmissibilityReasonCode[] = [],
+) {
   const exportContent = vi.fn(async () => exported(workspaceId));
   return {
     exportContent,
@@ -30,14 +59,14 @@ function dependencies(workspaceId: string, current = true) {
         getById: (id: string, requestedWorkspaceId: string) =>
           id === PACKAGE && requestedWorkspaceId === workspaceId ? readyPackage(workspaceId) : null,
       },
-      isCurrentStaging: () => current,
+      projectGovernance: () => governed(workspaceId, reasonCodes),
       exportContent,
     },
   };
 }
 
 describe("Brain-ready ReadyPackage export", () => {
-  it("allows a Workspace to export its own current Knowledge", async () => {
+  it("allows a Workspace to export its own governed Knowledge", async () => {
     const deps = dependencies(A);
     const result = await buildBrainReadyPackageExport(
       { viewerWorkspaceId: A, knowledgeWorkspaceId: A, readyPackageId: PACKAGE },
@@ -46,7 +75,8 @@ describe("Brain-ready ReadyPackage export", () => {
     expect(result.knowledgeWorkspaceId).toBe(A);
     expect(deps.exportContent).toHaveBeenCalledWith({ workspaceId: A, readyPackageId: PACKAGE });
   });
-  it("allows a private Workspace to export current Global Knowledge", async () => {
+
+  it("allows a private Workspace to export governed Global Knowledge", async () => {
     const deps = dependencies(DEFAULT_WORKSPACE.id);
     const result = await buildBrainReadyPackageExport(
       {
@@ -59,32 +89,32 @@ describe("Brain-ready ReadyPackage export", () => {
     expect(result.knowledgeWorkspaceId).toBe(DEFAULT_WORKSPACE.id);
   });
 
-  it("rejects another private Workspace and private Knowledge from Global", async () => {
+  it("fails with the canonical visibility reason code", async () => {
+    const deps = dependencies(B, ["CORPUS_NOT_VISIBLE"]);
     await expect(
       buildBrainReadyPackageExport(
         { viewerWorkspaceId: A, knowledgeWorkspaceId: B, readyPackageId: PACKAGE },
-        dependencies(B).value,
-      ),
-    ).rejects.toMatchObject({ code: "BRAIN_READY_EXPORT_WORKSPACE_NOT_VISIBLE" });
-    await expect(
-      buildBrainReadyPackageExport(
-        {
-          viewerWorkspaceId: DEFAULT_WORKSPACE.id,
-          knowledgeWorkspaceId: A,
-          readyPackageId: PACKAGE,
-        },
-        dependencies(A).value,
-      ),
-    ).rejects.toMatchObject({ code: "BRAIN_READY_EXPORT_WORKSPACE_NOT_VISIBLE" });
-  });
-  it("fails closed when the ReadyPackage is no longer current Knowledge", async () => {
-    const deps = dependencies(A, false);
-    await expect(
-      buildBrainReadyPackageExport(
-        { viewerWorkspaceId: A, knowledgeWorkspaceId: A, readyPackageId: PACKAGE },
         deps.value,
       ),
-    ).rejects.toMatchObject({ code: "BRAIN_READY_EXPORT_NOT_CURRENT" });
+    ).rejects.toMatchObject({ code: "CORPUS_NOT_VISIBLE" });
     expect(deps.exportContent).not.toHaveBeenCalled();
+  });
+  it("fails stale and unverified exports with bounded reason codes", async () => {
+    for (const reason of [
+      "CONTENT_NOT_CURRENT",
+      "WORKSPACE_INACTIVE",
+      "SOURCE_ARCHIVED",
+      "VERIFICATION_MISSING",
+      "VERIFICATION_NOT_ACCEPTABLE",
+    ] as const) {
+      const deps = dependencies(A, [reason]);
+      await expect(
+        buildBrainReadyPackageExport(
+          { viewerWorkspaceId: A, knowledgeWorkspaceId: A, readyPackageId: PACKAGE },
+          deps.value,
+        ),
+      ).rejects.toMatchObject({ code: reason });
+      expect(deps.exportContent).not.toHaveBeenCalled();
+    }
   });
 });

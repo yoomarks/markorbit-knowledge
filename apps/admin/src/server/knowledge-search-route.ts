@@ -168,7 +168,7 @@ export async function handleKnowledgeSearchGet(request: Request) {
     const page = filtered.slice(offset, offset + limit);
     const projectedPage = page.map((item) => ({
       ...item,
-      ...projectBrainReadyItem(database, item),
+      ...projectBrainReadyItem(database, item, workspaceId),
     }));
     const facetResults = scopes.map((scope) =>
       queryKnowledgeReadModel(database, {

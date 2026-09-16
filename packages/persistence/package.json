@@ -57,6 +57,7 @@
     "./production-validation-scorecard-snapshots": "./src/production-validation-scorecard-snapshots.ts",
     "./producer-core-reliability-scorecard": "./src/producer-core-reliability-scorecard.ts",
     "./knowledge-browser-query": "./src/knowledge-browser-query.ts",
+    "./current-governed-knowledge": "./src/current-governed-knowledge.ts",
     "./production-validation-failure-taxonomy": "./src/production-validation-failure-taxonomy.ts",
     "./radar-source-discovery-intake": "./src/radar-source-discovery-intake.ts",
     "./representative-source-activation": "./src/representative-source-activation.ts",

@@ -1,15 +1,18 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { ReadyPackageContentExportV1_1 } from "@markorbit/contracts";
+import type {
+  CurrentGovernedKnowledgeV1,
+  KnowledgeAdmissibilityReasonCode,
+  ReadyPackageContentExportV1_1,
+} from "@markorbit/contracts";
 import {
   RegistryConflictError,
   RegistryError,
   RegistryValidationError,
 } from "@markorbit/persistence";
-import { currentKnowledgeReadyPackageId } from "@markorbit/persistence/knowledge-browser-query";
+import { projectCurrentGovernedKnowledge } from "@markorbit/persistence/current-governed-knowledge";
 import type { ReadyPackageRegistryRepository } from "@markorbit/persistence/ready-packages";
 import { buildConfiguredReadyPackageContentExportV1 } from "./ready-package-content-export";
 import { getReadyPackageRepository, getRegistryDatabase } from "./source-registry";
-import { workspaceRetrievalScopes } from "./workspace-retrieval-overlay";
 
 export type BrainReadyPackageExportInput = {
   viewerWorkspaceId: string;
@@ -17,18 +20,19 @@ export type BrainReadyPackageExportInput = {
   readyPackageId: string;
 };
 
-export type BrainReadyProjectionItem = {
-  id: string;
-  workspaceId: string;
-};
+export type BrainReadyProjectionItem = { id: string; workspaceId: string };
 export type BrainReadyProjection = {
   brainReady: boolean;
   readyPackageId: string | null;
+  brainReadyReasonCodes: readonly KnowledgeAdmissibilityReasonCode[];
 };
-
 type BrainReadyDependencies = {
   readyPackages: Pick<ReadyPackageRegistryRepository, "getById">;
-  isCurrentStaging: (workspaceId: string, stagingDocumentId: string) => boolean;
+  projectGovernance: (input: {
+    viewerWorkspaceId: string;
+    workspaceId: string;
+    stagingDocumentId: string;
+  }) => CurrentGovernedKnowledgeV1;
   exportContent: (input: {
     workspaceId: string;
     readyPackageId: string;
@@ -41,23 +45,25 @@ function required(value: string, field: string): string {
   return normalized;
 }
 
-function assertKnowledgeWorkspaceVisible(
-  viewerWorkspaceId: string,
-  knowledgeWorkspaceId: string,
-): void {
-  if (!workspaceRetrievalScopes(viewerWorkspaceId).includes(knowledgeWorkspaceId)) {
-    throw new RegistryConflictError(
-      "BRAIN_READY_EXPORT_WORKSPACE_NOT_VISIBLE",
-      "Knowledge Workspace is outside the viewer Workspace retrieval scope",
-    );
-  }
+function assertConsumerAdmissible(projection: CurrentGovernedKnowledgeV1): void {
+  if (projection.states.consumerAdmissible) return;
+  const code = projection.reasonCodes[0] ?? "VERIFICATION_NOT_ACCEPTABLE";
+  throw new RegistryConflictError(
+    code,
+    `Knowledge content is not consumer-admissible: ${projection.reasonCodes.join(", ") || code}`,
+    { reasonCodes: [...projection.reasonCodes] },
+  );
 }
 export function isCurrentBrainReadyStaging(
   database: DatabaseSync,
   workspaceId: string,
   stagingDocumentId: string,
 ): boolean {
-  return currentKnowledgeReadyPackageId(database, workspaceId, stagingDocumentId) !== null;
+  return projectCurrentGovernedKnowledge(database, {
+    workspaceId,
+    stagingDocumentId,
+    viewerWorkspaceId: workspaceId,
+  }).states.consumerAdmissible;
 }
 
 export async function buildBrainReadyPackageExport(
@@ -67,8 +73,6 @@ export async function buildBrainReadyPackageExport(
   const viewerWorkspaceId = required(input.viewerWorkspaceId, "viewerWorkspaceId");
   const knowledgeWorkspaceId = required(input.knowledgeWorkspaceId, "knowledgeWorkspaceId");
   const readyPackageId = required(input.readyPackageId, "readyPackageId");
-  assertKnowledgeWorkspaceVisible(viewerWorkspaceId, knowledgeWorkspaceId);
-
   const readyPackage = dependencies.readyPackages.getById(readyPackageId, knowledgeWorkspaceId);
   if (!readyPackage) {
     throw new RegistryError(
@@ -76,12 +80,17 @@ export async function buildBrainReadyPackageExport(
       `ReadyPackage ${readyPackageId} was not found`,
     );
   }
-  if (
-    !dependencies.isCurrentStaging(knowledgeWorkspaceId, readyPackage.evidence.stagingDocumentId)
-  ) {
+  const projection = dependencies.projectGovernance({
+    viewerWorkspaceId,
+    workspaceId: knowledgeWorkspaceId,
+    stagingDocumentId: readyPackage.evidence.stagingDocumentId,
+  });
+  assertConsumerAdmissible(projection);
+  if (projection.readyPackageId !== readyPackageId) {
     throw new RegistryConflictError(
-      "BRAIN_READY_EXPORT_NOT_CURRENT",
-      "ReadyPackage is not part of current retrievable Knowledge",
+      "CONTENT_NOT_CURRENT",
+      "Requested ReadyPackage is not the current governed package for this Knowledge content",
+      { reasonCodes: ["CONTENT_NOT_CURRENT"] },
     );
   }
 
@@ -97,25 +106,35 @@ export function buildConfiguredBrainReadyPackageExport(
   const database = getRegistryDatabase();
   return buildBrainReadyPackageExport(input, {
     readyPackages: getReadyPackageRepository(),
-    isCurrentStaging: (workspaceId, stagingDocumentId) =>
-      isCurrentBrainReadyStaging(database, workspaceId, stagingDocumentId),
+    projectGovernance: ({ viewerWorkspaceId, workspaceId, stagingDocumentId }) =>
+      projectCurrentGovernedKnowledge(database, {
+        viewerWorkspaceId,
+        workspaceId,
+        stagingDocumentId,
+      }),
     exportContent: buildConfiguredReadyPackageContentExportV1,
   });
 }
+
 export function projectBrainReadyItem(
   database: DatabaseSync,
   item: BrainReadyProjectionItem,
-  readyPackages: Pick<ReadyPackageRegistryRepository, "getById"> = getReadyPackageRepository(),
+  viewerWorkspaceId = item.workspaceId,
 ): BrainReadyProjection {
-  if (!isCurrentBrainReadyStaging(database, item.workspaceId, item.id)) {
-    return { brainReady: false, readyPackageId: null };
-  }
-  const readyPackageId = currentKnowledgeReadyPackageId(database, item.workspaceId, item.id);
-  if (!readyPackageId) return { brainReady: false, readyPackageId: null };
-
-  const readyPackage = readyPackages.getById(readyPackageId, item.workspaceId);
-  if (!readyPackage || !["VERIFIED", "HANDED_OFF"].includes(readyPackage.status)) {
-    return { brainReady: false, readyPackageId: null };
-  }
-  return { brainReady: true, readyPackageId: readyPackage.id };
+  const projection = projectCurrentGovernedKnowledge(database, {
+    workspaceId: item.workspaceId,
+    stagingDocumentId: item.id,
+    viewerWorkspaceId,
+  });
+  return projection.states.consumerAdmissible && projection.readyPackageId
+    ? {
+        brainReady: true,
+        readyPackageId: projection.readyPackageId,
+        brainReadyReasonCodes: [],
+      }
+    : {
+        brainReady: false,
+        readyPackageId: null,
+        brainReadyReasonCodes: projection.reasonCodes,
+      };
 }

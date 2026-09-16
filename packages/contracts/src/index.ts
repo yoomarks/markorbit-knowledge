@@ -53,6 +53,7 @@ export * from "./case-live-acceptance-v1";
 export * from "./content-relationship-v1";
 export * from "./knowledge-relationship-query-v1";
 export * from "./knowledge-retrieval-composition-v1";
+export * from "./current-governed-knowledge-v1";
 export { SOURCE_REGISTRY_VERSION } from "./source-registry-v1";
 export type {
   SourceKind as RegistrySourceKind,

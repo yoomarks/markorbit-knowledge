@@ -3,6 +3,7 @@ import { createReadStream } from "node:fs";
 import {
   READY_PACKAGE_CONTENT_EXPORT_V1_1_VERSION,
   assertReadyPackageContentExportV1_1,
+  type CurrentGovernedKnowledgeV1,
   type ReadyPackageContentExportV1_1,
   type ReadyPackageEvidence,
 } from "@markorbit/contracts";
@@ -13,10 +14,12 @@ import {
   type SourceRepository,
 } from "@markorbit/persistence";
 import type { RawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
+import { projectCurrentGovernedKnowledge } from "@markorbit/persistence/current-governed-knowledge";
 import type { ReadyPackageRegistryRepository } from "@markorbit/persistence/ready-packages";
 import type { StagingContentRegistryRepository } from "@markorbit/persistence/staging-content";
 import {
   getRawArtifactRepository,
+  getRegistryDatabase,
   getReadyPackageRepository,
   getSourceRepository,
   getStagingContentRepository,
@@ -134,6 +137,23 @@ function sameConverter(
   right: { converterId: string; version: string },
 ): boolean {
   return left.converterId === right.converterId && left.version === right.version;
+}
+
+export function assertReadyPackageContentConsumerAdmissible(
+  projection: CurrentGovernedKnowledgeV1,
+  expectedReadyPackageId: string,
+): void {
+  if (
+    !projection.states.consumerAdmissible ||
+    projection.readyPackageId !== expectedReadyPackageId
+  ) {
+    const code = projection.reasonCodes[0] ?? "CONTENT_NOT_CURRENT";
+    throw new RegistryConflictError(
+      code,
+      `ReadyPackage content is not consumer-admissible: ${projection.reasonCodes.join(", ") || code}`,
+      { reasonCodes: [...projection.reasonCodes] },
+    );
+  }
 }
 
 export async function buildReadyPackageContentExportV1(
@@ -297,8 +317,18 @@ export async function buildReadyPackageContentExportV1(
 export function buildConfiguredReadyPackageContentExportV1(
   input: ReadyPackageContentExportInput,
 ): Promise<ReadyPackageContentExportV1_1> {
+  const readyPackages = getReadyPackageRepository();
+  const readyPackage = readyPackages.getById(input.readyPackageId, input.workspaceId);
+  if (readyPackage) {
+    const projection = projectCurrentGovernedKnowledge(getRegistryDatabase(), {
+      workspaceId: input.workspaceId,
+      stagingDocumentId: readyPackage.evidence.stagingDocumentId,
+      viewerWorkspaceId: input.workspaceId,
+    });
+    assertReadyPackageContentConsumerAdmissible(projection, input.readyPackageId);
+  }
   return buildReadyPackageContentExportV1(input, {
-    readyPackages: getReadyPackageRepository(),
+    readyPackages,
     rawArtifacts: getRawArtifactRepository(),
     staging: getStagingContentRepository(),
     sources: getSourceRepository(),
