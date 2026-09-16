@@ -29,13 +29,23 @@ Knowledge consumer readiness is projected from one canonical state model: `CURRE
 
 Lexical retrieval explicitly supports private Workspace + Global Public Knowledge overlay. Graph and vector retrieval remain exact-Workspace channels and must advertise that limitation rather than silently changing corpus membership. See `docs/architecture/CURRENT_GOVERNED_KNOWLEDGE.md`.
 
+## Main-repo Knowledge integration bridge
+
+The main MarkOrbit repository path `services/knowledge` is an **integration bridge**, not a second Knowledge domain owner. Its stable service identity exists for bounded provenance-query / ready-package-consumption compatibility and transport integration. New Evidence Plane persistence, source ownership, currentness or health/readiness authority belongs in `markorbit-knowledge`.
+
 ## Obsidian
 
 Obsidian is the default Knowledge Staging implementation. The durable integration boundary is Markdown, YAML properties, Wiki Links, attachments and file/Git history. Core protocols must not depend on an optional Obsidian community plugin.
 
-## MarkOrbit Core
+## Cross-system cognitive and execution ownership
 
-MarkOrbit Core exclusively owns information understanding, entity and relationship interpretation, distillation, knowledge and capability objects, value scoring, recommendations and Next Best Action. Core logic must not be moved into this repository.
+MarkOrbit Core owns authenticated Workspace/Principal authority, shared bounded context/business semantics, and Knowledge intake/delivery governance. Core does not own Knowledge evidence currentness or replace Brain/Method/Capability domain ownership.
+
+Brain owns derived/resolved operational intelligence, interpretation, confidence and cognitive gaps. Method owns versioned reasoning-method meaning, applicability, evaluation, limitations and selection semantics. Capability owns stable outcome contracts, implementation binding/admission, governed invocation and protected execution semantics.
+
+Cordis is a planned Workspace-local/private personalization overlay. It is not currently a canonical runtime owner or health/readiness authority and must not redefine Knowledge evidence, Core identity, shared Brain/Method canon or Capability permissions.
+
+The full decision/status hierarchy and owner map is frozen in `docs/architecture/K0_HEALTH_READINESS_TAXONOMY_AND_OWNER_MAP.md`.
 
 ## Worker security
 

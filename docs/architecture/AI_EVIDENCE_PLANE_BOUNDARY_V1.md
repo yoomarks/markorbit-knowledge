@@ -30,3 +30,7 @@ Knowledge may own and enforce:
 - hashes, timestamps, byte size and content-addressed lineage;
 - acquisition authorization evidence and retry/recovery safety;
 - source/citation structure checks that explicitly do not verify semantic claim coverage;
+
+## Health / readiness boundary
+
+K0-5 health/readiness projections remain Evidence Plane controls or objective operational diagnostics. They may report coverage, freshness, failures, backlog, delivery evidence and bounded readiness reasons, but they do not create cognitive meaning or action authority. The canonical hierarchy and cross-system owner map are frozen in `docs/architecture/K0_HEALTH_READINESS_TAXONOMY_AND_OWNER_MAP.md`.
