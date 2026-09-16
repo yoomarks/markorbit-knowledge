@@ -31,10 +31,14 @@ export type StorageEnvelopeReasonCode =
   | "FREE_PAGE_RATIO_ATTENTION"
   | "BACKUP_EVIDENCE_MISSING"
   | "BACKUP_STALE"
+  | "BACKUP_READBACK_FAILED"
   | "RESTORE_DRILL_EVIDENCE_MISSING"
   | "RESTORE_DRILL_STALE"
   | "RESTORE_THROUGHPUT_EVIDENCE_MISSING"
   | "RESTORE_THROUGHPUT_LOW"
+  | "RESTORE_INTEGRITY_FAILED"
+  | "RESTORE_RECONCILIATION_FAILED"
+  | "RECOVERY_EVIDENCE_INVALID"
   | "ACTIVE_URL_FRONTIER_ATTENTION"
   | "ACTIVE_URL_FRONTIER_MIGRATION_REVIEW";
 
@@ -53,6 +57,10 @@ export function assessStorageOperatingEnvelope(input: {
   backupAgeHours?: number | null;
   restoreDrillAgeDays?: number | null;
   restoreThroughputMiBPerSecond?: number | null;
+  backupReadbackVerified?: boolean | null;
+  restoreIntegrityVerified?: boolean | null;
+  restoreReconciliationVerified?: boolean | null;
+  recoveryEvidenceInvalid?: boolean;
 }): StorageOperatingEnvelopeAssessment {
   const reasons: StorageEnvelopeReasonCode[] = [];
   const limits = STORAGE_OPERATING_ENVELOPE_V1;
@@ -86,6 +94,12 @@ export function assessStorageOperatingEnvelope(input: {
   ) {
     reasons.push("RESTORE_THROUGHPUT_LOW");
   }
+  if (input.backupReadbackVerified === false) reasons.push("BACKUP_READBACK_FAILED");
+  if (input.restoreIntegrityVerified === false) reasons.push("RESTORE_INTEGRITY_FAILED");
+  if (input.restoreReconciliationVerified === false) {
+    reasons.push("RESTORE_RECONCILIATION_FAILED");
+  }
+  if (input.recoveryEvidenceInvalid) reasons.push("RECOVERY_EVIDENCE_INVALID");
   if (input.activeUrlFrontierRows >= limits.activeUrlFrontier.migrationReviewRows) {
     reasons.push("ACTIVE_URL_FRONTIER_MIGRATION_REVIEW");
   } else if (input.activeUrlFrontierRows >= limits.activeUrlFrontier.attentionRows) {

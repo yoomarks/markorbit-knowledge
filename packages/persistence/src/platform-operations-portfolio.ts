@@ -1,8 +1,10 @@
 ﻿import type { DatabaseSync } from "node:sqlite";
+import { RegistryValidationError } from "./index";
 import {
   assessStorageOperatingEnvelope,
   type StorageOperatingEnvelopeAssessment,
 } from "./storage-operating-envelope";
+import { latestStorageRecoveryEvidence, storageRecoveryMetrics } from "./storage-recovery-evidence";
 
 export type PlatformOperationsPortfolio = {
   version: "1.0";
@@ -39,6 +41,12 @@ export type PlatformOperationsPortfolio = {
     backupAgeHours: number | null;
     restoreDrillAgeDays: number | null;
     restoreThroughputMiBPerSecond: number | null;
+    recoveryEvidence: {
+      id: string;
+      evidenceRef: string;
+      backupCompletedAt: string;
+      restoreCompletedAt: string;
+    } | null;
     envelope: StorageOperatingEnvelopeAssessment;
   };
 };
@@ -103,12 +111,10 @@ export function buildPlatformOperationsPortfolio(
   input: {
     observedAt?: Date;
     walBytes?: number;
-    backupAgeHours?: number | null;
-    restoreDrillAgeDays?: number | null;
-    restoreThroughputMiBPerSecond?: number | null;
   } = {},
 ): PlatformOperationsPortfolio {
-  const observedAt = (input.observedAt ?? new Date()).toISOString();
+  const observed = input.observedAt ?? new Date();
+  const observedAt = observed.toISOString();
   const workspaceByStatus = workspaceStatuses(database);
   const sourceByStatus = grouped(database, "source_definitions", "status");
   const runByStatus = grouped(database, "collection_runs", "status");
@@ -133,14 +139,27 @@ export function buildPlatformOperationsPortfolio(
       )
     : 0;
   const walBytes = Math.max(0, input.walBytes ?? 0);
+  let recoveryEvidence = null;
+  let recoveryEvidenceInvalid = false;
+  try {
+    recoveryEvidence = latestStorageRecoveryEvidence(database);
+  } catch (error) {
+    if (error instanceof RegistryValidationError) recoveryEvidenceInvalid = true;
+    else throw error;
+  }
+  const recovery = storageRecoveryMetrics(recoveryEvidence, observed);
   const envelope = assessStorageOperatingEnvelope({
     databaseBytes,
     walBytes,
     freePageRatio,
     activeUrlFrontierRows: activeFrontierRows,
-    backupAgeHours: input.backupAgeHours,
-    restoreDrillAgeDays: input.restoreDrillAgeDays,
-    restoreThroughputMiBPerSecond: input.restoreThroughputMiBPerSecond,
+    backupAgeHours: recovery.backupAgeHours,
+    restoreDrillAgeDays: recovery.restoreDrillAgeDays,
+    restoreThroughputMiBPerSecond: recovery.restoreThroughputMiBPerSecond,
+    backupReadbackVerified: recovery.backupReadbackVerified,
+    restoreIntegrityVerified: recovery.restoreIntegrityVerified,
+    restoreReconciliationVerified: recovery.restoreReconciliationVerified,
+    recoveryEvidenceInvalid,
   });
   return {
     version: "1.0",
@@ -185,9 +204,17 @@ export function buildPlatformOperationsPortfolio(
       databaseBytes,
       freePageRatio,
       walBytes,
-      backupAgeHours: input.backupAgeHours ?? null,
-      restoreDrillAgeDays: input.restoreDrillAgeDays ?? null,
-      restoreThroughputMiBPerSecond: input.restoreThroughputMiBPerSecond ?? null,
+      backupAgeHours: recovery.backupAgeHours,
+      restoreDrillAgeDays: recovery.restoreDrillAgeDays,
+      restoreThroughputMiBPerSecond: recovery.restoreThroughputMiBPerSecond,
+      recoveryEvidence: recoveryEvidence
+        ? {
+            id: recoveryEvidence.id,
+            evidenceRef: recoveryEvidence.evidenceRef,
+            backupCompletedAt: recoveryEvidence.backupCompletedAt,
+            restoreCompletedAt: recoveryEvidence.restoreCompletedAt,
+          }
+        : null,
       envelope,
     },
   };

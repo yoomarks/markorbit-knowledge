@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { openRegistryDatabase } from "@markorbit/persistence";
+import { recordStorageRecoveryEvidence } from "@markorbit/persistence/storage-recovery-evidence";
 import { getKnowledgePlatformAdministrationOwnerView } from "./control-plane-platform-administration-owner";
 
 const OBSERVED_AT = new Date("2026-09-16T10:00:00.000Z");
@@ -24,6 +25,40 @@ describe("getKnowledgePlatformAdministrationOwnerView", () => {
         "RESTORE_DRILL_EVIDENCE_MISSING",
         "RESTORE_THROUGHPUT_EVIDENCE_MISSING",
       ]);
+      expect(
+        database
+          .prepare(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='storage_recovery_evidence'",
+          )
+          .get(),
+      ).toBeUndefined();
+    } finally {
+      database.close();
+    }
+  });
+
+  it("automatically consumes the latest durable recovery evidence", () => {
+    const database = openRegistryDatabase(":memory:");
+    try {
+      recordStorageRecoveryEvidence(database, {
+        backupCompletedAt: "2026-09-16T08:00:00.000Z",
+        restoreCompletedAt: "2026-09-16T09:00:00.000Z",
+        recordedAt: new Date("2026-09-16T09:05:00.000Z"),
+        backupManifestSha256: "c".repeat(64),
+        backupBytes: 4096,
+        restoreThroughputMiBPerSecond: 64,
+        sqliteIntegrityCheck: "ok",
+        backupReadbackVerified: true,
+        registryReconciliationVerified: true,
+        evidenceRef: "ops:recovery:admin-01",
+      });
+      const result = getKnowledgePlatformAdministrationOwnerView(OBSERVED_AT, database, 0);
+      expect(result.portfolio.facts.storage.backupAgeHours).toBe(2);
+      expect(result.portfolio.facts.storage.restoreDrillAgeDays).toBe(1 / 24);
+      expect(result.portfolio.facts.storage.recoveryEvidence).toMatchObject({
+        evidenceRef: "ops:recovery:admin-01",
+      });
+      expect(result.portfolio.facts.storage.envelope.reasonCodes).toEqual([]);
     } finally {
       database.close();
     }

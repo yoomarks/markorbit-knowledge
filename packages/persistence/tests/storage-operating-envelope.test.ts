@@ -84,4 +84,26 @@ describe("Storage Operating Envelope", () => {
     ]);
     expect(result.migrationAuthorized).toBe(false);
   });
+
+  it("fails closed on an explicit failed recovery drill even when evidence is fresh", () => {
+    const result = assessStorageOperatingEnvelope({
+      databaseBytes: 128 * 1024 ** 2,
+      walBytes: 8 * 1024 ** 2,
+      freePageRatio: 0,
+      activeUrlFrontierRows: 1_000,
+      backupAgeHours: 1,
+      restoreDrillAgeDays: 1,
+      restoreThroughputMiBPerSecond: 80,
+      backupReadbackVerified: false,
+      restoreIntegrityVerified: false,
+      restoreReconciliationVerified: false,
+    });
+    expect(result.state).toBe("ATTENTION");
+    expect(result.reasonCodes).toEqual([
+      "BACKUP_READBACK_FAILED",
+      "RESTORE_INTEGRITY_FAILED",
+      "RESTORE_RECONCILIATION_FAILED",
+    ]);
+    expect(result.migrationAuthorized).toBe(false);
+  });
 });
