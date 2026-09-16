@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExternalLink, Loader2, Play, RefreshCw } from "lucide-react";
 import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
@@ -67,6 +68,7 @@ async function responseError(response: Response): Promise<string> {
 }
 
 export function RadarCollectionAuthorization() {
+  const workspaceId = useResolvedAdminWorkspaceId();
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [items, setItems] = useState<CandidateRecord[]>([]);
@@ -78,7 +80,11 @@ export function RadarCollectionAuthorization() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ candidateLimit: "100", candidateOffset: "0" });
+      const params = new URLSearchParams({
+        workspaceId,
+        candidateLimit: "100",
+        candidateOffset: "0",
+      });
       params.append("candidateStatus", "ACCEPTED");
       const response = await fetch(`/api/discovery?${params.toString()}`, { cache: "no-store" });
       if (!response.ok) throw new Error(await responseError(response));
@@ -97,7 +103,7 @@ export function RadarCollectionAuthorization() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);

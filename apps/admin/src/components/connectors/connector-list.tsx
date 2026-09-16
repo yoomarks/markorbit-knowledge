@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Cable, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
@@ -52,7 +53,8 @@ function StatusBadge({ status }: { status: ConnectorStatus }) {
   );
 }
 
-export function ConnectorList({ workspaceId }: { workspaceId: string }) {
+export function ConnectorList({ workspaceId: fallbackWorkspaceId }: { workspaceId: string }) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [offset, setOffset] = useState(0);
   const [result, setResult] = useState<ConnectorListResult | null>(null);

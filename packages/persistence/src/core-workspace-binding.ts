@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import {
+  DEFAULT_WORKSPACE,
   RegistryConflictError,
   RegistryError,
   RegistryValidationError,
@@ -18,6 +19,7 @@ export type CoreWorkspaceBinding = {
 
 export interface CoreWorkspaceBindingRepository {
   getByKnowledgeWorkspaceId(knowledgeWorkspaceId: string): CoreWorkspaceBinding | null;
+  getByCoreWorkspaceId(coreWorkspaceId: string): CoreWorkspaceBinding | null;
   bind(knowledgeWorkspaceId: string, coreWorkspaceId: string): CoreWorkspaceBinding;
 }
 
@@ -113,10 +115,44 @@ export class SqliteCoreWorkspaceBindingRepository implements CoreWorkspaceBindin
     return row ? bindingFromRow(row) : null;
   }
 
+  getByCoreWorkspaceId(coreWorkspaceId: string): CoreWorkspaceBinding | null {
+    const normalizedCoreWorkspaceId = normalizeCanonicalCoreWorkspaceId(coreWorkspaceId);
+    const rows = this.database
+      .prepare(
+        `SELECT knowledge_workspace_id, core_workspace_id, created_at, updated_at
+         FROM core_workspace_bindings
+         WHERE core_workspace_id = ?
+         ORDER BY knowledge_workspace_id ASC
+         LIMIT 2`,
+      )
+      .all(normalizedCoreWorkspaceId);
+    if (rows.length > 1) {
+      throw new RegistryConflictError(
+        "CORE_WORKSPACE_BINDING_AMBIGUOUS",
+        `Core workspace ${normalizedCoreWorkspaceId} is bound to multiple Knowledge workspaces`,
+      );
+    }
+    const row = rows[0] as
+      | {
+          knowledge_workspace_id: string;
+          core_workspace_id: string;
+          created_at: string;
+          updated_at: string;
+        }
+      | undefined;
+    return row ? bindingFromRow(row) : null;
+  }
+
   bind(knowledgeWorkspaceId: string, coreWorkspaceId: string): CoreWorkspaceBinding {
     const normalizedWorkspaceId = knowledgeWorkspaceId?.trim();
     if (!normalizedWorkspaceId)
       throw new RegistryValidationError("knowledgeWorkspaceId is required");
+    if (normalizedWorkspaceId === DEFAULT_WORKSPACE.id) {
+      throw new RegistryConflictError(
+        "GLOBAL_WORKSPACE_CORE_BINDING_FORBIDDEN",
+        "Global Public Knowledge cannot be bound to a Core Workspace",
+      );
+    }
     const normalizedCoreWorkspaceId = normalizeCanonicalCoreWorkspaceId(coreWorkspaceId);
 
     const workspace = this.database
@@ -138,6 +174,14 @@ export class SqliteCoreWorkspaceBindingRepository implements CoreWorkspaceBindin
         );
       }
       return existing;
+    }
+
+    const existingCoreBinding = this.getByCoreWorkspaceId(normalizedCoreWorkspaceId);
+    if (existingCoreBinding && existingCoreBinding.knowledgeWorkspaceId !== normalizedWorkspaceId) {
+      throw new RegistryConflictError(
+        "CORE_WORKSPACE_BINDING_CONFLICT",
+        `Core workspace ${normalizedCoreWorkspaceId} is already bound to a different Knowledge workspace`,
+      );
     }
 
     const timestamp = this.clock().toISOString();

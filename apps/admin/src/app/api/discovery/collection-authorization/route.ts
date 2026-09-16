@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
 import { resolveAdminBrowserApiMutationAccess } from "@/server/admin-browser-api-access";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { getDiscoveryCollectionService } from "@/server/discovery-collection-service";
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       throw new RegistryValidationError("candidateId is required");
     }
 
-    const { principal } = await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
+    const { principal } = await resolveAdminBrowserApiMutationAccess(request);
     const candidateId = body.candidateId.trim();
     const result = getDiscoveryCollectionService().authorizeAndDispatch(candidateId, {
       requestedBy: principal.userId,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Globe2, Loader2, RefreshCw, Rocket, Send, ShieldCheck } from "lucide-react";
 import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
@@ -59,7 +60,12 @@ function profileLabel(profile: string): string {
   return profile.replaceAll("_", " ");
 }
 
-export function RepresentativeActivationWave({ workspaceId }: { workspaceId: string }) {
+export function RepresentativeActivationWave({
+  workspaceId: fallbackWorkspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [preview, setPreview] = useState<ActivationPreview | null>(null);

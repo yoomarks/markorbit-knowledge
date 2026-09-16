@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, ArrowRight, Inbox, Loader2, RefreshCw } from "lucide-react";
@@ -60,7 +61,8 @@ async function readError(response: Response): Promise<string> {
   }
 }
 
-export function OperatorInbox({ workspaceId }: { workspaceId: string }) {
+export function OperatorInbox({ workspaceId: fallbackWorkspaceId }: { workspaceId: string }) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const [state, setState] = useState<OperatorInboxResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

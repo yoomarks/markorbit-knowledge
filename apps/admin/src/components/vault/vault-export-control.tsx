@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileOutput, RefreshCw } from "lucide-react";
 import type { VaultBindingV1, VaultExportRunV1 } from "@markorbit/contracts";
@@ -55,7 +56,8 @@ function shortHash(value: string): string {
   return `${value.slice(0, 10)}…${value.slice(-8)}`;
 }
 
-export function VaultExportControl({ workspaceId }: { workspaceId: string }) {
+export function VaultExportControl({ workspaceId: fallbackWorkspaceId }: { workspaceId: string }) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [selected, setSelected] = useState("");
   const [loading, setLoading] = useState(true);

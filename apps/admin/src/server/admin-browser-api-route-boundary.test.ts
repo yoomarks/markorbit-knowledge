@@ -236,12 +236,12 @@ const serverDerivedIdentityRoutes = [
   },
   {
     route: "expert-tasks",
-    pattern: /requestedBy:\s*principal\.userId/,
+    pattern: /requestedBy:\s*principal\.principal\.userId/,
     forbidden: /requestedBy:\s*body\./,
   },
   {
     route: "expert-tasks/[id]",
-    pattern: /requiredString\(body,\s*"question"\),\s*principal\.userId/s,
+    pattern: /requiredString\(body,\s*"question"\),\s*principal\.principal\.userId/s,
     forbidden: /createFollowUp\([^)]*body\.(?:requestedBy|actor|reviewer)/s,
   },
   {
@@ -320,6 +320,13 @@ test("Knowledge search route delegates to a canonical workspace-authorized handl
   );
 });
 
+test("Sources default to the current Core-bound private workspace; Global requires an explicit assertion", () => {
+  const source = routeSource("sources");
+  assert.doesNotMatch(source, /DEFAULT_WORKSPACE/);
+  assert.match(source, /url\.searchParams\.get\("workspaceId"\)\?\.trim\(\) \|\| undefined/);
+  assert.match(source, /typeof body\.workspaceId === "string"[\s\S]*?: undefined;/);
+});
+
 test("Admin browser mutation routes use canonical mutation access", () => {
   for (const route of workspaceScopedMutationRoutes) {
     assert.match(
@@ -380,13 +387,13 @@ test("Expert browser routes use the governed dual browser/internal successor", (
   }
 });
 
-test("Expert successor preserves internal auth but browser access uses Workspace Principal and CSRF", () => {
+test("Expert successor preserves internal auth and delegates browser access to canonical Admin API authority", () => {
   const source = serverSource("expert-api-access");
   assert.match(source, /authenticateCaseProducerRequest/);
-  assert.match(source, /resolveAdminBrowserWorkspacePrincipal/);
-  assert.match(source, /validateAdminBrowserMutation/);
+  assert.match(source, /resolveAdminBrowserApiReadAccess/);
+  assert.match(source, /resolveAdminBrowserApiMutationAccess/);
+  assert.match(source, /resolveKnowledgeWorkspaceAuthority/);
   assert.match(source, /SqliteExpertTaskWorkspaceBindingRepository/);
-  assert.match(source, /READ_ONLY Workspace Principals cannot mutate Expert tasks/);
 });
 
 test("Workspace resource routes bind canonical principals to durable resource workspace", () => {

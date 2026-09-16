@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -79,11 +80,12 @@ function optionLabel(value: string): string {
 
 export function WorkerEditor({
   workerId,
-  workspaceId,
+  workspaceId: fallbackWorkspaceId,
 }: {
   workerId?: string;
   workspaceId: string;
 }) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const router = useRouter();
   const [values, setValues] = useState<EditorValues>(emptyValues);
   const [view, setView] = useState<WorkerRuntimeView | null>(null);

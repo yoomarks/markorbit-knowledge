@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Check, ExternalLink, Loader2, RefreshCw, RotateCcw, Sparkles, X } from "lucide-react";
@@ -147,6 +148,7 @@ async function responseError(response: Response): Promise<string> {
 }
 
 export function SourceSmartReviewUi() {
+  const workspaceId = useResolvedAdminWorkspaceId();
   const { locale } = useAdminI18n();
   const t = useCallback(
     (key: IntakeMessageKey, params?: IntakeMessageParams) => intakeT(locale, key, params),
@@ -174,6 +176,7 @@ export function SourceSmartReviewUi() {
     setLoading(true);
     try {
       const params = new URLSearchParams({
+        workspaceId,
         candidateLimit: String(PAGE_SIZE),
         candidateOffset: String(pageOffset),
       });
@@ -213,7 +216,7 @@ export function SourceSmartReviewUi() {
     } finally {
       setLoading(false);
     }
-  }, [pageOffset, t, tab]);
+  }, [pageOffset, t, tab, workspaceId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);

@@ -30,3 +30,11 @@ Central services may send only declarative, schema-validated tasks. Arbitrary sh
 ## Raw artifact invariant
 
 Raw artifacts are immutable evidence. Content changes create a new version; they never overwrite the earlier artifact. Derived Markdown and previews must retain provenance back to the raw version.
+
+## Workspace authority and Knowledge namespace
+
+MarkOrbit Core owns authenticated Workspace identity, membership and product lifecycle. Core Workspace IDs are UUIDs and must remain the authority used to authenticate and authorize product access.
+
+Knowledge Schema v1 `Workspace` owns a separate `wsp_<ULID>` data-boundary namespace for Knowledge persistence, acquisition, staging and retrieval. Browser or service access authorized by a Core Workspace must resolve through a durable Core-to-Knowledge binding before reading or mutating Knowledge-owned records. Missing or ambiguous bindings fail closed.
+
+Knowledge Workspace lifecycle state gates local Knowledge availability only. It does not create, activate, suspend, archive or otherwise redefine the corresponding Core Workspace or its memberships. Global Public Knowledge is platform-owned and is never an implicit fallback for an unbound tenant Workspace.

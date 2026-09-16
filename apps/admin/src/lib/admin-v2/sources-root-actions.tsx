@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { FileUp, X } from "lucide-react";
@@ -7,7 +8,8 @@ import { useAdminI18n } from "@/lib/i18n";
 import { intakeT } from "@/lib/intake-i18n";
 import { SourceFileImportUi } from "@/lib/admin-v2/source-file-import-ui";
 
-export function SourcesRootActions({ workspaceId }: { workspaceId: string }) {
+export function SourcesRootActions({ workspaceId: fallbackWorkspaceId }: { workspaceId: string }) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const pathname = usePathname();
   const { locale } = useAdminI18n();
   const [open, setOpen] = useState(false);

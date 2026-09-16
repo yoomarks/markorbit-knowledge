@@ -196,13 +196,22 @@ async function verifyCoreBoundary(
 
   const binding = record(payload.coreWorkspaceBinding);
   const preview = record(payload.coreIntakeRequestPreview);
-  if (binding && !preview) {
-    throw new Error("Bound Core workspace is missing the read-only Core Intake preview");
+  if (!binding || !preview) {
+    throw new Error(
+      "Private Knowledge workspace must expose its canonical Core binding and read-only preview",
+    );
   }
   if (preview) {
+    const coreWorkspaceId = requiredString(
+      binding.coreWorkspaceId,
+      "coreWorkspaceBinding.coreWorkspaceId",
+    );
+    if (binding.knowledgeWorkspaceId !== workspaceId) {
+      throw new Error("Core workspace binding does not preserve the Knowledge workspace namespace");
+    }
     if (
       preview.readyPackageId !== readyPackageId ||
-      preview.workspaceId !== workspaceId ||
+      preview.workspaceId !== coreWorkspaceId ||
       preview.digest !== digest
     ) {
       throw new Error("Core Intake preview does not preserve ReadyPackage identity/digest");

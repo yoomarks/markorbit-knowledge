@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
 import type { FoundationalRemediationQueueSnapshot } from "@markorbit/worker-runtime/foundational-remediation-snapshot";
@@ -107,7 +108,12 @@ async function requestSnapshot(workspaceId: string, jurisdiction: Jurisdiction):
   return payload;
 }
 
-export function FoundationalRemediationConsole({ workspaceId }: { workspaceId: string }) {
+export function FoundationalRemediationConsole({
+  workspaceId: fallbackWorkspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const [jurisdiction, setJurisdiction] = useState<Jurisdiction>("US");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);

@@ -72,7 +72,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           const created = operator.createFollowUp(
             id,
             requiredString(body, "question"),
-            principal.userId,
+            principal.principal.userId,
           );
           bindExpertTaskWorkspace(created.taskId, principal.workspaceId);
           return created;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type {
@@ -40,7 +41,8 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
   );
 }
 
-export function ProducerCoreReliability({ workspaceId }: Props) {
+export function ProducerCoreReliability({ workspaceId: fallbackWorkspaceId }: Props) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [windowDays, setWindowDays] = useState(30);

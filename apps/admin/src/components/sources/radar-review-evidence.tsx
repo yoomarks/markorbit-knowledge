@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, ExternalLink, Loader2, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
@@ -131,6 +132,7 @@ function chip(value: string | undefined) {
 }
 
 export function RadarReviewEvidence() {
+  const workspaceId = useResolvedAdminWorkspaceId();
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [items, setItems] = useState<CandidateRecord[]>([]);
@@ -142,7 +144,11 @@ export function RadarReviewEvidence() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ candidateLimit: "100", candidateOffset: "0" });
+      const params = new URLSearchParams({
+        workspaceId,
+        candidateLimit: "100",
+        candidateOffset: "0",
+      });
       params.append("candidateStatus", "DISCOVERED");
       params.append("candidateStatus", "REVIEWED");
       const response = await fetch(`/api/discovery?${params.toString()}`, { cache: "no-store" });
@@ -157,7 +163,7 @@ export function RadarReviewEvidence() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);

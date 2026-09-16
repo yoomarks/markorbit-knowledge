@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DEFAULT_WORKSPACE, RegistryValidationError } from "@markorbit/persistence";
+import { RegistryValidationError } from "@markorbit/persistence";
 import {
   resolveAdminBrowserApiMutationAccess,
   resolveAdminBrowserApiReadAccess,
@@ -24,7 +24,7 @@ function candidateIds(value: unknown): string[] {
 
 export async function GET(request: Request) {
   try {
-    await resolveAdminBrowserApiReadAccess(request, DEFAULT_WORKSPACE.id);
+    await resolveAdminBrowserApiReadAccess(request);
     return NextResponse.json({ status: getPageValueCapabilityService().status() });
   } catch (error) {
     return apiError(error);
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await resolveAdminBrowserApiMutationAccess(request, DEFAULT_WORKSPACE.id);
+    await resolveAdminBrowserApiMutationAccess(request);
     const body = requireRecord(await readJson(request));
     const service = getPageValueCapabilityService();
     const ids = candidateIds(body.candidateIds);

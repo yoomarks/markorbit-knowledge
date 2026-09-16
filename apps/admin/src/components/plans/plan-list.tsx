@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
@@ -68,7 +69,8 @@ function StatusBadge({ status }: { status: CollectionPlanStatus }) {
   );
 }
 
-export function PlanList({ workspaceId }: { workspaceId: string }) {
+export function PlanList({ workspaceId: fallbackWorkspaceId }: { workspaceId: string }) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [offset, setOffset] = useState(0);
   const [result, setResult] = useState<CollectionPlanListResult | null>(null);

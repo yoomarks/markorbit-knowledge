@@ -7,11 +7,19 @@ import {
   type CaseProducerWorkspacePrincipalV1,
 } from "./case-producer-auth";
 import {
-  resolveAdminBrowserWorkspacePrincipal,
-  validateAdminBrowserMutation,
-  type AdminBrowserSessionOptions,
-} from "./admin-browser-session";
+  resolveAdminBrowserApiMutationAccess,
+  resolveAdminBrowserApiReadAccess,
+  type AdminBrowserApiAccessOptions,
+} from "./admin-browser-api-access";
+import {
+  resolveKnowledgeWorkspaceAuthority,
+  type KnowledgeWorkspaceAuthority,
+} from "./knowledge-workspace-authority";
 import { getRegistryDatabase } from "./source-registry";
+
+export type ExpertAccessOptions = AdminBrowserApiAccessOptions & {
+  internalServiceSecret?: string;
+};
 
 export function authenticateExpertReadRequest(
   request: Request,
@@ -19,7 +27,6 @@ export function authenticateExpertReadRequest(
 ): CaseProducerWorkspacePrincipalV1 {
   return authenticateCaseProducerRequest(request, internalServiceSecret);
 }
-
 export function authenticateExpertMutationRequest(
   request: Request,
   internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET,
@@ -41,32 +48,33 @@ function hasInternalPrincipalHeaders(request: Request): boolean {
     request.headers.has(CASE_PRODUCER_PRINCIPAL_HEADER)
   );
 }
-
 export async function resolveExpertReadPrincipal(
   request: Request,
-  browserOptions: AdminBrowserSessionOptions = {},
-): Promise<CaseProducerWorkspacePrincipalV1> {
-  if (hasInternalPrincipalHeaders(request)) return authenticateExpertReadRequest(request);
-  return resolveAdminBrowserWorkspacePrincipal(request, browserOptions);
+  options: ExpertAccessOptions = {},
+): Promise<KnowledgeWorkspaceAuthority> {
+  if (hasInternalPrincipalHeaders(request)) {
+    const principal = authenticateExpertReadRequest(
+      request,
+      options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET,
+    );
+    return resolveKnowledgeWorkspaceAuthority(principal, undefined, options);
+  }
+  return resolveAdminBrowserApiReadAccess(request, undefined, options);
 }
 
 export async function resolveExpertMutationPrincipal(
   request: Request,
-  browserOptions: AdminBrowserSessionOptions = {},
-): Promise<CaseProducerWorkspacePrincipalV1> {
-  if (hasInternalPrincipalHeaders(request)) return authenticateExpertMutationRequest(request);
-  const principal = await resolveAdminBrowserWorkspacePrincipal(request, browserOptions);
-  validateAdminBrowserMutation(request, principal, browserOptions);
-  if (principal.role === "READ_ONLY") {
-    throw new CaseProducerAccessError(
-      "PERMISSION_DENIED",
-      403,
-      "READ_ONLY Workspace Principals cannot mutate Expert tasks.",
+  options: ExpertAccessOptions = {},
+): Promise<KnowledgeWorkspaceAuthority> {
+  if (hasInternalPrincipalHeaders(request)) {
+    const principal = authenticateExpertMutationRequest(
+      request,
+      options.internalServiceSecret ?? process.env.MO_INTERNAL_SERVICE_SECRET,
     );
+    return resolveKnowledgeWorkspaceAuthority(principal, undefined, options);
   }
-  return principal;
+  return resolveAdminBrowserApiMutationAccess(request, undefined, options);
 }
-
 function bindings(): SqliteExpertTaskWorkspaceBindingRepository {
   return new SqliteExpertTaskWorkspaceBindingRepository(getRegistryDatabase());
 }
@@ -88,11 +96,10 @@ export function authorizeExpertTaskWorkspace(taskId: string, workspaceId: string
     throw new CaseProducerAccessError(
       "WORKSPACE_MISMATCH",
       403,
-      "Workspace Principal does not match the Expert task workspace.",
+      "Workspace authority does not match the Expert task workspace.",
     );
   }
 }
-
 export function listExpertTaskIdsForWorkspace(workspaceId: string): string[] {
   return bindings().listTaskIds(workspaceId);
 }

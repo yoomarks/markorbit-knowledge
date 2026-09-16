@@ -70,3 +70,39 @@ test("Expert browser mutations carry the session CSRF token", () => {
   assert.match(source, /method:\s*"POST"/);
   assert.match(source, /method:\s*"PATCH"/);
 });
+
+test("Admin browser mutation helper carries the canonical Core workspace context", () => {
+  const source = appSource("lib/admin-browser-api-client.ts");
+  assert.match(source, /browserWorkspaceIdFromLocation/);
+  assert.match(
+    source,
+    /headers\.set\(ADMIN_WORKSPACE_HEADER, normalizedWorkspaceId\(workspaceId\)\)/,
+  );
+});
+
+test("Sources and Discovery browser reads carry explicit Core workspace context", () => {
+  assert.match(appSource("components/sources/source-list.tsx"), /workspaceId,/);
+  assert.match(
+    appSource("components/sources/radar-review-evidence.tsx"),
+    /workspaceId,\s*candidateLimit/,
+  );
+  assert.match(
+    appSource("components/sources/radar-collection-authorization.tsx"),
+    /workspaceId,\s*candidateLimit/,
+  );
+  assert.match(appSource("lib/admin-v2/source-smart-review-ui.tsx"), /workspaceId,/);
+});
+
+test("Workspace-scoped browser APIs never silently default to Global Public Knowledge", () => {
+  for (const path of [
+    "app/api/capabilities/page-value/route.ts",
+    "app/api/discovery/route.ts",
+    "app/api/discovery/batch/route.ts",
+    "app/api/discovery/collection-authorization/route.ts",
+    "app/api/discovery/reviews/route.ts",
+    "app/api/discovery/reviews/reopen/route.ts",
+    "app/api/source-coverage/activation-wave/route.ts",
+  ]) {
+    assert.doesNotMatch(appSource(path), /DEFAULT_WORKSPACE\.id/);
+  }
+});

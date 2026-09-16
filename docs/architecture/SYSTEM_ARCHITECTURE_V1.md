@@ -129,3 +129,13 @@ Knowledge may project objective before/after facts from immutable evidence, incl
 Acquisition intelligence learns how to collect evidence more reliably. It records measured source structure, acquisition run evidence, deterministic operational lessons, governed strategy candidates and explainable playbook selections.
 
 Strategy selection cannot authorize collection or activate a candidate. Promotion remains explicit and audited, and production activation requires a HUMAN actor. Source-specific adapters should remain thin discovery or normalization layers over reusable structural acquisition profiles.
+
+## 14. Core Workspace authority and Knowledge namespace
+
+Authenticated product access is authorized by MarkOrbit Core. Core Workspace identity, membership and lifecycle are external authority and use Core UUIDs.
+
+Schema v1 `Workspace` remains the Knowledge-owned data-boundary and storage namespace. Its `wsp_<ULID>` identifier scopes Knowledge persistence, retrieval, acquisition and staging records. A Core UUID must resolve through a durable Core-to-Knowledge Workspace binding before it is used to access those records. Missing or ambiguous bindings fail closed.
+
+Knowledge Workspace `status` gates local Knowledge availability only. It may suspend or archive acquisition/retrieval within the Knowledge data boundary, but it does not activate, suspend or archive the corresponding Core Workspace or membership.
+
+Global Public Knowledge is a platform-owned Knowledge Workspace. Tenant access to it is through explicit governed overlay rules; it is never a fallback for a missing private Workspace binding.

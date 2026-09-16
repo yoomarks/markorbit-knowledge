@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { adminBrowserMutationHeaders } from "@/lib/admin-browser-api-client";
@@ -53,7 +54,12 @@ function priorityTone(priority: "HIGH" | "MEDIUM" | "LOW"): string {
   return "bg-slate-100 text-slate-600 ring-slate-200";
 }
 
-export function SourceCountryAnalysis({ workspaceId }: { workspaceId: string }) {
+export function SourceCountryAnalysis({
+  workspaceId: fallbackWorkspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [coverage, setCoverage] = useState<CoverageItem[]>([]);

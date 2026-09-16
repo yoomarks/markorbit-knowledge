@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, Database, Globe2, Loader2, RefreshCw, ShieldAlert, Wrench } from "lucide-react";
 import { useAdminI18n } from "@/lib/i18n";
@@ -49,7 +50,12 @@ function percent(value: number, total: number): string {
   return `${Math.round((value / total) * 100)}%`;
 }
 
-export function SourceSupplyCoverage({ workspaceId }: { workspaceId: string }) {
+export function SourceSupplyCoverage({
+  workspaceId: fallbackWorkspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const { locale } = useAdminI18n();
   const zh = locale === "zh-CN";
   const [result, setResult] = useState<SupplyCoverageResponse | null>(null);

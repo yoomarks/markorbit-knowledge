@@ -1,5 +1,6 @@
 "use client";
 
+import { useResolvedAdminWorkspaceId } from "@/components/admin-workspace";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Clock3, Search } from "lucide-react";
@@ -53,7 +54,8 @@ function StatusBadge({ status }: { status: CollectionRunStatus }) {
   );
 }
 
-export function RunList({ workspaceId }: { workspaceId: string }) {
+export function RunList({ workspaceId: fallbackWorkspaceId }: { workspaceId: string }) {
+  const workspaceId = useResolvedAdminWorkspaceId(fallbackWorkspaceId);
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [offset, setOffset] = useState(0);
   const [result, setResult] = useState<ExecutionRunListResult | null>(null);

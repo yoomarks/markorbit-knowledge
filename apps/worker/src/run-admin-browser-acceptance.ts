@@ -20,11 +20,9 @@ import {
   type RawArtifact,
   type StagingDocumentDescriptor,
 } from "@markorbit/contracts";
-import {
-  DEFAULT_WORKSPACE,
-  SqliteSourceRepository,
-  openRegistryDatabase,
-} from "@markorbit/persistence";
+import { SqliteSourceRepository, openRegistryDatabase } from "@markorbit/persistence";
+import { SqliteCoreWorkspaceBindingRepository } from "@markorbit/persistence/core-workspace-bindings";
+import { SqliteWorkspaceRepository } from "@markorbit/persistence/workspaces";
 import { SqliteRawArtifactRepository } from "@markorbit/persistence/raw-artifacts";
 import { SqliteStagingContentRegistryRepository } from "@markorbit/persistence/staging-content";
 import { chromium, type BrowserContext, type Page } from "playwright-core";
@@ -34,8 +32,9 @@ const ADMIN_PORT = 3317;
 const AUTH_PORT = 4317;
 const ADMIN_ORIGIN = `http://127.0.0.1:${ADMIN_PORT}`;
 const AUTH_ORIGIN = `http://127.0.0.1:${AUTH_PORT}`;
-const WORKSPACE_ID = DEFAULT_WORKSPACE.id;
-const OTHER_WORKSPACE_ID = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FB0";
+const CORE_WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
+const KNOWLEDGE_WORKSPACE_ID = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FB1";
+const OTHER_CORE_WORKSPACE_ID = "22222222-2222-4222-8222-222222222222";
 const SOURCE_ID = "src_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const ARTIFACT_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const STAGING_ID = "std_01ARZ3NDEKTSV4RRFFQ69G5FAV";
@@ -110,9 +109,15 @@ async function stopProcess(child: ChildProcess | null): Promise<void> {
 function seedFixture(databasePath: string, artifactStore: string, stagingStore: string): void {
   const database = openRegistryDatabase(databasePath);
   const clock = () => new Date(FIXED_TIME);
+  const workspaces = new SqliteWorkspaceRepository(database, clock, () => KNOWLEDGE_WORKSPACE_ID);
+  workspaces.create({ slug: "browser-acceptance", name: "Browser Acceptance Workspace" });
+  new SqliteCoreWorkspaceBindingRepository(database, clock).bind(
+    KNOWLEDGE_WORKSPACE_ID,
+    CORE_WORKSPACE_ID,
+  );
   const sources = new SqliteSourceRepository(database, clock, () => SOURCE_ID);
   sources.create({
-    workspaceId: WORKSPACE_ID,
+    workspaceId: KNOWLEDGE_WORKSPACE_ID,
     name: FIXTURE_SOURCE_NAME,
     slug: "browser-acceptance-source",
     sourceType: "WEB",
@@ -144,7 +149,7 @@ function seedFixture(databasePath: string, artifactStore: string, stagingStore: 
     schemaVersion: SCHEMA_V1_VERSION,
     objectType: "RAW_ARTIFACT",
     id: ARTIFACT_ID,
-    workspaceId: WORKSPACE_ID,
+    workspaceId: KNOWLEDGE_WORKSPACE_ID,
     sourceId: SOURCE_ID,
     version: 1,
     artifactKind: "HTML",
@@ -185,7 +190,7 @@ function seedFixture(databasePath: string, artifactStore: string, stagingStore: 
     contractVersion: CONVERSION_EXECUTION_VERSION,
     objectType: "STAGING_DOCUMENT_DESCRIPTOR",
     id: STAGING_ID,
-    workspaceId: WORKSPACE_ID,
+    workspaceId: KNOWLEDGE_WORKSPACE_ID,
     sourceId: SOURCE_ID,
     rawArtifactId: ARTIFACT_ID,
     conversionRunId: CONVERSION_RUN_ID,
@@ -232,7 +237,7 @@ function seedFixture(databasePath: string, artifactStore: string, stagingStore: 
     )
     .run(
       ARTIFACT_ID,
-      WORKSPACE_ID,
+      KNOWLEDGE_WORKSPACE_ID,
       SOURCE_ID,
       "run_01ARZ3NDEKTSV4RRFFQ69G5FAV",
       "job_browser_acceptance",
@@ -264,7 +269,7 @@ function seedFixture(databasePath: string, artifactStore: string, stagingStore: 
     )
     .run(
       STAGING_ID,
-      WORKSPACE_ID,
+      KNOWLEDGE_WORKSPACE_ID,
       SOURCE_ID,
       ARTIFACT_ID,
       CONVERSION_RUN_ID,
@@ -336,10 +341,10 @@ async function assertAuthenticationBoundary(): Promise<void> {
     assert.equal(session.authenticated, true);
     assert.ok(session.userId);
     assert.ok(session.csrfToken);
-    assert.ok(session.workspaces?.some((workspace) => workspace.workspaceId === WORKSPACE_ID));
+    assert.ok(session.workspaces?.some((workspace) => workspace.workspaceId === CORE_WORKSPACE_ID));
 
     const mismatch = await context.request.get(
-      `${ADMIN_ORIGIN}/api/knowledge?workspaceId=${OTHER_WORKSPACE_ID}`,
+      `${ADMIN_ORIGIN}/api/knowledge?workspaceId=${OTHER_CORE_WORKSPACE_ID}`,
     );
     assert.equal(mismatch.status(), 403, "cross-workspace assertion must fail closed");
   } finally {
@@ -350,6 +355,10 @@ async function assertAuthenticationBoundary(): Promise<void> {
 async function navigateThroughBusinessSurfaces(page: Page): Promise<void> {
   await page.goto(`${ADMIN_ORIGIN}/dashboard`);
   await page.waitForLoadState("domcontentloaded");
+  await page.waitForURL(
+    (url) =>
+      url.pathname === "/dashboard" && url.searchParams.get("workspaceId") === CORE_WORKSPACE_ID,
+  );
 
   for (const href of ["/sources", "/jobs", "/runs", "/workers", "/connectors", "/packages"]) {
     const link = page.locator(`a[href="${href}"]`).first();
@@ -359,7 +368,9 @@ async function navigateThroughBusinessSurfaces(page: Page): Promise<void> {
       if ((await advanced.getAttribute("aria-expanded")) !== "true") await advanced.click();
     }
     await link.click();
-    await page.waitForURL((url) => url.pathname === href);
+    await page.waitForURL(
+      (url) => url.pathname === href && url.searchParams.get("workspaceId") === CORE_WORKSPACE_ID,
+    );
     assert.equal(new URL(page.url()).pathname, href);
   }
 }
@@ -377,7 +388,7 @@ async function waitForKnowledgeRefresh(page: Page, action: () => Promise<unknown
 
 function assertWorkspaceUrl(url: URL, pathname: string): void {
   assert.equal(url.pathname, pathname);
-  assert.equal(url.searchParams.get("workspaceId"), WORKSPACE_ID);
+  assert.equal(url.searchParams.get("workspaceId"), CORE_WORKSPACE_ID);
 }
 
 async function clickEvidenceReturn(page: Page): Promise<void> {
@@ -392,7 +403,7 @@ async function assertBrowseRoundTrip(page: Page): Promise<void> {
   const initialResponse = page.waitForResponse(
     (response) => response.url().includes("/api/knowledge?") && response.status() === 200,
   );
-  await page.goto(`${ADMIN_ORIGIN}/knowledge?workspaceId=${encodeURIComponent(WORKSPACE_ID)}`);
+  await page.goto(`${ADMIN_ORIGIN}/knowledge?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}`);
   await initialResponse;
   await page.getByText(FIXTURE_TITLE, { exact: true }).waitFor();
 
@@ -438,7 +449,7 @@ async function assertSearchRoundTrip(page: Page): Promise<void> {
     (response) => response.url().includes("/api/knowledge/search?") && response.status() === 200,
   );
   await page.goto(
-    `${ADMIN_ORIGIN}/knowledge/search?workspaceId=${encodeURIComponent(WORKSPACE_ID)}&q=${encodeURIComponent("Browser Acceptance")}&status=READY`,
+    `${ADMIN_ORIGIN}/knowledge/search?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}&q=${encodeURIComponent("Browser Acceptance")}&status=READY`,
   );
   await searchResponse;
   await page.getByText(FIXTURE_TITLE, { exact: true }).waitFor();
@@ -469,9 +480,9 @@ async function assertSearchRoundTrip(page: Page): Promise<void> {
 }
 
 async function assertDirectDeepLinkRestoration(page: Page): Promise<void> {
-  const returnTo = `/knowledge/search?workspaceId=${encodeURIComponent(WORKSPACE_ID)}&q=${encodeURIComponent("Browser Acceptance")}&status=READY`;
+  const returnTo = `/knowledge/search?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}&q=${encodeURIComponent("Browser Acceptance")}&status=READY`;
   await page.goto(
-    `${ADMIN_ORIGIN}/knowledge/${STAGING_ID}?workspaceId=${encodeURIComponent(WORKSPACE_ID)}&returnTo=${encodeURIComponent(returnTo)}`,
+    `${ADMIN_ORIGIN}/knowledge/${STAGING_ID}?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}&returnTo=${encodeURIComponent(returnTo)}`,
   );
   await page.getByText(FIXTURE_CONTENT_MARKER, { exact: false }).waitFor();
   await clickEvidenceReturn(page);
@@ -489,7 +500,7 @@ async function assertInboxRoundTrip(page: Page): Promise<void> {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        workspaceId: WORKSPACE_ID,
+        workspaceId: CORE_WORKSPACE_ID,
         generatedAt: FIXED_TIME,
         evidenceState: "COMPLETE",
         unavailableEvidence: [],
@@ -516,7 +527,9 @@ async function assertInboxRoundTrip(page: Page): Promise<void> {
     });
   });
   try {
-    await page.goto(`${ADMIN_ORIGIN}/dashboard?workspaceId=${encodeURIComponent(WORKSPACE_ID)}`);
+    await page.goto(
+      `${ADMIN_ORIGIN}/dashboard?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}`,
+    );
     const itemLink = page.getByRole("link", { name: new RegExp(FIXTURE_TITLE) }).first();
     await itemLink.waitFor();
     const href = await itemLink.getAttribute("href");
@@ -525,7 +538,7 @@ async function assertInboxRoundTrip(page: Page): Promise<void> {
     assertWorkspaceUrl(evidenceUrl, `/knowledge/${STAGING_ID}`);
     assert.equal(
       evidenceUrl.searchParams.get("returnTo"),
-      `/dashboard?workspaceId=${WORKSPACE_ID}`,
+      `/dashboard?workspaceId=${CORE_WORKSPACE_ID}`,
     );
 
     await itemLink.click();
@@ -671,7 +684,7 @@ async function main(): Promise<void> {
     MARKORBIT_CALIBRATION_SESSION_TOKEN: SESSION_TOKEN,
     MARKORBIT_CALIBRATION_SESSION_ID: "ses_browser_acceptance",
     MARKORBIT_CALIBRATION_USER_ID: "usr_browser_acceptance",
-    MARKORBIT_CALIBRATION_WORKSPACE_ID: WORKSPACE_ID,
+    MARKORBIT_CALIBRATION_WORKSPACE_ID: CORE_WORKSPACE_ID,
     MARKORBIT_CALIBRATION_MEMBERSHIP_ID: "mem_browser_acceptance",
   };
 
@@ -730,7 +743,7 @@ async function main(): Promise<void> {
         {
           schemaVersion: 1,
           status: "PASS",
-          workspaceId: WORKSPACE_ID,
+          workspaceId: CORE_WORKSPACE_ID,
           sourceId: SOURCE_ID,
           stagingDocumentId: STAGING_ID,
           browser: "chromium",
