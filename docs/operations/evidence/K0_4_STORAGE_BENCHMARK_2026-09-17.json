@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "objectType": "KNOWLEDGE_STORAGE_OPERATING_ENVELOPE_BENCHMARK",
+  "startedAt": "2026-09-16T19:49:27.549Z",
+  "completedAt": "2026-09-16T19:49:35.623Z",
+  "rowCount": 800000,
+  "insert": {
+    "durationSeconds": 4.254,
+    "rowsPerSecond": 188060
+  },
+  "sqlite": {
+    "pageCount": 72699,
+    "pageSize": 4096,
+    "freePages": 0,
+    "databaseBytes": 297775104,
+    "walBytesBeforeCheckpoint": 299548752
+  },
+  "backup": {
+    "bytes": 297775104,
+    "durationSeconds": 0.061
+  },
+  "restore": {
+    "durationSeconds": 2.627,
+    "throughputMiBPerSecond": 108.12,
+    "integrityCheck": "ok",
+    "restoredRows": 800000
+  },
+  "environment": {
+    "os": "Windows",
+    "nodeSqlite": "node:sqlite",
+    "journalMode": "WAL",
+    "synchronous": "NORMAL"
+  }
+}
