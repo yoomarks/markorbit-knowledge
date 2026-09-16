@@ -29,6 +29,8 @@ export * from "./acquisition-intelligence-learning-v1";
 export * from "./acquisition-playbooks-v1";
 export * from "./acquisition-strategy-governance-v1";
 export * from "./acquisition-recurring-regression-v1";
+export * from "./ai-acquisition-evidence-v1";
+export * from "./ai-evidence-plane-owner-map-v1";
 export * from "./ai-distilled-knowledge-v1";
 export * from "./ai-assignment-graph-v1";
 export * from "./ai-assignment-candidate-v1";

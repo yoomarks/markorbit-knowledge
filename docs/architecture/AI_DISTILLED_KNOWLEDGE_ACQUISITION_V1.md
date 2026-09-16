@@ -1,3 +1,5 @@
+> **K0 boundary note (2026-09-16):** This document is retained as historical ADK compatibility documentation. Canonical ownership is now defined by `AI_EVIDENCE_PLANE_BOUNDARY_V1.md`: Knowledge owns bounded AI acquisition evidence/provenance only; research strategy, prompts/instructions, synthesis/distillation and semantic meaning belong to Brain/Method. Existing records remain readable, but this document must not be used to justify new cognitive ownership in Knowledge.
+
 # AI Distilled Knowledge Acquisition V1
 
 Status: **ADK-00 through ADK-10 implemented; ADK-06 production control surface implemented with real 3×2 live acceptance still open in issue #405; ADK-07 production queue safety hardened through #427; US/AU/CA Trademark Assignment Libraries established**

@@ -15,6 +15,14 @@ MarkOrbit Knowledge owns acquisition and staging control:
 
 Mo Crawl and other connectors are replaceable execution providers. They execute constrained collection or conversion requests and return normalized results. They do not own source business policy or MarkOrbit knowledge semantics.
 
+## AI Evidence Plane
+
+Knowledge may execute only bounded, externally authorized AI acquisition and may persist exact provider-response bytes, hashes, provider/model identity, request lineage and other provenance needed to reproduce that acquisition. Those records are evidence, not interpreted truth.
+
+Brain/Method owns research-question strategy, prompt and instruction meaning, synthesis, distillation, semantic conclusions, Assignment Graph/Candidate/Library meaning, recommendations and downstream action authority. Knowledge must not turn AI output into legal truth, semantic truth, provider ranking or autonomous execution authority.
+
+Legacy ADK contracts and runtimes remain readable during migration. Their canonical ownership is frozen by `packages/contracts/src/ai-evidence-plane-owner-map-v1.ts`; compatibility code does not establish ongoing Knowledge ownership. New provider or AI runtime surfaces must enter through the evidence-only seam and be classified by that owner map.
+
 ## Obsidian
 
 Obsidian is the default Knowledge Staging implementation. The durable integration boundary is Markdown, YAML properties, Wiki Links, attachments and file/Git history. Core protocols must not depend on an optional Obsidian community plugin.
