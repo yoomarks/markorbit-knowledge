@@ -26,6 +26,7 @@ export * from "./production-conversion-worker-runtime";
 export * from "./artifact-ingestion-port";
 export * from "./artifact-backed-collection-executor";
 export * from "./uspto-tsdr-acquisition-policy";
+export * from "./uspto-tsdr-document-classifier";
 export * from "./crawl4ai-subprocess-acquirer";
 export * from "./bright-data-fallback-acquirer";
 export * from "./api-acquirer";
