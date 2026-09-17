@@ -58,7 +58,7 @@ function record(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-function cnipaTransientBusinessCode(value: unknown): number | undefined {
+export function cnipaTransientBusinessCode(value: unknown): number | undefined {
   const container = record(value);
   if (!container) return undefined;
   const rawCode = container.code;
