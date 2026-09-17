@@ -3,6 +3,7 @@ import path from "node:path";
 import { chromium, type BrowserContext, type Page } from "playwright-core";
 import {
   CnipaAcquisitionError,
+  cnipaTransientBusinessCode,
   type CnipaAuthenticatedRequest,
   type CnipaAuthenticatedSessionResponse,
 } from "@markorbit/worker-runtime";
@@ -306,6 +307,16 @@ function cloneResponse(
   return { ...response, body: new Uint8Array(response.body) };
 }
 
+function isCnipaTransientBusinessResponse(response: CnipaAuthenticatedSessionResponse): boolean {
+  if (!response.contentType.toLowerCase().includes("json")) return false;
+  try {
+    const value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(response.body));
+    return cnipaTransientBusinessCode(value) !== undefined;
+  } catch {
+    return false;
+  }
+}
+
 class PlaywrightCnipaSessionExecutor implements CnipaClosableAuthenticatedSessionExecutor {
   private requestCount = 0;
   private lastRequestAt = 0;
@@ -389,8 +400,13 @@ class PlaywrightCnipaSessionExecutor implements CnipaClosableAuthenticatedSessio
       body: Buffer.from(result.bodyBase64, "base64"),
       securityState,
     };
-    if (result.status >= 200 && result.status < 300)
+    if (
+      result.status >= 200 &&
+      result.status < 300 &&
+      !isCnipaTransientBusinessResponse(response)
+    ) {
       this.cache.set(cacheKey, cloneResponse(response));
+    }
     return response;
   }
 

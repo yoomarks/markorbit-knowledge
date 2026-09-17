@@ -134,6 +134,13 @@ The Playwright executor has an additional per-run request ceiling and a minimum 
 
 No ambiguous browser/network failure is replayed automatically. It remains `CNIPA_DELIVERY_UNKNOWN`.
 
+Authenticated review captures also observed two explicit divide-layer business responses that later succeeded unchanged for the same request:
+
+- `code=-102`: `divide:Rule not found!`
+- `code=-107`: `divide:Can not find selector, please check your configuration!`
+
+These two responses are treated differently from transport uncertainty because the server returned a definite HTTP/JSON result. The adapter retries only these observed business codes with a bounded exponential backoff (default 3 attempts, 250 ms base delay, capped at 2 seconds). Intermediate transient bodies are discarded rather than admitted as RawArtifact evidence. If the bounded budget is exhausted, the run fails as `CNIPA_SOURCE_TEMPORARY_FAILURE` with `retryable=true`. Browser/network/session ambiguity still receives no automatic replay.
+
 ## Raw evidence
 
 Every successful list and detail response is emitted as `artifactKind=JSON` using the exact sanitized response bytes. `ArtifactBackedCollectionExecutor` then performs the existing immutable RawArtifact ingestion protocol, SHA verification, change-watch identity checks and finalization. CNIPA does not write directly to persistence.
