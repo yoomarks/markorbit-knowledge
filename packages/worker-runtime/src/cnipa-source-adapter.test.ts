@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   CnipaSourceAdapter,
   type CnipaAuthenticatedRequest,
@@ -105,7 +105,7 @@ describe("CnipaSourceAdapter", () => {
     const adapter = new CnipaSourceAdapter(executor, new FixtureDecoder());
 
     await expect(
-      adapter.fetch({ mode: "PARTY_NAME", partyName: "????????" }),
+      adapter.fetch({ mode: "PARTY_NAME", partyName: "Synthetic Party" }),
     ).rejects.toMatchObject({
       code: "CNIPA_SCHEMA_UNVERIFIED",
       retryable: false,
