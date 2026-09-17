@@ -79,6 +79,39 @@ describe("CnipaPlaywrightSessionExecutorFactory", () => {
     expect(setup.closes()).toBe(1);
   });
 
+  it("does not cache observed transient business responses but caches the later success", async () => {
+    const setup = fixture();
+    const session = await setup.factory.create();
+    setup.page.result = {
+      kind: "RESPONSE",
+      status: 200,
+      sourceUri: "https://cnipa.example/api",
+      contentType: "application/json",
+      bodyBase64: Buffer.from(
+        JSON.stringify({ code: -102, msg: "divide:Rule not found!" }),
+      ).toString("base64"),
+    };
+
+    const transient = await session.execute(request);
+    setup.page.result = {
+      kind: "RESPONSE",
+      status: 200,
+      sourceUri: "https://cnipa.example/api",
+      contentType: "application/json",
+      bodyBase64: Buffer.from(JSON.stringify({ code: 0, data: { list: [] } })).toString("base64"),
+    };
+    const success = await session.execute(request);
+    const cachedSuccess = await session.execute(request);
+
+    expect(setup.page.requests).toHaveLength(2);
+    expect(JSON.parse(new TextDecoder().decode(transient.body))).toMatchObject({ code: -102 });
+    expect(JSON.parse(new TextDecoder().decode(success.body))).toMatchObject({ code: 0 });
+    expect(new TextDecoder().decode(cachedSuccess.body)).toBe(
+      new TextDecoder().decode(success.body),
+    );
+    await session.close();
+  });
+
   it("maps browser-side missing bearer state to operator reauthentication", async () => {
     const setup = fixture();
     setup.page.result = { kind: "REAUTH_REQUIRED" };
