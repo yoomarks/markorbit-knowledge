@@ -119,8 +119,7 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
     const documents: CnipaJudgmentCollection["documents"] = [];
     const evidence: CnipaJudgmentCollection["evidence"] = [];
     const coverageReasons = new Set<string>([
-      "CNIPA endpoint/response schema is operator-supplied and not yet authenticated-live-verified",
-      "Pagination and the reported 100-result boundary are not yet authenticated-live-verified",
+      "CNIPA normalized detail semantics remain operator-supplied and are not fully authenticated-live-verified",
     ]);
     let detailRequests = 0;
 
@@ -141,7 +140,33 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
         const pageIds = [...new Set(page.sourceRecordIds.map((value) => value.trim()))].filter(
           Boolean,
         );
+        const observedBeforePage = sourceRecordIds.size;
         for (const sourceRecordId of pageIds) sourceRecordIds.add(sourceRecordId);
+        const newUniqueIds = sourceRecordIds.size - observedBeforePage;
+
+        const authenticatedHiddenPaging =
+          normalizedQuery.mode === "DATE_RANGE" && documentKind === "REVIEW_ADJUDICATION";
+        if (authenticatedHiddenPaging) {
+          // Authenticated raw evidence shows that CNIPA clamps response total/pages/pageIndex
+          // to the visible 100-result window while still honoring the requested pageIndex
+          // offset. For this verified surface, stop on observed page contents rather than
+          // the misleading response pagination metadata.
+          if (pageIds.length === 0 || pageIds.length < this.pageSize) break;
+          if (newUniqueIds === 0) {
+            coverageReasons.add(
+              `${documentKind} returned a full hidden page without any new source ids; collection stopped without claiming completeness`,
+            );
+            break;
+          }
+          if (pageIndex === this.maxPagesPerLibrary) {
+            coverageReasons.add(
+              `${documentKind} reached the configured ${this.maxPagesPerLibrary}-page safety ceiling while more hidden pages may exist`,
+            );
+            break;
+          }
+          pageIndex += 1;
+          continue;
+        }
 
         if (page.hasMore === true && pageIds.length === 0) {
           throw new CnipaAcquisitionError(
@@ -173,6 +198,13 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
           break;
         }
         pageIndex += 1;
+      }
+
+      if (normalizedQuery.mode === "DATE_RANGE") {
+        coverageReasons.add(
+          `${documentKind} date-range bulk acquisition preserves complete LIST response bytes as primary evidence; DETAIL fan-out is intentionally skipped`,
+        );
+        continue;
       }
 
       for (const sourceRecordId of sourceRecordIds) {

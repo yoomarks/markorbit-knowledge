@@ -3,7 +3,7 @@ import {
   type CnipaTrademarkJudgmentQuery,
 } from "./cnipa-trademark-judgment";
 
-export const CNIPA_ACQUISITION_INTENT_POLICY_REVISION = "2026-09-02" as const;
+export const CNIPA_ACQUISITION_INTENT_POLICY_REVISION = "2026-09-18" as const;
 
 export type CnipaAcquisitionIntent = "DATE_RECENCY_DISCOVERY" | "REGISTRATION_NUMBER_TARGETED";
 
@@ -31,8 +31,8 @@ export const CNIPA_ACQUISITION_INTENT_POLICIES: Readonly<
     sourceTruthAuthority: "CNIPA_EVIDENCE_ONLY",
     notes: Object.freeze([
       "Use date windows for fresh decision/customer-development/content signals, not full-history mirroring.",
-      "Manual authenticated UI evidence shows a 100-visible-result / 10-page ceiling, including single-day windows that can still saturate at 100.",
-      "A saturated date window must never be represented as complete population coverage.",
+      "The public UI clamps visible pagination metadata at 100 results, but authenticated raw REVIEW_ADJUDICATION evidence shows requested pageIndex offsets continue beyond that visible window.",
+      "Hidden pagination improves recency evidence capture but does not authorize a complete-population claim.",
     ]),
   }),
   REGISTRATION_NUMBER_TARGETED: Object.freeze({
@@ -89,7 +89,7 @@ export function assertCnipaIntentCoverageClaim(
   if (acquisitionIntent === "DATE_RECENCY_DISCOVERY" && coverageStatus === "COMPLETE") {
     throw new CnipaAcquisitionError(
       "CNIPA_COVERAGE_UNKNOWN",
-      "DATE_RECENCY_DISCOVERY cannot claim COMPLETE coverage under the observed 100-visible-result source window",
+      "DATE_RECENCY_DISCOVERY remains PARTIAL by policy and cannot claim COMPLETE population coverage",
       false,
     );
   }

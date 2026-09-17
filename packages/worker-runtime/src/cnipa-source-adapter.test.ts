@@ -100,20 +100,65 @@ describe("CnipaSourceAdapter", () => {
     );
   });
 
-  it("models party/date queries but fails closed instead of inventing unverified request fields", async () => {
+  it("keeps party-name and unverified date/document-kind combinations fail-closed", async () => {
     const executor = new FixtureExecutor();
     const adapter = new CnipaSourceAdapter(executor, new FixtureDecoder());
 
     await expect(
-      adapter.fetch({ mode: "PARTY_NAME", partyName: "某某科技有限公司" }),
+      adapter.fetch({ mode: "PARTY_NAME", partyName: "????????" }),
     ).rejects.toMatchObject({
       code: "CNIPA_SCHEMA_UNVERIFIED",
       retryable: false,
     });
     await expect(
-      adapter.fetch({ mode: "DATE_RANGE", fromDate: "2026-01-01", toDate: "2026-01-31" }),
+      adapter.fetch({
+        mode: "DATE_RANGE",
+        fromDate: "2026-01-01",
+        toDate: "2026-01-31",
+        documentKinds: ["REGISTRATION_EXAMINATION"],
+      }),
     ).rejects.toMatchObject({ code: "CNIPA_SCHEMA_UNVERIFIED", retryable: false });
     expect(executor.requests).toHaveLength(0);
+  });
+
+  it("emits the authenticated-live-verified review date request fields", async () => {
+    const requests: CnipaAuthenticatedRequest[] = [];
+    const executor: CnipaAuthenticatedSessionExecutor = {
+      async execute(request) {
+        requests.push(request);
+        return jsonResponse(request, { ok: true });
+      },
+    };
+    const decoder = new FixtureDecoder();
+    decoder.decodeList = () => ({ sourceRecordIds: [], total: 100, hasMore: false });
+    const adapter = new CnipaSourceAdapter(executor, decoder, { pageSize: 100 });
+
+    const result = await adapter.fetch({
+      mode: "DATE_RANGE",
+      fromDate: "2026-07-01",
+      toDate: "2026-07-01",
+      documentKinds: ["REVIEW_ADJUDICATION"],
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      method: "POST",
+      documentKind: "REVIEW_ADJUDICATION",
+      surface: "LIST",
+      jsonBody: {
+        openFlag: 1,
+        regNo: "",
+        tmName: "",
+        applicantName: "",
+        respondentName: "",
+        judgeDateStart: "2026-07-01",
+        judgeDateEnd: "2026-07-01",
+        pageIndex: 1,
+        pageSize: 100,
+      },
+    });
+    expect(result.documents).toHaveLength(0);
+    expect(result.evidence).toHaveLength(1);
   });
 
   it("stops immediately for an expired authenticated session", async () => {

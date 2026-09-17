@@ -20,7 +20,7 @@ import {
 } from "./cnipa-trademark-judgment";
 
 export const CNIPA_CONNECTOR_ID = "cnipa-authenticated-worker";
-export const CNIPA_CONNECTOR_VERSION = "0.2.0";
+export const CNIPA_CONNECTOR_VERSION = "0.3.0";
 export const CNIPA_EXECUTOR: ExecutionExecutor = {
   executorId: CNIPA_CONNECTOR_ID,
   version: CNIPA_CONNECTOR_VERSION,
@@ -77,21 +77,32 @@ function sourceConfig(context: ArtifactBackedExecutionContext): CnipaSourceConfi
     );
   }
   const query = parseCnipaTrademarkJudgmentQuery(config.query);
-  if (query.mode !== "REGISTRATION_NUMBER") {
+  const verifiedReviewDateRange =
+    query.mode === "DATE_RANGE" &&
+    query.documentKinds?.length === 1 &&
+    query.documentKinds[0] === "REVIEW_ADJUDICATION";
+  if (query.mode !== "REGISTRATION_NUMBER" && !verifiedReviewDateRange) {
     throw new CollectionAcquisitionError(
       "CNIPA_SCHEMA_UNVERIFIED",
-      `${query.mode} collection remains disabled until Phase 3 verifies its request parameters`,
+      `${query.mode} collection remains disabled for this document-kind selection until authenticated raw evidence verifies its request parameters`,
       false,
     );
   }
   const limits = record(config.limits) ?? {};
+  const bulkDateRange = query.mode === "DATE_RANGE";
   return {
     query,
     responseSchema: parseCnipaResponseSchemaConfig(config.responseSchema),
-    pageSize: boundedInteger(limits.pageSize, 10, 1, 100, "connectorConfig.limits.pageSize"),
+    pageSize: boundedInteger(
+      limits.pageSize,
+      bulkDateRange ? 100 : 10,
+      1,
+      100,
+      "connectorConfig.limits.pageSize",
+    ),
     maxPagesPerLibrary: boundedInteger(
       limits.maxPagesPerLibrary,
-      10,
+      bulkDateRange ? 50 : 10,
       1,
       50,
       "connectorConfig.limits.maxPagesPerLibrary",

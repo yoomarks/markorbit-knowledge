@@ -87,6 +87,51 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
     expect(closed).toBe(1);
   });
 
+  it("acquires review date ranges as hidden-paged LIST evidence without DETAIL fan-out", async () => {
+    const input = context();
+    (input.job.sourceSnapshot.connectorConfig as Record<string, unknown>).query = {
+      mode: "DATE_RANGE",
+      fromDate: "2026-07-01",
+      toDate: "2026-07-01",
+      documentKinds: ["REVIEW_ADJUDICATION"],
+    };
+    let closed = 0;
+    const factory: CnipaAuthenticatedSessionExecutorFactory = {
+      async create() {
+        return {
+          async execute(request) {
+            if (request.surface !== "LIST") throw new Error("DETAIL must not be requested");
+            const pageIndex = Number(request.jsonBody?.pageIndex ?? 1);
+            const count = pageIndex === 1 ? 100 : 35;
+            return jsonResponse(request, {
+              data: {
+                records: Array.from({ length: count }, (_, index) => ({
+                  id: `p${pageIndex}-${index + 1}`,
+                })),
+                total: 100,
+                hasMore: false,
+              },
+            });
+          },
+          async close() {
+            closed += 1;
+          },
+        };
+      },
+    };
+
+    const artifacts = await new CnipaJudgmentArtifactAcquirer(factory).acquire(input);
+
+    expect(artifacts).toHaveLength(2);
+    expect(artifacts.map((artifact) => artifact.originalName)).toEqual([
+      expect.stringContaining("review-adjudication-list-"),
+      expect.stringContaining("review-adjudication-list-"),
+    ]);
+    expect(artifacts[0]?.canonicalUri).toContain("page=1");
+    expect(artifacts[1]?.canonicalUri).toContain("page=2");
+    expect(closed).toBe(1);
+  });
+
   it("fails before opening a browser for unverified party-name request parameters", async () => {
     let creates = 0;
     const factory: CnipaAuthenticatedSessionExecutorFactory = {

@@ -293,35 +293,58 @@ export function resolveCnipaDocumentKinds(
 
 /**
  * Official frontend static code establishes the request field names and the fixed
- * `openFlag: 1` used by opposition/review list requests. This runtime still emits
- * only registration-number queries automatically; party/date field semantics remain
- * fail-closed until permitted live behavior evidence verifies them.
+ * `openFlag: 1` used by opposition/review list requests. Authenticated raw response
+ * evidence additionally verifies REVIEW_ADJUDICATION date-range request semantics.
+ * Other unverified query/document-kind combinations remain fail-closed.
  */
 export function buildCnipaCandidateListRequest(
   documentKind: CnipaDocumentKind,
   query: CnipaTrademarkJudgmentQuery,
 ): CnipaAuthenticatedRequest {
   const endpoint = CNIPA_CANDIDATE_ENDPOINTS[documentKind];
-  if (query.mode !== "REGISTRATION_NUMBER") {
-    throw new CnipaAcquisitionError(
-      "CNIPA_SCHEMA_UNVERIFIED",
-      `${query.mode} request semantics are not yet authenticated-live-verified`,
-      false,
-    );
+  const fixedFields =
+    CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind[documentKind].fixedListRequestFields;
+
+  if (query.mode === "REGISTRATION_NUMBER") {
+    return {
+      method: "POST",
+      path: endpoint.listPath,
+      documentKind,
+      surface: "LIST",
+      jsonBody: {
+        ...fixedFields,
+        pageIndex: 1,
+        pageSize: 10,
+        regNo: query.registrationNumber,
+      },
+    };
   }
-  return {
-    method: "POST",
-    path: endpoint.listPath,
-    documentKind,
-    surface: "LIST",
-    jsonBody: {
-      ...CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE.byDocumentKind[documentKind]
-        .fixedListRequestFields,
-      pageIndex: 1,
-      pageSize: 10,
-      regNo: query.registrationNumber,
-    },
-  };
+
+  if (query.mode === "DATE_RANGE" && documentKind === "REVIEW_ADJUDICATION") {
+    return {
+      method: "POST",
+      path: endpoint.listPath,
+      documentKind,
+      surface: "LIST",
+      jsonBody: {
+        ...fixedFields,
+        regNo: "",
+        tmName: "",
+        applicantName: "",
+        respondentName: "",
+        judgeDateStart: query.fromDate,
+        judgeDateEnd: query.toDate,
+        pageIndex: 1,
+        pageSize: 100,
+      },
+    };
+  }
+
+  throw new CnipaAcquisitionError(
+    "CNIPA_SCHEMA_UNVERIFIED",
+    `${query.mode} request semantics are not authenticated-live-verified for ${documentKind}`,
+    false,
+  );
 }
 
 export function buildCnipaCandidateDetailRequest(
