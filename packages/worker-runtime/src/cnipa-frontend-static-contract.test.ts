@@ -170,20 +170,38 @@ describe("CNIPA official frontend static request contract", () => {
     ).toEqual({ openFlag: 1, pageIndex: 1, pageSize: 10, regNo: "1234567" });
   });
 
-  it("keeps party-name and date-range production request construction fail-closed", () => {
+  it("keeps unverified request construction fail-closed while allowing the verified review date shape", () => {
     expect(() =>
       buildCnipaCandidateListRequest("OPPOSITION_DECISION", {
         mode: "PARTY_NAME",
         partyName: "Synthetic Party",
       }),
-    ).toThrow(/request semantics are not yet authenticated-live-verified/i);
+    ).toThrow(/request semantics are not authenticated-live-verified/i);
 
     expect(() =>
-      buildCnipaCandidateListRequest("REVIEW_ADJUDICATION", {
+      buildCnipaCandidateListRequest("REGISTRATION_EXAMINATION", {
         mode: "DATE_RANGE",
         fromDate: "2026-01-01",
         toDate: "2026-01-30",
       }),
-    ).toThrow(/request semantics are not yet authenticated-live-verified/i);
+    ).toThrow(/request semantics are not authenticated-live-verified/i);
+
+    expect(
+      buildCnipaCandidateListRequest("REVIEW_ADJUDICATION", {
+        mode: "DATE_RANGE",
+        fromDate: "2026-01-01",
+        toDate: "2026-01-30",
+      }).jsonBody,
+    ).toEqual({
+      openFlag: 1,
+      regNo: "",
+      tmName: "",
+      applicantName: "",
+      respondentName: "",
+      judgeDateStart: "2026-01-01",
+      judgeDateEnd: "2026-01-30",
+      pageIndex: 1,
+      pageSize: 100,
+    });
   });
 });

@@ -44,7 +44,7 @@ describe("CNIPA acquisition intent policy", () => {
       sourceTruthAuthority: "CNIPA_EVIDENCE_ONLY",
     });
     expect(CNIPA_ACQUISITION_INTENT_POLICIES.DATE_RECENCY_DISCOVERY.notes.join(" ")).toContain(
-      "100-visible-result",
+      "pageIndex offsets continue beyond",
     );
   });
 
@@ -85,7 +85,7 @@ describe("CNIPA acquisition intent policy", () => {
     const completePopulation = () =>
       assertCnipaIntentCoverageClaim("REGISTRATION_NUMBER_TARGETED", "COMPLETE");
 
-    expect(completeRecency).toThrow(/100-visible-result source window/);
+    expect(completeRecency).toThrow(/remains PARTIAL by policy/);
     expect(completePopulation).toThrow(/complete CNIPA population coverage/);
 
     expect(() => assertCnipaIntentCoverageClaim("DATE_RECENCY_DISCOVERY", "PARTIAL")).not.toThrow();
