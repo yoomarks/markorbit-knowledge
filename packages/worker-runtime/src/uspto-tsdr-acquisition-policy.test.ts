@@ -107,11 +107,19 @@ describe("USPTO TSDR acquisition policy", () => {
   });
 
   it("keeps routine and unclassified families metadata-only", () => {
-    for (const family of ["APPLICATION_FILING", "SPECIMEN", "OTHER"]) {
+    for (const [family, sourceDocumentType] of [
+      ["APPLICATION_FILING", "Application Filing"],
+      ["SPECIMEN", "Specimen"],
+    ]) {
       expect(() =>
         admitUsptoTsdrAcquisition({
           ...binaryRequest(),
-          document: { ...binaryRequest().document, family },
+          document: {
+            ...binaryRequest().document,
+            family,
+            sourceDocumentType,
+            sourceDescription: sourceDocumentType,
+          },
         }),
       ).toThrow(expect.objectContaining({ code: "TSDR_DOCUMENT_DOWNLOAD_NOT_ADMITTED" }));
     }
@@ -121,6 +129,22 @@ describe("USPTO TSDR acquisition policy", () => {
         document: { ...binaryRequest().document, family: "UNVERIFIED_FAMILY" },
       }),
     ).toThrow(expect.objectContaining({ code: "TSDR_DOCUMENT_CLASSIFICATION_REQUIRED" }));
+  });
+
+  it("recomputes classification and rejects family, classifier, or ambiguous metadata tampering", () => {
+    for (const document of [
+      { ...binaryRequest().document, family: "OUTCOME_DOCUMENT" },
+      { ...binaryRequest().document, classifierIdentity: "caller-classifier" },
+      { ...binaryRequest().document, classifierVersion: "2.0.0" },
+      {
+        ...binaryRequest().document,
+        sourceDescription: "Response to Office Action",
+      },
+    ]) {
+      expect(() => admitUsptoTsdrAcquisition({ ...binaryRequest(), document })).toThrow(
+        expect.objectContaining({ code: "TSDR_DOCUMENT_CLASSIFICATION_REQUIRED" }),
+      );
+    }
   });
 
   it("rejects a binary selection that is not grounded in an immutable index artifact", () => {

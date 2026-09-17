@@ -52,6 +52,13 @@ acquisition-cost policy, not a claim about legal significance. The classifier id
 and source index RawArtifact ID are retained so the selection decision is reproducible and can
 evolve under review.
 
+The admitted classifier is `uspto-tsdr-document-family@1.0.0`. It performs exact matching against
+separately normalized official Type and Description field values. It does not use broad substring
+matching. Unknown metadata remains `UNCLASSIFIED`; Type/Description matches that point to different
+families become `AMBIGUOUS`. Both states block binary admission. The acquisition policy recomputes
+the classification and rejects a caller-supplied family, classifier identity, or version that does
+not reproduce from the source metadata.
+
 ## Evidence and authority
 
 Every admitted binary must enter the existing immutable RawArtifact path with exact bytes, hash,

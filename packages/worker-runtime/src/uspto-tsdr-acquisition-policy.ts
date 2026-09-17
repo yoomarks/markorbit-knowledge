@@ -226,6 +226,21 @@ function documentSelection(value: unknown): UsptoTsdrDocumentSelection {
       "selected document must reference the immutable TSDR index RawArtifact",
     );
   }
+  const classification = classifyUsptoTsdrDocument({
+    sourceDocumentType: normalized.sourceDocumentType,
+    sourceDescription: normalized.sourceDescription,
+  });
+  if (
+    classification.status !== "CLASSIFIED" ||
+    classification.family !== family ||
+    normalized.classifierIdentity !== USPTO_TSDR_DOCUMENT_CLASSIFIER_IDENTITY ||
+    normalized.classifierVersion !== USPTO_TSDR_DOCUMENT_CLASSIFIER_VERSION
+  ) {
+    throw new UsptoTsdrPolicyError(
+      "TSDR_DOCUMENT_CLASSIFICATION_REQUIRED",
+      "selected document classification must reproduce from the accepted deterministic classifier",
+    );
+  }
   if (!HIGH_VALUE_FAMILIES.has(family)) {
     throw new UsptoTsdrPolicyError(
       "TSDR_DOCUMENT_DOWNLOAD_NOT_ADMITTED",
@@ -335,3 +350,8 @@ export function usptoTsdrAcquisitionPolicyDescriptor() {
     productionExecutionImplemented: false as const,
   });
 }
+import {
+  USPTO_TSDR_DOCUMENT_CLASSIFIER_IDENTITY,
+  USPTO_TSDR_DOCUMENT_CLASSIFIER_VERSION,
+  classifyUsptoTsdrDocument,
+} from "./uspto-tsdr-document-classifier";
