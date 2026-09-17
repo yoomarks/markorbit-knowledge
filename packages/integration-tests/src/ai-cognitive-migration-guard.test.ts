@@ -10,11 +10,48 @@ const MIGRATION = new Map(
   AI_COGNITIVE_MIGRATION_LEDGER_V1.map((entry) => [entry.modulePath, entry]),
 );
 const CONTRACT_PREFIX = "packages/contracts/src/";
+const PACKAGE_NAMES = ["contracts", "persistence", "worker-runtime"] as const;
+type PackageName = (typeof PACKAGE_NAMES)[number];
+const PACKAGE_EXPORTS = new Map<PackageName, Record<string, string>>();
 
 function posix(value: string): string {
   return value.split(path.sep).join("/");
 }
 
+function exportsForPackage(packageName: PackageName): Record<string, string> {
+  const cached = PACKAGE_EXPORTS.get(packageName);
+  if (cached) return cached;
+  const packageDir = path.join(ROOT, "packages", packageName);
+  const manifest = JSON.parse(fs.readFileSync(path.join(packageDir, "package.json"), "utf8")) as {
+    exports?: Record<string, string>;
+  };
+  const exports = manifest.exports ?? {};
+  PACKAGE_EXPORTS.set(packageName, exports);
+  return exports;
+}
+
+function migrationImportNeedles(): string[] {
+  const needles = new Set<string>(["@markorbit/contracts"]);
+  for (const modulePath of MIGRATION.keys()) {
+    needles.add(path.basename(modulePath, path.extname(modulePath)));
+    for (const packageName of PACKAGE_NAMES) {
+      const packageDir = path.join(ROOT, "packages", packageName);
+      if (!modulePath.startsWith(`packages/${packageName}/`)) continue;
+      for (const [subpath, target] of Object.entries(exportsForPackage(packageName))) {
+        const resolved = posix(path.relative(ROOT, path.resolve(packageDir, target)));
+        if (resolved !== modulePath || subpath === ".") continue;
+        needles.add(`@markorbit/${packageName}/${subpath.slice(2)}`);
+      }
+    }
+  }
+  return [...needles];
+}
+
+const MIGRATION_IMPORT_NEEDLES = migrationImportNeedles();
+
+function mayReferenceMigrationOwnedModule(text: string): boolean {
+  return MIGRATION_IMPORT_NEEDLES.some((needle) => text.includes(needle));
+}
 function exportedNames(modulePath: string): Set<string> {
   const text = fs.readFileSync(path.join(ROOT, modulePath), "utf8");
   const source = ts.createSourceFile(modulePath, text, ts.ScriptTarget.Latest, true);
@@ -49,13 +86,11 @@ for (const modulePath of MIGRATION.keys()) {
 function resolvePackageExport(specifier: string): string | null {
   const match = /^@markorbit\/(contracts|persistence|worker-runtime)(?:\/(.+))?$/.exec(specifier);
   if (!match) return null;
-  const [, packageName, subpath] = match;
+  const packageName = match[1] as PackageName;
+  const subpath = match[2];
   if (!subpath) return packageName === "contracts" ? "packages/contracts/src/index.ts" : null;
   const packageDir = path.join(ROOT, "packages", packageName);
-  const manifest = JSON.parse(fs.readFileSync(path.join(packageDir, "package.json"), "utf8")) as {
-    exports?: Record<string, string>;
-  };
-  const target = manifest.exports?.[`./${subpath}`];
+  const target = exportsForPackage(packageName)[`./${subpath}`];
   return target ? posix(path.relative(ROOT, path.resolve(packageDir, target))) : null;
 }
 
@@ -99,6 +134,7 @@ function collectUsages(): UsageMap {
   const usage: UsageMap = new Map();
   for (const filePath of productionSources()) {
     const text = fs.readFileSync(path.join(ROOT, filePath), "utf8");
+    if (!mayReferenceMigrationOwnedModule(text)) continue;
     const source = ts.createSourceFile(filePath, text, ts.ScriptTarget.Latest, true);
     for (const node of source.statements) {
       if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) continue;
@@ -145,6 +181,16 @@ describe("AI cognitive migration compatibility guard", () => {
     expect(drift).toEqual({});
   });
 
+  it("retains every frozen approved call site in the migration prefilter", () => {
+    const approvedCallSites = new Set(
+      AI_COGNITIVE_MIGRATION_LEDGER_V1.flatMap((entry) => entry.approvedCompatibilityCallSites),
+    );
+    const missed = [...approvedCallSites].filter((filePath) => {
+      const text = fs.readFileSync(path.join(ROOT, filePath), "utf8");
+      return !mayReferenceMigrationOwnedModule(text);
+    });
+    expect(missed).toEqual([]);
+  });
   it("keeps the two legacy cognitive CLIs exposed only through their frozen scripts", () => {
     const manifest = JSON.parse(
       fs.readFileSync(path.join(ROOT, "apps/worker/package.json"), "utf8"),

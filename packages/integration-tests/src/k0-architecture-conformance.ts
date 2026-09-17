@@ -144,17 +144,43 @@ function contractSymbolOwners(files: RepositoryFiles): Map<string, string> {
   return owners;
 }
 
-function resolvePackageExport(specifier: string, files: RepositoryFiles): string | null {
-  const match = /^@markorbit\/(contracts|persistence|worker-runtime)(?:\/(.+))?$/.exec(specifier);
-  if (!match) return null;
-  const [, packageName, subpath] = match;
-  if (!subpath) return packageName === "contracts" ? "packages/contracts/src/index.ts" : null;
-  const manifestText = files.get(`packages/${packageName}/package.json`);
-  if (!manifestText) return null;
-  const manifest = JSON.parse(manifestText) as { exports?: Record<string, string> };
-  const target = manifest.exports?.[`./${subpath}`];
-  if (!target) return null;
-  return posix(path.join(`packages/${packageName}`, target.replace(/^\.\//, "")));
+type PackageExportMap = Map<string, string>;
+
+function packageExports(files: RepositoryFiles): PackageExportMap {
+  const exports = new Map<string, string>();
+  exports.set("@markorbit/contracts", "packages/contracts/src/index.ts");
+  for (const packageName of ["contracts", "persistence", "worker-runtime"] as const) {
+    const manifestText = files.get(`packages/${packageName}/package.json`);
+    if (!manifestText) continue;
+    const manifest = JSON.parse(manifestText) as { exports?: Record<string, string> };
+    for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
+      const suffix = subpath === "." ? "" : `/${subpath.replace(/^\.\//, "")}`;
+      exports.set(
+        `@markorbit/${packageName}${suffix}`,
+        posix(path.join(`packages/${packageName}`, target.replace(/^\.\//, ""))),
+      );
+    }
+  }
+  return exports;
+}
+
+function migrationImportNeedles(exports: PackageExportMap): readonly string[] {
+  const migration = new Set(AI_COGNITIVE_MIGRATION_LEDGER_V1.map((entry) => entry.modulePath));
+  return [
+    "@markorbit/contracts",
+    ...new Set(
+      AI_COGNITIVE_MIGRATION_LEDGER_V1.map((entry) =>
+        path.posix.basename(entry.modulePath, path.posix.extname(entry.modulePath)),
+      ),
+    ),
+    ...[...exports.entries()]
+      .filter(([, target]) => migration.has(target))
+      .map(([specifier]) => specifier),
+  ];
+}
+
+function resolvePackageExport(specifier: string, exports: PackageExportMap): string | null {
+  return exports.get(specifier) ?? null;
 }
 function resolveRelativeImport(
   filePath: string,
@@ -181,14 +207,13 @@ function addUsage(usage: Map<string, Set<string>>, modulePath: string, filePath:
 function cognitiveUsage(files: RepositoryFiles): Map<string, Set<string>> {
   const migration = new Set(AI_COGNITIVE_MIGRATION_LEDGER_V1.map((entry) => entry.modulePath));
   const symbols = contractSymbolOwners(files);
+  const exports = packageExports(files);
+  const needles = migrationImportNeedles(exports);
   const usage = new Map<string, Set<string>>();
   for (const filePath of productionSourcePaths(files)) {
-    const source = ts.createSourceFile(
-      filePath,
-      files.get(filePath) ?? "",
-      ts.ScriptTarget.Latest,
-      true,
-    );
+    const text = files.get(filePath) ?? "";
+    if (!needles.some((needle) => text.includes(needle))) continue;
+    const source = ts.createSourceFile(filePath, text, ts.ScriptTarget.Latest, true);
     for (const node of source.statements) {
       if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) continue;
       const specifier = node.moduleSpecifier.text;
@@ -208,7 +233,8 @@ function cognitiveUsage(files: RepositoryFiles): Map<string, Set<string>> {
         continue;
       }
       const resolved =
-        resolvePackageExport(specifier, files) ?? resolveRelativeImport(filePath, specifier, files);
+        resolvePackageExport(specifier, exports) ??
+        resolveRelativeImport(filePath, specifier, files);
       if (resolved && migration.has(resolved)) addUsage(usage, resolved, filePath);
     }
   }
