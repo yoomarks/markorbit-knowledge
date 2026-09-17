@@ -1,14 +1,8 @@
 import { createHash } from "node:crypto";
 
-export type CnipaCaptureDatasetKind =
-  | "registration_list"
-  | "opposition_list"
-  | "review_list";
+export type CnipaCaptureDatasetKind = "registration_list" | "opposition_list" | "review_list";
 
-export type CnipaHiddenPaginationAssessment =
-  | "VERIFIED"
-  | "NOT_EXERCISED"
-  | "INCONCLUSIVE";
+export type CnipaHiddenPaginationAssessment = "VERIFIED" | "NOT_EXERCISED" | "INCONCLUSIVE";
 
 export type CnipaCaptureDatasetAssessment = {
   schema: "mo-cnipa-capture-dataset-assessment-v1";
@@ -220,14 +214,8 @@ export function assessCnipaCaptureDataset(
       page.requestedPageIndex,
       `dataset.pages[${index}].requestedPageIndex`,
     );
-    const listLength = asNonNegativeInteger(
-      page.listLength,
-      `dataset.pages[${index}].listLength`,
-    );
-    const newUnique = asNonNegativeInteger(
-      page.newUnique,
-      `dataset.pages[${index}].newUnique`,
-    );
+    const listLength = asNonNegativeInteger(page.listLength, `dataset.pages[${index}].listLength`);
+    const newUnique = asNonNegativeInteger(page.newUnique, `dataset.pages[${index}].newUnique`);
     const attempts = asPositiveInteger(page.attempts, `dataset.pages[${index}].attempts`);
     if (newUnique > listLength) {
       throw new Error(`dataset.pages[${index}].newUnique cannot exceed listLength`);
@@ -273,13 +261,16 @@ export function assessCnipaCaptureDataset(
   }
 
   const reasons: string[] = [];
-  if (!sourceUrlMatchesKind) reasons.push("source URL does not match the selected judgment library");
+  if (!sourceUrlMatchesKind)
+    reasons.push("source URL does not match the selected judgment library");
   if (!pageIndexIsOne || !pageSizeIsHundred) {
     reasons.push("base query must be exported as pageIndex=1 and pageSize=100");
   }
   if (!dateFieldsPresent) reasons.push("expected date-range fields are missing");
-  if (!openFlagMatchesObservedShape) reasons.push("openFlag does not match the observed request shape");
-  if (idStrategy !== spec.expectedIdStrategy) reasons.push("dataset idStrategy does not match the kind");
+  if (!openFlagMatchesObservedShape)
+    reasons.push("openFlag does not match the observed request shape");
+  if (idStrategy !== spec.expectedIdStrategy)
+    reasons.push("dataset idStrategy does not match the kind");
   if (!countMatchesRecords) reasons.push("dataset.count does not equal records.length");
   if (expectedIdCount !== records.length) {
     reasons.push(`not every record contains canonical ${spec.expectedIdField}`);
@@ -287,8 +278,10 @@ export function assessCnipaCaptureDataset(
   if (fallbackAdjuIdCount > 0) reasons.push("one or more records require adjuId fallback");
   if (missingCanonicalIdCount > 0) reasons.push("one or more records have no canonical source id");
   if (duplicateResolvedIdCount > 0) reasons.push("duplicate resolved source ids were found");
-  if (!allRecordsContainFileContent) reasons.push("not every LIST record contains non-empty fileContent");
-  if (!pageIndicesContiguousFromTwo) reasons.push("hidden requested page indices are not contiguous from 2");
+  if (!allRecordsContainFileContent)
+    reasons.push("not every LIST record contains non-empty fileContent");
+  if (!pageIndicesContiguousFromTwo)
+    reasons.push("hidden requested page indices are not contiguous from 2");
   if (hiddenPagination !== "VERIFIED") {
     reasons.push("hidden pagination beyond the visible 100-row window was not fully demonstrated");
   }
@@ -337,3 +330,5 @@ export function assessCnipaCaptureDataset(
     },
   };
 }
+
+[executed on device: MarkOrbit (710fa508-4ac4-4899-bf0a-594e530d3e21)]
