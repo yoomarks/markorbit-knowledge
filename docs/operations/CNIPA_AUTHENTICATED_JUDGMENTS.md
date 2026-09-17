@@ -174,6 +174,21 @@ Authenticated raw evidence additionally verifies this review date-range shape:
 
 For subsequent hidden pages only `pageIndex` changes; returned pagination metadata is not trusted for this verified mode.
 
+A minimal authenticated-raw-verified response mapping for review bulk LIST acquisition is:
+
+```json
+{
+  "list": {
+    "recordsPath": ["data", "list"],
+    "sourceRecordIdField": "pubId",
+    "totalPath": ["data", "total"]
+  },
+  "detail": {}
+}
+```
+
+`detail` remains present because the connector schema contract requires the object, but review `DATE_RANGE` bulk mode does not fan out DETAIL requests. The observed LIST rows already carry `fileContent` and are preserved verbatim as RawArtifact evidence.
+
 Opposition role semantics remain `UNVERIFIED` until a live document establishes which source field maps to opposer vs opposed party.
 
 ## Phase 3 gate

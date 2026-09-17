@@ -95,6 +95,14 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
       toDate: "2026-07-01",
       documentKinds: ["REVIEW_ADJUDICATION"],
     };
+    (input.job.sourceSnapshot.connectorConfig as Record<string, unknown>).responseSchema = {
+      list: {
+        recordsPath: ["data", "list"],
+        sourceRecordIdField: "pubId",
+        totalPath: ["data", "total"],
+      },
+      detail: {},
+    };
     let closed = 0;
     const factory: CnipaAuthenticatedSessionExecutorFactory = {
       async create() {
@@ -105,11 +113,14 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
             const count = pageIndex === 1 ? 100 : 35;
             return jsonResponse(request, {
               data: {
-                records: Array.from({ length: count }, (_, index) => ({
-                  id: `p${pageIndex}-${index + 1}`,
+                list: Array.from({ length: count }, (_, index) => ({
+                  pubId: `p${pageIndex}-${index + 1}`,
+                  fileContent: `decision-${pageIndex}-${index + 1}`,
                 })),
                 total: 100,
-                hasMore: false,
+                pageIndex: 1,
+                pageSize: 100,
+                pages: 1,
               },
             });
           },
