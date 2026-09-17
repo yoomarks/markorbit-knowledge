@@ -20,7 +20,7 @@ import {
 } from "./cnipa-trademark-judgment";
 
 export const CNIPA_CONNECTOR_ID = "cnipa-authenticated-worker";
-export const CNIPA_CONNECTOR_VERSION = "0.3.0";
+export const CNIPA_CONNECTOR_VERSION = "0.3.1";
 export const CNIPA_EXECUTOR: ExecutionExecutor = {
   executorId: CNIPA_CONNECTOR_ID,
   version: CNIPA_CONNECTOR_VERSION,
