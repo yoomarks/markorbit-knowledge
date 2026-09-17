@@ -14,6 +14,7 @@ export type AiEvidencePlaneOwnerEntryV1 = {
 
 const KEEP_IN_KNOWLEDGE = [
   "packages/contracts/src/ai-acquisition-evidence-v1.ts",
+  "packages/contracts/src/ai-cognitive-migration-ledger-v1.ts",
   "packages/contracts/src/ai-evidence-plane-owner-map-v1.ts",
   "packages/contracts/src/ai-grounded-prepared-evidence-v1.ts",
   "packages/contracts/src/ai-grounded-provider-authorization-v1.ts",

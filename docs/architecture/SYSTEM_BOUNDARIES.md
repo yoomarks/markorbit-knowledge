@@ -62,3 +62,9 @@ MarkOrbit Core owns authenticated Workspace identity, membership and product lif
 Knowledge Schema v1 `Workspace` owns a separate `wsp_<ULID>` data-boundary namespace for Knowledge persistence, acquisition, staging and retrieval. Browser or service access authorized by a Core Workspace must resolve through a durable Core-to-Knowledge binding before reading or mutating Knowledge-owned records. Missing or ambiguous bindings fail closed.
 
 Knowledge Workspace lifecycle state gates local Knowledge availability only. It does not create, activate, suspend, archive or otherwise redefine the corresponding Core Workspace or its memberships. Global Public Knowledge is platform-owned and is never an implicit fallback for an unbound tenant Workspace.
+
+## K0 architecture conformance gate
+
+`pnpm --filter @markorbit/integration-tests check:k0-architecture` is a lightweight drift guard for the K0 authority seams. It checks only machine-identifiable invariants around Core Workspace binding, AI/ADK ownership and compatibility call sites, universal Knowledge health/readiness authority declarations, and Current Governed Knowledge consumer gates.
+
+The gate is drift protection, not a replacement for architecture review or code review. Exceptions must remain explicit and narrow; new architecture should extend the canonical seams rather than broadening allowlists to make the check pass.

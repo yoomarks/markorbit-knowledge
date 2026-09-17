@@ -25,6 +25,7 @@ const EXPECTED_PRODUCTION_AI_MODULES = [
   "apps/worker/src/run-adk-queue-recover.ts",
   "apps/worker/src/run-adk-queue-worker.ts",
   "packages/contracts/src/ai-acquisition-evidence-v1.ts",
+  "packages/contracts/src/ai-cognitive-migration-ledger-v1.ts",
   "packages/contracts/src/ai-assignment-candidate-promotion-v1.ts",
   "packages/contracts/src/ai-assignment-candidate-v1.ts",
   "packages/contracts/src/ai-assignment-graph-v1.ts",
