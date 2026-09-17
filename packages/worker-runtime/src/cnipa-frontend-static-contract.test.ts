@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  CNIPA_AUTH_ARCHITECTURE_EVIDENCE,
+  CNIPA_AUTH_ARCHITECTURE_EVIDENCE_STATUS,
   CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE,
   CNIPA_FRONTEND_STATIC_CONTRACT_STATUS,
 } from "./cnipa-frontend-static-contract";
@@ -12,6 +14,38 @@ const registrationNumberQuery = {
   mode: "REGISTRATION_NUMBER",
   registrationNumber: "1234567",
 } as const;
+
+describe("CNIPA authentication architecture evidence", () => {
+  it("records verified client observations without inferring judgment route client ids", () => {
+    expect(CNIPA_AUTH_ARCHITECTURE_EVIDENCE_STATUS).toBe("PARTIALLY_VERIFIED");
+    expect(CNIPA_AUTH_ARCHITECTURE_EVIDENCE).toMatchObject({
+      observedDate: "2026-09-17",
+      sharedSsoObservedByOperator: true,
+      trademarkQuery: {
+        host: "wcjs.sbj.cnipa.gov.cn",
+        userInfoPath: "/api/user/getInfo",
+        clientId: "trademark_query",
+      },
+      publicPortalBrandNotice: {
+        clientId: "trademark_three_public",
+        stateRoute: "portalui-pub-prod/brandNotice",
+      },
+      judgmentRouteClientAllocation: {
+        trademarkRegistration: "UNVERIFIED",
+        trademarkObjection: "UNVERIFIED",
+        reviewAdjudication: "UNVERIFIED",
+      },
+      routeNameMayBeUsedAsClientId: false,
+    });
+    expect(CNIPA_AUTH_ARCHITECTURE_EVIDENCE.doesNotVerify).toContain(
+      "JUDGMENT_RAW_HTTP_RESPONSE_ENVELOPE_OR_SCHEMA",
+    );
+    expect(CNIPA_AUTH_ARCHITECTURE_EVIDENCE.doesNotVerify).toContain(
+      "JUDGMENT_DATA_TOTAL_SEMANTICS",
+    );
+    expect(CNIPA_JUDGMENT_SCHEMA_STATUS).toBe("OPERATOR_SUPPLIED_UNVERIFIED");
+  });
+});
 
 describe("CNIPA official frontend static request contract", () => {
   it("records the public API base and evidence boundary separately from live schema verification", () => {

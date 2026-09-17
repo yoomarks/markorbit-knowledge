@@ -1,13 +1,14 @@
 # CNIPA Phase 3 manual authenticated live acceptance
 
-Status: operator-only acceptance. The Playwright-authenticated live path is currently blocked by an observed CNIPA access-control gate, and the operator has confirmed that the currently usable ordinary-Chrome CNIPA portal does not provide a usable DevTools path. Do not bypass either limitation.
+Status: partial Phase 3 authenticated validation. Operator-controlled ordinary Chrome capture has now produced authenticated raw judgment LIST/DETAIL evidence, and REVIEW_ADJUDICATION hidden date pagination has been promoted into the runtime. The direct Playwright-authenticated production session remains separately gated, and registration/opposition date-range hidden paging still requires equivalent raw verification.
 
 Current permitted evidence layers are:
 
+- operator-controlled ordinary Chrome capture of bounded judgment LIST/DETAIL responses, with credentials/headers/session material excluded from exported evidence;
+- operator-retrieved official frontend static code for request construction, frontend-consumed fields and client expectations;
+- ordinary-Chrome manual UI observation for visible business behavior;
 - ordinary-Chrome Default-mode `chrome://net-export/` for bounded transport/status observations;
-- operator-retrieved official frontend static code for request construction, frontend-consumed fields and UI intent/client expectations;
-- ordinary-Chrome **manual UI observation** for visible business behavior that does not require DevTools;
-- the offline Response-only assessor implemented by #633/#635, but only when a site/session legitimately provides a permitted way to save selected Response JSON bodies. That input path is not currently available on the operator's CNIPA session.
+- the offline Response-only assessor for sanitized captured JSON files.
 
 Parent issue: #573  
 Implementation issue: #576  
@@ -27,25 +28,31 @@ Do **not** solve or bypass CAPTCHA/SSO/access controls, change browser fingerpri
 
 Normal PR CI must remain zero-CNIPA-request. Raw evidence, probe plans and private operator inputs remain outside the repository.
 
-## Current authentication and observation gate
+## Historical Playwright gate and current operator path
 
-A/B testing on 2026-09-01 established:
+A/B testing on 2026-09-01 established that the direct Playwright persistent-session path was blocked while ordinary Chrome remained usable. That remains a historical constraint on the production Playwright harness, not a prohibition on the later operator-controlled ordinary-Chrome capture path.
 
-- ordinary Chrome can use the current CNIPA public portal;
-- the same portal path is blocked when launched through the Playwright persistent-session route;
-- therefore the Playwright failure is treated as an external access-control/anti-automation gate, not a local executable/profile defect;
-- the operator has separately confirmed that the usable ordinary-Chrome CNIPA portal does not provide a usable DevTools path.
+By 2026-09-17/18, sanitized authenticated raw LIST/DETAIL response capture was successfully obtained from ordinary Chrome without exporting cookies, Authorization headers or bearer values. Review date queries were then replay-tested with only pagination fields changed, proving hidden backend offsets beyond the visible 100-row window.
 
 Consequences:
 
-- do not execute the Playwright live acceptance path while this gate remains;
-- do not instruct the operator to use DevTools on the current site path;
-- do not enable sensitive NetLog/raw-byte capture merely to reconstruct response bodies;
-- use `docs/operations/CNIPA_OFFLINE_NETLOG_EVIDENCE.md` for transport evidence;
-- use `CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE` for static request/client expectations;
-- use `docs/operations/CNIPA_MANUAL_UI_OBSERVATION.md` for current visible business-behavior evidence;
-- use `docs/operations/CNIPA_ACQUISITION_INTENTS.md` for the frozen distinction between recency discovery and targeted known-mark follow-up;
-- retain `docs/operations/CNIPA_OFFLINE_RESPONSE_BUNDLE.md` as an implemented safe capability for a future environment/session where selected Response JSON can legitimately be saved without extracting authentication material.
+- do not bypass CAPTCHA/SSO or extract/replay session credentials;
+- keep the direct Playwright production-session gate separate from the browser-capture evidence path;
+- use captured raw JSON plus `docs/operations/CNIPA_AUTHENTICATED_JUDGMENTS.md` for currently verified Review runtime behavior;
+- use `docs/operations/CNIPA_ACQUISITION_INTENTS.md` for coverage/intended-use boundaries;
+- keep registration/opposition DATE_RANGE fail-closed until equivalent raw hidden-pagination evidence is verified.
+
+## Authentication architecture evidence - 2026-09-17
+
+Sanitized operator observations add a separate authentication-architecture evidence layer:
+
+- Trademark Query (`wcjs.sbj.cnipa.gov.cn`) and the public judgment/publication applications were observed to share one SSO login state at the user-visible layer.
+- Authenticated `GET /api/user/getInfo` in Trademark Query returned a sanitized structural observation with `data.user.clientId = "trademark_query"`. No account fields, cookies, tokens, OAuth code/state values, browser storage, or profile data are retained.
+- Operator-retrieved official static JavaScript contains an OAuth navigation relationship for `state=portalui-pub-prod/brandNotice` using `client_id=trademark_three_public` and redirect URI `https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/pubauth/login`.
+
+This proves that a portal route name cannot be treated as its OAuth `clientId`: `brandNotice` is routed through `trademark_three_public`, while Trademark Query reports `trademark_query`. Therefore `trademarkObjection -> trademarkObjection` and `trademarkRegistration -> trademarkRegistration` are explicitly **not verified**. Their client allocation, and the review-adjudication route client allocation, remain `UNVERIFIED` until their own permitted static/runtime evidence is available.
+
+This authentication evidence, by itself, does not promote any judgment backend fact. Independent authenticated review captures now verify the REVIEW_ADJUDICATION LIST envelope and hidden-pagination behavior; those findings are tracked separately in the acquisition/runtime evidence and do not come from the authentication evidence described here. Authentication evidence still does not establish registration/opposition response semantics, population completeness, or judgment-route OAuth client allocation. `CNIPA_JUDGMENT_SCHEMA_STATUS` remains `OPERATOR_SUPPLIED_UNVERIFIED`.
 
 ## Observed transport boundary
 
@@ -100,7 +107,7 @@ Manual UI evidence can promote only bounded statements such as `REGISTRATION_NUM
 
 It does **not** verify raw JSON/source fields, real sourceRecordId identity, backend-only caps, authenticated 403 meaning or complete coverage.
 
-## Accepted visible-window observation — 2026-09-02
+## Accepted visible-window observation - 2026-09-02
 
 Authorized ordinary-Chrome observation now establishes the following current UI/business behavior across the three judgment libraries:
 
@@ -113,11 +120,11 @@ Authorized ordinary-Chrome observation now establishes the following current UI/
 
 This replaces the earlier `page 11 / >100 = NOT_TESTED` UI status. The **UI cap is now observed**.
 
-It does not establish the corresponding backend semantics. In particular, this evidence does not prove that the authenticated API hard-caps `data.total` or retrievable rows at 100, whether an unexposed page 11 exists server-side, or what the true result population is.
+Later authenticated raw REVIEW_ADJUDICATION evidence resolved the backend question for that library: `pageSize=100` is accepted, `pageSize=200` is rejected, and requested `pageIndex=2,3,4,5` returns new offsets even though every response continues to report clamped `pageIndex=1 / pages=1 / total=100`. A 2026-07-01 run produced 435 unique `pubId` values as `100 + 100 + 100 + 100 + 35`. Therefore the visible 100-row ceiling is not a Review backend offset cap. Registration/opposition hidden-pagination behavior remains separately unverified.
 
-The single-day saturation also proves that date partitioning alone cannot establish complete daily coverage. Per #673/#674, `DATE_RECENCY_DISCOVERY` is therefore a partial fresh-signal acquisition intent, while `REGISTRATION_NUMBER_TARGETED` is a separate target-object evidence-follow-up intent for known marks. Neither intent authorizes a CNIPA population `COMPLETE` claim.
+`DATE_RECENCY_DISCOVERY` remains a partial fresh-signal acquisition intent by policy; hidden paging improves acquisition depth but does not by itself authorize a CNIPA population `COMPLETE` claim.
 
-## Offline Response-only capability — implemented but currently input-blocked
+## Offline Response-only capability - implemented and usable with sanitized captures
 
 #633/#635 added `docs/operations/CNIPA_OFFLINE_RESPONSE_BUNDLE.md` and a zero-network local assessor. When a permitted selected Response JSON file exists, it can:
 
@@ -127,7 +134,7 @@ The single-day saturation also proves that date partitioning alone cannot establ
 - record JSON validity and expected-field presence without copying response values into the manifest;
 - leave production decoder/schema/coverage state unchanged.
 
-On the current CNIPA ordinary-Chrome path, the operator cannot use DevTools to save those Response bodies, so this capability is **not currently executable**. Do not work around that by using sensitive NetLog modes, session extraction or browser scripting.
+The earlier input-blocked state has been superseded by the operator-controlled capture extension, which can export sanitized response JSON without persisting headers, cookies or Authorization values. The offline assessor therefore remains usable for captured artifacts. Do not broaden that capability into credential/session extraction.
 
 ## Future authenticated Playwright harness
 
@@ -169,13 +176,20 @@ The remaining items are now split by evidence availability.
 5. visible one-day date-window saturation at 100 and newest-date-first ordering;
 6. visible >30-day date-picker restriction.
 
-### Still blocked on a permitted raw/source-response channel
+### Authenticated raw Review facts now established
 
-1. authenticated JSON response conformance and current live source fields;
-2. real list -> detail source-record identifier consistency (`adjuOpenId` / `pubId` -> query `id` -> response identity);
-3. backend-only pagination/result-cap semantics, including real `data.total` behavior behind the observed 100-row UI ceiling;
-4. backend date-window behavior beyond the UI restriction;
-5. authenticated 403 business/security semantics through a supported authenticated execution path;
-6. final schema-version promotion and coverage classification.
+1. REVIEW_ADJUDICATION LIST responses use the observed `data.list` / `data.total` envelope and `pubId` source identifier;
+2. Review LIST rows include full `fileContent`, allowing bulk LIST evidence without per-record DETAIL fan-out;
+3. Review `pubId` -> detail `id` binding was observed on a matched LIST/DETAIL pair;
+4. Review hidden pagination can exceed the visible 100-row window and must be driven by requested `pageIndex`, not returned pagination metadata;
+5. transient divide-layer business codes `-102/-107` can be retried with bounded backoff because unchanged requests later succeeded.
 
-Until separate permitted evidence supports those blocked facts, keep `CNIPA_JUDGMENT_SCHEMA_STATUS = OPERATOR_SUPPLIED_UNVERIFIED` and coverage `UNKNOWN` or `PARTIAL` as applicable. Never claim `COMPLETE` coverage from UI observations alone.
+### Remaining raw/live acceptance facts
+
+1. registration-examination DATE_RANGE request/hidden-pagination behavior beyond the visible 100-row window;
+2. opposition DATE_RANGE request/hidden-pagination behavior beyond the visible 100-row window;
+3. any still-unverified opposition detail/source-role semantics;
+4. authenticated 403 business/security semantics through a supported production session path;
+5. final global schema-version promotion and any population-level coverage classification.
+
+Until those separate facts are verified, keep unverified combinations fail-closed, retain `CNIPA_JUDGMENT_SCHEMA_STATUS = OPERATOR_SUPPLIED_UNVERIFIED`, and keep coverage `UNKNOWN` or `PARTIAL` as applicable. Never infer `COMPLETE` population coverage from the UI or from one verified daily Review run.
