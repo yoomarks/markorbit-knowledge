@@ -16,7 +16,8 @@
     "verify:ready-package": "jiti src/ready-package-cli.ts --verify",
     "verify:vault-handoff": "jiti src/obsidian-vault-consumer-cli.ts verify",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:k0-architecture": "jiti src/k0-architecture-conformance-cli.ts"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
