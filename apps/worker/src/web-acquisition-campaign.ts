@@ -681,14 +681,11 @@ class CampaignControlPlaneClient {
   private async headers(method: string, workspaceId?: string): Promise<Record<string, string>> {
     await this.ensureBrowserSession();
     if (!this.sessionToken) return {};
-    if (workspaceId && this.sessionWorkspaceId && workspaceId !== this.sessionWorkspaceId) {
-      throw new Error(
-        `Admin session workspace ${this.sessionWorkspaceId} does not match ${workspaceId}`,
-      );
-    }
     return {
       cookie: `mo_session=${encodeURIComponent(this.sessionToken)}`,
-      ...(workspaceId ? { "x-markorbit-workspace-id": workspaceId } : {}),
+      ...(workspaceId && this.sessionWorkspaceId
+        ? { "x-markorbit-workspace-id": this.sessionWorkspaceId }
+        : {}),
       ...(method !== "GET" && this.csrfToken ? { "x-markorbit-csrf-token": this.csrfToken } : {}),
       ...(method !== "GET" ? { origin: new URL(this.baseUrl).origin } : {}),
     };
@@ -1022,6 +1019,7 @@ async function ensureCampaignPlan(
   const created = await client.request(
     "/api/plans",
     jsonPost({
+      workspaceId: manifest.workspaceId,
       sourceId,
       name,
       status: "ACTIVE",
@@ -1148,6 +1146,7 @@ async function ensureCampaignRefreshPlan(
   const created = await client.request(
     "/api/plans",
     jsonPost({
+      workspaceId: manifest.workspaceId,
       sourceId,
       name,
       status: "ACTIVE",
@@ -1320,6 +1319,7 @@ async function ensureCampaignWorker(
   const created = await client.request(
     "/api/workers",
     jsonPost({
+      workspaceId: manifest.workspaceId,
       displayName: `Bulk Web Acquisition — ${manifest.name}`,
       desiredState: "ACTIVE",
       runtime: { runtimeId: "crawl4ai-worker", version: "1.0.0" },

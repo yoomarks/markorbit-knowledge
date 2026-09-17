@@ -35,14 +35,21 @@ async function main(): Promise<void> {
     throw new Error("Provide exactly one of --manifest=<path> or --official-scale");
   }
   const invocationRoot = process.env.INIT_CWD?.trim() || process.cwd();
-  const manifest = officialScale
+  const runtimeWorkspaceId = argument("--workspace");
+  let manifest = officialScale
     ? buildOfficialScaleCampaignManifest(
-        argument("--workspace") ?? "",
+        runtimeWorkspaceId ?? "",
         Number(argument("--domain-count") ?? OFFICIAL_SCALE_DOMAIN_COUNT),
       )
     : parseWebAcquisitionCampaignManifest(
         JSON.parse(await readFile(resolve(invocationRoot, manifestPath!), "utf8")),
       );
+  if (!officialScale && runtimeWorkspaceId !== undefined) {
+    manifest = parseWebAcquisitionCampaignManifest({
+      ...manifest,
+      workspaceId: runtimeWorkspaceId,
+    });
+  }
   const outputPath = argument("--output");
   const credentialOutput = argument("--credential-output");
   const discoverOnly = process.argv.includes("--discover-only");

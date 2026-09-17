@@ -4,7 +4,7 @@ import { getRepresentativeSourceLiveCanaries } from "../src/representative-sourc
 
 const GUIDANCE_URI =
   "https://www.cnipa.gov.cn/jact/front/mailpubdetail.do?sysid=13&transactId=502906";
-const SEARCH_LANDING_URI = "https://sbj.cnipa.gov.cn/sbj/sbcx/";
+const SEARCH_LANDING_URI = "https://sbj.cnipa.gov.cn/trademark-query";
 const SEARCH_SERVICE_URI = "https://wcjs.sbj.cnipa.gov.cn/";
 const SSO_NOTICE_URI = "https://sbj.cnipa.gov.cn/sbj/tzgg/202512/t20251203_36767.html";
 
@@ -26,7 +26,7 @@ describe("CNIPA trademark search authentication boundary", () => {
         expectedArtifactKinds: ["HTML", "MARKDOWN"],
       },
       verificationEvidenceUri: GUIDANCE_URI,
-      verifiedAt: "2026-08-29T12:25:00Z",
+      verifiedAt: "2026-09-17T02:30:00Z",
     });
     expect(target?.entrypoints).toEqual([
       { uri: GUIDANCE_URI, label: "Official trademark search access guidance" },
@@ -40,6 +40,26 @@ describe("CNIPA trademark search authentication boundary", () => {
     expect(target?.notes).toContain("requires account registration or sign-in");
     expect(target?.notes).toContain("does not claim anonymous structured-result JSON acquisition");
     expect(target?.notes).toContain("does not authorize authentication automation");
+  });
+
+  it("uses the redesigned public fee guide and fee schedule instead of the removed 2019 page", () => {
+    const target = CNIPA_SOURCE_COVERAGE_TARGETS.find(
+      (item) => item.id === "cn-cnipa-trademark-fees",
+    );
+
+    expect(target).toMatchObject({
+      family: "FEES",
+      canonicalUri: "https://sbj.cnipa.gov.cn/shbjfzn/index.html",
+      verificationEvidenceUri: "https://sbj.cnipa.gov.cn/shbjfzn/index.html",
+      verifiedAt: "2026-09-17T02:30:00Z",
+    });
+    expect(target?.entrypoints).toEqual([
+      {
+        uri: "https://sbj.cnipa.gov.cn/shbjfzn/index.html",
+        label: "Trademark fee payment guide",
+      },
+      { uri: "https://sbj.cnipa.gov.cn/sfbz/index.html", label: "Trademark fee schedule" },
+    ]);
   });
 
   it("keeps the China representative canary on public guidance with a filing baseline", () => {

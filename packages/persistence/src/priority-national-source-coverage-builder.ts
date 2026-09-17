@@ -40,7 +40,7 @@ type PriorityNationalCoverageTargetOverride = Partial<
 
 const CNIPA_SEARCH_GUIDANCE_URI =
   "https://www.cnipa.gov.cn/jact/front/mailpubdetail.do?sysid=13&transactId=502906";
-const CNIPA_SEARCH_LANDING_URI = "https://sbj.cnipa.gov.cn/sbj/sbcx/";
+const CNIPA_SEARCH_LANDING_URI = "https://sbj.cnipa.gov.cn/trademark-query";
 const CNIPA_SEARCH_SERVICE_URI = "https://wcjs.sbj.cnipa.gov.cn/";
 const CNIPA_SSO_NOTICE_URI = "https://sbj.cnipa.gov.cn/sbj/tzgg/202512/t20251203_36767.html";
 const IP_INDIA_SEARCH_GUIDANCE_URI =
@@ -71,7 +71,7 @@ const PRIORITY_NATIONAL_CURATED_OVERRIDES: Readonly<
     renderJavascriptHint: false,
     fetchAttachmentsHint: false,
     expectedArtifactKinds: ["HTML", "MARKDOWN"],
-    verifiedAt: "2026-08-29T12:25:00Z",
+    verifiedAt: "2026-09-17T02:30:00Z",
     verificationEvidenceUri: CNIPA_SEARCH_GUIDANCE_URI,
     notes:
       "The canonical CNIPA page is anonymously readable official guidance confirming that trademark online search requires account registration or sign-in. The current query service is a separate protected entrypoint; this coverage target does not claim anonymous structured-result JSON acquisition and does not authorize authentication automation.",
