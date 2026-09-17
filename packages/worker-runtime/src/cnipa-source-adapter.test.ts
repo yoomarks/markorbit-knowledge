@@ -174,6 +174,81 @@ describe("CnipaSourceAdapter", () => {
     ).rejects.toMatchObject({ code: "CNIPA_REAUTH_REQUIRED", retryable: false });
   });
 
+  it("retries only observed transient CNIPA business responses with bounded backoff", async () => {
+    let calls = 0;
+    const delays: number[] = [];
+    const executor: CnipaAuthenticatedSessionExecutor = {
+      async execute(request) {
+        calls += 1;
+        if (calls === 1) {
+          return jsonResponse(request, { code: -102, msg: "divide:Rule not found!" });
+        }
+        if (calls === 2) {
+          return jsonResponse(request, {
+            code: "-107",
+            msg: "divide:Can not find selector, please check your configuration!",
+          });
+        }
+        return jsonResponse(request, { code: 0, data: { list: [], total: 0 } });
+      },
+    };
+    const decoder = new FixtureDecoder();
+    decoder.decodeList = () => ({ sourceRecordIds: [], total: 0, hasMore: false });
+    const adapter = new CnipaSourceAdapter(executor, decoder, {
+      pageSize: 100,
+      maxTransientBusinessAttempts: 3,
+      transientBusinessRetryBaseDelayMs: 10,
+      sleep: async (delayMs) => {
+        delays.push(delayMs);
+      },
+    });
+
+    const result = await adapter.fetch({
+      mode: "DATE_RANGE",
+      fromDate: "2026-07-01",
+      toDate: "2026-07-01",
+      documentKinds: ["REVIEW_ADJUDICATION"],
+    });
+
+    expect(calls).toBe(3);
+    expect(delays).toEqual([10, 20]);
+    expect(result.evidence).toHaveLength(1);
+    expect(result.documents).toHaveLength(0);
+  });
+
+  it("fails retryably after the bounded transient-business retry budget is exhausted", async () => {
+    let calls = 0;
+    const delays: number[] = [];
+    const executor: CnipaAuthenticatedSessionExecutor = {
+      async execute(request) {
+        calls += 1;
+        return jsonResponse(request, { code: -102, msg: "divide:Rule not found!" });
+      },
+    };
+    const adapter = new CnipaSourceAdapter(executor, new FixtureDecoder(), {
+      pageSize: 100,
+      maxTransientBusinessAttempts: 3,
+      transientBusinessRetryBaseDelayMs: 5,
+      sleep: async (delayMs) => {
+        delays.push(delayMs);
+      },
+    });
+
+    await expect(
+      adapter.fetch({
+        mode: "DATE_RANGE",
+        fromDate: "2026-07-01",
+        toDate: "2026-07-01",
+        documentKinds: ["REVIEW_ADJUDICATION"],
+      }),
+    ).rejects.toMatchObject({
+      code: "CNIPA_SOURCE_TEMPORARY_FAILURE",
+      retryable: true,
+    });
+    expect(calls).toBe(3);
+    expect(delays).toEqual([5, 10]);
+  });
+
   it("does not automatically replay an ambiguous browser/session execution failure", async () => {
     let calls = 0;
     const executor: CnipaAuthenticatedSessionExecutor = {
