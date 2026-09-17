@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { SqliteWebUrlCatalogRepository } from "@markorbit/persistence/web-url-catalog";
+import { HttpWebsiteDiscoveryProvider } from "@markorbit/worker-runtime";
 
 export const WEB_ACQUISITION_CAMPAIGN_VERSION = "1.0" as const;
 export const CAMPAIGN_CONNECTOR_ID = "crawl4ai-web";
@@ -597,6 +598,76 @@ export async function discoverWebAcquisitionInventory(
   };
 }
 
+export async function discoverWebAcquisitionPreflightInventory(
+  source: WebAcquisitionCampaignSourceV1,
+  fetchImpl: FetchLike = fetch,
+): Promise<WebAcquisitionInventoryInternal> {
+  if (source.discovery.mode !== "LINK_CRAWL") {
+    return discoverWebAcquisitionInventory(source, fetchImpl);
+  }
+
+  const base = new URL(source.baseUrl);
+  const allowedHosts = [...new Set([base.hostname, ...(source.allowedHosts ?? [])])];
+  const provider = new HttpWebsiteDiscoveryProvider(fetchImpl);
+  const maxCandidates = Math.min(Math.max(source.maxPages, 1), 50);
+  const candidates = await provider.discover({
+    batchId: `web-preflight:${source.key}`,
+    seeds: [{ seedId: `web-preflight:${source.key}`, locator: source.baseUrl }],
+    createdAt: new Date().toISOString(),
+    constraints: {
+      maxDepth: 1,
+      maxCandidates,
+      maxFetches: 4,
+      sameHostOnly: false,
+      allowedHosts,
+      respectRobots: true,
+      discoverSitemaps: false,
+      discoverExternalLinks: false,
+    },
+  });
+  const discovered = candidates
+    .filter((candidate) => candidate.metadata?.robotsAllowed !== false)
+    .map((candidate) => candidate.locator);
+  const selected = selectedUrls(source, discovered);
+  const errors: string[] = [];
+  if (discovered.length === 0) errors.push("link-crawl-preflight:no-child-links-discovered");
+  if (selected.eligibleUrls.length === 0) {
+    errors.push("link-crawl-preflight:no-eligible-child-links");
+  }
+  return {
+    sourceKey: source.key,
+    baseUrl: source.baseUrl,
+    requestedMode: source.discovery.mode,
+    modeUsed: "LINK_CRAWL",
+    robotsUrl: new URL("/robots.txt", base.origin).toString(),
+    robotsStatus: null,
+    sitemapUrls: [],
+    discoveredCount: discovered.length,
+    selectedUrls: selected.batchUrls,
+    catalogCount: selected.catalogUrls.length,
+    eligibleCount: selected.eligibleUrls.length,
+    catalogUrls: selected.catalogUrls,
+    eligibleUrls: selected.eligibleUrls,
+    excludedCount: selected.excludedCount,
+    duplicateCount: selected.duplicateCount,
+    errors,
+    inventorySha256: inventoryHash(selected.catalogUrls),
+    eligibleInventorySha256: inventoryHash(selected.eligibleUrls),
+  };
+}
+export function assertWebAcquisitionPreflightInventories(
+  inventories: readonly WebAcquisitionInventoryV1[],
+): void {
+  const failedLinkCrawls = inventories.filter(
+    (inventory) => inventory.requestedMode === "LINK_CRAWL" && inventory.eligibleCount === 0,
+  );
+  if (failedLinkCrawls.length === 0) return;
+  throw new Error(
+    `LINK_CRAWL preflight has no eligible child coverage for: ${failedLinkCrawls
+      .map((inventory) => inventory.sourceKey)
+      .join(", ")}`,
+  );
+}
 function publicInventory(inventory: WebAcquisitionInventoryInternal): WebAcquisitionInventoryV1 {
   const { catalogUrls, eligibleUrls, ...publicView } = inventory;
   void catalogUrls;

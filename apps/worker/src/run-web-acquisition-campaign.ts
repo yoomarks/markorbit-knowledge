@@ -1,7 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import {
-  discoverWebAcquisitionInventory,
+  assertWebAcquisitionPreflightInventories,
+  discoverWebAcquisitionPreflightInventory,
   parseWebAcquisitionCampaignManifest,
   runWebAcquisitionCampaign,
 } from "./web-acquisition-campaign";
@@ -56,7 +57,7 @@ async function main(): Promise<void> {
 
   if (discoverOnly) {
     const inventories = await Promise.all(
-      manifest.sources.map((source) => discoverWebAcquisitionInventory(source)),
+      manifest.sources.map((source) => discoverWebAcquisitionPreflightInventory(source)),
     );
     const report = {
       campaignId: manifest.campaignId,
@@ -67,6 +68,7 @@ async function main(): Promise<void> {
       await writeJson(resolve(invocationRoot, outputPath), report);
     }
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    assertWebAcquisitionPreflightInventories(inventories);
     return;
   }
 
