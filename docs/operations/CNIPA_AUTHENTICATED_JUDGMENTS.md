@@ -1,6 +1,6 @@
 # CNIPA authenticated trademark judgment acquisition
 
-Status: Phase 2 runtime implementation. Ordinary CI performs no CNIPA request and launches no real browser. Phase 3 authenticated live validation is still required before any endpoint/response mapping is promoted to verified.
+Status: Phase 2 runtime plus partial Phase 3 authenticated validation. Ordinary CI performs no CNIPA request and launches no real browser. Authenticated raw evidence now verifies the REVIEW_ADJUDICATION date-range request shape and hidden-pagination behavior; other request/semantic mappings remain gated.
 
 Issue: #573
 
@@ -120,13 +120,15 @@ Phase 2 deliberately does not guess the CNIPA response envelope. Each Source sna
 
 The example envelope keys above are illustrative configuration syntax, not a claim about the live CNIPA response. Phase 3 must replace illustrative values with observed evidence before a live source is enabled.
 
-Party-name and date-range requests still fail before browser launch because their request parameter names have not been authenticated-live-verified.
+`PARTY_NAME` and registration/opposition `DATE_RANGE` requests still fail before browser launch. `DATE_RANGE` is enabled only for an explicit `["REVIEW_ADJUDICATION"]` document-kind selection using the authenticated-raw-verified `judgeDateStart` / `judgeDateEnd` request shape.
 
 ## Bounded pagination and cache
 
-The adapter now supports multiple pages for the supplied registration-number request shape, but it only advances when decoded `hasMore=true` or a decoded `total` proves additional rows exist. It does not infer another page merely because a page is full.
+Targeted registration-number acquisition retains the conservative metadata-driven pagination rule: it advances only when decoded `hasMore=true` or decoded `total` proves another page exists.
 
-Defaults are 10 rows per page, at most 10 pages per library, and at most 30 detail requests. Source snapshots may reduce or raise those values only within hard code bounds. Reaching a ceiling keeps `coverageStatus=UNKNOWN` and records an explicit coverage reason.
+Authenticated review date-range acquisition uses a different, evidence-backed rule. CNIPA was observed to honor requested `pageIndex` offsets while clamping response `pageIndex/pages/total` to the visible 100-result window. For this verified surface the adapter therefore ignores those pagination metadata fields, uses `pageSize=100`, and advances requested `pageIndex` until it observes an empty page, a short page, a full page with no new source ids, or the configured safety ceiling. A captured `2026-07-01` run produced 435 unique review `pubId` values as `100 + 100 + 100 + 100 + 35`.
+
+Bulk date-range defaults are 100 rows per page and at most 50 pages; targeted defaults remain 10 rows and 10 pages. Reaching a ceiling keeps `coverageStatus=UNKNOWN` and records an explicit coverage reason. Review date-range bulk mode preserves LIST JSON and skips per-record DETAIL fan-out.
 
 The Playwright executor has an additional per-run request ceiling and a minimum request interval. Identical requests inside one run are served from an in-memory response cache, so retry/re-entry inside the same deterministic acquisition does not duplicate a CNIPA request. Cache entries never contain session credentials.
 
@@ -148,11 +150,29 @@ The following operator-supplied mappings are still `OPERATOR_SUPPLIED_UNVERIFIED
 | `OPPOSITION_DECISION`      | `/pubnotice/portal/tmyyJudgment/queryPageList` | `/tmyyJudgment/queryInfo?id=...` | `objenderCnName`, `objeperCnName` |
 | `REVIEW_ADJUDICATION`      | `/pubnotice/portal/tmpsJudgment/queryPageList` | `/tmpsJudgment/queryInfo?id=...` | `applicantName`, `respondentName` |
 
-The supplied registration-number list body remains the only request shape represented as a candidate:
+The targeted registration-number list body remains supported:
 
 ```json
 { "pageIndex": 1, "pageSize": 10, "regNo": "..." }
 ```
+
+Authenticated raw evidence additionally verifies this review date-range shape:
+
+```json
+{
+  "openFlag": 1,
+  "regNo": "",
+  "tmName": "",
+  "applicantName": "",
+  "respondentName": "",
+  "judgeDateStart": "2026-07-01",
+  "judgeDateEnd": "2026-07-01",
+  "pageIndex": 1,
+  "pageSize": 100
+}
+```
+
+For subsequent hidden pages only `pageIndex` changes; returned pagination metadata is not trusted for this verified mode.
 
 Opposition role semantics remain `UNVERIFIED` until a live document establishes which source field maps to opposer vs opposed party.
 
@@ -164,8 +184,8 @@ Before this provider can claim operational acceptance, a manual authenticated pr
 2. the actual list response envelope and source-record id field;
 3. actual detail envelope and canonical fields;
 4. one real party-name request and its parameter/role mapping;
-5. page 11 / >100 behavior and whether 100 is a UI cap or backend cap;
-6. whether date windows can be partitioned legitimately and completely;
+5. registration/opposition page-11 / >100 behavior (review >100 behavior is now raw-verified: 100 is a visible-metadata window, not a review backend offset cap);
+6. registration/opposition date request shapes and whether their hidden pagination matches the verified review behavior;
 7. whether HTTP 403 in an authenticated session means reauthentication/security challenge or permanent access denial.
 
 Until then `coverageStatus` remains `UNKNOWN`, the schema revision remains candidate/unverified, and ordinary CI performs only synthetic deterministic tests.

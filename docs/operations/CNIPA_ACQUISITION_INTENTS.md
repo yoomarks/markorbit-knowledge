@@ -11,18 +11,16 @@ Purpose: obtain fresh decision signals for customer development, current-case/co
 
 Compatible query mode: `DATE_RANGE`.
 
-Observed ordinary authenticated UI behavior on 2026-09-02:
+Observed behavior now has two layers:
 
-- all three judgment libraries expose at most 10 visible pages / 100 visible rows;
-- the UI reports `100` as the visible total when the ceiling is reached and exposes no page 11;
-- date windows can remain saturated even when reduced to one calendar day;
-- therefore date partitioning cannot establish exhaustive daily coverage.
+- the authenticated public UI still exposes at most 100 visible rows and reports `total=100` / `pages=1` when `pageSize=100`;
+- authenticated raw `REVIEW_ADJUDICATION` captures show that the backend nevertheless honors requested `pageIndex=2,3,...` offsets beyond that visible window;
+- on `2026-07-01`, hidden review pagination returned 435 unique `pubId` values as `100 + 100 + 100 + 100 + 35` while every hidden response continued to report the clamped 100-row pagination metadata;
+- `pageSize=200` is rejected, so the verified bulk strategy keeps `pageSize=100` and advances `pageIndex` until an empty/short/no-new-id stop condition or the configured safety ceiling.
 
-This mode is intentionally a **partial recency signal feed**, not a full CNIPA judgment mirror. Saturation at 100 must remain visible as a coverage limitation. No consumer may interpret a date-window result as all decisions issued that day.
+This mode remains intentionally a **partial recency signal feed**, not a claim that MarkOrbit mirrors the complete CNIPA judgment population. Hidden pagination removes the previously assumed 100-row acquisition barrier for the verified review surface, but it does not by itself prove historical/population completeness.
 
 Current policy: `currentCoverageCeiling=PARTIAL`, population `COMPLETE` claims forbidden.
-
-The 100-row observation is a UI/business-behavior fact only. It is not yet proof of a backend API hard cap because permitted authenticated raw/source-response evidence is still unavailable.
 
 ## 2. REGISTRATION_NUMBER_TARGETED
 
@@ -40,15 +38,16 @@ Current policy: `currentCoverageCeiling=UNKNOWN` while source identifier and aut
 
 `PARTY_NAME` remains modeled but has no accepted production acquisition intent in this policy revision. Its live request semantics remain fail-closed until permitted evidence justifies a separate use case and authority boundary.
 
-## Live execution boundary remains unchanged
+## Live execution boundary
 
-This policy freeze does **not** enable any new CNIPA request.
+Authenticated raw evidence now promotes one bounded date-range request shape in addition to targeted registration-number lookup:
 
-- `REGISTRATION_NUMBER` remains the only candidate request shape currently emitted by the runtime.
-- `DATE_RANGE` and `PARTY_NAME` continue to fail before browser execution.
-- no CAPTCHA/SSO bypass, session extraction, request replay, stealth or registration-number enumeration is authorized.
-- `CNIPA_JUDGMENT_SCHEMA_STATUS` remains `OPERATOR_SUPPLIED_UNVERIFIED`.
-- source identity remains provisional until authenticated list/detail response evidence verifies `adjuOpenId` / `pubId` -> detail `id` semantics.
+- `DATE_RANGE` is enabled only when `documentKinds` is exactly `["REVIEW_ADJUDICATION"]`;
+- the verified review request uses `judgeDateStart`, `judgeDateEnd`, `pageSize=100`, and explicit hidden `pageIndex` progression;
+- review bulk acquisition preserves exact LIST JSON as primary evidence and intentionally skips per-record DETAIL fan-out because the observed LIST rows already contain `fileContent`;
+- registration/opposition `DATE_RANGE` and all `PARTY_NAME` production requests remain fail-closed until equivalent authenticated raw evidence is supplied;
+- no CAPTCHA/SSO bypass, credential persistence, stealth or registration-number enumeration is introduced;
+- `CNIPA_JUDGMENT_SCHEMA_STATUS` remains `OPERATOR_SUPPLIED_UNVERIFIED` and population `COMPLETE` claims remain forbidden.
 
 ## Product routing summary
 
