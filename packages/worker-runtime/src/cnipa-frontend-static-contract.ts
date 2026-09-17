@@ -3,6 +3,8 @@ import type { CnipaDocumentKind } from "./cnipa-trademark-judgment";
 export const CNIPA_FRONTEND_STATIC_CONTRACT_STATUS =
   "OFFICIAL_FRONTEND_STATIC_CODE_OBSERVED" as const;
 
+export const CNIPA_AUTH_ARCHITECTURE_EVIDENCE_STATUS = "PARTIALLY_VERIFIED" as const;
+
 export type CnipaFrontendUiPartyRoleIntent =
   "APPLICANT" | "OPPOSER" | "OPPOSED_PARTY" | "RESPONDENT";
 
@@ -178,3 +180,43 @@ export const CNIPA_FRONTEND_STATIC_CONTRACT_EVIDENCE = {
     "COVERAGE_COMPLETENESS",
   ],
 } as const satisfies CnipaFrontendStaticContractEvidence;
+
+/**
+ * Sanitized authentication-architecture observations collected without persisting or replaying
+ * credentials/session material. These observations are deliberately separate from the judgment
+ * response schema contract: sharing SSO or an OAuth client does not verify a judgment backend
+ * response envelope, source identity, pagination semantics, or coverage.
+ */
+export const CNIPA_AUTH_ARCHITECTURE_EVIDENCE = {
+  status: CNIPA_AUTH_ARCHITECTURE_EVIDENCE_STATUS,
+  observedDate: "2026-09-17",
+  sharedSsoObservedByOperator: true,
+  trademarkQuery: {
+    host: "wcjs.sbj.cnipa.gov.cn",
+    userInfoPath: "/api/user/getInfo",
+    clientId: "trademark_query",
+    evidenceKind: "AUTHENTICATED_RUNTIME_SANITIZED_STRUCTURAL_OBSERVATION",
+  },
+  publicPortalBrandNotice: {
+    host: "pub.sbj.cnipa.gov.cn",
+    authorizationPath: "https://sso.cnipa.gov.cn/oauth2/authorize",
+    clientId: "trademark_three_public",
+    redirectUri: "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/pubauth/login",
+    stateRoute: "portalui-pub-prod/brandNotice",
+    evidenceKind: "OPERATOR_RETRIEVED_OFFICIAL_STATIC_APPLICATION_CODE",
+  },
+  judgmentRouteClientAllocation: {
+    trademarkRegistration: "UNVERIFIED",
+    trademarkObjection: "UNVERIFIED",
+    reviewAdjudication: "UNVERIFIED",
+  },
+  routeNameMayBeUsedAsClientId: false,
+  doesNotVerify: [
+    "JUDGMENT_ROUTE_CLIENT_ID",
+    "JUDGMENT_RAW_HTTP_RESPONSE_ENVELOPE_OR_SCHEMA",
+    "JUDGMENT_BACKEND_SOURCE_IDENTITY",
+    "JUDGMENT_DATA_TOTAL_SEMANTICS",
+    "JUDGMENT_BACKEND_PAGINATION_OR_CAPS",
+    "JUDGMENT_COVERAGE_COMPLETENESS",
+  ],
+} as const;
