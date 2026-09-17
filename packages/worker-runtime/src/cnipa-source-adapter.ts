@@ -27,6 +27,9 @@ export type CnipaSourceAdapterOptions = {
   maxDetailRequestsPerRun?: number;
   maxPagesPerLibrary?: number;
   pageSize?: number;
+  maxTransientBusinessAttempts?: number;
+  transientBusinessRetryBaseDelayMs?: number;
+  sleep?: (delayMs: number) => Promise<void>;
 };
 
 function boundedInteger(
@@ -45,6 +48,27 @@ function boundedInteger(
     );
   }
   return resolved;
+}
+
+const CNIPA_TRANSIENT_BUSINESS_CODES = new Set([-102, -107]);
+
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function cnipaTransientBusinessCode(value: unknown): number | undefined {
+  const container = record(value);
+  if (!container) return undefined;
+  const rawCode = container.code;
+  const code =
+    typeof rawCode === "number" && Number.isSafeInteger(rawCode)
+      ? rawCode
+      : typeof rawCode === "string" && /^-?\d+$/.test(rawCode.trim())
+        ? Number(rawCode.trim())
+        : undefined;
+  return code !== undefined && CNIPA_TRANSIENT_BUSINESS_CODES.has(code) ? code : undefined;
 }
 
 function pagedListRequest(
@@ -69,6 +93,9 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
   private readonly maxDetailRequestsPerRun: number;
   private readonly maxPagesPerLibrary: number;
   private readonly pageSize: number;
+  private readonly maxTransientBusinessAttempts: number;
+  private readonly transientBusinessRetryBaseDelayMs: number;
+  private readonly sleep: (delayMs: number) => Promise<void>;
 
   constructor(
     private readonly executor: CnipaAuthenticatedSessionExecutor,
@@ -90,6 +117,22 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
       "maxPagesPerLibrary",
     );
     this.pageSize = boundedInteger(options.pageSize, 10, 1, 100, "pageSize");
+    this.maxTransientBusinessAttempts = boundedInteger(
+      options.maxTransientBusinessAttempts,
+      3,
+      1,
+      5,
+      "maxTransientBusinessAttempts",
+    );
+    this.transientBusinessRetryBaseDelayMs = boundedInteger(
+      options.transientBusinessRetryBaseDelayMs,
+      250,
+      0,
+      5_000,
+      "transientBusinessRetryBaseDelayMs",
+    );
+    this.sleep =
+      options.sleep ?? ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
   }
 
   private async execute(
@@ -107,6 +150,44 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
         error instanceof Error ? { cause: error } : undefined,
       );
     }
+  }
+
+  private transientBusinessRetryDelayMs(attempt: number): number {
+    return Math.min(this.transientBusinessRetryBaseDelayMs * 2 ** (attempt - 1), 2_000);
+  }
+
+  private async executeJsonWithTransientBusinessRetry(
+    request: CnipaAuthenticatedRequest,
+  ): Promise<{ response: CnipaAuthenticatedSessionResponse; value: unknown }> {
+    for (let attempt = 1; attempt <= this.maxTransientBusinessAttempts; attempt += 1) {
+      const response = await this.execute(request);
+      const value = parseCnipaJson(response);
+      const transientCode = cnipaTransientBusinessCode(value);
+      if (transientCode === undefined) return { response, value };
+
+      if (attempt === this.maxTransientBusinessAttempts) {
+        throw new CnipaAcquisitionError(
+          "CNIPA_SOURCE_TEMPORARY_FAILURE",
+          "CNIPA returned transient business code " +
+            transientCode +
+            " for " +
+            request.documentKind +
+            " " +
+            request.surface +
+            " after " +
+            attempt +
+            " attempts",
+          true,
+          response.status,
+        );
+      }
+      await this.sleep(this.transientBusinessRetryDelayMs(attempt));
+    }
+    throw new CnipaAcquisitionError(
+      "CNIPA_SOURCE_TEMPORARY_FAILURE",
+      "CNIPA transient business retry loop exhausted unexpectedly",
+      true,
+    );
   }
 
   async fetch(request: unknown): Promise<CnipaJudgmentCollection> {
@@ -134,9 +215,10 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
           pageIndex,
           this.pageSize,
         );
-        const listResponse = await this.execute(listRequest);
+        const { response: listResponse, value: listJson } =
+          await this.executeJsonWithTransientBusinessRetry(listRequest);
         evidence.push(cnipaResponseEvidence(listResponse, listRequest));
-        const page = this.decoder.decodeList(documentKind, parseCnipaJson(listResponse));
+        const page = this.decoder.decodeList(documentKind, listJson);
         const pageIds = [...new Set(page.sourceRecordIds.map((value) => value.trim()))].filter(
           Boolean,
         );
@@ -217,13 +299,10 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
           );
         }
         const detailRequest = buildCnipaCandidateDetailRequest(documentKind, sourceRecordId);
-        const detailResponse = await this.execute(detailRequest);
+        const { response: detailResponse, value: detailJson } =
+          await this.executeJsonWithTransientBusinessRetry(detailRequest);
         evidence.push(cnipaResponseEvidence(detailResponse, detailRequest, sourceRecordId));
-        const decoded = this.decoder.decodeDetail(
-          documentKind,
-          sourceRecordId,
-          parseCnipaJson(detailResponse),
-        );
+        const decoded = this.decoder.decodeDetail(documentKind, sourceRecordId, detailJson);
         if (decoded.sourceRecordId !== sourceRecordId) {
           throw new CnipaAcquisitionError(
             "CNIPA_SCHEMA_CHANGED",
