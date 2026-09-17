@@ -198,6 +198,18 @@ A minimal authenticated-raw-verified response mapping for review bulk LIST acqui
 
 Opposition role semantics remain `UNVERIFIED` until a live document establishes which source field maps to opposer vs opposed party.
 
+## v0.7 capture-dataset offline assessment
+
+The operator capture extension v0.7 exports a normalized `mo-cnipa-query-dataset-v2` JSON file after a bounded current-query sweep. Before promoting registration/opposition DATE_RANGE behavior, assess the exported file offline:
+
+```text
+pnpm --filter @markorbit/worker cnipa:evidence:assess-capture-dataset -- --input "<dataset.json>"
+```
+
+Optionally add `--output "<assessment.json>"` to create a new summary file. The assessor performs no network request and does not copy trademark numbers, party names, document text, or source ids into its report. It records only the input SHA-256 and structural/count/pagination findings.
+
+A dataset is `runtimeDateRangeReady=true` only when the v0.7 schema/kind/source route match, the base query is `pageIndex=1/pageSize=100` with the expected date fields, every exported LIST row has the canonical source id and non-empty `fileContent`, no duplicate ids exist, hidden pages are contiguous from page 2 with new unique ids beyond the first 100, and the sweep terminates on a short or empty page. A repeated page remains a safe runtime stop condition but is not sufficient evidence for automatic DATE_RANGE promotion.
+
 ## Phase 3 gate
 
 Before this provider can claim operational acceptance, a manual authenticated probe must establish from real evidence:
