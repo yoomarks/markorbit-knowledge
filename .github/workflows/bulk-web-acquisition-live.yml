@@ -82,6 +82,7 @@ jobs:
         run: |
           pnpm --filter @markorbit/worker campaign:web -- \
             --manifest=config/web-acquisition-official-core-v1.json \
+            --workspace="$MARKORBIT_CI_KNOWLEDGE_WORKSPACE_ID" \
             --dispatch \
             --run-key="gha-${GITHUB_RUN_ID}" \
             --output="$RUNNER_TEMP/campaign-result.json" \

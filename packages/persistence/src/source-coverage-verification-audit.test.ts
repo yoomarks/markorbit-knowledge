@@ -93,9 +93,9 @@ describe("priority national source coverage verification", () => {
     expect(audit.missingEvidenceTargetIds).toEqual(["duplicate", "duplicate"]);
   });
 
-  it("keeps the live national catalog structurally auditable without changing its coverage data", () => {
+  it("keeps the live national catalog structurally auditable at the latest verification clock", () => {
     const audit = auditSourceCoverageVerification(PRIORITY_NATIONAL_SOURCE_COVERAGE_TARGETS, {
-      observedAt: new Date("2026-08-29T12:25:00Z"),
+      observedAt: new Date("2026-09-17T02:30:00Z"),
       maxAgeDays: 3650,
     });
     const jurisdictions = new Set(

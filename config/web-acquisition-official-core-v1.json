@@ -11,11 +11,11 @@
       "sourceClass": "OFFICIAL_AUTHORITY",
       "jurisdictions": ["CN"],
       "languages": ["zh-CN"],
-      "baseUrl": "https://sbj.cnipa.gov.cn/sbj/",
+      "baseUrl": "https://sbj.cnipa.gov.cn/",
       "discovery": {
         "mode": "LINK_CRAWL"
       },
-      "includePatterns": ["https://sbj.cnipa.gov.cn/sbj/*"],
+      "includePatterns": ["https://sbj.cnipa.gov.cn/*"],
       "maxPages": 280,
       "maxDepth": 3,
       "rateLimitPerMinute": 24,

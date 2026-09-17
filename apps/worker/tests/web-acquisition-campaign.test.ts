@@ -10,6 +10,7 @@ import {
 } from "../src/web-acquisition-campaign";
 
 const workspaceId = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
+const coreWorkspaceId = "11111111-1111-4111-8111-111111111111";
 
 function manifest(
   overrides: Partial<WebAcquisitionCampaignManifestV1> = {},
@@ -173,7 +174,10 @@ type ControlPlaneCall = {
   headers: Record<string, string>;
 };
 
-function controlPlaneFetch(calls: ControlPlaneCall[]): typeof fetch {
+function controlPlaneFetch(
+  calls: ControlPlaneCall[],
+  adminWorkspaceId = workspaceId,
+): typeof fetch {
   return (async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const url = String(input);
     const method = (init.method ?? "GET").toUpperCase();
@@ -185,7 +189,7 @@ function controlPlaneFetch(calls: ControlPlaneCall[]): typeof fetch {
       return Response.json({
         authenticated: true,
         csrfToken: "csrf-test",
-        workspaces: [{ workspaceId, name: "Test", role: "WORKSPACE_ADMIN" }],
+        workspaces: [{ workspaceId: adminWorkspaceId, name: "Test", role: "WORKSPACE_ADMIN" }],
       });
     }
     if (url === "https://peer.example/robots.txt") {
@@ -255,6 +259,27 @@ function controlPlaneFetch(calls: ControlPlaneCall[]): typeof fetch {
 }
 
 describe("bulk campaign orchestration", () => {
+  it("uses the canonical Core workspace as the admin authority header while preserving the Knowledge workspace assertion", async () => {
+    process.env.MARKORBIT_CI_ADMIN_SESSION_TOKEN = "session-test";
+    const calls: ControlPlaneCall[] = [];
+    const value = manifest({
+      sources: [{ ...manifest().sources[0]!, discovery: { mode: "LINK_CRAWL" } }],
+    });
+
+    const result = await runWebAcquisitionCampaign(value, {
+      controlPlaneUrl: "http://control.test",
+      dispatch: false,
+      fetchImpl: controlPlaneFetch(calls, coreWorkspaceId),
+    });
+
+    expect(result.workspaceId).toBe(workspaceId);
+    const governedCalls = calls.filter((call) => !call.url.endsWith("/api/admin-session"));
+    expect(governedCalls.length).toBeGreaterThan(0);
+    expect(
+      governedCalls.every((call) => call.headers["x-markorbit-workspace-id"] === coreWorkspaceId),
+    ).toBe(true);
+  });
+
   function resetError(): TypeError {
     const cause = Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" });
     return Object.assign(new TypeError("fetch failed"), { cause });
@@ -386,6 +411,7 @@ describe("bulk campaign orchestration", () => {
       JSON.stringify(call.body).includes('"x-markorbit-plan-role":"REFRESH_WATCH"'),
     );
     expect(initialPlanPost?.body).toMatchObject({
+      workspaceId,
       schedule: { mode: "MANUAL" },
       output: { artifactKinds: ["MARKDOWN"] },
       extensions: {
@@ -408,6 +434,7 @@ describe("bulk campaign orchestration", () => {
       (call) => call.method === "POST" && call.url.endsWith("/api/workers"),
     );
     expect(workerPost?.body).toMatchObject({
+      workspaceId,
       supportedJobTypes: ["WEB_CRAWL", "PAGE_UPDATE_CHECK"],
       connectorBindings: [
         {
