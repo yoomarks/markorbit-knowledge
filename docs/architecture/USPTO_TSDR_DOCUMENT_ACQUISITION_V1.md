@@ -72,6 +72,68 @@ Evidence-to-Fact bridge with document/version/locator and method provenance.
 
 ## Current implementation boundary
 
-V1 freezes admission semantics only. It does not implement a production TSDR HTTP executor,
-construct an unverified single-document URL, register an API key, download live evidence, classify
-TSDR document codes, convert PDFs, publish a ReadyPackage, or mutate production state.
+The CASE_DOCUMENT_INDEX intent now has a production Worker Runtime acquirer for the official
+single-serial bundle.xml?sn={serialNumber} endpoint. It resolves the API key only through the
+admitted secretRef, sends USPTO-API-KEY, bounds timeout/response size, treats rate limits and
+provider failures explicitly, and returns the exact XML bytes to the existing artifact-backed
+collection pipeline for immutable RawArtifact admission.
+
+SELECTED_DOCUMENT_BINARY remains fail-closed. The runtime does not construct an unverified
+single-document URL from provider metadata, does not register an API key, does not download a
+selected live PDF/ZIP, does not interpret document contents, does not publish a ReadyPackage, and
+does not mutate production state. A selected-binary executor requires separately verified official
+endpoint semantics that bind one source document identity to one returned binary.
+
+## Sparse business-document refinement
+
+TSDR is not a default historical-document archive. Binary acquisition is intentionally narrower
+than document-index acquisition.
+
+Every selected binary must now declare one of two purposes:
+
+- `LIVE_BUSINESS_EVENT` for a current OA, declaration/maintenance, or renewal service chain;
+- `CASE_RESEARCH` for a deliberately selected historical case needed for professional research.
+
+A live-business request must identify the `OA`, `DECLARATION`, or `RENEWAL` chain.
+`OTHER_RESEARCH` is accepted only with `CASE_RESEARCH`.
+
+This prevents a high-value-looking document type from silently becoming authority to download the
+entire history of a case. The upstream Capability/Product decides that the document is needed;
+Knowledge only enforces the bounded acquisition and preserves the immutable document evidence.
+
+The business chain may later contain notice, filing/response and result/outcome documents, but
+Knowledge does not infer the commercial opportunity that caused the chain to be requested.
+
+## Live document-viewer endpoint evidence
+
+A read-only live inspection of the official TSDR document viewer for serial `90817045` confirmed
+that the viewer embeds a `DocsList` object containing, per document:
+
+- `docId`;
+- description and display date;
+- source system (`cms` or legacy/TICRS);
+- page count;
+- `urlPathList`;
+- `mediaTypeList`.
+
+The same official page publishes these endpoint templates to its own viewer JavaScript:
+
+- legacy/TICRS full-document PDF:
+  `https://tsdrsec.uspto.gov/ts/cd/casedoc/{caseId}/{docId}/download.pdf`;
+- legacy/TICRS page content:
+  `https://tsdrsec.uspto.gov/ts/cd/casedoc/{caseId}/{docId}/{pageNum}/webcontent?scale=1`;
+- trademark media:
+  `https://tsdrsec.uspto.gov/ts/cd/casedoc/{caseId}/{docId}/{pageNum}/tmmedia?scale=1`;
+- CMS download flow:
+  `https://tsdrsec.uspto.gov/ts/cd/tmcasedoc/{caseId}/{docId}/cmsdownload?url={url}`,
+  with CMS document locators also present in `urlPathList`.
+
+The official `caseViewer.js` uses a page-issued short-lived authorization value when submitting
+legacy/CMS download forms. Knowledge must never persist that transient credential in Source,
+RawArtifact metadata, fixtures, logs, or policy.
+
+This evidence establishes the official document-identity-to-locator shape, but it does **not** yet
+establish a production-safe token lifecycle or a successful binary transport acceptance under the
+Knowledge runtime. Therefore `SELECTED_DOCUMENT_BINARY` remains fail-closed until a dedicated
+transport implementation proves authorization handling, rate/budget behavior, returned media
+validation, immutable RawArtifact admission, retry semantics, and token non-persistence.
