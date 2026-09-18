@@ -18,18 +18,12 @@ function fixture() {
   return { database, repository };
 }
 
-function pointer(
-  sourceRecordId: string,
-  observedAt = "2026-09-18T08:00:00Z",
-) {
+function pointer(sourceRecordId: string, observedAt = "2026-09-18T08:00:00Z") {
   return {
     workspaceId: DEFAULT_WORKSPACE.id,
     documentKind: "OPPOSITION_DECISION" as const,
     sourceRecordId,
-    detailCanonicalUri: cnipaDetailQueueCanonicalUri(
-      "OPPOSITION_DECISION",
-      sourceRecordId,
-    ),
+    detailCanonicalUri: cnipaDetailQueueCanonicalUri("OPPOSITION_DECISION", sourceRecordId),
     listArtifactRef: `artifact:list:${sourceRecordId}:${observedAt}`,
     observedAt,
   };
@@ -75,9 +69,7 @@ describe("CNIPA DETAIL enrichment queue", () => {
         "record-2",
       );
 
-    const replay = repository.admit(
-      pointer("record-2", "2026-09-18T09:00:00Z"),
-    );
+    const replay = repository.admit(pointer("record-2", "2026-09-18T09:00:00Z"));
     expect(replay.observationCount).toBe(2);
     expect(replay.discoveredAt).toBe("2026-09-18T08:00:00.000Z");
     expect(replay.lastObservedAt).toBe("2026-09-18T09:00:00.000Z");
@@ -98,9 +90,7 @@ describe("CNIPA DETAIL enrichment queue", () => {
       "record-3",
     )!.lastListArtifactRef;
 
-    const replay = repository.admit(
-      pointer("record-3", "2026-09-18T08:00:00Z"),
-    );
+    const replay = repository.admit(pointer("record-3", "2026-09-18T08:00:00Z"));
     expect(replay.lastObservedAt).toBe("2026-09-18T09:00:00.000Z");
     expect(replay.lastListArtifactRef).toBe(latestRef);
     expect(replay.observationCount).toBe(2);
