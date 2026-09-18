@@ -151,7 +151,7 @@ export function resolveCnipaExecutionQuery(
     return parseCnipaTrademarkJudgmentQuery(explicit);
   }
 
-  const template = job.planSnapshot.extensions?.[CNIPA_QUERY_TEMPLATE_EXTENSION_KEY];
+  const template = job.planSnapshot?.extensions?.[CNIPA_QUERY_TEMPLATE_EXTENSION_KEY];
   if (template !== undefined) {
     return resolveTemplateQuery(job, template);
   }
