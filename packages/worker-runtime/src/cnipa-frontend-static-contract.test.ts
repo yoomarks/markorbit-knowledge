@@ -204,7 +204,7 @@ describe("CNIPA official frontend static request contract", () => {
     ).toEqual({ openFlag: 1, pageIndex: 1, pageSize: 10, regNo: "1234567" });
   });
 
-  it("keeps unverified request construction fail-closed while allowing verified opposition/review date shapes", () => {
+  it("keeps unverified party-name construction fail-closed while allowing all verified date shapes", () => {
     expect(() =>
       buildCnipaCandidateListRequest("OPPOSITION_DECISION", {
         mode: "PARTY_NAME",
@@ -212,13 +212,21 @@ describe("CNIPA official frontend static request contract", () => {
       }),
     ).toThrow(/request semantics are not authenticated-live-verified/i);
 
-    expect(() =>
+    expect(
       buildCnipaCandidateListRequest("REGISTRATION_EXAMINATION", {
         mode: "DATE_RANGE",
         fromDate: "2026-01-01",
         toDate: "2026-01-30",
-      }),
-    ).toThrow(/request semantics are not authenticated-live-verified/i);
+      }).jsonBody,
+    ).toEqual({
+      regNo: "",
+      tmName: "",
+      applicantCnName: "",
+      returnDateStart: "2026-01-01",
+      returnDateEnd: "2026-01-30",
+      pageIndex: 1,
+      pageSize: 100,
+    });
 
     expect(
       buildCnipaCandidateListRequest("OPPOSITION_DECISION", {
