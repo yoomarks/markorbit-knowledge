@@ -1,14 +1,11 @@
-import {
-  materializeCnipaListPageBytes,
-} from "./cnipa-list-materializer";
+import { materializeCnipaListPageBytes } from "./cnipa-list-materializer";
 import type {
   CnipaDocumentKind,
   CnipaJudgmentCollection,
   CnipaResponseEvidence,
 } from "./cnipa-trademark-judgment";
 
-export const CNIPA_COLLECTION_COVERAGE_VERSION =
-  "cnipa-collection-coverage-v1" as const;
+export const CNIPA_COLLECTION_COVERAGE_VERSION = "cnipa-collection-coverage-v1" as const;
 
 export type CnipaCollectionCoverageStopReason =
   | "NATURAL_SHORT_OR_EMPTY_PAGE"
@@ -49,9 +46,7 @@ function listEvidenceFor(
   documentKind: CnipaDocumentKind,
 ): CnipaResponseEvidence[] {
   return collection.evidence.filter(
-    (evidence) =>
-      evidence.documentKind === documentKind &&
-      evidence.evidenceKind === "LIST_JSON",
+    (evidence) => evidence.documentKind === documentKind && evidence.evidenceKind === "LIST_JSON",
   );
 }
 
@@ -61,13 +56,8 @@ export function buildCnipaDateRangeCoverageManifest(input: {
   maxPagesPerLibrary: number;
 }): CnipaCollectionCoverageManifestV1 {
   const { collection, pageSize, maxPagesPerLibrary } = input;
-  if (
-    collection.query.mode !== "DATE_RANGE" ||
-    collection.query.documentKinds?.length !== 1
-  ) {
-    throw new Error(
-      "CNIPA collection coverage manifest requires one DATE_RANGE document kind",
-    );
+  if (collection.query.mode !== "DATE_RANGE" || collection.query.documentKinds?.length !== 1) {
+    throw new Error("CNIPA collection coverage manifest requires one DATE_RANGE document kind");
   }
 
   const documentKind = collection.query.documentKinds[0]!;
@@ -78,10 +68,7 @@ export function buildCnipaDateRangeCoverageManifest(input: {
   let duplicateFullPageDetected = false;
 
   listEvidence.forEach((evidence, index) => {
-    const materialized = materializeCnipaListPageBytes(
-      documentKind,
-      evidence.content,
-    );
+    const materialized = materializeCnipaListPageBytes(documentKind, evidence.content);
     const before = seen.size;
     for (const record of materialized.records) {
       seen.add(record.sourceRecordId);
@@ -98,8 +85,7 @@ export function buildCnipaDateRangeCoverageManifest(input: {
     }
   });
 
-  const terminalPageLength =
-    pages.length > 0 ? pages[pages.length - 1]!.recordCount : null;
+  const terminalPageLength = pages.length > 0 ? pages[pages.length - 1]!.recordCount : null;
   const safetyCeilingReached =
     pages.length === maxPagesPerLibrary &&
     terminalPageLength === pageSize &&
@@ -123,9 +109,7 @@ export function buildCnipaDateRangeCoverageManifest(input: {
     sourceAuthority: "CNIPA",
     documentKind,
     query: collection.query,
-    ...(listEvidence.at(-1)?.observedAt
-      ? { observedAt: listEvidence.at(-1)!.observedAt }
-      : {}),
+    ...(listEvidence.at(-1)?.observedAt ? { observedAt: listEvidence.at(-1)!.observedAt } : {}),
     pageSize,
     maxPagesPerLibrary,
     rawListPageCount: pages.length,
@@ -136,8 +120,7 @@ export function buildCnipaDateRangeCoverageManifest(input: {
     stopReason,
     safetyCeilingReached,
     duplicateFullPageDetected,
-    completeByObservedPaging:
-      stopReason === "NATURAL_SHORT_OR_EMPTY_PAGE",
+    completeByObservedPaging: stopReason === "NATURAL_SHORT_OR_EMPTY_PAGE",
     coverageStatus: collection.coverageStatus,
     coverageReasons: [...collection.coverageReasons],
   };
