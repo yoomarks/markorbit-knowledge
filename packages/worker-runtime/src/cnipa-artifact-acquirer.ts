@@ -237,24 +237,18 @@ function coverageArtifact(
     maxPagesPerLibrary,
   });
   const slug = kindSlug(manifest.documentKind);
+  const canonicalCoverageUri = `cnipa://collection-coverage/${manifest.documentKind}/${queryId}`;
   const listEvidence = collection.evidence.find(
     (evidence) =>
       evidence.documentKind === manifest.documentKind && evidence.evidenceKind === "LIST_JSON",
   );
-  if (!listEvidence) {
-    throw new CollectionAcquisitionError(
-      "CNIPA_MATERIALIZATION_FAILED",
-      "CNIPA DATE_RANGE coverage manifest requires LIST evidence",
-      false,
-    );
-  }
 
   return {
     artifactKind: "JSON",
     mimeType: "application/json;charset=UTF-8",
     originalName: `cnipa-${slug}-coverage-${queryId}.json`,
-    sourceUri: listEvidence.sourceUri,
-    canonicalUri: `cnipa://collection-coverage/${manifest.documentKind}/${queryId}`,
+    sourceUri: listEvidence?.sourceUri ?? canonicalCoverageUri,
+    canonicalUri: canonicalCoverageUri,
     parentCanonicalUris: [...rawListCanonicalUris],
     content: new TextEncoder().encode(JSON.stringify(manifest)),
   };
