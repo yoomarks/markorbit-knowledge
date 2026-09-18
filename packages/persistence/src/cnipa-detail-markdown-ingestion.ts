@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import type { ArtifactUploadDescriptor } from "@markorbit/contracts";
-import type {
-  RawArtifactRepository,
-  RawArtifactView,
-} from "./raw-artifact-repository";
+import type { RawArtifactRepository, RawArtifactView } from "./raw-artifact-repository";
 import {
   cnipaDetailQueueCanonicalUri,
   type CnipaDetailDocumentKind,
@@ -43,10 +40,7 @@ function required(value: string, label: string): string {
   return normalized;
 }
 
-function expectedLogicalUri(
-  documentKind: CnipaDetailDocumentKind,
-  sourceRecordId: string,
-): string {
+function expectedLogicalUri(documentKind: CnipaDetailDocumentKind, sourceRecordId: string): string {
   return "cnipa://judgment/" + documentKind + "/" + encodeURIComponent(sourceRecordId);
 }
 
@@ -63,10 +57,7 @@ function descriptor(
   markdownSha256: string,
 ): ArtifactUploadDescriptor {
   const sourceRecordId = required(input.sourceRecordId, "sourceRecordId");
-  const expectedDetailUri = cnipaDetailQueueCanonicalUri(
-    input.documentKind,
-    sourceRecordId,
-  );
+  const expectedDetailUri = cnipaDetailQueueCanonicalUri(input.documentKind, sourceRecordId);
   if (input.detailCanonicalUri !== expectedDetailUri) {
     throw new RegistryValidationError(
       "CNIPA DETAIL canonical URI does not match enrichment identity",
@@ -79,9 +70,7 @@ function descriptor(
     );
   }
   if (input.markdownContent.byteLength === 0) {
-    throw new RegistryValidationError(
-      "CNIPA enriched Markdown content must not be empty",
-    );
+    throw new RegistryValidationError("CNIPA enriched Markdown content must not be empty");
   }
   const parentArtifactIds = [
     required(input.listMarkdownArtifactId, "listMarkdownArtifactId"),
@@ -93,10 +82,7 @@ function descriptor(
       "CNIPA enriched Markdown parents must be distinct immutable artifacts",
     );
   }
-  const identityHash = sha256(input.documentKind + "\u0000" + sourceRecordId).slice(
-    0,
-    20,
-  );
+  const identityHash = sha256(input.documentKind + "\u0000" + sourceRecordId).slice(0, 20);
   return {
     artifactKind: "MARKDOWN",
     mimeType: "text/markdown;charset=UTF-8",
@@ -125,18 +111,15 @@ export async function ingestCnipaEnrichedMarkdown(input: {
 }): Promise<{ artifact: RawArtifactView; sha256: string }> {
   const contentSha256 = sha256(input.enrichment.markdownContent);
   const uploadDescriptor = descriptor(input.enrichment, contentSha256);
-  const sourceRecordId = required(
-    input.enrichment.sourceRecordId,
-    "sourceRecordId",
+  const sourceRecordId = required(input.enrichment.sourceRecordId, "sourceRecordId");
+  const identityHash = sha256(input.enrichment.documentKind + "\u0000" + sourceRecordId).slice(
+    0,
+    16,
   );
-  const identityHash = sha256(
-    input.enrichment.documentKind + "\u0000" + sourceRecordId,
-  ).slice(0, 16);
   const created = input.repository.createSession({
     ...input.execution,
     descriptor: uploadDescriptor,
-    idempotencyKey:
-      "cnipa-detail-markdown:" + identityHash + ":" + contentSha256,
+    idempotencyKey: "cnipa-detail-markdown:" + identityHash + ":" + contentSha256,
   });
   const sessionId = created.record.session.id;
   await input.repository.uploadContent(

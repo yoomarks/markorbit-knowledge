@@ -57,15 +57,9 @@ describe("CNIPA enriched Markdown ingestion", () => {
     expect(captured.descriptor).toMatchObject({
       artifactKind: "MARKDOWN",
       canonicalUri: "cnipa://judgment/OPPOSITION_DECISION/detail-1",
-      parentArtifactIds: [
-        "raw_list_markdown",
-        "raw_list_json",
-        "raw_detail_json",
-      ],
+      parentArtifactIds: ["raw_list_markdown", "raw_list_json", "raw_detail_json"],
     });
-    expect(captured.descriptor?.sourceUri).toContain(
-      "markorbit+cnipa://detail-enrichment/",
-    );
+    expect(captured.descriptor?.sourceUri).toContain("markorbit+cnipa://detail-enrichment/");
     expect(captured.key).toContain("cnipa-detail-markdown:");
     expect(captured.key).toContain(result.sha256);
   });

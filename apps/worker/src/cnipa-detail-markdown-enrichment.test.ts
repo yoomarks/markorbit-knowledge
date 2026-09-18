@@ -10,9 +10,7 @@ function evidence(detailValue: unknown) {
     listMarkdownArtifactId: "raw_list_markdown",
     listRawArtifactId: "raw_list_json",
     detailRawArtifactId: "raw_detail_json",
-    listMarkdownContent: new TextEncoder().encode(
-      "# Decision\n\nTrademark ABC\n",
-    ),
+    listMarkdownContent: new TextEncoder().encode("# Decision\n\nTrademark ABC\n"),
     detailContent: new TextEncoder().encode(JSON.stringify(detailValue)),
   };
 }

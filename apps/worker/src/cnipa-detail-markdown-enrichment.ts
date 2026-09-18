@@ -1,6 +1,4 @@
-import type {
-  CnipaEnrichedMarkdownInput,
-} from "@markorbit/persistence/cnipa-detail-markdown-ingestion";
+import type { CnipaEnrichedMarkdownInput } from "@markorbit/persistence/cnipa-detail-markdown-ingestion";
 import type { CnipaDetailDocumentKind } from "@markorbit/persistence/cnipa-detail-enrichment-queue";
 import {
   materializeCnipaDetailMarkdownEnrichmentBytes,

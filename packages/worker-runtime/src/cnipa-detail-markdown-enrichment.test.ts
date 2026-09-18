@@ -40,18 +40,14 @@ describe("CNIPA DETAIL Markdown enrichment", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(result?.logicalDocumentUri).toBe(
-      "cnipa://judgment/REVIEW_ADJUDICATION/detail-2",
-    );
+    expect(result?.logicalDocumentUri).toBe("cnipa://judgment/REVIEW_ADJUDICATION/detail-2");
     expect(result?.facts).toEqual([
       { path: "citedMarks[0]", value: "998877" },
       { path: "citedMarks[1]", value: "665544" },
       { path: "respondentName", value: "Example Respondent" },
     ]);
     expect(result?.markdownBody).toContain("## DETAIL enrichment");
-    expect(result?.markdownBody).toContain(
-      "- `respondentName`: Example Respondent",
-    );
+    expect(result?.markdownBody).toContain("- `respondentName`: Example Respondent");
     expect(result?.markdownBody).not.toContain("- `tmName`: Trademark ABC");
     expect(result?.markdownBody).not.toContain("- `code`:");
     expect(result?.markdownBody).not.toContain("- `message`:");
@@ -114,9 +110,7 @@ describe("CNIPA DETAIL Markdown enrichment", () => {
       ),
     });
 
-    expect(result?.facts).toEqual([
-      { path: "additionalText", value: "新增事实" },
-    ]);
+    expect(result?.facts).toEqual([{ path: "additionalText", value: "新增事实" }]);
     expect(result?.markdownBody).toContain("新增事实");
   });
 

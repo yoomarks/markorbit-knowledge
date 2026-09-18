@@ -1,7 +1,4 @@
-import {
-  CnipaAcquisitionError,
-  type CnipaDocumentKind,
-} from "./cnipa-trademark-judgment";
+import { CnipaAcquisitionError, type CnipaDocumentKind } from "./cnipa-trademark-judgment";
 
 export const CNIPA_DETAIL_MARKDOWN_ENRICHMENT_VERSION =
   "cnipa-detail-markdown-enrichment-v1" as const;
@@ -10,13 +7,7 @@ const MAX_DEPTH = 8;
 const MAX_FACTS = 250;
 const MAX_ARRAY_ITEMS = 50;
 const MAX_STRING_LENGTH = 20_000;
-const TOP_LEVEL_CONTROL_FIELDS = new Set([
-  "code",
-  "message",
-  "msg",
-  "success",
-  "timestamp",
-]);
+const TOP_LEVEL_CONTROL_FIELDS = new Set(["code", "message", "msg", "success", "timestamp"]);
 
 export type CnipaDetailMarkdownFactV1 = {
   path: string;
@@ -45,19 +36,12 @@ function required(value: string, label: string): string {
   return normalized;
 }
 
-function logicalDocumentUri(
-  documentKind: CnipaDocumentKind,
-  sourceRecordId: string,
-): string {
+function logicalDocumentUri(documentKind: CnipaDocumentKind, sourceRecordId: string): string {
   return "cnipa://judgment/" + documentKind + "/" + encodeURIComponent(sourceRecordId);
 }
 
 function normalizeText(value: string): string {
-  return value
-    .normalize("NFKC")
-    .replace(/\s+/gu, " ")
-    .trim()
-    .toLocaleLowerCase("en-US");
+  return value.normalize("NFKC").replace(/\s+/gu, " ").trim().toLocaleLowerCase("en-US");
 }
 
 function scalarText(value: Scalar): string {
@@ -72,9 +56,7 @@ function valueAlreadyRepresented(baseNormalized: string, value: Scalar): boolean
     return text.length >= 3 && baseNormalized.includes(text);
   }
   const escaped = text.replace(/[.*+?^$()|[\]\\]/gu, "\\$&");
-  return new RegExp("(^|[^0-9a-z])" + escaped + "([^0-9a-z]|$)", "u").test(
-    baseNormalized,
-  );
+  return new RegExp("(^|[^0-9a-z])" + escaped + "([^0-9a-z]|$)", "u").test(baseNormalized);
 }
 
 function safeString(value: string, path: string): string {
@@ -86,11 +68,7 @@ function safeString(value: string, path: string): string {
   return normalized;
 }
 
-function pushFact(
-  facts: CnipaDetailMarkdownFactV1[],
-  path: string,
-  value: unknown,
-): void {
+function pushFact(facts: CnipaDetailMarkdownFactV1[], path: string, value: unknown): void {
   if (facts.length >= MAX_FACTS) {
     fail("CNIPA DETAIL enrichment exceeds " + MAX_FACTS + " scalar facts");
   }
@@ -116,11 +94,7 @@ function flatten(
   if (depth > MAX_DEPTH) {
     fail("CNIPA DETAIL field " + (path || "<root>") + " exceeds nesting bound");
   }
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     if (path) pushFact(facts, path, value);
     return;
   }
@@ -129,9 +103,7 @@ function flatten(
     if (value.length > MAX_ARRAY_ITEMS) {
       fail("CNIPA DETAIL array " + (path || "<root>") + " exceeds item bound");
     }
-    value.forEach((child, index) =>
-      flatten(child, path + "[" + index + "]", facts, depth + 1),
-    );
+    value.forEach((child, index) => flatten(child, path + "[" + index + "]", facts, depth + 1));
     return;
   }
   if (typeof value !== "object") {
@@ -158,16 +130,10 @@ function sourcePayload(value: unknown): unknown {
 
 function markdownScalar(value: Scalar): string {
   if (typeof value !== "string") return String(value);
-  return value
-    .replace(/\\/gu, "\\\\")
-    .replace(/`/gu, "\\`")
-    .replace(/\n/gu, "<br>");
+  return value.replace(/\\/gu, "\\\\").replace(/`/gu, "\\`").replace(/\n/gu, "<br>");
 }
 
-function render(
-  baseMarkdown: string,
-  facts: readonly CnipaDetailMarkdownFactV1[],
-): string {
+function render(baseMarkdown: string, facts: readonly CnipaDetailMarkdownFactV1[]): string {
   const base = baseMarkdown.replace(/\r\n?/gu, "\n").replace(/\s+$/u, "");
   const tick = String.fromCharCode(96);
   const lines = [
@@ -177,9 +143,7 @@ function render(
     "",
     "The following source facts were observed only in the CNIPA DETAIL evidence:",
     "",
-    ...facts.map(
-      (fact) => "- " + tick + fact.path + tick + ": " + markdownScalar(fact.value),
-    ),
+    ...facts.map((fact) => "- " + tick + fact.path + tick + ": " + markdownScalar(fact.value)),
     "",
   ];
   return lines.join("\n");
@@ -227,12 +191,8 @@ export function materializeCnipaDetailMarkdownEnrichmentBytes(input: {
   let listMarkdownBody: string;
   let detailValue: unknown;
   try {
-    listMarkdownBody = new TextDecoder("utf-8", { fatal: true }).decode(
-      input.listMarkdownContent,
-    );
-    detailValue = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(input.detailContent),
-    );
+    listMarkdownBody = new TextDecoder("utf-8", { fatal: true }).decode(input.listMarkdownContent);
+    detailValue = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(input.detailContent));
   } catch (error) {
     throw new CnipaAcquisitionError(
       "CNIPA_SCHEMA_CHANGED",
