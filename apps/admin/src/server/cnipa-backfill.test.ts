@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CollectionPlanRegistryRecord } from "@markorbit/persistence/collection-plans";
-import type { ExecutionLedgerRepository } from "@markorbit/persistence/execution-ledger";
+import type {
+  ExecutionLedgerRepository,
+  ManualDispatchInput,
+} from "@markorbit/persistence/execution-ledger";
 import { dispatchCnipaBackfill } from "./cnipa-backfill";
 
 function plan(connectorId = "cnipa-authenticated-worker"): CollectionPlanRegistryRecord {
@@ -26,7 +29,7 @@ function plan(connectorId = "cnipa-authenticated-worker"): CollectionPlanRegistr
 describe("CNIPA backfill dispatch service", () => {
   it("dispatches one deterministic manual Run per date", () => {
     let index = 0;
-    const dispatchManual = vi.fn((input) => ({
+    const dispatchManual = vi.fn((_input: ManualDispatchInput) => ({
       record: {
         run: { id: `run-${++index}` },
         jobs: [],
@@ -65,7 +68,7 @@ describe("CNIPA backfill dispatch service", () => {
   });
 
   it("reports idempotent replays without creating a different query", () => {
-    const dispatchManual = vi.fn((input) => ({
+    const dispatchManual = vi.fn((_input: ManualDispatchInput) => ({
       record: { run: { id: "run-existing" }, jobs: [] },
       replayed: true,
     }));
