@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import type { ArtifactUploadDescriptor } from "@markorbit/contracts";
-import type {
-  RawArtifactRepository,
-  RawArtifactView,
-} from "./raw-artifact-repository";
+import type { RawArtifactRepository, RawArtifactView } from "./raw-artifact-repository";
 import {
   cnipaDetailQueueCanonicalUri,
   type CnipaDetailDocumentKind,
@@ -98,7 +95,9 @@ export async function ingestCnipaDetailAsRawArtifact(input: {
 }): Promise<CnipaDetailRawArtifactIngestionResult> {
   const sourceRecordId = validateInput(input.detail);
   const contentSha256 = sha256(input.detail.content);
-  const identityHash = sha256(`${input.detail.documentKind}\u0000${sourceRecordId}`).slice(0, 16);
+  const identityHash = sha256(
+    `${input.detail.documentKind}\u0000${sourceRecordId}`,
+  ).slice(0, 16);
   const created = input.repository.createSession({
     ...input.execution,
     descriptor: descriptor(input.detail, sourceRecordId, contentSha256),
