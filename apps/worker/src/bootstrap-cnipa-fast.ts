@@ -66,8 +66,7 @@ async function requestJson(
 
   if (!response.ok && !allowedStatuses.includes(response.status)) {
     const error = record(record(body)?.error);
-    const message =
-      typeof error?.message === "string" ? error.message : `HTTP ${response.status}`;
+    const message = typeof error?.message === "string" ? error.message : `HTTP ${response.status}`;
     throw new Error(`${path}: ${message}`);
   }
   return { status: response.status, body };
