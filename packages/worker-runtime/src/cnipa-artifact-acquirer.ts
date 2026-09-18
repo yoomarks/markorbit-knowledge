@@ -11,6 +11,10 @@ import {
   parseCnipaResponseSchemaConfig,
 } from "./cnipa-configurable-response-decoder";
 import { resolveCnipaExecutionQuery } from "./cnipa-execution-query";
+import {
+  CNIPA_LIST_FACT_PROJECTION_VERSION,
+  materializeCnipaListPageBytes,
+} from "./cnipa-list-materializer";
 import { CnipaSourceAdapter } from "./cnipa-source-adapter";
 import {
   CnipaAcquisitionError,
@@ -20,7 +24,7 @@ import {
 } from "./cnipa-trademark-judgment";
 
 export const CNIPA_CONNECTOR_ID = "cnipa-authenticated-worker";
-export const CNIPA_CONNECTOR_VERSION = "0.5.0";
+export const CNIPA_CONNECTOR_VERSION = "0.6.0";
 export const CNIPA_EXECUTOR: ExecutionExecutor = {
   executorId: CNIPA_CONNECTOR_ID,
   version: CNIPA_CONNECTOR_VERSION,
@@ -152,6 +156,73 @@ function originalName(
   return `cnipa-${kind}-detail-${recordId}.json`;
 }
 
+function kindSlug(documentKind: CnipaResponseEvidence["documentKind"]): string {
+  return documentKind.toLowerCase().replaceAll("_", "-");
+}
+
+function rowSourceUri(sourceUri: string, sourceRecordId: string): string {
+  const url = new URL(sourceUri);
+  url.hash = `markorbit-cnipa-record=${encodeURIComponent(sourceRecordId)}`;
+  return url.toString();
+}
+
+function projectionArtifact(
+  evidence: CnipaResponseEvidence,
+  rawArtifact: AcquiredCollectionArtifact,
+  query: CnipaTrademarkJudgmentQuery,
+  queryId: string,
+  listPage: number,
+): AcquiredCollectionArtifact[] {
+  const materialized = materializeCnipaListPageBytes(evidence.documentKind, evidence.content);
+  const parentCanonicalUri = rawArtifact.canonicalUri;
+  if (!parentCanonicalUri) {
+    throw new CollectionAcquisitionError(
+      "CNIPA_MATERIALIZATION_FAILED",
+      "CNIPA raw LIST artifact requires canonicalUri before materialization",
+      false,
+    );
+  }
+
+  const projection = {
+    schemaVersion: `${CNIPA_LIST_FACT_PROJECTION_VERSION}-page`,
+    sourceOwner: "MARKORBIT_KNOWLEDGE",
+    documentKind: evidence.documentKind,
+    query,
+    observedAt: evidence.observedAt,
+    sourceListCanonicalUri: parentCanonicalUri,
+    recordCount: materialized.recordCount,
+    records: materialized.records.map((record) => record.factProjection),
+  };
+  const slug = kindSlug(evidence.documentKind);
+  const artifacts: AcquiredCollectionArtifact[] = [
+    {
+      artifactKind: "JSON",
+      mimeType: "application/json;charset=UTF-8",
+      originalName: `cnipa-${slug}-facts-${queryId}-p${listPage}.json`,
+      sourceUri: evidence.sourceUri,
+      canonicalUri: `cnipa://fact-projection/${evidence.documentKind}/${queryId}/page/${listPage}`,
+      parentCanonicalUris: [parentCanonicalUri],
+      content: new TextEncoder().encode(JSON.stringify(projection)),
+    },
+  ];
+
+  for (const record of materialized.records) {
+    const seed = record.documentSeed;
+    if (!seed) continue;
+    artifacts.push({
+      artifactKind: "MARKDOWN",
+      mimeType: "text/markdown;charset=UTF-8",
+      originalName: `cnipa-${slug}-document-${digest(record.sourceRecordId).slice(0, 16)}.md`,
+      sourceUri: rowSourceUri(evidence.sourceUri, record.sourceRecordId),
+      canonicalUri: seed.logicalDocumentUri,
+      parentCanonicalUris: [parentCanonicalUri],
+      content: new TextEncoder().encode(seed.markdownBody),
+    });
+  }
+
+  return artifacts;
+}
+
 function acquisitionFailure(error: unknown): CollectionAcquisitionError {
   if (error instanceof CollectionAcquisitionError) return error;
   if (error instanceof CnipaAcquisitionError) {
@@ -184,16 +255,29 @@ export class CnipaJudgmentArtifactAcquirer implements CollectionArtifactAcquirer
         },
       );
       const collection = await adapter.collect(config.query);
+
+      const completedSession = session;
+      session = undefined;
+      try {
+        await completedSession.close();
+      } catch {
+        // The source bytes are already collected. Browser cleanup must not rewrite
+        // the deterministic acquisition result or trigger source replay.
+      }
+
       const queryId = queryIdentity(collection.query);
       const listPages = new Map<string, number>();
-      return collection.evidence.map((evidence) => {
+      const artifacts: AcquiredCollectionArtifact[] = [];
+
+      for (const evidence of collection.evidence) {
         let listPage: number | undefined;
         if (evidence.evidenceKind === "LIST_JSON") {
           const next = (listPages.get(evidence.documentKind) ?? 0) + 1;
           listPages.set(evidence.documentKind, next);
           listPage = next;
         }
-        return {
+
+        const rawArtifact: AcquiredCollectionArtifact = {
           artifactKind: "JSON",
           mimeType: evidence.mediaType,
           originalName: originalName(evidence, queryId, listPage),
@@ -201,7 +285,26 @@ export class CnipaJudgmentArtifactAcquirer implements CollectionArtifactAcquirer
           canonicalUri: canonicalUri(evidence, queryId, listPage),
           content: evidence.content,
         };
-      });
+        artifacts.push(rawArtifact);
+
+        if (
+          collection.query.mode === "DATE_RANGE" &&
+          evidence.evidenceKind === "LIST_JSON" &&
+          listPage !== undefined
+        ) {
+          artifacts.push(
+            ...projectionArtifact(
+              evidence,
+              rawArtifact,
+              collection.query,
+              queryId,
+              listPage,
+            ),
+          );
+        }
+      }
+
+      return artifacts;
     } catch (error) {
       throw acquisitionFailure(error);
     } finally {
