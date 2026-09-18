@@ -52,7 +52,10 @@ export const CNIPA_FAST_SOURCE_SPECS: readonly CnipaFastSourceSpec[] = [
   },
 ] as const;
 
-export function cnipaFastCron(hour = CNIPA_FAST_DEFAULT_HOUR, minute = CNIPA_FAST_DEFAULT_MINUTE) {
+export function cnipaFastCron(
+  hour: number = CNIPA_FAST_DEFAULT_HOUR,
+  minute: number = CNIPA_FAST_DEFAULT_MINUTE,
+) {
   if (!Number.isInteger(hour) || hour < 0 || hour > 23) {
     throw new Error("CNIPA FAST hour must be an integer in 0..23");
   }
