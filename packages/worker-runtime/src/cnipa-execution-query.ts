@@ -27,8 +27,7 @@ type CnipaWeekdayIncrementalDateRangeTemplate = {
 };
 
 type CnipaQueryTemplate =
-  | CnipaScheduleSlotDateRangeTemplate
-  | CnipaWeekdayIncrementalDateRangeTemplate;
+  CnipaScheduleSlotDateRangeTemplate | CnipaWeekdayIncrementalDateRangeTemplate;
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
