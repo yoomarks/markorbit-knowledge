@@ -85,6 +85,7 @@ export * from "./source-adapter-registry";
 export * from "./uspto-source-adapter";
 export * from "./wipo-source-adapter";
 export * from "./cnipa-source-adapter";
+export * from "./cnipa-backfill-plan";
 export * from "./source-capability-matrix";
 export * from "./source-config-registry";
 export * from "./source-parser-port";
