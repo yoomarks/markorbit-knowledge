@@ -6,8 +6,7 @@ import {
 } from "./cnipa-trademark-judgment";
 
 export const CNIPA_LIST_FACT_PROJECTION_VERSION = "cnipa-list-fact-projection-v1" as const;
-export const CNIPA_KNOWLEDGE_DOCUMENT_SEED_VERSION =
-  "cnipa-knowledge-document-seed-v1" as const;
+export const CNIPA_KNOWLEDGE_DOCUMENT_SEED_VERSION = "cnipa-knowledge-document-seed-v1" as const;
 
 type SourceScalar = string | number | boolean | null;
 
@@ -226,7 +225,10 @@ function sourceTitle(
 }
 
 function markdownBody(title: string, fileContent: string): string {
-  const normalized = fileContent.replace(/\r\n?/g, "\n").replace(/[ \t]+$/gm, "").replace(/\s+$/u, "");
+  const normalized = fileContent
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\s+$/u, "");
   return `# ${title}\n\n${normalized}\n`;
 }
 
@@ -251,10 +253,7 @@ function documentSeed(
     return { seed: null, warnings: ["FILE_CONTENT_EMPTY"] };
   }
 
-  const decisionDate = optionalString(
-    row[contract.dateField],
-    `CNIPA LIST ${contract.dateField}`,
-  );
+  const decisionDate = optionalString(row[contract.dateField], `CNIPA LIST ${contract.dateField}`);
   const registrationNumber = optionalString(
     row[contract.registrationNumberField],
     `CNIPA LIST ${contract.registrationNumberField}`,
@@ -289,7 +288,9 @@ export function materializeCnipaListPage(
 ): CnipaListPageMaterializationV1 {
   const root = record(value, "CNIPA LIST response");
   if (root.code !== undefined && root.code !== 0) {
-    return materializationError(`CNIPA LIST response code must be 0, received ${String(root.code)}`);
+    return materializationError(
+      `CNIPA LIST response code must be 0, received ${String(root.code)}`,
+    );
   }
   const data = record(root.data, "CNIPA LIST data");
   if (!Array.isArray(data.list)) {
