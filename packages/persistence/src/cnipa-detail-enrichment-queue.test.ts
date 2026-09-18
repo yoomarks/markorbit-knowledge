@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE, initializeRegistry } from "./index";
+import { SqliteWorkspaceRepository } from "./workspace-registry";
 import {
   SqliteCnipaDetailEnrichmentQueueRepository,
   cnipaDetailQueueCanonicalUri,
@@ -198,31 +199,14 @@ describe("CNIPA DETAIL enrichment queue", () => {
 
   it("isolates identical CNIPA source identity by workspace", () => {
     const { database, repository } = fixture();
-    const otherWorkspace = {
-      ...DEFAULT_WORKSPACE,
-      id: "ws_cnipa_other",
+    const otherWorkspace = new SqliteWorkspaceRepository(
+      database,
+      () => new Date("2026-09-18T08:00:00.000Z"),
+      () => "wsp_cnipa_other",
+    ).create({
       slug: "cnipa-other",
       name: "CNIPA Other",
-      createdAt: "2026-09-18T08:00:00.000Z",
-      updatedAt: "2026-09-18T08:00:00.000Z",
-    };
-    database
-      .prepare(
-        `INSERT INTO workspaces
-          (id, slug, name, workspace_type, status, is_default, document_json, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        otherWorkspace.id,
-        otherWorkspace.slug,
-        otherWorkspace.name,
-        otherWorkspace.workspaceType,
-        otherWorkspace.status,
-        0,
-        JSON.stringify(otherWorkspace),
-        otherWorkspace.createdAt,
-        otherWorkspace.updatedAt,
-      );
+    });
 
     repository.admit(pointer("same-id"));
     const second = repository.admit({
