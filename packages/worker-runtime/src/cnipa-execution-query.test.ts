@@ -44,6 +44,75 @@ describe("CNIPA execution query materialization", () => {
     });
   });
 
+  it("materializes Monday as one Friday-Sunday incremental window", () => {
+    const input = job({
+      extensions: {
+        [SCHEDULE_SLOT_EXTENSION_KEY]: "2026-09-20T16:30:00.000Z",
+      },
+      planSnapshot: {
+        schedule: { mode: "CRON", expression: "30 0 * * 1-5", timezone: "Asia/Shanghai" },
+        extensions: {
+          [CNIPA_QUERY_TEMPLATE_EXTENSION_KEY]: {
+            mode: "WEEKDAY_INCREMENTAL_DATE_RANGE",
+            documentKinds: ["REGISTRATION_EXAMINATION"],
+          },
+        },
+      } as unknown as Job["planSnapshot"],
+    });
+
+    expect(resolveCnipaExecutionQuery(input, undefined)).toEqual({
+      mode: "DATE_RANGE",
+      fromDate: "2026-09-18",
+      toDate: "2026-09-20",
+      documentKinds: ["REGISTRATION_EXAMINATION"],
+    });
+  });
+
+  it("materializes Tuesday-Friday as the prior completed local day", () => {
+    const input = job({
+      extensions: {
+        [SCHEDULE_SLOT_EXTENSION_KEY]: "2026-09-21T16:30:00.000Z",
+      },
+      planSnapshot: {
+        schedule: { mode: "CRON", expression: "30 0 * * 1-5", timezone: "Asia/Shanghai" },
+        extensions: {
+          [CNIPA_QUERY_TEMPLATE_EXTENSION_KEY]: {
+            mode: "WEEKDAY_INCREMENTAL_DATE_RANGE",
+            documentKinds: ["REVIEW_ADJUDICATION"],
+          },
+        },
+      } as unknown as Job["planSnapshot"],
+    });
+
+    expect(resolveCnipaExecutionQuery(input, undefined)).toEqual({
+      mode: "DATE_RANGE",
+      fromDate: "2026-09-21",
+      toDate: "2026-09-21",
+      documentKinds: ["REVIEW_ADJUDICATION"],
+    });
+  });
+
+  it("fails closed if a weekday incremental template is accidentally scheduled on a weekend", () => {
+    const input = job({
+      extensions: {
+        [SCHEDULE_SLOT_EXTENSION_KEY]: "2026-09-18T16:30:00.000Z",
+      },
+      planSnapshot: {
+        schedule: { mode: "CRON", expression: "30 0 * * 1-5", timezone: "Asia/Shanghai" },
+        extensions: {
+          [CNIPA_QUERY_TEMPLATE_EXTENSION_KEY]: {
+            mode: "WEEKDAY_INCREMENTAL_DATE_RANGE",
+            documentKinds: ["OPPOSITION_DECISION"],
+          },
+        },
+      } as unknown as Job["planSnapshot"],
+    });
+
+    expect(() => resolveCnipaExecutionQuery(input, undefined)).toThrowError(
+      /must not run on Saturday or Sunday/i,
+    );
+  });
+
   it("supports bounded multi-day reconciliation windows", () => {
     const input = job({
       extensions: {
