@@ -140,6 +140,90 @@ describe("CNIPA DETAIL Markdown enrichment", () => {
     expect(left.enrichment.detailBodySha256).not.toBe(right.enrichment.detailBodySha256);
   });
 
+  it("preserves optional LIST-derived Markdown lineage when supplied", () => {
+    const result = enrichCnipaMarkdownFromDetail({
+      documentSeed: seed(),
+      listArtifactId: "raw-list-1",
+      listMarkdownArtifactId: "raw-list-markdown-1",
+      detailArtifactId: "raw-detail-1",
+      detailBody: bytes({ code: 0, data: { extra: "new" } }),
+    });
+
+    expect(result.material).toBe(true);
+    if (!result.material) return;
+    expect(result.enrichment).toMatchObject({
+      listArtifactId: "raw-list-1",
+      listMarkdownArtifactId: "raw-list-markdown-1",
+      detailArtifactId: "raw-detail-1",
+    });
+  });
+
+  it("rejects duplicate three-way lineage identities", () => {
+    expect(() =>
+      enrichCnipaMarkdownFromDetail({
+        documentSeed: seed(),
+        listArtifactId: "raw-list-1",
+        listMarkdownArtifactId: "raw-list-1",
+        detailArtifactId: "raw-detail-1",
+        detailBody: bytes({ code: 0, data: { extra: "new" } }),
+      }),
+    ).toThrow(/lineage artifacts must be distinct/i);
+  });
+
+  it("fails closed when DETAIL arrays exceed the materialization bound", () => {
+    expect(() =>
+      enrichCnipaMarkdownFromDetail({
+        documentSeed: seed(),
+        listArtifactId: "raw-list-1",
+        detailArtifactId: "raw-detail-1",
+        detailBody: bytes({
+          code: 0,
+          data: { items: Array.from({ length: 51 }, (_, index) => index) },
+        }),
+      }),
+    ).toThrow(/item bound/i);
+  });
+
+  it("fails closed when DETAIL nesting exceeds the materialization bound", () => {
+    let nested: unknown = "leaf";
+    for (let index = 0; index < 10; index += 1) {
+      nested = { child: nested };
+    }
+    expect(() =>
+      enrichCnipaMarkdownFromDetail({
+        documentSeed: seed(),
+        listArtifactId: "raw-list-1",
+        detailArtifactId: "raw-detail-1",
+        detailBody: bytes({ code: 0, data: nested }),
+      }),
+    ).toThrow(/nesting bound/i);
+  });
+
+  it("fails closed when DETAIL scalar facts exceed the materialization bound", () => {
+    const data = Object.fromEntries(
+      Array.from({ length: 251 }, (_, index) => [`field${index}`, `value-${index}`]),
+    );
+    expect(() =>
+      enrichCnipaMarkdownFromDetail({
+        documentSeed: seed(),
+        listArtifactId: "raw-list-1",
+        detailArtifactId: "raw-detail-1",
+        detailBody: bytes({ code: 0, data }),
+      }),
+    ).toThrow(/250 scalar facts/i);
+  });
+
+  it("fails closed when a DETAIL string exceeds the materialization bound", () => {
+    expect(() =>
+      enrichCnipaMarkdownFromDetail({
+        documentSeed: seed(),
+        listArtifactId: "raw-list-1",
+        detailArtifactId: "raw-detail-1",
+        detailBody: bytes({ code: 0, data: { text: "x".repeat(20_001) } }),
+      }),
+    ).toThrow(/string bound/i);
+  });
+
   it("rejects non-JSON DETAIL evidence", () => {
     expect(() =>
       enrichCnipaMarkdownFromDetail({
