@@ -9,6 +9,7 @@ import {
 
 const LIST_ARTIFACT_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const DETAIL_ARTIFACT_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAW";
+const LIST_MARKDOWN_ARTIFACT_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAX";
 
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -112,6 +113,52 @@ describe("CNIPA enriched Markdown ingestion", () => {
     expect(new TextDecoder().decode(fixture.uploaded[0])).toBe(seed.markdownBody);
   });
 
+  it("uses three-parent lineage when the LIST-derived Markdown artifact is available", async () => {
+    const fixture = repositoryFixture();
+    const seed = enrichment({
+      listMarkdownArtifactId: LIST_MARKDOWN_ARTIFACT_ID,
+    });
+
+    await ingestCnipaEnrichedMarkdown({
+      repository: fixture.repository,
+      execution,
+      enrichment: seed,
+    });
+
+    const call = fixture.createSession.mock.calls[0]![0] as {
+      descriptor: { parentArtifactIds: string[] };
+    };
+    expect(call.descriptor.parentArtifactIds).toEqual([
+      LIST_MARKDOWN_ARTIFACT_ID,
+      LIST_ARTIFACT_ID,
+      DETAIL_ARTIFACT_ID,
+    ]);
+  });
+
+  it("uses the optional LIST Markdown parent in idempotency identity", async () => {
+    const fixture = repositoryFixture();
+    const withoutMarkdownParent = enrichment();
+    const withMarkdownParent = enrichment({
+      listMarkdownArtifactId: LIST_MARKDOWN_ARTIFACT_ID,
+    });
+
+    await ingestCnipaEnrichedMarkdown({
+      repository: fixture.repository,
+      execution,
+      enrichment: withoutMarkdownParent,
+    });
+    await ingestCnipaEnrichedMarkdown({
+      repository: fixture.repository,
+      execution,
+      enrichment: withMarkdownParent,
+    });
+
+    const keys = fixture.createSession.mock.calls.map(
+      (call) => (call[0] as { idempotencyKey: string }).idempotencyKey,
+    );
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
   it("uses the same idempotency key for an identical enrichment replay", async () => {
     const fixture = repositoryFixture();
     const seed = enrichment();
@@ -168,7 +215,7 @@ describe("CNIPA enriched Markdown ingestion", () => {
     expect(keys[0]).not.toBe(keys[1]);
   });
 
-  it("rejects identical LIST and DETAIL parent identities", async () => {
+  it("rejects duplicate lineage parent identities", async () => {
     const fixture = repositoryFixture();
     await expect(
       ingestCnipaEnrichedMarkdown({
@@ -176,8 +223,18 @@ describe("CNIPA enriched Markdown ingestion", () => {
         execution,
         enrichment: enrichment({ detailArtifactId: LIST_ARTIFACT_ID }),
       }),
-    ).rejects.toThrow(/distinct LIST and DETAIL parent artifacts/i);
+    ).rejects.toThrow(/distinct lineage parent artifacts/i);
     expect(fixture.createSession).not.toHaveBeenCalled();
+
+    await expect(
+      ingestCnipaEnrichedMarkdown({
+        repository: fixture.repository,
+        execution,
+        enrichment: enrichment({
+          listMarkdownArtifactId: LIST_ARTIFACT_ID,
+        }),
+      }),
+    ).rejects.toThrow(/distinct lineage parent artifacts/i);
   });
 
   it("rejects Markdown bytes that do not match the frozen D1 digest", async () => {
