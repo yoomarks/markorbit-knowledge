@@ -149,9 +149,7 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
 
     const artifacts = await new CnipaJudgmentArtifactAcquirer(factory).acquire(input);
 
-    const rawList = artifacts.filter((artifact) =>
-      artifact.originalName.includes("-list-"),
-    );
+    const rawList = artifacts.filter((artifact) => artifact.originalName.includes("-list-"));
     const factProjection = artifacts.filter((artifact) =>
       artifact.originalName.includes("-facts-"),
     );
@@ -162,15 +160,11 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
     expect(markdown).toHaveLength(1);
     expect(factProjection[0]?.parentCanonicalUris).toEqual([rawList[0]?.canonicalUri]);
     expect(markdown[0]?.parentCanonicalUris).toEqual([rawList[0]?.canonicalUri]);
-    expect(markdown[0]?.canonicalUri).toBe(
-      "cnipa://judgment/REGISTRATION_EXAMINATION/scheduled-1",
-    );
+    expect(markdown[0]?.canonicalUri).toBe("cnipa://judgment/REGISTRATION_EXAMINATION/scheduled-1");
     expect(markdown[0]?.sourceUri).toContain("tmscJudgment/queryPageList");
     expect(markdown[0]?.sourceUri).toContain("markorbit-cnipa-record=scheduled-1");
     expect(markdown[0]?.sourceUri).not.toContain("queryInfo");
-    const projectionPayload = JSON.parse(
-      new TextDecoder().decode(factProjection[0]!.content),
-    );
+    const projectionPayload = JSON.parse(new TextDecoder().decode(factProjection[0]!.content));
     expect(projectionPayload.records[0].sourceFields).not.toHaveProperty("fileContent");
     expect(requests).toHaveLength(1);
     expect(requests[0]).toMatchObject({
@@ -414,8 +408,12 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
 
     const artifacts = await new CnipaJudgmentArtifactAcquirer(factory).acquire(input);
 
-    expect(artifacts.filter((artifact) => artifact.originalName.includes("-list-"))).toHaveLength(1);
-    expect(artifacts.filter((artifact) => artifact.originalName.includes("-facts-"))).toHaveLength(1);
+    expect(artifacts.filter((artifact) => artifact.originalName.includes("-list-"))).toHaveLength(
+      1,
+    );
+    expect(artifacts.filter((artifact) => artifact.originalName.includes("-facts-"))).toHaveLength(
+      1,
+    );
     expect(artifacts.filter((artifact) => artifact.artifactKind === "MARKDOWN")).toHaveLength(0);
   });
 
