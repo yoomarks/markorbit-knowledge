@@ -19,7 +19,9 @@ import {
   type CnipaDetailEnrichmentItemV1,
   type CnipaDetailRetryPolicy,
 } from "@markorbit/worker-runtime/cnipa-detail-enrichment-state";
-import type { CnipaAuthenticatedSessionExecutorFactory } from "@markorbit/worker-runtime/cnipa-artifact-acquirer";
+import type {
+  CnipaAuthenticatedSessionExecutorFactory,
+} from "@markorbit/worker-runtime/cnipa-artifact-acquirer";
 
 export interface CnipaDetailQueuePort {
   claimNext(input: {
@@ -200,13 +202,12 @@ export async function processNextCnipaDetail(
 
   const state = queueState(claimed);
   const leaseId = claimed.leaseId!;
-  let session: Awaited<ReturnType<CnipaAuthenticatedSessionExecutorFactory["create"]>> | undefined;
+  let session:
+    | Awaited<ReturnType<CnipaAuthenticatedSessionExecutorFactory["create"]>>
+    | undefined;
   try {
     session = await input.sessionFactory.create();
-    const request = buildCnipaCandidateDetailRequest(
-      claimed.documentKind,
-      claimed.sourceRecordId,
-    );
+    const request = buildCnipaCandidateDetailRequest(claimed.documentKind, claimed.sourceRecordId);
     const response = assertCnipaSessionResponse(await session.execute(request));
     const value = parseCnipaJson(response);
     const transientCode = cnipaTransientBusinessCode(value);
