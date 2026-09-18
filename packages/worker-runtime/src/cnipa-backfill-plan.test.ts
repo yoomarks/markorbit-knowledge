@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   CNIPA_BACKFILL_MAX_DAYS,
+  cnipaBackfillDocumentKindFromPlan,
   planCnipaBackfill,
+  planCnipaBackfillForPlan,
 } from "./cnipa-backfill-plan";
 
 describe("CNIPA bounded backfill planner", () => {
@@ -31,6 +33,54 @@ describe("CNIPA bounded backfill planner", () => {
         },
       },
     });
+  });
+
+  it("derives the only authorized library from the CollectionPlan template", () => {
+    const plan = {
+      id: "pln_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      extensions: {
+        "x-markorbit.cnipa-query-template": {
+          mode: "SCHEDULE_SLOT_DATE_RANGE",
+          documentKinds: ["OPPOSITION_DECISION"],
+          fromDayOffset: -1,
+          toDayOffset: -1,
+          timezone: "Asia/Shanghai",
+        },
+      },
+    };
+
+    expect(cnipaBackfillDocumentKindFromPlan(plan)).toBe("OPPOSITION_DECISION");
+    expect(
+      planCnipaBackfillForPlan({
+        plan,
+        fromDate: "2026-07-01",
+        toDate: "2026-07-01",
+      })[0]?.extensions,
+    ).toEqual({
+      "x-markorbit.cnipa-query": {
+        mode: "DATE_RANGE",
+        fromDate: "2026-07-01",
+        toDate: "2026-07-01",
+        documentKinds: ["OPPOSITION_DECISION"],
+      },
+    });
+  });
+
+  it("rejects plans that do not authorize exactly one CNIPA library", () => {
+    expect(() =>
+      cnipaBackfillDocumentKindFromPlan({
+        extensions: {
+          "x-markorbit.cnipa-query-template": {
+            mode: "SCHEDULE_SLOT_DATE_RANGE",
+            documentKinds: ["REGISTRATION_EXAMINATION", "REVIEW_ADJUDICATION"],
+          },
+        },
+      }),
+    ).toThrowError(/exactly one document kind/i);
+
+    expect(() => cnipaBackfillDocumentKindFromPlan({})).toThrowError(
+      /requires a CollectionPlan/i,
+    );
   });
 
   it("is deterministic for safe replay", () => {
