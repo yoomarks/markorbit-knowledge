@@ -251,9 +251,7 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
       rawList[0]?.canonicalUri,
       rawList[1]?.canonicalUri,
     ]);
-    const coveragePayload = JSON.parse(
-      new TextDecoder().decode(coverage[0]!.content),
-    );
+    const coveragePayload = JSON.parse(new TextDecoder().decode(coverage[0]!.content));
     expect(coveragePayload).toMatchObject({
       rawListPageCount: 2,
       rawListRecordCount: 179,
