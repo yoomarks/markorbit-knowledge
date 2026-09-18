@@ -228,8 +228,7 @@ export class CnipaSourceAdapter implements SourceAdapterPort {
 
         const authenticatedHiddenPaging =
           normalizedQuery.mode === "DATE_RANGE" &&
-          (documentKind === "OPPOSITION_DECISION" ||
-            documentKind === "REVIEW_ADJUDICATION");
+          (documentKind === "OPPOSITION_DECISION" || documentKind === "REVIEW_ADJUDICATION");
         if (authenticatedHiddenPaging) {
           // Authenticated raw evidence shows that CNIPA clamps response total/pages/pageIndex
           // to the visible 100-result window while still honoring the requested pageIndex
