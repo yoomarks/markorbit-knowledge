@@ -26,6 +26,7 @@ export type AcquiredCollectionArtifact = {
   canonicalUri?: string;
   publishedAt?: string;
   parentCanonicalUris?: string[];
+  parentArtifactIds?: string[];
   content: Uint8Array;
 };
 
@@ -146,8 +147,11 @@ function assertArtifactAllowed(job: Job, artifact: AcquiredCollectionArtifact): 
 
 function descriptorFor(
   artifact: AcquiredCollectionArtifact,
-  parentArtifactIds: string[] = [],
+  resolvedParentArtifactIds: string[] = [],
 ): ArtifactUploadDescriptor {
+  const parentArtifactIds = [
+    ...new Set([...(artifact.parentArtifactIds ?? []), ...resolvedParentArtifactIds]),
+  ].sort();
   return {
     artifactKind: artifact.artifactKind,
     mimeType: artifact.mimeType,

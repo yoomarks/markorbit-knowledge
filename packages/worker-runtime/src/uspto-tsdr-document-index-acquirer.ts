@@ -266,6 +266,6 @@ export function usptoTsdrDocumentIndexRuntimeDescriptor() {
     pathTemplate: "/ts/cd/casedocs/bundle.xml?sn={serialNumber}",
     artifactKind: "XML" as const,
     immutableRawArtifactRequired: true as const,
-    selectedDocumentBinaryImplemented: false as const,
+    selectedDocumentBinaryImplemented: true as const,
   });
 }

@@ -196,13 +196,13 @@ describe("USPTO TSDR acquisition policy", () => {
     );
   });
 
-  it("publishes an immutable descriptor without claiming a production executor", () => {
+  it("publishes the admitted production execution descriptor", () => {
     const descriptor = usptoTsdrAcquisitionPolicyDescriptor();
     expect(descriptor).toMatchObject({
       rateLimitsPerApiKeyPerMinute: { metadata: 60, pdfOrZip: 4 },
       populationCompleteClaimAllowed: false,
       legalEffectConclusionAllowed: false,
-      productionExecutionImplemented: false,
+      productionExecutionImplemented: true,
     });
     expect(Object.isFrozen(descriptor)).toBe(true);
     expect(Object.isFrozen(descriptor.highValueDocumentFamilies)).toBe(true);

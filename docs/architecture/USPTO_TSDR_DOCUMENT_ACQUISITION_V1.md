@@ -137,3 +137,22 @@ establish a production-safe token lifecycle or a successful binary transport acc
 Knowledge runtime. Therefore `SELECTED_DOCUMENT_BINARY` remains fail-closed until a dedicated
 transport implementation proves authorization handling, rate/budget behavior, returned media
 validation, immutable RawArtifact admission, retry semantics, and token non-persistence.
+
+## Official single-document API runtime
+
+The selected-document binary runtime uses the official API-key endpoint directly rather than the
+interactive document-viewer session token:
+
+- PDF: `GET https://tsdrapi.uspto.gov/ts/cd/casedoc/sn{serialNumber}/{sourceDocumentId}/download.pdf`;
+- ZIP: `GET https://tsdrapi.uspto.gov/ts/cd/casedoc/sn{serialNumber}/{sourceDocumentId}/download.zip`.
+
+The request carries the admitted `USPTO-API-KEY` secret reference, remains bounded by the existing
+4 PDF/ZIP requests-per-minute policy, rejects redirects, caps response bytes, validates HTTP status,
+media type and file signature, and never persists credential values.
+
+Each selected binary carries the immutable `sourceIndexArtifactId` as an explicit parent RawArtifact
+identity. Artifact-backed execution therefore records the document binary as immutable evidence with
+lineage to the exact TSDR document-index observation that admitted the selection.
+
+The document-viewer token flow remains observational evidence only and is not used by the production
+connector.
