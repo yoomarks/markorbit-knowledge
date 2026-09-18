@@ -103,7 +103,9 @@ async function bootstrapAdminAuth(baseUrl: string): Promise<AdminAuthContext> {
   const session = record(await requestJson(baseUrl, "/api/admin-session"));
   const csrfToken = requiredString(session?.csrfToken, "admin session csrfToken");
   const workspaceRecords = Array.isArray(session?.workspaces)
-    ? session.workspaces.map(record).filter((value): value is Record<string, unknown> => value !== null)
+    ? session.workspaces
+        .map(record)
+        .filter((value): value is Record<string, unknown> => value !== null)
     : [];
   const requestedWorkspaceId = process.env.MARKORBIT_CNIPA_BACKFILL_WORKSPACE_ID?.trim();
   const selected = requestedWorkspaceId
@@ -122,8 +124,7 @@ async function bootstrapAdminAuth(baseUrl: string): Promise<AdminAuthContext> {
         : `MARKORBIT_CNIPA_BACKFILL_WORKSPACE_ID is required when the admin session has ${workspaceRecords.length} workspaces${available ? `: ${available}` : ""}`,
     );
   }
-  const origin =
-    process.env.MARKORBIT_ADMIN_ORIGIN?.trim() || new URL(baseUrl).origin;
+  const origin = process.env.MARKORBIT_ADMIN_ORIGIN?.trim() || new URL(baseUrl).origin;
   const context = {
     workspaceId: requiredString(selected.workspaceId, "admin workspaceId"),
     csrfToken,
@@ -447,7 +448,11 @@ async function main(): Promise<void> {
     }
 
     process.stdout.write(
-      `${JSON.stringify({ statePath, workspaceId: checkpoint.workspaceId, sources: summary(checkpoint) }, null, 2)}\n`,
+      `${JSON.stringify(
+        { statePath, workspaceId: checkpoint.workspaceId, sources: summary(checkpoint) },
+        null,
+        2,
+      )}\n`,
     );
     const activeAfter = checkpoint.sources.filter(
       (source) => source.completionState === "ACTIVE",
