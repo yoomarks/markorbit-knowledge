@@ -14,10 +14,7 @@ describe("CNIPA FAST production bootstrap topology", () => {
   it("freezes exactly three CNIPA public judgment source families", () => {
     expect(CNIPA_FAST_SOURCE_SPECS).toHaveLength(3);
     expect(
-      CNIPA_FAST_SOURCE_SPECS.map((spec) => [
-        spec.documentKind,
-        spec.sourceRecordIdField,
-      ]),
+      CNIPA_FAST_SOURCE_SPECS.map((spec) => [spec.documentKind, spec.sourceRecordIdField]),
     ).toEqual([
       ["REGISTRATION_EXAMINATION", "adjuOpenId"],
       ["OPPOSITION_DECISION", "adjuOpenId"],
@@ -73,9 +70,7 @@ describe("CNIPA FAST production bootstrap topology", () => {
     expect(manifest.supportedJobTypes).toEqual(["API_COLLECTION"]);
     expect(manifest.capabilities).toEqual(["COLLECT"]);
     expect(manifest.outputArtifactKinds).toEqual(["JSON", "MARKDOWN"]);
-    expect(manifest.extensions["x-markorbit-detail-lane"]).toBe(
-      "SEPARATE_SLOW_ENRICHMENT",
-    );
+    expect(manifest.extensions["x-markorbit-detail-lane"]).toBe("SEPARATE_SLOW_ENRICHMENT");
   });
 
   it("keeps the production CNIPA worker serialized", () => {
