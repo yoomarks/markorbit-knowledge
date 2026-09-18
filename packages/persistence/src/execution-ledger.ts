@@ -16,6 +16,7 @@ import {
   type CollectionRunStatus,
   type ConnectorManifest,
   type ExecutionActor,
+  type Extensions,
   type Job,
   type JobType,
   type RunTriggerType,
@@ -49,6 +50,7 @@ export type ManualDispatchInput = {
   planId: string;
   requestedBy?: ExecutionActor;
   idempotencyKey?: string;
+  extensions?: Extensions;
 };
 
 export type CancelRunInput = {
@@ -146,6 +148,23 @@ function normalizeOffset(value: number | undefined): number {
     throw new RegistryValidationError("offset must be a non-negative integer");
   }
   return value;
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+      left.localeCompare(right),
+    );
+    return `{${entries
+      .map(([key, child]) => `${JSON.stringify(key)}:${canonicalJson(child)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function extensionsMatch(left: Extensions | undefined, right: Extensions | undefined): boolean {
+  return canonicalJson(left ?? null) === canonicalJson(right ?? null);
 }
 
 function normalizeIdempotencyKey(value: string | undefined): string | undefined {
@@ -527,7 +546,11 @@ export class SqliteExecutionLedgerRepository implements ExecutionLedgerRepositor
         .get(plan.workspaceId, idempotencyKey) as { document_json: string } | undefined;
       if (existing) {
         const record = recordFromRun(this.database, existing.document_json);
-        if (record.run.planId !== plan.id || record.run.trigger.type !== "MANUAL") {
+        if (
+          record.run.planId !== plan.id ||
+          record.run.trigger.type !== "MANUAL" ||
+          !extensionsMatch(record.run.extensions, input.extensions)
+        ) {
           throw new RegistryConflictError(
             "EXECUTION_IDEMPOTENCY_CONFLICT",
             "Idempotency key was already used for a different dispatch",
@@ -558,6 +581,7 @@ export class SqliteExecutionLedgerRepository implements ExecutionLedgerRepositor
       requestedAt: timestamp,
       createdAt: timestamp,
       updatedAt: timestamp,
+      ...(input.extensions ? { extensions: clone(input.extensions) } : {}),
     };
     const job: Job = {
       contractVersion: EXECUTION_CONTRACT_VERSION,
@@ -582,6 +606,7 @@ export class SqliteExecutionLedgerRepository implements ExecutionLedgerRepositor
       connectorSnapshot: clone(connector),
       createdAt: timestamp,
       updatedAt: timestamp,
+      ...(input.extensions ? { extensions: clone(input.extensions) } : {}),
     };
     if (!isCollectionRun(run) || !isJob(job)) {
       throw new RegistryValidationError("Dispatch does not satisfy Execution Contract v1");
@@ -650,7 +675,11 @@ export class SqliteExecutionLedgerRepository implements ExecutionLedgerRepositor
           .get(plan.workspaceId, idempotencyKey) as { document_json: string } | undefined;
         if (existing) {
           const record = recordFromRun(this.database, existing.document_json);
-          if (record.run.planId !== plan.id || record.run.trigger.type !== "MANUAL") {
+          if (
+            record.run.planId !== plan.id ||
+            record.run.trigger.type !== "MANUAL" ||
+            !extensionsMatch(record.run.extensions, input.extensions)
+          ) {
             throw new RegistryConflictError(
               "EXECUTION_IDEMPOTENCY_CONFLICT",
               "Idempotency key was concurrently used for a different dispatch",
