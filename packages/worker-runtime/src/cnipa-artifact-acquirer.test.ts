@@ -103,7 +103,7 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
           toDayOffset: -1,
         },
       },
-    } as typeof input.job.planSnapshot;
+    } as unknown as typeof input.job.planSnapshot;
     input.job.extensions = {
       [SCHEDULE_SLOT_EXTENSION_KEY]: "2026-09-17T16:30:00.000Z",
     };
