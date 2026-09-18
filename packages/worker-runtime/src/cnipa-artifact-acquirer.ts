@@ -11,6 +11,7 @@ import {
   parseCnipaResponseSchemaConfig,
 } from "./cnipa-configurable-response-decoder";
 import { resolveCnipaExecutionQuery } from "./cnipa-execution-query";
+import { buildCnipaDateRangeCoverageManifest } from "./cnipa-collection-coverage";
 import {
   CNIPA_LIST_FACT_PROJECTION_VERSION,
   materializeCnipaListPageBytes,
@@ -223,6 +224,42 @@ function projectionArtifact(
   return artifacts;
 }
 
+function coverageArtifact(
+  collection: Awaited<ReturnType<CnipaSourceAdapter["collect"]>>,
+  queryId: string,
+  pageSize: number,
+  maxPagesPerLibrary: number,
+  rawListCanonicalUris: readonly string[],
+): AcquiredCollectionArtifact {
+  const manifest = buildCnipaDateRangeCoverageManifest({
+    collection,
+    pageSize,
+    maxPagesPerLibrary,
+  });
+  const slug = kindSlug(manifest.documentKind);
+  const listEvidence = collection.evidence.find(
+    (evidence) =>
+      evidence.documentKind === manifest.documentKind && evidence.evidenceKind === "LIST_JSON",
+  );
+  if (!listEvidence) {
+    throw new CollectionAcquisitionError(
+      "CNIPA_MATERIALIZATION_FAILED",
+      "CNIPA DATE_RANGE coverage manifest requires LIST evidence",
+      false,
+    );
+  }
+
+  return {
+    artifactKind: "JSON",
+    mimeType: "application/json;charset=UTF-8",
+    originalName: `cnipa-${slug}-coverage-${queryId}.json`,
+    sourceUri: listEvidence.sourceUri,
+    canonicalUri: `cnipa://collection-coverage/${manifest.documentKind}/${queryId}`,
+    parentCanonicalUris: [...rawListCanonicalUris],
+    content: new TextEncoder().encode(JSON.stringify(manifest)),
+  };
+}
+
 function acquisitionFailure(error: unknown): CollectionAcquisitionError {
   if (error instanceof CollectionAcquisitionError) return error;
   if (error instanceof CnipaAcquisitionError) {
@@ -268,6 +305,7 @@ export class CnipaJudgmentArtifactAcquirer implements CollectionArtifactAcquirer
       const queryId = queryIdentity(collection.query);
       const listPages = new Map<string, number>();
       const artifacts: AcquiredCollectionArtifact[] = [];
+      const rawListCanonicalUris: string[] = [];
 
       for (const evidence of collection.evidence) {
         let listPage: number | undefined;
@@ -286,6 +324,9 @@ export class CnipaJudgmentArtifactAcquirer implements CollectionArtifactAcquirer
           content: evidence.content,
         };
         artifacts.push(rawArtifact);
+        if (evidence.evidenceKind === "LIST_JSON" && rawArtifact.canonicalUri) {
+          rawListCanonicalUris.push(rawArtifact.canonicalUri);
+        }
 
         if (
           collection.query.mode === "DATE_RANGE" &&
@@ -296,6 +337,18 @@ export class CnipaJudgmentArtifactAcquirer implements CollectionArtifactAcquirer
             ...projectionArtifact(evidence, rawArtifact, collection.query, queryId, listPage),
           );
         }
+      }
+
+      if (collection.query.mode === "DATE_RANGE") {
+        artifacts.push(
+          coverageArtifact(
+            collection,
+            queryId,
+            config.pageSize,
+            config.maxPagesPerLibrary,
+            rawListCanonicalUris,
+          ),
+        );
       }
 
       return artifacts;
