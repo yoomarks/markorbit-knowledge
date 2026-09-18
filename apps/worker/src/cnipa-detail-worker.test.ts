@@ -6,9 +6,7 @@ import {
 } from "@markorbit/persistence/cnipa-detail-enrichment-queue";
 import type { CnipaDetailRawArtifactIngestionResult } from "@markorbit/persistence/cnipa-detail-ingestion";
 import { DEFAULT_WORKSPACE, initializeRegistry } from "@markorbit/persistence";
-import type {
-  CnipaAuthenticatedSessionResponse,
-} from "@markorbit/worker-runtime";
+import type { CnipaAuthenticatedSessionResponse } from "@markorbit/worker-runtime";
 import type { CnipaAuthenticatedSessionExecutorFactory } from "@markorbit/worker-runtime/cnipa-artifact-acquirer";
 import { processNextCnipaDetail } from "./cnipa-detail-worker";
 
@@ -33,14 +31,18 @@ function queueFixture(sourceRecordId = "detail-1") {
   return { database, queue };
 }
 
-function response(input: Partial<CnipaAuthenticatedSessionResponse> = {}): CnipaAuthenticatedSessionResponse {
+function response(
+  input: Partial<CnipaAuthenticatedSessionResponse> = {},
+): CnipaAuthenticatedSessionResponse {
   return {
     status: 200,
     sourceUri:
       "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/pubnotice/portal/tmyyJudgment/queryInfo?id=detail-1",
     contentType: "application/json;charset=UTF-8",
     observedAt: "2026-09-18T10:00:05.000Z",
-    body: new TextEncoder().encode(JSON.stringify({ code: 0, data: { id: "detail-1" } })),
+    body: new TextEncoder().encode(
+      JSON.stringify({ code: 0, data: { id: "detail-1" } }),
+    ),
     securityState: "OK",
     ...input,
   };
@@ -63,7 +65,10 @@ function factory(
   };
 }
 
-function rawResult(id = "raw_detail_1", sha = "a".repeat(64)): CnipaDetailRawArtifactIngestionResult {
+function rawResult(
+  id = "raw_detail_1",
+  sha = "a".repeat(64),
+): CnipaDetailRawArtifactIngestionResult {
   return {
     artifact: {
       artifact: { id },
@@ -97,7 +102,9 @@ describe("CNIPA serial DETAIL worker", () => {
     });
     expect(close).toHaveBeenCalledTimes(1);
     expect(sink).toHaveBeenCalledTimes(1);
-    expect(sink.mock.invocationCallOrder[0]).toBeGreaterThan(close.mock.invocationCallOrder[0]!);
+    expect(sink.mock.invocationCallOrder[0]).toBeGreaterThan(
+      close.mock.invocationCallOrder[0]!,
+    );
   });
 
   it("persists known transient business responses as RETRYABLE with bounded backoff", async () => {
@@ -183,7 +190,9 @@ describe("CNIPA serial DETAIL worker", () => {
         queueLeaseId: "detail-lease-unknown",
         sessionFactory: factory(
           response({
-            body: new TextEncoder().encode(JSON.stringify({ code: -999, message: "unknown" })),
+            body: new TextEncoder().encode(
+              JSON.stringify({ code: -999, message: "unknown" }),
+            ),
           }),
         ),
         rawArtifactSink: sink,
