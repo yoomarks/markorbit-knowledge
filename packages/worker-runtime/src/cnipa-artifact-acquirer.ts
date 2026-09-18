@@ -11,9 +11,7 @@ import {
   parseCnipaResponseSchemaConfig,
 } from "./cnipa-configurable-response-decoder";
 import { resolveCnipaExecutionQuery } from "./cnipa-execution-query";
-import {
-  buildCnipaDateRangeCoverageManifest,
-} from "./cnipa-collection-coverage";
+import { buildCnipaDateRangeCoverageManifest } from "./cnipa-collection-coverage";
 import {
   CNIPA_LIST_FACT_PROJECTION_VERSION,
   materializeCnipaListPageBytes,
@@ -241,8 +239,7 @@ function coverageArtifact(
   const slug = kindSlug(manifest.documentKind);
   const listEvidence = collection.evidence.find(
     (evidence) =>
-      evidence.documentKind === manifest.documentKind &&
-      evidence.evidenceKind === "LIST_JSON",
+      evidence.documentKind === manifest.documentKind && evidence.evidenceKind === "LIST_JSON",
   );
   if (!listEvidence) {
     throw new CollectionAcquisitionError(
@@ -327,10 +324,7 @@ export class CnipaJudgmentArtifactAcquirer implements CollectionArtifactAcquirer
           content: evidence.content,
         };
         artifacts.push(rawArtifact);
-        if (
-          evidence.evidenceKind === "LIST_JSON" &&
-          rawArtifact.canonicalUri
-        ) {
+        if (evidence.evidenceKind === "LIST_JSON" && rawArtifact.canonicalUri) {
           rawListCanonicalUris.push(rawArtifact.canonicalUri);
         }
 
