@@ -7,9 +7,7 @@ import {
 } from "@markorbit/worker-runtime/cnipa-window-policy";
 
 export type CnipaBackfillDocumentKind =
-  | "REGISTRATION_EXAMINATION"
-  | "OPPOSITION_DECISION"
-  | "REVIEW_ADJUDICATION";
+  "REGISTRATION_EXAMINATION" | "OPPOSITION_DECISION" | "REVIEW_ADJUDICATION";
 
 export const CNIPA_HISTORICAL_BACKFILL_VERSION = "cnipa-historical-backfill-v1" as const;
 
@@ -83,7 +81,10 @@ function nextDate(value: string): string {
   return date.toISOString().slice(0, 10);
 }
 
-function deterministicKey(state: CnipaHistoricalBackfillSourceState, plan: CnipaHistoricalWindowPlan) {
+function deterministicKey(
+  state: CnipaHistoricalBackfillSourceState,
+  plan: CnipaHistoricalWindowPlan,
+) {
   return [
     "cnipa-backfill-v1",
     state.documentKind.toLowerCase(),
@@ -136,7 +137,8 @@ function assertCoverageMatchesPending(
   manifest: CnipaCoverageManifestForBackfill,
 ): CnipaPendingWindow {
   const pending = state.pendingWindow;
-  if (!pending) throw new Error("CNIPA backfill coverage cannot be applied without a pending window");
+  if (!pending)
+    throw new Error("CNIPA backfill coverage cannot be applied without a pending window");
   if (
     manifest.schemaVersion !== "cnipa-collection-coverage-v1" ||
     manifest.documentKind !== state.documentKind ||

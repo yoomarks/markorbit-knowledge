@@ -1,9 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import {
-  CNIPA_FAST_SOURCE_SPECS,
-  type CnipaFastSourceSpec,
-} from "./cnipa-fast-bootstrap-spec";
+import { CNIPA_FAST_SOURCE_SPECS, type CnipaFastSourceSpec } from "./cnipa-fast-bootstrap-spec";
 import {
   CNIPA_HISTORICAL_BACKFILL_VERSION,
   applyCnipaCoverageObservation,
@@ -55,11 +52,7 @@ function authHeaders(): Record<string, string> {
   return cookie ? { cookie } : {};
 }
 
-async function request(
-  baseUrl: string,
-  path: string,
-  init: RequestInit = {},
-): Promise<Response> {
+async function request(baseUrl: string, path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   for (const [key, value] of Object.entries(authHeaders())) headers.set(key, value);
   const response = await fetch(`${baseUrl}${path}`, { ...init, headers });
@@ -70,7 +63,11 @@ async function request(
   return response;
 }
 
-async function requestJson(baseUrl: string, path: string, init: RequestInit = {}): Promise<unknown> {
+async function requestJson(
+  baseUrl: string,
+  path: string,
+  init: RequestInit = {},
+): Promise<unknown> {
   const response = await request(baseUrl, path, init);
   return response.json();
 }
@@ -89,7 +86,9 @@ async function discoverSourceAndPlan(
     baseUrl,
     `/api/sources?q=${encodeURIComponent(spec.slug)}&limit=100`,
   );
-  const source = items(sources).map(record).find((candidate) => candidate?.slug === spec.slug);
+  const source = items(sources)
+    .map(record)
+    .find((candidate) => candidate?.slug === spec.slug);
   const sourceId = requiredString(source?.id, `${spec.key} sourceId`);
 
   const plans = await requestJson(
@@ -378,7 +377,9 @@ async function main(): Promise<void> {
       });
     }
 
-    process.stdout.write(`${JSON.stringify({ statePath, sources: summary(checkpoint) }, null, 2)}\n`);
+    process.stdout.write(
+      `${JSON.stringify({ statePath, sources: summary(checkpoint) }, null, 2)}\n`,
+    );
     const activeAfter = checkpoint.sources.filter(
       (source) => source.completionState === "ACTIVE",
     ).length;

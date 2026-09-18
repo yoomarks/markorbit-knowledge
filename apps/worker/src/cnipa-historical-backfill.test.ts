@@ -43,8 +43,7 @@ describe("CNIPA durable historical backfill state machine", () => {
       fromDate: "2016-01-01",
       toDate: "2016-01-30",
       windowDays: 30,
-      idempotencyKey:
-        "cnipa-backfill-v1-registration_examination-2016-01-01-2016-01-30-30",
+      idempotencyKey: "cnipa-backfill-v1-registration_examination-2016-01-01-2016-01-30-30",
     });
   });
 
