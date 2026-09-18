@@ -175,14 +175,20 @@ function requireSuccessfulXml(response: UsptoTsdrIndexTransportResponse): void {
     );
   }
   const mediaType = response.contentType?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
-  if (mediaType && !["application/xml", "text/xml"].includes(mediaType) && !mediaType.endsWith("+xml")) {
+  if (
+    mediaType &&
+    !["application/xml", "text/xml"].includes(mediaType) &&
+    !mediaType.endsWith("+xml")
+  ) {
     throw new CollectionAcquisitionError(
       "TSDR_RESPONSE_TYPE_INVALID",
       `USPTO TSDR document index returned unexpected content type ${mediaType}`,
       false,
     );
   }
-  const prefix = new TextDecoder().decode(response.body.slice(0, Math.min(response.body.length, 512))).trimStart();
+  const prefix = new TextDecoder()
+    .decode(response.body.slice(0, Math.min(response.body.length, 512)))
+    .trimStart();
   if (!prefix.startsWith("<")) {
     throw new CollectionAcquisitionError(
       "TSDR_RESPONSE_INVALID",

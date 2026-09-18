@@ -27,6 +27,8 @@ function binaryRequest() {
     coverageClaim: "TARGET_SERIAL_ONLY",
     legalEffectClaim: false,
     format: "PDF",
+    purpose: "LIVE_BUSINESS_EVENT",
+    businessChain: "OA",
     document: {
       sourceIndexArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
       sourceDocumentId: "TSDR-DOC-001",
@@ -58,12 +60,38 @@ describe("USPTO TSDR acquisition policy", () => {
       requestBudgetPerMinute: 4,
       artifactAdmission: "IMMUTABLE_RAW_BINARY_REQUIRED",
       format: "PDF",
+      purpose: "LIVE_BUSINESS_EVENT",
+      businessChain: "OA",
       document: {
         sourceIndexArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
         sourceDocumentId: "TSDR-DOC-001",
         family: "OFFICE_ACTION",
         classifierVersion: "1.0.0",
       },
+    });
+  });
+
+  it("requires explicit live-business or case-research purpose", () => {
+    const missing = binaryRequest() as Record<string, unknown>;
+    delete missing.purpose;
+    expect(() => admitUsptoTsdrAcquisition(missing)).toThrowError(/fields are invalid/);
+
+    expect(() =>
+      admitUsptoTsdrAcquisition({
+        ...binaryRequest(),
+        businessChain: "OTHER_RESEARCH",
+      }),
+    ).toThrowError(/requires OA, DECLARATION, or RENEWAL chain/);
+
+    expect(
+      admitUsptoTsdrAcquisition({
+        ...binaryRequest(),
+        purpose: "CASE_RESEARCH",
+        businessChain: "OTHER_RESEARCH",
+      }),
+    ).toMatchObject({
+      purpose: "CASE_RESEARCH",
+      businessChain: "OTHER_RESEARCH",
     });
   });
 

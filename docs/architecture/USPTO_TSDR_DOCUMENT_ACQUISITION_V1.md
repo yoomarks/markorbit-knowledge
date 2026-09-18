@@ -83,3 +83,23 @@ single-document URL from provider metadata, does not register an API key, does n
 selected live PDF/ZIP, does not interpret document contents, does not publish a ReadyPackage, and
 does not mutate production state. A selected-binary executor requires separately verified official
 endpoint semantics that bind one source document identity to one returned binary.
+
+## Sparse business-document refinement
+
+TSDR is not a default historical-document archive. Binary acquisition is intentionally narrower
+than document-index acquisition.
+
+Every selected binary must now declare one of two purposes:
+
+- `LIVE_BUSINESS_EVENT` for a current OA, declaration/maintenance, or renewal service chain;
+- `CASE_RESEARCH` for a deliberately selected historical case needed for professional research.
+
+A live-business request must identify the `OA`, `DECLARATION`, or `RENEWAL` chain.
+`OTHER_RESEARCH` is accepted only with `CASE_RESEARCH`.
+
+This prevents a high-value-looking document type from silently becoming authority to download the
+entire history of a case. The upstream Capability/Product decides that the document is needed;
+Knowledge only enforces the bounded acquisition and preserves the immutable document evidence.
+
+The business chain may later contain notice, filing/response and result/outcome documents, but
+Knowledge does not infer the commercial opportunity that caused the chain to be requested.

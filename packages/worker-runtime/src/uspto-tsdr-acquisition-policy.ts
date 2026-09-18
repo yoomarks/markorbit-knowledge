@@ -6,6 +6,9 @@ export const USPTO_TSDR_BINARY_MAX_REQUESTS_PER_MINUTE = 4 as const;
 
 export type UsptoTsdrAcquisitionIntent = "CASE_DOCUMENT_INDEX" | "SELECTED_DOCUMENT_BINARY";
 
+export type UsptoTsdrAcquisitionPurpose = "LIVE_BUSINESS_EVENT" | "CASE_RESEARCH";
+export type UsptoTsdrBusinessChain = "OA" | "DECLARATION" | "RENEWAL" | "OTHER_RESEARCH";
+
 export type UsptoTsdrHighValueDocumentFamily =
   | "OFFICE_ACTION"
   | "APPLICANT_RESPONSE"
@@ -48,6 +51,8 @@ export type UsptoTsdrSelectedDocumentRequest = {
   coverageClaim: "TARGET_SERIAL_ONLY";
   legalEffectClaim: false;
   format: "PDF" | "ZIP";
+  purpose: UsptoTsdrAcquisitionPurpose;
+  businessChain: UsptoTsdrBusinessChain;
   document: UsptoTsdrDocumentSelection;
 };
 
@@ -69,6 +74,8 @@ export type UsptoTsdrAcquisitionAdmission = {
   artifactAdmission: "IMMUTABLE_INDEX_RESPONSE_REQUIRED" | "IMMUTABLE_RAW_BINARY_REQUIRED";
   document?: UsptoTsdrDocumentSelection;
   format?: "PDF" | "ZIP";
+  purpose?: UsptoTsdrAcquisitionPurpose;
+  businessChain?: UsptoTsdrBusinessChain;
 };
 
 export type UsptoTsdrPolicyErrorCode =
@@ -280,6 +287,8 @@ export function admitUsptoTsdrAcquisition(input: unknown): UsptoTsdrAcquisitionA
           "coverageClaim",
           "legalEffectClaim",
           "format",
+          "purpose",
+          "businessChain",
           "document",
         ],
     "request",
@@ -310,6 +319,25 @@ export function admitUsptoTsdrAcquisition(input: unknown): UsptoTsdrAcquisitionA
     };
   }
 
+  if (request.purpose !== "LIVE_BUSINESS_EVENT" && request.purpose !== "CASE_RESEARCH") {
+    throw new UsptoTsdrPolicyError(
+      "TSDR_REQUEST_INVALID",
+      "selected document purpose must be LIVE_BUSINESS_EVENT or CASE_RESEARCH",
+    );
+  }
+  const allowedChains = new Set(["OA", "DECLARATION", "RENEWAL", "OTHER_RESEARCH"]);
+  if (!allowedChains.has(String(request.businessChain))) {
+    throw new UsptoTsdrPolicyError(
+      "TSDR_REQUEST_INVALID",
+      "selected document businessChain is invalid",
+    );
+  }
+  if (request.purpose === "LIVE_BUSINESS_EVENT" && request.businessChain === "OTHER_RESEARCH") {
+    throw new UsptoTsdrPolicyError(
+      "TSDR_REQUEST_INVALID",
+      "live business acquisition requires OA, DECLARATION, or RENEWAL chain",
+    );
+  }
   if (request.format !== "PDF" && request.format !== "ZIP") {
     throw new UsptoTsdrPolicyError(
       "TSDR_REQUEST_INVALID",
@@ -324,6 +352,8 @@ export function admitUsptoTsdrAcquisition(input: unknown): UsptoTsdrAcquisitionA
     ),
     artifactAdmission: "IMMUTABLE_RAW_BINARY_REQUIRED",
     format: request.format,
+    purpose: request.purpose as UsptoTsdrAcquisitionPurpose,
+    businessChain: request.businessChain as UsptoTsdrBusinessChain,
     document: documentSelection(request.document),
   };
 }

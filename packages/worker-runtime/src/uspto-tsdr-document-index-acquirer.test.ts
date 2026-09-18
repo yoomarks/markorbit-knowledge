@@ -32,17 +32,14 @@ describe("UsptoTsdrDocumentIndexAcquirer", () => {
     const artifacts = await acquirer.acquire({} as never);
 
     expect(seen).toHaveLength(1);
-    expect(seen[0]!.url).toBe(
-      "https://tsdrapi.uspto.gov/ts/cd/casedocs/bundle.xml?sn=75008897",
-    );
+    expect(seen[0]!.url).toBe("https://tsdrapi.uspto.gov/ts/cd/casedocs/bundle.xml?sn=75008897");
     expect(seen[0]!.headers["USPTO-API-KEY"]).toBe("test-api-key");
     expect(artifacts).toHaveLength(1);
     expect(artifacts[0]).toMatchObject({
       artifactKind: "XML",
       mimeType: "application/xml",
       originalName: "uspto-tsdr-75008897-document-index.xml",
-      canonicalUri:
-        "https://tsdrapi.uspto.gov/ts/cd/casedocs/bundle.xml?sn=75008897",
+      canonicalUri: "https://tsdrapi.uspto.gov/ts/cd/casedocs/bundle.xml?sn=75008897",
     });
   });
 
