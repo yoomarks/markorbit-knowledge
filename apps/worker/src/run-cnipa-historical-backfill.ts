@@ -97,7 +97,7 @@ async function discoverSourceAndPlan(
   );
   const expectedName = `${spec.name} — FAST LIST`;
   const plan = items(plans)
-    .map(record)
+    .map((candidate) => record(record(candidate)?.plan))
     .find((candidate) => candidate?.name === expectedName);
   return { sourceId, planId: requiredString(plan?.id, `${spec.key} planId`) };
 }
