@@ -525,15 +525,11 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
         );
       }
       if (!input.lastSuccessAt) {
-        throw new RegistryValidationError(
-          "FETCHED CNIPA DETAIL transition requires lastSuccessAt",
-        );
+        throw new RegistryValidationError("FETCHED CNIPA DETAIL transition requires lastSuccessAt");
       }
     }
     if (input.holdReason === "AUTH_SECURITY" && input.lifecycle !== "PENDING") {
-      throw new RegistryValidationError(
-        "AUTH_SECURITY hold requires PENDING lifecycle",
-      );
+      throw new RegistryValidationError("AUTH_SECURITY hold requires PENDING lifecycle");
     }
 
     const normalizeNullableTime = (value: string | null, label: string) =>
@@ -590,9 +586,7 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
     return this.getByIdentity(workspaceId, kind, sourceRecordId)!;
   }
 
-  releaseAuthSecurityHold(
-    input: ReleaseCnipaDetailAuthSecurityHoldInput,
-  ): CnipaDetailQueueRecord {
+  releaseAuthSecurityHold(input: ReleaseCnipaDetailAuthSecurityHoldInput): CnipaDetailQueueRecord {
     const workspaceId = required(input.workspaceId, "workspaceId");
     const kind = documentKind(input.documentKind);
     const sourceRecordId = required(input.sourceRecordId, "sourceRecordId");
