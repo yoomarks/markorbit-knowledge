@@ -149,7 +149,29 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
 
     const artifacts = await new CnipaJudgmentArtifactAcquirer(factory).acquire(input);
 
-    expect(artifacts).toHaveLength(1);
+    const rawList = artifacts.filter((artifact) =>
+      artifact.originalName.includes("-list-"),
+    );
+    const factProjection = artifacts.filter((artifact) =>
+      artifact.originalName.includes("-facts-"),
+    );
+    const markdown = artifacts.filter((artifact) => artifact.artifactKind === "MARKDOWN");
+
+    expect(rawList).toHaveLength(1);
+    expect(factProjection).toHaveLength(1);
+    expect(markdown).toHaveLength(1);
+    expect(factProjection[0]?.parentCanonicalUris).toEqual([rawList[0]?.canonicalUri]);
+    expect(markdown[0]?.parentCanonicalUris).toEqual([rawList[0]?.canonicalUri]);
+    expect(markdown[0]?.canonicalUri).toBe(
+      "cnipa://judgment/REGISTRATION_EXAMINATION/scheduled-1",
+    );
+    expect(markdown[0]?.sourceUri).toContain("tmscJudgment/queryPageList");
+    expect(markdown[0]?.sourceUri).toContain("markorbit-cnipa-record=scheduled-1");
+    expect(markdown[0]?.sourceUri).not.toContain("queryInfo");
+    const projectionPayload = JSON.parse(
+      new TextDecoder().decode(factProjection[0]!.content),
+    );
+    expect(projectionPayload.records[0].sourceFields).not.toHaveProperty("fileContent");
     expect(requests).toHaveLength(1);
     expect(requests[0]).toMatchObject({
       documentKind: "REGISTRATION_EXAMINATION",
@@ -212,13 +234,21 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
 
     const artifacts = await new CnipaJudgmentArtifactAcquirer(factory).acquire(input);
 
-    expect(artifacts).toHaveLength(2);
-    expect(artifacts.map((artifact) => artifact.originalName)).toEqual([
-      expect.stringContaining("registration-examination-list-"),
-      expect.stringContaining("registration-examination-list-"),
-    ]);
-    expect(artifacts[0]?.canonicalUri).toContain("page=1");
-    expect(artifacts[1]?.canonicalUri).toContain("page=2");
+    const rawList = artifacts.filter((artifact) =>
+      artifact.originalName.includes("registration-examination-list-"),
+    );
+    const factProjection = artifacts.filter((artifact) =>
+      artifact.originalName.includes("registration-examination-facts-"),
+    );
+    const markdown = artifacts.filter((artifact) => artifact.artifactKind === "MARKDOWN");
+
+    expect(rawList).toHaveLength(2);
+    expect(factProjection).toHaveLength(2);
+    expect(markdown).toHaveLength(179);
+    expect(rawList[0]?.canonicalUri).toContain("page=1");
+    expect(rawList[1]?.canonicalUri).toContain("page=2");
+    expect(factProjection[0]?.parentCanonicalUris).toEqual([rawList[0]?.canonicalUri]);
+    expect(factProjection[1]?.parentCanonicalUris).toEqual([rawList[1]?.canonicalUri]);
     expect(closed).toBe(1);
   });
 
@@ -268,13 +298,19 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
 
     const artifacts = await new CnipaJudgmentArtifactAcquirer(factory).acquire(input);
 
-    expect(artifacts).toHaveLength(2);
-    expect(artifacts.map((artifact) => artifact.originalName)).toEqual([
-      expect.stringContaining("opposition-decision-list-"),
-      expect.stringContaining("opposition-decision-list-"),
-    ]);
-    expect(artifacts[0]?.canonicalUri).toContain("page=1");
-    expect(artifacts[1]?.canonicalUri).toContain("page=2");
+    const rawList = artifacts.filter((artifact) =>
+      artifact.originalName.includes("opposition-decision-list-"),
+    );
+    const factProjection = artifacts.filter((artifact) =>
+      artifact.originalName.includes("opposition-decision-facts-"),
+    );
+    const markdown = artifacts.filter((artifact) => artifact.artifactKind === "MARKDOWN");
+
+    expect(rawList).toHaveLength(2);
+    expect(factProjection).toHaveLength(2);
+    expect(markdown).toHaveLength(197);
+    expect(rawList[0]?.canonicalUri).toContain("page=1");
+    expect(rawList[1]?.canonicalUri).toContain("page=2");
     expect(closed).toBe(1);
   });
 
@@ -324,14 +360,63 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
 
     const artifacts = await new CnipaJudgmentArtifactAcquirer(factory).acquire(input);
 
-    expect(artifacts).toHaveLength(2);
-    expect(artifacts.map((artifact) => artifact.originalName)).toEqual([
-      expect.stringContaining("review-adjudication-list-"),
-      expect.stringContaining("review-adjudication-list-"),
-    ]);
-    expect(artifacts[0]?.canonicalUri).toContain("page=1");
-    expect(artifacts[1]?.canonicalUri).toContain("page=2");
+    const rawList = artifacts.filter((artifact) =>
+      artifact.originalName.includes("review-adjudication-list-"),
+    );
+    const factProjection = artifacts.filter((artifact) =>
+      artifact.originalName.includes("review-adjudication-facts-"),
+    );
+    const markdown = artifacts.filter((artifact) => artifact.artifactKind === "MARKDOWN");
+
+    expect(rawList).toHaveLength(2);
+    expect(factProjection).toHaveLength(2);
+    expect(markdown).toHaveLength(135);
+    expect(rawList[0]?.canonicalUri).toContain("page=1");
+    expect(rawList[1]?.canonicalUri).toContain("page=2");
     expect(closed).toBe(1);
+  });
+
+  it("keeps LIST fact materialization successful when fileContent is missing", async () => {
+    const input = context();
+    (input.job.sourceSnapshot.connectorConfig as Record<string, unknown>).query = {
+      mode: "DATE_RANGE",
+      fromDate: "2026-07-01",
+      toDate: "2026-07-01",
+      documentKinds: ["REVIEW_ADJUDICATION"],
+    };
+    (input.job.sourceSnapshot.connectorConfig as Record<string, unknown>).responseSchema = {
+      list: {
+        recordsPath: ["data", "list"],
+        sourceRecordIdField: "pubId",
+        totalPath: ["data", "total"],
+      },
+      detail: {},
+    };
+    const factory: CnipaAuthenticatedSessionExecutorFactory = {
+      async create() {
+        return {
+          async execute(request) {
+            if (request.surface !== "LIST") throw new Error("DETAIL must not be requested");
+            return jsonResponse(request, {
+              data: {
+                list: [{ pubId: "review-no-body", regNo: "12345678", fileContent: null }],
+                total: 100,
+                pageIndex: 1,
+                pageSize: 100,
+                pages: 1,
+              },
+            });
+          },
+          async close() {},
+        };
+      },
+    };
+
+    const artifacts = await new CnipaJudgmentArtifactAcquirer(factory).acquire(input);
+
+    expect(artifacts.filter((artifact) => artifact.originalName.includes("-list-"))).toHaveLength(1);
+    expect(artifacts.filter((artifact) => artifact.originalName.includes("-facts-"))).toHaveLength(1);
+    expect(artifacts.filter((artifact) => artifact.artifactKind === "MARKDOWN")).toHaveLength(0);
   });
 
   it("fails before opening a browser for unverified party-name request parameters", async () => {
