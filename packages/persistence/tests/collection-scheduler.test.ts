@@ -143,6 +143,10 @@ describe("Collection scheduler runtime", () => {
     });
     expect(scheduled.items[0]?.jobs[0]?.status).toBe("PENDING");
     expect(scheduled.items[0]?.jobs[0]?.jobType).toBe("WEB_CRAWL");
+    expect(scheduled.items[0]?.run.extensions).toEqual({
+      "x-markorbit.schedule-slot-at": "2026-08-12T01:00:00.000Z",
+    });
+    expect(scheduled.items[0]?.jobs[0]?.extensions).toEqual(scheduled.items[0]?.run.extensions);
     expect(scheduler.getState(plan.plan.id).nextDueAt).toBe("2026-08-12T02:00:00.000Z");
     database.close();
   });
