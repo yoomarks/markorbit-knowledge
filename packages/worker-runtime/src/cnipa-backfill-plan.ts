@@ -1,5 +1,8 @@
-import type { Extensions } from "@markorbit/contracts";
-import { CNIPA_QUERY_OVERRIDE_EXTENSION_KEY } from "./cnipa-execution-query";
+import type { CollectionPlan, Extensions } from "@markorbit/contracts";
+import {
+  CNIPA_QUERY_OVERRIDE_EXTENSION_KEY,
+  CNIPA_QUERY_TEMPLATE_EXTENSION_KEY,
+} from "./cnipa-execution-query";
 import {
   CNIPA_DOCUMENT_KINDS,
   CnipaAcquisitionError,
@@ -20,6 +23,50 @@ export type CnipaBackfillDispatch = {
   idempotencyKey: string;
   extensions: Extensions;
 };
+
+export type CnipaPlanBackfillInput = {
+  plan: Pick<CollectionPlan, "id" | "extensions">;
+  fromDate: string;
+  toDate: string;
+};
+
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+export function cnipaBackfillDocumentKindFromPlan(
+  plan: Pick<CollectionPlan, "extensions">,
+): CnipaDocumentKind {
+  const template = record(plan.extensions?.[CNIPA_QUERY_TEMPLATE_EXTENSION_KEY]);
+  if (!template || template.mode !== "SCHEDULE_SLOT_DATE_RANGE") {
+    throw new CnipaAcquisitionError(
+      "CNIPA_BACKFILL_PLAN_INVALID",
+      "CNIPA backfill requires a CollectionPlan with SCHEDULE_SLOT_DATE_RANGE query template",
+      false,
+    );
+  }
+  if (!Array.isArray(template.documentKinds) || template.documentKinds.length !== 1) {
+    throw new CnipaAcquisitionError(
+      "CNIPA_BACKFILL_PLAN_INVALID",
+      "CNIPA backfill plan must authorize exactly one document kind",
+      false,
+    );
+  }
+  const documentKind = template.documentKinds[0];
+  if (
+    typeof documentKind !== "string" ||
+    !(CNIPA_DOCUMENT_KINDS as readonly string[]).includes(documentKind)
+  ) {
+    throw new CnipaAcquisitionError(
+      "CNIPA_BACKFILL_PLAN_INVALID",
+      `unsupported CNIPA document kind: ${String(documentKind)}`,
+      false,
+    );
+  }
+  return documentKind as CnipaDocumentKind;
+}
 
 function dateOnly(value: string, label: string): string {
   const normalized = value.trim();
@@ -121,4 +168,15 @@ export function planCnipaBackfill(input: CnipaBackfillInput): CnipaBackfillDispa
     });
   }
   return dispatches;
+}
+
+export function planCnipaBackfillForPlan(
+  input: CnipaPlanBackfillInput,
+): CnipaBackfillDispatch[] {
+  return planCnipaBackfill({
+    planId: input.plan.id,
+    documentKind: cnipaBackfillDocumentKindFromPlan(input.plan),
+    fromDate: input.fromDate,
+    toDate: input.toDate,
+  });
 }
