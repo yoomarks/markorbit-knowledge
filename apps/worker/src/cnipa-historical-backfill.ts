@@ -5,7 +5,11 @@ import {
   type CnipaHistoricalWindowDays,
   type CnipaHistoricalWindowPlan,
 } from "@markorbit/worker-runtime/cnipa-window-policy";
-import type { CnipaDocumentKind } from "@markorbit/worker-runtime/cnipa-trademark-judgment";
+
+export type CnipaBackfillDocumentKind =
+  | "REGISTRATION_EXAMINATION"
+  | "OPPOSITION_DECISION"
+  | "REVIEW_ADJUDICATION";
 
 export const CNIPA_HISTORICAL_BACKFILL_VERSION = "cnipa-historical-backfill-v1" as const;
 
@@ -30,7 +34,7 @@ export type CnipaPendingWindow = {
 export type CnipaHistoricalBackfillSourceState = {
   sourceId: string;
   planId: string;
-  documentKind: CnipaDocumentKind;
+  documentKind: CnipaBackfillDocumentKind;
   floorDate: string;
   throughDate: string;
   cursorDate: string;
@@ -53,12 +57,12 @@ export type CnipaHistoricalBackfillCheckpoint = {
 
 export type CnipaCoverageManifestForBackfill = {
   schemaVersion: "cnipa-collection-coverage-v1";
-  documentKind: CnipaDocumentKind;
+  documentKind: CnipaBackfillDocumentKind;
   query: {
     mode: "DATE_RANGE";
     fromDate: string;
     toDate: string;
-    documentKinds?: readonly CnipaDocumentKind[];
+    documentKinds?: readonly CnipaBackfillDocumentKind[];
   };
   rawListPageCount: number;
   uniqueSourceRecordCount: number;
@@ -92,7 +96,7 @@ function deterministicKey(state: CnipaHistoricalBackfillSourceState, plan: Cnipa
 export function createCnipaHistoricalBackfillState(input: {
   sourceId: string;
   planId: string;
-  documentKind: CnipaDocumentKind;
+  documentKind: CnipaBackfillDocumentKind;
   throughDate: string;
   floorDate?: string;
 }): CnipaHistoricalBackfillSourceState {
