@@ -179,6 +179,8 @@ export type CnipaJudgmentCollection = {
 
 export type CnipaAcquisitionErrorCode =
   | "CNIPA_QUERY_INVALID"
+  | "CNIPA_QUERY_TEMPLATE_INVALID"
+  | "CNIPA_QUERY_SLOT_MISSING"
   | "CNIPA_SCHEMA_UNVERIFIED"
   | "CNIPA_REAUTH_REQUIRED"
   | "CNIPA_ACCESS_DENIED"

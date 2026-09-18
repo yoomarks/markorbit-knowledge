@@ -4,6 +4,10 @@ import {
   CnipaJudgmentArtifactAcquirer,
   type CnipaAuthenticatedSessionExecutorFactory,
 } from "./cnipa-artifact-acquirer";
+import {
+  CNIPA_QUERY_TEMPLATE_EXTENSION_KEY,
+  SCHEDULE_SLOT_EXTENSION_KEY,
+} from "./cnipa-execution-query";
 import type { CnipaAuthenticatedRequest } from "./cnipa-trademark-judgment";
 
 function jsonResponse(request: CnipaAuthenticatedRequest, value: unknown) {
@@ -85,6 +89,81 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
     expect(artifacts[0]?.canonicalUri).toContain("markorbit-cnipa-query=");
     expect(artifacts[1]?.sourceUri).toContain("record-1");
     expect(closed).toBe(1);
+  });
+
+  it("materializes a scheduled local-day template into the actual registration LIST request", async () => {
+    const input = context();
+    input.job.planSnapshot = {
+      schedule: { mode: "CRON", expression: "30 0 * * *", timezone: "Asia/Shanghai" },
+      extensions: {
+        [CNIPA_QUERY_TEMPLATE_EXTENSION_KEY]: {
+          mode: "SCHEDULE_SLOT_DATE_RANGE",
+          documentKinds: ["REGISTRATION_EXAMINATION"],
+          fromDayOffset: -1,
+          toDayOffset: -1,
+        },
+      },
+    } as unknown as typeof input.job.planSnapshot;
+    input.job.extensions = {
+      [SCHEDULE_SLOT_EXTENSION_KEY]: "2026-09-17T16:30:00.000Z",
+    };
+    (input.job.sourceSnapshot.connectorConfig as Record<string, unknown>).query = {
+      mode: "REGISTRATION_NUMBER",
+      registrationNumber: "stale-static-query",
+      documentKinds: ["REGISTRATION_EXAMINATION"],
+    };
+    (input.job.sourceSnapshot.connectorConfig as Record<string, unknown>).responseSchema = {
+      list: {
+        recordsPath: ["data", "list"],
+        sourceRecordIdField: "adjuOpenId",
+        totalPath: ["data", "total"],
+      },
+      detail: {},
+    };
+
+    const requests: CnipaAuthenticatedRequest[] = [];
+    const factory: CnipaAuthenticatedSessionExecutorFactory = {
+      async create() {
+        return {
+          async execute(request) {
+            requests.push(request);
+            return jsonResponse(request, {
+              data: {
+                list: [
+                  {
+                    adjuOpenId: "scheduled-1",
+                    fileContent: "scheduled registration decision",
+                  },
+                ],
+                total: 100,
+                pageIndex: 1,
+                pageSize: 100,
+                pages: 1,
+              },
+            });
+          },
+          async close() {},
+        };
+      },
+    };
+
+    const artifacts = await new CnipaJudgmentArtifactAcquirer(factory).acquire(input);
+
+    expect(artifacts).toHaveLength(1);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      documentKind: "REGISTRATION_EXAMINATION",
+      surface: "LIST",
+      jsonBody: {
+        regNo: "",
+        tmName: "",
+        applicantCnName: "",
+        returnDateStart: "2026-09-17",
+        returnDateEnd: "2026-09-17",
+        pageIndex: 1,
+        pageSize: 100,
+      },
+    });
   });
 
   it("acquires registration date ranges as hidden-paged LIST evidence without DETAIL fan-out", async () => {

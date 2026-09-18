@@ -141,6 +141,53 @@ Authenticated review captures also observed two explicit divide-layer business r
 
 These two responses are treated differently from transport uncertainty because the server returned a definite HTTP/JSON result. The adapter retries only these observed business codes with a bounded exponential backoff (default 3 attempts, 250 ms base delay, capped at 2 seconds). Intermediate transient bodies are discarded rather than admitted as RawArtifact evidence. If the bounded budget is exhausted, the run fails as `CNIPA_SOURCE_TEMPORARY_FAILURE` with `retryable=true`. Browser/network/session ambiguity still receives no automatic replay.
 
+## Scheduled date-window materialization
+
+The generic Collection Scheduler remains responsible only for **when** a Run is due. It does not know CNIPA request parameters. Scheduled Runs and Jobs carry the immutable due slot in the Execution Contract extension:
+
+```json
+{
+  "x-markorbit.schedule-slot-at": "2026-09-17T16:30:00.000Z"
+}
+```
+
+A CNIPA CollectionPlan may opt into a bounded schedule-slot date template through `plan.extensions`:
+
+```json
+{
+  "x-markorbit.cnipa-query-template": {
+    "mode": "SCHEDULE_SLOT_DATE_RANGE",
+    "documentKinds": ["REGISTRATION_EXAMINATION"],
+    "fromDayOffset": -1,
+    "toDayOffset": -1,
+    "timezone": "Asia/Shanghai"
+  }
+}
+```
+
+The template accepts exactly one judgment library. Day offsets are bounded to `-31..0`; future windows are rejected. For CRON plans the template may omit `timezone`, in which case the plan schedule timezone is used. Interval schedules must provide an explicit timezone.
+
+Historical or operator-directed work may instead freeze a concrete query into the Job extension:
+
+```json
+{
+  "x-markorbit.cnipa-query": {
+    "mode": "DATE_RANGE",
+    "fromDate": "2026-07-01",
+    "toDate": "2026-07-01",
+    "documentKinds": ["REVIEW_ADJUDICATION"]
+  }
+}
+```
+
+Resolution precedence is deterministic:
+
+1. explicit Job `x-markorbit.cnipa-query`;
+2. CollectionPlan `x-markorbit.cnipa-query-template` resolved from the immutable schedule slot;
+3. the static Source `connectorConfig.query` used by existing manual/acceptance flows.
+
+The materializer never mutates the SourceDefinition or CollectionPlan snapshot and does not grant collection authority. The resulting concrete query still passes the existing authenticated-raw-verified query guards and bounded pagination logic.
+
 ## Raw evidence
 
 Every successful list and detail response is emitted as `artifactKind=JSON` using the exact sanitized response bytes. `ArtifactBackedCollectionExecutor` then performs the existing immutable RawArtifact ingestion protocol, SHA verification, change-watch identity checks and finalization. CNIPA does not write directly to persistence.
@@ -246,18 +293,17 @@ pnpm --filter @markorbit/worker cnipa:evidence:assess-capture-dataset -- --input
 
 Optionally add `--output "<assessment.json>"` to create a new summary file. The assessor performs no network request and does not copy trademark numbers, party names, document text, or source ids into its report. It records only the input SHA-256 and structural/count/pagination findings.
 
-A dataset is `runtimeDateRangeReady=true` only when the v0.7 schema/kind/source route match, the base query is `pageIndex=1/pageSize=100` with the expected date fields, every exported LIST row has the canonical source id and non-empty `fileContent`, no duplicate ids exist, hidden pages are contiguous from page 2 with new unique ids beyond the first 100, and the sweep terminates on a short or empty page. A repeated page remains a safe runtime stop condition but is not sufficient evidence for automatic DATE_RANGE promotion.
+The v0.7 assessor remains intentionally conservative: it marks `runtimeDateRangeReady=true` only when the v0.7 schema/kind/source route match, canonical ids and `fileContent` are present without duplicates, hidden pages are contiguous, and the sweep terminates on a short or empty page. Registration was later promoted from stronger v0.8 diagnostics plus cross-window set reconciliation: exact-multiple queries can wrap to page 1 after the true final row, so a full page with zero new canonical ids is now an evidence-backed safe runtime stop while coverage remains `UNKNOWN`.
 
 ## Phase 3 gate
 
 Before this provider can claim operational acceptance, a manual authenticated probe must establish from real evidence:
 
 1. one real registration number across all three libraries;
-2. the actual list response envelope and source-record id field;
-3. actual detail envelope and canonical fields;
-4. one real party-name request and its parameter/role mapping;
-5. registration/opposition page-11 / >100 behavior (review >100 behavior is now raw-verified: 100 is a visible-metadata window, not a review backend offset cap);
-6. registration/opposition date request shapes and whether their hidden pagination matches the verified review behavior;
-7. whether HTTP 403 in an authenticated session means reauthentication/security challenge or permanent access denial.
+2. any remaining normalized DETAIL semantic mappings that downstream consumers intend to rely on;
+3. one real party-name request and its parameter/role mapping;
+4. whether HTTP 403 in an authenticated session means reauthentication/security challenge or permanent access denial.
+
+The LIST response envelopes, canonical LIST ids, all three DATE_RANGE request shapes, hidden pagination beyond the visible 100-result metadata window, registration exact-multiple wrap behavior, and bounded transient divide-response retry are already authenticated-raw-verified and implemented.
 
 Until then `coverageStatus` remains `UNKNOWN`, the schema revision remains candidate/unverified, and ordinary CI performs only synthetic deterministic tests.

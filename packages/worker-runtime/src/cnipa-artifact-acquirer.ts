@@ -10,10 +10,10 @@ import {
   CnipaConfigurableResponseDecoder,
   parseCnipaResponseSchemaConfig,
 } from "./cnipa-configurable-response-decoder";
+import { resolveCnipaExecutionQuery } from "./cnipa-execution-query";
 import { CnipaSourceAdapter } from "./cnipa-source-adapter";
 import {
   CnipaAcquisitionError,
-  parseCnipaTrademarkJudgmentQuery,
   type CnipaAuthenticatedSessionExecutor,
   type CnipaResponseEvidence,
   type CnipaTrademarkJudgmentQuery,
@@ -76,7 +76,7 @@ function sourceConfig(context: ArtifactBackedExecutionContext): CnipaSourceConfi
       false,
     );
   }
-  const query = parseCnipaTrademarkJudgmentQuery(config.query);
+  const query = resolveCnipaExecutionQuery(context.job, config.query);
   const verifiedBulkDateRange =
     query.mode === "DATE_RANGE" &&
     query.documentKinds?.length === 1 &&
