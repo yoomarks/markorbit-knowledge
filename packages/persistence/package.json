@@ -126,7 +126,8 @@
     "./retention-execution": "./src/retention-execution.ts",
     "./platform-operations-portfolio": "./src/platform-operations-portfolio.ts",
     "./storage-operating-envelope": "./src/storage-operating-envelope.ts",
-    "./storage-recovery-evidence": "./src/storage-recovery-evidence.ts"
+    "./storage-recovery-evidence": "./src/storage-recovery-evidence.ts",
+    "./cnipa-detail-enrichment-queue": "./src/cnipa-detail-enrichment-queue.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
