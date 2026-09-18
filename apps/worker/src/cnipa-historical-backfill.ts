@@ -60,6 +60,7 @@ export type CnipaHistoricalBackfillSourceState = {
 
 export type CnipaHistoricalBackfillCheckpoint = {
   schemaVersion: typeof CNIPA_HISTORICAL_BACKFILL_VERSION;
+  workspaceId: string;
   updatedAt: string;
   sources: CnipaHistoricalBackfillSourceState[];
 };
