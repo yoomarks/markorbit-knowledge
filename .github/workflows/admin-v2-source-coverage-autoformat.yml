@@ -28,6 +28,9 @@ jobs:
           # including production staging, browser API boundaries and the bulk
           # collection-to-Knowledge P0 acceptance path.
           pnpm exec prettier --write \
+            apps/worker/src/cnipa-historical-backfill.ts \
+            apps/worker/src/cnipa-historical-backfill.test.ts \
+            apps/worker/src/run-cnipa-historical-backfill.ts \
             apps/admin/src/app/api/changes/evidence/feed/route.ts \
             apps/admin/src/app/api/conversion-profiles/route.ts \
             apps/admin/src/app/api/conversion-recovery/[id]/retry/route.ts \
@@ -147,6 +150,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            apps/worker/src/cnipa-historical-backfill.ts \
+            apps/worker/src/cnipa-historical-backfill.test.ts \
+            apps/worker/src/run-cnipa-historical-backfill.ts \
             apps/admin/src/app/api/changes/evidence/feed/route.ts \
             apps/admin/src/app/api/conversion-profiles/route.ts \
             apps/admin/src/app/api/conversion-recovery/[id]/retry/route.ts \
