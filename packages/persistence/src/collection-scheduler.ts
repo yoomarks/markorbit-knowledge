@@ -11,6 +11,7 @@ import {
   type CollectionRun,
   type CollectionSchedule,
   type ConnectorManifest,
+  type Extensions,
   type Job,
   type SourceDefinition,
 } from "@markorbit/contracts";
@@ -803,6 +804,9 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
     if (active) return coalescedDispatch(active);
 
     const timestamp = now.toISOString();
+    const executionExtensions: Extensions = {
+      "x-markorbit.schedule-slot-at": slot.toISOString(),
+    };
     const run: CollectionRun = {
       contractVersion: EXECUTION_CONTRACT_VERSION,
       objectType: "COLLECTION_RUN",
@@ -822,6 +826,7 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
       requestedAt: timestamp,
       createdAt: timestamp,
       updatedAt: timestamp,
+      extensions: clone(executionExtensions),
     };
     const job: Job = {
       contractVersion: EXECUTION_CONTRACT_VERSION,
@@ -846,6 +851,7 @@ export class SqliteCollectionSchedulerRepository implements CollectionSchedulerR
       connectorSnapshot: clone(connector),
       createdAt: timestamp,
       updatedAt: timestamp,
+      extensions: clone(executionExtensions),
     };
     if (!isCollectionRun(run) || !isJob(job)) {
       throw new RegistryValidationError(
