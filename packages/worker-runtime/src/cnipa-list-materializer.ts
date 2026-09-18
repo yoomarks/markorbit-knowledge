@@ -338,3 +338,22 @@ export function materializeCnipaListPage(
     records,
   };
 }
+
+export function materializeCnipaListPageBytes(
+  documentKind: CnipaDocumentKind,
+  content: Uint8Array,
+): CnipaListPageMaterializationV1 {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(content));
+  } catch (error) {
+    throw new CnipaAcquisitionError(
+      "CNIPA_SCHEMA_CHANGED",
+      "CNIPA LIST artifact was not valid UTF-8 JSON",
+      false,
+      undefined,
+      error instanceof Error ? { cause: error } : undefined,
+    );
+  }
+  return materializeCnipaListPage(documentKind, parsed);
+}
