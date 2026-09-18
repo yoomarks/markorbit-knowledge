@@ -126,10 +126,7 @@ describe("CNIPA FAST window policy", () => {
 
   it("bundles Friday through Sunday on Monday in Asia/Shanghai", () => {
     expect(
-      resolveCnipaWeekdayIncrementalWindow(
-        new Date("2026-09-20T16:30:00.000Z"),
-        "Asia/Shanghai",
-      ),
+      resolveCnipaWeekdayIncrementalWindow(new Date("2026-09-20T16:30:00.000Z"), "Asia/Shanghai"),
     ).toEqual({
       fromDate: "2026-09-18",
       toDate: "2026-09-20",
@@ -138,20 +135,14 @@ describe("CNIPA FAST window policy", () => {
 
   it("queries only the prior completed day Tuesday through Friday", () => {
     expect(
-      resolveCnipaWeekdayIncrementalWindow(
-        new Date("2026-09-21T16:30:00.000Z"),
-        "Asia/Shanghai",
-      ),
+      resolveCnipaWeekdayIncrementalWindow(new Date("2026-09-21T16:30:00.000Z"), "Asia/Shanghai"),
     ).toEqual({
       fromDate: "2026-09-21",
       toDate: "2026-09-21",
     });
 
     expect(
-      resolveCnipaWeekdayIncrementalWindow(
-        new Date("2026-09-17T16:30:00.000Z"),
-        "Asia/Shanghai",
-      ),
+      resolveCnipaWeekdayIncrementalWindow(new Date("2026-09-17T16:30:00.000Z"), "Asia/Shanghai"),
     ).toEqual({
       fromDate: "2026-09-17",
       toDate: "2026-09-17",
@@ -160,10 +151,7 @@ describe("CNIPA FAST window policy", () => {
 
   it("rejects weekend primary runs instead of manufacturing a duplicate window", () => {
     expect(() =>
-      resolveCnipaWeekdayIncrementalWindow(
-        new Date("2026-09-18T16:30:00.000Z"),
-        "Asia/Shanghai",
-      ),
+      resolveCnipaWeekdayIncrementalWindow(new Date("2026-09-18T16:30:00.000Z"), "Asia/Shanghai"),
     ).toThrowError(/must not run on Saturday or Sunday/i);
   });
 });
