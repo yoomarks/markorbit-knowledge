@@ -154,7 +154,10 @@ describe("CNIPA bounded pagination", () => {
       },
     };
     const ids = (page: number, count: number) =>
-      Array.from({ length: count }, (_, index) => `rr${page}-${String(index + 1).padStart(3, "0")}`);
+      Array.from(
+        { length: count },
+        (_, index) => `rr${page}-${String(index + 1).padStart(3, "0")}`,
+      );
     const decoder: CnipaJudgmentResponseDecoder = {
       decodeList() {
         const page = Number(requests.at(-1)?.jsonBody?.pageIndex ?? 1);
