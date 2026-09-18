@@ -87,9 +87,7 @@ describe("CNIPA DETAIL Markdown coordinator", () => {
       detailArtifactId: "raw-detail",
     });
     expect(sink).toHaveBeenCalledTimes(1);
-    expect(result.persisted.sha256).toBe(
-      result.decision.enrichment.enrichedMarkdownSha256,
-    );
+    expect(result.persisted.sha256).toBe(result.decision.enrichment.enrichedMarkdownSha256);
   });
 
   it("fails closed when material enrichment persistence is uncertain", async () => {
