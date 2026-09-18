@@ -377,7 +377,7 @@ export function usptoTsdrAcquisitionPolicyDescriptor() {
     }),
     populationCompleteClaimAllowed: false as const,
     legalEffectConclusionAllowed: false as const,
-    productionExecutionImplemented: false as const,
+    productionExecutionImplemented: true as const,
   });
 }
 import {

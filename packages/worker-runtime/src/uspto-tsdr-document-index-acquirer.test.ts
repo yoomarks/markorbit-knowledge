@@ -77,11 +77,11 @@ describe("UsptoTsdrDocumentIndexAcquirer", () => {
     });
   });
 
-  it("keeps selected-document binary execution explicitly disabled", () => {
+  it("reports selected-document binary execution as implemented", () => {
     expect(usptoTsdrDocumentIndexRuntimeDescriptor()).toMatchObject({
       intent: "CASE_DOCUMENT_INDEX",
       immutableRawArtifactRequired: true,
-      selectedDocumentBinaryImplemented: false,
+      selectedDocumentBinaryImplemented: true,
     });
   });
 });
