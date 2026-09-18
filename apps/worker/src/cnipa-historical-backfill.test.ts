@@ -65,6 +65,8 @@ describe("CNIPA durable historical backfill state machine", () => {
       runId: "run_accepted",
     });
     expect(next.pendingWindow).toBeNull();
+    expect(next.activeRunId).toBeNull();
+    expect(next.lastRunId).toBe("run_accepted");
     expect(next.lastObservation).toEqual({
       runId: "run_accepted",
       pageCount: 1,
@@ -97,6 +99,8 @@ describe("CNIPA durable historical backfill state machine", () => {
     expect(next.currentWindowDays).toBe(7);
     expect(next.replayRequired).toBe(true);
     expect(next.pendingWindow).toBeNull();
+    expect(next.activeRunId).toBeNull();
+    expect(next.lastRunId).toBe("run_ceiling");
     expect(planNextCnipaBackfillWindow(next)).toMatchObject({
       fromDate: "2016-01-01",
       toDate: "2016-01-07",
