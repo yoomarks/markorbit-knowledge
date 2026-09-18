@@ -345,7 +345,7 @@ async function tickSource(input: {
       await atomicWriteCheckpoint(input.statePath, checkpoint);
       return checkpoint;
     }
-    state = { ...state, pendingWindow, replayRequired: false };
+    state = { ...state, pendingWindow };
     checkpoint = updatedCheckpoint(checkpoint, state);
     await atomicWriteCheckpoint(input.statePath, checkpoint);
   }
