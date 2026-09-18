@@ -236,10 +236,7 @@ async function findCoverageArtifact(
     .map((item) => record(record(item)?.artifact))
     .filter((artifact) => {
       const uri = artifact?.canonicalUri;
-      return (
-        typeof uri === "string" &&
-        uri.startsWith(coverageUriPrefix)
-      );
+      return typeof uri === "string" && uri.startsWith(coverageUriPrefix);
     });
 
   if (matches.length !== 1) {
