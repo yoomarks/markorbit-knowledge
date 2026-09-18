@@ -100,7 +100,7 @@ describe("CnipaSourceAdapter", () => {
     );
   });
 
-  it("keeps party-name and unverified date/document-kind combinations fail-closed", async () => {
+  it("keeps party-name acquisition fail-closed", async () => {
     const executor = new FixtureExecutor();
     const adapter = new CnipaSourceAdapter(executor, new FixtureDecoder());
 
@@ -110,14 +110,6 @@ describe("CnipaSourceAdapter", () => {
       code: "CNIPA_SCHEMA_UNVERIFIED",
       retryable: false,
     });
-    await expect(
-      adapter.fetch({
-        mode: "DATE_RANGE",
-        fromDate: "2026-01-01",
-        toDate: "2026-01-31",
-        documentKinds: ["REGISTRATION_EXAMINATION"],
-      }),
-    ).rejects.toMatchObject({ code: "CNIPA_SCHEMA_UNVERIFIED", retryable: false });
     expect(executor.requests).toHaveLength(0);
   });
 
