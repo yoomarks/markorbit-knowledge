@@ -47,12 +47,9 @@ describe("CNIPA LIST materializer", () => {
       decisionDate: "2026-07-01",
       registrationNumber: "91031815",
       trademarkName: "优弗迪红颜",
-      logicalDocumentUri:
-        "cnipa://judgment/REGISTRATION_EXAMINATION/2067174869360140288",
+      logicalDocumentUri: "cnipa://judgment/REGISTRATION_EXAMINATION/2067174869360140288",
     });
-    expect(record.documentSeed?.markdownBody).toContain(
-      "# 关于第91031815号商标驳回通知书",
-    );
+    expect(record.documentSeed?.markdownBody).toContain("# 关于第91031815号商标驳回通知书");
     expect(record.documentSeed?.markdownBody).toContain("特此通知");
     expect(record.detailCanonicalUri).toBe(
       "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryInfo?id=2067174869360140288",
