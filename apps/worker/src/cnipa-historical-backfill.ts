@@ -29,6 +29,15 @@ export type CnipaPendingWindow = {
   idempotencyKey: string;
 };
 
+export type CnipaBackfillObservation = {
+  runId: string;
+  pageCount: number;
+  uniqueRecordCount: number;
+  stopReason: CnipaCoverageManifestForBackfill["stopReason"];
+  safetyCeilingReached: boolean;
+  completeByObservedPaging: boolean;
+};
+
 export type CnipaHistoricalBackfillSourceState = {
   sourceId: string;
   planId: string;
@@ -40,6 +49,7 @@ export type CnipaHistoricalBackfillSourceState = {
   pendingWindow: CnipaPendingWindow | null;
   lastRunId: string | null;
   lastAcceptedWindow: CnipaAcceptedWindow | null;
+  lastObservation: CnipaBackfillObservation | null;
   replayRequired: boolean;
   lastCoverageManifestArtifactId: string | null;
   lastCoverageManifestArtifactSha256: string | null;
@@ -110,6 +120,7 @@ export function createCnipaHistoricalBackfillState(input: {
     pendingWindow: null,
     lastRunId: null,
     lastAcceptedWindow: null,
+    lastObservation: null,
     replayRequired: false,
     lastCoverageManifestArtifactId: null,
     lastCoverageManifestArtifactSha256: null,
@@ -164,6 +175,14 @@ export function applyCnipaCoverageObservation(input: {
   const state: CnipaHistoricalBackfillSourceState = {
     ...input.state,
     lastRunId: input.runId,
+    lastObservation: {
+      runId: input.runId,
+      pageCount: input.manifest.rawListPageCount,
+      uniqueRecordCount: input.manifest.uniqueSourceRecordCount,
+      stopReason: input.manifest.stopReason,
+      safetyCeilingReached: input.manifest.safetyCeilingReached,
+      completeByObservedPaging: input.manifest.completeByObservedPaging,
+    },
     lastCoverageManifestArtifactId: input.artifactId,
     lastCoverageManifestArtifactSha256: input.artifactSha256,
   };
