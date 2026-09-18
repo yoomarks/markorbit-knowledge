@@ -8,11 +8,7 @@ import { processNextCnipaDetail } from "./cnipa-detail-worker";
 import type { GovernedCnipaDetailQueuePort } from "./cnipa-detail-governed-queue";
 
 export type CnipaDetailRunStopReason =
-  | "RUN_CAP_REACHED"
-  | "EMPTY"
-  | "PACING_BLOCKED"
-  | "BUDGET_EXHAUSTED"
-  | "AUTH_SECURITY_HOLD";
+  "RUN_CAP_REACHED" | "EMPTY" | "PACING_BLOCKED" | "BUDGET_EXHAUSTED" | "AUTH_SECURITY_HOLD";
 
 export type RunGovernedCnipaDetailInput = {
   queue: GovernedCnipaDetailQueuePort;

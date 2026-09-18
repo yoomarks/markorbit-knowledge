@@ -159,9 +159,7 @@ describe("governed CNIPA DETAIL run loop", () => {
   });
 
   it("stops the entire run immediately on auth/security pause", async () => {
-    const processOne = vi.fn(async () =>
-      outcome("record-auth", "AUTH_SECURITY_HOLD", true),
-    );
+    const processOne = vi.fn(async () => outcome("record-auth", "AUTH_SECURITY_HOLD", true));
 
     const result = await runGovernedCnipaDetail({
       queue: queue(),
