@@ -67,6 +67,30 @@ export type ClaimCnipaDetailInput = {
   leaseMs?: number;
 };
 
+export type PersistCnipaDetailAttemptTransitionInput = {
+  workspaceId: string;
+  documentKind: CnipaDetailDocumentKind;
+  sourceRecordId: string;
+  expectedLeaseId: string;
+  lifecycle: Exclude<CnipaDetailQueueLifecycle, "LEASED">;
+  holdReason: CnipaDetailQueueHoldReason;
+  attemptCount: number;
+  lastAttemptAt: string | null;
+  nextAttemptAt: string | null;
+  lastErrorCode: string | null;
+  lastHttpStatus: number | null;
+  lastBusinessCode: number | null;
+  lastSuccessAt: string | null;
+  detailArtifactRef: string | null;
+  detailSha256: string | null;
+};
+
+export type ReleaseCnipaDetailAuthSecurityHoldInput = {
+  workspaceId: string;
+  documentKind: CnipaDetailDocumentKind;
+  sourceRecordId: string;
+};
+
 type QueueRow = {
   workspace_id: string;
   document_kind: CnipaDetailDocumentKind;
@@ -463,6 +487,143 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
       claimedIdentity.documentKind,
       claimedIdentity.sourceRecordId,
     );
+  }
+
+  persistAttemptTransition(
+    input: PersistCnipaDetailAttemptTransitionInput,
+  ): CnipaDetailQueueRecord {
+    const workspaceId = required(input.workspaceId, "workspaceId");
+    const kind = documentKind(input.documentKind);
+    const sourceRecordId = required(input.sourceRecordId, "sourceRecordId");
+    const expectedLeaseId = required(input.expectedLeaseId, "expectedLeaseId");
+    const current = this.getByIdentity(workspaceId, kind, sourceRecordId);
+    if (!current) {
+      throw new RegistryConflictError(
+        "CNIPA_DETAIL_QUEUE_ITEM_NOT_FOUND",
+        "CNIPA DETAIL queue item was not found",
+      );
+    }
+    if (current.lifecycle !== "LEASED" || current.leaseId !== expectedLeaseId) {
+      throw new RegistryConflictError(
+        "CNIPA_DETAIL_STALE_LEASE",
+        "CNIPA DETAIL transition does not own the active queue lease",
+      );
+    }
+    if (!Number.isSafeInteger(input.attemptCount) || input.attemptCount < 0) {
+      throw new RegistryValidationError("attemptCount must be a non-negative integer");
+    }
+    if (input.attemptCount < current.attemptCount) {
+      throw new RegistryConflictError(
+        "CNIPA_DETAIL_ATTEMPT_REGRESSION",
+        "CNIPA DETAIL transition cannot reduce attemptCount",
+      );
+    }
+    if (input.lifecycle === "FETCHED") {
+      if (!input.detailArtifactRef?.trim() || !/^[a-f0-9]{64}$/.test(input.detailSha256 ?? "")) {
+        throw new RegistryValidationError(
+          "FETCHED CNIPA DETAIL transition requires artifact ref and SHA-256",
+        );
+      }
+      if (!input.lastSuccessAt) {
+        throw new RegistryValidationError(
+          "FETCHED CNIPA DETAIL transition requires lastSuccessAt",
+        );
+      }
+    }
+    if (input.holdReason === "AUTH_SECURITY" && input.lifecycle !== "PENDING") {
+      throw new RegistryValidationError(
+        "AUTH_SECURITY hold requires PENDING lifecycle",
+      );
+    }
+
+    const normalizeNullableTime = (value: string | null, label: string) =>
+      value === null ? null : timestamp(value, label);
+    const now = this.clock().toISOString();
+    const result = this.database
+      .prepare(
+        `UPDATE cnipa_detail_enrichment_queue
+            SET lifecycle = ?,
+                hold_reason = ?,
+                lease_id = NULL,
+                leased_at = NULL,
+                lease_expires_at = NULL,
+                attempt_count = ?,
+                last_attempt_at = ?,
+                next_attempt_at = ?,
+                last_error_code = ?,
+                last_http_status = ?,
+                last_business_code = ?,
+                last_success_at = ?,
+                detail_artifact_ref = ?,
+                detail_sha256 = ?,
+                updated_at = ?
+          WHERE workspace_id = ?
+            AND document_kind = ?
+            AND source_record_id = ?
+            AND lifecycle = 'LEASED'
+            AND lease_id = ?`,
+      )
+      .run(
+        input.lifecycle,
+        input.holdReason,
+        input.attemptCount,
+        normalizeNullableTime(input.lastAttemptAt, "lastAttemptAt"),
+        normalizeNullableTime(input.nextAttemptAt, "nextAttemptAt"),
+        input.lastErrorCode,
+        input.lastHttpStatus,
+        input.lastBusinessCode,
+        normalizeNullableTime(input.lastSuccessAt, "lastSuccessAt"),
+        input.detailArtifactRef?.trim() || null,
+        input.detailSha256,
+        now,
+        workspaceId,
+        kind,
+        sourceRecordId,
+        expectedLeaseId,
+      );
+    if (Number(result.changes) !== 1) {
+      throw new RegistryConflictError(
+        "CNIPA_DETAIL_STALE_LEASE",
+        "CNIPA DETAIL queue lease changed before transition persistence",
+      );
+    }
+    return this.getByIdentity(workspaceId, kind, sourceRecordId)!;
+  }
+
+  releaseAuthSecurityHold(
+    input: ReleaseCnipaDetailAuthSecurityHoldInput,
+  ): CnipaDetailQueueRecord {
+    const workspaceId = required(input.workspaceId, "workspaceId");
+    const kind = documentKind(input.documentKind);
+    const sourceRecordId = required(input.sourceRecordId, "sourceRecordId");
+    const current = this.getByIdentity(workspaceId, kind, sourceRecordId);
+    if (!current) {
+      throw new RegistryConflictError(
+        "CNIPA_DETAIL_QUEUE_ITEM_NOT_FOUND",
+        "CNIPA DETAIL queue item was not found",
+      );
+    }
+    if (current.holdReason !== "AUTH_SECURITY" || current.leaseId !== null) {
+      throw new RegistryConflictError(
+        "CNIPA_DETAIL_AUTH_HOLD_NOT_ACTIVE",
+        "CNIPA DETAIL item does not have a releasable auth/security hold",
+      );
+    }
+    const now = this.clock().toISOString();
+    this.database
+      .prepare(
+        `UPDATE cnipa_detail_enrichment_queue
+            SET hold_reason = NULL,
+                next_attempt_at = NULL,
+                updated_at = ?
+          WHERE workspace_id = ?
+            AND document_kind = ?
+            AND source_record_id = ?
+            AND hold_reason = 'AUTH_SECURITY'
+            AND lease_id IS NULL`,
+      )
+      .run(now, workspaceId, kind, sourceRecordId);
+    return this.getByIdentity(workspaceId, kind, sourceRecordId)!;
   }
 
   list(workspaceIdRaw: string, limitRaw = 50): CnipaDetailQueueRecord[] {
