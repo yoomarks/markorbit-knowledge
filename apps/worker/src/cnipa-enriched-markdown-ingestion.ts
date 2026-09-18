@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import type { ArtifactUploadDescriptor } from "@markorbit/contracts";
-import type {
-  RawArtifactRepository,
-  RawArtifactView,
-} from "@markorbit/persistence/raw-artifacts";
+import type { RawArtifactRepository, RawArtifactView } from "@markorbit/persistence/raw-artifacts";
 import type { CnipaDetailMarkdownEnrichmentV1 } from "@markorbit/worker-runtime/cnipa-detail-markdown-enrichment";
 
 export type CnipaEnrichedMarkdownIngestionRepository = Pick<

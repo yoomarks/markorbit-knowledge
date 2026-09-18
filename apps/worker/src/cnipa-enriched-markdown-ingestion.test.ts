@@ -18,7 +18,7 @@ function enrichment(
   overrides: Partial<CnipaDetailMarkdownEnrichmentV1> = {},
 ): CnipaDetailMarkdownEnrichmentV1 {
   const markdownBody =
-    "# 异议决定书\n\n商标：MO\n\n## CNIPA DETAIL enrichment\n\n- `/citedMarks/0/regNo`: `\"456\"`\n";
+    '# 异议决定书\n\n商标：MO\n\n## CNIPA DETAIL enrichment\n\n- `/citedMarks/0/regNo`: `"456"`\n';
   return {
     schemaVersion: "cnipa-detail-markdown-enrichment-v1",
     sourceAuthority: "CNIPA",
