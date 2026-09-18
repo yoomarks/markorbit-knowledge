@@ -1,4 +1,5 @@
 import type { Job } from "@markorbit/contracts";
+import { resolveCnipaWeekdayIncrementalWindow } from "./cnipa-window-policy";
 import {
   CNIPA_DOCUMENT_KINDS,
   CnipaAcquisitionError,
@@ -18,6 +19,15 @@ type CnipaScheduleSlotDateRangeTemplate = {
   toDayOffset: number;
   timezone: string;
 };
+
+type CnipaWeekdayIncrementalDateRangeTemplate = {
+  mode: "WEEKDAY_INCREMENTAL_DATE_RANGE";
+  documentKinds: readonly CnipaDocumentKind[];
+  timezone: string;
+};
+
+type CnipaQueryTemplate =
+  CnipaScheduleSlotDateRangeTemplate | CnipaWeekdayIncrementalDateRangeTemplate;
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -67,20 +77,37 @@ function defaultTemplateTimezone(job: Job): string | undefined {
   return schedule.mode === "CRON" ? schedule.timezone : undefined;
 }
 
-function parseTemplate(value: unknown, job: Job): CnipaScheduleSlotDateRangeTemplate {
+function parseTemplate(value: unknown, job: Job): CnipaQueryTemplate {
   const input = record(value);
-  if (!input || input.mode !== "SCHEDULE_SLOT_DATE_RANGE") {
-    templateError("query template mode must be SCHEDULE_SLOT_DATE_RANGE");
+  if (!input) {
+    templateError("query template must be an object");
   }
+
+  const timezone = validTimezone(input.timezone ?? defaultTemplateTimezone(job));
+  const kinds = singleDocumentKind(input.documentKinds);
+
+  if (input.mode === "WEEKDAY_INCREMENTAL_DATE_RANGE") {
+    return {
+      mode: "WEEKDAY_INCREMENTAL_DATE_RANGE",
+      documentKinds: kinds,
+      timezone,
+    };
+  }
+
+  if (input.mode !== "SCHEDULE_SLOT_DATE_RANGE") {
+    templateError(
+      "query template mode must be SCHEDULE_SLOT_DATE_RANGE or WEEKDAY_INCREMENTAL_DATE_RANGE",
+    );
+  }
+
   const fromDayOffset = integerOffset(input.fromDayOffset ?? -1, "fromDayOffset");
   const toDayOffset = integerOffset(input.toDayOffset ?? -1, "toDayOffset");
   if (fromDayOffset > toDayOffset) {
     templateError("fromDayOffset must be less than or equal to toDayOffset");
   }
-  const timezone = validTimezone(input.timezone ?? defaultTemplateTimezone(job));
   return {
     mode: "SCHEDULE_SLOT_DATE_RANGE",
-    documentKinds: singleDocumentKind(input.documentKinds),
+    documentKinds: kinds,
     fromDayOffset,
     toDayOffset,
     timezone,
@@ -133,7 +160,18 @@ function shiftDateOnly(value: string, dayOffset: number): string {
 
 function resolveTemplateQuery(job: Job, value: unknown): CnipaTrademarkJudgmentQuery {
   const template = parseTemplate(value, job);
-  const slotDate = dateOnlyAt(scheduleSlot(job), template.timezone);
+  const slot = scheduleSlot(job);
+
+  if (template.mode === "WEEKDAY_INCREMENTAL_DATE_RANGE") {
+    const window = resolveCnipaWeekdayIncrementalWindow(slot, template.timezone);
+    return parseCnipaTrademarkJudgmentQuery({
+      mode: "DATE_RANGE",
+      ...window,
+      documentKinds: template.documentKinds,
+    });
+  }
+
+  const slotDate = dateOnlyAt(slot, template.timezone);
   return parseCnipaTrademarkJudgmentQuery({
     mode: "DATE_RANGE",
     fromDate: shiftDateOnly(slotDate, template.fromDayOffset),

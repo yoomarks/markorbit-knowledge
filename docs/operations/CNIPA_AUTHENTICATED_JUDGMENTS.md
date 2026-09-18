@@ -141,6 +141,47 @@ Authenticated review captures also observed two explicit divide-layer business r
 
 These two responses are treated differently from transport uncertainty because the server returned a definite HTTP/JSON result. The adapter retries only these observed business codes with a bounded exponential backoff (default 3 attempts, 250 ms base delay, capped at 2 seconds). Intermediate transient bodies are discarded rather than admitted as RawArtifact evidence. If the bounded budget is exhausted, the run fails as `CNIPA_SOURCE_TEMPORARY_FAILURE` with `retryable=true`. Browser/network/session ambiguity still receives no automatic replay.
 
+## FAST LIST window policy
+
+Primary CNIPA DATE_RANGE collection is LIST-only. Window policy is separated from the generic Collection Scheduler.
+
+### Current incremental cadence
+
+A weekday CNIPA CollectionPlan should use a CRON schedule limited to Monday-Friday and the template mode:
+
+```json
+{
+  "x-markorbit.cnipa-query-template": {
+    "mode": "WEEKDAY_INCREMENTAL_DATE_RANGE",
+    "documentKinds": ["REGISTRATION_EXAMINATION"]
+  }
+}
+```
+
+With `Asia/Shanghai` schedule timezone:
+
+- Monday materializes Friday-Sunday as one DATE_RANGE;
+- Tuesday-Friday materializes the prior completed local day;
+- Saturday/Sunday execution fails closed and should not normally exist because the CRON excludes weekends.
+
+A successful zero-row LIST response remains a successful source observation.
+
+### Historical backfill windowing
+
+The default historical floor is `2016-01-01`, but callers may configure a different floor.
+
+Historical query span is bounded to 30 calendar days and window mode is monotonic:
+
+```text
+30 days -> 7 days -> 1 day
+```
+
+The policy does not hard-code calendar-year cutovers. It observes completed-window page density against a configurable target (default 20 pages per window) and reduces future span when density grows.
+
+If a window reaches the hard page safety ceiling, that current window is not accepted as complete. It must be replayed with the next smaller span. If a one-day window itself reaches the safety ceiling, acquisition is blocked for operator/engineering review rather than claiming completeness.
+
+V1 never widens a window again after a downgrade. This keeps historical replay deterministic and avoids oscillation around density boundaries.
+
 ## Scheduled date-window materialization
 
 The generic Collection Scheduler remains responsible only for **when** a Run is due. It does not know CNIPA request parameters. Scheduled Runs and Jobs carry the immutable due slot in the Execution Contract extension:
