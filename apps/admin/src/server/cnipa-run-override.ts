@@ -59,13 +59,8 @@ export function parseCnipaManualRunExtensions(input: {
   const extensions = record(input.rawExtensions);
   if (!extensions) return validation("extensions must be an object");
   const extensionKeys = Object.keys(extensions);
-  if (
-    extensionKeys.length !== 1 ||
-    extensionKeys[0] !== CNIPA_MANUAL_QUERY_OVERRIDE_KEY
-  ) {
-    return validation(
-      `CNIPA historical override only permits ${CNIPA_MANUAL_QUERY_OVERRIDE_KEY}`,
-    );
+  if (extensionKeys.length !== 1 || extensionKeys[0] !== CNIPA_MANUAL_QUERY_OVERRIDE_KEY) {
+    return validation(`CNIPA historical override only permits ${CNIPA_MANUAL_QUERY_OVERRIDE_KEY}`);
   }
 
   const query = record(extensions[CNIPA_MANUAL_QUERY_OVERRIDE_KEY]);
