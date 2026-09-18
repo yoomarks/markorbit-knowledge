@@ -23,13 +23,17 @@ export type CnipaBackfillDispatch = {
 
 function dateOnly(value: string, label: string): string {
   const normalized = value.trim();
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(normalized)
+    ? new Date(`${normalized}T00:00:00.000Z`)
+    : null;
   if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(normalized) ||
-    Number.isNaN(Date.parse(`${normalized}T00:00:00Z`))
+    !parsed ||
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== normalized
   ) {
     throw new CnipaAcquisitionError(
       "CNIPA_BACKFILL_INVALID",
-      `${label} must use YYYY-MM-DD`,
+      `${label} must use a real calendar date in YYYY-MM-DD`,
       false,
     );
   }
