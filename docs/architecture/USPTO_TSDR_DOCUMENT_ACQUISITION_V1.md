@@ -72,6 +72,14 @@ Evidence-to-Fact bridge with document/version/locator and method provenance.
 
 ## Current implementation boundary
 
-V1 freezes admission semantics only. It does not implement a production TSDR HTTP executor,
-construct an unverified single-document URL, register an API key, download live evidence, classify
-TSDR document codes, convert PDFs, publish a ReadyPackage, or mutate production state.
+The CASE_DOCUMENT_INDEX intent now has a production Worker Runtime acquirer for the official
+single-serial bundle.xml?sn={serialNumber} endpoint. It resolves the API key only through the
+admitted secretRef, sends USPTO-API-KEY, bounds timeout/response size, treats rate limits and
+provider failures explicitly, and returns the exact XML bytes to the existing artifact-backed
+collection pipeline for immutable RawArtifact admission.
+
+SELECTED_DOCUMENT_BINARY remains fail-closed. The runtime does not construct an unverified
+single-document URL from provider metadata, does not register an API key, does not download a
+selected live PDF/ZIP, does not interpret document contents, does not publish a ReadyPackage, and
+does not mutate production state. A selected-binary executor requires separately verified official
+endpoint semantics that bind one source document identity to one returned binary.
