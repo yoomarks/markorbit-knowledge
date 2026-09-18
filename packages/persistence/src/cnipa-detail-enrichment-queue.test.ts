@@ -192,7 +192,7 @@ describe("CNIPA DETAIL enrichment queue", () => {
     const otherWorkspace = new SqliteWorkspaceRepository(
       database,
       () => new Date("2026-09-18T08:00:00.000Z"),
-      () => "wsp_cnipa_other",
+      () => "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAW",
     ).create({
       slug: "cnipa-other",
       name: "CNIPA Other",
