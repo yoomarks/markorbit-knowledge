@@ -268,8 +268,11 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
           "Persisted DETAIL URI conflicts with the admitted pointer",
         );
       }
-      const lastObservedAt =
-        existing.lastObservedAt > observedAt ? existing.lastObservedAt : observedAt;
+      const isNewestObservation = observedAt >= existing.lastObservedAt;
+      const lastObservedAt = isNewestObservation ? observedAt : existing.lastObservedAt;
+      const lastListArtifactRef = isNewestObservation
+        ? listArtifactRef
+        : existing.lastListArtifactRef;
       this.database
         .prepare(
           `UPDATE cnipa_detail_enrichment_queue
@@ -280,7 +283,7 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
             WHERE workspace_id = ? AND document_kind = ? AND source_record_id = ?`,
         )
         .run(
-          listArtifactRef,
+          lastListArtifactRef,
           lastObservedAt,
           now,
           workspaceId,
@@ -398,6 +401,9 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
     }
     const leaseExpiresAt = new Date(Date.parse(now) + leaseMs).toISOString();
 
+    let claimedIdentity:
+      | { documentKind: CnipaDetailDocumentKind; sourceRecordId: string }
+      | undefined;
     databaseTransaction(this.database, () => {
       this.database
         .prepare(
@@ -439,6 +445,10 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
           }
         | undefined;
       if (!candidate) return;
+      claimedIdentity = {
+        documentKind: candidate.document_kind,
+        sourceRecordId: candidate.source_record_id,
+      };
 
       this.database
         .prepare(
@@ -465,13 +475,12 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
         );
     });
 
-    const row = this.database
-      .prepare(
-        `SELECT * FROM cnipa_detail_enrichment_queue
-          WHERE workspace_id = ? AND lease_id = ? AND lifecycle = 'LEASED'`,
-      )
-      .get(workspaceId, leaseId) as unknown as QueueRow | undefined;
-    return row ? rowRecord(row) : null;
+    if (!claimedIdentity) return null;
+    return this.getByIdentity(
+      workspaceId,
+      claimedIdentity.documentKind,
+      claimedIdentity.sourceRecordId,
+    );
   }
 
   list(workspaceIdRaw: string, limitRaw = 50): CnipaDetailQueueRecord[] {
