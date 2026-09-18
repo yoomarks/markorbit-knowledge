@@ -1,6 +1,9 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { CNIPA_FAST_SOURCE_SPECS, type CnipaFastSourceSpec } from "./cnipa-fast-bootstrap-spec";
+import {
+  CNIPA_FAST_SOURCE_SPECS,
+  type CnipaFastSourceSpec,
+} from "./cnipa-fast-bootstrap-spec";
 import {
   CNIPA_HISTORICAL_BACKFILL_VERSION,
   applyCnipaCoverageObservation,
@@ -36,14 +39,19 @@ function items(value: unknown): unknown[] {
 }
 
 function requiredString(value: unknown, label: string): string {
-  if (typeof value !== "string" || !value.trim()) throw new Error(`${label} is required`);
+  if (typeof value !== "string" || !value.trim())
+    throw new Error(`${label} is required`);
   return value.trim();
 }
 
 function dateOnly(value: string, label: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error(`${label} must use YYYY-MM-DD`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value))
+    throw new Error(`${label} must use YYYY-MM-DD`);
   const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== value
+  ) {
     throw new Error(`${label} must be a real calendar date`);
   }
   return value;
@@ -60,12 +68,18 @@ function normalizedBaseUrl(raw: string): string {
 function adminCookieHeader(): string {
   const raw = process.env.MARKORBIT_ADMIN_COOKIE?.trim();
   if (!raw) {
-    throw new Error("MARKORBIT_ADMIN_COOKIE is required for the Knowledge Admin control plane");
+    throw new Error(
+      "MARKORBIT_ADMIN_COOKIE is required for the Knowledge Admin control plane",
+    );
   }
   return raw.includes("=") ? raw : `mo_session=${raw}`;
 }
 
-async function request(baseUrl: string, path: string, init: RequestInit = {}): Promise<Response> {
+async function request(
+  baseUrl: string,
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("cookie", adminCookieHeader());
   if (adminAuthContext) {
@@ -79,7 +93,9 @@ async function request(baseUrl: string, path: string, init: RequestInit = {}): P
   const response = await fetch(`${baseUrl}${path}`, { ...init, headers });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new Error(`${path}: HTTP ${response.status}${body ? ` — ${body.slice(0, 500)}` : ""}`);
+    throw new Error(
+      `${path}: HTTP ${response.status}${body ? ` — ${body.slice(0, 500)}` : ""}`,
+    );
   }
   return response;
 }
@@ -94,22 +110,30 @@ async function requestJson(
 }
 
 function jsonPost(body: unknown, idempotencyKey?: string): RequestInit {
-  const headers: Record<string, string> = { "content-type": "application/json" };
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   return { method: "POST", headers, body: JSON.stringify(body) };
 }
 
 async function bootstrapAdminAuth(baseUrl: string): Promise<AdminAuthContext> {
   const session = record(await requestJson(baseUrl, "/api/admin-session"));
-  const csrfToken = requiredString(session?.csrfToken, "admin session csrfToken");
+  const csrfToken = requiredString(
+    session?.csrfToken,
+    "admin session csrfToken",
+  );
   const workspaceRecords = Array.isArray(session?.workspaces)
     ? session.workspaces
         .map(record)
         .filter((value): value is Record<string, unknown> => value !== null)
     : [];
-  const requestedWorkspaceId = process.env.MARKORBIT_CNIPA_BACKFILL_WORKSPACE_ID?.trim();
+  const requestedWorkspaceId =
+    process.env.MARKORBIT_CNIPA_BACKFILL_WORKSPACE_ID?.trim();
   const selected = requestedWorkspaceId
-    ? workspaceRecords.find((workspace) => workspace.workspaceId === requestedWorkspaceId)
+    ? workspaceRecords.find(
+        (workspace) => workspace.workspaceId === requestedWorkspaceId,
+      )
     : workspaceRecords.length === 1
       ? workspaceRecords[0]
       : undefined;
@@ -124,7 +148,8 @@ async function bootstrapAdminAuth(baseUrl: string): Promise<AdminAuthContext> {
         : `MARKORBIT_CNIPA_BACKFILL_WORKSPACE_ID is required when the admin session has ${workspaceRecords.length} workspaces${available ? `: ${available}` : ""}`,
     );
   }
-  const origin = process.env.MARKORBIT_ADMIN_ORIGIN?.trim() || new URL(baseUrl).origin;
+  const origin =
+    process.env.MARKORBIT_ADMIN_ORIGIN?.trim() || new URL(baseUrl).origin;
   const context = {
     workspaceId: requiredString(selected.workspaceId, "admin workspaceId"),
     csrfToken,
@@ -177,7 +202,11 @@ async function atomicWriteCheckpoint(
 ): Promise<void> {
   await mkdir(dirname(statePath), { recursive: true });
   const temporary = `${statePath}.tmp-${process.pid}`;
-  await writeFile(temporary, `${JSON.stringify(checkpoint, null, 2)}\n`, "utf8");
+  await writeFile(
+    temporary,
+    `${JSON.stringify(checkpoint, null, 2)}\n`,
+    "utf8",
+  );
   await rename(temporary, statePath);
 }
 
@@ -244,7 +273,8 @@ async function dispatchWindow(
   baseUrl: string,
   state: CnipaHistoricalBackfillSourceState,
 ): Promise<string> {
-  if (!state.pendingWindow) throw new Error("Cannot dispatch without a pending CNIPA window");
+  if (!state.pendingWindow)
+    throw new Error("Cannot dispatch without a pending CNIPA window");
   const window = state.pendingWindow;
   const body = await requestJson(
     baseUrl,
@@ -269,12 +299,19 @@ async function dispatchWindow(
 }
 
 async function getRunStatus(baseUrl: string, runId: string): Promise<string> {
-  const body = await requestJson(baseUrl, `/api/runs/${encodeURIComponent(runId)}`);
+  const body = await requestJson(
+    baseUrl,
+    `/api/runs/${encodeURIComponent(runId)}`,
+  );
   const status = record(record(record(body)?.run)?.run)?.status;
   return requiredString(status, `run ${runId} status`);
 }
 
-async function waitForTerminalRun(baseUrl: string, runId: string, pollMs: number): Promise<string> {
+async function waitForTerminalRun(
+  baseUrl: string,
+  runId: string,
+  pollMs: number,
+): Promise<string> {
   for (;;) {
     const status = await getRunStatus(baseUrl, runId);
     if (TERMINAL_RUN_STATUSES.has(status)) return status;
@@ -407,17 +444,21 @@ async function main(): Promise<void> {
     process.env.MARKORBIT_CONTROL_PLANE_URL?.trim() || "http://localhost:3000",
   );
   const statePath = resolve(
-    process.env.MARKORBIT_CNIPA_BACKFILL_STATE_PATH?.trim() || DEFAULT_STATE_PATH,
+    process.env.MARKORBIT_CNIPA_BACKFILL_STATE_PATH?.trim() ||
+      DEFAULT_STATE_PATH,
   );
   const throughDate = process.env.MARKORBIT_CNIPA_BACKFILL_THROUGH_DATE?.trim();
   const floorDate = dateOnly(
     process.env.MARKORBIT_CNIPA_BACKFILL_FLOOR_DATE?.trim() || "2016-01-01",
     "MARKORBIT_CNIPA_BACKFILL_FLOOR_DATE",
   );
-  if (throughDate) dateOnly(throughDate, "MARKORBIT_CNIPA_BACKFILL_THROUGH_DATE");
+  if (throughDate)
+    dateOnly(throughDate, "MARKORBIT_CNIPA_BACKFILL_THROUGH_DATE");
   const pollMs = Number(process.env.MARKORBIT_CNIPA_BACKFILL_POLL_MS || "5000");
   if (!Number.isSafeInteger(pollMs) || pollMs < 250 || pollMs > 60000) {
-    throw new Error("MARKORBIT_CNIPA_BACKFILL_POLL_MS must be an integer in 250..60000");
+    throw new Error(
+      "MARKORBIT_CNIPA_BACKFILL_POLL_MS must be an integer in 250..60000",
+    );
   }
   const continuous = process.argv.includes("--continuous");
 
@@ -449,7 +490,11 @@ async function main(): Promise<void> {
 
     process.stdout.write(
       `${JSON.stringify(
-        { statePath, workspaceId: checkpoint.workspaceId, sources: summary(checkpoint) },
+        {
+          statePath,
+          workspaceId: checkpoint.workspaceId,
+          sources: summary(checkpoint),
+        },
         null,
         2,
       )}\n`,
@@ -467,3 +512,28 @@ main().catch((error) => {
   );
   process.exitCode = 1;
 });
+  const artifact = await findCoverageArtifact(input.baseUrl, state, runId);
+  const manifest = await readCoverageManifest(input.baseUrl, artifact.id);
+  state = applyCnipaCoverageObservation({
+    state,
+    runId,
+    artifactId: artifact.id,
+    artifactSha256: artifact.sha256,
+    manifest,
+  });
+  checkpoint = updatedCheckpoint(checkpoint, state);
+  await atomicWriteCheckpoint(input.statePath, checkpoint);
+  return checkpoint;
+}
+
+function summary(checkpoint: CnipaHistoricalBackfillCheckpoint) {
+  return checkpoint.sources.map((source) => ({
+    documentKind: source.documentKind,
+    cursorDate: source.cursorDate,
+    throughDate: source.throughDate,
+    windowDays: source.currentWindowDays,
+    completionState: source.completionState,
+    blockReason: source.blockReason,
+    activeRunId: source.activeRunId,
+    lastRunId: source.lastRunId,
+    lastObservation: source.lastObservation,
