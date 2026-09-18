@@ -43,8 +43,8 @@ function collection(evidence: CnipaResponseEvidence[]): CnipaJudgmentCollection 
     coverageReasons: [
       "REGISTRATION_EXAMINATION date-range bulk acquisition preserves complete LIST response bytes as primary evidence; DETAIL fan-out is intentionally skipped",
     ],
-    schemaStatus: "PROVISIONAL_UNTIL_AUTHENTICATED_LIVE_VALIDATION",
-    schemaRevision: "cnipa-judgment-candidate-v1",
+    schemaStatus: "OPERATOR_SUPPLIED_UNVERIFIED",
+    schemaRevision: "candidate-2026-08-29",
   };
 }
 
