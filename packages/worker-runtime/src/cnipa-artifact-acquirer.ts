@@ -20,7 +20,7 @@ import {
 } from "./cnipa-trademark-judgment";
 
 export const CNIPA_CONNECTOR_ID = "cnipa-authenticated-worker";
-export const CNIPA_CONNECTOR_VERSION = "0.4.0";
+export const CNIPA_CONNECTOR_VERSION = "0.5.0";
 export const CNIPA_EXECUTOR: ExecutionExecutor = {
   executorId: CNIPA_CONNECTOR_ID,
   version: CNIPA_CONNECTOR_VERSION,
@@ -80,7 +80,8 @@ function sourceConfig(context: ArtifactBackedExecutionContext): CnipaSourceConfi
   const verifiedBulkDateRange =
     query.mode === "DATE_RANGE" &&
     query.documentKinds?.length === 1 &&
-    (query.documentKinds[0] === "OPPOSITION_DECISION" ||
+    (query.documentKinds[0] === "REGISTRATION_EXAMINATION" ||
+      query.documentKinds[0] === "OPPOSITION_DECISION" ||
       query.documentKinds[0] === "REVIEW_ADJUDICATION");
   if (query.mode !== "REGISTRATION_NUMBER" && !verifiedBulkDateRange) {
     throw new CollectionAcquisitionError(
