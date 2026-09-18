@@ -20,6 +20,7 @@ export type CnipaDetailMarkdownEnrichmentV1 = {
   logicalDocumentUri: string;
   title: string;
   listArtifactId: string;
+  listMarkdownArtifactId?: string;
   detailArtifactId: string;
   baseMarkdownSha256: string;
   detailBodySha256: string;
@@ -39,6 +40,11 @@ export type CnipaDetailMarkdownDecisionV1 =
       material: true;
       enrichment: CnipaDetailMarkdownEnrichmentV1;
     };
+
+const MAX_DEPTH = 8;
+const MAX_EVIDENCE_ENTRIES = 250;
+const MAX_ARRAY_ITEMS = 50;
+const MAX_STRING_LENGTH = 20_000;
 
 const TRANSPORT_FIELDS = new Set([
   "code",
@@ -81,25 +87,76 @@ function pointerPath(parent: string, key: string | number): string {
   return `${parent}/${token}`;
 }
 
-function flatten(value: unknown, path = ""): CnipaDetailEvidenceEntryV1[] {
+function pushEvidence(
+  output: CnipaDetailEvidenceEntryV1[],
+  path: string,
+  value: DetailScalar,
+): void {
+  if (output.length >= MAX_EVIDENCE_ENTRIES) {
+    throw new CnipaAcquisitionError(
+      "CNIPA_SCHEMA_CHANGED",
+      `CNIPA DETAIL enrichment exceeds ${MAX_EVIDENCE_ENTRIES} scalar facts`,
+      false,
+    );
+  }
+  if (typeof value === "string" && value.length > MAX_STRING_LENGTH) {
+    throw new CnipaAcquisitionError(
+      "CNIPA_SCHEMA_CHANGED",
+      `CNIPA DETAIL field ${path || "/"} exceeds the enrichment string bound`,
+      false,
+    );
+  }
+  output.push({ path: path || "/", value });
+}
+
+function flattenInto(
+  value: unknown,
+  output: CnipaDetailEvidenceEntryV1[],
+  path = "",
+  depth = 0,
+): void {
+  if (depth > MAX_DEPTH) {
+    throw new CnipaAcquisitionError(
+      "CNIPA_SCHEMA_CHANGED",
+      `CNIPA DETAIL field ${path || "/"} exceeds the enrichment nesting bound`,
+      false,
+    );
+  }
   if (
     value === null ||
     typeof value === "string" ||
     typeof value === "boolean" ||
     (typeof value === "number" && Number.isFinite(value))
   ) {
-    return [{ path: path || "/", value: value as DetailScalar }];
+    pushEvidence(output, path, value as DetailScalar);
+    return;
   }
   if (Array.isArray(value)) {
-    return value.flatMap((child, index) => flatten(child, pointerPath(path, index)));
+    if (value.length > MAX_ARRAY_ITEMS) {
+      throw new CnipaAcquisitionError(
+        "CNIPA_SCHEMA_CHANGED",
+        `CNIPA DETAIL array ${path || "/"} exceeds the enrichment item bound`,
+        false,
+      );
+    }
+    value.forEach((child, index) =>
+      flattenInto(child, output, pointerPath(path, index), depth + 1),
+    );
+    return;
   }
   if (value && typeof value === "object") {
-    return Object.entries(value as Record<string, unknown>)
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)
       .filter(([key]) => !(path === "" && TRANSPORT_FIELDS.has(key)))
-      .sort(([left], [right]) => left.localeCompare(right))
-      .flatMap(([key, child]) => flatten(child, pointerPath(path, key)));
+      .sort(([left], [right]) => left.localeCompare(right))) {
+      flattenInto(child, output, pointerPath(path, key), depth + 1);
+    }
   }
-  return [];
+}
+
+function flatten(value: unknown): CnipaDetailEvidenceEntryV1[] {
+  const output: CnipaDetailEvidenceEntryV1[] = [];
+  flattenInto(value, output);
+  return output;
 }
 
 function evidenceRoot(value: unknown): unknown {
@@ -151,11 +208,25 @@ function renderEnrichedMarkdown(
 export function enrichCnipaMarkdownFromDetail(input: {
   documentSeed: CnipaKnowledgeDocumentSeedV1;
   listArtifactId: string;
+  listMarkdownArtifactId?: string;
   detailArtifactId: string;
   detailBody: Uint8Array;
 }): CnipaDetailMarkdownDecisionV1 {
   const listArtifactId = required(input.listArtifactId, "listArtifactId");
   const detailArtifactId = required(input.detailArtifactId, "detailArtifactId");
+  const listMarkdownArtifactId = input.listMarkdownArtifactId
+    ? required(input.listMarkdownArtifactId, "listMarkdownArtifactId")
+    : undefined;
+  if (
+    listMarkdownArtifactId &&
+    new Set([listMarkdownArtifactId, listArtifactId, detailArtifactId]).size !== 3
+  ) {
+    throw new CnipaAcquisitionError(
+      "CNIPA_SCHEMA_CHANGED",
+      "CNIPA DETAIL enrichment lineage artifacts must be distinct",
+      false,
+    );
+  }
   const detail = parseJson(input.detailBody);
   const baseMarkdownSha256 = sha256(input.documentSeed.markdownBody);
   const detailBodySha256 = sha256(input.detailBody);
@@ -180,6 +251,7 @@ export function enrichCnipaMarkdownFromDetail(input: {
       logicalDocumentUri: input.documentSeed.logicalDocumentUri,
       title: input.documentSeed.title,
       listArtifactId,
+      ...(listMarkdownArtifactId ? { listMarkdownArtifactId } : {}),
       detailArtifactId,
       baseMarkdownSha256,
       detailBodySha256,
