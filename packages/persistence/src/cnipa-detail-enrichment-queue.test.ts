@@ -327,6 +327,172 @@ describe("CNIPA DETAIL enrichment queue", () => {
     ).toBe("auth");
   });
 
+  it("governed claim atomically reserves one request budget unit", () => {
+    const { repository } = fixture();
+    repository.admit(pointer("governed-a"));
+    repository.admit(pointer("governed-b", "2026-09-18T08:01:00Z"));
+
+    const claimed = repository.claimNextGoverned({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-governed-1",
+      now: "2026-09-18T09:00:00Z",
+      budgetWindowKey: "2026-09-18-asia-shanghai",
+      minIntervalMs: 60_000,
+      maxRequestsPerBudgetWindow: 2,
+    });
+    expect(claimed).toMatchObject({
+      status: "CLAIMED",
+      requestCount: 1,
+      budgetWindowKey: "2026-09-18-asia-shanghai",
+    });
+    if (claimed.status !== "CLAIMED") return;
+    expect(claimed.record.sourceRecordId).toBe("governed-a");
+    expect(claimed.record.lifecycle).toBe("LEASED");
+  });
+
+  it("pacing block creates no queue lease and consumes no additional budget", () => {
+    const { repository } = fixture();
+    repository.admit(pointer("paced-a"));
+    repository.admit(pointer("paced-b", "2026-09-18T08:01:00Z"));
+
+    const first = repository.claimNextGoverned({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-paced-1",
+      now: "2026-09-18T09:00:00Z",
+      budgetWindowKey: "window-1",
+      minIntervalMs: 120_000,
+      maxRequestsPerBudgetWindow: 10,
+    });
+    expect(first.status).toBe("CLAIMED");
+
+    const blocked = repository.claimNextGoverned({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-paced-2",
+      now: "2026-09-18T09:01:00Z",
+      budgetWindowKey: "window-1",
+      minIntervalMs: 120_000,
+      maxRequestsPerBudgetWindow: 10,
+    });
+    expect(blocked).toEqual({
+      status: "PACING_BLOCKED",
+      record: null,
+      budgetWindowKey: "window-1",
+      requestCount: 1,
+      nextEligibleAt: "2026-09-18T09:02:00.000Z",
+    });
+    expect(
+      repository.getByIdentity(DEFAULT_WORKSPACE.id, "OPPOSITION_DECISION", "paced-b")?.lifecycle,
+    ).toBe("PENDING");
+  });
+
+  it("durably exhausts the budget across repository restarts", () => {
+    const database = new DatabaseSync(":memory:");
+    initializeRegistry(database);
+    const firstRepository = new SqliteCnipaDetailEnrichmentQueueRepository(database);
+    firstRepository.admit(pointer("budget-a"));
+    firstRepository.admit(pointer("budget-b", "2026-09-18T08:01:00Z"));
+    firstRepository.claimNextGoverned({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-budget-1",
+      now: "2026-09-18T09:00:00Z",
+      budgetWindowKey: "window-budget",
+      minIntervalMs: 0,
+      maxRequestsPerBudgetWindow: 1,
+    });
+
+    const restarted = new SqliteCnipaDetailEnrichmentQueueRepository(database);
+    const blocked = restarted.claimNextGoverned({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-budget-2",
+      now: "2026-09-18T10:00:00Z",
+      budgetWindowKey: "window-budget",
+      minIntervalMs: 0,
+      maxRequestsPerBudgetWindow: 1,
+    });
+    expect(blocked).toEqual({
+      status: "BUDGET_EXHAUSTED",
+      record: null,
+      budgetWindowKey: "window-budget",
+      requestCount: 1,
+      nextEligibleAt: null,
+    });
+    expect(
+      restarted.getByIdentity(DEFAULT_WORKSPACE.id, "OPPOSITION_DECISION", "budget-b")?.lifecycle,
+    ).toBe("PENDING");
+  });
+
+  it("resets count for a new budget window while preserving global pacing", () => {
+    const { repository } = fixture();
+    repository.admit(pointer("window-a"));
+    repository.admit(pointer("window-b", "2026-09-18T08:01:00Z"));
+    repository.claimNextGoverned({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-window-1",
+      now: "2026-09-18T09:00:00Z",
+      budgetWindowKey: "window-old",
+      minIntervalMs: 120_000,
+      maxRequestsPerBudgetWindow: 1,
+    });
+
+    const paced = repository.claimNextGoverned({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-window-2",
+      now: "2026-09-18T09:01:00Z",
+      budgetWindowKey: "window-new",
+      minIntervalMs: 120_000,
+      maxRequestsPerBudgetWindow: 1,
+    });
+    expect(paced).toEqual({
+      status: "PACING_BLOCKED",
+      record: null,
+      budgetWindowKey: "window-new",
+      requestCount: 0,
+      nextEligibleAt: "2026-09-18T09:02:00.000Z",
+    });
+
+    const claimed = repository.claimNextGoverned({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-window-3",
+      now: "2026-09-18T09:02:00Z",
+      budgetWindowKey: "window-new",
+      minIntervalMs: 120_000,
+      maxRequestsPerBudgetWindow: 1,
+    });
+    expect(claimed.status).toBe("CLAIMED");
+    expect(claimed.requestCount).toBe(1);
+  });
+
+  it("does not consume budget when no due queue item exists", () => {
+    const { repository } = fixture();
+    const empty = repository.claimNextGoverned({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-empty-governed",
+      now: "2026-09-18T09:00:00Z",
+      budgetWindowKey: "window-empty",
+      minIntervalMs: 0,
+      maxRequestsPerBudgetWindow: 1,
+    });
+    expect(empty).toEqual({
+      status: "EMPTY",
+      record: null,
+      budgetWindowKey: "window-empty",
+      requestCount: 0,
+      nextEligibleAt: null,
+    });
+
+    repository.admit(pointer("empty-later"));
+    const claimed = repository.claimNextGoverned({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-empty-governed-2",
+      now: "2026-09-18T09:00:01Z",
+      budgetWindowKey: "window-empty",
+      minIntervalMs: 0,
+      maxRequestsPerBudgetWindow: 1,
+    });
+    expect(claimed.status).toBe("CLAIMED");
+    expect(claimed.requestCount).toBe(1);
+  });
+
   it("isolates identical CNIPA source identity by workspace", () => {
     const { database, repository } = fixture();
     const otherWorkspace = new SqliteWorkspaceRepository(

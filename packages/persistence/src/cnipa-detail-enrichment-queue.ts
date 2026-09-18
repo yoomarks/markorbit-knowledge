@@ -8,6 +8,7 @@ import {
 } from "./index";
 
 const MIGRATION_ID = "0020_cnipa_detail_enrichment_queue";
+const GOVERNANCE_MIGRATION_ID = "0021_cnipa_detail_lane_governance";
 const MAX_LIMIT = 100;
 const DEFAULT_LEASE_MS = 10 * 60_000;
 const DOCUMENT_KINDS = [
@@ -66,6 +67,41 @@ export type ClaimCnipaDetailInput = {
   now?: string;
   leaseMs?: number;
 };
+
+export type ClaimGovernedCnipaDetailInput = ClaimCnipaDetailInput & {
+  budgetWindowKey: string;
+  minIntervalMs: number;
+  maxRequestsPerBudgetWindow: number;
+};
+
+export type ClaimGovernedCnipaDetailResult =
+  | {
+      status: "CLAIMED";
+      record: CnipaDetailQueueRecord;
+      budgetWindowKey: string;
+      requestCount: number;
+    }
+  | {
+      status: "PACING_BLOCKED";
+      record: null;
+      budgetWindowKey: string;
+      requestCount: number;
+      nextEligibleAt: string;
+    }
+  | {
+      status: "BUDGET_EXHAUSTED";
+      record: null;
+      budgetWindowKey: string;
+      requestCount: number;
+      nextEligibleAt: null;
+    }
+  | {
+      status: "EMPTY";
+      record: null;
+      budgetWindowKey: string;
+      requestCount: number;
+      nextEligibleAt: null;
+    };
 
 export type PersistCnipaDetailAttemptTransitionInput = {
   workspaceId: string;
@@ -251,12 +287,57 @@ export function ensureCnipaDetailEnrichmentQueue(database: DatabaseSync): void {
   }
 }
 
+function ensureCnipaDetailLaneGovernance(database: DatabaseSync): void {
+  initializeRegistry(database);
+  if (
+    database.prepare("SELECT id FROM schema_migrations WHERE id = ?").get(GOVERNANCE_MIGRATION_ID)
+  ) {
+    return;
+  }
+
+  database.exec("BEGIN IMMEDIATE;");
+  try {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS cnipa_detail_lane_governance (
+        workspace_id TEXT PRIMARY KEY,
+        budget_window_key TEXT NOT NULL,
+        request_count INTEGER NOT NULL CHECK (request_count >= 0),
+        last_request_at TEXT,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces(id)
+      ) STRICT;
+    `);
+    database
+      .prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)")
+      .run(GOVERNANCE_MIGRATION_ID, new Date().toISOString());
+    database.exec("COMMIT;");
+  } catch (error) {
+    database.exec("ROLLBACK;");
+    throw error;
+  }
+}
+
+function nonNegativeIntegerBounded(value: number, label: string, maximum: number): number {
+  if (!Number.isSafeInteger(value) || value < 0 || value > maximum) {
+    throw new RegistryValidationError(`${label} must be an integer in 0..${maximum}`);
+  }
+  return value;
+}
+
+function positiveIntegerBounded(value: number, label: string, maximum: number): number {
+  if (!Number.isSafeInteger(value) || value <= 0 || value > maximum) {
+    throw new RegistryValidationError(`${label} must be an integer in 1..${maximum}`);
+  }
+  return value;
+}
+
 export class SqliteCnipaDetailEnrichmentQueueRepository {
   constructor(
     private readonly database: DatabaseSync,
     private readonly clock: () => Date = () => new Date(),
   ) {
     ensureCnipaDetailEnrichmentQueue(database);
+    ensureCnipaDetailLaneGovernance(database);
   }
 
   admit(input: AdmitCnipaDetailPointerInput): CnipaDetailQueueRecord {
@@ -487,6 +568,201 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
       claimedIdentity.documentKind,
       claimedIdentity.sourceRecordId,
     );
+  }
+
+  claimNextGoverned(input: ClaimGovernedCnipaDetailInput): ClaimGovernedCnipaDetailResult {
+    const workspaceId = required(input.workspaceId, "workspaceId");
+    assertWorkspaceActive(this.database, workspaceId);
+    const leaseId = required(input.leaseId, "leaseId");
+    const budgetWindowKey = required(input.budgetWindowKey, "budgetWindowKey");
+    if (budgetWindowKey.length > 128) {
+      throw new RegistryValidationError("budgetWindowKey must be at most 128 characters");
+    }
+    const now = timestamp(input.now ?? this.clock().toISOString(), "now");
+    const leaseMs = input.leaseMs ?? DEFAULT_LEASE_MS;
+    positiveIntegerBounded(leaseMs, "leaseMs", 24 * 60 * 60_000);
+    const minIntervalMs = nonNegativeIntegerBounded(
+      input.minIntervalMs,
+      "minIntervalMs",
+      24 * 60 * 60_000,
+    );
+    const maxRequests = positiveIntegerBounded(
+      input.maxRequestsPerBudgetWindow,
+      "maxRequestsPerBudgetWindow",
+      100_000,
+    );
+    const leaseExpiresAt = new Date(Date.parse(now) + leaseMs).toISOString();
+
+    let result: ClaimGovernedCnipaDetailResult = {
+      status: "EMPTY",
+      record: null,
+      budgetWindowKey,
+      requestCount: 0,
+      nextEligibleAt: null,
+    };
+
+    databaseTransaction(this.database, () => {
+      this.database
+        .prepare(
+          `UPDATE cnipa_detail_enrichment_queue
+              SET lifecycle = 'RETRYABLE',
+                  lease_id = NULL,
+                  leased_at = NULL,
+                  lease_expires_at = NULL,
+                  next_attempt_at = ?,
+                  last_error_code = 'CNIPA_DETAIL_LEASE_EXPIRED',
+                  updated_at = ?
+            WHERE workspace_id = ?
+              AND lifecycle = 'LEASED'
+              AND lease_expires_at <= ?`,
+        )
+        .run(now, now, workspaceId, now);
+
+      const lane = this.database
+        .prepare(
+          `SELECT budget_window_key, request_count, last_request_at
+             FROM cnipa_detail_lane_governance
+            WHERE workspace_id = ?`,
+        )
+        .get(workspaceId) as
+        | {
+            budget_window_key: string;
+            request_count: number;
+            last_request_at: string | null;
+          }
+        | undefined;
+
+      const sameWindow = lane?.budget_window_key === budgetWindowKey;
+      const requestCount = sameWindow ? Number(lane?.request_count ?? 0) : 0;
+      const lastRequestAt = lane?.last_request_at ?? null;
+
+      if (lastRequestAt && minIntervalMs > 0) {
+        const nextEligibleAt = new Date(Date.parse(lastRequestAt) + minIntervalMs).toISOString();
+        if (nextEligibleAt > now) {
+          result = {
+            status: "PACING_BLOCKED",
+            record: null,
+            budgetWindowKey,
+            requestCount,
+            nextEligibleAt,
+          };
+          return;
+        }
+      }
+
+      if (requestCount >= maxRequests) {
+        result = {
+          status: "BUDGET_EXHAUSTED",
+          record: null,
+          budgetWindowKey,
+          requestCount,
+          nextEligibleAt: null,
+        };
+        return;
+      }
+
+      const candidate = this.database
+        .prepare(
+          `SELECT workspace_id, document_kind, source_record_id
+             FROM cnipa_detail_enrichment_queue
+            WHERE workspace_id = ?
+              AND lifecycle IN ('PENDING','RETRYABLE')
+              AND hold_reason IS NULL
+              AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
+            ORDER BY
+              CASE WHEN next_attempt_at IS NULL THEN 0 ELSE 1 END,
+              next_attempt_at,
+              discovered_at,
+              document_kind,
+              source_record_id
+            LIMIT 1`,
+        )
+        .get(workspaceId, now) as
+        | {
+            workspace_id: string;
+            document_kind: CnipaDetailDocumentKind;
+            source_record_id: string;
+          }
+        | undefined;
+
+      if (!candidate) {
+        result = {
+          status: "EMPTY",
+          record: null,
+          budgetWindowKey,
+          requestCount,
+          nextEligibleAt: null,
+        };
+        return;
+      }
+
+      const claimed = this.database
+        .prepare(
+          `UPDATE cnipa_detail_enrichment_queue
+              SET lifecycle = 'LEASED',
+                  lease_id = ?,
+                  leased_at = ?,
+                  lease_expires_at = ?,
+                  updated_at = ?
+            WHERE workspace_id = ?
+              AND document_kind = ?
+              AND source_record_id = ?
+              AND lifecycle IN ('PENDING','RETRYABLE')
+              AND hold_reason IS NULL
+              AND (next_attempt_at IS NULL OR next_attempt_at <= ?)`,
+        )
+        .run(
+          leaseId,
+          now,
+          leaseExpiresAt,
+          now,
+          workspaceId,
+          candidate.document_kind,
+          candidate.source_record_id,
+          now,
+        );
+      if (Number(claimed.changes) !== 1) {
+        throw new RegistryConflictError(
+          "CNIPA_DETAIL_CLAIM_RACE",
+          "CNIPA DETAIL queue item changed before governed claim",
+        );
+      }
+
+      const nextCount = requestCount + 1;
+      this.database
+        .prepare(
+          `INSERT INTO cnipa_detail_lane_governance
+             (workspace_id, budget_window_key, request_count, last_request_at, updated_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(workspace_id) DO UPDATE SET
+             budget_window_key = excluded.budget_window_key,
+             request_count = excluded.request_count,
+             last_request_at = excluded.last_request_at,
+             updated_at = excluded.updated_at`,
+        )
+        .run(workspaceId, budgetWindowKey, nextCount, now, now);
+
+      result = {
+        status: "CLAIMED",
+        record: null as unknown as CnipaDetailQueueRecord,
+        budgetWindowKey,
+        requestCount: nextCount,
+      };
+      const claimedRecord = this.getByIdentity(
+        workspaceId,
+        candidate.document_kind,
+        candidate.source_record_id,
+      );
+      if (!claimedRecord) {
+        throw new RegistryConflictError(
+          "CNIPA_DETAIL_CLAIM_MISSING",
+          "Governed CNIPA DETAIL claim could not be reloaded",
+        );
+      }
+      result = { ...result, record: claimedRecord };
+    });
+
+    return result;
   }
 
   persistAttemptTransition(
