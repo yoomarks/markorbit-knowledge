@@ -187,6 +187,146 @@ describe("CNIPA DETAIL enrichment queue", () => {
     });
   });
 
+  it("persists a fetched transition only for the active lease and preserves LIST provenance", () => {
+    const { repository } = fixture();
+    const admitted = repository.admit(pointer("fetched"));
+    const leased = repository.claimNext({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-fetched",
+      now: "2026-09-18T09:00:00Z",
+    })!;
+    const persisted = repository.persistAttemptTransition({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      documentKind: leased.documentKind,
+      sourceRecordId: leased.sourceRecordId,
+      expectedLeaseId: "lease-fetched",
+      lifecycle: "FETCHED",
+      holdReason: null,
+      attemptCount: 1,
+      lastAttemptAt: "2026-09-18T09:00:30Z",
+      nextAttemptAt: null,
+      lastErrorCode: null,
+      lastHttpStatus: null,
+      lastBusinessCode: null,
+      lastSuccessAt: "2026-09-18T09:00:30Z",
+      detailArtifactRef: "artifact:detail:fetched",
+      detailSha256: "b".repeat(64),
+    });
+    expect(persisted).toMatchObject({
+      lifecycle: "FETCHED",
+      leaseId: null,
+      attemptCount: 1,
+      detailArtifactRef: "artifact:detail:fetched",
+      detailSha256: "b".repeat(64),
+      firstListArtifactRef: admitted.firstListArtifactRef,
+      lastListArtifactRef: admitted.lastListArtifactRef,
+      discoveredAt: admitted.discoveredAt,
+      observationCount: admitted.observationCount,
+    });
+  });
+
+  it("rejects stale lease writers after an attempt transition", () => {
+    const { repository } = fixture();
+    repository.admit(pointer("stale"));
+    const leased = repository.claimNext({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-current",
+      now: "2026-09-18T09:00:00Z",
+    })!;
+    repository.persistAttemptTransition({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      documentKind: leased.documentKind,
+      sourceRecordId: leased.sourceRecordId,
+      expectedLeaseId: "lease-current",
+      lifecycle: "RETRYABLE",
+      holdReason: null,
+      attemptCount: 1,
+      lastAttemptAt: "2026-09-18T09:00:10Z",
+      nextAttemptAt: "2026-09-18T09:05:10Z",
+      lastErrorCode: "CNIPA_SOURCE_TEMPORARY_FAILURE",
+      lastHttpStatus: 503,
+      lastBusinessCode: null,
+      lastSuccessAt: null,
+      detailArtifactRef: null,
+      detailSha256: null,
+    });
+    expect(() =>
+      repository.persistAttemptTransition({
+        workspaceId: DEFAULT_WORKSPACE.id,
+        documentKind: leased.documentKind,
+        sourceRecordId: leased.sourceRecordId,
+        expectedLeaseId: "lease-current",
+        lifecycle: "RETRYABLE",
+        holdReason: null,
+        attemptCount: 2,
+        lastAttemptAt: "2026-09-18T09:00:20Z",
+        nextAttemptAt: "2026-09-18T09:10:20Z",
+        lastErrorCode: "TEMP",
+        lastHttpStatus: null,
+        lastBusinessCode: null,
+        lastSuccessAt: null,
+        detailArtifactRef: null,
+        detailSha256: null,
+      }),
+    ).toThrow(/active queue lease/i);
+  });
+
+  it("persists auth/security hold without burning attempts and releases it explicitly", () => {
+    const { repository } = fixture();
+    repository.admit(pointer("auth"));
+    const leased = repository.claimNext({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      leaseId: "lease-auth",
+      now: "2026-09-18T09:00:00Z",
+    })!;
+    const held = repository.persistAttemptTransition({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      documentKind: leased.documentKind,
+      sourceRecordId: leased.sourceRecordId,
+      expectedLeaseId: "lease-auth",
+      lifecycle: "PENDING",
+      holdReason: "AUTH_SECURITY",
+      attemptCount: 0,
+      lastAttemptAt: "2026-09-18T09:00:05Z",
+      nextAttemptAt: null,
+      lastErrorCode: "CNIPA_REAUTH_REQUIRED",
+      lastHttpStatus: 401,
+      lastBusinessCode: null,
+      lastSuccessAt: null,
+      detailArtifactRef: null,
+      detailSha256: null,
+    });
+    expect(held).toMatchObject({
+      lifecycle: "PENDING",
+      holdReason: "AUTH_SECURITY",
+      leaseId: null,
+      attemptCount: 0,
+    });
+    expect(
+      repository.claimNext({
+        workspaceId: DEFAULT_WORKSPACE.id,
+        leaseId: "lease-blocked",
+        now: "2026-09-18T10:00:00Z",
+      }),
+    ).toBeNull();
+
+    const released = repository.releaseAuthSecurityHold({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      documentKind: held.documentKind,
+      sourceRecordId: held.sourceRecordId,
+    });
+    expect(released.holdReason).toBeNull();
+    expect(released.attemptCount).toBe(0);
+    expect(released.lastErrorCode).toBe("CNIPA_REAUTH_REQUIRED");
+    expect(
+      repository.claimNext({
+        workspaceId: DEFAULT_WORKSPACE.id,
+        leaseId: "lease-after-auth",
+        now: "2026-09-18T10:00:00Z",
+      })?.sourceRecordId,
+    ).toBe("auth");
+  });
+
   it("isolates identical CNIPA source identity by workspace", () => {
     const { database, repository } = fixture();
     const otherWorkspace = new SqliteWorkspaceRepository(
