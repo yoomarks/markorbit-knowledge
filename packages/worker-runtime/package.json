@@ -28,7 +28,8 @@
     "./foundational-collection-outcome": "./src/foundational-collection-outcome.ts",
     "./cnipa-artifact-acquirer": "./src/cnipa-artifact-acquirer.ts",
     "./cnipa-window-policy": "./src/cnipa-window-policy.ts",
-    "./cnipa-detail-enrichment-state": "./src/cnipa-detail-enrichment-state.ts"
+    "./cnipa-detail-enrichment-state": "./src/cnipa-detail-enrichment-state.ts",
+    "./cnipa-detail-markdown-enrichment": "./src/cnipa-detail-markdown-enrichment.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
