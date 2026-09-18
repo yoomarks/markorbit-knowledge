@@ -65,6 +65,14 @@ describe("CNIPA durable historical backfill state machine", () => {
       runId: "run_accepted",
     });
     expect(next.pendingWindow).toBeNull();
+    expect(next.lastObservation).toEqual({
+      runId: "run_accepted",
+      pageCount: 1,
+      uniqueRecordCount: 10,
+      stopReason: "NATURAL_SHORT_OR_EMPTY_PAGE",
+      safetyCeilingReached: false,
+      completeByObservedPaging: true,
+    });
     expect(next.completionState).toBe("ACTIVE");
   });
 
