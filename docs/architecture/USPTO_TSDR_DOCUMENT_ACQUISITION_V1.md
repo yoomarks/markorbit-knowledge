@@ -103,3 +103,37 @@ Knowledge only enforces the bounded acquisition and preserves the immutable docu
 
 The business chain may later contain notice, filing/response and result/outcome documents, but
 Knowledge does not infer the commercial opportunity that caused the chain to be requested.
+
+## Live document-viewer endpoint evidence
+
+A read-only live inspection of the official TSDR document viewer for serial `90817045` confirmed
+that the viewer embeds a `DocsList` object containing, per document:
+
+- `docId`;
+- description and display date;
+- source system (`cms` or legacy/TICRS);
+- page count;
+- `urlPathList`;
+- `mediaTypeList`.
+
+The same official page publishes these endpoint templates to its own viewer JavaScript:
+
+- legacy/TICRS full-document PDF:
+  `https://tsdrsec.uspto.gov/ts/cd/casedoc/{caseId}/{docId}/download.pdf`;
+- legacy/TICRS page content:
+  `https://tsdrsec.uspto.gov/ts/cd/casedoc/{caseId}/{docId}/{pageNum}/webcontent?scale=1`;
+- trademark media:
+  `https://tsdrsec.uspto.gov/ts/cd/casedoc/{caseId}/{docId}/{pageNum}/tmmedia?scale=1`;
+- CMS download flow:
+  `https://tsdrsec.uspto.gov/ts/cd/tmcasedoc/{caseId}/{docId}/cmsdownload?url={url}`,
+  with CMS document locators also present in `urlPathList`.
+
+The official `caseViewer.js` uses a page-issued short-lived authorization value when submitting
+legacy/CMS download forms. Knowledge must never persist that transient credential in Source,
+RawArtifact metadata, fixtures, logs, or policy.
+
+This evidence establishes the official document-identity-to-locator shape, but it does **not** yet
+establish a production-safe token lifecycle or a successful binary transport acceptance under the
+Knowledge runtime. Therefore `SELECTED_DOCUMENT_BINARY` remains fail-closed until a dedicated
+transport implementation proves authorization handling, rate/budget behavior, returned media
+validation, immutable RawArtifact admission, retry semantics, and token non-persistence.
