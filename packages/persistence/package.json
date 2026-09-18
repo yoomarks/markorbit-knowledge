@@ -128,7 +128,8 @@
     "./storage-operating-envelope": "./src/storage-operating-envelope.ts",
     "./storage-recovery-evidence": "./src/storage-recovery-evidence.ts",
     "./cnipa-detail-enrichment-queue": "./src/cnipa-detail-enrichment-queue.ts",
-    "./cnipa-detail-ingestion": "./src/cnipa-detail-ingestion.ts"
+    "./cnipa-detail-ingestion": "./src/cnipa-detail-ingestion.ts",
+    "./cnipa-detail-markdown-ingestion": "./src/cnipa-detail-markdown-ingestion.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
