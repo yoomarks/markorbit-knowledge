@@ -293,13 +293,7 @@ export class CnipaJudgmentArtifactAcquirer implements CollectionArtifactAcquirer
           listPage !== undefined
         ) {
           artifacts.push(
-            ...projectionArtifact(
-              evidence,
-              rawArtifact,
-              collection.query,
-              queryId,
-              listPage,
-            ),
+            ...projectionArtifact(evidence, rawArtifact, collection.query, queryId, listPage),
           );
         }
       }
