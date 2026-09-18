@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { CnipaKnowledgeDocumentSeedV1 } from "./cnipa-list-materializer";
 import { enrichCnipaMarkdownFromDetail } from "./cnipa-detail-markdown-enrichment";
 
-function seed(markdownBody = "# 异议决定书\n\n商标：MO\n注册号：123\n"): CnipaKnowledgeDocumentSeedV1 {
+function seed(
+  markdownBody = "# 异议决定书\n\n商标：MO\n注册号：123\n",
+): CnipaKnowledgeDocumentSeedV1 {
   return {
     schemaVersion: "cnipa-knowledge-document-seed-v1",
     sourceAuthority: "CNIPA",
@@ -135,9 +137,7 @@ describe("CNIPA DETAIL Markdown enrichment", () => {
     expect(right.material).toBe(true);
     if (!left.material || !right.material) return;
     expect(left.enrichment.markdownBody).toBe(right.enrichment.markdownBody);
-    expect(left.enrichment.detailBodySha256).not.toBe(
-      right.enrichment.detailBodySha256,
-    );
+    expect(left.enrichment.detailBodySha256).not.toBe(right.enrichment.detailBodySha256);
   });
 
   it("rejects non-JSON DETAIL evidence", () => {

@@ -1,8 +1,5 @@
 import { createHash } from "node:crypto";
-import {
-  CnipaAcquisitionError,
-  type CnipaDocumentKind,
-} from "./cnipa-trademark-judgment";
+import { CnipaAcquisitionError, type CnipaDocumentKind } from "./cnipa-trademark-judgment";
 import type { CnipaKnowledgeDocumentSeedV1 } from "./cnipa-list-materializer";
 
 export const CNIPA_DETAIL_MARKDOWN_ENRICHMENT_VERSION =
@@ -113,27 +110,17 @@ function evidenceRoot(value: unknown): unknown {
 
 function normalizedText(value: DetailScalar): string {
   if (value === null) return "null";
-  return String(value)
-    .replace(/\r\n?/g, "\n")
-    .replace(/\s+/gu, " ")
-    .trim()
-    .toLocaleLowerCase();
+  return String(value).replace(/\r\n?/g, "\n").replace(/\s+/gu, " ").trim().toLocaleLowerCase();
 }
 
 function presentInBase(markdown: string, value: DetailScalar): boolean {
   const normalized = normalizedText(value);
   if (!normalized) return true;
-  const base = markdown
-    .replace(/\r\n?/g, "\n")
-    .replace(/\s+/gu, " ")
-    .toLocaleLowerCase();
+  const base = markdown.replace(/\r\n?/g, "\n").replace(/\s+/gu, " ").toLocaleLowerCase();
   return base.includes(normalized);
 }
 
-function materialEvidence(
-  baseMarkdown: string,
-  detail: unknown,
-): CnipaDetailEvidenceEntryV1[] {
+function materialEvidence(baseMarkdown: string, detail: unknown): CnipaDetailEvidenceEntryV1[] {
   const seen = new Set<string>();
   const result: CnipaDetailEvidenceEntryV1[] = [];
   for (const entry of flatten(evidenceRoot(detail))) {
