@@ -330,6 +330,7 @@ function summary(checkpoint: CnipaHistoricalBackfillCheckpoint) {
     windowDays: source.currentWindowDays,
     completionState: source.completionState,
     blockReason: source.blockReason,
+    lastObservation: source.lastObservation,
     lastAcceptedWindow: source.lastAcceptedWindow,
   }));
 }
