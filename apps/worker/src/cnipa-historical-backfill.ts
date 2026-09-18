@@ -47,6 +47,7 @@ export type CnipaHistoricalBackfillSourceState = {
   cursorDate: string;
   currentWindowDays: CnipaHistoricalWindowDays;
   pendingWindow: CnipaPendingWindow | null;
+  activeRunId: string | null;
   lastRunId: string | null;
   lastAcceptedWindow: CnipaAcceptedWindow | null;
   lastObservation: CnipaBackfillObservation | null;
@@ -118,6 +119,7 @@ export function createCnipaHistoricalBackfillState(input: {
     cursorDate: floorDate,
     currentWindowDays: 30,
     pendingWindow: null,
+    activeRunId: null,
     lastRunId: null,
     lastAcceptedWindow: null,
     lastObservation: null,
@@ -174,6 +176,7 @@ export function applyCnipaCoverageObservation(input: {
   const pending = assertCoverageMatchesPending(input.state, input.manifest);
   const state: CnipaHistoricalBackfillSourceState = {
     ...input.state,
+    activeRunId: null,
     lastRunId: input.runId,
     lastObservation: {
       runId: input.runId,
@@ -237,7 +240,6 @@ export function applyCnipaCoverageObservation(input: {
       ...state,
       currentWindowDays: decision.nextWindowDays,
       pendingWindow: null,
-      lastRunId: null,
       replayRequired: true,
       completionState: "ACTIVE",
       blockReason: null,
@@ -268,7 +270,6 @@ export function applyCnipaCoverageObservation(input: {
     cursorDate,
     currentWindowDays: decision.nextWindowDays,
     pendingWindow: null,
-    lastRunId: null,
     lastAcceptedWindow: accepted,
     replayRequired: false,
     completionState: finished ? "COMPLETE" : "ACTIVE",
