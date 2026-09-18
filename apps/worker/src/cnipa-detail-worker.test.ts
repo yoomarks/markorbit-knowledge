@@ -21,10 +21,7 @@ function queueFixture(sourceRecordId = "detail-1") {
     workspaceId: DEFAULT_WORKSPACE.id,
     documentKind: "OPPOSITION_DECISION",
     sourceRecordId,
-    detailCanonicalUri: cnipaDetailQueueCanonicalUri(
-      "OPPOSITION_DECISION",
-      sourceRecordId,
-    ),
+    detailCanonicalUri: cnipaDetailQueueCanonicalUri("OPPOSITION_DECISION", sourceRecordId),
     listArtifactRef: `artifact:list:${sourceRecordId}`,
     observedAt: "2026-09-18T09:00:00Z",
   });
@@ -40,9 +37,7 @@ function response(
       "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/pubnotice/portal/tmyyJudgment/queryInfo?id=detail-1",
     contentType: "application/json;charset=UTF-8",
     observedAt: "2026-09-18T10:00:05.000Z",
-    body: new TextEncoder().encode(
-      JSON.stringify({ code: 0, data: { id: "detail-1" } }),
-    ),
+    body: new TextEncoder().encode(JSON.stringify({ code: 0, data: { id: "detail-1" } })),
     securityState: "OK",
     ...input,
   };
@@ -102,9 +97,7 @@ describe("CNIPA serial DETAIL worker", () => {
     });
     expect(close).toHaveBeenCalledTimes(1);
     expect(sink).toHaveBeenCalledTimes(1);
-    expect(sink.mock.invocationCallOrder[0]).toBeGreaterThan(
-      close.mock.invocationCallOrder[0]!,
-    );
+    expect(sink.mock.invocationCallOrder[0]).toBeGreaterThan(close.mock.invocationCallOrder[0]!);
   });
 
   it("persists known transient business responses as RETRYABLE with bounded backoff", async () => {
@@ -115,9 +108,7 @@ describe("CNIPA serial DETAIL worker", () => {
       queueLeaseId: "detail-lease-transient",
       sessionFactory: factory(
         response({
-          body: new TextEncoder().encode(
-            JSON.stringify({ code: -107, message: "temporary" }),
-          ),
+          body: new TextEncoder().encode(JSON.stringify({ code: -107, message: "temporary" })),
         }),
       ),
       rawArtifactSink: vi.fn(async () => rawResult()),
@@ -190,9 +181,7 @@ describe("CNIPA serial DETAIL worker", () => {
         queueLeaseId: "detail-lease-unknown",
         sessionFactory: factory(
           response({
-            body: new TextEncoder().encode(
-              JSON.stringify({ code: -999, message: "unknown" }),
-            ),
+            body: new TextEncoder().encode(JSON.stringify({ code: -999, message: "unknown" })),
           }),
         ),
         rawArtifactSink: sink,
@@ -201,11 +190,7 @@ describe("CNIPA serial DETAIL worker", () => {
     ).rejects.toThrow(/unclassified business code/i);
     expect(sink).not.toHaveBeenCalled();
     expect(
-      queue.getByIdentity(
-        DEFAULT_WORKSPACE.id,
-        "OPPOSITION_DECISION",
-        "detail-1",
-      )?.lifecycle,
+      queue.getByIdentity(DEFAULT_WORKSPACE.id, "OPPOSITION_DECISION", "detail-1")?.lifecycle,
     ).toBe("LEASED");
   });
 
@@ -224,11 +209,7 @@ describe("CNIPA serial DETAIL worker", () => {
       }),
     ).rejects.toThrow(/artifact persistence uncertain/i);
     expect(
-      queue.getByIdentity(
-        DEFAULT_WORKSPACE.id,
-        "OPPOSITION_DECISION",
-        "detail-1",
-      )?.lifecycle,
+      queue.getByIdentity(DEFAULT_WORKSPACE.id, "OPPOSITION_DECISION", "detail-1")?.lifecycle,
     ).toBe("LEASED");
   });
 

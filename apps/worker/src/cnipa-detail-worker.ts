@@ -19,9 +19,7 @@ import {
   type CnipaDetailEnrichmentItemV1,
   type CnipaDetailRetryPolicy,
 } from "@markorbit/worker-runtime/cnipa-detail-enrichment-state";
-import type {
-  CnipaAuthenticatedSessionExecutorFactory,
-} from "@markorbit/worker-runtime/cnipa-artifact-acquirer";
+import type { CnipaAuthenticatedSessionExecutorFactory } from "@markorbit/worker-runtime/cnipa-artifact-acquirer";
 
 export interface CnipaDetailQueuePort {
   claimNext(input: {
@@ -30,9 +28,7 @@ export interface CnipaDetailQueuePort {
     now?: string;
     leaseMs?: number;
   }): CnipaDetailQueueRecord | null;
-  persistAttemptTransition(
-    input: PersistCnipaDetailAttemptTransitionInput,
-  ): CnipaDetailQueueRecord;
+  persistAttemptTransition(input: PersistCnipaDetailAttemptTransitionInput): CnipaDetailQueueRecord;
 }
 
 export type CnipaDetailRawArtifactSink = (
@@ -53,11 +49,7 @@ export type ProcessNextCnipaDetailInput = {
 export type ProcessNextCnipaDetailResult = {
   record: CnipaDetailQueueRecord;
   pauseLane: boolean;
-  outcome:
-    | "FETCHED"
-    | "RETRYABLE"
-    | "PERMANENTLY_UNAVAILABLE"
-    | "AUTH_SECURITY_HOLD";
+  outcome: "FETCHED" | "RETRYABLE" | "PERMANENTLY_UNAVAILABLE" | "AUTH_SECURITY_HOLD";
 };
 
 function queueState(record: CnipaDetailQueueRecord): CnipaDetailEnrichmentItemV1 {
@@ -141,10 +133,7 @@ function classifyError(
       ...(error.status !== undefined ? { httpStatus: error.status } : {}),
     };
   }
-  if (
-    error.code === "CNIPA_SOURCE_REJECTED" &&
-    (error.status === 404 || error.status === 410)
-  ) {
+  if (error.code === "CNIPA_SOURCE_REJECTED" && (error.status === 404 || error.status === 410)) {
     return {
       kind: "PERMANENTLY_UNAVAILABLE",
       observedAt,
@@ -202,9 +191,7 @@ export async function processNextCnipaDetail(
 
   const state = queueState(claimed);
   const leaseId = claimed.leaseId!;
-  let session:
-    | Awaited<ReturnType<CnipaAuthenticatedSessionExecutorFactory["create"]>>
-    | undefined;
+  let session: Awaited<ReturnType<CnipaAuthenticatedSessionExecutorFactory["create"]>> | undefined;
   try {
     session = await input.sessionFactory.create();
     const request = buildCnipaCandidateDetailRequest(claimed.documentKind, claimed.sourceRecordId);
