@@ -7,11 +7,7 @@ import {
 export const CNIPA_DETAIL_ENRICHMENT_STATE_VERSION = "cnipa-detail-enrichment-v1" as const;
 
 export type CnipaDetailLifecycle =
-  | "PENDING"
-  | "LEASED"
-  | "FETCHED"
-  | "RETRYABLE"
-  | "PERMANENTLY_UNAVAILABLE";
+  "PENDING" | "LEASED" | "FETCHED" | "RETRYABLE" | "PERMANENTLY_UNAVAILABLE";
 
 export type CnipaDetailHoldReason = "AUTH_SECURITY" | null;
 
@@ -98,7 +94,11 @@ function nonEmpty(value: string, label: string): string {
 function iso(value: string, label: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    throw new CnipaAcquisitionError("CNIPA_QUERY_INVALID", `${label} must be an ISO timestamp`, false);
+    throw new CnipaAcquisitionError(
+      "CNIPA_QUERY_INVALID",
+      `${label} must be an ISO timestamp`,
+      false,
+    );
   }
   return parsed.toISOString();
 }
@@ -270,10 +270,7 @@ export function cnipaDetailRetryDelayMs(
   return Math.min(resolved.retryBaseMs * 2 ** (attempts - 1), resolved.retryMaxMs);
 }
 
-function assertedLease(
-  item: CnipaDetailEnrichmentItemV1,
-  leaseId: string,
-): CnipaDetailLease {
+function assertedLease(item: CnipaDetailEnrichmentItemV1, leaseId: string): CnipaDetailLease {
   if (item.lifecycle !== "LEASED" || !item.lease) {
     throw new CnipaAcquisitionError(
       "CNIPA_QUERY_INVALID",
@@ -294,8 +291,7 @@ function assertedLease(
 function outcomeMetadata(outcome: CnipaDetailAttemptOutcome) {
   return {
     lastErrorCode: outcome.kind === "FETCHED" ? null : outcome.errorCode,
-    lastHttpStatus:
-      outcome.kind === "FETCHED" ? null : (outcome.httpStatus ?? null),
+    lastHttpStatus: outcome.kind === "FETCHED" ? null : (outcome.httpStatus ?? null),
     lastBusinessCode:
       outcome.kind === "FETCHED" || outcome.kind === "AUTH_SECURITY_HOLD"
         ? null
