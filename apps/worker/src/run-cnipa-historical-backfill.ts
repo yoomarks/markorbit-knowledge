@@ -227,9 +227,10 @@ async function findCoverageArtifact(
   state: CnipaHistoricalBackfillSourceState,
   runId: string,
 ): Promise<CoverageArtifact> {
+  const coverageUriPrefix = `cnipa://collection-coverage/${state.documentKind}/`;
   const body = await requestJson(
     baseUrl,
-    `/api/artifacts?runId=${encodeURIComponent(runId)}&artifactKind=JSON&limit=1000`,
+    `/api/artifacts?runId=${encodeURIComponent(runId)}&artifactKind=JSON&q=${encodeURIComponent(coverageUriPrefix)}&limit=100`,
   );
   const matches = items(body)
     .map((item) => record(record(item)?.artifact))
@@ -237,7 +238,7 @@ async function findCoverageArtifact(
       const uri = artifact?.canonicalUri;
       return (
         typeof uri === "string" &&
-        uri.startsWith(`cnipa://collection-coverage/${state.documentKind}/`)
+        uri.startsWith(coverageUriPrefix)
       );
     });
 
