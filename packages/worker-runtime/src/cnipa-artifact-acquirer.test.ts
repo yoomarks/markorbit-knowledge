@@ -235,6 +235,9 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
       artifact.originalName.includes("registration-examination-facts-"),
     );
     const markdown = artifacts.filter((artifact) => artifact.artifactKind === "MARKDOWN");
+    const coverage = artifacts.filter((artifact) =>
+      artifact.originalName.includes("registration-examination-coverage-"),
+    );
 
     expect(rawList).toHaveLength(2);
     expect(factProjection).toHaveLength(2);
@@ -243,6 +246,23 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
     expect(rawList[1]?.canonicalUri).toContain("page=2");
     expect(factProjection[0]?.parentCanonicalUris).toEqual([rawList[0]?.canonicalUri]);
     expect(factProjection[1]?.parentCanonicalUris).toEqual([rawList[1]?.canonicalUri]);
+    expect(coverage).toHaveLength(1);
+    expect(coverage[0]?.parentCanonicalUris).toEqual([
+      rawList[0]?.canonicalUri,
+      rawList[1]?.canonicalUri,
+    ]);
+    const coveragePayload = JSON.parse(
+      new TextDecoder().decode(coverage[0]!.content),
+    );
+    expect(coveragePayload).toMatchObject({
+      rawListPageCount: 2,
+      rawListRecordCount: 179,
+      uniqueSourceRecordCount: 179,
+      terminalPageLength: 79,
+      stopReason: "NATURAL_SHORT_OR_EMPTY_PAGE",
+      safetyCeilingReached: false,
+      completeByObservedPaging: true,
+    });
     expect(closed).toBe(1);
   });
 
