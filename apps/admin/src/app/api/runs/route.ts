@@ -23,6 +23,7 @@ import {
   getCollectionPlanRepository,
   getExecutionLedgerRepository,
 } from "@/server/source-registry";
+import { parseCnipaManualRunExtensions } from "@/server/cnipa-run-override";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,7 +82,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
-    const allowed = new Set(["planId"]);
+    const allowed = new Set(["planId", "extensions"]);
     if (Object.keys(body).some((key) => !allowed.has(key))) {
       throw new RegistryValidationError("Unknown manual dispatch field");
     }
@@ -95,10 +96,17 @@ export async function POST(request: Request) {
       plan.plan.workspaceId,
     );
     assertAdminBrowserResourceWorkspace(principal, plan.plan.workspaceId);
+    const idempotencyKey = request.headers.get("Idempotency-Key");
+    const extensions = parseCnipaManualRunExtensions({
+      rawExtensions: body.extensions,
+      planExtensions: plan.plan.extensions,
+      idempotencyKey,
+    });
     const result = getExecutionLedgerRepository().dispatchManual({
       planId: body.planId,
       requestedBy: { actorType: "LOCAL_ADMIN", actorId: principal.userId },
-      idempotencyKey: request.headers.get("Idempotency-Key") ?? undefined,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
+      ...(extensions ? { extensions } : {}),
     });
     return NextResponse.json(result, { status: result.replayed ? 200 : 201 });
   } catch (error) {
