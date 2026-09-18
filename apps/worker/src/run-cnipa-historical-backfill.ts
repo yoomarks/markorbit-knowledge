@@ -13,6 +13,16 @@ import {
 
 const DEFAULT_STATE_PATH = ".markorbit/cnipa-historical-backfill.json";
 const TERMINAL_RUN_STATUSES = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
+const ADMIN_WORKSPACE_HEADER = "x-markorbit-workspace-id";
+const ADMIN_CSRF_HEADER = "x-markorbit-csrf-token";
+
+type AdminAuthContext = {
+  workspaceId: string;
+  csrfToken: string;
+  origin: string;
+};
+
+let adminAuthContext: AdminAuthContext | null = null;
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -47,14 +57,25 @@ function normalizedBaseUrl(raw: string): string {
   return url.toString().replace(/\/$/, "");
 }
 
-function authHeaders(): Record<string, string> {
-  const cookie = process.env.MARKORBIT_ADMIN_COOKIE?.trim();
-  return cookie ? { cookie } : {};
+function adminCookieHeader(): string {
+  const raw = process.env.MARKORBIT_ADMIN_COOKIE?.trim();
+  if (!raw) {
+    throw new Error("MARKORBIT_ADMIN_COOKIE is required for the Knowledge Admin control plane");
+  }
+  return raw.includes("=") ? raw : `mo_session=${raw}`;
 }
 
 async function request(baseUrl: string, path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
-  for (const [key, value] of Object.entries(authHeaders())) headers.set(key, value);
+  headers.set("cookie", adminCookieHeader());
+  if (adminAuthContext) {
+    headers.set(ADMIN_WORKSPACE_HEADER, adminAuthContext.workspaceId);
+    const method = (init.method ?? "GET").toUpperCase();
+    if (method !== "GET" && method !== "HEAD") {
+      headers.set("origin", adminAuthContext.origin);
+      headers.set(ADMIN_CSRF_HEADER, adminAuthContext.csrfToken);
+    }
+  }
   const response = await fetch(`${baseUrl}${path}`, { ...init, headers });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -76,6 +97,40 @@ function jsonPost(body: unknown, idempotencyKey?: string): RequestInit {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   return { method: "POST", headers, body: JSON.stringify(body) };
+}
+
+async function bootstrapAdminAuth(baseUrl: string): Promise<AdminAuthContext> {
+  const session = record(await requestJson(baseUrl, "/api/admin-session"));
+  const csrfToken = requiredString(session?.csrfToken, "admin session csrfToken");
+  const workspaceRecords = Array.isArray(session?.workspaces)
+    ? session.workspaces.map(record).filter((value): value is Record<string, unknown> => value !== null)
+    : [];
+  const requestedWorkspaceId = process.env.MARKORBIT_CNIPA_BACKFILL_WORKSPACE_ID?.trim();
+  const selected = requestedWorkspaceId
+    ? workspaceRecords.find((workspace) => workspace.workspaceId === requestedWorkspaceId)
+    : workspaceRecords.length === 1
+      ? workspaceRecords[0]
+      : undefined;
+  if (!selected) {
+    const available = workspaceRecords
+      .map((workspace) => workspace.workspaceId)
+      .filter((value): value is string => typeof value === "string")
+      .join(", ");
+    throw new Error(
+      requestedWorkspaceId
+        ? `MARKORBIT_CNIPA_BACKFILL_WORKSPACE_ID ${requestedWorkspaceId} is not available in the admin session`
+        : `MARKORBIT_CNIPA_BACKFILL_WORKSPACE_ID is required when the admin session has ${workspaceRecords.length} workspaces${available ? `: ${available}` : ""}`,
+    );
+  }
+  const origin =
+    process.env.MARKORBIT_ADMIN_ORIGIN?.trim() || new URL(baseUrl).origin;
+  const context = {
+    workspaceId: requiredString(selected.workspaceId, "admin workspaceId"),
+    csrfToken,
+    origin,
+  };
+  adminAuthContext = context;
+  return context;
 }
 
 async function discoverSourceAndPlan(
@@ -125,10 +180,14 @@ async function atomicWriteCheckpoint(
   await rename(temporary, statePath);
 }
 
-function parseCheckpoint(value: unknown): CnipaHistoricalBackfillCheckpoint {
+function parseCheckpoint(
+  value: unknown,
+  expectedWorkspaceId: string,
+): CnipaHistoricalBackfillCheckpoint {
   const root = record(value);
   if (
     root?.schemaVersion !== CNIPA_HISTORICAL_BACKFILL_VERSION ||
+    root.workspaceId !== expectedWorkspaceId ||
     typeof root.updatedAt !== "string" ||
     !Array.isArray(root.sources)
   ) {
@@ -140,11 +199,15 @@ function parseCheckpoint(value: unknown): CnipaHistoricalBackfillCheckpoint {
 async function loadOrCreateCheckpoint(input: {
   baseUrl: string;
   statePath: string;
+  workspaceId: string;
   throughDate: string | undefined;
   floorDate: string;
 }): Promise<CnipaHistoricalBackfillCheckpoint> {
   try {
-    return parseCheckpoint(JSON.parse(await readFile(input.statePath, "utf8")));
+    return parseCheckpoint(
+      JSON.parse(await readFile(input.statePath, "utf8")),
+      input.workspaceId,
+    );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
@@ -168,6 +231,7 @@ async function loadOrCreateCheckpoint(input: {
   }
   const checkpoint: CnipaHistoricalBackfillCheckpoint = {
     schemaVersion: CNIPA_HISTORICAL_BACKFILL_VERSION,
+    workspaceId: input.workspaceId,
     updatedAt: new Date().toISOString(),
     sources,
   };
@@ -356,9 +420,11 @@ async function main(): Promise<void> {
   }
   const continuous = process.argv.includes("--continuous");
 
+  const auth = await bootstrapAdminAuth(baseUrl);
   let checkpoint = await loadOrCreateCheckpoint({
     baseUrl,
     statePath,
+    workspaceId: auth.workspaceId,
     throughDate,
     floorDate,
   });
@@ -381,7 +447,7 @@ async function main(): Promise<void> {
     }
 
     process.stdout.write(
-      `${JSON.stringify({ statePath, sources: summary(checkpoint) }, null, 2)}\n`,
+      `${JSON.stringify({ statePath, workspaceId: checkpoint.workspaceId, sources: summary(checkpoint) }, null, 2)}\n`,
     );
     const activeAfter = checkpoint.sources.filter(
       (source) => source.completionState === "ACTIVE",
