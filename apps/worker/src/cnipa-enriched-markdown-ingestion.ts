@@ -42,13 +42,23 @@ function byteStream(value: Uint8Array): AsyncIterable<Uint8Array> {
 
 function validateSeed(seed: CnipaDetailMarkdownEnrichmentV1): {
   content: Uint8Array;
+  parentArtifactIds: string[];
   listArtifactId: string;
+  listMarkdownArtifactId?: string;
   detailArtifactId: string;
 } {
   const listArtifactId = required(seed.listArtifactId, "listArtifactId");
+  const listMarkdownArtifactId = seed.listMarkdownArtifactId
+    ? required(seed.listMarkdownArtifactId, "listMarkdownArtifactId")
+    : undefined;
   const detailArtifactId = required(seed.detailArtifactId, "detailArtifactId");
-  if (listArtifactId === detailArtifactId) {
-    throw new Error("CNIPA enriched Markdown requires distinct LIST and DETAIL parent artifacts");
+  const parentArtifactIds = [
+    ...(listMarkdownArtifactId ? [listMarkdownArtifactId] : []),
+    listArtifactId,
+    detailArtifactId,
+  ];
+  if (new Set(parentArtifactIds).size !== parentArtifactIds.length) {
+    throw new Error("CNIPA enriched Markdown requires distinct lineage parent artifacts");
   }
   if (
     !SHA256.test(seed.baseMarkdownSha256) ||
@@ -64,13 +74,19 @@ function validateSeed(seed: CnipaDetailMarkdownEnrichmentV1): {
   if (!seed.logicalDocumentUri.startsWith("cnipa://judgment/")) {
     throw new Error("CNIPA enriched Markdown logical document URI is invalid");
   }
-  return { content, listArtifactId, detailArtifactId };
+  return {
+    content,
+    parentArtifactIds,
+    listArtifactId,
+    ...(listMarkdownArtifactId ? { listMarkdownArtifactId } : {}),
+    detailArtifactId,
+  };
 }
 
 function descriptor(
   seed: CnipaDetailMarkdownEnrichmentV1,
   content: Uint8Array,
-  parents: readonly [string, string],
+  parents: readonly string[],
 ): ArtifactUploadDescriptor {
   const identity = sha256(
     `${seed.documentKind}\u0000${seed.sourceRecordId}\u0000${seed.logicalDocumentUri}`,
@@ -93,14 +109,12 @@ export async function ingestCnipaEnrichedMarkdown(input: {
   enrichment: CnipaDetailMarkdownEnrichmentV1;
 }): Promise<CnipaEnrichedMarkdownIngestionResult> {
   const validated = validateSeed(input.enrichment);
-  const parentArtifactIds: [string, string] = [
-    validated.listArtifactId,
-    validated.detailArtifactId,
-  ];
+  const parentArtifactIds = validated.parentArtifactIds;
   const identityHash = sha256(
     [
       input.enrichment.logicalDocumentUri,
       validated.listArtifactId,
+      validated.listMarkdownArtifactId ?? "",
       validated.detailArtifactId,
       input.enrichment.baseMarkdownSha256,
       input.enrichment.detailBodySha256,
