@@ -188,6 +188,36 @@ Resolution precedence is deterministic:
 
 The materializer never mutates the SourceDefinition or CollectionPlan snapshot and does not grant collection authority. The resulting concrete query still passes the existing authenticated-raw-verified query guards and bounded pagination logic.
 
+## Bounded historical backfill
+
+Historical replay is dispatched through the existing Execution Ledger rather than by teaching the Collection Scheduler to catch up an unbounded past. A backfill request is authorized against an existing CNIPA CollectionPlan and derives the single permitted document library from that plan's `x-markorbit.cnipa-query-template`.
+
+The Admin mutation endpoint is:
+
+```text
+POST /api/cnipa/backfill
+```
+
+with a bounded body:
+
+```json
+{
+  "planId": "pln_...",
+  "fromDate": "2026-07-01",
+  "toDate": "2026-07-31"
+}
+```
+
+The endpoint accepts at most 31 calendar days per batch. It creates one MANUAL CollectionRun per date using a deterministic idempotency key of the form:
+
+```text
+cnipa-backfill:<planId>:<documentKind>:<YYYY-MM-DD>
+```
+
+Each Run/Job freezes a concrete single-day `x-markorbit.cnipa-query` DATE_RANGE override. Re-submitting the same plan/date batch replays the existing Run identities instead of creating duplicates. Reusing an idempotency key with different execution extensions remains an Execution Ledger conflict.
+
+The endpoint does not accept a caller-supplied document kind, arbitrary extensions, credentials, or browser/session settings. The plan's Source must use `cnipa-authenticated-worker`; the plan must authorize exactly one CNIPA judgment library through its schedule-slot query template. Larger historical ranges are intentionally split into multiple bounded batches.
+
 ## Raw evidence
 
 Every successful list and detail response is emitted as `artifactKind=JSON` using the exact sanitized response bytes. `ArtifactBackedCollectionExecutor` then performs the existing immutable RawArtifact ingestion protocol, SHA verification, change-watch identity checks and finalization. CNIPA does not write directly to persistence.
