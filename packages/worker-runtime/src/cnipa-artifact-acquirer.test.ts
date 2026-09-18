@@ -87,6 +87,62 @@ describe("CnipaJudgmentArtifactAcquirer", () => {
     expect(closed).toBe(1);
   });
 
+  it("acquires registration date ranges as hidden-paged LIST evidence without DETAIL fan-out", async () => {
+    const input = context();
+    (input.job.sourceSnapshot.connectorConfig as Record<string, unknown>).query = {
+      mode: "DATE_RANGE",
+      fromDate: "2026-07-02",
+      toDate: "2026-07-02",
+      documentKinds: ["REGISTRATION_EXAMINATION"],
+    };
+    (input.job.sourceSnapshot.connectorConfig as Record<string, unknown>).responseSchema = {
+      list: {
+        recordsPath: ["data", "list"],
+        sourceRecordIdField: "adjuOpenId",
+        totalPath: ["data", "total"],
+      },
+      detail: {},
+    };
+    let closed = 0;
+    const factory: CnipaAuthenticatedSessionExecutorFactory = {
+      async create() {
+        return {
+          async execute(request) {
+            if (request.surface !== "LIST") throw new Error("DETAIL must not be requested");
+            const pageIndex = Number(request.jsonBody?.pageIndex ?? 1);
+            const count = pageIndex === 1 ? 100 : 79;
+            return jsonResponse(request, {
+              data: {
+                list: Array.from({ length: count }, (_, index) => ({
+                  adjuOpenId: `r${pageIndex}-${index + 1}`,
+                  fileContent: `registration-${pageIndex}-${index + 1}`,
+                })),
+                total: 100,
+                pageIndex: 1,
+                pageSize: 100,
+                pages: 1,
+              },
+            });
+          },
+          async close() {
+            closed += 1;
+          },
+        };
+      },
+    };
+
+    const artifacts = await new CnipaJudgmentArtifactAcquirer(factory).acquire(input);
+
+    expect(artifacts).toHaveLength(2);
+    expect(artifacts.map((artifact) => artifact.originalName)).toEqual([
+      expect.stringContaining("registration-examination-list-"),
+      expect.stringContaining("registration-examination-list-"),
+    ]);
+    expect(artifacts[0]?.canonicalUri).toContain("page=1");
+    expect(artifacts[1]?.canonicalUri).toContain("page=2");
+    expect(closed).toBe(1);
+  });
+
   it("acquires opposition date ranges as hidden-paged LIST evidence without DETAIL fan-out", async () => {
     const input = context();
     (input.job.sourceSnapshot.connectorConfig as Record<string, unknown>).query = {

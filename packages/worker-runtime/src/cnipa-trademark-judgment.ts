@@ -294,9 +294,8 @@ export function resolveCnipaDocumentKinds(
 /**
  * Official frontend static code establishes the request field names and the fixed
  * `openFlag: 1` used by opposition/review list requests. Authenticated raw response
- * evidence additionally verifies OPPOSITION_DECISION and REVIEW_ADJUDICATION
- * date-range request semantics. Other unverified query/document-kind combinations
- * remain fail-closed.
+ * evidence additionally verifies date-range request semantics for all three judgment
+ * libraries. Other unverified query/document-kind combinations remain fail-closed.
  */
 export function buildCnipaCandidateListRequest(
   documentKind: CnipaDocumentKind,
@@ -317,6 +316,25 @@ export function buildCnipaCandidateListRequest(
         pageIndex: 1,
         pageSize: 10,
         regNo: query.registrationNumber,
+      },
+    };
+  }
+
+  if (query.mode === "DATE_RANGE" && documentKind === "REGISTRATION_EXAMINATION") {
+    return {
+      method: "POST",
+      path: endpoint.listPath,
+      documentKind,
+      surface: "LIST",
+      jsonBody: {
+        ...fixedFields,
+        regNo: "",
+        tmName: "",
+        applicantCnName: "",
+        returnDateStart: query.fromDate,
+        returnDateEnd: query.toDate,
+        pageIndex: 1,
+        pageSize: 100,
       },
     };
   }

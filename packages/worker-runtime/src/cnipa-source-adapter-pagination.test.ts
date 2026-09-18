@@ -95,6 +95,105 @@ describe("CNIPA bounded pagination", () => {
     expect(result.coverageStatus).toBe("UNKNOWN");
   });
 
+  it("treats a repeated full registration page with no new ids as a safe terminal signal", async () => {
+    const requests: CnipaAuthenticatedRequest[] = [];
+    const executor: CnipaAuthenticatedSessionExecutor = {
+      async execute(request) {
+        requests.push(request);
+        return response(request, { code: 0, data: { total: 100, pages: 1, pageIndex: 1 } });
+      },
+    };
+    const ids = (page: number) =>
+      Array.from({ length: 100 }, (_, index) => `r${page}-${String(index + 1).padStart(3, "0")}`);
+    const decoder: CnipaJudgmentResponseDecoder = {
+      decodeList() {
+        const page = Number(requests.at(-1)?.jsonBody?.pageIndex ?? 1);
+        return {
+          sourceRecordIds: page <= 6 ? ids(page) : ids(1),
+          total: 100,
+          hasMore: false,
+        };
+      },
+      decodeDetail(_kind, sourceRecordId) {
+        return { sourceRecordId, parties: [] };
+      },
+    };
+    const adapter = new CnipaSourceAdapter(executor, decoder, {
+      maxPagesPerLibrary: 10,
+      maxDetailRequestsPerRun: 1,
+      pageSize: 100,
+    });
+
+    const result = await adapter.fetch({
+      mode: "DATE_RANGE",
+      fromDate: "2026-07-01",
+      toDate: "2026-07-01",
+      documentKinds: ["REGISTRATION_EXAMINATION"],
+    });
+
+    expect(
+      requests
+        .filter((request) => request.surface === "LIST")
+        .map((request) => request.jsonBody?.pageIndex),
+    ).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(requests.filter((request) => request.surface === "DETAIL")).toHaveLength(0);
+    expect(result.evidence).toHaveLength(7);
+    expect(result.documents).toHaveLength(0);
+    expect(result.coverageStatus).toBe("UNKNOWN");
+    expect(result.coverageReasons.join(" ")).toContain(
+      "full hidden page without any new source ids",
+    );
+  });
+
+  it("follows registration hidden pages until a natural short page", async () => {
+    const requests: CnipaAuthenticatedRequest[] = [];
+    const executor: CnipaAuthenticatedSessionExecutor = {
+      async execute(request) {
+        requests.push(request);
+        return response(request, { code: 0, data: { total: 100, pages: 1, pageIndex: 1 } });
+      },
+    };
+    const ids = (page: number, count: number) =>
+      Array.from(
+        { length: count },
+        (_, index) => `rr${page}-${String(index + 1).padStart(3, "0")}`,
+      );
+    const decoder: CnipaJudgmentResponseDecoder = {
+      decodeList() {
+        const page = Number(requests.at(-1)?.jsonBody?.pageIndex ?? 1);
+        return {
+          sourceRecordIds: page <= 7 ? ids(page, 100) : ids(page, 79),
+          total: 100,
+          hasMore: false,
+        };
+      },
+      decodeDetail(_kind, sourceRecordId) {
+        return { sourceRecordId, parties: [] };
+      },
+    };
+    const adapter = new CnipaSourceAdapter(executor, decoder, {
+      maxPagesPerLibrary: 10,
+      maxDetailRequestsPerRun: 1,
+      pageSize: 100,
+    });
+
+    const result = await adapter.fetch({
+      mode: "DATE_RANGE",
+      fromDate: "2026-07-02",
+      toDate: "2026-07-02",
+      documentKinds: ["REGISTRATION_EXAMINATION"],
+    });
+
+    expect(
+      requests
+        .filter((request) => request.surface === "LIST")
+        .map((request) => request.jsonBody?.pageIndex),
+    ).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(result.evidence).toHaveLength(8);
+    expect(result.documents).toHaveLength(0);
+    expect(result.coverageStatus).toBe("UNKNOWN");
+  });
+
   it("follows requested opposition date pageIndex beyond the clamped 100-result metadata window", async () => {
     const requests: CnipaAuthenticatedRequest[] = [];
     const executor: CnipaAuthenticatedSessionExecutor = {
