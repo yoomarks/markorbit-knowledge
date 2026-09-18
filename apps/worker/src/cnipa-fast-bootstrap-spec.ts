@@ -3,8 +3,7 @@ import {
   CNIPA_CONNECTOR_VERSION,
 } from "@markorbit/worker-runtime/cnipa-artifact-acquirer";
 
-export const CNIPA_FAST_QUERY_TEMPLATE_EXTENSION_KEY =
-  "x-markorbit.cnipa-query-template" as const;
+export const CNIPA_FAST_QUERY_TEMPLATE_EXTENSION_KEY = "x-markorbit.cnipa-query-template" as const;
 export const CNIPA_FAST_TIMEZONE = "Asia/Shanghai" as const;
 export const CNIPA_FAST_DEFAULT_HOUR = 8 as const;
 export const CNIPA_FAST_DEFAULT_MINUTE = 30 as const;
@@ -13,10 +12,7 @@ export type CnipaFastSourceKey = "registration" | "opposition" | "review";
 
 export type CnipaFastSourceSpec = {
   key: CnipaFastSourceKey;
-  documentKind:
-    | "REGISTRATION_EXAMINATION"
-    | "OPPOSITION_DECISION"
-    | "REVIEW_ADJUDICATION";
+  documentKind: "REGISTRATION_EXAMINATION" | "OPPOSITION_DECISION" | "REVIEW_ADJUDICATION";
   name: string;
   slug: string;
   canonicalUri: string;
@@ -40,8 +36,7 @@ export const CNIPA_FAST_SOURCE_SPECS: readonly CnipaFastSourceSpec[] = [
     documentKind: "OPPOSITION_DECISION",
     name: "CNIPA Trademark Opposition Decisions",
     slug: "cnipa-trademark-opposition-decisions",
-    canonicalUri:
-      "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/portalui-pub-prod/trademarkObjection",
+    canonicalUri: "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/portalui-pub-prod/trademarkObjection",
     sourceRecordIdField: "adjuOpenId",
     tags: ["cnipa", "trademark", "judgment", "opposition", "fast-list"],
   },
