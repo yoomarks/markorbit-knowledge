@@ -60,7 +60,8 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "cnipa:evidence:assess-capture-dataset": "tsx src/run-cnipa-capture-dataset-assessor.ts"
+    "cnipa:evidence:assess-capture-dataset": "tsx src/run-cnipa-capture-dataset-assessor.ts",
+    "bootstrap:cnipa-fast": "tsx src/bootstrap-cnipa-fast.ts"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
