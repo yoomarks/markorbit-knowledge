@@ -33,7 +33,7 @@ describe("CNIPA execution query materialization", () => {
             toDayOffset: -1,
           },
         },
-      } as Job["planSnapshot"],
+      } as unknown as Job["planSnapshot"],
     });
 
     expect(resolveCnipaExecutionQuery(input, undefined)).toEqual({
@@ -60,7 +60,7 @@ describe("CNIPA execution query materialization", () => {
             toDayOffset: -1,
           },
         },
-      } as Job["planSnapshot"],
+      } as unknown as Job["planSnapshot"],
     });
 
     expect(resolveCnipaExecutionQuery(input, undefined)).toEqual({
@@ -92,7 +92,7 @@ describe("CNIPA execution query materialization", () => {
             toDayOffset: -1,
           },
         },
-      } as Job["planSnapshot"],
+      } as unknown as Job["planSnapshot"],
     });
 
     expect(
@@ -132,7 +132,7 @@ describe("CNIPA execution query materialization", () => {
             documentKinds: ["REGISTRATION_EXAMINATION"],
           },
         },
-      } as Job["planSnapshot"],
+      } as unknown as Job["planSnapshot"],
     });
 
     expect(() => resolveCnipaExecutionQuery(input, undefined)).toThrowError(
@@ -155,7 +155,7 @@ describe("CNIPA execution query materialization", () => {
             toDayOffset: 1,
           },
         },
-      } as Job["planSnapshot"],
+      } as unknown as Job["planSnapshot"],
     });
 
     expect(() => resolveCnipaExecutionQuery(input, undefined)).toThrowError(
@@ -176,7 +176,7 @@ describe("CNIPA execution query materialization", () => {
             documentKinds: ["REGISTRATION_EXAMINATION", "OPPOSITION_DECISION"],
           },
         },
-      } as Job["planSnapshot"],
+      } as unknown as Job["planSnapshot"],
     });
 
     expect(() => resolveCnipaExecutionQuery(input, undefined)).toThrowError(
