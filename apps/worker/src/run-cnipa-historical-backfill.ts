@@ -97,7 +97,7 @@ async function discoverSourceAndPlan(
   );
   const expectedName = `${spec.name} — FAST LIST`;
   const plan = items(plans)
-    .map((candidate) => record(record(candidate)?.plan))
+    .map(record)
     .find((candidate) => candidate?.name === expectedName);
   return { sourceId, planId: requiredString(plan?.id, `${spec.key} planId`) };
 }
@@ -286,18 +286,20 @@ async function tickSource(input: {
     await atomicWriteCheckpoint(input.statePath, checkpoint);
   }
 
-  if (!state.lastRunId) {
+  if (!state.activeRunId) {
     const runId = await dispatchWindow(input.baseUrl, state);
-    state = { ...state, lastRunId: runId };
+    state = { ...state, activeRunId: runId };
     checkpoint = updatedCheckpoint(checkpoint, state);
     await atomicWriteCheckpoint(input.statePath, checkpoint);
   }
 
-  const runId = state.lastRunId!;
+  const runId = state.activeRunId!;
   const status = await waitForTerminalRun(input.baseUrl, runId, input.pollMs);
   if (status !== "COMPLETED") {
     state = {
       ...state,
+      activeRunId: null,
+      lastRunId: runId,
       completionState: "BLOCKED",
       blockReason: `RUN_${status}`,
     };
@@ -328,6 +330,8 @@ function summary(checkpoint: CnipaHistoricalBackfillCheckpoint) {
     windowDays: source.currentWindowDays,
     completionState: source.completionState,
     blockReason: source.blockReason,
+    activeRunId: source.activeRunId,
+    lastRunId: source.lastRunId,
     lastObservation: source.lastObservation,
     lastAcceptedWindow: source.lastAcceptedWindow,
   }));
