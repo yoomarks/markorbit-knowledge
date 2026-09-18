@@ -18,11 +18,7 @@ const DOCUMENT_KINDS = [
 
 export type CnipaDetailDocumentKind = (typeof DOCUMENT_KINDS)[number];
 export type CnipaDetailQueueLifecycle =
-  | "PENDING"
-  | "LEASED"
-  | "FETCHED"
-  | "RETRYABLE"
-  | "PERMANENTLY_UNAVAILABLE";
+  "PENDING" | "LEASED" | "FETCHED" | "RETRYABLE" | "PERMANENTLY_UNAVAILABLE";
 export type CnipaDetailQueueHoldReason = "AUTH_SECURITY" | null;
 
 export type CnipaDetailQueueRecord = {
@@ -100,12 +96,9 @@ type QueueRow = {
 };
 
 const DETAIL_PATHS: Record<CnipaDetailDocumentKind, string> = {
-  REGISTRATION_EXAMINATION:
-    "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryInfo",
-  OPPOSITION_DECISION:
-    "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmyyJudgment/queryInfo",
-  REVIEW_ADJUDICATION:
-    "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmpsJudgment/queryInfo",
+  REGISTRATION_EXAMINATION: "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmscJudgment/queryInfo",
+  OPPOSITION_DECISION: "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmyyJudgment/queryInfo",
+  REVIEW_ADJUDICATION: "/toas-pub-prod/pub-prod-api/pubnotice/portal/tmpsJudgment/queryInfo",
 };
 
 function required(value: string, label: string): string {
@@ -162,8 +155,7 @@ function rowRecord(row: QueueRow): CnipaDetailQueueRecord {
     nextAttemptAt: row.next_attempt_at,
     lastErrorCode: row.last_error_code,
     lastHttpStatus: row.last_http_status === null ? null : Number(row.last_http_status),
-    lastBusinessCode:
-      row.last_business_code === null ? null : Number(row.last_business_code),
+    lastBusinessCode: row.last_business_code === null ? null : Number(row.last_business_code),
     lastSuccessAt: row.last_success_at,
     detailArtifactRef: row.detail_artifact_ref,
     detailSha256: row.detail_sha256,
@@ -282,14 +274,7 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
                   updated_at = ?
             WHERE workspace_id = ? AND document_kind = ? AND source_record_id = ?`,
         )
-        .run(
-          lastListArtifactRef,
-          lastObservedAt,
-          now,
-          workspaceId,
-          kind,
-          sourceRecordId,
-        );
+        .run(lastListArtifactRef, lastObservedAt, now, workspaceId, kind, sourceRecordId);
       return this.getByIdentity(workspaceId, kind, sourceRecordId)!;
     }
 
@@ -384,9 +369,7 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
         `SELECT * FROM cnipa_detail_enrichment_queue
           WHERE workspace_id = ? AND document_kind = ? AND source_record_id = ?`,
       )
-      .get(workspaceId, documentKind(kind), sourceRecordId) as unknown as
-      | QueueRow
-      | undefined;
+      .get(workspaceId, documentKind(kind), sourceRecordId) as unknown as QueueRow | undefined;
     return row ? rowRecord(row) : null;
   }
 
@@ -402,8 +385,7 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
     const leaseExpiresAt = new Date(Date.parse(now) + leaseMs).toISOString();
 
     let claimedIdentity:
-      | { documentKind: CnipaDetailDocumentKind; sourceRecordId: string }
-      | undefined;
+      { documentKind: CnipaDetailDocumentKind; sourceRecordId: string } | undefined;
     databaseTransaction(this.database, () => {
       this.database
         .prepare(
