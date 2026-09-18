@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildCnipaDateRangeCoverageManifest } from "./cnipa-collection-coverage";
-import type {
-  CnipaJudgmentCollection,
-  CnipaResponseEvidence,
-} from "./cnipa-trademark-judgment";
+import type { CnipaJudgmentCollection, CnipaResponseEvidence } from "./cnipa-trademark-judgment";
 
 function listEvidence(page: number, ids: string[]): CnipaResponseEvidence {
   return {
@@ -55,10 +52,7 @@ function ids(prefix: string, count: number): string[] {
 describe("CNIPA collection coverage manifest", () => {
   it("accepts a natural short terminal page as complete by observed paging", () => {
     const manifest = buildCnipaDateRangeCoverageManifest({
-      collection: collection([
-        listEvidence(1, ids("p1", 100)),
-        listEvidence(2, ids("p2", 35)),
-      ]),
+      collection: collection([listEvidence(1, ids("p1", 100)), listEvidence(2, ids("p2", 35))]),
       pageSize: 100,
       maxPagesPerLibrary: 50,
     });
@@ -79,10 +73,7 @@ describe("CNIPA collection coverage manifest", () => {
   it("marks a repeated full page as incomplete even when the run itself can complete", () => {
     const first = ids("same", 100);
     const manifest = buildCnipaDateRangeCoverageManifest({
-      collection: collection([
-        listEvidence(1, first),
-        listEvidence(2, first),
-      ]),
+      collection: collection([listEvidence(1, first), listEvidence(2, first)]),
       pageSize: 100,
       maxPagesPerLibrary: 50,
     });
