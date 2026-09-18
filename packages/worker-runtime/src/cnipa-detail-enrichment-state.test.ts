@@ -26,9 +26,9 @@ describe("CNIPA DETAIL enrichment state", () => {
     );
     expect(item.lifecycle).toBe("PENDING");
     expect(item.attemptCount).toBe(0);
-    expect(
-      cnipaDetailCanonicalUri("REVIEW_ADJUDICATION", "2072268351827644416"),
-    ).toContain("tmpsJudgment/queryInfo?id=2072268351827644416");
+    expect(cnipaDetailCanonicalUri("REVIEW_ADJUDICATION", "2072268351827644416")).toContain(
+      "tmpsJudgment/queryInfo?id=2072268351827644416",
+    );
   });
 
   it("leases only eligible work and rejects stale lease ids", () => {
@@ -60,10 +60,7 @@ describe("CNIPA DETAIL enrichment state", () => {
       now: "2026-09-18T08:01:00Z",
       policy: { leaseMs: 60_000 },
     });
-    const reclaimed = reclaimExpiredCnipaDetailLease(
-      leased,
-      "2026-09-18T08:03:00Z",
-    );
+    const reclaimed = reclaimExpiredCnipaDetailLease(leased, "2026-09-18T08:03:00Z");
     expect(reclaimed.lifecycle).toBe("RETRYABLE");
     expect(reclaimed.attemptCount).toBe(0);
     expect(reclaimed.nextAttemptAt).toBe("2026-09-18T08:03:00.000Z");
@@ -110,9 +107,7 @@ describe("CNIPA DETAIL enrichment state", () => {
     expect(transition.item.lifecycle).toBe("PENDING");
     expect(transition.item.holdReason).toBe("AUTH_SECURITY");
     expect(transition.item.attemptCount).toBe(0);
-    expect(
-      isCnipaDetailEligible(transition.item, "2026-09-19T08:00:00Z"),
-    ).toBe(false);
+    expect(isCnipaDetailEligible(transition.item, "2026-09-19T08:00:00Z")).toBe(false);
 
     const released = releaseCnipaDetailAuthSecurityHold(transition.item);
     expect(released.holdReason).toBeNull();
@@ -139,12 +134,8 @@ describe("CNIPA DETAIL enrichment state", () => {
     expect(transition.item.lifecycle).toBe("RETRYABLE");
     expect(transition.item.attemptCount).toBe(1);
     expect(transition.item.nextAttemptAt).toBe("2026-09-18T08:02:30.000Z");
-    expect(
-      isCnipaDetailEligible(transition.item, "2026-09-18T08:02:00Z"),
-    ).toBe(false);
-    expect(
-      isCnipaDetailEligible(transition.item, "2026-09-18T08:02:30Z"),
-    ).toBe(true);
+    expect(isCnipaDetailEligible(transition.item, "2026-09-18T08:02:00Z")).toBe(false);
+    expect(isCnipaDetailEligible(transition.item, "2026-09-18T08:02:30Z")).toBe(true);
   });
 
   it("records fetched artifact identity and detects same-body dedupe", () => {
