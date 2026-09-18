@@ -121,6 +121,48 @@ describe("CnipaSourceAdapter", () => {
     expect(executor.requests).toHaveLength(0);
   });
 
+  it("emits the authenticated-live-verified opposition date request fields", async () => {
+    const requests: CnipaAuthenticatedRequest[] = [];
+    const executor: CnipaAuthenticatedSessionExecutor = {
+      async execute(request) {
+        requests.push(request);
+        return jsonResponse(request, { ok: true });
+      },
+    };
+    const decoder = new FixtureDecoder();
+    decoder.decodeList = () => ({ sourceRecordIds: [], total: 100, hasMore: false });
+    const adapter = new CnipaSourceAdapter(executor, decoder, { pageSize: 100 });
+
+    const result = await adapter.fetch({
+      mode: "DATE_RANGE",
+      fromDate: "2026-07-01",
+      toDate: "2026-07-09",
+      documentKinds: ["OPPOSITION_DECISION"],
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      method: "POST",
+      documentKind: "OPPOSITION_DECISION",
+      surface: "LIST",
+      jsonBody: {
+        openFlag: 1,
+        regNo: "",
+        tmName: "",
+        objenderCnName: "",
+        objeperCnName: "",
+        objenderAgentName: "",
+        objeperAgentName: "",
+        returnDateStart: "2026-07-01",
+        returnDateEnd: "2026-07-09",
+        pageIndex: 1,
+        pageSize: 100,
+      },
+    });
+    expect(result.documents).toHaveLength(0);
+    expect(result.evidence).toHaveLength(1);
+  });
+
   it("emits the authenticated-live-verified review date request fields", async () => {
     const requests: CnipaAuthenticatedRequest[] = [];
     const executor: CnipaAuthenticatedSessionExecutor = {
