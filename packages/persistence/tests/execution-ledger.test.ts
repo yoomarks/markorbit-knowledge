@@ -126,6 +126,12 @@ describe("SQLite Execution Ledger", () => {
     const dispatched = runs.dispatchManual({
       planId: plan.plan.id,
       idempotencyKey: "manual-001",
+      extensions: {
+        "x-markorbit.test-window": {
+          fromDate: "2026-07-01",
+          toDate: "2026-07-01",
+        },
+      },
     });
 
     expect(dispatched.replayed).toBe(false);
@@ -133,6 +139,13 @@ describe("SQLite Execution Ledger", () => {
     expect(dispatched.record.jobs).toHaveLength(1);
     expect(dispatched.record.jobs[0]?.status).toBe("PENDING");
     expect(dispatched.record.jobs[0]?.jobType).toBe("WEB_CRAWL");
+    expect(dispatched.record.run.extensions).toEqual({
+      "x-markorbit.test-window": {
+        fromDate: "2026-07-01",
+        toDate: "2026-07-01",
+      },
+    });
+    expect(dispatched.record.jobs[0]?.extensions).toEqual(dispatched.record.run.extensions);
     expect(isCollectionRun(dispatched.record.run)).toBe(true);
     expect(isJob(dispatched.record.jobs[0])).toBe(true);
     expect(
@@ -152,18 +165,54 @@ describe("SQLite Execution Ledger", () => {
     database.close();
   });
 
-  it("replays identical idempotent dispatch and rejects conflicting use", () => {
+  it("replays identical idempotent dispatch and rejects plan or extension conflicts", () => {
     const { database, sources, plans, runs } = repositories();
     const source = sources.create(sourceInput());
     const firstPlan = plans.create(planInput(source.id));
-    const first = runs.dispatchManual({ planId: firstPlan.plan.id, idempotencyKey: "same-key" });
-    const replay = runs.dispatchManual({ planId: firstPlan.plan.id, idempotencyKey: "same-key" });
+    const extensions = {
+      "x-markorbit.test-window": {
+        fromDate: "2026-07-01",
+        toDate: "2026-07-01",
+      },
+    } as const;
+    const first = runs.dispatchManual({
+      planId: firstPlan.plan.id,
+      idempotencyKey: "same-key",
+      extensions,
+    });
+    const replay = runs.dispatchManual({
+      planId: firstPlan.plan.id,
+      idempotencyKey: "same-key",
+      extensions: {
+        "x-markorbit.test-window": {
+          toDate: "2026-07-01",
+          fromDate: "2026-07-01",
+        },
+      },
+    });
     expect(replay.replayed).toBe(true);
     expect(replay.record.run.id).toBe(first.record.run.id);
 
+    expect(() =>
+      runs.dispatchManual({
+        planId: firstPlan.plan.id,
+        idempotencyKey: "same-key",
+        extensions: {
+          "x-markorbit.test-window": {
+            fromDate: "2026-07-02",
+            toDate: "2026-07-02",
+          },
+        },
+      }),
+    ).toThrowError(RegistryConflictError);
+
     const secondPlan = plans.create(planInput(source.id, { name: "Second plan" }));
     expect(() =>
-      runs.dispatchManual({ planId: secondPlan.plan.id, idempotencyKey: "same-key" }),
+      runs.dispatchManual({
+        planId: secondPlan.plan.id,
+        idempotencyKey: "same-key",
+        extensions,
+      }),
     ).toThrowError(RegistryConflictError);
     database.close();
   });
