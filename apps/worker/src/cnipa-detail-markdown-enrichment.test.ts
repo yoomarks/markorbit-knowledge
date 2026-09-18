@@ -37,10 +37,12 @@ describe("CNIPA DETAIL Markdown enrichment coordinator", () => {
   });
 
   it("persists one new immutable Markdown version for material DETAIL facts", async () => {
-    const sink = vi.fn(async () => ({
-      artifactId: "raw_enriched_markdown",
-      sha256: "a".repeat(64),
-    }));
+    const sink = vi.fn(
+      async (_input: Parameters<CnipaDetailMarkdownSink>[0]) => ({
+        artifactId: "raw_enriched_markdown",
+        sha256: "a".repeat(64),
+      }),
+    );
     const result = await enrichCnipaDetailMarkdown({
       evidence: evidence({
         code: 0,
