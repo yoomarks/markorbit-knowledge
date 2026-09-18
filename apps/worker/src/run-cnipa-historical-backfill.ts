@@ -512,28 +512,3 @@ main().catch((error) => {
   );
   process.exitCode = 1;
 });
-  const artifact = await findCoverageArtifact(input.baseUrl, state, runId);
-  const manifest = await readCoverageManifest(input.baseUrl, artifact.id);
-  state = applyCnipaCoverageObservation({
-    state,
-    runId,
-    artifactId: artifact.id,
-    artifactSha256: artifact.sha256,
-    manifest,
-  });
-  checkpoint = updatedCheckpoint(checkpoint, state);
-  await atomicWriteCheckpoint(input.statePath, checkpoint);
-  return checkpoint;
-}
-
-function summary(checkpoint: CnipaHistoricalBackfillCheckpoint) {
-  return checkpoint.sources.map((source) => ({
-    documentKind: source.documentKind,
-    cursorDate: source.cursorDate,
-    throughDate: source.throughDate,
-    windowDays: source.currentWindowDays,
-    completionState: source.completionState,
-    blockReason: source.blockReason,
-    activeRunId: source.activeRunId,
-    lastRunId: source.lastRunId,
-    lastObservation: source.lastObservation,
