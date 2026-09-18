@@ -95,6 +95,54 @@ describe("CNIPA bounded pagination", () => {
     expect(result.coverageStatus).toBe("UNKNOWN");
   });
 
+  it("follows requested opposition date pageIndex beyond the clamped 100-result metadata window", async () => {
+    const requests: CnipaAuthenticatedRequest[] = [];
+    const executor: CnipaAuthenticatedSessionExecutor = {
+      async execute(request) {
+        requests.push(request);
+        return response(request, { code: 0, data: { total: 100, pages: 1, pageIndex: 1 } });
+      },
+    };
+    const ids = (page: number, count: number) =>
+      Array.from({ length: count }, (_, index) => `o${page}-${String(index + 1).padStart(3, "0")}`);
+    const decoder: CnipaJudgmentResponseDecoder = {
+      decodeList() {
+        const page = Number(requests.at(-1)?.jsonBody?.pageIndex ?? 1);
+        return {
+          sourceRecordIds: page === 1 ? ids(1, 100) : page === 2 ? ids(2, 100) : ids(3, 97),
+          total: 100,
+          hasMore: false,
+        };
+      },
+      decodeDetail(_kind, sourceRecordId) {
+        return { sourceRecordId, parties: [] };
+      },
+    };
+    const adapter = new CnipaSourceAdapter(executor, decoder, {
+      maxPagesPerLibrary: 5,
+      maxDetailRequestsPerRun: 1,
+      pageSize: 100,
+    });
+
+    const result = await adapter.fetch({
+      mode: "DATE_RANGE",
+      fromDate: "2026-07-01",
+      toDate: "2026-07-09",
+      documentKinds: ["OPPOSITION_DECISION"],
+    });
+
+    expect(
+      requests
+        .filter((request) => request.surface === "LIST")
+        .map((request) => request.jsonBody?.pageIndex),
+    ).toEqual([1, 2, 3]);
+    expect(requests.filter((request) => request.surface === "DETAIL")).toHaveLength(0);
+    expect(result.evidence).toHaveLength(3);
+    expect(result.documents).toHaveLength(0);
+    expect(result.coverageStatus).toBe("UNKNOWN");
+    expect(result.coverageReasons.join(" ")).toContain("DETAIL fan-out is intentionally skipped");
+  });
+
   it("follows requested review date pageIndex beyond the clamped 100-result metadata window", async () => {
     const requests: CnipaAuthenticatedRequest[] = [];
     const executor: CnipaAuthenticatedSessionExecutor = {
