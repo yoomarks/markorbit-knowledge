@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { enrichCnipaDetailMarkdown } from "./cnipa-detail-markdown-enrichment";
+import {\n  enrichCnipaDetailMarkdown,\n  type CnipaDetailMarkdownSink,\n} from "./cnipa-detail-markdown-enrichment";
 
 function evidence(detailValue: unknown) {
   return {
