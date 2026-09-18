@@ -290,9 +290,7 @@ export function ensureCnipaDetailEnrichmentQueue(database: DatabaseSync): void {
 function ensureCnipaDetailLaneGovernance(database: DatabaseSync): void {
   initializeRegistry(database);
   if (
-    database
-      .prepare("SELECT id FROM schema_migrations WHERE id = ?")
-      .get(GOVERNANCE_MIGRATION_ID)
+    database.prepare("SELECT id FROM schema_migrations WHERE id = ?").get(GOVERNANCE_MIGRATION_ID)
   ) {
     return;
   }
@@ -319,28 +317,16 @@ function ensureCnipaDetailLaneGovernance(database: DatabaseSync): void {
   }
 }
 
-function nonNegativeIntegerBounded(
-  value: number,
-  label: string,
-  maximum: number,
-): number {
+function nonNegativeIntegerBounded(value: number, label: string, maximum: number): number {
   if (!Number.isSafeInteger(value) || value < 0 || value > maximum) {
-    throw new RegistryValidationError(
-      `${label} must be an integer in 0..${maximum}`,
-    );
+    throw new RegistryValidationError(`${label} must be an integer in 0..${maximum}`);
   }
   return value;
 }
 
-function positiveIntegerBounded(
-  value: number,
-  label: string,
-  maximum: number,
-): number {
+function positiveIntegerBounded(value: number, label: string, maximum: number): number {
   if (!Number.isSafeInteger(value) || value <= 0 || value > maximum) {
-    throw new RegistryValidationError(
-      `${label} must be an integer in 1..${maximum}`,
-    );
+    throw new RegistryValidationError(`${label} must be an integer in 1..${maximum}`);
   }
   return value;
 }
@@ -584,9 +570,7 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
     );
   }
 
-  claimNextGoverned(
-    input: ClaimGovernedCnipaDetailInput,
-  ): ClaimGovernedCnipaDetailResult {
+  claimNextGoverned(input: ClaimGovernedCnipaDetailInput): ClaimGovernedCnipaDetailResult {
     const workspaceId = required(input.workspaceId, "workspaceId");
     assertWorkspaceActive(this.database, workspaceId);
     const leaseId = required(input.leaseId, "leaseId");
@@ -653,9 +637,7 @@ export class SqliteCnipaDetailEnrichmentQueueRepository {
       const lastRequestAt = lane?.last_request_at ?? null;
 
       if (lastRequestAt && minIntervalMs > 0) {
-        const nextEligibleAt = new Date(
-          Date.parse(lastRequestAt) + minIntervalMs,
-        ).toISOString();
+        const nextEligibleAt = new Date(Date.parse(lastRequestAt) + minIntervalMs).toISOString();
         if (nextEligibleAt > now) {
           result = {
             status: "PACING_BLOCKED",

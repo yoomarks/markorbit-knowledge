@@ -3,9 +3,7 @@ import type {
   PersistCnipaDetailAttemptTransitionInput,
   SqliteCnipaDetailEnrichmentQueueRepository,
 } from "@markorbit/persistence/cnipa-detail-enrichment-queue";
-import type {
-  CnipaDetailQueuePort,
-} from "./cnipa-detail-worker";
+import type { CnipaDetailQueuePort } from "./cnipa-detail-worker";
 
 export type CnipaDetailLaneGovernancePolicy = {
   budgetWindowKey: string;
@@ -34,9 +32,7 @@ export function createGovernedCnipaDetailQueuePort(input: {
       lastDecision = decision;
       return decision.status === "CLAIMED" ? decision.record : null;
     },
-    persistAttemptTransition(
-      transition: PersistCnipaDetailAttemptTransitionInput,
-    ) {
+    persistAttemptTransition(transition: PersistCnipaDetailAttemptTransitionInput) {
       return input.repository.persistAttemptTransition(transition);
     },
     lastClaimDecision() {

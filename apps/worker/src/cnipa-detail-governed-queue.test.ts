@@ -1,9 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_WORKSPACE,
-  initializeRegistry,
-} from "@markorbit/persistence";
+import { DEFAULT_WORKSPACE, initializeRegistry } from "@markorbit/persistence";
 import {
   SqliteCnipaDetailEnrichmentQueueRepository,
   cnipaDetailQueueCanonicalUri,
@@ -17,18 +14,12 @@ function fixture() {
   return { repository };
 }
 
-function admit(
-  repository: SqliteCnipaDetailEnrichmentQueueRepository,
-  sourceRecordId: string,
-) {
+function admit(repository: SqliteCnipaDetailEnrichmentQueueRepository, sourceRecordId: string) {
   repository.admit({
     workspaceId: DEFAULT_WORKSPACE.id,
     documentKind: "OPPOSITION_DECISION",
     sourceRecordId,
-    detailCanonicalUri: cnipaDetailQueueCanonicalUri(
-      "OPPOSITION_DECISION",
-      sourceRecordId,
-    ),
+    detailCanonicalUri: cnipaDetailQueueCanonicalUri("OPPOSITION_DECISION", sourceRecordId),
     listArtifactRef: `artifact:list:${sourceRecordId}`,
     observedAt: "2026-09-18T09:00:00Z",
   });

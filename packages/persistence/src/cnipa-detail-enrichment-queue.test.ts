@@ -381,11 +381,7 @@ describe("CNIPA DETAIL enrichment queue", () => {
       nextEligibleAt: "2026-09-18T09:02:00.000Z",
     });
     expect(
-      repository.getByIdentity(
-        DEFAULT_WORKSPACE.id,
-        "OPPOSITION_DECISION",
-        "paced-b",
-      )?.lifecycle,
+      repository.getByIdentity(DEFAULT_WORKSPACE.id, "OPPOSITION_DECISION", "paced-b")?.lifecycle,
     ).toBe("PENDING");
   });
 
@@ -421,11 +417,7 @@ describe("CNIPA DETAIL enrichment queue", () => {
       nextEligibleAt: null,
     });
     expect(
-      restarted.getByIdentity(
-        DEFAULT_WORKSPACE.id,
-        "OPPOSITION_DECISION",
-        "budget-b",
-      )?.lifecycle,
+      restarted.getByIdentity(DEFAULT_WORKSPACE.id, "OPPOSITION_DECISION", "budget-b")?.lifecycle,
     ).toBe("PENDING");
   });
 
