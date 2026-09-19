@@ -121,6 +121,21 @@ function optionalPositiveInteger(value: unknown, label: string): number | null {
   return integer(value, label, 1);
 }
 
+function isoDate(value: unknown, label: string): string {
+  const normalized = requiredText(value, label, 32);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/u.test(normalized) ||
+    Number.isNaN(Date.parse(`${normalized}T00:00:00Z`))
+  ) {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_ROW_INVALID",
+      `${label} must be YYYY-MM-DD`,
+      false,
+    );
+  }
+  return normalized;
+}
+
 function sourceCode(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && /^-?\d+$/u.test(value.trim())) return Number(value.trim());
@@ -294,13 +309,33 @@ function validateAndNormalizePage(input: {
     );
   }
 
-  const rows = data.list.map((row, index) =>
-    normalizeSourceRow(row, {
+  const observedDates = new Set<string>();
+  const rows = data.list.map((row, index) => {
+    const sourceRow = record(row, `page ${input.pageIndex}.list[${index}]`);
+    observedDates.add(
+      isoDate(sourceRow.anncDate, `page ${input.pageIndex}.list[${index}].anncDate`),
+    );
+    return normalizeSourceRow(sourceRow, {
       announcementIssue: input.announcementIssue,
       pageIndex: input.pageIndex,
       rowIndex: index,
-    }),
-  );
+    });
+  });
+  if (observedDates.size > 1) {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_ROW_INVALID",
+      `page ${input.pageIndex} contains inconsistent announcement dates`,
+      false,
+    );
+  }
+  const announcementDate = observedDates.values().next().value ?? null;
+  if (sourceTotal > 0 && announcementDate === null) {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_ROW_INVALID",
+      `page ${input.pageIndex} has no announcement date`,
+      false,
+    );
+  }
 
   if (input.pageIndex < sourcePages && rows.length !== CNIPA_GAZETTE_PAGE_SIZE) {
     throw new CnipaGazetteSourceError(
@@ -325,6 +360,7 @@ function validateAndNormalizePage(input: {
     pageSize: CNIPA_GAZETTE_PAGE_SIZE,
     sourceTotal,
     sourcePages,
+    announcementDate,
     rows,
   };
 }
