@@ -48,7 +48,7 @@ function selectedConfig() {
       sourceDescription: "Non-final Office action",
       family: "OFFICE_ACTION",
       classifierIdentity: "uspto-tsdr-document-family",
-      classifierVersion: "1.0.0",
+      classifierVersion: "1.1.0",
     },
   };
 }
