@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { ArtifactBackedExecutionContext, CollectionArtifactAcquirer } from "./artifact-backed-collection-executor";
+import type {
+  ArtifactBackedExecutionContext,
+  CollectionArtifactAcquirer,
+} from "./artifact-backed-collection-executor";
 import { CollectionAcquisitionError } from "./artifact-backed-collection-executor";
 import {
   UsptoTsdrWebArtifactAcquirer,
@@ -7,7 +10,10 @@ import {
   usptoTsdrWebRuntimeDescriptor,
 } from "./uspto-tsdr-web-acquirer";
 
-function context(urls: string[], overrides: Record<string, unknown> = {}): ArtifactBackedExecutionContext {
+function context(
+  urls: string[],
+  overrides: Record<string, unknown> = {},
+): ArtifactBackedExecutionContext {
   return {
     job: {
       sourceSnapshot: {
@@ -36,7 +42,11 @@ function context(urls: string[], overrides: Record<string, unknown> = {}): Artif
 }
 
 class FakeDelegate implements CollectionArtifactAcquirer {
-  readonly executor = { executorId: "fake", version: "1.0.0", mode: "PRODUCTION" as const };
+  readonly executor = {
+    executorId: "fake",
+    version: "1.0.0",
+    mode: "PRODUCTION" as const,
+  };
 
   constructor(private readonly body = "<html>TSDR case page</html>") {}
 
@@ -57,11 +67,15 @@ class FakeDelegate implements CollectionArtifactAcquirer {
 
 describe("USPTO TSDR Web acquisition", () => {
   it("parses the three governed official surfaces", () => {
-    expect(parseUsptoTsdrWebTarget("https://tsdr.uspto.gov/statusview/sn90817045")).toMatchObject({
+    expect(
+      parseUsptoTsdrWebTarget("https://tsdr.uspto.gov/statusview/sn90817045"),
+    ).toMatchObject({
       surface: "STATUS",
       serialNumber: "90817045",
     });
-    expect(parseUsptoTsdrWebTarget("https://tsdr.uspto.gov/img/90817045/large")).toMatchObject({
+    expect(
+      parseUsptoTsdrWebTarget("https://tsdr.uspto.gov/img/90817045/large"),
+    ).toMatchObject({
       surface: "MARK_IMAGE",
       serialNumber: "90817045",
     });
@@ -73,7 +87,9 @@ describe("USPTO TSDR Web acquisition", () => {
   });
 
   it("accepts a bounded same-serial job through the normal artifact delegate", async () => {
-    const acquirer = new UsptoTsdrWebArtifactAcquirer({ delegate: new FakeDelegate() });
+    const acquirer = new UsptoTsdrWebArtifactAcquirer({
+      delegate: new FakeDelegate(),
+    });
     const artifacts = await acquirer.acquire(
       context([
         "https://tsdr.uspto.gov/statusview/sn90817045",
@@ -85,7 +101,9 @@ describe("USPTO TSDR Web acquisition", () => {
   });
 
   it("rejects cross-serial and alternate-origin jobs", async () => {
-    const acquirer = new UsptoTsdrWebArtifactAcquirer({ delegate: new FakeDelegate() });
+    const acquirer = new UsptoTsdrWebArtifactAcquirer({
+      delegate: new FakeDelegate(),
+    });
     await expect(
       acquirer.acquire(
         context([
@@ -101,16 +119,22 @@ describe("USPTO TSDR Web acquisition", () => {
   });
 
   it("fails closed on recursive, excessive-rate, or robots-disabled plans", async () => {
-    const acquirer = new UsptoTsdrWebArtifactAcquirer({ delegate: new FakeDelegate() });
+    const acquirer = new UsptoTsdrWebArtifactAcquirer({
+      delegate: new FakeDelegate(),
+    });
     const uri = "https://tsdr.uspto.gov/statusview/sn90817045";
 
-    await expect(acquirer.acquire(context([uri], { maxDepth: 1 }))).rejects.toMatchObject({
+    await expect(
+      acquirer.acquire(context([uri], { maxDepth: 1 })),
+    ).rejects.toMatchObject({
       code: "TSDR_WEB_BOUNDARY_INVALID",
     });
     await expect(
       acquirer.acquire(context([uri], { rateLimitPerMinute: 13 })),
     ).rejects.toMatchObject({ code: "TSDR_WEB_BOUNDARY_INVALID" });
-    await expect(acquirer.acquire(context([uri], { respectRobots: false }))).rejects.toMatchObject({
+    await expect(
+      acquirer.acquire(context([uri], { respectRobots: false })),
+    ).rejects.toMatchObject({
       code: "TSDR_WEB_BOUNDARY_INVALID",
     });
   });
@@ -120,7 +144,9 @@ describe("USPTO TSDR Web acquisition", () => {
       delegate: new FakeDelegate("<html>Please verify you are human</html>"),
     });
     await expect(
-      acquirer.acquire(context(["https://tsdr.uspto.gov/statusview/sn90817045"])),
+      acquirer.acquire(
+        context(["https://tsdr.uspto.gov/statusview/sn90817045"]),
+      ),
     ).rejects.toMatchObject({ code: "TSDR_WEB_CHALLENGE_DETECTED" });
   });
 
