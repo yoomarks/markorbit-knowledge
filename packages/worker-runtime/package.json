@@ -28,6 +28,8 @@
     "./foundational-collection-outcome": "./src/foundational-collection-outcome.ts",
     "./cnipa-artifact-acquirer": "./src/cnipa-artifact-acquirer.ts",
     "./uspto-tsdr-selected-document-acquirer": "./src/uspto-tsdr-selected-document-acquirer.ts",
+    "./uspto-tsdr-environment-secret-resolver": "./src/uspto-tsdr-environment-secret-resolver.ts",
+    "./uspto-tsdr-job-acquirer": "./src/uspto-tsdr-job-acquirer.ts",
     "./cnipa-window-policy": "./src/cnipa-window-policy.ts",
     "./cnipa-detail-enrichment-state": "./src/cnipa-detail-enrichment-state.ts",
     "./cnipa-detail-markdown-enrichment": "./src/cnipa-detail-markdown-enrichment.ts",

@@ -16,6 +16,8 @@ import {
   LocalFolderArtifactAcquirer,
   ProductionConversionWorkerRuntime,
   RssArtifactAcquirer,
+  UsptoTsdrEnvironmentSecretResolver,
+  UsptoTsdrJobArtifactAcquirer,
   buildAcquisitionRunEvidenceFromProfile,
   buildSourceFingerprintFromAcquisitionProfile,
   createConditionalHttpChangeWatch,
@@ -112,20 +114,24 @@ async function main(): Promise<void> {
         ? conditionalHttp.wrap(new ApiArtifactAcquirer({ transport: conditionalHttp.transport }))
         : config.collectionProvider === "rss"
           ? conditionalHttp.wrap(new RssArtifactAcquirer({ transport: conditionalHttp.transport }))
-          : config.collectionProvider === "github"
-            ? new GitHubArtifactAcquirer({
-                maxFileBytes: config.githubMaxFileBytes,
-                maxTotalBytes: config.githubMaxTotalBytes,
-                maxTreeEntries: config.githubMaxTreeEntries,
-                maxItems: config.githubMaxItems,
-                maxDepth: config.githubMaxDepth,
+          : config.collectionProvider === "uspto-tsdr"
+            ? new UsptoTsdrJobArtifactAcquirer({
+                secretResolver: new UsptoTsdrEnvironmentSecretResolver(),
               })
-            : config.collectionProvider === "cnipa"
-              ? (cnipaAcquirer ??
-                (() => {
-                  throw new Error("CNIPA acquirer configuration is incomplete");
-                })())
-              : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
+            : config.collectionProvider === "github"
+              ? new GitHubArtifactAcquirer({
+                  maxFileBytes: config.githubMaxFileBytes,
+                  maxTotalBytes: config.githubMaxTotalBytes,
+                  maxTreeEntries: config.githubMaxTreeEntries,
+                  maxItems: config.githubMaxItems,
+                  maxDepth: config.githubMaxDepth,
+                })
+              : config.collectionProvider === "cnipa"
+                ? (cnipaAcquirer ??
+                  (() => {
+                    throw new Error("CNIPA acquirer configuration is incomplete");
+                  })())
+                : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
   const learningProfileForJob = (job: Job) =>
     acquisitionLearningProfileForJob({
       job,

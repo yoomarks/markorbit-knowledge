@@ -28,6 +28,8 @@ export * from "./artifact-backed-collection-executor";
 export * from "./uspto-tsdr-acquisition-policy";
 export * from "./uspto-tsdr-document-classifier";
 export * from "./uspto-tsdr-document-index-acquirer";
+export * from "./uspto-tsdr-environment-secret-resolver";
+export * from "./uspto-tsdr-job-acquirer";
 export * from "./uspto-tsdr-selected-document-acquirer";
 export * from "./crawl4ai-subprocess-acquirer";
 export * from "./bright-data-fallback-acquirer";

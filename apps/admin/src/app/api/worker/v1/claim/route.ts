@@ -36,7 +36,14 @@ export async function POST(request: Request) {
       console.error("collection_scheduler_tick_failed", schedulerFailure(error));
     }
 
-    const result = workers.claim(workerId, credential);
+    const jobId =
+      typeof body.jobId === "string" && body.jobId.trim() ? body.jobId.trim() : undefined;
+    if (body.jobId !== undefined && !jobId) {
+      throw new RegistryValidationError("jobId must be a non-empty string when supplied");
+    }
+    const result = jobId
+      ? workers.claimSpecific(workerId, credential, jobId)
+      : workers.claim(workerId, credential);
     return NextResponse.json(result);
   } catch (error) {
     return apiError(error);

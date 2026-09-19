@@ -10,7 +10,7 @@ import type { ControlledWorkerClaim } from "./http-controlled-collection-client"
 export interface ControlledCollectionWorkerClient extends ArtifactBackedExecutionClient {
   readonly workerId: string;
   heartbeat(runtimeVersion: string, activeLeaseIds?: string[]): Promise<void>;
-  claim(): Promise<ControlledWorkerClaim>;
+  claim(jobId?: string): Promise<ControlledWorkerClaim>;
   renewLease(leaseId: string, leaseToken: string): Promise<JobLease>;
 }
 
@@ -98,9 +98,9 @@ export class ControlledCollectionWorkerRuntime {
     };
   }
 
-  async runOnce(): Promise<boolean> {
+  async runOnce(jobId?: string): Promise<boolean> {
     await this.client.heartbeat(this.runtimeVersion, []);
-    const claim = await this.client.claim();
+    const claim = await this.client.claim(jobId);
     if (!claim.job || !claim.lease || !claim.leaseToken) return false;
 
     await this.client.heartbeat(this.runtimeVersion, [claim.lease.id]);
