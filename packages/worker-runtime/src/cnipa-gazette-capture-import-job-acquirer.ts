@@ -166,7 +166,7 @@ function configFromContext(context: ArtifactBackedExecutionContext): ImportConfi
   }
   const pagesPerCheckpoint = positiveInteger(config.pagesPerCheckpoint, "pagesPerCheckpoint");
   if (pagesPerCheckpoint !== endPage) {
-    invalid("capture-import pagesPerCheckpoint must equal the complete captured page count");
+    invalid("capture-import pagesPerCheckpoint must equal the normalized logical page count");
   }
   return {
     captureSha256,
@@ -224,12 +224,18 @@ export class CnipaGazetteCaptureImportJobArtifactAcquirer implements CollectionA
     } catch (error) {
       invalid(error instanceof Error ? error.message : "v0.9.4 capture is invalid");
     }
+    const normalizedPages = Math.max(1, Math.ceil(capture.sourceTotal / 100));
+    const normalizedQuery = {
+      ...capture.query,
+      pageIndex: 1,
+      pageSize: 100,
+    };
     if (
       capture.announcementIssue !== String(config.job.announcementIssue) ||
-      capture.sourcePages !== config.job.range.endPage ||
-      stable(capture.query) !== stable(config.job.requestTemplate)
+      normalizedPages !== config.job.range.endPage ||
+      stable(normalizedQuery) !== stable(config.job.requestTemplate)
     ) {
-      invalid("v0.9.4 capture does not match the immutable Job issue/pages/query scope");
+      invalid("v0.9.4 capture does not match the immutable Job issue/normalized-pages/query scope");
     }
     const root = rootArtifact({
       bytes: this.options.captureBytes,

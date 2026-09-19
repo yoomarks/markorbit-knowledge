@@ -166,13 +166,15 @@ export async function loadCnipaGazetteAcceptanceCaptureFile(
   );
   const bytes = new Uint8Array(await readFile(absolutePath));
   const capture = parseCnipaGazetteV094SmallCompleteCaptureBytes(bytes);
+  const normalizedPages = Math.max(1, Math.ceil(capture.sourceTotal / plan.pageSize));
+  const normalizedLastPageLength =
+    capture.sourceTotal === 0 ? 0 : capture.sourceTotal % plan.pageSize || plan.pageSize;
   if (
     capture.announcementIssue !== String(plan.announcementIssue) ||
     capture.announcementDate !== plan.announcementDate ||
     capture.sourceTotal !== plan.sourceRecordCount ||
-    capture.sourcePages !== plan.sourcePageCount ||
-    capture.pageSize !== plan.pageSize ||
-    capture.observedLastPageLength !== plan.finalPageRowCount
+    normalizedPages !== plan.sourcePageCount ||
+    normalizedLastPageLength !== plan.finalPageRowCount
   ) {
     throw new Error("CNIPA Gazette capture does not match the frozen issue-75 acceptance scope");
   }

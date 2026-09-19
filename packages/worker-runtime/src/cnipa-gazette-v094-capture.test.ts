@@ -45,17 +45,17 @@ function capture() {
       startDate: "",
       endDate: "",
       pageIndex: 1,
-      pageSize: 100,
+      pageSize: 10,
     },
     sourceUrl:
       "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/public/web/anncInfo/searchEsTmgg",
     sourceTotal: 576,
-    sourcePages: 6,
-    pageSize: 100,
+    sourcePages: 58,
+    pageSize: 10,
     collectedCount: 576,
     uniqueOfficialRowIds: 576,
-    expectedLastPageLength: 76,
-    observedLastPageLength: 76,
+    expectedLastPageLength: 6,
+    observedLastPageLength: 6,
     completeness: "COMPLETE",
     records,
   };
@@ -67,12 +67,12 @@ describe("MO CNIPA Network Capture v0.9.4 Gazette small-complete import", () => 
       version: "0.9.4",
       announcementIssue: "75",
       sourceTotal: 576,
-      sourcePages: 6,
-      pageSize: 100,
+      sourcePages: 58,
+      pageSize: 10,
       collectedCount: 576,
       uniqueOfficialRowIds: 576,
-      expectedLastPageLength: 76,
-      observedLastPageLength: 76,
+      expectedLastPageLength: 6,
+      observedLastPageLength: 6,
       completeness: "COMPLETE",
     });
   });
@@ -82,11 +82,11 @@ describe("MO CNIPA Network Capture v0.9.4 Gazette small-complete import", () => 
     const transport = new CnipaGazetteV094CaptureTransport(parsed);
     const first = await transport.postJson({
       path: "/toas-pub-prod/pub-prod-api/public/web/anncInfo/searchEsTmgg",
-      body: parsed.query,
+      body: { ...parsed.query, pageIndex: 1, pageSize: 100 },
     });
     const last = await transport.postJson({
       path: "/toas-pub-prod/pub-prod-api/public/web/anncInfo/searchEsTmgg",
-      body: { ...parsed.query, pageIndex: 6 },
+      body: { ...parsed.query, pageIndex: 6, pageSize: 100 },
     });
     const firstJson = JSON.parse(new TextDecoder().decode(first.rawBody));
     const lastJson = JSON.parse(new TextDecoder().decode(last.rawBody));
@@ -137,7 +137,7 @@ describe("MO CNIPA Network Capture v0.9.4 Gazette small-complete import", () => 
     expect(() =>
       parseCnipaGazetteV094SmallCompleteCapture({
         ...capture(),
-        observedLastPageLength: 75,
+        observedLastPageLength: 5,
       }),
     ).toThrow(/last-page length/);
   });
