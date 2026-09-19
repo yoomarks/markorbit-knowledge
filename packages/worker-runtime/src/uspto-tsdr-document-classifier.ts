@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { UsptoTsdrDocumentFamily } from "./uspto-tsdr-acquisition-policy";
 
 export const USPTO_TSDR_DOCUMENT_CLASSIFIER_IDENTITY = "uspto-tsdr-document-family" as const;
-export const USPTO_TSDR_DOCUMENT_CLASSIFIER_VERSION = "1.0.0" as const;
+export const USPTO_TSDR_DOCUMENT_CLASSIFIER_VERSION = "1.1.0" as const;
 
 export type UsptoTsdrDocumentMetadata = {
   sourceDocumentType: string;
@@ -30,7 +30,13 @@ const RULES: readonly ClassificationRule[] = Object.freeze([
   {
     id: "office-action-explicit-v1",
     family: "OFFICE_ACTION",
-    exactMetadataValues: ["office action", "non final office action", "final office action"],
+    exactMetadataValues: [
+      "office action",
+      "non final action",
+      "non final office action",
+      "final action",
+      "final office action",
+    ],
   },
   {
     id: "applicant-response-explicit-v1",
