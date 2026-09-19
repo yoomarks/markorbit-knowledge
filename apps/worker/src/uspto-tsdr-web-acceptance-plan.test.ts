@@ -17,6 +17,7 @@ const base = {
   workerMode: "PROVISION_ONE_SHOT",
   channel: "WEB",
   stage: "STATUS",
+  transportMode: "STATIC_HTTP_PINNED",
   serialNumber: "90817045",
 } as const;
 
@@ -37,7 +38,7 @@ describe("TSDR Web acceptance plan", () => {
       ["MARK_IMAGE", "https://tsdr.uspto.gov/img/90817045/large"],
       ["DOCUMENT_INDEX", "https://tsdr.uspto.gov/documentviewer?caseId=sn90817045"],
     ] as const) {
-      const plan = parseUsptoTsdrWebAcceptancePlan({ ...base, stage });
+      const plan = parseUsptoTsdrWebAcceptancePlan({ ...base, stage, transportMode: stage === "DOCUMENT_INDEX" ? "BROWSER_PROXY" : "STATIC_HTTP_PINNED" });
       expect(usptoTsdrWebAcceptanceTargetUrl(plan)).toBe(url);
     }
   });
@@ -67,7 +68,7 @@ describe("TSDR Web acceptance plan", () => {
   });
 
   it("uses IMAGE-only output for the mark asset proof", () => {
-    const plan = parseUsptoTsdrWebAcceptancePlan({ ...base, stage: "MARK_IMAGE" });
+    const plan = parseUsptoTsdrWebAcceptancePlan({ ...base, stage: "MARK_IMAGE", transportMode: "STATIC_HTTP_PINNED" });
     expect(
       usptoTsdrWebAcceptanceCollectionPlanPayload("src_test", plan).output.artifactKinds,
     ).toEqual(["IMAGE"]);
