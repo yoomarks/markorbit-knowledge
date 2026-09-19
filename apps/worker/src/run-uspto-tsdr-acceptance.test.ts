@@ -12,6 +12,7 @@ import {
 const plan = parseUsptoTsdrAcceptancePlan({
   version: 1,
   operationId: "oa-proof-90817045-index",
+  workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
   stage: "INDEX",
   serialNumber: "90817045",
   secretRef: "sec_01ARZ3NDEKTSV4RRFFQ69G5FAV",
