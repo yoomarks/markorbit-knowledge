@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION } from "@markorbit/contracts";
 import {
   CNIPA_GAZETTE_ACCEPTANCE_STAGES,
-  cnipaGazetteAcceptanceAcquisitionConfig,
+  cnipaGazetteAcceptanceCaptureImportConfig,
   cnipaGazetteAcceptanceCollectionPlanPayload,
   cnipaGazetteAcceptancePlanSha256,
   cnipaGazetteAcceptanceConnectorManifest,
@@ -124,11 +124,26 @@ function connectorConfigAndGrants(
   workspaceId: string,
   plan: ReturnType<typeof parseCnipaGazetteAcceptancePlan>,
 ) {
-  if (runtimeStage === "ACQUIRE") {
-    const expected = cnipaGazetteAcceptanceAcquisitionConfig(plan);
+  if (runtimeStage === "IMPORT_CAPTURE") {
+    const config = objectValue(rawConfig, "connectorConfig");
+    const captureSha256 = text(config.captureSha256, "captureSha256").toLowerCase();
+    const captureOriginalName = text(config.captureOriginalName, "captureOriginalName");
+    const captureSizeBytes = config.captureSizeBytes;
+    if (
+      !/^[a-f0-9]{64}$/u.test(captureSha256) ||
+      !Number.isSafeInteger(captureSizeBytes) ||
+      (captureSizeBytes as number) < 1
+    ) {
+      throw new RegistryValidationError("Gazette capture identity is invalid");
+    }
+    const expected = cnipaGazetteAcceptanceCaptureImportConfig(plan, {
+      sha256: captureSha256,
+      sizeBytes: captureSizeBytes as number,
+      originalName: captureOriginalName,
+    });
     if (stable(rawConfig) !== stable(expected)) {
       throw new RegistryValidationError(
-        "Gazette ACQUIRE config must equal the frozen issue-75 scope",
+        "Gazette IMPORT_CAPTURE config must equal the frozen issue-75 scope",
       );
     }
     return { connectorConfig: expected, grants: [] as string[] };
@@ -140,7 +155,8 @@ function connectorConfigAndGrants(
       throw new RegistryValidationError("Gazette publisher intent is invalid");
     }
     const reference = artifactReference(config.requestArtifactRef, "requestArtifactRef");
-    const expectedParentStage = runtimeStage === "PUBLISH_CHUNK" ? "ACQUIRE" : "BUILD_FINALIZE";
+    const expectedParentStage =
+      runtimeStage === "PUBLISH_CHUNK" ? "IMPORT_CAPTURE" : "BUILD_FINALIZE";
     const view = verifyReference(reference, workspaceId, planSha256, expectedParentStage);
     const expectedMarker = runtimeStage === "PUBLISH_CHUNK" ? "chunk" : "finalize";
     if (
@@ -159,7 +175,7 @@ function connectorConfigAndGrants(
     throw new RegistryValidationError("Gazette finalize-builder intent is invalid");
   }
   const datasetIdentityRef = artifactReference(config.datasetIdentityRef, "datasetIdentityRef");
-  verifyReference(datasetIdentityRef, workspaceId, planSha256, "ACQUIRE");
+  verifyReference(datasetIdentityRef, workspaceId, planSha256, "IMPORT_CAPTURE");
   const rawReceipts = config.chunkReceiptRefs;
   if (!Array.isArray(rawReceipts) || rawReceipts.length !== 1) {
     throw new RegistryValidationError("Issue-75 acceptance requires exactly one CHUNK receipt");

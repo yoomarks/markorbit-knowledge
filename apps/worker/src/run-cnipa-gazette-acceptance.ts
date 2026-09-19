@@ -2,26 +2,26 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  CnipaGazetteAuthenticatedTransport,
+  CnipaGazetteCaptureImportJobArtifactAcquirer,
   CnipaGazetteFactAdmissionJobAcquirer,
   CnipaGazetteFinalizeJobAcquirer,
-  CnipaGazetteJobArtifactAcquirer,
   ControlledCollectionWorkerRuntime,
   HttpCnipaGazetteDurableArtifactReader,
   HttpControlledCollectionClient,
   HttpFactAdmissionClient,
-  cnipaGazetteAcceptanceAcquisitionConfig,
+  cnipaGazetteAcceptanceCaptureImportConfig,
   cnipaGazetteAcceptancePlanSha256,
+  cnipaGazetteCaptureSha256,
   expectedCnipaGazetteAcceptanceAuthorityToken,
   parseCnipaGazetteAcceptancePlan,
+  parseCnipaGazetteV094SmallCompleteCaptureBytes,
   type CnipaGazetteAcceptancePlan,
   type CnipaGazetteAcceptanceRuntimeStage,
 } from "@markorbit/worker-runtime";
-import { CnipaPlaywrightSessionExecutorFactory } from "./cnipa-playwright-session-executor";
-import { loadCnipaBrowserSessionConfig } from "./config";
 type CliArguments = {
   planPath: string;
   outputDirectory?: string;
+  capturePath?: string;
   apply: boolean;
   expectedSha?: string;
   authorityToken?: string;
@@ -81,6 +81,7 @@ function valueAfter(args: string[], index: number, name: string): string {
 export function parseCnipaGazetteAcceptanceArguments(args: string[]): CliArguments {
   let planPath: string | undefined;
   let outputDirectory: string | undefined;
+  let capturePath: string | undefined;
   let expectedSha: string | undefined;
   let authorityToken: string | undefined;
   let apply = false;
@@ -91,6 +92,9 @@ export function parseCnipaGazetteAcceptanceArguments(args: string[]): CliArgumen
       index += 1;
     } else if (arg === "--output") {
       outputDirectory = valueAfter(args, index, "--output");
+      index += 1;
+    } else if (arg === "--capture") {
+      capturePath = valueAfter(args, index, "--capture");
       index += 1;
     } else if (arg === "--expected-sha") {
       expectedSha = valueAfter(args, index, "--expected-sha");
@@ -105,13 +109,14 @@ export function parseCnipaGazetteAcceptanceArguments(args: string[]): CliArgumen
     }
   }
   if (!planPath) throw new Error("--plan is required");
-  if (apply && (!expectedSha || !authorityToken || !outputDirectory)) {
-    throw new Error("--apply requires --expected-sha, --authority-token, and --output");
+  if (apply && (!expectedSha || !authorityToken || !outputDirectory || !capturePath)) {
+    throw new Error("--apply requires --capture, --expected-sha, --authority-token, and --output");
   }
   return {
     planPath: path.resolve(planPath),
     apply,
     ...(outputDirectory ? { outputDirectory: path.resolve(outputDirectory) } : {}),
+    ...(capturePath ? { capturePath: path.resolve(capturePath) } : {}),
     ...(expectedSha ? { expectedSha } : {}),
     ...(authorityToken ? { authorityToken } : {}),
   };
@@ -147,6 +152,37 @@ export async function loadCnipaGazetteAcceptancePlanFile(
     plan,
     planSha256: cnipaGazetteAcceptancePlanSha256(plan),
     absolutePath,
+  };
+}
+
+export async function loadCnipaGazetteAcceptanceCaptureFile(
+  capturePath: string,
+  plan: CnipaGazetteAcceptancePlan,
+  workingDirectory = process.cwd(),
+) {
+  const absolutePath = assertCnipaGazetteAcceptancePathOutsideWorkingTree(
+    capturePath,
+    workingDirectory,
+  );
+  const bytes = new Uint8Array(await readFile(absolutePath));
+  const capture = parseCnipaGazetteV094SmallCompleteCaptureBytes(bytes);
+  if (
+    capture.announcementIssue !== String(plan.announcementIssue) ||
+    capture.announcementDate !== plan.announcementDate ||
+    capture.sourceTotal !== plan.sourceRecordCount ||
+    capture.sourcePages !== plan.sourcePageCount ||
+    capture.pageSize !== plan.pageSize ||
+    capture.observedLastPageLength !== plan.finalPageRowCount
+  ) {
+    throw new Error("CNIPA Gazette capture does not match the frozen issue-75 acceptance scope");
+  }
+  return {
+    absolutePath,
+    originalName: path.basename(absolutePath),
+    bytes,
+    sha256: cnipaGazetteCaptureSha256(bytes),
+    sizeBytes: bytes.byteLength,
+    capture,
   };
 }
 
@@ -343,7 +379,7 @@ async function runStageWorker(input: {
   baseUrl: string;
   prepared: StagePreparation;
   acquirer:
-    | CnipaGazetteJobArtifactAcquirer
+    | CnipaGazetteCaptureImportJobArtifactAcquirer
     | CnipaGazetteFactAdmissionJobAcquirer
     | CnipaGazetteFinalizeJobAcquirer;
 }) {
@@ -360,8 +396,8 @@ async function runStageWorker(input: {
     throw new Error(`Gazette ${input.prepared.runtimeStage} Worker did not claim its Job`);
   }
 }
-function assertAcquisitionArtifactSet(items: ArtifactView[]): void {
-  const expected = new Set<string>();
+function assertAcquisitionArtifactSet(items: ArtifactView[], captureOriginalName: string): void {
+  const expected = new Set<string>([captureOriginalName]);
   for (let page = 1; page <= 6; page += 1) {
     expected.add(`cnipa-gazette-issue-75-list-p${page}.json`);
     expected.add(`cnipa-gazette-issue-75-projection-p${page}.json`);
@@ -503,29 +539,43 @@ export async function applyCnipaGazetteAcceptance(input: {
   planSha256: string;
   authorityToken: string;
   outputDirectory: string;
+  capture: {
+    bytes: Uint8Array;
+    sha256: string;
+    sizeBytes: number;
+    originalName: string;
+  };
 }) {
   const outputDirectory = assertCnipaGazetteAcceptancePathOutsideWorkingTree(input.outputDirectory);
   await mkdir(outputDirectory, { recursive: true });
-  const sessionConfig = loadCnipaBrowserSessionConfig(process.env, { headless: true });
   const acquisition = await prepareStage({
     ...input,
-    stage: "ACQUIRE",
-    connectorConfig: cnipaGazetteAcceptanceAcquisitionConfig(input.plan),
+    stage: "IMPORT_CAPTURE",
+    connectorConfig: cnipaGazetteAcceptanceCaptureImportConfig(input.plan, {
+      sha256: input.capture.sha256,
+      sizeBytes: input.capture.sizeBytes,
+      originalName: input.capture.originalName,
+    }),
   });
   await runStageWorker({
     baseUrl: input.baseUrl,
     prepared: acquisition,
-    acquirer: new CnipaGazetteJobArtifactAcquirer({
-      transport: new CnipaGazetteAuthenticatedTransport(
-        new CnipaPlaywrightSessionExecutorFactory(sessionConfig),
-      ),
+    acquirer: new CnipaGazetteCaptureImportJobArtifactAcquirer({
+      captureBytes: input.capture.bytes,
     }),
   });
   const acquisitionArtifacts = await listRunArtifacts({
     ...input,
     runId: acquisition.runId,
   });
-  assertAcquisitionArtifactSet(acquisitionArtifacts);
+  assertAcquisitionArtifactSet(acquisitionArtifacts, input.capture.originalName);
+  const captureArtifact = oneArtifact(acquisitionArtifacts, input.capture.originalName);
+  for (let page = 1; page <= 6; page += 1) {
+    const raw = oneArtifact(acquisitionArtifacts, `cnipa-gazette-issue-75-list-p${page}.json`);
+    if (!raw.parentArtifactIds.includes(captureArtifact.artifactId)) {
+      throw new Error(`Issue-75 page ${page} is not descended from the durable v0.9.4 capture`);
+    }
+  }
   const identityArtifact = oneArtifact(
     acquisitionArtifacts,
     "cnipa-gazette-issue-75-dataset-identity.json",
@@ -672,6 +722,17 @@ export async function applyCnipaGazetteAcceptance(input: {
       sourcePageCount: 6,
       pageSize: 100,
       finalPageRowCount: 76,
+      acquisitionMode: input.plan.acquisitionMode,
+      captureTool: input.plan.captureTool,
+      captureToolVersion: input.plan.captureToolVersion,
+      captureExportSchema: input.plan.captureExportSchema,
+      captureToolBundleSha256: input.plan.captureToolBundleSha256,
+    },
+    capture: {
+      originalName: input.capture.originalName,
+      sha256: input.capture.sha256,
+      sizeBytes: input.capture.sizeBytes,
+      durableArtifactId: captureArtifact.artifactId,
     },
     assertions: {
       acquisitionArtifactCount: acquisitionArtifacts.length,
@@ -700,6 +761,9 @@ async function main(): Promise<void> {
     loaded.plan,
     loaded.planSha256,
   );
+  const loadedCapture = args.capturePath
+    ? await loadCnipaGazetteAcceptanceCaptureFile(args.capturePath, loaded.plan)
+    : null;
   if (!args.apply) {
     process.stdout.write(
       `${JSON.stringify({
@@ -709,13 +773,24 @@ async function main(): Promise<void> {
         sourceRecordCount: 576,
         sourcePageCount: 6,
         planSha256: loaded.planSha256,
+        captureValidated: loadedCapture !== null,
+        ...(loadedCapture
+          ? {
+              captureSha256: loadedCapture.sha256,
+              captureSizeBytes: loadedCapture.sizeBytes,
+              captureOriginalName: loadedCapture.originalName,
+            }
+          : {}),
         applyPerformed: false,
         expectedAuthorityToken,
         message:
-          "Frozen bounded plan validated only. No CNIPA request, Knowledge mutation, or Data Engine write was performed.",
+          "Frozen plan/capture validation only. No CNIPA network request, Knowledge mutation, or Data Engine write was performed.",
       })}\n`,
     );
     return;
+  }
+  if (!loadedCapture) {
+    throw new Error("--capture is required for Gazette acceptance apply");
   }
   const authorityTokenSha256 = assertCnipaGazetteAcceptanceAuthority({
     plan: loaded.plan,
@@ -733,6 +808,12 @@ async function main(): Promise<void> {
     planSha256: loaded.planSha256,
     authorityToken: args.authorityToken!,
     outputDirectory: args.outputDirectory!,
+    capture: {
+      bytes: loadedCapture.bytes,
+      sha256: loadedCapture.sha256,
+      sizeBytes: loadedCapture.sizeBytes,
+      originalName: loadedCapture.originalName,
+    },
   });
   process.stdout.write(
     `${JSON.stringify({

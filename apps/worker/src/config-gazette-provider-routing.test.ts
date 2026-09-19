@@ -16,23 +16,14 @@ const cnipaEnv = {
 };
 
 describe("CNIPA Gazette provider routing", () => {
-  it("requires the authenticated CNIPA session only for Gazette acquisition", () => {
+  it("fails closed for the deprecated Playwright Gazette acquisition provider", () => {
     expect(() =>
       loadWorkerProcessConfig({
         ...baseEnv,
+        ...cnipaEnv,
         MARKORBIT_COLLECTION_PROVIDER: "cnipa-gazette",
       }),
-    ).toThrow(/MARKORBIT_CNIPA_BASE_URL/);
-
-    const config = loadWorkerProcessConfig({
-      ...baseEnv,
-      ...cnipaEnv,
-      MARKORBIT_COLLECTION_PROVIDER: "cnipa-gazette",
-    });
-    expect(config.collectionProvider).toBe("cnipa-gazette");
-    expect(config.cnipaSession?.baseUrl).toBe("https://pub.sbj.cnipa.gov.cn");
-    expect(config.dataEngineUrl).toBeUndefined();
-    expect(config.dataEngineFactAdmissionKey).toBeUndefined();
+    ).toThrow(/normal browser \+ MO CNIPA Network Capture bridge/);
   });
 
   it("requires explicit Data Engine authority only for the durable-request publisher", () => {

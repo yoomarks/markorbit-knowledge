@@ -55,7 +55,7 @@ type DatasetIdentityReference = {
   canonicalUri: string;
   snapshot: CnipaGazetteDatasetIdentitySnapshot;
 };
-type GazetteCheckpointJob = {
+export type CnipaGazetteCheckpointJob = {
   announcementIssue: number;
   range: { startPage: number; endPage: number };
   requestTemplate: Readonly<Record<string, string | number>>;
@@ -226,7 +226,9 @@ function datasetIdentityReference(
   return { artifactId, canonicalUri, snapshot };
 }
 
-function checkpointJobFromContext(context: ArtifactBackedExecutionContext): GazetteCheckpointJob {
+function checkpointJobFromContext(
+  context: ArtifactBackedExecutionContext,
+): CnipaGazetteCheckpointJob {
   requireSourceBoundary(context);
   const config = objectValue(context.job.sourceSnapshot.connectorConfig, "connectorConfig");
   exactKeys(
@@ -326,92 +328,105 @@ function checkpointCollectedAt(artifacts: readonly AcquiredCollectionArtifact[])
   }
   return observed.sort((left, right) => Date.parse(left) - Date.parse(right)).at(-1)!;
 }
+export async function acquireCnipaGazetteArtifactsForCheckpointJob(input: {
+  context: ArtifactBackedExecutionContext;
+  job: CnipaGazetteCheckpointJob;
+  transport: CnipaGazetteJsonTransport;
+  sleep?: (ms: number) => Promise<void>;
+}): Promise<AcquiredCollectionArtifact[]> {
+  const identityRef = input.job.datasetIdentityRef;
+  try {
+    const checkpoint = await acquireCnipaGazetteCheckpointRange({
+      announcementIssue: input.job.announcementIssue,
+      range: input.job.range,
+      requestTemplate: input.job.requestTemplate,
+      transport: input.transport,
+      pagesPerCheckpoint: input.job.pagesPerCheckpoint,
+      ...(identityRef
+        ? {
+            expectedSourceTotal: identityRef.snapshot.identity.sourceRecordCount,
+            expectedSourcePages: identityRef.snapshot.identity.sourcePageCount,
+            expectedAnnouncementDate: identityRef.snapshot.identity.announcementDate,
+          }
+        : {}),
+      retry: {
+        maxAttempts: input.context.job.planSnapshot.policy.retry.maxAttempts,
+        retryDelayMs: input.context.job.planSnapshot.policy.retry.backoffSeconds * 1_000,
+        ...(input.sleep ? { sleep: input.sleep } : {}),
+      },
+    });
+    const datasetIdentity = identityRef?.snapshot ?? buildCnipaGazetteDatasetIdentity(checkpoint);
+    const collectedAt = checkpointCollectedAt(checkpoint.pageArtifacts);
+    const chunkPackage = buildCnipaGazetteDataEngineChunkPackage({
+      checkpoint: checkpoint.checkpoint,
+      datasetIdentity,
+      collectedAt,
+    });
+    const checkpointCanonicalUri = checkpoint.checkpointArtifact.canonicalUri;
+    if (!checkpointCanonicalUri) {
+      throw new CollectionAcquisitionError(
+        "CNIPA_GAZETTE_EVIDENCE_INVALID",
+        "Gazette checkpoint artifact is missing canonical URI",
+        false,
+      );
+    }
+    const identityCanonicalUri =
+      identityRef?.canonicalUri ??
+      (datasetIdentity as ReturnType<typeof buildCnipaGazetteDatasetIdentity>).artifact
+        .canonicalUri;
+    if (!identityCanonicalUri) {
+      throw new CollectionAcquisitionError(
+        "CNIPA_GAZETTE_EVIDENCE_INVALID",
+        "Gazette dataset identity artifact is missing canonical URI",
+        false,
+      );
+    }
+    let requestArtifact = buildCnipaGazetteChunkAdmissionRequestArtifact({
+      package: chunkPackage,
+      datasetIdentityCanonicalUri: identityCanonicalUri,
+      checkpointCanonicalUri,
+      createdAt: collectedAt,
+    });
+    if (identityRef) {
+      requestArtifact = {
+        ...requestArtifact,
+        parentCanonicalUris: [checkpointCanonicalUri],
+        parentArtifactIds: [identityRef.artifactId],
+      };
+    }
+    const firstIdentity =
+      identityRef === undefined
+        ? (datasetIdentity as ReturnType<typeof buildCnipaGazetteDatasetIdentity>)
+        : null;
+    return [
+      ...checkpoint.pageArtifacts,
+      checkpoint.checkpointArtifact,
+      ...(firstIdentity ? [firstIdentity.artifact] : []),
+      requestArtifact,
+    ];
+  } catch (error) {
+    if (error instanceof CollectionAcquisitionError) throw error;
+    if (error instanceof CnipaGazetteSourceError || error instanceof CnipaAcquisitionError) {
+      throw new CollectionAcquisitionError(error.code, error.message, error.retryable);
+    }
+    throw error;
+  } finally {
+    await input.transport.close?.();
+  }
+}
+
 export class CnipaGazetteJobArtifactAcquirer implements CollectionArtifactAcquirer {
   readonly executor = CNIPA_GAZETTE_JOB_EXECUTOR;
 
   constructor(private readonly options: CnipaGazetteJobArtifactAcquirerOptions) {}
 
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
-    const job = checkpointJobFromContext(context);
-    const identityRef = job.datasetIdentityRef;
-    try {
-      const checkpoint = await acquireCnipaGazetteCheckpointRange({
-        announcementIssue: job.announcementIssue,
-        range: job.range,
-        requestTemplate: job.requestTemplate,
-        transport: this.options.transport,
-        pagesPerCheckpoint: job.pagesPerCheckpoint,
-        ...(identityRef
-          ? {
-              expectedSourceTotal: identityRef.snapshot.identity.sourceRecordCount,
-              expectedSourcePages: identityRef.snapshot.identity.sourcePageCount,
-              expectedAnnouncementDate: identityRef.snapshot.identity.announcementDate,
-            }
-          : {}),
-        retry: {
-          maxAttempts: context.job.planSnapshot.policy.retry.maxAttempts,
-          retryDelayMs: context.job.planSnapshot.policy.retry.backoffSeconds * 1_000,
-          ...(this.options.sleep ? { sleep: this.options.sleep } : {}),
-        },
-      });
-      const datasetIdentity = identityRef?.snapshot ?? buildCnipaGazetteDatasetIdentity(checkpoint);
-      const collectedAt = checkpointCollectedAt(checkpoint.pageArtifacts);
-      const chunkPackage = buildCnipaGazetteDataEngineChunkPackage({
-        checkpoint: checkpoint.checkpoint,
-        datasetIdentity,
-        collectedAt,
-      });
-      const checkpointCanonicalUri = checkpoint.checkpointArtifact.canonicalUri;
-      if (!checkpointCanonicalUri) {
-        throw new CollectionAcquisitionError(
-          "CNIPA_GAZETTE_EVIDENCE_INVALID",
-          "Gazette checkpoint artifact is missing canonical URI",
-          false,
-        );
-      }
-      const identityCanonicalUri =
-        identityRef?.canonicalUri ??
-        (datasetIdentity as ReturnType<typeof buildCnipaGazetteDatasetIdentity>).artifact
-          .canonicalUri;
-      if (!identityCanonicalUri) {
-        throw new CollectionAcquisitionError(
-          "CNIPA_GAZETTE_EVIDENCE_INVALID",
-          "Gazette dataset identity artifact is missing canonical URI",
-          false,
-        );
-      }
-      let requestArtifact = buildCnipaGazetteChunkAdmissionRequestArtifact({
-        package: chunkPackage,
-        datasetIdentityCanonicalUri: identityCanonicalUri,
-        checkpointCanonicalUri,
-        createdAt: collectedAt,
-      });
-      if (identityRef) {
-        requestArtifact = {
-          ...requestArtifact,
-          parentCanonicalUris: [checkpointCanonicalUri],
-          parentArtifactIds: [identityRef.artifactId],
-        };
-      }
-      const firstIdentity =
-        identityRef === undefined
-          ? (datasetIdentity as ReturnType<typeof buildCnipaGazetteDatasetIdentity>)
-          : null;
-      return [
-        ...checkpoint.pageArtifacts,
-        checkpoint.checkpointArtifact,
-        ...(firstIdentity ? [firstIdentity.artifact] : []),
-        requestArtifact,
-      ];
-    } catch (error) {
-      if (error instanceof CollectionAcquisitionError) throw error;
-      if (error instanceof CnipaGazetteSourceError || error instanceof CnipaAcquisitionError) {
-        throw new CollectionAcquisitionError(error.code, error.message, error.retryable);
-      }
-      throw error;
-    } finally {
-      await this.options.transport.close?.();
-    }
+    return acquireCnipaGazetteArtifactsForCheckpointJob({
+      context,
+      job: checkpointJobFromContext(context),
+      transport: this.options.transport,
+      ...(this.options.sleep ? { sleep: this.options.sleep } : {}),
+    });
   }
 }
 

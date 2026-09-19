@@ -11,6 +11,7 @@ import {
 import {
   assertCnipaGazetteAcceptanceAuthority,
   assertCnipaGazetteAcceptancePathOutsideWorkingTree,
+  loadCnipaGazetteAcceptanceCaptureFile,
   loadCnipaGazetteAcceptancePlanFile,
   parseCnipaGazetteAcceptanceArguments,
 } from "./run-cnipa-gazette-acceptance";
@@ -21,6 +22,55 @@ afterEach(async () => {
     temporary.splice(0).map((entry) => rm(entry, { recursive: true, force: true })),
   );
 });
+
+function captureFixture() {
+  return {
+    exportedSchema: "mo-cnipa-gazette-small-complete-v1",
+    tool: "MO CNIPA Network Capture",
+    version: "0.9.4",
+    kind: "gazette_small_issue_complete",
+    exportedAt: "2026-09-19T14:06:48.000Z",
+    announcementIssue: "75",
+    query: {
+      anncIssue: "75",
+      anncType: "",
+      regNo: "",
+      tmName: "",
+      intlCls: "",
+      registerCnName: "",
+      coowner: "",
+      agentName: "",
+      tmType: "",
+      tmDescType: "0",
+      startDate: "",
+      endDate: "",
+      pageIndex: 1,
+      pageSize: 100,
+    },
+    sourceUrl:
+      "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/public/web/anncInfo/searchEsTmgg",
+    sourceTotal: 576,
+    sourcePages: 6,
+    pageSize: 100,
+    collectedCount: 576,
+    uniqueOfficialRowIds: 576,
+    expectedLastPageLength: 76,
+    observedLastPageLength: 76,
+    completeness: "COMPLETE",
+    records: Array.from({ length: 576 }, (_, index) => {
+      const id = index.toString(16).toUpperCase().padStart(32, "0");
+      return {
+        id,
+        searchId: id,
+        anncIssue: "75",
+        anncDate: "1983-08-15",
+        anncType: "TMZCSQ",
+        anncTypeName: "商标初步审定公告",
+        regNo: String(200000 + index),
+      };
+    }),
+  };
+}
 
 function plan() {
   return parseCnipaGazetteAcceptancePlan({
@@ -40,6 +90,11 @@ function plan() {
     range: { startPage: 1, endPage: 6 },
     announcementTypeSelection: "ALL",
     anncType: "",
+    acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_V094_IMPORT",
+    captureTool: "MO CNIPA Network Capture",
+    captureToolVersion: "0.9.4",
+    captureExportSchema: "mo-cnipa-gazette-small-complete-v1",
+    captureToolBundleSha256: "d143cd3433580460b8937d83cc623351f96b279b5cd52e8a01ba765c5e908b87",
     dataEngineUrl: "http://127.0.0.1:8080",
   });
 }
@@ -47,7 +102,7 @@ function plan() {
 describe("CNIPA Gazette bounded acceptance runner governance", () => {
   it("requires complete apply authority arguments", () => {
     expect(() => parseCnipaGazetteAcceptanceArguments(["--plan", "x", "--apply"])).toThrow(
-      /requires --expected-sha, --authority-token, and --output/,
+      /requires --capture, --expected-sha, --authority-token, and --output/,
     );
     expect(parseCnipaGazetteAcceptanceArguments(["--plan", "x"])).toMatchObject({ apply: false });
   });
@@ -95,5 +150,24 @@ describe("CNIPA Gazette bounded acceptance runner governance", () => {
         process.cwd(),
       ),
     ).toThrow(/outside the repository/);
+  });
+
+  it("validates a v0.9.4 issue-75 capture without mutation before GO", async () => {
+    const root = path.join(tmpdir(), "markorbit-gazette-capture-test-" + Date.now());
+    temporary.push(root);
+    await mkdir(root, { recursive: true });
+    const capturePath = path.join(root, "MO_CNIPA_GAZETTE_75_SMALL_COMPLETE.json");
+    await writeFile(capturePath, JSON.stringify(captureFixture()), "utf8");
+    const loaded = await loadCnipaGazetteAcceptanceCaptureFile(capturePath, plan(), process.cwd());
+    expect(loaded.capture).toMatchObject({
+      version: "0.9.4",
+      announcementIssue: "75",
+      announcementDate: "1983-08-15",
+      sourceTotal: 576,
+      sourcePages: 6,
+      observedLastPageLength: 76,
+    });
+    expect(loaded.sha256).toMatch(/^[a-f0-9]{64}$/u);
+    expect(loaded.sizeBytes).toBeGreaterThan(0);
   });
 });
