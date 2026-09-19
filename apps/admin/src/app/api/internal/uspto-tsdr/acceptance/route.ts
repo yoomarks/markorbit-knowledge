@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { RegistryValidationError, type CreateSourceInput } from "@markorbit/persistence";
 import type { CreateCollectionPlanInput } from "@markorbit/persistence/collection-plans";
 import type { CreateConnectorManifestInput } from "@markorbit/persistence/connectors";
+import type { CreateWorkerInput } from "@markorbit/persistence/workers";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { authenticateUsptoTsdrAcceptanceRequest } from "@/server/uspto-tsdr-acceptance-auth";
 import {
@@ -92,6 +93,65 @@ function assertTsdrPlanInput(
   return plan as unknown as CreateCollectionPlanInput;
 }
 
+function sameStrings(value: unknown, expected: readonly string[]): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length === expected.length &&
+    value.every((item, index) => item === expected[index])
+  );
+}
+
+function assertTsdrWorkerInput(value: unknown, workspaceId: string): CreateWorkerInput {
+  const worker = object(value, "worker");
+  const runtime = object(worker.runtime, "worker.runtime");
+  const bindings = Array.isArray(worker.connectorBindings) ? worker.connectorBindings : [];
+  const binding = object(bindings[0], "worker.connectorBindings[0]");
+  if (
+    worker.workspaceId !== workspaceId ||
+    worker.displayName !== "USPTO TSDR Governed Evidence Worker" ||
+    worker.desiredState !== "ACTIVE" ||
+    runtime.runtimeId !== "uspto-tsdr-worker" ||
+    runtime.version !== CONNECTOR_VERSION ||
+    !sameStrings(worker.supportedJobTypes, ["API_COLLECTION"]) ||
+    bindings.length !== 1 ||
+    binding.connectorId !== CONNECTOR_ID ||
+    binding.version !== CONNECTOR_VERSION ||
+    !sameStrings(binding.capabilities, ["COLLECT"]) ||
+    worker.maxConcurrency !== 1 ||
+    !Array.isArray(worker.labels) ||
+    !worker.labels.includes(WORKER_LABEL)
+  ) {
+    throw new RegistryValidationError("TSDR acceptance Worker definition mismatch");
+  }
+  return worker as unknown as CreateWorkerInput;
+}
+
+function sameGovernedWorker(
+  value: unknown,
+  expected: CreateWorkerInput,
+  workspaceId: string,
+): boolean {
+  const container = object(value, "worker view");
+  const worker = object(container.worker ?? container, "worker");
+  const runtime = object(worker.runtime, "worker.runtime");
+  const bindings = Array.isArray(worker.connectorBindings) ? worker.connectorBindings : [];
+  const binding = object(bindings[0], "worker.connectorBindings[0]");
+  return (
+    worker.workspaceId === workspaceId &&
+    worker.displayName === expected.displayName &&
+    runtime.runtimeId === expected.runtime.runtimeId &&
+    runtime.version === expected.runtime.version &&
+    worker.maxConcurrency === expected.maxConcurrency &&
+    sameStrings(worker.supportedJobTypes, expected.supportedJobTypes) &&
+    bindings.length === 1 &&
+    binding.connectorId === CONNECTOR_ID &&
+    binding.version === CONNECTOR_VERSION &&
+    sameStrings(binding.capabilities, ["COLLECT"]) &&
+    Array.isArray(worker.labels) &&
+    worker.labels.includes(WORKER_LABEL)
+  );
+}
+
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
@@ -143,6 +203,40 @@ export async function POST(request: Request) {
         assertTsdrPlanInput(payload.plan, workspaceId, access.planSha256),
       );
       return NextResponse.json({ plan }, { status: 201 });
+    }
+
+    if (operation === "PROVISION_WORKER") {
+      const expected = assertTsdrWorkerInput(payload.worker, workspaceId);
+      const repository = getWorkerRegistryRepository();
+      const existing = repository.list({
+        workspaceId,
+        label: WORKER_LABEL,
+        limit: 100,
+      });
+      for (const candidate of existing.items) {
+        if (!sameGovernedWorker(candidate, expected, workspaceId)) continue;
+        const workerId = text(object(candidate.worker ?? candidate, "worker").id, "worker.id");
+        const rotated = repository.rotateCredential(workerId);
+        return NextResponse.json({
+          workerId,
+          credential: rotated.credential,
+          provisioning: "ROTATED",
+        });
+      }
+      if (existing.items.length > 0) {
+        throw new RegistryValidationError(
+          "Existing TSDR governed Worker drifted from the frozen runtime definition",
+        );
+      }
+      const created = repository.create(expected);
+      return NextResponse.json(
+        {
+          workerId: created.view.worker.id,
+          credential: created.credential,
+          provisioning: "CREATED",
+        },
+        { status: 201 },
+      );
     }
 
     if (operation === "LIST_WORKERS") {
