@@ -13,6 +13,15 @@ import { parseUsptoTsdrWebTarget } from "./uspto-tsdr-web-acquirer";
 
 type ResolvedAddress = { address: string; family: 4 | 6 };
 type Resolver = (hostname: string) => Promise<ResolvedAddress[]>;
+type StaticTransport = (
+  url: URL,
+  resolved: ResolvedAddress,
+  maxBytes: number,
+) => Promise<{
+  statusCode: number;
+  headers: Record<string, string | string[] | undefined>;
+  body: Uint8Array;
+}>;
 
 const EXECUTOR: ExecutionExecutor = {
   executorId: "uspto-tsdr-web-static-http",
@@ -115,8 +124,13 @@ function robotsAllows(text: string, pathname: string): boolean {
 
 export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcquirer {
   readonly executor = EXECUTOR;
+  private readonly resolver: Resolver;
+  private readonly transport: StaticTransport;
 
-  constructor(private readonly resolver: Resolver = defaultResolver) {}
+  constructor(options: { resolver?: Resolver; transport?: StaticTransport } = {}) {
+    this.resolver = options.resolver ?? defaultResolver;
+    this.transport = options.transport ?? fetchPinned;
+  }
 
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
     const source = context.job.sourceSnapshot;
@@ -170,7 +184,7 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
     }
 
     const robotsUrl = new URL("/robots.txt", url.origin);
-    const robots = await fetchPinned(robotsUrl, resolved[0]!, 512 * 1024);
+    const robots = await this.transport(robotsUrl, resolved[0]!, 512 * 1024);
     if (robots.statusCode < 200 || robots.statusCode >= 300) {
       throw new CollectionAcquisitionError(
         "TSDR_WEB_STATIC_ROBOTS_UNAVAILABLE",
@@ -187,7 +201,7 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
     }
 
     const maxBytes = target.surface === "MARK_IMAGE" ? MAX_IMAGE_BYTES : MAX_STATUS_BYTES;
-    const response = await fetchPinned(url, resolved[0]!, maxBytes);
+    const response = await this.transport(url, resolved[0]!, maxBytes);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw new CollectionAcquisitionError(
         "TSDR_WEB_STATIC_HTTP_STATUS_REJECTED",
