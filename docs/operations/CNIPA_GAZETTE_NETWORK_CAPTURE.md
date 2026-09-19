@@ -154,17 +154,20 @@ Publication existence alone is not a legal conclusion and does not authorize a b
 
 ## Governed production runtime wiring
 
-Production execution is split into three least-privilege Worker providers. None of these providers plans or starts the historical replay by itself.
+Production mutation is split into least-privilege stages, but Gazette source acquisition must respect the source's browser-access boundary.
 
-- `cnipa-gazette`: authenticated CNIPA checkpoint acquisition only. Requires the operator-managed CNIPA browser-session environment. A checkpoint is bounded to at most 100 pages and defaults to 25 pages.
-- `cnipa-gazette-publisher`: reads an already-durable Knowledge fact-admission request under the active Worker lease, verifies canonical URI/SHA/size, and posts only to the Data Engine fact-admission endpoints. Requires `MARKORBIT_DATA_ENGINE_URL` plus the dedicated `MARKORBIT_DATA_ENGINE_FACT_ADMISSION_KEY`; the key must satisfy the Data Engine minimum 32-character admission-key rule. It does not receive a CNIPA browser session.
+- The former `cnipa-gazette` Playwright provider is **disabled**. The official Gazette site rejects that browser-launch path; it must not be used as a production acquisition fallback.
+- Gazette source acquisition begins in a **normally opened, operator-authorized Chrome tab** with **MO CNIPA Network Capture** attached through `chrome.debugger`. The extension observes the successful official request and replays only bounded page changes inside that already-authorized page context.
+- `cnipa-gazette-publisher`: reads an already-durable Knowledge fact-admission request under the active Worker lease, verifies canonical URI/SHA/size, and posts only to the Data Engine fact-admission endpoints. Requires `MARKORBIT_DATA_ENGINE_URL` plus the dedicated `MARKORBIT_DATA_ENGINE_FACT_ADMISSION_KEY`; the key must satisfy the Data Engine minimum 32-character admission-key rule. It receives no CNIPA browser credentials.
 - `cnipa-gazette-finalize`: reads the durable dataset identity plus durable CHUNK admission receipts from Knowledge, with receipt reads bounded to 8 concurrent requests. It emits a durable FINALIZE request only after contiguous page coverage is proven. It receives neither CNIPA credentials nor Data Engine write credentials.
+
+The bounded #860 acceptance imports a complete v0.9.4 capture offline. A separately governed streaming/browser-extension bridge is still required before any historical production replay can be enabled.
 
 Durable Knowledge artifact reads are available only through the lease-scoped Worker endpoint and only for RawArtifact ids explicitly referenced by the immutable Gazette publisher/finalize Job snapshot. The endpoint also enforces workspace ownership and stored SHA/size integrity before streaming bytes.
 
 The production lineage is therefore:
 
-`official page -> durable raw/projection/checkpoint/dataset identity -> durable CHUNK request -> Data Engine CHUNK receipt -> durable FINALIZE request -> Data Engine FINALIZE receipt`.
+`normal official browser session -> durable v0.9.4 capture root -> durable raw/projection/checkpoint/dataset identity -> durable CHUNK request -> Data Engine CHUNK receipt -> durable FINALIZE request -> Data Engine FINALIZE receipt`.
 
 Data Engine mutation never occurs before the corresponding request artifact is durable in Knowledge.
 
@@ -190,16 +193,20 @@ The frozen plan is SHA-bound and apply requires an exact `GO #860 CNIPA-GAZETTE 
 
 The acceptance chain is four one-shot Worker stages:
 
-1. `ACQUIRE`: authenticated CNIPA browser-session transport; persists raw pages, projections, checkpoint, dataset identity, and CHUNK request.
+1. `IMPORT_CAPTURE`: imports a complete **MO CNIPA Network Capture v0.9.4** issue-75 export. The immutable Job binds the external file SHA-256, byte size, filename, issue/range and captured query. The original export becomes the durable lineage root; the existing Gazette artifact builder then reconstructs pages 1..6 offline and persists raw pages, projections, checkpoint, dataset identity and CHUNK request.
 2. `PUBLISH_CHUNK`: reads only the exact durable CHUNK request granted by its immutable Job and persists the Data Engine CHUNK receipt.
 3. `BUILD_FINALIZE`: reads only the exact dataset identity plus CHUNK receipt from the prior frozen acceptance stages and persists the FINALIZE request.
 4. `PUBLISH_FINALIZE`: reads only the exact durable FINALIZE request and persists the Data Engine FINALIZE receipt.
 
-Acceptance references are not merely same-workspace references: the Admin acceptance boundary also proves that each referenced RawArtifact came from the expected prior stage of the **same frozen acceptance plan**.
+The accepted client is pinned to **MO CNIPA Network Capture v0.9.4** and the frozen bundle SHA-256 `5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a`. The acceptance input schema is `mo-cnipa-gazette-small-complete-v1`. The verifier keeps the successful normal request's effective headers only in extension memory for same-session replay; authentication headers are never written into capture exports. Old v0.9.1/v0.9.3 raw captures and incomplete exports are not acceptable substitutes.
 
-The governed one-shot runner starts a clean Data Engine API from the merged #762 code on a separate loopback port with an ephemeral in-memory admission bearer key. It does not rewrite the existing Data Engine `.env`, restart the existing API service, or persist that key. The final manifest records only plan SHA, run/job/worker ids, artifact ids/hashes/sizes, completeness assertions, and admission outcomes; credentials are excluded.
+Before any GO authorization, the runner may validate `--plan` plus `--capture` locally. This verifies issue 75, date 1983-08-15, 576 rows, 6 pages, pageSize 100, terminal-page length 76, unique official ids, `searchId == id`, official source URL and captured ALL query. That validation performs no CNIPA network request, Knowledge mutation or Data Engine write.
 
-The CNIPA browser session uses a dedicated profile outside the repository rather than the operator's normal Chrome profile. Before apply, the operator opens that profile in headed mode, completes any CNIPA SSO/CAPTCHA manually, verifies the `brandNotice` portal, and closes the session. A non-secret preparation marker is required by the one-shot runner; cookies/tokens remain only in the browser profile and are never copied into the plan or evidence manifest.
+Acceptance references are not merely same-workspace references: the Admin acceptance boundary also proves that each referenced RawArtifact came from the expected prior stage of the **same frozen acceptance plan**. Each reconstructed raw page must also descend from the durable v0.9.4 capture root.
+
+The governed one-shot runner starts a clean Data Engine API from the merged #762 code on a separate loopback port with an ephemeral in-memory admission bearer key. It does not rewrite the existing Data Engine `.env`, restart the existing API service, or persist that key. The final manifest records only plan SHA, capture SHA/size/durable artifact id, run/job/worker ids, artifact ids/hashes/sizes, completeness assertions, and admission outcomes; credentials are excluded.
+
+The operator opens the official `brandNotice` page **normally** in Chrome, starts MO CNIPA Network Capture v0.9.4, runs one normal issue-75 + 全部 query, then uses **完整验证小期**. The extension performs bounded replay in that already-working page context and exports the complete JSON file. Cookies, SSO state, CAPTCHA state and browser tokens never enter the Job snapshot or acceptance manifest.
 
 Historical replay remains a separate authorization even after this bounded acceptance passes.
 

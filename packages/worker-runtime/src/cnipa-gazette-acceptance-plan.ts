@@ -10,16 +10,16 @@ import {
   CNIPA_GAZETTE_FINALIZE_JOB_SOURCE,
 } from "./cnipa-gazette-finalize-job-acquirer";
 import {
-  CNIPA_GAZETTE_JOB_CONNECTOR_ID,
-  CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
-} from "./cnipa-gazette-job-acquirer";
-import { CNIPA_GAZETTE_PUBLIC_ORIGIN } from "./cnipa-gazette-page-acquirer";
+  CNIPA_GAZETTE_CAPTURE_IMPORT_CONNECTOR_ID,
+  CNIPA_GAZETTE_CAPTURE_IMPORT_CONNECTOR_VERSION,
+  CNIPA_GAZETTE_CAPTURE_IMPORT_SOURCE,
+} from "./cnipa-gazette-capture-import-job-acquirer";
 
 export const CNIPA_GAZETTE_ACCEPTANCE_AUTHORITY_MODE = "INTERNAL_SERVICE_GO_V1" as const;
 export const CNIPA_GAZETTE_ACCEPTANCE_STAGE = "FULL_CHAIN" as const;
 
 export const CNIPA_GAZETTE_ACCEPTANCE_STAGES = [
-  "ACQUIRE",
+  "IMPORT_CAPTURE",
   "PUBLISH_CHUNK",
   "BUILD_FINALIZE",
   "PUBLISH_FINALIZE",
@@ -44,6 +44,11 @@ export type CnipaGazetteAcceptancePlan = {
   range: { startPage: 1; endPage: 6 };
   announcementTypeSelection: "ALL";
   anncType: "";
+  acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_V094_IMPORT";
+  captureTool: "MO CNIPA Network Capture";
+  captureToolVersion: "0.9.4";
+  captureExportSchema: "mo-cnipa-gazette-small-complete-v1";
+  captureToolBundleSha256: "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a";
   dataEngineUrl: string;
 };
 
@@ -120,6 +125,11 @@ export function parseCnipaGazetteAcceptancePlan(value: unknown): CnipaGazetteAcc
       "range",
       "announcementTypeSelection",
       "anncType",
+      "acquisitionMode",
+      "captureTool",
+      "captureToolVersion",
+      "captureExportSchema",
+      "captureToolBundleSha256",
       "dataEngineUrl",
     ],
     "root",
@@ -154,7 +164,13 @@ export function parseCnipaGazetteAcceptancePlan(value: unknown): CnipaGazetteAcc
     range.startPage !== 1 ||
     range.endPage !== 6 ||
     input.announcementTypeSelection !== "ALL" ||
-    input.anncType !== ""
+    input.anncType !== "" ||
+    input.acquisitionMode !== "MO_CNIPA_NETWORK_CAPTURE_V094_IMPORT" ||
+    input.captureTool !== "MO CNIPA Network Capture" ||
+    input.captureToolVersion !== "0.9.4" ||
+    input.captureExportSchema !== "mo-cnipa-gazette-small-complete-v1" ||
+    input.captureToolBundleSha256 !==
+      "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a"
   ) {
     throw new Error("CNIPA Gazette acceptance plan invalid: issue-75 frozen scope mismatch");
   }
@@ -176,6 +192,11 @@ export function parseCnipaGazetteAcceptancePlan(value: unknown): CnipaGazetteAcc
     range: { startPage: 1, endPage: 6 },
     announcementTypeSelection: "ALL",
     anncType: "",
+    acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_V094_IMPORT",
+    captureTool: "MO CNIPA Network Capture",
+    captureToolVersion: "0.9.4",
+    captureExportSchema: "mo-cnipa-gazette-small-complete-v1",
+    captureToolBundleSha256: "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a",
     dataEngineUrl: dataEngineUrl(input.dataEngineUrl),
   };
 }
@@ -209,14 +230,14 @@ export function cnipaGazetteAcceptanceRequestTemplate(
 }
 
 function stageRuntime(stage: CnipaGazetteAcceptanceRuntimeStage) {
-  if (stage === "ACQUIRE") {
+  if (stage === "IMPORT_CAPTURE") {
     return {
-      connectorId: CNIPA_GAZETTE_JOB_CONNECTOR_ID,
-      connectorVersion: CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
-      sourceType: "API" as const,
-      canonicalUri: CNIPA_GAZETTE_PUBLIC_ORIGIN,
-      category: "OFFICIAL_AUTHORITY" as const,
-      authorityLevel: "PRIMARY_OFFICIAL" as const,
+      connectorId: CNIPA_GAZETTE_CAPTURE_IMPORT_CONNECTOR_ID,
+      connectorVersion: CNIPA_GAZETTE_CAPTURE_IMPORT_CONNECTOR_VERSION,
+      sourceType: "DATABASE" as const,
+      canonicalUri: CNIPA_GAZETTE_CAPTURE_IMPORT_SOURCE,
+      category: "INTERNAL" as const,
+      authorityLevel: "INTERNAL" as const,
     };
   }
   if (stage === "BUILD_FINALIZE") {
@@ -255,13 +276,25 @@ function durableArtifactReferenceSchema() {
 }
 
 function acceptanceConfigurationSchema(stage: CnipaGazetteAcceptanceRuntimeStage) {
-  if (stage === "ACQUIRE") {
+  if (stage === "IMPORT_CAPTURE") {
     return {
       type: "object",
       additionalProperties: false,
-      required: ["intent", "announcementIssue", "range", "requestTemplate", "pagesPerCheckpoint"],
+      required: [
+        "intent",
+        "captureSha256",
+        "captureSizeBytes",
+        "captureOriginalName",
+        "announcementIssue",
+        "range",
+        "requestTemplate",
+        "pagesPerCheckpoint",
+      ],
       properties: {
-        intent: { const: "CHECKPOINT" },
+        intent: { const: "IMPORT_V094_SMALL_COMPLETE" },
+        captureSha256: { type: "string", pattern: "^[a-f0-9]{64}$" },
+        captureSizeBytes: { type: "integer", minimum: 1 },
+        captureOriginalName: { type: "string", minLength: 1, maxLength: 255 },
         announcementIssue: { const: 75 },
         range: {
           type: "object",
@@ -409,11 +442,11 @@ export function cnipaGazetteAcceptanceCollectionPlanPayload(input: {
       includePatterns: [],
       excludePatterns: [],
       maxDepth: 0,
-      maxItems: input.stage === "ACQUIRE" ? 20 : 5,
+      maxItems: input.stage === "IMPORT_CAPTURE" ? 20 : 5,
       renderJavascript: false,
       fetchAttachments: false,
       respectRobots: false,
-      rateLimitPerMinute: input.stage === "ACQUIRE" ? 12 : 60,
+      rateLimitPerMinute: input.stage === "IMPORT_CAPTURE" ? 60 : 60,
       timeoutSeconds: 300,
       retry: { maxAttempts: 1, backoffSeconds: 0 },
       locale: "zh-CN",
@@ -460,9 +493,28 @@ export function cnipaGazetteAcceptanceWorkerPayload(
   };
 }
 
-export function cnipaGazetteAcceptanceAcquisitionConfig(plan: CnipaGazetteAcceptancePlan) {
+export function cnipaGazetteAcceptanceCaptureImportConfig(
+  plan: CnipaGazetteAcceptancePlan,
+  capture: {
+    sha256: string;
+    sizeBytes: number;
+    originalName: string;
+  },
+) {
+  if (!/^[a-f0-9]{64}$/u.test(capture.sha256)) {
+    throw new Error("CNIPA Gazette acceptance capture SHA-256 is invalid");
+  }
+  if (!Number.isSafeInteger(capture.sizeBytes) || capture.sizeBytes < 1) {
+    throw new Error("CNIPA Gazette acceptance capture size is invalid");
+  }
+  if (!capture.originalName.trim() || capture.originalName.length > 255) {
+    throw new Error("CNIPA Gazette acceptance capture filename is invalid");
+  }
   return {
-    intent: "CHECKPOINT",
+    intent: "IMPORT_V094_SMALL_COMPLETE",
+    captureSha256: capture.sha256,
+    captureSizeBytes: capture.sizeBytes,
+    captureOriginalName: capture.originalName,
     announcementIssue: 75,
     range: { startPage: 1, endPage: 6 },
     requestTemplate: cnipaGazetteAcceptanceRequestTemplate(plan),

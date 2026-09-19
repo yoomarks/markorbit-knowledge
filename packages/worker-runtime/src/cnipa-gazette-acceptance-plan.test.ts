@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CNIPA_GAZETTE_ACCEPTANCE_AUTHORITY_MODE,
-  cnipaGazetteAcceptanceAcquisitionConfig,
+  cnipaGazetteAcceptanceCaptureImportConfig,
   cnipaGazetteAcceptanceCollectionPlanPayload,
   cnipaGazetteAcceptanceConnectorManifest,
   cnipaGazetteAcceptancePlanSha256,
@@ -29,6 +29,11 @@ const rawPlan = {
   range: { startPage: 1, endPage: 6 },
   announcementTypeSelection: "ALL",
   anncType: "",
+  acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_V094_IMPORT",
+  captureTool: "MO CNIPA Network Capture",
+  captureToolVersion: "0.9.4",
+  captureExportSchema: "mo-cnipa-gazette-small-complete-v1",
+  captureToolBundleSha256: "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a",
   dataEngineUrl: "http://127.0.0.1:8080/",
 };
 
@@ -44,11 +49,22 @@ describe("CNIPA Gazette bounded acceptance plan", () => {
       finalPageRowCount: 76,
       range: { startPage: 1, endPage: 6 },
       anncType: "",
+      acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_V094_IMPORT",
+      captureToolVersion: "0.9.4",
+      captureExportSchema: "mo-cnipa-gazette-small-complete-v1",
       dataEngineUrl: "http://127.0.0.1:8080",
     });
 
-    expect(cnipaGazetteAcceptanceAcquisitionConfig(plan)).toMatchObject({
-      intent: "CHECKPOINT",
+    expect(
+      cnipaGazetteAcceptanceCaptureImportConfig(plan, {
+        sha256: "a".repeat(64),
+        sizeBytes: 123456,
+        originalName: "MO_CNIPA_GAZETTE_75_SMALL_COMPLETE.json",
+      }),
+    ).toMatchObject({
+      intent: "IMPORT_V094_SMALL_COMPLETE",
+      captureSha256: "a".repeat(64),
+      captureSizeBytes: 123456,
       announcementIssue: 75,
       range: { startPage: 1, endPage: 6 },
       pagesPerCheckpoint: 6,
@@ -80,12 +96,12 @@ describe("CNIPA Gazette bounded acceptance plan", () => {
 
   it("declares least-privilege stage identities", () => {
     const plan = parseCnipaGazetteAcceptancePlan(rawPlan);
-    const acquisition = cnipaGazetteAcceptanceConnectorManifest("ACQUIRE");
+    const acquisition = cnipaGazetteAcceptanceConnectorManifest("IMPORT_CAPTURE");
     const publisher = cnipaGazetteAcceptanceConnectorManifest("PUBLISH_CHUNK");
     const finalize = cnipaGazetteAcceptanceConnectorManifest("BUILD_FINALIZE");
     expect(acquisition).toMatchObject({
-      connectorId: "cnipa-trademark-gazette",
-      sourceTypes: ["API"],
+      connectorId: "cnipa-gazette-capture-import",
+      sourceTypes: ["DATABASE"],
       outputArtifactKinds: ["JSON"],
     });
     expect(publisher).toMatchObject({
@@ -99,14 +115,18 @@ describe("CNIPA Gazette bounded acceptance plan", () => {
 
     const source = cnipaGazetteAcceptanceSourcePayload({
       plan,
-      stage: "ACQUIRE",
-      connectorConfig: cnipaGazetteAcceptanceAcquisitionConfig(plan),
+      stage: "IMPORT_CAPTURE",
+      connectorConfig: cnipaGazetteAcceptanceCaptureImportConfig(plan, {
+        sha256: "a".repeat(64),
+        sizeBytes: 123456,
+        originalName: "MO_CNIPA_GAZETTE_75_SMALL_COMPLETE.json",
+      }),
     });
     expect(source.extensions["x-markorbit-historical-replay-activated"]).toBe(false);
     const collectionPlan = cnipaGazetteAcceptanceCollectionPlanPayload({
       sourceId: "src_01ARZ3NDEKTSV4RRFFQ69G5FAV",
       plan,
-      stage: "ACQUIRE",
+      stage: "IMPORT_CAPTURE",
     });
     expect(collectionPlan).toMatchObject({
       schedule: { mode: "MANUAL" },

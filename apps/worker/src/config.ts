@@ -12,7 +12,6 @@ import type {
 export type WorkerCollectionProvider =
   | "api"
   | "cnipa"
-  | "cnipa-gazette"
   | "cnipa-gazette-publisher"
   | "cnipa-gazette-finalize"
   | "crawl4ai"
@@ -142,10 +141,14 @@ function dataEngineFactAdmissionKey(env: NodeJS.ProcessEnv): string {
 
 function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
   const value = env.MARKORBIT_COLLECTION_PROVIDER?.trim().toLowerCase() || "crawl4ai";
+  if (value === "cnipa-gazette") {
+    throw new Error(
+      "MARKORBIT_COLLECTION_PROVIDER=cnipa-gazette is disabled: CNIPA Gazette requires the normal browser + MO CNIPA Network Capture bridge; Playwright Gazette acquisition is not authorized.",
+    );
+  }
   if (
     value === "api" ||
     value === "cnipa" ||
-    value === "cnipa-gazette" ||
     value === "cnipa-gazette-publisher" ||
     value === "cnipa-gazette-finalize" ||
     value === "crawl4ai" ||
@@ -159,7 +162,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, ip-australia-manual, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, ip-australia-manual, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
   );
 }
 
@@ -318,10 +321,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
       );
     }
   }
-  const cnipaSession =
-    provider === "cnipa" || provider === "cnipa-gazette"
-      ? loadCnipaBrowserSessionConfig(env)
-      : undefined;
+  const cnipaSession = provider === "cnipa" ? loadCnipaBrowserSessionConfig(env) : undefined;
   const dataEngineUrl =
     provider === "cnipa-gazette-publisher"
       ? normalizedDataEngineUrl(required(env, "MARKORBIT_DATA_ENGINE_URL"))

@@ -3,10 +3,8 @@ import {
   ApiArtifactAcquirer,
   BrightDataFallbackAcquirer,
   BrightDataWebUnlockerClient,
-  CnipaGazetteAuthenticatedTransport,
   CnipaGazetteFactAdmissionJobAcquirer,
   CnipaGazetteFinalizeJobAcquirer,
-  CnipaGazetteJobArtifactAcquirer,
   CollectionAcquisitionError,
   ControlledCollectionWorkerRuntime,
   type ControlledCollectionCompletion,
@@ -96,25 +94,20 @@ async function main(): Promise<void> {
         )
       : null;
   const cnipaGazetteAcquirer =
-    config.collectionProvider === "cnipa-gazette" && cnipaSessionFactory
-      ? new CnipaGazetteJobArtifactAcquirer({
-          transport: new CnipaGazetteAuthenticatedTransport(cnipaSessionFactory),
+    config.collectionProvider === "cnipa-gazette-publisher" &&
+    cnipaGazetteDurableArtifactReader &&
+    config.dataEngineUrl &&
+    config.dataEngineFactAdmissionKey
+      ? new CnipaGazetteFactAdmissionJobAcquirer({
+          reader: cnipaGazetteDurableArtifactReader,
+          client: new HttpFactAdmissionClient(
+            config.dataEngineUrl,
+            config.dataEngineFactAdmissionKey,
+          ),
         })
-      : config.collectionProvider === "cnipa-gazette-publisher" &&
-          cnipaGazetteDurableArtifactReader &&
-          config.dataEngineUrl &&
-          config.dataEngineFactAdmissionKey
-        ? new CnipaGazetteFactAdmissionJobAcquirer({
-            reader: cnipaGazetteDurableArtifactReader,
-            client: new HttpFactAdmissionClient(
-              config.dataEngineUrl,
-              config.dataEngineFactAdmissionKey,
-            ),
-          })
-        : config.collectionProvider === "cnipa-gazette-finalize" &&
-            cnipaGazetteDurableArtifactReader
-          ? new CnipaGazetteFinalizeJobAcquirer({ reader: cnipaGazetteDurableArtifactReader })
-          : null;
+      : config.collectionProvider === "cnipa-gazette-finalize" && cnipaGazetteDurableArtifactReader
+        ? new CnipaGazetteFinalizeJobAcquirer({ reader: cnipaGazetteDurableArtifactReader })
+        : null;
   const crawl4AiAcquirer = new Crawl4AiSubprocessAcquirer({
     requireEgressProxy: config.requireEgressProxy,
     maxConcurrency: config.crawl4AiMaxConcurrency,
@@ -165,8 +158,7 @@ async function main(): Promise<void> {
                     maxItems: config.githubMaxItems,
                     maxDepth: config.githubMaxDepth,
                   })
-                : config.collectionProvider === "cnipa-gazette" ||
-                    config.collectionProvider === "cnipa-gazette-publisher" ||
+                : config.collectionProvider === "cnipa-gazette-publisher" ||
                     config.collectionProvider === "cnipa-gazette-finalize"
                   ? (cnipaGazetteAcquirer ??
                     (() => {
@@ -358,7 +350,7 @@ async function main(): Promise<void> {
       if (!collectionProcessed && !conversionProcessed) await delay(config.pollIntervalMs);
     } catch (error) {
       if (
-        (config.collectionProvider === "cnipa" || config.collectionProvider === "cnipa-gazette") &&
+        config.collectionProvider === "cnipa" &&
         error instanceof CollectionAcquisitionError &&
         error.code === "CNIPA_REAUTH_REQUIRED"
       ) {
