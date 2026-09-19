@@ -92,6 +92,7 @@ export * from "./wipo-source-adapter";
 export * from "./cnipa-source-adapter";
 export * from "./cnipa-trademark-gazette";
 export * from "./cnipa-gazette-capture-dataset";
+export * from "./cnipa-gazette-checkpoint-runtime";
 export * from "./source-capability-matrix";
 export * from "./source-config-registry";
 export * from "./source-parser-port";
