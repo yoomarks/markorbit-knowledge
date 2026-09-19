@@ -197,9 +197,14 @@ export class HttpControlledCollectionClient implements ArtifactBackedExecutionCl
     });
   }
 
-  async claim(): Promise<ControlledWorkerClaim> {
+  async claim(jobId?: string): Promise<ControlledWorkerClaim> {
     const payload = record(
-      await this.jsonRequest("/api/worker/v1/claim", { workerId: this.workerId }, undefined, false),
+      await this.jsonRequest(
+        "/api/worker/v1/claim",
+        { workerId: this.workerId, ...(jobId ? { jobId } : {}) },
+        undefined,
+        false,
+      ),
     );
     if (!payload) throw new Error("Worker claim response must be an object");
     const job = payload.job === null ? null : isJob(payload.job) ? payload.job : undefined;
