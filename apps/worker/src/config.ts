@@ -10,7 +10,14 @@ import type {
 } from "./cnipa-playwright-session-executor";
 
 export type WorkerCollectionProvider =
-  "api" | "cnipa" | "crawl4ai" | "github" | "ip-australia-manual" | "local-folder" | "rss";
+  | "api"
+  | "cnipa"
+  | "crawl4ai"
+  | "github"
+  | "ip-australia-manual"
+  | "local-folder"
+  | "rss"
+  | "uspto-tsdr";
 
 export type WorkerProcessConfig = {
   controlPlaneUrl: string;
@@ -120,12 +127,13 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     value === "github" ||
     value === "ip-australia-manual" ||
     value === "local-folder" ||
-    value === "rss"
+    value === "rss" ||
+    value === "uspto-tsdr"
   ) {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, crawl4ai, github, ip-australia-manual, local-folder, or rss",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, crawl4ai, github, ip-australia-manual, local-folder, rss, or uspto-tsdr",
   );
 }
 
