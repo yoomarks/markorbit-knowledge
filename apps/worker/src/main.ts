@@ -122,19 +122,19 @@ async function main(): Promise<void> {
             : config.collectionProvider === "uspto-tsdr-web"
               ? new UsptoTsdrWebArtifactAcquirer({ delegate: crawl4AiAcquirer })
               : config.collectionProvider === "github"
-              ? new GitHubArtifactAcquirer({
-                  maxFileBytes: config.githubMaxFileBytes,
-                  maxTotalBytes: config.githubMaxTotalBytes,
-                  maxTreeEntries: config.githubMaxTreeEntries,
-                  maxItems: config.githubMaxItems,
-                  maxDepth: config.githubMaxDepth,
-                })
-              : config.collectionProvider === "cnipa"
-                ? (cnipaAcquirer ??
-                  (() => {
-                    throw new Error("CNIPA acquirer configuration is incomplete");
-                  })())
-                : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
+                ? new GitHubArtifactAcquirer({
+                    maxFileBytes: config.githubMaxFileBytes,
+                    maxTotalBytes: config.githubMaxTotalBytes,
+                    maxTreeEntries: config.githubMaxTreeEntries,
+                    maxItems: config.githubMaxItems,
+                    maxDepth: config.githubMaxDepth,
+                  })
+                : config.collectionProvider === "cnipa"
+                  ? (cnipaAcquirer ??
+                    (() => {
+                      throw new Error("CNIPA acquirer configuration is incomplete");
+                    })())
+                  : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
   const learningProfileForJob = (job: Job) =>
     acquisitionLearningProfileForJob({
       job,
