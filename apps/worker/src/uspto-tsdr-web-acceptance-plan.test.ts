@@ -92,8 +92,6 @@ describe("TSDR Web acceptance plan", () => {
     expect(() =>
       parseUsptoTsdrWebAcceptancePlan({ ...base, secretRef: "sec_01ARZ3NDEKTSV4RRFFQ69G5FAV" }),
     ).toThrow(/unsupported keys/u);
-    expect(() => parseUsptoTsdrWebAcceptancePlan({ ...base, channel: "API" })).toThrow(
-      /channel/u,
-    );
+    expect(() => parseUsptoTsdrWebAcceptancePlan({ ...base, channel: "API" })).toThrow(/channel/u);
   });
 });

@@ -57,7 +57,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 export function usptoTsdrWebAcceptancePlanSha256(plan: UsptoTsdrWebAcceptancePlan): string {
-  return createHash("sha256").update(JSON.stringify(canonicalize(plan))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(plan)))
+    .digest("hex");
 }
 
 export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcceptancePlan {
@@ -152,8 +154,7 @@ export function usptoTsdrWebAcceptanceCollectionPlanPayload(
   sourceId: string,
   plan: UsptoTsdrWebAcceptancePlan,
 ) {
-  const artifactKinds =
-    plan.stage === "MARK_IMAGE" ? ["IMAGE"] : ["HTML", "MARKDOWN"];
+  const artifactKinds = plan.stage === "MARK_IMAGE" ? ["IMAGE"] : ["HTML", "MARKDOWN"];
   return {
     workspaceId: plan.workspaceId,
     sourceId,
@@ -185,7 +186,8 @@ export function usptoTsdrWebAcceptanceCollectionPlanPayload(
 }
 
 export function usptoTsdrWebAcceptanceWorkerPayload(workspaceId: string) {
-  if (!WORKSPACE_ID.test(workspaceId)) throw new Error("TSDR Web acceptance workspaceId is invalid");
+  if (!WORKSPACE_ID.test(workspaceId))
+    throw new Error("TSDR Web acceptance workspaceId is invalid");
   return {
     workspaceId,
     displayName: "USPTO TSDR Web Governed Evidence Worker",

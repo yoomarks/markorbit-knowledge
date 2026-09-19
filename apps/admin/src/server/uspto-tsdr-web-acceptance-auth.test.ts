@@ -30,7 +30,9 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
-const sha = createHash("sha256").update(JSON.stringify(canonicalize(plan))).digest("hex");
+const sha = createHash("sha256")
+  .update(JSON.stringify(canonicalize(plan)))
+  .digest("hex");
 const go = `GO #842 TSDR-WEB web-proof-90817045-status STATUS ${sha}`;
 
 function request(token = go, internal = "service-secret") {

@@ -54,7 +54,9 @@ function assertOfficialTsdrWebUri(raw: unknown): void {
     url.searchParams.size === 1 &&
     /^sn\d{8}$/u.test(url.searchParams.get("caseId") ?? "");
   if (!status && !image && !viewer) {
-    throw new RegistryValidationError("TSDR Web acceptance source path is outside governed surfaces");
+    throw new RegistryValidationError(
+      "TSDR Web acceptance source path is outside governed surfaces",
+    );
   }
 }
 
@@ -89,7 +91,9 @@ function assertSourceInput(value: unknown, workspaceId: string): CreateSourceInp
 function assertSourceRecord(sourceId: string, workspaceId: string): void {
   const source = getSourceRepository().getById(sourceId);
   if (!source || source.workspaceId !== workspaceId || source.sourceType !== "WEB") {
-    throw new RegistryValidationError("TSDR Web acceptance source is not in the authorized workspace");
+    throw new RegistryValidationError(
+      "TSDR Web acceptance source is not in the authorized workspace",
+    );
   }
   assertConnector(source.connector);
   assertOfficialTsdrWebUri(source.canonicalUri);
@@ -189,7 +193,9 @@ export async function POST(request: Request) {
     if (operation === "GET_CONNECTOR") {
       const connector = getConnectorRepository().get(CONNECTOR_ID, CONNECTOR_VERSION);
       if (!connector) {
-        throw new RegistryValidationError("Governed crawl4ai-web@1.3.0 connector is not registered");
+        throw new RegistryValidationError(
+          "Governed crawl4ai-web@1.3.0 connector is not registered",
+        );
       }
       return NextResponse.json({ connector });
     }

@@ -1,8 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { CaseProducerAccessError } from "./case-producer-auth";
 
-export const USPTO_TSDR_WEB_ACCEPTANCE_AUTHORITY_HEADER =
-  "x-markorbit-tsdr-web-authority" as const;
+export const USPTO_TSDR_WEB_ACCEPTANCE_AUTHORITY_HEADER = "x-markorbit-tsdr-web-authority" as const;
 export const USPTO_TSDR_WEB_ACCEPTANCE_INTERNAL_AUTHORIZATION_HEADER =
   "x-markorbit-internal-authorization" as const;
 
@@ -42,7 +41,9 @@ function canonicalize(value: unknown): unknown {
 }
 
 function planHash(plan: Record<string, unknown>): string {
-  return createHash("sha256").update(JSON.stringify(canonicalize(plan))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(plan)))
+    .digest("hex");
 }
 
 function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
@@ -135,8 +136,7 @@ export function authenticateUsptoTsdrWebAcceptanceRequest(
       "TSDR Web acceptance workspace does not match the frozen plan.",
     );
   }
-  const expectedToken =
-    `GO #842 TSDR-WEB ${summary.operationId} ${summary.stage} ${summary.planSha256}`;
+  const expectedToken = `GO #842 TSDR-WEB ${summary.operationId} ${summary.stage} ${summary.planSha256}`;
   const suppliedToken = request.headers.get(USPTO_TSDR_WEB_ACCEPTANCE_AUTHORITY_HEADER);
   if (!sameSecret(suppliedToken, expectedToken)) {
     throw new CaseProducerAccessError(

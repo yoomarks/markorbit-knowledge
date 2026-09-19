@@ -66,7 +66,9 @@ export function assertTsdrWebAcceptancePathOutsideWorkingTree(
   const root = path.resolve(workingDirectory);
   const relative = path.relative(root, resolvedTarget);
   if (relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative))) {
-    throw new Error("TSDR Web acceptance frozen plan must live outside the repository working tree");
+    throw new Error(
+      "TSDR Web acceptance frozen plan must live outside the repository working tree",
+    );
   }
   return resolvedTarget;
 }
@@ -296,7 +298,8 @@ async function dispatch(
   const run = record(value?.run);
   const jobs = Array.isArray(value?.jobs) ? value.jobs : [];
   const job = record(jobs[0]);
-  if (jobs.length !== 1 || !job) throw new Error("TSDR Web acceptance must dispatch exactly one Job");
+  if (jobs.length !== 1 || !job)
+    throw new Error("TSDR Web acceptance must dispatch exactly one Job");
   return { runId: identifier(run?.id, "run.id"), jobId: identifier(job.id, "job.id") };
 }
 
