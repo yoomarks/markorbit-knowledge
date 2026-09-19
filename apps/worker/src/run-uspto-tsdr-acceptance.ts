@@ -166,20 +166,37 @@ export function assertUsptoTsdrAcceptanceAuthority(input: {
   };
 }
 
-async function requestJson(
+async function acceptanceRequest(
   baseUrl: string,
-  requestPath: string,
-  init: RequestInit = {},
-  allowedStatuses: number[] = [],
+  workspaceId: string,
+  operation: string,
+  payload: Record<string, unknown> = {},
 ): Promise<{ status: number; body: unknown }> {
-  const response = await fetch(`${baseUrl}${requestPath}`, init);
+  const internalSecret = process.env.MO_INTERNAL_SERVICE_SECRET?.trim();
+  const principal = process.env.MARKORBIT_OPERATOR_SERVICE_PRINCIPAL?.trim();
+  if (!internalSecret) {
+    throw new Error("MO_INTERNAL_SERVICE_SECRET is required for TSDR acceptance apply");
+  }
+  if (!principal) {
+    throw new Error("MARKORBIT_OPERATOR_SERVICE_PRINCIPAL is required for TSDR acceptance apply");
+  }
+  const requestPath = "/api/internal/uspto-tsdr/acceptance";
+  const response = await fetch(`${baseUrl}${requestPath}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-markorbit-internal-authorization": internalSecret,
+      "x-markorbit-principal": principal,
+    },
+    body: JSON.stringify({ workspaceId, operation, payload }),
+  });
   let body: unknown = null;
   try {
     body = await response.json();
   } catch {
     body = null;
   }
-  if (!response.ok && !allowedStatuses.includes(response.status)) {
+  if (!response.ok) {
     const error = record(record(body)?.error);
     const message = typeof error?.message === "string" ? error.message : `HTTP ${response.status}`;
     throw new Error(`${requestPath}: ${message}`);
@@ -187,34 +204,21 @@ async function requestJson(
   return { status: response.status, body };
 }
 
-function jsonPost(body: unknown): RequestInit {
-  return {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  };
-}
-
 function items(value: unknown): unknown[] {
   const container = record(value);
   return Array.isArray(container?.items) ? container.items : [];
 }
 
-async function ensureConnector(baseUrl: string): Promise<void> {
+async function ensureConnector(baseUrl: string, plan: UsptoTsdrAcceptancePlan): Promise<void> {
   const manifest = usptoTsdrAcceptanceConnectorManifest();
-  const existing = await requestJson(
-    baseUrl,
-    `/api/connectors/${manifest.connectorId}/${manifest.version}`,
-    {},
-    [404],
-  );
-  if (existing.status === 404) {
-    await requestJson(baseUrl, "/api/connectors", jsonPost(manifest));
+  const existing = await acceptanceRequest(baseUrl, plan.workspaceId, "GET_CONNECTOR");
+  const current = record(existing.body);
+  const connector = record(current?.connector);
+  if (!connector) {
+    await acceptanceRequest(baseUrl, plan.workspaceId, "CREATE_CONNECTOR", { manifest });
     return;
   }
-  const current = record(existing.body);
-  const connector = record(current?.connector) ?? current;
-  if (connector?.connectorId !== manifest.connectorId || connector?.version !== manifest.version) {
+  if (connector.connectorId !== manifest.connectorId || connector.version !== manifest.version) {
     throw new Error("Existing TSDR connector drifted from the frozen connector identity");
   }
 }
@@ -236,10 +240,9 @@ function assertExistingSource(
 
 async function ensureSource(baseUrl: string, plan: UsptoTsdrAcceptancePlan): Promise<string> {
   const expected = usptoTsdrAcceptanceSourcePayload(plan);
-  const existing = await requestJson(
-    baseUrl,
-    `/api/sources?q=${encodeURIComponent(expected.slug)}&limit=100`,
-  );
+  const existing = await acceptanceRequest(baseUrl, plan.workspaceId, "LIST_SOURCES", {
+    slug: expected.slug,
+  });
   for (const candidate of items(existing.body)) {
     const source = record(candidate);
     if (source?.slug !== expected.slug) continue;
@@ -247,7 +250,9 @@ async function ensureSource(baseUrl: string, plan: UsptoTsdrAcceptancePlan): Pro
     return identifier(source.id, "source.id");
   }
 
-  const created = await requestJson(baseUrl, "/api/sources", jsonPost(expected));
+  const created = await acceptanceRequest(baseUrl, plan.workspaceId, "CREATE_SOURCE", {
+    source: expected,
+  });
   const source = record(record(created.body)?.source);
   return identifier(source?.id, "source.id");
 }
@@ -280,10 +285,7 @@ async function ensureCollectionPlan(
   plan: UsptoTsdrAcceptancePlan,
 ): Promise<string> {
   const expected = usptoTsdrAcceptanceCollectionPlanPayload(sourceId, plan);
-  const existing = await requestJson(
-    baseUrl,
-    `/api/plans?sourceId=${encodeURIComponent(sourceId)}&limit=100`,
-  );
+  const existing = await acceptanceRequest(baseUrl, plan.workspaceId, "LIST_PLANS", { sourceId });
   for (const candidate of items(existing.body)) {
     const container = record(candidate);
     const collectionPlan = record(container?.plan) ?? container;
@@ -292,7 +294,10 @@ async function ensureCollectionPlan(
     return identifier(collectionPlan.id, "plan.id");
   }
 
-  const created = await requestJson(baseUrl, "/api/plans", jsonPost(expected));
+  const created = await acceptanceRequest(baseUrl, plan.workspaceId, "CREATE_PLAN", {
+    plan: expected,
+    planSha256: usptoTsdrAcceptancePlanSha256(plan),
+  });
   const body = record(created.body);
   const outer = record(body?.plan);
   const collectionPlan = record(outer?.plan) ?? outer;
@@ -301,16 +306,14 @@ async function ensureCollectionPlan(
 
 async function dispatchRun(
   baseUrl: string,
+  plan: UsptoTsdrAcceptancePlan,
   collectionPlanId: string,
-  operationId: string,
   planSha256: string,
 ): Promise<string> {
-  const response = await requestJson(baseUrl, "/api/runs", {
-    ...jsonPost({ planId: collectionPlanId }),
-    headers: {
-      "content-type": "application/json",
-      "Idempotency-Key": `tsdr-acceptance-${operationId}-${planSha256}`,
-    },
+  const response = await acceptanceRequest(baseUrl, plan.workspaceId, "DISPATCH_RUN", {
+    planId: collectionPlanId,
+    planSha256,
+    idempotencyKey: `tsdr-acceptance-${plan.operationId}-${planSha256}`,
   });
   const value = record(record(response.body)?.record);
   const run = record(value?.run);
@@ -325,13 +328,12 @@ function sameStrings(value: unknown, expected: readonly string[]): boolean {
   );
 }
 
-async function requireGovernedTsdrWorker(baseUrl: string): Promise<string> {
-  const expected = usptoTsdrAcceptanceWorkerPayload();
-  const label = "uspto-tsdr-governed-worker-v1";
-  const response = await requestJson(
-    baseUrl,
-    `/api/workers?label=${encodeURIComponent(label)}&limit=100`,
-  );
+async function requireGovernedTsdrWorker(
+  baseUrl: string,
+  plan: UsptoTsdrAcceptancePlan,
+): Promise<string> {
+  const expected = usptoTsdrAcceptanceWorkerPayload(plan.workspaceId);
+  const response = await acceptanceRequest(baseUrl, plan.workspaceId, "LIST_WORKERS");
   for (const candidate of items(response.body)) {
     const container = record(candidate);
     const worker = record(container?.worker) ?? container;
@@ -339,6 +341,7 @@ async function requireGovernedTsdrWorker(baseUrl: string): Promise<string> {
     const bindings = Array.isArray(worker.connectorBindings) ? worker.connectorBindings : [];
     const binding = record(bindings[0]);
     if (
+      worker.workspaceId === expected.workspaceId &&
       worker.maxConcurrency === expected.maxConcurrency &&
       sameStrings(worker.supportedJobTypes, expected.supportedJobTypes) &&
       bindings.length === 1 &&
@@ -365,19 +368,14 @@ export async function applyUsptoTsdrAcceptancePlan(input: {
   workerId: string | null;
   runId: string | null;
 }> {
-  await ensureConnector(input.baseUrl);
+  await ensureConnector(input.baseUrl, input.plan);
   const sourceId = await ensureSource(input.baseUrl, input.plan);
   const collectionPlanId = await ensureCollectionPlan(input.baseUrl, sourceId, input.plan);
   let workerId: string | null = null;
   let runId: string | null = null;
   if (input.dispatch) {
-    workerId = await requireGovernedTsdrWorker(input.baseUrl);
-    runId = await dispatchRun(
-      input.baseUrl,
-      collectionPlanId,
-      input.plan.operationId,
-      input.planSha256,
-    );
+    workerId = await requireGovernedTsdrWorker(input.baseUrl, input.plan);
+    runId = await dispatchRun(input.baseUrl, input.plan, collectionPlanId, input.planSha256);
   }
   return { sourceId, collectionPlanId, workerId, runId };
 }

@@ -9,11 +9,13 @@ import {
 } from "./uspto-tsdr-acceptance-plan";
 
 const SECRET_REF = "sec_01ARZ3NDEKTSV4RRFFQ69G5FAV";
+const WORKSPACE_ID = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 
 function indexPlan() {
   return {
     version: 1,
     operationId: "oa-proof-90817045-index",
+    workspaceId: WORKSPACE_ID,
     stage: "INDEX",
     serialNumber: "90817045",
     secretRef: SECRET_REF,
@@ -24,6 +26,7 @@ function selectedPlan() {
   return {
     version: 1,
     operationId: "oa-proof-90817045-pdf",
+    workspaceId: WORKSPACE_ID,
     stage: "SELECTED_DOCUMENT",
     serialNumber: "90817045",
     secretRef: SECRET_REF,
@@ -50,6 +53,20 @@ describe("USPTO TSDR acceptance frozen plan", () => {
     expect(usptoTsdrAcceptancePlanSha256(parsed)).toBe(usptoTsdrAcceptancePlanSha256(indexPlan()));
   });
 
+  it("requires workspace authority to be frozen into every acceptance plan", () => {
+    const { workspaceId: _workspaceId, ...withoutWorkspace } = indexPlan();
+    expect(() => parseUsptoTsdrAcceptancePlan(withoutWorkspace)).toThrow(/workspaceId/);
+  });
+
+  it("changes the frozen SHA when workspace authority changes", () => {
+    const first = parseUsptoTsdrAcceptancePlan(indexPlan());
+    const second = parseUsptoTsdrAcceptancePlan({
+      ...indexPlan(),
+      workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+    });
+    expect(usptoTsdrAcceptancePlanSha256(second)).not.toBe(usptoTsdrAcceptancePlanSha256(first));
+  });
+
   it("builds a manual one-item index source and CollectionPlan with secretRef only", () => {
     const plan = parseUsptoTsdrAcceptancePlan(indexPlan());
     const source = usptoTsdrAcceptanceSourcePayload(plan);
@@ -59,6 +76,7 @@ describe("USPTO TSDR acceptance frozen plan", () => {
     );
 
     expect(source).toMatchObject({
+      workspaceId: WORKSPACE_ID,
       connectorConfig: { intent: "CASE_DOCUMENT_INDEX", serialNumber: "90817045" },
       secretRef: SECRET_REF,
       canonicalUri: "https://tsdrapi.uspto.gov",
@@ -130,7 +148,8 @@ describe("USPTO TSDR acceptance frozen plan", () => {
       supportedJobTypes: ["API_COLLECTION"],
       outputArtifactKinds: ["XML", "PDF"],
     });
-    expect(usptoTsdrAcceptanceWorkerPayload()).toMatchObject({
+    expect(usptoTsdrAcceptanceWorkerPayload(WORKSPACE_ID)).toMatchObject({
+      workspaceId: WORKSPACE_ID,
       supportedJobTypes: ["API_COLLECTION"],
       maxConcurrency: 1,
       connectorBindings: [{ connectorId: "uspto-tsdr", capabilities: ["COLLECT"] }],
