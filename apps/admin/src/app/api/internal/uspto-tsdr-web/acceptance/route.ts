@@ -80,6 +80,9 @@ function assertSourceInput(value: unknown, workspaceId: string): CreateSourceInp
   const extensions = object(source.extensions, "source.extensions");
   if (
     extensions["x-markorbit-tsdr-acquisition-channel"] !== "WEB" ||
+    !["STATIC_HTTP_PINNED", "BROWSER_PROXY"].includes(
+      String(extensions["x-markorbit-tsdr-web-transport-mode"]),
+    ) ||
     extensions["x-markorbit-tsdr-target-serial-only"] !== true ||
     extensions["x-markorbit-legal-effect-claim"] !== false
   ) {
@@ -123,6 +126,9 @@ function assertPlanInput(
   const extensions = object(plan.extensions, "plan.extensions");
   if (
     extensions["x-markorbit-tsdr-acquisition-channel"] !== "WEB" ||
+    !["STATIC_HTTP_PINNED", "BROWSER_PROXY"].includes(
+      String(extensions["x-markorbit-tsdr-web-transport-mode"]),
+    ) ||
     extensions["x-markorbit-tsdr-web-frozen-plan-sha256"] !== planSha256
   ) {
     throw new RegistryValidationError("TSDR Web acceptance CollectionPlan SHA/channel mismatch");
