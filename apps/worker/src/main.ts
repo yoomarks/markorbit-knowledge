@@ -18,6 +18,7 @@ import {
   RssArtifactAcquirer,
   UsptoTsdrEnvironmentSecretResolver,
   UsptoTsdrJobArtifactAcquirer,
+  UsptoTsdrWebArtifactAcquirer,
   buildAcquisitionRunEvidenceFromProfile,
   buildSourceFingerprintFromAcquisitionProfile,
   createConditionalHttpChangeWatch,
@@ -118,20 +119,22 @@ async function main(): Promise<void> {
             ? new UsptoTsdrJobArtifactAcquirer({
                 secretResolver: new UsptoTsdrEnvironmentSecretResolver(),
               })
-            : config.collectionProvider === "github"
-              ? new GitHubArtifactAcquirer({
-                  maxFileBytes: config.githubMaxFileBytes,
-                  maxTotalBytes: config.githubMaxTotalBytes,
-                  maxTreeEntries: config.githubMaxTreeEntries,
-                  maxItems: config.githubMaxItems,
-                  maxDepth: config.githubMaxDepth,
-                })
-              : config.collectionProvider === "cnipa"
-                ? (cnipaAcquirer ??
-                  (() => {
-                    throw new Error("CNIPA acquirer configuration is incomplete");
-                  })())
-                : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
+            : config.collectionProvider === "uspto-tsdr-web"
+              ? new UsptoTsdrWebArtifactAcquirer({ delegate: crawl4AiAcquirer })
+              : config.collectionProvider === "github"
+                ? new GitHubArtifactAcquirer({
+                    maxFileBytes: config.githubMaxFileBytes,
+                    maxTotalBytes: config.githubMaxTotalBytes,
+                    maxTreeEntries: config.githubMaxTreeEntries,
+                    maxItems: config.githubMaxItems,
+                    maxDepth: config.githubMaxDepth,
+                  })
+                : config.collectionProvider === "cnipa"
+                  ? (cnipaAcquirer ??
+                    (() => {
+                      throw new Error("CNIPA acquirer configuration is incomplete");
+                    })())
+                  : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
   const learningProfileForJob = (job: Job) =>
     acquisitionLearningProfileForJob({
       job,
@@ -146,7 +149,9 @@ async function main(): Promise<void> {
     if (!profile || !completion.receipt) return;
     const observation = buildReceiptAcquisitionLearningObservation(
       completion,
-      config.collectionProvider === "crawl4ai" ? crawl4AiAcquirer.getDiagnostics() : null,
+      config.collectionProvider === "crawl4ai" || config.collectionProvider === "uspto-tsdr-web"
+        ? crawl4AiAcquirer.getDiagnostics()
+        : null,
     );
     if (!observation) return;
     const evidence = ipAustraliaManualAcquirer
