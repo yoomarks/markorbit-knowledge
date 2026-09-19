@@ -17,7 +17,8 @@ export type WorkerCollectionProvider =
   | "ip-australia-manual"
   | "local-folder"
   | "rss"
-  | "uspto-tsdr";
+  | "uspto-tsdr"
+  | "uspto-tsdr-web";
 
 export type WorkerProcessConfig = {
   controlPlaneUrl: string;
@@ -128,12 +129,13 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     value === "ip-australia-manual" ||
     value === "local-folder" ||
     value === "rss" ||
-    value === "uspto-tsdr"
+    value === "uspto-tsdr" ||
+    value === "uspto-tsdr-web"
   ) {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, crawl4ai, github, ip-australia-manual, local-folder, rss, or uspto-tsdr",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, crawl4ai, github, ip-australia-manual, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
   );
 }
 
