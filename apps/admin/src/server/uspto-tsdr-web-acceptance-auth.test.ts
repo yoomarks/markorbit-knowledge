@@ -82,6 +82,57 @@ describe("TSDR Web acceptance machine authority", () => {
     ).toThrow();
   });
 
+  it("accepts DOCUMENT_INDEX only on the frozen static transport", () => {
+    const documentPlan = {
+      ...plan,
+      operationId: "web-proof-90817045-document-index-r3",
+      stage: "DOCUMENT_INDEX",
+      transportMode: "STATIC_HTTP_PINNED",
+      robotsPolicy: "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
+    };
+    const documentSha = createHash("sha256")
+      .update(JSON.stringify(canonicalize(documentPlan)))
+      .digest("hex");
+    const documentGo = `GO #842 TSDR-WEB web-proof-90817045-document-index-r3 DOCUMENT_INDEX ${documentSha}`;
+
+    expect(
+      authenticateUsptoTsdrWebAcceptanceRequest(
+        request(documentGo),
+        {
+          workspaceId: documentPlan.workspaceId,
+          frozenPlan: documentPlan,
+          planSha256: documentSha,
+        },
+        "service-secret",
+      ),
+    ).toMatchObject({
+      stage: "DOCUMENT_INDEX",
+      transportMode: "STATIC_HTTP_PINNED",
+      planSha256: documentSha,
+    });
+
+    const browserPlan = {
+      ...documentPlan,
+      transportMode: "BROWSER_PROXY",
+      robotsPolicy: "BROWSER_PROVIDER_NATIVE_V1",
+    };
+    const browserSha = createHash("sha256")
+      .update(JSON.stringify(canonicalize(browserPlan)))
+      .digest("hex");
+    const browserGo = `GO #842 TSDR-WEB web-proof-90817045-document-index-r3 DOCUMENT_INDEX ${browserSha}`;
+    expect(() =>
+      authenticateUsptoTsdrWebAcceptanceRequest(
+        request(browserGo),
+        {
+          workspaceId: browserPlan.workspaceId,
+          frozenPlan: browserPlan,
+          planSha256: browserSha,
+        },
+        "service-secret",
+      ),
+    ).toThrow();
+  });
+
   it("rejects added secretRef or altered frozen plan without a new SHA/GO", () => {
     expect(() =>
       authenticateUsptoTsdrWebAcceptanceRequest(

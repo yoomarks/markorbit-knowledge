@@ -80,12 +80,8 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
       "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
       "BROWSER_PROVIDER_NATIVE_V1",
     ].includes(String(plan.robotsPolicy)) ||
-    (plan.stage === "DOCUMENT_INDEX" &&
-      (plan.transportMode !== "BROWSER_PROXY" ||
-        plan.robotsPolicy !== "BROWSER_PROVIDER_NATIVE_V1")) ||
-    (plan.stage !== "DOCUMENT_INDEX" &&
-      (plan.transportMode !== "STATIC_HTTP_PINNED" ||
-        plan.robotsPolicy !== "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1"))
+    plan.transportMode !== "STATIC_HTTP_PINNED" ||
+    plan.robotsPolicy !== "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1"
   ) {
     throw new CaseProducerAccessError(
       "TSDR_WEB_ACCEPTANCE_AUTHORITY_INVALID",

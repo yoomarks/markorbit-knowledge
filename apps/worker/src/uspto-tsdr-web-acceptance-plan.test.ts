@@ -42,11 +42,8 @@ describe("TSDR Web acceptance plan", () => {
       const plan = parseUsptoTsdrWebAcceptancePlan({
         ...base,
         stage,
-        transportMode: stage === "DOCUMENT_INDEX" ? "BROWSER_PROXY" : "STATIC_HTTP_PINNED",
-        robotsPolicy:
-          stage === "DOCUMENT_INDEX"
-            ? "BROWSER_PROVIDER_NATIVE_V1"
-            : "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
+        transportMode: "STATIC_HTTP_PINNED",
+        robotsPolicy: "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
       });
       expect(usptoTsdrWebAcceptanceTargetUrl(plan)).toBe(url);
     }
@@ -76,6 +73,18 @@ describe("TSDR Web acceptance plan", () => {
       rateLimitPerMinute: 6,
     });
     expect(collectionPlan.output.artifactKinds).toEqual(["HTML"]);
+  });
+
+  it("uses static HTML output for the document index proof", () => {
+    const plan = parseUsptoTsdrWebAcceptancePlan({
+      ...base,
+      stage: "DOCUMENT_INDEX",
+      transportMode: "STATIC_HTTP_PINNED",
+      robotsPolicy: "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
+    });
+    const collectionPlan = usptoTsdrWebAcceptanceCollectionPlanPayload("src_test", plan);
+    expect(collectionPlan.output.artifactKinds).toEqual(["HTML"]);
+    expect(collectionPlan.policy.renderJavascript).toBe(false);
   });
 
   it("uses IMAGE-only output for the mark asset proof", () => {
