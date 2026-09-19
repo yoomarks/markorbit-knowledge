@@ -19,14 +19,26 @@ describe("TSDR worker provider routing config", () => {
     expect("USPTO_API_KEY" in config).toBe(false);
   });
 
-  it("does not allow Bright Data fallback on the TSDR provider", () => {
-    expect(() =>
-      loadWorkerProcessConfig({
-        ...baseEnv(),
-        MARKORBIT_BRIGHTDATA_FALLBACK_ENABLED: "1",
-        BRIGHTDATA_API_TOKEN: "runtime-only-token",
-        BRIGHTDATA_WEB_UNLOCKER_ZONE: "zone",
-      }),
-    ).toThrow(/only be enabled.*crawl4ai/);
+  it("admits the dedicated uspto-tsdr-web provider without API credentials", () => {
+    const config = loadWorkerProcessConfig({
+      ...baseEnv(),
+      MARKORBIT_COLLECTION_PROVIDER: "uspto-tsdr-web",
+    });
+
+    expect(config.collectionProvider).toBe("uspto-tsdr-web");
+  });
+
+  it("does not allow Bright Data fallback on either TSDR provider", () => {
+    for (const provider of ["uspto-tsdr", "uspto-tsdr-web"]) {
+      expect(() =>
+        loadWorkerProcessConfig({
+          ...baseEnv(),
+          MARKORBIT_COLLECTION_PROVIDER: provider,
+          MARKORBIT_BRIGHTDATA_FALLBACK_ENABLED: "1",
+          BRIGHTDATA_API_TOKEN: "runtime-only-token",
+          BRIGHTDATA_WEB_UNLOCKER_ZONE: "zone",
+        }),
+      ).toThrow(/only be enabled.*crawl4ai/);
+    }
   });
 });
