@@ -14,6 +14,8 @@ const plan = parseUsptoTsdrAcceptancePlan({
   operationId: "oa-proof-90817045-index",
   workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
   authorityMode: "INTERNAL_SERVICE_GO_V1",
+  executionMode: "APPLY_DISPATCH_ONCE",
+  workerMode: "PROVISION_ONE_SHOT",
   stage: "INDEX",
   serialNumber: "90817045",
   secretRef: "sec_01ARZ3NDEKTSV4RRFFQ69G5FAV",
@@ -35,9 +37,15 @@ describe("USPTO TSDR acceptance runner authority", () => {
     ).toThrow(/dispatch requires --apply/);
   });
 
-  it("requires both exact SHA and authority token for apply", () => {
+  it("requires dispatch for apply-and-dispatch-once acceptance", () => {
     expect(() =>
       parseUsptoTsdrAcceptanceArguments(["--plan", "C:\\tmp\\plan.json", "--apply"]),
+    ).toThrow(/apply requires --dispatch/);
+  });
+
+  it("requires both exact SHA and authority token for apply", () => {
+    expect(() =>
+      parseUsptoTsdrAcceptanceArguments(["--plan", "C:\\tmp\\plan.json", "--apply", "--dispatch"]),
     ).toThrow(/expected-sha and --authority-token/);
   });
 
