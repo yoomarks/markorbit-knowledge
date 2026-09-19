@@ -56,7 +56,7 @@ describe("raw artifact parent scope integrity", () => {
     db.close();
   });
 
-  it("rejects cross-Source parent artifacts", () => {
+  it("rejects cross-Source parent artifacts without an immutable Job grant", () => {
     const db = database();
     expect(() =>
       assertRawArtifactParentScope(db, {
@@ -65,6 +65,32 @@ describe("raw artifact parent scope integrity", () => {
         parentArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAV"],
       }),
     ).toThrowError(expect.objectContaining({ code: "RAW_ARTIFACT_PARENT_SOURCE_MISMATCH" }));
+    db.close();
+  });
+
+  it("accepts an explicitly granted cross-Source parent in the same workspace", () => {
+    const db = database();
+    expect(() =>
+      assertRawArtifactParentScope(db, {
+        workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        sourceId: "src_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        parentArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAV"],
+        authorizedCrossSourceParentArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAV"],
+      }),
+    ).not.toThrow();
+    db.close();
+  });
+
+  it("never lets a cross-Source grant cross the workspace boundary", () => {
+    const db = database();
+    expect(() =>
+      assertRawArtifactParentScope(db, {
+        workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        sourceId: "src_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        parentArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAV"],
+        authorizedCrossSourceParentArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAV"],
+      }),
+    ).toThrowError(expect.objectContaining({ code: "RAW_ARTIFACT_PARENT_WORKSPACE_MISMATCH" }));
     db.close();
   });
 });

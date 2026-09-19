@@ -1,6 +1,8 @@
 import { type ArtifactKind } from "./schema-v1";
 
 export const WORKER_EXECUTION_PROTOCOL_VERSION = "1.0" as const;
+export const CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION =
+  "x-markorbit-cross-source-parent-artifact-ids" as const;
 
 export const EXECUTION_ATTEMPT_STATUSES = [
   "RUNNING",

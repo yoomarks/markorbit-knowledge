@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION, isJob, type Job } from "@markorbit/contracts";
 import { RegistryConflictError } from "./index";
 import {
   SqliteRawArtifactRepository as BaseSqliteRawArtifactRepository,
@@ -34,6 +35,7 @@ type RawArtifactParentScope = {
   workspaceId: string;
   sourceId: string;
   parentArtifactIds: string[];
+  authorizedCrossSourceParentArtifactIds?: string[];
 };
 
 type ParentArtifactRow = {
@@ -41,6 +43,41 @@ type ParentArtifactRow = {
   workspace_id: string;
   source_id: string;
 };
+
+const ARTIFACT_ID = /^art_[0-9A-HJKMNP-TV-Z]{26}$/u;
+
+function persistedJob(value: string): Job {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value) as unknown;
+  } catch {
+    parsed = null;
+  }
+  if (!isJob(parsed)) {
+    throw new RegistryConflictError(
+      "RAW_ARTIFACT_PARENT_GRANT_INVALID",
+      "Cross-Source parent artifact grant requires a valid immutable Job snapshot",
+    );
+  }
+  return parsed;
+}
+
+function authorizedCrossSourceParentArtifactIds(job: Job): string[] {
+  const raw = job.extensions?.[CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION];
+  if (raw === undefined) return [];
+  if (
+    !Array.isArray(raw) ||
+    raw.length === 0 ||
+    raw.some((value) => typeof value !== "string" || !ARTIFACT_ID.test(value)) ||
+    new Set(raw).size !== raw.length
+  ) {
+    throw new RegistryConflictError(
+      "RAW_ARTIFACT_PARENT_GRANT_INVALID",
+      "Cross-Source parent artifact grant must contain unique RawArtifact ids",
+    );
+  }
+  return raw as string[];
+}
 
 export function assertRawArtifactParentScope(
   database: DatabaseSync,
@@ -57,6 +94,7 @@ export function assertRawArtifactParentScope(
     )
     .all(...input.parentArtifactIds) as unknown as ParentArtifactRow[];
   const byId = new Map(rows.map((row) => [row.id, row]));
+  const crossSourceGrants = new Set(input.authorizedCrossSourceParentArtifactIds ?? []);
 
   for (const parentArtifactId of input.parentArtifactIds) {
     const parent = byId.get(parentArtifactId);
@@ -78,7 +116,7 @@ export function assertRawArtifactParentScope(
         },
       );
     }
-    if (parent.source_id !== input.sourceId) {
+    if (parent.source_id !== input.sourceId && !crossSourceGrants.has(parentArtifactId)) {
       throw new RegistryConflictError(
         "RAW_ARTIFACT_PARENT_SOURCE_MISMATCH",
         "RawArtifact parent must belong to the same Source as the ingestion execution",
@@ -113,20 +151,27 @@ export class SqliteRawArtifactRepository extends BaseSqliteRawArtifactRepository
     if (parentArtifactIds.length > 0) {
       const executionScope = this.integrityDatabase
         .prepare(
-          `SELECT r.workspace_id AS workspaceId, r.source_id AS sourceId
+          `SELECT r.workspace_id AS workspaceId, r.source_id AS sourceId,
+                  j.document_json AS jobJson
              FROM job_leases AS l
              JOIN collection_runs AS r ON r.id = l.run_id
+             JOIN jobs AS j ON j.id = l.job_id
             WHERE l.id = ?`,
         )
-        .get(input.leaseId) as { workspaceId: string; sourceId: string } | undefined;
+        .get(input.leaseId) as
+        { workspaceId: string; sourceId: string; jobJson: string } | undefined;
 
       // Authentication and missing execution-context errors remain owned by the
       // base repository. Only validate lineage once a real execution scope can
       // be resolved without creating an ingestion session.
       if (executionScope) {
         assertRawArtifactParentScope(this.integrityDatabase, {
-          ...executionScope,
+          workspaceId: executionScope.workspaceId,
+          sourceId: executionScope.sourceId,
           parentArtifactIds,
+          authorizedCrossSourceParentArtifactIds: authorizedCrossSourceParentArtifactIds(
+            persistedJob(executionScope.jobJson),
+          ),
         });
       }
     }
