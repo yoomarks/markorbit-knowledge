@@ -41,22 +41,23 @@ function sameStrings(value: unknown, expected: readonly string[]): boolean {
   );
 }
 
-function assertOfficialTsdrWebUri(raw: unknown): void {
+function assertOfficialTsdrWebUri(
+  raw: unknown,
+  expected: { stage: string; serialNumber: string },
+): void {
   const value = text(raw, "source canonicalUri");
   const url = new URL(value);
   if (url.origin !== "https://tsdr.uspto.gov" || url.username || url.password || url.hash) {
     throw new RegistryValidationError("TSDR Web acceptance source origin mismatch");
   }
-  const status = /^\/statusview\/sn\d{8}$/u.test(url.pathname) && !url.search;
-  const image = /^\/img\/\d{8}\/large$/u.test(url.pathname) && !url.search;
-  const viewer =
-    url.pathname === "/documentviewer" &&
-    url.searchParams.size === 1 &&
-    /^sn\d{8}$/u.test(url.searchParams.get("caseId") ?? "");
-  if (!status && !image && !viewer) {
-    throw new RegistryValidationError(
-      "TSDR Web acceptance source path is outside governed surfaces",
-    );
+  const expectedUri =
+    expected.stage === "STATUS"
+      ? `https://tsdr.uspto.gov/statusview/sn${expected.serialNumber}`
+      : expected.stage === "MARK_IMAGE"
+        ? `https://tsdr.uspto.gov/img/${expected.serialNumber}/large`
+        : `https://tsdr.uspto.gov/documentviewer?caseId=sn${expected.serialNumber}`;
+  if (url.toString() !== expectedUri) {
+    throw new RegistryValidationError("TSDR Web acceptance source URI does not match frozen plan");
   }
 }
 
@@ -67,19 +68,25 @@ function assertConnector(value: unknown): void {
   }
 }
 
-function assertSourceInput(value: unknown, workspaceId: string): CreateSourceInput {
+function assertSourceInput(
+  value: unknown,
+  workspaceId: string,
+  expected: { stage: string; serialNumber: string; transportMode: string },
+): CreateSourceInput {
   const source = object(value, "source");
   if (source.workspaceId !== workspaceId || source.sourceType !== "WEB") {
     throw new RegistryValidationError("TSDR Web acceptance source boundary mismatch");
   }
   assertConnector(source.connector);
-  assertOfficialTsdrWebUri(source.canonicalUri);
+  assertOfficialTsdrWebUri(source.canonicalUri, expected);
   if ("secretRef" in source && source.secretRef) {
     throw new RegistryValidationError("TSDR Web acceptance source must not persist a secretRef");
   }
   const extensions = object(source.extensions, "source.extensions");
   if (
     extensions["x-markorbit-tsdr-acquisition-channel"] !== "WEB" ||
+    extensions["x-markorbit-tsdr-web-acceptance-stage"] !== expected.stage ||
+    extensions["x-markorbit-tsdr-web-transport-mode"] !== expected.transportMode ||
     extensions["x-markorbit-tsdr-target-serial-only"] !== true ||
     extensions["x-markorbit-legal-effect-claim"] !== false
   ) {
@@ -88,7 +95,11 @@ function assertSourceInput(value: unknown, workspaceId: string): CreateSourceInp
   return source as unknown as CreateSourceInput;
 }
 
-function assertSourceRecord(sourceId: string, workspaceId: string): void {
+function assertSourceRecord(
+  sourceId: string,
+  workspaceId: string,
+  expected: { stage: string; serialNumber: string },
+): void {
   const source = getSourceRepository().getById(sourceId);
   if (!source || source.workspaceId !== workspaceId || source.sourceType !== "WEB") {
     throw new RegistryValidationError(
@@ -96,20 +107,21 @@ function assertSourceRecord(sourceId: string, workspaceId: string): void {
     );
   }
   assertConnector(source.connector);
-  assertOfficialTsdrWebUri(source.canonicalUri);
+  assertOfficialTsdrWebUri(source.canonicalUri, expected);
 }
 
 function assertPlanInput(
   value: unknown,
   workspaceId: string,
   planSha256: string,
+  expected: { stage: string; serialNumber: string; transportMode: string },
 ): CreateCollectionPlanInput {
   const plan = object(value, "plan");
   if (plan.workspaceId !== workspaceId) {
     throw new RegistryValidationError("TSDR Web acceptance plan workspace mismatch");
   }
   const sourceId = text(plan.sourceId, "plan.sourceId");
-  assertSourceRecord(sourceId, workspaceId);
+  assertSourceRecord(sourceId, workspaceId, expected);
   const policy = object(plan.policy, "plan.policy");
   if (
     policy.maxDepth !== 0 ||
@@ -123,6 +135,9 @@ function assertPlanInput(
   const extensions = object(plan.extensions, "plan.extensions");
   if (
     extensions["x-markorbit-tsdr-acquisition-channel"] !== "WEB" ||
+    extensions["x-markorbit-tsdr-web-acceptance-stage"] !== expected.stage ||
+    extensions["x-markorbit-tsdr-web-transport-mode"] !== expected.transportMode ||
+    policy.renderJavascript !== (expected.transportMode === "BROWSER_PROXY") ||
     extensions["x-markorbit-tsdr-web-frozen-plan-sha256"] !== planSha256
   ) {
     throw new RegistryValidationError("TSDR Web acceptance CollectionPlan SHA/channel mismatch");
@@ -206,13 +221,15 @@ export async function POST(request: Request) {
     }
 
     if (operation === "CREATE_SOURCE") {
-      const source = getSourceRepository().create(assertSourceInput(payload.source, workspaceId));
+      const source = getSourceRepository().create(
+        assertSourceInput(payload.source, workspaceId, access),
+      );
       return NextResponse.json({ source }, { status: 201 });
     }
 
     if (operation === "LIST_PLANS") {
       const sourceId = text(payload.sourceId, "sourceId");
-      assertSourceRecord(sourceId, workspaceId);
+      assertSourceRecord(sourceId, workspaceId, access);
       return NextResponse.json(
         getCollectionPlanRepository().list({ workspaceId, sourceId, limit: 100 }),
       );
@@ -220,7 +237,7 @@ export async function POST(request: Request) {
 
     if (operation === "CREATE_PLAN") {
       const plan = getCollectionPlanRepository().create(
-        assertPlanInput(payload.plan, workspaceId, access.planSha256),
+        assertPlanInput(payload.plan, workspaceId, access.planSha256, access),
       );
       return NextResponse.json({ plan }, { status: 201 });
     }
@@ -261,7 +278,7 @@ export async function POST(request: Request) {
       if (!planRecord || planRecord.plan.workspaceId !== workspaceId) {
         throw new RegistryValidationError("TSDR Web acceptance CollectionPlan workspace mismatch");
       }
-      assertSourceRecord(planRecord.plan.sourceId, workspaceId);
+      assertSourceRecord(planRecord.plan.sourceId, workspaceId, access);
       const extensions = planRecord.plan.extensions ?? {};
       if (extensions["x-markorbit-tsdr-web-frozen-plan-sha256"] !== access.planSha256) {
         throw new RegistryValidationError("TSDR Web acceptance dispatch SHA mismatch");
