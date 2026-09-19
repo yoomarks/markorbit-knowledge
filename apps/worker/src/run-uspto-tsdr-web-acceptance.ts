@@ -5,6 +5,7 @@ import {
   ControlledCollectionWorkerRuntime,
   Crawl4AiSubprocessAcquirer,
   HttpControlledCollectionClient,
+  UsptoTsdrStaticWebArtifactAcquirer,
   UsptoTsdrWebArtifactAcquirer,
 } from "@markorbit/worker-runtime";
 import {
@@ -307,14 +308,19 @@ async function runOneShot(
   baseUrl: string,
   worker: { workerId: string; credential: string },
   jobId: string,
+  plan: UsptoTsdrWebAcceptancePlan,
 ): Promise<void> {
-  const crawl = new Crawl4AiSubprocessAcquirer({
-    maxDepth: 0,
-    maxItems: 1,
-    maxConcurrency: 1,
-    maxProcessTimeoutMs: 180_000,
-  });
-  const acquirer = new UsptoTsdrWebArtifactAcquirer({ delegate: crawl });
+  const acquirer =
+    plan.transportMode === "STATIC_HTTP_PINNED"
+      ? new UsptoTsdrStaticWebArtifactAcquirer()
+      : new UsptoTsdrWebArtifactAcquirer({
+          delegate: new Crawl4AiSubprocessAcquirer({
+            maxDepth: 0,
+            maxItems: 1,
+            maxConcurrency: 1,
+            maxProcessTimeoutMs: 180_000,
+          }),
+        });
   const runtime = new ControlledCollectionWorkerRuntime(
     new HttpControlledCollectionClient(baseUrl, worker.workerId, worker.credential),
     acquirer,
@@ -358,7 +364,7 @@ export async function applyUsptoTsdrWebAcceptancePlan(input: {
     input.planSha256,
     input.authorityToken,
   );
-  await runOneShot(input.baseUrl, worker, dispatched.jobId);
+  await runOneShot(input.baseUrl, worker, dispatched.jobId, input.plan);
   return { sourceId, collectionPlanId, workerId: worker.workerId, runId: dispatched.runId };
 }
 
