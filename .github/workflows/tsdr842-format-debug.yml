@@ -1,0 +1,27 @@
+name: TSDR 842 Format Debug
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    if: github.head_ref == 'feature/842-tsdr-web-evidence-v2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Show exact Prettier diff
+        run: |
+          pnpm exec prettier --write apps/worker/src/main.ts packages/worker-runtime/src/uspto-tsdr-web-acquirer.ts packages/worker-runtime/src/uspto-tsdr-web-acquirer.test.ts
+          git diff --no-ext-diff -- apps/worker/src/main.ts packages/worker-runtime/src/uspto-tsdr-web-acquirer.ts packages/worker-runtime/src/uspto-tsdr-web-acquirer.test.ts
