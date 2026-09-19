@@ -70,6 +70,15 @@ export type ExecutionAttemptRecord = {
   events: ExecutionEvent[];
 };
 
+export type WorkerLeaseReadAuthorization = {
+  workspaceId: string;
+  runId: string;
+  jobId: string;
+  leaseId: string;
+  workerId: string;
+  job: Job;
+};
+
 export interface WorkerExecutionRepository {
   start(
     workerId: string,
@@ -106,6 +115,12 @@ export interface WorkerExecutionRepository {
     leaseToken: string,
     input: FailExecutionInput,
   ): ExecutionTransitionResult;
+  authorizeArtifactRead(
+    workerId: string,
+    credential: string,
+    leaseId: string,
+    leaseToken: string,
+  ): WorkerLeaseReadAuthorization;
   getById(id: string): ExecutionAttemptRecord | null;
   getByLeaseId(leaseId: string): ExecutionAttemptRecord | null;
   listForRun(runId: string): ExecutionAttemptRecord[];
@@ -503,6 +518,29 @@ export class SqliteWorkerExecutionRepository implements WorkerExecutionRepositor
     return this.terminalAuthenticated(workerId, leaseId, leaseToken, key, "FAIL", payloadDigest, {
       failure,
     });
+  }
+
+  authorizeArtifactRead(
+    workerId: string,
+    credential: string,
+    leaseId: string,
+    leaseToken: string,
+  ): WorkerLeaseReadAuthorization {
+    this.workers.verifyCredential(workerId, credential);
+    const context = this.requireActiveContext(
+      workerId,
+      leaseId,
+      leaseToken,
+      this.clock().toISOString(),
+    );
+    return {
+      workspaceId: context.job.workspaceId,
+      runId: context.job.runId,
+      jobId: context.job.id,
+      leaseId: context.lease.id,
+      workerId,
+      job: clone(context.job),
+    };
   }
 
   getById(id: string): ExecutionAttemptRecord | null {

@@ -274,10 +274,35 @@ async function selectChangedArtifacts(
   };
 }
 
-function orderedForLineage(artifacts: AcquiredCollectionArtifact[]): AcquiredCollectionArtifact[] {
-  const parents = artifacts.filter((artifact) => !isLineageChild(artifact));
-  const children = artifacts.filter((artifact) => isLineageChild(artifact));
-  return [...parents, ...children];
+type IndexedArtifact = {
+  artifact: AcquiredCollectionArtifact;
+  index: number;
+};
+
+function nextLineageLayer(
+  pending: readonly IndexedArtifact[],
+  knownArtifactIdsByCanonicalUri: Map<string, Set<string>>,
+): IndexedArtifact[] {
+  const pendingCanonicalUris = new Set(
+    pending
+      .map(({ artifact }) => artifact.canonicalUri)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const ready = pending.filter(({ artifact }) =>
+    (artifact.parentCanonicalUris ?? []).every(
+      (parentUri) =>
+        (knownArtifactIdsByCanonicalUri.get(parentUri)?.size ?? 0) > 0 ||
+        !pendingCanonicalUris.has(parentUri),
+    ),
+  );
+  if (ready.length === 0 && pending.length > 0) {
+    throw new CollectionAcquisitionError(
+      "ARTIFACT_LINEAGE_CYCLE",
+      "Artifact lineage contains a cycle or self-reference that cannot be finalized",
+      false,
+    );
+  }
+  return ready;
 }
 
 async function mapWithConcurrency<T, R>(
@@ -407,16 +432,14 @@ export class ArtifactBackedCollectionExecutor {
 
       const receipts: ArtifactIngestionReceipt[] = [];
       let bytesPrepared = 0;
-      const ordered = orderedForLineage(selection.changed).map((artifact, index) => ({
+      let pending: IndexedArtifact[] = selection.changed.map((artifact, index) => ({
         artifact,
         index,
       }));
-      const layers = [
-        ordered.filter(({ artifact }) => !isLineageChild(artifact)),
-        ordered.filter(({ artifact }) => isLineageChild(artifact)),
-      ];
 
-      for (const layer of layers) {
+      while (pending.length > 0) {
+        const layer = nextLineageLayer(pending, selection.knownArtifactIdsByCanonicalUri);
+        const layerIndexes = new Set(layer.map(({ index }) => index));
         const finalizedLayer = await mapWithConcurrency(
           layer,
           this.ingestionConcurrency,
@@ -445,6 +468,7 @@ export class ArtifactBackedCollectionExecutor {
           );
           bytesPrepared += artifact.content.byteLength;
         }
+        pending = pending.filter(({ index }) => !layerIndexes.has(index));
       }
 
       await this.client.verifying(context, `${prefix}-verifying`);

@@ -4,11 +4,13 @@ import { chromium, type BrowserContext, type Page } from "playwright-core";
 import {
   CnipaAcquisitionError,
   cnipaTransientBusinessCode,
-  type CnipaAuthenticatedRequest,
+  type CnipaAuthenticatedHttpRequest,
   type CnipaAuthenticatedSessionResponse,
 } from "@markorbit/worker-runtime";
 import type {
+  CnipaAuthenticatedHttpSessionExecutorFactory,
   CnipaAuthenticatedSessionExecutorFactory,
+  CnipaClosableAuthenticatedHttpSessionExecutor,
   CnipaClosableAuthenticatedSessionExecutor,
 } from "@markorbit/worker-runtime/cnipa-artifact-acquirer";
 
@@ -268,7 +270,7 @@ function validateOptions(
   };
 }
 
-function requestUrl(baseUrl: string, request: CnipaAuthenticatedRequest): string {
+function requestUrl(baseUrl: string, request: CnipaAuthenticatedHttpRequest): string {
   if (
     !request.path.startsWith("/") ||
     request.path.startsWith("//") ||
@@ -288,7 +290,7 @@ function requestUrl(baseUrl: string, request: CnipaAuthenticatedRequest): string
   return url.toString();
 }
 
-function requestIdentity(request: CnipaAuthenticatedRequest): string {
+function requestIdentity(request: CnipaAuthenticatedHttpRequest): string {
   return createHash("sha256")
     .update(
       JSON.stringify({
@@ -328,7 +330,9 @@ class PlaywrightCnipaSessionExecutor implements CnipaClosableAuthenticatedSessio
     private readonly options: ReturnType<typeof validateOptions>,
   ) {}
 
-  async execute(request: CnipaAuthenticatedRequest): Promise<CnipaAuthenticatedSessionResponse> {
+  async execute(
+    request: CnipaAuthenticatedHttpRequest,
+  ): Promise<CnipaAuthenticatedSessionResponse> {
     const cacheKey = requestIdentity(request);
     const cached = this.cache.get(cacheKey);
     if (cached) return cloneResponse(cached);
@@ -416,7 +420,9 @@ class PlaywrightCnipaSessionExecutor implements CnipaClosableAuthenticatedSessio
   }
 }
 
-export class CnipaPlaywrightSessionExecutorFactory implements CnipaAuthenticatedSessionExecutorFactory {
+export class CnipaPlaywrightSessionExecutorFactory
+  implements CnipaAuthenticatedSessionExecutorFactory, CnipaAuthenticatedHttpSessionExecutorFactory
+{
   private readonly options: ReturnType<typeof validateOptions>;
 
   constructor(
@@ -426,7 +432,9 @@ export class CnipaPlaywrightSessionExecutorFactory implements CnipaAuthenticated
     this.options = validateOptions(options);
   }
 
-  async create(): Promise<CnipaClosableAuthenticatedSessionExecutor> {
+  async create(): Promise<
+    CnipaClosableAuthenticatedSessionExecutor & CnipaClosableAuthenticatedHttpSessionExecutor
+  > {
     let context: CnipaBrowserContext | undefined;
     try {
       context = await this.launcher(this.options.userDataDir, {

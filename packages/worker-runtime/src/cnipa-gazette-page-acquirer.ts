@@ -24,6 +24,7 @@ export interface CnipaGazetteJsonTransport {
     path: string;
     body: Readonly<Record<string, string | number>>;
   }): Promise<CnipaGazetteJsonTransportResponse>;
+  close?(): Promise<void>;
 }
 
 export type CnipaGazetteSourceErrorCode =

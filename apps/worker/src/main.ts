@@ -3,6 +3,10 @@ import {
   ApiArtifactAcquirer,
   BrightDataFallbackAcquirer,
   BrightDataWebUnlockerClient,
+  CnipaGazetteAuthenticatedTransport,
+  CnipaGazetteFactAdmissionJobAcquirer,
+  CnipaGazetteFinalizeJobAcquirer,
+  CnipaGazetteJobArtifactAcquirer,
   CollectionAcquisitionError,
   ControlledCollectionWorkerRuntime,
   type ControlledCollectionCompletion,
@@ -10,7 +14,9 @@ import {
   Crawl4AiSubprocessAcquirer,
   GitHubArtifactAcquirer,
   HttpAcquisitionIntelligenceClient,
+  HttpCnipaGazetteDurableArtifactReader,
   HttpControlledCollectionClient,
+  HttpFactAdmissionClient,
   HttpProductionConversionClient,
   HttpValidatorControlPlaneClient,
   LocalFolderArtifactAcquirer,
@@ -73,12 +79,42 @@ async function main(): Promise<void> {
     config.collectionProvider === "ip-australia-manual"
       ? new IpAustraliaManualArtifactAcquirer()
       : null;
+  const cnipaSessionFactory = config.cnipaSession
+    ? new CnipaPlaywrightSessionExecutorFactory(config.cnipaSession)
+    : null;
   const cnipaAcquirer =
-    config.collectionProvider === "cnipa" && config.cnipaSession
-      ? new CnipaJudgmentArtifactAcquirer(
-          new CnipaPlaywrightSessionExecutorFactory(config.cnipaSession),
+    config.collectionProvider === "cnipa" && cnipaSessionFactory
+      ? new CnipaJudgmentArtifactAcquirer(cnipaSessionFactory)
+      : null;
+  const cnipaGazetteDurableArtifactReader =
+    config.collectionProvider === "cnipa-gazette-publisher" ||
+    config.collectionProvider === "cnipa-gazette-finalize"
+      ? new HttpCnipaGazetteDurableArtifactReader(
+          config.controlPlaneUrl,
+          config.workerId,
+          config.workerCredential,
         )
       : null;
+  const cnipaGazetteAcquirer =
+    config.collectionProvider === "cnipa-gazette" && cnipaSessionFactory
+      ? new CnipaGazetteJobArtifactAcquirer({
+          transport: new CnipaGazetteAuthenticatedTransport(cnipaSessionFactory),
+        })
+      : config.collectionProvider === "cnipa-gazette-publisher" &&
+          cnipaGazetteDurableArtifactReader &&
+          config.dataEngineUrl &&
+          config.dataEngineFactAdmissionKey
+        ? new CnipaGazetteFactAdmissionJobAcquirer({
+            reader: cnipaGazetteDurableArtifactReader,
+            client: new HttpFactAdmissionClient(
+              config.dataEngineUrl,
+              config.dataEngineFactAdmissionKey,
+            ),
+          })
+        : config.collectionProvider === "cnipa-gazette-finalize" &&
+            cnipaGazetteDurableArtifactReader
+          ? new CnipaGazetteFinalizeJobAcquirer({ reader: cnipaGazetteDurableArtifactReader })
+          : null;
   const crawl4AiAcquirer = new Crawl4AiSubprocessAcquirer({
     requireEgressProxy: config.requireEgressProxy,
     maxConcurrency: config.crawl4AiMaxConcurrency,
@@ -129,12 +165,19 @@ async function main(): Promise<void> {
                     maxItems: config.githubMaxItems,
                     maxDepth: config.githubMaxDepth,
                   })
-                : config.collectionProvider === "cnipa"
-                  ? (cnipaAcquirer ??
+                : config.collectionProvider === "cnipa-gazette" ||
+                    config.collectionProvider === "cnipa-gazette-publisher" ||
+                    config.collectionProvider === "cnipa-gazette-finalize"
+                  ? (cnipaGazetteAcquirer ??
                     (() => {
-                      throw new Error("CNIPA acquirer configuration is incomplete");
+                      throw new Error("CNIPA Gazette acquirer configuration is incomplete");
                     })())
-                  : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
+                  : config.collectionProvider === "cnipa"
+                    ? (cnipaAcquirer ??
+                      (() => {
+                        throw new Error("CNIPA acquirer configuration is incomplete");
+                      })())
+                    : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
   const learningProfileForJob = (job: Job) =>
     acquisitionLearningProfileForJob({
       job,
@@ -289,6 +332,8 @@ async function main(): Promise<void> {
     brightDataFallbackEnabled: config.brightDataFallbackEnabled,
     brightDataMaxRequestsPerRun: config.brightDataMaxRequestsPerRun,
     cnipaAuthenticatedRuntimeEnabled: Boolean(cnipaAcquirer),
+    cnipaGazetteRuntimeEnabled: Boolean(cnipaGazetteAcquirer),
+    cnipaGazetteDataEngineWriteEnabled: config.collectionProvider === "cnipa-gazette-publisher",
     localFolderRootIds: Object.keys(config.localFolderRoots),
     maxCollectionRuntimeMs: config.maxCollectionRuntimeMs,
     artifactIngestionConcurrency: config.artifactIngestionConcurrency,
@@ -313,7 +358,7 @@ async function main(): Promise<void> {
       if (!collectionProcessed && !conversionProcessed) await delay(config.pollIntervalMs);
     } catch (error) {
       if (
-        config.collectionProvider === "cnipa" &&
+        (config.collectionProvider === "cnipa" || config.collectionProvider === "cnipa-gazette") &&
         error instanceof CollectionAcquisitionError &&
         error.code === "CNIPA_REAUTH_REQUIRED"
       ) {
