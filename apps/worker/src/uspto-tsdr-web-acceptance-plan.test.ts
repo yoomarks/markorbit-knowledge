@@ -64,7 +64,7 @@ describe("TSDR Web acceptance plan", () => {
       respectRobots: true,
       rateLimitPerMinute: 6,
     });
-    expect(collectionPlan.output.artifactKinds).toEqual(["HTML", "MARKDOWN"]);
+    expect(collectionPlan.output.artifactKinds).toEqual(["HTML"]);
   });
 
   it("uses IMAGE-only output for the mark asset proof", () => {
@@ -94,5 +94,8 @@ describe("TSDR Web acceptance plan", () => {
       parseUsptoTsdrWebAcceptancePlan({ ...base, secretRef: "sec_01ARZ3NDEKTSV4RRFFQ69G5FAV" }),
     ).toThrow(/unsupported keys/u);
     expect(() => parseUsptoTsdrWebAcceptancePlan({ ...base, channel: "API" })).toThrow(/channel/u);
+    expect(() =>
+      parseUsptoTsdrWebAcceptancePlan({ ...base, transportMode: "BROWSER_PROXY" }),
+    ).toThrow(/transportMode/u);
   });
 });
