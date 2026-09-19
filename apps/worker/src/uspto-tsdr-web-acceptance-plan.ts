@@ -98,7 +98,6 @@ export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcc
   }
   const stage = input.stage as UsptoTsdrWebAcceptanceStage;
   const parsedTarget = parseUsptoTsdrWebTarget(targetUrl(stage, input.serialNumber));
-  if (parsedTarget.stage !== undefined) void parsedTarget.stage;
   if (parsedTarget.surface !== stage || parsedTarget.serialNumber !== input.serialNumber) {
     throw new Error("TSDR Web acceptance target derivation mismatch");
   }
