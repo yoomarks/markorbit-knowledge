@@ -9,6 +9,8 @@ import {
 describe("USPTO TSDR document classifier", () => {
   it.each([
     ["Non-final Office Action", "", "OFFICE_ACTION"],
+    ["Non-Final Action", "", "OFFICE_ACTION"],
+    ["Final Action", "", "OFFICE_ACTION"],
     ["Response to Office Action", "", "APPLICANT_RESPONSE"],
     ["", "Notice of Allowance", "NEXT_ACTION_NOTICE"],
     ["Notice of Abandonment", "", "OUTCOME_DOCUMENT"],
