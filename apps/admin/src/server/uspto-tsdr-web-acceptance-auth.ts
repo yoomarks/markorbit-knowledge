@@ -103,6 +103,8 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
     workspaceId: plan.workspaceId,
     operationId: plan.operationId,
     stage: String(plan.stage),
+    transportMode: String(plan.transportMode),
+    serialNumber: String(plan.serialNumber),
     planSha256: computedSha256,
   };
 }
@@ -111,7 +113,13 @@ export function authenticateUsptoTsdrWebAcceptanceRequest(
   request: Request,
   input: { workspaceId: unknown; frozenPlan: unknown; planSha256: unknown },
   internalServiceSecret = process.env.MO_INTERNAL_SERVICE_SECRET,
-): { actorId: string; planSha256: string } {
+): {
+  actorId: string;
+  planSha256: string;
+  stage: string;
+  transportMode: string;
+  serialNumber: string;
+} {
   if (!internalServiceSecret) {
     throw new CaseProducerAccessError(
       "TSDR_WEB_ACCEPTANCE_AUTH_NOT_CONFIGURED",
@@ -153,5 +161,8 @@ export function authenticateUsptoTsdrWebAcceptanceRequest(
   return {
     actorId: `tsdr-web-acceptance:${digest.slice(0, 32)}`,
     planSha256: summary.planSha256,
+    stage: summary.stage,
+    transportMode: summary.transportMode,
+    serialNumber: summary.serialNumber,
   };
 }
