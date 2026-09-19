@@ -69,6 +69,8 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown): FrozenPlan
   if (
     plan.version !== 1 ||
     plan.authorityMode !== USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE ||
+    plan.executionMode !== "APPLY_DISPATCH_ONCE" ||
+    plan.workerMode !== "PROVISION_ONE_SHOT" ||
     typeof plan.operationId !== "string" ||
     !OPERATION_ID.test(plan.operationId) ||
     typeof plan.workspaceId !== "string" ||
@@ -91,6 +93,8 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown): FrozenPlan
       "operationId",
       "workspaceId",
       "authorityMode",
+      "executionMode",
+      "workerMode",
       "stage",
       "serialNumber",
       "secretRef",
@@ -101,6 +105,8 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown): FrozenPlan
       "operationId",
       "workspaceId",
       "authorityMode",
+      "executionMode",
+      "workerMode",
       "stage",
       "serialNumber",
       "secretRef",
