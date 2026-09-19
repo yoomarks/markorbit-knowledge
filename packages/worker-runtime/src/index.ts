@@ -100,6 +100,7 @@ export * from "./cnipa-gazette-data-engine-handoff";
 export * from "./fact-admission-http-client";
 export * from "./cnipa-gazette-data-engine-publisher";
 export * from "./cnipa-gazette-fact-admission-artifacts";
+export * from "./cnipa-gazette-fact-admission-request-publisher";
 export * from "./source-capability-matrix";
 export * from "./source-config-registry";
 export * from "./source-parser-port";
