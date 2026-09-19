@@ -18,6 +18,7 @@ const plan = parseUsptoTsdrWebAcceptancePlan({
   workerMode: "PROVISION_ONE_SHOT",
   channel: "WEB",
   stage: "STATUS",
+  transportMode: "STATIC_HTTP_PINNED",
   serialNumber: "90817045",
 });
 
