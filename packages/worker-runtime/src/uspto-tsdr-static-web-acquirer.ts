@@ -88,6 +88,31 @@ async function fetchPinned(
   });
 }
 
+function robotsAllows(text: string, pathname: string): boolean {
+  const lines = text.split(/\r?\n/u);
+  let applies = false;
+  const rules: Array<{ allow: boolean; path: string }> = [];
+  for (const raw of lines) {
+    const line = raw.split("#", 1)[0]!.trim();
+    if (!line) continue;
+    const separator = line.indexOf(":");
+    if (separator < 0) continue;
+    const key = line.slice(0, separator).trim().toLowerCase();
+    const value = line.slice(separator + 1).trim();
+    if (key === "user-agent") {
+      applies = value === "*";
+      continue;
+    }
+    if (!applies || (key !== "allow" && key !== "disallow")) continue;
+    if (!value) continue;
+    rules.push({ allow: key === "allow", path: value });
+  }
+  const matches = rules
+    .filter((rule) => pathname.startsWith(rule.path))
+    .sort((left, right) => right.path.length - left.path.length);
+  return matches[0]?.allow ?? true;
+}
+
 export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcquirer {
   readonly executor = EXECUTOR;
 
@@ -140,6 +165,23 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
       throw new CollectionAcquisitionError(
         "TSDR_WEB_STATIC_NETWORK_TARGET_REJECTED",
         "TSDR static target did not resolve exclusively to public addresses",
+        false,
+      );
+    }
+
+    const robotsUrl = new URL("/robots.txt", url.origin);
+    const robots = await fetchPinned(robotsUrl, resolved[0]!, 512 * 1024);
+    if (robots.statusCode < 200 || robots.statusCode >= 300) {
+      throw new CollectionAcquisitionError(
+        "TSDR_WEB_STATIC_ROBOTS_UNAVAILABLE",
+        `TSDR robots.txt returned HTTP ${robots.statusCode}`,
+        robots.statusCode === 429 || robots.statusCode >= 500,
+      );
+    }
+    if (!robotsAllows(Buffer.from(robots.body).toString("utf8"), url.pathname)) {
+      throw new CollectionAcquisitionError(
+        "TSDR_WEB_STATIC_ROBOTS_DISALLOWED",
+        "TSDR robots.txt disallows the requested path",
         false,
       );
     }
