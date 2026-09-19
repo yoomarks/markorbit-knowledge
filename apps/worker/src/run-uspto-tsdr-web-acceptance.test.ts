@@ -19,6 +19,7 @@ const plan = parseUsptoTsdrWebAcceptancePlan({
   channel: "WEB",
   stage: "STATUS",
   transportMode: "STATIC_HTTP_PINNED",
+  robotsPolicy: "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
   serialNumber: "90817045",
 });
 

@@ -71,7 +71,12 @@ function assertConnector(value: unknown): void {
 function assertSourceInput(
   value: unknown,
   workspaceId: string,
-  expected: { stage: string; serialNumber: string; transportMode: string },
+  expected: {
+    stage: string;
+    serialNumber: string;
+    transportMode: string;
+    robotsPolicy: string;
+  },
 ): CreateSourceInput {
   const source = object(value, "source");
   if (source.workspaceId !== workspaceId || source.sourceType !== "WEB") {
@@ -87,6 +92,7 @@ function assertSourceInput(
     extensions["x-markorbit-tsdr-acquisition-channel"] !== "WEB" ||
     extensions["x-markorbit-tsdr-web-acceptance-stage"] !== expected.stage ||
     extensions["x-markorbit-tsdr-web-transport-mode"] !== expected.transportMode ||
+    extensions["x-markorbit-tsdr-web-robots-policy"] !== expected.robotsPolicy ||
     extensions["x-markorbit-tsdr-target-serial-only"] !== true ||
     extensions["x-markorbit-legal-effect-claim"] !== false
   ) {
@@ -98,7 +104,12 @@ function assertSourceInput(
 function assertSourceRecord(
   sourceId: string,
   workspaceId: string,
-  expected: { stage: string; serialNumber: string },
+  expected: {
+    stage: string;
+    serialNumber: string;
+    transportMode: string;
+    robotsPolicy: string;
+  },
 ): void {
   const source = getSourceRepository().getById(sourceId);
   if (!source || source.workspaceId !== workspaceId || source.sourceType !== "WEB") {
@@ -108,13 +119,26 @@ function assertSourceRecord(
   }
   assertConnector(source.connector);
   assertOfficialTsdrWebUri(source.canonicalUri, expected);
+  const extensions = source.extensions ?? {};
+  if (
+    extensions["x-markorbit-tsdr-web-acceptance-stage"] !== expected.stage ||
+    extensions["x-markorbit-tsdr-web-transport-mode"] !== expected.transportMode ||
+    extensions["x-markorbit-tsdr-web-robots-policy"] !== expected.robotsPolicy
+  ) {
+    throw new RegistryValidationError("TSDR Web acceptance source execution semantics mismatch");
+  }
 }
 
 function assertPlanInput(
   value: unknown,
   workspaceId: string,
   planSha256: string,
-  expected: { stage: string; serialNumber: string; transportMode: string },
+  expected: {
+    stage: string;
+    serialNumber: string;
+    transportMode: string;
+    robotsPolicy: string;
+  },
 ): CreateCollectionPlanInput {
   const plan = object(value, "plan");
   if (plan.workspaceId !== workspaceId) {
@@ -137,6 +161,7 @@ function assertPlanInput(
     extensions["x-markorbit-tsdr-acquisition-channel"] !== "WEB" ||
     extensions["x-markorbit-tsdr-web-acceptance-stage"] !== expected.stage ||
     extensions["x-markorbit-tsdr-web-transport-mode"] !== expected.transportMode ||
+    extensions["x-markorbit-tsdr-web-robots-policy"] !== expected.robotsPolicy ||
     policy.renderJavascript !== (expected.transportMode === "BROWSER_PROXY") ||
     extensions["x-markorbit-tsdr-web-frozen-plan-sha256"] !== planSha256
   ) {

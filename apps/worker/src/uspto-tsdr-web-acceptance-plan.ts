@@ -12,8 +12,7 @@ export const USPTO_TSDR_WEB_CONNECTOR_VERSION = "1.3.0" as const;
 export type UsptoTsdrWebAcceptanceStage = UsptoTsdrWebSurface;
 export type UsptoTsdrWebTransportMode = "STATIC_HTTP_PINNED" | "BROWSER_PROXY";
 export type UsptoTsdrWebRobotsPolicy =
-  | "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1"
-  | "BROWSER_PROVIDER_NATIVE_V1";
+  "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1" | "BROWSER_PROVIDER_NATIVE_V1";
 
 export type UsptoTsdrWebAcceptancePlan = {
   version: 1;

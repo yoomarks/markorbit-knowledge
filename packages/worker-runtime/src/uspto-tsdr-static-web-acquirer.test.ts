@@ -14,6 +14,10 @@ function context(url: string, output: "HTML" | "IMAGE"): ArtifactBackedExecution
         entrypoints: [{ uri: url }],
       },
       planSnapshot: {
+        extensions: {
+          "x-markorbit-tsdr-web-robots-policy":
+            "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
+        },
         policy: {
           includePatterns: [],
           excludePatterns: [],
@@ -67,6 +71,55 @@ describe("USPTO TSDR static Web acquirer", () => {
     expect(artifacts[0]).toMatchObject({
       artifactKind: "HTML",
       canonicalUri: "https://tsdr.uspto.gov/statusview/sn90817045",
+    });
+  });
+
+  it("continues when robots.txt is unavailable with HTTP 404", async () => {
+    const calls: string[] = [];
+    const acquirer = new UsptoTsdrStaticWebArtifactAcquirer({
+      resolver,
+      transport: async (url) => {
+        calls.push(url.toString());
+        return url.pathname === "/robots.txt"
+          ? {
+              statusCode: 404,
+              headers: { "content-type": "text/html" },
+              body: new Uint8Array(),
+            }
+          : {
+              statusCode: 200,
+              headers: { "content-type": "text/html" },
+              body: new TextEncoder().encode("<html>US Serial Number: 90817045</html>"),
+            };
+      },
+    });
+
+    const artifacts = await acquirer.acquire(
+      context("https://tsdr.uspto.gov/statusview/sn90817045", "HTML"),
+    );
+
+    expect(calls).toEqual([
+      "https://tsdr.uspto.gov/robots.txt",
+      "https://tsdr.uspto.gov/statusview/sn90817045",
+    ]);
+    expect(artifacts).toHaveLength(1);
+  });
+
+  it("fails closed when robots.txt is unreachable with HTTP 5xx", async () => {
+    const acquirer = new UsptoTsdrStaticWebArtifactAcquirer({
+      resolver,
+      transport: async () => ({
+        statusCode: 503,
+        headers: { "content-type": "text/plain" },
+        body: new Uint8Array(),
+      }),
+    });
+
+    await expect(
+      acquirer.acquire(context("https://tsdr.uspto.gov/statusview/sn90817045", "HTML")),
+    ).rejects.toMatchObject({
+      code: "TSDR_WEB_STATIC_ROBOTS_UNREACHABLE",
+      retryable: true,
     });
   });
 
