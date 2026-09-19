@@ -32,6 +32,9 @@ const EXECUTOR: ExecutionExecutor = {
 const MAX_STATUS_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
+export const USPTO_TSDR_STATIC_ROBOTS_POLICY =
+  "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1" as const;
+
 async function defaultResolver(hostname: string): Promise<ResolvedAddress[]> {
   const rows = await lookup(hostname, { all: true, verbatim: true });
   return rows
@@ -145,6 +148,7 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
     const source = context.job.sourceSnapshot;
     const policy = context.job.planSnapshot.policy;
+    const planExtensions = context.job.planSnapshot.extensions ?? {};
     if (
       source.sourceType !== "WEB" ||
       source.connector.connectorId !== "crawl4ai-web" ||
@@ -160,6 +164,13 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
       throw new CollectionAcquisitionError(
         "TSDR_WEB_STATIC_BOUNDARY_INVALID",
         "TSDR static acquisition requires maxDepth=0, maxItems=1 and respectRobots=true",
+        false,
+      );
+    }
+    if (planExtensions["x-markorbit-tsdr-web-robots-policy"] !== USPTO_TSDR_STATIC_ROBOTS_POLICY) {
+      throw new CollectionAcquisitionError(
+        "TSDR_WEB_STATIC_ROBOTS_POLICY_INVALID",
+        "TSDR static acquisition requires the frozen RFC9309 robots status policy",
         false,
       );
     }
@@ -195,18 +206,22 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
 
     const robotsUrl = new URL("/robots.txt", url.origin);
     const robots = await this.transport(robotsUrl, resolved[0]!, 512 * 1024);
-    if (robots.statusCode < 200 || robots.statusCode >= 300) {
+    if (robots.statusCode >= 200 && robots.statusCode < 300) {
+      if (!robotsAllows(Buffer.from(robots.body).toString("utf8"), url.pathname)) {
+        throw new CollectionAcquisitionError(
+          "TSDR_WEB_STATIC_ROBOTS_DISALLOWED",
+          "TSDR robots.txt disallows the requested path",
+          false,
+        );
+      }
+    } else if (robots.statusCode >= 400 && robots.statusCode < 500) {
+      // RFC 9309 §2.3.1.3: 4xx means robots.txt is unavailable;
+      // the crawler may access resources on the server.
+    } else {
       throw new CollectionAcquisitionError(
-        "TSDR_WEB_STATIC_ROBOTS_UNAVAILABLE",
+        "TSDR_WEB_STATIC_ROBOTS_UNREACHABLE",
         `TSDR robots.txt returned HTTP ${robots.statusCode}`,
-        robots.statusCode === 429 || robots.statusCode >= 500,
-      );
-    }
-    if (!robotsAllows(Buffer.from(robots.body).toString("utf8"), url.pathname)) {
-      throw new CollectionAcquisitionError(
-        "TSDR_WEB_STATIC_ROBOTS_DISALLOWED",
-        "TSDR robots.txt disallows the requested path",
-        false,
+        robots.statusCode >= 500,
       );
     }
 

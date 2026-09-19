@@ -18,6 +18,7 @@ const base = {
   channel: "WEB",
   stage: "STATUS",
   transportMode: "STATIC_HTTP_PINNED",
+  robotsPolicy: "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
   serialNumber: "90817045",
 } as const;
 
@@ -42,6 +43,10 @@ describe("TSDR Web acceptance plan", () => {
         ...base,
         stage,
         transportMode: stage === "DOCUMENT_INDEX" ? "BROWSER_PROXY" : "STATIC_HTTP_PINNED",
+        robotsPolicy:
+          stage === "DOCUMENT_INDEX"
+            ? "BROWSER_PROVIDER_NATIVE_V1"
+            : "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
       });
       expect(usptoTsdrWebAcceptanceTargetUrl(plan)).toBe(url);
     }
@@ -56,6 +61,8 @@ describe("TSDR Web acceptance plan", () => {
       connector: { connectorId: "crawl4ai-web", version: "1.3.0" },
       extensions: {
         "x-markorbit-tsdr-acquisition-channel": "WEB",
+        "x-markorbit-tsdr-web-robots-policy":
+          "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
         "x-markorbit-legal-effect-claim": false,
       },
     });
@@ -76,6 +83,7 @@ describe("TSDR Web acceptance plan", () => {
       ...base,
       stage: "MARK_IMAGE",
       transportMode: "STATIC_HTTP_PINNED",
+      robotsPolicy: "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
     });
     expect(
       usptoTsdrWebAcceptanceCollectionPlanPayload("src_test", plan).output.artifactKinds,
@@ -105,5 +113,11 @@ describe("TSDR Web acceptance plan", () => {
     expect(() =>
       parseUsptoTsdrWebAcceptancePlan({ ...base, transportMode: "BROWSER_PROXY" }),
     ).toThrow(/transportMode/u);
+    expect(() =>
+      parseUsptoTsdrWebAcceptancePlan({
+        ...base,
+        robotsPolicy: "BROWSER_PROVIDER_NATIVE_V1",
+      }),
+    ).toThrow(/robotsPolicy/u);
   });
 });

@@ -11,6 +11,8 @@ export const USPTO_TSDR_WEB_CONNECTOR_VERSION = "1.3.0" as const;
 
 export type UsptoTsdrWebAcceptanceStage = UsptoTsdrWebSurface;
 export type UsptoTsdrWebTransportMode = "STATIC_HTTP_PINNED" | "BROWSER_PROXY";
+export type UsptoTsdrWebRobotsPolicy =
+  "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1" | "BROWSER_PROVIDER_NATIVE_V1";
 
 export type UsptoTsdrWebAcceptancePlan = {
   version: 1;
@@ -22,6 +24,7 @@ export type UsptoTsdrWebAcceptancePlan = {
   channel: "WEB";
   stage: UsptoTsdrWebAcceptanceStage;
   transportMode: UsptoTsdrWebTransportMode;
+  robotsPolicy: UsptoTsdrWebRobotsPolicy;
   serialNumber: string;
 };
 
@@ -76,6 +79,7 @@ export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcc
     "channel",
     "stage",
     "transportMode",
+    "robotsPolicy",
     "serialNumber",
   ]);
   if (input.version !== 1) throw new Error("TSDR Web acceptance plan version must be 1");
@@ -108,6 +112,15 @@ export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcc
       `TSDR Web acceptance transportMode for ${stage} must be ${expectedTransportMode}`,
     );
   }
+  const expectedRobotsPolicy =
+    expectedTransportMode === "STATIC_HTTP_PINNED"
+      ? "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1"
+      : "BROWSER_PROVIDER_NATIVE_V1";
+  if (input.robotsPolicy !== expectedRobotsPolicy) {
+    throw new Error(
+      `TSDR Web acceptance robotsPolicy for ${stage} must be ${expectedRobotsPolicy}`,
+    );
+  }
   const parsedTarget = parseUsptoTsdrWebTarget(targetUrl(stage, input.serialNumber));
   if (parsedTarget.surface !== stage || parsedTarget.serialNumber !== input.serialNumber) {
     throw new Error("TSDR Web acceptance target derivation mismatch");
@@ -122,6 +135,7 @@ export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcc
     channel: "WEB",
     stage,
     transportMode: expectedTransportMode,
+    robotsPolicy: expectedRobotsPolicy,
     serialNumber: input.serialNumber,
   };
 }
@@ -155,6 +169,7 @@ export function usptoTsdrWebAcceptanceSourcePayload(plan: UsptoTsdrWebAcceptance
       "x-markorbit-tsdr-web-acceptance-operation": plan.operationId,
       "x-markorbit-tsdr-web-acceptance-stage": plan.stage,
       "x-markorbit-tsdr-web-transport-mode": plan.transportMode,
+      "x-markorbit-tsdr-web-robots-policy": plan.robotsPolicy,
       "x-markorbit-tsdr-target-serial-only": true,
       "x-markorbit-legal-effect-claim": false,
     },
@@ -197,6 +212,7 @@ export function usptoTsdrWebAcceptanceCollectionPlanPayload(
       "x-markorbit-tsdr-web-acceptance-operation": plan.operationId,
       "x-markorbit-tsdr-web-acceptance-stage": plan.stage,
       "x-markorbit-tsdr-web-transport-mode": plan.transportMode,
+      "x-markorbit-tsdr-web-robots-policy": plan.robotsPolicy,
       "x-markorbit-tsdr-web-frozen-plan-sha256": usptoTsdrWebAcceptancePlanSha256(plan),
     },
   };

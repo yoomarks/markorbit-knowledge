@@ -58,6 +58,7 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
     "channel",
     "stage",
     "transportMode",
+    "robotsPolicy",
     "serialNumber",
   ]);
   if (
@@ -75,8 +76,16 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
     !SERIAL_NUMBER.test(plan.serialNumber) ||
     !["STATUS", "MARK_IMAGE", "DOCUMENT_INDEX"].includes(String(plan.stage)) ||
     !["STATIC_HTTP_PINNED", "BROWSER_PROXY"].includes(String(plan.transportMode)) ||
-    (plan.stage === "DOCUMENT_INDEX" && plan.transportMode !== "BROWSER_PROXY") ||
-    (plan.stage !== "DOCUMENT_INDEX" && plan.transportMode !== "STATIC_HTTP_PINNED")
+    ![
+      "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
+      "BROWSER_PROVIDER_NATIVE_V1",
+    ].includes(String(plan.robotsPolicy)) ||
+    (plan.stage === "DOCUMENT_INDEX" &&
+      (plan.transportMode !== "BROWSER_PROXY" ||
+        plan.robotsPolicy !== "BROWSER_PROVIDER_NATIVE_V1")) ||
+    (plan.stage !== "DOCUMENT_INDEX" &&
+      (plan.transportMode !== "STATIC_HTTP_PINNED" ||
+        plan.robotsPolicy !== "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1"))
   ) {
     throw new CaseProducerAccessError(
       "TSDR_WEB_ACCEPTANCE_AUTHORITY_INVALID",
@@ -104,6 +113,7 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
     operationId: plan.operationId,
     stage: String(plan.stage),
     transportMode: String(plan.transportMode),
+    robotsPolicy: String(plan.robotsPolicy),
     serialNumber: String(plan.serialNumber),
     planSha256: computedSha256,
   };
@@ -118,6 +128,7 @@ export function authenticateUsptoTsdrWebAcceptanceRequest(
   planSha256: string;
   stage: string;
   transportMode: string;
+  robotsPolicy: string;
   serialNumber: string;
 } {
   if (!internalServiceSecret) {
@@ -163,6 +174,7 @@ export function authenticateUsptoTsdrWebAcceptanceRequest(
     planSha256: summary.planSha256,
     stage: summary.stage,
     transportMode: summary.transportMode,
+    robotsPolicy: summary.robotsPolicy,
     serialNumber: summary.serialNumber,
   };
 }
