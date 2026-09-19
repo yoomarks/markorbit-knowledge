@@ -33,6 +33,7 @@ export * from "./uspto-tsdr-job-acquirer";
 export * from "./uspto-tsdr-selected-document-acquirer";
 export * from "./uspto-tsdr-web-acquirer";
 export * from "./uspto-tsdr-static-web-acquirer";
+export * from "./uspto-tsdr-web-selected-document-acquirer";
 export * from "./crawl4ai-subprocess-acquirer";
 export * from "./bright-data-fallback-acquirer";
 export * from "./api-acquirer";

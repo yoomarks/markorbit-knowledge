@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
+import { readFileSync } from "node:fs";
 import { RegistryValidationError, type CreateSourceInput } from "@markorbit/persistence";
 import type { CreateCollectionPlanInput } from "@markorbit/persistence/collection-plans";
 import type { CreateWorkerInput } from "@markorbit/persistence/workers";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import { authenticateUsptoTsdrWebAcceptanceRequest } from "@/server/uspto-tsdr-web-acceptance-auth";
+import { verifyUsptoTsdrWebSelectedDocumentParentEvidence } from "@/server/uspto-tsdr-web-selected-document-parent";
 import {
   getCollectionPlanRepository,
   getConnectorRepository,
   getExecutionLedgerRepository,
+  getRawArtifactRepository,
   getSourceRepository,
   getWorkerRegistryRepository,
 } from "@/server/source-registry";
@@ -41,19 +44,24 @@ function sameStrings(value: unknown, expected: readonly string[]): boolean {
   );
 }
 
+function sourceStage(expectedStage: string): string {
+  return expectedStage === "SELECTED_DOCUMENT" ? "DOCUMENT_INDEX" : expectedStage;
+}
+
 function assertOfficialTsdrWebUri(
   raw: unknown,
   expected: { stage: string; serialNumber: string },
 ): void {
   const value = text(raw, "source canonicalUri");
   const url = new URL(value);
+  const expectedStage = sourceStage(expected.stage);
   if (url.origin !== "https://tsdr.uspto.gov" || url.username || url.password || url.hash) {
     throw new RegistryValidationError("TSDR Web acceptance source origin mismatch");
   }
   const expectedUri =
-    expected.stage === "STATUS"
+    expectedStage === "STATUS"
       ? `https://tsdr.uspto.gov/statusview/sn${expected.serialNumber}`
-      : expected.stage === "MARK_IMAGE"
+      : expectedStage === "MARK_IMAGE"
         ? `https://tsdr.uspto.gov/img/${expected.serialNumber}/large`
         : `https://tsdr.uspto.gov/documentviewer?caseId=sn${expected.serialNumber}`;
   if (url.toString() !== expectedUri) {
@@ -90,7 +98,7 @@ function assertSourceInput(
   const extensions = object(source.extensions, "source.extensions");
   if (
     extensions["x-markorbit-tsdr-acquisition-channel"] !== "WEB" ||
-    extensions["x-markorbit-tsdr-web-acceptance-stage"] !== expected.stage ||
+    extensions["x-markorbit-tsdr-web-acceptance-stage"] !== sourceStage(expected.stage) ||
     extensions["x-markorbit-tsdr-web-transport-mode"] !== expected.transportMode ||
     extensions["x-markorbit-tsdr-web-robots-policy"] !== expected.robotsPolicy ||
     extensions["x-markorbit-tsdr-target-serial-only"] !== true ||
@@ -121,7 +129,7 @@ function assertSourceRecord(
   assertOfficialTsdrWebUri(source.canonicalUri, expected);
   const extensions = source.extensions ?? {};
   if (
-    extensions["x-markorbit-tsdr-web-acceptance-stage"] !== expected.stage ||
+    extensions["x-markorbit-tsdr-web-acceptance-stage"] !== sourceStage(expected.stage) ||
     extensions["x-markorbit-tsdr-web-transport-mode"] !== expected.transportMode ||
     extensions["x-markorbit-tsdr-web-robots-policy"] !== expected.robotsPolicy
   ) {
@@ -138,6 +146,13 @@ function assertPlanInput(
     serialNumber: string;
     transportMode: string;
     robotsPolicy: string;
+    document?: {
+      sourceIndexArtifactId: string;
+      sourceIndexArtifactSha256: string;
+      sourceDocumentId: string;
+      classifierIdentity: string;
+      classifierVersion: string;
+    };
   },
 ): CreateCollectionPlanInput {
   const plan = object(value, "plan");
@@ -147,14 +162,25 @@ function assertPlanInput(
   const sourceId = text(plan.sourceId, "plan.sourceId");
   assertSourceRecord(sourceId, workspaceId, expected);
   const policy = object(plan.policy, "plan.policy");
+  const selected = expected.stage === "SELECTED_DOCUMENT";
+  const rateLimitCeiling = selected ? 4 : 12;
   if (
     policy.maxDepth !== 0 ||
     policy.maxItems !== 1 ||
     policy.respectRobots !== true ||
+    policy.renderJavascript !== false ||
     typeof policy.rateLimitPerMinute !== "number" ||
-    policy.rateLimitPerMinute > 12
+    !Number.isInteger(policy.rateLimitPerMinute) ||
+    policy.rateLimitPerMinute < 1 ||
+    policy.rateLimitPerMinute > rateLimitCeiling
   ) {
     throw new RegistryValidationError("TSDR Web acceptance CollectionPlan policy mismatch");
+  }
+  const output = object(plan.output, "plan.output");
+  const expectedArtifactKinds =
+    expected.stage === "MARK_IMAGE" ? ["IMAGE"] : selected ? ["PDF"] : ["HTML"];
+  if (!sameStrings(output.artifactKinds, expectedArtifactKinds)) {
+    throw new RegistryValidationError("TSDR Web acceptance CollectionPlan output mismatch");
   }
   const extensions = object(plan.extensions, "plan.extensions");
   if (
@@ -162,10 +188,27 @@ function assertPlanInput(
     extensions["x-markorbit-tsdr-web-acceptance-stage"] !== expected.stage ||
     extensions["x-markorbit-tsdr-web-transport-mode"] !== expected.transportMode ||
     extensions["x-markorbit-tsdr-web-robots-policy"] !== expected.robotsPolicy ||
-    policy.renderJavascript !== (expected.transportMode === "BROWSER_PROXY") ||
     extensions["x-markorbit-tsdr-web-frozen-plan-sha256"] !== planSha256
   ) {
     throw new RegistryValidationError("TSDR Web acceptance CollectionPlan SHA/channel mismatch");
+  }
+  if (selected) {
+    const document = expected.document;
+    if (
+      !document ||
+      extensions["x-markorbit-tsdr-web-selected-parent-artifact-id"] !==
+        document.sourceIndexArtifactId ||
+      extensions["x-markorbit-tsdr-web-selected-parent-sha256"] !==
+        document.sourceIndexArtifactSha256 ||
+      extensions["x-markorbit-tsdr-web-selected-document-id"] !== document.sourceDocumentId ||
+      extensions["x-markorbit-tsdr-web-selected-document-family"] !== "OFFICE_ACTION" ||
+      extensions["x-markorbit-tsdr-web-selected-classifier"] !==
+        `${document.classifierIdentity}@${document.classifierVersion}`
+    ) {
+      throw new RegistryValidationError(
+        "TSDR Web selected-document CollectionPlan lineage mismatch",
+      );
+    }
   }
   return plan as unknown as CreateCollectionPlanInput;
 }
@@ -246,10 +289,59 @@ export async function POST(request: Request) {
     }
 
     if (operation === "CREATE_SOURCE") {
+      if (access.stage === "SELECTED_DOCUMENT") {
+        throw new RegistryValidationError(
+          "Selected TSDR Web documents must reuse the immutable document-index Source",
+        );
+      }
       const source = getSourceRepository().create(
         assertSourceInput(payload.source, workspaceId, access),
       );
       return NextResponse.json({ source }, { status: 201 });
+    }
+
+    if (operation === "VERIFY_SELECTED_DOCUMENT_PARENT") {
+      if (access.stage !== "SELECTED_DOCUMENT" || !access.document) {
+        throw new RegistryValidationError(
+          "Selected-document parent verification requires SELECTED_DOCUMENT authority",
+        );
+      }
+      const artifacts = getRawArtifactRepository();
+      const view = artifacts.getArtifact(access.document.sourceIndexArtifactId);
+      if (!view) {
+        throw new RegistryValidationError("Selected-document parent RawArtifact was not found");
+      }
+      const content = readFileSync(artifacts.contentPath(view.artifact.id).path);
+      let verified: { sourceId: string };
+      try {
+        verified = verifyUsptoTsdrWebSelectedDocumentParentEvidence({
+          workspaceId,
+          serialNumber: access.serialNumber,
+          document: access.document,
+          parent: {
+            workspaceId: view.artifact.workspaceId,
+            sourceId: view.artifact.sourceId,
+            artifactId: view.artifact.id,
+            artifactKind: view.artifact.artifactKind,
+            mimeType: view.artifact.mimeType,
+            canonicalUri: view.artifact.canonicalUri ?? null,
+            sha256: view.contentObject.sha256,
+            sizeBytes: view.contentObject.sizeBytes,
+            content,
+          },
+        });
+      } catch (error) {
+        throw new RegistryValidationError(
+          error instanceof Error
+            ? error.message
+            : "Selected-document parent evidence verification failed",
+        );
+      }
+      assertSourceRecord(verified.sourceId, workspaceId, access);
+      return NextResponse.json({
+        sourceId: verified.sourceId,
+        parentArtifactId: access.document.sourceIndexArtifactId,
+      });
     }
 
     if (operation === "LIST_PLANS") {

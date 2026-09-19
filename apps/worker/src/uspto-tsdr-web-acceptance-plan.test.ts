@@ -87,6 +87,53 @@ describe("TSDR Web acceptance plan", () => {
     expect(collectionPlan.policy.renderJavascript).toBe(false);
   });
 
+  it("freezes a selected OFFICE_ACTION PDF with immutable index lineage", () => {
+    const plan = parseUsptoTsdrWebAcceptancePlan({
+      ...base,
+      operationId: "web-proof-99047647-final-action-r1",
+      stage: "SELECTED_DOCUMENT",
+      serialNumber: "99047647",
+      format: "PDF",
+      purpose: "CASE_RESEARCH",
+      businessChain: "OA",
+      document: {
+        sourceIndexArtifactId: "art_01M2X01M8RS5MNFC953RM7N6Y3",
+        sourceIndexArtifactSha256:
+          "3544fddfc90f59b94603e908857ddb0208b80920c0e517b4c7d59cf46e91b837",
+        sourceDocumentId: "FREF20260722103245",
+        sourceDocumentType: "Final Action",
+        sourceDescription: "Final Action",
+        sourceDisplayDate: "Jul. 22, 2026",
+        sourcePageCount: 1,
+        family: "OFFICE_ACTION",
+        classifierIdentity: "uspto-tsdr-document-family",
+        classifierVersion: "1.1.0",
+        downloadUrl:
+          "https://tsdrsec.uspto.gov/ts/cd/tmcasedoc/downloadproxy?url=/api/casedoc/cms/case/99047647/office-action/OfficeAction8740681.pdf",
+      },
+    });
+    if (plan.stage !== "SELECTED_DOCUMENT") {
+      throw new Error("Expected selected-document plan");
+    }
+    expect(usptoTsdrWebAcceptanceTargetUrl(plan)).toBe(plan.document.downloadUrl);
+    expect(() => usptoTsdrWebAcceptanceSourcePayload(plan)).toThrow(/reuses/u);
+    const collectionPlan = usptoTsdrWebAcceptanceCollectionPlanPayload("src_index", plan);
+    expect(collectionPlan.output.artifactKinds).toEqual(["PDF"]);
+    expect(collectionPlan.policy).toMatchObject({
+      maxDepth: 0,
+      maxItems: 1,
+      renderJavascript: false,
+      respectRobots: true,
+      rateLimitPerMinute: 4,
+    });
+    expect(collectionPlan.extensions).toMatchObject({
+      "x-markorbit-tsdr-web-selected-parent-artifact-id": "art_01M2X01M8RS5MNFC953RM7N6Y3",
+      "x-markorbit-tsdr-web-selected-document-id": "FREF20260722103245",
+      "x-markorbit-tsdr-web-selected-document-family": "OFFICE_ACTION",
+      "x-markorbit-tsdr-web-selected-classifier": "uspto-tsdr-document-family@1.1.0",
+    });
+  });
+
   it("uses IMAGE-only output for the mark asset proof", () => {
     const plan = parseUsptoTsdrWebAcceptancePlan({
       ...base,
