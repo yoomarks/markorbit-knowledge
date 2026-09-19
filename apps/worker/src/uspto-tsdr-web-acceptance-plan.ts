@@ -10,6 +10,7 @@ export const USPTO_TSDR_WEB_CONNECTOR_ID = "crawl4ai-web" as const;
 export const USPTO_TSDR_WEB_CONNECTOR_VERSION = "1.3.0" as const;
 
 export type UsptoTsdrWebAcceptanceStage = UsptoTsdrWebSurface;
+export type UsptoTsdrWebTransportMode = "STATIC_HTTP_PINNED" | "BROWSER_PROXY";
 
 export type UsptoTsdrWebAcceptancePlan = {
   version: 1;
@@ -20,6 +21,7 @@ export type UsptoTsdrWebAcceptancePlan = {
   workerMode: "PROVISION_ONE_SHOT";
   channel: "WEB";
   stage: UsptoTsdrWebAcceptanceStage;
+  transportMode: UsptoTsdrWebTransportMode;
   serialNumber: string;
 };
 
@@ -73,6 +75,7 @@ export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcc
     "workerMode",
     "channel",
     "stage",
+    "transportMode",
     "serialNumber",
   ]);
   if (input.version !== 1) throw new Error("TSDR Web acceptance plan version must be 1");
@@ -99,6 +102,13 @@ export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcc
     throw new Error("TSDR Web acceptance serialNumber must be 8 digits");
   }
   const stage = input.stage as UsptoTsdrWebAcceptanceStage;
+  const expectedTransportMode =
+    stage === "DOCUMENT_INDEX" ? "BROWSER_PROXY" : "STATIC_HTTP_PINNED";
+  if (input.transportMode !== expectedTransportMode) {
+    throw new Error(
+      `TSDR Web acceptance transportMode for ${stage} must be ${expectedTransportMode}`,
+    );
+  }
   const parsedTarget = parseUsptoTsdrWebTarget(targetUrl(stage, input.serialNumber));
   if (parsedTarget.surface !== stage || parsedTarget.serialNumber !== input.serialNumber) {
     throw new Error("TSDR Web acceptance target derivation mismatch");
@@ -112,6 +122,7 @@ export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcc
     workerMode: "PROVISION_ONE_SHOT",
     channel: "WEB",
     stage,
+    transportMode: expectedTransportMode,
     serialNumber: input.serialNumber,
   };
 }
@@ -144,6 +155,7 @@ export function usptoTsdrWebAcceptanceSourcePayload(plan: UsptoTsdrWebAcceptance
       "x-markorbit-tsdr-acquisition-channel": "WEB",
       "x-markorbit-tsdr-web-acceptance-operation": plan.operationId,
       "x-markorbit-tsdr-web-acceptance-stage": plan.stage,
+      "x-markorbit-tsdr-web-transport-mode": plan.transportMode,
       "x-markorbit-tsdr-target-serial-only": true,
       "x-markorbit-legal-effect-claim": false,
     },
@@ -154,7 +166,12 @@ export function usptoTsdrWebAcceptanceCollectionPlanPayload(
   sourceId: string,
   plan: UsptoTsdrWebAcceptancePlan,
 ) {
-  const artifactKinds = plan.stage === "MARK_IMAGE" ? ["IMAGE"] : ["HTML", "MARKDOWN"];
+  const artifactKinds =
+    plan.stage === "MARK_IMAGE"
+      ? ["IMAGE"]
+      : plan.stage === "STATUS"
+        ? ["HTML"]
+        : ["HTML", "MARKDOWN"];
   return {
     workspaceId: plan.workspaceId,
     sourceId,
@@ -167,7 +184,7 @@ export function usptoTsdrWebAcceptanceCollectionPlanPayload(
       excludePatterns: [],
       maxDepth: 0,
       maxItems: 1,
-      renderJavascript: plan.stage !== "MARK_IMAGE",
+      renderJavascript: plan.transportMode === "BROWSER_PROXY",
       fetchAttachments: false,
       respectRobots: true,
       rateLimitPerMinute: 6,
@@ -180,6 +197,7 @@ export function usptoTsdrWebAcceptanceCollectionPlanPayload(
       "x-markorbit-tsdr-acquisition-channel": "WEB",
       "x-markorbit-tsdr-web-acceptance-operation": plan.operationId,
       "x-markorbit-tsdr-web-acceptance-stage": plan.stage,
+      "x-markorbit-tsdr-web-transport-mode": plan.transportMode,
       "x-markorbit-tsdr-web-frozen-plan-sha256": usptoTsdrWebAcceptancePlanSha256(plan),
     },
   };
