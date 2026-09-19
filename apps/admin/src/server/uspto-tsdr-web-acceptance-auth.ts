@@ -1,4 +1,8 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import {
+  normalizeUsptoTsdrWebSelectedDocumentSelection,
+  type UsptoTsdrWebSelectedDocumentSelection,
+} from "@markorbit/worker-runtime";
 import { CaseProducerAccessError } from "./case-producer-auth";
 
 export const USPTO_TSDR_WEB_ACCEPTANCE_AUTHORITY_HEADER = "x-markorbit-tsdr-web-authority" as const;
@@ -46,8 +50,30 @@ function planHash(plan: Record<string, unknown>): string {
     .digest("hex");
 }
 
-function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
+function invalid(): never {
+  throw new CaseProducerAccessError(
+    "TSDR_WEB_ACCEPTANCE_AUTHORITY_INVALID",
+    403,
+    "TSDR Web acceptance authority is invalid.",
+  );
+}
+
+function summarizeFrozenPlan(
+  value: unknown,
+  claimedSha256: unknown,
+): {
+  workspaceId: string;
+  operationId: string;
+  stage: string;
+  transportMode: string;
+  robotsPolicy: string;
+  serialNumber: string;
+  planSha256: string;
+  document?: UsptoTsdrWebSelectedDocumentSelection;
+} {
   const plan = record(value);
+  const stage = typeof plan.stage === "string" ? plan.stage : "";
+  const selected = stage === "SELECTED_DOCUMENT";
   const allowed = new Set([
     "version",
     "operationId",
@@ -60,6 +86,7 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
     "transportMode",
     "robotsPolicy",
     "serialNumber",
+    ...(selected ? ["format", "purpose", "businessChain", "document"] : []),
   ]);
   if (
     Object.keys(plan).some((key) => !allowed.has(key)) ||
@@ -74,44 +101,38 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
     !WORKSPACE_ID.test(plan.workspaceId) ||
     typeof plan.serialNumber !== "string" ||
     !SERIAL_NUMBER.test(plan.serialNumber) ||
-    !["STATUS", "MARK_IMAGE", "DOCUMENT_INDEX"].includes(String(plan.stage)) ||
-    !["STATIC_HTTP_PINNED", "BROWSER_PROXY"].includes(String(plan.transportMode)) ||
-    ![
-      "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
-      "BROWSER_PROVIDER_NATIVE_V1",
-    ].includes(String(plan.robotsPolicy)) ||
+    !["STATUS", "MARK_IMAGE", "DOCUMENT_INDEX", "SELECTED_DOCUMENT"].includes(stage) ||
     plan.transportMode !== "STATIC_HTTP_PINNED" ||
     plan.robotsPolicy !== "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1"
   ) {
-    throw new CaseProducerAccessError(
-      "TSDR_WEB_ACCEPTANCE_AUTHORITY_INVALID",
-      403,
-      "TSDR Web acceptance authority is invalid.",
-    );
+    invalid();
   }
-  if (typeof claimedSha256 !== "string" || !SHA256.test(claimedSha256)) {
-    throw new CaseProducerAccessError(
-      "TSDR_WEB_ACCEPTANCE_AUTHORITY_INVALID",
-      403,
-      "TSDR Web acceptance authority is invalid.",
-    );
+  let document: UsptoTsdrWebSelectedDocumentSelection | undefined;
+  if (selected) {
+    if (plan.format !== "PDF" || plan.purpose !== "CASE_RESEARCH" || plan.businessChain !== "OA") {
+      invalid();
+    }
+    try {
+      document = normalizeUsptoTsdrWebSelectedDocumentSelection(
+        plan.serialNumber as string,
+        plan.document,
+      );
+    } catch {
+      invalid();
+    }
   }
+  if (typeof claimedSha256 !== "string" || !SHA256.test(claimedSha256)) invalid();
   const computedSha256 = planHash(plan);
-  if (computedSha256 !== claimedSha256) {
-    throw new CaseProducerAccessError(
-      "TSDR_WEB_ACCEPTANCE_AUTHORITY_INVALID",
-      403,
-      "TSDR Web acceptance authority is invalid.",
-    );
-  }
+  if (computedSha256 !== claimedSha256) invalid();
   return {
-    workspaceId: plan.workspaceId,
-    operationId: plan.operationId,
-    stage: String(plan.stage),
-    transportMode: String(plan.transportMode),
-    robotsPolicy: String(plan.robotsPolicy),
-    serialNumber: String(plan.serialNumber),
+    workspaceId: plan.workspaceId as string,
+    operationId: plan.operationId as string,
+    stage,
+    transportMode: "STATIC_HTTP_PINNED",
+    robotsPolicy: "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
+    serialNumber: plan.serialNumber as string,
     planSha256: computedSha256,
+    ...(document ? { document } : {}),
   };
 }
 
@@ -126,6 +147,7 @@ export function authenticateUsptoTsdrWebAcceptanceRequest(
   transportMode: string;
   robotsPolicy: string;
   serialNumber: string;
+  document?: UsptoTsdrWebSelectedDocumentSelection;
 } {
   if (!internalServiceSecret) {
     throw new CaseProducerAccessError(
@@ -172,5 +194,6 @@ export function authenticateUsptoTsdrWebAcceptanceRequest(
     transportMode: summary.transportMode,
     robotsPolicy: summary.robotsPolicy,
     serialNumber: summary.serialNumber,
+    ...(summary.document ? { document: summary.document } : {}),
   };
 }

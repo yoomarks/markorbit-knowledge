@@ -1,5 +1,10 @@
 import { createHash } from "node:crypto";
-import { parseUsptoTsdrWebTarget, type UsptoTsdrWebSurface } from "@markorbit/worker-runtime";
+import {
+  normalizeUsptoTsdrWebSelectedDocumentSelection,
+  parseUsptoTsdrWebTarget,
+  type UsptoTsdrWebSelectedDocumentSelection,
+  type UsptoTsdrWebSurface,
+} from "@markorbit/worker-runtime";
 
 const OPERATION_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const WORKSPACE_ID = /^wsp_[0-9A-HJKMNP-TV-Z]{26}$/u;
@@ -9,12 +14,12 @@ export const USPTO_TSDR_WEB_ACCEPTANCE_AUTHORITY_MODE = "INTERNAL_SERVICE_GO_V1"
 export const USPTO_TSDR_WEB_CONNECTOR_ID = "crawl4ai-web" as const;
 export const USPTO_TSDR_WEB_CONNECTOR_VERSION = "1.3.0" as const;
 
-export type UsptoTsdrWebAcceptanceStage = UsptoTsdrWebSurface;
+export type UsptoTsdrWebAcceptanceStage = UsptoTsdrWebSurface | "SELECTED_DOCUMENT";
 export type UsptoTsdrWebTransportMode = "STATIC_HTTP_PINNED" | "BROWSER_PROXY";
 export type UsptoTsdrWebRobotsPolicy =
   "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1" | "BROWSER_PROVIDER_NATIVE_V1";
 
-export type UsptoTsdrWebAcceptancePlan = {
+type CommonPlan = {
   version: 1;
   operationId: string;
   workspaceId: string;
@@ -22,11 +27,25 @@ export type UsptoTsdrWebAcceptancePlan = {
   executionMode: "APPLY_DISPATCH_ONCE";
   workerMode: "PROVISION_ONE_SHOT";
   channel: "WEB";
-  stage: UsptoTsdrWebAcceptanceStage;
-  transportMode: UsptoTsdrWebTransportMode;
-  robotsPolicy: UsptoTsdrWebRobotsPolicy;
+  transportMode: "STATIC_HTTP_PINNED";
+  robotsPolicy: "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1";
   serialNumber: string;
 };
+
+export type UsptoTsdrWebAcceptanceSurfacePlan = CommonPlan & {
+  stage: UsptoTsdrWebSurface;
+};
+
+export type UsptoTsdrWebAcceptanceSelectedPlan = CommonPlan & {
+  stage: "SELECTED_DOCUMENT";
+  format: "PDF";
+  purpose: "CASE_RESEARCH";
+  businessChain: "OA";
+  document: UsptoTsdrWebSelectedDocumentSelection;
+};
+
+export type UsptoTsdrWebAcceptancePlan =
+  UsptoTsdrWebAcceptanceSurfacePlan | UsptoTsdrWebAcceptanceSelectedPlan;
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -43,7 +62,7 @@ function exactKeys(value: Record<string, unknown>, allowed: readonly string[]): 
   }
 }
 
-function targetUrl(stage: UsptoTsdrWebAcceptanceStage, serialNumber: string): string {
+function surfaceTargetUrl(stage: UsptoTsdrWebSurface, serialNumber: string): string {
   if (stage === "STATUS") return `https://tsdr.uspto.gov/statusview/sn${serialNumber}`;
   if (stage === "MARK_IMAGE") return `https://tsdr.uspto.gov/img/${serialNumber}/large`;
   return `https://tsdr.uspto.gov/documentviewer?caseId=sn${serialNumber}`;
@@ -69,19 +88,41 @@ export function usptoTsdrWebAcceptancePlanSha256(plan: UsptoTsdrWebAcceptancePla
 
 export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcceptancePlan {
   const input = record(value);
-  exactKeys(input, [
-    "version",
-    "operationId",
-    "workspaceId",
-    "authorityMode",
-    "executionMode",
-    "workerMode",
-    "channel",
-    "stage",
-    "transportMode",
-    "robotsPolicy",
-    "serialNumber",
-  ]);
+  const selected = input.stage === "SELECTED_DOCUMENT";
+  exactKeys(
+    input,
+    selected
+      ? [
+          "version",
+          "operationId",
+          "workspaceId",
+          "authorityMode",
+          "executionMode",
+          "workerMode",
+          "channel",
+          "stage",
+          "transportMode",
+          "robotsPolicy",
+          "serialNumber",
+          "format",
+          "purpose",
+          "businessChain",
+          "document",
+        ]
+      : [
+          "version",
+          "operationId",
+          "workspaceId",
+          "authorityMode",
+          "executionMode",
+          "workerMode",
+          "channel",
+          "stage",
+          "transportMode",
+          "robotsPolicy",
+          "serialNumber",
+        ],
+  );
   if (input.version !== 1) throw new Error("TSDR Web acceptance plan version must be 1");
   if (typeof input.operationId !== "string" || !OPERATION_ID.test(input.operationId)) {
     throw new Error("TSDR Web acceptance operationId must be a lowercase slug");
@@ -99,49 +140,70 @@ export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcc
     throw new Error("TSDR Web acceptance workerMode mismatch");
   }
   if (input.channel !== "WEB") throw new Error("TSDR Web acceptance channel must be WEB");
-  if (!["STATUS", "MARK_IMAGE", "DOCUMENT_INDEX"].includes(String(input.stage))) {
-    throw new Error("TSDR Web acceptance stage is invalid");
-  }
   if (typeof input.serialNumber !== "string" || !SERIAL_NUMBER.test(input.serialNumber)) {
     throw new Error("TSDR Web acceptance serialNumber must be 8 digits");
   }
-  const stage = input.stage as UsptoTsdrWebAcceptanceStage;
-  const expectedTransportMode = "STATIC_HTTP_PINNED";
-  if (input.transportMode !== expectedTransportMode) {
+  if (input.transportMode !== "STATIC_HTTP_PINNED") {
+    throw new Error("TSDR Web acceptance transportMode must be STATIC_HTTP_PINNED");
+  }
+  if (input.robotsPolicy !== "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1") {
     throw new Error(
-      `TSDR Web acceptance transportMode for ${stage} must be ${expectedTransportMode}`,
+      "TSDR Web acceptance robotsPolicy must be RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1",
     );
   }
-  const expectedRobotsPolicy = "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1";
-  if (input.robotsPolicy !== expectedRobotsPolicy) {
-    throw new Error(
-      `TSDR Web acceptance robotsPolicy for ${stage} must be ${expectedRobotsPolicy}`,
-    );
-  }
-  const parsedTarget = parseUsptoTsdrWebTarget(targetUrl(stage, input.serialNumber));
-  if (parsedTarget.surface !== stage || parsedTarget.serialNumber !== input.serialNumber) {
-    throw new Error("TSDR Web acceptance target derivation mismatch");
-  }
-  return {
-    version: 1,
+
+  const common = {
+    version: 1 as const,
     operationId: input.operationId,
     workspaceId: input.workspaceId,
     authorityMode: USPTO_TSDR_WEB_ACCEPTANCE_AUTHORITY_MODE,
-    executionMode: "APPLY_DISPATCH_ONCE",
-    workerMode: "PROVISION_ONE_SHOT",
-    channel: "WEB",
-    stage,
-    transportMode: expectedTransportMode,
-    robotsPolicy: expectedRobotsPolicy,
+    executionMode: "APPLY_DISPATCH_ONCE" as const,
+    workerMode: "PROVISION_ONE_SHOT" as const,
+    channel: "WEB" as const,
+    transportMode: "STATIC_HTTP_PINNED" as const,
+    robotsPolicy: "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1" as const,
     serialNumber: input.serialNumber,
   };
+
+  if (selected) {
+    if (input.format !== "PDF") throw new Error("selected Web acceptance format must be PDF");
+    if (input.purpose !== "CASE_RESEARCH") {
+      throw new Error("selected Web acceptance purpose must be CASE_RESEARCH");
+    }
+    if (input.businessChain !== "OA") {
+      throw new Error("selected Web acceptance businessChain must be OA");
+    }
+    return {
+      ...common,
+      stage: "SELECTED_DOCUMENT",
+      format: "PDF",
+      purpose: "CASE_RESEARCH",
+      businessChain: "OA",
+      document: normalizeUsptoTsdrWebSelectedDocumentSelection(input.serialNumber, input.document),
+    };
+  }
+
+  if (!["STATUS", "MARK_IMAGE", "DOCUMENT_INDEX"].includes(String(input.stage))) {
+    throw new Error("TSDR Web acceptance stage is invalid");
+  }
+  const stage = input.stage as UsptoTsdrWebSurface;
+  const parsedTarget = parseUsptoTsdrWebTarget(surfaceTargetUrl(stage, input.serialNumber));
+  if (parsedTarget.surface !== stage || parsedTarget.serialNumber !== input.serialNumber) {
+    throw new Error("TSDR Web acceptance target derivation mismatch");
+  }
+  return { ...common, stage };
 }
 
 export function usptoTsdrWebAcceptanceTargetUrl(plan: UsptoTsdrWebAcceptancePlan): string {
-  return targetUrl(plan.stage, plan.serialNumber);
+  return plan.stage === "SELECTED_DOCUMENT"
+    ? plan.document.downloadUrl
+    : surfaceTargetUrl(plan.stage, plan.serialNumber);
 }
 
 export function usptoTsdrWebAcceptanceSourcePayload(plan: UsptoTsdrWebAcceptancePlan) {
+  if (plan.stage === "SELECTED_DOCUMENT") {
+    throw new Error("Selected document acceptance reuses the immutable DOCUMENT_INDEX Source");
+  }
   const uri = usptoTsdrWebAcceptanceTargetUrl(plan);
   return {
     workspaceId: plan.workspaceId,
@@ -177,7 +239,13 @@ export function usptoTsdrWebAcceptanceCollectionPlanPayload(
   sourceId: string,
   plan: UsptoTsdrWebAcceptancePlan,
 ) {
-  const artifactKinds = plan.stage === "MARK_IMAGE" ? ["IMAGE"] : ["HTML"];
+  const artifactKinds =
+    plan.stage === "MARK_IMAGE"
+      ? ["IMAGE"]
+      : plan.stage === "SELECTED_DOCUMENT"
+        ? ["PDF"]
+        : ["HTML"];
+  const rateLimitPerMinute = plan.stage === "SELECTED_DOCUMENT" ? 4 : 6;
   return {
     workspaceId: plan.workspaceId,
     sourceId,
@@ -190,10 +258,10 @@ export function usptoTsdrWebAcceptanceCollectionPlanPayload(
       excludePatterns: [],
       maxDepth: 0,
       maxItems: 1,
-      renderJavascript: plan.transportMode === "BROWSER_PROXY",
+      renderJavascript: false,
       fetchAttachments: false,
       respectRobots: true,
-      rateLimitPerMinute: 6,
+      rateLimitPerMinute,
       timeoutSeconds: 120,
       retry: { maxAttempts: 1, backoffSeconds: 0 },
       locale: "en-US",
@@ -206,6 +274,15 @@ export function usptoTsdrWebAcceptanceCollectionPlanPayload(
       "x-markorbit-tsdr-web-transport-mode": plan.transportMode,
       "x-markorbit-tsdr-web-robots-policy": plan.robotsPolicy,
       "x-markorbit-tsdr-web-frozen-plan-sha256": usptoTsdrWebAcceptancePlanSha256(plan),
+      ...(plan.stage === "SELECTED_DOCUMENT"
+        ? {
+            "x-markorbit-tsdr-web-selected-parent-artifact-id": plan.document.sourceIndexArtifactId,
+            "x-markorbit-tsdr-web-selected-parent-sha256": plan.document.sourceIndexArtifactSha256,
+            "x-markorbit-tsdr-web-selected-document-id": plan.document.sourceDocumentId,
+            "x-markorbit-tsdr-web-selected-document-family": plan.document.family,
+            "x-markorbit-tsdr-web-selected-classifier": `${plan.document.classifierIdentity}@${plan.document.classifierVersion}`,
+          }
+        : {}),
     },
   };
 }

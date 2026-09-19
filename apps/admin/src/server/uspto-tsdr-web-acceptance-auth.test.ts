@@ -133,6 +133,74 @@ describe("TSDR Web acceptance machine authority", () => {
     ).toThrow();
   });
 
+  it("binds selected-document authority to immutable parent and live OA classifier", () => {
+    const selectedPlan = {
+      ...plan,
+      operationId: "web-proof-99047647-final-action-r1",
+      stage: "SELECTED_DOCUMENT",
+      serialNumber: "99047647",
+      format: "PDF",
+      purpose: "CASE_RESEARCH",
+      businessChain: "OA",
+      document: {
+        sourceIndexArtifactId: "art_01M2X01M8RS5MNFC953RM7N6Y3",
+        sourceIndexArtifactSha256:
+          "3544fddfc90f59b94603e908857ddb0208b80920c0e517b4c7d59cf46e91b837",
+        sourceDocumentId: "FREF20260722103245",
+        sourceDocumentType: "Final Action",
+        sourceDescription: "Final Action",
+        sourceDisplayDate: "Jul. 22, 2026",
+        sourcePageCount: 1,
+        family: "OFFICE_ACTION",
+        classifierIdentity: "uspto-tsdr-document-family",
+        classifierVersion: "1.1.0",
+        downloadUrl:
+          "https://tsdrsec.uspto.gov/ts/cd/tmcasedoc/downloadproxy?url=/api/casedoc/cms/case/99047647/office-action/OfficeAction8740681.pdf",
+      },
+    };
+    const selectedSha = createHash("sha256")
+      .update(JSON.stringify(canonicalize(selectedPlan)))
+      .digest("hex");
+    const selectedGo = `GO #842 TSDR-WEB web-proof-99047647-final-action-r1 SELECTED_DOCUMENT ${selectedSha}`;
+
+    expect(
+      authenticateUsptoTsdrWebAcceptanceRequest(
+        request(selectedGo),
+        {
+          workspaceId: selectedPlan.workspaceId,
+          frozenPlan: selectedPlan,
+          planSha256: selectedSha,
+        },
+        "service-secret",
+      ),
+    ).toMatchObject({
+      stage: "SELECTED_DOCUMENT",
+      serialNumber: "99047647",
+      document: {
+        sourceIndexArtifactId: "art_01M2X01M8RS5MNFC953RM7N6Y3",
+        sourceDocumentId: "FREF20260722103245",
+        family: "OFFICE_ACTION",
+        classifierVersion: "1.1.0",
+      },
+    });
+
+    const tampered = {
+      ...selectedPlan,
+      document: { ...selectedPlan.document, sourceDocumentId: "FREF-TAMPERED" },
+    };
+    expect(() =>
+      authenticateUsptoTsdrWebAcceptanceRequest(
+        request(selectedGo),
+        {
+          workspaceId: selectedPlan.workspaceId,
+          frozenPlan: tampered,
+          planSha256: selectedSha,
+        },
+        "service-secret",
+      ),
+    ).toThrow();
+  });
+
   it("rejects added secretRef or altered frozen plan without a new SHA/GO", () => {
     expect(() =>
       authenticateUsptoTsdrWebAcceptanceRequest(

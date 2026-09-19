@@ -7,6 +7,7 @@ import {
   HttpControlledCollectionClient,
   UsptoTsdrStaticWebArtifactAcquirer,
   UsptoTsdrWebArtifactAcquirer,
+  UsptoTsdrWebSelectedDocumentAcquirer,
 } from "@markorbit/worker-runtime";
 import {
   parseUsptoTsdrWebAcceptancePlan,
@@ -243,6 +244,31 @@ async function ensureSource(
   return identifier(source?.id, "source.id");
 }
 
+async function resolveSelectedSource(
+  baseUrl: string,
+  plan: UsptoTsdrWebAcceptancePlan,
+  sha: string,
+  token: string,
+): Promise<string> {
+  if (plan.stage !== "SELECTED_DOCUMENT") {
+    throw new Error("Selected Source resolution requires SELECTED_DOCUMENT plan");
+  }
+  const response = await acceptanceRequest(
+    baseUrl,
+    plan,
+    sha,
+    token,
+    "VERIFY_SELECTED_DOCUMENT_PARENT",
+  );
+  const body = record(response.body);
+  const sourceId = identifier(body?.sourceId, "selected sourceId");
+  const parentArtifactId = identifier(body?.parentArtifactId, "selected parentArtifactId");
+  if (parentArtifactId !== plan.document.sourceIndexArtifactId) {
+    throw new Error("Selected parent verification returned a different RawArtifact");
+  }
+  return sourceId;
+}
+
 async function ensurePlan(
   baseUrl: string,
   sourceId: string,
@@ -312,16 +338,21 @@ async function runOneShot(
   plan: UsptoTsdrWebAcceptancePlan,
 ): Promise<void> {
   const acquirer =
-    plan.transportMode === "STATIC_HTTP_PINNED"
-      ? new UsptoTsdrStaticWebArtifactAcquirer()
-      : new UsptoTsdrWebArtifactAcquirer({
-          delegate: new Crawl4AiSubprocessAcquirer({
-            maxDepth: 0,
-            maxItems: 1,
-            maxConcurrency: 1,
-            maxProcessTimeoutMs: 180_000,
-          }),
-        });
+    plan.stage === "SELECTED_DOCUMENT"
+      ? new UsptoTsdrWebSelectedDocumentAcquirer({
+          serialNumber: plan.serialNumber,
+          document: plan.document,
+        })
+      : plan.transportMode === "STATIC_HTTP_PINNED"
+        ? new UsptoTsdrStaticWebArtifactAcquirer()
+        : new UsptoTsdrWebArtifactAcquirer({
+            delegate: new Crawl4AiSubprocessAcquirer({
+              maxDepth: 0,
+              maxItems: 1,
+              maxConcurrency: 1,
+              maxProcessTimeoutMs: 180_000,
+            }),
+          });
   const runtime = new ControlledCollectionWorkerRuntime(
     new HttpControlledCollectionClient(baseUrl, worker.workerId, worker.credential),
     acquirer,
@@ -339,12 +370,15 @@ export async function applyUsptoTsdrWebAcceptancePlan(input: {
   authorityToken: string;
 }): Promise<{ sourceId: string; collectionPlanId: string; workerId: string; runId: string }> {
   await ensureConnector(input.baseUrl, input.plan, input.planSha256, input.authorityToken);
-  const sourceId = await ensureSource(
-    input.baseUrl,
-    input.plan,
-    input.planSha256,
-    input.authorityToken,
-  );
+  const sourceId =
+    input.plan.stage === "SELECTED_DOCUMENT"
+      ? await resolveSelectedSource(
+          input.baseUrl,
+          input.plan,
+          input.planSha256,
+          input.authorityToken,
+        )
+      : await ensureSource(input.baseUrl, input.plan, input.planSha256, input.authorityToken);
   const collectionPlanId = await ensurePlan(
     input.baseUrl,
     sourceId,
