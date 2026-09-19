@@ -13,6 +13,7 @@ function sourceRow(index: number) {
     id,
     searchId: id,
     anncIssue: "75",
+    anncDate: "1983-08-15",
     anncType: "TMZCSQ",
     anncTypeName: "商标初步审定公告",
     regNo: String(100000 + index),
@@ -297,6 +298,20 @@ describe("CNIPA Gazette page acquirer", () => {
         }),
       }),
     ).rejects.toThrow(/non-empty raw response bytes/);
+  });
+
+  it("rejects inconsistent announcement dates within one source page", async () => {
+    const inconsistent = successPayload();
+    inconsistent.data.list[1]!.anncDate = "1983-08-16";
+
+    await expect(
+      acquireCnipaGazettePage({
+        announcementIssue: 75,
+        pageIndex: 1,
+        requestTemplate: allTemplate,
+        transport: new Transport({ httpStatus: 200, payload: inconsistent }),
+      }),
+    ).rejects.toThrow(/inconsistent announcement dates/);
   });
 
   it("rejects missing registration numbers, cross-issue rows and id drift", async () => {

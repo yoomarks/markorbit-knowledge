@@ -29,6 +29,7 @@ export type CnipaGazettePageResult = {
   pageSize: 100;
   sourceTotal: number;
   sourcePages: number;
+  announcementDate: string | null;
   rows: readonly CnipaGazetteRuntimeRow[];
 };
 
@@ -37,6 +38,7 @@ export type CnipaGazetteCheckpoint = {
   announcementIssue: number;
   sourceTotal: number;
   sourcePages: number;
+  announcementDate: string | null;
   pageSize: 100;
   range: CnipaGazettePageRange;
   pages: readonly CnipaGazettePageResult[];
@@ -217,6 +219,7 @@ export function buildCnipaGazetteCheckpoint(input: {
 
   let sourceTotal: number | null = null;
   let sourcePages: number | null = null;
+  let announcementDate: string | null | undefined;
   let rowCount = 0;
   const ids = new Set<string>();
 
@@ -236,6 +239,14 @@ export function buildCnipaGazetteCheckpoint(input: {
     if (sourcePages === null) sourcePages = pages;
     if (sourceTotal !== total || sourcePages !== pages) {
       throw new Error("source total/pages drifted within checkpoint");
+    }
+    const pageAnnouncementDate = assertIsoDateOrNull(page.announcementDate);
+    if (total > 0 && pageAnnouncementDate === null) {
+      throw new Error("non-empty Gazette page requires announcementDate");
+    }
+    if (announcementDate === undefined) announcementDate = pageAnnouncementDate;
+    if (announcementDate !== pageAnnouncementDate) {
+      throw new Error("announcementDate drifted within checkpoint");
     }
     if (page.pageIndex > pages) {
       throw new Error(`page ${page.pageIndex} exceeds sourcePages=${pages}`);
@@ -265,7 +276,7 @@ export function buildCnipaGazetteCheckpoint(input: {
     }
   });
 
-  if (sourceTotal === null || sourcePages === null) {
+  if (sourceTotal === null || sourcePages === null || announcementDate === undefined) {
     throw new Error("checkpoint requires at least one page");
   }
 
@@ -274,6 +285,7 @@ export function buildCnipaGazetteCheckpoint(input: {
     announcementIssue: issue,
     sourceTotal,
     sourcePages,
+    announcementDate,
     pageSize: CNIPA_GAZETTE_PAGE_SIZE,
     range: { startPage, endPage },
     pages: input.pages,
@@ -295,6 +307,11 @@ export function assembleCnipaGazetteAdmissionPackage(
 
   const sourceTotal = nonNegativeInteger(first.sourceTotal, "sourceTotal");
   const sourcePages = positiveInteger(first.sourcePages, "sourcePages");
+  const announcementDate = assertIsoDateOrNull(first.announcementDate);
+  const requestedAnnouncementDate = assertIsoDateOrNull(input.announcementDate);
+  if (requestedAnnouncementDate !== announcementDate) {
+    throw new Error("input announcementDate does not match checkpoint announcementDate");
+  }
   let nextPage = 1;
   const ids = new Set<string>();
   const records: CnipaGazetteAdmissionRow[] = [];
@@ -315,6 +332,9 @@ export function assembleCnipaGazetteAdmissionPackage(
       checkpoint.pageSize !== CNIPA_GAZETTE_PAGE_SIZE
     ) {
       throw new Error("source total/pages/pageSize drifted across checkpoints");
+    }
+    if (assertIsoDateOrNull(checkpoint.announcementDate) !== announcementDate) {
+      throw new Error("announcementDate drifted across checkpoints");
     }
     if (checkpoint.range.startPage !== nextPage) {
       throw new Error(
@@ -363,7 +383,7 @@ export function assembleCnipaGazetteAdmissionPackage(
     source_authority: "CNIPA",
     completeness: "COMPLETE",
     announcement_issue: issue,
-    announcement_date: assertIsoDateOrNull(input.announcementDate),
+    announcement_date: announcementDate,
     record_count: sourceTotal,
     page_count: sourcePages,
     page_size: CNIPA_GAZETTE_PAGE_SIZE,
