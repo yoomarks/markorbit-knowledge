@@ -1,3 +1,4 @@
+import type { AcquiredCollectionArtifact } from "./artifact-backed-collection-executor";
 import {
   buildCnipaGazetteIssueAllPageRequest,
   CNIPA_GAZETTE_ENDPOINTS,
@@ -8,9 +9,14 @@ import {
   type CnipaGazetteRuntimeRow,
 } from "./cnipa-gazette-checkpoint-runtime";
 
+export const CNIPA_GAZETTE_PUBLIC_ORIGIN = "https://pub.sbj.cnipa.gov.cn" as const;
+export const CNIPA_GAZETTE_PAGE_EVIDENCE_SCHEMA = "CNIPA_GAZETTE_PAGE_EVIDENCE_V1" as const;
+
 export type CnipaGazetteJsonTransportResponse = {
   httpStatus: number;
-  payload: unknown;
+  rawBody: Uint8Array;
+  observedAt: string;
+  contentType?: string;
 };
 
 export interface CnipaGazetteJsonTransport {
@@ -38,6 +44,12 @@ export class CnipaGazetteSourceError extends Error {
     this.name = "CnipaGazetteSourceError";
   }
 }
+
+export type CnipaGazetteEvidenceBackedPage = {
+  page: CnipaGazettePageResult;
+  rawArtifact: AcquiredCollectionArtifact;
+  projectionArtifact: AcquiredCollectionArtifact;
+};
 
 type JsonRecord = Record<string, unknown>;
 
@@ -119,6 +131,46 @@ function sourceCode(value: unknown): number {
   );
 }
 
+function observedInstant(value: string): string {
+  if (!value || Number.isNaN(Date.parse(value))) {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_RESPONSE_INVALID",
+      "transport observedAt must be an ISO-8601 instant",
+      false,
+    );
+  }
+  return value;
+}
+
+function parseRawJson(rawBody: Uint8Array): unknown {
+  if (!(rawBody instanceof Uint8Array) || rawBody.byteLength === 0) {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_RESPONSE_INVALID",
+      "Gazette transport must return non-empty raw response bytes",
+      false,
+    );
+  }
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(rawBody);
+  } catch {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_RESPONSE_INVALID",
+      "Gazette raw response is not valid UTF-8",
+      false,
+    );
+  }
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_RESPONSE_INVALID",
+      "Gazette raw response is not valid JSON",
+      false,
+    );
+  }
+}
+
 function normalizeSourceRow(
   value: unknown,
   options: {
@@ -178,60 +230,12 @@ function normalizeSourceRow(
   };
 }
 
-export async function acquireCnipaGazettePage(input: {
+function validateAndNormalizePage(input: {
   announcementIssue: number;
   pageIndex: number;
-  requestTemplate: Readonly<Record<string, unknown>>;
-  transport: CnipaGazetteJsonTransport;
-}): Promise<CnipaGazettePageResult> {
-  if (!Number.isSafeInteger(input.announcementIssue) || input.announcementIssue < 1) {
-    throw new CnipaGazetteSourceError(
-      "CNIPA_GAZETTE_RESPONSE_INVALID",
-      "announcementIssue must be a positive safe integer",
-      false,
-    );
-  }
-  if (!Number.isSafeInteger(input.pageIndex) || input.pageIndex < 1) {
-    throw new CnipaGazetteSourceError(
-      "CNIPA_GAZETTE_RESPONSE_INVALID",
-      "pageIndex must be a positive safe integer",
-      false,
-    );
-  }
-
-  const request = buildCnipaGazetteIssueAllPageRequest({
-    capturedListBody: input.requestTemplate,
-    pageIndex: input.pageIndex,
-  });
-  if (request.path !== CNIPA_GAZETTE_ENDPOINTS.list || request.method !== "POST") {
-    throw new CnipaGazetteSourceError(
-      "CNIPA_GAZETTE_RESPONSE_INVALID",
-      "Gazette request builder escaped the canonical LIST endpoint",
-      false,
-    );
-  }
-
-  const response = await input.transport.postJson({
-    path: request.path,
-    body: request.jsonBody ?? {},
-  });
-
-  if (!Number.isInteger(response.httpStatus) || response.httpStatus < 100) {
-    throw new CnipaGazetteSourceError(
-      "CNIPA_GAZETTE_HTTP_ERROR",
-      "Gazette transport returned an invalid HTTP status",
-      false,
-    );
-  }
-  if (response.httpStatus < 200 || response.httpStatus >= 300) {
-    throw new CnipaGazetteSourceError(
-      "CNIPA_GAZETTE_HTTP_ERROR",
-      `Gazette LIST HTTP ${response.httpStatus}`,
-      response.httpStatus === 408 || response.httpStatus === 429 || response.httpStatus >= 500,
-    );
-  }
-
-  const envelope = record(response.payload, "response");
+  payload: unknown;
+}): CnipaGazettePageResult {
+  const envelope = record(input.payload, "response");
   const code = sourceCode(envelope.code);
   if (code === 401) {
     throw new CnipaGazetteSourceError(
@@ -323,4 +327,122 @@ export async function acquireCnipaGazettePage(input: {
     sourcePages,
     rows,
   };
+}
+
+function artifactUris(announcementIssue: number, pageIndex: number) {
+  const base = `cnipa://trademark-gazette/issue/${announcementIssue}/list/page/${pageIndex}`;
+  return {
+    raw: `${base}/raw`,
+    projection: `${base}/projection`,
+    source: `${CNIPA_GAZETTE_PUBLIC_ORIGIN}${CNIPA_GAZETTE_ENDPOINTS.list}`,
+  };
+}
+
+export async function acquireCnipaGazettePageWithEvidence(input: {
+  announcementIssue: number;
+  pageIndex: number;
+  requestTemplate: Readonly<Record<string, unknown>>;
+  transport: CnipaGazetteJsonTransport;
+}): Promise<CnipaGazetteEvidenceBackedPage> {
+  if (!Number.isSafeInteger(input.announcementIssue) || input.announcementIssue < 1) {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_RESPONSE_INVALID",
+      "announcementIssue must be a positive safe integer",
+      false,
+    );
+  }
+  if (!Number.isSafeInteger(input.pageIndex) || input.pageIndex < 1) {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_RESPONSE_INVALID",
+      "pageIndex must be a positive safe integer",
+      false,
+    );
+  }
+
+  const request = buildCnipaGazetteIssueAllPageRequest({
+    capturedListBody: input.requestTemplate,
+    pageIndex: input.pageIndex,
+  });
+  if (request.path !== CNIPA_GAZETTE_ENDPOINTS.list || request.method !== "POST") {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_RESPONSE_INVALID",
+      "Gazette request builder escaped the canonical LIST endpoint",
+      false,
+    );
+  }
+
+  const response = await input.transport.postJson({
+    path: request.path,
+    body: request.jsonBody ?? {},
+  });
+
+  if (!Number.isInteger(response.httpStatus) || response.httpStatus < 100) {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_HTTP_ERROR",
+      "Gazette transport returned an invalid HTTP status",
+      false,
+    );
+  }
+  if (response.httpStatus < 200 || response.httpStatus >= 300) {
+    throw new CnipaGazetteSourceError(
+      "CNIPA_GAZETTE_HTTP_ERROR",
+      `Gazette LIST HTTP ${response.httpStatus}`,
+      response.httpStatus === 408 || response.httpStatus === 429 || response.httpStatus >= 500,
+    );
+  }
+
+  const observedAt = observedInstant(response.observedAt);
+  const payload = parseRawJson(response.rawBody);
+  const page = validateAndNormalizePage({
+    announcementIssue: input.announcementIssue,
+    pageIndex: input.pageIndex,
+    payload,
+  });
+  const uris = artifactUris(input.announcementIssue, input.pageIndex);
+
+  const rawArtifact: AcquiredCollectionArtifact = {
+    artifactKind: "JSON",
+    mimeType: response.contentType?.trim() || "application/json;charset=UTF-8",
+    originalName: `cnipa-gazette-issue-${input.announcementIssue}-list-p${input.pageIndex}.json`,
+    sourceUri: uris.source,
+    canonicalUri: uris.raw,
+    content: response.rawBody,
+  };
+
+  const projection = {
+    schemaVersion: CNIPA_GAZETTE_PAGE_EVIDENCE_SCHEMA,
+    sourceOwner: "MARKORBIT_KNOWLEDGE",
+    sourceFamily: "CNIPA_TRADEMARK_GAZETTE",
+    announcementIssue: input.announcementIssue,
+    pageIndex: input.pageIndex,
+    pageSize: CNIPA_GAZETTE_PAGE_SIZE,
+    observedAt,
+    request: {
+      method: "POST",
+      path: request.path,
+      body: request.jsonBody ?? {},
+    },
+    sourceRawCanonicalUri: uris.raw,
+    page,
+  };
+  const projectionArtifact: AcquiredCollectionArtifact = {
+    artifactKind: "JSON",
+    mimeType: "application/json;charset=UTF-8",
+    originalName: `cnipa-gazette-issue-${input.announcementIssue}-projection-p${input.pageIndex}.json`,
+    sourceUri: uris.source,
+    canonicalUri: uris.projection,
+    parentCanonicalUris: [uris.raw],
+    content: new TextEncoder().encode(JSON.stringify(projection)),
+  };
+
+  return { page, rawArtifact, projectionArtifact };
+}
+
+export async function acquireCnipaGazettePage(input: {
+  announcementIssue: number;
+  pageIndex: number;
+  requestTemplate: Readonly<Record<string, unknown>>;
+  transport: CnipaGazetteJsonTransport;
+}): Promise<CnipaGazettePageResult> {
+  return (await acquireCnipaGazettePageWithEvidence(input)).page;
 }
