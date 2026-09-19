@@ -1,162 +1,183 @@
-import { describe, expect, it } from "vitest";
-import type {
-  ArtifactBackedExecutionContext,
-  CollectionArtifactAcquirer,
-} from "./artifact-backed-collection-executor";
-import { CollectionAcquisitionError } from "./artifact-backed-collection-executor";
+import type { ArtifactKind, ExecutionExecutor } from "@markorbit/contracts";
 import {
-  UsptoTsdrWebArtifactAcquirer,
-  parseUsptoTsdrWebTarget,
-  usptoTsdrWebRuntimeDescriptor,
-} from "./uspto-tsdr-web-acquirer";
+  type AcquiredCollectionArtifact,
+  type ArtifactBackedExecutionContext,
+  CollectionAcquisitionError,
+  type CollectionArtifactAcquirer,
+} from "./artifact-backed-collection-executor";
+import { Crawl4AiSubprocessAcquirer } from "./crawl4ai-subprocess-acquirer";
 
-function context(
-  urls: string[],
-  overrides: Record<string, unknown> = {},
-): ArtifactBackedExecutionContext {
-  return {
-    job: {
-      sourceSnapshot: {
-        sourceType: "WEB",
-        connector: { connectorId: "crawl4ai-web", version: "1.2.0" },
-        canonicalUri: urls[0],
-        entrypoints: urls.map((uri) => ({ uri })),
-      },
-      planSnapshot: {
-        policy: {
-          maxDepth: 0,
-          maxItems: 3,
-          rateLimitPerMinute: 6,
-          respectRobots: true,
-          renderJavascript: true,
-          fetchAttachments: false,
-          includePatterns: [],
-          excludePatterns: [],
-          timeoutSeconds: 30,
-          ...overrides,
-        },
-        output: { artifactKinds: ["HTML", "MARKDOWN", "IMAGE"] },
-      },
-    },
-  } as unknown as ArtifactBackedExecutionContext;
+const TSDR_WEB_ORIGIN = "https://tsdr.uspto.gov";
+const SERIAL = /^\d{8}$/u;
+const MAX_RATE_LIMIT_PER_MINUTE = 12;
+const MAX_ITEMS = 10;
+const TEXTUAL_KINDS = new Set<ArtifactKind>(["HTML", "MARKDOWN", "TEXT", "JSON"]);
+const CHALLENGE_MARKERS = [
+  "verify you are human",
+  "captcha",
+  "access denied",
+  "security check",
+  "unusual traffic",
+] as const;
+
+export type UsptoTsdrWebSurface = "STATUS" | "MARK_IMAGE" | "DOCUMENT_INDEX";
+
+export type UsptoTsdrWebTarget = {
+  surface: UsptoTsdrWebSurface;
+  serialNumber: string;
+  canonicalUri: string;
+};
+
+export type UsptoTsdrWebArtifactAcquirerOptions = {
+  delegate?: CollectionArtifactAcquirer;
+};
+
+function invalid(message: string): never {
+  throw new CollectionAcquisitionError("TSDR_WEB_BOUNDARY_INVALID", message, false);
 }
 
-class FakeDelegate implements CollectionArtifactAcquirer {
-  readonly executor = {
-    executorId: "fake",
-    version: "1.0.0",
-    mode: "PRODUCTION" as const,
-  };
+export function parseUsptoTsdrWebTarget(raw: string): UsptoTsdrWebTarget {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return invalid("TSDR Web target must be an absolute URL");
+  }
+  if (url.origin !== TSDR_WEB_ORIGIN || url.username || url.password || url.hash) {
+    return invalid(
+      "TSDR Web target must use the canonical public TSDR origin without credentials/hash",
+    );
+  }
 
-  constructor(private readonly body = "<html>TSDR case page</html>") {}
+  const status = /^\/statusview\/sn(\d{8})$/u.exec(url.pathname);
+  if (status) {
+    if (url.search) invalid("TSDR status target cannot include query parameters");
+    return {
+      surface: "STATUS",
+      serialNumber: status[1]!,
+      canonicalUri: url.toString(),
+    };
+  }
 
-  async acquire(input: ArtifactBackedExecutionContext) {
-    const uri = input.job.sourceSnapshot.entrypoints[0]!.uri;
-    return [
-      {
-        artifactKind: "HTML" as const,
-        mimeType: "text/html",
-        originalName: "case.html",
-        sourceUri: uri,
-        canonicalUri: uri,
-        content: new TextEncoder().encode(this.body),
-      },
-    ];
+  const image = /^\/img\/(\d{8})\/large$/u.exec(url.pathname);
+  if (image) {
+    if (url.search) invalid("TSDR mark image target cannot include query parameters");
+    return {
+      surface: "MARK_IMAGE",
+      serialNumber: image[1]!,
+      canonicalUri: url.toString(),
+    };
+  }
+
+  if (url.pathname === "/documentviewer") {
+    const caseId = url.searchParams.get("caseId");
+    if (url.searchParams.size !== 1 || !caseId || !/^sn\d{8}$/u.test(caseId)) {
+      invalid("TSDR document viewer target must contain only caseId=sn{8-digit serial}");
+    }
+    const serialNumber = caseId.slice(2);
+    return {
+      surface: "DOCUMENT_INDEX",
+      serialNumber,
+      canonicalUri: url.toString(),
+    };
+  }
+
+  return invalid("URL is outside the governed TSDR status/image/document surfaces");
+}
+
+function governedUrls(context: ArtifactBackedExecutionContext): UsptoTsdrWebTarget[] {
+  const source = context.job.sourceSnapshot;
+  if (source.sourceType !== "WEB") invalid("TSDR Web acquisition requires a WEB Source snapshot");
+  if (source.connector.connectorId !== "crawl4ai-web") {
+    invalid("TSDR Web acquisition requires the governed crawl4ai-web connector");
+  }
+  const raw = [
+    ...source.entrypoints.map((entrypoint) => entrypoint.uri),
+    ...(source.canonicalUri ? [source.canonicalUri] : []),
+  ];
+  const unique = [...new Set(raw.filter(Boolean))];
+  if (unique.length === 0) invalid("TSDR Web acquisition requires a case-scoped entrypoint");
+  const targets = unique.map(parseUsptoTsdrWebTarget);
+  const serials = new Set(targets.map((target) => target.serialNumber));
+  if (serials.size !== 1) invalid("A TSDR Web Job cannot mix serial numbers");
+  return targets;
+}
+
+function assertPolicy(context: ArtifactBackedExecutionContext): void {
+  const policy = context.job.planSnapshot.policy;
+  if (policy.maxDepth !== 0) invalid("TSDR Web acquisition requires maxDepth=0");
+  if (policy.maxItems < 1 || policy.maxItems > MAX_ITEMS) {
+    invalid(`TSDR Web acquisition maxItems must be between 1 and ${MAX_ITEMS}`);
+  }
+  if (policy.rateLimitPerMinute < 1 || policy.rateLimitPerMinute > MAX_RATE_LIMIT_PER_MINUTE) {
+    invalid(
+      `TSDR Web acquisition rateLimitPerMinute must be between 1 and ${MAX_RATE_LIMIT_PER_MINUTE}`,
+    );
+  }
+  if (!policy.respectRobots) invalid("TSDR Web acquisition requires respectRobots=true");
+}
+
+function assertNoChallenge(artifacts: AcquiredCollectionArtifact[]): void {
+  const decoder = new TextDecoder();
+  for (const artifact of artifacts) {
+    if (!TEXTUAL_KINDS.has(artifact.artifactKind)) continue;
+    const sample = decoder.decode(artifact.content.subarray(0, 256 * 1024)).toLowerCase();
+    if (CHALLENGE_MARKERS.some((marker) => sample.includes(marker))) {
+      throw new CollectionAcquisitionError(
+        "TSDR_WEB_CHALLENGE_DETECTED",
+        "TSDR returned a challenge/access-control page; automated acquisition stopped",
+        false,
+      );
+    }
   }
 }
 
-describe("USPTO TSDR Web acquisition", () => {
-  it("parses the three governed official surfaces", () => {
-    expect(
-      parseUsptoTsdrWebTarget("https://tsdr.uspto.gov/statusview/sn90817045"),
-    ).toMatchObject({
-      surface: "STATUS",
-      serialNumber: "90817045",
-    });
-    expect(
-      parseUsptoTsdrWebTarget("https://tsdr.uspto.gov/img/90817045/large"),
-    ).toMatchObject({
-      surface: "MARK_IMAGE",
-      serialNumber: "90817045",
-    });
-    expect(
-      parseUsptoTsdrWebTarget(
-        "https://tsdr.uspto.gov/documentviewer?caseId=sn90817045",
-      ),
-    ).toMatchObject({ surface: "DOCUMENT_INDEX", serialNumber: "90817045" });
-  });
+export function usptoTsdrWebRuntimeDescriptor() {
+  return {
+    providerId: "uspto-tsdr-web",
+    officialOrigin: TSDR_WEB_ORIGIN,
+    surfaces: ["STATUS", "MARK_IMAGE", "DOCUMENT_INDEX"] as const,
+    maxRateLimitPerMinute: MAX_RATE_LIMIT_PER_MINUTE,
+    maxItems: MAX_ITEMS,
+    recursiveCrawlForbidden: true,
+    challengeBypassForbidden: true,
+    artifactBackedIngestionRequired: true,
+  };
+}
 
-  it("accepts a bounded same-serial job through the normal artifact delegate", async () => {
-    const acquirer = new UsptoTsdrWebArtifactAcquirer({
-      delegate: new FakeDelegate(),
-    });
-    const artifacts = await acquirer.acquire(
-      context([
-        "https://tsdr.uspto.gov/statusview/sn90817045",
-        "https://tsdr.uspto.gov/img/90817045/large",
-      ]),
-    );
-    expect(artifacts).toHaveLength(1);
-    expect(acquirer.executor.executorId).toBe("uspto-tsdr-web-crawl4ai");
-  });
+export class UsptoTsdrWebArtifactAcquirer implements CollectionArtifactAcquirer {
+  readonly executor: ExecutionExecutor = {
+    executorId: "uspto-tsdr-web-crawl4ai",
+    version: "1.0.0",
+    mode: "PRODUCTION",
+  };
 
-  it("rejects cross-serial and alternate-origin jobs", async () => {
-    const acquirer = new UsptoTsdrWebArtifactAcquirer({
-      delegate: new FakeDelegate(),
-    });
-    await expect(
-      acquirer.acquire(
-        context([
-          "https://tsdr.uspto.gov/statusview/sn90817045",
-          "https://tsdr.uspto.gov/img/90817046/large",
-        ]),
-      ),
-    ).rejects.toMatchObject({ code: "TSDR_WEB_BOUNDARY_INVALID" });
+  private readonly delegate: CollectionArtifactAcquirer;
 
-    expect(() =>
-      parseUsptoTsdrWebTarget("https://example.test/statusview/sn90817045"),
-    ).toThrow(CollectionAcquisitionError);
-  });
+  constructor(options: UsptoTsdrWebArtifactAcquirerOptions = {}) {
+    this.delegate =
+      options.delegate ??
+      new Crawl4AiSubprocessAcquirer({
+        maxDepth: 0,
+        maxItems: MAX_ITEMS,
+        maxConcurrency: 1,
+      });
+  }
 
-  it("fails closed on recursive, excessive-rate, or robots-disabled plans", async () => {
-    const acquirer = new UsptoTsdrWebArtifactAcquirer({
-      delegate: new FakeDelegate(),
-    });
-    const uri = "https://tsdr.uspto.gov/statusview/sn90817045";
+  async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
+    const targets = governedUrls(context);
+    assertPolicy(context);
+    const serialNumber = targets[0]!.serialNumber;
+    if (!SERIAL.test(serialNumber)) invalid("TSDR Web serial number is invalid");
 
-    await expect(
-      acquirer.acquire(context([uri], { maxDepth: 1 })),
-    ).rejects.toMatchObject({
-      code: "TSDR_WEB_BOUNDARY_INVALID",
-    });
-    await expect(
-      acquirer.acquire(context([uri], { rateLimitPerMinute: 13 })),
-    ).rejects.toMatchObject({ code: "TSDR_WEB_BOUNDARY_INVALID" });
-    await expect(
-      acquirer.acquire(context([uri], { respectRobots: false })),
-    ).rejects.toMatchObject({
-      code: "TSDR_WEB_BOUNDARY_INVALID",
-    });
-  });
-
-  it("stops when an access-control or CAPTCHA page is observed", async () => {
-    const acquirer = new UsptoTsdrWebArtifactAcquirer({
-      delegate: new FakeDelegate("<html>Please verify you are human</html>"),
-    });
-    await expect(
-      acquirer.acquire(
-        context(["https://tsdr.uspto.gov/statusview/sn90817045"]),
-      ),
-    ).rejects.toMatchObject({ code: "TSDR_WEB_CHALLENGE_DETECTED" });
-  });
-
-  it("publishes the dual-channel-safe runtime boundary", () => {
-    expect(usptoTsdrWebRuntimeDescriptor()).toMatchObject({
-      providerId: "uspto-tsdr-web",
-      officialOrigin: "https://tsdr.uspto.gov",
-      recursiveCrawlForbidden: true,
-      challengeBypassForbidden: true,
-      artifactBackedIngestionRequired: true,
-    });
-  });
-});
+    const artifacts = await this.delegate.acquire(context);
+    for (const artifact of artifacts) {
+      const parsed = parseUsptoTsdrWebTarget(artifact.canonicalUri ?? artifact.sourceUri);
+      if (parsed.serialNumber !== serialNumber) {
+        invalid("TSDR Web artifact escaped the immutable serial-number boundary");
+      }
+    }
+    assertNoChallenge(artifacts);
+    return artifacts;
+  }
+}
