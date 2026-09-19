@@ -31,6 +31,7 @@ function page(pageIndex: number, sourceTotal: number, sourcePages: number, count
     pageSize: CNIPA_GAZETTE_PAGE_SIZE,
     sourceTotal,
     sourcePages,
+    announcementDate: "1983-08-15",
     rows,
   } satisfies CnipaGazettePageResult;
 }
@@ -91,6 +92,19 @@ describe("CNIPA Gazette checkpoint runtime", () => {
         pages: [page(1, 250, 3, 99)],
       }),
     ).toThrow(/must contain exactly 100 rows/);
+  });
+
+  it("rejects announcement-date drift within a checkpoint", () => {
+    const first = page(1, 200, 2, 100);
+    const second = { ...page(2, 200, 2, 100), announcementDate: "1983-08-16" };
+
+    expect(() =>
+      buildCnipaGazetteCheckpoint({
+        announcementIssue: 75,
+        range: { startPage: 1, endPage: 2 },
+        pages: [first, second],
+      }),
+    ).toThrow(/announcementDate drifted/);
   });
 
   it("validates terminal page remainder", () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   acquireCnipaGazettePage,
+  acquireCnipaGazettePageWithEvidence,
   CnipaGazetteSourceError,
   type CnipaGazetteJsonTransport,
 } from "./cnipa-gazette-page-acquirer";
@@ -12,17 +13,18 @@ function sourceRow(index: number) {
     id,
     searchId: id,
     anncIssue: "75",
+    anncDate: "1983-08-15",
     anncType: "TMZCSQ",
-    anncTypeName: "商标注册申请初步审定公告",
+    anncTypeName: "商标初步审定公告",
     regNo: String(100000 + index),
     pageNo: 1,
     fileId: "file-1",
     imgDir: "/group/1983/75/page1.jpg",
     anncPageNum: 100,
-    registerCnName: null,
-    tmName: null,
-    intlCls: null,
-    applyDate: null,
+    registerCnName: "ignored applicant",
+    tmName: "ignored trademark",
+    intlCls: "3",
+    applyDate: "1983-04-13",
   };
 }
 
@@ -45,17 +47,28 @@ class Transport implements CnipaGazetteJsonTransport {
   constructor(
     private readonly response: {
       httpStatus: number;
-      payload: unknown;
+      payload?: unknown;
+      rawBody?: Uint8Array;
+      observedAt?: string;
+      contentType?: string;
     },
   ) {}
 
   async postJson(input: { path: string; body: Readonly<Record<string, string | number>> }) {
     this.calls.push(input);
-    return this.response;
+    const rawBody =
+      this.response.rawBody ??
+      new TextEncoder().encode(JSON.stringify(this.response.payload ?? null));
+    return {
+      httpStatus: this.response.httpStatus,
+      rawBody,
+      observedAt: this.response.observedAt ?? "2026-09-19T06:48:37.552Z",
+      ...(this.response.contentType ? { contentType: this.response.contentType } : {}),
+    };
   }
 }
 
-const template = {
+const allTemplate = {
   anncIssue: "75",
   anncType: "",
   regNo: "",
@@ -65,7 +78,7 @@ const template = {
   coowner: "",
   agentName: "",
   tmType: "",
-  tmDescType: "",
+  tmDescType: "0",
   startDate: "",
   endDate: "",
   pageIndex: 1,
@@ -79,7 +92,7 @@ describe("CNIPA Gazette page acquirer", () => {
     const result = await acquireCnipaGazettePage({
       announcementIssue: 75,
       pageIndex: 1,
-      requestTemplate: template,
+      requestTemplate: allTemplate,
       transport,
     });
 
@@ -90,7 +103,7 @@ describe("CNIPA Gazette page acquirer", () => {
       anncType: "",
       pageIndex: 1,
       pageSize: 100,
-      tmDescType: "",
+      tmDescType: "0",
     });
     expect(result).toMatchObject({
       pageIndex: 1,
@@ -109,9 +122,65 @@ describe("CNIPA Gazette page acquirer", () => {
       detailAssetPath: "/group/1983/75/page1.jpg",
       announcementDetailUrl: "",
     });
+    expect(result.rows[0]).not.toHaveProperty("registerCnName");
+    expect(result.rows[0]).not.toHaveProperty("tmName");
+    expect(result.rows[0]).not.toHaveProperty("intlCls");
+    expect(result.rows[0]).not.toHaveProperty("applyDate");
   });
 
-  it("accepts the terminal remainder and rejects the wrong terminal length", async () => {
+  it("preserves exact raw response bytes as immutable parent evidence", async () => {
+    const payload = successPayload();
+    const rawText = JSON.stringify(payload, null, 2);
+    const rawBody = new TextEncoder().encode(rawText);
+    const transport = new Transport({
+      httpStatus: 200,
+      rawBody,
+      observedAt: "2026-09-19T06:48:37.552Z",
+      contentType: "application/json;charset=UTF-8",
+    });
+
+    const result = await acquireCnipaGazettePageWithEvidence({
+      announcementIssue: 75,
+      pageIndex: 1,
+      requestTemplate: allTemplate,
+      transport,
+    });
+
+    expect(result.rawArtifact.content).toBe(rawBody);
+    expect(new TextDecoder().decode(result.rawArtifact.content)).toBe(rawText);
+    expect(result.rawArtifact).toMatchObject({
+      artifactKind: "JSON",
+      sourceUri:
+        "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/public/web/anncInfo/searchEsTmgg",
+      canonicalUri: "cnipa://trademark-gazette/issue/75/list/page/1/raw",
+    });
+    expect(result.rawArtifact.sourceUri).not.toContain("FECU");
+
+    expect(result.projectionArtifact.parentCanonicalUris).toEqual([
+      "cnipa://trademark-gazette/issue/75/list/page/1/raw",
+    ]);
+    expect(result.projectionArtifact.canonicalUri).toBe(
+      "cnipa://trademark-gazette/issue/75/list/page/1/projection",
+    );
+
+    const projection = JSON.parse(
+      new TextDecoder().decode(result.projectionArtifact.content),
+    ) as Record<string, unknown>;
+    expect(projection).toMatchObject({
+      schemaVersion: "CNIPA_GAZETTE_PAGE_EVIDENCE_V1",
+      sourceOwner: "MARKORBIT_KNOWLEDGE",
+      sourceFamily: "CNIPA_TRADEMARK_GAZETTE",
+      announcementIssue: 75,
+      pageIndex: 1,
+      pageSize: 100,
+      observedAt: "2026-09-19T06:48:37.552Z",
+    });
+    const encodedProjection = JSON.stringify(projection);
+    expect(encodedProjection).not.toContain("ignored applicant");
+    expect(encodedProjection).not.toContain("ignored trademark");
+  });
+
+  it("accepts terminal remainder and rejects wrong terminal length", async () => {
     const ok = new Transport({
       httpStatus: 200,
       payload: successPayload(2, 150, 2, 50),
@@ -121,7 +190,7 @@ describe("CNIPA Gazette page acquirer", () => {
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 2,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: ok,
       }),
     ).resolves.toMatchObject({ sourceTotal: 150, sourcePages: 2 });
@@ -130,12 +199,11 @@ describe("CNIPA Gazette page acquirer", () => {
       httpStatus: 200,
       payload: successPayload(2, 150, 2, 49),
     });
-
     await expect(
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 2,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: bad,
       }),
     ).rejects.toThrow(/expected 50/);
@@ -151,7 +219,7 @@ describe("CNIPA Gazette page acquirer", () => {
       await acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 1,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport,
       });
       throw new Error("expected auth error");
@@ -171,7 +239,7 @@ describe("CNIPA Gazette page acquirer", () => {
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 1,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: transientSource,
       }),
     ).rejects.toMatchObject({
@@ -184,7 +252,7 @@ describe("CNIPA Gazette page acquirer", () => {
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 1,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: throttled,
       }),
     ).rejects.toMatchObject({
@@ -197,13 +265,53 @@ describe("CNIPA Gazette page acquirer", () => {
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 1,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: forbidden,
       }),
     ).rejects.toMatchObject({
       code: "CNIPA_GAZETTE_HTTP_ERROR",
       retryable: false,
     });
+  });
+
+  it("rejects invalid raw evidence bytes before normalization", async () => {
+    await expect(
+      acquireCnipaGazettePageWithEvidence({
+        announcementIssue: 75,
+        pageIndex: 1,
+        requestTemplate: allTemplate,
+        transport: new Transport({
+          httpStatus: 200,
+          rawBody: new TextEncoder().encode("{not json"),
+        }),
+      }),
+    ).rejects.toThrow(/not valid JSON/);
+
+    await expect(
+      acquireCnipaGazettePageWithEvidence({
+        announcementIssue: 75,
+        pageIndex: 1,
+        requestTemplate: allTemplate,
+        transport: new Transport({
+          httpStatus: 200,
+          rawBody: new Uint8Array(),
+        }),
+      }),
+    ).rejects.toThrow(/non-empty raw response bytes/);
+  });
+
+  it("rejects inconsistent announcement dates within one source page", async () => {
+    const inconsistent = successPayload();
+    inconsistent.data.list[1]!.anncDate = "1983-08-16";
+
+    await expect(
+      acquireCnipaGazettePage({
+        announcementIssue: 75,
+        pageIndex: 1,
+        requestTemplate: allTemplate,
+        transport: new Transport({ httpStatus: 200, payload: inconsistent }),
+      }),
+    ).rejects.toThrow(/inconsistent announcement dates/);
   });
 
   it("rejects missing registration numbers, cross-issue rows and id drift", async () => {
@@ -213,7 +321,7 @@ describe("CNIPA Gazette page acquirer", () => {
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 1,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: new Transport({ httpStatus: 200, payload: missingReg }),
       }),
     ).rejects.toThrow(/regNo/);
@@ -224,7 +332,7 @@ describe("CNIPA Gazette page acquirer", () => {
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 1,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: new Transport({ httpStatus: 200, payload: crossIssue }),
       }),
     ).rejects.toThrow(/expected 75/);
@@ -235,7 +343,7 @@ describe("CNIPA Gazette page acquirer", () => {
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 1,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: new Transport({ httpStatus: 200, payload: idDrift }),
       }),
     ).rejects.toThrow(/does not match id/);
@@ -248,7 +356,7 @@ describe("CNIPA Gazette page acquirer", () => {
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 1,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: new Transport({ httpStatus: 200, payload: wrongPage }),
       }),
     ).rejects.toThrow(/does not match requested 1/);
@@ -259,7 +367,7 @@ describe("CNIPA Gazette page acquirer", () => {
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 1,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: new Transport({ httpStatus: 200, payload: wrongSize }),
       }),
     ).rejects.toThrow(/pageSize=10/);
@@ -268,12 +376,23 @@ describe("CNIPA Gazette page acquirer", () => {
       acquireCnipaGazettePage({
         announcementIssue: 75,
         pageIndex: 1,
-        requestTemplate: template,
+        requestTemplate: allTemplate,
         transport: new Transport({
           httpStatus: 200,
           payload: { code: 0, data: { list: null, total: 1, pages: 1 } },
         }),
       }),
     ).rejects.toThrow(/data.list must be an array/);
+  });
+
+  it("fails closed if request template is not ALL announcement types", async () => {
+    await expect(
+      acquireCnipaGazettePage({
+        announcementIssue: 75,
+        pageIndex: 1,
+        requestTemplate: { ...allTemplate, anncType: "TMZCSQ" },
+        transport: new Transport({ httpStatus: 200, payload: successPayload() }),
+      }),
+    ).rejects.toThrow();
   });
 });
