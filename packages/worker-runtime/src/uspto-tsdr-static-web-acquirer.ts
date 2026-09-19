@@ -35,7 +35,9 @@ const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 async function defaultResolver(hostname: string): Promise<ResolvedAddress[]> {
   const rows = await lookup(hostname, { all: true, verbatim: true });
   return rows
-    .filter((row): row is { address: string; family: 4 | 6 } => row.family === 4 || row.family === 6)
+    .filter(
+      (row): row is { address: string; family: 4 | 6 } => row.family === 4 || row.family === 6,
+    )
     .map((row) => ({ address: row.address, family: row.family }));
 }
 
@@ -43,7 +45,11 @@ async function fetchPinned(
   url: URL,
   resolved: ResolvedAddress,
   maxBytes: number,
-): Promise<{ statusCode: number; headers: Record<string, string | string[] | undefined>; body: Uint8Array }> {
+): Promise<{
+  statusCode: number;
+  headers: Record<string, string | string[] | undefined>;
+  body: Uint8Array;
+}> {
   return await new Promise((resolvePromise, rejectPromise) => {
     const chunks: Buffer[] = [];
     let total = 0;
@@ -89,7 +95,11 @@ async function fetchPinned(
     );
     request.once("timeout", () =>
       request.destroy(
-        new CollectionAcquisitionError("TSDR_WEB_STATIC_TIMEOUT", "TSDR static request timed out", true),
+        new CollectionAcquisitionError(
+          "TSDR_WEB_STATIC_TIMEOUT",
+          "TSDR static request timed out",
+          true,
+        ),
       ),
     );
     request.once("error", rejectPromise);
@@ -219,7 +229,7 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
     }
     const contentTypeHeader = response.headers["content-type"];
     const contentType = (
-      Array.isArray(contentTypeHeader) ? contentTypeHeader[0] : contentTypeHeader ?? ""
+      Array.isArray(contentTypeHeader) ? contentTypeHeader[0] : (contentTypeHeader ?? "")
     )
       .split(";", 1)[0]!
       .trim()
@@ -233,11 +243,18 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
           false,
         );
       }
-      const sample = Buffer.from(response.body).subarray(0, 256 * 1024).toString("utf8").toLowerCase();
+      const sample = Buffer.from(response.body)
+        .subarray(0, 256 * 1024)
+        .toString("utf8")
+        .toLowerCase();
       if (
-        ["verify you are human", "captcha", "access denied", "security check", "unusual traffic"].some(
-          (marker) => sample.includes(marker),
-        )
+        [
+          "verify you are human",
+          "captcha",
+          "access denied",
+          "security check",
+          "unusual traffic",
+        ].some((marker) => sample.includes(marker))
       ) {
         throw new CollectionAcquisitionError(
           "TSDR_WEB_CHALLENGE_DETECTED",

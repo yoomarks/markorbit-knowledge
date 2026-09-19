@@ -102,8 +102,7 @@ export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcc
     throw new Error("TSDR Web acceptance serialNumber must be 8 digits");
   }
   const stage = input.stage as UsptoTsdrWebAcceptanceStage;
-  const expectedTransportMode =
-    stage === "DOCUMENT_INDEX" ? "BROWSER_PROXY" : "STATIC_HTTP_PINNED";
+  const expectedTransportMode = stage === "DOCUMENT_INDEX" ? "BROWSER_PROXY" : "STATIC_HTTP_PINNED";
   if (input.transportMode !== expectedTransportMode) {
     throw new Error(
       `TSDR Web acceptance transportMode for ${stage} must be ${expectedTransportMode}`,

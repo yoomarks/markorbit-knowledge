@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArtifactBackedExecutionContext } from "./artifact-backed-collection-executor";
-import {
-  UsptoTsdrStaticWebArtifactAcquirer,
-} from "./uspto-tsdr-static-web-acquirer";
+import { UsptoTsdrStaticWebArtifactAcquirer } from "./uspto-tsdr-static-web-acquirer";
 
 function context(url: string, output: "HTML" | "IMAGE"): ArtifactBackedExecutionContext {
   return {
@@ -116,9 +114,7 @@ describe("USPTO TSDR static Web acquirer", () => {
 
     const viewer = new UsptoTsdrStaticWebArtifactAcquirer({ resolver });
     await expect(
-      viewer.acquire(
-        context("https://tsdr.uspto.gov/documentviewer?caseId=sn90817045", "HTML"),
-      ),
+      viewer.acquire(context("https://tsdr.uspto.gov/documentviewer?caseId=sn90817045", "HTML")),
     ).rejects.toMatchObject({ code: "TSDR_WEB_STATIC_DOCUMENT_INDEX_UNSUPPORTED" });
 
     const challenge = new UsptoTsdrStaticWebArtifactAcquirer({
