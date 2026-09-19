@@ -168,17 +168,15 @@ export function assertUsptoTsdrAcceptanceAuthority(input: {
 
 async function acceptanceRequest(
   baseUrl: string,
-  workspaceId: string,
+  plan: UsptoTsdrAcceptancePlan,
+  planSha256: string,
+  authorityToken: string,
   operation: string,
   payload: Record<string, unknown> = {},
 ): Promise<{ status: number; body: unknown }> {
   const internalSecret = process.env.MO_INTERNAL_SERVICE_SECRET?.trim();
-  const principal = process.env.MARKORBIT_OPERATOR_SERVICE_PRINCIPAL?.trim();
   if (!internalSecret) {
     throw new Error("MO_INTERNAL_SERVICE_SECRET is required for TSDR acceptance apply");
-  }
-  if (!principal) {
-    throw new Error("MARKORBIT_OPERATOR_SERVICE_PRINCIPAL is required for TSDR acceptance apply");
   }
   const requestPath = "/api/internal/uspto-tsdr/acceptance";
   const response = await fetch(`${baseUrl}${requestPath}`, {
@@ -186,9 +184,14 @@ async function acceptanceRequest(
     headers: {
       "content-type": "application/json",
       "x-markorbit-internal-authorization": internalSecret,
-      "x-markorbit-principal": principal,
+      "x-markorbit-tsdr-authority": authorityToken,
     },
-    body: JSON.stringify({ workspaceId, operation, payload }),
+    body: JSON.stringify({
+      workspaceId: plan.workspaceId,
+      operation,
+      authority: { frozenPlan: plan, planSha256 },
+      payload,
+    }),
   });
   let body: unknown = null;
   try {
@@ -209,13 +212,26 @@ function items(value: unknown): unknown[] {
   return Array.isArray(container?.items) ? container.items : [];
 }
 
-async function ensureConnector(baseUrl: string, plan: UsptoTsdrAcceptancePlan): Promise<void> {
+async function ensureConnector(
+  baseUrl: string,
+  plan: UsptoTsdrAcceptancePlan,
+  planSha256: string,
+  authorityToken: string,
+): Promise<void> {
   const manifest = usptoTsdrAcceptanceConnectorManifest();
-  const existing = await acceptanceRequest(baseUrl, plan.workspaceId, "GET_CONNECTOR");
+  const existing = await acceptanceRequest(
+    baseUrl,
+    plan,
+    planSha256,
+    authorityToken,
+    "GET_CONNECTOR",
+  );
   const current = record(existing.body);
   const connector = record(current?.connector);
   if (!connector) {
-    await acceptanceRequest(baseUrl, plan.workspaceId, "CREATE_CONNECTOR", { manifest });
+    await acceptanceRequest(baseUrl, plan, planSha256, authorityToken, "CREATE_CONNECTOR", {
+      manifest,
+    });
     return;
   }
   if (connector.connectorId !== manifest.connectorId || connector.version !== manifest.version) {
@@ -238,11 +254,21 @@ function assertExistingSource(
   }
 }
 
-async function ensureSource(baseUrl: string, plan: UsptoTsdrAcceptancePlan): Promise<string> {
+async function ensureSource(
+  baseUrl: string,
+  plan: UsptoTsdrAcceptancePlan,
+  planSha256: string,
+  authorityToken: string,
+): Promise<string> {
   const expected = usptoTsdrAcceptanceSourcePayload(plan);
-  const existing = await acceptanceRequest(baseUrl, plan.workspaceId, "LIST_SOURCES", {
-    slug: expected.slug,
-  });
+  const existing = await acceptanceRequest(
+    baseUrl,
+    plan,
+    planSha256,
+    authorityToken,
+    "LIST_SOURCES",
+    { slug: expected.slug },
+  );
   for (const candidate of items(existing.body)) {
     const source = record(candidate);
     if (source?.slug !== expected.slug) continue;
@@ -250,9 +276,14 @@ async function ensureSource(baseUrl: string, plan: UsptoTsdrAcceptancePlan): Pro
     return identifier(source.id, "source.id");
   }
 
-  const created = await acceptanceRequest(baseUrl, plan.workspaceId, "CREATE_SOURCE", {
-    source: expected,
-  });
+  const created = await acceptanceRequest(
+    baseUrl,
+    plan,
+    planSha256,
+    authorityToken,
+    "CREATE_SOURCE",
+    { source: expected },
+  );
   const source = record(record(created.body)?.source);
   return identifier(source?.id, "source.id");
 }
@@ -283,9 +314,18 @@ async function ensureCollectionPlan(
   baseUrl: string,
   sourceId: string,
   plan: UsptoTsdrAcceptancePlan,
+  planSha256: string,
+  authorityToken: string,
 ): Promise<string> {
   const expected = usptoTsdrAcceptanceCollectionPlanPayload(sourceId, plan);
-  const existing = await acceptanceRequest(baseUrl, plan.workspaceId, "LIST_PLANS", { sourceId });
+  const existing = await acceptanceRequest(
+    baseUrl,
+    plan,
+    planSha256,
+    authorityToken,
+    "LIST_PLANS",
+    { sourceId },
+  );
   for (const candidate of items(existing.body)) {
     const container = record(candidate);
     const collectionPlan = record(container?.plan) ?? container;
@@ -294,10 +334,14 @@ async function ensureCollectionPlan(
     return identifier(collectionPlan.id, "plan.id");
   }
 
-  const created = await acceptanceRequest(baseUrl, plan.workspaceId, "CREATE_PLAN", {
-    plan: expected,
-    planSha256: usptoTsdrAcceptancePlanSha256(plan),
-  });
+  const created = await acceptanceRequest(
+    baseUrl,
+    plan,
+    planSha256,
+    authorityToken,
+    "CREATE_PLAN",
+    { plan: expected },
+  );
   const body = record(created.body);
   const outer = record(body?.plan);
   const collectionPlan = record(outer?.plan) ?? outer;
@@ -309,12 +353,19 @@ async function dispatchRun(
   plan: UsptoTsdrAcceptancePlan,
   collectionPlanId: string,
   planSha256: string,
+  authorityToken: string,
 ): Promise<string> {
-  const response = await acceptanceRequest(baseUrl, plan.workspaceId, "DISPATCH_RUN", {
-    planId: collectionPlanId,
+  const response = await acceptanceRequest(
+    baseUrl,
+    plan,
     planSha256,
-    idempotencyKey: `tsdr-acceptance-${plan.operationId}-${planSha256}`,
-  });
+    authorityToken,
+    "DISPATCH_RUN",
+    {
+      planId: collectionPlanId,
+      idempotencyKey: `tsdr-acceptance-${plan.operationId}-${planSha256}`,
+    },
+  );
   const value = record(record(response.body)?.record);
   const run = record(value?.run);
   return identifier(run?.id, "run.id");
@@ -331,9 +382,17 @@ function sameStrings(value: unknown, expected: readonly string[]): boolean {
 async function requireGovernedTsdrWorker(
   baseUrl: string,
   plan: UsptoTsdrAcceptancePlan,
+  planSha256: string,
+  authorityToken: string,
 ): Promise<string> {
   const expected = usptoTsdrAcceptanceWorkerPayload(plan.workspaceId);
-  const response = await acceptanceRequest(baseUrl, plan.workspaceId, "LIST_WORKERS");
+  const response = await acceptanceRequest(
+    baseUrl,
+    plan,
+    planSha256,
+    authorityToken,
+    "LIST_WORKERS",
+  );
   for (const candidate of items(response.body)) {
     const container = record(candidate);
     const worker = record(container?.worker) ?? container;
@@ -361,6 +420,7 @@ export async function applyUsptoTsdrAcceptancePlan(input: {
   baseUrl: string;
   plan: UsptoTsdrAcceptancePlan;
   planSha256: string;
+  authorityToken: string;
   dispatch: boolean;
 }): Promise<{
   sourceId: string;
@@ -368,14 +428,36 @@ export async function applyUsptoTsdrAcceptancePlan(input: {
   workerId: string | null;
   runId: string | null;
 }> {
-  await ensureConnector(input.baseUrl, input.plan);
-  const sourceId = await ensureSource(input.baseUrl, input.plan);
-  const collectionPlanId = await ensureCollectionPlan(input.baseUrl, sourceId, input.plan);
+  await ensureConnector(input.baseUrl, input.plan, input.planSha256, input.authorityToken);
+  const sourceId = await ensureSource(
+    input.baseUrl,
+    input.plan,
+    input.planSha256,
+    input.authorityToken,
+  );
+  const collectionPlanId = await ensureCollectionPlan(
+    input.baseUrl,
+    sourceId,
+    input.plan,
+    input.planSha256,
+    input.authorityToken,
+  );
   let workerId: string | null = null;
   let runId: string | null = null;
   if (input.dispatch) {
-    workerId = await requireGovernedTsdrWorker(input.baseUrl, input.plan);
-    runId = await dispatchRun(input.baseUrl, input.plan, collectionPlanId, input.planSha256);
+    workerId = await requireGovernedTsdrWorker(
+      input.baseUrl,
+      input.plan,
+      input.planSha256,
+      input.authorityToken,
+    );
+    runId = await dispatchRun(
+      input.baseUrl,
+      input.plan,
+      collectionPlanId,
+      input.planSha256,
+      input.authorityToken,
+    );
   }
   return { sourceId, collectionPlanId, workerId, runId };
 }
@@ -421,6 +503,7 @@ async function main(): Promise<void> {
     baseUrl,
     plan: loaded.plan,
     planSha256: loaded.planSha256,
+    authorityToken: args.authorityToken!,
     dispatch: args.dispatch,
   });
 

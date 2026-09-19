@@ -12,11 +12,13 @@ import {
 const OPERATION_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SECRET_REF = /^sec_[0-9A-HJKMNP-TV-Z]{26}$/;
 const WORKSPACE_ID = /^wsp_[0-9A-HJKMNP-TV-Z]{26}$/;
+export const USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE = "INTERNAL_SERVICE_GO_V1" as const;
 
 export type UsptoTsdrAcceptanceIndexPlan = {
   version: 1;
   operationId: string;
   workspaceId: string;
+  authorityMode: typeof USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE;
   stage: "INDEX";
   serialNumber: string;
   secretRef: string;
@@ -26,6 +28,7 @@ export type UsptoTsdrAcceptanceSelectedPlan = {
   version: 1;
   operationId: string;
   workspaceId: string;
+  authorityMode: typeof USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE;
   stage: "SELECTED_DOCUMENT";
   serialNumber: string;
   secretRef: string;
@@ -105,12 +108,25 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
   }
   const id = operationId(input.operationId);
   const workspace = workspaceId(input.workspaceId);
+  if (input.authorityMode !== USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE) {
+    throw new Error(
+      `TSDR acceptance plan invalid: authorityMode must be ${USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE}`,
+    );
+  }
   const ref = secretRef(input.secretRef);
 
   if (input.stage === "INDEX") {
     exactKeys(
       input,
-      ["version", "operationId", "workspaceId", "stage", "serialNumber", "secretRef"],
+      [
+        "version",
+        "operationId",
+        "workspaceId",
+        "authorityMode",
+        "stage",
+        "serialNumber",
+        "secretRef",
+      ],
       "root",
     );
     const admitted = admitUsptoTsdrAcquisition({
@@ -125,6 +141,7 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
       version: 1,
       operationId: id,
       workspaceId: workspace,
+      authorityMode: USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE,
       stage: "INDEX",
       serialNumber: admitted.serialNumber,
       secretRef: ref,
@@ -138,6 +155,7 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
         "version",
         "operationId",
         "workspaceId",
+        "authorityMode",
         "stage",
         "serialNumber",
         "secretRef",
@@ -170,6 +188,7 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
       version: 1,
       operationId: id,
       workspaceId: workspace,
+      authorityMode: USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE,
       stage: "SELECTED_DOCUMENT",
       serialNumber: admitted.serialNumber,
       secretRef: ref,
@@ -217,6 +236,7 @@ export function usptoTsdrAcceptanceSourcePayload(plan: UsptoTsdrAcceptancePlan) 
     extensions: {
       "x-markorbit-tsdr-acceptance-operation": plan.operationId,
       "x-markorbit-tsdr-acceptance-stage": plan.stage,
+      "x-markorbit-tsdr-acceptance-authority-mode": plan.authorityMode,
       "x-markorbit-tsdr-target-serial-only": true,
       "x-markorbit-legal-effect-claim": false,
     },
@@ -253,6 +273,7 @@ export function usptoTsdrAcceptanceCollectionPlanPayload(
     extensions: {
       "x-markorbit-tsdr-acceptance-operation": plan.operationId,
       "x-markorbit-tsdr-acceptance-stage": plan.stage,
+      "x-markorbit-tsdr-acceptance-authority-mode": plan.authorityMode,
       "x-markorbit-tsdr-frozen-plan-sha256": usptoTsdrAcceptancePlanSha256(plan),
     },
   };

@@ -3,9 +3,7 @@ import { RegistryValidationError, type CreateSourceInput } from "@markorbit/pers
 import type { CreateCollectionPlanInput } from "@markorbit/persistence/collection-plans";
 import type { CreateConnectorManifestInput } from "@markorbit/persistence/connectors";
 import { apiError, readJson, requireRecord } from "@/server/api-errors";
-import { authenticateCaseProducerRequest } from "@/server/case-producer-auth";
-import { resolveKnowledgeWorkspaceAuthority } from "@/server/knowledge-workspace-authority";
-import { assertOperatorServiceWritablePrincipal } from "@/server/operator-service-api-access";
+import { authenticateUsptoTsdrAcceptanceRequest } from "@/server/uspto-tsdr-acceptance-auth";
 import {
   getCollectionPlanRepository,
   getConnectorRepository,
@@ -21,7 +19,6 @@ const CONNECTOR_ID = "uspto-tsdr";
 const CONNECTOR_VERSION = "1.0.0";
 const TSDR_ORIGIN = "https://tsdrapi.uspto.gov";
 const WORKER_LABEL = "uspto-tsdr-governed-worker-v1";
-const SHA256 = /^[a-f0-9]{64}$/;
 const SECRET_REF = /^sec_[0-9A-HJKMNP-TV-Z]{26}$/;
 function text(value: unknown, label: string): string {
   if (typeof value !== "string" || !value.trim()) {
@@ -95,25 +92,18 @@ function assertTsdrPlanInput(
   return plan as unknown as CreateCollectionPlanInput;
 }
 
-function frozenSha(payload: Record<string, unknown>): string {
-  const value = text(payload.planSha256, "planSha256");
-  if (!SHA256.test(value)) {
-    throw new RegistryValidationError("planSha256 must be a lowercase SHA-256");
-  }
-  return value;
-}
-
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
     const workspaceId = text(body.workspaceId, "workspaceId");
     const operation = text(body.operation, "operation");
     const payload = object(body.payload ?? {}, "payload");
-    const principal = authenticateCaseProducerRequest(request);
-    const access = resolveKnowledgeWorkspaceAuthority(principal, workspaceId, {
-      allowExplicitGlobalPublicScope: true,
+    const authority = object(body.authority, "authority");
+    const access = authenticateUsptoTsdrAcceptanceRequest(request, {
+      workspaceId,
+      frozenPlan: authority.frozenPlan,
+      planSha256: authority.planSha256,
     });
-    assertOperatorServiceWritablePrincipal(access.principal);
     if (operation === "GET_CONNECTOR") {
       return NextResponse.json({
         connector: getConnectorRepository().get(CONNECTOR_ID, CONNECTOR_VERSION),
@@ -149,9 +139,8 @@ export async function POST(request: Request) {
     }
 
     if (operation === "CREATE_PLAN") {
-      const planSha256 = frozenSha(payload);
       const plan = getCollectionPlanRepository().create(
-        assertTsdrPlanInput(payload.plan, workspaceId, planSha256),
+        assertTsdrPlanInput(payload.plan, workspaceId, access.planSha256),
       );
       return NextResponse.json({ plan }, { status: 201 });
     }
@@ -168,20 +157,19 @@ export async function POST(request: Request) {
 
     if (operation === "DISPATCH_RUN") {
       const planId = text(payload.planId, "planId");
-      const planSha256 = frozenSha(payload);
       const planRecord = getCollectionPlanRepository().getById(planId);
       if (!planRecord || planRecord.plan.workspaceId !== workspaceId) {
         throw new RegistryValidationError("TSDR acceptance CollectionPlan workspace mismatch");
       }
       assertTsdrSourceRecord(planRecord.plan.sourceId, workspaceId);
       const extensions = planRecord.plan.extensions ?? {};
-      if (extensions["x-markorbit-tsdr-frozen-plan-sha256"] !== planSha256) {
+      if (extensions["x-markorbit-tsdr-frozen-plan-sha256"] !== access.planSha256) {
         throw new RegistryValidationError("TSDR acceptance dispatch SHA mismatch");
       }
       const idempotencyKey = text(payload.idempotencyKey, "idempotencyKey");
       const result = getExecutionLedgerRepository().dispatchManual({
         planId,
-        requestedBy: { actorType: "LOCAL_ADMIN", actorId: access.principal.userId },
+        requestedBy: { actorType: "API_CLIENT", actorId: access.actorId },
         idempotencyKey,
       });
       return NextResponse.json(result, { status: result.replayed ? 200 : 201 });
