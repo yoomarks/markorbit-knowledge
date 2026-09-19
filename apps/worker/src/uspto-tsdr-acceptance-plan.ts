@@ -19,6 +19,8 @@ export type UsptoTsdrAcceptanceIndexPlan = {
   operationId: string;
   workspaceId: string;
   authorityMode: typeof USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE;
+  executionMode: "APPLY_DISPATCH_ONCE";
+  workerMode: "PROVISION_ONE_SHOT";
   stage: "INDEX";
   serialNumber: string;
   secretRef: string;
@@ -29,6 +31,8 @@ export type UsptoTsdrAcceptanceSelectedPlan = {
   operationId: string;
   workspaceId: string;
   authorityMode: typeof USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE;
+  executionMode: "APPLY_DISPATCH_ONCE";
+  workerMode: "PROVISION_ONE_SHOT";
   stage: "SELECTED_DOCUMENT";
   serialNumber: string;
   secretRef: string;
@@ -113,6 +117,12 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
       `TSDR acceptance plan invalid: authorityMode must be ${USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE}`,
     );
   }
+  if (input.executionMode !== "APPLY_DISPATCH_ONCE") {
+    throw new Error("TSDR acceptance plan invalid: executionMode must be APPLY_DISPATCH_ONCE");
+  }
+  if (input.workerMode !== "PROVISION_ONE_SHOT") {
+    throw new Error("TSDR acceptance plan invalid: workerMode must be PROVISION_ONE_SHOT");
+  }
   const ref = secretRef(input.secretRef);
 
   if (input.stage === "INDEX") {
@@ -123,6 +133,8 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
         "operationId",
         "workspaceId",
         "authorityMode",
+        "executionMode",
+        "workerMode",
         "stage",
         "serialNumber",
         "secretRef",
@@ -142,6 +154,8 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
       operationId: id,
       workspaceId: workspace,
       authorityMode: USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE,
+      executionMode: "APPLY_DISPATCH_ONCE",
+      workerMode: "PROVISION_ONE_SHOT",
       stage: "INDEX",
       serialNumber: admitted.serialNumber,
       secretRef: ref,
@@ -156,6 +170,8 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
         "operationId",
         "workspaceId",
         "authorityMode",
+        "executionMode",
+        "workerMode",
         "stage",
         "serialNumber",
         "secretRef",
@@ -189,6 +205,8 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
       operationId: id,
       workspaceId: workspace,
       authorityMode: USPTO_TSDR_ACCEPTANCE_AUTHORITY_MODE,
+      executionMode: "APPLY_DISPATCH_ONCE",
+      workerMode: "PROVISION_ONE_SHOT",
       stage: "SELECTED_DOCUMENT",
       serialNumber: admitted.serialNumber,
       secretRef: ref,
@@ -237,6 +255,8 @@ export function usptoTsdrAcceptanceSourcePayload(plan: UsptoTsdrAcceptancePlan) 
       "x-markorbit-tsdr-acceptance-operation": plan.operationId,
       "x-markorbit-tsdr-acceptance-stage": plan.stage,
       "x-markorbit-tsdr-acceptance-authority-mode": plan.authorityMode,
+      "x-markorbit-tsdr-acceptance-execution-mode": plan.executionMode,
+      "x-markorbit-tsdr-acceptance-worker-mode": plan.workerMode,
       "x-markorbit-tsdr-target-serial-only": true,
       "x-markorbit-legal-effect-claim": false,
     },
@@ -274,6 +294,8 @@ export function usptoTsdrAcceptanceCollectionPlanPayload(
       "x-markorbit-tsdr-acceptance-operation": plan.operationId,
       "x-markorbit-tsdr-acceptance-stage": plan.stage,
       "x-markorbit-tsdr-acceptance-authority-mode": plan.authorityMode,
+      "x-markorbit-tsdr-acceptance-execution-mode": plan.executionMode,
+      "x-markorbit-tsdr-acceptance-worker-mode": plan.workerMode,
       "x-markorbit-tsdr-frozen-plan-sha256": usptoTsdrAcceptancePlanSha256(plan),
     },
   };
