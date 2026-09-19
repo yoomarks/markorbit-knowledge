@@ -152,6 +152,22 @@ A governed Capability/Knowledge execution path may then acquire the selected PDF
 
 Publication existence alone is not a legal conclusion and does not authorize a business action.
 
+## Governed production runtime wiring
+
+Production execution is split into three least-privilege Worker providers. None of these providers plans or starts the historical replay by itself.
+
+- `cnipa-gazette`: authenticated CNIPA checkpoint acquisition only. Requires the operator-managed CNIPA browser-session environment. A checkpoint is bounded to at most 100 pages and defaults to 25 pages.
+- `cnipa-gazette-publisher`: reads an already-durable Knowledge fact-admission request under the active Worker lease, verifies canonical URI/SHA/size, and posts only to the Data Engine fact-admission endpoints. Requires `MARKORBIT_DATA_ENGINE_URL` plus the dedicated `MARKORBIT_DATA_ENGINE_FACT_ADMISSION_KEY`; the key must satisfy the Data Engine minimum 32-character admission-key rule. It does not receive a CNIPA browser session.
+- `cnipa-gazette-finalize`: reads the durable dataset identity plus durable CHUNK admission receipts from Knowledge, with receipt reads bounded to 8 concurrent requests. It emits a durable FINALIZE request only after contiguous page coverage is proven. It receives neither CNIPA credentials nor Data Engine write credentials.
+
+Durable Knowledge artifact reads are available only through the lease-scoped Worker endpoint and only for RawArtifact ids explicitly referenced by the immutable Gazette publisher/finalize Job snapshot. The endpoint also enforces workspace ownership and stored SHA/size integrity before streaming bytes.
+
+The production lineage is therefore:
+
+`official page -> durable raw/projection/checkpoint/dataset identity -> durable CHUNK request -> Data Engine CHUNK receipt -> durable FINALIZE request -> Data Engine FINALIZE receipt`.
+
+Data Engine mutation never occurs before the corresponding request artifact is durable in Knowledge.
+
 ## Historical backfill
 
 Historical floor is issue 73.

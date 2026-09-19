@@ -19,6 +19,7 @@ import {
 import { CnipaSourceAdapter } from "./cnipa-source-adapter";
 import {
   CnipaAcquisitionError,
+  type CnipaAuthenticatedHttpSessionExecutor,
   type CnipaAuthenticatedSessionExecutor,
   type CnipaResponseEvidence,
   type CnipaTrademarkJudgmentQuery,
@@ -36,8 +37,16 @@ export interface CnipaClosableAuthenticatedSessionExecutor extends CnipaAuthenti
   close(): Promise<void>;
 }
 
+export interface CnipaClosableAuthenticatedHttpSessionExecutor extends CnipaAuthenticatedHttpSessionExecutor {
+  close(): Promise<void>;
+}
+
 export interface CnipaAuthenticatedSessionExecutorFactory {
   create(): Promise<CnipaClosableAuthenticatedSessionExecutor>;
+}
+
+export interface CnipaAuthenticatedHttpSessionExecutorFactory {
+  create(): Promise<CnipaClosableAuthenticatedHttpSessionExecutor>;
 }
 
 type CnipaSourceConfig = {

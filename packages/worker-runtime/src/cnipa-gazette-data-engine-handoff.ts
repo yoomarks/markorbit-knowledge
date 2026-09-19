@@ -33,9 +33,12 @@ export type CnipaGazetteDatasetIdentity = {
   firstPageRawSha256: string;
 };
 
-export type CnipaGazetteDatasetIdentityEnvelope = {
+export type CnipaGazetteDatasetIdentitySnapshot = {
   identity: CnipaGazetteDatasetIdentity;
   sourceDatasetSha256: string;
+};
+
+export type CnipaGazetteDatasetIdentityEnvelope = CnipaGazetteDatasetIdentitySnapshot & {
   artifact: AcquiredCollectionArtifact;
 };
 
@@ -164,6 +167,73 @@ function nonNegativeInteger(value: number, label: string): number {
   return value;
 }
 
+function objectValue(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+  return value as Record<string, unknown>;
+}
+
+export function validateCnipaGazetteDatasetIdentitySnapshot(
+  value: unknown,
+): CnipaGazetteDatasetIdentitySnapshot {
+  const envelope = objectValue(value, "dataset identity snapshot");
+  const identity = objectValue(envelope.identity, "dataset identity");
+  const queryScope = objectValue(identity.queryScope, "dataset identity.queryScope");
+  if (
+    identity.schemaVersion !== CNIPA_GAZETTE_DATASET_IDENTITY_SCHEMA ||
+    identity.sourceAuthority !== "CNIPA" ||
+    identity.sourceFamily !== "CNIPA_TRADEMARK_GAZETTE" ||
+    queryScope.announcementTypeSelection !== "ALL" ||
+    queryScope.anncType !== "" ||
+    identity.pageSize !== 100
+  ) {
+    throw new Error("dataset identity scope/schema is invalid");
+  }
+
+  const normalizedIdentity: CnipaGazetteDatasetIdentity = {
+    schemaVersion: CNIPA_GAZETTE_DATASET_IDENTITY_SCHEMA,
+    sourceAuthority: "CNIPA",
+    sourceFamily: "CNIPA_TRADEMARK_GAZETTE",
+    queryScope: { announcementTypeSelection: "ALL", anncType: "" },
+    announcementIssue: positiveInteger(
+      identity.announcementIssue as number,
+      "dataset identity.announcementIssue",
+    ),
+    announcementDate: isoDate(
+      identity.announcementDate as string | null,
+      "dataset identity.announcementDate",
+    ),
+    sourceRecordCount: nonNegativeInteger(
+      identity.sourceRecordCount as number,
+      "dataset identity.sourceRecordCount",
+    ),
+    sourcePageCount: positiveInteger(
+      identity.sourcePageCount as number,
+      "dataset identity.sourcePageCount",
+    ),
+    pageSize: 100,
+    sourceUri: nonEmpty(identity.sourceUri as string, "dataset identity.sourceUri"),
+    captureStartedAt: instant(
+      identity.captureStartedAt as string,
+      "dataset identity.captureStartedAt",
+    ),
+    firstPageRawSha256: sha256Text(
+      identity.firstPageRawSha256 as string,
+      "dataset identity.firstPageRawSha256",
+    ),
+  };
+  const sourceDatasetSha256 = sha256Text(
+    envelope.sourceDatasetSha256 as string,
+    "sourceDatasetSha256",
+  );
+  const computed = sha256(canonicalJson(normalizedIdentity));
+  if (sourceDatasetSha256 !== computed) {
+    throw new Error("dataset identity snapshot hash does not match canonical identity");
+  }
+  return { identity: normalizedIdentity, sourceDatasetSha256 };
+}
+
 function parseProjectionObservedAt(artifact: AcquiredCollectionArtifact): string {
   if (!artifact.canonicalUri?.endsWith("/projection")) {
     throw new Error("first page projection artifact has an unexpected canonical URI");
@@ -264,9 +334,29 @@ export function buildCnipaGazetteDatasetIdentity(
   };
 }
 
+export function parseCnipaGazetteDatasetIdentityArtifact(
+  artifact: AcquiredCollectionArtifact,
+): CnipaGazetteDatasetIdentitySnapshot {
+  if (artifact.artifactKind !== "JSON") {
+    throw new Error("Gazette dataset identity artifact must be JSON");
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(artifact.content)) as unknown;
+  } catch {
+    throw new Error("Gazette dataset identity artifact must contain valid JSON");
+  }
+  const snapshot = validateCnipaGazetteDatasetIdentitySnapshot(parsed);
+  const expectedCanonical = `cnipa://trademark-gazette/issue/${snapshot.identity.announcementIssue}/dataset/${snapshot.sourceDatasetSha256}`;
+  if (artifact.canonicalUri !== expectedCanonical) {
+    throw new Error("Gazette dataset identity canonical URI does not match its content");
+  }
+  return snapshot;
+}
+
 function assertCheckpointMatchesIdentity(
   checkpoint: CnipaGazetteCheckpoint,
-  identity: CnipaGazetteDatasetIdentityEnvelope,
+  identity: CnipaGazetteDatasetIdentitySnapshot,
 ): void {
   const expected = identity.identity;
   if (
@@ -299,7 +389,7 @@ function mapRow(row: CnipaGazetteRuntimeRow): CnipaGazetteDataEngineAnnouncement
 
 export function buildCnipaGazetteDataEngineChunkPackage(input: {
   checkpoint: CnipaGazetteCheckpoint;
-  datasetIdentity: CnipaGazetteDatasetIdentityEnvelope;
+  datasetIdentity: CnipaGazetteDatasetIdentitySnapshot;
   collectedAt: string;
 }): CnipaGazetteDataEngineChunkPackage {
   assertCheckpointMatchesIdentity(input.checkpoint, input.datasetIdentity);
@@ -337,7 +427,7 @@ export function buildCnipaGazetteDataEngineChunkPackage(input: {
 }
 
 export function buildCnipaGazetteDataEngineFinalizePackage(input: {
-  datasetIdentity: CnipaGazetteDatasetIdentityEnvelope;
+  datasetIdentity: CnipaGazetteDatasetIdentitySnapshot;
   collectedAt: string;
 }): CnipaGazetteDataEngineFinalizePackage {
   const identity = input.datasetIdentity.identity;

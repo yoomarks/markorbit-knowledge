@@ -12,6 +12,9 @@ import type {
 export type WorkerCollectionProvider =
   | "api"
   | "cnipa"
+  | "cnipa-gazette"
+  | "cnipa-gazette-publisher"
+  | "cnipa-gazette-finalize"
   | "crawl4ai"
   | "github"
   | "ip-australia-manual"
@@ -34,6 +37,8 @@ export type WorkerProcessConfig = {
   errorBackoffMaxMs: number;
   collectionEnabled: boolean;
   collectionProvider: WorkerCollectionProvider;
+  dataEngineUrl?: string;
+  dataEngineFactAdmissionKey?: string;
   acquisitionLearningProfileId?: string;
   requireEgressProxy: boolean;
   brightDataFallbackEnabled: boolean;
@@ -119,11 +124,30 @@ function normalizedControlPlaneUrl(value: string): string {
   return url.toString().replace(/\/$/, "");
 }
 
+function normalizedDataEngineUrl(value: string): string {
+  const url = new URL(value);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("MARKORBIT_DATA_ENGINE_URL must use http or https");
+  }
+  return url.toString().replace(/\/$/, "");
+}
+
+function dataEngineFactAdmissionKey(env: NodeJS.ProcessEnv): string {
+  const value = required(env, "MARKORBIT_DATA_ENGINE_FACT_ADMISSION_KEY");
+  if (value.length < 32) {
+    throw new Error("MARKORBIT_DATA_ENGINE_FACT_ADMISSION_KEY must be at least 32 characters");
+  }
+  return value;
+}
+
 function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
   const value = env.MARKORBIT_COLLECTION_PROVIDER?.trim().toLowerCase() || "crawl4ai";
   if (
     value === "api" ||
     value === "cnipa" ||
+    value === "cnipa-gazette" ||
+    value === "cnipa-gazette-publisher" ||
+    value === "cnipa-gazette-finalize" ||
     value === "crawl4ai" ||
     value === "github" ||
     value === "ip-australia-manual" ||
@@ -135,7 +159,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, crawl4ai, github, ip-australia-manual, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, ip-australia-manual, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
   );
 }
 
@@ -294,7 +318,16 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
       );
     }
   }
-  const cnipaSession = provider === "cnipa" ? loadCnipaBrowserSessionConfig(env) : undefined;
+  const cnipaSession =
+    provider === "cnipa" || provider === "cnipa-gazette"
+      ? loadCnipaBrowserSessionConfig(env)
+      : undefined;
+  const dataEngineUrl =
+    provider === "cnipa-gazette-publisher"
+      ? normalizedDataEngineUrl(required(env, "MARKORBIT_DATA_ENGINE_URL"))
+      : undefined;
+  const factAdmissionKey =
+    provider === "cnipa-gazette-publisher" ? dataEngineFactAdmissionKey(env) : undefined;
 
   const githubMaxFileBytes = integer(
     env,
@@ -395,6 +428,8 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     errorBackoffMaxMs,
     collectionEnabled,
     collectionProvider: provider,
+    ...(dataEngineUrl ? { dataEngineUrl } : {}),
+    ...(factAdmissionKey ? { dataEngineFactAdmissionKey: factAdmissionKey } : {}),
     ...(acquisitionLearningProfileId ? { acquisitionLearningProfileId } : {}),
     requireEgressProxy,
     brightDataFallbackEnabled,

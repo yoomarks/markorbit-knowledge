@@ -186,6 +186,44 @@ describe("controlled Worker execution", () => {
     database.close();
   });
 
+  it("authorizes lease-scoped artifact reads only for the active worker lease", () => {
+    const env = createEnvironment();
+    const authorized = env.executions.authorizeArtifactRead(
+      env.worker.view.worker.id,
+      env.worker.credential,
+      env.claim.lease!.id,
+      env.claim.leaseToken!,
+    );
+
+    expect(authorized).toMatchObject({
+      workspaceId,
+      runId: env.claim.job!.runId,
+      jobId: env.claim.job!.id,
+      leaseId: env.claim.lease!.id,
+      workerId: env.worker.view.worker.id,
+    });
+    expect(authorized.job.id).toBe(env.claim.job!.id);
+
+    expect(() =>
+      env.executions.authorizeArtifactRead(
+        env.worker.view.worker.id,
+        env.worker.credential,
+        env.claim.lease!.id,
+        "wrong-token",
+      ),
+    ).toThrow(/Invalid lease ownership or token/);
+
+    env.advance(5_001);
+    expect(() =>
+      env.executions.authorizeArtifactRead(
+        env.worker.view.worker.id,
+        env.worker.credential,
+        env.claim.lease!.id,
+        env.claim.leaseToken!,
+      ),
+    ).toThrow(/active lease/);
+  });
+
   it("completes the strict lifecycle and closes the active lease", () => {
     const env = createEnvironment();
     expect(start(env).attempt.status).toBe("RUNNING");

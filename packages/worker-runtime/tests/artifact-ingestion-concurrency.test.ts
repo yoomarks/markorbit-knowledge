@@ -130,6 +130,30 @@ function lineageAcquirer(): CollectionArtifactAcquirer {
   };
 }
 
+function deepLineageAcquirer(): CollectionArtifactAcquirer {
+  const artifact = (name: string, parent?: string) => ({
+    artifactKind: "HTML" as const,
+    mimeType: "text/html",
+    originalName: `${name}.html`,
+    sourceUri: `https://example.com/${name}`,
+    canonicalUri: `https://example.com/${name}`,
+    ...(parent ? { parentCanonicalUris: [`https://example.com/${parent}`] } : {}),
+    content: bytes(name),
+  });
+  return {
+    executor: { executorId: "fixture", version: "1.0.0", mode: "FIXTURE" },
+    async acquire() {
+      return [
+        artifact("request", "dataset"),
+        artifact("dataset", "checkpoint"),
+        artifact("checkpoint", "projection"),
+        artifact("projection", "raw"),
+        artifact("raw"),
+      ];
+    },
+  };
+}
+
 describe("artifact ingestion concurrency", () => {
   it("runs independent artifact ingestion concurrently within the configured bound", async () => {
     const fixture = client();
@@ -161,6 +185,32 @@ describe("artifact ingestion concurrency", () => {
     ]);
     expect(fixture.finalizedUris[2]).toBe("https://example.com/rules.pdf");
     expect(fixture.descriptors[2]?.parentArtifactIds).toEqual(["art_session-1", "art_session-2"]);
+  });
+
+  it("topologically finalizes lineage deeper than one parent-child layer", async () => {
+    const fixture = client(1);
+    const executor = new ArtifactBackedCollectionExecutor(
+      deepLineageAcquirer(),
+      fixture.implementation,
+      { ingestionConcurrency: 4 },
+    );
+
+    await executor.execute(context());
+
+    expect(fixture.finalizedUris).toEqual([
+      "https://example.com/raw",
+      "https://example.com/projection",
+      "https://example.com/checkpoint",
+      "https://example.com/dataset",
+      "https://example.com/request",
+    ]);
+    expect(fixture.descriptors.map((item) => item.parentArtifactIds ?? [])).toEqual([
+      [],
+      ["art_session-1"],
+      ["art_session-2"],
+      ["art_session-3"],
+      ["art_session-4"],
+    ]);
   });
 
   it("rejects unsafe ingestion concurrency", () => {

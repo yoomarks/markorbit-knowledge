@@ -88,13 +88,16 @@ export const CNIPA_DOCUMENT_KINDS = Object.freeze([
   "REVIEW_ADJUDICATION",
 ] as const satisfies readonly CnipaDocumentKind[]);
 
-export type CnipaAuthenticatedRequest = {
+export type CnipaAuthenticatedHttpRequest = {
   method: "GET" | "POST";
   path: string;
-  documentKind: CnipaDocumentKind;
-  surface: "LIST" | "DETAIL";
   query?: Readonly<Record<string, string>>;
   jsonBody?: Readonly<Record<string, string | number>>;
+};
+
+export type CnipaAuthenticatedRequest = CnipaAuthenticatedHttpRequest & {
+  documentKind: CnipaDocumentKind;
+  surface: "LIST" | "DETAIL";
 };
 
 export type CnipaSessionSecurityState = "OK" | "REAUTH_REQUIRED" | "ACCESS_DENIED" | "RATE_LIMITED";
@@ -112,6 +115,10 @@ export type CnipaAuthenticatedSessionResponse = {
   body: Uint8Array;
   securityState: CnipaSessionSecurityState;
 };
+
+export interface CnipaAuthenticatedHttpSessionExecutor {
+  execute(request: CnipaAuthenticatedHttpRequest): Promise<CnipaAuthenticatedSessionResponse>;
+}
 
 export interface CnipaAuthenticatedSessionExecutor {
   execute(request: CnipaAuthenticatedRequest): Promise<CnipaAuthenticatedSessionResponse>;
