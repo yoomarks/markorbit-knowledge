@@ -12,6 +12,8 @@ const plan = {
   operationId: "oa-proof-90817045-index",
   workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
   authorityMode: "INTERNAL_SERVICE_GO_V1",
+  executionMode: "APPLY_DISPATCH_ONCE",
+  workerMode: "PROVISION_ONE_SHOT",
   stage: "INDEX",
   serialNumber: "90817045",
   secretRef: "sec_01ARZ3NDEKTSV4RRFFQ69G5FAV",
