@@ -97,6 +97,7 @@ export * from "./cnipa-gazette-capture-dataset";
 export * from "./cnipa-gazette-checkpoint-runtime";
 export * from "./cnipa-gazette-page-acquirer";
 export * from "./cnipa-gazette-authenticated-transport";
+export * from "./cnipa-gazette-capture-import-job-acquirer";
 export * from "./cnipa-gazette-acceptance-plan";
 export * from "./cnipa-gazette-checkpoint-acquirer";
 export * from "./cnipa-gazette-job-acquirer";

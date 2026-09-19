@@ -2,10 +2,9 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  CnipaGazetteAuthenticatedTransport,
+  CnipaGazetteCaptureImportJobAcquirer,
   CnipaGazetteFactAdmissionJobAcquirer,
   CnipaGazetteFinalizeJobAcquirer,
-  CnipaGazetteJobArtifactAcquirer,
   ControlledCollectionWorkerRuntime,
   HttpCnipaGazetteDurableArtifactReader,
   HttpControlledCollectionClient,
@@ -16,9 +15,8 @@ import {
   parseCnipaGazetteAcceptancePlan,
   type CnipaGazetteAcceptancePlan,
   type CnipaGazetteAcceptanceRuntimeStage,
+  type CollectionArtifactAcquirer,
 } from "@markorbit/worker-runtime";
-import { CnipaPlaywrightSessionExecutorFactory } from "./cnipa-playwright-session-executor";
-import { loadCnipaBrowserSessionConfig } from "./config";
 type CliArguments = {
   planPath: string;
   outputDirectory?: string;
@@ -342,10 +340,7 @@ function reference(view: ArtifactView): ArtifactReference {
 async function runStageWorker(input: {
   baseUrl: string;
   prepared: StagePreparation;
-  acquirer:
-    | CnipaGazetteJobArtifactAcquirer
-    | CnipaGazetteFactAdmissionJobAcquirer
-    | CnipaGazetteFinalizeJobAcquirer;
+  acquirer: CollectionArtifactAcquirer;
 }) {
   const client = new HttpControlledCollectionClient(
     input.baseUrl,
@@ -361,9 +356,9 @@ async function runStageWorker(input: {
   }
 }
 function assertAcquisitionArtifactSet(items: ArtifactView[]): void {
-  const expected = new Set<string>();
+  const expected = new Set<string>(["cnipa-gazette-issue-75-browser-capture-0.9.4.json"]);
   for (let page = 1; page <= 6; page += 1) {
-    expected.add(`cnipa-gazette-issue-75-list-p${page}.json`);
+    expected.add(`cnipa-gazette-issue-75-capture-page-${page}.json`);
     expected.add(`cnipa-gazette-issue-75-projection-p${page}.json`);
   }
   expected.add("cnipa-gazette-issue-75-checkpoint-1-6.json");
@@ -506,7 +501,6 @@ export async function applyCnipaGazetteAcceptance(input: {
 }) {
   const outputDirectory = assertCnipaGazetteAcceptancePathOutsideWorkingTree(input.outputDirectory);
   await mkdir(outputDirectory, { recursive: true });
-  const sessionConfig = loadCnipaBrowserSessionConfig(process.env, { headless: true });
   const acquisition = await prepareStage({
     ...input,
     stage: "ACQUIRE",
@@ -515,17 +509,24 @@ export async function applyCnipaGazetteAcceptance(input: {
   await runStageWorker({
     baseUrl: input.baseUrl,
     prepared: acquisition,
-    acquirer: new CnipaGazetteJobArtifactAcquirer({
-      transport: new CnipaGazetteAuthenticatedTransport(
-        new CnipaPlaywrightSessionExecutorFactory(sessionConfig),
-      ),
-    }),
+    acquirer: new CnipaGazetteCaptureImportJobAcquirer(),
   });
   const acquisitionArtifacts = await listRunArtifacts({
     ...input,
     runId: acquisition.runId,
   });
   assertAcquisitionArtifactSet(acquisitionArtifacts);
+  const browserCaptureArtifact = oneArtifact(
+    acquisitionArtifacts,
+    "cnipa-gazette-issue-75-browser-capture-0.9.4.json",
+  );
+  if (
+    browserCaptureArtifact.sha256 !== input.plan.captureFileSha256 ||
+    browserCaptureArtifact.canonicalUri !==
+      `cnipa://trademark-gazette/issue/75/browser-capture/${input.plan.captureFileSha256}`
+  ) {
+    throw new Error("Durable browser capture does not match the frozen acceptance capture SHA");
+  }
   const identityArtifact = oneArtifact(
     acquisitionArtifacts,
     "cnipa-gazette-issue-75-dataset-identity.json",
@@ -659,7 +660,7 @@ export async function applyCnipaGazetteAcceptance(input: {
   assertFinalizeReceipt(finalizeReceiptJson.json);
 
   const manifest = {
-    schema: "markorbit-cnipa-gazette-bounded-acceptance-v1",
+    schema: "markorbit-cnipa-gazette-bounded-acceptance-v2",
     generatedAt: new Date().toISOString(),
     planSha256: input.planSha256,
     operationId: input.plan.operationId,
@@ -668,6 +669,11 @@ export async function applyCnipaGazetteAcceptance(input: {
       announcementDate: "1983-08-15",
       announcementTypeSelection: "ALL",
       anncType: "",
+      acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_IMPORT",
+      captureToolVersion: input.plan.captureToolVersion,
+      captureFileSha256: input.plan.captureFileSha256,
+      durableBrowserCaptureArtifactId: browserCaptureArtifact.artifactId,
+      durableBrowserCaptureSha256: browserCaptureArtifact.sha256,
       sourceRecordCount: 576,
       sourcePageCount: 6,
       pageSize: 100,
@@ -711,8 +717,10 @@ async function main(): Promise<void> {
         planSha256: loaded.planSha256,
         applyPerformed: false,
         expectedAuthorityToken,
+        acquisitionMode: loaded.plan.acquisitionMode,
+        captureFileSha256: loaded.plan.captureFileSha256,
         message:
-          "Frozen bounded plan validated only. No CNIPA request, Knowledge mutation, or Data Engine write was performed.",
+          "Frozen capture-bound plan validated only. No CNIPA network request, Knowledge mutation, or Data Engine write was performed.",
       })}\n`,
     );
     return;

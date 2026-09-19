@@ -3,10 +3,9 @@ import {
   ApiArtifactAcquirer,
   BrightDataFallbackAcquirer,
   BrightDataWebUnlockerClient,
-  CnipaGazetteAuthenticatedTransport,
+  CnipaGazetteCaptureImportJobAcquirer,
   CnipaGazetteFactAdmissionJobAcquirer,
   CnipaGazetteFinalizeJobAcquirer,
-  CnipaGazetteJobArtifactAcquirer,
   CollectionAcquisitionError,
   ControlledCollectionWorkerRuntime,
   type ControlledCollectionCompletion,
@@ -96,10 +95,8 @@ async function main(): Promise<void> {
         )
       : null;
   const cnipaGazetteAcquirer =
-    config.collectionProvider === "cnipa-gazette" && cnipaSessionFactory
-      ? new CnipaGazetteJobArtifactAcquirer({
-          transport: new CnipaGazetteAuthenticatedTransport(cnipaSessionFactory),
-        })
+    config.collectionProvider === "cnipa-gazette-capture-import"
+      ? new CnipaGazetteCaptureImportJobAcquirer()
       : config.collectionProvider === "cnipa-gazette-publisher" &&
           cnipaGazetteDurableArtifactReader &&
           config.dataEngineUrl &&
@@ -165,7 +162,7 @@ async function main(): Promise<void> {
                     maxItems: config.githubMaxItems,
                     maxDepth: config.githubMaxDepth,
                   })
-                : config.collectionProvider === "cnipa-gazette" ||
+                : config.collectionProvider === "cnipa-gazette-capture-import" ||
                     config.collectionProvider === "cnipa-gazette-publisher" ||
                     config.collectionProvider === "cnipa-gazette-finalize"
                   ? (cnipaGazetteAcquirer ??
@@ -358,7 +355,7 @@ async function main(): Promise<void> {
       if (!collectionProcessed && !conversionProcessed) await delay(config.pollIntervalMs);
     } catch (error) {
       if (
-        (config.collectionProvider === "cnipa" || config.collectionProvider === "cnipa-gazette") &&
+        config.collectionProvider === "cnipa" &&
         error instanceof CollectionAcquisitionError &&
         error.code === "CNIPA_REAUTH_REQUIRED"
       ) {

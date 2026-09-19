@@ -246,7 +246,7 @@ function normalizeSourceRow(
   };
 }
 
-function validateAndNormalizePage(input: {
+export function validateAndNormalizeCnipaGazettePagePayload(input: {
   announcementIssue: number;
   pageIndex: number;
   payload: unknown;
@@ -430,7 +430,7 @@ export async function acquireCnipaGazettePageWithEvidence(input: {
 
   const observedAt = observedInstant(response.observedAt);
   const payload = parseRawJson(response.rawBody);
-  const page = validateAndNormalizePage({
+  const page = validateAndNormalizeCnipaGazettePagePayload({
     announcementIssue: input.announcementIssue,
     pageIndex: input.pageIndex,
     payload,

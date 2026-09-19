@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
 import {
   CNIPA_GAZETTE_FACT_ADMISSION_JOB_CONNECTOR_ID,
   CNIPA_GAZETTE_FACT_ADMISSION_JOB_CONNECTOR_VERSION,
@@ -10,10 +11,10 @@ import {
   CNIPA_GAZETTE_FINALIZE_JOB_SOURCE,
 } from "./cnipa-gazette-finalize-job-acquirer";
 import {
-  CNIPA_GAZETTE_JOB_CONNECTOR_ID,
-  CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
-} from "./cnipa-gazette-job-acquirer";
-import { CNIPA_GAZETTE_PUBLIC_ORIGIN } from "./cnipa-gazette-page-acquirer";
+  CNIPA_GAZETTE_CAPTURE_IMPORT_CONNECTOR_ID,
+  CNIPA_GAZETTE_CAPTURE_IMPORT_CONNECTOR_VERSION,
+  CNIPA_GAZETTE_CAPTURE_IMPORT_SOURCE,
+} from "./cnipa-gazette-capture-import-job-acquirer";
 
 export const CNIPA_GAZETTE_ACCEPTANCE_AUTHORITY_MODE = "INTERNAL_SERVICE_GO_V1" as const;
 export const CNIPA_GAZETTE_ACCEPTANCE_STAGE = "FULL_CHAIN" as const;
@@ -27,7 +28,7 @@ export const CNIPA_GAZETTE_ACCEPTANCE_STAGES = [
 export type CnipaGazetteAcceptanceRuntimeStage = (typeof CNIPA_GAZETTE_ACCEPTANCE_STAGES)[number];
 
 export type CnipaGazetteAcceptancePlan = {
-  version: 1;
+  version: 2;
   operationId: string;
   workspaceId: string;
   authorityMode: typeof CNIPA_GAZETTE_ACCEPTANCE_AUTHORITY_MODE;
@@ -44,6 +45,10 @@ export type CnipaGazetteAcceptancePlan = {
   range: { startPage: 1; endPage: 6 };
   announcementTypeSelection: "ALL";
   anncType: "";
+  acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_IMPORT";
+  captureToolVersion: "0.9.4";
+  captureFilePath: string;
+  captureFileSha256: string;
   dataEngineUrl: string;
 };
 
@@ -92,6 +97,28 @@ function dataEngineUrl(value: unknown): string {
   return url.toString().replace(/\/$/u, "");
 }
 
+function captureFilePath(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error("CNIPA Gazette acceptance plan invalid: captureFilePath must be absolute");
+  }
+  const normalized = value.trim();
+  if (!path.isAbsolute(normalized) && !path.win32.isAbsolute(normalized)) {
+    throw new Error("CNIPA Gazette acceptance plan invalid: captureFilePath must be absolute");
+  }
+  return path.win32.isAbsolute(normalized)
+    ? path.win32.normalize(normalized)
+    : path.resolve(normalized);
+}
+
+function captureFileSha256(value: unknown): string {
+  if (typeof value !== "string" || !/^[a-f0-9]{64}$/u.test(value.trim().toLowerCase())) {
+    throw new Error(
+      "CNIPA Gazette acceptance plan invalid: captureFileSha256 must be 64 hexadecimal characters",
+    );
+  }
+  return value.trim().toLowerCase();
+}
+
 export function cnipaGazetteAcceptancePlanSha256(plan: CnipaGazetteAcceptancePlan): string {
   return createHash("sha256")
     .update(JSON.stringify(canonicalize(plan)))
@@ -120,12 +147,16 @@ export function parseCnipaGazetteAcceptancePlan(value: unknown): CnipaGazetteAcc
       "range",
       "announcementTypeSelection",
       "anncType",
+      "acquisitionMode",
+      "captureToolVersion",
+      "captureFilePath",
+      "captureFileSha256",
       "dataEngineUrl",
     ],
     "root",
   );
-  if (input.version !== 1)
-    throw new Error("CNIPA Gazette acceptance plan invalid: version must be 1");
+  if (input.version !== 2)
+    throw new Error("CNIPA Gazette acceptance plan invalid: version must be 2");
   if (typeof input.operationId !== "string" || !OPERATION_ID.test(input.operationId)) {
     throw new Error("CNIPA Gazette acceptance plan invalid: operationId must be a lowercase slug");
   }
@@ -154,13 +185,15 @@ export function parseCnipaGazetteAcceptancePlan(value: unknown): CnipaGazetteAcc
     range.startPage !== 1 ||
     range.endPage !== 6 ||
     input.announcementTypeSelection !== "ALL" ||
-    input.anncType !== ""
+    input.anncType !== "" ||
+    input.acquisitionMode !== "MO_CNIPA_NETWORK_CAPTURE_IMPORT" ||
+    input.captureToolVersion !== "0.9.4"
   ) {
     throw new Error("CNIPA Gazette acceptance plan invalid: issue-75 frozen scope mismatch");
   }
 
   return {
-    version: 1,
+    version: 2,
     operationId: input.operationId,
     workspaceId: input.workspaceId,
     authorityMode: CNIPA_GAZETTE_ACCEPTANCE_AUTHORITY_MODE,
@@ -176,6 +209,10 @@ export function parseCnipaGazetteAcceptancePlan(value: unknown): CnipaGazetteAcc
     range: { startPage: 1, endPage: 6 },
     announcementTypeSelection: "ALL",
     anncType: "",
+    acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_IMPORT",
+    captureToolVersion: "0.9.4",
+    captureFilePath: captureFilePath(input.captureFilePath),
+    captureFileSha256: captureFileSha256(input.captureFileSha256),
     dataEngineUrl: dataEngineUrl(input.dataEngineUrl),
   };
 }
@@ -187,36 +224,16 @@ export function expectedCnipaGazetteAcceptanceAuthorityToken(
   return `GO #860 CNIPA-GAZETTE ${plan.operationId} FULL_CHAIN ${planSha256}`;
 }
 
-export function cnipaGazetteAcceptanceRequestTemplate(
-  plan: CnipaGazetteAcceptancePlan,
-): Record<string, string | number> {
-  return {
-    anncIssue: String(plan.announcementIssue),
-    anncType: "",
-    regNo: "",
-    tmName: "",
-    intlCls: "",
-    registerCnName: "",
-    coowner: "",
-    agentName: "",
-    tmType: "",
-    tmDescType: "0",
-    startDate: "",
-    endDate: "",
-    pageIndex: 1,
-    pageSize: 100,
-  };
-}
-
 function stageRuntime(stage: CnipaGazetteAcceptanceRuntimeStage) {
   if (stage === "ACQUIRE") {
     return {
-      connectorId: CNIPA_GAZETTE_JOB_CONNECTOR_ID,
-      connectorVersion: CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
-      sourceType: "API" as const,
-      canonicalUri: CNIPA_GAZETTE_PUBLIC_ORIGIN,
+      connectorId: CNIPA_GAZETTE_CAPTURE_IMPORT_CONNECTOR_ID,
+      connectorVersion: CNIPA_GAZETTE_CAPTURE_IMPORT_CONNECTOR_VERSION,
+      sourceType: "MANUAL_UPLOAD" as const,
+      canonicalUri: CNIPA_GAZETTE_CAPTURE_IMPORT_SOURCE,
       category: "OFFICIAL_AUTHORITY" as const,
       authorityLevel: "PRIMARY_OFFICIAL" as const,
+      jobType: "LOCAL_FILE_SCAN" as const,
     };
   }
   if (stage === "BUILD_FINALIZE") {
@@ -227,6 +244,7 @@ function stageRuntime(stage: CnipaGazetteAcceptanceRuntimeStage) {
       canonicalUri: CNIPA_GAZETTE_FINALIZE_JOB_SOURCE,
       category: "INTERNAL" as const,
       authorityLevel: "INTERNAL" as const,
+      jobType: "API_COLLECTION" as const,
     };
   }
 
@@ -237,6 +255,7 @@ function stageRuntime(stage: CnipaGazetteAcceptanceRuntimeStage) {
     canonicalUri: CNIPA_GAZETTE_FACT_ADMISSION_JOB_SOURCE,
     category: "INTERNAL" as const,
     authorityLevel: "INTERNAL" as const,
+    jobType: "API_COLLECTION" as const,
   };
 }
 
@@ -259,53 +278,21 @@ function acceptanceConfigurationSchema(stage: CnipaGazetteAcceptanceRuntimeStage
     return {
       type: "object",
       additionalProperties: false,
-      required: ["intent", "announcementIssue", "range", "requestTemplate", "pagesPerCheckpoint"],
+      required: [
+        "intent",
+        "announcementIssue",
+        "announcementDate",
+        "captureFilePath",
+        "captureSha256",
+        "captureToolVersion",
+      ],
       properties: {
-        intent: { const: "CHECKPOINT" },
+        intent: { const: "IMPORT_SMALL_COMPLETE_CAPTURE" },
         announcementIssue: { const: 75 },
-        range: {
-          type: "object",
-          additionalProperties: false,
-          required: ["startPage", "endPage"],
-          properties: { startPage: { const: 1 }, endPage: { const: 6 } },
-        },
-        requestTemplate: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "anncIssue",
-            "anncType",
-            "regNo",
-            "tmName",
-            "intlCls",
-            "registerCnName",
-            "coowner",
-            "agentName",
-            "tmType",
-            "tmDescType",
-            "startDate",
-            "endDate",
-            "pageIndex",
-            "pageSize",
-          ],
-          properties: {
-            anncIssue: { const: "75" },
-            anncType: { const: "" },
-            regNo: { const: "" },
-            tmName: { const: "" },
-            intlCls: { const: "" },
-            registerCnName: { const: "" },
-            coowner: { const: "" },
-            agentName: { const: "" },
-            tmType: { const: "" },
-            tmDescType: { const: "0" },
-            startDate: { const: "" },
-            endDate: { const: "" },
-            pageIndex: { const: 1 },
-            pageSize: { const: 100 },
-          },
-        },
-        pagesPerCheckpoint: { const: 6 },
+        announcementDate: { const: "1983-08-15" },
+        captureFilePath: { type: "string", minLength: 1 },
+        captureSha256: { type: "string", pattern: "^[a-f0-9]{64}$" },
+        captureToolVersion: { const: "0.9.4" },
       },
     };
   }
@@ -346,7 +333,7 @@ export function cnipaGazetteAcceptanceConnectorManifest(stage: CnipaGazetteAccep
     sourceTypes: [runtime.sourceType],
     runtime: "NODE",
     capabilities: ["COLLECT"],
-    supportedJobTypes: ["API_COLLECTION"],
+    supportedJobTypes: [runtime.jobType],
     configurationSchema: acceptanceConfigurationSchema(stage),
     secretSchema: { type: "object", properties: {}, additionalProperties: false },
 
@@ -442,7 +429,7 @@ export function cnipaGazetteAcceptanceWorkerPayload(
       runtimeId: `cnipa-gazette-${stage.toLowerCase().replace(/_/gu, "-")}`,
       version: "1.0.0",
     },
-    supportedJobTypes: ["API_COLLECTION"],
+    supportedJobTypes: [runtime.jobType],
     connectorBindings: [
       {
         connectorId: runtime.connectorId,
@@ -462,10 +449,11 @@ export function cnipaGazetteAcceptanceWorkerPayload(
 
 export function cnipaGazetteAcceptanceAcquisitionConfig(plan: CnipaGazetteAcceptancePlan) {
   return {
-    intent: "CHECKPOINT",
+    intent: "IMPORT_SMALL_COMPLETE_CAPTURE",
     announcementIssue: 75,
-    range: { startPage: 1, endPage: 6 },
-    requestTemplate: cnipaGazetteAcceptanceRequestTemplate(plan),
-    pagesPerCheckpoint: 6,
+    announcementDate: "1983-08-15",
+    captureFilePath: plan.captureFilePath,
+    captureSha256: plan.captureFileSha256,
+    captureToolVersion: plan.captureToolVersion,
   };
 }

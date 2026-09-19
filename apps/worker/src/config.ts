@@ -13,6 +13,7 @@ export type WorkerCollectionProvider =
   | "api"
   | "cnipa"
   | "cnipa-gazette"
+  | "cnipa-gazette-capture-import"
   | "cnipa-gazette-publisher"
   | "cnipa-gazette-finalize"
   | "crawl4ai"
@@ -146,6 +147,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     value === "api" ||
     value === "cnipa" ||
     value === "cnipa-gazette" ||
+    value === "cnipa-gazette-capture-import" ||
     value === "cnipa-gazette-publisher" ||
     value === "cnipa-gazette-finalize" ||
     value === "crawl4ai" ||
@@ -159,7 +161,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, ip-australia-manual, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette, cnipa-gazette-capture-import, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, ip-australia-manual, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
   );
 }
 
@@ -278,6 +280,11 @@ export function loadCnipaBrowserSessionConfig(
 
 export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): WorkerProcessConfig {
   const provider = collectionProvider(env);
+  if (provider === "cnipa-gazette") {
+    throw new Error(
+      "MARKORBIT_COLLECTION_PROVIDER=cnipa-gazette is disabled: the Gazette site rejects Worker-launched browser access. Use cnipa-gazette-capture-import with MO CNIPA Network Capture evidence.",
+    );
+  }
   const requireEgressProxy = env.MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY?.trim() !== "0";
   if (env.NODE_ENV === "production" && provider === "crawl4ai" && !requireEgressProxy) {
     throw new Error("Production Crawl4AI Worker cannot disable the egress-proxy requirement");
@@ -318,10 +325,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
       );
     }
   }
-  const cnipaSession =
-    provider === "cnipa" || provider === "cnipa-gazette"
-      ? loadCnipaBrowserSessionConfig(env)
-      : undefined;
+  const cnipaSession = provider === "cnipa" ? loadCnipaBrowserSessionConfig(env) : undefined;
   const dataEngineUrl =
     provider === "cnipa-gazette-publisher"
       ? normalizedDataEngineUrl(required(env, "MARKORBIT_DATA_ENGINE_URL"))

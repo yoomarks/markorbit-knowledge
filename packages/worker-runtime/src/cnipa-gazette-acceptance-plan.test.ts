@@ -12,8 +12,8 @@ import {
 } from "./cnipa-gazette-acceptance-plan";
 
 const rawPlan = {
-  version: 1,
-  operationId: "issue-75-full-chain-r1",
+  version: 2,
+  operationId: "issue-75-capture-full-chain-r2",
   workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
   authorityMode: CNIPA_GAZETTE_ACCEPTANCE_AUTHORITY_MODE,
   executionMode: "APPLY_DISPATCH_ONCE",
@@ -29,6 +29,10 @@ const rawPlan = {
   range: { startPage: 1, endPage: 6 },
   announcementTypeSelection: "ALL",
   anncType: "",
+  acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_IMPORT",
+  captureToolVersion: "0.9.4",
+  captureFilePath: "D:\\captures\\MO_CNIPA_GAZETTE_75_SMALL_COMPLETE.json",
+  captureFileSha256: "a".repeat(64),
   dataEngineUrl: "http://127.0.0.1:8080/",
 };
 
@@ -44,15 +48,20 @@ describe("CNIPA Gazette bounded acceptance plan", () => {
       finalPageRowCount: 76,
       range: { startPage: 1, endPage: 6 },
       anncType: "",
+      acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_IMPORT",
+      captureToolVersion: "0.9.4",
+      captureFilePath: "D:\\captures\\MO_CNIPA_GAZETTE_75_SMALL_COMPLETE.json",
+      captureFileSha256: "a".repeat(64),
       dataEngineUrl: "http://127.0.0.1:8080",
     });
 
-    expect(cnipaGazetteAcceptanceAcquisitionConfig(plan)).toMatchObject({
-      intent: "CHECKPOINT",
+    expect(cnipaGazetteAcceptanceAcquisitionConfig(plan)).toEqual({
+      intent: "IMPORT_SMALL_COMPLETE_CAPTURE",
       announcementIssue: 75,
-      range: { startPage: 1, endPage: 6 },
-      pagesPerCheckpoint: 6,
-      requestTemplate: { anncIssue: "75", anncType: "", pageSize: 100 },
+      announcementDate: "1983-08-15",
+      captureFilePath: "D:\\captures\\MO_CNIPA_GAZETTE_75_SMALL_COMPLETE.json",
+      captureSha256: "a".repeat(64),
+      captureToolVersion: "0.9.4",
     });
   });
 
@@ -74,7 +83,7 @@ describe("CNIPA Gazette bounded acceptance plan", () => {
     const sha = cnipaGazetteAcceptancePlanSha256(plan);
     expect(sha).toMatch(/^[a-f0-9]{64}$/u);
     expect(expectedCnipaGazetteAcceptanceAuthorityToken(plan, sha)).toBe(
-      `GO #860 CNIPA-GAZETTE issue-75-full-chain-r1 FULL_CHAIN ${sha}`,
+      `GO #860 CNIPA-GAZETTE issue-75-capture-full-chain-r2 FULL_CHAIN ${sha}`,
     );
   });
 
@@ -84,8 +93,9 @@ describe("CNIPA Gazette bounded acceptance plan", () => {
     const publisher = cnipaGazetteAcceptanceConnectorManifest("PUBLISH_CHUNK");
     const finalize = cnipaGazetteAcceptanceConnectorManifest("BUILD_FINALIZE");
     expect(acquisition).toMatchObject({
-      connectorId: "cnipa-trademark-gazette",
-      sourceTypes: ["API"],
+      connectorId: "cnipa-gazette-capture-import",
+      sourceTypes: ["MANUAL_UPLOAD"],
+      supportedJobTypes: ["LOCAL_FILE_SCAN"],
       outputArtifactKinds: ["JSON"],
     });
     expect(publisher).toMatchObject({

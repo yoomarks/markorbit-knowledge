@@ -7,30 +7,23 @@ const baseEnv = {
   MARKORBIT_WORKER_CREDENTIAL: "worker-secret",
 };
 
-const cnipaEnv = {
-  MARKORBIT_CNIPA_BASE_URL: "https://pub.sbj.cnipa.gov.cn",
-  MARKORBIT_CNIPA_SESSION_ENTRY_URL:
-    "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/portalui-pub-prod/",
-  MARKORBIT_CNIPA_USER_DATA_DIR: "/runtime-secret/cnipa-profile",
-  MARKORBIT_CNIPA_BROWSER_EXECUTABLE_PATH: "/opt/chrome/chrome",
-};
-
 describe("CNIPA Gazette provider routing", () => {
-  it("requires the authenticated CNIPA session only for Gazette acquisition", () => {
+  it("fails closed on the obsolete Worker-launched Gazette browser provider", () => {
     expect(() =>
       loadWorkerProcessConfig({
         ...baseEnv,
         MARKORBIT_COLLECTION_PROVIDER: "cnipa-gazette",
       }),
-    ).toThrow(/MARKORBIT_CNIPA_BASE_URL/);
+    ).toThrow(/disabled.*capture-import/i);
+  });
 
+  it("routes Gazette capture import without any CNIPA browser-session credentials", () => {
     const config = loadWorkerProcessConfig({
       ...baseEnv,
-      ...cnipaEnv,
-      MARKORBIT_COLLECTION_PROVIDER: "cnipa-gazette",
+      MARKORBIT_COLLECTION_PROVIDER: "cnipa-gazette-capture-import",
     });
-    expect(config.collectionProvider).toBe("cnipa-gazette");
-    expect(config.cnipaSession?.baseUrl).toBe("https://pub.sbj.cnipa.gov.cn");
+    expect(config.collectionProvider).toBe("cnipa-gazette-capture-import");
+    expect(config.cnipaSession).toBeUndefined();
     expect(config.dataEngineUrl).toBeUndefined();
     expect(config.dataEngineFactAdmissionKey).toBeUndefined();
   });

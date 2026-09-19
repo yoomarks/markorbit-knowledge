@@ -12,8 +12,8 @@ import {
 } from "../cnipa-gazette-acceptance-auth";
 
 const plan = parseCnipaGazetteAcceptancePlan({
-  version: 1,
-  operationId: "issue-75-full-chain-r1",
+  version: 2,
+  operationId: "issue-75-capture-full-chain-r2",
   workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
   authorityMode: CNIPA_GAZETTE_ACCEPTANCE_AUTHORITY_MODE,
   executionMode: "APPLY_DISPATCH_ONCE",
@@ -29,6 +29,10 @@ const plan = parseCnipaGazetteAcceptancePlan({
   range: { startPage: 1, endPage: 6 },
   announcementTypeSelection: "ALL",
   anncType: "",
+  acquisitionMode: "MO_CNIPA_NETWORK_CAPTURE_IMPORT",
+  captureToolVersion: "0.9.4",
+  captureFilePath: "D:\\captures\\MO_CNIPA_GAZETTE_75_SMALL_COMPLETE.json",
+  captureFileSha256: "c".repeat(64),
   dataEngineUrl: "http://127.0.0.1:8080",
 });
 const sha = cnipaGazetteAcceptancePlanSha256(plan);
