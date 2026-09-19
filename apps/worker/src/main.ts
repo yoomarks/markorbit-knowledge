@@ -53,8 +53,13 @@ function log(event: string, fields: Record<string, unknown> = {}): void {
 async function main(): Promise<void> {
   const config = loadWorkerProcessConfig();
   const configuredLearningProfileId = config.acquisitionLearningProfileId;
-  if (configuredLearningProfileId && !acquisitionLearningProfile(configuredLearningProfileId)) {
-    throw new Error(`Unknown acquisition learning profile: ${configuredLearningProfileId}`);
+  if (
+    configuredLearningProfileId &&
+    !acquisitionLearningProfile(configuredLearningProfileId)
+  ) {
+    throw new Error(
+      `Unknown acquisition learning profile: ${configuredLearningProfileId}`,
+    );
   }
   const collectionClient = new HttpControlledCollectionClient(
     config.controlPlaneUrl,
@@ -112,9 +117,13 @@ async function main(): Promise<void> {
           maxDepth: config.localFolderMaxDepth,
         })
       : config.collectionProvider === "api"
-        ? conditionalHttp.wrap(new ApiArtifactAcquirer({ transport: conditionalHttp.transport }))
+        ? conditionalHttp.wrap(
+            new ApiArtifactAcquirer({ transport: conditionalHttp.transport }),
+          )
         : config.collectionProvider === "rss"
-          ? conditionalHttp.wrap(new RssArtifactAcquirer({ transport: conditionalHttp.transport }))
+          ? conditionalHttp.wrap(
+              new RssArtifactAcquirer({ transport: conditionalHttp.transport }),
+            )
           : config.collectionProvider === "uspto-tsdr"
             ? new UsptoTsdrJobArtifactAcquirer({
                 secretResolver: new UsptoTsdrEnvironmentSecretResolver(),
@@ -122,23 +131,27 @@ async function main(): Promise<void> {
             : config.collectionProvider === "uspto-tsdr-web"
               ? new UsptoTsdrWebArtifactAcquirer({ delegate: crawl4AiAcquirer })
               : config.collectionProvider === "github"
-              ? new GitHubArtifactAcquirer({
-                  maxFileBytes: config.githubMaxFileBytes,
-                  maxTotalBytes: config.githubMaxTotalBytes,
-                  maxTreeEntries: config.githubMaxTreeEntries,
-                  maxItems: config.githubMaxItems,
-                  maxDepth: config.githubMaxDepth,
-                })
-              : config.collectionProvider === "cnipa"
-                ? (cnipaAcquirer ??
-                  (() => {
-                    throw new Error("CNIPA acquirer configuration is incomplete");
-                  })())
-                : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
+                ? new GitHubArtifactAcquirer({
+                    maxFileBytes: config.githubMaxFileBytes,
+                    maxTotalBytes: config.githubMaxTotalBytes,
+                    maxTreeEntries: config.githubMaxTreeEntries,
+                    maxItems: config.githubMaxItems,
+                    maxDepth: config.githubMaxDepth,
+                  })
+                : config.collectionProvider === "cnipa"
+                  ? (cnipaAcquirer ??
+                    (() => {
+                      throw new Error(
+                        "CNIPA acquirer configuration is incomplete",
+                      );
+                    })())
+                  : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
   const learningProfileForJob = (job: Job) =>
     acquisitionLearningProfileForJob({
       job,
-      ...(configuredLearningProfileId ? { configuredProfileId: configuredLearningProfileId } : {}),
+      ...(configuredLearningProfileId
+        ? { configuredProfileId: configuredLearningProfileId }
+        : {}),
       collectionProvider: config.collectionProvider,
     });
 
@@ -149,7 +162,8 @@ async function main(): Promise<void> {
     if (!profile || !completion.receipt) return;
     const observation = buildReceiptAcquisitionLearningObservation(
       completion,
-      config.collectionProvider === "crawl4ai" || config.collectionProvider === "uspto-tsdr-web"
+      config.collectionProvider === "crawl4ai" ||
+        config.collectionProvider === "uspto-tsdr-web"
         ? crawl4AiAcquirer.getDiagnostics()
         : null,
     );
@@ -171,7 +185,10 @@ async function main(): Promise<void> {
       evidenceRefs: evidence.evidenceRefs,
       changeDetection: evidence.changeDetection,
     });
-    const learned = await acquisitionIntelligenceClient.recordRun(evidence, fingerprint);
+    const learned = await acquisitionIntelligenceClient.recordRun(
+      evidence,
+      fingerprint,
+    );
     const manualDiagnostics = ipAustraliaManualAcquirer?.getDiagnostics();
     log("worker.acquisition.learning.recorded", {
       runId: learned.runId,
@@ -197,21 +214,28 @@ async function main(): Promise<void> {
             inventoryPageCount: manualDiagnostics.inventoryPageCount,
             emittedArtifactCount: manualDiagnostics.emittedArtifactCount,
             sourceGapCount: manualDiagnostics.sourceGaps.length,
-            sourceGapSamples: manualDiagnostics.sourceGaps.slice(0, 10).map((gap) => ({
-              uri: gap.uri,
-              status: gap.status,
-              reason: gap.reason,
-            })),
+            sourceGapSamples: manualDiagnostics.sourceGaps
+              .slice(0, 10)
+              .map((gap) => ({
+                uri: gap.uri,
+                status: gap.status,
+                reason: gap.reason,
+              })),
           }
         : {}),
     });
   }
 
-  async function recordFailedLearning(failure: ControlledCollectionFailure): Promise<void> {
+  async function recordFailedLearning(
+    failure: ControlledCollectionFailure,
+  ): Promise<void> {
     const profile = learningProfileForJob(failure.context.job);
     if (!profile) return;
     const observation = buildFailedAcquisitionLearningObservation(failure);
-    const evidence = buildAcquisitionRunEvidenceFromProfile({ profile, observation });
+    const evidence = buildAcquisitionRunEvidenceFromProfile({
+      profile,
+      observation,
+    });
     const fingerprint = buildSourceFingerprintFromAcquisitionProfile({
       profile,
       sourceId: failure.context.job.sourceId,
@@ -219,7 +243,10 @@ async function main(): Promise<void> {
       evidenceRefs: evidence.evidenceRefs,
       changeDetection: evidence.changeDetection,
     });
-    const learned = await acquisitionIntelligenceClient.recordRun(evidence, fingerprint);
+    const learned = await acquisitionIntelligenceClient.recordRun(
+      evidence,
+      fingerprint,
+    );
     log("worker.acquisition.learning.failure.recorded", {
       runId: learned.runId,
       sourceId: learned.sourceId,
@@ -234,16 +261,20 @@ async function main(): Promise<void> {
     });
   }
 
-  const collectionRuntime = new ControlledCollectionWorkerRuntime(collectionClient, acquirer, {
-    runtimeVersion: config.runtimeVersion,
-    keepAliveIntervalMs: config.keepAliveIntervalMs,
-    artifactIngestionConcurrency: config.artifactIngestionConcurrency,
-    onBackgroundError(error) {
-      log("worker.background.error", { message: errorMessage(error) });
+  const collectionRuntime = new ControlledCollectionWorkerRuntime(
+    collectionClient,
+    acquirer,
+    {
+      runtimeVersion: config.runtimeVersion,
+      keepAliveIntervalMs: config.keepAliveIntervalMs,
+      artifactIngestionConcurrency: config.artifactIngestionConcurrency,
+      onBackgroundError(error) {
+        log("worker.background.error", { message: errorMessage(error) });
+      },
+      onCompleted: recordCompletedLearning,
+      onFailed: recordFailedLearning,
     },
-    onCompleted: recordCompletedLearning,
-    onFailed: recordFailedLearning,
-  });
+  );
   const conversionRuntime =
     config.conversionEnabled && config.workspaceId
       ? new ProductionConversionWorkerRuntime(
@@ -255,7 +286,8 @@ async function main(): Promise<void> {
           config.workspaceId,
           {
             capabilityRevision: config.conversionCapabilityRevision,
-            requestedLeaseDurationSeconds: config.conversionLeaseDurationSeconds,
+            requestedLeaseDurationSeconds:
+              config.conversionLeaseDurationSeconds,
             supportedConverters: config.conversionSupportedConverters,
             onResult(result) {
               if (!result) {
@@ -308,9 +340,12 @@ async function main(): Promise<void> {
         ? await collectionRuntime.runOnce()
         : false;
       const conversionProcessed =
-        !collectionProcessed && conversionRuntime ? await conversionRuntime.runOnce() : false;
+        !collectionProcessed && conversionRuntime
+          ? await conversionRuntime.runOnce()
+          : false;
       consecutiveFailures = 0;
-      if (!collectionProcessed && !conversionProcessed) await delay(config.pollIntervalMs);
+      if (!collectionProcessed && !conversionProcessed)
+        await delay(config.pollIntervalMs);
     } catch (error) {
       if (
         config.collectionProvider === "cnipa" &&
