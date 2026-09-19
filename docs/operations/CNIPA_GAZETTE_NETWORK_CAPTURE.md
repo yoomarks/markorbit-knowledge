@@ -168,6 +168,41 @@ The production lineage is therefore:
 
 Data Engine mutation never occurs before the corresponding request artifact is durable in Knowledge.
 
+Cross-Source RawArtifact lineage is fail-closed. The default rule remains same-workspace **and same-Source**. A multi-stage Gazette Job may reference a parent from another Source only when the immutable Job snapshot explicitly grants that exact RawArtifact id through `x-markorbit-cross-source-parent-artifact-ids`; the grant never permits a cross-workspace parent.
+
+## Bounded production acceptance (#860)
+
+Production promotion uses one separately authorized, full-chain acceptance plan. It is intentionally narrower than the general Gazette runtime:
+
+- issue: **75** only;
+- date: **1983-08-15**;
+- announcement type: **ALL** with `anncType: ""`;
+- expected total: **576**;
+- pageSize: **100**;
+- pages: **1..6**;
+- expected page row counts: **100, 100, 100, 100, 100, 76**;
+- one CHUNK covering pages 1..6;
+- no neighboring issue;
+- no detail-image/PDF bulk acquisition;
+- no issue 73 -> current replay.
+
+The frozen plan is SHA-bound and apply requires an exact `GO #860 CNIPA-GAZETTE ... FULL_CHAIN <sha256>` token. Plan validation alone performs no CNIPA request, Knowledge mutation, or Data Engine write.
+
+The acceptance chain is four one-shot Worker stages:
+
+1. `ACQUIRE`: authenticated CNIPA browser-session transport; persists raw pages, projections, checkpoint, dataset identity, and CHUNK request.
+2. `PUBLISH_CHUNK`: reads only the exact durable CHUNK request granted by its immutable Job and persists the Data Engine CHUNK receipt.
+3. `BUILD_FINALIZE`: reads only the exact dataset identity plus CHUNK receipt from the prior frozen acceptance stages and persists the FINALIZE request.
+4. `PUBLISH_FINALIZE`: reads only the exact durable FINALIZE request and persists the Data Engine FINALIZE receipt.
+
+Acceptance references are not merely same-workspace references: the Admin acceptance boundary also proves that each referenced RawArtifact came from the expected prior stage of the **same frozen acceptance plan**.
+
+The governed one-shot runner starts a clean Data Engine API from the merged #762 code on a separate loopback port with an ephemeral in-memory admission bearer key. It does not rewrite the existing Data Engine `.env`, restart the existing API service, or persist that key. The final manifest records only plan SHA, run/job/worker ids, artifact ids/hashes/sizes, completeness assertions, and admission outcomes; credentials are excluded.
+
+The CNIPA browser session uses a dedicated profile outside the repository rather than the operator's normal Chrome profile. Before apply, the operator opens that profile in headed mode, completes any CNIPA SSO/CAPTCHA manually, verifies the `brandNotice` portal, and closes the session. A non-secret preparation marker is required by the one-shot runner; cookies/tokens remain only in the browser profile and are never copied into the plan or evidence manifest.
+
+Historical replay remains a separate authorization even after this bounded acceptance passes.
+
 ## Historical backfill
 
 Historical floor is issue 73.
