@@ -95,6 +95,7 @@ export * from "./cnipa-gazette-capture-dataset";
 export * from "./cnipa-gazette-checkpoint-runtime";
 export * from "./cnipa-gazette-page-acquirer";
 export * from "./cnipa-gazette-checkpoint-acquirer";
+export * from "./cnipa-gazette-data-engine-handoff";
 export * from "./source-capability-matrix";
 export * from "./source-config-registry";
 export * from "./source-parser-port";
