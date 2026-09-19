@@ -57,6 +57,7 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
     "workerMode",
     "channel",
     "stage",
+    "transportMode",
     "serialNumber",
   ]);
   if (
@@ -72,7 +73,10 @@ function summarizeFrozenPlan(value: unknown, claimedSha256: unknown) {
     !WORKSPACE_ID.test(plan.workspaceId) ||
     typeof plan.serialNumber !== "string" ||
     !SERIAL_NUMBER.test(plan.serialNumber) ||
-    !["STATUS", "MARK_IMAGE", "DOCUMENT_INDEX"].includes(String(plan.stage))
+    !["STATUS", "MARK_IMAGE", "DOCUMENT_INDEX"].includes(String(plan.stage)) ||
+    !["STATIC_HTTP_PINNED", "BROWSER_PROXY"].includes(String(plan.transportMode)) ||
+    (plan.stage === "DOCUMENT_INDEX" && plan.transportMode !== "BROWSER_PROXY") ||
+    (plan.stage !== "DOCUMENT_INDEX" && plan.transportMode !== "STATIC_HTTP_PINNED")
   ) {
     throw new CaseProducerAccessError(
       "TSDR_WEB_ACCEPTANCE_AUTHORITY_INVALID",
