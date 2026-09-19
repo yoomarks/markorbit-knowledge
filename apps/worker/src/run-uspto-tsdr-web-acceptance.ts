@@ -228,7 +228,8 @@ async function ensureSource(
     if (!source || source.slug !== expected.slug) continue;
     if (
       source.canonicalUri !== expected.canonicalUri ||
-      stable(source.connector) !== stable(expected.connector)
+      stable(source.connector) !== stable(expected.connector) ||
+      stable(source.extensions) !== stable(expected.extensions)
     ) {
       throw new Error("Existing TSDR Web Source drifted from frozen authority");
     }
