@@ -36,7 +36,7 @@ function binaryRequest() {
       sourceDescription: "Non-final Office action",
       family: "OFFICE_ACTION",
       classifierIdentity: "uspto-tsdr-document-family",
-      classifierVersion: "1.0.0",
+      classifierVersion: "1.1.0",
     },
   };
 }
@@ -66,7 +66,7 @@ describe("USPTO TSDR acquisition policy", () => {
         sourceIndexArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
         sourceDocumentId: "TSDR-DOC-001",
         family: "OFFICE_ACTION",
-        classifierVersion: "1.0.0",
+        classifierVersion: "1.1.0",
       },
     });
   });
