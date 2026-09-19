@@ -11,10 +11,12 @@ import {
 
 const OPERATION_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SECRET_REF = /^sec_[0-9A-HJKMNP-TV-Z]{26}$/;
+const WORKSPACE_ID = /^wsp_[0-9A-HJKMNP-TV-Z]{26}$/;
 
 export type UsptoTsdrAcceptanceIndexPlan = {
   version: 1;
   operationId: string;
+  workspaceId: string;
   stage: "INDEX";
   serialNumber: string;
   secretRef: string;
@@ -23,6 +25,7 @@ export type UsptoTsdrAcceptanceIndexPlan = {
 export type UsptoTsdrAcceptanceSelectedPlan = {
   version: 1;
   operationId: string;
+  workspaceId: string;
   stage: "SELECTED_DOCUMENT";
   serialNumber: string;
   secretRef: string;
@@ -70,6 +73,13 @@ function secretRef(value: unknown): string {
   return value;
 }
 
+function workspaceId(value: unknown): string {
+  if (typeof value !== "string" || !WORKSPACE_ID.test(value)) {
+    throw new Error("TSDR acceptance plan invalid: workspaceId must be a Schema v1 workspace id");
+  }
+  return value;
+}
+
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value && typeof value === "object") {
@@ -94,10 +104,15 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
     throw new Error("TSDR acceptance plan invalid: version must be 1");
   }
   const id = operationId(input.operationId);
+  const workspace = workspaceId(input.workspaceId);
   const ref = secretRef(input.secretRef);
 
   if (input.stage === "INDEX") {
-    exactKeys(input, ["version", "operationId", "stage", "serialNumber", "secretRef"], "root");
+    exactKeys(
+      input,
+      ["version", "operationId", "workspaceId", "stage", "serialNumber", "secretRef"],
+      "root",
+    );
     const admitted = admitUsptoTsdrAcquisition({
       intent: "CASE_DOCUMENT_INDEX",
       serialNumber: input.serialNumber,
@@ -109,6 +124,7 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
     return {
       version: 1,
       operationId: id,
+      workspaceId: workspace,
       stage: "INDEX",
       serialNumber: admitted.serialNumber,
       secretRef: ref,
@@ -121,6 +137,7 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
       [
         "version",
         "operationId",
+        "workspaceId",
         "stage",
         "serialNumber",
         "secretRef",
@@ -152,6 +169,7 @@ export function parseUsptoTsdrAcceptancePlan(value: unknown): UsptoTsdrAcceptanc
     return {
       version: 1,
       operationId: id,
+      workspaceId: workspace,
       stage: "SELECTED_DOCUMENT",
       serialNumber: admitted.serialNumber,
       secretRef: ref,
@@ -178,6 +196,7 @@ export function usptoTsdrAcceptanceSourcePayload(plan: UsptoTsdrAcceptancePlan) 
           document: plan.document,
         };
   return {
+    workspaceId: plan.workspaceId,
     name: `USPTO TSDR ${plan.serialNumber} — ${plan.stage}`,
     slug: `uspto-tsdr-${plan.serialNumber}-${plan.stage.toLowerCase().replace("_", "-")}-${plan.operationId}`,
     sourceType: "API",
@@ -211,6 +230,7 @@ export function usptoTsdrAcceptanceCollectionPlanPayload(
   const rateLimitPerMinute = plan.stage === "INDEX" ? 30 : 4;
   const artifactKinds = plan.stage === "INDEX" ? ["XML"] : ["PDF"];
   return {
+    workspaceId: plan.workspaceId,
     sourceId,
     name: `USPTO TSDR ${plan.serialNumber} — ${plan.stage} — ${plan.operationId}`,
     status: "ACTIVE",
@@ -275,8 +295,13 @@ export function usptoTsdrAcceptanceConnectorManifest() {
   };
 }
 
-export function usptoTsdrAcceptanceWorkerPayload() {
+export function usptoTsdrAcceptanceWorkerPayload(workspaceIdValue: string) {
+  const workspaceId = workspaceIdValue.trim();
+  if (!WORKSPACE_ID.test(workspaceId)) {
+    throw new Error("TSDR acceptance worker requires a Schema v1 workspace id");
+  }
   return {
+    workspaceId,
     displayName: "USPTO TSDR Governed Evidence Worker",
     desiredState: "ACTIVE",
     runtime: {
