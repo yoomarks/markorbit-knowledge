@@ -48,7 +48,7 @@ export type CnipaGazetteAcceptancePlan = {
   captureTool: "MO CNIPA Network Capture";
   captureToolVersion: "0.9.4";
   captureExportSchema: "mo-cnipa-gazette-small-complete-v1";
-  captureToolBundleSha256: "d143cd3433580460b8937d83cc623351f96b279b5cd52e8a01ba765c5e908b87";
+  captureToolBundleSha256: "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a";
   dataEngineUrl: string;
 };
 
@@ -170,7 +170,7 @@ export function parseCnipaGazetteAcceptancePlan(value: unknown): CnipaGazetteAcc
     input.captureToolVersion !== "0.9.4" ||
     input.captureExportSchema !== "mo-cnipa-gazette-small-complete-v1" ||
     input.captureToolBundleSha256 !==
-      "d143cd3433580460b8937d83cc623351f96b279b5cd52e8a01ba765c5e908b87"
+      "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a"
   ) {
     throw new Error("CNIPA Gazette acceptance plan invalid: issue-75 frozen scope mismatch");
   }
@@ -196,7 +196,7 @@ export function parseCnipaGazetteAcceptancePlan(value: unknown): CnipaGazetteAcc
     captureTool: "MO CNIPA Network Capture",
     captureToolVersion: "0.9.4",
     captureExportSchema: "mo-cnipa-gazette-small-complete-v1",
-    captureToolBundleSha256: "d143cd3433580460b8937d83cc623351f96b279b5cd52e8a01ba765c5e908b87",
+    captureToolBundleSha256: "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a",
     dataEngineUrl: dataEngineUrl(input.dataEngineUrl),
   };
 }

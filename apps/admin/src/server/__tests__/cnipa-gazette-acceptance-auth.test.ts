@@ -33,7 +33,7 @@ const plan = parseCnipaGazetteAcceptancePlan({
   captureTool: "MO CNIPA Network Capture",
   captureToolVersion: "0.9.4",
   captureExportSchema: "mo-cnipa-gazette-small-complete-v1",
-  captureToolBundleSha256: "d143cd3433580460b8937d83cc623351f96b279b5cd52e8a01ba765c5e908b87",
+  captureToolBundleSha256: "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a",
   dataEngineUrl: "http://127.0.0.1:8080",
 });
 const sha = cnipaGazetteAcceptancePlanSha256(plan);

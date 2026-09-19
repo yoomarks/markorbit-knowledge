@@ -198,7 +198,7 @@ The acceptance chain is four one-shot Worker stages:
 3. `BUILD_FINALIZE`: reads only the exact dataset identity plus CHUNK receipt from the prior frozen acceptance stages and persists the FINALIZE request.
 4. `PUBLISH_FINALIZE`: reads only the exact durable FINALIZE request and persists the Data Engine FINALIZE receipt.
 
-The accepted client is pinned to **MO CNIPA Network Capture v0.9.4** and the frozen bundle SHA-256 `d143cd3433580460b8937d83cc623351f96b279b5cd52e8a01ba765c5e908b87`. The acceptance input schema is `mo-cnipa-gazette-small-complete-v1`. Old v0.9.1/v0.9.3 raw captures and incomplete exports are not acceptable substitutes.
+The accepted client is pinned to **MO CNIPA Network Capture v0.9.4** and the frozen bundle SHA-256 `5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a`. The acceptance input schema is `mo-cnipa-gazette-small-complete-v1`. The verifier keeps the successful normal request's effective headers only in extension memory for same-session replay; authentication headers are never written into capture exports. Old v0.9.1/v0.9.3 raw captures and incomplete exports are not acceptable substitutes.
 
 Before any GO authorization, the runner may validate `--plan` plus `--capture` locally. This verifies issue 75, date 1983-08-15, 576 rows, 6 pages, pageSize 100, terminal-page length 76, unique official ids, `searchId == id`, official source URL and captured ALL query. That validation performs no CNIPA network request, Knowledge mutation or Data Engine write.
 
