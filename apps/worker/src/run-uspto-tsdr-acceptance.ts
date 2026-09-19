@@ -2,6 +2,12 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  ControlledCollectionWorkerRuntime,
+  HttpControlledCollectionClient,
+  UsptoTsdrEnvironmentSecretResolver,
+  UsptoTsdrJobArtifactAcquirer,
+} from "@markorbit/worker-runtime";
+import {
   parseUsptoTsdrAcceptancePlan,
   usptoTsdrAcceptanceCollectionPlanPayload,
   usptoTsdrAcceptanceConnectorManifest,
@@ -128,6 +134,9 @@ export function parseUsptoTsdrAcceptanceArguments(args: string[]): CliArguments 
 
   if (!planPath) throw new Error("--plan is required");
   if (dispatch && !apply) throw new Error("--dispatch requires --apply");
+  if (apply && !dispatch) {
+    throw new Error("--apply requires --dispatch for APPLY_DISPATCH_ONCE acceptance");
+  }
   if (apply && (!expectedSha || !authorityToken)) {
     throw new Error("--apply requires --expected-sha and --authority-token");
   }
@@ -354,7 +363,7 @@ async function dispatchRun(
   collectionPlanId: string,
   planSha256: string,
   authorityToken: string,
-): Promise<string> {
+): Promise<{ runId: string; jobId: string }> {
   const response = await acceptanceRequest(
     baseUrl,
     plan,
@@ -368,52 +377,74 @@ async function dispatchRun(
   );
   const value = record(record(response.body)?.record);
   const run = record(value?.run);
-  return identifier(run?.id, "run.id");
+  const jobs = Array.isArray(value?.jobs) ? value.jobs : [];
+  const job = record(jobs[0]);
+  if (jobs.length !== 1 || !job) {
+    throw new Error("TSDR acceptance dispatch must create exactly one Job");
+  }
+  return {
+    runId: identifier(run?.id, "run.id"),
+    jobId: identifier(job.id, "job.id"),
+  };
 }
 
-function sameStrings(value: unknown, expected: readonly string[]): boolean {
-  return (
-    Array.isArray(value) &&
-    value.length === expected.length &&
-    value.every((item, index) => item === expected[index])
-  );
+type ProvisionedTsdrWorker = {
+  workerId: string;
+  credential: string;
+  provisioning: "CREATED" | "ROTATED";
+};
+
+async function preflightTsdrSecretBinding(plan: UsptoTsdrAcceptancePlan): Promise<void> {
+  const resolver = new UsptoTsdrEnvironmentSecretResolver();
+  await resolver.resolve(plan.secretRef);
 }
 
-async function requireGovernedTsdrWorker(
+async function provisionGovernedTsdrWorker(
   baseUrl: string,
   plan: UsptoTsdrAcceptancePlan,
   planSha256: string,
   authorityToken: string,
-): Promise<string> {
+): Promise<ProvisionedTsdrWorker> {
   const expected = usptoTsdrAcceptanceWorkerPayload(plan.workspaceId);
   const response = await acceptanceRequest(
     baseUrl,
     plan,
     planSha256,
     authorityToken,
-    "LIST_WORKERS",
+    "PROVISION_WORKER",
+    { worker: expected },
   );
-  for (const candidate of items(response.body)) {
-    const container = record(candidate);
-    const worker = record(container?.worker) ?? container;
-    if (!worker) continue;
-    const bindings = Array.isArray(worker.connectorBindings) ? worker.connectorBindings : [];
-    const binding = record(bindings[0]);
-    if (
-      worker.workspaceId === expected.workspaceId &&
-      worker.maxConcurrency === expected.maxConcurrency &&
-      sameStrings(worker.supportedJobTypes, expected.supportedJobTypes) &&
-      bindings.length === 1 &&
-      binding?.connectorId === "uspto-tsdr" &&
-      binding?.version === "1.0.0" &&
-      sameStrings(binding?.capabilities, ["COLLECT"])
-    ) {
-      return identifier(worker.id, "worker.id");
-    }
+  const body = record(response.body);
+  const workerId = identifier(body?.workerId, "workerId");
+  const credential = identifier(body?.credential, "worker credential");
+  const provisioning = body?.provisioning;
+  if (provisioning !== "CREATED" && provisioning !== "ROTATED") {
+    throw new Error("TSDR acceptance response missing Worker provisioning state");
   }
-  throw new Error(
-    "No governed USPTO TSDR Worker is registered. Provision its Worker credential separately before dispatch.",
+  return { workerId, credential, provisioning };
+}
+
+async function runOneShotTsdrWorker(
+  baseUrl: string,
+  provisioned: ProvisionedTsdrWorker,
+  jobId: string,
+): Promise<void> {
+  const client = new HttpControlledCollectionClient(
+    baseUrl,
+    provisioned.workerId,
+    provisioned.credential,
   );
+  const runtime = new ControlledCollectionWorkerRuntime(
+    client,
+    new UsptoTsdrJobArtifactAcquirer({
+      secretResolver: new UsptoTsdrEnvironmentSecretResolver(),
+    }),
+    { runtimeVersion: "1.0.0" },
+  );
+  const claimed = await runtime.runOnce(jobId);
+  if (!claimed) {
+    throw new Error("Governed USPTO TSDR one-shot Worker did not claim the dispatched Job");
+  }
 }
 
 export async function applyUsptoTsdrAcceptancePlan(input: {
@@ -445,19 +476,23 @@ export async function applyUsptoTsdrAcceptancePlan(input: {
   let workerId: string | null = null;
   let runId: string | null = null;
   if (input.dispatch) {
-    workerId = await requireGovernedTsdrWorker(
+    await preflightTsdrSecretBinding(input.plan);
+    const provisioned = await provisionGovernedTsdrWorker(
       input.baseUrl,
       input.plan,
       input.planSha256,
       input.authorityToken,
     );
-    runId = await dispatchRun(
+    workerId = provisioned.workerId;
+    const dispatched = await dispatchRun(
       input.baseUrl,
       input.plan,
       collectionPlanId,
       input.planSha256,
       input.authorityToken,
     );
+    runId = dispatched.runId;
+    await runOneShotTsdrWorker(input.baseUrl, provisioned, dispatched.jobId);
   }
   return { sourceId, collectionPlanId, workerId, runId };
 }
