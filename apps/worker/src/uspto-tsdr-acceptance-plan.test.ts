@@ -137,5 +137,3 @@ describe("USPTO TSDR acceptance frozen plan", () => {
     });
   });
 });
-
-[executed on device: MarkOrbit (710fa508-4ac4-4899-bf0a-594e530d3e21)]
