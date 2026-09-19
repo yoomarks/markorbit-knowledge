@@ -183,13 +183,6 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
       );
     }
     const target = parseUsptoTsdrWebTarget(raw);
-    if (target.surface === "DOCUMENT_INDEX") {
-      throw new CollectionAcquisitionError(
-        "TSDR_WEB_STATIC_DOCUMENT_INDEX_UNSUPPORTED",
-        "DOCUMENT_INDEX requires the governed browser path",
-        false,
-      );
-    }
     const url = new URL(target.canonicalUri);
     const hostname = normalizedUrlHostname(url);
     const resolved = await this.resolver(hostname);
@@ -250,11 +243,11 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
       .trim()
       .toLowerCase();
 
-    if (target.surface === "STATUS") {
+    if (target.surface !== "MARK_IMAGE") {
       if (contentType !== "text/html" && contentType !== "application/xhtml+xml") {
         throw new CollectionAcquisitionError(
           "TSDR_WEB_STATIC_CONTENT_TYPE_REJECTED",
-          "TSDR STATUS response must be HTML",
+          "TSDR static HTML surface response must be HTML",
           false,
         );
       }
@@ -281,7 +274,10 @@ export class UsptoTsdrStaticWebArtifactAcquirer implements CollectionArtifactAcq
         {
           artifactKind: "HTML",
           mimeType: contentType,
-          originalName: `tsdr-${target.serialNumber}-status.html`,
+          originalName:
+            target.surface === "STATUS"
+              ? `tsdr-${target.serialNumber}-status.html`
+              : `tsdr-${target.serialNumber}-document-index.html`,
           sourceUri: target.canonicalUri,
           canonicalUri: target.canonicalUri,
           content: response.body,

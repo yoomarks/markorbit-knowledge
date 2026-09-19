@@ -106,16 +106,13 @@ export function parseUsptoTsdrWebAcceptancePlan(value: unknown): UsptoTsdrWebAcc
     throw new Error("TSDR Web acceptance serialNumber must be 8 digits");
   }
   const stage = input.stage as UsptoTsdrWebAcceptanceStage;
-  const expectedTransportMode = stage === "DOCUMENT_INDEX" ? "BROWSER_PROXY" : "STATIC_HTTP_PINNED";
+  const expectedTransportMode = "STATIC_HTTP_PINNED";
   if (input.transportMode !== expectedTransportMode) {
     throw new Error(
       `TSDR Web acceptance transportMode for ${stage} must be ${expectedTransportMode}`,
     );
   }
-  const expectedRobotsPolicy =
-    expectedTransportMode === "STATIC_HTTP_PINNED"
-      ? "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1"
-      : "BROWSER_PROVIDER_NATIVE_V1";
+  const expectedRobotsPolicy = "RFC9309_4XX_UNAVAILABLE_ALLOW_5XX_UNREACHABLE_FAIL_V1";
   if (input.robotsPolicy !== expectedRobotsPolicy) {
     throw new Error(
       `TSDR Web acceptance robotsPolicy for ${stage} must be ${expectedRobotsPolicy}`,
@@ -180,12 +177,7 @@ export function usptoTsdrWebAcceptanceCollectionPlanPayload(
   sourceId: string,
   plan: UsptoTsdrWebAcceptancePlan,
 ) {
-  const artifactKinds =
-    plan.stage === "MARK_IMAGE"
-      ? ["IMAGE"]
-      : plan.stage === "STATUS"
-        ? ["HTML"]
-        : ["HTML", "MARKDOWN"];
+  const artifactKinds = plan.stage === "MARK_IMAGE" ? ["IMAGE"] : ["HTML"];
   return {
     workspaceId: plan.workspaceId,
     sourceId,

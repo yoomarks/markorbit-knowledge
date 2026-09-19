@@ -123,6 +123,43 @@ describe("USPTO TSDR static Web acquirer", () => {
     });
   });
 
+  it("captures DOCUMENT_INDEX HTML through the same pinned public address", async () => {
+    const calls: string[] = [];
+    const acquirer = new UsptoTsdrStaticWebArtifactAcquirer({
+      resolver,
+      transport: async (url) => {
+        calls.push(url.toString());
+        return url.pathname === "/robots.txt"
+          ? {
+              statusCode: 404,
+              headers: { "content-type": "text/html" },
+              body: new Uint8Array(),
+            }
+          : {
+              statusCode: 200,
+              headers: { "content-type": "text/html; charset=UTF-8" },
+              body: new TextEncoder().encode(
+                "<html><body>Case Id 90817045 <select><option>Non-Final Action</option></select></body></html>",
+              ),
+            };
+      },
+    });
+
+    const [artifact] = await acquirer.acquire(
+      context("https://tsdr.uspto.gov/documentviewer?caseId=sn90817045", "HTML"),
+    );
+
+    expect(calls).toEqual([
+      "https://tsdr.uspto.gov/robots.txt",
+      "https://tsdr.uspto.gov/documentviewer?caseId=sn90817045",
+    ]);
+    expect(artifact).toMatchObject({
+      artifactKind: "HTML",
+      mimeType: "text/html",
+      originalName: "tsdr-90817045-document-index.html",
+    });
+  });
+
   it("captures the mark image through the same pinned public address", async () => {
     const acquirer = new UsptoTsdrStaticWebArtifactAcquirer({
       resolver,
@@ -145,7 +182,7 @@ describe("USPTO TSDR static Web acquirer", () => {
     expect(artifact).toMatchObject({ artifactKind: "IMAGE", mimeType: "image/png" });
   });
 
-  it("fails closed on robots disallow, non-public DNS, document viewer, or challenge HTML", async () => {
+  it("fails closed on robots disallow, non-public DNS, or challenge HTML", async () => {
     const disallowed = new UsptoTsdrStaticWebArtifactAcquirer({
       resolver,
       transport: async () => ({
@@ -164,11 +201,6 @@ describe("USPTO TSDR static Web acquirer", () => {
     await expect(
       privateTarget.acquire(context("https://tsdr.uspto.gov/statusview/sn90817045", "HTML")),
     ).rejects.toMatchObject({ code: "TSDR_WEB_STATIC_NETWORK_TARGET_REJECTED" });
-
-    const viewer = new UsptoTsdrStaticWebArtifactAcquirer({ resolver });
-    await expect(
-      viewer.acquire(context("https://tsdr.uspto.gov/documentviewer?caseId=sn90817045", "HTML")),
-    ).rejects.toMatchObject({ code: "TSDR_WEB_STATIC_DOCUMENT_INDEX_UNSUPPORTED" });
 
     const challenge = new UsptoTsdrStaticWebArtifactAcquirer({
       resolver,
