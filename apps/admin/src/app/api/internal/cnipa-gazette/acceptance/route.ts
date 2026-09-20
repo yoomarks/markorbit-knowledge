@@ -406,7 +406,7 @@ export async function POST(request: Request) {
       const dispatched = getExecutionLedgerRepository().dispatchManual({
         planId: collectionPlan.id,
         requestedBy: { actorType: "API_CLIENT", actorId: access.actorId },
-        idempotencyKey: `cnipa-gazette-acceptance-${plan.operationId}-${runtimeStage}-${access.planSha256}`,
+        idempotencyKey: `cnipa-gazette-acceptance-${runtimeStage}-${access.planSha256.slice(0, 32)}`,
         extensions,
       });
       const jobs = dispatched.record.jobs;
