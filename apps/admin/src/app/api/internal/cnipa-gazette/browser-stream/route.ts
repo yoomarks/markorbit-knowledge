@@ -58,7 +58,22 @@ function ensureConnector() {
   const repository = getConnectorRepository();
   const existing = repository.get(expected.connectorId, expected.version);
   if (existing) {
-    if (stable(existing.manifest) !== stable(expected)) {
+    const manifest = existing.manifest;
+    if (
+      manifest.connectorId !== expected.connectorId ||
+      manifest.displayName !== expected.displayName ||
+      manifest.version !== expected.version ||
+      stable(manifest.sourceTypes) !== stable(expected.sourceTypes) ||
+      manifest.runtime !== expected.runtime ||
+      stable(manifest.capabilities) !== stable(expected.capabilities) ||
+      stable(manifest.supportedJobTypes) !== stable(expected.supportedJobTypes) ||
+      stable(manifest.configurationSchema) !== stable(expected.configurationSchema) ||
+      stable(manifest.secretSchema) !== stable(expected.secretSchema) ||
+      stable(manifest.outputArtifactKinds) !== stable(expected.outputArtifactKinds) ||
+      stable(manifest.healthCheck) !== stable(expected.healthCheck) ||
+      manifest.status !== expected.status ||
+      stable(manifest.extensions) !== stable(expected.extensions)
+    ) {
       throw new RegistryValidationError("Existing Gazette browser connector drifted");
     }
     return existing;
