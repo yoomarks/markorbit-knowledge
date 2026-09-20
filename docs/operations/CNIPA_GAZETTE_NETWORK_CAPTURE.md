@@ -172,13 +172,30 @@ The production bridge separates **source pagination** from the existing durable 
 - resumable stream state is bounded to progress counters, at most 99 pending logical rows, and the immediately previous source-page row ids/signature for repeated-page diagnostics;
 - request headers, cookies, browser tokens, SSO/CAPTCHA state and other live browser authorization material are not part of the durable session or checkpoint state.
 
-This contract is an offline prerequisite for the loopback/browser bridge. It does **not** enable the disabled Playwright Gazette provider and does **not** authorize issue 73 -> current historical replay.
+The stream contract feeds a local loopback bridge; it does **not** enable the disabled Playwright Gazette provider and does **not** authorize issue 73 -> current historical replay.
+
+### #865 loopback bridge protocol
+
+The browser-to-Worker bridge is local and deliberately narrower than the CNIPA browser session:
+
+- the HTTP listener binds only to `127.0.0.1` and rejects non-loopback Host headers;
+- requests must come from an explicit configured `chrome-extension://<id>` Origin;
+- the bridge uses a separate header-safe, short-lived local token kept in process/extension memory; it is not a Worker lease token and is never persisted into Knowledge;
+- source-page transfer is `application/octet-stream` raw response bytes plus only bounded non-secret metadata: session fingerprint, observed timestamp, source HTTP status, and source MIME type;
+- cookies, CNIPA request headers, FECU, authorization tokens, SSO/CAPTCHA state and browser storage are not accepted by the page-transfer protocol;
+- the server supports Chrome private-network preflight, bounded request bodies, bounded concurrent sessions, and authenticated explicit session cleanup;
+- retrying the immediately previous page with identical bytes returns the prior ACK without re-running the stream; the same page with different bytes fails closed;
+- the browser receives checkpoint progress and immutable request identity only. It never receives Knowledge Worker credentials or Data Engine write credentials.
+
+The Worker-side checkpoint stream persists, in order, source raw -> source projection -> bounded stream state -> logical 100-row projection -> aligned checkpoint -> dataset identity V2 -> durable CHUNK request. In-memory progress advances only after the whole durable chain for that source page succeeds, so a failed page can be replayed safely and already-finalized canonical+SHA-identical artifacts are reused.
 
 Durable Knowledge artifact reads are available only through the lease-scoped Worker endpoint and only for RawArtifact ids explicitly referenced by the immutable Gazette publisher/finalize Job snapshot. The endpoint also enforces workspace ownership and stored SHA/size integrity before streaming bytes.
 
 The production lineage is therefore:
 
-`normal official browser session -> durable v0.9.4 capture root -> durable raw/projection/checkpoint/dataset identity -> durable CHUNK request -> Data Engine CHUNK receipt -> durable FINALIZE request -> Data Engine FINALIZE receipt`.
+`normal official browser session -> loopback source-page raw/projection stream -> aligned checkpoint -> dataset identity V2 -> durable CHUNK request -> Data Engine CHUNK receipt -> durable FINALIZE request -> Data Engine FINALIZE receipt`.
+
+MO CNIPA Network Capture v0.9.4 remains the pinned offline evidence bundle only for bounded #860 acceptance; it is not the production streaming lineage root.
 
 Data Engine mutation never occurs before the corresponding request artifact is durable in Knowledge.
 
