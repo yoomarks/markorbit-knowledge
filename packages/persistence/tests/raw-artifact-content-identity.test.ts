@@ -25,7 +25,7 @@ async function* oneChunk(value: Uint8Array): AsyncIterable<Uint8Array> {
   yield value;
 }
 
-async function environment() {
+async function environment(canonicalUri = "https://example.com/rules") {
   const database = openRegistryDatabase(":memory:");
   const storageRoot = join(tmpdir(), `markorbit-identity-${randomUUID()}`);
   temporaryPaths.push(storageRoot);
@@ -110,7 +110,7 @@ async function environment() {
   );
 
   const bytes = new TextEncoder().encode("<html>stable rules</html>");
-  const canonicalUri = "https://example.com/rules";
+  const sourceUri = "https://example.com/rules";
   const session = artifacts.createSession({
     workerId: worker.view.worker.id,
     credential: worker.credential,
@@ -123,7 +123,7 @@ async function environment() {
       originalName: "rules.html",
       expectedSizeBytes: bytes.length,
       expectedSha256: sha256(bytes),
-      sourceUri: canonicalUri,
+      sourceUri,
       canonicalUri,
     },
   });
@@ -181,6 +181,48 @@ describe("RawArtifact current content identity", () => {
       }),
     ).toEqual({ unchanged: false, latestArtifactId: null, latestSha256: null });
 
+    env.database.close();
+  });
+});
+
+describe("RawArtifact non-HTTP canonical identity", () => {
+  it("supports absolute logical canonical URIs while provenance remains HTTP", async () => {
+    const canonicalUri =
+      "cnipa://trademark-gazette/issue/75/browser-source/page-size/30/page/1/raw";
+    const env = await environment(canonicalUri);
+    const result = env.artifacts.checkCurrentContent({
+      workerId: env.worker.view.worker.id,
+      credential: env.worker.credential,
+      leaseId: env.claim.lease!.id,
+      leaseToken: env.claim.leaseToken!,
+      artifactKind: "HTML",
+      canonicalUri,
+      sha256: sha256(env.bytes),
+    });
+
+    expect(result).toEqual({
+      unchanged: true,
+      latestArtifactId: env.finalized.artifact.artifact.id,
+      latestSha256: sha256(env.bytes),
+    });
+    expect(env.finalized.artifact.artifact.canonicalUri).toBe(canonicalUri);
+    expect(env.finalized.artifact.artifact.provenance.sourceUri).toBe("https://example.com/rules");
+    env.database.close();
+  });
+
+  it("still rejects relative canonical identities", async () => {
+    const env = await environment();
+    expect(() =>
+      env.artifacts.checkCurrentContent({
+        workerId: env.worker.view.worker.id,
+        credential: env.worker.credential,
+        leaseId: env.claim.lease!.id,
+        leaseToken: env.claim.leaseToken!,
+        artifactKind: "HTML",
+        canonicalUri: "trademark-gazette/issue/75/page/1",
+        sha256: sha256(env.bytes),
+      }),
+    ).toThrow(/canonicalUri must be an absolute URI/);
     env.database.close();
   });
 });

@@ -7,6 +7,7 @@ type CliArguments = {
   jobId: string;
   extensionOrigin: string;
   port: number;
+  bridgeToken?: string;
 };
 
 function valueAfter(args: string[], index: number, name: string): string {
@@ -18,6 +19,7 @@ function valueAfter(args: string[], index: number, name: string): string {
 export function parseCnipaGazetteBrowserBridgeArguments(args: string[]): CliArguments {
   let jobId: string | undefined;
   let extensionOrigin: string | undefined;
+  let bridgeToken: string | undefined;
   let port = 0;
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]!;
@@ -37,13 +39,24 @@ export function parseCnipaGazetteBrowserBridgeArguments(args: string[]): CliArgu
         throw new Error("--port must be an integer from 0 to 65535");
       }
       index += 1;
+    } else if (arg === "--bridge-token") {
+      bridgeToken = valueAfter(args, index, "--bridge-token");
+      if (!/^[A-Za-z0-9._~-]{32,256}$/u.test(bridgeToken)) {
+        throw new Error("--bridge-token must contain 32 to 256 header-safe characters");
+      }
+      index += 1;
     } else {
       throw new Error(`Unknown CNIPA Gazette browser bridge argument: ${arg}`);
     }
   }
   if (!jobId) throw new Error("--job is required");
   if (!extensionOrigin) throw new Error("--extension-origin is required");
-  return { jobId, extensionOrigin, port };
+  return {
+    jobId,
+    extensionOrigin,
+    port,
+    ...(bridgeToken ? { bridgeToken } : {}),
+  };
 }
 function requiredEnvironment(name: string): string {
   const value = process.env[name]?.trim();
@@ -67,6 +80,7 @@ export async function runCnipaGazetteBrowserBridge(args: string[]): Promise<void
     const runtime = new CnipaGazetteBrowserRuntime(client, {
       extensionOrigin: cli.extensionOrigin,
       port: cli.port,
+      ...(cli.bridgeToken ? { bridgeToken: cli.bridgeToken } : {}),
       signal: controller.signal,
       onBackgroundError: (error) => {
         const message = error instanceof Error ? error.message : String(error);
