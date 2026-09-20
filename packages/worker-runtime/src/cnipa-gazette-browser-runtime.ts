@@ -1,6 +1,7 @@
 import type { ExecutionReceipt, JobLease } from "@markorbit/contracts";
 import {
   CollectionAcquisitionError,
+  type AcquiredCollectionArtifact,
   type ArtifactBackedExecutionContext,
 } from "./artifact-backed-collection-executor";
 import {
@@ -10,10 +11,27 @@ import {
 } from "./cnipa-gazette-browser-job";
 import { CnipaGazetteBrowserCheckpointStream } from "./cnipa-gazette-browser-checkpoint-stream";
 import {
+  buildCnipaGazetteBrowserSourcePageEvidence,
+  CNIPA_GAZETTE_BROWSER_LOGICAL_PAGE_EVIDENCE_SCHEMA,
+  CNIPA_GAZETTE_BROWSER_SOURCE_PAGE_EVIDENCE_SCHEMA,
+  CNIPA_GAZETTE_BROWSER_STREAM_STATE_ARTIFACT_SCHEMA,
+  type CnipaGazetteBrowserSourcePageEvidence,
+} from "./cnipa-gazette-browser-stream-artifacts";
+import {
+  createCnipaGazetteBrowserStreamSession,
+  parseCnipaGazetteBrowserStreamState,
+  rebindCnipaGazetteBrowserStreamState,
+  type CnipaGazetteBrowserLogicalPage,
+  type CnipaGazetteBrowserStreamSession,
+  type CnipaGazetteBrowserStreamState,
+} from "./cnipa-gazette-browser-stream";
+import {
   CnipaGazetteLoopbackServer,
   createCnipaGazetteLoopbackToken,
 } from "./cnipa-gazette-loopback-server";
+import { buildCnipaGazetteCheckpoint } from "./cnipa-gazette-checkpoint-runtime";
 import { CNIPA_GAZETTE_JOB_EXECUTOR } from "./cnipa-gazette-job-acquirer";
+import type { CnipaGazetteDurableArtifactReader } from "./cnipa-gazette-fact-admission-job-acquirer";
 import type { ControlledCollectionWorkerClient } from "./controlled-collection-worker-runtime";
 import {
   StreamingArtifactWriter,
@@ -42,6 +60,7 @@ export type CnipaGazetteBrowserRuntimeOptions = {
   runtimeVersion?: string;
   keepAliveIntervalMs?: number;
   bridgeToken?: string;
+  durableArtifactReader?: CnipaGazetteDurableArtifactReader;
   signal?: AbortSignal;
   onListening?: (details: CnipaGazetteBrowserRuntimeListening) => void | Promise<void>;
   onBackgroundError?: (error: unknown) => void;
@@ -52,6 +71,160 @@ type RuntimeStats = {
   bytesPrepared: number;
   artifactReceiptIds: string[];
 };
+
+type PreparedBrowserResume = {
+  priorSession: CnipaGazetteBrowserStreamSession;
+  priorState: CnipaGazetteBrowserStreamState;
+  logicalPages: readonly CnipaGazetteBrowserLogicalPage[];
+  firstSourceRaw: AcquiredCollectionArtifact;
+  firstSourceObservedAt: string;
+  knownDurableParents: readonly { canonicalUri: string; artifactId: string }[];
+};
+
+function recordValue(value: unknown, label: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError(`${label} must be an object`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function jsonArtifact(
+  artifact: AcquiredCollectionArtifact,
+  label: string,
+): Record<string, unknown> {
+  if (artifact.artifactKind !== "JSON" || artifact.content.byteLength === 0) {
+    throw new TypeError(`${label} must be a non-empty JSON RawArtifact`);
+  }
+  try {
+    return recordValue(
+      JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(artifact.content)),
+      label,
+    );
+  } catch (error) {
+    if (error instanceof TypeError) throw error;
+    throw new TypeError(`${label} must contain valid UTF-8 JSON`);
+  }
+}
+
+function requiredInteger(value: unknown, label: string, minimum = 0): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < minimum) {
+    throw new TypeError(`${label} must be an integer >= ${minimum}`);
+  }
+  return value;
+}
+
+function requiredIso(value: unknown, label: string): string {
+  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+    throw new TypeError(`${label} must be ISO-8601`);
+  }
+  return value;
+}
+
+function parseResumeStateArtifact(artifact: AcquiredCollectionArtifact): {
+  session: CnipaGazetteBrowserStreamSession;
+  state: CnipaGazetteBrowserStreamState;
+} {
+  const root = jsonArtifact(artifact, "resume state artifact");
+  if (root.schemaVersion !== CNIPA_GAZETTE_BROWSER_STREAM_STATE_ARTIFACT_SCHEMA) {
+    throw new TypeError("resume state artifact schema mismatch");
+  }
+  const rawSession = recordValue(root.session, "resume state session");
+  const session = createCnipaGazetteBrowserStreamSession({
+    sessionId: String(rawSession.sessionId ?? ""),
+    announcementIssue: requiredInteger(rawSession.announcementIssue, "resume announcementIssue", 1),
+    sourceUrl: String(rawSession.sourceUrl ?? ""),
+    capturedQuery: rawSession.capturedQuery,
+    sourceTotal: requiredInteger(rawSession.sourceTotal, "resume sourceTotal", 0),
+    sourcePages: requiredInteger(rawSession.sourcePages, "resume sourcePages", 1),
+    announcementDate:
+      rawSession.announcementDate === null ? null : String(rawSession.announcementDate ?? ""),
+    startedAt: String(rawSession.startedAt ?? ""),
+  });
+  const state = parseCnipaGazetteBrowserStreamState(root.state, session);
+  const expectedCanonical =
+    `cnipa://trademark-gazette/issue/${session.announcementIssue}` +
+    `/browser-stream/${state.sessionFingerprintSha256}/state`;
+  if (artifact.canonicalUri !== expectedCanonical) {
+    throw new TypeError("resume state artifact canonicalUri mismatch");
+  }
+  return { session, state };
+}
+
+function parseResumeLogicalPage(
+  artifact: AcquiredCollectionArtifact,
+  session: CnipaGazetteBrowserStreamSession,
+): CnipaGazetteBrowserLogicalPage {
+  const root = jsonArtifact(artifact, "resume logical projection");
+  if (root.schemaVersion !== CNIPA_GAZETTE_BROWSER_LOGICAL_PAGE_EVIDENCE_SCHEMA) {
+    throw new TypeError("resume logical projection schema mismatch");
+  }
+  const page = recordValue(root.page, "resume logical projection page");
+  if (!Array.isArray(page.rows) || !Array.isArray(root.sourcePageIndices)) {
+    throw new TypeError("resume logical projection rows/provenance must be arrays");
+  }
+  const pageIndex = requiredInteger(page.pageIndex, "resume logical pageIndex", 1);
+  const pageSize = requiredInteger(page.pageSize, "resume logical pageSize", 1);
+  if (pageSize !== 100) throw new TypeError("resume logical pageSize must equal 100");
+  const sourcePageIndices = root.sourcePageIndices.map((value, index) =>
+    requiredInteger(value, `resume sourcePageIndices[${index}]`, 1),
+  );
+  const logical: CnipaGazetteBrowserLogicalPage = {
+    pageIndex,
+    pageSize: 100,
+    sourceTotal: requiredInteger(page.sourceTotal, "resume logical sourceTotal", 0),
+    sourcePages: requiredInteger(page.sourcePages, "resume logical sourcePages", 1),
+    announcementDate: page.announcementDate === null ? null : String(page.announcementDate ?? ""),
+    rows: page.rows as CnipaGazetteBrowserLogicalPage["rows"],
+    sourcePageIndices,
+    observedAt: requiredIso(root.observedAt, "resume logical observedAt"),
+  };
+  buildCnipaGazetteCheckpoint({
+    announcementIssue: session.announcementIssue,
+    range: { startPage: pageIndex, endPage: pageIndex },
+    pages: [logical],
+  });
+  if (
+    logical.sourceTotal !== session.sourceTotal ||
+    logical.announcementDate !== session.announcementDate ||
+    sourcePageIndices.length === 0 ||
+    sourcePageIndices.some((value) => value > session.sourcePages) ||
+    artifact.canonicalUri !==
+      `cnipa://trademark-gazette/issue/${session.announcementIssue}/list/page/${pageIndex}/projection`
+  ) {
+    throw new TypeError("resume logical projection does not match durable session");
+  }
+  return logical;
+}
+
+function parseFirstSourceObservedAt(
+  artifact: AcquiredCollectionArtifact,
+  session: CnipaGazetteBrowserStreamSession,
+): string {
+  const root = jsonArtifact(artifact, "resume source page 1 projection");
+  if (root.schemaVersion !== CNIPA_GAZETTE_BROWSER_SOURCE_PAGE_EVIDENCE_SCHEMA) {
+    throw new TypeError("resume source page 1 projection schema mismatch");
+  }
+  const sourcePage = recordValue(root.sourcePage, "resume source page 1");
+  if (
+    requiredInteger(sourcePage.sourcePageIndex, "resume sourcePageIndex", 1) !== 1 ||
+    requiredInteger(sourcePage.sourcePageSize, "resume sourcePageSize", 1) !==
+      session.sourcePageSize ||
+    requiredInteger(sourcePage.sourceTotal, "resume sourceTotal", 0) !== session.sourceTotal ||
+    requiredInteger(sourcePage.sourcePages, "resume sourcePages", 1) !== session.sourcePages ||
+    (sourcePage.announcementDate === null ? null : String(sourcePage.announcementDate ?? "")) !==
+      session.announcementDate
+  ) {
+    throw new TypeError("resume source page 1 projection does not match durable session");
+  }
+  const expected =
+    `cnipa://trademark-gazette/issue/${session.announcementIssue}` +
+    `/browser-source/page-size/${session.sourcePageSize}/page/1/projection`;
+  if (artifact.canonicalUri !== expected) {
+    throw new TypeError("resume source page 1 projection canonicalUri mismatch");
+  }
+  return requiredIso(sourcePage.observedAt, "resume source page 1 observedAt");
+}
+
 function extensionOrigin(value: string): string {
   const normalized = value.trim();
   if (!/^chrome-extension:\/\/[a-p]{32}$/u.test(normalized)) {
@@ -213,11 +386,90 @@ export class CnipaGazetteBrowserRuntime {
     };
   }
 
+  private async loadPreparedResume(
+    context: ArtifactBackedExecutionContext,
+    jobConfig: CnipaGazetteBrowserStreamJobConfig,
+  ): Promise<PreparedBrowserResume | null> {
+    if (!jobConfig.resumeFrom) return null;
+    const reader = this.options.durableArtifactReader;
+    if (!reader) {
+      throw new TypeError("browser Gazette resume requires a durable artifact reader");
+    }
+    const refs = jobConfig.resumeFrom;
+    const [
+      stateArtifact,
+      logicalArtifacts,
+      firstSourceRaw,
+      firstSourceProjection,
+      previousSourceProjection,
+    ] = await Promise.all([
+      reader.read(refs.stateArtifactId, context),
+      Promise.all(
+        refs.logicalProjectionArtifactIds.map((artifactId) => reader.read(artifactId, context)),
+      ),
+      reader.read(refs.firstSourceRawArtifactId, context),
+      reader.read(refs.firstSourceProjectionArtifactId, context),
+      reader.read(refs.previousSourceProjectionArtifactId, context),
+    ]);
+    const parsed = parseResumeStateArtifact(stateArtifact);
+    assertCnipaGazetteBrowserSessionMatchesJob(parsed.session, jobConfig);
+    const logicalPages = logicalArtifacts
+      .map((artifact) => parseResumeLogicalPage(artifact, parsed.session))
+      .sort((left, right) => left.pageIndex - right.pageIndex);
+    if (
+      new Set(logicalPages.map((page) => page.pageIndex)).size !== logicalPages.length ||
+      logicalPages.length !== parsed.state.nextLogicalPageIndex - 1
+    ) {
+      throw new TypeError("resume logical projection refs do not cover durable logical progress");
+    }
+    const expectedRaw =
+      `cnipa://trademark-gazette/issue/${parsed.session.announcementIssue}` +
+      `/browser-source/page-size/${parsed.session.sourcePageSize}/page/1/raw`;
+    if (firstSourceRaw.canonicalUri !== expectedRaw) {
+      throw new TypeError("resume source page 1 raw canonicalUri mismatch");
+    }
+    const previousSourcePageIndex = parsed.state.nextSourcePageIndex - 1;
+    const expectedPreviousProjection =
+      `cnipa://trademark-gazette/issue/${parsed.session.announcementIssue}` +
+      `/browser-source/page-size/${parsed.session.sourcePageSize}` +
+      `/page/${previousSourcePageIndex}/projection`;
+    if (previousSourceProjection.canonicalUri !== expectedPreviousProjection) {
+      throw new TypeError("resume previous source projection canonicalUri mismatch");
+    }
+    const firstSourceObservedAt = parseFirstSourceObservedAt(firstSourceProjection, parsed.session);
+    return {
+      priorSession: parsed.session,
+      priorState: parsed.state,
+      logicalPages,
+      firstSourceRaw,
+      firstSourceObservedAt,
+      knownDurableParents: [
+        {
+          canonicalUri: firstSourceRaw.canonicalUri!,
+          artifactId: refs.firstSourceRawArtifactId,
+        },
+        {
+          canonicalUri: firstSourceProjection.canonicalUri!,
+          artifactId: refs.firstSourceProjectionArtifactId,
+        },
+        {
+          canonicalUri: previousSourceProjection.canonicalUri!,
+          artifactId: refs.previousSourceProjectionArtifactId,
+        },
+        ...logicalArtifacts.map((artifact, index) => ({
+          canonicalUri: artifact.canonicalUri!,
+          artifactId: refs.logicalProjectionArtifactIds[index]!,
+        })),
+      ],
+    };
+  }
+
   private createServer(
     context: ArtifactBackedExecutionContext,
     jobConfig: CnipaGazetteBrowserStreamJobConfig,
     stats: RuntimeStats,
     completion: ReturnType<typeof deferred<void>>,
+    resume: PreparedBrowserResume | null,
   ): CnipaGazetteLoopbackServer {
     let streamCreated = false;
     return new CnipaGazetteLoopbackServer({
@@ -233,11 +485,42 @@ export class CnipaGazetteBrowserRuntime {
           }
           assertCnipaGazetteBrowserSessionMatchesJob(session, jobConfig);
           streamCreated = true;
-          const stream = new CnipaGazetteBrowserCheckpointStream(
-            session,
-            new StreamingArtifactWriter(context, this.client),
-            { targetLogicalPagesPerCheckpoint: jobConfig.targetLogicalPagesPerCheckpoint },
-          );
+          let resumeInput:
+            | {
+                state: CnipaGazetteBrowserStreamState;
+                logicalPages: readonly CnipaGazetteBrowserLogicalPage[];
+                firstSourcePageEvidence: CnipaGazetteBrowserSourcePageEvidence;
+              }
+            | undefined;
+          if (resume) {
+            const state = rebindCnipaGazetteBrowserStreamState({
+              priorSession: resume.priorSession,
+              priorState: resume.priorState,
+              session,
+            });
+            const firstSourcePageEvidence = buildCnipaGazetteBrowserSourcePageEvidence({
+              session,
+              requestedPageIndex: 1,
+              observedAt: resume.firstSourceObservedAt,
+              httpStatus: 200,
+              rawBody: resume.firstSourceRaw.content,
+              contentType: resume.firstSourceRaw.mimeType,
+            });
+            resumeInput = {
+              state,
+              logicalPages: resume.logicalPages,
+              firstSourcePageEvidence,
+            };
+            stats.rowsSeen = state.rowsSeen;
+          }
+          const writer = new StreamingArtifactWriter(context, this.client);
+          for (const parent of resume?.knownDurableParents ?? []) {
+            writer.remember(parent.canonicalUri, parent.artifactId);
+          }
+          const stream = new CnipaGazetteBrowserCheckpointStream(session, writer, {
+            targetLogicalPagesPerCheckpoint: jobConfig.targetLogicalPagesPerCheckpoint,
+            ...(resumeInput ? { resume: resumeInput } : {}),
+          });
           return {
             checkpointPlans: () => stream.checkpointPlans(),
             snapshot: () => stream.snapshot(),
@@ -297,8 +580,9 @@ export class CnipaGazetteBrowserRuntime {
       await this.client.start(context, CNIPA_GAZETTE_JOB_EXECUTOR, `${prefix}-start`);
       started = true;
       await this.client.uploading(context, `${prefix}-uploading`);
+      const resume = await this.loadPreparedResume(context, jobConfig);
 
-      server = this.createServer(context, jobConfig, stats, completion);
+      server = this.createServer(context, jobConfig, stats, completion, resume);
       const address = await server.listen(this.requestedPort);
       const listening: CnipaGazetteBrowserRuntimeListening = {
         ...address,

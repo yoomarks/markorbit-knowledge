@@ -123,6 +123,7 @@ function ensurePlan(input: {
     announcementIssue: input.plan.announcementIssue,
     targetLogicalPagesPerCheckpoint: input.plan.targetLogicalPagesPerCheckpoint,
     maxRuntimeSeconds: input.plan.maxRuntimeSeconds,
+    ...(input.plan.resumeFrom ? { resumeFrom: input.plan.resumeFrom } : {}),
   });
   const expected = {
     ...base,

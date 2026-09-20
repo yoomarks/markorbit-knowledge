@@ -1,5 +1,6 @@
 import {
   CnipaGazetteBrowserRuntime,
+  HttpCnipaGazetteDurableArtifactReader,
   HttpControlledCollectionClient,
 } from "@markorbit/worker-runtime";
 
@@ -72,12 +73,16 @@ export async function runCnipaGazetteBrowserBridge(args: string[]): Promise<void
   process.once("SIGTERM", abort);
 
   try {
-    const client = new HttpControlledCollectionClient(
-      requiredEnvironment("MARKORBIT_CONTROL_PLANE_URL"),
-      requiredEnvironment("MARKORBIT_WORKER_ID"),
-      requiredEnvironment("MARKORBIT_WORKER_CREDENTIAL"),
-    );
+    const controlPlaneUrl = requiredEnvironment("MARKORBIT_CONTROL_PLANE_URL");
+    const workerId = requiredEnvironment("MARKORBIT_WORKER_ID");
+    const workerCredential = requiredEnvironment("MARKORBIT_WORKER_CREDENTIAL");
+    const client = new HttpControlledCollectionClient(controlPlaneUrl, workerId, workerCredential);
     const runtime = new CnipaGazetteBrowserRuntime(client, {
+      durableArtifactReader: new HttpCnipaGazetteDurableArtifactReader(
+        controlPlaneUrl,
+        workerId,
+        workerCredential,
+      ),
       extensionOrigin: cli.extensionOrigin,
       port: cli.port,
       ...(cli.bridgeToken ? { bridgeToken: cli.bridgeToken } : {}),

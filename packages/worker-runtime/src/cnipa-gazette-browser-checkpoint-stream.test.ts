@@ -5,9 +5,14 @@ import type {
   ArtifactBackedExecutionContext,
 } from "./artifact-backed-collection-executor";
 import {
+  acceptCnipaGazetteBrowserSourcePage,
   createCnipaGazetteBrowserStreamSession,
+  createCnipaGazetteBrowserStreamState,
+  rebindCnipaGazetteBrowserStreamState,
+  type CnipaGazetteBrowserLogicalPage,
   type CnipaGazetteBrowserStreamSession,
 } from "./cnipa-gazette-browser-stream";
+import { buildCnipaGazetteBrowserSourcePageEvidence } from "./cnipa-gazette-browser-stream-artifacts";
 import { CnipaGazetteBrowserCheckpointStream } from "./cnipa-gazette-browser-checkpoint-stream";
 import { StreamingArtifactWriter } from "./streaming-artifact-writer";
 
@@ -310,6 +315,149 @@ describe("CNIPA Gazette browser checkpoint stream", () => {
     expect(stream.snapshot()).toMatchObject({
       nextSourcePageIndex: 1,
       rowsSeen: 0,
+    });
+  });
+});
+
+function resumeBrowserSession(sessionId: string): CnipaGazetteBrowserStreamSession {
+  return createCnipaGazetteBrowserStreamSession({
+    sessionId,
+    announcementIssue: 75,
+    sourceUrl: SOURCE_URL,
+    capturedQuery: {
+      anncIssue: "75",
+      anncType: "",
+      pageIndex: 1,
+      pageSize: 10,
+    },
+    sourceTotal: 576,
+    sourcePages: 58,
+    announcementDate: "1983-08-15",
+    startedAt: "2026-09-20T14:23:59.900Z",
+  });
+}
+
+function resumePayload(pageIndex: number): Uint8Array {
+  const pageSize = 10;
+  const total = 576;
+  const pages = 58;
+  const start = (pageIndex - 1) * pageSize;
+  const length = pageIndex < pages ? pageSize : total % pageSize || pageSize;
+  return new TextEncoder().encode(
+    JSON.stringify({
+      code: 0,
+      data: {
+        pageIndex,
+        pageSize,
+        total,
+        pages,
+        list: Array.from({ length }, (_, offset) => row(start + offset)),
+      },
+    }),
+  );
+}
+
+describe("CNIPA Gazette browser mid-checkpoint resume", () => {
+  it("resumes durable issue-75 progress from source page 12 and completes 576 rows", async () => {
+    const priorSession = resumeBrowserSession("gazette-75-prior");
+    let priorState = createCnipaGazetteBrowserStreamState(priorSession);
+    const durableLogicalPages: CnipaGazetteBrowserLogicalPage[] = [];
+    let priorFirstSourceEvidence:
+      ReturnType<typeof buildCnipaGazetteBrowserSourcePageEvidence> | undefined;
+
+    for (let pageIndex = 1; pageIndex <= 11; pageIndex += 1) {
+      const evidence = buildCnipaGazetteBrowserSourcePageEvidence({
+        session: priorSession,
+        requestedPageIndex: pageIndex,
+        observedAt: `2026-09-20T14:24:${String(pageIndex).padStart(2, "0")}.000Z`,
+        httpStatus: 200,
+        rawBody: resumePayload(pageIndex),
+      });
+      priorFirstSourceEvidence ??= evidence;
+      const accepted = acceptCnipaGazetteBrowserSourcePage({
+        session: priorSession,
+        state: priorState,
+        page: evidence.page,
+      });
+      priorState = accepted.state;
+      durableLogicalPages.push(...accepted.logicalPages);
+    }
+
+    expect(priorState).toMatchObject({
+      nextSourcePageIndex: 12,
+      nextLogicalPageIndex: 2,
+      rowsSeen: 110,
+      completed: false,
+    });
+    expect(durableLogicalPages.map((page) => page.pageIndex)).toEqual([1]);
+
+    const resumedSession = resumeBrowserSession("gazette-75-resumed");
+    const rebound = rebindCnipaGazetteBrowserStreamState({
+      priorSession,
+      priorState,
+      session: resumedSession,
+    });
+    const resumedFirstSourceEvidence = buildCnipaGazetteBrowserSourcePageEvidence({
+      session: resumedSession,
+      requestedPageIndex: 1,
+      observedAt: priorFirstSourceEvidence!.page.observedAt,
+      httpStatus: 200,
+      rawBody: resumePayload(1),
+    });
+
+    const fixture = artifactClient();
+    const writer = new StreamingArtifactWriter(context(), fixture.client);
+    writer.remember(
+      resumedFirstSourceEvidence.rawArtifact.canonicalUri!,
+      "art_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    );
+    writer.remember(
+      "cnipa://trademark-gazette/issue/75/list/page/1/projection",
+      "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+    );
+    writer.remember(
+      "cnipa://trademark-gazette/issue/75/browser-source/page-size/10/page/11/projection",
+      "art_01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+    );
+    const stream = new CnipaGazetteBrowserCheckpointStream(resumedSession, writer, {
+      targetLogicalPagesPerCheckpoint: 6,
+      resume: {
+        state: rebound,
+        logicalPages: durableLogicalPages,
+        firstSourcePageEvidence: resumedFirstSourceEvidence,
+      },
+    });
+
+    expect(stream.snapshot()).toMatchObject({
+      nextSourcePageIndex: 12,
+      nextLogicalPageIndex: 2,
+      rowsSeen: 110,
+    });
+
+    let terminalCheckpoint = null;
+    for (let pageIndex = 12; pageIndex <= 58; pageIndex += 1) {
+      const result = await stream.acceptSourcePage({
+        requestedPageIndex: pageIndex,
+        observedAt: `2026-09-20T14:25:${String(pageIndex % 60).padStart(2, "0")}.000Z`,
+        httpStatus: 200,
+        rawBody: resumePayload(pageIndex),
+      });
+      terminalCheckpoint = result.checkpoint ?? terminalCheckpoint;
+    }
+
+    expect(terminalCheckpoint).toMatchObject({
+      rangePlan: {
+        logicalRange: { startPage: 1, endPage: 6 },
+        sourceRange: { startPage: 1, endPage: 58 },
+        terminal: true,
+      },
+      rowCount: 576,
+    });
+    expect(stream.snapshot()).toMatchObject({
+      nextSourcePageIndex: 59,
+      nextLogicalPageIndex: 7,
+      rowsSeen: 576,
+      completed: true,
     });
   });
 });

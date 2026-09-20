@@ -8,6 +8,14 @@ export const CNIPA_GAZETTE_BROWSER_DISPATCH_MODES = [
 ] as const;
 export type CnipaGazetteBrowserDispatchMode = (typeof CNIPA_GAZETTE_BROWSER_DISPATCH_MODES)[number];
 
+export type CnipaGazetteBrowserAuthorityResumeFrom = {
+  stateArtifactId: string;
+  logicalProjectionArtifactIds: readonly string[];
+  firstSourceRawArtifactId: string;
+  firstSourceProjectionArtifactId: string;
+  previousSourceProjectionArtifactId: string;
+};
+
 export type CnipaGazetteBrowserAuthorityPlan = {
   version: 1;
   operationId: string;
@@ -21,18 +29,77 @@ export type CnipaGazetteBrowserAuthorityPlan = {
   maxRuntimeSeconds: number;
   acquisitionMode: typeof CNIPA_GAZETTE_BROWSER_ACQUISITION_MODE;
   captureTool: "MO CNIPA Network Capture";
-  captureToolVersion: "1.0.0";
+  captureToolVersion: "1.0.0" | "1.0.1" | "1.0.2";
   captureToolBundleName: string;
   captureToolBundleSha256: string;
   minimumChromeVersion: 118;
   sourcePageSizeMode: "PRESERVE_CAPTURED_1_TO_100";
   dataEngineMutation: "DISABLED";
   historicalReplayActivated: false;
+  resumeFrom?: CnipaGazetteBrowserAuthorityResumeFrom;
 };
 
 const OPERATION_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const WORKSPACE_ID = /^wsp_[0-9A-HJKMNP-TV-Z]{26}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
+const ARTIFACT_ID = /^art_[0-9A-HJKMNP-TV-Z]{26}$/u;
+
+function artifactId(value: unknown, label: string): string {
+  if (typeof value !== "string" || !ARTIFACT_ID.test(value)) {
+    throw new TypeError(
+      `CNIPA Gazette browser authority plan invalid: ${label} must be a RawArtifact id`,
+    );
+  }
+  return value;
+}
+
+function parseResumeFrom(value: unknown): CnipaGazetteBrowserAuthorityResumeFrom {
+  const raw = objectValue(value, "resumeFrom");
+  exactKeys(
+    raw,
+    [
+      "stateArtifactId",
+      "logicalProjectionArtifactIds",
+      "firstSourceRawArtifactId",
+      "firstSourceProjectionArtifactId",
+      "previousSourceProjectionArtifactId",
+    ],
+    "resumeFrom",
+  );
+  if (
+    !Array.isArray(raw.logicalProjectionArtifactIds) ||
+    raw.logicalProjectionArtifactIds.length < 1 ||
+    raw.logicalProjectionArtifactIds.length > 100
+  ) {
+    throw new TypeError(
+      "CNIPA Gazette browser authority plan invalid: resumeFrom.logicalProjectionArtifactIds must contain 1..100 RawArtifact ids",
+    );
+  }
+  const logicalProjectionArtifactIds = raw.logicalProjectionArtifactIds.map((value, index) =>
+    artifactId(value, `resumeFrom.logicalProjectionArtifactIds[${index}]`),
+  );
+  if (new Set(logicalProjectionArtifactIds).size !== logicalProjectionArtifactIds.length) {
+    throw new TypeError(
+      "CNIPA Gazette browser authority plan invalid: resumeFrom logical projection refs must be unique",
+    );
+  }
+  return {
+    stateArtifactId: artifactId(raw.stateArtifactId, "resumeFrom.stateArtifactId"),
+    logicalProjectionArtifactIds,
+    firstSourceRawArtifactId: artifactId(
+      raw.firstSourceRawArtifactId,
+      "resumeFrom.firstSourceRawArtifactId",
+    ),
+    firstSourceProjectionArtifactId: artifactId(
+      raw.firstSourceProjectionArtifactId,
+      "resumeFrom.firstSourceProjectionArtifactId",
+    ),
+    previousSourceProjectionArtifactId: artifactId(
+      raw.previousSourceProjectionArtifactId,
+      "resumeFrom.previousSourceProjectionArtifactId",
+    ),
+  };
+}
 
 function objectValue(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -101,6 +168,7 @@ export function parseCnipaGazetteBrowserAuthorityPlan(
       "sourcePageSizeMode",
       "dataEngineMutation",
       "historicalReplayActivated",
+      "resumeFrom",
     ],
     "root",
   );
@@ -143,7 +211,9 @@ export function parseCnipaGazetteBrowserAuthorityPlan(
     input.anncType !== "" ||
     input.acquisitionMode !== CNIPA_GAZETTE_BROWSER_ACQUISITION_MODE ||
     input.captureTool !== "MO CNIPA Network Capture" ||
-    input.captureToolVersion !== "1.0.0" ||
+    (input.captureToolVersion !== "1.0.0" &&
+      input.captureToolVersion !== "1.0.1" &&
+      input.captureToolVersion !== "1.0.2") ||
     input.minimumChromeVersion !== 118 ||
     input.sourcePageSizeMode !== "PRESERVE_CAPTURED_1_TO_100" ||
     input.dataEngineMutation !== "DISABLED" ||
@@ -183,13 +253,14 @@ export function parseCnipaGazetteBrowserAuthorityPlan(
     maxRuntimeSeconds,
     acquisitionMode: CNIPA_GAZETTE_BROWSER_ACQUISITION_MODE,
     captureTool: "MO CNIPA Network Capture",
-    captureToolVersion: "1.0.0",
+    captureToolVersion: input.captureToolVersion as "1.0.0" | "1.0.1" | "1.0.2",
     captureToolBundleName: input.captureToolBundleName.trim(),
     captureToolBundleSha256: input.captureToolBundleSha256,
     minimumChromeVersion: 118,
     sourcePageSizeMode: "PRESERVE_CAPTURED_1_TO_100",
     dataEngineMutation: "DISABLED",
     historicalReplayActivated: false,
+    ...(input.resumeFrom !== undefined ? { resumeFrom: parseResumeFrom(input.resumeFrom) } : {}),
   };
 }
 
@@ -216,8 +287,10 @@ export function cnipaGazetteBrowserAuthorityPlan(input: {
   announcementIssue: number;
   targetLogicalPagesPerCheckpoint?: number;
   maxRuntimeSeconds?: number;
+  captureToolVersion?: "1.0.0" | "1.0.1" | "1.0.2";
   captureToolBundleName: string;
   captureToolBundleSha256: string;
+  resumeFrom?: CnipaGazetteBrowserAuthorityResumeFrom;
 }): CnipaGazetteBrowserAuthorityPlan {
   return parseCnipaGazetteBrowserAuthorityPlan({
     version: 1,
@@ -232,12 +305,13 @@ export function cnipaGazetteBrowserAuthorityPlan(input: {
     maxRuntimeSeconds: input.maxRuntimeSeconds ?? 21600,
     acquisitionMode: CNIPA_GAZETTE_BROWSER_ACQUISITION_MODE,
     captureTool: "MO CNIPA Network Capture",
-    captureToolVersion: "1.0.0",
+    captureToolVersion: input.captureToolVersion ?? "1.0.0",
     captureToolBundleName: input.captureToolBundleName,
     captureToolBundleSha256: input.captureToolBundleSha256,
     minimumChromeVersion: 118,
     sourcePageSizeMode: "PRESERVE_CAPTURED_1_TO_100",
     dataEngineMutation: "DISABLED",
     historicalReplayActivated: false,
+    ...(input.resumeFrom ? { resumeFrom: input.resumeFrom } : {}),
   });
 }

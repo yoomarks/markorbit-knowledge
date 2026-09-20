@@ -427,6 +427,38 @@ export function createCnipaGazetteBrowserStreamState(
   };
 }
 
+export function rebindCnipaGazetteBrowserStreamState(input: {
+  priorSession: CnipaGazetteBrowserStreamSession;
+  priorState: CnipaGazetteBrowserStreamState;
+  session: CnipaGazetteBrowserStreamSession;
+}): CnipaGazetteBrowserStreamState {
+  const prior = parseCnipaGazetteBrowserStreamState(input.priorState, input.priorSession);
+  const left = input.priorSession;
+  const right = input.session;
+  if (
+    left.announcementIssue !== right.announcementIssue ||
+    left.sourceUrl !== right.sourceUrl ||
+    left.sourcePageSize !== right.sourcePageSize ||
+    left.sourceTotal !== right.sourceTotal ||
+    left.sourcePages !== right.sourcePages ||
+    left.announcementDate !== right.announcementDate ||
+    stable(left.capturedQuery) !== stable(right.capturedQuery)
+  ) {
+    throw new TypeError("resume browser session does not match the durable stream session");
+  }
+  if (prior.completed) {
+    throw new TypeError("completed browser stream cannot be resumed");
+  }
+  return parseCnipaGazetteBrowserStreamState(
+    {
+      ...prior,
+      sessionId: right.sessionId,
+      sessionFingerprintSha256: cnipaGazetteBrowserStreamSessionFingerprint(right),
+    },
+    right,
+  );
+}
+
 function normalizePersistedRuntimeRow(
   value: unknown,
   session: CnipaGazetteBrowserStreamSession,
