@@ -781,11 +781,11 @@ export class SqliteRawArtifactRepository implements RawArtifactRepository {
     }
     try {
       const parsed = new URL(canonicalUri);
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        throw new Error("unsupported protocol");
+      if (!parsed.protocol) {
+        throw new Error("missing protocol");
       }
     } catch {
-      throw new RegistryValidationError("canonicalUri must be an absolute http(s) URL");
+      throw new RegistryValidationError("canonicalUri must be an absolute URI");
     }
     if (!ARTIFACT_KINDS.includes(input.artifactKind)) {
       throw new RegistryValidationError("Unknown artifactKind");

@@ -18,17 +18,19 @@ describe("CNIPA Gazette browser bridge CLI", () => {
     });
   });
 
-  it("parses an explicit loopback port", () => {
-    expect(
-      parseCnipaGazetteBrowserBridgeArguments([
-        "--job",
-        "job_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        "--extension-origin",
-        "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "--port",
-        "39123",
-      ]).port,
-    ).toBe(39123);
+  it("parses an explicit loopback port and optional stable bridge token", () => {
+    const parsed = parseCnipaGazetteBrowserBridgeArguments([
+      "--job",
+      "job_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "--extension-origin",
+      "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "--port",
+      "39123",
+      "--bridge-token",
+      "t".repeat(48),
+    ]);
+    expect(parsed.port).toBe(39123);
+    expect(parsed.bridgeToken).toBe("t".repeat(48));
   });
 
   it("fails closed on missing or unsupported CLI scope", () => {
