@@ -158,11 +158,13 @@ function connectorConfigAndGrants(
     const expectedParentStage =
       runtimeStage === "PUBLISH_CHUNK" ? "IMPORT_CAPTURE" : "BUILD_FINALIZE";
     const view = verifyReference(reference, workspaceId, planSha256, expectedParentStage);
+    const lowerName = view.artifact.originalName.toLowerCase();
     const expectedMarker = runtimeStage === "PUBLISH_CHUNK" ? "chunk" : "finalize";
-    if (
-      !view.artifact.originalName.includes("fact-admission-request") ||
-      !view.artifact.originalName.toLowerCase().includes(expectedMarker)
-    ) {
+    const expectedRequestFragment =
+      runtimeStage === "PUBLISH_CHUNK"
+        ? "fact-admission-request"
+        : "fact-admission-finalize-request";
+    if (!lowerName.includes(expectedRequestFragment) || !lowerName.includes(expectedMarker)) {
       throw new RegistryValidationError("Gazette publisher request artifact stage mismatch");
     }
     return {
