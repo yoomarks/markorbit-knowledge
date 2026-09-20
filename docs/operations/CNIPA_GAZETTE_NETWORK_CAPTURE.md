@@ -208,15 +208,26 @@ The loopback listener is not started as an unscoped local utility. A Worker must
 
 The Job must use the existing governed `cnipa-trademark-gazette@1.0.0` source identity, authorize JSON artifacts, and carry no server-side `secretRef`. The live browser session is checked against that frozen scope before the first page is accepted. The captured browser pageSize remains runtime-observed and may be 1..100; it is not used to widen or alter the frozen query scope.
 
-Prepare the governed source/plan/Worker first. Preparation is idempotent and does not dispatch by default:
+Browser-stream preparation is governed by a repo-external frozen authority plan. That plan binds the exact issue, ALL scope, checkpoint/runtime bounds, Chrome >=118 requirement, Data Engine mutation disabled, historical replay disabled, and the exact v1.0.0 candidate bundle name + SHA-256.
+
+Validation alone performs no Knowledge mutation:
 
 ```powershell
 pnpm --filter @markorbit/worker cnipa:gazette:browser-job:prepare -- `
-  --workspace <workspace-id> `
-  --issue <announcement-issue>
+  --plan <absolute-external-plan.json>
 ```
 
-When ready for one bounded acquisition, add `--dispatch`. The dispatch response must contain exactly one Job whose immutable source/plan snapshots pass the browser-stream parser; only then is its exact `jobId` printed. The preparation CLI has no query/filter override: it always freezes announcement type = ALL with all trademark/applicant/class/date filters empty. `--checkpoint-pages` and `--max-runtime-seconds` only tune bounded execution/checkpoint behavior.
+The dry validation output includes the canonical plan SHA-256 and the exact expected `GO #865 CNIPA-GAZETTE-BROWSER ...` authority token. Apply is allowed only when both are supplied back exactly and `MO_INTERNAL_SERVICE_SECRET` is configured:
+
+```powershell
+pnpm --filter @markorbit/worker cnipa:gazette:browser-job:prepare -- `
+  --plan <absolute-external-plan.json> `
+  --apply `
+  --expected-sha <frozen-plan-sha256> `
+  --authority-token "<exact-GO-#865-token>"
+```
+
+The plan's `dispatchMode` is authoritative. `PREPARE_ONLY` idempotently ensures the connector/source/CollectionPlan/Worker but creates no CollectionRun or Job. `PREPARE_AND_DISPATCH_ONCE` additionally dispatches exactly one Run/Job under a plan-SHA idempotency key; the returned immutable Job snapshot is parsed again through the browser-stream boundary before its exact `jobId` is exposed. The CLI has no issue/query/checkpoint/runtime override during apply: those values come only from the frozen authority plan.
 
 Then start the bridge with that exact Job id and the existing Worker control-plane credentials:
 

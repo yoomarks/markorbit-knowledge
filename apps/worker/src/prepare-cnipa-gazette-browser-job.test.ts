@@ -1,183 +1,180 @@
-import { describe, expect, it } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import {
-  cnipaGazetteBrowserConnectorManifest,
-  cnipaGazetteBrowserPlanPayload,
-  cnipaGazetteBrowserSourcePayload,
-  cnipaGazetteBrowserWorkerPayload,
-  CNIPA_GAZETTE_JOB_CONNECTOR_ID,
-  CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
+  cnipaGazetteBrowserAuthorityPlan,
+  cnipaGazetteBrowserAuthorityPlanSha256,
+  expectedCnipaGazetteBrowserAuthorityToken,
 } from "@markorbit/worker-runtime";
 import {
+  applyCnipaGazetteBrowserJobPreparation,
+  assertCnipaGazetteBrowserAuthority,
+  loadCnipaGazetteBrowserAuthorityPlanFile,
   parseCnipaGazetteBrowserJobArguments,
-  prepareCnipaGazetteBrowserJob,
 } from "./prepare-cnipa-gazette-browser-job";
 
 const WSP = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
-const SRC = "src_01ARZ3NDEKTSV4RRFFQ69G5FAV";
-const PLN = "pln_01ARZ3NDEKTSV4RRFFQ69G5FAV";
-const WRK = "wrk_01ARZ3NDEKTSV4RRFFQ69G5FAV";
-const RUN = "run_01ARZ3NDEKTSV4RRFFQ69G5FAV";
-const JOB = "job_01ARZ3NDEKTSV4RRFFQ69G5FAV";
+const RC_SHA = "f01e654ccfdf08ba1dfbcb33b5ec343767012c5409a847d617305f1e01e146d3";
+const dirs: string[] = [];
+const originalInternal = process.env.MO_INTERNAL_SERVICE_SECRET;
 
-function json(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
+afterEach(async () => {
+  process.env.MO_INTERNAL_SERVICE_SECRET = originalInternal;
+  await Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
+function plan(dispatchMode: "PREPARE_ONLY" | "PREPARE_AND_DISPATCH_ONCE" = "PREPARE_ONLY") {
+  return cnipaGazetteBrowserAuthorityPlan({
+    operationId:
+      dispatchMode === "PREPARE_ONLY"
+        ? "issue-75-browser-rc1-prepare"
+        : "issue-75-browser-rc1-live",
+    workspaceId: WSP,
+    dispatchMode,
+    announcementIssue: 75,
+    captureToolBundleName: "MO_CNIPA_Network_Capture_v1.0.0_Gazette_Stream_RC1.zip",
+    captureToolBundleSha256: RC_SHA,
   });
 }
 
-function bodyOf(init?: RequestInit): Record<string, unknown> {
-  return JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
-}
-function controlPlane() {
-  let connector: Record<string, unknown> | null = null;
-  let source: Record<string, unknown> | null = null;
-  let plan: Record<string, unknown> | null = null;
-  let worker: Record<string, unknown> | null = null;
-  const creates: string[] = [];
-
-  const fetcher: typeof fetch = async (input, init = {}) => {
-    const url = new URL(String(input));
-    const method = init.method ?? "GET";
-    if (
-      url.pathname ===
-        `/api/connectors/${CNIPA_GAZETTE_JOB_CONNECTOR_ID}/${CNIPA_GAZETTE_JOB_CONNECTOR_VERSION}` &&
-      method === "GET"
-    ) {
-      return connector ? json(200, { connector }) : json(404, { error: { message: "not found" } });
-    }
-    if (url.pathname === "/api/connectors" && method === "POST") {
-      creates.push("connector");
-      connector = bodyOf(init);
-      return json(201, { connector });
-    }
-    if (url.pathname === "/api/sources" && method === "GET") {
-      return json(200, { items: source ? [source] : [] });
-    }
-    if (url.pathname === "/api/sources" && method === "POST") {
-      creates.push("source");
-      source = { ...bodyOf(init), id: SRC };
-      return json(201, { source });
-    }
-    if (url.pathname === "/api/plans" && method === "GET") {
-      return json(200, { items: plan ? [{ plan }] : [] });
-    }
-    if (url.pathname === "/api/plans" && method === "POST") {
-      creates.push("plan");
-      plan = { ...bodyOf(init), id: PLN };
-      return json(201, { plan: { plan } });
-    }
-    if (url.pathname === "/api/workers" && method === "GET") {
-      return json(200, { items: worker ? [{ worker }] : [] });
-    }
-    if (url.pathname === "/api/workers" && method === "POST") {
-      creates.push("worker");
-      worker = { ...bodyOf(init), id: WRK };
-      return json(201, { view: { worker }, credential: "worker-secret-once" });
-    }
-    if (url.pathname === "/api/runs" && method === "POST") {
-      creates.push("run");
-      if (!source || !plan) throw new Error("source/plan must exist before dispatch");
-      const job = {
-        id: JOB,
-        runId: RUN,
-        workspaceId: WSP,
-        sourceId: SRC,
-        planId: PLN,
-        jobType: "API_COLLECTION",
-        connector: {
-          connectorId: CNIPA_GAZETTE_JOB_CONNECTOR_ID,
-          version: CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
-        },
-        sourceSnapshot: source,
-        planSnapshot: plan,
-      };
-      return json(201, { replayed: false, record: { run: { id: RUN }, jobs: [job] } });
-    }
-    throw new Error(`unexpected ${method} ${url.pathname}`);
-  };
-
-  return { fetcher, creates, current: () => ({ connector, source, plan, worker }) };
-}
-describe("CNIPA Gazette browser Job preparation", () => {
-  it("parses prepare-only defaults and explicit dispatch", () => {
-    expect(parseCnipaGazetteBrowserJobArguments(["--workspace", WSP, "--issue", "75"])).toEqual({
-      workspaceId: WSP,
-      announcementIssue: 75,
-      targetLogicalPagesPerCheckpoint: 24,
-      maxRuntimeSeconds: 21600,
-      dispatch: false,
+describe("CNIPA Gazette browser Job governed preparation CLI", () => {
+  it("parses plan validation vs explicit apply", () => {
+    expect(
+      parseCnipaGazetteBrowserJobArguments(["--", "--plan", "D:\\proof\\plan.json"]),
+    ).toMatchObject({
+      apply: false,
     });
     expect(
-      parseCnipaGazetteBrowserJobArguments(["--workspace", WSP, "--issue", "75", "--dispatch"])
-        .dispatch,
-    ).toBe(true);
+      parseCnipaGazetteBrowserJobArguments([
+        "--plan",
+        "D:\\proof\\plan.json",
+        "--apply",
+        "--expected-sha",
+        "a".repeat(64),
+        "--authority-token",
+        "GO fixture",
+      ]),
+    ).toMatchObject({ apply: true, expectedSha: "a".repeat(64), authorityToken: "GO fixture" });
+  });
+  it("loads a repo-external plan and verifies exact SHA/token", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mo-gazette-browser-"));
+    dirs.push(dir);
+    const file = path.join(dir, "plan.json");
+    const frozen = plan();
+    await writeFile(file, JSON.stringify(frozen), "utf8");
+    const loaded = await loadCnipaGazetteBrowserAuthorityPlanFile(file);
+    const sha = cnipaGazetteBrowserAuthorityPlanSha256(frozen);
+    expect(loaded.planSha256).toBe(sha);
+    const token = expectedCnipaGazetteBrowserAuthorityToken(frozen, sha);
+    expect(
+      assertCnipaGazetteBrowserAuthority({
+        plan: frozen,
+        planSha256: sha,
+        expectedSha: sha,
+        authorityToken: token,
+      }),
+    ).toMatch(/^[a-f0-9]{64}$/u);
+    expect(() =>
+      assertCnipaGazetteBrowserAuthority({
+        plan: frozen,
+        planSha256: sha,
+        expectedSha: "0".repeat(64),
+        authorityToken: token,
+      }),
+    ).toThrow(/expected SHA/);
   });
 
-  it("creates governed resources once, then reuses them and returns the exact dispatched jobId", async () => {
-    const cp = controlPlane();
-    const args = parseCnipaGazetteBrowserJobArguments(["--workspace", WSP, "--issue", "75"]);
-    const prepared = await prepareCnipaGazetteBrowserJob(args, {
-      baseUrl: "https://knowledge.example.test",
-      fetcher: cp.fetcher,
-    });
-    expect(prepared).toMatchObject({
-      sourceId: SRC,
-      planId: PLN,
-      workerId: WRK,
-      workerCredential: "worker-secret-once",
-      dispatched: false,
-      runId: null,
-      jobId: null,
-      historicalReplayActivated: false,
-    });
-    expect(cp.creates).toEqual(["connector", "source", "plan", "worker"]);
-
-    const dispatched = await prepareCnipaGazetteBrowserJob(
-      { ...args, dispatch: true },
-      { baseUrl: "https://knowledge.example.test", fetcher: cp.fetcher },
-    );
-    expect(dispatched).toMatchObject({
-      sourceId: SRC,
-      planId: PLN,
-      workerId: WRK,
-      workerCredential: null,
-      dispatched: true,
-      runId: RUN,
-      jobId: JOB,
-      replayed: false,
-      historicalReplayActivated: false,
-    });
-    expect(cp.creates).toEqual(["connector", "source", "plan", "worker", "run"]);
-
-    const state = cp.current();
-    expect(state.connector).toEqual(cnipaGazetteBrowserConnectorManifest());
-    expect(state.source).toEqual({ ...cnipaGazetteBrowserSourcePayload(WSP), id: SRC });
-    expect(state.plan).toEqual({
-      ...cnipaGazetteBrowserPlanPayload({ workspaceId: WSP, sourceId: SRC, announcementIssue: 75 }),
-      id: PLN,
-    });
-    expect(state.worker).toEqual({ ...cnipaGazetteBrowserWorkerPayload(WSP), id: WRK });
+  it("requires complete apply authority arguments", () => {
+    expect(() =>
+      parseCnipaGazetteBrowserJobArguments(["--plan", "D:\\proof\\plan.json", "--apply"]),
+    ).toThrow(/requires --expected-sha and --authority-token/);
   });
-
-  it("fails closed if an existing connector uses the same id/version without the browser contract", async () => {
-    const badFetcher: typeof fetch = async (input) => {
-      const url = new URL(String(input));
-      if (url.pathname.includes("/api/connectors/")) {
-        return json(200, {
-          connector: {
-            ...cnipaGazetteBrowserConnectorManifest(),
-            extensions: {},
-          },
-        });
-      }
-      throw new Error("should not continue after connector drift");
+  it("calls only the internal governed endpoint for PREPARE_ONLY", async () => {
+    const internal = "i".repeat(40);
+    process.env.MO_INTERNAL_SERVICE_SECRET = internal;
+    const frozen = plan();
+    const sha = cnipaGazetteBrowserAuthorityPlanSha256(frozen);
+    const token = expectedCnipaGazetteBrowserAuthorityToken(frozen, sha);
+    const fetcher: typeof fetch = async (input, init = {}) => {
+      expect(String(input)).toBe(
+        "https://knowledge.example.test/api/internal/cnipa-gazette/browser-stream",
+      );
+      const headers = new Headers(init.headers);
+      expect(headers.get("x-markorbit-internal-authorization")).toBe(internal);
+      expect(headers.get("x-markorbit-cnipa-gazette-browser-authority")).toBe(token);
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      expect(body).toMatchObject({
+        workspaceId: WSP,
+        operation: "PREPARE_BROWSER_JOB",
+        authority: { frozenPlan: frozen, planSha256: sha },
+      });
+      return new Response(
+        JSON.stringify({
+          sourceId: "src_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          collectionPlanId: "pln_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          workerId: "wrk_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          workerCredential: "fixture-worker-value",
+          workerProvisioning: "CREATED",
+          runId: null,
+          jobId: null,
+          replayed: false,
+          dispatchPerformed: false,
+          captureToolBundleSha256: RC_SHA,
+          historicalReplayActivated: false,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
     };
     await expect(
-      prepareCnipaGazetteBrowserJob(
-        parseCnipaGazetteBrowserJobArguments(["--workspace", WSP, "--issue", "75"]),
-        { baseUrl: "https://knowledge.example.test", fetcher: badFetcher },
-      ),
-    ).rejects.toThrow(/connector drifted/);
+      applyCnipaGazetteBrowserJobPreparation({
+        baseUrl: "https://knowledge.example.test",
+        plan: frozen,
+        planSha256: sha,
+        authorityToken: token,
+        fetcher,
+      }),
+    ).resolves.toMatchObject({
+      dispatchPerformed: false,
+      runId: null,
+      jobId: null,
+      captureToolBundleSha256: RC_SHA,
+    });
+  });
+
+  it("requires run/job identity for an authorized dispatch plan", async () => {
+    process.env.MO_INTERNAL_SERVICE_SECRET = "i".repeat(40);
+    const frozen = plan("PREPARE_AND_DISPATCH_ONCE");
+    const sha = cnipaGazetteBrowserAuthorityPlanSha256(frozen);
+    const token = expectedCnipaGazetteBrowserAuthorityToken(frozen, sha);
+    const fetcher: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          sourceId: "src_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          collectionPlanId: "pln_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          workerId: "wrk_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          workerCredential: "fixture-worker-value",
+          workerProvisioning: "ROTATED",
+          runId: "run_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          jobId: "job_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          replayed: false,
+          dispatchPerformed: true,
+          captureToolBundleSha256: RC_SHA,
+          historicalReplayActivated: false,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    await expect(
+      applyCnipaGazetteBrowserJobPreparation({
+        baseUrl: "https://knowledge.example.test",
+        plan: frozen,
+        planSha256: sha,
+        authorityToken: token,
+        fetcher,
+      }),
+    ).resolves.toMatchObject({
+      dispatchPerformed: true,
+      runId: "run_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      jobId: "job_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    });
   });
 });
