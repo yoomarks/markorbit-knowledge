@@ -403,7 +403,7 @@ export function cnipaGazetteAcceptanceSourcePayload(input: {
   const suffix = input.stage.toLowerCase().replace(/_/gu, "-");
   return {
     workspaceId: input.plan.workspaceId,
-    name: `CNIPA Gazette issue 75 鈥?${input.stage} 鈥?${input.plan.operationId}`,
+    name: `CNIPA Gazette issue 75 | ${input.stage} | ${input.plan.operationId}`,
     slug: `cnipa-gazette-75-${suffix}-${input.plan.operationId}`,
     sourceType: runtime.sourceType,
     category: runtime.category,
@@ -434,7 +434,7 @@ export function cnipaGazetteAcceptanceCollectionPlanPayload(input: {
   return {
     workspaceId: input.plan.workspaceId,
     sourceId: input.sourceId,
-    name: `CNIPA Gazette issue 75 鈥?${input.stage} 鈥?${input.plan.operationId}`,
+    name: `CNIPA Gazette issue 75 | ${input.stage} | ${input.plan.operationId}`,
     status: "ACTIVE",
     schedule: { mode: "MANUAL" },
     priority: "HIGH",

@@ -65,7 +65,7 @@ function captureFixture() {
         anncIssue: "75",
         anncDate: "1983-08-15",
         anncType: "TMZCSQ",
-        anncTypeName: "鍟嗘爣鍒濇瀹″畾鍏憡",
+        anncTypeName: "fixture-announcement",
         regNo: String(200000 + index),
       };
     }),
