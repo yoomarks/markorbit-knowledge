@@ -11,11 +11,13 @@ import {
 } from "./cnipa-gazette-checkpoint-acquirer";
 
 export const CNIPA_GAZETTE_DATASET_IDENTITY_SCHEMA = "CNIPA_GAZETTE_DATASET_IDENTITY_V1" as const;
+export const CNIPA_GAZETTE_BROWSER_DATASET_IDENTITY_SCHEMA =
+  "CNIPA_GAZETTE_DATASET_IDENTITY_V2" as const;
 export const CNIPA_GAZETTE_DE_CHUNK_CONTRACT = "CN_TRADEMARK_GAZETTE_ADMISSION_CHUNK_V1" as const;
 export const CNIPA_GAZETTE_DE_FINALIZE_CONTRACT =
   "CN_TRADEMARK_GAZETTE_ADMISSION_FINALIZE_V1" as const;
 
-export type CnipaGazetteDatasetIdentity = {
+export type CnipaGazetteDatasetIdentityV1 = {
   schemaVersion: typeof CNIPA_GAZETTE_DATASET_IDENTITY_SCHEMA;
   sourceAuthority: "CNIPA";
   sourceFamily: "CNIPA_TRADEMARK_GAZETTE";
@@ -32,6 +34,30 @@ export type CnipaGazetteDatasetIdentity = {
   captureStartedAt: string;
   firstPageRawSha256: string;
 };
+
+export type CnipaGazetteBrowserDatasetIdentityV2 = {
+  schemaVersion: typeof CNIPA_GAZETTE_BROWSER_DATASET_IDENTITY_SCHEMA;
+  sourceAuthority: "CNIPA";
+  sourceFamily: "CNIPA_TRADEMARK_GAZETTE";
+  queryScope: {
+    announcementTypeSelection: "ALL";
+    anncType: "";
+  };
+  announcementIssue: number;
+  announcementDate: string;
+  sourceRecordCount: number;
+  sourcePageCount: number;
+  pageSize: 100;
+  sourceUri: string;
+  captureStartedAt: string;
+  acquisitionMode: "NORMAL_BROWSER_STREAM";
+  sourceCapturePageSize: number;
+  sourceCapturePageCount: number;
+  captureRootRawSha256: string;
+};
+
+export type CnipaGazetteDatasetIdentity =
+  CnipaGazetteDatasetIdentityV1 | CnipaGazetteBrowserDatasetIdentityV2;
 
 export type CnipaGazetteDatasetIdentitySnapshot = {
   identity: CnipaGazetteDatasetIdentity;
@@ -181,7 +207,6 @@ export function validateCnipaGazetteDatasetIdentitySnapshot(
   const identity = objectValue(envelope.identity, "dataset identity");
   const queryScope = objectValue(identity.queryScope, "dataset identity.queryScope");
   if (
-    identity.schemaVersion !== CNIPA_GAZETTE_DATASET_IDENTITY_SCHEMA ||
     identity.sourceAuthority !== "CNIPA" ||
     identity.sourceFamily !== "CNIPA_TRADEMARK_GAZETTE" ||
     queryScope.announcementTypeSelection !== "ALL" ||
@@ -191,11 +216,10 @@ export function validateCnipaGazetteDatasetIdentitySnapshot(
     throw new Error("dataset identity scope/schema is invalid");
   }
 
-  const normalizedIdentity: CnipaGazetteDatasetIdentity = {
-    schemaVersion: CNIPA_GAZETTE_DATASET_IDENTITY_SCHEMA,
-    sourceAuthority: "CNIPA",
-    sourceFamily: "CNIPA_TRADEMARK_GAZETTE",
-    queryScope: { announcementTypeSelection: "ALL", anncType: "" },
+  const common = {
+    sourceAuthority: "CNIPA" as const,
+    sourceFamily: "CNIPA_TRADEMARK_GAZETTE" as const,
+    queryScope: { announcementTypeSelection: "ALL" as const, anncType: "" as const },
     announcementIssue: positiveInteger(
       identity.announcementIssue as number,
       "dataset identity.announcementIssue",
@@ -212,17 +236,65 @@ export function validateCnipaGazetteDatasetIdentitySnapshot(
       identity.sourcePageCount as number,
       "dataset identity.sourcePageCount",
     ),
-    pageSize: 100,
+    pageSize: 100 as const,
     sourceUri: nonEmpty(identity.sourceUri as string, "dataset identity.sourceUri"),
     captureStartedAt: instant(
       identity.captureStartedAt as string,
       "dataset identity.captureStartedAt",
     ),
-    firstPageRawSha256: sha256Text(
-      identity.firstPageRawSha256 as string,
-      "dataset identity.firstPageRawSha256",
-    ),
   };
+
+  let normalizedIdentity: CnipaGazetteDatasetIdentity;
+  if (identity.schemaVersion === CNIPA_GAZETTE_DATASET_IDENTITY_SCHEMA) {
+    normalizedIdentity = {
+      schemaVersion: CNIPA_GAZETTE_DATASET_IDENTITY_SCHEMA,
+      ...common,
+      firstPageRawSha256: sha256Text(
+        identity.firstPageRawSha256 as string,
+        "dataset identity.firstPageRawSha256",
+      ),
+    };
+  } else if (identity.schemaVersion === CNIPA_GAZETTE_BROWSER_DATASET_IDENTITY_SCHEMA) {
+    if (identity.acquisitionMode !== "NORMAL_BROWSER_STREAM") {
+      throw new Error("browser dataset identity acquisitionMode is invalid");
+    }
+    const sourceCapturePageSize = positiveInteger(
+      identity.sourceCapturePageSize as number,
+      "dataset identity.sourceCapturePageSize",
+    );
+    if (sourceCapturePageSize > 100) {
+      throw new Error("dataset identity.sourceCapturePageSize must be <= 100");
+    }
+    const sourceCapturePageCount = positiveInteger(
+      identity.sourceCapturePageCount as number,
+      "dataset identity.sourceCapturePageCount",
+    );
+    const expectedCapturePages = Math.max(
+      1,
+      Math.ceil(common.sourceRecordCount / sourceCapturePageSize),
+    );
+    if (sourceCapturePageCount !== expectedCapturePages) {
+      throw new Error("browser dataset identity source capture pagination is inconsistent");
+    }
+    const expectedLogicalPages = Math.max(1, Math.ceil(common.sourceRecordCount / 100));
+    if (common.sourcePageCount !== expectedLogicalPages) {
+      throw new Error("browser dataset identity logical pagination is inconsistent");
+    }
+    normalizedIdentity = {
+      schemaVersion: CNIPA_GAZETTE_BROWSER_DATASET_IDENTITY_SCHEMA,
+      ...common,
+      acquisitionMode: "NORMAL_BROWSER_STREAM",
+      sourceCapturePageSize,
+      sourceCapturePageCount,
+      captureRootRawSha256: sha256Text(
+        identity.captureRootRawSha256 as string,
+        "dataset identity.captureRootRawSha256",
+      ),
+    };
+  } else {
+    throw new Error("dataset identity scope/schema is invalid");
+  }
+
   const sourceDatasetSha256 = sha256Text(
     envelope.sourceDatasetSha256 as string,
     "sourceDatasetSha256",
@@ -273,6 +345,40 @@ function firstPageArtifacts(result: CnipaGazetteCheckpointAcquisitionResult): {
   return { raw, projection };
 }
 
+export function materializeCnipaGazetteDatasetIdentity(input: {
+  identity: CnipaGazetteDatasetIdentity;
+  parentCanonicalUris: readonly string[];
+}): CnipaGazetteDatasetIdentityEnvelope {
+  const sourceDatasetSha256 = sha256(canonicalJson(input.identity));
+  const snapshot = validateCnipaGazetteDatasetIdentitySnapshot({
+    identity: input.identity,
+    sourceDatasetSha256,
+  });
+  const parents = [
+    ...new Set(
+      input.parentCanonicalUris.map((value) =>
+        nonEmpty(value, "dataset identity parentCanonicalUri"),
+      ),
+    ),
+  ];
+  if (parents.length === 0) {
+    throw new Error("dataset identity requires at least one immutable parent");
+  }
+  const canonicalUri =
+    `cnipa://trademark-gazette/issue/${snapshot.identity.announcementIssue}` +
+    `/dataset/${snapshot.sourceDatasetSha256}`;
+  const artifact: AcquiredCollectionArtifact = {
+    artifactKind: "JSON",
+    mimeType: "application/json;charset=UTF-8",
+    originalName: `cnipa-gazette-issue-${snapshot.identity.announcementIssue}-dataset-identity.json`,
+    sourceUri: snapshot.identity.sourceUri,
+    canonicalUri,
+    parentCanonicalUris: parents,
+    content: new TextEncoder().encode(JSON.stringify(snapshot)),
+  };
+  return { ...snapshot, artifact };
+}
+
 export function buildCnipaGazetteDatasetIdentity(
   firstCheckpoint: CnipaGazetteCheckpointAcquisitionResult,
 ): CnipaGazetteDatasetIdentityEnvelope {
@@ -289,7 +395,7 @@ export function buildCnipaGazetteDatasetIdentity(
   const captureStartedAt = parseProjectionObservedAt(projection);
   const firstPageRawSha256 = sha256(raw.content);
 
-  const identity: CnipaGazetteDatasetIdentity = {
+  const identity: CnipaGazetteDatasetIdentityV1 = {
     schemaVersion: CNIPA_GAZETTE_DATASET_IDENTITY_SCHEMA,
     sourceAuthority: "CNIPA",
     sourceFamily: "CNIPA_TRADEMARK_GAZETTE",
@@ -306,32 +412,12 @@ export function buildCnipaGazetteDatasetIdentity(
     captureStartedAt,
     firstPageRawSha256,
   };
-  const sourceDatasetSha256 = sha256(canonicalJson(identity));
-  const canonicalUri = `cnipa://trademark-gazette/issue/${announcementIssue}/dataset/${sourceDatasetSha256}`;
-  const parents = [raw.canonicalUri, firstCheckpoint.checkpointArtifact.canonicalUri].filter(
-    (value): value is string => Boolean(value),
-  );
-
-  const artifact: AcquiredCollectionArtifact = {
-    artifactKind: "JSON",
-    mimeType: "application/json;charset=UTF-8",
-    originalName: `cnipa-gazette-issue-${announcementIssue}-dataset-identity.json`,
-    sourceUri,
-    canonicalUri,
-    parentCanonicalUris: parents,
-    content: new TextEncoder().encode(
-      JSON.stringify({
-        identity,
-        sourceDatasetSha256,
-      }),
-    ),
-  };
-
-  return {
+  return materializeCnipaGazetteDatasetIdentity({
     identity,
-    sourceDatasetSha256,
-    artifact,
-  };
+    parentCanonicalUris: [raw.canonicalUri, firstCheckpoint.checkpointArtifact.canonicalUri].filter(
+      (value): value is string => Boolean(value),
+    ),
+  });
 }
 
 export function parseCnipaGazetteDatasetIdentityArtifact(

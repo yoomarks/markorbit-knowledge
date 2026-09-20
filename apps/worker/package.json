@@ -63,7 +63,9 @@
     "test": "vitest run",
     "cnipa:evidence:assess-capture-dataset": "tsx src/run-cnipa-capture-dataset-assessor.ts",
     "bootstrap:cnipa-fast": "tsx src/bootstrap-cnipa-fast.ts",
-    "backfill:cnipa-historical": "tsx src/run-cnipa-historical-backfill.ts"
+    "backfill:cnipa-historical": "tsx src/run-cnipa-historical-backfill.ts",
+    "cnipa:gazette:browser-bridge": "tsx src/run-cnipa-gazette-browser-bridge.ts",
+    "cnipa:gazette:browser-job:prepare": "tsx src/prepare-cnipa-gazette-browser-job.ts"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",

@@ -172,13 +172,78 @@ The production bridge separates **source pagination** from the existing durable 
 - resumable stream state is bounded to progress counters, at most 99 pending logical rows, and the immediately previous source-page row ids/signature for repeated-page diagnostics;
 - request headers, cookies, browser tokens, SSO/CAPTCHA state and other live browser authorization material are not part of the durable session or checkpoint state.
 
-This contract is an offline prerequisite for the loopback/browser bridge. It does **not** enable the disabled Playwright Gazette provider and does **not** authorize issue 73 -> current historical replay.
+The stream contract feeds a local loopback bridge; it does **not** enable the disabled Playwright Gazette provider and does **not** authorize issue 73 -> current historical replay.
+
+### #865 loopback bridge protocol
+
+The browser-to-Worker bridge is local and deliberately narrower than the CNIPA browser session:
+
+- the HTTP listener binds only to `127.0.0.1` and rejects non-loopback Host headers;
+- requests must come from an explicit configured `chrome-extension://<id>` Origin;
+- the bridge uses a separate header-safe, short-lived local token kept in process/extension memory; it is not a Worker lease token and is never persisted into Knowledge;
+- source-page transfer is `application/octet-stream` raw response bytes plus only bounded non-secret metadata: session fingerprint, observed timestamp, source HTTP status, and source MIME type;
+- cookies, CNIPA request headers, FECU, authorization tokens, SSO/CAPTCHA state and browser storage are not accepted by the page-transfer protocol;
+- the server supports Chrome private-network preflight, bounded request bodies, bounded concurrent sessions, and authenticated explicit session cleanup;
+- retrying the immediately previous page with identical bytes returns the prior ACK without re-running the stream; the same page with different bytes fails closed;
+- the browser receives checkpoint progress and immutable request identity only. It never receives Knowledge Worker credentials or Data Engine write credentials.
+
+The Worker-side checkpoint stream persists, in order, source raw -> source projection -> bounded stream state -> logical 100-row projection -> aligned checkpoint -> dataset identity V2 -> durable CHUNK request. In-memory progress advances only after the whole durable chain for that source page succeeds, so a failed page can be replayed safely and already-finalized canonical+SHA-identical artifacts are reused.
 
 Durable Knowledge artifact reads are available only through the lease-scoped Worker endpoint and only for RawArtifact ids explicitly referenced by the immutable Gazette publisher/finalize Job snapshot. The endpoint also enforces workspace ownership and stored SHA/size integrity before streaming bytes.
 
 The production lineage is therefore:
 
-`normal official browser session -> durable v0.9.4 capture root -> durable raw/projection/checkpoint/dataset identity -> durable CHUNK request -> Data Engine CHUNK receipt -> durable FINALIZE request -> Data Engine FINALIZE receipt`.
+`normal official browser session -> loopback source-page raw/projection stream -> aligned checkpoint -> dataset identity V2 -> durable CHUNK request -> Data Engine CHUNK receipt -> durable FINALIZE request -> Data Engine FINALIZE receipt`.
+
+MO CNIPA Network Capture v0.9.4 remains the pinned offline evidence bundle only for bounded #860 acceptance; it is not the production streaming lineage root.
+
+### Governed browser-stream Worker runtime
+
+The loopback listener is not started as an unscoped local utility. A Worker must first claim one exact governed Gazette `API_COLLECTION` Job. The immutable Job snapshot carries `x-markorbit-cnipa-gazette-browser-stream-v1` with:
+
+- the exact announcement issue;
+- a full-issue ALL query template with no trademark/applicant/class/date filters;
+- the logical-pages-per-checkpoint target;
+- a bounded maximum runtime.
+
+The Job must use the existing governed `cnipa-trademark-gazette@1.0.0` source identity, authorize JSON artifacts, and carry no server-side `secretRef`. The live browser session is checked against that frozen scope before the first page is accepted. The captured browser pageSize remains runtime-observed and may be 1..100; it is not used to widen or alter the frozen query scope.
+
+Browser-stream preparation is governed by a repo-external frozen authority plan. That plan binds the exact issue, ALL scope, checkpoint/runtime bounds, Chrome >=118 requirement, Data Engine mutation disabled, historical replay disabled, and the exact v1.0.0 candidate bundle name + SHA-256.
+
+Validation alone performs no Knowledge mutation:
+
+```powershell
+pnpm --filter @markorbit/worker cnipa:gazette:browser-job:prepare -- `
+  --plan <absolute-external-plan.json>
+```
+
+The dry validation output includes the canonical plan SHA-256 and the exact expected `GO #865 CNIPA-GAZETTE-BROWSER ...` authority token. Apply is allowed only when both are supplied back exactly and `MO_INTERNAL_SERVICE_SECRET` is configured:
+
+```powershell
+pnpm --filter @markorbit/worker cnipa:gazette:browser-job:prepare -- `
+  --plan <absolute-external-plan.json> `
+  --apply `
+  --expected-sha <frozen-plan-sha256> `
+  --authority-token "<exact-GO-#865-token>"
+```
+
+The plan's `dispatchMode` is authoritative. `PREPARE_ONLY` idempotently ensures the connector/source/CollectionPlan/Worker but creates no CollectionRun or Job. `PREPARE_AND_DISPATCH_ONCE` additionally dispatches exactly one Run/Job under a plan-SHA idempotency key; the returned immutable Job snapshot is parsed again through the browser-stream boundary before its exact `jobId` is exposed. The CLI has no issue/query/checkpoint/runtime override during apply: those values come only from the frozen authority plan.
+
+Then start the bridge with that exact Job id and the existing Worker control-plane credentials:
+
+```powershell
+pnpm --filter @markorbit/worker cnipa:gazette:browser-bridge -- `
+  --job <exact-job-id> `
+  --extension-origin chrome-extension://<extension-id>
+```
+
+Required environment variables are `MARKORBIT_CONTROL_PLANE_URL`, `MARKORBIT_WORKER_ID`, and `MARKORBIT_WORKER_CREDENTIAL`. An optional `--port <0..65535>` pins the loopback port; otherwise an ephemeral port is selected. The command prints the loopback URL and one short-lived bridge token to the operator console only. That token is never written to a runtime manifest or durable artifact.
+
+The runtime owns the Worker lifecycle: claim exact Job -> start -> uploading -> browser streaming/durable artifacts -> verifying -> complete. Lease renewals continue while the browser stream is active. Timeout, browser/session mismatch, durable-write failure, SIGINT or SIGTERM go through Worker fail and loopback cleanup instead of abandoning the lease.
+
+The production extension candidate is MO CNIPA Network Capture v1.0.0. It requires Chrome 118 or later because the streaming task relies on the active `chrome.debugger` session as Chrome's strong service-worker keepalive for operations longer than five minutes. Its bridge token is stored only in `chrome.storage.session`; it is cleared on browser/extension lifecycle reset and is never included in capture exports.
+
+The current bounded-live-proof candidate is `MO_CNIPA_Network_Capture_v1.0.0_Gazette_Stream_RC1.zip`, SHA-256 `f01e654ccfdf08ba1dfbcb33b5ec343767012c5409a847d617305f1e01e146d3`. This digest identifies the release candidate only; it is not a production-acceptance or historical-replay authorization.
 
 Data Engine mutation never occurs before the corresponding request artifact is durable in Knowledge.
 
