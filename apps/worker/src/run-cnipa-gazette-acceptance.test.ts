@@ -94,7 +94,7 @@ function plan() {
     captureTool: "MO CNIPA Network Capture",
     captureToolVersion: "0.9.4",
     captureExportSchema: "mo-cnipa-gazette-small-complete-v1",
-    captureToolBundleSha256: "c657000199271dce8c2098b72823a69d906c30ebcd702571a81b2cb61e3883c2",
+    captureToolBundleSha256: "4ae00c31ed2cc417e1d47bf47b84378f84a7e4a77c2dbb15cc43a237b69ea5c2",
     dataEngineUrl: "http://127.0.0.1:8080",
   });
 }
