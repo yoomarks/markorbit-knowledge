@@ -21,6 +21,9 @@ export function parseCnipaGazetteBrowserBridgeArguments(args: string[]): CliArgu
   let port = 0;
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]!;
+    if (arg === "--") {
+      continue;
+    }
     if (arg === "--job") {
       jobId = valueAfter(args, index, "--job");
       index += 1;

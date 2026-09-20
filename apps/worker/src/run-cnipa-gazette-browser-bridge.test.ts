@@ -5,6 +5,7 @@ describe("CNIPA Gazette browser bridge CLI", () => {
   it("requires an exact Job and extension origin while allowing an ephemeral port", () => {
     expect(
       parseCnipaGazetteBrowserBridgeArguments([
+        "--",
         "--job",
         "job_01ARZ3NDEKTSV4RRFFQ69G5FAV",
         "--extension-origin",
