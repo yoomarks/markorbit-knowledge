@@ -208,7 +208,17 @@ The loopback listener is not started as an unscoped local utility. A Worker must
 
 The Job must use the existing governed `cnipa-trademark-gazette@1.0.0` source identity, authorize JSON artifacts, and carry no server-side `secretRef`. The live browser session is checked against that frozen scope before the first page is accepted. The captured browser pageSize remains runtime-observed and may be 1..100; it is not used to widen or alter the frozen query scope.
 
-Start the bridge with the existing Worker control-plane credentials:
+Prepare the governed source/plan/Worker first. Preparation is idempotent and does not dispatch by default:
+
+```powershell
+pnpm --filter @markorbit/worker cnipa:gazette:browser-job:prepare -- `
+  --workspace <workspace-id> `
+  --issue <announcement-issue>
+```
+
+When ready for one bounded acquisition, add `--dispatch`. The dispatch response must contain exactly one Job whose immutable source/plan snapshots pass the browser-stream parser; only then is its exact `jobId` printed. The preparation CLI has no query/filter override: it always freezes announcement type = ALL with all trademark/applicant/class/date filters empty. `--checkpoint-pages` and `--max-runtime-seconds` only tune bounded execution/checkpoint behavior.
+
+Then start the bridge with that exact Job id and the existing Worker control-plane credentials:
 
 ```powershell
 pnpm --filter @markorbit/worker cnipa:gazette:browser-bridge -- `
@@ -221,6 +231,8 @@ Required environment variables are `MARKORBIT_CONTROL_PLANE_URL`, `MARKORBIT_WOR
 The runtime owns the Worker lifecycle: claim exact Job -> start -> uploading -> browser streaming/durable artifacts -> verifying -> complete. Lease renewals continue while the browser stream is active. Timeout, browser/session mismatch, durable-write failure, SIGINT or SIGTERM go through Worker fail and loopback cleanup instead of abandoning the lease.
 
 The production extension candidate is MO CNIPA Network Capture v1.0.0. It requires Chrome 118 or later because the streaming task relies on the active `chrome.debugger` session as Chrome's strong service-worker keepalive for operations longer than five minutes. Its bridge token is stored only in `chrome.storage.session`; it is cleared on browser/extension lifecycle reset and is never included in capture exports.
+
+The current bounded-live-proof candidate is `MO_CNIPA_Network_Capture_v1.0.0_Gazette_Stream_RC1.zip`, SHA-256 `f01e654ccfdf08ba1dfbcb33b5ec343767012c5409a847d617305f1e01e146d3`. This digest identifies the release candidate only; it is not a production-acceptance or historical-replay authorization.
 
 Data Engine mutation never occurs before the corresponding request artifact is durable in Knowledge.
 

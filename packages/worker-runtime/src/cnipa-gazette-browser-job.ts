@@ -118,6 +118,11 @@ function assertSourceBoundary(context: ArtifactBackedExecutionContext): void {
   if (source.secretRef !== undefined) {
     throw new TypeError("browser-stream Gazette source must not carry a server-side secretRef");
   }
+  const sourceConfig = objectValue(source.connectorConfig, "browser-stream source connectorConfig");
+  exactKeys(sourceConfig, ["acquisitionMode"], "browser-stream source connectorConfig");
+  if (sourceConfig.acquisitionMode !== CNIPA_GAZETTE_BROWSER_SOURCE_MODE) {
+    throw new TypeError("browser-stream Gazette source acquisitionMode mismatch");
+  }
   if (!job.planSnapshot.output.artifactKinds.includes("JSON")) {
     throw new TypeError("browser-stream Gazette job must authorize JSON artifacts");
   }
@@ -173,4 +178,169 @@ export function assertCnipaGazetteBrowserSessionMatchesJob(
   ) {
     throw new TypeError("browser session must start at pageIndex 1 with captured pageSize 1..100");
   }
+}
+
+export const CNIPA_GAZETTE_BROWSER_SOURCE_MODE = "NORMAL_BROWSER_BRIDGE_V1" as const;
+
+export function cnipaGazetteBrowserConnectorManifest() {
+  return {
+    connectorId: CNIPA_GAZETTE_JOB_CONNECTOR_ID,
+    displayName: "CNIPA Trademark Gazette — Normal Browser Bridge",
+    version: CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
+    sourceTypes: ["API"],
+    runtime: "NODE",
+    capabilities: ["COLLECT"],
+    supportedJobTypes: ["API_COLLECTION"],
+    configurationSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["acquisitionMode"],
+      properties: {
+        acquisitionMode: { const: CNIPA_GAZETTE_BROWSER_SOURCE_MODE },
+      },
+    },
+    secretSchema: { type: "object", properties: {}, additionalProperties: false },
+    outputArtifactKinds: ["JSON"],
+    healthCheck: { mode: "WORKER_PROBE", timeoutSeconds: 30 },
+    status: "ACTIVE",
+    extensions: {
+      "x-markorbit-production-provider": true,
+      "x-markorbit-cnipa-gazette-browser-bridge": true,
+      "x-markorbit-browser-auth-owned-by-browser": true,
+      "x-markorbit-historical-replay-activated": false,
+    },
+  };
+}
+
+export function cnipaGazetteBrowserSourcePayload(workspaceId: string) {
+  return {
+    workspaceId,
+    name: "CNIPA Trademark Gazette — Normal Browser Bridge",
+    slug: "cnipa-trademark-gazette-browser-bridge",
+    sourceType: "API",
+    category: "OFFICIAL_AUTHORITY",
+    authorityLevel: "PRIMARY_OFFICIAL",
+    status: "ACTIVE",
+    jurisdictions: ["CN"],
+    languages: ["zh-CN"],
+    connector: {
+      connectorId: CNIPA_GAZETTE_JOB_CONNECTOR_ID,
+      version: CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
+    },
+    connectorConfig: { acquisitionMode: CNIPA_GAZETTE_BROWSER_SOURCE_MODE },
+    canonicalUri: CNIPA_GAZETTE_PUBLIC_ORIGIN,
+    entrypoints: [
+      {
+        uri: `${CNIPA_GAZETTE_PUBLIC_ORIGIN}/toas-pub-prod/portalui-pub-prod/brandNotice`,
+        label: "CNIPA Trademark Gazette",
+      },
+    ],
+    tags: ["cnipa", "gazette", "official", "normal-browser", "bridge"],
+    extensions: {
+      "x-markorbit-source-owner": "China National Intellectual Property Administration",
+      "x-markorbit-browser-auth-owned-by-browser": true,
+      "x-markorbit-server-side-secret-forbidden": true,
+      "x-markorbit-historical-replay-activated": false,
+    },
+  };
+}
+
+export function cnipaGazetteBrowserQueryTemplate(announcementIssue: number) {
+  const issue = positiveInteger(announcementIssue, "announcementIssue");
+  return {
+    anncIssue: String(issue),
+    anncType: "",
+    regNo: "",
+    tmName: "",
+    intlCls: "",
+    registerCnName: "",
+    coowner: "",
+    agentName: "",
+    tmType: "",
+    tmDescType: "0",
+    startDate: "",
+    endDate: "",
+  } as const;
+}
+
+export function cnipaGazetteBrowserPlanPayload(input: {
+  workspaceId: string;
+  sourceId: string;
+  announcementIssue: number;
+  targetLogicalPagesPerCheckpoint?: number;
+  maxRuntimeSeconds?: number;
+}) {
+  const announcementIssue = positiveInteger(input.announcementIssue, "announcementIssue");
+  const targetLogicalPagesPerCheckpoint = positiveInteger(
+    input.targetLogicalPagesPerCheckpoint ?? 24,
+    "targetLogicalPagesPerCheckpoint",
+    100,
+  );
+  const maxRuntimeSeconds = positiveInteger(
+    input.maxRuntimeSeconds ?? 21_600,
+    "maxRuntimeSeconds",
+    86_400,
+  );
+  return {
+    workspaceId: input.workspaceId,
+    sourceId: input.sourceId,
+    name: `CNIPA Gazette issue ${announcementIssue} — browser stream`,
+    status: "ACTIVE",
+    schedule: { mode: "MANUAL" },
+    priority: "HIGH",
+    policy: {
+      includePatterns: [],
+      excludePatterns: [],
+      maxDepth: 0,
+      maxItems: 100,
+      renderJavascript: false,
+      fetchAttachments: false,
+      respectRobots: false,
+      rateLimitPerMinute: 120,
+      timeoutSeconds: 300,
+      retry: { maxAttempts: 1, backoffSeconds: 0 },
+      locale: "zh-CN",
+    },
+    output: { artifactKinds: ["JSON"] },
+    extensions: {
+      [CNIPA_GAZETTE_BROWSER_STREAM_PLAN_EXTENSION]: {
+        announcementIssue,
+        queryTemplate: cnipaGazetteBrowserQueryTemplate(announcementIssue),
+        targetLogicalPagesPerCheckpoint,
+        maxRuntimeSeconds,
+      },
+      "x-markorbit-browser-auth-owned-by-browser": true,
+      "x-markorbit-historical-replay-activated": false,
+    },
+  };
+}
+
+export function cnipaGazetteBrowserWorkerPayload(workspaceId: string) {
+  return {
+    workspaceId,
+    displayName: "CNIPA Gazette Normal-Browser Bridge Worker",
+    desiredState: "ACTIVE",
+    runtime: { runtimeId: "cnipa-gazette-browser-bridge", version: "1.0.0" },
+    supportedJobTypes: ["API_COLLECTION"],
+    connectorBindings: [
+      {
+        connectorId: CNIPA_GAZETTE_JOB_CONNECTOR_ID,
+        version: CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
+        capabilities: ["COLLECT"],
+      },
+    ],
+    maxConcurrency: 1,
+    labels: [
+      "production",
+      "cnipa",
+      "gazette",
+      "normal-browser",
+      "bridge",
+      "cnipa-gazette-browser-bridge",
+    ],
+    extensions: {
+      "x-markorbit-browser-auth-owned-by-browser": true,
+      "x-markorbit-worker-concurrency": 1,
+    },
+  };
 }

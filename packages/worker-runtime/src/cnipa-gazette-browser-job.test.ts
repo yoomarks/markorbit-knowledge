@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { ArtifactBackedExecutionContext } from "./artifact-backed-collection-executor";
 import {
   assertCnipaGazetteBrowserSessionMatchesJob,
+  cnipaGazetteBrowserConnectorManifest,
+  cnipaGazetteBrowserPlanPayload,
+  cnipaGazetteBrowserQueryTemplate,
+  cnipaGazetteBrowserSourcePayload,
   cnipaGazetteBrowserStreamJobFromContext,
+  cnipaGazetteBrowserWorkerPayload,
+  CNIPA_GAZETTE_BROWSER_SOURCE_MODE,
   CNIPA_GAZETTE_BROWSER_STREAM_PLAN_EXTENSION,
 } from "./cnipa-gazette-browser-job";
 import { createCnipaGazetteBrowserStreamSession } from "./cnipa-gazette-browser-stream";
@@ -48,7 +54,7 @@ function context(
           connectorId: CNIPA_GAZETTE_JOB_CONNECTOR_ID,
           version: CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
         },
-        connectorConfig: {},
+        connectorConfig: { acquisitionMode: "NORMAL_BROWSER_BRIDGE_V1" },
         canonicalUri: "https://pub.sbj.cnipa.gov.cn",
         ...(input.secretRef ? { secretRef: input.secretRef } : {}),
       },
@@ -148,5 +154,59 @@ describe("CNIPA Gazette browser-stream Job boundary", () => {
     expect(() => assertCnipaGazetteBrowserSessionMatchesJob(drifted, job)).toThrow(
       /announcementIssue does not match/,
     );
+  });
+});
+
+describe("CNIPA Gazette browser-stream bootstrap payloads", () => {
+  it("freezes the connector/source boundary without server-side secrets", () => {
+    const connector = cnipaGazetteBrowserConnectorManifest();
+    expect(connector).toMatchObject({
+      connectorId: CNIPA_GAZETTE_JOB_CONNECTOR_ID,
+      version: CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
+      secretSchema: { type: "object", additionalProperties: false },
+      extensions: {
+        "x-markorbit-cnipa-gazette-browser-bridge": true,
+        "x-markorbit-browser-auth-owned-by-browser": true,
+      },
+    });
+    const source = cnipaGazetteBrowserSourcePayload("wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV");
+    expect(source).toMatchObject({
+      connectorConfig: { acquisitionMode: CNIPA_GAZETTE_BROWSER_SOURCE_MODE },
+      canonicalUri: "https://pub.sbj.cnipa.gov.cn",
+      extensions: { "x-markorbit-server-side-secret-forbidden": true },
+    });
+    expect(source).not.toHaveProperty("secretRef");
+  });
+
+  it("builds an issue-specific MANUAL plan with one exact ALL query and no replay activation", () => {
+    const plan = cnipaGazetteBrowserPlanPayload({
+      workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      sourceId: "src_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      announcementIssue: 75,
+      targetLogicalPagesPerCheckpoint: 12,
+      maxRuntimeSeconds: 7200,
+    });
+    expect(plan.schedule).toEqual({ mode: "MANUAL" });
+    expect(plan.extensions[CNIPA_GAZETTE_BROWSER_STREAM_PLAN_EXTENSION]).toEqual({
+      announcementIssue: 75,
+      queryTemplate: cnipaGazetteBrowserQueryTemplate(75),
+      targetLogicalPagesPerCheckpoint: 12,
+      maxRuntimeSeconds: 7200,
+    });
+    expect(plan.extensions["x-markorbit-historical-replay-activated"]).toBe(false);
+  });
+
+  it("builds a one-concurrency governed Worker binding", () => {
+    expect(cnipaGazetteBrowserWorkerPayload("wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV")).toMatchObject({
+      maxConcurrency: 1,
+      supportedJobTypes: ["API_COLLECTION"],
+      connectorBindings: [
+        {
+          connectorId: CNIPA_GAZETTE_JOB_CONNECTOR_ID,
+          version: CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
+          capabilities: ["COLLECT"],
+        },
+      ],
+    });
   });
 });

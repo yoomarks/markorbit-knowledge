@@ -82,7 +82,7 @@ function job(): Job {
         connectorId: CNIPA_GAZETTE_JOB_CONNECTOR_ID,
         version: CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
       },
-      connectorConfig: {},
+      connectorConfig: { acquisitionMode: "NORMAL_BROWSER_BRIDGE_V1" },
       canonicalUri: "https://pub.sbj.cnipa.gov.cn",
     },
     planSnapshot: {
