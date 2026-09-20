@@ -197,6 +197,31 @@ The production lineage is therefore:
 
 MO CNIPA Network Capture v0.9.4 remains the pinned offline evidence bundle only for bounded #860 acceptance; it is not the production streaming lineage root.
 
+### Governed browser-stream Worker runtime
+
+The loopback listener is not started as an unscoped local utility. A Worker must first claim one exact governed Gazette `API_COLLECTION` Job. The immutable Job snapshot carries `x-markorbit-cnipa-gazette-browser-stream-v1` with:
+
+- the exact announcement issue;
+- a full-issue ALL query template with no trademark/applicant/class/date filters;
+- the logical-pages-per-checkpoint target;
+- a bounded maximum runtime.
+
+The Job must use the existing governed `cnipa-trademark-gazette@1.0.0` source identity, authorize JSON artifacts, and carry no server-side `secretRef`. The live browser session is checked against that frozen scope before the first page is accepted. The captured browser pageSize remains runtime-observed and may be 1..100; it is not used to widen or alter the frozen query scope.
+
+Start the bridge with the existing Worker control-plane credentials:
+
+```powershell
+pnpm --filter @markorbit/worker cnipa:gazette:browser-bridge -- `
+  --job <exact-job-id> `
+  --extension-origin chrome-extension://<extension-id>
+```
+
+Required environment variables are `MARKORBIT_CONTROL_PLANE_URL`, `MARKORBIT_WORKER_ID`, and `MARKORBIT_WORKER_CREDENTIAL`. An optional `--port <0..65535>` pins the loopback port; otherwise an ephemeral port is selected. The command prints the loopback URL and one short-lived bridge token to the operator console only. That token is never written to a runtime manifest or durable artifact.
+
+The runtime owns the Worker lifecycle: claim exact Job -> start -> uploading -> browser streaming/durable artifacts -> verifying -> complete. Lease renewals continue while the browser stream is active. Timeout, browser/session mismatch, durable-write failure, SIGINT or SIGTERM go through Worker fail and loopback cleanup instead of abandoning the lease.
+
+The production extension candidate is MO CNIPA Network Capture v1.0.0. It requires Chrome 118 or later because the streaming task relies on the active `chrome.debugger` session as Chrome's strong service-worker keepalive for operations longer than five minutes. Its bridge token is stored only in `chrome.storage.session`; it is cleared on browser/extension lifecycle reset and is never included in capture exports.
+
 Data Engine mutation never occurs before the corresponding request artifact is durable in Knowledge.
 
 Cross-Source RawArtifact lineage is fail-closed. The default rule remains same-workspace **and same-Source**. A multi-stage Gazette Job may reference a parent from another Source only when the immutable Job snapshot explicitly grants that exact RawArtifact id through `x-markorbit-cross-source-parent-artifact-ids`; the grant never permits a cross-workspace parent.

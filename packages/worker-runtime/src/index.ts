@@ -211,3 +211,5 @@ export * from "./cnipa-gazette-browser-checkpoint-plan";
 export * from "./streaming-artifact-writer";
 export * from "./cnipa-gazette-browser-checkpoint-stream";
 export * from "./cnipa-gazette-loopback-server";
+export * from "./cnipa-gazette-browser-job";
+export * from "./cnipa-gazette-browser-runtime";
