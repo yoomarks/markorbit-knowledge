@@ -34,8 +34,8 @@ It does not require DevTools to be open.
 Existing v0.7/v0.8 behavior to reuse:
 
 - capture the most recent successful LIST POST body;
-- replay only bounded pageIndex/pageSize changes;
-- pageSize=100;
+- replay only bounded pageIndex changes;
+- preserve the pageSize of the successful normal query instead of forcing a different browser-side page size;
 - transient `-102/-107` retry;
 - HTTP transient retry;
 - repeated-page / no-new-data diagnostics;
@@ -50,17 +50,15 @@ For a historical issue capture:
 
 1. open the official `brandNotice` page normally;
 2. enter the target announcement issue;
-3. set announcement type to **全部**;
+3. set announcement type to **鍏ㄩ儴**;
 4. perform one normal query;
 5. Network Capture observes the successful POST body;
 6. verify that the captured body contains:
    - non-empty `anncIssue`;
-   - `anncType: ""` (the official frontend value for 全部);
-7. sweep pages by preserving the captured body and changing only:
-   - `pageIndex`;
-   - `pageSize: 100`.
+   - `anncType: ""` (the official frontend value for 鍏ㄩ儴);
+7. sweep pages by preserving the captured body and changing only `pageIndex`.
 
-The official frontend page-size selector exposes 10/20/50/100.
+The official frontend page-size selector exposes 10/20/50/100. The verifier preserves whichever pageSize produced the successful normal query. For example, issue 75 at pageSize 10 is captured as 58 source pages; the offline importer later normalizes the 576 records into six 100-row logical pages for the durable Gazette pipeline.
 
 ## Gazette verification datasets
 
@@ -198,15 +196,15 @@ The acceptance chain is four one-shot Worker stages:
 3. `BUILD_FINALIZE`: reads only the exact dataset identity plus CHUNK receipt from the prior frozen acceptance stages and persists the FINALIZE request.
 4. `PUBLISH_FINALIZE`: reads only the exact durable FINALIZE request and persists the Data Engine FINALIZE receipt.
 
-The accepted client is pinned to **MO CNIPA Network Capture v0.9.4** and the frozen bundle SHA-256 `5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a`. The acceptance input schema is `mo-cnipa-gazette-small-complete-v1`. The verifier keeps the successful normal request's effective headers only in extension memory for same-session replay; authentication headers are never written into capture exports. Old v0.9.1/v0.9.3 raw captures and incomplete exports are not acceptable substitutes.
+The accepted client is pinned to **MO CNIPA Network Capture v0.9.4** and the frozen bundle SHA-256 `c657000199271dce8c2098b72823a69d906c30ebcd702571a81b2cb61e3883c2`. The acceptance input schema is `mo-cnipa-gazette-small-complete-v1`. The verifier keeps the successful normal request's effective headers only in extension memory for same-session replay; authentication headers are never written into capture exports. Old v0.9.1/v0.9.3 raw captures and incomplete exports are not acceptable substitutes.
 
-Before any GO authorization, the runner may validate `--plan` plus `--capture` locally. This verifies issue 75, date 1983-08-15, 576 rows, 6 pages, pageSize 100, terminal-page length 76, unique official ids, `searchId == id`, official source URL and captured ALL query. That validation performs no CNIPA network request, Knowledge mutation or Data Engine write.
+Before any GO authorization, the runner may validate `--plan` plus `--capture` locally. It verifies issue 75, date 1983-08-15, 576 captured rows, captured-pagination completeness at the successful normal query's pageSize, unique official ids, `searchId == id`, the official source URL and the captured ALL query. It then verifies that those 576 rows normalize to six 100-row logical pages with terminal length 76. That validation performs no CNIPA network request, Knowledge mutation or Data Engine write.
 
 Acceptance references are not merely same-workspace references: the Admin acceptance boundary also proves that each referenced RawArtifact came from the expected prior stage of the **same frozen acceptance plan**. Each reconstructed raw page must also descend from the durable v0.9.4 capture root.
 
 The governed one-shot runner starts a clean Data Engine API from the merged #762 code on a separate loopback port with an ephemeral in-memory admission bearer key. It does not rewrite the existing Data Engine `.env`, restart the existing API service, or persist that key. The final manifest records only plan SHA, capture SHA/size/durable artifact id, run/job/worker ids, artifact ids/hashes/sizes, completeness assertions, and admission outcomes; credentials are excluded.
 
-The operator opens the official `brandNotice` page **normally** in Chrome, starts MO CNIPA Network Capture v0.9.4, runs one normal issue-75 + 全部 query, then uses **完整验证小期**. The extension performs bounded replay in that already-working page context and exports the complete JSON file. Cookies, SSO state, CAPTCHA state and browser tokens never enter the Job snapshot or acceptance manifest.
+The operator opens the official `brandNotice` page **normally** in Chrome, starts MO CNIPA Network Capture v0.9.4, runs one normal issue-75 + 鍏ㄩ儴 query, then uses **瀹屾暣楠岃瘉灏忔湡**. The extension performs bounded replay in that already-working page context and exports the complete JSON file. Cookies, SSO state, CAPTCHA state and browser tokens never enter the Job snapshot or acceptance manifest.
 
 Historical replay remains a separate authorization even after this bounded acceptance passes.
 
@@ -216,9 +214,9 @@ Historical floor is issue 73.
 
 For each issue:
 
-1. capture issue + 全部;
-2. page at 100 rows/page;
-3. verify terminal/repeat behavior;
+1. capture issue + 鍏ㄩ儴;
+2. page using the normal-browser streaming bridge's accepted source pageSize, changing only pageIndex;
+3. verify terminal/repeat behavior and normalize downstream evidence into 100-row logical pages;
 4. write/update issue catalog metadata;
 5. project announcement rows to Data Engine;
 6. register detail URLs in Knowledge as candidates only.
@@ -241,11 +239,11 @@ The validation gate is intentionally bounded.
 Required evidence is:
 
 1. **one large issue boundary validation**
-   - first 3 pages at pageSize=100;
-   - last 3 pages at pageSize=100;
+   - first 3 pages at the successful normal query's captured pageSize;
+   - last 3 pages at that same captured pageSize;
    - stable `total/pages` across the sampled pages;
    - official `id/searchId` consistency;
-   - final-page length matching `total % 100` (or 100 when evenly divisible);
+   - final-page length matching `total % capturedPageSize` (or capturedPageSize when evenly divisible);
 2. **one small historical issue complete validation**
    - page 1 through final page;
    - collected row count equals source total;

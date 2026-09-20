@@ -24,7 +24,7 @@ export type CnipaGazetteV094SmallCompleteCapture = {
   sourceUrl: string;
   sourceTotal: number;
   sourcePages: number;
-  pageSize: 100;
+  pageSize: number;
   collectedCount: number;
   uniqueOfficialRowIds: number;
   expectedLastPageLength: number;
@@ -88,7 +88,7 @@ function sourceUrl(value: unknown): string {
   return resolved;
 }
 
-function captureQuery(value: unknown, announcementIssue: string) {
+function captureQuery(value: unknown, announcementIssue: string, pageSize: number) {
   const raw = record(value, "capture.query");
   const result: Record<string, string | number> = {};
   for (const [key, child] of Object.entries(raw)) {
@@ -101,9 +101,9 @@ function captureQuery(value: unknown, announcementIssue: string) {
     String(result.anncIssue ?? "").trim() !== announcementIssue ||
     result.anncType !== "" ||
     result.pageIndex !== 1 ||
-    result.pageSize !== CNIPA_GAZETTE_PAGE_SIZE
+    result.pageSize !== pageSize
   ) {
-    throw new TypeError("capture.query must be issue + ALL + pageIndex 1 + pageSize 100");
+    throw new TypeError("capture.query must be issue + ALL + pageIndex 1 + captured pageSize");
   }
   return result;
 }
@@ -179,13 +179,14 @@ export function parseCnipaGazetteV094SmallCompleteCapture(
   const sourceTotal = integer(root.sourceTotal, "capture.sourceTotal");
   const sourcePages = integer(root.sourcePages, "capture.sourcePages", 1);
   const pageSize = integer(root.pageSize, "capture.pageSize", 1);
-  if (pageSize !== CNIPA_GAZETTE_PAGE_SIZE) throw new TypeError("capture.pageSize must equal 100");
-  const calculatedPages = Math.max(1, Math.ceil(sourceTotal / CNIPA_GAZETTE_PAGE_SIZE));
+  if (pageSize > CNIPA_GAZETTE_PAGE_SIZE) {
+    throw new TypeError("capture.pageSize must be between 1 and 100");
+  }
+  const calculatedPages = Math.max(1, Math.ceil(sourceTotal / pageSize));
   if (sourcePages !== calculatedPages) {
     throw new TypeError("capture.sourcePages does not match sourceTotal/pageSize");
   }
-  const expectedLastPageLength =
-    sourceTotal === 0 ? 0 : sourceTotal % CNIPA_GAZETTE_PAGE_SIZE || CNIPA_GAZETTE_PAGE_SIZE;
+  const expectedLastPageLength = sourceTotal === 0 ? 0 : sourceTotal % pageSize || pageSize;
   if (
     integer(root.expectedLastPageLength, "capture.expectedLastPageLength") !==
       expectedLastPageLength ||
@@ -221,11 +222,11 @@ export function parseCnipaGazetteV094SmallCompleteCapture(
       (() => {
         throw new TypeError("capture contains no announcement date");
       })(),
-    query: captureQuery(root.query, announcementIssue),
+    query: captureQuery(root.query, announcementIssue, pageSize),
     sourceUrl: sourceUrl(root.sourceUrl),
     sourceTotal,
     sourcePages,
-    pageSize: 100,
+    pageSize,
     collectedCount,
     uniqueOfficialRowIds,
     expectedLastPageLength,
@@ -262,8 +263,12 @@ export class CnipaGazetteV094CaptureTransport implements CnipaGazetteJsonTranspo
       throw new TypeError("capture transport only serves the canonical Gazette LIST path");
     }
     const pageIndex = integer(input.body.pageIndex, "request.pageIndex", 1);
+    const normalizedPages = Math.max(
+      1,
+      Math.ceil(this.capture.sourceTotal / CNIPA_GAZETTE_PAGE_SIZE),
+    );
     if (
-      pageIndex > this.capture.sourcePages ||
+      pageIndex > normalizedPages ||
       input.body.pageSize !== 100 ||
       input.body.anncType !== "" ||
       String(input.body.anncIssue ?? "").trim() !== this.capture.announcementIssue
@@ -290,7 +295,7 @@ export class CnipaGazetteV094CaptureTransport implements CnipaGazetteJsonTranspo
         pageIndex,
         pageSize: CNIPA_GAZETTE_PAGE_SIZE,
         total: this.capture.sourceTotal,
-        pages: this.capture.sourcePages,
+        pages: normalizedPages,
         list,
       },
     };

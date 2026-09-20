@@ -45,17 +45,17 @@ function captureFixture() {
       startDate: "",
       endDate: "",
       pageIndex: 1,
-      pageSize: 100,
+      pageSize: 10,
     },
     sourceUrl:
       "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/public/web/anncInfo/searchEsTmgg",
     sourceTotal: 576,
-    sourcePages: 6,
-    pageSize: 100,
+    sourcePages: 58,
+    pageSize: 10,
     collectedCount: 576,
     uniqueOfficialRowIds: 576,
-    expectedLastPageLength: 76,
-    observedLastPageLength: 76,
+    expectedLastPageLength: 6,
+    observedLastPageLength: 6,
     completeness: "COMPLETE",
     records: Array.from({ length: 576 }, (_, index) => {
       const id = index.toString(16).toUpperCase().padStart(32, "0");
@@ -65,7 +65,7 @@ function captureFixture() {
         anncIssue: "75",
         anncDate: "1983-08-15",
         anncType: "TMZCSQ",
-        anncTypeName: "商标初步审定公告",
+        anncTypeName: "fixture-announcement",
         regNo: String(200000 + index),
       };
     }),
@@ -94,7 +94,7 @@ function plan() {
     captureTool: "MO CNIPA Network Capture",
     captureToolVersion: "0.9.4",
     captureExportSchema: "mo-cnipa-gazette-small-complete-v1",
-    captureToolBundleSha256: "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a",
+    captureToolBundleSha256: "c657000199271dce8c2098b72823a69d906c30ebcd702571a81b2cb61e3883c2",
     dataEngineUrl: "http://127.0.0.1:8080",
   });
 }
@@ -164,8 +164,9 @@ describe("CNIPA Gazette bounded acceptance runner governance", () => {
       announcementIssue: "75",
       announcementDate: "1983-08-15",
       sourceTotal: 576,
-      sourcePages: 6,
-      observedLastPageLength: 76,
+      sourcePages: 58,
+      pageSize: 10,
+      observedLastPageLength: 6,
     });
     expect(loaded.sha256).toMatch(/^[a-f0-9]{64}$/u);
     expect(loaded.sizeBytes).toBeGreaterThan(0);

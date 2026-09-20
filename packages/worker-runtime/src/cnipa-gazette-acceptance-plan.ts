@@ -48,7 +48,7 @@ export type CnipaGazetteAcceptancePlan = {
   captureTool: "MO CNIPA Network Capture";
   captureToolVersion: "0.9.4";
   captureExportSchema: "mo-cnipa-gazette-small-complete-v1";
-  captureToolBundleSha256: "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a";
+  captureToolBundleSha256: "c657000199271dce8c2098b72823a69d906c30ebcd702571a81b2cb61e3883c2";
   dataEngineUrl: string;
 };
 
@@ -170,7 +170,7 @@ export function parseCnipaGazetteAcceptancePlan(value: unknown): CnipaGazetteAcc
     input.captureToolVersion !== "0.9.4" ||
     input.captureExportSchema !== "mo-cnipa-gazette-small-complete-v1" ||
     input.captureToolBundleSha256 !==
-      "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a"
+      "c657000199271dce8c2098b72823a69d906c30ebcd702571a81b2cb61e3883c2"
   ) {
     throw new Error("CNIPA Gazette acceptance plan invalid: issue-75 frozen scope mismatch");
   }
@@ -196,7 +196,7 @@ export function parseCnipaGazetteAcceptancePlan(value: unknown): CnipaGazetteAcc
     captureTool: "MO CNIPA Network Capture",
     captureToolVersion: "0.9.4",
     captureExportSchema: "mo-cnipa-gazette-small-complete-v1",
-    captureToolBundleSha256: "5b1e4a788c261b2662827f6789bba7f10fa56d0c5699bcd6bd9fa373fe0afa2a",
+    captureToolBundleSha256: "c657000199271dce8c2098b72823a69d906c30ebcd702571a81b2cb61e3883c2",
     dataEngineUrl: dataEngineUrl(input.dataEngineUrl),
   };
 }
@@ -403,7 +403,7 @@ export function cnipaGazetteAcceptanceSourcePayload(input: {
   const suffix = input.stage.toLowerCase().replace(/_/gu, "-");
   return {
     workspaceId: input.plan.workspaceId,
-    name: `CNIPA Gazette issue 75 — ${input.stage} — ${input.plan.operationId}`,
+    name: `CNIPA Gazette issue 75 | ${input.stage} | ${input.plan.operationId}`,
     slug: `cnipa-gazette-75-${suffix}-${input.plan.operationId}`,
     sourceType: runtime.sourceType,
     category: runtime.category,
@@ -434,7 +434,7 @@ export function cnipaGazetteAcceptanceCollectionPlanPayload(input: {
   return {
     workspaceId: input.plan.workspaceId,
     sourceId: input.sourceId,
-    name: `CNIPA Gazette issue 75 — ${input.stage} — ${input.plan.operationId}`,
+    name: `CNIPA Gazette issue 75 | ${input.stage} | ${input.plan.operationId}`,
     status: "ACTIVE",
     schedule: { mode: "MANUAL" },
     priority: "HIGH",
