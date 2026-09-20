@@ -207,3 +207,5 @@ export class FixtureConnectorExecutor implements ConnectorExecutor {
 
 export * from "./cnipa-gazette-browser-stream";
 export * from "./cnipa-gazette-browser-stream-artifacts";
+export * from "./cnipa-gazette-browser-checkpoint-plan";
+export * from "./streaming-artifact-writer";
