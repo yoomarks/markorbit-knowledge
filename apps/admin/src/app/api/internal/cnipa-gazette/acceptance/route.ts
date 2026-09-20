@@ -158,11 +158,13 @@ function connectorConfigAndGrants(
     const expectedParentStage =
       runtimeStage === "PUBLISH_CHUNK" ? "IMPORT_CAPTURE" : "BUILD_FINALIZE";
     const view = verifyReference(reference, workspaceId, planSha256, expectedParentStage);
+    const lowerName = view.artifact.originalName.toLowerCase();
     const expectedMarker = runtimeStage === "PUBLISH_CHUNK" ? "chunk" : "finalize";
-    if (
-      !view.artifact.originalName.includes("fact-admission-request") ||
-      !view.artifact.originalName.toLowerCase().includes(expectedMarker)
-    ) {
+    const expectedRequestFragment =
+      runtimeStage === "PUBLISH_CHUNK"
+        ? "fact-admission-request"
+        : "fact-admission-finalize-request";
+    if (!lowerName.includes(expectedRequestFragment) || !lowerName.includes(expectedMarker)) {
       throw new RegistryValidationError("Gazette publisher request artifact stage mismatch");
     }
     return {
@@ -381,6 +383,13 @@ export async function POST(request: Request) {
     const payload = objectValue(body.payload ?? {}, "payload");
     if (operation === "PREPARE_STAGE") {
       const runtimeStage = stage(payload.stage);
+      const rawDispatchAttemptKey =
+        payload.dispatchAttemptKey === undefined
+          ? "default"
+          : text(payload.dispatchAttemptKey, "dispatchAttemptKey");
+      if (!/^[a-z0-9-]{1,48}$/u.test(rawDispatchAttemptKey)) {
+        throw new RegistryValidationError("Gazette dispatch attempt key is invalid");
+      }
       const prepared = connectorConfigAndGrants(
         runtimeStage,
         payload.connectorConfig,
@@ -406,7 +415,7 @@ export async function POST(request: Request) {
       const dispatched = getExecutionLedgerRepository().dispatchManual({
         planId: collectionPlan.id,
         requestedBy: { actorType: "API_CLIENT", actorId: access.actorId },
-        idempotencyKey: `cnipa-gazette-acceptance-${plan.operationId}-${runtimeStage}-${access.planSha256}`,
+        idempotencyKey: `cnipa-gazette-acceptance-${runtimeStage}-${access.planSha256.slice(0, 24)}-${rawDispatchAttemptKey}`,
         extensions,
       });
       const jobs = dispatched.record.jobs;

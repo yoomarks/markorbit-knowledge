@@ -174,7 +174,7 @@ export function isArtifactUploadDescriptor(value: unknown): value is ArtifactUpl
   return (
     isEnum(ARTIFACT_KINDS, value.artifactKind) &&
     typeof value.mimeType === "string" &&
-    /^[\w.+-]+\/[\w.+-]+$/.test(value.mimeType) &&
+    /^[\w.+-]+\/[\w.+-]+(?:\s*;\s*[\w!#$&^_.+-]+=[\w!#$&^_.+-]+)*$/.test(value.mimeType) &&
     typeof value.originalName === "string" &&
     value.originalName.length > 0 &&
     value.originalName.length <= 255 &&

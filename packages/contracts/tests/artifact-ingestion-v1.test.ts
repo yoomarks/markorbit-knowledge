@@ -77,6 +77,9 @@ const event: ArtifactIngestionEvent = {
 describe("Artifact Ingestion Protocol v1", () => {
   it("accepts strict transport and evidence objects", () => {
     expect(isArtifactUploadDescriptor(descriptor)).toBe(true);
+    expect(
+      isArtifactUploadDescriptor({ ...descriptor, mimeType: "application/json;charset=UTF-8" }),
+    ).toBe(true);
     expect(isArtifactIngestionSession(session)).toBe(true);
     expect(isArtifactVerificationResult(verification)).toBe(true);
     expect(isArtifactIngestionReceipt(receipt)).toBe(true);

@@ -401,10 +401,14 @@ export function cnipaGazetteAcceptanceSourcePayload(input: {
 }) {
   const runtime = stageRuntime(input.stage);
   const suffix = input.stage.toLowerCase().replace(/_/gu, "-");
+  const configFingerprint = createHash("sha256")
+    .update(JSON.stringify(canonicalize(input.connectorConfig)))
+    .digest("hex")
+    .slice(0, 16);
   return {
     workspaceId: input.plan.workspaceId,
     name: `CNIPA Gazette issue 75 | ${input.stage} | ${input.plan.operationId}`,
-    slug: `cnipa-gazette-75-${suffix}-${input.plan.operationId}`,
+    slug: `cnipa-gazette-75-${suffix}-${input.plan.operationId}-${configFingerprint}`,
     sourceType: runtime.sourceType,
     category: runtime.category,
 

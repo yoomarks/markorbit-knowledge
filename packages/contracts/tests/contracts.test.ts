@@ -71,6 +71,9 @@ describe("Schema v1 fixtures", () => {
     expect(isCollectionPlan(collectionPlanFixture)).toBe(true);
     expect(isSourceDefinition(sourceDefinitionFixture)).toBe(true);
     expect(isRawArtifact(rawArtifactFixture)).toBe(true);
+    expect(
+      isRawArtifact({ ...rawArtifactFixture, mimeType: "application/json;charset=UTF-8" }),
+    ).toBe(true);
 
     for (const fixture of [
       workspaceFixture,
