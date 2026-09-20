@@ -127,6 +127,33 @@ describe("StreamingArtifactWriter", () => {
     expect(writer.knownArtifactId("cnipa://gazette/source/1/raw")).toBe(ARTIFACT_A);
   });
 
+  it("reuses an unchanged child without requiring old parent ids in memory", async () => {
+    const client = {
+      checkArtifactContent: vi.fn(async () => ({
+        unchanged: true,
+        latestArtifactId: ARTIFACT_B,
+        latestSha256: "b".repeat(64),
+      })),
+      createArtifactSession: vi.fn(),
+      uploadArtifactContent: vi.fn(),
+      finalizeArtifact: vi.fn(),
+    } as unknown as ArtifactBackedExecutionClient;
+    const writer = new StreamingArtifactWriter(context(), client);
+    const result = await writer.write(
+      artifact({
+        canonicalUri: "cnipa://gazette/dataset/identity",
+        content: '{"identity":1}',
+        parentCanonicalUris: ["cnipa://gazette/source/1/raw", "cnipa://gazette/checkpoint/1-3"],
+      }),
+    );
+
+    expect(result).toMatchObject({
+      artifactId: ARTIFACT_B,
+      reused: true,
+    });
+    expect(client.createArtifactSession).not.toHaveBeenCalled();
+  });
+
   it("fails closed when a child arrives before its canonical parent is durable", async () => {
     const fixture = uploadClient();
     const writer = new StreamingArtifactWriter(context(), fixture.client);
@@ -142,7 +169,8 @@ describe("StreamingArtifactWriter", () => {
       code: "STREAM_ARTIFACT_PARENT_NOT_DURABLE",
       retryable: false,
     });
-    expect(fixture.client.checkArtifactContent).not.toHaveBeenCalled();
+    expect(fixture.client.checkArtifactContent).toHaveBeenCalledTimes(1);
+    expect(fixture.client.createArtifactSession).not.toHaveBeenCalled();
   });
 
   it("can retain only cross-checkpoint identities needed by the next checkpoint", () => {

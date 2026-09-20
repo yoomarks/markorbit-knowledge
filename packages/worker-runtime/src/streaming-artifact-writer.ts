@@ -144,7 +144,6 @@ export class StreamingArtifactWriter {
     assertArtifactAllowed(this.context, artifact);
     const canonical = canonicalUri(artifact);
     const contentSha256 = sha256(artifact.content);
-    const parentArtifactIds = this.resolveParentArtifactIds(artifact);
     const identity = await this.client.checkArtifactContent!(this.context, {
       artifactKind: artifact.artifactKind,
       canonicalUri: canonical,
@@ -161,6 +160,7 @@ export class StreamingArtifactWriter {
       };
     }
 
+    const parentArtifactIds = this.resolveParentArtifactIds(artifact);
     const session = await this.client.createArtifactSession(
       this.context,
       descriptorFor(artifact, parentArtifactIds),
