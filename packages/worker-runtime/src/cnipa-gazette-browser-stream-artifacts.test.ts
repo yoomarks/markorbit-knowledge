@@ -9,11 +9,18 @@ import {
   CNIPA_GAZETTE_BROWSER_SOURCE_PAGE_EVIDENCE_SCHEMA,
   CNIPA_GAZETTE_BROWSER_STREAM_STATE_ARTIFACT_SCHEMA,
   buildCnipaGazetteBrowserCheckpointEvidence,
+  buildCnipaGazetteBrowserDatasetIdentity,
   buildCnipaGazetteBrowserLogicalPageEvidence,
   buildCnipaGazetteBrowserSourcePageEvidence,
   buildCnipaGazetteBrowserStreamStateArtifact,
 } from "./cnipa-gazette-browser-stream-artifacts";
 import { CNIPA_GAZETTE_CHECKPOINT_ARTIFACT_SCHEMA } from "./cnipa-gazette-checkpoint-acquirer";
+import {
+  CNIPA_GAZETTE_BROWSER_DATASET_IDENTITY_SCHEMA,
+  buildCnipaGazetteDataEngineChunkPackage,
+  buildCnipaGazetteDataEngineFinalizePackage,
+  parseCnipaGazetteDatasetIdentityArtifact,
+} from "./cnipa-gazette-data-engine-handoff";
 
 const SOURCE_URL =
   "https://pub.sbj.cnipa.gov.cn/toas-pub-prod/pub-prod-api/public/web/anncInfo/searchEsTmgg";
@@ -251,6 +258,63 @@ describe("CNIPA Gazette browser-stream durable evidence builders", () => {
       },
     });
     expect(evidence.plannedRanges).toEqual([{ startPage: 1, endPage: 3 }]);
+  });
+
+  it("builds a browser-stream V2 dataset identity compatible with existing handoff builders", () => {
+    const { session, logicalPages } = collectLogicalPages();
+    const firstCheckpoint = buildCnipaGazetteBrowserCheckpointEvidence({
+      session,
+      range: { startPage: 1, endPage: 3 },
+      logicalPages,
+    });
+    const identity = buildCnipaGazetteBrowserDatasetIdentity({
+      session,
+      firstCheckpoint,
+      firstSourcePageEvidence: sourceEvidence(1),
+    });
+
+    expect(identity.identity).toMatchObject({
+      schemaVersion: CNIPA_GAZETTE_BROWSER_DATASET_IDENTITY_SCHEMA,
+      acquisitionMode: "NORMAL_BROWSER_STREAM",
+      announcementIssue: 75,
+      sourceRecordCount: 250,
+      sourcePageCount: 3,
+      pageSize: 100,
+      sourceCapturePageSize: 30,
+      sourceCapturePageCount: 9,
+      captureRootRawSha256: expect.stringMatching(/^[a-f0-9]{64}$/u),
+    });
+    expect(identity.artifact.parentCanonicalUris).toContain(
+      "cnipa://trademark-gazette/issue/75/browser-source/page-size/30/page/1/raw",
+    );
+    expect(identity.artifact.parentCanonicalUris).toContain(
+      "cnipa://trademark-gazette/issue/75/checkpoint/1-3",
+    );
+
+    const parsed = parseCnipaGazetteDatasetIdentityArtifact(identity.artifact);
+    const chunk = buildCnipaGazetteDataEngineChunkPackage({
+      checkpoint: firstCheckpoint.checkpoint,
+      datasetIdentity: parsed,
+      collectedAt: "2026-09-20T07:09:00.000Z",
+    });
+    expect(chunk).toMatchObject({
+      announcement_issue: 75,
+      source_record_count: 250,
+      source_page_count: 3,
+      page_size: 100,
+      source_dataset_sha256: identity.sourceDatasetSha256,
+    });
+    const finalize = buildCnipaGazetteDataEngineFinalizePackage({
+      datasetIdentity: parsed,
+      collectedAt: "2026-09-20T07:10:00.000Z",
+    });
+    expect(finalize).toMatchObject({
+      announcement_issue: 75,
+      record_count: 250,
+      page_count: 3,
+      page_size: 100,
+      source_dataset_sha256: identity.sourceDatasetSha256,
+    });
   });
 
   it("fails closed when logical provenance points outside the source session", () => {

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type { AcquiredCollectionArtifact } from "./artifact-backed-collection-executor";
 import {
   buildCnipaGazetteCheckpoint,
@@ -9,6 +11,12 @@ import {
   CNIPA_GAZETTE_CHECKPOINT_ARTIFACT_SCHEMA,
   CNIPA_GAZETTE_DEFAULT_PAGES_PER_CHECKPOINT,
 } from "./cnipa-gazette-checkpoint-acquirer";
+import {
+  CNIPA_GAZETTE_BROWSER_DATASET_IDENTITY_SCHEMA,
+  materializeCnipaGazetteDatasetIdentity,
+  type CnipaGazetteBrowserDatasetIdentityV2,
+  type CnipaGazetteDatasetIdentityEnvelope,
+} from "./cnipa-gazette-data-engine-handoff";
 import {
   cnipaGazetteBrowserStreamSessionFingerprint,
   parseCnipaGazetteBrowserSourcePage,
@@ -47,6 +55,11 @@ export type CnipaGazetteBrowserCheckpointEvidence = {
 function jsonBytes(value: unknown): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(value));
 }
+
+function sha256Bytes(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
 function parseJsonBytes(bytes: Uint8Array): unknown {
   if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) {
     throw new TypeError("browser source raw body must be non-empty bytes");
@@ -326,4 +339,71 @@ export function buildCnipaGazetteBrowserCheckpointEvidence(input: {
     logicalPageProjectionArtifacts,
     plannedRanges,
   };
+}
+export function buildCnipaGazetteBrowserDatasetIdentity(input: {
+  session: CnipaGazetteBrowserStreamSession;
+  firstCheckpoint: CnipaGazetteBrowserCheckpointEvidence;
+  firstSourcePageEvidence: CnipaGazetteBrowserSourcePageEvidence;
+}): CnipaGazetteDatasetIdentityEnvelope {
+  const checkpoint = input.firstCheckpoint.checkpoint;
+  const sourcePage = input.firstSourcePageEvidence.page;
+  if (checkpoint.range.startPage !== 1) {
+    throw new TypeError("browser dataset identity requires the first logical checkpoint");
+  }
+  if (
+    sourcePage.sourcePageIndex !== 1 ||
+    sourcePage.sessionId !== input.session.sessionId ||
+    sourcePage.sourcePageSize !== input.session.sourcePageSize ||
+    sourcePage.sourceTotal !== input.session.sourceTotal ||
+    sourcePage.sourcePages !== input.session.sourcePages
+  ) {
+    throw new TypeError("browser dataset identity requires source page 1 from the same session");
+  }
+  if (
+    checkpoint.announcementIssue !== input.session.announcementIssue ||
+    checkpoint.announcementDate !== input.session.announcementDate ||
+    checkpoint.sourceTotal !== input.session.sourceTotal
+  ) {
+    throw new TypeError("browser dataset identity checkpoint does not match the session");
+  }
+
+  if (input.session.announcementDate === null) {
+    throw new TypeError("browser dataset identity requires a non-empty announcement date");
+  }
+  const expectedRawCanonical = `${sourcePageBase(input.session, 1)}/raw`;
+  if (
+    input.firstSourcePageEvidence.rawArtifact.canonicalUri !== expectedRawCanonical ||
+    input.firstSourcePageEvidence.rawArtifact.sourceUri !== input.session.sourceUrl
+  ) {
+    throw new TypeError("browser dataset identity source-page raw artifact is invalid");
+  }
+
+  const identity: CnipaGazetteBrowserDatasetIdentityV2 = {
+    schemaVersion: CNIPA_GAZETTE_BROWSER_DATASET_IDENTITY_SCHEMA,
+    sourceAuthority: "CNIPA",
+    sourceFamily: "CNIPA_TRADEMARK_GAZETTE",
+    queryScope: {
+      announcementTypeSelection: "ALL",
+      anncType: "",
+    },
+    announcementIssue: input.session.announcementIssue,
+    announcementDate: input.session.announcementDate!,
+    sourceRecordCount: input.session.sourceTotal,
+    sourcePageCount: checkpoint.sourcePages,
+    pageSize: 100,
+    sourceUri: input.session.sourceUrl,
+    captureStartedAt: sourcePage.observedAt,
+    acquisitionMode: "NORMAL_BROWSER_STREAM",
+    sourceCapturePageSize: input.session.sourcePageSize,
+    sourceCapturePageCount: input.session.sourcePages,
+    captureRootRawSha256: sha256Bytes(input.firstSourcePageEvidence.rawArtifact.content),
+  };
+
+  return materializeCnipaGazetteDatasetIdentity({
+    identity,
+    parentCanonicalUris: [
+      input.firstSourcePageEvidence.rawArtifact.canonicalUri,
+      input.firstCheckpoint.checkpointArtifact.canonicalUri,
+    ].filter((value): value is string => Boolean(value)),
+  });
 }
