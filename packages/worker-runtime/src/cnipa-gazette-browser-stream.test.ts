@@ -105,6 +105,7 @@ describe("CNIPA Gazette normal-browser stream contract", () => {
       logicalPages.push(...accepted.logicalPages);
       if (pageIndex === 9) {
         expect(state.tailRows).toHaveLength(90);
+        expect(state.tailSourcePageIndices).toHaveLength(90);
         expect(logicalPages).toHaveLength(0);
       }
       if (pageIndex === 10) {
@@ -117,6 +118,8 @@ describe("CNIPA Gazette normal-browser stream contract", () => {
     expect(logicalPages.map((page) => page.pageIndex)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(logicalPages.every((page) => page.pageSize === 100)).toBe(true);
     expect(logicalPages.every((page) => page.sourcePages === 6)).toBe(true);
+    expect(logicalPages[0]?.sourcePageIndices).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(logicalPages[5]?.sourcePageIndices).toEqual([51, 52, 53, 54, 55, 56, 57, 58]);
     expect(state).toMatchObject({
       nextSourcePageIndex: 59,
       nextLogicalPageIndex: 7,
@@ -127,6 +130,55 @@ describe("CNIPA Gazette normal-browser stream contract", () => {
     expect(logicalPages.flatMap((page) => page.rows).map((item) => item.sourceRowId)).toHaveLength(
       576,
     );
+  });
+
+  it("preserves source-page provenance when pageSize does not divide 100", () => {
+    const currentSession = session({
+      capturedQuery: {
+        anncIssue: "75",
+        anncType: "",
+        regNo: "",
+        pageIndex: 1,
+        pageSize: 30,
+      },
+      sourceTotal: 250,
+      sourcePages: 9,
+    });
+    let state = createCnipaGazetteBrowserStreamState(currentSession);
+    const logicalPages = [];
+
+    for (let pageIndex = 1; pageIndex <= 9; pageIndex += 1) {
+      const accepted = acceptCnipaGazetteBrowserSourcePage({
+        session: currentSession,
+        state,
+        page: sourcePage(
+          currentSession,
+          pageIndex,
+          sourcePayload(pageIndex, {
+            pageSize: 30,
+            total: 250,
+            pages: 9,
+          }),
+        ),
+      });
+      state = accepted.state;
+      logicalPages.push(...accepted.logicalPages);
+    }
+
+    expect(logicalPages.map((page) => page.rows.length)).toEqual([100, 100, 50]);
+    expect(logicalPages.map((page) => page.sourcePageIndices)).toEqual([
+      [1, 2, 3, 4],
+      [4, 5, 6, 7],
+      [7, 8, 9],
+    ]);
+    expect(state).toMatchObject({
+      rowsSeen: 250,
+      nextSourcePageIndex: 10,
+      nextLogicalPageIndex: 4,
+      completed: true,
+    });
+    expect(state.tailRows).toHaveLength(0);
+    expect(state.tailSourcePageIndices).toHaveLength(0);
   });
 
   it("round-trips a bounded resume snapshot without retaining whole-issue rows", () => {
@@ -146,6 +198,7 @@ describe("CNIPA Gazette normal-browser stream contract", () => {
       currentSession,
     );
     expect(resumed.tailRows).toHaveLength(90);
+    expect(resumed.tailSourcePageIndices).toHaveLength(90);
     expect(resumed.previousSourceRowIds).toHaveLength(10);
     expect(resumed.rowsSeen).toBe(90);
     expect(() =>

@@ -41,6 +41,11 @@ export type CnipaGazetteBrowserSourcePage = {
   rows: readonly CnipaGazetteRuntimeRow[];
 };
 
+export type CnipaGazetteBrowserLogicalPage = CnipaGazettePageResult & {
+  sourcePageIndices: readonly number[];
+  observedAt: string;
+};
+
 export type CnipaGazetteBrowserStreamState = {
   schema: typeof CNIPA_GAZETTE_BROWSER_STREAM_STATE_SCHEMA;
   sessionId: string;
@@ -49,6 +54,7 @@ export type CnipaGazetteBrowserStreamState = {
   nextLogicalPageIndex: number;
   rowsSeen: number;
   tailRows: readonly CnipaGazetteRuntimeRow[];
+  tailSourcePageIndices: readonly number[];
   previousSourceRowIds: readonly string[];
   previousSourcePageSignatureSha256: string | null;
   completed: boolean;
@@ -376,6 +382,7 @@ export function createCnipaGazetteBrowserStreamState(
     nextLogicalPageIndex: 1,
     rowsSeen: 0,
     tailRows: [],
+    tailSourcePageIndices: [],
     previousSourceRowIds: [],
     previousSourcePageSignatureSha256: null,
     completed: false,
@@ -450,6 +457,19 @@ export function parseCnipaGazetteBrowserStreamState(
   if (tailRows.length >= CNIPA_GAZETTE_PAGE_SIZE) {
     throw new TypeError("state.tailRows must stay below one logical page");
   }
+  const tailSourcePageIndices = Array.isArray(state.tailSourcePageIndices)
+    ? state.tailSourcePageIndices.map((value, index) =>
+        integer(value, `state.tailSourcePageIndices[${index}]`, 1),
+      )
+    : (() => {
+        throw new TypeError("state.tailSourcePageIndices must be an array");
+      })();
+  if (
+    tailSourcePageIndices.length !== tailRows.length ||
+    tailSourcePageIndices.some((pageIndex) => pageIndex > session.sourcePages)
+  ) {
+    throw new TypeError("state tail provenance is internally inconsistent");
+  }
   const previousSourceRowIds = Array.isArray(state.previousSourceRowIds)
     ? state.previousSourceRowIds.map((value, index) =>
         requiredText(value, `state.previousSourceRowIds[${index}]`, 256),
@@ -480,7 +500,8 @@ export function parseCnipaGazetteBrowserStreamState(
   if (
     nextSourcePageIndex > session.sourcePages + 1 ||
     nextLogicalPageIndex > logicalPageCount(session.sourceTotal) + 1 ||
-    rowsSeen > session.sourceTotal
+    rowsSeen > session.sourceTotal ||
+    tailSourcePageIndices.some((pageIndex) => pageIndex >= nextSourcePageIndex)
   ) {
     throw new TypeError("state progress exceeds the browser-stream session bounds");
   }
@@ -495,6 +516,7 @@ export function parseCnipaGazetteBrowserStreamState(
       nextLogicalPageIndex !== logicalPageCount(session.sourceTotal) + 1 ||
       rowsSeen !== session.sourceTotal ||
       tailRows.length !== 0 ||
+      tailSourcePageIndices.length !== 0 ||
       previousSourceRowIds.length !== expectedLastLength ||
       signature === null
     ) {
@@ -523,6 +545,7 @@ export function parseCnipaGazetteBrowserStreamState(
     nextLogicalPageIndex,
     rowsSeen,
     tailRows,
+    tailSourcePageIndices,
     previousSourceRowIds,
     previousSourcePageSignatureSha256: signature,
     completed: state.completed,
@@ -539,7 +562,7 @@ export function acceptCnipaGazetteBrowserSourcePage(input: {
   page: CnipaGazetteBrowserSourcePage;
 }): {
   state: CnipaGazetteBrowserStreamState;
-  logicalPages: readonly CnipaGazettePageResult[];
+  logicalPages: readonly CnipaGazetteBrowserLogicalPage[];
 } {
   const state = parseCnipaGazetteBrowserStreamState(input.state, input.session);
   const page = input.page;
@@ -576,12 +599,19 @@ export function acceptCnipaGazetteBrowserSourcePage(input: {
   }
 
   const combined = [...state.tailRows, ...page.rows];
+  const combinedSourcePageIndices = [
+    ...state.tailSourcePageIndices,
+    ...page.rows.map(() => page.sourcePageIndex),
+  ];
   const finalSourcePage = page.sourcePageIndex === input.session.sourcePages;
-  const logicalPages: CnipaGazettePageResult[] = [];
+  const logicalPages: CnipaGazetteBrowserLogicalPage[] = [];
   const totalLogicalPages = logicalPageCount(input.session.sourceTotal);
   let nextLogicalPageIndex = state.nextLogicalPageIndex;
   while (combined.length >= CNIPA_GAZETTE_PAGE_SIZE) {
     const rows = combined.splice(0, CNIPA_GAZETTE_PAGE_SIZE);
+    const sourcePageIndices = [
+      ...new Set(combinedSourcePageIndices.splice(0, CNIPA_GAZETTE_PAGE_SIZE)),
+    ].sort((left, right) => left - right);
     logicalPages.push({
       pageIndex: nextLogicalPageIndex,
       pageSize: CNIPA_GAZETTE_PAGE_SIZE,
@@ -589,11 +619,16 @@ export function acceptCnipaGazetteBrowserSourcePage(input: {
       sourcePages: totalLogicalPages,
       announcementDate: input.session.announcementDate,
       rows,
+      sourcePageIndices,
+      observedAt: page.observedAt,
     });
     nextLogicalPageIndex += 1;
   }
 
   if (finalSourcePage && (combined.length > 0 || input.session.sourceTotal === 0)) {
+    const sourcePageIndices = [...new Set(combinedSourcePageIndices.splice(0))].sort(
+      (left, right) => left - right,
+    );
     logicalPages.push({
       pageIndex: nextLogicalPageIndex,
       pageSize: CNIPA_GAZETTE_PAGE_SIZE,
@@ -601,6 +636,8 @@ export function acceptCnipaGazetteBrowserSourcePage(input: {
       sourcePages: totalLogicalPages,
       announcementDate: input.session.announcementDate,
       rows: combined.splice(0),
+      sourcePageIndices,
+      observedAt: page.observedAt,
     });
     nextLogicalPageIndex += 1;
   }
@@ -615,7 +652,11 @@ export function acceptCnipaGazetteBrowserSourcePage(input: {
         `browser stream terminal count mismatch: rows=${rowsSeen}, sourceTotal=${input.session.sourceTotal}`,
       );
     }
-    if (combined.length !== 0 || nextLogicalPageIndex !== totalLogicalPages + 1) {
+    if (
+      combined.length !== 0 ||
+      combinedSourcePageIndices.length !== 0 ||
+      nextLogicalPageIndex !== totalLogicalPages + 1
+    ) {
       throw new TypeError(
         "browser stream logical normalization did not finish exactly at sourceTotal",
       );
@@ -633,6 +674,7 @@ export function acceptCnipaGazetteBrowserSourcePage(input: {
       nextLogicalPageIndex,
       rowsSeen,
       tailRows: combined,
+      tailSourcePageIndices: combinedSourcePageIndices,
       previousSourceRowIds: page.rows.map((row) => row.sourceRowId),
       previousSourcePageSignatureSha256: page.pageSignatureSha256,
       completed: finalSourcePage,
