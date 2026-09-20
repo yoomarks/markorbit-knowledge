@@ -155,6 +155,33 @@ function canonicalSourceUrl(value: unknown): string {
 }
 
 const FORBIDDEN_QUERY_KEY = /fecu|cookie|credential|bearer|token|captcha|sso/iu;
+const ALLOWED_QUERY_KEYS = new Set([
+  "anncIssue",
+  "anncType",
+  "regNo",
+  "tmName",
+  "intlCls",
+  "registerCnName",
+  "coowner",
+  "agentName",
+  "tmType",
+  "tmDescType",
+  "startDate",
+  "endDate",
+  "pageIndex",
+  "pageSize",
+]);
+const EMPTY_SCOPE_QUERY_KEYS = [
+  "regNo",
+  "tmName",
+  "intlCls",
+  "registerCnName",
+  "coowner",
+  "agentName",
+  "tmType",
+  "startDate",
+  "endDate",
+] as const;
 
 function capturedQuery(
   value: unknown,
@@ -166,6 +193,9 @@ function capturedQuery(
     if (FORBIDDEN_QUERY_KEY.test(key)) {
       throw new TypeError(`capturedQuery.${key} is forbidden in durable browser-stream evidence`);
     }
+    if (!ALLOWED_QUERY_KEYS.has(key)) {
+      throw new TypeError(`capturedQuery.${key} is outside the frozen Gazette issue/ALL scope`);
+    }
     if (typeof child !== "string" && typeof child !== "number") {
       throw new TypeError(`capturedQuery.${key} must be string/number`);
     }
@@ -173,6 +203,14 @@ function capturedQuery(
   }
   if (String(query.anncIssue ?? "").trim() !== String(announcementIssue) || query.anncType !== "") {
     throw new TypeError("capturedQuery must target the session issue with announcement type ALL");
+  }
+  for (const key of EMPTY_SCOPE_QUERY_KEYS) {
+    if (key in query && String(query[key] ?? "").trim() !== "") {
+      throw new TypeError(`capturedQuery.${key} must be empty for full-issue Gazette acquisition`);
+    }
+  }
+  if ("tmDescType" in query && String(query.tmDescType ?? "").trim() !== "0") {
+    throw new TypeError("capturedQuery.tmDescType must equal 0 when supplied");
   }
   if (query.pageIndex !== 1) throw new TypeError("capturedQuery.pageIndex must equal 1");
   const pageSize = integer(query.pageSize, "capturedQuery.pageSize", 1);

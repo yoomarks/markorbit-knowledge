@@ -243,6 +243,28 @@ describe("CNIPA Gazette normal-browser stream contract", () => {
         },
       }),
     ).toThrow(/forbidden in durable browser-stream evidence/);
+    expect(() =>
+      session({
+        capturedQuery: {
+          anncIssue: "75",
+          anncType: "",
+          regNo: "123456",
+          pageIndex: 1,
+          pageSize: 10,
+        },
+      }),
+    ).toThrow(/must be empty for full-issue Gazette acquisition/);
+    expect(() =>
+      session({
+        capturedQuery: {
+          anncIssue: "75",
+          anncType: "",
+          pageIndex: 1,
+          pageSize: 10,
+          futureFilter: "",
+        },
+      }),
+    ).toThrow(/outside the frozen Gazette issue\/ALL scope/);
 
     const safeSession = session();
     const safeState = createCnipaGazetteBrowserStreamState(safeSession);
