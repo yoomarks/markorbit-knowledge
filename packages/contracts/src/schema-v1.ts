@@ -714,7 +714,7 @@ export function isRawArtifact(value: unknown): value is RawArtifact {
     versionRelationshipIsValid &&
     isEnumValue(ARTIFACT_KINDS, value.artifactKind) &&
     typeof value.mimeType === "string" &&
-    /^[\w.+-]+\/[\w.+-]+$/.test(value.mimeType) &&
+    /^[\w.+-]+\/[\w.+-]+(?:\s*;\s*[\w!#$&^_.+-]+=[\w!#$&^_.+-]+)*$/.test(value.mimeType) &&
     typeof value.originalName === "string" &&
     value.originalName.length > 0 &&
     (value.canonicalUri === undefined || isUri(value.canonicalUri)) &&
