@@ -161,6 +161,19 @@ Production mutation is split into least-privilege stages, but Gazette source acq
 
 The bounded #860 acceptance imports a complete v0.9.4 capture offline. A separately governed streaming/browser-extension bridge is still required before any historical production replay can be enabled.
 
+### #865 normal-browser stream contract
+
+The production bridge separates **source pagination** from the existing durable Gazette pagination contract:
+
+- the browser preserves the pageSize of the successful normal official query and changes only pageIndex;
+- source pages may therefore arrive at the captured browser pageSize, while Knowledge normalizes the ordered row stream into the existing 100-row logical pages consumed by checkpoint/dataset/CHUNK builders;
+- the durable browser-stream session records only the canonical LIST endpoint, issue/ALL query fields, source total/pages/pageSize, announcement date and bounded timestamps/identifiers;
+- query-string FECU and credential/session-like query fields are rejected from durable evidence;
+- resumable stream state is bounded to progress counters, at most 99 pending logical rows, and the immediately previous source-page row ids/signature for repeated-page diagnostics;
+- request headers, cookies, browser tokens, SSO/CAPTCHA state and other live browser authorization material are not part of the durable session or checkpoint state.
+
+This contract is an offline prerequisite for the loopback/browser bridge. It does **not** enable the disabled Playwright Gazette provider and does **not** authorize issue 73 -> current historical replay.
+
 Durable Knowledge artifact reads are available only through the lease-scoped Worker endpoint and only for RawArtifact ids explicitly referenced by the immutable Gazette publisher/finalize Job snapshot. The endpoint also enforces workspace ownership and stored SHA/size integrity before streaming bytes.
 
 The production lineage is therefore:
