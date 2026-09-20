@@ -265,6 +265,7 @@ async function prepareStage(input: {
   authorityToken: string;
   stage: CnipaGazetteAcceptanceRuntimeStage;
   connectorConfig: Record<string, unknown>;
+  dispatchAttemptKey?: string;
 }): Promise<StagePreparation> {
   const body = await acceptanceRequest(
     input.baseUrl,
@@ -272,7 +273,11 @@ async function prepareStage(input: {
     input.planSha256,
     input.authorityToken,
     "PREPARE_STAGE",
-    { stage: input.stage, connectorConfig: input.connectorConfig },
+    {
+      stage: input.stage,
+      connectorConfig: input.connectorConfig,
+      ...(input.dispatchAttemptKey ? { dispatchAttemptKey: input.dispatchAttemptKey } : {}),
+    },
   );
   return {
     runtimeStage: input.stage,
@@ -550,8 +555,10 @@ export async function applyCnipaGazetteAcceptance(input: {
 }) {
   const outputDirectory = assertCnipaGazetteAcceptancePathOutsideWorkingTree(input.outputDirectory);
   await mkdir(outputDirectory, { recursive: true });
+  const dispatchAttemptKey = `try-${Date.now().toString(36)}-${process.pid.toString(36)}`;
   const acquisition = await prepareStage({
     ...input,
+    dispatchAttemptKey,
     stage: "IMPORT_CAPTURE",
     connectorConfig: cnipaGazetteAcceptanceCaptureImportConfig(input.plan, {
       sha256: input.capture.sha256,
@@ -607,6 +614,7 @@ export async function applyCnipaGazetteAcceptance(input: {
   }
   const chunkPublisher = await prepareStage({
     ...input,
+    dispatchAttemptKey,
     stage: "PUBLISH_CHUNK",
     connectorConfig: {
       intent: "PUBLISH_DURABLE_REQUEST",
@@ -642,6 +650,7 @@ export async function applyCnipaGazetteAcceptance(input: {
 
   const finalizeBuilder = await prepareStage({
     ...input,
+    dispatchAttemptKey,
     stage: "BUILD_FINALIZE",
     connectorConfig: {
       intent: "BUILD_FINALIZE_REQUEST",
@@ -677,6 +686,7 @@ export async function applyCnipaGazetteAcceptance(input: {
 
   const finalizePublisher = await prepareStage({
     ...input,
+    dispatchAttemptKey,
     stage: "PUBLISH_FINALIZE",
     connectorConfig: {
       intent: "PUBLISH_DURABLE_REQUEST",

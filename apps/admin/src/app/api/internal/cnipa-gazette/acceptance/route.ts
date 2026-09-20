@@ -381,6 +381,13 @@ export async function POST(request: Request) {
     const payload = objectValue(body.payload ?? {}, "payload");
     if (operation === "PREPARE_STAGE") {
       const runtimeStage = stage(payload.stage);
+      const rawDispatchAttemptKey =
+        payload.dispatchAttemptKey === undefined
+          ? "default"
+          : text(payload.dispatchAttemptKey, "dispatchAttemptKey");
+      if (!/^[a-z0-9-]{1,48}$/u.test(rawDispatchAttemptKey)) {
+        throw new RegistryValidationError("Gazette dispatch attempt key is invalid");
+      }
       const prepared = connectorConfigAndGrants(
         runtimeStage,
         payload.connectorConfig,
@@ -406,7 +413,7 @@ export async function POST(request: Request) {
       const dispatched = getExecutionLedgerRepository().dispatchManual({
         planId: collectionPlan.id,
         requestedBy: { actorType: "API_CLIENT", actorId: access.actorId },
-        idempotencyKey: `cnipa-gazette-acceptance-${runtimeStage}-${access.planSha256.slice(0, 32)}`,
+        idempotencyKey: `cnipa-gazette-acceptance-${runtimeStage}-${access.planSha256.slice(0, 24)}-${rawDispatchAttemptKey}`,
         extensions,
       });
       const jobs = dispatched.record.jobs;
