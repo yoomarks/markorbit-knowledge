@@ -36,8 +36,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ip-australia-acquisition-learning-live-${{ github.run_id }}
-  cancel-in-progress: false
+  group: ip-australia-acquisition-learning-live-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   acquisition-learning:
@@ -74,7 +74,7 @@ jobs:
 
       - name: Resolve authoritative Manual inventory baseline
         run: |
-          pnpm --filter @markorbit/worker inventory:ip-australia-manual > "$RUNNER_TEMP/ip-au-inventory.json"
+          pnpm --filter @markorbit/worker inventory:ip-australia-manual -- --output "$RUNNER_TEMP/ip-au-inventory.json"
           node <<'NODE'
           const fs=require('node:fs');
           const report=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/ip-au-inventory.json','utf8'));
