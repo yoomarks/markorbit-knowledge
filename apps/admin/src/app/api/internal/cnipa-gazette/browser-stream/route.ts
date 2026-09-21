@@ -1,10 +1,15 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
 import {
+  cnipaGazetteBrowserAdmissionPlanSha256,
   cnipaGazetteBrowserConnectorManifest,
   cnipaGazetteBrowserPlanPayload,
   cnipaGazetteBrowserSourcePayload,
   cnipaGazetteBrowserStreamJobFromContext,
   cnipaGazetteBrowserWorkerPayload,
+  expectedCnipaGazetteBrowserAdmissionAuthorityToken,
+  parseCnipaGazetteBrowserAdmissionPlan,
   parseCnipaGazetteBrowserAuthorityPlan,
   type CnipaGazetteBrowserAuthorityPlan,
 } from "@markorbit/worker-runtime";
@@ -19,6 +24,7 @@ import {
   getCollectionPlanRepository,
   getConnectorRepository,
   getExecutionLedgerRepository,
+  getRawArtifactRepository,
   getSourceRepository,
   getWorkerRegistryRepository,
 } from "@/server/source-registry";
@@ -235,11 +241,254 @@ function validateJob(
   }
   return id;
 }
+
+function positiveInteger(value: unknown, label: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 1) {
+    throw new RegistryValidationError(`${label} must be a positive integer`);
+  }
+  return value as number;
+}
+
+function browserRunRecord(
+  runId: string,
+  workspaceId: string,
+  plan: CnipaGazetteBrowserAuthorityPlan,
+  planSha256: string,
+) {
+  const record = getExecutionLedgerRepository().getById(runId);
+  if (!record || record.run.workspaceId !== workspaceId) {
+    throw new RegistryValidationError("Gazette browser run is unavailable");
+  }
+  const source = getSourceRepository().getById(record.run.sourceId);
+  if (
+    !source ||
+    source.sourceType !== "API" ||
+    source.connector.connectorId !== "cnipa-trademark-gazette" ||
+    source.connector.version !== "1.0.0" ||
+    source.extensions?.["x-markorbit-browser-auth-owned-by-browser"] !== true ||
+    source.extensions?.["x-markorbit-historical-replay-activated"] !== false ||
+    record.run.extensions?.["x-markorbit-gazette-browser-operation"] !== plan.operationId ||
+    record.run.extensions?.["x-markorbit-gazette-browser-frozen-plan-sha256"] !== planSha256 ||
+    record.run.extensions?.["x-markorbit-historical-replay-activated"] !== false
+  ) {
+    throw new RegistryValidationError("Gazette browser run is outside the frozen browser scope");
+  }
+  return record;
+}
+
+async function verifiedArtifactJson(
+  view: ReturnType<ReturnType<typeof getRawArtifactRepository>["getArtifact"]>,
+) {
+  if (!view) throw new RegistryValidationError("Gazette browser artifact is unavailable");
+  const content = getRawArtifactRepository().contentPath(view.artifact.id);
+  const bytes = await readFile(content.path);
+  const observedSha = createHash("sha256").update(bytes).digest("hex");
+  if (
+    bytes.byteLength !== view.artifact.sizeBytes ||
+    observedSha !== view.artifact.binaryHash.value
+  ) {
+    throw new RegistryValidationError("Gazette browser artifact storage integrity mismatch");
+  }
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
+  } catch {
+    throw new RegistryValidationError("Gazette browser artifact is not valid JSON");
+  }
+}
+
+function admissionArtifactRef(
+  view: NonNullable<ReturnType<ReturnType<typeof getRawArtifactRepository>["getArtifact"]>>,
+) {
+  if (!view.artifact.canonicalUri) {
+    throw new RegistryValidationError("Gazette browser admission seed is missing canonical URI");
+  }
+  return {
+    artifactId: view.artifact.id,
+    canonicalUri: view.artifact.canonicalUri,
+    sha256: view.artifact.binaryHash.value,
+    sizeBytes: view.artifact.sizeBytes,
+  };
+}
+
+function listAllRunArtifacts(input: { workspaceId: string; runId: string; q: string }) {
+  const repository = getRawArtifactRepository();
+  const items: ReturnType<typeof repository.list>["items"] = [];
+  let offset = 0;
+  let total = 0;
+  do {
+    const page = repository.list({
+      workspaceId: input.workspaceId,
+      runId: input.runId,
+      artifactKind: "JSON",
+      q: input.q,
+      limit: 100,
+      offset,
+    });
+    total = page.total;
+    items.push(...page.items);
+    offset += page.items.length;
+    if (items.length > 10_000) {
+      throw new RegistryValidationError("Gazette browser artifact set exceeds bounded limit");
+    }
+    if (page.items.length === 0 && offset < total) {
+      throw new RegistryValidationError("Gazette browser artifact pagination stalled");
+    }
+  } while (offset < total);
+  return { items, total };
+}
+
+async function buildAdmissionPlanFromBrowserRun(input: {
+  workspaceId: string;
+  browserPlan: CnipaGazetteBrowserAuthorityPlan;
+  browserPlanSha256: string;
+  runId: string;
+  authorityIssueNumber: number;
+  operationId: string;
+  dataEngineUrl: string;
+}) {
+  browserRunRecord(input.runId, input.workspaceId, input.browserPlan, input.browserPlanSha256);
+  const artifacts = getRawArtifactRepository();
+
+  const identityResult = artifacts.list({
+    workspaceId: input.workspaceId,
+    runId: input.runId,
+    artifactKind: "JSON",
+    q: "dataset-identity",
+    limit: 10,
+  });
+  if (identityResult.total !== 1 || identityResult.items.length !== 1) {
+    throw new RegistryValidationError(
+      "Completed Gazette browser run must contain exactly one dataset identity",
+    );
+  }
+  const identityView = identityResult.items[0]!;
+  const identityRaw = objectValue(await verifiedArtifactJson(identityView), "dataset identity");
+  const identity = objectValue(identityRaw.identity, "dataset identity.identity");
+  const queryScope = objectValue(identity.queryScope, "dataset identity.queryScope");
+  const sourceDatasetSha256 = text(identityRaw.sourceDatasetSha256, "sourceDatasetSha256");
+  if (!/^[a-f0-9]{64}$/u.test(sourceDatasetSha256)) {
+    throw new RegistryValidationError("Gazette dataset identity SHA-256 is invalid");
+  }
+  const announcementIssue = positiveInteger(identity.announcementIssue, "announcementIssue");
+  const sourceRecordCount = positiveInteger(identity.sourceRecordCount, "sourceRecordCount");
+  const logicalPageCount = positiveInteger(identity.sourcePageCount, "logicalPageCount");
+  const logicalPageSize = positiveInteger(identity.pageSize, "logicalPageSize");
+  const browserSourcePageSize = positiveInteger(
+    identity.sourceCapturePageSize,
+    "browserSourcePageSize",
+  );
+  const browserSourcePageCount = positiveInteger(
+    identity.sourceCapturePageCount,
+    "browserSourcePageCount",
+  );
+  const announcementDate = text(identity.announcementDate, "announcementDate");
+  if (
+    announcementIssue !== input.browserPlan.announcementIssue ||
+    logicalPageSize !== 100 ||
+    queryScope.announcementTypeSelection !== "ALL" ||
+    queryScope.anncType !== ""
+  ) {
+    throw new RegistryValidationError("Gazette dataset identity escaped frozen browser scope");
+  }
+  const expectedIdentityCanonical = `cnipa://trademark-gazette/issue/${announcementIssue}/dataset/${sourceDatasetSha256}`;
+  if (identityView.artifact.canonicalUri !== expectedIdentityCanonical) {
+    throw new RegistryValidationError("Gazette dataset identity canonical URI mismatch");
+  }
+
+  const chunkResult = listAllRunArtifacts({
+    workspaceId: input.workspaceId,
+    runId: input.runId,
+    q: "/fact-admission/chunk/",
+  });
+  if (
+    chunkResult.total < 1 ||
+    chunkResult.total > 10_000 ||
+    chunkResult.items.length !== chunkResult.total
+  ) {
+    throw new RegistryValidationError(
+      "Gazette browser run must expose 1..10000 frozen CHUNK requests",
+    );
+  }
+
+  const chunkRequests = [];
+  for (const view of chunkResult.items) {
+    const raw = objectValue(await verifiedArtifactJson(view), "CHUNK request");
+    const payload = objectValue(raw.payload, "CHUNK request.payload");
+    const range = objectValue(raw.range, "CHUNK request.range");
+    const startPage = positiveInteger(range.startPage, "CHUNK request.range.startPage");
+    const endPage = positiveInteger(range.endPage, "CHUNK request.range.endPage");
+    if (
+      raw.operation !== "CHUNK" ||
+      raw.announcementIssue !== announcementIssue ||
+      raw.sourceDatasetSha256 !== sourceDatasetSha256 ||
+      payload.source_record_count !== sourceRecordCount ||
+      payload.source_page_count !== logicalPageCount ||
+      payload.page_size !== 100 ||
+      payload.range_start_page !== startPage ||
+      payload.range_end_page !== endPage
+    ) {
+      throw new RegistryValidationError("Gazette CHUNK request does not match dataset identity");
+    }
+    if (!view.artifact.provenance.parentArtifactIds?.includes(identityView.artifact.id)) {
+      throw new RegistryValidationError(
+        "Gazette CHUNK request does not descend from the durable dataset identity",
+      );
+    }
+    chunkRequests.push({
+      range: { startPage, endPage },
+      requestRef: admissionArtifactRef(view),
+    });
+  }
+  chunkRequests.sort((left, right) => left.range.startPage - right.range.startPage);
+
+  const finalSourcePageRowCount =
+    sourceRecordCount - (browserSourcePageCount - 1) * browserSourcePageSize;
+  const finalLogicalPageRowCount = sourceRecordCount - (logicalPageCount - 1) * 100;
+
+  const plan = parseCnipaGazetteBrowserAdmissionPlan({
+    version: 1,
+    operationId: input.operationId,
+    workspaceId: input.workspaceId,
+    authorityMode: "INTERNAL_SERVICE_GO_V1",
+    executionMode: "APPLY_DISPATCH_ONCE",
+    workerMode: "PROVISION_ONE_SHOT",
+    stage: "BROWSER_DATASET_ADMISSION",
+    authorityIssueNumber: input.authorityIssueNumber,
+    announcementIssue,
+    announcementDate,
+    sourceRecordCount,
+    browserSourcePageSize,
+    browserSourcePageCount,
+    finalSourcePageRowCount,
+    logicalPageSize: 100,
+    logicalPageCount,
+    finalLogicalPageRowCount,
+    range: { startPage: 1, endPage: logicalPageCount },
+    announcementTypeSelection: "ALL",
+    anncType: "",
+    acquisitionMode: "MO_CNIPA_NORMAL_BROWSER_STREAM_V1",
+    captureTool: "MO CNIPA Network Capture",
+    captureToolVersion: input.browserPlan.captureToolVersion,
+    sourceDatasetSha256,
+    datasetIdentityRef: admissionArtifactRef(identityView),
+    chunkRequests,
+    dataEngineUrl: input.dataEngineUrl,
+    historicalReplayActivated: false,
+  });
+  const planSha256 = cnipaGazetteBrowserAdmissionPlanSha256(plan);
+  return {
+    plan,
+    planSha256,
+    expectedAuthorityToken: expectedCnipaGazetteBrowserAdmissionAuthorityToken(plan, planSha256),
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const body = requireRecord(await readJson(request));
     const workspaceId = text(body.workspaceId, "workspaceId");
-    if (body.operation !== "PREPARE_BROWSER_JOB") {
+    const operation = text(body.operation, "operation");
+    if (operation !== "PREPARE_BROWSER_JOB" && operation !== "BUILD_ADMISSION_PLAN") {
       throw new RegistryValidationError("Unsupported CNIPA Gazette browser-stream operation");
     }
     const authority = objectValue(body.authority, "authority");
@@ -249,6 +498,31 @@ export async function POST(request: Request) {
       frozenPlan: plan,
       planSha256: authority.planSha256,
     });
+
+    if (operation === "BUILD_ADMISSION_PLAN") {
+      const payload = objectValue(body.payload ?? {}, "payload");
+      const runId = text(payload.runId, "runId");
+      const authorityIssueNumber = positiveInteger(
+        payload.authorityIssueNumber,
+        "authorityIssueNumber",
+      );
+      const operationId = text(payload.operationId, "operationId");
+      const dataEngineUrl = text(payload.dataEngineUrl, "dataEngineUrl");
+      const result = await buildAdmissionPlanFromBrowserRun({
+        workspaceId,
+        browserPlan: plan,
+        browserPlanSha256: access.planSha256,
+        runId,
+        authorityIssueNumber,
+        operationId,
+        dataEngineUrl,
+      });
+      return NextResponse.json({
+        ...result,
+        sourceBrowserRunId: runId,
+        historicalReplayActivated: false,
+      });
+    }
 
     ensureConnector();
     const source = ensureSource(plan);
