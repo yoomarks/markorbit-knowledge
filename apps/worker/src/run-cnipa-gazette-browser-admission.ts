@@ -396,9 +396,25 @@ function expectedLogicalPageRowCount(
   return pageIndex === plan.logicalPageCount ? plan.finalLogicalPageRowCount : plan.logicalPageSize;
 }
 
-function assertChunkRequest(value: unknown, plan: CnipaGazetteBrowserAdmissionPlan): void {
+function chunkRowCount(
+  plan: CnipaGazetteBrowserAdmissionPlan,
+  range: CnipaGazetteBrowserAdmissionPlan["chunkRequests"][number]["range"],
+): number {
+  let total = 0;
+  for (let pageIndex = range.startPage; pageIndex <= range.endPage; pageIndex += 1) {
+    total += expectedLogicalPageRowCount(plan, pageIndex);
+  }
+  return total;
+}
+
+function assertChunkRequest(
+  value: unknown,
+  plan: CnipaGazetteBrowserAdmissionPlan,
+  seed: CnipaGazetteBrowserAdmissionPlan["chunkRequests"][number],
+): void {
   const root = record(value, "chunk request");
   const payload = record(root.payload, "chunk request.payload");
+  const expectedRows = chunkRowCount(plan, seed.range);
   if (
     root.operation !== "CHUNK" ||
     root.announcementIssue !== plan.announcementIssue ||
@@ -406,19 +422,20 @@ function assertChunkRequest(value: unknown, plan: CnipaGazetteBrowserAdmissionPl
     payload.source_record_count !== plan.sourceRecordCount ||
     payload.source_page_count !== plan.logicalPageCount ||
     payload.page_size !== plan.logicalPageSize ||
-    payload.range_start_page !== 1 ||
-    payload.range_end_page !== plan.logicalPageCount ||
-    payload.chunk_row_count !== plan.sourceRecordCount
+    payload.range_start_page !== seed.range.startPage ||
+    payload.range_end_page !== seed.range.endPage ||
+    payload.chunk_row_count !== expectedRows
   ) {
-    throw new Error("Browser CHUNK request does not match the frozen single-issue plan");
+    throw new Error("Browser CHUNK request does not match the frozen chunk plan");
   }
   const counts = payload.page_row_counts;
-  if (!Array.isArray(counts) || counts.length !== plan.logicalPageCount) {
-    throw new Error("Browser CHUNK page_row_counts do not cover the frozen logical range");
+  const expectedPageCount = seed.range.endPage - seed.range.startPage + 1;
+  if (!Array.isArray(counts) || counts.length !== expectedPageCount) {
+    throw new Error("Browser CHUNK page_row_counts do not cover the frozen chunk range");
   }
   counts.forEach((entry, index) => {
     const row = record(entry, `page_row_counts[${index}]`);
-    const pageIndex = index + 1;
+    const pageIndex = seed.range.startPage + index;
     if (
       row.page_index !== pageIndex ||
       row.row_count !== expectedLogicalPageRowCount(plan, pageIndex)
@@ -426,12 +443,16 @@ function assertChunkRequest(value: unknown, plan: CnipaGazetteBrowserAdmissionPl
       throw new Error(`Browser logical page ${pageIndex} row count mismatch`);
     }
   });
-  if (!Array.isArray(payload.records) || payload.records.length !== plan.sourceRecordCount) {
-    throw new Error("Browser CHUNK record count does not match the frozen plan");
+  if (!Array.isArray(payload.records) || payload.records.length !== expectedRows) {
+    throw new Error("Browser CHUNK record count does not match the frozen chunk range");
   }
 }
 
-function assertChunkReceipt(value: unknown, plan: CnipaGazetteBrowserAdmissionPlan): boolean {
+function assertChunkReceipt(
+  value: unknown,
+  plan: CnipaGazetteBrowserAdmissionPlan,
+  seed: CnipaGazetteBrowserAdmissionPlan["chunkRequests"][number],
+): boolean {
   const root = record(value, "chunk receipt");
   const receipt = record(root.receipt, "chunk receipt.receipt");
   const range = record(root.range, "chunk receipt.range");
@@ -439,8 +460,8 @@ function assertChunkReceipt(value: unknown, plan: CnipaGazetteBrowserAdmissionPl
     root.operation !== "CHUNK" ||
     root.sourceDatasetSha256 !== plan.sourceDatasetSha256 ||
     root.announcementIssue !== plan.announcementIssue ||
-    range.startPage !== 1 ||
-    range.endPage !== plan.logicalPageCount ||
+    range.startPage !== seed.range.startPage ||
+    range.endPage !== seed.range.endPage ||
     receipt.outcome !== "CHUNK_ADMITTED" ||
     typeof receipt.replayed !== "boolean"
   ) {
@@ -514,14 +535,21 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     ...input,
     artifactId: input.plan.datasetIdentityRef.artifactId,
   });
-  const chunkSeed = await readSeedJsonArtifact({
-    ...input,
-    artifactId: input.plan.chunkRequestRef.artifactId,
-  });
   assertDatasetIdentity(datasetSeed.json, input.plan);
-  assertChunkRequest(chunkSeed.json, input.plan);
-  if (!chunkSeed.artifact.parentArtifactIds.includes(input.plan.datasetIdentityRef.artifactId)) {
-    throw new Error("Browser CHUNK request is not descended from the frozen dataset identity");
+
+  const chunkSeeds = [];
+  for (const seed of input.plan.chunkRequests) {
+    const durable = await readSeedJsonArtifact({
+      ...input,
+      artifactId: seed.requestRef.artifactId,
+    });
+    assertChunkRequest(durable.json, input.plan, seed);
+    if (!durable.artifact.parentArtifactIds.includes(input.plan.datasetIdentityRef.artifactId)) {
+      throw new Error(
+        `Browser CHUNK request ${seed.range.startPage}-${seed.range.endPage} is not descended from the frozen dataset identity`,
+      );
+    }
+    chunkSeeds.push({ seed, durable });
   }
 
   const dataEngineKey = process.env.MARKORBIT_DATA_ENGINE_FACT_ADMISSION_KEY?.trim();
@@ -532,39 +560,60 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
   }
   const dispatchAttemptKey = `try-${Date.now().toString(36)}-${process.pid.toString(36)}`;
   const artifactNames = cnipaGazetteBrowserAdmissionArtifactNames(input.plan);
+  const chunkStages: Array<{
+    prepared: StagePreparation;
+    artifacts: ArtifactView[];
+    receipt: ArtifactView;
+    replayed: boolean;
+    range: { startPage: number; endPage: number };
+  }> = [];
 
-  const chunkPublisher = await prepareStage({
-    ...input,
-    dispatchAttemptKey,
-    stage: "PUBLISH_CHUNK",
-    connectorConfig: {
-      intent: "PUBLISH_DURABLE_REQUEST",
-      requestArtifactRef: input.plan.chunkRequestRef,
-    },
-  });
-  await runStageWorker({
-    baseUrl: input.baseUrl,
-    prepared: chunkPublisher,
-    acquirer: new CnipaGazetteFactAdmissionJobAcquirer({
-      reader: new HttpCnipaGazetteDurableArtifactReader(
-        input.baseUrl,
-        chunkPublisher.workerId,
-        chunkPublisher.workerCredential,
-      ),
-      client: new HttpFactAdmissionClient(input.plan.dataEngineUrl, dataEngineKey),
-    }),
-  });
-  const chunkArtifacts = await listRunArtifacts({ ...input, runId: chunkPublisher.runId });
-  const chunkReceipt = oneArtifact(chunkArtifacts, artifactNames.chunkReceipt);
-  const chunkReceiptJson = await readJsonArtifact({
-    ...input,
-    runId: chunkPublisher.runId,
-    artifactId: chunkReceipt.artifactId,
-  });
-  const chunkReplayed = assertChunkReceipt(chunkReceiptJson.json, input.plan);
-  if (!chunkReceipt.parentArtifactIds.includes(input.plan.chunkRequestRef.artifactId)) {
-    throw new Error("CHUNK receipt does not descend from the frozen browser CHUNK request");
+  for (const [index, { seed }] of chunkSeeds.entries()) {
+    const chunkPublisher = await prepareStage({
+      ...input,
+      dispatchAttemptKey: `${dispatchAttemptKey}-c${index + 1}`,
+      stage: "PUBLISH_CHUNK",
+      connectorConfig: {
+        intent: "PUBLISH_DURABLE_REQUEST",
+        requestArtifactRef: seed.requestRef,
+      },
+    });
+    await runStageWorker({
+      baseUrl: input.baseUrl,
+      prepared: chunkPublisher,
+      acquirer: new CnipaGazetteFactAdmissionJobAcquirer({
+        reader: new HttpCnipaGazetteDurableArtifactReader(
+          input.baseUrl,
+          chunkPublisher.workerId,
+          chunkPublisher.workerCredential,
+        ),
+        client: new HttpFactAdmissionClient(input.plan.dataEngineUrl, dataEngineKey),
+      }),
+    });
+    const chunkArtifacts = await listRunArtifacts({ ...input, runId: chunkPublisher.runId });
+    const names = cnipaGazetteBrowserAdmissionArtifactNames(input.plan, seed.range);
+    const chunkReceipt = oneArtifact(chunkArtifacts, names.chunkReceipt);
+    const chunkReceiptJson = await readJsonArtifact({
+      ...input,
+      runId: chunkPublisher.runId,
+      artifactId: chunkReceipt.artifactId,
+    });
+    const chunkReplayed = assertChunkReceipt(chunkReceiptJson.json, input.plan, seed);
+    if (!chunkReceipt.parentArtifactIds.includes(seed.requestRef.artifactId)) {
+      throw new Error(
+        `CHUNK receipt ${seed.range.startPage}-${seed.range.endPage} does not descend from its frozen browser request`,
+      );
+    }
+    chunkStages.push({
+      prepared: chunkPublisher,
+      artifacts: chunkArtifacts,
+      receipt: chunkReceipt,
+      replayed: chunkReplayed,
+      range: seed.range,
+    });
   }
+
+  const chunkReceipts = chunkStages.map((stage) => stage.receipt);
 
   const finalizeBuilder = await prepareStage({
     ...input,
@@ -573,7 +622,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     connectorConfig: {
       intent: "BUILD_FINALIZE_REQUEST",
       datasetIdentityRef: input.plan.datasetIdentityRef,
-      chunkReceiptRefs: [reference(chunkReceipt)],
+      chunkReceiptRefs: chunkReceipts.map(reference),
     },
   });
   await runStageWorker({
@@ -600,7 +649,9 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
   assertFinalizeRequest(finalizeRequestJson.json, input.plan);
   if (
     !finalizeRequest.parentArtifactIds.includes(input.plan.datasetIdentityRef.artifactId) ||
-    !finalizeRequest.parentArtifactIds.includes(chunkReceipt.artifactId)
+    chunkReceipts.some(
+      (receipt) => !finalizeRequest.parentArtifactIds.includes(receipt.artifactId),
+    )
   ) {
     throw new Error("FINALIZE request lineage is incomplete");
   }
@@ -665,11 +716,16 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     },
     browserSeeds: {
       datasetIdentity: input.plan.datasetIdentityRef,
-      chunkRequest: input.plan.chunkRequestRef,
+      chunkRequests: input.plan.chunkRequests,
     },
     assertions: {
       chunkOutcome: "CHUNK_ADMITTED",
-      chunkReplayed,
+      chunkCount: chunkStages.length,
+      chunkReplayed: chunkStages.every((stage) => stage.replayed),
+      chunkReplayStates: chunkStages.map((stage) => ({
+        range: stage.range,
+        replayed: stage.replayed,
+      })),
       finalizeOutcome: "ADMITTED",
       finalizeReplayed,
       browserSecretsCrossedBridge: false,
@@ -677,12 +733,12 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
       historicalReplayActivated: false,
     },
     stages: [
-      stageEvidence(chunkPublisher, chunkArtifacts),
+      ...chunkStages.map((stage) => stageEvidence(stage.prepared, stage.artifacts)),
       stageEvidence(finalizeBuilder, finalizeBuilderArtifacts),
       stageEvidence(finalizePublisher, finalizePublisherArtifacts),
     ],
     terminal: {
-      chunkReceiptArtifactId: chunkReceipt.artifactId,
+      chunkReceiptArtifactIds: chunkReceipts.map((receipt) => receipt.artifactId),
       finalizeRequestArtifactId: finalizeRequest.artifactId,
       finalizeReceiptArtifactId: finalizeReceipt.artifactId,
     },
@@ -707,7 +763,9 @@ async function main(): Promise<void> {
         announcementIssue: loaded.plan.announcementIssue,
         sourceDatasetSha256: loaded.plan.sourceDatasetSha256,
         datasetIdentityArtifactId: loaded.plan.datasetIdentityRef.artifactId,
-        chunkRequestArtifactId: loaded.plan.chunkRequestRef.artifactId,
+        chunkRequestArtifactIds: loaded.plan.chunkRequests.map(
+          (seed) => seed.requestRef.artifactId,
+        ),
         planSha256: loaded.planSha256,
         applyPerformed: false,
         expectedAuthorityToken,
