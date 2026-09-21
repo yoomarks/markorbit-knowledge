@@ -118,11 +118,13 @@ function record(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export async function prepareCnipaGazetteAdmissionPlan(input: Arguments & {
-  controlPlaneUrl: string;
-  internalSecret: string;
-  fetcher?: typeof fetch;
-}) {
+export async function prepareCnipaGazetteAdmissionPlan(
+  input: Arguments & {
+    controlPlaneUrl: string;
+    internalSecret: string;
+    fetcher?: typeof fetch;
+  },
+) {
   const planPath = assertCnipaGazetteAdmissionPlanPathOutsideWorkingTree(input.browserPlanPath);
   const outputPath = assertCnipaGazetteAdmissionPlanPathOutsideWorkingTree(input.outputPath);
   const browserPlan = parseCnipaGazetteBrowserAuthorityPlan(
