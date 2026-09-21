@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -17,6 +21,51 @@ jobs:
         node: [22, 24]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect required acceptance scope
+        id: acceptance-scope
+        if: github.event_name == 'pull_request' && matrix.node == 22
+        shell: bash
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          files="$(git diff --name-only "$base"...HEAD)"
+          printf '%s\n' "$files"
+
+          if printf '%s\n' "$files" | grep -Eq '^(apps/admin/|apps/worker/src/run-admin-browser-acceptance[^/]*\.ts$|packages/contracts/|packages/persistence/|scripts/admin-browser-calibration-core-auth-stub\.mjs$|pnpm-lock\.yaml$|\.github/workflows/admin-browser-acceptance\.yml$)'; then
+            echo "browser=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "browser=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if printf '%s\n' "$files" | grep -Eq '^(\.github/workflows/k-case-008-cross-repo-live\.yml$|\.github/workflows/markreg-core-contract-drift\.yml$|scripts/core-drift-gate\.(mjs|test\.mjs)$|apps/admin/vitest\.e2e\.config\.ts$|apps/admin/src/app/api/internal/case-candidates/|apps/admin/src/server/case-(candidate-intake|dossier-assembly-service|dossier-privacy-service|evidence-collection-service|live-acceptance-service|producer-auth)\.ts$|apps/admin/src/server/markreg-case-source-resolver\.ts$|apps/admin/src/server/e2e/k-case-008-real-markreg\.e2e\.ts$|packages/contracts/src/case-[^/]*\.ts$|packages/persistence/src/case-[^/]*\.ts$|packages/worker-runtime/src/markreg-case-evidence-collector\.ts$)'; then
+            echo "kcase=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "kcase=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout current Core history for required K-CASE freshness
+        if: github.event_name == 'pull_request' && matrix.node == 22 && steps.acceptance-scope.outputs.kcase == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+          path: .core-drift/markorbit
+
+      - name: Enforce required K-CASE freshness
+        if: github.event_name == 'pull_request' && matrix.node == 22 && steps.acceptance-scope.outputs.kcase == 'true'
+        shell: bash
+        run: |
+          core_ref="$(awk '/^  CORE_REF:/ { print $2; exit }' .github/workflows/k-case-008-cross-repo-live.yml)"
+          test -n "$core_ref"
+          node scripts/core-drift-gate.mjs \
+            --repo .core-drift/markorbit \
+            --baseline "$core_ref" \
+            --profile k-case-008
+
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.1
@@ -34,6 +83,34 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
+
+      - name: Install Chromium for required Admin browser acceptance
+        if: github.event_name == 'pull_request' && matrix.node == 22 && steps.acceptance-scope.outputs.browser == 'true'
+        run: pnpm --filter @markorbit/worker exec playwright-core install --with-deps chromium
+
+      - name: Run required Admin browser critical journey
+        if: github.event_name == 'pull_request' && matrix.node == 22 && steps.acceptance-scope.outputs.browser == 'true'
+        env:
+          MARKORBIT_ADMIN_BROWSER_ACCEPTANCE_ARTIFACTS: ${{ runner.temp }}/required-admin-browser-acceptance
+        run: pnpm --filter @markorbit/worker exec tsx src/run-admin-browser-acceptance.ts
+
+      - name: Run required Admin evidence, accessibility and CSRF probes
+        if: github.event_name == 'pull_request' && matrix.node == 22 && steps.acceptance-scope.outputs.browser == 'true'
+        env:
+          MARKORBIT_ADMIN_BROWSER_ACCEPTANCE_EDGE_ARTIFACTS: ${{ runner.temp }}/required-admin-browser-acceptance-edge
+        run: pnpm --filter @markorbit/worker exec tsx src/run-admin-browser-acceptance-edge.ts
+
+      - name: Upload required browser diagnostics
+        if: always() && github.event_name == 'pull_request' && matrix.node == 22 && steps.acceptance-scope.outputs.browser == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: required-admin-browser-acceptance-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/required-admin-browser-acceptance
+            ${{ runner.temp }}/required-admin-browser-acceptance-edge
+
       - run: pnpm test
       - run: pnpm --filter @markorbit/integration-tests check:k0-architecture
       - run: pnpm build
