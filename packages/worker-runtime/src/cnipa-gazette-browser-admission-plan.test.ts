@@ -39,8 +39,7 @@ const rawPlan = {
   },
   chunkRequestRef: {
     artifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
-    canonicalUri:
-      `cnipa://trademark-gazette/issue/75/dataset/${datasetSha}/fact-admission/chunk/1-6/request`,
+    canonicalUri: `cnipa://trademark-gazette/issue/75/dataset/${datasetSha}/fact-admission/chunk/1-6/request`,
     sha256: "b".repeat(64),
     sizeBytes: 262104,
   },

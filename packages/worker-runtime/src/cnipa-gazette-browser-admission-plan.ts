@@ -69,7 +69,11 @@ function objectValue(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function exactKeys(value: Record<string, unknown>, allowed: readonly string[], label: string): void {
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  label: string,
+): void {
   const accepted = new Set(allowed);
   const extra = Object.keys(value).filter((key) => !accepted.has(key));
   if (extra.length > 0) {
@@ -120,7 +124,9 @@ function dataEngineUrl(value: unknown): string {
   }
   const url = new URL(value.trim());
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("CNIPA Gazette browser admission plan invalid: dataEngineUrl must use http or https");
+    throw new Error(
+      "CNIPA Gazette browser admission plan invalid: dataEngineUrl must use http or https",
+    );
   }
   return url.toString().replace(/\/$/u, "");
 }
@@ -165,7 +171,9 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
     throw new Error("CNIPA Gazette browser admission plan invalid: version must be 1");
   }
   if (typeof input.operationId !== "string" || !OPERATION_ID.test(input.operationId)) {
-    throw new Error("CNIPA Gazette browser admission plan invalid: operationId must be a lowercase slug");
+    throw new Error(
+      "CNIPA Gazette browser admission plan invalid: operationId must be a lowercase slug",
+    );
   }
   if (typeof input.workspaceId !== "string" || !WORKSPACE_ID.test(input.workspaceId)) {
     throw new Error("CNIPA Gazette browser admission plan invalid: workspaceId must be Schema v1");
@@ -176,7 +184,9 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
     input.workerMode !== "PROVISION_ONE_SHOT" ||
     input.stage !== CNIPA_GAZETTE_BROWSER_ADMISSION_STAGE
   ) {
-    throw new Error("CNIPA Gazette browser admission plan invalid: authority/execution boundary mismatch");
+    throw new Error(
+      "CNIPA Gazette browser admission plan invalid: authority/execution boundary mismatch",
+    );
   }
   const range = objectValue(input.range, "range");
   exactKeys(range, ["startPage", "endPage"], "range");
@@ -206,15 +216,20 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
   const datasetIdentityRef = artifactRef(input.datasetIdentityRef, "datasetIdentityRef");
   const chunkRequestRef = artifactRef(input.chunkRequestRef, "chunkRequestRef");
   if (datasetIdentityRef.artifactId === chunkRequestRef.artifactId) {
-    throw new Error("CNIPA Gazette browser admission plan invalid: seed artifact ids must be unique");
+    throw new Error(
+      "CNIPA Gazette browser admission plan invalid: seed artifact ids must be unique",
+    );
   }
-  const datasetCanonical =
-    `cnipa://trademark-gazette/issue/75/dataset/${input.sourceDatasetSha256}`;
+  const datasetCanonical = `cnipa://trademark-gazette/issue/75/dataset/${input.sourceDatasetSha256}`;
   if (datasetIdentityRef.canonicalUri !== datasetCanonical) {
-    throw new Error("CNIPA Gazette browser admission plan invalid: dataset identity canonical URI mismatch");
+    throw new Error(
+      "CNIPA Gazette browser admission plan invalid: dataset identity canonical URI mismatch",
+    );
   }
   if (chunkRequestRef.canonicalUri !== `${datasetCanonical}/fact-admission/chunk/1-6/request`) {
-    throw new Error("CNIPA Gazette browser admission plan invalid: CHUNK request canonical URI mismatch");
+    throw new Error(
+      "CNIPA Gazette browser admission plan invalid: CHUNK request canonical URI mismatch",
+    );
   }
   return {
     version: 1,
@@ -249,7 +264,9 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
 export function cnipaGazetteBrowserAdmissionPlanSha256(
   plan: CnipaGazetteBrowserAdmissionPlan,
 ): string {
-  return createHash("sha256").update(JSON.stringify(canonicalize(plan))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(plan)))
+    .digest("hex");
 }
 
 export function expectedCnipaGazetteBrowserAdmissionAuthorityToken(
@@ -345,8 +362,9 @@ export function cnipaGazetteBrowserAdmissionCollectionPlanPayload(input: {
     extensions: {
       "x-markorbit-gazette-browser-admission-operation": input.plan.operationId,
       "x-markorbit-gazette-browser-admission-stage": input.stage,
-      "x-markorbit-gazette-browser-admission-plan-sha256":
-        cnipaGazetteBrowserAdmissionPlanSha256(input.plan),
+      "x-markorbit-gazette-browser-admission-plan-sha256": cnipaGazetteBrowserAdmissionPlanSha256(
+        input.plan,
+      ),
       "x-markorbit-historical-replay-activated": false,
     },
   };
@@ -374,7 +392,14 @@ export function cnipaGazetteBrowserAdmissionWorkerPayload(
       },
     ],
     maxConcurrency: 1,
-    labels: ["production", "cnipa", "gazette", "browser-admission", "issue-75", stage.toLowerCase()],
+    labels: [
+      "production",
+      "cnipa",
+      "gazette",
+      "browser-admission",
+      "issue-75",
+      stage.toLowerCase(),
+    ],
     extensions: {
       "x-markorbit-gazette-browser-admission-stage": stage,
       "x-markorbit-worker-concurrency": 1,
