@@ -9,6 +9,29 @@ function response(body: string, status = 200): Response {
 }
 
 describe("IP Australia trademark manual inventory", () => {
+  it("ignores early non-heading Recent updates text and splits on the semantic heading", () => {
+    const parsed = parseIpAustraliaManualScreen(
+      `
+        <script>window.sectionLabel = "Recent updates";</script>
+        <nav>
+          <a href="/trademark/1.-definition-of-a-trade-mark">Definition</a>
+          <a href="/trademark/2.-data-capture">Data capture</a>
+        </nav>
+        <h1><span>Recent updates</span></h1>
+        <a href="/trademark/3.-historic-only">Historic only</a>
+        <a href="/trademark?page=4">Last page</a>
+      `,
+      "https://manuals.ipaustralia.gov.au/trademark",
+    );
+
+    expect(parsed.highestUpdateHistoryPage).toBe(4);
+    expect(parsed.navigationPages.map((page) => page.label).sort()).toEqual([
+      "Data capture",
+      "Definition",
+    ]);
+    expect(parsed.updatePages.map((page) => page.label)).toEqual(["Historic only"]);
+  });
+
   it("separates the current manual navigation from Recent updates history", () => {
     const parsed = parseIpAustraliaManualScreen(
       `
