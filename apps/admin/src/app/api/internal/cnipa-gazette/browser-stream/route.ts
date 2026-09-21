@@ -310,11 +310,7 @@ function admissionArtifactRef(
   };
 }
 
-function listAllRunArtifacts(input: {
-  workspaceId: string;
-  runId: string;
-  q: string;
-}) {
+function listAllRunArtifacts(input: { workspaceId: string; runId: string; q: string }) {
   const repository = getRawArtifactRepository();
   const items: ReturnType<typeof repository.list>["items"] = [];
   let offset = 0;
