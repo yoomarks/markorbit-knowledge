@@ -396,12 +396,14 @@ export class CnipaGazetteBrowserRuntime {
       throw new TypeError("browser Gazette resume requires a durable artifact reader");
     }
     const refs = jobConfig.resumeFrom;
+    const tailSourceProjectionArtifactIds = refs.tailSourceProjectionArtifactIds ?? [];
     const [
       stateArtifact,
       logicalArtifacts,
       firstSourceRaw,
       firstSourceProjection,
       previousSourceProjection,
+      tailSourceProjections,
     ] = await Promise.all([
       reader.read(refs.stateArtifactId, context),
       Promise.all(
@@ -410,6 +412,9 @@ export class CnipaGazetteBrowserRuntime {
       reader.read(refs.firstSourceRawArtifactId, context),
       reader.read(refs.firstSourceProjectionArtifactId, context),
       reader.read(refs.previousSourceProjectionArtifactId, context),
+      Promise.all(
+        tailSourceProjectionArtifactIds.map((artifactId) => reader.read(artifactId, context)),
+      ),
     ]);
     const parsed = parseResumeStateArtifact(stateArtifact);
     assertCnipaGazetteBrowserSessionMatchesJob(parsed.session, jobConfig);
@@ -436,6 +441,46 @@ export class CnipaGazetteBrowserRuntime {
     if (previousSourceProjection.canonicalUri !== expectedPreviousProjection) {
       throw new TypeError("resume previous source projection canonicalUri mismatch");
     }
+    const tailSourcePageIndices = [...new Set(parsed.state.tailSourcePageIndices)].sort(
+      (left, right) => left - right,
+    );
+    if (tailSourceProjectionArtifactIds.length > 0) {
+      if (
+        tailSourceProjectionArtifactIds.length !== tailSourcePageIndices.length ||
+        tailSourceProjections.length !== tailSourcePageIndices.length
+      ) {
+        throw new TypeError(
+          "resume tail source projection refs do not cover durable tail provenance",
+        );
+      }
+      for (let index = 0; index < tailSourceProjections.length; index += 1) {
+        const pageIndex = tailSourcePageIndices[index]!;
+        const expected =
+          `cnipa://trademark-gazette/issue/${parsed.session.announcementIssue}` +
+          `/browser-source/page-size/${parsed.session.sourcePageSize}` +
+          `/page/${pageIndex}/projection`;
+        if (tailSourceProjections[index]!.canonicalUri !== expected) {
+          throw new TypeError(
+            "resume tail source projection canonicalUri does not match durable tail provenance",
+          );
+        }
+      }
+      if (
+        tailSourceProjectionArtifactIds[tailSourceProjectionArtifactIds.length - 1] !==
+        refs.previousSourceProjectionArtifactId
+      ) {
+        throw new TypeError(
+          "resume previous source projection must equal the final durable tail projection",
+        );
+      }
+    } else if (
+      tailSourcePageIndices.length !== 1 ||
+      tailSourcePageIndices[0] !== previousSourcePageIndex
+    ) {
+      throw new TypeError(
+        "resume with multi-page durable tail requires tailSourceProjectionArtifactIds",
+      );
+    }
     const firstSourceObservedAt = parseFirstSourceObservedAt(firstSourceProjection, parsed.session);
     return {
       priorSession: parsed.session,
@@ -452,10 +497,17 @@ export class CnipaGazetteBrowserRuntime {
           canonicalUri: firstSourceProjection.canonicalUri!,
           artifactId: refs.firstSourceProjectionArtifactId,
         },
-        {
-          canonicalUri: previousSourceProjection.canonicalUri!,
-          artifactId: refs.previousSourceProjectionArtifactId,
-        },
+        ...(tailSourceProjections.length > 0
+          ? tailSourceProjections.map((artifact, index) => ({
+              canonicalUri: artifact.canonicalUri!,
+              artifactId: tailSourceProjectionArtifactIds[index]!,
+            }))
+          : [
+              {
+                canonicalUri: previousSourceProjection.canonicalUri!,
+                artifactId: refs.previousSourceProjectionArtifactId,
+              },
+            ]),
         ...logicalArtifacts.map((artifact, index) => ({
           canonicalUri: artifact.canonicalUri!,
           artifactId: refs.logicalProjectionArtifactIds[index]!,

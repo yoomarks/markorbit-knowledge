@@ -88,7 +88,11 @@ describe("CNIPA Gazette browser-stream Job boundary", () => {
       logicalProjectionArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAW"],
       firstSourceRawArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAX",
       firstSourceProjectionArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAY",
-      previousSourceProjectionArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+      previousSourceProjectionArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      tailSourceProjectionArtifactIds: [
+        "art_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+        "art_01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      ],
     };
     const parsed = cnipaGazetteBrowserStreamJobFromContext(
       context({
@@ -120,6 +124,25 @@ describe("CNIPA Gazette browser-stream Job boundary", () => {
     expect(plan.extensions[CNIPA_GAZETTE_BROWSER_STREAM_PLAN_EXTENSION]).toMatchObject({
       resumeFrom,
     });
+    expect(() =>
+      cnipaGazetteBrowserStreamJobFromContext(
+        context({
+          extension: {
+            announcementIssue: 75,
+            queryTemplate,
+            targetLogicalPagesPerCheckpoint: 6,
+            maxRuntimeSeconds: 3600,
+            resumeFrom: {
+              ...resumeFrom,
+              tailSourceProjectionArtifactIds: [
+                "art_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+                "art_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              ],
+            },
+          },
+        }),
+      ),
+    ).toThrow(/tail source projection refs must be unique/);
   });
 
   it("rejects filtered/non-ALL query templates and issue drift", () => {

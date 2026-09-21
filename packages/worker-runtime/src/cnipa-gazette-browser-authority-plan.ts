@@ -14,6 +14,7 @@ export type CnipaGazetteBrowserAuthorityResumeFrom = {
   firstSourceRawArtifactId: string;
   firstSourceProjectionArtifactId: string;
   previousSourceProjectionArtifactId: string;
+  tailSourceProjectionArtifactIds?: readonly string[];
 };
 
 export type CnipaGazetteBrowserAuthorityPlan = {
@@ -29,7 +30,7 @@ export type CnipaGazetteBrowserAuthorityPlan = {
   maxRuntimeSeconds: number;
   acquisitionMode: typeof CNIPA_GAZETTE_BROWSER_ACQUISITION_MODE;
   captureTool: "MO CNIPA Network Capture";
-  captureToolVersion: "1.0.0" | "1.0.1" | "1.0.2";
+  captureToolVersion: "1.0.0" | "1.0.1" | "1.0.2" | "1.0.3";
   captureToolBundleName: string;
   captureToolBundleSha256: string;
   minimumChromeVersion: 118;
@@ -63,6 +64,7 @@ function parseResumeFrom(value: unknown): CnipaGazetteBrowserAuthorityResumeFrom
       "firstSourceRawArtifactId",
       "firstSourceProjectionArtifactId",
       "previousSourceProjectionArtifactId",
+      "tailSourceProjectionArtifactIds",
     ],
     "resumeFrom",
   );
@@ -83,6 +85,26 @@ function parseResumeFrom(value: unknown): CnipaGazetteBrowserAuthorityResumeFrom
       "CNIPA Gazette browser authority plan invalid: resumeFrom logical projection refs must be unique",
     );
   }
+  let tailSourceProjectionArtifactIds: string[] | undefined;
+  if (raw.tailSourceProjectionArtifactIds !== undefined) {
+    if (
+      !Array.isArray(raw.tailSourceProjectionArtifactIds) ||
+      raw.tailSourceProjectionArtifactIds.length < 1 ||
+      raw.tailSourceProjectionArtifactIds.length > 100
+    ) {
+      throw new TypeError(
+        "CNIPA Gazette browser authority plan invalid: resumeFrom.tailSourceProjectionArtifactIds must contain 1..100 RawArtifact ids",
+      );
+    }
+    tailSourceProjectionArtifactIds = raw.tailSourceProjectionArtifactIds.map((value, index) =>
+      artifactId(value, `resumeFrom.tailSourceProjectionArtifactIds[${index}]`),
+    );
+    if (new Set(tailSourceProjectionArtifactIds).size !== tailSourceProjectionArtifactIds.length) {
+      throw new TypeError(
+        "CNIPA Gazette browser authority plan invalid: resumeFrom tail source projection refs must be unique",
+      );
+    }
+  }
   return {
     stateArtifactId: artifactId(raw.stateArtifactId, "resumeFrom.stateArtifactId"),
     logicalProjectionArtifactIds,
@@ -98,6 +120,7 @@ function parseResumeFrom(value: unknown): CnipaGazetteBrowserAuthorityResumeFrom
       raw.previousSourceProjectionArtifactId,
       "resumeFrom.previousSourceProjectionArtifactId",
     ),
+    ...(tailSourceProjectionArtifactIds ? { tailSourceProjectionArtifactIds } : {}),
   };
 }
 
@@ -213,7 +236,8 @@ export function parseCnipaGazetteBrowserAuthorityPlan(
     input.captureTool !== "MO CNIPA Network Capture" ||
     (input.captureToolVersion !== "1.0.0" &&
       input.captureToolVersion !== "1.0.1" &&
-      input.captureToolVersion !== "1.0.2") ||
+      input.captureToolVersion !== "1.0.2" &&
+      input.captureToolVersion !== "1.0.3") ||
     input.minimumChromeVersion !== 118 ||
     input.sourcePageSizeMode !== "PRESERVE_CAPTURED_1_TO_100" ||
     input.dataEngineMutation !== "DISABLED" ||
@@ -253,7 +277,7 @@ export function parseCnipaGazetteBrowserAuthorityPlan(
     maxRuntimeSeconds,
     acquisitionMode: CNIPA_GAZETTE_BROWSER_ACQUISITION_MODE,
     captureTool: "MO CNIPA Network Capture",
-    captureToolVersion: input.captureToolVersion as "1.0.0" | "1.0.1" | "1.0.2",
+    captureToolVersion: input.captureToolVersion as "1.0.0" | "1.0.1" | "1.0.2" | "1.0.3",
     captureToolBundleName: input.captureToolBundleName.trim(),
     captureToolBundleSha256: input.captureToolBundleSha256,
     minimumChromeVersion: 118,
@@ -287,7 +311,7 @@ export function cnipaGazetteBrowserAuthorityPlan(input: {
   announcementIssue: number;
   targetLogicalPagesPerCheckpoint?: number;
   maxRuntimeSeconds?: number;
-  captureToolVersion?: "1.0.0" | "1.0.1" | "1.0.2";
+  captureToolVersion?: "1.0.0" | "1.0.1" | "1.0.2" | "1.0.3";
   captureToolBundleName: string;
   captureToolBundleSha256: string;
   resumeFrom?: CnipaGazetteBrowserAuthorityResumeFrom;

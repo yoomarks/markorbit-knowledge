@@ -43,6 +43,7 @@ export type CnipaGazetteBrowserResumeFrom = {
   firstSourceRawArtifactId: string;
   firstSourceProjectionArtifactId: string;
   previousSourceProjectionArtifactId: string;
+  tailSourceProjectionArtifactIds?: readonly string[];
 };
 
 export type CnipaGazetteBrowserStreamJobConfig = {
@@ -120,6 +121,7 @@ function parseResumeFrom(value: unknown): CnipaGazetteBrowserResumeFrom {
       "firstSourceRawArtifactId",
       "firstSourceProjectionArtifactId",
       "previousSourceProjectionArtifactId",
+      "tailSourceProjectionArtifactIds",
     ],
     "browserStream.resumeFrom",
   );
@@ -144,6 +146,24 @@ function parseResumeFrom(value: unknown): CnipaGazetteBrowserResumeFrom {
   if (new Set(logicalProjectionArtifactIds).size !== logicalProjectionArtifactIds.length) {
     throw new TypeError("browserStream.resumeFrom logical projection refs must be unique");
   }
+  let tailSourceProjectionArtifactIds: string[] | undefined;
+  if (raw.tailSourceProjectionArtifactIds !== undefined) {
+    if (
+      !Array.isArray(raw.tailSourceProjectionArtifactIds) ||
+      raw.tailSourceProjectionArtifactIds.length < 1 ||
+      raw.tailSourceProjectionArtifactIds.length > 100
+    ) {
+      throw new TypeError(
+        "browserStream.resumeFrom.tailSourceProjectionArtifactIds must contain 1..100 refs",
+      );
+    }
+    tailSourceProjectionArtifactIds = raw.tailSourceProjectionArtifactIds.map((item, index) =>
+      one(item, `browserStream.resumeFrom.tailSourceProjectionArtifactIds[${index}]`),
+    );
+    if (new Set(tailSourceProjectionArtifactIds).size !== tailSourceProjectionArtifactIds.length) {
+      throw new TypeError("browserStream.resumeFrom tail source projection refs must be unique");
+    }
+  }
   return {
     stateArtifactId: one(raw.stateArtifactId, "browserStream.resumeFrom.stateArtifactId"),
     logicalProjectionArtifactIds,
@@ -159,6 +179,7 @@ function parseResumeFrom(value: unknown): CnipaGazetteBrowserResumeFrom {
       raw.previousSourceProjectionArtifactId,
       "browserStream.resumeFrom.previousSourceProjectionArtifactId",
     ),
+    ...(tailSourceProjectionArtifactIds ? { tailSourceProjectionArtifactIds } : {}),
   };
 }
 

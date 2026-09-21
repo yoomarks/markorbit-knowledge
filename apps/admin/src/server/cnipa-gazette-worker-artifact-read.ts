@@ -87,11 +87,17 @@ function browserResumeAllowedArtifactIds(
       "browserStream.resumeFrom.logicalProjectionArtifactIds must be a non-empty array",
     );
   }
+  const tailSourceProjectionArtifactIds = Array.isArray(resume.tailSourceProjectionArtifactIds)
+    ? resume.tailSourceProjectionArtifactIds.map((value, index) =>
+        artifactId(value, `browserStream.resumeFrom.tailSourceProjectionArtifactIds[${index}]`),
+      )
+    : [];
   return new Set([
     artifactId(resume.stateArtifactId, "browserStream.resumeFrom.stateArtifactId"),
     ...resume.logicalProjectionArtifactIds.map((value, index) =>
       artifactId(value, `browserStream.resumeFrom.logicalProjectionArtifactIds[${index}]`),
     ),
+    ...tailSourceProjectionArtifactIds,
     artifactId(
       resume.firstSourceRawArtifactId,
       "browserStream.resumeFrom.firstSourceRawArtifactId",

@@ -24,6 +24,7 @@ const RESUME_LOGICAL_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FA1";
 const RESUME_FIRST_RAW_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FA2";
 const RESUME_FIRST_PROJECTION_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FA3";
 const RESUME_PREVIOUS_PROJECTION_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FA4";
+const RESUME_TAIL_PROJECTION_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FA5";
 const WORKSPACE_ID = "wsp_fixture";
 const SHA = "a".repeat(64);
 
@@ -69,6 +70,10 @@ function authorization(kind: FixtureKind): WorkerLeaseReadAuthorization {
                 firstSourceRawArtifactId: RESUME_FIRST_RAW_ID,
                 firstSourceProjectionArtifactId: RESUME_FIRST_PROJECTION_ID,
                 previousSourceProjectionArtifactId: RESUME_PREVIOUS_PROJECTION_ID,
+                tailSourceProjectionArtifactIds: [
+                  RESUME_TAIL_PROJECTION_ID,
+                  RESUME_PREVIOUS_PROJECTION_ID,
+                ],
               },
             },
           },
@@ -163,6 +168,7 @@ describe("CNIPA Gazette Worker RawArtifact read authorization", () => {
       [RESUME_LOGICAL_ID]: view(RESUME_LOGICAL_ID),
       [RESUME_FIRST_RAW_ID]: view(RESUME_FIRST_RAW_ID),
       [RESUME_FIRST_PROJECTION_ID]: view(RESUME_FIRST_PROJECTION_ID),
+      [RESUME_TAIL_PROJECTION_ID]: view(RESUME_TAIL_PROJECTION_ID),
       [RESUME_PREVIOUS_PROJECTION_ID]: view(RESUME_PREVIOUS_PROJECTION_ID),
       [OTHER_ID]: view(OTHER_ID),
     });
@@ -171,6 +177,7 @@ describe("CNIPA Gazette Worker RawArtifact read authorization", () => {
       RESUME_LOGICAL_ID,
       RESUME_FIRST_RAW_ID,
       RESUME_FIRST_PROJECTION_ID,
+      RESUME_TAIL_PROJECTION_ID,
       RESUME_PREVIOUS_PROJECTION_ID,
     ]) {
       expect(
