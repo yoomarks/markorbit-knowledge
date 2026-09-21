@@ -336,9 +336,7 @@ export function expectedCnipaGazetteBrowserAdmissionAuthorityToken(
   return `GO #${plan.authorityIssueNumber} CNIPA-GAZETTE-BROWSER-ADMISSION ${plan.operationId} FULL_CHAIN ${planSha256}`;
 }
 
-export function cnipaGazetteBrowserAdmissionArtifactNames(
-  plan: CnipaGazetteBrowserAdmissionPlan,
-) {
+export function cnipaGazetteBrowserAdmissionArtifactNames(plan: CnipaGazetteBrowserAdmissionPlan) {
   const prefix = `cnipa-gazette-issue-${plan.announcementIssue}`;
   const chunk = `chunk-1-${plan.logicalPageCount}-fact-admission`;
   return {
