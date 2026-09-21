@@ -366,9 +366,10 @@ describe("CnipaGazetteBrowserRuntime", () => {
     const result = await runtime.run(JOB_ID);
     expect(result.receipt).toMatchObject({
       metadataOnly: false,
-      itemsObserved: 30,
+      itemsObserved: 7,
       outputKinds: ["JSON"],
     });
+    expect(result.receipt.summary).toContain("30 official row(s)");
     expect(result.receipt.metadataOnly).toBe(false);
     if (!result.receipt.metadataOnly) {
       expect(result.receipt.artifactReceiptIds).toHaveLength(7);
@@ -467,8 +468,12 @@ describe("CnipaGazetteBrowserRuntime", () => {
     const result = await runtime.run(JOB_ID);
     expect(result.receipt).toMatchObject({
       metadataOnly: false,
-      itemsObserved: DEEP_TOTAL,
+      itemsObserved: 125,
     });
+    expect(result.receipt.summary).toContain(`${DEEP_TOTAL} official row(s)`);
+    if (!result.receipt.metadataOnly) {
+      expect(result.receipt.itemsObserved).toBe(result.receipt.artifactReceiptIds.length);
+    }
     expect(fixture.failed()).toBeNull();
 
     const logicalPage2 = [...fixture.descriptors.values()].find(

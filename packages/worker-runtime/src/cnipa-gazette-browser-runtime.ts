@@ -651,7 +651,10 @@ export class CnipaGazetteBrowserRuntime {
       const receipt: ExecutionReceipt = {
         executor: CNIPA_GAZETTE_JOB_EXECUTOR,
         outputKinds: ["JSON"],
-        itemsObserved: stats.rowsSeen,
+        // Worker Protocol completion validates itemsObserved against the finalized
+        // artifact receipts referenced by this execution. Source-row cardinality
+        // remains preserved in stats.rowsSeen and the human-readable summary.
+        itemsObserved: stats.artifactReceiptIds.length,
         bytesPrepared: stats.bytesPrepared,
         metadataOnly: false,
         artifactReceiptIds: [...new Set(stats.artifactReceiptIds)],
