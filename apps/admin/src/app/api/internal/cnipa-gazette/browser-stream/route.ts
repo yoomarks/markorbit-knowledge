@@ -271,7 +271,9 @@ function browserRunRecord(
   return record;
 }
 
-async function verifiedArtifactJson(view: ReturnType<ReturnType<typeof getRawArtifactRepository>["getArtifact"]>) {
+async function verifiedArtifactJson(
+  view: ReturnType<ReturnType<typeof getRawArtifactRepository>["getArtifact"]>,
+) {
   if (!view) throw new RegistryValidationError("Gazette browser artifact is unavailable");
   const content = getRawArtifactRepository().contentPath(view.artifact.id);
   const bytes = await readFile(content.path);
@@ -289,7 +291,9 @@ async function verifiedArtifactJson(view: ReturnType<ReturnType<typeof getRawArt
   }
 }
 
-function admissionArtifactRef(view: NonNullable<ReturnType<ReturnType<typeof getRawArtifactRepository>["getArtifact"]>>) {
+function admissionArtifactRef(
+  view: NonNullable<ReturnType<ReturnType<typeof getRawArtifactRepository>["getArtifact"]>>,
+) {
   if (!view.artifact.canonicalUri) {
     throw new RegistryValidationError("Gazette browser admission seed is missing canonical URI");
   }
@@ -310,12 +314,7 @@ async function buildAdmissionPlanFromBrowserRun(input: {
   operationId: string;
   dataEngineUrl: string;
 }) {
-  browserRunRecord(
-    input.runId,
-    input.workspaceId,
-    input.browserPlan,
-    input.browserPlanSha256,
-  );
+  browserRunRecord(input.runId, input.workspaceId, input.browserPlan, input.browserPlanSha256);
   const artifacts = getRawArtifactRepository();
 
   const identityResult = artifacts.list({
@@ -359,8 +358,7 @@ async function buildAdmissionPlanFromBrowserRun(input: {
   ) {
     throw new RegistryValidationError("Gazette dataset identity escaped frozen browser scope");
   }
-  const expectedIdentityCanonical =
-    `cnipa://trademark-gazette/issue/${announcementIssue}/dataset/${sourceDatasetSha256}`;
+  const expectedIdentityCanonical = `cnipa://trademark-gazette/issue/${announcementIssue}/dataset/${sourceDatasetSha256}`;
   if (identityView.artifact.canonicalUri !== expectedIdentityCanonical) {
     throw new RegistryValidationError("Gazette dataset identity canonical URI mismatch");
   }
@@ -372,7 +370,11 @@ async function buildAdmissionPlanFromBrowserRun(input: {
     q: "/fact-admission/chunk/",
     limit: 100,
   });
-  if (chunkResult.total < 1 || chunkResult.total > 100 || chunkResult.items.length !== chunkResult.total) {
+  if (
+    chunkResult.total < 1 ||
+    chunkResult.total > 100 ||
+    chunkResult.items.length !== chunkResult.total
+  ) {
     throw new RegistryValidationError(
       "Gazette browser run must expose 1..100 frozen CHUNK requests",
     );
