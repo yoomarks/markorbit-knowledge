@@ -262,9 +262,14 @@ function browserRunRecord(
   const source = getSourceRepository().getById(record.run.sourceId);
   if (
     !source ||
-    source.extensions?.["x-markorbit-gazette-browser-operation"] !== plan.operationId ||
-    source.extensions?.["x-markorbit-gazette-browser-frozen-plan-sha256"] !== planSha256 ||
-    source.extensions?.["x-markorbit-historical-replay-activated"] !== false
+    source.sourceType !== "API" ||
+    source.connector.connectorId !== "cnipa-trademark-gazette" ||
+    source.connector.version !== "1.0.0" ||
+    source.extensions?.["x-markorbit-browser-auth-owned-by-browser"] !== true ||
+    source.extensions?.["x-markorbit-historical-replay-activated"] !== false ||
+    record.run.extensions?.["x-markorbit-gazette-browser-operation"] !== plan.operationId ||
+    record.run.extensions?.["x-markorbit-gazette-browser-frozen-plan-sha256"] !== planSha256 ||
+    record.run.extensions?.["x-markorbit-historical-replay-activated"] !== false
   ) {
     throw new RegistryValidationError("Gazette browser run is outside the frozen browser scope");
   }
