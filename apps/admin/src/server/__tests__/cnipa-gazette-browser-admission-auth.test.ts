@@ -14,21 +14,23 @@ import {
 const datasetSha = "6".repeat(64);
 const rawPlan = {
   version: 1,
-  operationId: "issue-75-browser-admission-r1",
+  operationId: "issue-429-browser-admission-r1",
   workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
   authorityMode: CNIPA_GAZETTE_BROWSER_ADMISSION_AUTHORITY_MODE,
   executionMode: "APPLY_DISPATCH_ONCE",
   workerMode: "PROVISION_ONE_SHOT",
   stage: "BROWSER_DATASET_ADMISSION",
-  announcementIssue: 75,
-  announcementDate: "1983-08-15",
-  sourceRecordCount: 576,
-  browserSourcePageSize: 10,
-  browserSourcePageCount: 58,
+  authorityIssueNumber: 885,
+  announcementIssue: 429,
+  announcementDate: "1990-01-01",
+  sourceRecordCount: 1234,
+  browserSourcePageSize: 100,
+  browserSourcePageCount: 13,
+  finalSourcePageRowCount: 34,
   logicalPageSize: 100,
-  logicalPageCount: 6,
-  finalLogicalPageRowCount: 76,
-  range: { startPage: 1, endPage: 6 },
+  logicalPageCount: 13,
+  finalLogicalPageRowCount: 34,
+  range: { startPage: 1, endPage: 13 },
   announcementTypeSelection: "ALL",
   anncType: "",
   acquisitionMode: "MO_CNIPA_NORMAL_BROWSER_STREAM_V1",
@@ -37,13 +39,13 @@ const rawPlan = {
   sourceDatasetSha256: datasetSha,
   datasetIdentityRef: {
     artifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-    canonicalUri: `cnipa://trademark-gazette/issue/75/dataset/${datasetSha}`,
+    canonicalUri: `cnipa://trademark-gazette/issue/429/dataset/${datasetSha}`,
     sha256: "a".repeat(64),
     sizeBytes: 735,
   },
   chunkRequestRef: {
     artifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
-    canonicalUri: `cnipa://trademark-gazette/issue/75/dataset/${datasetSha}/fact-admission/chunk/1-6/request`,
+    canonicalUri: `cnipa://trademark-gazette/issue/75/dataset/${datasetSha}/fact-admission/chunk/1-13/request`,
     sha256: "b".repeat(64),
     sizeBytes: 262104,
   },
@@ -52,7 +54,7 @@ const rawPlan = {
 };
 
 describe("CNIPA Gazette browser admission auth", () => {
-  it("accepts exact internal secret and exact #866 frozen-plan authority", () => {
+  it("accepts exact internal secret and exact generic frozen-plan authority", () => {
     const plan = parseCnipaGazetteBrowserAdmissionPlan(rawPlan);
     const sha = cnipaGazetteBrowserAdmissionPlanSha256(plan);
     const token = expectedCnipaGazetteBrowserAdmissionAuthorityToken(plan, sha);
