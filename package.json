@@ -20,7 +20,7 @@
     "release:preflight": "node scripts/release-preflight.mjs",
     "release:backup-restore-drill": "node scripts/release-backup-restore-drill.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --write packages/worker-runtime/src/cnipa-gazette-browser-admission-plan.ts && git diff -- packages/worker-runtime/src/cnipa-gazette-browser-admission-plan.ts && exit 1",
+    "format:check": "prettier --check .",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
