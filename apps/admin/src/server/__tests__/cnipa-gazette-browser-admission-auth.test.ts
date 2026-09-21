@@ -43,12 +43,19 @@ const rawPlan = {
     sha256: "a".repeat(64),
     sizeBytes: 735,
   },
-  chunkRequestRef: {
-    artifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
-    canonicalUri: `cnipa://trademark-gazette/issue/75/dataset/${datasetSha}/fact-admission/chunk/1-13/request`,
-    sha256: "b".repeat(64),
-    sizeBytes: 262104,
-  },
+  chunkRequests: [
+    {
+      range: { startPage: 1, endPage: 13 },
+      requestRef: {
+        artifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        canonicalUri:
+          `cnipa://trademark-gazette/issue/429/dataset/${datasetSha}` +
+          "/fact-admission/chunk/1-13/request",
+        sha256: "b".repeat(64),
+        sizeBytes: 262104,
+      },
+    },
+  ],
   dataEngineUrl: "http://127.0.0.1:8080",
   historicalReplayActivated: false,
 };
