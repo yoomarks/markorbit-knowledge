@@ -393,7 +393,9 @@ function expectedLogicalPageRowCount(
   plan: CnipaGazetteBrowserAdmissionPlan,
   pageIndex: number,
 ): number {
-  return pageIndex === plan.logicalPageCount ? plan.finalLogicalPageRowCount : plan.logicalPageSize;
+  return pageIndex === plan.logicalPageCount
+    ? plan.finalLogicalPageRowCount
+    : plan.logicalPageSize;
 }
 
 function assertChunkRequest(value: unknown, plan: CnipaGazetteBrowserAdmissionPlan): void {
@@ -555,10 +557,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     }),
   });
   const chunkArtifacts = await listRunArtifacts({ ...input, runId: chunkPublisher.runId });
-  const chunkReceipt = oneArtifact(
-    chunkArtifacts,
-    artifactNames.chunkReceipt,
-  );
+  const chunkReceipt = oneArtifact(chunkArtifacts, artifactNames.chunkReceipt);
   const chunkReceiptJson = await readJsonArtifact({
     ...input,
     runId: chunkPublisher.runId,
@@ -594,10 +593,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     ...input,
     runId: finalizeBuilder.runId,
   });
-  const finalizeRequest = oneArtifact(
-    finalizeBuilderArtifacts,
-    artifactNames.finalizeRequest,
-  );
+  const finalizeRequest = oneArtifact(finalizeBuilderArtifacts, artifactNames.finalizeRequest);
   const finalizeRequestJson = await readJsonArtifact({
     ...input,
     runId: finalizeBuilder.runId,
@@ -636,10 +632,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     ...input,
     runId: finalizePublisher.runId,
   });
-  const finalizeReceipt = oneArtifact(
-    finalizePublisherArtifacts,
-    artifactNames.finalizeReceipt,
-  );
+  const finalizeReceipt = oneArtifact(finalizePublisherArtifacts, artifactNames.finalizeReceipt);
   const finalizeReceiptJson = await readJsonArtifact({
     ...input,
     runId: finalizePublisher.runId,
