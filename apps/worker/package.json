@@ -65,7 +65,8 @@
     "bootstrap:cnipa-fast": "tsx src/bootstrap-cnipa-fast.ts",
     "backfill:cnipa-historical": "tsx src/run-cnipa-historical-backfill.ts",
     "cnipa:gazette:browser-bridge": "tsx src/run-cnipa-gazette-browser-bridge.ts",
-    "cnipa:gazette:browser-job:prepare": "tsx src/prepare-cnipa-gazette-browser-job.ts"
+    "cnipa:gazette:browser-job:prepare": "tsx src/prepare-cnipa-gazette-browser-job.ts",
+    "cnipa:gazette:browser-admission": "tsx src/run-cnipa-gazette-browser-admission.ts"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",
