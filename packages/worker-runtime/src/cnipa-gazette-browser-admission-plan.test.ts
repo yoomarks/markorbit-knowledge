@@ -9,15 +9,28 @@ import {
 } from "./cnipa-gazette-browser-admission-plan";
 
 const datasetSha = "6".repeat(64);
+const chunkArtifactIds = [
+  "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+  "art_01ARZ3NDEKTSV4RRFFQ69G5FAX",
+  "art_01ARZ3NDEKTSV4RRFFQ69G5FAY",
+];
 
 function rawPlan(issue = 75, authorityIssueNumber = 866) {
-  const sourceRecordCount = issue === 75 ? 576 : 1234;
+  const sourceRecordCount = issue === 75 ? 576 : 5234;
   const browserSourcePageSize = issue === 75 ? 10 : 100;
   const browserSourcePageCount = Math.ceil(sourceRecordCount / browserSourcePageSize);
   const finalSourcePageRowCount =
     sourceRecordCount - (browserSourcePageCount - 1) * browserSourcePageSize;
   const logicalPageCount = Math.ceil(sourceRecordCount / 100);
   const finalLogicalPageRowCount = sourceRecordCount - (logicalPageCount - 1) * 100;
+  const ranges =
+    issue === 75
+      ? [{ startPage: 1, endPage: 6 }]
+      : [
+          { startPage: 1, endPage: 24 },
+          { startPage: 25, endPage: 48 },
+          { startPage: 49, endPage: 53 },
+        ];
   return {
     version: 1,
     operationId: `issue-${issue}-browser-admission-r1`,
@@ -28,7 +41,7 @@ function rawPlan(issue = 75, authorityIssueNumber = 866) {
     stage: "BROWSER_DATASET_ADMISSION",
     authorityIssueNumber,
     announcementIssue: issue,
-    announcementDate: issue === 75 ? "1983-08-15" : "1990-01-01",
+    announcementDate: issue === 75 ? "1983-08-15" : "1998-01-01",
     sourceRecordCount,
     browserSourcePageSize,
     browserSourcePageCount,
@@ -49,14 +62,17 @@ function rawPlan(issue = 75, authorityIssueNumber = 866) {
       sha256: "a".repeat(64),
       sizeBytes: 735,
     },
-    chunkRequestRef: {
-      artifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
-      canonicalUri:
-        `cnipa://trademark-gazette/issue/${issue}/dataset/${datasetSha}` +
-        `/fact-admission/chunk/1-${logicalPageCount}/request`,
-      sha256: "b".repeat(64),
-      sizeBytes: 262104,
-    },
+    chunkRequests: ranges.map((range, index) => ({
+      range,
+      requestRef: {
+        artifactId: chunkArtifactIds[index],
+        canonicalUri:
+          `cnipa://trademark-gazette/issue/${issue}/dataset/${datasetSha}` +
+          `/fact-admission/chunk/${range.startPage}-${range.endPage}/request`,
+        sha256: String(index + 1).repeat(64),
+        sizeBytes: 262104 + index,
+      },
+    })),
     dataEngineUrl: "http://127.0.0.1:8080/",
     historicalReplayActivated: false,
   };
@@ -76,37 +92,58 @@ describe("CNIPA Gazette browser admission plan", () => {
       dataEngineUrl: "http://127.0.0.1:8080",
       historicalReplayActivated: false,
     });
+    expect(plan.chunkRequests).toHaveLength(1);
   });
 
-  it("accepts a non-75 single-issue frozen plan", () => {
+  it("accepts contiguous multi-checkpoint coverage for a non-75 issue", () => {
     const plan = parseCnipaGazetteBrowserAdmissionPlan(rawPlan(429, 885));
     expect(plan).toMatchObject({
       authorityIssueNumber: 885,
       announcementIssue: 429,
-      sourceRecordCount: 1234,
+      sourceRecordCount: 5234,
       browserSourcePageSize: 100,
-      browserSourcePageCount: 13,
+      browserSourcePageCount: 53,
       finalSourcePageRowCount: 34,
-      logicalPageCount: 13,
+      logicalPageCount: 53,
       finalLogicalPageRowCount: 34,
     });
-    expect(cnipaGazetteBrowserAdmissionArtifactNames(plan)).toEqual({
-      chunkRequest: "cnipa-gazette-issue-429-chunk-1-13-fact-admission-request.json",
-      chunkReceipt: "cnipa-gazette-issue-429-chunk-1-13-fact-admission-receipt.json",
+    expect(plan.chunkRequests.map((seed) => seed.range)).toEqual([
+      { startPage: 1, endPage: 24 },
+      { startPage: 25, endPage: 48 },
+      { startPage: 49, endPage: 53 },
+    ]);
+    expect(cnipaGazetteBrowserAdmissionArtifactNames(plan, plan.chunkRequests[1]!.range)).toEqual({
+      chunkRequest: "cnipa-gazette-issue-429-chunk-25-48-fact-admission-request.json",
+      chunkReceipt: "cnipa-gazette-issue-429-chunk-25-48-fact-admission-receipt.json",
       finalizeRequest: "cnipa-gazette-issue-429-fact-admission-finalize-request.json",
       finalizeReceipt: "cnipa-gazette-issue-429-fact-admission-finalize-receipt.json",
     });
   });
 
-  it("fails closed on arithmetic drift or mismatched seed canonical URIs", () => {
+  it("fails closed on arithmetic drift, coverage gaps, or mismatched canonical URIs", () => {
     const fixture = rawPlan(429, 885);
     expect(() =>
-      parseCnipaGazetteBrowserAdmissionPlan({ ...fixture, browserSourcePageCount: 14 }),
+      parseCnipaGazetteBrowserAdmissionPlan({ ...fixture, browserSourcePageCount: 54 }),
     ).toThrow(/frozen single-issue scope mismatch/);
     expect(() =>
       parseCnipaGazetteBrowserAdmissionPlan({
         ...fixture,
-        chunkRequestRef: { ...fixture.chunkRequestRef, canonicalUri: "cnipa://wrong" },
+        chunkRequests: fixture.chunkRequests.map((seed, index) =>
+          index === 1 ? { ...seed, range: { startPage: 26, endPage: 48 } } : seed,
+        ),
+      }),
+    ).toThrow(/contiguous bounded coverage/);
+    expect(() =>
+      parseCnipaGazetteBrowserAdmissionPlan({
+        ...fixture,
+        chunkRequests: fixture.chunkRequests.map((seed, index) =>
+          index === 0
+            ? {
+                ...seed,
+                requestRef: { ...seed.requestRef, canonicalUri: "cnipa://wrong" },
+              }
+            : seed,
+        ),
       }),
     ).toThrow(/CHUNK request canonical URI mismatch/);
   });
@@ -126,7 +163,7 @@ describe("CNIPA Gazette browser admission plan", () => {
       stage: "PUBLISH_CHUNK",
       connectorConfig: {
         intent: "PUBLISH_DURABLE_REQUEST",
-        requestArtifactRef: plan.chunkRequestRef,
+        requestArtifactRef: plan.chunkRequests[0]!.requestRef,
       },
     });
     expect(source.tags).toContain("issue-429");
