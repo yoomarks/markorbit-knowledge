@@ -305,6 +305,37 @@ function admissionArtifactRef(
   };
 }
 
+function listAllRunArtifacts(input: {
+  workspaceId: string;
+  runId: string;
+  q: string;
+}) {
+  const repository = getRawArtifactRepository();
+  const items: ReturnType<typeof repository.list>["items"] = [];
+  let offset = 0;
+  let total = 0;
+  do {
+    const page = repository.list({
+      workspaceId: input.workspaceId,
+      runId: input.runId,
+      artifactKind: "JSON",
+      q: input.q,
+      limit: 100,
+      offset,
+    });
+    total = page.total;
+    items.push(...page.items);
+    offset += page.items.length;
+    if (items.length > 10_000) {
+      throw new RegistryValidationError("Gazette browser artifact set exceeds bounded limit");
+    }
+    if (page.items.length === 0 && offset < total) {
+      throw new RegistryValidationError("Gazette browser artifact pagination stalled");
+    }
+  } while (offset < total);
+  return { items, total };
+}
+
 async function buildAdmissionPlanFromBrowserRun(input: {
   workspaceId: string;
   browserPlan: CnipaGazetteBrowserAuthorityPlan;
@@ -363,20 +394,18 @@ async function buildAdmissionPlanFromBrowserRun(input: {
     throw new RegistryValidationError("Gazette dataset identity canonical URI mismatch");
   }
 
-  const chunkResult = artifacts.list({
+  const chunkResult = listAllRunArtifacts({
     workspaceId: input.workspaceId,
     runId: input.runId,
-    artifactKind: "JSON",
     q: "/fact-admission/chunk/",
-    limit: 100,
   });
   if (
     chunkResult.total < 1 ||
-    chunkResult.total > 100 ||
+    chunkResult.total > 10_000 ||
     chunkResult.items.length !== chunkResult.total
   ) {
     throw new RegistryValidationError(
-      "Gazette browser run must expose 1..100 frozen CHUNK requests",
+      "Gazette browser run must expose 1..10000 frozen CHUNK requests",
     );
   }
 
