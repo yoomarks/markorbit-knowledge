@@ -369,6 +369,7 @@ describe("CnipaGazetteBrowserRuntime", () => {
       itemsObserved: 7,
       outputKinds: ["JSON"],
     });
+    expect(result.sourceRowsSeen).toBe(30);
     expect(result.receipt.summary).toContain("30 official row(s)");
     expect(result.receipt.metadataOnly).toBe(false);
     if (!result.receipt.metadataOnly) {
@@ -470,6 +471,7 @@ describe("CnipaGazetteBrowserRuntime", () => {
       metadataOnly: false,
       itemsObserved: 125,
     });
+    expect(result.sourceRowsSeen).toBe(DEEP_TOTAL);
     expect(result.receipt.summary).toContain(`${DEEP_TOTAL} official row(s)`);
     if (!result.receipt.metadataOnly) {
       expect(result.receipt.itemsObserved).toBe(result.receipt.artifactReceiptIds.length);

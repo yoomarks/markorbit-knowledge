@@ -111,7 +111,8 @@ export async function runCnipaGazetteBrowserBridge(args: string[]): Promise<void
     process.stdout.write(
       [
         "browser_bridge_outcome=COMPLETED",
-        `rows_seen=${result.receipt.itemsObserved}`,
+        `rows_seen=${result.sourceRowsSeen}`,
+        `artifact_items_observed=${result.receipt.itemsObserved}`,
         `bytes_prepared=${result.receipt.bytesPrepared}`,
       ].join("\n") + "\n",
     );

@@ -52,6 +52,7 @@ export type CnipaGazetteBrowserRuntimeListening = {
 export type CnipaGazetteBrowserRuntimeResult = {
   listening: CnipaGazetteBrowserRuntimeListening;
   receipt: ExecutionReceipt;
+  sourceRowsSeen: number;
 };
 
 export type CnipaGazetteBrowserRuntimeOptions = {
@@ -664,7 +665,7 @@ export class CnipaGazetteBrowserRuntime {
           "Data Engine mutation was not performed by this Job.",
       };
       await this.client.complete(context, receipt, `${prefix}-complete`);
-      return { listening, receipt };
+      return { listening, receipt, sourceRowsSeen: stats.rowsSeen };
     } catch (error) {
       if (started) {
         try {
