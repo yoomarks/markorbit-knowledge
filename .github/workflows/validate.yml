@@ -66,6 +66,11 @@ jobs:
             --baseline "$core_ref" \
             --profile k-case-008
 
+      - name: Remove temporary Core freshness checkout
+        if: always() && github.event_name == 'pull_request' && matrix.node == 22 && steps.acceptance-scope.outputs.kcase == 'true'
+        shell: bash
+        run: rm -rf .core-drift
+
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.1
