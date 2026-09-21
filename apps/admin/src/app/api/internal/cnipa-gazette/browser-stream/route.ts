@@ -433,6 +433,11 @@ async function buildAdmissionPlanFromBrowserRun(input: {
     ) {
       throw new RegistryValidationError("Gazette CHUNK request does not match dataset identity");
     }
+    if (!view.artifact.provenance.parentArtifactIds?.includes(identityView.artifact.id)) {
+      throw new RegistryValidationError(
+        "Gazette CHUNK request does not descend from the durable dataset identity",
+      );
+    }
     chunkRequests.push({
       range: { startPage, endPage },
       requestRef: admissionArtifactRef(view),
