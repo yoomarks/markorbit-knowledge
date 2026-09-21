@@ -649,9 +649,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
   assertFinalizeRequest(finalizeRequestJson.json, input.plan);
   if (
     !finalizeRequest.parentArtifactIds.includes(input.plan.datasetIdentityRef.artifactId) ||
-    chunkReceipts.some(
-      (receipt) => !finalizeRequest.parentArtifactIds.includes(receipt.artifactId),
-    )
+    chunkReceipts.some((receipt) => !finalizeRequest.parentArtifactIds.includes(receipt.artifactId))
   ) {
     throw new Error("FINALIZE request lineage is incomplete");
   }
