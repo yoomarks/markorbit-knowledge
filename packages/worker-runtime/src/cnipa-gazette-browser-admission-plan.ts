@@ -28,6 +28,16 @@ export type CnipaGazetteBrowserAdmissionArtifactRef = {
   sizeBytes: number;
 };
 
+export type CnipaGazetteBrowserAdmissionPageRange = {
+  startPage: number;
+  endPage: number;
+};
+
+export type CnipaGazetteBrowserAdmissionChunkRequest = {
+  range: CnipaGazetteBrowserAdmissionPageRange;
+  requestRef: CnipaGazetteBrowserAdmissionArtifactRef;
+};
+
 export type CnipaGazetteBrowserAdmissionPlan = {
   version: 1;
   operationId: string;
@@ -36,15 +46,17 @@ export type CnipaGazetteBrowserAdmissionPlan = {
   executionMode: "APPLY_DISPATCH_ONCE";
   workerMode: "PROVISION_ONE_SHOT";
   stage: typeof CNIPA_GAZETTE_BROWSER_ADMISSION_STAGE;
-  announcementIssue: 75;
-  announcementDate: "1983-08-15";
-  sourceRecordCount: 576;
-  browserSourcePageSize: 10;
-  browserSourcePageCount: 58;
+  authorityIssueNumber: number;
+  announcementIssue: number;
+  announcementDate: string;
+  sourceRecordCount: number;
+  browserSourcePageSize: number;
+  browserSourcePageCount: number;
+  finalSourcePageRowCount: number;
   logicalPageSize: 100;
-  logicalPageCount: 6;
-  finalLogicalPageRowCount: 76;
-  range: { startPage: 1; endPage: 6 };
+  logicalPageCount: number;
+  finalLogicalPageRowCount: number;
+  range: { startPage: 1; endPage: number };
   announcementTypeSelection: "ALL";
   anncType: "";
   acquisitionMode: "MO_CNIPA_NORMAL_BROWSER_STREAM_V1";
@@ -52,7 +64,7 @@ export type CnipaGazetteBrowserAdmissionPlan = {
   captureToolVersion: "1.0.3";
   sourceDatasetSha256: string;
   datasetIdentityRef: CnipaGazetteBrowserAdmissionArtifactRef;
-  chunkRequestRef: CnipaGazetteBrowserAdmissionArtifactRef;
+  chunkRequests: CnipaGazetteBrowserAdmissionChunkRequest[];
   dataEngineUrl: string;
   historicalReplayActivated: false;
 };
@@ -61,6 +73,29 @@ const OPERATION_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const WORKSPACE_ID = /^wsp_[0-9A-HJKMNP-TV-Z]{26}$/u;
 const ARTIFACT_ID = /^art_[0-9A-HJKMNP-TV-Z]{26}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/u;
+
+function positiveInteger(value: unknown, label: string, maximum = Number.MAX_SAFE_INTEGER): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 1 || (value as number) > maximum) {
+    throw new Error(
+      `CNIPA Gazette browser admission plan invalid: ${label} must be an integer from 1 to ${maximum}`,
+    );
+  }
+  return value as number;
+}
+
+function announcementDate(value: unknown): string {
+  if (typeof value !== "string" || !ISO_DATE.test(value)) {
+    throw new Error(
+      "CNIPA Gazette browser admission plan invalid: announcementDate must be YYYY-MM-DD",
+    );
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new Error("CNIPA Gazette browser admission plan invalid: announcementDate is invalid");
+  }
+  return value;
+}
 
 function objectValue(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -118,6 +153,28 @@ function artifactRef(value: unknown, label: string): CnipaGazetteBrowserAdmissio
   };
 }
 
+function pageRange(value: unknown, label: string): CnipaGazetteBrowserAdmissionPageRange {
+  const raw = objectValue(value, label);
+  exactKeys(raw, ["startPage", "endPage"], label);
+  const startPage = positiveInteger(raw.startPage, `${label}.startPage`);
+  const endPage = positiveInteger(raw.endPage, `${label}.endPage`);
+  if (endPage < startPage) {
+    throw new Error(
+      `CNIPA Gazette browser admission plan invalid: ${label}.endPage must be >= startPage`,
+    );
+  }
+  return { startPage, endPage };
+}
+
+function chunkRequest(value: unknown, label: string): CnipaGazetteBrowserAdmissionChunkRequest {
+  const raw = objectValue(value, label);
+  exactKeys(raw, ["range", "requestRef"], label);
+  return {
+    range: pageRange(raw.range, `${label}.range`),
+    requestRef: artifactRef(raw.requestRef, `${label}.requestRef`),
+  };
+}
+
 function dataEngineUrl(value: unknown): string {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error("CNIPA Gazette browser admission plan invalid: dataEngineUrl is required");
@@ -145,11 +202,13 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
       "executionMode",
       "workerMode",
       "stage",
+      "authorityIssueNumber",
       "announcementIssue",
       "announcementDate",
       "sourceRecordCount",
       "browserSourcePageSize",
       "browserSourcePageCount",
+      "finalSourcePageRowCount",
       "logicalPageSize",
       "logicalPageCount",
       "finalLogicalPageRowCount",
@@ -161,7 +220,7 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
       "captureToolVersion",
       "sourceDatasetSha256",
       "datasetIdentityRef",
-      "chunkRequestRef",
+      "chunkRequests",
       "dataEngineUrl",
       "historicalReplayActivated",
     ],
@@ -188,19 +247,45 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
       "CNIPA Gazette browser admission plan invalid: authority/execution boundary mismatch",
     );
   }
+  const authorityIssueNumber = positiveInteger(input.authorityIssueNumber, "authorityIssueNumber");
+  const issue = positiveInteger(input.announcementIssue, "announcementIssue");
+  const date = announcementDate(input.announcementDate);
+  const sourceRecordCount = positiveInteger(input.sourceRecordCount, "sourceRecordCount");
+  const browserSourcePageSize = positiveInteger(
+    input.browserSourcePageSize,
+    "browserSourcePageSize",
+    100,
+  );
+  const browserSourcePageCount = positiveInteger(
+    input.browserSourcePageCount,
+    "browserSourcePageCount",
+  );
+  const finalSourcePageRowCount = positiveInteger(
+    input.finalSourcePageRowCount,
+    "finalSourcePageRowCount",
+    browserSourcePageSize,
+  );
+  const logicalPageCount = positiveInteger(input.logicalPageCount, "logicalPageCount");
+  const finalLogicalPageRowCount = positiveInteger(
+    input.finalLogicalPageRowCount,
+    "finalLogicalPageRowCount",
+    100,
+  );
   const range = objectValue(input.range, "range");
   exactKeys(range, ["startPage", "endPage"], "range");
+  const expectedBrowserPageCount = Math.ceil(sourceRecordCount / browserSourcePageSize);
+  const expectedFinalSourceRows =
+    sourceRecordCount - (expectedBrowserPageCount - 1) * browserSourcePageSize;
+  const expectedLogicalPageCount = Math.ceil(sourceRecordCount / 100);
+  const expectedFinalLogicalRows = sourceRecordCount - (expectedLogicalPageCount - 1) * 100;
   if (
-    input.announcementIssue !== 75 ||
-    input.announcementDate !== "1983-08-15" ||
-    input.sourceRecordCount !== 576 ||
-    input.browserSourcePageSize !== 10 ||
-    input.browserSourcePageCount !== 58 ||
+    browserSourcePageCount !== expectedBrowserPageCount ||
+    finalSourcePageRowCount !== expectedFinalSourceRows ||
     input.logicalPageSize !== 100 ||
-    input.logicalPageCount !== 6 ||
-    input.finalLogicalPageRowCount !== 76 ||
+    logicalPageCount !== expectedLogicalPageCount ||
+    finalLogicalPageRowCount !== expectedFinalLogicalRows ||
     range.startPage !== 1 ||
-    range.endPage !== 6 ||
+    range.endPage !== logicalPageCount ||
     input.announcementTypeSelection !== "ALL" ||
     input.anncType !== "" ||
     input.acquisitionMode !== "MO_CNIPA_NORMAL_BROWSER_STREAM_V1" ||
@@ -208,27 +293,66 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
     input.captureToolVersion !== "1.0.3" ||
     input.historicalReplayActivated !== false
   ) {
-    throw new Error("CNIPA Gazette browser admission plan invalid: issue-75 frozen scope mismatch");
+    throw new Error(
+      "CNIPA Gazette browser admission plan invalid: frozen single-issue scope mismatch",
+    );
   }
   if (typeof input.sourceDatasetSha256 !== "string" || !SHA256.test(input.sourceDatasetSha256)) {
     throw new Error("CNIPA Gazette browser admission plan invalid: sourceDatasetSha256 is invalid");
   }
   const datasetIdentityRef = artifactRef(input.datasetIdentityRef, "datasetIdentityRef");
-  const chunkRequestRef = artifactRef(input.chunkRequestRef, "chunkRequestRef");
-  if (datasetIdentityRef.artifactId === chunkRequestRef.artifactId) {
+  if (
+    !Array.isArray(input.chunkRequests) ||
+    input.chunkRequests.length < 1 ||
+    input.chunkRequests.length > logicalPageCount
+  ) {
     throw new Error(
-      "CNIPA Gazette browser admission plan invalid: seed artifact ids must be unique",
+      "CNIPA Gazette browser admission plan invalid: chunkRequests must contain 1..logicalPageCount entries",
     );
   }
-  const datasetCanonical = `cnipa://trademark-gazette/issue/75/dataset/${input.sourceDatasetSha256}`;
+  const chunkRequests = input.chunkRequests.map((value, index) =>
+    chunkRequest(value, `chunkRequests[${index}]`),
+  );
+  const datasetCanonical = `cnipa://trademark-gazette/issue/${issue}/dataset/${input.sourceDatasetSha256}`;
   if (datasetIdentityRef.canonicalUri !== datasetCanonical) {
     throw new Error(
       "CNIPA Gazette browser admission plan invalid: dataset identity canonical URI mismatch",
     );
   }
-  if (chunkRequestRef.canonicalUri !== `${datasetCanonical}/fact-admission/chunk/1-6/request`) {
+  const artifactIds = new Set<string>([datasetIdentityRef.artifactId]);
+  const canonicalUris = new Set<string>();
+  let nextPage = 1;
+  for (const seed of chunkRequests) {
+    if (
+      seed.range.startPage !== nextPage ||
+      seed.range.endPage > logicalPageCount ||
+      seed.range.endPage - seed.range.startPage + 1 > 100
+    ) {
+      throw new Error(
+        "CNIPA Gazette browser admission plan invalid: chunkRequests must provide contiguous bounded coverage",
+      );
+    }
+    const expectedCanonical = `${datasetCanonical}/fact-admission/chunk/${seed.range.startPage}-${seed.range.endPage}/request`;
+    if (seed.requestRef.canonicalUri !== expectedCanonical) {
+      throw new Error(
+        "CNIPA Gazette browser admission plan invalid: CHUNK request canonical URI mismatch",
+      );
+    }
+    if (
+      artifactIds.has(seed.requestRef.artifactId) ||
+      canonicalUris.has(seed.requestRef.canonicalUri)
+    ) {
+      throw new Error(
+        "CNIPA Gazette browser admission plan invalid: seed artifact identities must be unique",
+      );
+    }
+    artifactIds.add(seed.requestRef.artifactId);
+    canonicalUris.add(seed.requestRef.canonicalUri);
+    nextPage = seed.range.endPage + 1;
+  }
+  if (nextPage !== logicalPageCount + 1) {
     throw new Error(
-      "CNIPA Gazette browser admission plan invalid: CHUNK request canonical URI mismatch",
+      "CNIPA Gazette browser admission plan invalid: chunkRequests do not cover the full logical issue",
     );
   }
   return {
@@ -239,15 +363,17 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
     executionMode: "APPLY_DISPATCH_ONCE",
     workerMode: "PROVISION_ONE_SHOT",
     stage: CNIPA_GAZETTE_BROWSER_ADMISSION_STAGE,
-    announcementIssue: 75,
-    announcementDate: "1983-08-15",
-    sourceRecordCount: 576,
-    browserSourcePageSize: 10,
-    browserSourcePageCount: 58,
+    authorityIssueNumber,
+    announcementIssue: issue,
+    announcementDate: date,
+    sourceRecordCount,
+    browserSourcePageSize,
+    browserSourcePageCount,
+    finalSourcePageRowCount,
     logicalPageSize: 100,
-    logicalPageCount: 6,
-    finalLogicalPageRowCount: 76,
-    range: { startPage: 1, endPage: 6 },
+    logicalPageCount,
+    finalLogicalPageRowCount,
+    range: { startPage: 1, endPage: logicalPageCount },
     announcementTypeSelection: "ALL",
     anncType: "",
     acquisitionMode: "MO_CNIPA_NORMAL_BROWSER_STREAM_V1",
@@ -255,7 +381,7 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
     captureToolVersion: "1.0.3",
     sourceDatasetSha256: input.sourceDatasetSha256,
     datasetIdentityRef,
-    chunkRequestRef,
+    chunkRequests,
     dataEngineUrl: dataEngineUrl(input.dataEngineUrl),
     historicalReplayActivated: false,
   };
@@ -273,7 +399,21 @@ export function expectedCnipaGazetteBrowserAdmissionAuthorityToken(
   plan: CnipaGazetteBrowserAdmissionPlan,
   planSha256: string,
 ): string {
-  return `GO #866 CNIPA-GAZETTE-BROWSER-ADMISSION ${plan.operationId} FULL_CHAIN ${planSha256}`;
+  return `GO #${plan.authorityIssueNumber} CNIPA-GAZETTE-BROWSER-ADMISSION ${plan.operationId} FULL_CHAIN ${planSha256}`;
+}
+
+export function cnipaGazetteBrowserAdmissionArtifactNames(
+  plan: CnipaGazetteBrowserAdmissionPlan,
+  range: CnipaGazetteBrowserAdmissionPageRange = plan.range,
+) {
+  const prefix = `cnipa-gazette-issue-${plan.announcementIssue}`;
+  const chunk = `chunk-${range.startPage}-${range.endPage}-fact-admission`;
+  return {
+    chunkRequest: `${prefix}-${chunk}-request.json`,
+    chunkReceipt: `${prefix}-${chunk}-receipt.json`,
+    finalizeRequest: `${prefix}-fact-admission-finalize-request.json`,
+    finalizeReceipt: `${prefix}-fact-admission-finalize-receipt.json`,
+  };
 }
 
 function stageRuntime(stage: CnipaGazetteBrowserAdmissionRuntimeStage) {
@@ -323,7 +463,13 @@ export function cnipaGazetteBrowserAdmissionSourcePayload(input: {
     connectorConfig: input.connectorConfig,
     canonicalUri: runtime.canonicalUri,
     entrypoints: [{ uri: runtime.canonicalUri, label: `CNIPA Gazette ${input.stage}` }],
-    tags: ["cnipa", "gazette", "browser-admission", "issue-75", suffix],
+    tags: [
+      "cnipa",
+      "gazette",
+      "browser-admission",
+      `issue-${input.plan.announcementIssue}`,
+      suffix,
+    ],
     extensions: {
       "x-markorbit-gazette-browser-admission-operation": input.plan.operationId,
       "x-markorbit-gazette-browser-admission-stage": input.stage,
@@ -397,7 +543,7 @@ export function cnipaGazetteBrowserAdmissionWorkerPayload(
       "cnipa",
       "gazette",
       "browser-admission",
-      "issue-75",
+      "single-issue",
       stage.toLowerCase(),
     ],
     extensions: {

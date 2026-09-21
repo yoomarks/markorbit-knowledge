@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION } from "@markorbit/contracts";
 import {
   CNIPA_GAZETTE_BROWSER_ADMISSION_STAGES,
+  cnipaGazetteBrowserAdmissionArtifactNames,
   cnipaGazetteBrowserAdmissionCollectionPlanPayload,
   cnipaGazetteBrowserAdmissionConnectorManifest,
   cnipaGazetteBrowserAdmissionPlanSha256,
@@ -202,14 +203,18 @@ function connectorConfigAndGrants(
 ) {
   const config = objectValue(rawConfig, "connectorConfig");
   const planSha256 = cnipaGazetteBrowserAdmissionPlanSha256(plan);
+  const artifactNames = cnipaGazetteBrowserAdmissionArtifactNames(plan);
   if (runtimeStage === "PUBLISH_CHUNK") {
     if (config.intent !== "PUBLISH_DURABLE_REQUEST") {
       throw new RegistryValidationError("Gazette publisher intent is invalid");
     }
     const reference = artifactReference(config.requestArtifactRef, "requestArtifactRef");
-    if (stable(reference) !== stable(plan.chunkRequestRef)) {
+    const seed = plan.chunkRequests.find(
+      (candidate) => stable(candidate.requestRef) === stable(reference),
+    );
+    if (!seed) {
       throw new RegistryValidationError(
-        "PUBLISH_CHUNK must use the frozen browser CHUNK request ref",
+        "PUBLISH_CHUNK must use one frozen browser CHUNK request ref",
       );
     }
     const view = assertBrowserSeed(
@@ -218,10 +223,8 @@ function connectorConfigAndGrants(
       "CHUNK_REQUEST",
       plan.datasetIdentityRef.artifactId,
     );
-    if (
-      view.artifact.originalName.toLowerCase() !==
-      "cnipa-gazette-issue-75-chunk-1-6-fact-admission-request.json"
-    ) {
+    const chunkNames = cnipaGazetteBrowserAdmissionArtifactNames(plan, seed.range);
+    if (view.artifact.originalName.toLowerCase() !== chunkNames.chunkRequest) {
       throw new RegistryValidationError("Browser CHUNK request artifact stage mismatch");
     }
     return {
@@ -236,10 +239,7 @@ function connectorConfigAndGrants(
     }
     const reference = artifactReference(config.requestArtifactRef, "requestArtifactRef");
     const view = verifyAdmissionReference(reference, workspaceId, planSha256, "BUILD_FINALIZE");
-    if (
-      view.artifact.originalName.toLowerCase() !==
-      "cnipa-gazette-issue-75-fact-admission-finalize-request.json"
-    ) {
+    if (view.artifact.originalName.toLowerCase() !== artifactNames.finalizeRequest) {
       throw new RegistryValidationError("Gazette FINALIZE request artifact stage mismatch");
     }
     return {
@@ -264,22 +264,30 @@ function connectorConfigAndGrants(
     plan.datasetIdentityRef.artifactId,
   );
   const rawReceipts = config.chunkReceiptRefs;
-  if (!Array.isArray(rawReceipts) || rawReceipts.length !== 1) {
+  if (!Array.isArray(rawReceipts) || rawReceipts.length !== plan.chunkRequests.length) {
     throw new RegistryValidationError(
-      "Issue-75 browser admission requires exactly one CHUNK receipt",
+      "Single-issue browser admission requires one CHUNK receipt per frozen chunk",
     );
   }
   const chunkReceiptRefs = rawReceipts.map((value, index) =>
     artifactReference(value, `chunkReceiptRefs[${index}]`),
   );
+  const expectedReceiptNames = new Set(
+    plan.chunkRequests.map(
+      (seed) => cnipaGazetteBrowserAdmissionArtifactNames(plan, seed.range).chunkReceipt,
+    ),
+  );
   for (const reference of chunkReceiptRefs) {
     const view = verifyAdmissionReference(reference, workspaceId, planSha256, "PUBLISH_CHUNK");
-    if (
-      view.artifact.originalName.toLowerCase() !==
-      "cnipa-gazette-issue-75-chunk-1-6-fact-admission-receipt.json"
-    ) {
-      throw new RegistryValidationError("Gazette CHUNK receipt artifact stage mismatch");
+    const originalName = view.artifact.originalName.toLowerCase();
+    if (!expectedReceiptNames.delete(originalName)) {
+      throw new RegistryValidationError(
+        "Gazette CHUNK receipt artifact is duplicated or outside frozen coverage",
+      );
     }
+  }
+  if (expectedReceiptNames.size !== 0) {
+    throw new RegistryValidationError("Gazette CHUNK receipt coverage is incomplete");
   }
   return {
     connectorConfig: {
@@ -554,17 +562,20 @@ export async function POST(request: Request) {
 
     if (operation === "READ_SEED_JSON_ARTIFACT") {
       const artifactId = text(payload.artifactId, "artifactId");
+      const chunkSeed = plan.chunkRequests.find(
+        (candidate) => candidate.requestRef.artifactId === artifactId,
+      );
       const role =
         artifactId === plan.datasetIdentityRef.artifactId
           ? ("DATASET_IDENTITY" as const)
-          : artifactId === plan.chunkRequestRef.artifactId
+          : chunkSeed
             ? ("CHUNK_REQUEST" as const)
             : null;
       if (!role) {
         throw new RegistryValidationError("Requested seed artifact is outside the frozen plan");
       }
       const reference =
-        role === "DATASET_IDENTITY" ? plan.datasetIdentityRef : plan.chunkRequestRef;
+        role === "DATASET_IDENTITY" ? plan.datasetIdentityRef : chunkSeed!.requestRef;
       const view = assertBrowserSeed(
         reference,
         workspaceId,
