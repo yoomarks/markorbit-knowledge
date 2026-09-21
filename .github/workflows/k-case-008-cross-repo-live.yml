@@ -26,10 +26,10 @@ permissions:
   contents: read
 
 env:
-  CORE_REF: 68422b9cbe6416ac5cefa3b05aa76786bcc8fc93
+  CORE_REF: 095d651f1e806193fed5a3d47b71056907b37103
   MARKREG_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/markorbit_kcase008
   MARKREG_MIGRATION_NAMESPACE: markreg_kcase008
-  MO_INTERNAL_SERVICE_SECRET: markorbit-k-case-008-shared-secret-0001
+  MO_INTERNAL_SERVICE_SECRET: ${{ format('markorbit-kcase-{0}', github.run_id) }}
   MARKREG_URL: http://127.0.0.1:4105
   KNOWLEDGE_URL: http://127.0.0.1:3100
   MARKORBIT_KCASE_WORKSPACE_ID: 77777777-7777-4777-8777-777777777777
