@@ -87,11 +87,27 @@ function parseManualLinks(html: string, sourceUri: string): ManualLink[] {
 }
 
 function splitRecentUpdates(html: string): { navigationHtml: string; updatesHtml: string } {
-  const match = /recent\s+updates/i.exec(html);
-  if (!match || match.index <= 0) return { navigationHtml: html, updatesHtml: "" };
+  const heading = /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi;
+  for (const match of html.matchAll(heading)) {
+    if (cleanText(match[2] ?? "").toLowerCase() !== "recent updates") continue;
+    if (match.index === undefined || match.index <= 0) break;
+    return {
+      navigationHtml: html.slice(0, match.index),
+      updatesHtml: html.slice(match.index),
+    };
+  }
+
+  // Backward-compatible fallback for legacy fixtures/surfaces without semantic headings.
+  // Prefer the last textual marker so script/meta references near the document head
+  // cannot truncate the real navigation tree.
+  const markers = [...html.matchAll(/recent\s+updates/gi)];
+  const fallback = markers.at(-1);
+  if (!fallback || fallback.index === undefined || fallback.index <= 0) {
+    return { navigationHtml: html, updatesHtml: "" };
+  }
   return {
-    navigationHtml: html.slice(0, match.index),
-    updatesHtml: html.slice(match.index),
+    navigationHtml: html.slice(0, fallback.index),
+    updatesHtml: html.slice(fallback.index),
   };
 }
 
