@@ -33,7 +33,7 @@ jobs:
           files="$(git diff --name-only "$base"...HEAD)"
           printf '%s\n' "$files"
 
-          if printf '%s\n' "$files" | grep -Eq '^(apps/admin/|apps/worker/src/run-admin-browser-acceptance[^/]*\.ts$|packages/contracts/|packages/persistence/|scripts/admin-browser-calibration-core-auth-stub\.mjs$|pnpm-lock\.yaml$|\.github/workflows/admin-browser-acceptance\.yml$)'; then
+          if printf '%s\n' "$files" | grep -Eq '^(apps/admin/|apps/worker/src/run-admin-browser-acceptance[^/]*\.ts$|packages/contracts/|packages/persistence/|scripts/admin-browser-calibration-core-auth-stub\.mjs$|pnpm-lock\.yaml$|\.github/workflows/admin-browser-acceptance\.yml$|\.github/workflows/validate\.yml$)'; then
             echo "browser=true" >> "$GITHUB_OUTPUT"
           else
             echo "browser=false" >> "$GITHUB_OUTPUT"
