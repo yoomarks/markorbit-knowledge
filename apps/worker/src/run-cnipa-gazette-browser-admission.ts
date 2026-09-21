@@ -8,6 +8,7 @@ import {
   HttpCnipaGazetteDurableArtifactReader,
   HttpControlledCollectionClient,
   HttpFactAdmissionClient,
+  cnipaGazetteBrowserAdmissionArtifactNames,
   cnipaGazetteBrowserAdmissionPlanSha256,
   expectedCnipaGazetteBrowserAdmissionAuthorityToken,
   parseCnipaGazetteBrowserAdmissionPlan,
@@ -384,8 +385,15 @@ function assertDatasetIdentity(value: unknown, plan: CnipaGazetteBrowserAdmissio
     scope.announcementTypeSelection !== "ALL" ||
     scope.anncType !== ""
   ) {
-    throw new Error("Issue-75 browser dataset identity does not match the frozen plan");
+    throw new Error("Browser dataset identity does not match the frozen single-issue plan");
   }
+}
+
+function expectedLogicalPageRowCount(
+  plan: CnipaGazetteBrowserAdmissionPlan,
+  pageIndex: number,
+): number {
+  return pageIndex === plan.logicalPageCount ? plan.finalLogicalPageRowCount : plan.logicalPageSize;
 }
 
 function assertChunkRequest(value: unknown, plan: CnipaGazetteBrowserAdmissionPlan): void {
@@ -393,30 +401,33 @@ function assertChunkRequest(value: unknown, plan: CnipaGazetteBrowserAdmissionPl
   const payload = record(root.payload, "chunk request.payload");
   if (
     root.operation !== "CHUNK" ||
-    root.announcementIssue !== 75 ||
+    root.announcementIssue !== plan.announcementIssue ||
     root.sourceDatasetSha256 !== plan.sourceDatasetSha256 ||
     payload.source_record_count !== plan.sourceRecordCount ||
     payload.source_page_count !== plan.logicalPageCount ||
     payload.page_size !== plan.logicalPageSize ||
     payload.range_start_page !== 1 ||
-    payload.range_end_page !== 6 ||
-    payload.chunk_row_count !== 576
+    payload.range_end_page !== plan.logicalPageCount ||
+    payload.chunk_row_count !== plan.sourceRecordCount
   ) {
-    throw new Error("Issue-75 browser CHUNK request does not match the frozen plan");
+    throw new Error("Browser CHUNK request does not match the frozen single-issue plan");
   }
   const counts = payload.page_row_counts;
-  if (!Array.isArray(counts) || counts.length !== 6) {
-    throw new Error("Issue-75 browser CHUNK page_row_counts must contain six pages");
+  if (!Array.isArray(counts) || counts.length !== plan.logicalPageCount) {
+    throw new Error("Browser CHUNK page_row_counts do not cover the frozen logical range");
   }
-  const expected = [100, 100, 100, 100, 100, 76];
   counts.forEach((entry, index) => {
     const row = record(entry, `page_row_counts[${index}]`);
-    if (row.page_index !== index + 1 || row.row_count !== expected[index]) {
-      throw new Error(`Issue-75 browser page ${index + 1} row count mismatch`);
+    const pageIndex = index + 1;
+    if (
+      row.page_index !== pageIndex ||
+      row.row_count !== expectedLogicalPageRowCount(plan, pageIndex)
+    ) {
+      throw new Error(`Browser logical page ${pageIndex} row count mismatch`);
     }
   });
-  if (!Array.isArray(payload.records) || payload.records.length !== 576) {
-    throw new Error("Issue-75 browser CHUNK must materialize exactly 576 records");
+  if (!Array.isArray(payload.records) || payload.records.length !== plan.sourceRecordCount) {
+    throw new Error("Browser CHUNK record count does not match the frozen plan");
   }
 }
 
@@ -427,13 +438,13 @@ function assertChunkReceipt(value: unknown, plan: CnipaGazetteBrowserAdmissionPl
   if (
     root.operation !== "CHUNK" ||
     root.sourceDatasetSha256 !== plan.sourceDatasetSha256 ||
-    root.announcementIssue !== 75 ||
+    root.announcementIssue !== plan.announcementIssue ||
     range.startPage !== 1 ||
-    range.endPage !== 6 ||
+    range.endPage !== plan.logicalPageCount ||
     receipt.outcome !== "CHUNK_ADMITTED" ||
     typeof receipt.replayed !== "boolean"
   ) {
-    throw new Error("Issue-75 browser CHUNK receipt is invalid");
+    throw new Error("Browser CHUNK receipt is invalid");
   }
   return receipt.replayed;
 }
@@ -444,13 +455,13 @@ function assertFinalizeRequest(value: unknown, plan: CnipaGazetteBrowserAdmissio
   if (
     root.operation !== "FINALIZE" ||
     root.sourceDatasetSha256 !== plan.sourceDatasetSha256 ||
-    root.announcementIssue !== 75 ||
-    root.pageCount !== 6 ||
+    root.announcementIssue !== plan.announcementIssue ||
+    root.pageCount !== plan.logicalPageCount ||
     payload.record_count !== plan.sourceRecordCount ||
     payload.page_count !== plan.logicalPageCount ||
     payload.page_size !== plan.logicalPageSize
   ) {
-    throw new Error("Issue-75 browser FINALIZE request does not match the frozen plan");
+    throw new Error("Browser FINALIZE request does not match the frozen plan");
   }
 }
 
@@ -460,12 +471,12 @@ function assertFinalizeReceipt(value: unknown, plan: CnipaGazetteBrowserAdmissio
   if (
     root.operation !== "FINALIZE" ||
     root.sourceDatasetSha256 !== plan.sourceDatasetSha256 ||
-    root.announcementIssue !== 75 ||
-    root.pageCount !== 6 ||
+    root.announcementIssue !== plan.announcementIssue ||
+    root.pageCount !== plan.logicalPageCount ||
     receipt.outcome !== "ADMITTED" ||
     typeof receipt.replayed !== "boolean"
   ) {
-    throw new Error("Issue-75 browser FINALIZE receipt is invalid");
+    throw new Error("Browser FINALIZE receipt is invalid");
   }
   return receipt.replayed;
 }
@@ -520,6 +531,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     );
   }
   const dispatchAttemptKey = `try-${Date.now().toString(36)}-${process.pid.toString(36)}`;
+  const artifactNames = cnipaGazetteBrowserAdmissionArtifactNames(input.plan);
 
   const chunkPublisher = await prepareStage({
     ...input,
@@ -545,7 +557,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
   const chunkArtifacts = await listRunArtifacts({ ...input, runId: chunkPublisher.runId });
   const chunkReceipt = oneArtifact(
     chunkArtifacts,
-    "cnipa-gazette-issue-75-chunk-1-6-fact-admission-receipt.json",
+    artifactNames.chunkReceipt,
   );
   const chunkReceiptJson = await readJsonArtifact({
     ...input,
@@ -584,7 +596,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
   });
   const finalizeRequest = oneArtifact(
     finalizeBuilderArtifacts,
-    "cnipa-gazette-issue-75-fact-admission-finalize-request.json",
+    artifactNames.finalizeRequest,
   );
   const finalizeRequestJson = await readJsonArtifact({
     ...input,
@@ -626,7 +638,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
   });
   const finalizeReceipt = oneArtifact(
     finalizePublisherArtifacts,
-    "cnipa-gazette-issue-75-fact-admission-finalize-receipt.json",
+    artifactNames.finalizeReceipt,
   );
   const finalizeReceiptJson = await readJsonArtifact({
     ...input,
@@ -644,16 +656,18 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     planSha256: input.planSha256,
     operationId: input.plan.operationId,
     frozenScope: {
-      announcementIssue: 75,
-      announcementDate: "1983-08-15",
+      authorityIssueNumber: input.plan.authorityIssueNumber,
+      announcementIssue: input.plan.announcementIssue,
+      announcementDate: input.plan.announcementDate,
       announcementTypeSelection: "ALL",
       anncType: "",
-      sourceRecordCount: 576,
-      browserSourcePageSize: 10,
-      browserSourcePageCount: 58,
-      logicalPageSize: 100,
-      logicalPageCount: 6,
-      finalLogicalPageRowCount: 76,
+      sourceRecordCount: input.plan.sourceRecordCount,
+      browserSourcePageSize: input.plan.browserSourcePageSize,
+      browserSourcePageCount: input.plan.browserSourcePageCount,
+      finalSourcePageRowCount: input.plan.finalSourcePageRowCount,
+      logicalPageSize: input.plan.logicalPageSize,
+      logicalPageCount: input.plan.logicalPageCount,
+      finalLogicalPageRowCount: input.plan.finalLogicalPageRowCount,
       acquisitionMode: input.plan.acquisitionMode,
       captureToolVersion: input.plan.captureToolVersion,
       sourceDatasetSha256: input.plan.sourceDatasetSha256,
@@ -699,7 +713,7 @@ async function main(): Promise<void> {
       `${JSON.stringify({
         event: "cnipa_gazette_browser_admission.plan_validated",
         operationId: loaded.plan.operationId,
-        announcementIssue: 75,
+        announcementIssue: loaded.plan.announcementIssue,
         sourceDatasetSha256: loaded.plan.sourceDatasetSha256,
         datasetIdentityArtifactId: loaded.plan.datasetIdentityRef.artifactId,
         chunkRequestArtifactId: loaded.plan.chunkRequestRef.artifactId,
