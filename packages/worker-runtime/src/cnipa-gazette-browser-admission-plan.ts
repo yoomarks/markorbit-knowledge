@@ -65,7 +65,11 @@ const ARTIFACT_ID = /^art_[0-9A-HJKMNP-TV-Z]{26}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/u;
 
-function positiveInteger(value: unknown, label: string, maximum = Number.MAX_SAFE_INTEGER): number {
+function positiveInteger(
+  value: unknown,
+  label: string,
+  maximum = Number.MAX_SAFE_INTEGER,
+): number {
   if (!Number.isSafeInteger(value) || (value as number) < 1 || (value as number) > maximum) {
     throw new Error(
       `CNIPA Gazette browser admission plan invalid: ${label} must be an integer from 1 to ${maximum}`,
@@ -215,7 +219,10 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
       "CNIPA Gazette browser admission plan invalid: authority/execution boundary mismatch",
     );
   }
-  const authorityIssueNumber = positiveInteger(input.authorityIssueNumber, "authorityIssueNumber");
+  const authorityIssueNumber = positiveInteger(
+    input.authorityIssueNumber,
+    "authorityIssueNumber",
+  );
   const issue = positiveInteger(input.announcementIssue, "announcementIssue");
   const date = announcementDate(input.announcementDate);
   const sourceRecordCount = positiveInteger(input.sourceRecordCount, "sourceRecordCount");
@@ -275,7 +282,8 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
       "CNIPA Gazette browser admission plan invalid: seed artifact ids must be unique",
     );
   }
-  const datasetCanonical = `cnipa://trademark-gazette/issue/${issue}/dataset/${input.sourceDatasetSha256}`;
+  const datasetCanonical =
+    `cnipa://trademark-gazette/issue/${issue}/dataset/${input.sourceDatasetSha256}`;
   if (datasetIdentityRef.canonicalUri !== datasetCanonical) {
     throw new Error(
       "CNIPA Gazette browser admission plan invalid: dataset identity canonical URI mismatch",
