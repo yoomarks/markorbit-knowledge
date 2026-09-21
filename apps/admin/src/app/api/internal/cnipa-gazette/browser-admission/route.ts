@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION } from "@markorbit/contracts";
 import {
   CNIPA_GAZETTE_BROWSER_ADMISSION_STAGES,
+  cnipaGazetteBrowserAdmissionArtifactNames,
   cnipaGazetteBrowserAdmissionCollectionPlanPayload,
   cnipaGazetteBrowserAdmissionConnectorManifest,
   cnipaGazetteBrowserAdmissionPlanSha256,
@@ -202,6 +203,7 @@ function connectorConfigAndGrants(
 ) {
   const config = objectValue(rawConfig, "connectorConfig");
   const planSha256 = cnipaGazetteBrowserAdmissionPlanSha256(plan);
+  const artifactNames = cnipaGazetteBrowserAdmissionArtifactNames(plan);
   if (runtimeStage === "PUBLISH_CHUNK") {
     if (config.intent !== "PUBLISH_DURABLE_REQUEST") {
       throw new RegistryValidationError("Gazette publisher intent is invalid");
@@ -218,10 +220,7 @@ function connectorConfigAndGrants(
       "CHUNK_REQUEST",
       plan.datasetIdentityRef.artifactId,
     );
-    if (
-      view.artifact.originalName.toLowerCase() !==
-      "cnipa-gazette-issue-75-chunk-1-6-fact-admission-request.json"
-    ) {
+    if (view.artifact.originalName.toLowerCase() !== artifactNames.chunkRequest) {
       throw new RegistryValidationError("Browser CHUNK request artifact stage mismatch");
     }
     return {
@@ -236,10 +235,7 @@ function connectorConfigAndGrants(
     }
     const reference = artifactReference(config.requestArtifactRef, "requestArtifactRef");
     const view = verifyAdmissionReference(reference, workspaceId, planSha256, "BUILD_FINALIZE");
-    if (
-      view.artifact.originalName.toLowerCase() !==
-      "cnipa-gazette-issue-75-fact-admission-finalize-request.json"
-    ) {
+    if (view.artifact.originalName.toLowerCase() !== artifactNames.finalizeRequest) {
       throw new RegistryValidationError("Gazette FINALIZE request artifact stage mismatch");
     }
     return {
@@ -266,7 +262,7 @@ function connectorConfigAndGrants(
   const rawReceipts = config.chunkReceiptRefs;
   if (!Array.isArray(rawReceipts) || rawReceipts.length !== 1) {
     throw new RegistryValidationError(
-      "Issue-75 browser admission requires exactly one CHUNK receipt",
+      "Single-issue browser admission requires exactly one CHUNK receipt",
     );
   }
   const chunkReceiptRefs = rawReceipts.map((value, index) =>
@@ -274,10 +270,7 @@ function connectorConfigAndGrants(
   );
   for (const reference of chunkReceiptRefs) {
     const view = verifyAdmissionReference(reference, workspaceId, planSha256, "PUBLISH_CHUNK");
-    if (
-      view.artifact.originalName.toLowerCase() !==
-      "cnipa-gazette-issue-75-chunk-1-6-fact-admission-receipt.json"
-    ) {
+    if (view.artifact.originalName.toLowerCase() !== artifactNames.chunkReceipt) {
       throw new RegistryValidationError("Gazette CHUNK receipt artifact stage mismatch");
     }
   }
