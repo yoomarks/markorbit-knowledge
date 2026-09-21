@@ -44,8 +44,7 @@ const plan = parseCnipaGazetteBrowserAdmissionPlan({
   },
   chunkRequestRef: {
     artifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAW",
-    canonicalUri:
-      `cnipa://trademark-gazette/issue/75/dataset/${datasetSha}/fact-admission/chunk/1-6/request`,
+    canonicalUri: `cnipa://trademark-gazette/issue/75/dataset/${datasetSha}/fact-admission/chunk/1-6/request`,
     sha256: "b".repeat(64),
     sizeBytes: 262104,
   },
@@ -55,25 +54,20 @@ const plan = parseCnipaGazetteBrowserAdmissionPlan({
 
 describe("run CNIPA Gazette browser admission", () => {
   it("parses plan-only and apply CLI boundaries", () => {
-    expect(parseCnipaGazetteBrowserAdmissionArguments(["--plan", "D:\\plans\\p.json"])).toMatchObject({
+    expect(
+      parseCnipaGazetteBrowserAdmissionArguments(["--plan", "D:\\plans\\p.json"]),
+    ).toMatchObject({
       apply: false,
     });
     expect(() =>
-      parseCnipaGazetteBrowserAdmissionArguments([
-        "--plan",
-        "D:\\plans\\p.json",
-        "--apply",
-      ]),
+      parseCnipaGazetteBrowserAdmissionArguments(["--plan", "D:\\plans\\p.json", "--apply"]),
     ).toThrow(/--apply requires/);
   });
 
   it("requires plan/evidence paths outside the working tree", () => {
     const cwd = path.resolve("D:\\repo");
     expect(() =>
-      assertCnipaGazetteBrowserAdmissionPathOutsideWorkingTree(
-        path.resolve(cwd, "plan.json"),
-        cwd,
-      ),
+      assertCnipaGazetteBrowserAdmissionPathOutsideWorkingTree(path.resolve(cwd, "plan.json"), cwd),
     ).toThrow(/outside the repository/);
   });
 

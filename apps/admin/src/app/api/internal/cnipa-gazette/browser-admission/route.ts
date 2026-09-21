@@ -107,7 +107,9 @@ function verifyExactReference(
     view.artifact.binaryHash.value !== reference.sha256 ||
     view.artifact.sizeBytes !== reference.sizeBytes
   ) {
-    throw new RegistryValidationError("Referenced Gazette RawArtifact does not match immutable ref");
+    throw new RegistryValidationError(
+      "Referenced Gazette RawArtifact does not match immutable ref",
+    );
   }
   return view;
 }
@@ -206,7 +208,9 @@ function connectorConfigAndGrants(
     }
     const reference = artifactReference(config.requestArtifactRef, "requestArtifactRef");
     if (stable(reference) !== stable(plan.chunkRequestRef)) {
-      throw new RegistryValidationError("PUBLISH_CHUNK must use the frozen browser CHUNK request ref");
+      throw new RegistryValidationError(
+        "PUBLISH_CHUNK must use the frozen browser CHUNK request ref",
+      );
     }
     const view = assertBrowserSeed(
       reference,
@@ -231,12 +235,7 @@ function connectorConfigAndGrants(
       throw new RegistryValidationError("Gazette publisher intent is invalid");
     }
     const reference = artifactReference(config.requestArtifactRef, "requestArtifactRef");
-    const view = verifyAdmissionReference(
-      reference,
-      workspaceId,
-      planSha256,
-      "BUILD_FINALIZE",
-    );
+    const view = verifyAdmissionReference(reference, workspaceId, planSha256, "BUILD_FINALIZE");
     if (
       view.artifact.originalName.toLowerCase() !==
       "cnipa-gazette-issue-75-fact-admission-finalize-request.json"
@@ -254,7 +253,9 @@ function connectorConfigAndGrants(
   }
   const datasetIdentityRef = artifactReference(config.datasetIdentityRef, "datasetIdentityRef");
   if (stable(datasetIdentityRef) !== stable(plan.datasetIdentityRef)) {
-    throw new RegistryValidationError("BUILD_FINALIZE must use the frozen browser dataset identity");
+    throw new RegistryValidationError(
+      "BUILD_FINALIZE must use the frozen browser dataset identity",
+    );
   }
   assertBrowserSeed(
     datasetIdentityRef,
@@ -264,18 +265,15 @@ function connectorConfigAndGrants(
   );
   const rawReceipts = config.chunkReceiptRefs;
   if (!Array.isArray(rawReceipts) || rawReceipts.length !== 1) {
-    throw new RegistryValidationError("Issue-75 browser admission requires exactly one CHUNK receipt");
+    throw new RegistryValidationError(
+      "Issue-75 browser admission requires exactly one CHUNK receipt",
+    );
   }
   const chunkReceiptRefs = rawReceipts.map((value, index) =>
     artifactReference(value, `chunkReceiptRefs[${index}]`),
   );
   for (const reference of chunkReceiptRefs) {
-    const view = verifyAdmissionReference(
-      reference,
-      workspaceId,
-      planSha256,
-      "PUBLISH_CHUNK",
-    );
+    const view = verifyAdmissionReference(reference, workspaceId, planSha256, "PUBLISH_CHUNK");
     if (
       view.artifact.originalName.toLowerCase() !==
       "cnipa-gazette-issue-75-chunk-1-6-fact-admission-receipt.json"
@@ -375,7 +373,9 @@ function ensurePlan(input: {
       stable(value.output) !== stable(expected.output) ||
       stable(value.extensions) !== stable(expected.extensions)
     ) {
-      throw new RegistryValidationError("Existing Gazette browser admission CollectionPlan drifted");
+      throw new RegistryValidationError(
+        "Existing Gazette browser admission CollectionPlan drifted",
+      );
     }
     return value;
   }
@@ -508,8 +508,7 @@ export async function POST(request: Request) {
       const dispatched = getExecutionLedgerRepository().dispatchManual({
         planId: collectionPlan.id,
         requestedBy: { actorType: "API_CLIENT", actorId: access.actorId },
-        idempotencyKey:
-          `cnipa-gazette-browser-admission-${runtimeStage}-${access.planSha256.slice(0, 24)}-${rawDispatchAttemptKey}`,
+        idempotencyKey: `cnipa-gazette-browser-admission-${runtimeStage}-${access.planSha256.slice(0, 24)}-${rawDispatchAttemptKey}`,
         extensions,
       });
       if (dispatched.record.jobs.length !== 1) {
@@ -543,9 +542,14 @@ export async function POST(request: Request) {
       assertAdmissionRun(runId, workspaceId, access.planSha256);
       const view = artifactMetadata(artifactId, workspaceId);
       if (view.artifact.collectionRunId !== runId || view.artifact.artifactKind !== "JSON") {
-        throw new RegistryValidationError("Gazette browser admission JSON artifact is outside the run");
+        throw new RegistryValidationError(
+          "Gazette browser admission JSON artifact is outside the run",
+        );
       }
-      return NextResponse.json({ artifact: safeArtifactView(view), json: await readArtifactJson(view) });
+      return NextResponse.json({
+        artifact: safeArtifactView(view),
+        json: await readArtifactJson(view),
+      });
     }
 
     if (operation === "READ_SEED_JSON_ARTIFACT") {
@@ -567,7 +571,10 @@ export async function POST(request: Request) {
         role,
         plan.datasetIdentityRef.artifactId,
       );
-      return NextResponse.json({ artifact: safeArtifactView(view), json: await readArtifactJson(view) });
+      return NextResponse.json({
+        artifact: safeArtifactView(view),
+        json: await readArtifactJson(view),
+      });
     }
 
     throw new RegistryValidationError("Unsupported CNIPA Gazette browser admission operation");

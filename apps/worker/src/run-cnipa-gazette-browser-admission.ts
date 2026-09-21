@@ -122,7 +122,9 @@ export function assertCnipaGazetteBrowserAdmissionPathOutsideWorkingTree(
   const relative = path.relative(resolvedWorkingDirectory, resolvedTarget);
   const inside = relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
   if (inside) {
-    throw new Error("CNIPA Gazette browser admission plan/evidence must live outside the repository");
+    throw new Error(
+      "CNIPA Gazette browser admission plan/evidence must live outside the repository",
+    );
   }
   return resolvedTarget;
 }
@@ -154,10 +156,7 @@ export function assertCnipaGazetteBrowserAdmissionAuthority(input: {
   if (input.expectedSha !== input.planSha256) {
     throw new Error("CNIPA Gazette browser admission expected SHA does not match the frozen plan");
   }
-  const expected = expectedCnipaGazetteBrowserAdmissionAuthorityToken(
-    input.plan,
-    input.planSha256,
-  );
+  const expected = expectedCnipaGazetteBrowserAdmissionAuthorityToken(input.plan, input.planSha256);
   if (input.authorityToken !== expected) {
     throw new Error("CNIPA Gazette browser admission GO token does not match the frozen plan");
   }
@@ -743,8 +742,7 @@ if (process.env.VITEST !== "true") {
     process.stderr.write(
       `${JSON.stringify({
         event: "cnipa_gazette_browser_admission.failed",
-        message:
-          error instanceof Error ? error.message : "CNIPA Gazette browser admission failed",
+        message: error instanceof Error ? error.message : "CNIPA Gazette browser admission failed",
       })}\n`,
     );
     process.exitCode = 1;
