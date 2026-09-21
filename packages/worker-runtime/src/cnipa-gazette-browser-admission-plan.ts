@@ -28,6 +28,16 @@ export type CnipaGazetteBrowserAdmissionArtifactRef = {
   sizeBytes: number;
 };
 
+export type CnipaGazetteBrowserAdmissionPageRange = {
+  startPage: number;
+  endPage: number;
+};
+
+export type CnipaGazetteBrowserAdmissionChunkRequest = {
+  range: CnipaGazetteBrowserAdmissionPageRange;
+  requestRef: CnipaGazetteBrowserAdmissionArtifactRef;
+};
+
 export type CnipaGazetteBrowserAdmissionPlan = {
   version: 1;
   operationId: string;
@@ -54,7 +64,7 @@ export type CnipaGazetteBrowserAdmissionPlan = {
   captureToolVersion: "1.0.3";
   sourceDatasetSha256: string;
   datasetIdentityRef: CnipaGazetteBrowserAdmissionArtifactRef;
-  chunkRequestRef: CnipaGazetteBrowserAdmissionArtifactRef;
+  chunkRequests: CnipaGazetteBrowserAdmissionChunkRequest[];
   dataEngineUrl: string;
   historicalReplayActivated: false;
 };
@@ -143,6 +153,31 @@ function artifactRef(value: unknown, label: string): CnipaGazetteBrowserAdmissio
   };
 }
 
+function pageRange(value: unknown, label: string): CnipaGazetteBrowserAdmissionPageRange {
+  const raw = objectValue(value, label);
+  exactKeys(raw, ["startPage", "endPage"], label);
+  const startPage = positiveInteger(raw.startPage, `${label}.startPage`);
+  const endPage = positiveInteger(raw.endPage, `${label}.endPage`);
+  if (endPage < startPage) {
+    throw new Error(
+      `CNIPA Gazette browser admission plan invalid: ${label}.endPage must be >= startPage`,
+    );
+  }
+  return { startPage, endPage };
+}
+
+function chunkRequest(
+  value: unknown,
+  label: string,
+): CnipaGazetteBrowserAdmissionChunkRequest {
+  const raw = objectValue(value, label);
+  exactKeys(raw, ["range", "requestRef"], label);
+  return {
+    range: pageRange(raw.range, `${label}.range`),
+    requestRef: artifactRef(raw.requestRef, `${label}.requestRef`),
+  };
+}
+
 function dataEngineUrl(value: unknown): string {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error("CNIPA Gazette browser admission plan invalid: dataEngineUrl is required");
@@ -188,7 +223,7 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
       "captureToolVersion",
       "sourceDatasetSha256",
       "datasetIdentityRef",
-      "chunkRequestRef",
+      "chunkRequests",
       "dataEngineUrl",
       "historicalReplayActivated",
     ],
@@ -269,24 +304,59 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
     throw new Error("CNIPA Gazette browser admission plan invalid: sourceDatasetSha256 is invalid");
   }
   const datasetIdentityRef = artifactRef(input.datasetIdentityRef, "datasetIdentityRef");
-  const chunkRequestRef = artifactRef(input.chunkRequestRef, "chunkRequestRef");
-  if (datasetIdentityRef.artifactId === chunkRequestRef.artifactId) {
+  if (
+    !Array.isArray(input.chunkRequests) ||
+    input.chunkRequests.length < 1 ||
+    input.chunkRequests.length > logicalPageCount
+  ) {
     throw new Error(
-      "CNIPA Gazette browser admission plan invalid: seed artifact ids must be unique",
+      "CNIPA Gazette browser admission plan invalid: chunkRequests must contain 1..logicalPageCount entries",
     );
   }
+  const chunkRequests = input.chunkRequests.map((value, index) =>
+    chunkRequest(value, `chunkRequests[${index}]`),
+  );
   const datasetCanonical = `cnipa://trademark-gazette/issue/${issue}/dataset/${input.sourceDatasetSha256}`;
   if (datasetIdentityRef.canonicalUri !== datasetCanonical) {
     throw new Error(
       "CNIPA Gazette browser admission plan invalid: dataset identity canonical URI mismatch",
     );
   }
-  if (
-    chunkRequestRef.canonicalUri !==
-    `${datasetCanonical}/fact-admission/chunk/1-${logicalPageCount}/request`
-  ) {
+  const artifactIds = new Set<string>([datasetIdentityRef.artifactId]);
+  const canonicalUris = new Set<string>();
+  let nextPage = 1;
+  for (const seed of chunkRequests) {
+    if (
+      seed.range.startPage !== nextPage ||
+      seed.range.endPage > logicalPageCount ||
+      seed.range.endPage - seed.range.startPage + 1 > 100
+    ) {
+      throw new Error(
+        "CNIPA Gazette browser admission plan invalid: chunkRequests must provide contiguous bounded coverage",
+      );
+    }
+    const expectedCanonical =
+      `${datasetCanonical}/fact-admission/chunk/${seed.range.startPage}-${seed.range.endPage}/request`;
+    if (seed.requestRef.canonicalUri !== expectedCanonical) {
+      throw new Error(
+        "CNIPA Gazette browser admission plan invalid: CHUNK request canonical URI mismatch",
+      );
+    }
+    if (
+      artifactIds.has(seed.requestRef.artifactId) ||
+      canonicalUris.has(seed.requestRef.canonicalUri)
+    ) {
+      throw new Error(
+        "CNIPA Gazette browser admission plan invalid: seed artifact identities must be unique",
+      );
+    }
+    artifactIds.add(seed.requestRef.artifactId);
+    canonicalUris.add(seed.requestRef.canonicalUri);
+    nextPage = seed.range.endPage + 1;
+  }
+  if (nextPage !== logicalPageCount + 1) {
     throw new Error(
-      "CNIPA Gazette browser admission plan invalid: CHUNK request canonical URI mismatch",
+      "CNIPA Gazette browser admission plan invalid: chunkRequests do not cover the full logical issue",
     );
   }
   return {
@@ -315,7 +385,7 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
     captureToolVersion: "1.0.3",
     sourceDatasetSha256: input.sourceDatasetSha256,
     datasetIdentityRef,
-    chunkRequestRef,
+    chunkRequests,
     dataEngineUrl: dataEngineUrl(input.dataEngineUrl),
     historicalReplayActivated: false,
   };
@@ -336,9 +406,12 @@ export function expectedCnipaGazetteBrowserAdmissionAuthorityToken(
   return `GO #${plan.authorityIssueNumber} CNIPA-GAZETTE-BROWSER-ADMISSION ${plan.operationId} FULL_CHAIN ${planSha256}`;
 }
 
-export function cnipaGazetteBrowserAdmissionArtifactNames(plan: CnipaGazetteBrowserAdmissionPlan) {
+export function cnipaGazetteBrowserAdmissionArtifactNames(
+  plan: CnipaGazetteBrowserAdmissionPlan,
+  range: CnipaGazetteBrowserAdmissionPageRange = plan.range,
+) {
   const prefix = `cnipa-gazette-issue-${plan.announcementIssue}`;
-  const chunk = `chunk-1-${plan.logicalPageCount}-fact-admission`;
+  const chunk = `chunk-${range.startPage}-${range.endPage}-fact-admission`;
   return {
     chunkRequest: `${prefix}-${chunk}-request.json`,
     chunkReceipt: `${prefix}-${chunk}-receipt.json`,
