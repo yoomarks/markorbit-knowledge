@@ -393,9 +393,7 @@ function expectedLogicalPageRowCount(
   plan: CnipaGazetteBrowserAdmissionPlan,
   pageIndex: number,
 ): number {
-  return pageIndex === plan.logicalPageCount
-    ? plan.finalLogicalPageRowCount
-    : plan.logicalPageSize;
+  return pageIndex === plan.logicalPageCount ? plan.finalLogicalPageRowCount : plan.logicalPageSize;
 }
 
 function assertChunkRequest(value: unknown, plan: CnipaGazetteBrowserAdmissionPlan): void {
