@@ -166,10 +166,7 @@ function pageRange(value: unknown, label: string): CnipaGazetteBrowserAdmissionP
   return { startPage, endPage };
 }
 
-function chunkRequest(
-  value: unknown,
-  label: string,
-): CnipaGazetteBrowserAdmissionChunkRequest {
+function chunkRequest(value: unknown, label: string): CnipaGazetteBrowserAdmissionChunkRequest {
   const raw = objectValue(value, label);
   exactKeys(raw, ["range", "requestRef"], label);
   return {
@@ -335,8 +332,7 @@ export function parseCnipaGazetteBrowserAdmissionPlan(
         "CNIPA Gazette browser admission plan invalid: chunkRequests must provide contiguous bounded coverage",
       );
     }
-    const expectedCanonical =
-      `${datasetCanonical}/fact-admission/chunk/${seed.range.startPage}-${seed.range.endPage}/request`;
+    const expectedCanonical = `${datasetCanonical}/fact-admission/chunk/${seed.range.startPage}-${seed.range.endPage}/request`;
     if (seed.requestRef.canonicalUri !== expectedCanonical) {
       throw new Error(
         "CNIPA Gazette browser admission plan invalid: CHUNK request canonical URI mismatch",
