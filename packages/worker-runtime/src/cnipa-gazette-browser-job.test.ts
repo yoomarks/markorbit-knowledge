@@ -82,6 +82,69 @@ describe("CNIPA Gazette browser-stream Job boundary", () => {
     });
   });
 
+  it("freezes explicit resume references into the immutable Job snapshot", () => {
+    const resumeFrom = {
+      stateArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      logicalProjectionArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAW"],
+      firstSourceRawArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAX",
+      firstSourceProjectionArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAY",
+      previousSourceProjectionArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      tailSourceProjectionArtifactIds: [
+        "art_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+        "art_01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      ],
+    };
+    const parsed = cnipaGazetteBrowserStreamJobFromContext(
+      context({
+        extension: {
+          announcementIssue: 75,
+          queryTemplate,
+          targetLogicalPagesPerCheckpoint: 6,
+          maxRuntimeSeconds: 3600,
+          resumeFrom,
+        },
+      }),
+    );
+    expect(parsed).toEqual({
+      announcementIssue: 75,
+      queryTemplate,
+      targetLogicalPagesPerCheckpoint: 6,
+      maxRuntimeSeconds: 3600,
+      resumeFrom,
+    });
+
+    const plan = cnipaGazetteBrowserPlanPayload({
+      workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      sourceId: "src_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      announcementIssue: 75,
+      targetLogicalPagesPerCheckpoint: 6,
+      maxRuntimeSeconds: 3600,
+      resumeFrom,
+    });
+    expect(plan.extensions[CNIPA_GAZETTE_BROWSER_STREAM_PLAN_EXTENSION]).toMatchObject({
+      resumeFrom,
+    });
+    expect(() =>
+      cnipaGazetteBrowserStreamJobFromContext(
+        context({
+          extension: {
+            announcementIssue: 75,
+            queryTemplate,
+            targetLogicalPagesPerCheckpoint: 6,
+            maxRuntimeSeconds: 3600,
+            resumeFrom: {
+              ...resumeFrom,
+              tailSourceProjectionArtifactIds: [
+                "art_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+                "art_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              ],
+            },
+          },
+        }),
+      ),
+    ).toThrow(/tail source projection refs must be unique/);
+  });
+
   it("rejects filtered/non-ALL query templates and issue drift", () => {
     expect(() =>
       cnipaGazetteBrowserStreamJobFromContext(

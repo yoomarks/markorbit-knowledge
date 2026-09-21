@@ -37,11 +37,21 @@ const EMPTY_FILTER_KEYS = [
 
 type QueryKey = (typeof QUERY_KEYS)[number];
 
+export type CnipaGazetteBrowserResumeFrom = {
+  stateArtifactId: string;
+  logicalProjectionArtifactIds: readonly string[];
+  firstSourceRawArtifactId: string;
+  firstSourceProjectionArtifactId: string;
+  previousSourceProjectionArtifactId: string;
+  tailSourceProjectionArtifactIds?: readonly string[];
+};
+
 export type CnipaGazetteBrowserStreamJobConfig = {
   announcementIssue: number;
   queryTemplate: Readonly<Record<QueryKey, string>>;
   targetLogicalPagesPerCheckpoint: number;
   maxRuntimeSeconds: number;
+  resumeFrom?: CnipaGazetteBrowserResumeFrom;
 };
 
 function objectValue(value: unknown, label: string): Record<string, unknown> {
@@ -99,6 +109,80 @@ function parseQueryTemplate(
   }
   return Object.freeze(query);
 }
+const ARTIFACT_ID = /^art_[0-9A-HJKMNP-TV-Z]{26}$/u;
+
+function parseResumeFrom(value: unknown): CnipaGazetteBrowserResumeFrom {
+  const raw = objectValue(value, "browserStream.resumeFrom");
+  exactKeys(
+    raw,
+    [
+      "stateArtifactId",
+      "logicalProjectionArtifactIds",
+      "firstSourceRawArtifactId",
+      "firstSourceProjectionArtifactId",
+      "previousSourceProjectionArtifactId",
+      "tailSourceProjectionArtifactIds",
+    ],
+    "browserStream.resumeFrom",
+  );
+  const one = (candidate: unknown, label: string): string => {
+    if (typeof candidate !== "string" || !ARTIFACT_ID.test(candidate)) {
+      throw new TypeError(`${label} must be a RawArtifact id`);
+    }
+    return candidate;
+  };
+  if (
+    !Array.isArray(raw.logicalProjectionArtifactIds) ||
+    raw.logicalProjectionArtifactIds.length < 1 ||
+    raw.logicalProjectionArtifactIds.length > 100
+  ) {
+    throw new TypeError(
+      "browserStream.resumeFrom.logicalProjectionArtifactIds must contain 1..100 refs",
+    );
+  }
+  const logicalProjectionArtifactIds = raw.logicalProjectionArtifactIds.map((item, index) =>
+    one(item, `browserStream.resumeFrom.logicalProjectionArtifactIds[${index}]`),
+  );
+  if (new Set(logicalProjectionArtifactIds).size !== logicalProjectionArtifactIds.length) {
+    throw new TypeError("browserStream.resumeFrom logical projection refs must be unique");
+  }
+  let tailSourceProjectionArtifactIds: string[] | undefined;
+  if (raw.tailSourceProjectionArtifactIds !== undefined) {
+    if (
+      !Array.isArray(raw.tailSourceProjectionArtifactIds) ||
+      raw.tailSourceProjectionArtifactIds.length < 1 ||
+      raw.tailSourceProjectionArtifactIds.length > 100
+    ) {
+      throw new TypeError(
+        "browserStream.resumeFrom.tailSourceProjectionArtifactIds must contain 1..100 refs",
+      );
+    }
+    tailSourceProjectionArtifactIds = raw.tailSourceProjectionArtifactIds.map((item, index) =>
+      one(item, `browserStream.resumeFrom.tailSourceProjectionArtifactIds[${index}]`),
+    );
+    if (new Set(tailSourceProjectionArtifactIds).size !== tailSourceProjectionArtifactIds.length) {
+      throw new TypeError("browserStream.resumeFrom tail source projection refs must be unique");
+    }
+  }
+  return {
+    stateArtifactId: one(raw.stateArtifactId, "browserStream.resumeFrom.stateArtifactId"),
+    logicalProjectionArtifactIds,
+    firstSourceRawArtifactId: one(
+      raw.firstSourceRawArtifactId,
+      "browserStream.resumeFrom.firstSourceRawArtifactId",
+    ),
+    firstSourceProjectionArtifactId: one(
+      raw.firstSourceProjectionArtifactId,
+      "browserStream.resumeFrom.firstSourceProjectionArtifactId",
+    ),
+    previousSourceProjectionArtifactId: one(
+      raw.previousSourceProjectionArtifactId,
+      "browserStream.resumeFrom.previousSourceProjectionArtifactId",
+    ),
+    ...(tailSourceProjectionArtifactIds ? { tailSourceProjectionArtifactIds } : {}),
+  };
+}
+
 function assertSourceBoundary(context: ArtifactBackedExecutionContext): void {
   const { job } = context;
   const source = job.sourceSnapshot;
@@ -136,7 +220,13 @@ export function cnipaGazetteBrowserStreamJobFromContext(
   const raw = objectValue(extension, "browserStream plan extension");
   exactKeys(
     raw,
-    ["announcementIssue", "queryTemplate", "targetLogicalPagesPerCheckpoint", "maxRuntimeSeconds"],
+    [
+      "announcementIssue",
+      "queryTemplate",
+      "targetLogicalPagesPerCheckpoint",
+      "maxRuntimeSeconds",
+      "resumeFrom",
+    ],
     "browserStream plan extension",
   );
   const announcementIssue = positiveInteger(
@@ -156,6 +246,7 @@ export function cnipaGazetteBrowserStreamJobFromContext(
       "browserStream.maxRuntimeSeconds",
       86_400,
     ),
+    ...(raw.resumeFrom !== undefined ? { resumeFrom: parseResumeFrom(raw.resumeFrom) } : {}),
   };
 }
 export function assertCnipaGazetteBrowserSessionMatchesJob(
@@ -269,6 +360,7 @@ export function cnipaGazetteBrowserPlanPayload(input: {
   announcementIssue: number;
   targetLogicalPagesPerCheckpoint?: number;
   maxRuntimeSeconds?: number;
+  resumeFrom?: CnipaGazetteBrowserResumeFrom;
 }) {
   const announcementIssue = positiveInteger(input.announcementIssue, "announcementIssue");
   const targetLogicalPagesPerCheckpoint = positiveInteger(
@@ -308,6 +400,7 @@ export function cnipaGazetteBrowserPlanPayload(input: {
         queryTemplate: cnipaGazetteBrowserQueryTemplate(announcementIssue),
         targetLogicalPagesPerCheckpoint,
         maxRuntimeSeconds,
+        ...(input.resumeFrom ? { resumeFrom: input.resumeFrom } : {}),
       },
       "x-markorbit-browser-auth-owned-by-browser": true,
       "x-markorbit-historical-replay-activated": false,

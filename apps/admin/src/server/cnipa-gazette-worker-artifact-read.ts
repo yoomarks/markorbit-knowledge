@@ -1,8 +1,11 @@
 import {
+  CNIPA_GAZETTE_BROWSER_STREAM_PLAN_EXTENSION,
   CNIPA_GAZETTE_FACT_ADMISSION_JOB_CONNECTOR_ID,
   CNIPA_GAZETTE_FACT_ADMISSION_JOB_CONNECTOR_VERSION,
   CNIPA_GAZETTE_FINALIZE_JOB_CONNECTOR_ID,
   CNIPA_GAZETTE_FINALIZE_JOB_CONNECTOR_VERSION,
+  CNIPA_GAZETTE_JOB_CONNECTOR_ID,
+  CNIPA_GAZETTE_JOB_CONNECTOR_VERSION,
 } from "@markorbit/worker-runtime";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import type { WorkerExecutionRepository } from "@markorbit/persistence/worker-execution";
@@ -68,6 +71,48 @@ function finalizeAllowedArtifactIds(config: RecordValue): Set<string> {
   ]);
 }
 
+function browserResumeAllowedArtifactIds(
+  job: ReturnType<WorkerExecutionRepository["authorizeArtifactRead"]>["job"],
+): Set<string> {
+  const extension = record(
+    job.planSnapshot.extensions?.[CNIPA_GAZETTE_BROWSER_STREAM_PLAN_EXTENSION],
+    "browserStream plan extension",
+  );
+  const resume = record(extension.resumeFrom, "browserStream.resumeFrom");
+  if (
+    !Array.isArray(resume.logicalProjectionArtifactIds) ||
+    resume.logicalProjectionArtifactIds.length < 1
+  ) {
+    throw new RegistryValidationError(
+      "browserStream.resumeFrom.logicalProjectionArtifactIds must be a non-empty array",
+    );
+  }
+  const tailSourceProjectionArtifactIds = Array.isArray(resume.tailSourceProjectionArtifactIds)
+    ? resume.tailSourceProjectionArtifactIds.map((value, index) =>
+        artifactId(value, `browserStream.resumeFrom.tailSourceProjectionArtifactIds[${index}]`),
+      )
+    : [];
+  return new Set([
+    artifactId(resume.stateArtifactId, "browserStream.resumeFrom.stateArtifactId"),
+    ...resume.logicalProjectionArtifactIds.map((value, index) =>
+      artifactId(value, `browserStream.resumeFrom.logicalProjectionArtifactIds[${index}]`),
+    ),
+    ...tailSourceProjectionArtifactIds,
+    artifactId(
+      resume.firstSourceRawArtifactId,
+      "browserStream.resumeFrom.firstSourceRawArtifactId",
+    ),
+    artifactId(
+      resume.firstSourceProjectionArtifactId,
+      "browserStream.resumeFrom.firstSourceProjectionArtifactId",
+    ),
+    artifactId(
+      resume.previousSourceProjectionArtifactId,
+      "browserStream.resumeFrom.previousSourceProjectionArtifactId",
+    ),
+  ]);
+}
+
 function allowedArtifactIds(
   job: ReturnType<WorkerExecutionRepository["authorizeArtifactRead"]>["job"],
 ): Set<string> {
@@ -89,6 +134,14 @@ function allowedArtifactIds(
     sourceConnector.version === CNIPA_GAZETTE_FINALIZE_JOB_CONNECTOR_VERSION
   ) {
     return finalizeAllowedArtifactIds(config);
+  }
+  if (
+    connector.connectorId === CNIPA_GAZETTE_JOB_CONNECTOR_ID &&
+    connector.version === CNIPA_GAZETTE_JOB_CONNECTOR_VERSION &&
+    sourceConnector.connectorId === CNIPA_GAZETTE_JOB_CONNECTOR_ID &&
+    sourceConnector.version === CNIPA_GAZETTE_JOB_CONNECTOR_VERSION
+  ) {
+    return browserResumeAllowedArtifactIds(job);
   }
   throw new RegistryConflictError(
     "GAZETTE_WORKER_ARTIFACT_READ_JOB_INVALID",

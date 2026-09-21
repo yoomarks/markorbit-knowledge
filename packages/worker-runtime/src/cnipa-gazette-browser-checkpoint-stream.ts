@@ -2,6 +2,7 @@ import type { AcquiredCollectionArtifact } from "./artifact-backed-collection-ex
 import {
   acceptCnipaGazetteBrowserSourcePage,
   createCnipaGazetteBrowserStreamState,
+  parseCnipaGazetteBrowserStreamState,
   type CnipaGazetteBrowserLogicalPage,
   type CnipaGazetteBrowserStreamSession,
   type CnipaGazetteBrowserStreamState,
@@ -71,9 +72,16 @@ export class CnipaGazetteBrowserCheckpointStream {
     private readonly writer: StreamWriter,
     input: {
       targetLogicalPagesPerCheckpoint?: number;
+      resume?: {
+        state: CnipaGazetteBrowserStreamState;
+        logicalPages: readonly CnipaGazetteBrowserLogicalPage[];
+        firstSourcePageEvidence: CnipaGazetteBrowserSourcePageEvidence;
+      };
     } = {},
   ) {
-    this.state = createCnipaGazetteBrowserStreamState(session);
+    this.state = input.resume
+      ? parseCnipaGazetteBrowserStreamState(input.resume.state, session)
+      : createCnipaGazetteBrowserStreamState(session);
     this.effectiveLogicalPagesPerCheckpoint = cnipaGazetteBrowserEffectiveCheckpointPages({
       sourcePageSize: session.sourcePageSize,
       ...(input.targetLogicalPagesPerCheckpoint !== undefined
@@ -87,6 +95,48 @@ export class CnipaGazetteBrowserCheckpointStream {
       sourcePageSize: session.sourcePageSize,
       targetLogicalPagesPerCheckpoint: this.effectiveLogicalPagesPerCheckpoint,
     });
+    if (input.resume) {
+      const firstRange = this.ranges[0];
+      if (!firstRange) throw new TypeError("browser Gazette resume has no checkpoint range");
+      if (
+        this.state.completed ||
+        this.state.nextSourcePageIndex <= 1 ||
+        this.state.nextSourcePageIndex > firstRange.sourceRange.endPage ||
+        this.state.nextLogicalPageIndex <= firstRange.logicalRange.startPage ||
+        this.state.nextLogicalPageIndex > firstRange.logicalRange.endPage
+      ) {
+        throw new TypeError(
+          "browser Gazette resume currently supports only progress within the first checkpoint",
+        );
+      }
+      const expectedLogicalPages =
+        this.state.nextLogicalPageIndex - firstRange.logicalRange.startPage;
+      if (
+        input.resume.logicalPages.length !== expectedLogicalPages ||
+        input.resume.logicalPages.some(
+          (page, index) =>
+            page.pageIndex !== firstRange.logicalRange.startPage + index ||
+            page.pageSize !== 100 ||
+            page.sourceTotal !== session.sourceTotal ||
+            page.announcementDate !== session.announcementDate,
+        )
+      ) {
+        throw new TypeError("browser Gazette resume logical pages do not match durable progress");
+      }
+      const firstSourcePage = input.resume.firstSourcePageEvidence.page;
+      if (
+        firstSourcePage.sessionId !== session.sessionId ||
+        firstSourcePage.sourcePageIndex !== 1 ||
+        firstSourcePage.sourcePageSize !== session.sourcePageSize ||
+        firstSourcePage.sourceTotal !== session.sourceTotal ||
+        firstSourcePage.sourcePages !== session.sourcePages ||
+        firstSourcePage.announcementDate !== session.announcementDate
+      ) {
+        throw new TypeError("browser Gazette resume source page 1 evidence is invalid");
+      }
+      this.logicalPages = [...input.resume.logicalPages];
+      this.firstSourcePageEvidence = input.resume.firstSourcePageEvidence;
+    }
   }
 
   snapshot(): CnipaGazetteBrowserStreamState {

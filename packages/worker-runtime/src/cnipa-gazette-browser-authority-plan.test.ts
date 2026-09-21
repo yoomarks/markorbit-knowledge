@@ -38,6 +38,54 @@ describe("CNIPA Gazette browser authority plan", () => {
     );
   });
 
+  it("freezes explicit mid-checkpoint resume artifact references", () => {
+    const resumeFrom = {
+      stateArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      logicalProjectionArtifactIds: ["art_01ARZ3NDEKTSV4RRFFQ69G5FAW"],
+      firstSourceRawArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAX",
+      firstSourceProjectionArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FAY",
+      previousSourceProjectionArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      tailSourceProjectionArtifactIds: [
+        "art_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+        "art_01ARZ3NDEKTSV4RRFFQ69G5FB1",
+      ],
+    } as const;
+    const resumed = cnipaGazetteBrowserAuthorityPlan({
+      operationId: "issue-75-browser-resume-r4",
+      workspaceId: "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      dispatchMode: "PREPARE_AND_DISPATCH_ONCE",
+      announcementIssue: 75,
+      captureToolVersion: "1.0.3",
+      captureToolBundleName: "MO_CNIPA_Network_Capture_v1.0.3_Gazette_Resume_RC5.zip",
+      captureToolBundleSha256: "a".repeat(64),
+      resumeFrom,
+    });
+    expect(resumed).toMatchObject({
+      captureToolVersion: "1.0.3",
+      resumeFrom,
+      historicalReplayActivated: false,
+      dataEngineMutation: "DISABLED",
+    });
+    expect(() =>
+      parseCnipaGazetteBrowserAuthorityPlan({
+        ...resumed,
+        resumeFrom: { ...resumeFrom, stateArtifactId: "not-an-artifact" },
+      }),
+    ).toThrow(/RawArtifact id/);
+    expect(() =>
+      parseCnipaGazetteBrowserAuthorityPlan({
+        ...resumed,
+        resumeFrom: {
+          ...resumeFrom,
+          tailSourceProjectionArtifactIds: [
+            "art_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            "art_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+          ],
+        },
+      }),
+    ).toThrow(/tail source projection refs must be unique/);
+  });
+
   it("rejects scope drift and unknown keys", () => {
     expect(() =>
       parseCnipaGazetteBrowserAuthorityPlan({
