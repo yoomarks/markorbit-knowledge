@@ -420,7 +420,7 @@ function assertChunkRequest(value: unknown, plan: CnipaGazetteBrowserAdmissionPl
   }
 }
 
-function assertChunkReceipt(value: unknown, plan: CnipaGazetteBrowserAdmissionPlan): void {
+function assertChunkReceipt(value: unknown, plan: CnipaGazetteBrowserAdmissionPlan): boolean {
   const root = record(value, "chunk receipt");
   const receipt = record(root.receipt, "chunk receipt.receipt");
   const range = record(root.range, "chunk receipt.range");
@@ -430,10 +430,12 @@ function assertChunkReceipt(value: unknown, plan: CnipaGazetteBrowserAdmissionPl
     root.announcementIssue !== 75 ||
     range.startPage !== 1 ||
     range.endPage !== 6 ||
-    receipt.outcome !== "CHUNK_ADMITTED"
+    receipt.outcome !== "CHUNK_ADMITTED" ||
+    typeof receipt.replayed !== "boolean"
   ) {
     throw new Error("Issue-75 browser CHUNK receipt is invalid");
   }
+  return receipt.replayed;
 }
 
 function assertFinalizeRequest(value: unknown, plan: CnipaGazetteBrowserAdmissionPlan): void {
@@ -452,7 +454,7 @@ function assertFinalizeRequest(value: unknown, plan: CnipaGazetteBrowserAdmissio
   }
 }
 
-function assertFinalizeReceipt(value: unknown, plan: CnipaGazetteBrowserAdmissionPlan): void {
+function assertFinalizeReceipt(value: unknown, plan: CnipaGazetteBrowserAdmissionPlan): boolean {
   const root = record(value, "finalize receipt");
   const receipt = record(root.receipt, "finalize receipt.receipt");
   if (
@@ -460,10 +462,12 @@ function assertFinalizeReceipt(value: unknown, plan: CnipaGazetteBrowserAdmissio
     root.sourceDatasetSha256 !== plan.sourceDatasetSha256 ||
     root.announcementIssue !== 75 ||
     root.pageCount !== 6 ||
-    receipt.outcome !== "ADMITTED"
+    receipt.outcome !== "ADMITTED" ||
+    typeof receipt.replayed !== "boolean"
   ) {
     throw new Error("Issue-75 browser FINALIZE receipt is invalid");
   }
+  return receipt.replayed;
 }
 
 function stageEvidence(prepared: StagePreparation, artifacts: ArtifactView[]) {
@@ -548,7 +552,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     runId: chunkPublisher.runId,
     artifactId: chunkReceipt.artifactId,
   });
-  assertChunkReceipt(chunkReceiptJson.json, input.plan);
+  const chunkReplayed = assertChunkReceipt(chunkReceiptJson.json, input.plan);
   if (!chunkReceipt.parentArtifactIds.includes(input.plan.chunkRequestRef.artifactId)) {
     throw new Error("CHUNK receipt does not descend from the frozen browser CHUNK request");
   }
@@ -629,7 +633,7 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     runId: finalizePublisher.runId,
     artifactId: finalizeReceipt.artifactId,
   });
-  assertFinalizeReceipt(finalizeReceiptJson.json, input.plan);
+  const finalizeReplayed = assertFinalizeReceipt(finalizeReceiptJson.json, input.plan);
   if (!finalizeReceipt.parentArtifactIds.includes(finalizeRequest.artifactId)) {
     throw new Error("FINALIZE receipt does not descend from the durable FINALIZE request");
   }
@@ -660,7 +664,9 @@ export async function applyCnipaGazetteBrowserAdmission(input: {
     },
     assertions: {
       chunkOutcome: "CHUNK_ADMITTED",
+      chunkReplayed,
       finalizeOutcome: "ADMITTED",
+      finalizeReplayed,
       browserSecretsCrossedBridge: false,
       cnipaNetworkAccessPerformedByAdmission: false,
       historicalReplayActivated: false,
