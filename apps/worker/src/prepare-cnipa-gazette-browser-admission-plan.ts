@@ -68,7 +68,11 @@ export function parseCnipaGazetteAdmissionPlanPreparationArguments(args: string[
   if (!browserPlanPath) throw new Error("--browser-plan is required");
   if (!runId) throw new Error("--run-id is required");
   if (!outputPath) throw new Error("--output is required");
-  if (!Number.isSafeInteger(authorityIssueNumber) || (authorityIssueNumber ?? 0) < 1) {
+  if (
+    authorityIssueNumber === undefined ||
+    !Number.isSafeInteger(authorityIssueNumber) ||
+    authorityIssueNumber < 1
+  ) {
     throw new Error("--authority-issue must be a positive integer");
   }
   if (!operationId) throw new Error("--operation-id is required");
