@@ -102,7 +102,8 @@ function optionalText(value: unknown, label: string, maximum = 4096): string {
 
 function positiveIntegerOrNull(value: unknown, label: string): number | null {
   if (value === null || value === undefined || value === "") return null;
-  return integer(value, label, 1);
+  const parsed = integer(value, label, 0);
+  return parsed === 0 ? null : parsed;
 }
 
 function isoInstant(value: unknown, label: string): string {
