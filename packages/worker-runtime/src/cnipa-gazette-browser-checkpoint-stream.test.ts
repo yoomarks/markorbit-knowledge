@@ -12,7 +12,11 @@ import {
   type CnipaGazetteBrowserLogicalPage,
   type CnipaGazetteBrowserStreamSession,
 } from "./cnipa-gazette-browser-stream";
-import { buildCnipaGazetteBrowserSourcePageEvidence } from "./cnipa-gazette-browser-stream-artifacts";
+import {
+  buildCnipaGazetteBrowserCheckpointEvidence,
+  buildCnipaGazetteBrowserDatasetIdentity,
+  buildCnipaGazetteBrowserSourcePageEvidence,
+} from "./cnipa-gazette-browser-stream-artifacts";
 import { CnipaGazetteBrowserCheckpointStream } from "./cnipa-gazette-browser-checkpoint-stream";
 import { StreamingArtifactWriter } from "./streaming-artifact-writer";
 
@@ -457,6 +461,160 @@ describe("CNIPA Gazette browser mid-checkpoint resume", () => {
       nextSourcePageIndex: 59,
       nextLogicalPageIndex: 7,
       rowsSeen: 576,
+      completed: true,
+    });
+  });
+});
+
+function checkpointBoundarySession(sessionId: string): CnipaGazetteBrowserStreamSession {
+  return createCnipaGazetteBrowserStreamSession({
+    sessionId,
+    announcementIssue: 75,
+    sourceUrl: SOURCE_URL,
+    capturedQuery: {
+      anncIssue: "75",
+      anncType: "",
+      pageIndex: 1,
+      pageSize: 100,
+    },
+    sourceTotal: 2046,
+    sourcePages: 21,
+    announcementDate: "1983-08-15",
+    startedAt: "2026-09-20T15:00:00.000Z",
+  });
+}
+
+function checkpointBoundaryPayload(pageIndex: number): Uint8Array {
+  const pageSize = 100;
+  const total = 2046;
+  const pages = 21;
+  const start = (pageIndex - 1) * pageSize;
+  const length = pageIndex < pages ? pageSize : total - start;
+  return new TextEncoder().encode(
+    JSON.stringify({
+      code: 0,
+      data: {
+        pageIndex,
+        pageSize,
+        total,
+        pages,
+        list: Array.from({ length }, (_, offset) => row(start + offset)),
+      },
+    }),
+  );
+}
+
+describe("CNIPA Gazette browser cross-checkpoint resume", () => {
+  it("resumes after two complete checkpoints and accepts only terminal source page 21", async () => {
+    const priorSession = checkpointBoundarySession("gazette-75-cross-prior");
+    let priorState = createCnipaGazetteBrowserStreamState(priorSession);
+    const durableLogicalPages: CnipaGazetteBrowserLogicalPage[] = [];
+    let priorFirstSourceEvidence:
+      ReturnType<typeof buildCnipaGazetteBrowserSourcePageEvidence> | undefined;
+    const fixture = artifactClient();
+    const priorWriter = new StreamingArtifactWriter(context(), fixture.client);
+    const priorStream = new CnipaGazetteBrowserCheckpointStream(priorSession, priorWriter, {
+      targetLogicalPagesPerCheckpoint: 10,
+    });
+
+    for (let pageIndex = 1; pageIndex <= 20; pageIndex += 1) {
+      const evidence = buildCnipaGazetteBrowserSourcePageEvidence({
+        session: priorSession,
+        requestedPageIndex: pageIndex,
+        observedAt: `2026-09-20T15:${String(pageIndex).padStart(2, "0")}:00.000Z`,
+        httpStatus: 200,
+        rawBody: checkpointBoundaryPayload(pageIndex),
+      });
+      priorFirstSourceEvidence ??= evidence;
+      const accepted = acceptCnipaGazetteBrowserSourcePage({
+        session: priorSession,
+        state: priorState,
+        page: evidence.page,
+      });
+      priorState = accepted.state;
+      durableLogicalPages.push(...accepted.logicalPages);
+      await priorStream.acceptSourcePage({
+        requestedPageIndex: pageIndex,
+        observedAt: evidence.page.observedAt,
+        httpStatus: 200,
+        rawBody: checkpointBoundaryPayload(pageIndex),
+      });
+    }
+
+    expect(priorState).toMatchObject({
+      nextSourcePageIndex: 21,
+      nextLogicalPageIndex: 21,
+      rowsSeen: 2000,
+      tailRows: [],
+      tailSourcePageIndices: [],
+      completed: false,
+    });
+    expect(durableLogicalPages.map((page) => page.pageIndex)).toEqual(
+      Array.from({ length: 20 }, (_, index) => index + 1),
+    );
+
+    const resumedSession = checkpointBoundarySession("gazette-75-cross-resumed");
+    const rebound = rebindCnipaGazetteBrowserStreamState({
+      priorSession,
+      priorState,
+      session: resumedSession,
+    });
+    const resumedFirstSourceEvidence = buildCnipaGazetteBrowserSourcePageEvidence({
+      session: resumedSession,
+      requestedPageIndex: 1,
+      observedAt: priorFirstSourceEvidence!.page.observedAt,
+      httpStatus: 200,
+      rawBody: checkpointBoundaryPayload(1),
+    });
+    const firstCheckpoint = buildCnipaGazetteBrowserCheckpointEvidence({
+      session: resumedSession,
+      range: { startPage: 1, endPage: 10 },
+      logicalPages: durableLogicalPages.slice(0, 10),
+      pagesPerCheckpoint: 10,
+    });
+    const expectedIdentity = buildCnipaGazetteBrowserDatasetIdentity({
+      session: resumedSession,
+      firstCheckpoint,
+      firstSourcePageEvidence: resumedFirstSourceEvidence,
+    });
+
+    const writer = new StreamingArtifactWriter(context(), fixture.client);
+    const stream = new CnipaGazetteBrowserCheckpointStream(resumedSession, writer, {
+      targetLogicalPagesPerCheckpoint: 10,
+      resume: {
+        state: rebound,
+        logicalPages: durableLogicalPages,
+        firstSourcePageEvidence: resumedFirstSourceEvidence,
+      },
+    });
+
+    expect(stream.snapshot()).toMatchObject({
+      nextSourcePageIndex: 21,
+      nextLogicalPageIndex: 21,
+      rowsSeen: 2000,
+    });
+
+    const result = await stream.acceptSourcePage({
+      requestedPageIndex: 21,
+      observedAt: "2026-09-20T15:21:00.000Z",
+      httpStatus: 200,
+      rawBody: checkpointBoundaryPayload(21),
+    });
+
+    expect(result.checkpoint).toMatchObject({
+      rangePlan: {
+        logicalRange: { startPage: 21, endPage: 21 },
+        sourceRange: { startPage: 21, endPage: 21 },
+        terminal: true,
+      },
+      rowCount: 46,
+      sourceDatasetSha256: expectedIdentity.sourceDatasetSha256,
+    });
+    expect(stream.snapshot()).toMatchObject({
+      nextSourcePageIndex: 22,
+      nextLogicalPageIndex: 22,
+      rowsSeen: 2046,
+      tailRows: [],
       completed: true,
     });
   });
