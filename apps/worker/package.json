@@ -67,7 +67,8 @@
     "cnipa:gazette:browser-bridge": "tsx src/run-cnipa-gazette-browser-bridge.ts",
     "cnipa:gazette:browser-job:prepare": "tsx src/prepare-cnipa-gazette-browser-job.ts",
     "cnipa:gazette:browser-admission-plan:prepare": "tsx src/prepare-cnipa-gazette-browser-admission-plan.ts",
-    "cnipa:gazette:browser-admission": "tsx src/run-cnipa-gazette-browser-admission.ts"
+    "cnipa:gazette:browser-admission": "tsx src/run-cnipa-gazette-browser-admission.ts",
+    "cnipa:gazette:orchestration:prepare": "tsx src/prepare-cnipa-gazette-orchestration.ts"
   },
   "dependencies": {
     "@markorbit/contracts": "workspace:*",

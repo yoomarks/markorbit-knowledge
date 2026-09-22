@@ -215,3 +215,4 @@ export * from "./cnipa-gazette-browser-job";
 export * from "./cnipa-gazette-browser-runtime";
 export * from "./cnipa-gazette-browser-authority-plan";
 export * from "./cnipa-gazette-browser-admission-plan";
+export * from "./cnipa-gazette-orchestration-plan";
