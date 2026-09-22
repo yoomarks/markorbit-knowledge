@@ -11,9 +11,12 @@ import {
   assertCnipaGazetteOrchestrationAuthority,
   assertCnipaGazetteOrchestrationPathOutsideWorkingTree,
   loadCnipaGazetteOrchestrationEvidenceFile,
+  loadCnipaGazetteOrchestrationIssueEvidenceFile,
   loadCnipaGazetteOrchestrationPlanFile,
   parseCnipaGazetteOrchestrationArguments,
   prepareCnipaGazetteOrchestrationNext,
+  prepareCnipaGazetteOrchestrationNextBatch,
+  recordCnipaGazetteOrchestrationEvidence,
 } from "./prepare-cnipa-gazette-orchestration";
 
 const WSP = "wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV";
@@ -55,9 +58,9 @@ function plan() {
   });
 }
 
-function completed73() {
+function completedIssue(announcementIssue: number) {
   return {
-    announcementIssue: 73,
+    announcementIssue,
     browser: {
       stateArtifactId: STATE_73,
       completed: true,
@@ -69,6 +72,10 @@ function completed73() {
       finalizeReceiptArtifactId: RECEIPT_73,
     },
   } as const;
+}
+
+function completed73() {
+  return completedIssue(73);
 }
 
 describe("CNIPA Gazette orchestration preparation CLI", () => {
@@ -212,6 +219,147 @@ describe("CNIPA Gazette orchestration preparation CLI", () => {
       dispatchMode: "PREPARE_ONLY",
       dataEngineMutation: "DISABLED",
       historicalReplayActivated: false,
+    });
+  });
+});
+
+describe("CNIPA Gazette orchestration evidence and batch CLI helpers", () => {
+  it("parses record/build actions and rejects mixed actions", () => {
+    expect(
+      parseCnipaGazetteOrchestrationArguments([
+        "--plan",
+        "D:\\proof\\plan.json",
+        "--record-evidence",
+        "--issue-evidence",
+        "D:\\proof\\issue.json",
+        "--output-evidence",
+        "D:\\proof\\evidence-next.json",
+        "--expected-sha",
+        "a".repeat(64),
+        "--authority-token",
+        "GO fixture",
+      ]),
+    ).toMatchObject({
+      recordEvidence: true,
+      prepareNext: false,
+      buildNextBatch: false,
+    });
+
+    expect(
+      parseCnipaGazetteOrchestrationArguments([
+        "--plan",
+        "D:\\proof\\plan.json",
+        "--build-next-batch",
+        "--evidence",
+        "D:\\proof\\evidence.json",
+        "--output-dir",
+        "D:\\proof\\next",
+        "--batch-size",
+        "3",
+        "--historical-upper-bound",
+        "100",
+        "--expected-sha",
+        "a".repeat(64),
+        "--authority-token",
+        "GO fixture",
+      ]),
+    ).toMatchObject({
+      buildNextBatch: true,
+      batchSize: 3,
+      historicalUpperBound: 100,
+    });
+
+    expect(() =>
+      parseCnipaGazetteOrchestrationArguments([
+        "--plan",
+        "D:\\proof\\plan.json",
+        "--prepare-next",
+        "--record-evidence",
+      ]),
+    ).toThrow(/mutually exclusive/u);
+  });
+
+  it("records one issue update into a repo-external versioned evidence file", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mo-gazette-orchestration-"));
+    dirs.push(dir);
+    const issuePath = path.join(dir, "issue-73.json");
+    const outputPath = path.join(dir, "evidence.json");
+    await writeFile(issuePath, JSON.stringify(completed73()), "utf8");
+
+    const update = await loadCnipaGazetteOrchestrationIssueEvidenceFile(issuePath);
+    const result = await recordCnipaGazetteOrchestrationEvidence({
+      plan: plan(),
+      update,
+      outputPath,
+    });
+
+    expect(result.progress.counts).toEqual({
+      total: 3,
+      completed: 1,
+      resume: 0,
+      pending: 2,
+    });
+    expect(result.progress.nextIssue).toBe(74);
+    await expect(loadCnipaGazetteOrchestrationEvidenceFile(outputPath)).resolves.toEqual([
+      completed73(),
+    ]);
+
+    const stored = JSON.parse(await readFile(outputPath, "utf8")) as Record<string, unknown>;
+    expect(stored).toEqual({
+      version: 1,
+      issues: [completed73()],
+    });
+  });
+
+  it("writes a child historical batch proposal with parent SHA and a new exact GO", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "mo-gazette-orchestration-"));
+    dirs.push(dir);
+    const output = path.join(dir, "next-batch");
+    const frozen = plan();
+    const parentSha = cnipaGazetteOrchestrationPlanSha256(frozen);
+
+    const result = await prepareCnipaGazetteOrchestrationNextBatch({
+      plan: frozen,
+      evidence: [completedIssue(73), completedIssue(74), completedIssue(75)],
+      batchSize: 2,
+      historicalUpperBound: 80,
+      outputDirectory: output,
+    });
+
+    expect(result.parentPlanSha256).toBe(parentSha);
+    expect(result.nextPlan).toMatchObject({
+      issueSelection: {
+        mode: "RANGE",
+        startIssue: 76,
+        endIssue: 77,
+      },
+      parentPlanSha256: parentSha,
+    });
+    expect(result.nextPlanSha256).toMatch(/^[a-f0-9]{64}$/u);
+    expect(result.expectedAuthorityToken).toContain("CNIPA-GAZETTE-ORCHESTRATION");
+    expect(result.nextPlanPath).not.toBeNull();
+
+    const proposal = JSON.parse(await readFile(result.proposalPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    const nextPlan = JSON.parse(await readFile(result.nextPlanPath!, "utf8")) as Record<
+      string,
+      unknown
+    >;
+
+    expect(proposal).toMatchObject({
+      parentPlanSha256: parentSha,
+      nextPlanSha256: result.nextPlanSha256,
+      expectedAuthorityToken: result.expectedAuthorityToken,
+    });
+    expect(nextPlan).toMatchObject({
+      parentPlanSha256: parentSha,
+      historicalReplayActivated: true,
+      issueSelection: {
+        startIssue: 76,
+        endIssue: 77,
+      },
     });
   });
 });

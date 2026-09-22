@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCnipaGazetteOrchestrationNextBatchPlan,
   buildCnipaGazetteOrchestrationNextPreparation,
   cnipaGazetteOrchestrationPlanSha256,
   deriveCnipaGazetteOrchestrationProgress,
   expandCnipaGazetteOrchestrationIssues,
   expectedCnipaGazetteOrchestrationAuthorityToken,
   parseCnipaGazetteOrchestrationPlan,
+  recordCnipaGazetteOrchestrationIssueEvidence,
   type CnipaGazetteOrchestrationPlan,
 } from "./cnipa-gazette-orchestration-plan";
 
@@ -431,5 +433,234 @@ describe("CNIPA Gazette orchestration next preparation", () => {
         ],
       }),
     ).toThrow(/partial browser progress requires frozen resumeFrom refs/u);
+  });
+});
+
+describe("CNIPA Gazette orchestration evidence recording", () => {
+  it("records durable partial progress monotonically and idempotently", () => {
+    const partial = {
+      announcementIssue: 74,
+      browser: {
+        stateArtifactId: STATE_74,
+        completed: false,
+        nextSourcePageIndex: 3,
+        rowsSeen: 200,
+        resumeFrom: resumeFrom(STATE_74),
+      },
+    } as const;
+    const advancedState = "art_01ARZ3NDEKTSV4RRFFQ69G5FB5";
+    const advanced = {
+      announcementIssue: 74,
+      browser: {
+        stateArtifactId: advancedState,
+        completed: false,
+        nextSourcePageIndex: 4,
+        rowsSeen: 300,
+        resumeFrom: resumeFrom(advancedState),
+      },
+    } as const;
+
+    const first = recordCnipaGazetteOrchestrationIssueEvidence({
+      plan: historicalPlan(),
+      existing: [completedEvidence(73, STATE_73, RECEIPT_73)],
+      update: partial,
+    });
+    const duplicate = recordCnipaGazetteOrchestrationIssueEvidence({
+      plan: historicalPlan(),
+      existing: first,
+      update: partial,
+    });
+    const next = recordCnipaGazetteOrchestrationIssueEvidence({
+      plan: historicalPlan(),
+      existing: duplicate,
+      update: advanced,
+    });
+
+    expect(duplicate).toEqual(first);
+    expect(next).toEqual([completedEvidence(73, STATE_73, RECEIPT_73), advanced]);
+
+    expect(() =>
+      recordCnipaGazetteOrchestrationIssueEvidence({
+        plan: historicalPlan(),
+        existing: next,
+        update: partial,
+      }),
+    ).toThrow(/cannot move backwards/u);
+  });
+
+  it("allows completion and finalize to be recorded, then freezes finalized evidence", () => {
+    const partial = {
+      announcementIssue: 74,
+      browser: {
+        stateArtifactId: STATE_74,
+        completed: false,
+        nextSourcePageIndex: 3,
+        rowsSeen: 200,
+        resumeFrom: resumeFrom(STATE_74),
+      },
+    } as const;
+    const finalState = "art_01ARZ3NDEKTSV4RRFFQ69G5FB6";
+    const completed = {
+      announcementIssue: 74,
+      browser: {
+        stateArtifactId: finalState,
+        completed: true,
+        nextSourcePageIndex: 7,
+        rowsSeen: 576,
+      },
+    } as const;
+    const finalized = {
+      ...completed,
+      admission: {
+        sourceDatasetSha256: DATASET_SHA,
+        finalizeReceiptArtifactId: "art_01ARZ3NDEKTSV4RRFFQ69G5FB7",
+      },
+    } as const;
+
+    const afterPartial = recordCnipaGazetteOrchestrationIssueEvidence({
+      plan: historicalPlan(),
+      update: partial,
+    });
+    const afterCompleted = recordCnipaGazetteOrchestrationIssueEvidence({
+      plan: historicalPlan(),
+      existing: afterPartial,
+      update: completed,
+    });
+    const afterFinalized = recordCnipaGazetteOrchestrationIssueEvidence({
+      plan: historicalPlan(),
+      existing: afterCompleted,
+      update: finalized,
+    });
+
+    expect(afterFinalized).toEqual([finalized]);
+    expect(() =>
+      recordCnipaGazetteOrchestrationIssueEvidence({
+        plan: historicalPlan(),
+        existing: afterFinalized,
+        update: {
+          ...finalized,
+          admission: {
+            ...finalized.admission,
+            sourceDatasetSha256: "c".repeat(64),
+          },
+        },
+      }),
+    ).toThrow(/finalized issue evidence is immutable/u);
+  });
+});
+
+describe("CNIPA Gazette orchestration next batch proposal", () => {
+  const completeHistoricalEvidence = [
+    completedEvidence(73, STATE_73, RECEIPT_73),
+    completedEvidence(74, STATE_74, RECEIPT_73),
+    completedEvidence(75, STATE_75, RECEIPT_75),
+  ] as const;
+
+  it("builds a bounded historical child plan with parent-plan lineage", () => {
+    const current = historicalPlan();
+    const parentSha = cnipaGazetteOrchestrationPlanSha256(current);
+    const result = buildCnipaGazetteOrchestrationNextBatchPlan({
+      plan: current,
+      evidence: completeHistoricalEvidence,
+      batchSize: 3,
+      historicalUpperBound: 80,
+    });
+
+    expect(result.parentPlanSha256).toBe(parentSha);
+    expect(result.nextPlan).toMatchObject({
+      purpose: "HISTORICAL_BACKFILL",
+      issueSelection: {
+        mode: "RANGE",
+        startIssue: 76,
+        endIssue: 78,
+      },
+      parentPlanSha256: parentSha,
+      historicalReplayActivated: true,
+    });
+    expect(result.nextPlanSha256).toMatch(/^[a-f0-9]{64}$/u);
+    expect(result.expectedAuthorityToken).toContain(
+      "GO #898 CNIPA-GAZETTE-ORCHESTRATION gazette-historical-76-78-",
+    );
+  });
+
+  it("refuses to build a child batch while the current batch is incomplete", () => {
+    expect(() =>
+      buildCnipaGazetteOrchestrationNextBatchPlan({
+        plan: historicalPlan(),
+        evidence: [completedEvidence(73, STATE_73, RECEIPT_73)],
+        batchSize: 3,
+        historicalUpperBound: 80,
+      }),
+    ).toThrow(/current batch must be fully finalized/u);
+  });
+
+  it("returns no child plan after the explicit historical upper bound is reached", () => {
+    const result = buildCnipaGazetteOrchestrationNextBatchPlan({
+      plan: historicalPlan(),
+      evidence: completeHistoricalEvidence,
+      batchSize: 3,
+      historicalUpperBound: 75,
+    });
+    expect(result.nextPlan).toBeNull();
+    expect(result.nextPlanSha256).toBeNull();
+    expect(result.expectedAuthorityToken).toBeNull();
+  });
+
+  it("builds incremental children only within the frozen observed max", () => {
+    const incremental = parseCnipaGazetteOrchestrationPlan({
+      version: 1,
+      operationId: "incremental-1999-2000-r1",
+      workspaceId: WORKSPACE,
+      authorityMode: "INTERNAL_SERVICE_GO_V1",
+      stage: "MULTI_ISSUE_ORCHESTRATION",
+      purpose: "INCREMENTAL_CATCHUP",
+      issueSelection: { mode: "RANGE", startIssue: 1999, endIssue: 2000 },
+      observedMaxIssue: 2002,
+      announcementTypeSelection: "ALL",
+      anncType: "",
+      concurrency: 1,
+      browserTemplate: historicalPlan().browserTemplate,
+      dataEngineMutation: "DISABLED",
+      historicalReplayActivated: false,
+    });
+    const evidence = [
+      completedEvidence(1999, STATE_73, RECEIPT_73),
+      completedEvidence(2000, STATE_74, RECEIPT_75),
+    ];
+    const result = buildCnipaGazetteOrchestrationNextBatchPlan({
+      plan: incremental,
+      evidence,
+      batchSize: 10,
+    });
+
+    expect(result.nextPlan).toMatchObject({
+      purpose: "INCREMENTAL_CATCHUP",
+      issueSelection: {
+        mode: "RANGE",
+        startIssue: 2001,
+        endIssue: 2002,
+      },
+      observedMaxIssue: 2002,
+      historicalReplayActivated: false,
+      parentPlanSha256: cnipaGazetteOrchestrationPlanSha256(incremental),
+    });
+
+    expect(() =>
+      buildCnipaGazetteOrchestrationNextBatchPlan({
+        plan: incremental,
+        evidence,
+        batchSize: 10,
+        historicalUpperBound: 2100,
+      }),
+    ).toThrow(/cannot override frozen observedMaxIssue/u);
+  });
+
+  it("rejects malformed parent-plan lineage in frozen plans", () => {
+    expect(() =>
+      parseCnipaGazetteOrchestrationPlan({
+        ...historicalPlan(),
+        parentPlanSha256: "NOT-A-SHA",
+      }),
+    ).toThrow(/parentPlanSha256 must be lowercase SHA-256/u);
   });
 });

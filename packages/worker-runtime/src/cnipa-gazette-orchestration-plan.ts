@@ -39,6 +39,7 @@ export type CnipaGazetteOrchestrationPlan = {
   stage: typeof CNIPA_GAZETTE_ORCHESTRATION_STAGE;
   purpose: CnipaGazetteOrchestrationPurpose;
   issueSelection: CnipaGazetteOrchestrationIssueSelection;
+  parentPlanSha256?: string;
   observedMaxIssue?: number;
   announcementTypeSelection: "ALL";
   anncType: "";
@@ -292,6 +293,7 @@ export function parseCnipaGazetteOrchestrationPlan(value: unknown): CnipaGazette
       "stage",
       "purpose",
       "issueSelection",
+      "parentPlanSha256",
       "observedMaxIssue",
       "announcementTypeSelection",
       "anncType",
@@ -331,6 +333,15 @@ export function parseCnipaGazetteOrchestrationPlan(value: unknown): CnipaGazette
   const issueSelection = parseIssueSelection(input.issueSelection);
   const browserTemplate = parseBrowserTemplate(input.browserTemplate);
   const issues = expandCnipaGazetteOrchestrationIssues({ issueSelection });
+  let parentPlanSha256: string | undefined;
+  if (input.parentPlanSha256 !== undefined) {
+    if (typeof input.parentPlanSha256 !== "string" || !SHA256.test(input.parentPlanSha256)) {
+      throw new TypeError(
+        "CNIPA Gazette orchestration plan invalid: parentPlanSha256 must be lowercase SHA-256",
+      );
+    }
+    parentPlanSha256 = input.parentPlanSha256;
+  }
   let observedMaxIssue: number | undefined;
 
   if (input.purpose === "HISTORICAL_BACKFILL") {
@@ -366,6 +377,7 @@ export function parseCnipaGazetteOrchestrationPlan(value: unknown): CnipaGazette
     stage: CNIPA_GAZETTE_ORCHESTRATION_STAGE,
     purpose: input.purpose,
     issueSelection,
+    ...(parentPlanSha256 ? { parentPlanSha256 } : {}),
     ...(observedMaxIssue !== undefined ? { observedMaxIssue } : {}),
     announcementTypeSelection: "ALL",
     anncType: "",
@@ -400,6 +412,25 @@ export function deriveCnipaGazetteOrchestrationProgress(input: {
   const evidenceByIssue = new Map<number, CnipaGazetteOrchestrationIssueEvidence>();
 
   for (const item of input.evidence ?? []) {
+    exactKeys(
+      item as unknown as Record<string, unknown>,
+      ["announcementIssue", "browser", "admission"],
+      "evidence issue",
+    );
+    if (item.browser) {
+      exactKeys(
+        item.browser as unknown as Record<string, unknown>,
+        ["stateArtifactId", "completed", "nextSourcePageIndex", "rowsSeen", "resumeFrom"],
+        "evidence browser",
+      );
+    }
+    if (item.admission) {
+      exactKeys(
+        item.admission as unknown as Record<string, unknown>,
+        ["sourceDatasetSha256", "finalizeReceiptArtifactId"],
+        "evidence admission",
+      );
+    }
     if (!Number.isSafeInteger(item.announcementIssue) || !authorized.has(item.announcementIssue)) {
       throw new TypeError(
         "CNIPA Gazette orchestration evidence invalid: evidence issue is outside frozen authority",
@@ -636,5 +667,199 @@ export function buildCnipaGazetteOrchestrationNextPreparation(input: {
       nextAction: nextProgress.nextAction,
       browserPlan,
     },
+  };
+}
+
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(canonicalize(value));
+}
+
+function assertMonotonicIssueEvidence(input: {
+  previous: CnipaGazetteOrchestrationIssueEvidence;
+  next: CnipaGazetteOrchestrationIssueEvidence;
+}): void {
+  if (canonicalJson(input.previous) === canonicalJson(input.next)) return;
+
+  if (input.previous.admission) {
+    throw new TypeError(
+      "CNIPA Gazette orchestration evidence invalid: finalized issue evidence is immutable",
+    );
+  }
+
+  if (input.previous.browser) {
+    if (!input.next.browser) {
+      throw new TypeError(
+        "CNIPA Gazette orchestration evidence invalid: browser evidence cannot be removed",
+      );
+    }
+    if (input.previous.browser.completed && !input.next.browser.completed) {
+      throw new TypeError(
+        "CNIPA Gazette orchestration evidence invalid: completed browser evidence cannot regress",
+      );
+    }
+    if (
+      input.next.browser.rowsSeen < input.previous.browser.rowsSeen ||
+      input.next.browser.nextSourcePageIndex < input.previous.browser.nextSourcePageIndex
+    ) {
+      throw new TypeError(
+        "CNIPA Gazette orchestration evidence invalid: browser progress cannot move backwards",
+      );
+    }
+
+    const progressAdvanced =
+      input.next.browser.rowsSeen > input.previous.browser.rowsSeen ||
+      input.next.browser.nextSourcePageIndex > input.previous.browser.nextSourcePageIndex ||
+      (!input.previous.browser.completed && input.next.browser.completed);
+
+    if (
+      !progressAdvanced &&
+      canonicalJson(input.previous.browser) !== canonicalJson(input.next.browser)
+    ) {
+      throw new TypeError(
+        "CNIPA Gazette orchestration evidence invalid: browser evidence changed without durable progress",
+      );
+    }
+  }
+}
+
+export function recordCnipaGazetteOrchestrationIssueEvidence(input: {
+  plan: CnipaGazetteOrchestrationPlan;
+  existing?: readonly CnipaGazetteOrchestrationIssueEvidence[];
+  update: CnipaGazetteOrchestrationIssueEvidence;
+}): readonly CnipaGazetteOrchestrationIssueEvidence[] {
+  const plan = parseCnipaGazetteOrchestrationPlan(input.plan);
+  const existing = [...(input.existing ?? [])];
+
+  // Validate the existing evidence set and the candidate update independently
+  // before attempting a monotonic merge.
+  deriveCnipaGazetteOrchestrationProgress({ plan, evidence: existing });
+  deriveCnipaGazetteOrchestrationProgress({ plan, evidence: [input.update] });
+
+  const authorizedIssues = expandCnipaGazetteOrchestrationIssues(plan);
+  const order = new Map(authorizedIssues.map((issue, index) => [issue, index]));
+  const existingIndex = existing.findIndex(
+    (item) => item.announcementIssue === input.update.announcementIssue,
+  );
+
+  if (existingIndex >= 0) {
+    assertMonotonicIssueEvidence({
+      previous: existing[existingIndex]!,
+      next: input.update,
+    });
+    existing[existingIndex] = input.update;
+  } else {
+    existing.push(input.update);
+  }
+
+  existing.sort(
+    (left, right) =>
+      (order.get(left.announcementIssue) ?? Number.MAX_SAFE_INTEGER) -
+      (order.get(right.announcementIssue) ?? Number.MAX_SAFE_INTEGER),
+  );
+
+  // Validate the merged state as a final fail-closed check.
+  deriveCnipaGazetteOrchestrationProgress({ plan, evidence: existing });
+  return existing;
+}
+
+export type CnipaGazetteOrchestrationNextBatchProposal = {
+  parentPlanSha256: string;
+  nextPlan: CnipaGazetteOrchestrationPlan | null;
+  nextPlanSha256: string | null;
+  expectedAuthorityToken: string | null;
+};
+
+export function buildCnipaGazetteOrchestrationNextBatchPlan(input: {
+  plan: CnipaGazetteOrchestrationPlan;
+  evidence: readonly CnipaGazetteOrchestrationIssueEvidence[];
+  batchSize: number;
+  historicalUpperBound?: number;
+}): CnipaGazetteOrchestrationNextBatchProposal {
+  const plan = parseCnipaGazetteOrchestrationPlan(input.plan);
+  const progress = deriveCnipaGazetteOrchestrationProgress({
+    plan,
+    evidence: input.evidence,
+  });
+  if (!progress.completed) {
+    throw new TypeError(
+      "CNIPA Gazette orchestration next batch invalid: current batch must be fully finalized",
+    );
+  }
+
+  const batchSize = integer(
+    input.batchSize,
+    "batchSize",
+    1,
+    CNIPA_GAZETTE_ORCHESTRATION_MAX_ISSUES,
+  );
+  const parentPlanSha256 = cnipaGazetteOrchestrationPlanSha256(plan);
+  const currentIssues = expandCnipaGazetteOrchestrationIssues(plan);
+  const lastIssue = currentIssues.at(-1)!;
+
+  let upperBound: number;
+  if (plan.purpose === "HISTORICAL_BACKFILL") {
+    upperBound = integer(
+      input.historicalUpperBound,
+      "historicalUpperBound",
+      CNIPA_GAZETTE_ORCHESTRATION_MIN_ISSUE,
+      999999,
+    );
+    if (upperBound < lastIssue) {
+      throw new TypeError(
+        "CNIPA Gazette orchestration next batch invalid: historicalUpperBound precedes current batch",
+      );
+    }
+  } else {
+    if (input.historicalUpperBound !== undefined) {
+      throw new TypeError(
+        "CNIPA Gazette orchestration next batch invalid: incremental catch-up cannot override frozen observedMaxIssue",
+      );
+    }
+    upperBound = plan.observedMaxIssue!;
+  }
+
+  if (lastIssue >= upperBound) {
+    return {
+      parentPlanSha256,
+      nextPlan: null,
+      nextPlanSha256: null,
+      expectedAuthorityToken: null,
+    };
+  }
+
+  const startIssue = lastIssue + 1;
+  const endIssue = Math.min(upperBound, startIssue + batchSize - 1);
+  const purposeSlug = plan.purpose === "HISTORICAL_BACKFILL" ? "historical" : "incremental";
+  const nextPlan = parseCnipaGazetteOrchestrationPlan({
+    version: 1,
+    operationId: `gazette-${purposeSlug}-${startIssue}-${endIssue}-${parentPlanSha256.slice(0, 12)}`,
+    workspaceId: plan.workspaceId,
+    authorityMode: CNIPA_GAZETTE_ORCHESTRATION_AUTHORITY_MODE,
+    stage: CNIPA_GAZETTE_ORCHESTRATION_STAGE,
+    purpose: plan.purpose,
+    issueSelection: {
+      mode: "RANGE",
+      startIssue,
+      endIssue,
+    },
+    parentPlanSha256,
+    ...(plan.purpose === "INCREMENTAL_CATCHUP" ? { observedMaxIssue: plan.observedMaxIssue } : {}),
+    announcementTypeSelection: "ALL",
+    anncType: "",
+    concurrency: 1,
+    browserTemplate: plan.browserTemplate,
+    dataEngineMutation: "DISABLED",
+    historicalReplayActivated: plan.historicalReplayActivated,
+  });
+  const nextPlanSha256 = cnipaGazetteOrchestrationPlanSha256(nextPlan);
+
+  return {
+    parentPlanSha256,
+    nextPlan,
+    nextPlanSha256,
+    expectedAuthorityToken: expectedCnipaGazetteOrchestrationAuthorityToken(
+      nextPlan,
+      nextPlanSha256,
+    ),
   };
 }
