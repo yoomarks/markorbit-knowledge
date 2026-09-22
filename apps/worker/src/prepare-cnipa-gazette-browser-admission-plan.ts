@@ -132,7 +132,7 @@ export async function prepareCnipaGazetteAdmissionPlan(
   const planPath = assertCnipaGazetteAdmissionPlanPathOutsideWorkingTree(input.browserPlanPath);
   const outputPath = assertCnipaGazetteAdmissionPlanPathOutsideWorkingTree(input.outputPath);
   const browserPlan = parseCnipaGazetteBrowserAuthorityPlan(
-    JSON.parse(await readFile(planPath, "utf8")) as unknown,
+    JSON.parse((await readFile(planPath, "utf8")).replace(/^\uFEFF/u, "")) as unknown,
   );
   const browserPlanSha256 = cnipaGazetteBrowserAuthorityPlanSha256(browserPlan);
   if (browserPlanSha256 !== input.expectedSha) {

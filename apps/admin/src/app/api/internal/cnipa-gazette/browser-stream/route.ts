@@ -310,7 +310,7 @@ function admissionArtifactRef(
   };
 }
 
-function listAllRunArtifacts(input: { workspaceId: string; runId: string; q: string }) {
+function listAllArtifacts(input: { workspaceId: string; runId?: string; q: string }) {
   const repository = getRawArtifactRepository();
   const items: ReturnType<typeof repository.list>["items"] = [];
   let offset = 0;
@@ -318,7 +318,7 @@ function listAllRunArtifacts(input: { workspaceId: string; runId: string; q: str
   do {
     const page = repository.list({
       workspaceId: input.workspaceId,
-      runId: input.runId,
+      ...(input.runId ? { runId: input.runId } : {}),
       artifactKind: "JSON",
       q: input.q,
       limit: 100,
@@ -335,6 +335,10 @@ function listAllRunArtifacts(input: { workspaceId: string; runId: string; q: str
     }
   } while (offset < total);
   return { items, total };
+}
+
+function listAllRunArtifacts(input: { workspaceId: string; runId: string; q: string }) {
+  return listAllArtifacts(input);
 }
 
 async function buildAdmissionPlanFromBrowserRun(input: {
@@ -356,12 +360,53 @@ async function buildAdmissionPlanFromBrowserRun(input: {
     q: "dataset-identity",
     limit: 10,
   });
-  if (identityResult.total !== 1 || identityResult.items.length !== 1) {
+  if (identityResult.total > 1 || identityResult.items.length > 1) {
     throw new RegistryValidationError(
-      "Completed Gazette browser run must contain exactly one dataset identity",
+      "Completed Gazette browser run must contain at most one dataset identity",
     );
   }
-  const identityView = identityResult.items[0]!;
+
+  let identityView = identityResult.items[0] ?? null;
+  if (!identityView) {
+    const terminalChunks = listAllRunArtifacts({
+      workspaceId: input.workspaceId,
+      runId: input.runId,
+      q: "/fact-admission/chunk/",
+    }).items.filter(
+      (view) =>
+        view.artifact.canonicalUri?.endsWith("/request") === true &&
+        view.artifact.canonicalUri.includes("/fact-admission/chunk/"),
+    );
+    if (terminalChunks.length < 1) {
+      throw new RegistryValidationError(
+        "Completed resumed Gazette browser run must expose a terminal CHUNK request",
+      );
+    }
+    const identityParents = new Map<
+      string,
+      NonNullable<ReturnType<typeof artifacts.getArtifact>>
+    >();
+    const expectedDatasetPrefix = `cnipa://trademark-gazette/issue/${input.browserPlan.announcementIssue}/dataset/`;
+    for (const chunk of terminalChunks) {
+      for (const parentId of chunk.artifact.provenance.parentArtifactIds ?? []) {
+        const parent = artifacts.getArtifact(parentId);
+        if (
+          parent &&
+          parent.artifact.workspaceId === input.workspaceId &&
+          parent.artifact.canonicalUri?.startsWith(expectedDatasetPrefix) === true &&
+          !parent.artifact.canonicalUri.includes("/fact-admission/")
+        ) {
+          identityParents.set(parent.artifact.id, parent);
+        }
+      }
+    }
+    if (identityParents.size !== 1) {
+      throw new RegistryValidationError(
+        "Completed resumed Gazette browser run must descend from exactly one dataset identity",
+      );
+    }
+    identityView = [...identityParents.values()][0]!;
+  }
   const identityRaw = objectValue(await verifiedArtifactJson(identityView), "dataset identity");
   const identity = objectValue(identityRaw.identity, "dataset identity.identity");
   const queryScope = objectValue(identity.queryScope, "dataset identity.queryScope");
@@ -395,29 +440,43 @@ async function buildAdmissionPlanFromBrowserRun(input: {
     throw new RegistryValidationError("Gazette dataset identity canonical URI mismatch");
   }
 
-  const chunkResult = listAllRunArtifacts({
+  const chunkCandidates = listAllArtifacts({
     workspaceId: input.workspaceId,
-    runId: input.runId,
-    q: "/fact-admission/chunk/",
-  });
-  if (
-    chunkResult.total < 1 ||
-    chunkResult.total > 10_000 ||
-    chunkResult.items.length !== chunkResult.total
-  ) {
+    q: sourceDatasetSha256,
+  }).items.filter(
+    (view) =>
+      view.artifact.canonicalUri?.startsWith(
+        `${expectedIdentityCanonical}/fact-admission/chunk/`,
+      ) === true &&
+      view.artifact.canonicalUri.endsWith("/request") &&
+      view.artifact.provenance.parentArtifactIds?.includes(identityView.artifact.id) === true,
+  );
+  if (chunkCandidates.length < 1 || chunkCandidates.length > 10_000) {
     throw new RegistryValidationError(
-      "Gazette browser run must expose 1..10000 frozen CHUNK requests",
+      "Gazette browser dataset must expose 1..10000 frozen CHUNK requests",
     );
   }
 
   const chunkRequests = [];
-  for (const view of chunkResult.items) {
+  const seenChunkCanonicals = new Set<string>();
+  for (const view of chunkCandidates) {
+    const canonicalUri = view.artifact.canonicalUri!;
+    if (seenChunkCanonicals.has(canonicalUri)) {
+      throw new RegistryValidationError(
+        "Gazette browser dataset contains duplicate CHUNK requests",
+      );
+    }
+    seenChunkCanonicals.add(canonicalUri);
     const raw = objectValue(await verifiedArtifactJson(view), "CHUNK request");
     const payload = objectValue(raw.payload, "CHUNK request.payload");
     const range = objectValue(raw.range, "CHUNK request.range");
     const startPage = positiveInteger(range.startPage, "CHUNK request.range.startPage");
     const endPage = positiveInteger(range.endPage, "CHUNK request.range.endPage");
+    const expectedChunkCanonical = `${expectedIdentityCanonical}/fact-admission/chunk/${startPage}-${endPage}/request`;
     if (
+      startPage > endPage ||
+      endPage > logicalPageCount ||
+      canonicalUri !== expectedChunkCanonical ||
       raw.operation !== "CHUNK" ||
       raw.announcementIssue !== announcementIssue ||
       raw.sourceDatasetSha256 !== sourceDatasetSha256 ||
@@ -440,6 +499,20 @@ async function buildAdmissionPlanFromBrowserRun(input: {
     });
   }
   chunkRequests.sort((left, right) => left.range.startPage - right.range.startPage);
+  let expectedChunkStartPage = 1;
+  for (const chunk of chunkRequests) {
+    if (chunk.range.startPage !== expectedChunkStartPage) {
+      throw new RegistryValidationError(
+        "Gazette browser dataset CHUNK requests contain a gap or overlap",
+      );
+    }
+    expectedChunkStartPage = chunk.range.endPage + 1;
+  }
+  if (expectedChunkStartPage !== logicalPageCount + 1) {
+    throw new RegistryValidationError(
+      "Gazette browser dataset CHUNK requests do not cover the full logical page range",
+    );
+  }
 
   const finalSourcePageRowCount =
     sourceRecordCount - (browserSourcePageCount - 1) * browserSourcePageSize;
