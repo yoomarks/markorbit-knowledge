@@ -475,8 +475,8 @@ export class CnipaGazetteBrowserRuntime {
         );
       }
     } else if (
-      tailSourcePageIndices.length !== 1 ||
-      tailSourcePageIndices[0] !== previousSourcePageIndex
+      tailSourcePageIndices.length > 0 &&
+      (tailSourcePageIndices.length !== 1 || tailSourcePageIndices[0] !== previousSourcePageIndex)
     ) {
       throw new TypeError(
         "resume with multi-page durable tail requires tailSourceProjectionArtifactIds",

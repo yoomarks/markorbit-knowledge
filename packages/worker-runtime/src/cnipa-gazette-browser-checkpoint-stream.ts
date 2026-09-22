@@ -98,24 +98,30 @@ export class CnipaGazetteBrowserCheckpointStream {
     if (input.resume) {
       const firstRange = this.ranges[0];
       if (!firstRange) throw new TypeError("browser Gazette resume has no checkpoint range");
-      if (
-        this.state.completed ||
-        this.state.nextSourcePageIndex <= 1 ||
-        this.state.nextSourcePageIndex > firstRange.sourceRange.endPage ||
-        this.state.nextLogicalPageIndex <= firstRange.logicalRange.startPage ||
-        this.state.nextLogicalPageIndex > firstRange.logicalRange.endPage
-      ) {
-        throw new TypeError(
-          "browser Gazette resume currently supports only progress within the first checkpoint",
-        );
+      if (this.state.completed || this.state.nextSourcePageIndex <= 1) {
+        throw new TypeError("browser Gazette resume durable progress is not resumable");
       }
-      const expectedLogicalPages =
-        this.state.nextLogicalPageIndex - firstRange.logicalRange.startPage;
+
+      const checkpointIndex = this.ranges.findIndex(
+        (range) =>
+          this.state.nextSourcePageIndex >= range.sourceRange.startPage &&
+          this.state.nextSourcePageIndex <= range.sourceRange.endPage,
+      );
+      const activeRange = checkpointIndex >= 0 ? this.ranges[checkpointIndex] : undefined;
       if (
-        input.resume.logicalPages.length !== expectedLogicalPages ||
+        !activeRange ||
+        this.state.nextLogicalPageIndex < activeRange.logicalRange.startPage ||
+        this.state.nextLogicalPageIndex > activeRange.logicalRange.endPage
+      ) {
+        throw new TypeError("browser Gazette resume durable progress has no active checkpoint");
+      }
+
+      const expectedHistoricalLogicalPages = this.state.nextLogicalPageIndex - 1;
+      if (
+        input.resume.logicalPages.length !== expectedHistoricalLogicalPages ||
         input.resume.logicalPages.some(
           (page, index) =>
-            page.pageIndex !== firstRange.logicalRange.startPage + index ||
+            page.pageIndex !== index + 1 ||
             page.pageSize !== 100 ||
             page.sourceTotal !== session.sourceTotal ||
             page.announcementDate !== session.announcementDate,
@@ -123,6 +129,23 @@ export class CnipaGazetteBrowserCheckpointStream {
       ) {
         throw new TypeError("browser Gazette resume logical pages do not match durable progress");
       }
+
+      const activeLogicalPages = input.resume.logicalPages.filter(
+        (page) => page.pageIndex >= activeRange.logicalRange.startPage,
+      );
+      const expectedActiveLogicalPages =
+        this.state.nextLogicalPageIndex - activeRange.logicalRange.startPage;
+      if (
+        activeLogicalPages.length !== expectedActiveLogicalPages ||
+        activeLogicalPages.some(
+          (page, index) => page.pageIndex !== activeRange.logicalRange.startPage + index,
+        )
+      ) {
+        throw new TypeError(
+          "browser Gazette resume logical pages do not match the active checkpoint",
+        );
+      }
+
       const firstSourcePage = input.resume.firstSourcePageEvidence.page;
       if (
         firstSourcePage.sessionId !== session.sessionId ||
@@ -134,8 +157,37 @@ export class CnipaGazetteBrowserCheckpointStream {
       ) {
         throw new TypeError("browser Gazette resume source page 1 evidence is invalid");
       }
-      this.logicalPages = [...input.resume.logicalPages];
-      this.firstSourcePageEvidence = input.resume.firstSourcePageEvidence;
+
+      this.checkpointIndex = checkpointIndex;
+      this.logicalPages = [...activeLogicalPages];
+      if (checkpointIndex === 0) {
+        this.firstSourcePageEvidence = input.resume.firstSourcePageEvidence;
+      } else {
+        const firstCheckpointLogicalPages = input.resume.logicalPages.filter(
+          (page) =>
+            page.pageIndex >= firstRange.logicalRange.startPage &&
+            page.pageIndex <= firstRange.logicalRange.endPage,
+        );
+        const expectedFirstCheckpointLogicalPages =
+          firstRange.logicalRange.endPage - firstRange.logicalRange.startPage + 1;
+        if (firstCheckpointLogicalPages.length !== expectedFirstCheckpointLogicalPages) {
+          throw new TypeError(
+            "browser Gazette resume cannot reconstruct the first checkpoint identity",
+          );
+        }
+        const firstCheckpoint = buildCnipaGazetteBrowserCheckpointEvidence({
+          session: this.session,
+          range: firstRange.logicalRange,
+          logicalPages: firstCheckpointLogicalPages,
+          pagesPerCheckpoint: this.effectiveLogicalPagesPerCheckpoint,
+        });
+        this.datasetIdentity = buildCnipaGazetteBrowserDatasetIdentity({
+          session: this.session,
+          firstCheckpoint,
+          firstSourcePageEvidence: input.resume.firstSourcePageEvidence,
+        });
+        this.firstSourcePageEvidence = null;
+      }
     }
   }
 

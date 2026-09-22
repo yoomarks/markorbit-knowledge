@@ -196,6 +196,121 @@ function deepResumeFixture() {
   return { refs, artifacts, tailSourceProjectionArtifactIds };
 }
 
+const CLEAN_TOTAL = 300;
+const CLEAN_PAGE_SIZE = 100;
+const CLEAN_PAGES = 3;
+
+function cleanRawPage(pageIndex: number): Uint8Array {
+  const start = (pageIndex - 1) * CLEAN_PAGE_SIZE;
+  const length = pageIndex < CLEAN_PAGES ? CLEAN_PAGE_SIZE : CLEAN_TOTAL - start;
+  return new TextEncoder().encode(
+    JSON.stringify({
+      code: 0,
+      data: {
+        pageIndex,
+        pageSize: CLEAN_PAGE_SIZE,
+        total: CLEAN_TOTAL,
+        pages: CLEAN_PAGES,
+        list: Array.from({ length }, (_, offset) => row(start + offset + 1)),
+      },
+    }),
+  );
+}
+
+function cleanSession(sessionId: string) {
+  return createCnipaGazetteBrowserStreamSession({
+    sessionId,
+    announcementIssue: 75,
+    sourceUrl: SOURCE_URL,
+    capturedQuery: {
+      ...queryTemplate,
+      pageIndex: 1,
+      pageSize: CLEAN_PAGE_SIZE,
+    },
+    sourceTotal: CLEAN_TOTAL,
+    sourcePages: CLEAN_PAGES,
+    announcementDate: "1983-08-15",
+    startedAt: "2026-09-20T10:00:00.000Z",
+  });
+}
+
+function cleanEvidence(session: ReturnType<typeof cleanSession>, pageIndex: number) {
+  return buildCnipaGazetteBrowserSourcePageEvidence({
+    session,
+    requestedPageIndex: pageIndex,
+    observedAt: new Date(Date.parse("2026-09-20T10:00:00.000Z") + pageIndex * 1_000).toISOString(),
+    httpStatus: 200,
+    rawBody: cleanRawPage(pageIndex),
+  });
+}
+
+function cleanBoundaryResumeFixture() {
+  const session = cleanSession("gazette-75-clean-prior");
+  let state = createCnipaGazetteBrowserStreamState(session);
+  const logicalPages = [];
+  const evidenceByPage = new Map<number, ReturnType<typeof cleanEvidence>>();
+
+  for (let pageIndex = 1; pageIndex <= 2; pageIndex += 1) {
+    const evidence = cleanEvidence(session, pageIndex);
+    evidenceByPage.set(pageIndex, evidence);
+    const accepted = acceptCnipaGazetteBrowserSourcePage({
+      session,
+      state,
+      page: evidence.page,
+    });
+    state = accepted.state;
+    logicalPages.push(...accepted.logicalPages);
+  }
+
+  expect(state).toMatchObject({
+    nextSourcePageIndex: 3,
+    nextLogicalPageIndex: 3,
+    rowsSeen: 200,
+    tailRows: [],
+    tailSourcePageIndices: [],
+    completed: false,
+  });
+  expect(logicalPages).toHaveLength(2);
+
+  const refs = {
+    stateArtifactId: resumeArtifactId(30),
+    logicalProjectionArtifactIds: [resumeArtifactId(31), resumeArtifactId(32)],
+    firstSourceRawArtifactId: resumeArtifactId(33),
+    firstSourceProjectionArtifactId: resumeArtifactId(34),
+    previousSourceProjectionArtifactId: resumeArtifactId(35),
+  };
+  const first = evidenceByPage.get(1)!;
+  const previous = evidenceByPage.get(2)!;
+  const artifacts = new Map<string, AcquiredCollectionArtifact>([
+    [
+      refs.stateArtifactId,
+      buildCnipaGazetteBrowserStreamStateArtifact({
+        session,
+        state,
+        observedAt: previous.page.observedAt,
+      }),
+    ],
+    [
+      refs.logicalProjectionArtifactIds[0]!,
+      buildCnipaGazetteBrowserLogicalPageEvidence({
+        session,
+        page: logicalPages[0]!,
+      }).projectionArtifact,
+    ],
+    [
+      refs.logicalProjectionArtifactIds[1]!,
+      buildCnipaGazetteBrowserLogicalPageEvidence({
+        session,
+        page: logicalPages[1]!,
+      }).projectionArtifact,
+    ],
+    [refs.firstSourceRawArtifactId, first.rawArtifact],
+    [refs.firstSourceProjectionArtifactId, first.projectionArtifact],
+    [refs.previousSourceProjectionArtifactId, previous.projectionArtifact],
+  ]);
+  return { refs, artifacts };
+}
+
 function job(resumeFrom?: Record<string, unknown>): Job {
   return {
     id: JOB_ID,
@@ -390,6 +505,83 @@ describe("CnipaGazetteBrowserRuntime", () => {
     expect(uploading).toBeLessThan(firstArtifact);
     expect(firstArtifact).toBeLessThan(verifying);
     expect(verifying).toBeLessThan(completed);
+  });
+
+  it("resumes from a clean logical-page boundary with no durable tail", async () => {
+    const resume = cleanBoundaryResumeFixture();
+    const fixture = fixtureClient(job(resume.refs));
+    const runtime = new CnipaGazetteBrowserRuntime(fixture.client, {
+      extensionOrigin: ORIGIN,
+      bridgeToken: "b".repeat(48),
+      durableArtifactReader: {
+        async read(artifactId) {
+          const artifact = resume.artifacts.get(artifactId);
+          if (!artifact) throw new Error(`missing resume artifact ${artifactId}`);
+          return artifact;
+        },
+      },
+      onListening: async (listening) => {
+        const sessionId = "gazette-runtime-75-clean-resume";
+        const sessionResponse = await fetch(`${listening.baseUrl}/v1/cnipa-gazette/sessions`, {
+          method: "POST",
+          headers: {
+            Origin: ORIGIN,
+            Authorization: `Bearer ${listening.bridgeToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            schemaVersion: CNIPA_GAZETTE_LOOPBACK_SESSION_START_SCHEMA,
+            sessionId,
+            announcementIssue: 75,
+            sourceUrl: SOURCE_URL,
+            capturedQuery: {
+              ...queryTemplate,
+              pageIndex: 1,
+              pageSize: CLEAN_PAGE_SIZE,
+            },
+            sourceTotal: CLEAN_TOTAL,
+            sourcePages: CLEAN_PAGES,
+            announcementDate: "1983-08-15",
+            startedAt: "2026-09-20T11:00:00.000Z",
+          }),
+        });
+        expect(sessionResponse.status).toBe(201);
+        const sessionAck = (await sessionResponse.json()) as Record<string, unknown>;
+        expect(sessionAck).toMatchObject({
+          nextSourcePageIndex: 3,
+          sourcePages: CLEAN_PAGES,
+        });
+        const fingerprint = String(sessionAck.sessionFingerprintSha256);
+
+        const pageResponse = await fetch(
+          `${listening.baseUrl}/v1/cnipa-gazette/sessions/${sessionId}/pages/3`,
+          {
+            method: "POST",
+            headers: {
+              Origin: ORIGIN,
+              Authorization: `Bearer ${listening.bridgeToken}`,
+              "Content-Type": "application/octet-stream",
+              "X-MO-Session-Fingerprint": fingerprint,
+              "X-MO-Observed-At": "2026-09-20T11:00:03.000Z",
+              "X-MO-Source-HTTP-Status": "200",
+              "X-MO-Source-Content-Type": "application/json;charset=UTF-8",
+            },
+            body: cleanRawPage(3) as unknown as BodyInit,
+          },
+        );
+        expect(pageResponse.status).toBe(200);
+        expect(await pageResponse.json()).toMatchObject({
+          sourcePageIndex: 3,
+          nextSourcePageIndex: 4,
+          completed: true,
+        });
+      },
+    });
+
+    const result = await runtime.run(JOB_ID);
+    expect(result.sourceRowsSeen).toBe(CLEAN_TOTAL);
+    expect(result.receipt.summary).toContain(`${CLEAN_TOTAL} official row(s)`);
+    expect(fixture.failed()).toBeNull();
   });
 
   it("resumes a deep durable tail at source page 20 and preserves all tail lineage", async () => {
