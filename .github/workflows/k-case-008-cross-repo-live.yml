@@ -25,11 +25,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: k-case-008-cross-repo-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
-  CORE_REF: 68422b9cbe6416ac5cefa3b05aa76786bcc8fc93
+  CORE_REF: e44470ea8bf08faf8a2be9ac8c7b513317a45ea9
   MARKREG_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/markorbit_kcase008
   MARKREG_MIGRATION_NAMESPACE: markreg_kcase008
-  MO_INTERNAL_SERVICE_SECRET: markorbit-k-case-008-shared-secret-0001
+  MO_INTERNAL_SERVICE_SECRET: ${{ format('markorbit-kcase-ephemeral-{0}-acceptance-secret', github.run_id) }}
   MARKREG_URL: http://127.0.0.1:4105
   KNOWLEDGE_URL: http://127.0.0.1:3100
   MARKORBIT_KCASE_WORKSPACE_ID: 77777777-7777-4777-8777-777777777777
