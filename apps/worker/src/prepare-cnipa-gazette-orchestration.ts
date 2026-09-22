@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  buildCnipaGazetteOrchestrationNextBatchPlan,
   buildCnipaGazetteOrchestrationNextPreparation,
   cnipaGazetteBrowserAuthorityPlanSha256,
   cnipaGazetteOrchestrationPlanSha256,
@@ -9,6 +10,7 @@ import {
   expectedCnipaGazetteOrchestrationAuthorityToken,
   expandCnipaGazetteOrchestrationIssues,
   parseCnipaGazetteOrchestrationPlan,
+  recordCnipaGazetteOrchestrationIssueEvidence,
   type CnipaGazetteOrchestrationIssueEvidence,
   type CnipaGazetteOrchestrationPlan,
 } from "@markorbit/worker-runtime";
@@ -16,8 +18,14 @@ import {
 type CliArguments = {
   planPath: string;
   prepareNext: boolean;
+  recordEvidence: boolean;
+  buildNextBatch: boolean;
   evidencePath?: string;
+  issueEvidencePath?: string;
+  outputEvidencePath?: string;
   outputDirectory?: string;
+  batchSize?: number;
+  historicalUpperBound?: number;
   expectedSha?: string;
   authorityToken?: string;
 };
@@ -28,13 +36,27 @@ function valueAfter(args: string[], index: number, name: string): string {
   return value;
 }
 
+function integerArgument(value: string, name: string): number {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return parsed;
+}
+
 export function parseCnipaGazetteOrchestrationArguments(args: string[]): CliArguments {
   let planPath: string | undefined;
   let evidencePath: string | undefined;
+  let issueEvidencePath: string | undefined;
+  let outputEvidencePath: string | undefined;
   let outputDirectory: string | undefined;
+  let batchSize: number | undefined;
+  let historicalUpperBound: number | undefined;
   let expectedSha: string | undefined;
   let authorityToken: string | undefined;
   let prepareNext = false;
+  let recordEvidence = false;
+  let buildNextBatch = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]!;
@@ -45,8 +67,23 @@ export function parseCnipaGazetteOrchestrationArguments(args: string[]): CliArgu
     } else if (arg === "--evidence") {
       evidencePath = valueAfter(args, index, "--evidence");
       index += 1;
+    } else if (arg === "--issue-evidence") {
+      issueEvidencePath = valueAfter(args, index, "--issue-evidence");
+      index += 1;
+    } else if (arg === "--output-evidence") {
+      outputEvidencePath = valueAfter(args, index, "--output-evidence");
+      index += 1;
     } else if (arg === "--output-dir") {
       outputDirectory = valueAfter(args, index, "--output-dir");
+      index += 1;
+    } else if (arg === "--batch-size") {
+      batchSize = integerArgument(valueAfter(args, index, "--batch-size"), "--batch-size");
+      index += 1;
+    } else if (arg === "--historical-upper-bound") {
+      historicalUpperBound = integerArgument(
+        valueAfter(args, index, "--historical-upper-bound"),
+        "--historical-upper-bound",
+      );
       index += 1;
     } else if (arg === "--expected-sha") {
       expectedSha = valueAfter(args, index, "--expected-sha");
@@ -56,23 +93,57 @@ export function parseCnipaGazetteOrchestrationArguments(args: string[]): CliArgu
       index += 1;
     } else if (arg === "--prepare-next") {
       prepareNext = true;
+    } else if (arg === "--record-evidence") {
+      recordEvidence = true;
+    } else if (arg === "--build-next-batch") {
+      buildNextBatch = true;
     } else {
       throw new Error(`Unknown CNIPA Gazette orchestration argument: ${arg}`);
     }
   }
 
   if (!planPath) throw new Error("--plan is required");
+
+  const actions = [prepareNext, recordEvidence, buildNextBatch].filter(Boolean).length;
+  if (actions > 1) {
+    throw new Error(
+      "--prepare-next, --record-evidence and --build-next-batch are mutually exclusive",
+    );
+  }
+
   if (prepareNext && (!evidencePath || !outputDirectory || !expectedSha || !authorityToken)) {
     throw new Error(
       "--prepare-next requires --evidence, --output-dir, --expected-sha and --authority-token",
+    );
+  }
+  if (
+    recordEvidence &&
+    (!issueEvidencePath || !outputEvidencePath || !expectedSha || !authorityToken)
+  ) {
+    throw new Error(
+      "--record-evidence requires --issue-evidence, --output-evidence, --expected-sha and --authority-token",
+    );
+  }
+  if (
+    buildNextBatch &&
+    (!evidencePath || !outputDirectory || !batchSize || !expectedSha || !authorityToken)
+  ) {
+    throw new Error(
+      "--build-next-batch requires --evidence, --output-dir, --batch-size, --expected-sha and --authority-token",
     );
   }
 
   return {
     planPath: path.resolve(planPath),
     prepareNext,
+    recordEvidence,
+    buildNextBatch,
     ...(evidencePath ? { evidencePath: path.resolve(evidencePath) } : {}),
+    ...(issueEvidencePath ? { issueEvidencePath: path.resolve(issueEvidencePath) } : {}),
+    ...(outputEvidencePath ? { outputEvidencePath: path.resolve(outputEvidencePath) } : {}),
     ...(outputDirectory ? { outputDirectory: path.resolve(outputDirectory) } : {}),
+    ...(batchSize !== undefined ? { batchSize } : {}),
+    ...(historicalUpperBound !== undefined ? { historicalUpperBound } : {}),
     ...(expectedSha ? { expectedSha } : {}),
     ...(authorityToken ? { authorityToken } : {}),
   };
@@ -142,6 +213,98 @@ export async function loadCnipaGazetteOrchestrationEvidenceFile(
     throw new Error("orchestration evidence must be version 1 with an issues array");
   }
   return root.issues as CnipaGazetteOrchestrationIssueEvidence[];
+}
+
+export async function loadCnipaGazetteOrchestrationIssueEvidenceFile(
+  evidencePath: string,
+  workingDirectory = process.cwd(),
+): Promise<CnipaGazetteOrchestrationIssueEvidence> {
+  const absolutePath = assertCnipaGazetteOrchestrationPathOutsideWorkingTree(
+    evidencePath,
+    workingDirectory,
+  );
+  return objectValue(
+    await readJsonFile(absolutePath),
+    "orchestration issue evidence",
+  ) as unknown as CnipaGazetteOrchestrationIssueEvidence;
+}
+
+export async function recordCnipaGazetteOrchestrationEvidence(input: {
+  plan: CnipaGazetteOrchestrationPlan;
+  existing?: readonly CnipaGazetteOrchestrationIssueEvidence[];
+  update: CnipaGazetteOrchestrationIssueEvidence;
+  outputPath: string;
+  workingDirectory?: string;
+}) {
+  const outputPath = assertCnipaGazetteOrchestrationPathOutsideWorkingTree(
+    input.outputPath,
+    input.workingDirectory ?? process.cwd(),
+  );
+  const issues = recordCnipaGazetteOrchestrationIssueEvidence({
+    plan: input.plan,
+    existing: input.existing,
+    update: input.update,
+  });
+  await mkdir(path.dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, `${JSON.stringify({ version: 1, issues }, null, 2)}\n`, "utf8");
+  return {
+    outputPath,
+    issues,
+    progress: buildCnipaGazetteOrchestrationNextPreparation({
+      plan: input.plan,
+      evidence: issues,
+    }).progress,
+  };
+}
+
+export async function prepareCnipaGazetteOrchestrationNextBatch(input: {
+  plan: CnipaGazetteOrchestrationPlan;
+  evidence: readonly CnipaGazetteOrchestrationIssueEvidence[];
+  batchSize: number;
+  historicalUpperBound?: number;
+  outputDirectory: string;
+  workingDirectory?: string;
+}) {
+  const outputDirectory = assertCnipaGazetteOrchestrationPathOutsideWorkingTree(
+    input.outputDirectory,
+    input.workingDirectory ?? process.cwd(),
+  );
+  const proposal = buildCnipaGazetteOrchestrationNextBatchPlan({
+    plan: input.plan,
+    evidence: input.evidence,
+    batchSize: input.batchSize,
+    ...(input.historicalUpperBound !== undefined
+      ? { historicalUpperBound: input.historicalUpperBound }
+      : {}),
+  });
+
+  await mkdir(outputDirectory, { recursive: true });
+  let nextPlanPath: string | null = null;
+  if (proposal.nextPlan) {
+    nextPlanPath = path.join(outputDirectory, "next-orchestration-plan.json");
+    await writeFile(nextPlanPath, `${JSON.stringify(proposal.nextPlan, null, 2)}\n`, "utf8");
+  }
+  const proposalPath = path.join(outputDirectory, "next-batch.json");
+  await writeFile(
+    proposalPath,
+    `${JSON.stringify(
+      {
+        parentPlanSha256: proposal.parentPlanSha256,
+        nextPlanPath,
+        nextPlanSha256: proposal.nextPlanSha256,
+        expectedAuthorityToken: proposal.expectedAuthorityToken,
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+
+  return {
+    ...proposal,
+    nextPlanPath,
+    proposalPath,
+  };
 }
 
 export function assertCnipaGazetteOrchestrationAuthority(input: {
@@ -235,7 +398,8 @@ async function main(): Promise<void> {
     loaded.planSha256,
   );
 
-  if (!args.prepareNext) {
+  const actionRequested = args.prepareNext || args.recordEvidence || args.buildNextBatch;
+  if (!actionRequested) {
     process.stdout.write(
       `${JSON.stringify({
         event: "cnipa_gazette_orchestration.plan_validated",
@@ -244,6 +408,7 @@ async function main(): Promise<void> {
         issueCount: issues.length,
         firstIssue: issues[0],
         lastIssue: issues.at(-1),
+        parentPlanSha256: loaded.plan.parentPlanSha256 ?? null,
         planSha256: loaded.planSha256,
         expectedAuthorityToken,
         historicalReplayActivated: loaded.plan.historicalReplayActivated,
@@ -264,7 +429,69 @@ async function main(): Promise<void> {
     expectedSha: args.expectedSha,
     authorityToken: args.authorityToken,
   });
+
+  if (args.recordEvidence) {
+    const existing = args.evidencePath
+      ? await loadCnipaGazetteOrchestrationEvidenceFile(args.evidencePath)
+      : [];
+    const update = await loadCnipaGazetteOrchestrationIssueEvidenceFile(args.issueEvidencePath!);
+    const result = await recordCnipaGazetteOrchestrationEvidence({
+      plan: loaded.plan,
+      existing,
+      update,
+      outputPath: args.outputEvidencePath!,
+    });
+    process.stdout.write(
+      `${JSON.stringify({
+        event: "cnipa_gazette_orchestration.evidence_recorded",
+        operationId: loaded.plan.operationId,
+        planSha256: loaded.planSha256,
+        authorityTokenSha256,
+        announcementIssue: update.announcementIssue,
+        evidencePath: result.outputPath,
+        counts: result.progress.counts,
+        nextIssue: result.progress.nextIssue,
+        browserDispatchPerformed: false,
+        cnipaNetworkAccessPerformed: false,
+        knowledgeMutationPerformed: false,
+        dataEngineMutationPerformed: false,
+      })}\n`,
+    );
+    return;
+  }
+
   const evidence = await loadCnipaGazetteOrchestrationEvidenceFile(args.evidencePath!);
+
+  if (args.buildNextBatch) {
+    const result = await prepareCnipaGazetteOrchestrationNextBatch({
+      plan: loaded.plan,
+      evidence,
+      batchSize: args.batchSize!,
+      ...(args.historicalUpperBound !== undefined
+        ? { historicalUpperBound: args.historicalUpperBound }
+        : {}),
+      outputDirectory: args.outputDirectory!,
+    });
+    process.stdout.write(
+      `${JSON.stringify({
+        event: "cnipa_gazette_orchestration.next_batch_prepared",
+        operationId: loaded.plan.operationId,
+        planSha256: loaded.planSha256,
+        authorityTokenSha256,
+        parentPlanSha256: result.parentPlanSha256,
+        nextPlanPath: result.nextPlanPath,
+        nextPlanSha256: result.nextPlanSha256,
+        expectedNextAuthorityToken: result.expectedAuthorityToken,
+        proposalPath: result.proposalPath,
+        browserDispatchPerformed: false,
+        cnipaNetworkAccessPerformed: false,
+        knowledgeMutationPerformed: false,
+        dataEngineMutationPerformed: false,
+      })}\n`,
+    );
+    return;
+  }
+
   const result = await prepareCnipaGazetteOrchestrationNext({
     plan: loaded.plan,
     evidence,
