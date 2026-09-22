@@ -15,8 +15,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ip-australia-manual-live-inventory-${{ github.run_id }}
-  cancel-in-progress: false
+  group: ip-australia-manual-live-inventory-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   inventory:
@@ -43,8 +43,7 @@ jobs:
         run: |
           set +e
           mkdir -p "$RUNNER_TEMP/ip-australia-manual-inventory"
-          pnpm --filter @markorbit/worker inventory:ip-australia-manual \
-            > "$RUNNER_TEMP/ip-australia-manual-inventory/report.json"
+          pnpm --filter @markorbit/worker inventory:ip-australia-manual -- --output "$RUNNER_TEMP/ip-australia-manual-inventory/report.json"
           status=$?
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
           node -e '
