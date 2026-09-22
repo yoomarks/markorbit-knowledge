@@ -90,6 +90,23 @@ function sourcePage(
 }
 
 describe("CNIPA Gazette normal-browser stream contract", () => {
+  it("normalizes legacy pageNo zero to a missing detail page number", () => {
+    const currentSession = session();
+    const records = Array.from({ length: 10 }, (_, index) => row(index));
+    records[0] = { ...records[0]!, pageNo: 0 };
+
+    const page = sourcePage(
+      currentSession,
+      1,
+      sourcePayload(1, {
+        records,
+      }),
+    );
+
+    expect(page.rows[0]?.detailPageNo).toBeNull();
+    expect(page.rows[1]?.detailPageNo).toBe(1);
+  });
+
   it("normalizes a captured 10-row source stream into 100-row logical pages", () => {
     const currentSession = session();
     let state = createCnipaGazetteBrowserStreamState(currentSession);
