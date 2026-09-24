@@ -17,9 +17,13 @@ import {
   HttpFactAdmissionClient,
   HttpProductionConversionClient,
   HttpValidatorControlPlaneClient,
+  LaosWopublishJobArtifactAcquirer,
+  LaosWopublishSourceAdapter,
   LocalFolderArtifactAcquirer,
   ProductionConversionWorkerRuntime,
   RssArtifactAcquirer,
+  SourceAdapterRegistry,
+  registerLaosAdapter,
   UsptoTsdrEnvironmentSecretResolver,
   UsptoTsdrJobArtifactAcquirer,
   UsptoTsdrWebArtifactAcquirer,
@@ -37,6 +41,7 @@ import { acquisitionLearningProfileForJob } from "./acquisition-learning-job-pro
 import { acquisitionLearningProfile } from "./acquisition-learning-profiles";
 import { CnipaPlaywrightSessionExecutorFactory } from "./cnipa-playwright-session-executor";
 import { loadWorkerProcessConfig } from "./config";
+import { LaosPlaywrightTransport } from "./laos-playwright-transport";
 import { buildIpAustraliaManualAcquisitionRunEvidence } from "./ip-australia-manual-acquisition-learning";
 import { IpAustraliaManualArtifactAcquirer } from "./ip-australia-manual-artifact-acquirer";
 
@@ -108,6 +113,19 @@ async function main(): Promise<void> {
       : config.collectionProvider === "cnipa-gazette-finalize" && cnipaGazetteDurableArtifactReader
         ? new CnipaGazetteFinalizeJobAcquirer({ reader: cnipaGazetteDurableArtifactReader })
         : null;
+  const laosAcquirer =
+    config.collectionProvider === "laos-wopublish"
+      ? (() => {
+          const registry = new SourceAdapterRegistry();
+          registerLaosAdapter(
+            registry,
+            new LaosWopublishSourceAdapter({
+              transportFactory: () => new LaosPlaywrightTransport(),
+            }),
+          );
+          return new LaosWopublishJobArtifactAcquirer(registry);
+        })()
+      : null;
   const crawl4AiAcquirer = new Crawl4AiSubprocessAcquirer({
     requireEgressProxy: config.requireEgressProxy,
     maxConcurrency: config.crawl4AiMaxConcurrency,
@@ -132,44 +150,48 @@ async function main(): Promise<void> {
     config.workerCredential,
   );
   const acquirer =
-    config.collectionProvider === "local-folder"
-      ? new LocalFolderArtifactAcquirer({
-          roots: config.localFolderRoots,
-          maxArtifactBytes: config.localFolderMaxArtifactBytes,
-          maxTotalBytes: config.localFolderMaxTotalBytes,
-          maxItems: config.localFolderMaxItems,
-          maxDepth: config.localFolderMaxDepth,
-        })
-      : config.collectionProvider === "api"
-        ? conditionalHttp.wrap(new ApiArtifactAcquirer({ transport: conditionalHttp.transport }))
-        : config.collectionProvider === "rss"
-          ? conditionalHttp.wrap(new RssArtifactAcquirer({ transport: conditionalHttp.transport }))
-          : config.collectionProvider === "uspto-tsdr"
-            ? new UsptoTsdrJobArtifactAcquirer({
-                secretResolver: new UsptoTsdrEnvironmentSecretResolver(),
-              })
-            : config.collectionProvider === "uspto-tsdr-web"
-              ? new UsptoTsdrWebArtifactAcquirer({ delegate: crawl4AiAcquirer })
-              : config.collectionProvider === "github"
-                ? new GitHubArtifactAcquirer({
-                    maxFileBytes: config.githubMaxFileBytes,
-                    maxTotalBytes: config.githubMaxTotalBytes,
-                    maxTreeEntries: config.githubMaxTreeEntries,
-                    maxItems: config.githubMaxItems,
-                    maxDepth: config.githubMaxDepth,
-                  })
-                : config.collectionProvider === "cnipa-gazette-publisher" ||
-                    config.collectionProvider === "cnipa-gazette-finalize"
-                  ? (cnipaGazetteAcquirer ??
-                    (() => {
-                      throw new Error("CNIPA Gazette acquirer configuration is incomplete");
-                    })())
-                  : config.collectionProvider === "cnipa"
-                    ? (cnipaAcquirer ??
+    config.collectionProvider === "laos-wopublish" && laosAcquirer
+      ? laosAcquirer
+      : config.collectionProvider === "local-folder"
+        ? new LocalFolderArtifactAcquirer({
+            roots: config.localFolderRoots,
+            maxArtifactBytes: config.localFolderMaxArtifactBytes,
+            maxTotalBytes: config.localFolderMaxTotalBytes,
+            maxItems: config.localFolderMaxItems,
+            maxDepth: config.localFolderMaxDepth,
+          })
+        : config.collectionProvider === "api"
+          ? conditionalHttp.wrap(new ApiArtifactAcquirer({ transport: conditionalHttp.transport }))
+          : config.collectionProvider === "rss"
+            ? conditionalHttp.wrap(
+                new RssArtifactAcquirer({ transport: conditionalHttp.transport }),
+              )
+            : config.collectionProvider === "uspto-tsdr"
+              ? new UsptoTsdrJobArtifactAcquirer({
+                  secretResolver: new UsptoTsdrEnvironmentSecretResolver(),
+                })
+              : config.collectionProvider === "uspto-tsdr-web"
+                ? new UsptoTsdrWebArtifactAcquirer({ delegate: crawl4AiAcquirer })
+                : config.collectionProvider === "github"
+                  ? new GitHubArtifactAcquirer({
+                      maxFileBytes: config.githubMaxFileBytes,
+                      maxTotalBytes: config.githubMaxTotalBytes,
+                      maxTreeEntries: config.githubMaxTreeEntries,
+                      maxItems: config.githubMaxItems,
+                      maxDepth: config.githubMaxDepth,
+                    })
+                  : config.collectionProvider === "cnipa-gazette-publisher" ||
+                      config.collectionProvider === "cnipa-gazette-finalize"
+                    ? (cnipaGazetteAcquirer ??
                       (() => {
-                        throw new Error("CNIPA acquirer configuration is incomplete");
+                        throw new Error("CNIPA Gazette acquirer configuration is incomplete");
                       })())
-                    : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
+                    : config.collectionProvider === "cnipa"
+                      ? (cnipaAcquirer ??
+                        (() => {
+                          throw new Error("CNIPA acquirer configuration is incomplete");
+                        })())
+                      : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
   const learningProfileForJob = (job: Job) =>
     acquisitionLearningProfileForJob({
       job,

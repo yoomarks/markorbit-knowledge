@@ -17,6 +17,7 @@ export type WorkerCollectionProvider =
   | "crawl4ai"
   | "github"
   | "ip-australia-manual"
+  | "laos-wopublish"
   | "local-folder"
   | "rss"
   | "uspto-tsdr"
@@ -154,6 +155,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     value === "crawl4ai" ||
     value === "github" ||
     value === "ip-australia-manual" ||
+    value === "laos-wopublish" ||
     value === "local-folder" ||
     value === "rss" ||
     value === "uspto-tsdr" ||
@@ -162,7 +164,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, ip-australia-manual, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, ip-australia-manual, laos-wopublish, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
   );
 }
 
