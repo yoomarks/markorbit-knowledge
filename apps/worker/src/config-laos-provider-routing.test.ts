@@ -19,6 +19,30 @@ describe("WoPublish worker provider activation", () => {
     expect(pilot.dataEngineUrl).toBeUndefined();
     expect(pilot.dataEngineFactAdmissionKey).toBeUndefined();
   });
+  it("enables the separate generic Data Engine publisher only with its own URL and secret", () => {
+    expect(() =>
+      loadWorkerProcessConfig({
+        ...env,
+        MARKORBIT_COLLECTION_PROVIDER: "global-trademark-publisher",
+      }),
+    ).toThrowError(/MARKORBIT_DATA_ENGINE_URL/);
+    expect(() =>
+      loadWorkerProcessConfig({
+        ...env,
+        MARKORBIT_COLLECTION_PROVIDER: "global-trademark-publisher",
+        MARKORBIT_DATA_ENGINE_URL: "https://data-engine.example.test",
+      }),
+    ).toThrowError(/FACT_ADMISSION/);
+    const publisher = loadWorkerProcessConfig({
+      ...env,
+      MARKORBIT_COLLECTION_PROVIDER: "global-trademark-publisher",
+      MARKORBIT_DATA_ENGINE_URL: "https://data-engine.example.test",
+      MARKORBIT_DATA_ENGINE_FACT_ADMISSION_KEY: "a".repeat(64),
+    });
+    expect(publisher.collectionProvider).toBe("global-trademark-publisher");
+    expect(publisher.dataEngineUrl).toBe("https://data-engine.example.test");
+    expect(publisher.dataEngineFactAdmissionKey).toBe("a".repeat(64));
+  });
   it("rejects arbitrary providers even when the pilot Worker is enabled", () => {
     expect(() =>
       loadWorkerProcessConfig({

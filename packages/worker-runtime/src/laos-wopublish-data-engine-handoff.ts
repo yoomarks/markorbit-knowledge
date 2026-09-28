@@ -1,10 +1,11 @@
 ﻿import type { AcquiredCollectionArtifact } from "./artifact-backed-collection-executor";
+import { GLOBAL_TRADEMARK_ADMISSION_REQUEST_SCHEMA } from "./global-trademark-fact-admission-job-acquirer";
 import { LAOS_SOURCE_ID, laosSha256, type LaosObservation } from "./laos-wopublish-source-adapter";
 
 export const LAOS_GLOBAL_ADMISSION_CONTRACT = "GLOBAL_TRADEMARK_STRUCTURED_ADMISSION_V1";
 export const LAOS_GLOBAL_MAPPING_VERSION = "GLOBAL_TRADEMARK_NORMALIZED_V1";
 export const LAOS_GLOBAL_ADMISSION_PATH = "/api/admin/v2/fact-admissions/global/observations";
-export const LAOS_ADMISSION_REQUEST_SCHEMA = "LA_WOPUBLISH_FACT_ADMISSION_REQUEST_V1";
+export const LAOS_ADMISSION_REQUEST_SCHEMA = GLOBAL_TRADEMARK_ADMISSION_REQUEST_SCHEMA;
 const encoder = new TextEncoder();
 
 function normalizedDate(value: string): string {

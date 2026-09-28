@@ -92,6 +92,8 @@ export * from "./source-adapter-registry";
 export * from "./laos-wopublish-source-adapter";
 export * from "./laos-wopublish-job-acquirer";
 export * from "./laos-wopublish-data-engine-handoff";
+export * from "./global-trademark-fact-admission-job-acquirer";
+export * from "./http-global-trademark-durable-artifact-reader";
 export * from "./uspto-source-adapter";
 export * from "./wipo-source-adapter";
 export * from "./cnipa-source-adapter";
