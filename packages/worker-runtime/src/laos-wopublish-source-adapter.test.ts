@@ -92,6 +92,24 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     expect(result.nextUrl).toContain("navigator-next");
     expect(result.nextUrl).toContain("jsessionid");
   });
+  it("reparses redacted session paths from persisted list evidence without reintroducing credentials", () => {
+    const sessionHtml = first.replaceAll(
+      "./detail/trademarks?id=",
+      "./detail/trademarks;jsessionid=TRANSIENTSESSION?id=",
+    );
+    const evidence = redactLaosResponse(text(sessionHtml));
+    const rendered = new TextDecoder().decode(evidence);
+    expect(rendered).not.toContain("TRANSIENTSESSION");
+    expect(rendered).not.toContain("SECRETSESSION");
+    expect(rendered).toContain("jsessionid=[REDACTED]");
+    expect(parseLaosList(evidence).ids).toEqual(firstIds);
+    expect(parseLaosList(evidence).total).toBe(73531);
+    const invalid = sessionHtml.replaceAll(
+      ";jsessionid=TRANSIENTSESSION",
+      ";jsessionid=[UNEXPECTED]",
+    );
+    expect(parseLaosList(text(invalid)).ids).toEqual([]);
+  });
   it("rejects invented page numbers rather than enumerating presumed sequential IDs", async () => {
     const { subject, session } = adapter([]);
     await expect(
