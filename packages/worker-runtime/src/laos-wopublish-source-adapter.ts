@@ -183,7 +183,9 @@ export function parseLaosList(body: Uint8Array): {
     const id = url.searchParams.get("id");
     if (
       url.origin === LAOS_ORIGIN &&
-      /^\/wopublish-search\/public\/detail\/trademarks(?:;jsessionid=[A-Za-z0-9]+)?$/.test(
+      // Persisted Knowledge RawArtifacts redact Wicket path session values to an exact
+      // marker. Accept it for evidence parsing only; network target validation stays strict.
+      /^\/wopublish-search\/public\/detail\/trademarks(?:;jsessionid=(?:[A-Za-z0-9]+|\[REDACTED\]))?$/.test(
         url.pathname,
       ) &&
       url.searchParams.size === 1 &&
