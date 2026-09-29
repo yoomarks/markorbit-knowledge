@@ -139,6 +139,16 @@ export type LaosPage = {
   observedAt: string;
   sourceUri: string;
 };
+/** Streaming index page; only a governed manual baseline job may consume it. */
+export type LaosIndexPage = Omit<LaosPage, "page"> & {
+  page: number;
+  sourceRecordIdsSha256: string;
+};
+export type LaosIndexResume = {
+  sourceTotal: number;
+  /** The exact digests of all previously committed pages, in page order. */
+  committedPageIdsSha256: string[];
+};
 export type LaosDetail = {
   kind: "DETAIL";
   id: string;
@@ -523,6 +533,143 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
       sourceUri: LAOS_LIST_URL,
     };
   }
+  /**
+   * A single-session Wicket index stream for a separately authorized, manual
+   * baseline. Yield one real page at a time so its caller can commit durable
+   * evidence and an admission receipt before requesting the next page.
+   * This method is deliberately not routed through the pilot-only fetch().
+   */
+  async *streamFullIndex(options: {
+    maxPages: number;
+    resume?: LaosIndexResume;
+  }): AsyncGenerator<LaosIndexPage, { sourceTotal: number; uniqueIds: number }, void> {
+    if (
+      !Number.isSafeInteger(options.maxPages) ||
+      options.maxPages < 1 ||
+      options.maxPages > 2_000
+    ) {
+      throw failure(
+        "LA_INDEX_BOUND_INVALID",
+        "Index stream requires an explicit 1..2000 page budget",
+      );
+    }
+    const prior = options.resume?.committedPageIdsSha256 ?? [];
+    if (
+      options.resume &&
+      (!Number.isSafeInteger(options.resume.sourceTotal) ||
+        options.resume.sourceTotal < 1 ||
+        prior.length >= options.maxPages ||
+        prior.some((sha) => !/^[a-f0-9]{64}$/.test(sha)))
+    ) {
+      throw failure(
+        "LA_INDEX_RESUME_INVALID",
+        "Index resume requires exact committed page digests",
+      );
+    }
+    const transport = this.factory();
+    const seen = new Set<string>();
+    try {
+      let response = await this.get(transport, LAOS_LIST_URL, {
+        accept: "text/html,application/xhtml+xml",
+        "user-agent": "MarkOrbitKnowledge-LA-Index/1.0",
+      });
+      if (!response.contentType.toLowerCase().includes("html")) {
+        throw failure("LA_MIME_DRIFT", "Index first page is not HTML");
+      }
+      let parsed = parseLaosList(response.body);
+      const total = parsed.total;
+      if (
+        total === undefined ||
+        total < 1 ||
+        parsed.ids.length !== Math.min(50, total) ||
+        Math.ceil(total / 50) > options.maxPages ||
+        (total > 50 && !parsed.nextUrl) ||
+        (options.resume && options.resume.sourceTotal !== total)
+      ) {
+        throw failure("LA_INDEX_TOTAL_DRIFT", "Index source total or page budget is not stable");
+      }
+      const firstHash = laosSha256(encoder.encode(parsed.ids.join("\n")));
+      let base = parsed.baseUrl ?? "public/trademarks?0";
+      const requiredPages = Math.ceil(total / 50);
+      for (let page = 1; page <= requiredPages; page++) {
+        if (
+          parsed.ids.length !== Math.min(50, total - seen.size) ||
+          (parsed.total !== undefined && parsed.total !== total) ||
+          parsed.ids.some((id) => seen.has(id))
+        ) {
+          throw failure(
+            "LA_INDEX_PAGE_DRIFT",
+            "Index page count, total or true source IDs drifted",
+          );
+        }
+        const pageHash = laosSha256(encoder.encode(parsed.ids.join("\n")));
+        for (const id of parsed.ids) seen.add(id);
+        if (page <= prior.length) {
+          if (prior[page - 1] !== pageHash) {
+            throw failure(
+              "LA_INDEX_RESUME_DRIFT",
+              "Committed source ID page changed during resume",
+            );
+          }
+        } else {
+          yield {
+            kind: "PAGE",
+            page,
+            ids: parsed.ids,
+            total,
+            firstPageIdsSha256: firstHash,
+            sourceRecordIdsSha256: pageHash,
+            rawSha256: laosSha256(response.body),
+            redactedBody: redactLaosResponse(response.body),
+            mime: response.contentType,
+            observedAt: response.observedAt,
+            sourceUri: LAOS_LIST_URL,
+          };
+        }
+        if (seen.size === total) {
+          return { sourceTotal: total, uniqueIds: seen.size };
+        }
+        if (!parsed.nextUrl) {
+          throw failure("LA_INDEX_NEXT_MISSING", "Index ended before the official source total");
+        }
+        const next = new URL(parsed.nextUrl, LAOS_LIST_URL);
+        if (
+          next.origin !== LAOS_ORIGIN ||
+          !/^\/wopublish-search\/public\/trademarks(?:;jsessionid=[A-Za-z0-9]+)?$/.test(
+            next.pathname,
+          ) ||
+          !/^[0-9A-Za-z._~-]{1,320}$/.test(next.search.slice(1)) ||
+          !next.search.includes("navigator-next") ||
+          !/^public\/trademarks\?\d{1,6}$/.test(base)
+        ) {
+          throw failure(
+            "LA_INDEX_AJAX_INVALID",
+            "Index next callback escaped the official Wicket route",
+          );
+        }
+        response = await this.get(transport, next.toString(), {
+          accept: "text/xml,application/xml,*/*;q=0.8",
+          "user-agent": "MarkOrbitKnowledge-LA-Index/1.0",
+          "wicket-ajax": "true",
+          "wicket-ajax-baseurl": base,
+          "x-requested-with": "XMLHttpRequest",
+          referer: LAOS_LIST_URL,
+        });
+        if (
+          !/^(?:text|application)\/xml\b/i.test(response.contentType) ||
+          !/^\s*(?:<\?xml[^>]*>\s*)?<ajax-response\b/i.test(decoder.decode(response.body))
+        ) {
+          throw failure("LA_INDEX_AJAX_DRIFT", "Index continuation was not Wicket XML");
+        }
+        parsed = parseLaosList(response.body);
+        base = parsed.baseUrl ?? base;
+      }
+      throw failure("LA_INDEX_INCOMPLETE", "Index source ID coverage is incomplete");
+    } finally {
+      await transport.close?.();
+    }
+  }
+
   private async detail(transport: LaosHttpTransport, id: string): Promise<LaosDetail> {
     const uri = LAOS_ORIGIN + "/wopublish-search/public/detail/trademarks?id=" + id;
     const response = await this.get(transport, uri, {
