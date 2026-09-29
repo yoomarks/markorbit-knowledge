@@ -206,6 +206,86 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     expect(session.requests).toHaveLength(2);
     expect(waits).toEqual([2000]);
   });
+  it("streams all true index IDs through one Wicket session without guessing IDs", async () => {
+    const tinyFirst = first.replace("73531", "125");
+    const next3 =
+      "./trademarks?0-2.IBehaviorListener.0-body-searchResultPanel-resultWrapper-dataTable-topToolbars-toolbars-1-span-navigator-next";
+    const secondWithNext = second.replace(
+      "</ajax-response>",
+      '<evaluate><![CDATA[Wicket.Ajax.ajax({"u":"' +
+        next3 +
+        '","e":"click","c":"id15"});]]></evaluate></ajax-response>',
+    );
+    const finalIds = ids(54200).slice(0, 25);
+    const finalXml =
+      '<?xml version="1.0"?><ajax-response><component><![CDATA[' +
+      links(finalIds) +
+      "]]></component></ajax-response>";
+    const { subject, session } = adapter([
+      response(tinyFirst, "text/html"),
+      response(secondWithNext, "text/xml"),
+      response(finalXml, "text/xml"),
+    ]);
+    const pages: number[] = [];
+    const collected: string[] = [];
+    for await (const page of subject.streamFullIndex({ maxPages: 3 })) {
+      pages.push(page.page);
+      collected.push(...page.ids);
+      expect(page.sourceRecordIdsSha256).toBe(laosSha256(text(page.ids.join("\n"))));
+      expect(new TextDecoder().decode(page.redactedBody)).not.toContain("SECRETSESSION");
+    }
+    expect(pages).toEqual([1, 2, 3]);
+    expect(collected).toHaveLength(125);
+    expect(new Set(collected).size).toBe(125);
+    expect(session.requests).toHaveLength(3);
+    expect(session.requests.slice(1).every((r) => r.headers["wicket-ajax"] === "true")).toBe(true);
+  });
+  it("replays every committed page digest before resuming after a failure", async () => {
+    const tinyFirst = first.replace("73531", "100");
+    const firstDigest = laosSha256(text(firstIds.join("\n")));
+    const secondDigest = laosSha256(text(secondIds.join("\n")));
+    const { subject, session } = adapter([
+      response(tinyFirst, "text/html"),
+      response(second, "text/xml"),
+    ]);
+    const emitted = [];
+    for await (const page of subject.streamFullIndex({
+      maxPages: 2,
+      resume: { sourceTotal: 100, committedPageIdsSha256: [firstDigest] },
+    }))
+      emitted.push(page.page);
+    expect(emitted).toEqual([2]);
+    expect(session.requests).toHaveLength(2);
+    const drift = adapter([response(tinyFirst, "text/html")]);
+    await expect(async () => {
+      for await (const page of drift.subject.streamFullIndex({
+        maxPages: 2,
+        resume: { sourceTotal: 100, committedPageIdsSha256: [secondDigest] },
+      })) {
+        throw Error("Unexpectedly emitted mismatched page " + page.page);
+      }
+    }).rejects.toMatchObject({ code: "LA_INDEX_RESUME_DRIFT" });
+    expect(drift.session.requests).toHaveLength(1);
+  });
+  it("stops the full index before unapproved page budget or duplicate IDs", async () => {
+    const over = adapter([response(first, "text/html")]);
+    await expect(async () => {
+      for await (const page of over.subject.streamFullIndex({ maxPages: 1 })) {
+        throw Error("Unapproved page " + page.page + " was emitted");
+      }
+    }).rejects.toMatchObject({ code: "LA_INDEX_TOTAL_DRIFT" });
+    expect(over.session.requests).toHaveLength(1);
+    const repeated = adapter([
+      response(first.replace("73531", "100"), "text/html"),
+      response(second.replaceAll("LA541", "LA540"), "text/xml"),
+    ]);
+    await expect(async () => {
+      for await (const page of repeated.subject.streamFullIndex({ maxPages: 2 })) {
+        expect(page.page).toBe(1);
+      }
+    }).rejects.toMatchObject({ code: "LA_INDEX_PAGE_DRIFT" });
+    expect(repeated.session.requests).toHaveLength(2);
+  });
   it("parses the independent detail ID, status, filing date, applicant, Nice class and official logo URL", async () => {
     const parsed = parseLaosDetail(text(detail), "LA55159");
     expect(parsed).toMatchObject({
@@ -262,6 +342,23 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     ).rejects.toMatchObject({ code: "LA_NETWORK_TARGET_REJECTED" });
   });
 });
+const sanitizedPilotDir = process.env.MARKORBIT_LA_SANITIZED_PILOT_DIR;
+if (sanitizedPilotDir) {
+  describe("operator-only sanitized official Wicket continuation evidence", () => {
+    it("proves the second-page AJAX response exposes a real next-page callback", () => {
+      const firstPage = parseLaosList(
+        readFileSync(resolve(sanitizedPilotDir, "la-wopublish-page-1-redacted.html")),
+      );
+      const secondPage = parseLaosList(
+        readFileSync(resolve(sanitizedPilotDir, "la-wopublish-page-2-redacted.xml")),
+      );
+      expect(firstPage.ids).toHaveLength(50);
+      expect(secondPage.ids).toHaveLength(50);
+      expect(secondPage.ids.some((id) => firstPage.ids.includes(id))).toBe(false);
+      expect(secondPage.nextUrl).toContain("navigator-next");
+    });
+  });
+}
 const localDir = process.env.LAOS_OFFLINE_SAMPLE_DIR;
 if (localDir) {
   describe("operator-only official HTML sample (never committed to fixtures)", () => {
