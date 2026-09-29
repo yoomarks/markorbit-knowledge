@@ -4,7 +4,10 @@ import type {
   ArtifactBackedExecutionContext,
   CollectionArtifactAcquirer,
 } from "./artifact-backed-collection-executor";
-import { ArtifactBackedCollectionExecutor } from "./artifact-backed-collection-executor";
+import {
+  ArtifactBackedCollectionExecutor,
+  StreamingArtifactBackedCollectionExecutor,
+} from "./artifact-backed-collection-executor";
 import type { ControlledWorkerClaim } from "./http-controlled-collection-client";
 
 export interface ControlledCollectionWorkerClient extends ArtifactBackedExecutionClient {
@@ -105,11 +108,6 @@ export class ControlledCollectionWorkerRuntime {
 
     await this.client.heartbeat(this.runtimeVersion, [claim.lease.id]);
     const stopKeepAlive = this.startKeepAlive(claim.lease, claim.leaseToken);
-    const executor = new ArtifactBackedCollectionExecutor(this.acquirer, this.client, {
-      ...(this.artifactIngestionConcurrency === undefined
-        ? {}
-        : { ingestionConcurrency: this.artifactIngestionConcurrency }),
-    });
     const context: ArtifactBackedExecutionContext = {
       workerId: this.client.workerId,
       job: claim.job,
@@ -118,6 +116,15 @@ export class ControlledCollectionWorkerRuntime {
     };
     const startedAt = new Date().toISOString();
     try {
+      const options = {
+        ...(this.artifactIngestionConcurrency === undefined
+          ? {}
+          : { ingestionConcurrency: this.artifactIngestionConcurrency }),
+      };
+      const executor =
+        this.acquirer.acquireBatches && this.acquirer.isStreamingJob?.(context) === true
+          ? new StreamingArtifactBackedCollectionExecutor(this.acquirer, this.client, options)
+          : new ArtifactBackedCollectionExecutor(this.acquirer, this.client, options);
       const receipt = await executor.execute(context);
       const finishedAt = new Date().toISOString();
       if (this.onCompleted) {
