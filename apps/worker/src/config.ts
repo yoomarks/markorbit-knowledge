@@ -40,6 +40,7 @@ export type WorkerProcessConfig = {
   collectionProvider: WorkerCollectionProvider;
   dataEngineUrl?: string;
   dataEngineFactAdmissionKey?: string;
+  globalTrademarkFullBaselinePublisherEnabled: boolean;
   acquisitionLearningProfileId?: string;
   requireEgressProxy: boolean;
   brightDataFallbackEnabled: boolean;
@@ -332,6 +333,16 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     ? normalizedDataEngineUrl(required(env, "MARKORBIT_DATA_ENGINE_URL"))
     : undefined;
   const factAdmissionKey = factAdmissionPublisher ? dataEngineFactAdmissionKey(env) : undefined;
+  const fullBaselinePublisherEnabled = enabled(
+    env,
+    "MARKORBIT_LA_FULL_BASELINE_PUBLISH_ENABLED",
+    false,
+  );
+  if (fullBaselinePublisherEnabled && provider !== "global-trademark-publisher") {
+    throw new Error(
+      "LA full baseline publisher activation requires global-trademark-publisher provider",
+    );
+  }
 
   const githubMaxFileBytes = integer(
     env,
@@ -434,6 +445,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     collectionProvider: provider,
     ...(dataEngineUrl ? { dataEngineUrl } : {}),
     ...(factAdmissionKey ? { dataEngineFactAdmissionKey: factAdmissionKey } : {}),
+    globalTrademarkFullBaselinePublisherEnabled: fullBaselinePublisherEnabled,
     ...(acquisitionLearningProfileId ? { acquisitionLearningProfileId } : {}),
     requireEgressProxy,
     brightDataFallbackEnabled,

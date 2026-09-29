@@ -42,6 +42,24 @@ describe("WoPublish worker provider activation", () => {
     expect(publisher.collectionProvider).toBe("global-trademark-publisher");
     expect(publisher.dataEngineUrl).toBe("https://data-engine.example.test");
     expect(publisher.dataEngineFactAdmissionKey).toBe("a".repeat(64));
+    expect(publisher.globalTrademarkFullBaselinePublisherEnabled).toBe(false);
+    const fullPublisher = loadWorkerProcessConfig({
+      ...env,
+      MARKORBIT_COLLECTION_PROVIDER: "global-trademark-publisher",
+      MARKORBIT_DATA_ENGINE_URL: "https://data-engine.example.test",
+      MARKORBIT_DATA_ENGINE_FACT_ADMISSION_KEY: "a".repeat(64),
+      MARKORBIT_LA_FULL_BASELINE_PUBLISH_ENABLED: "true",
+    });
+    expect(fullPublisher.globalTrademarkFullBaselinePublisherEnabled).toBe(true);
+  });
+  it("refuses V2 publisher activation on a crawler or unrelated Worker", () => {
+    expect(() =>
+      loadWorkerProcessConfig({
+        ...env,
+        MARKORBIT_COLLECTION_PROVIDER: "laos-wopublish",
+        MARKORBIT_LA_FULL_BASELINE_PUBLISH_ENABLED: "true",
+      }),
+    ).toThrowError(/global-trademark-publisher/);
   });
   it("rejects arbitrary providers even when the pilot Worker is enabled", () => {
     expect(() =>

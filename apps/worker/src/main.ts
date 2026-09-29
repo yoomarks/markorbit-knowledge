@@ -129,6 +129,7 @@ async function main(): Promise<void> {
             config.dataEngineUrl,
             config.dataEngineFactAdmissionKey,
           ),
+          fullBaselineEnabled: config.globalTrademarkFullBaselinePublisherEnabled,
         })
       : null;
   const laosAcquirer =
