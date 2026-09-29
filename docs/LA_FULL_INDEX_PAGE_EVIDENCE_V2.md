@@ -23,10 +23,12 @@ index**, not a reusable Wicket callback/session. It explicitly does not
 claim the full 70k+ index is complete or that details/legal status are
 current. Once a separately governed streaming Worker can finalize each
 batch under its real Worker lease, it may persist one page before fetching
-the next. The per-page V2 admission request remains prepared and cannot
-be published until it is a durable RawArtifact referenced by the correct
-manual publisher Job, with an approved cross-Source grant and the
-independent Knowledge/DE V2 enablement gates.
+the next. The checkpoint has the exact prepared V2 request as its parent, which in
+turn requires the page projection and original redacted response. Thus a
+finalized checkpoint cannot exist without the page's complete prepared
+admission evidence. The request cannot be published until it is a durable
+RawArtifact referenced by the correct manual publisher Job, with an approved
+cross-Source grant and the independent Knowledge/DE V2 enablement gates.
 
 This implementation adds the mapper and tests only. The full streaming
 executor, frozen all-page checkpoint manifest, successful pilot #903,

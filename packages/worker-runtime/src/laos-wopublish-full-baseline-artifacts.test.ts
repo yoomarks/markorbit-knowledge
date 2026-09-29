@@ -77,7 +77,7 @@ describe("full index source page → Knowledge durable V2 admission intent", () 
       ),
     ).toBe(true);
     expect(artifacts[1]?.parentCanonicalUris).toEqual([artifacts[0]?.canonicalUri]);
-    expect(artifacts[2]?.parentCanonicalUris).toEqual([artifacts[1]?.canonicalUri]);
+    expect(artifacts[2]?.parentCanonicalUris).toEqual([artifacts[3]?.canonicalUri]);
     expect(artifacts[3]?.parentCanonicalUris).toEqual([artifacts[1]?.canonicalUri]);
   });
   it("retains exact first-page ID digest and a resume page index without leaking Wicket cookies", () => {

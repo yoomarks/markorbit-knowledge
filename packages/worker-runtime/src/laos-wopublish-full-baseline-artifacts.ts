@@ -124,7 +124,7 @@ export function buildLaosFullIndexPageArtifacts(
     "la-wopublish-full-page-" + page.page + "-checkpoint.json",
     checkpointUri,
     page.sourceUri,
-    [projectionUri],
+    [base + "/fact-admission-request"],
     {
       schemaVersion: LAOS_FULL_INDEX_CHECKPOINT_SCHEMA,
       sourceId: LAOS_SOURCE_ID,

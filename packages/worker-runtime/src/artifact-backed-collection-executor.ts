@@ -66,6 +66,12 @@ export class CollectionNotModifiedSignal extends CollectionAcquisitionError {
 export interface CollectionArtifactAcquirer {
   readonly executor: ExecutionExecutor;
   acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]>;
+  /** Explicitly opt-in per frozen Job; existing acquisition keeps its original path. */
+  isStreamingJob?(context: ArtifactBackedExecutionContext): boolean;
+  /** Each batch must be finalized as Knowledge RawArtifacts before the next is read. */
+  acquireBatches?(
+    context: ArtifactBackedExecutionContext,
+  ): AsyncIterable<readonly AcquiredCollectionArtifact[]>;
 }
 
 export type ArtifactBackedCollectionExecutorOptions = {
@@ -513,6 +519,163 @@ export class ArtifactBackedCollectionExecutor {
         } catch {
           // Preserve the original execution error. The control plane remains the
           // authority for terminal-state reconciliation if failure reporting itself fails.
+        }
+      }
+      throw error;
+    }
+  }
+}
+
+/**
+ * Governed per-batch RawArtifact ingestion. Unlike acquire(), this executor
+ * never buffers an entire provider corpus before persisting source evidence.
+ * No Connector receives authority to write Data Engine from this path.
+ *
+ * The caller must explicitly select a streaming Job after the immutable
+ * Worker claim. Existing pilot, detail, and change-watch execution is
+ * unaffected when the acquirer does not opt in for that exact Job.
+ */
+export class StreamingArtifactBackedCollectionExecutor {
+  private readonly ingestionConcurrency: number;
+  constructor(
+    private readonly acquirer: CollectionArtifactAcquirer,
+    private readonly client: ArtifactBackedExecutionClient,
+    options: ArtifactBackedCollectionExecutorOptions = {},
+  ) {
+    this.ingestionConcurrency =
+      options.ingestionConcurrency ?? DEFAULT_ARTIFACT_INGESTION_CONCURRENCY;
+    if (
+      !Number.isInteger(this.ingestionConcurrency) ||
+      this.ingestionConcurrency < 1 ||
+      this.ingestionConcurrency > MAX_ARTIFACT_INGESTION_CONCURRENCY
+    ) {
+      throw new Error("streaming ingestion concurrency must be an integer from 1 to 16");
+    }
+  }
+
+  async execute(context: ArtifactBackedExecutionContext): Promise<ExecutionReceipt> {
+    if (!context.leaseToken) {
+      throw new CollectionAcquisitionError(
+        "LEASE_TOKEN_REQUIRED",
+        "Streaming collection requires an active Worker lease token",
+        false,
+      );
+    }
+    if (!this.acquirer.acquireBatches || this.acquirer.isStreamingJob?.(context) !== true) {
+      throw new CollectionAcquisitionError(
+        "STREAMING_JOB_NOT_AUTHORIZED",
+        "Only an explicitly opted-in governed Job can stream RawArtifact batches",
+        false,
+      );
+    }
+    const prefix = `artifact-${context.lease.id}`;
+    const identities = new Map<string, Set<string>>();
+    const canonicalUris = new Set<string>();
+    const receiptIds: string[] = [];
+    const outputKinds = new Set<ArtifactKind>();
+    let started = false;
+    let uploading = false;
+    let batchCount = 0;
+    let itemsObserved = 0;
+    let bytesPrepared = 0;
+    try {
+      await this.client.start(context, this.acquirer.executor, `${prefix}-start`);
+      started = true;
+      for await (const batch of this.acquirer.acquireBatches(context)) {
+        batchCount += 1;
+        if (
+          !Array.isArray(batch) ||
+          batch.length < 1 ||
+          batch.length > MAX_ARTIFACT_INGESTION_CONCURRENCY ||
+          batchCount > 2_000 ||
+          itemsObserved + batch.length > 8_000 ||
+          batch.reduce((bytes, artifact) => bytes + artifact.content.byteLength, bytesPrepared) >
+            512 * 1024 * 1024
+        ) {
+          throw new CollectionAcquisitionError(
+            "STREAM_BATCH_BUDGET_EXCEEDED",
+            "Streaming source exceeded its bounded batch, artifact, or page budget",
+            false,
+          );
+        }
+        for (const artifact of batch) {
+          assertArtifactAllowed(context.job, artifact);
+          if (!artifact.canonicalUri || canonicalUris.has(artifact.canonicalUri)) {
+            throw new CollectionAcquisitionError(
+              "STREAM_CANONICAL_URI_REPEATED",
+              "Streaming source must emit a unique canonical RawArtifact identity per Job",
+              false,
+            );
+          }
+          canonicalUris.add(artifact.canonicalUri);
+          outputKinds.add(artifact.artifactKind);
+        }
+        if (!uploading) {
+          await this.client.uploading(context, `${prefix}-uploading`);
+          uploading = true;
+        }
+        let pending: IndexedArtifact[] = batch.map((artifact, index) => ({
+          artifact,
+          index,
+        }));
+        while (pending.length) {
+          const layer = nextLineageLayer(pending, identities);
+          const layerIndexes = new Set(layer.map((item) => item.index));
+          const finalized = await mapWithConcurrency(
+            layer,
+            this.ingestionConcurrency,
+            async ({ artifact, index }) => {
+              const parents = resolveParentArtifactIds(artifact, identities);
+              const descriptor = descriptorFor(artifact, parents);
+              const session = await this.client.createArtifactSession(
+                context,
+                descriptor,
+                `${prefix}-batch-${batchCount}-artifact-${index + 1}`,
+              );
+              await this.client.uploadArtifactContent(context, session.id, artifact.content);
+              const result = await this.client.finalizeArtifact(context, session.id);
+              return { artifact, result };
+            },
+          );
+          for (const { artifact, result } of finalized) {
+            receiptIds.push(result.id);
+            addArtifactIdentity(identities, artifact.canonicalUri, result.artifactId);
+            bytesPrepared += artifact.content.byteLength;
+            itemsObserved += 1;
+          }
+          pending = pending.filter((item) => !layerIndexes.has(item.index));
+        }
+        // Only now does for-await request the provider's next source page.
+      }
+      if (!batchCount || !receiptIds.length) {
+        throw new CollectionAcquisitionError(
+          "NO_ARTIFACTS_PRODUCED",
+          "Streaming source cannot complete without finalized RawArtifact evidence",
+          false,
+        );
+      }
+      await this.client.verifying(context, `${prefix}-verifying`);
+      const receipt: ExecutionReceipt = {
+        executor: this.acquirer.executor,
+        outputKinds: [...outputKinds],
+        itemsObserved,
+        bytesPrepared,
+        metadataOnly: false,
+        artifactReceiptIds: receiptIds,
+        summary:
+          `Streaming collection finalized ${itemsObserved} immutable RawArtifact ` +
+          `observation(s) in ${batchCount} bounded batch(es).`,
+      };
+      await this.client.complete(context, receipt, `${prefix}-complete`);
+      return receipt;
+    } catch (error) {
+      if (started) {
+        const failure = failureFrom(error);
+        try {
+          await this.client.fail(context, failure, `${prefix}-fail`);
+        } catch {
+          // The control plane, never a local retry, reconciles an uncertain
+          // terminal state. Already-finalized immutable artifacts are retained.
         }
       }
       throw error;
