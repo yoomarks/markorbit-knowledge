@@ -61,6 +61,23 @@ async function* generated(pages: readonly LaosIndexPage[]) {
 }
 
 describe("Lao full-index durable streaming checkpoints", () => {
+  it("accepts page-scoped immutable checkpoints and rejects mismatched page identities", () => {
+    const scoped = buildLaosBaselineIndexPageCommit({
+      page: page(1, 101),
+      committedPageIdsSha256: [],
+      pageScopedCheckpoint: true,
+    });
+    expect(scoped.checkpointArtifact.canonicalUri).toBe(
+      LAOS_BASELINE_INDEX_CHECKPOINT_URI + "/page/1",
+    );
+    expect(parseLaosBaselineIndexCheckpoint(scoped.checkpointArtifact)).toEqual(scoped.checkpoint);
+    expect(() =>
+      parseLaosBaselineIndexCheckpoint({
+        ...scoped.checkpointArtifact,
+        canonicalUri: LAOS_BASELINE_INDEX_CHECKPOINT_URI + "/page/2",
+      }),
+    ).toThrow(/inconsistent/);
+  });
   it("materializes page evidence and an exact durable resume checkpoint", () => {
     const first = buildLaosBaselineIndexPageCommit({
       page: page(1, 101),

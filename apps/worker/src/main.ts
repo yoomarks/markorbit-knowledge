@@ -136,13 +136,15 @@ async function main(): Promise<void> {
     config.collectionProvider === "laos-wopublish"
       ? (() => {
           const registry = new SourceAdapterRegistry();
-          registerLaosAdapter(
-            registry,
-            new LaosWopublishSourceAdapter({
-              transportFactory: () => new LaosPlaywrightTransport(),
-            }),
-          );
-          return new LaosWopublishJobArtifactAcquirer(registry);
+          const sourceAdapter = new LaosWopublishSourceAdapter({
+            transportFactory: () => new LaosPlaywrightTransport(),
+            intervalMs: config.laosRequestIntervalMs,
+          });
+          registerLaosAdapter(registry, sourceAdapter);
+          return new LaosWopublishJobArtifactAcquirer(registry, {
+            fullIndexEnabled: config.laosFullIndexCollectionEnabled,
+            streamAdapter: sourceAdapter,
+          });
         })()
       : null;
   const crawl4AiAcquirer = new Crawl4AiSubprocessAcquirer({

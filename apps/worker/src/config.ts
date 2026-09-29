@@ -41,6 +41,8 @@ export type WorkerProcessConfig = {
   dataEngineUrl?: string;
   dataEngineFactAdmissionKey?: string;
   globalTrademarkFullBaselinePublisherEnabled: boolean;
+  laosFullIndexCollectionEnabled: boolean;
+  laosRequestIntervalMs: number;
   acquisitionLearningProfileId?: string;
   requireEgressProxy: boolean;
   brightDataFallbackEnabled: boolean;
@@ -333,6 +335,21 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     ? normalizedDataEngineUrl(required(env, "MARKORBIT_DATA_ENGINE_URL"))
     : undefined;
   const factAdmissionKey = factAdmissionPublisher ? dataEngineFactAdmissionKey(env) : undefined;
+  const laosFullIndexCollectionEnabled = enabled(
+    env,
+    "MARKORBIT_LA_FULL_INDEX_COLLECTION_ENABLED",
+    false,
+  );
+  if (laosFullIndexCollectionEnabled && provider !== "laos-wopublish") {
+    throw new Error("LA full-index collection requires the laos-wopublish source Worker");
+  }
+  const laosRequestIntervalMs = integer(
+    env,
+    "MARKORBIT_LA_MIN_REQUEST_INTERVAL_MS",
+    2_500,
+    2_500,
+    60_000,
+  );
   const fullBaselinePublisherEnabled = enabled(
     env,
     "MARKORBIT_LA_FULL_BASELINE_PUBLISH_ENABLED",
@@ -446,6 +463,8 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     ...(dataEngineUrl ? { dataEngineUrl } : {}),
     ...(factAdmissionKey ? { dataEngineFactAdmissionKey: factAdmissionKey } : {}),
     globalTrademarkFullBaselinePublisherEnabled: fullBaselinePublisherEnabled,
+    laosFullIndexCollectionEnabled,
+    laosRequestIntervalMs,
     ...(acquisitionLearningProfileId ? { acquisitionLearningProfileId } : {}),
     requireEgressProxy,
     brightDataFallbackEnabled,

@@ -60,6 +60,8 @@ function requiredCanonical(
 export function buildLaosBaselineIndexPageCommit(input: {
   page: LaosIndexPage;
   committedPageIdsSha256: readonly string[];
+  /** Claim-scoped batch writing requires a distinct canonical URI per page. */
+  pageScopedCheckpoint?: boolean;
 }): LaosBaselineIndexPageCommit {
   const page = input.page;
   const expectedPage = input.committedPageIdsSha256.length + 1;
@@ -97,7 +99,9 @@ export function buildLaosBaselineIndexPageCommit(input: {
     mimeType: "application/json;charset=UTF-8",
     originalName: "la-wopublish-full-index-stream-checkpoint.json",
     sourceUri: page.sourceUri,
-    canonicalUri: LAOS_BASELINE_INDEX_CHECKPOINT_URI,
+    canonicalUri: input.pageScopedCheckpoint
+      ? LAOS_BASELINE_INDEX_CHECKPOINT_URI + "/page/" + page.page
+      : LAOS_BASELINE_INDEX_CHECKPOINT_URI,
     parentCanonicalUris: [pageCheckpointUri, admissionUri],
     content: jsonBytes(checkpoint),
   };
@@ -116,7 +120,9 @@ export function parseLaosBaselineIndexCheckpoint(
 ): LaosBaselineIndexCheckpoint {
   if (
     artifact.artifactKind !== "JSON" ||
-    artifact.canonicalUri !== LAOS_BASELINE_INDEX_CHECKPOINT_URI
+    !artifact.canonicalUri ||
+    (artifact.canonicalUri !== LAOS_BASELINE_INDEX_CHECKPOINT_URI &&
+      !artifact.canonicalUri.startsWith(LAOS_BASELINE_INDEX_CHECKPOINT_URI + "/page/"))
   ) {
     throw new TypeError("Lao baseline checkpoint RawArtifact identity is invalid");
   }
@@ -140,6 +146,9 @@ export function parseLaosBaselineIndexCheckpoint(
   if (
     root.schemaVersion !== LAOS_BASELINE_INDEX_CHECKPOINT_SCHEMA ||
     root.sourceId !== LAOS_SOURCE_ID ||
+    (artifact.canonicalUri !== LAOS_BASELINE_INDEX_CHECKPOINT_URI &&
+      artifact.canonicalUri !==
+        LAOS_BASELINE_INDEX_CHECKPOINT_URI + "/page/" + String(completedPage)) ||
     !Number.isSafeInteger(total) ||
     (total as number) <= 100 ||
     (total as number) > 100_000 ||
