@@ -95,6 +95,7 @@ export * from "./laos-wopublish-data-engine-handoff";
 export * from "./laos-baseline-coverage";
 export * from "./laos-baseline-index-stream";
 export * from "./laos-wopublish-full-baseline-artifacts";
+export * from "./laos-wopublish-full-detail-artifacts";
 export * from "./global-trademark-fact-admission-job-acquirer";
 export * from "./http-global-trademark-durable-artifact-reader";
 export * from "./uspto-source-adapter";
