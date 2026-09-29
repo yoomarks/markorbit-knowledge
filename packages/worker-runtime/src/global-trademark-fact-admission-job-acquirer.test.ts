@@ -7,6 +7,8 @@ import type {
 import { FactAdmissionHttpError, type FactAdmissionClient } from "./fact-admission-http-client";
 import {
   GLOBAL_TRADEMARK_ADMISSION_CONTRACT,
+  GLOBAL_TRADEMARK_FULL_BASELINE_CONTRACT,
+  GLOBAL_TRADEMARK_FULL_BASELINE_REQUEST_SCHEMA,
   GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_ID,
   GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_VERSION,
   GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_SOURCE,
@@ -204,5 +206,120 @@ describe("GlobalTrademarkFactAdmissionJobAcquirer", () => {
       hotGlobalReceiptRequired: true,
       currentStateAuthority: false,
     });
+  });
+});
+
+function fullIndexRequest(): AcquiredCollectionArtifact {
+  const pilot = requestArtifact();
+  const parsed = JSON.parse(new TextDecoder().decode(pilot.content));
+  parsed.schemaVersion = GLOBAL_TRADEMARK_FULL_BASELINE_REQUEST_SCHEMA;
+  parsed.fullCollectionAuthorized = true;
+  parsed.payload.contract_version = GLOBAL_TRADEMARK_FULL_BASELINE_CONTRACT;
+  parsed.payload.observation_kind = "FULL_INDEX_PAGE";
+  parsed.payload.source_total = 73531;
+  parsed.payload.records = Array.from({ length: 50 }, (_, index) => ({
+    source_record_id: "LA" + String(55100 + index),
+    application_number: null,
+    registration_number: null,
+    normalized_status: null,
+  }));
+  return { ...pilot, content: encoder.encode(JSON.stringify(parsed)) };
+}
+function manualContext(reference: ReturnType<typeof ref>): ArtifactBackedExecutionContext {
+  const original = context(reference);
+  return {
+    ...original,
+    job: {
+      ...original.job,
+      planSnapshot: {
+        ...original.job.planSnapshot,
+        schedule: { mode: "MANUAL" },
+      },
+    },
+  } as unknown as ArtifactBackedExecutionContext;
+}
+const fullReceipt = {
+  ...receipt,
+  contract_version: GLOBAL_TRADEMARK_FULL_BASELINE_CONTRACT,
+  observation_kind: "FULL_INDEX_PAGE",
+  source_total: 73531,
+  record_count: 50,
+  inserted_count: 50,
+};
+
+describe("default-off V2 full-index fact admission publisher", () => {
+  it("rejects an authentic durable full request before any DE access when switch is off", async () => {
+    const request = fullIndexRequest();
+    const client = new FakeClient(fullReceipt);
+    await expect(
+      new GlobalTrademarkFactAdmissionJobAcquirer({
+        reader: { read: async () => request },
+        client,
+      }).acquire(manualContext(ref(request))),
+    ).rejects.toMatchObject({ code: "GLOBAL_TRADEMARK_PUBLISH_JOB_CONFIG_INVALID" });
+    expect(client.calls).toEqual([]);
+  });
+  it("requires an immutable manual Work as well as an explicit worker switch", async () => {
+    const request = fullIndexRequest();
+    const client = new FakeClient(fullReceipt);
+    await expect(
+      new GlobalTrademarkFactAdmissionJobAcquirer({
+        reader: { read: async () => request },
+        client,
+        fullBaselineEnabled: true,
+      }).acquire(context(ref(request))),
+    ).rejects.toMatchObject({ code: "GLOBAL_TRADEMARK_PUBLISH_JOB_CONFIG_INVALID" });
+    expect(client.calls).toEqual([]);
+  });
+  it("only forwards exact durable V2 source evidence and validates source-total receipt", async () => {
+    const request = fullIndexRequest();
+    const client = new FakeClient(fullReceipt);
+    const producer = new GlobalTrademarkFactAdmissionJobAcquirer({
+      reader: { read: async () => request },
+      client,
+      fullBaselineEnabled: true,
+    });
+    const output = await producer.acquire(manualContext(ref(request)));
+    expect(client.calls).toHaveLength(1);
+    expect(client.calls[0]?.payload).toMatchObject({
+      contract_version: GLOBAL_TRADEMARK_FULL_BASELINE_CONTRACT,
+      source_total: 73531,
+      page_index: 1,
+    });
+    expect(output[0]?.parentArtifactIds).toEqual([ARTIFACT_ID]);
+    const badClient = new FakeClient({ ...fullReceipt, source_total: 73530 });
+    await expect(
+      new GlobalTrademarkFactAdmissionJobAcquirer({
+        reader: { read: async () => request },
+        client: badClient,
+        fullBaselineEnabled: true,
+      }).acquire(manualContext(ref(request))),
+    ).rejects.toMatchObject({ code: "GLOBAL_TRADEMARK_ADMISSION_RECEIPT_INVALID" });
+  });
+  it("rejects forged V2 plan bounds and V1 authorization upgrades before writing", async () => {
+    const request = fullIndexRequest();
+    const payload = JSON.parse(new TextDecoder().decode(request.content));
+    payload.payload.page_index = 2001;
+    const forged = { ...request, content: encoder.encode(JSON.stringify(payload)) };
+    const client = new FakeClient(fullReceipt);
+    await expect(
+      new GlobalTrademarkFactAdmissionJobAcquirer({
+        reader: { read: async () => forged },
+        client,
+        fullBaselineEnabled: true,
+      }).acquire(manualContext(ref(forged))),
+    ).rejects.toMatchObject({ code: "GLOBAL_TRADEMARK_PUBLISH_JOB_CONFIG_INVALID" });
+    const pilot = requestArtifact();
+    const upgraded = JSON.parse(new TextDecoder().decode(pilot.content));
+    upgraded.fullCollectionAuthorized = true;
+    const fakePilot = { ...pilot, content: encoder.encode(JSON.stringify(upgraded)) };
+    await expect(
+      new GlobalTrademarkFactAdmissionJobAcquirer({
+        reader: { read: async () => fakePilot },
+        client,
+        fullBaselineEnabled: true,
+      }).acquire(manualContext(ref(fakePilot))),
+    ).rejects.toMatchObject({ code: "GLOBAL_TRADEMARK_PUBLISH_JOB_CONFIG_INVALID" });
+    expect(client.calls).toEqual([]);
   });
 });

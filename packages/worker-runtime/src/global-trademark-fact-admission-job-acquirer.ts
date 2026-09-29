@@ -16,9 +16,12 @@ export const GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_SOURCE =
 export const GLOBAL_TRADEMARK_FACT_ADMISSION_PATH =
   "/api/admin/v2/fact-admissions/global/observations";
 export const GLOBAL_TRADEMARK_ADMISSION_CONTRACT = "GLOBAL_TRADEMARK_STRUCTURED_ADMISSION_V1";
+export const GLOBAL_TRADEMARK_FULL_BASELINE_CONTRACT = "GLOBAL_TRADEMARK_STRUCTURED_ADMISSION_V2";
 export const GLOBAL_TRADEMARK_RECEIPT_SCHEMA = "GLOBAL_TRADEMARK_FACT_ADMISSION_RECEIPT_V1";
 export const GLOBAL_TRADEMARK_ADMISSION_REQUEST_SCHEMA =
   "GLOBAL_TRADEMARK_FACT_ADMISSION_REQUEST_V1";
+export const GLOBAL_TRADEMARK_FULL_BASELINE_REQUEST_SCHEMA =
+  "GLOBAL_TRADEMARK_FACT_ADMISSION_REQUEST_V2";
 
 export const GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_EXECUTOR: ExecutionExecutor = {
   executorId: GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_ID,
@@ -42,6 +45,8 @@ export type GlobalTrademarkFactAdmissionJobOptions = {
   reader: GlobalTrademarkDurableArtifactReader;
   client: FactAdmissionClient;
   clock?: () => string;
+  /** Extra operator-controlled gate; default false even when V2 code is installed. */
+  fullBaselineEnabled?: boolean;
 };
 
 const ARTIFACT_ID = /^art_[0-9A-HJKMNP-TV-Z]{26}$/u;
@@ -138,7 +143,10 @@ function verifyLoaded(
   }
   return artifact;
 }
-function parsePreparedRequest(artifact: AcquiredCollectionArtifact): Record<string, unknown> {
+function parsePreparedRequest(
+  artifact: AcquiredCollectionArtifact,
+  options: { fullBaselineEnabled: boolean; manualJob: boolean },
+): Record<string, unknown> {
   let value: unknown;
   try {
     value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(artifact.content));
@@ -159,22 +167,50 @@ function parsePreparedRequest(artifact: AcquiredCollectionArtifact): Record<stri
     ],
     "request",
   );
+  const payload = record(root.payload, "request.payload");
+  const isFull = payload.contract_version === GLOBAL_TRADEMARK_FULL_BASELINE_CONTRACT;
   if (
-    root.schemaVersion !== GLOBAL_TRADEMARK_ADMISSION_REQUEST_SCHEMA ||
+    root.schemaVersion !==
+      (isFull
+        ? GLOBAL_TRADEMARK_FULL_BASELINE_REQUEST_SCHEMA
+        : GLOBAL_TRADEMARK_ADMISSION_REQUEST_SCHEMA) ||
     root.method !== "POST" ||
     root.path !== GLOBAL_TRADEMARK_FACT_ADMISSION_PATH ||
     root.status !== "PREPARED_NOT_DISPATCHED" ||
-    root.fullCollectionAuthorized !== false
+    root.fullCollectionAuthorized !== isFull
   ) {
     throw invalid("Durable request method/path/status/authorization boundary is invalid");
+  }
+  if (isFull && (!options.fullBaselineEnabled || !options.manualJob)) {
+    throw invalid(
+      "Full baseline publisher requires operator activation and a manual immutable Job",
+    );
+  }
+  if (isFull) {
+    const sourceTotal = payload.source_total;
+    const page = payload.page_index;
+    const kind = payload.observation_kind;
+    if (
+      (kind === "FULL_INDEX_PAGE" &&
+        (!Number.isSafeInteger(sourceTotal) ||
+          (sourceTotal as number) <= 100 ||
+          (sourceTotal as number) > 100_000 ||
+          !Number.isSafeInteger(page) ||
+          (page as number) < 1 ||
+          (page as number) > Math.ceil((sourceTotal as number) / 50))) ||
+      (kind === "FULL_DETAIL" && (page !== 0 || sourceTotal !== undefined)) ||
+      (kind !== "FULL_INDEX_PAGE" && kind !== "FULL_DETAIL")
+    ) {
+      throw invalid("Full baseline request exceeds reviewed index/detail bounds");
+    }
   }
   const evidenceCanonicalUri = requiredText(
     root.evidenceCanonicalUri,
     "request.evidenceCanonicalUri",
   );
-  const payload = record(root.payload, "request.payload");
   if (
-    payload.contract_version !== GLOBAL_TRADEMARK_ADMISSION_CONTRACT ||
+    payload.contract_version !==
+      (isFull ? GLOBAL_TRADEMARK_FULL_BASELINE_CONTRACT : GLOBAL_TRADEMARK_ADMISSION_CONTRACT) ||
     payload.source_owner !== "MARKORBIT_KNOWLEDGE" ||
     payload.evidence_canonical_uri !== evidenceCanonicalUri
   ) {
@@ -203,6 +239,10 @@ function receiptArtifact(input: {
     ["page_index", input.payload.page_index],
     ["source_response_sha256", input.payload.source_response_sha256],
     ["evidence_sha256", input.payload.evidence_sha256],
+    ...(input.payload.contract_version === GLOBAL_TRADEMARK_FULL_BASELINE_CONTRACT &&
+    input.payload.observation_kind === "FULL_INDEX_PAGE"
+      ? ([["source_total", input.payload.source_total]] as const)
+      : []),
   ];
   const records = input.payload.records;
   if (
@@ -264,7 +304,10 @@ export class GlobalTrademarkFactAdmissionJobAcquirer implements CollectionArtifa
       reference,
       await this.options.reader.read(reference.artifactId, context),
     );
-    const payload = parsePreparedRequest(loaded);
+    const payload = parsePreparedRequest(loaded, {
+      fullBaselineEnabled: this.options.fullBaselineEnabled === true,
+      manualJob: context.job.planSnapshot.schedule?.mode === "MANUAL",
+    });
     try {
       const receipt = await this.options.client.post(GLOBAL_TRADEMARK_FACT_ADMISSION_PATH, payload);
       return [
