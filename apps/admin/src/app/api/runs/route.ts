@@ -22,8 +22,10 @@ import { apiError, readJson, requireRecord } from "@/server/api-errors";
 import {
   getCollectionPlanRepository,
   getExecutionLedgerRepository,
+  getSourceRepository,
 } from "@/server/source-registry";
 import { parseCnipaManualRunExtensions } from "@/server/cnipa-run-override";
+import { deriveGlobalTrademarkPublisherRunExtensions } from "@/server/global-trademark-publisher-run-grant";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,11 +99,21 @@ export async function POST(request: Request) {
     );
     assertAdminBrowserResourceWorkspace(principal, plan.plan.workspaceId);
     const idempotencyKey = request.headers.get("Idempotency-Key");
-    const extensions = parseCnipaManualRunExtensions({
+    const source = getSourceRepository().getById(plan.plan.sourceId);
+    if (!source) {
+      throw new RegistryValidationError("CollectionPlan Source is missing");
+    }
+    const publisherExtensions = deriveGlobalTrademarkPublisherRunExtensions({
+      source,
       rawExtensions: body.extensions,
-      planExtensions: plan.plan.extensions,
-      idempotencyKey,
     });
+    const extensions =
+      publisherExtensions ??
+      parseCnipaManualRunExtensions({
+        rawExtensions: body.extensions,
+        planExtensions: plan.plan.extensions,
+        idempotencyKey,
+      });
     const result = getExecutionLedgerRepository().dispatchManual({
       planId: body.planId,
       requestedBy: { actorType: "LOCAL_ADMIN", actorId: principal.userId },
