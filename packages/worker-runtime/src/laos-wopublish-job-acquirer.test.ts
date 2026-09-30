@@ -8,7 +8,9 @@ import {
   LAOS_SOURCE_ID,
   LAOS_SOURCE_METADATA,
   laosSha256,
+  type LaosIndexPage,
   type LaosObservation,
+  type LaosWopublishSourceAdapter,
 } from "./laos-wopublish-source-adapter";
 import { SourceAdapterRegistry } from "./source-adapter-registry";
 
@@ -70,6 +72,8 @@ function context(
     sourceType?: string;
     jobType?: string;
     kinds?: string[];
+    rateLimitPerMinute?: number;
+    respectRobots?: boolean;
   } = {},
 ): ArtifactBackedExecutionContext {
   return {
@@ -94,6 +98,10 @@ function context(
       planSnapshot: {
         schedule: { mode: opts.schedule ?? "MANUAL" },
         output: { artifactKinds: opts.kinds ?? ["HTML", "XML", "JSON", "IMAGE"] },
+        policy: {
+          rateLimitPerMinute: opts.rateLimitPerMinute ?? 24,
+          respectRobots: opts.respectRobots ?? true,
+        },
       },
     },
   } as unknown as ArtifactBackedExecutionContext;
@@ -235,5 +243,168 @@ describe("Laos WoPublish Knowledge-only governed Worker adapter", () => {
     expect(LAOS_CONNECTOR_ID).toBe("laos-wopublish-trademarks");
     expect(LAOS_SOURCE_METADATA.providerKind).toBe("TRADEMARK_OFFICE");
     expect(LAOS_SOURCE_METADATA.country).toBe("LA");
+  });
+});
+
+function fullIndexPage(pageNumber: number): LaosIndexPage {
+  const total = 125;
+  const ids = Array.from(
+    { length: pageNumber === 3 ? 25 : 50 },
+    (_, i) => "LA" + String(60000 + (pageNumber - 1) * 50 + i),
+  );
+  const firstIds = Array.from({ length: 50 }, (_, i) => "LA" + String(60000 + i));
+  const body = encoder.encode(
+    pageNumber === 1 ? "<html>list</html>" : "<ajax-response>list</ajax-response>",
+  );
+  return {
+    kind: "PAGE",
+    page: pageNumber,
+    total,
+    ids,
+    firstPageIdsSha256: laosSha256(encoder.encode(firstIds.join("\n"))),
+    sourceRecordIdsSha256: laosSha256(encoder.encode(ids.join("\n"))),
+    rawSha256: laosSha256(body),
+    redactedBody: body,
+    mime: pageNumber === 1 ? "text/html" : "text/xml",
+    observedAt,
+    sourceUri: LAOS_LIST_URL,
+  };
+}
+
+describe("explicitly approved full Lao source index Work", () => {
+  it("streams only a manual, frozen, rate-bounded 3-page source Work without DE writes", async () => {
+    let sourceCalls = 0;
+    const fakeStreamAdapter = {
+      requestIntervalMs: 2_500,
+      async *streamFullIndex(options: { maxPages: number }) {
+        sourceCalls += 1;
+        expect(options.maxPages).toBe(3);
+        yield fullIndexPage(1);
+        yield fullIndexPage(2);
+        yield fullIndexPage(3);
+        return { sourceTotal: 125, uniqueIds: 125 };
+      },
+    } as unknown as LaosWopublishSourceAdapter;
+    const entry = registry(page);
+    const acquirer = new LaosWopublishJobArtifactAcquirer(entry.adapters, {
+      fullIndexEnabled: true,
+      streamAdapter: fakeStreamAdapter,
+    });
+    const frozen = context({ mode: "FULL_INDEX_BASELINE", maxPages: 3 });
+    expect(acquirer.isStreamingJob(frozen)).toBe(true);
+    const batches = [];
+    for await (const batch of acquirer.acquireBatches(frozen)) batches.push(batch);
+    expect(sourceCalls).toBe(1);
+    expect(entry.received()).toBeUndefined();
+    expect(batches).toHaveLength(3);
+    expect(batches.map((batch) => batch.map((artifact) => artifact.artifactKind))).toEqual([
+      ["HTML", "JSON", "JSON", "JSON", "JSON"],
+      ["XML", "JSON", "JSON", "JSON", "JSON"],
+      ["XML", "JSON", "JSON", "JSON", "JSON"],
+    ]);
+    expect(new Set(batches.map((batch) => batch[4]?.canonicalUri)).size).toBe(3);
+    expect(json(batches[2]![4]!.content)).toMatchObject({
+      sourceTotal: 125,
+      completedPage: 3,
+      committedUniqueCount: 125,
+      complete: true,
+      nextPage: null,
+    });
+    expect(batches[2]![4]?.parentCanonicalUris).toEqual([
+      batches[2]![2]?.canonicalUri,
+      batches[2]![3]?.canonicalUri,
+    ]);
+    const finalRequest = json(batches[2]![3]!.content);
+    const finalPayload = finalRequest.payload as Record<string, unknown>;
+    expect(finalPayload).toMatchObject({
+      contract_version: "GLOBAL_TRADEMARK_STRUCTURED_ADMISSION_V2",
+      observation_kind: "FULL_INDEX_PAGE",
+      page_index: 3,
+      source_total: 125,
+    });
+    expect(finalPayload.records).toHaveLength(25);
+    expect(batches[2]![2]?.parentCanonicalUris).toEqual([batches[2]![3]?.canonicalUri]);
+  });
+  it("keeps full source mode OFF by default and forbids the pilot bulk path", async () => {
+    const entry = registry(page);
+    const frozen = context({ mode: "FULL_INDEX_BASELINE", maxPages: 3 });
+    const off = new LaosWopublishJobArtifactAcquirer(entry.adapters);
+    expect(off.isStreamingJob(frozen)).toBe(false);
+    await expect(off.acquire(frozen)).rejects.toMatchObject({
+      code: "LA_FULL_INDEX_STREAMING_REQUIRED",
+    });
+    const consume = async () => {
+      for await (const batch of off.acquireBatches(frozen)) {
+        throw new Error("Disabled stream emitted " + batch.length + " artifacts");
+      }
+    };
+    await expect(consume()).rejects.toMatchObject({ code: "LA_JOB_CONFIG_INVALID" });
+    expect(entry.received()).toBeUndefined();
+  });
+  it.each([
+    {
+      name: "unreviewed CRON plan",
+      config: { mode: "FULL_INDEX_BASELINE", maxPages: 3 },
+      opts: { schedule: "CRON" },
+    },
+    {
+      name: "forged resume",
+      config: { mode: "FULL_INDEX_BASELINE", maxPages: 3, resume: { page: 3 } },
+      opts: {},
+    },
+    { name: "unbounded pages", config: { mode: "FULL_INDEX_BASELINE", maxPages: 2001 }, opts: {} },
+    {
+      name: "robots disabled",
+      config: { mode: "FULL_INDEX_BASELINE", maxPages: 3 },
+      opts: { respectRobots: false },
+    },
+    {
+      name: "rate over 24 per minute",
+      config: { mode: "FULL_INDEX_BASELINE", maxPages: 3 },
+      opts: { rateLimitPerMinute: 25 },
+    },
+  ])("refuses $name before any source request", async ({ config, opts }) => {
+    let sourceCalls = 0;
+    const adapter = {
+      requestIntervalMs: 2_500,
+      async *streamFullIndex() {
+        sourceCalls += 1;
+        yield fullIndexPage(1);
+      },
+    } as unknown as LaosWopublishSourceAdapter;
+    const acquirer = new LaosWopublishJobArtifactAcquirer(registry(page).adapters, {
+      fullIndexEnabled: true,
+      streamAdapter: adapter,
+    });
+    const consume = async () => {
+      for await (const batch of acquirer.acquireBatches(context(config, opts))) {
+        throw new Error("Rejected plan emitted " + batch.length + " artifacts");
+      }
+    };
+    await expect(consume()).rejects.toMatchObject({ code: "LA_JOB_CONFIG_INVALID" });
+    expect(sourceCalls).toBe(0);
+  });
+  it("refuses source requests faster than the approved plan even when enabled", async () => {
+    let sourceCalls = 0;
+    const adapter = {
+      requestIntervalMs: 2_500,
+      async *streamFullIndex() {
+        sourceCalls += 1;
+        yield fullIndexPage(1);
+      },
+    } as unknown as LaosWopublishSourceAdapter;
+    const acquirer = new LaosWopublishJobArtifactAcquirer(registry(page).adapters, {
+      fullIndexEnabled: true,
+      streamAdapter: adapter,
+    });
+    const consume = async () => {
+      for await (const batch of acquirer.acquireBatches(
+        context({ mode: "FULL_INDEX_BASELINE", maxPages: 3 }, { rateLimitPerMinute: 10 }),
+      )) {
+        throw new Error("Overspeed stream emitted " + batch.length + " artifacts");
+      }
+    };
+    await expect(consume()).rejects.toMatchObject({ code: "LA_JOB_CONFIG_INVALID" });
+    expect(sourceCalls).toBe(0);
   });
 });
