@@ -117,3 +117,31 @@ GB Country Store insertion, current UK register coverage or API serving
 readiness. Future UKIPO original-logo writes target F: only. Existing E: CAS
 objects are retained until an independently verified F: relocation receipt is
 accepted; deletion of the E: copy requires separate authority.
+
+## Governed E: to F: original-visual relocation
+
+The pre-correction E: CAS is migrated only by the reviewed
+`workers/local_folder/ukipo_visual_relocate.py` operator. Plan freeze verifies
+all 131,210 E: CAS objects against the SHA-256 encoded in each filename and
+pins the accepted 78-issue audit plus a path/size inventory hash. The target
+must be absent when the plan is frozen.
+
+Apply is additive and resumable. Existing target objects are reused only when
+their size and SHA-256 exactly match the frozen source; a mismatching object is
+never overwritten. New objects are written through a verified same-directory
+temporary file and then linked into the immutable CAS namespace. After copy,
+the complete F: CAS and the retained E: source are both reverified.
+
+The capacity authority freezes the physical F: volume size and its
+30%-plus-64-GiB reserve floor, but not the observed free-byte snapshot. Apply
+checks live free space against the frozen floor after accounting for all
+remaining missing bytes.
+
+Apply requires the exact frozen plan SHA and token:
+
+`GO #910 UKIPO-GB-VISUAL-F-RELOCATE <plan-sha> ADDITIVE-COPY-VERIFY-NO-DELETE`
+
+A successful relocation receipt explicitly keeps `source_deleted=false` and
+does not authorize Data Engine ingestion, API serving, or deletion of the E:
+copy. Any later E: cleanup requires its own reviewed authority and an
+independent F: residency audit.
