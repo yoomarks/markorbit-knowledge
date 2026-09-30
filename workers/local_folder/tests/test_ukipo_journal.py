@@ -1,4 +1,4 @@
-"""Offline UKIPO journal parser and E: CAS staging tests (synthetic ZIP fixtures)."""
+"""Offline UKIPO journal parser and F: CAS staging tests (synthetic ZIP fixtures)."""
 from __future__ import annotations
 
 import hashlib
@@ -10,6 +10,7 @@ import zipfile
 from pathlib import Path
 
 from workers.local_folder.ukipo_journal import (
+    ASSET_ROOT,
     UKIPOInputError,
     approved_missing_images,
     parse_xhtml,
@@ -90,6 +91,12 @@ class UKIPOJournalPilotTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.zip = self.root / f"{ISSUE}.zip"
         make_fixture(self.zip)
+
+    def test_production_original_visual_root_is_f_drive(self) -> None:
+        self.assertEqual(
+            ASSET_ROOT,
+            Path(r"F:\MarkOrbitData\visual-raw\assets\raw\gb\mark-images"),
+        )
 
     def test_named_html_entities_and_exact_indexes(self) -> None:
         root = parse_xhtml(xhtml("<p>A &Oacute;wner &amp; another</p>"))
