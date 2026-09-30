@@ -1,4 +1,4 @@
-"""Offline UKIPO journal ZIP evidence parser and governed E: original-logo CAS pilot.
+"""Offline UKIPO journal ZIP evidence parser and governed F: original-logo CAS pilot.
 
 This LOCAL_FOLDER execution helper produces source-grounded handoff data only.
 It does not register canonical Knowledge RawArtifact or write Data Engine.
@@ -20,7 +20,7 @@ from pathlib import Path, PurePosixPath
 
 RAW_ROOT = Path(r"F:\MarkOrbitData\raw\incoming\uk")
 STAGE_ROOT = Path(r"D:\yoomarks\governed-plans\910\ukipo-journal")
-ASSET_ROOT = Path(r"E:\MarkOrbitData\visual-raw\assets\raw\gb\mark-images")
+ASSET_ROOT = Path(r"F:\MarkOrbitData\visual-raw\assets\raw\gb\mark-images")
 ISSUE_RE = re.compile(r"20\d{2}-\d{3}\Z")
 DETAIL_RE = re.compile(r"(UK|WO)\d+\.html\Z")
 MEDIA_RE = re.compile(r"images/[^/\\\x00-\x1f\x7f]{1,240}\.(?:jpe?g|png|gif)\Z", re.I)
@@ -366,7 +366,7 @@ def stage_zip(
         require(
             disk.free - expected_new_bytes >= (disk.total * 30 + 99) // 100
             + 64 * 1024 * 1024 * 1024,
-            "E: disk reserve admission failed (30% + 64 GiB buffer)",
+            "F: disk reserve admission failed (30% + 64 GiB buffer)",
         )
     stage_root.mkdir(parents=True, exist_ok=True)
     for digest, (relative, raw) in sorted(assets.items()):
@@ -393,7 +393,7 @@ def stage_zip(
                 temp.unlink()
     for digest, (relative, _) in assets.items():
         require(sha256_file(asset_root / Path(relative)) == digest,
-                "staged E: mark image integrity check failed")
+                "staged F: mark image integrity check failed")
     with records_path.open("x", encoding="utf-8", newline="\n") as stream:
         for item in details:
             stream.write(json.dumps(item, ensure_ascii=False, sort_keys=True) + "\n")

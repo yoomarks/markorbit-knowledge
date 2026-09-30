@@ -37,16 +37,16 @@ Read-only --preflight-only validates the entire named issue and emits a
 size/identity/coverage manifest without writing any asset or handoff record.
 
 Separately admitted --stage --expected-sha SHA256 writes original image bytes
-in an E:-only, SHA-256 content-addressed CAS rooted at
-E:\MarkOrbitData\visual-raw\assets\raw\gb\mark-images.
+in an F:-only, SHA-256 content-addressed CAS rooted at
+F:\MarkOrbitData\visual-raw\assets\raw\gb\mark-images.
 An original file uses sha256/aa/bb/hash plus an image suffix derived from
 actual file magic. Shared images are stored once. Immutable source-grounded
 detail JSONL and a content-hashed manifest are written under
 D:\yoomarks\governed-plans\910\ukipo-journal.
 
-The E: writer refuses symlink/junction traversal, verifies any existing CAS
+The F: writer refuses symlink/junction traversal, verifies any existing CAS
 object, writes new objects through same-directory temporary files and refuses
-to overwrite existing immutable handoffs. Before writing, E: must have enough
+to overwrite existing immutable handoffs. Before writing, F: must have enough
 free space to retain **30% of its physical size plus an additional 64 GiB
 buffer** after the proposed image bytes. This tool never writes the existing
 Docker/ClickHouse VHDX directories or changes image roots for other countries.
@@ -57,8 +57,10 @@ Local issue 2026-033.zip, ZIP SHA
 63690a48858778b01e2eb06edc31a5b8bb72dd89c02b30133234014004741814,
 was independently parsed and staged: 3,351 details (2,868 UK / 483 WO),
 1,462 mark-image associations, 1,460 unique originals, 9,010,718 original
-bytes. Actual E: CAS files and every detail/image link were independently
-verified. Immutable first-pilot manifest SHA:
+bytes. The originally accepted E: CAS bytes and every detail/image link were
+independently verified; the accepted receipt remains immutable. The physical
+original-visual authority is now F:, and E: is only a temporary pre-correction
+copy until a separately verified relocation is completed. Immutable first-pilot manifest SHA:
 ea413c3caefec4e6ded77cceb5776c5afcee53c20dbe988e9e29bbeee59724b0.
 This older first-pilot receipt predates optional source_markup_repairs per
 detail; keep it immutable rather than rewriting accepted evidence.
@@ -74,7 +76,7 @@ These are distinct real issues, not duplicates of 2026-022 or 2026-039.
 Staged JSONL and CAS evidence are **not** published RawArtifact V1 records,
 not a current British trademark register, and not Data Engine GB tables.
 Data Engine issue yoomarks/markorbit-data-engine#855 separately owns schema,
-historical-stock co-owner correctness, GB journal history, E: image relations,
+historical-stock co-owner correctness, GB journal history, F: original-image relations,
 controlled ingestion, independent receipts and serving projections. Never
 declare nationwide current coverage from the 2018 open-data snapshot plus a
 partial later journal window.
@@ -88,7 +90,7 @@ hashes and matching internal titles/folders.
 
 An independent full staged-JSONL and raw-ZIP replay audit verified
 295,930 unique issue/detail identities, 132,482 original image associations
-and the actual SHA-256 bytes of 131,210 unique E: CAS originals
+and the actual SHA-256 bytes of 131,210 unique originals currently staged on E:
 (836,495,412 bytes). Immutable evidence:
 
 - D:\yoomarks\governed-plans\910\ukipo-78-stage-independent-audit-r1.json
@@ -112,5 +114,6 @@ separately sourced, verifiable official bytes.
 
 This stage does not establish canonical Knowledge RawArtifact publication,
 GB Country Store insertion, current UK register coverage or API serving
-readiness. The E: physical volume still passes the 30% free-space plus
-64 GiB buffer admission after the images were staged.
+readiness. Future UKIPO original-logo writes target F: only. Existing E: CAS
+objects are retained until an independently verified F: relocation receipt is
+accepted; deletion of the E: copy requires separate authority.
