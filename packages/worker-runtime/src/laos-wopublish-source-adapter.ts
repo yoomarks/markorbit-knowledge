@@ -338,6 +338,9 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
       throw failure("LA_RATE_INVALID", "Invalid WoPublish request interval");
     }
   }
+  get requestIntervalMs(): number {
+    return this.interval;
+  }
   async fetch(input: SourceAdapterRequest): Promise<SourceAdapterResponse<LaosObservation>> {
     if (input.sourceId !== this.sourceId) throw failure("LA_SOURCE_MISMATCH", "Unknown source");
     const params = input.params ?? {};

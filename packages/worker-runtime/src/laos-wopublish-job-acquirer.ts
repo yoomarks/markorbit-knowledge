@@ -10,12 +10,17 @@ import {
   LAOS_CONNECTOR_VERSION,
   LAOS_LIST_URL,
   LAOS_SOURCE_ID,
+  LaosWopublishSourceAdapter,
   laosSha256,
   type LaosObservation,
 } from "./laos-wopublish-source-adapter";
 import type { SourceAdapterResponse } from "./source-adapter-port";
 import type { SourceAdapterRegistry } from "./source-adapter-registry";
 import { buildLaosDataEngineAdmissionRequest } from "./laos-wopublish-data-engine-handoff";
+import {
+  buildLaosBaselineIndexPageCommit,
+  type LaosBaselineIndexCheckpoint,
+} from "./laos-baseline-index-stream";
 
 export const LAOS_JOB_EXECUTOR: ExecutionExecutor = {
   executorId: LAOS_CONNECTOR_ID,
@@ -35,7 +40,8 @@ type PilotConfig = {
   expectedSourceTotal?: number;
 };
 type DetailConfig = { mode: "DETAIL_REFRESH"; sourceRecordId: string };
-export type LaosJobConfig = PilotConfig | DetailConfig;
+type FullIndexConfig = { mode: "FULL_INDEX_BASELINE"; maxPages: number };
+export type LaosJobConfig = PilotConfig | DetailConfig | FullIndexConfig;
 function jobConfig(context: ArtifactBackedExecutionContext): LaosJobConfig {
   const source = context.job.sourceSnapshot;
   if (
@@ -101,7 +107,25 @@ function jobConfig(context: ArtifactBackedExecutionContext): LaosJobConfig {
     }
     return { mode: "DETAIL_REFRESH", sourceRecordId: input.sourceRecordId };
   }
-  throw failure("Full, scheduled and bulk collection modes are not admitted");
+  if (input.mode === "FULL_INDEX_BASELINE") {
+    const plan = context.job.planSnapshot;
+    if (
+      Object.keys(input).some((key) => !["mode", "maxPages"].includes(key)) ||
+      !Number.isSafeInteger(input.maxPages) ||
+      (input.maxPages as number) < 3 ||
+      (input.maxPages as number) > 2_000 ||
+      plan.policy?.respectRobots !== true ||
+      !Number.isSafeInteger(plan.policy?.rateLimitPerMinute) ||
+      plan.policy.rateLimitPerMinute < 1 ||
+      plan.policy.rateLimitPerMinute > 24
+    ) {
+      throw failure(
+        "Full index requires an explicit manual page budget and <=24/min governed policy",
+      );
+    }
+    return { mode: "FULL_INDEX_BASELINE", maxPages: input.maxPages as number };
+  }
+  throw failure("Scheduled and unreviewed bulk collection modes are not admitted");
 }
 function requireOutput(context: ArtifactBackedExecutionContext, kinds: string[]): void {
   if (
@@ -250,12 +274,39 @@ function artifactsFor(observation: LaosObservation): AcquiredCollectionArtifact[
   );
   return artifacts;
 }
+export type LaosWopublishAcquirerOptions = {
+  /** Separately approved source-work activation, independent of the publisher and DE flags. */
+  fullIndexEnabled?: boolean;
+  streamAdapter?: LaosWopublishSourceAdapter;
+};
+
 /** No second acquisition store. The existing artifact-backed executor persists these artifacts. */
 export class LaosWopublishJobArtifactAcquirer implements CollectionArtifactAcquirer {
   readonly executor = LAOS_JOB_EXECUTOR;
-  constructor(private readonly registry: SourceAdapterRegistry) {}
+  constructor(
+    private readonly registry: SourceAdapterRegistry,
+    private readonly options: LaosWopublishAcquirerOptions = {},
+  ) {}
+  isStreamingJob(context: ArtifactBackedExecutionContext): boolean {
+    const config = context.job.sourceSnapshot.connectorConfig;
+    return (
+      this.options.fullIndexEnabled === true &&
+      Boolean(this.options.streamAdapter) &&
+      config !== null &&
+      typeof config === "object" &&
+      !Array.isArray(config) &&
+      (config as Record<string, unknown>).mode === "FULL_INDEX_BASELINE"
+    );
+  }
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
     const config = jobConfig(context);
+    if (config.mode === "FULL_INDEX_BASELINE") {
+      throw new CollectionAcquisitionError(
+        "LA_FULL_INDEX_STREAMING_REQUIRED",
+        "Full Lao index cannot use the pilot bulk executor or bypass source activation",
+        false,
+      );
+    }
     requireOutput(
       context,
       config.mode === "PILOT_PAGE"
@@ -295,5 +346,47 @@ export class LaosWopublishJobArtifactAcquirer implements CollectionArtifactAcqui
       throw failure("Registered adapter returned an unexpected source observation");
     }
     return artifactsFor(result.items[0]!);
+  }
+
+  async *acquireBatches(
+    context: ArtifactBackedExecutionContext,
+  ): AsyncIterable<readonly AcquiredCollectionArtifact[]> {
+    const config = jobConfig(context);
+    const adapter = this.options.streamAdapter;
+    if (
+      config.mode !== "FULL_INDEX_BASELINE" ||
+      this.options.fullIndexEnabled !== true ||
+      !adapter
+    ) {
+      throw failure("Full index requires an explicitly activated streaming source Worker");
+    }
+    const rate = context.job.planSnapshot.policy.rateLimitPerMinute;
+    const minimumIntervalMs = Math.max(2_500, Math.ceil(60_000 / rate));
+    if (adapter.requestIntervalMs < minimumIntervalMs) {
+      throw failure("Configured WoPublish rate exceeds the frozen CollectionPlan budget");
+    }
+    requireOutput(context, ["HTML", "XML", "JSON"]);
+    let committed: string[] = [];
+    let lastCheckpoint: LaosBaselineIndexCheckpoint | undefined;
+    for await (const page of adapter.streamFullIndex({ maxPages: config.maxPages })) {
+      // The shared streaming executor admits at most 8,000 artifacts per Job.
+      // A page produces four source artifacts plus one cumulative checkpoint.
+      if (Math.ceil(page.total / 50) * 5 > 8_000) {
+        throw failure("Official Lao index exceeds the reviewed streaming artifact budget");
+      }
+      const batch = buildLaosBaselineIndexPageCommit({
+        page,
+        committedPageIdsSha256: committed,
+        pageScopedCheckpoint: true,
+      });
+      yield [...batch.pageArtifacts, batch.checkpointArtifact];
+      // Only advance this in-memory cursor after the Worker has finalized the
+      // previous batch; source iterator's next page remains suspended until then.
+      committed = [...batch.checkpoint.committedPageIdsSha256];
+      lastCheckpoint = batch.checkpoint;
+    }
+    if (!lastCheckpoint?.complete) {
+      throw failure("Lao full index ended without a complete durable page checkpoint");
+    }
   }
 }
