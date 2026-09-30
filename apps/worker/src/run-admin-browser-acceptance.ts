@@ -352,8 +352,22 @@ async function assertAuthenticationBoundary(): Promise<void> {
   }
 }
 
+async function gotoAfterKnowledgeProvisioning(page: Page, url: string): Promise<void> {
+  const provisioningResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/admin-session/knowledge-workspace",
+  );
+  await page.goto(url);
+  const response = await provisioningResponse;
+  assert.ok(
+    response.status() === 200 || response.status() === 201,
+    `Knowledge workspace provisioning failed: ${response.status()}`,
+  );
+}
+
 async function navigateThroughBusinessSurfaces(page: Page): Promise<void> {
-  await page.goto(`${ADMIN_ORIGIN}/dashboard`);
+  await gotoAfterKnowledgeProvisioning(page, `${ADMIN_ORIGIN}/dashboard`);
   await page.waitForLoadState("domcontentloaded");
   await page.waitForURL(
     (url) =>
@@ -403,7 +417,10 @@ async function assertBrowseRoundTrip(page: Page): Promise<void> {
   const initialResponse = page.waitForResponse(
     (response) => response.url().includes("/api/knowledge?") && response.status() === 200,
   );
-  await page.goto(`${ADMIN_ORIGIN}/knowledge?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}`);
+  await gotoAfterKnowledgeProvisioning(
+    page,
+    `${ADMIN_ORIGIN}/knowledge?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}`,
+  );
   await initialResponse;
   await page.getByText(FIXTURE_TITLE, { exact: true }).waitFor();
 
@@ -448,7 +465,8 @@ async function assertSearchRoundTrip(page: Page): Promise<void> {
   const searchResponse = page.waitForResponse(
     (response) => response.url().includes("/api/knowledge/search?") && response.status() === 200,
   );
-  await page.goto(
+  await gotoAfterKnowledgeProvisioning(
+    page,
     `${ADMIN_ORIGIN}/knowledge/search?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}&q=${encodeURIComponent("Browser Acceptance")}&status=READY`,
   );
   await searchResponse;
@@ -481,7 +499,8 @@ async function assertSearchRoundTrip(page: Page): Promise<void> {
 
 async function assertDirectDeepLinkRestoration(page: Page): Promise<void> {
   const returnTo = `/knowledge/search?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}&q=${encodeURIComponent("Browser Acceptance")}&status=READY`;
-  await page.goto(
+  await gotoAfterKnowledgeProvisioning(
+    page,
     `${ADMIN_ORIGIN}/knowledge/${STAGING_ID}?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}&returnTo=${encodeURIComponent(returnTo)}`,
   );
   await page.getByText(FIXTURE_CONTENT_MARKER, { exact: false }).waitFor();
@@ -527,7 +546,8 @@ async function assertInboxRoundTrip(page: Page): Promise<void> {
     });
   });
   try {
-    await page.goto(
+    await gotoAfterKnowledgeProvisioning(
+      page,
       `${ADMIN_ORIGIN}/dashboard?workspaceId=${encodeURIComponent(CORE_WORKSPACE_ID)}`,
     );
     const itemLink = page.getByRole("link", { name: new RegExp(FIXTURE_TITLE) }).first();
@@ -560,7 +580,7 @@ async function assertKnowledgeJourney(page: Page): Promise<void> {
 }
 
 async function assertRealMutation(page: Page): Promise<void> {
-  await page.goto(`${ADMIN_ORIGIN}/workers/new`);
+  await gotoAfterKnowledgeProvisioning(page, `${ADMIN_ORIGIN}/workers/new`);
   await page.getByLabel("显示名称").fill("Browser Acceptance Worker");
   const responsePromise = page.waitForResponse(
     (response) =>
@@ -589,7 +609,7 @@ async function assertRealMutation(page: Page): Promise<void> {
 }
 
 async function assertMobileNavigation(page: Page): Promise<void> {
-  await page.goto(`${ADMIN_ORIGIN}/knowledge`);
+  await gotoAfterKnowledgeProvisioning(page, `${ADMIN_ORIGIN}/knowledge`);
   const menu = page.locator('button[aria-controls="admin-mobile-navigation"]');
   await menu.click();
   let dialog = page.getByRole("dialog", { name: /Main navigation|主导航/ });
@@ -750,6 +770,7 @@ async function main(): Promise<void> {
           viewports: ["1440x1000", "390x844"],
           boundaries: {
             canonicalAdminSession: true,
+            browserAuthenticatedKnowledgeProvisioning: true,
             unauthenticatedFailClosed: true,
             workspaceMismatchFailClosed: true,
             evidenceWorkspaceRoundTrips: ["BROWSE", "SEARCH", "INBOX", "DIRECT_DEEP_LINK"],

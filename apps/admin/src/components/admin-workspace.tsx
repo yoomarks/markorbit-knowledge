@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { adminBrowserWorkspaceHeaders } from "@/lib/admin-browser-api-client";
 import {
   knowledgeWorkspaceHref,
   selectKnowledgeWorkspace,
@@ -12,6 +13,7 @@ import {
 type AdminSessionResponse = {
   authenticated: true;
   userId: string;
+  csrfToken: string;
   workspaces: KnowledgeWorkspaceOption[];
 };
 
@@ -56,6 +58,7 @@ export function AdminWorkspaceBoundary({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AdminSessionResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [provisionedWorkspaceId, setProvisionedWorkspaceId] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -98,27 +101,72 @@ export function AdminWorkspaceBoundary({ children }: { children: ReactNode }) {
     });
   }, [currentHref, router, selection]);
 
+  useEffect(() => {
+    if (!session || selection?.kind !== "SELECTED" || selection.needsExplicitUrl) return;
+    const workspaceId = selection.workspace.workspaceId;
+    if (provisionedWorkspaceId === workspaceId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const headers = adminBrowserWorkspaceHeaders(workspaceId, {
+          "x-markorbit-csrf-token": session.csrfToken,
+        });
+        const response = await fetch("/api/admin-session/knowledge-workspace", {
+          method: "POST",
+          headers,
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error(await readError(response));
+        if (active) {
+          setProvisionedWorkspaceId(workspaceId);
+          setError(null);
+        }
+      } catch (requestError) {
+        if (active) {
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Unable to provision Knowledge workspace",
+          );
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [provisionedWorkspaceId, selection, session]);
+
   const contextValue = useMemo<AdminWorkspaceContextValue | null>(() => {
-    if (!session || selection?.kind !== "SELECTED" || selection.needsExplicitUrl) return null;
+    if (
+      !session ||
+      selection?.kind !== "SELECTED" ||
+      selection.needsExplicitUrl ||
+      provisionedWorkspaceId !== selection.workspace.workspaceId
+    )
+      return null;
     return {
       workspaceId: selection.workspace.workspaceId,
       workspace: selection.workspace,
       workspaces: session.workspaces,
     };
-  }, [selection, session]);
+  }, [provisionedWorkspaceId, selection, session]);
 
-  if (loading || (selection?.kind === "SELECTED" && selection.needsExplicitUrl)) {
-    return (
-      <div className="min-h-screen bg-[#f4f7fb] p-10 text-center text-sm text-slate-500">
-        <Loader2 className="mx-auto mb-3 animate-spin" size={20} />
-        Resolving Core workspace…
-      </div>
-    );
-  }
   if (error) {
     return (
       <div className="min-h-screen bg-[#f4f7fb] p-10 text-center text-sm text-rose-700">
         {error}
+      </div>
+    );
+  }
+  if (
+    loading ||
+    (selection?.kind === "SELECTED" &&
+      (selection.needsExplicitUrl || provisionedWorkspaceId !== selection.workspace.workspaceId))
+  ) {
+    return (
+      <div className="min-h-screen bg-[#f4f7fb] p-10 text-center text-sm text-slate-500">
+        <Loader2 className="mx-auto mb-3 animate-spin" size={20} />
+        Resolving Core workspace…
       </div>
     );
   }
