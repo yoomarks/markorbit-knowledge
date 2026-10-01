@@ -30,6 +30,7 @@ const BROWSER_BOUNDARY_PATTERNS = [
   /\bresolveSourceIntelligenceBrowserMutationAccess\b/,
   /\bresolveExpertReadPrincipal\b/,
   /\bresolveExpertMutationPrincipal\b/,
+  /\bprovisionAdminBrowserKnowledgeWorkspace\b/,
 ] as const;
 
 const OPERATOR_BOUNDARY_PATTERNS = [
