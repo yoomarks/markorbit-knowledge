@@ -2,9 +2,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION } from "@markorbit/contracts";
 import { SqliteCoreWorkspaceBindingRepository } from "@markorbit/persistence/core-workspace-bindings";
 import {
   getCollectionPlanRepository,
+  getConnectorRepository,
   getRegistryDatabase,
   getSourceRepository,
   getWorkspaceRepository,
@@ -29,6 +31,8 @@ type GlobalRegistry = typeof globalThis & {
 let temporaryRoot: string;
 let planAId: string;
 let planBId: string;
+let publisherPlanId: string;
+const PUBLISHER_REQUEST_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAV";
 
 function resetRegistry(): void {
   const registry = globalThis as GlobalRegistry;
@@ -152,6 +156,66 @@ beforeAll(() => {
 
   planAId = createPlan(workspaceA.id, "a");
   planBId = createPlan(workspaceB.id, "b");
+
+  getConnectorRepository().create({
+    connectorId: "global-trademark-fact-admission-publisher",
+    displayName: "Global Trademark Fact Admission Publisher",
+    version: "1.0.0",
+    sourceTypes: ["DATABASE"],
+    runtime: "NODE",
+    capabilities: ["COLLECT"],
+    supportedJobTypes: ["API_COLLECTION"],
+    configurationSchema: { type: "object", properties: {} },
+    secretSchema: { type: "object", properties: {} },
+    outputArtifactKinds: ["JSON"],
+    healthCheck: { mode: "NONE", timeoutSeconds: 30 },
+    status: "ACTIVE",
+  });
+  const publisherSource = sources.create({
+    workspaceId: workspaceA.id,
+    name: "Operator global trademark publisher",
+    slug: "operator-global-trademark-publisher",
+    sourceType: "DATABASE",
+    category: "INTERNAL",
+    authorityLevel: "INTERNAL",
+    status: "ACTIVE",
+    jurisdictions: ["LA"],
+    languages: ["en-US"],
+    connector: { connectorId: "global-trademark-fact-admission-publisher", version: "1.0.0" },
+    connectorConfig: {
+      intent: "PUBLISH_DURABLE_REQUEST",
+      requestArtifactRef: {
+        artifactId: PUBLISHER_REQUEST_ID,
+        canonicalUri: "la-dipo://wopublish/trademarks/list/page/1/fact-admission-request",
+        sha256: "a".repeat(64),
+        sizeBytes: 100,
+      },
+    },
+    canonicalUri: "markorbit://knowledge/global-trademark/fact-admission-requests",
+    entrypoints: [{ uri: "markorbit://knowledge/global-trademark/fact-admission-requests" }],
+  });
+  publisherPlanId = plans.create({
+    workspaceId: workspaceA.id,
+    sourceId: publisherSource.id,
+    name: "Operator publisher plan",
+    status: "ACTIVE",
+    schedule: { mode: "MANUAL" },
+    priority: "HIGH",
+    policy: {
+      includePatterns: [],
+      excludePatterns: [],
+      maxDepth: 0,
+      maxItems: 1,
+      renderJavascript: false,
+      fetchAttachments: false,
+      respectRobots: true,
+      rateLimitPerMinute: 10,
+      timeoutSeconds: 60,
+      retry: { maxAttempts: 2, backoffSeconds: 10 },
+      locale: "en-US",
+    },
+    output: { artifactKinds: ["JSON"] },
+  }).plan.id;
 });
 
 afterAll(() => {
@@ -222,6 +286,33 @@ describe.sequential("POST /api/operator-runs", () => {
     const response = await POST(dispatchRequest({ planId: planAId, role: "READ_ONLY" }));
     expect(response.status).toBe(403);
     expect(await errorCode(response)).toBe("PERMISSION_DENIED");
+  });
+
+  it("freezes the publisher durable request as the cross-Source parent grant", async () => {
+    const response = await POST(
+      dispatchRequest({
+        planId: publisherPlanId,
+        idempotencyKey: "operator-publisher-001",
+      }),
+    );
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as {
+      record: {
+        run: { extensions?: Record<string, unknown> };
+        jobs: Array<{ extensions?: unknown }>;
+      };
+    };
+    const expected = { [CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION]: [PUBLISHER_REQUEST_ID] };
+    expect(body.record.run.extensions).toEqual(expected);
+    expect(body.record.jobs[0]?.extensions).toEqual(expected);
+
+    const replay = await POST(
+      dispatchRequest({
+        planId: publisherPlanId,
+        idempotencyKey: "operator-publisher-001",
+      }),
+    );
+    expect(replay.status).toBe(200);
   });
 
   it("derives workspace authority from the persisted Plan", async () => {

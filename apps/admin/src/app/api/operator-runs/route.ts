@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
+import {
+  CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION,
+  type Extensions,
+  type SourceDefinition,
+} from "@markorbit/contracts";
 import { RegistryValidationError } from "@markorbit/persistence";
 import { CollectionPlanNotFoundError } from "@markorbit/persistence/collection-plans";
+import { GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_ID } from "@markorbit/worker-runtime";
 import { apiError, readJson, requireRecord } from "../../../server/api-errors";
 import { parseCnipaManualRunExtensions } from "../../../server/cnipa-run-override";
 import {
@@ -10,10 +16,35 @@ import {
 import {
   getCollectionPlanRepository,
   getExecutionLedgerRepository,
+  getSourceRepository,
 } from "../../../server/source-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const ARTIFACT_ID = /^art_[0-9A-HJKMNP-TV-Z]{26}$/u;
+
+function globalTrademarkParentGrant(source: SourceDefinition): Extensions | undefined {
+  if (source.connector.connectorId !== GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_ID) {
+    return undefined;
+  }
+  const config = source.connectorConfig;
+  const reference = config.requestArtifactRef;
+  const artifactId =
+    typeof reference === "object" && reference !== null && !Array.isArray(reference)
+      ? (reference as Record<string, unknown>).artifactId
+      : undefined;
+  if (
+    config.intent !== "PUBLISH_DURABLE_REQUEST" ||
+    typeof artifactId !== "string" ||
+    !ARTIFACT_ID.test(artifactId)
+  ) {
+    throw new RegistryValidationError(
+      "Global trademark publisher source must identify a durable request artifact",
+    );
+  }
+  return { [CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION]: [artifactId] };
+}
 
 export async function POST(request: Request) {
   try {
@@ -32,12 +63,17 @@ export async function POST(request: Request) {
     const access = resolveOperatorServiceMutationAccess(request, plan.plan.workspaceId);
     assertOperatorServiceResourceWorkspace(access, plan.plan.workspaceId);
 
+    const source = getSourceRepository().getById(plan.plan.sourceId);
+    if (!source) throw new RegistryValidationError("CollectionPlan source was not found");
+    assertOperatorServiceResourceWorkspace(access, source.workspaceId);
+
     const idempotencyKey = request.headers.get("Idempotency-Key");
-    const extensions = parseCnipaManualRunExtensions({
-      rawExtensions: body.extensions,
-      planExtensions: plan.plan.extensions,
-      idempotencyKey,
-    });
+    const extensions =
+      parseCnipaManualRunExtensions({
+        rawExtensions: body.extensions,
+        planExtensions: plan.plan.extensions,
+        idempotencyKey,
+      }) ?? globalTrademarkParentGrant(source);
     const result = getExecutionLedgerRepository().dispatchManual({
       planId: body.planId,
       requestedBy: { actorType: "API_CLIENT", actorId: access.principal.userId },
