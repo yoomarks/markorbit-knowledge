@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const access = await resolveAdminBrowserApiReadAccess(request);
-    return NextResponse.json(getCaseEvidenceInventoryView(access.workspaceId));
+    return NextResponse.json(getCaseEvidenceInventoryView(access.coreWorkspaceId));
   } catch (error) {
     return apiError(error);
   }

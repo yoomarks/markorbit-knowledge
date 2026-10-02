@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CaseCandidateV1 } from "@markorbit/contracts";
 import {
+  authorizeCaseProducerMutation,
   authorizeCaseProducerRequest,
   CASE_PRODUCER_INTERNAL_AUTHORIZATION_HEADER,
   CASE_PRODUCER_PRINCIPAL_HEADER,
@@ -167,6 +168,21 @@ describe("Case producer internal authentication", () => {
       code: "PERMISSION_DENIED",
       httpStatus: 403,
     });
+  });
+
+  it("requires explicit matter:promote-knowledge authority for intake mutations", () => {
+    const readOnlyForIntake = authorize();
+    expectAccessError(() => authorizeCaseProducerMutation(readOnlyForIntake), {
+      code: "PERMISSION_DENIED",
+      httpStatus: 403,
+    });
+
+    const promoter = authorize(
+      principal({
+        permissions: ["workspace:read", "matter:read", "matter:promote-knowledge"],
+      }),
+    );
+    expect(() => authorizeCaseProducerMutation(promoter)).not.toThrow();
   });
 
   it("rejects cross-workspace promotion even with valid service authentication", () => {
