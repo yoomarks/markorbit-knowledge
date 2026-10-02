@@ -35,6 +35,13 @@ export class ChangeAwareRetrievalIndexRepository implements RetrievalIndexReposi
     return this.retrieval.getDocument(workspaceId, documentId, artifactVersion);
   }
 
+  getCurrentDocumentByStagingDocumentId(
+    workspaceId: string,
+    stagingDocumentId: string,
+  ): RetrievalDocument | null {
+    return this.retrieval.getCurrentDocumentByStagingDocumentId(workspaceId, stagingDocumentId);
+  }
+
   listChunks(stagingDocumentId: string, workspaceId: string) {
     return this.retrieval.listChunks(stagingDocumentId, workspaceId);
   }

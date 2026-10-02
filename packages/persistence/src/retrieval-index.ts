@@ -49,6 +49,10 @@ export interface RetrievalIndexRepository {
     documentId: string,
     artifactVersion?: number,
   ): RetrievalDocument | null;
+  getCurrentDocumentByStagingDocumentId(
+    workspaceId: string,
+    stagingDocumentId: string,
+  ): RetrievalDocument | null;
   listChunks(stagingDocumentId: string, workspaceId: string): RetrievalChunk[];
   documentResult(
     workspaceId: string,
@@ -690,6 +694,33 @@ export class SqliteRetrievalIndexRepository implements RetrievalIndexRepository 
          ORDER BY artifact_version DESC LIMIT 1`,
       )
       .get(...values) as Record<string, unknown> | undefined;
+    return row ? rowDocument(row) : null;
+  }
+
+  getCurrentDocumentByStagingDocumentId(
+    workspaceId: string,
+    stagingDocumentId: string,
+  ): RetrievalDocument | null {
+    const row = this.database
+      .prepare(
+        `SELECT ${DOCUMENT_COLUMNS} FROM retrieval_documents
+         WHERE workspace_id = ?
+           AND staging_document_id = ?
+           AND is_current = 1
+           AND EXISTS (
+             SELECT 1 FROM workspaces w
+             WHERE w.id = retrieval_documents.workspace_id
+               AND json_extract(w.document_json, '$.status') = 'ACTIVE'
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM source_definitions s
+             WHERE s.id = retrieval_documents.source_id
+               AND s.workspace_id = retrieval_documents.workspace_id
+               AND s.status = 'ARCHIVED'
+           )
+         LIMIT 1`,
+      )
+      .get(workspaceId, stagingDocumentId) as Record<string, unknown> | undefined;
     return row ? rowDocument(row) : null;
   }
 

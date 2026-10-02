@@ -116,6 +116,13 @@ function exactLiveRepository(): RetrievalIndexRepository {
     },
     getDocument: (_requestedWorkspaceId, documentId) =>
       documents.find((document) => document.documentId === documentId) ?? null,
+    getCurrentDocumentByStagingDocumentId: (requestedWorkspaceId, stagingDocumentId) =>
+      documents.find(
+        (document) =>
+          document.workspaceId === requestedWorkspaceId &&
+          document.stagingDocumentId === stagingDocumentId &&
+          document.isCurrent,
+      ) ?? null,
     listChunks: (stagingDocumentId) => {
       const index = documents.findIndex(
         (document) => document.stagingDocumentId === stagingDocumentId,

@@ -1,0 +1,135 @@
+name: Workspace Private Exact Read Cross Repo
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"
+  pull_request:
+    paths:
+      - ".github/workflows/workspace-private-exact-read-cross-repo.yml"
+      - "scripts/core-drift-gate.mjs"
+      - "scripts/core-drift-gate.test.mjs"
+      - "apps/admin/src/app/api/internal/workspace-private-case-evidence/**"
+      - "apps/admin/src/server/workspace-private-case-evidence-read.ts"
+      - "apps/admin/src/server/core-workspace-private-case-evidence-grant-http.ts"
+      - "apps/admin/src/server/api-errors.ts"
+      - "apps/admin/src/server/knowledge-workspace-authority.ts"
+      - "apps/admin/src/server/operator-service-api-access.ts"
+      - "apps/admin/src/server/case-producer-auth.ts"
+      - "apps/admin/src/server/ready-package-content-export.ts"
+      - "apps/admin/src/server/__tests__/workspace-file-knowledge.e2e.test.ts"
+      - "packages/contracts/src/ready-package-content-export-v1*.ts"
+      - "packages/contracts/src/workspace-private-case-evidence-read-v1.ts"
+      - "packages/persistence/src/retrieval-index.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workspace-private-exact-read-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CORE_REF: 714f8599b11bfe5fabb6e94cfa17c5bc2624246c
+  MO_INTERNAL_SERVICE_SECRET: ${{ format('workspace-private-exact-read-{0}-ephemeral-secret', github.run_id) }}
+  MARKORBIT_CORE_INTERNAL_SECRET: ${{ format('workspace-private-exact-read-core-{0}-ephemeral-secret', github.run_id) }}
+  MARKORBIT_CORE_URL: http://127.0.0.1:4106
+  KNOWLEDGE_URL: http://127.0.0.1:3100
+
+jobs:
+  core-ref-freshness:
+    runs-on: ubuntu-24.04
+    outputs:
+      core_ref_to_test: ${{ steps.classify.outputs.core_ref_to_test }}
+      drift_state: ${{ steps.classify.outputs.drift_state }}
+    steps:
+      - name: Checkout Knowledge
+        uses: actions/checkout@v4
+      - name: Checkout Core history for drift classification
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+          path: .core-drift/markorbit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Classify Core dependency drift
+        id: classify
+        run: >-
+          node scripts/core-drift-gate.mjs
+          --repo .core-drift/markorbit
+          --baseline "$CORE_REF"
+          --profile k-case-008
+          --github-output "$GITHUB_OUTPUT"
+
+  workspace-private-exact-read:
+    needs: core-ref-freshness
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Knowledge
+        uses: actions/checkout@v4
+      - name: Checkout classified current Core grant owner
+        uses: actions/checkout@v4
+        with:
+          repository: yoomarks/markorbit
+          ref: ${{ needs.core-ref-freshness.outputs.core_ref_to_test }}
+          path: .e2e/markorbit-core
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Knowledge dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Core dependencies
+        working-directory: .e2e/markorbit-core
+        run: pnpm install --frozen-lockfile
+      - name: Build Knowledge Admin dependency closure
+        run: pnpm --filter @markorbit/admin... build
+      - name: Build Core grant-owner dependency closure
+        working-directory: .e2e/markorbit-core
+        run: pnpm exec turbo run build --filter=@markorbit/core-service...
+      - name: Start real Knowledge private-read owner
+        env:
+          PORT: 3100
+          MARKORBIT_REPOSITORY_ROOT: ${{ github.workspace }}
+          MARKORBIT_WORKSPACE_PRIVATE_E2E_ROOT: ${{ runner.temp }}/workspace-private-exact-read
+          MARKORBIT_KNOWLEDGE_DB_PATH: ${{ runner.temp }}/workspace-private-exact-read/knowledge.sqlite
+          MARKORBIT_ARTIFACT_STORE_PATH: ${{ runner.temp }}/workspace-private-exact-read/artifacts
+          MARKORBIT_STAGING_STORE_PATH: ${{ runner.temp }}/workspace-private-exact-read/staging
+        run: |
+          mkdir -p "$MARKORBIT_WORKSPACE_PRIVATE_E2E_ROOT"
+          pnpm --filter @markorbit/admin start > "$RUNNER_TEMP/workspace-private-read.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/workspace-private-read.pid"
+          for attempt in $(seq 1 40); do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -X POST -H 'content-type: application/json' --data '{}' \
+              "$KNOWLEDGE_URL/api/internal/workspace-private-case-evidence/read" || true)
+            if [ "$status" = "401" ]; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/workspace-private-read.log"
+          exit 1
+      - name: Prove exact Core grant through real Knowledge HTTP, SQLite, CAS and retrieval
+        env:
+          MARKORBIT_REPOSITORY_ROOT: ${{ github.workspace }}
+          MARKORBIT_WORKSPACE_PRIVATE_E2E_ROOT: ${{ runner.temp }}/workspace-private-exact-read
+          MARKORBIT_WORKSPACE_PRIVATE_READ_URL: ${{ env.KNOWLEDGE_URL }}/api/internal/workspace-private-case-evidence/read
+          MARKORBIT_CORE_DIST_ROOT: ${{ github.workspace }}/.e2e/markorbit-core
+        run: >-
+          pnpm --filter @markorbit/admin exec vitest run
+          src/server/__tests__/workspace-file-knowledge.e2e.test.ts
+      - name: Knowledge log
+        if: always()
+        run: cat "$RUNNER_TEMP/workspace-private-read.log" || true
+      - name: Stop Knowledge private-read owner
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/workspace-private-read.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/workspace-private-read.pid")" || true
+          fi

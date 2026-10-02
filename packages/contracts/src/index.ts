@@ -104,6 +104,7 @@ export * from "./ready-package-content-export-v1";
 export * from "./ready-package-content-export-v1-1";
 export * from "./ready-package-v2";
 export * from "./ready-package-content-export-v2";
+export * from "./workspace-private-case-evidence-read-v1";
 export * from "./ready-package-v2-delivery-v1";
 export * from "./core-intake-v1";
 export * from "./vault-binding-v1";

@@ -26,6 +26,7 @@ import {
 import { CaseProducerAccessError } from "./case-producer-auth";
 import { ControlPlaneOwnerAccessError } from "./control-plane-owner-auth";
 import { CoreIntakeTransportError } from "./core-intake-http-transport";
+import { WorkspacePrivateCaseEvidenceReadError } from "./workspace-private-case-evidence-read";
 
 export type ApiErrorEnvelope = {
   error: {
@@ -36,6 +37,12 @@ export type ApiErrorEnvelope = {
 };
 
 export function apiError(error: unknown): NextResponse<ApiErrorEnvelope> {
+  if (error instanceof WorkspacePrivateCaseEvidenceReadError) {
+    return NextResponse.json(
+      { error: { code: error.code, message: error.message } },
+      { status: error.httpStatus },
+    );
+  }
   if (error instanceof ControlPlaneOwnerAccessError) {
     return NextResponse.json(
       { error: { code: error.code, message: error.message } },
