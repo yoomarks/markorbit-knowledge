@@ -9,13 +9,13 @@ describe("source registry worker lease configuration", () => {
   it("accepts an explicit governed long-running lease lifetime", () => {
     expect(
       workerMaxLeaseLifetimeMs({
-        MARKORBIT_WORKER_MAX_LEASE_LIFETIME_MS: "1800000",
+        MARKORBIT_WORKER_MAX_LEASE_LIFETIME_MS: "14400000",
       }),
-    ).toBe(1_800_000);
+    ).toBe(14_400_000);
   });
 
   it("rejects unsafe or malformed lease lifetime overrides", () => {
-    for (const value of ["119999", "3600001", "1.5", "not-a-number"]) {
+    for (const value of ["119999", "14400001", "1.5", "not-a-number"]) {
       expect(() =>
         workerMaxLeaseLifetimeMs({
           MARKORBIT_WORKER_MAX_LEASE_LIFETIME_MS: value,
