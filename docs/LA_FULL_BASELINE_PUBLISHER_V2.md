@@ -19,6 +19,14 @@ Worker lease and the control plane's cross-Source read grant. The request must
 set fullCollectionAuthorized=true with contract_version
 GLOBAL_TRADEMARK_STRUCTURED_ADMISSION_V2 and target the one exact Global Hot
 fact-admission path. The Job schedule must be MANUAL.
+
+For bounded baseline operation, `PUBLISH_DURABLE_REQUEST_BATCH` accepts 1–500
+unique immutable request references. The operator-service dispatch freezes
+every referenced RawArtifact ID into the immutable cross-Source parent grant.
+The streaming publisher reads and verifies each request in order, admits it to
+the same V2 owner route, and finalizes its receipt before advancing. Batch mode
+is V2-only; the existing single-request V1/V2 behavior remains unchanged.
+
 The publisher validates V2 source-total bounds, official pagination and
 source response identity before any Data Engine call. It verifies V2 response
 contract, storage_placement=hot_global, no legal currentness, record counts,

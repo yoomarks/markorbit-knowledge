@@ -143,6 +143,7 @@ async function main(): Promise<void> {
           registerLaosAdapter(registry, sourceAdapter);
           return new LaosWopublishJobArtifactAcquirer(registry, {
             fullIndexEnabled: config.laosFullIndexCollectionEnabled,
+            fullDetailEnabled: config.laosFullDetailCollectionEnabled,
             streamAdapter: sourceAdapter,
           });
         })()

@@ -5,7 +5,7 @@ export const LAOS_BASELINE_INDEX_SCHEMA = "LA_WOPUBLISH_BASELINE_INDEX_V1" as co
 export const LAOS_BASELINE_PAGE_SIZE = 50;
 export const LAOS_BASELINE_MAX_RECORDS = 100_000;
 
-const LA_ID = /^LA\d{3,10}$/u;
+const LA_ID = /^LA(?:M)?\d{3,10}$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
 
 export type LaosBaselineIndexPage = {
