@@ -113,6 +113,31 @@ The Raw Artifacts page contains the Manual Upload control. The browser:
 
 The UI never receives or renders a local CAS filesystem path.
 
+## Workspace-private exact-grant reads
+
+`POST /api/internal/workspace-private-case-evidence/read` is the internal-only read seam for a
+Core-accepted Case binding. It requires the existing internal service authorization and Workspace
+Principal headers plus the accepted binding ID and expected version. Knowledge forwards that exact
+Principal to Core and obtains a current short-lived
+`WORKSPACE_PRIVATE_CASE_EVIDENCE_READ_GRANT`; callers cannot submit or modify the grant. The
+Knowledge owner then independently verifies:
+
+- the Principal, Core Workspace and durable private Knowledge Workspace binding;
+- the exact current ReadyPackage digest, serialized content-export SHA, Staging SHA and raw
+  artifact SHA against the existing CAS/Staging owners;
+- the current exact retrieval document selected by immutable Staging document ID, without the
+  Global Public overlay;
+- every granted source locator against a real chunk in that exact document version.
+
+The result contains only the granted canonical Markdown chunks and their real retrieval chunk IDs.
+The current converter/index does not retain trustworthy PDF page numbers or canonical character
+offsets, so the response reports both as `UNAVAILABLE` and returns `null` values instead of deriving
+or inventing them. It is always `private, no-store` and carries no authority to create Official
+Truth, authorize filing, or perform an external action.
+
+Identity/permission failures are `403`, an absent exact retrieval document is `404`, stale lineage,
+version, hash or locator state is `409`, and an unavailable owner is `503`.
+
 ## Non-goals
 
 Manual Upload V1 does not add:

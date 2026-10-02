@@ -47,7 +47,7 @@ const IDS = {
   workspace: /^wsp_[0-9A-HJKMNP-TV-Z]{26}$/u,
   source: /^src_[0-9A-HJKMNP-TV-Z]{26}$/u,
   conversionRun: /^cvr_[0-9A-HJKMNP-TV-Z]{26}$/u,
-  verification: /^svr_[0-9A-HJKMNP-TV-Z]{26}$/u,
+  verification: /^(?:svr|stv)_[0-9A-HJKMNP-TV-Z]{26}$/u,
   artifact: /^art_[0-9A-HJKMNP-TV-Z]{26}$/u,
   stagingDocument: /^std_[0-9A-HJKMNP-TV-Z]{26}$/u,
 } as const;

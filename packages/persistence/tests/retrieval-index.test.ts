@@ -137,6 +137,18 @@ describe("retrieval index", () => {
     expect(current?.isCurrent).toBe(true);
     expect(historical?.artifactVersion).toBe(1);
     expect(historical?.isCurrent).toBe(false);
+    expect(
+      repository.getCurrentDocumentByStagingDocumentId(
+        workspaceId,
+        "std_00000000000000000000000002",
+      )?.artifactVersion,
+    ).toBe(2);
+    expect(
+      repository.getCurrentDocumentByStagingDocumentId(
+        workspaceId,
+        "std_00000000000000000000000001",
+      ),
+    ).toBeNull();
 
     const currentSearch = repository.search({ workspaceId, query: "renewal maintenance" });
     expect(currentSearch.items.every((item) => item.document.artifactVersion === 2)).toBe(true);
@@ -283,6 +295,9 @@ describe("retrieval index", () => {
     sourcesA.archive(sourceA.id, sourceA.updatedAt);
     expect(repository.search({ workspaceId, query: "private pricing marker" }).total).toBe(0);
     expect(repository.getDocument(workspaceId, documentId)).toBeNull();
+    expect(
+      repository.getCurrentDocumentByStagingDocumentId(workspaceId, "std_workspace_a"),
+    ).toBeNull();
     expect(repository.getDocument(workspaceId, documentId, 1)).not.toBeNull();
     expect(
       repository.search({ workspaceId: workspaceBId, query: "private pricing marker" }).total,
@@ -293,6 +308,9 @@ describe("retrieval index", () => {
       repository.search({ workspaceId: workspaceBId, query: "private pricing marker" }).total,
     ).toBe(0);
     expect(repository.getDocument(workspaceBId, "doc-b-pricing")).toBeNull();
+    expect(
+      repository.getCurrentDocumentByStagingDocumentId(workspaceBId, "std_workspace_b"),
+    ).toBeNull();
     expect(
       repository.search({ workspaceId: DEFAULT_WORKSPACE.id, query: "private pricing marker" })
         .total,

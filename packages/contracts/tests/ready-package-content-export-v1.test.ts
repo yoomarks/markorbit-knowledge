@@ -56,6 +56,18 @@ describe("ReadyPackage Content Export V1", () => {
     expect(serializeReadyPackageContentExportV1(reordered)).toBe(first);
   });
 
+  it("accepts the canonical Staging Verification evidence identity", () => {
+    expect(
+      isReadyPackageContentExportV1({
+        ...fixture(),
+        provenance: {
+          ...fixture().provenance,
+          verificationId: "stv_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        },
+      }),
+    ).toBe(true);
+  });
+
   it("rejects mutable delivery state and unexpected fields", () => {
     expect(isReadyPackageContentExportV1({ ...fixture(), status: "HANDED_OFF" })).toBe(false);
   });
