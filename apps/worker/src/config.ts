@@ -42,6 +42,7 @@ export type WorkerProcessConfig = {
   dataEngineFactAdmissionKey?: string;
   globalTrademarkFullBaselinePublisherEnabled: boolean;
   laosFullIndexCollectionEnabled: boolean;
+  laosFullDetailCollectionEnabled: boolean;
   laosRequestIntervalMs: number;
   acquisitionLearningProfileId?: string;
   requireEgressProxy: boolean;
@@ -343,6 +344,14 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
   if (laosFullIndexCollectionEnabled && provider !== "laos-wopublish") {
     throw new Error("LA full-index collection requires the laos-wopublish source Worker");
   }
+  const laosFullDetailCollectionEnabled = enabled(
+    env,
+    "MARKORBIT_LA_FULL_DETAIL_COLLECTION_ENABLED",
+    false,
+  );
+  if (laosFullDetailCollectionEnabled && provider !== "laos-wopublish") {
+    throw new Error("LA full-detail collection requires the laos-wopublish source Worker");
+  }
   const laosRequestIntervalMs = integer(
     env,
     "MARKORBIT_LA_MIN_REQUEST_INTERVAL_MS",
@@ -440,7 +449,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
       "MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS",
       12 * 60_000,
       30_000,
-      14 * 60_000,
+      4 * 60 * 60_000,
     ),
     artifactIngestionConcurrency: integer(
       env,
@@ -464,6 +473,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
     ...(factAdmissionKey ? { dataEngineFactAdmissionKey: factAdmissionKey } : {}),
     globalTrademarkFullBaselinePublisherEnabled: fullBaselinePublisherEnabled,
     laosFullIndexCollectionEnabled,
+    laosFullDetailCollectionEnabled,
     laosRequestIntervalMs,
     ...(acquisitionLearningProfileId ? { acquisitionLearningProfileId } : {}),
     requireEgressProxy,

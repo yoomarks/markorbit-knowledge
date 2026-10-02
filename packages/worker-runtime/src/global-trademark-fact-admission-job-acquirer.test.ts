@@ -17,6 +17,7 @@ import {
 } from "./global-trademark-fact-admission-job-acquirer";
 
 const ARTIFACT_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAV";
+const ARTIFACT_ID_2 = "art_01ARZ3NDEKTSV4RRFFQ69G5FAW";
 const encoder = new TextEncoder();
 function requestArtifact(): AcquiredCollectionArtifact {
   return {
@@ -52,9 +53,9 @@ function requestArtifact(): AcquiredCollectionArtifact {
     ),
   };
 }
-function ref(artifact: AcquiredCollectionArtifact) {
+function ref(artifact: AcquiredCollectionArtifact, artifactId = ARTIFACT_ID) {
   return {
-    artifactId: ARTIFACT_ID,
+    artifactId,
     canonicalUri: artifact.canonicalUri!,
     sha256: createHash("sha256").update(artifact.content).digest("hex"),
     sizeBytes: artifact.content.byteLength,
@@ -321,5 +322,102 @@ describe("default-off V2 full-index fact admission publisher", () => {
       }).acquire(manualContext(ref(fakePilot))),
     ).rejects.toMatchObject({ code: "GLOBAL_TRADEMARK_PUBLISH_JOB_CONFIG_INVALID" });
     expect(client.calls).toEqual([]);
+  });
+});
+
+describe("bounded streaming V2 durable-request publisher", () => {
+  function secondFullIndexRequest(): AcquiredCollectionArtifact {
+    const request = fullIndexRequest();
+    const value = JSON.parse(new TextDecoder().decode(request.content));
+    value.evidenceCanonicalUri = "la-dipo://wopublish/trademarks/list/page/2/redacted-response";
+    value.payload.page_index = 2;
+    value.payload.evidence_canonical_uri = value.evidenceCanonicalUri;
+    value.payload.records = value.payload.records.map(
+      (record: Record<string, unknown>, index: number) => ({
+        ...record,
+        source_record_id: "LA" + String(55200 + index),
+      }),
+    );
+    return {
+      ...request,
+      canonicalUri: "la-dipo://wopublish/trademarks/list/page/2/fact-admission-request",
+      content: encoder.encode(JSON.stringify(value)),
+    };
+  }
+  function batchContext(references: Array<ReturnType<typeof ref>>): ArtifactBackedExecutionContext {
+    const base = manualContext(references[0]!);
+    return {
+      ...base,
+      job: {
+        ...base.job,
+        sourceSnapshot: {
+          ...base.job.sourceSnapshot,
+          connectorConfig: {
+            intent: "PUBLISH_DURABLE_REQUEST_BATCH",
+            requestArtifactRefs: references,
+          },
+        },
+      },
+    } as unknown as ArtifactBackedExecutionContext;
+  }
+
+  it("publishes 1..500 exact V2 requests sequentially and parents every receipt", async () => {
+    const first = fullIndexRequest();
+    const second = secondFullIndexRequest();
+    const references = [ref(first), ref(second, ARTIFACT_ID_2)];
+    const artifacts = new Map([
+      [ARTIFACT_ID, first],
+      [ARTIFACT_ID_2, second],
+    ]);
+    const calls: number[] = [];
+    const client: FactAdmissionClient = {
+      async post(_path, payload) {
+        const value = payload as Record<string, unknown>;
+        calls.push(value.page_index as number);
+        return {
+          ...fullReceipt,
+          page_index: value.page_index,
+          source_total: value.source_total,
+          source_response_sha256: value.source_response_sha256,
+          evidence_sha256: value.evidence_sha256,
+          record_count: (value.records as unknown[]).length,
+          inserted_count: (value.records as unknown[]).length,
+        };
+      },
+    };
+    const producer = new GlobalTrademarkFactAdmissionJobAcquirer({
+      reader: {
+        async read(id) {
+          const artifact = artifacts.get(id);
+          if (!artifact) throw Error("Unexpected artifact " + id);
+          return artifact;
+        },
+      },
+      client,
+      fullBaselineEnabled: true,
+    });
+    const frozen = batchContext(references);
+    expect(producer.isStreamingJob(frozen)).toBe(true);
+    await expect(producer.acquire(frozen)).rejects.toMatchObject({
+      code: "GLOBAL_TRADEMARK_PUBLISH_JOB_CONFIG_INVALID",
+    });
+    const batches = [];
+    for await (const batch of producer.acquireBatches(frozen)) batches.push(batch);
+    expect(calls).toEqual([1, 2]);
+    expect(batches).toHaveLength(2);
+    expect(batches[0]![0]?.parentArtifactIds).toEqual([ARTIFACT_ID]);
+    expect(batches[1]![0]?.parentArtifactIds).toEqual([ARTIFACT_ID_2]);
+  });
+
+  it("rejects duplicate or oversized batch references before reading durable bytes", () => {
+    const request = fullIndexRequest();
+    const reference = ref(request);
+    const duplicate = batchContext([reference, reference]);
+    const producer = new GlobalTrademarkFactAdmissionJobAcquirer({
+      reader: { read: async () => request },
+      client: new FakeClient(fullReceipt),
+      fullBaselineEnabled: true,
+    });
+    expect(() => producer.isStreamingJob(duplicate)).toThrowError(/unique RawArtifact ids/u);
   });
 });

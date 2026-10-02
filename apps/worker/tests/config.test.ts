@@ -266,8 +266,17 @@ describe("loadWorkerProcessConfig", () => {
     expect(() =>
       loadWorkerProcessConfig(env({ MARKORBIT_WORKER_KEEPALIVE_INTERVAL_MS: "10" })),
     ).toThrow(/KEEPALIVE/);
+    expect(
+      loadWorkerProcessConfig({
+        ...env(),
+        MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: String(4 * 60 * 60_000),
+      }).maxCollectionRuntimeMs,
+    ).toBe(4 * 60 * 60_000);
     expect(() =>
-      loadWorkerProcessConfig(env({ MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: "900000" })),
+      loadWorkerProcessConfig({
+        ...env(),
+        MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS: String(4 * 60 * 60_000 + 1),
+      }),
     ).toThrow(/MAX_COLLECTION_RUNTIME/);
     expect(
       loadWorkerProcessConfig(env({ MARKORBIT_ARTIFACT_INGESTION_CONCURRENCY: "8" }))

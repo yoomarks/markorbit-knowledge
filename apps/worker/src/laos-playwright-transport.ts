@@ -15,6 +15,10 @@ import {
 
 const fail = (code: string, message: string) =>
   new CollectionAcquisitionError(code, message, false);
+const WICKET_AJAX_MAX_ATTEMPTS = 3;
+
+const isPlaywrightTimeout = (error: unknown): boolean =>
+  error instanceof Error && error.name === "TimeoutError";
 const target = (input: string): URL => {
   const url = new URL(input);
   if (
@@ -22,7 +26,7 @@ const target = (input: string): URL => {
     url.username ||
     url.password ||
     url.hash ||
-    !/^\/wopublish-search\/(?:public\/(?:trademarks|detail\/trademarks)|service\/trademarks\/application\/LA\d{3,10}\/logo)(?:;jsessionid=[A-Za-z0-9]+)?$/.test(
+    !/^\/wopublish-search\/(?:public\/(?:trademarks|detail\/trademarks)|service\/trademarks\/application\/LA(?:M)?\d{3,10}\/logo)(?:;jsessionid=[A-Za-z0-9]+)?$/.test(
       url.pathname,
     )
   ) {
@@ -88,10 +92,6 @@ export class LaosPlaywrightTransport implements LaosHttpTransport {
         );
       }
       const expected = url.toString();
-      const wait = page.waitForResponse(
-        (res) => res.request().method() === "GET" && res.url() === expected,
-        { timeout: 30_000 },
-      );
       const browserHeaders = Object.fromEntries(
         Object.entries(input.headers).filter(([key]) =>
           ["accept", "wicket-ajax", "wicket-ajax-baseurl", "x-requested-with"].includes(
@@ -99,19 +99,42 @@ export class LaosPlaywrightTransport implements LaosHttpTransport {
           ),
         ),
       );
-      await page.evaluate(
-        async ({ address, headers }) => {
-          const result = await fetch(address, {
-            method: "GET",
-            headers,
-            credentials: "same-origin",
-            redirect: "manual",
-          });
-          await result.arrayBuffer();
-        },
-        { address: expected, headers: browserHeaders },
-      );
-      response = await wait;
+      response = null;
+      for (let attempt = 1; attempt <= WICKET_AJAX_MAX_ATTEMPTS; attempt += 1) {
+        try {
+          const [responseResult, fetchResult] = await Promise.allSettled([
+            page.waitForResponse(
+              (res) => res.request().method() === "GET" && res.url() === expected,
+              { timeout: 30_000 },
+            ),
+            page.evaluate(
+              async ({ address, headers }) => {
+                const result = await fetch(address, {
+                  method: "GET",
+                  headers,
+                  credentials: "same-origin",
+                  redirect: "manual",
+                });
+                await result.arrayBuffer();
+              },
+              { address: expected, headers: browserHeaders },
+            ),
+          ]);
+          if (fetchResult.status === "rejected") throw fetchResult.reason;
+          if (responseResult.status === "rejected") throw responseResult.reason;
+          response = responseResult.value;
+          break;
+        } catch (error) {
+          if (!isPlaywrightTimeout(error)) throw error;
+          if (attempt === WICKET_AJAX_MAX_ATTEMPTS) {
+            throw new CollectionAcquisitionError(
+              "LA_BROWSER_RESPONSE_TIMEOUT",
+              "Official WoPublish AJAX response timed out after bounded retries",
+              true,
+            );
+          }
+        }
+      }
     } else if (url.pathname.endsWith("/logo")) {
       const expected = url.toString();
       const wait = page.waitForResponse(
