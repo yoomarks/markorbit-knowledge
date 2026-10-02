@@ -682,21 +682,31 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
             "Index next callback escaped the official Wicket route",
           );
         }
-        response = await this.get(transport, next.toString(), {
+        const continuationHeaders = {
           accept: "text/xml,application/xml,*/*;q=0.8",
           "user-agent": "MarkOrbitKnowledge-LA-Index/1.0",
           "wicket-ajax": "true",
           "wicket-ajax-baseurl": base,
           "x-requested-with": "XMLHttpRequest",
           referer: LAOS_LIST_URL,
-        });
-        if (
-          !/^(?:text|application)\/xml\b/i.test(response.contentType) ||
-          !/^\s*(?:<\?xml[^>]*>\s*)?<ajax-response\b/i.test(decoder.decode(response.body))
-        ) {
-          throw failure("LA_INDEX_AJAX_DRIFT", "Index continuation was not Wicket XML");
+        };
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          response = await this.get(transport, next.toString(), continuationHeaders);
+          if (
+            !/^(?:text|application)\/xml\b/i.test(response.contentType) ||
+            !/^\s*(?:<\?xml[^>]*>\s*)?<ajax-response\b/i.test(decoder.decode(response.body))
+          ) {
+            throw failure("LA_INDEX_AJAX_DRIFT", "Index continuation was not Wicket XML");
+          }
+          parsed = parseLaosList(response.body);
+          const remaining = total - seen.size;
+          const incompleteNonFinalPage =
+            remaining > 50 &&
+            parsed.ids.length < 50 &&
+            (parsed.total === undefined || parsed.total === total) &&
+            !parsed.ids.some((id) => seen.has(id));
+          if (!incompleteNonFinalPage || attempt === 3) break;
         }
-        parsed = parseLaosList(response.body);
         base = parsed.baseUrl ?? base;
       }
       throw failure("LA_INDEX_INCOMPLETE", "Index source ID coverage is incomplete");
