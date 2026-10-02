@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   launch: vi.fn(),
-  waitForResponse: vi.fn(),
   evaluate: vi.fn(),
 }));
 
@@ -28,16 +27,8 @@ const timeout = () => Object.assign(new Error("response timeout"), { name: "Time
 describe("LaosPlaywrightTransport", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    const response = {
-      request: () => ({ method: () => "GET" }),
-      url: () => request.url,
-      body: async () => Buffer.from("ok"),
-      headerValue: async (name: string) => (name === "content-type" ? "text/xml" : null),
-      status: () => 200,
-    };
     const page = {
       url: () => "https://online.dip.gov.la/wopublish-search/public/trademarks;jsessionid=ABC",
-      waitForResponse: mocks.waitForResponse,
       evaluate: mocks.evaluate,
     };
     const context = {
@@ -49,40 +40,45 @@ describe("LaosPlaywrightTransport", () => {
       newContext: vi.fn().mockResolvedValue(context),
       close: vi.fn().mockResolvedValue(undefined),
     });
-    mocks.evaluate.mockResolvedValue(undefined);
-    mocks.waitForResponse.mockResolvedValue(response);
+    mocks.evaluate.mockResolvedValue({
+      status: 200,
+      url: request.url,
+      contentType: "text/xml",
+      retryAfter: null,
+      bodyBase64: Buffer.from("ok").toString("base64"),
+    });
   });
 
-  it("retries a bounded transient Wicket response timeout", async () => {
-    mocks.waitForResponse.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(timeout());
-
+  it("returns the exact in-page Wicket fetch result without a second stateful request", async () => {
     const transport = new LaosPlaywrightTransport("browser.exe");
-    await expect(transport.get(request)).resolves.toMatchObject({
+    const result = await transport.get(request);
+    expect(result).toMatchObject({
       status: 200,
       contentType: "text/xml",
     });
-    expect(mocks.waitForResponse).toHaveBeenCalledTimes(3);
-    expect(mocks.evaluate).toHaveBeenCalledTimes(3);
+    expect(new TextDecoder().decode(result.body)).toBe("ok");
+    expect(mocks.evaluate).toHaveBeenCalledTimes(1);
   });
 
-  it("fails with a retryable governed error after the bounded attempts", async () => {
-    mocks.waitForResponse.mockRejectedValue(timeout());
+  it("fails closed without replay when a Wicket response outcome is uncertain", async () => {
+    mocks.evaluate.mockRejectedValue(timeout());
 
     const transport = new LaosPlaywrightTransport("browser.exe");
     await expect(transport.get(request)).rejects.toMatchObject({
       code: "LA_BROWSER_RESPONSE_TIMEOUT",
-      retryable: true,
+      retryable: false,
     });
-    expect(mocks.waitForResponse).toHaveBeenCalledTimes(3);
-    expect(mocks.evaluate).toHaveBeenCalledTimes(3);
+    expect(mocks.evaluate).toHaveBeenCalledTimes(1);
   });
 
   it("does not retry a non-timeout browser failure", async () => {
-    mocks.waitForResponse.mockRejectedValue(new Error("browser closed"));
+    mocks.evaluate.mockRejectedValue(new Error("browser closed"));
 
     const transport = new LaosPlaywrightTransport("browser.exe");
-    await expect(transport.get(request)).rejects.toThrow("browser closed");
-    expect(mocks.waitForResponse).toHaveBeenCalledTimes(1);
+    await expect(transport.get(request)).rejects.toMatchObject({
+      code: "LA_BROWSER_AJAX_UNCERTAIN",
+      retryable: false,
+    });
     expect(mocks.evaluate).toHaveBeenCalledTimes(1);
   });
 });

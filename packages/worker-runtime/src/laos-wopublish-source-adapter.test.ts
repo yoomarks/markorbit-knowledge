@@ -41,6 +41,13 @@ const second =
   '<?xml version="1.0"?><ajax-response><component id="table"><![CDATA[' +
   links(secondIds) +
   "]]></component></ajax-response>";
+const withRange = (xml: string, start: number, end: number, total: number) =>
+  xml.replace(
+    '<component id="table"><![CDATA[',
+    '<component id="table"><![CDATA[<li class="navigatorLabel results-display-text"><div>' +
+      `${start} to ${end} of ${total}` +
+      "</div></li>",
+  );
 const field = (label: string, value: string) =>
   '<div class="row"><div class="product-form-label">' +
   label +
@@ -89,6 +96,8 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     const result = parseLaosList(text(first));
     expect(result.ids).toEqual(firstIds);
     expect(result.total).toBe(73531);
+    expect(result.rangeStart).toBe(1);
+    expect(result.rangeEnd).toBe(50);
     expect(result.nextUrl).toContain("navigator-next");
     expect(result.nextUrl).toContain("jsessionid");
   });
@@ -250,7 +259,7 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     const tinyFirst = first.replace("73531", "125");
     const next3 =
       "./trademarks?0-2.IBehaviorListener.0-body-searchResultPanel-resultWrapper-dataTable-topToolbars-toolbars-1-span-navigator-next";
-    const secondWithNext = second.replace(
+    const secondWithNext = withRange(second, 51, 100, 125).replace(
       "</ajax-response>",
       '<evaluate><![CDATA[Wicket.Ajax.ajax({"u":"' +
         next3 +
@@ -259,6 +268,7 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     const finalIds = ids(54200).slice(0, 25);
     const finalXml =
       '<?xml version="1.0"?><ajax-response><component><![CDATA[' +
+      '<li class="navigatorLabel results-display-text"><div>101 to 125 of 125</div></li>' +
       links(finalIds) +
       "]]></component></ajax-response>";
     const { subject, session } = adapter([
@@ -284,16 +294,20 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     const tinyFirst = first.replace("73531", "150");
     const next3 =
       "./trademarks?0-2.IBehaviorListener.0-body-searchResultPanel-resultWrapper-dataTable-topToolbars-toolbars-1-span-navigator-next";
-    const secondWithNext = second.replace(
+    const secondWithNext = withRange(second, 51, 100, 150).replace(
       "</ajax-response>",
       '<evaluate><![CDATA[Wicket.Ajax.ajax({"u":"' +
         next3 +
         '","e":"click","c":"id15"});]]></evaluate></ajax-response>',
     );
-    const incompleteSecond = second.replace(links(secondIds), links(secondIds.slice(0, 38)));
+    const incompleteSecond = withRange(second, 51, 100, 150).replace(
+      links(secondIds),
+      links(secondIds.slice(0, 38)),
+    );
     const finalIds = ids(54200);
     const finalXml =
       '<?xml version="1.0"?><ajax-response><component><![CDATA[' +
+      '<li class="navigatorLabel results-display-text"><div>101 to 150 of 150</div></li>' +
       links(finalIds) +
       "]]></component></ajax-response>";
     const { subject, session } = adapter([
@@ -310,9 +324,31 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     expect(session.requests[1]?.url).toBe(session.requests[2]?.url);
     expect(session.requests[1]?.headers).toEqual(session.requests[2]?.headers);
   });
+  it("rejects a replayed Wicket callback that advances to a different official range", async () => {
+    const tinyFirst = first.replace("73531", "150");
+    const incompleteSecond = withRange(second, 51, 100, 150).replace(
+      links(secondIds),
+      links(secondIds.slice(0, 38)),
+    );
+    const advanced = withRange(second.replace(links(secondIds), links(ids(54200))), 101, 150, 150);
+    const { subject, session } = adapter([
+      response(tinyFirst, "text/html"),
+      response(incompleteSecond, "text/xml"),
+      response(advanced, "text/xml"),
+    ]);
+    await expect(async () => {
+      for await (const page of subject.streamFullIndex({ maxPages: 3 })) {
+        expect(page.page).toBe(1);
+      }
+    }).rejects.toMatchObject({ code: "LA_INDEX_PAGE_DRIFT" });
+    expect(session.requests).toHaveLength(3);
+  });
   it("fails closed after bounded incomplete-page retries or inconsistent totals", async () => {
     const tinyFirst = first.replace("73531", "150");
-    const incompleteSecond = second.replace(links(secondIds), links(secondIds.slice(0, 38)));
+    const incompleteSecond = withRange(second, 51, 100, 150).replace(
+      links(secondIds),
+      links(secondIds.slice(0, 38)),
+    );
     const persistent = adapter([
       response(tinyFirst, "text/html"),
       response(incompleteSecond, "text/xml"),
@@ -329,9 +365,11 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
       new Set([persistent.session.requests[1]!.url]),
     );
 
-    const inconsistentSecond = incompleteSecond.replace(
-      '<component id="table"><![CDATA[',
-      '<component id="table"><![CDATA[<li class="navigatorLabel results-display-text"><div>51 to 88 of 149</div></li>',
+    const inconsistentSecond = withRange(
+      second.replace(links(secondIds), links(secondIds.slice(0, 38))),
+      51,
+      88,
+      149,
     );
     const inconsistent = adapter([
       response(tinyFirst, "text/html"),
@@ -350,7 +388,7 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     const secondDigest = laosSha256(text(secondIds.join("\n")));
     const { subject, session } = adapter([
       response(tinyFirst, "text/html"),
-      response(second, "text/xml"),
+      response(withRange(second, 51, 100, 100), "text/xml"),
     ]);
     const emitted = [];
     for await (const page of subject.streamFullIndex({
@@ -381,7 +419,7 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     expect(over.session.requests).toHaveLength(1);
     const repeated = adapter([
       response(first.replace("73531", "100"), "text/html"),
-      response(second.replaceAll("LA541", "LA540"), "text/xml"),
+      response(withRange(second.replaceAll("LA541", "LA540"), 51, 100, 100), "text/xml"),
     ]);
     await expect(async () => {
       for await (const page of repeated.subject.streamFullIndex({ maxPages: 2 })) {

@@ -172,6 +172,8 @@ export type LaosObservation = LaosPage | LaosDetail;
 export function parseLaosList(body: Uint8Array): {
   ids: string[];
   total?: number;
+  rangeStart?: number;
+  rangeEnd?: number;
   nextUrl?: string;
   baseUrl?: string;
 } {
@@ -211,13 +213,26 @@ export function parseLaosList(body: Uint8Array): {
     /class=["'][^"']*\bnavigatorLabel\b[^"']*["'][^>]*>[\s\S]*?<div[^>]*>([^<]*)<\/div>/i.exec(
       html,
     );
-  const number = label?.[1]
+  const numbers = label?.[1]
     ?.match(/\d[\d,]*/g)
-    ?.at(-1)
-    ?.replaceAll(",", "");
-  const total = number === undefined ? undefined : Number(number);
+    ?.map((number) => Number(number.replaceAll(",", "")));
+  const rangeStart = numbers?.at(-3);
+  const rangeEnd = numbers?.at(-2);
+  const total = numbers?.at(-1);
   if (total !== undefined && (!Number.isSafeInteger(total) || total < ids.length)) {
     throw failure("LA_TOTAL_DRIFT", "Source record count is inconsistent");
+  }
+  if (
+    (rangeStart !== undefined || rangeEnd !== undefined) &&
+    (rangeStart === undefined ||
+      rangeEnd === undefined ||
+      !Number.isSafeInteger(rangeStart) ||
+      !Number.isSafeInteger(rangeEnd) ||
+      rangeStart < 1 ||
+      rangeEnd < rangeStart ||
+      (total !== undefined && rangeEnd > total))
+  ) {
+    throw failure("LA_PAGE_RANGE_DRIFT", "Source page range is inconsistent");
   }
   let nextUrl: string | undefined;
   for (const match of html.matchAll(/Wicket\.Ajax\.ajax\((\{[^)]{1,1500}\})\)/g)) {
@@ -241,6 +256,8 @@ export function parseLaosList(body: Uint8Array): {
   return {
     ids,
     ...(total === undefined ? {} : { total }),
+    ...(rangeStart === undefined ? {} : { rangeStart }),
+    ...(rangeEnd === undefined ? {} : { rangeEnd }),
     ...(nextUrl ? { nextUrl } : {}),
     ...(baseUrl ? { baseUrl } : {}),
   };
@@ -627,14 +644,18 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
       let base = parsed.baseUrl ?? "public/trademarks?0";
       const requiredPages = Math.ceil(total / 50);
       for (let page = 1; page <= requiredPages; page++) {
+        const expectedRangeStart = (page - 1) * 50 + 1;
+        const expectedRangeEnd = Math.min(page * 50, total);
         if (
           parsed.ids.length !== Math.min(50, total - seen.size) ||
           (parsed.total !== undefined && parsed.total !== total) ||
+          parsed.rangeStart !== expectedRangeStart ||
+          parsed.rangeEnd !== expectedRangeEnd ||
           parsed.ids.some((id) => seen.has(id))
         ) {
           throw failure(
             "LA_INDEX_PAGE_DRIFT",
-            `Index page ${page} drifted: count=${parsed.ids.length}, expected=${Math.min(50, total - seen.size)}, total=${String(parsed.total)}, initialTotal=${total}`,
+            `Index page ${page} drifted: count=${parsed.ids.length}, expected=${Math.min(50, total - seen.size)}, range=${String(parsed.rangeStart)}-${String(parsed.rangeEnd)}, expectedRange=${expectedRangeStart}-${expectedRangeEnd}, total=${String(parsed.total)}, initialTotal=${total}`,
           );
         }
         const pageHash = laosSha256(encoder.encode(parsed.ids.join("\n")));
@@ -700,10 +721,15 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
           }
           parsed = parseLaosList(response.body);
           const remaining = total - seen.size;
+          const nextPage = page + 1;
+          const expectedNextStart = page * 50 + 1;
+          const expectedNextEnd = Math.min(nextPage * 50, total);
           const incompleteNonFinalPage =
             remaining > 50 &&
             parsed.ids.length < 50 &&
             (parsed.total === undefined || parsed.total === total) &&
+            parsed.rangeStart === expectedNextStart &&
+            parsed.rangeEnd === expectedNextEnd &&
             !parsed.ids.some((id) => seen.has(id));
           if (!incompleteNonFinalPage || attempt === 3) break;
         }

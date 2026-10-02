@@ -15,7 +15,6 @@ import {
 
 const fail = (code: string, message: string) =>
   new CollectionAcquisitionError(code, message, false);
-const WICKET_AJAX_MAX_ATTEMPTS = 3;
 
 const isPlaywrightTimeout = (error: unknown): boolean =>
   error instanceof Error && error.name === "TimeoutError";
@@ -99,41 +98,71 @@ export class LaosPlaywrightTransport implements LaosHttpTransport {
           ),
         ),
       );
-      response = null;
-      for (let attempt = 1; attempt <= WICKET_AJAX_MAX_ATTEMPTS; attempt += 1) {
-        try {
-          const [responseResult, fetchResult] = await Promise.allSettled([
-            page.waitForResponse(
-              (res) => res.request().method() === "GET" && res.url() === expected,
-              { timeout: 30_000 },
-            ),
-            page.evaluate(
-              async ({ address, headers }) => {
-                const result = await fetch(address, {
-                  method: "GET",
-                  headers,
-                  credentials: "same-origin",
-                  redirect: "manual",
-                });
-                await result.arrayBuffer();
-              },
-              { address: expected, headers: browserHeaders },
-            ),
-          ]);
-          if (fetchResult.status === "rejected") throw fetchResult.reason;
-          if (responseResult.status === "rejected") throw responseResult.reason;
-          response = responseResult.value;
-          break;
-        } catch (error) {
-          if (!isPlaywrightTimeout(error)) throw error;
-          if (attempt === WICKET_AJAX_MAX_ATTEMPTS) {
-            throw new CollectionAcquisitionError(
-              "LA_BROWSER_RESPONSE_TIMEOUT",
-              "Official WoPublish AJAX response timed out after bounded retries",
-              true,
-            );
-          }
+      try {
+        const result = await page.evaluate(
+          async ({ address, headers }) => {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 30_000);
+            try {
+              const response = await fetch(address, {
+                method: "GET",
+                headers,
+                credentials: "same-origin",
+                redirect: "manual",
+                signal: controller.signal,
+              });
+              const bytes = new Uint8Array(await response.arrayBuffer());
+              let binary = "";
+              for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+                binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+              }
+              return {
+                status: response.status,
+                url: response.url,
+                contentType: response.headers.get("content-type"),
+                retryAfter: response.headers.get("retry-after"),
+                bodyBase64: btoa(binary),
+              };
+            } finally {
+              clearTimeout(timeout);
+            }
+          },
+          { address: expected, headers: browserHeaders },
+        );
+        if (new URL(result.url).origin !== LAOS_ORIGIN) {
+          throw fail(
+            "LA_BROWSER_SOURCE_REDIRECT",
+            "Browser did not return the official HTTPS source",
+          );
         }
+        const body = new Uint8Array(Buffer.from(result.bodyBase64, "base64"));
+        if (body.byteLength > input.maxBytes) {
+          throw fail(
+            "LA_RESPONSE_SIZE_INVALID",
+            "WoPublish response exceeded its governed byte limit",
+          );
+        }
+        return {
+          status: result.status,
+          body,
+          contentType: result.contentType ?? "application/octet-stream",
+          observedAt: new Date().toISOString(),
+          ...(result.retryAfter ? { headers: { "retry-after": result.retryAfter } } : {}),
+        };
+      } catch (error) {
+        if (error instanceof CollectionAcquisitionError) throw error;
+        if (isPlaywrightTimeout(error)) {
+          throw new CollectionAcquisitionError(
+            "LA_BROWSER_RESPONSE_TIMEOUT",
+            "Official WoPublish AJAX response outcome is uncertain after timeout",
+            false,
+          );
+        }
+        throw new CollectionAcquisitionError(
+          "LA_BROWSER_AJAX_UNCERTAIN",
+          "Official WoPublish AJAX response outcome is uncertain",
+          false,
+        );
       }
     } else if (url.pathname.endsWith("/logo")) {
       const expected = url.toString();
