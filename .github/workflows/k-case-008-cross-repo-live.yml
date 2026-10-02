@@ -30,7 +30,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  CORE_REF: e44470ea8bf08faf8a2be9ac8c7b513317a45ea9
+  CORE_REF: 887c85ece1d69d12c06699cde08b73b023a1cb9c
   MARKREG_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/markorbit_kcase008
   MARKREG_MIGRATION_NAMESPACE: markreg_kcase008
   MO_INTERNAL_SERVICE_SECRET: ${{ format('markorbit-kcase-ephemeral-{0}-acceptance-secret', github.run_id) }}
