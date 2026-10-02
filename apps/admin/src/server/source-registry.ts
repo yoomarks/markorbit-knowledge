@@ -160,9 +160,9 @@ export function workerMaxLeaseLifetimeMs(
   const configured = env.MARKORBIT_WORKER_MAX_LEASE_LIFETIME_MS?.trim();
   if (!configured) return undefined;
   const parsed = Number(configured);
-  if (!Number.isSafeInteger(parsed) || parsed < 120_000 || parsed > 3_600_000) {
+  if (!Number.isSafeInteger(parsed) || parsed < 120_000 || parsed > 14_400_000) {
     throw new RegistryValidationError(
-      "MARKORBIT_WORKER_MAX_LEASE_LIFETIME_MS must be an integer from 120000 to 3600000 milliseconds",
+      "MARKORBIT_WORKER_MAX_LEASE_LIFETIME_MS must be an integer from 120000 to 14400000 milliseconds",
     );
   }
   return parsed;
