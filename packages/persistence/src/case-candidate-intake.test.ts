@@ -177,6 +177,20 @@ describe("SqliteCaseCandidateIntakeRepository", () => {
         .listAllForWorkspace("workspace:other", 1)
         .map((item) => item.candidate.candidateId),
     ).toEqual(["case-candidate_02"]);
+    expect(
+      repository
+        .listPendingForWorkspace("workspace:test", 1)
+        .map((item) => item.candidate.candidateId),
+    ).toEqual(["case-candidate_01"]);
+    expect(
+      repository
+        .listPendingForWorkspace("workspace:other", 1)
+        .map((item) => item.candidate.candidateId),
+    ).toEqual(["case-candidate_02"]);
+    expect(
+      repository.getResultForWorkspace("case-candidate_01", "workspace:test")?.candidate,
+    ).toEqual(repository.getCandidate("case-candidate_01"));
+    expect(repository.getResultForWorkspace("case-candidate_01", "workspace:other")).toBeNull();
   });
 
   it("records collection completion durably and makes completion immutable", () => {

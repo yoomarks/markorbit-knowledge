@@ -313,6 +313,25 @@ export class SqliteCaseCandidateIntakeRepository {
     return intake;
   }
 
+  getResultForWorkspace(
+    candidateId: string,
+    workspaceId: string,
+  ): CaseCandidateIntakeResultV1 | null {
+    const normalizedWorkspaceId = workspaceId.trim();
+    if (!normalizedWorkspaceId) {
+      throw new RegistryValidationError("workspaceId is required");
+    }
+    const candidate = this.getCandidate(candidateId);
+    if (
+      !candidate ||
+      candidate.accessScope.sourceWorkspaceId.trim().toLowerCase() !==
+        normalizedWorkspaceId.toLowerCase()
+    ) {
+      return null;
+    }
+    return { candidate, intake: this.requireIntake(candidateId) };
+  }
+
   listPending(limit = 25): CaseCandidateIntakeResultV1[] {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
       throw new RegistryValidationError("limit must be an integer between 1 and 100");
@@ -327,6 +346,29 @@ export class SqliteCaseCandidateIntakeRepository {
           LIMIT ?`,
       )
       .all(limit) as { candidate_id: string }[];
+    return rows.map((row) => this.requireResult(row.candidate_id));
+  }
+
+  listPendingForWorkspace(workspaceId: string, limit = 25): CaseCandidateIntakeResultV1[] {
+    const normalizedWorkspaceId = workspaceId.trim();
+    if (!normalizedWorkspaceId) {
+      throw new RegistryValidationError("workspaceId is required");
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new RegistryValidationError("limit must be an integer between 1 and 100");
+    }
+    const rows = this.database
+      .prepare(
+        `SELECT ticket.candidate_id
+           FROM case_candidate_collection_tickets ticket
+           JOIN case_candidates candidate ON candidate.candidate_id = ticket.candidate_id
+          WHERE ticket.collection_state = 'PENDING'
+            AND ticket.collected_at IS NULL
+            AND lower(json_extract(candidate.document_json, '$.accessScope.sourceWorkspaceId')) = lower(?)
+          ORDER BY ticket.updated_at ASC, ticket.candidate_id ASC
+          LIMIT ?`,
+      )
+      .all(normalizedWorkspaceId, limit) as { candidate_id: string }[];
     return rows.map((row) => this.requireResult(row.candidate_id));
   }
 

@@ -8,6 +8,7 @@ import {
 import { getCaseCandidateIntakeRepository } from "@/server/case-candidate-intake";
 import {
   authenticateCaseProducerRequest,
+  authorizeCaseProducerMutation,
   authorizeCaseProducerWorkspace,
 } from "@/server/case-producer-auth";
 import { createRequestBoundMarkRegCaseSourceResolver } from "@/server/markreg-case-source-resolver";
@@ -65,6 +66,7 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
     authorizeCaseProducerWorkspace(principal, candidate);
+    authorizeCaseProducerMutation(principal);
 
     const service = createCaseEvidenceCollectionService({
       resolver: createRequestBoundMarkRegCaseSourceResolver(request),

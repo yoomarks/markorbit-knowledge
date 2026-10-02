@@ -4,6 +4,7 @@ export const CASE_PRODUCER_INTERNAL_AUTHORIZATION_HEADER =
   "x-markorbit-internal-authorization" as const;
 export const CASE_PRODUCER_PRINCIPAL_HEADER = "x-markorbit-principal" as const;
 export const CASE_PRODUCER_REQUIRED_PERMISSION = "matter:read" as const;
+export const CASE_PRODUCER_MUTATION_PERMISSION = "matter:promote-knowledge" as const;
 
 const WORKSPACE_ROLES = new Set(["WORKSPACE_ADMIN", "MATTER_MANAGER", "REVIEWER", "READ_ONLY"]);
 const WORKSPACE_PERMISSIONS = new Set([
@@ -201,6 +202,16 @@ export function authorizeCaseProducerWorkspace(
       "WORKSPACE_MISMATCH",
       403,
       "Workspace Principal does not match the Case Candidate source workspace.",
+    );
+  }
+}
+
+export function authorizeCaseProducerMutation(principal: CaseProducerWorkspacePrincipalV1): void {
+  if (!principal.permissions.includes(CASE_PRODUCER_MUTATION_PERMISSION)) {
+    throw new CaseProducerAccessError(
+      "PERMISSION_DENIED",
+      403,
+      `${CASE_PRODUCER_MUTATION_PERMISSION} permission is required.`,
     );
   }
 }
