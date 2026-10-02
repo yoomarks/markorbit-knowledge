@@ -29,21 +29,33 @@ function globalTrademarkParentGrant(source: SourceDefinition): Extensions | unde
     return undefined;
   }
   const config = source.connectorConfig;
-  const reference = config.requestArtifactRef;
-  const artifactId =
-    typeof reference === "object" && reference !== null && !Array.isArray(reference)
-      ? (reference as Record<string, unknown>).artifactId
-      : undefined;
-  if (
-    config.intent !== "PUBLISH_DURABLE_REQUEST" ||
-    typeof artifactId !== "string" ||
-    !ARTIFACT_ID.test(artifactId)
-  ) {
+  const references =
+    config.intent === "PUBLISH_DURABLE_REQUEST"
+      ? [config.requestArtifactRef]
+      : config.intent === "PUBLISH_DURABLE_REQUEST_BATCH"
+        ? config.requestArtifactRefs
+        : undefined;
+  if (!Array.isArray(references) || references.length < 1 || references.length > 500) {
     throw new RegistryValidationError(
       "Global trademark publisher source must identify a durable request artifact",
     );
   }
-  return { [CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION]: [artifactId] };
+  const artifactIds = references.map((reference) =>
+    typeof reference === "object" && reference !== null && !Array.isArray(reference)
+      ? (reference as Record<string, unknown>).artifactId
+      : undefined,
+  );
+  if (
+    artifactIds.some(
+      (artifactId) => typeof artifactId !== "string" || !ARTIFACT_ID.test(artifactId),
+    ) ||
+    new Set(artifactIds).size !== artifactIds.length
+  ) {
+    throw new RegistryValidationError(
+      "Global trademark publisher source must identify unique durable request artifacts",
+    );
+  }
+  return { [CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION]: artifactIds as string[] };
 }
 
 export async function POST(request: Request) {

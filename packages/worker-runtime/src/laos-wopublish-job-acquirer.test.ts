@@ -331,7 +331,7 @@ describe("explicitly approved full Lao source index Work", () => {
     const off = new LaosWopublishJobArtifactAcquirer(entry.adapters);
     expect(off.isStreamingJob(frozen)).toBe(false);
     await expect(off.acquire(frozen)).rejects.toMatchObject({
-      code: "LA_FULL_INDEX_STREAMING_REQUIRED",
+      code: "LA_FULL_BASELINE_STREAMING_REQUIRED",
     });
     const consume = async () => {
       for await (const batch of off.acquireBatches(frozen)) {
@@ -406,5 +406,92 @@ describe("explicitly approved full Lao source index Work", () => {
     };
     await expect(consume()).rejects.toMatchObject({ code: "LA_JOB_CONFIG_INVALID" });
     expect(sourceCalls).toBe(0);
+  });
+});
+
+describe("explicitly approved frozen Lao detail batch Work", () => {
+  const ids = ["LA55159", "LA55160"];
+  const config = {
+    mode: "FULL_DETAIL_BATCH",
+    batchIndex: 1,
+    sourceRecordIds: ids,
+    sourceRecordIdsSha256: laosSha256(encoder.encode(ids.join("\n"))),
+  };
+  const detailFor = (id: string) => ({
+    ...detail,
+    id,
+    logoUrl:
+      "https://online.dip.gov.la/wopublish-search/service/trademarks/application/" +
+      id +
+      "/logo?noLogo=true",
+    sourceUri: "https://online.dip.gov.la/wopublish-search/public/detail/trademarks?id=" + id,
+  });
+
+  it("streams each exact frozen ID into durable V2 detail evidence", async () => {
+    let calls = 0;
+    const adapter = {
+      requestIntervalMs: 2_500,
+      async *streamFullDetails(options: { sourceRecordIds: readonly string[] }) {
+        calls += 1;
+        expect(options.sourceRecordIds).toEqual(ids);
+        for (const id of ids) yield detailFor(id);
+        return { completed: ids.length };
+      },
+    } as unknown as LaosWopublishSourceAdapter;
+    const acquirer = new LaosWopublishJobArtifactAcquirer(registry(page).adapters, {
+      fullDetailEnabled: true,
+      streamAdapter: adapter,
+    });
+    const frozen = context(config);
+    expect(acquirer.isStreamingJob(frozen)).toBe(true);
+    const batches = [];
+    for await (const batch of acquirer.acquireBatches(frozen)) batches.push(batch);
+    expect(calls).toBe(1);
+    expect(batches).toHaveLength(2);
+    expect(batches.map((batch) => batch.map((artifact) => artifact.artifactKind))).toEqual([
+      ["HTML", "JSON", "IMAGE", "JSON"],
+      ["HTML", "JSON", "IMAGE", "JSON"],
+    ]);
+    expect(json(batches[1]![3]!.content)).toMatchObject({
+      schemaVersion: "GLOBAL_TRADEMARK_FACT_ADMISSION_REQUEST_V2",
+      fullCollectionAuthorized: true,
+      payload: {
+        contract_version: "GLOBAL_TRADEMARK_STRUCTURED_ADMISSION_V2",
+        observation_kind: "FULL_DETAIL",
+        page_index: 0,
+        records: [{ source_record_id: "LA55160" }],
+      },
+    });
+    expect(JSON.stringify(json(batches[1]![3]!.content))).not.toContain("source_total");
+  });
+
+  it("stays off by default and rejects a forged frozen-ID digest before source access", async () => {
+    const frozen = context(config);
+    const off = new LaosWopublishJobArtifactAcquirer(registry(page).adapters);
+    expect(off.isStreamingJob(frozen)).toBe(false);
+    await expect(off.acquire(frozen)).rejects.toMatchObject({
+      code: "LA_FULL_BASELINE_STREAMING_REQUIRED",
+    });
+    let calls = 0;
+    const adapter = {
+      requestIntervalMs: 2_500,
+      async *streamFullDetails() {
+        calls += 1;
+        yield detailFor(ids[0]!);
+      },
+    } as unknown as LaosWopublishSourceAdapter;
+    const enabled = new LaosWopublishJobArtifactAcquirer(registry(page).adapters, {
+      fullDetailEnabled: true,
+      streamAdapter: adapter,
+    });
+    const consume = async () => {
+      for await (const batch of enabled.acquireBatches(
+        context({ ...config, sourceRecordIdsSha256: "a".repeat(64) }),
+      )) {
+        throw new Error("Forged detail batch emitted " + batch.length + " artifacts");
+      }
+    };
+    await expect(consume()).rejects.toMatchObject({ code: "LA_JOB_CONFIG_INVALID" });
+    expect(calls).toBe(0);
   });
 });

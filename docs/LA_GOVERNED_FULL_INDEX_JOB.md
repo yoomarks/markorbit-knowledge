@@ -34,13 +34,21 @@ challenge, session expiry, 429/5xx exhaustion, schema drift, budget exhaustion
 or callback mismatch fails the Job; previously finalized Knowledge artifacts
 remain durable but no complete-baseline receipt is fabricated.
 
-This first full-index route explicitly does not accept caller-supplied
+This full-index route explicitly does not accept caller-supplied
 resume checkpoints: they must be resolved in a later authorized Work from
 actual accepted immutable Knowledge artifacts. A failed long Job may therefore
 revisit the index from page 1; plan a verified resume/frozen-coverage Work
-before approving any costly repeated production crawl. No details/logo work,
-legal-currentness assertion, Data Engine direct SQL, source scheduling or
-continuous monitoring is introduced here.
+before approving any costly repeated production crawl.
+
+After a complete frozen index exists, a separate manual `FULL_DETAIL_BATCH`
+Source may carry 1–500 exact, unique index IDs plus their SHA-256. It remains
+default-off behind `MARKORBIT_LA_FULL_DETAIL_COLLECTION_ENABLED=true`, uses the
+same <=24/min plan and single official adapter, and commits each detail,
+projection, permitted logo bytes and prepared V2 request before advancing.
+It cannot invent IDs, read an incomplete index, schedule itself, or write Data
+Engine directly. A failed batch retains already-finalized immutable evidence;
+operators must derive any replacement batch from the frozen index and durable
+artifacts rather than guessing a cursor.
 
 Prerequisites for production activation remain Knowledge #903 genuine
 authenticated 50+50+1 source/RawArtifact/publisher readback, operator-reviewed

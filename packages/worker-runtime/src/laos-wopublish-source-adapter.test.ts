@@ -310,6 +310,35 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     expect(value).toMatchObject({ kind: "DETAIL", logoMime: "image/png" });
     expect(session.requests[1]?.url).toContain("/LA55159/logo");
   });
+  it("streams one exact bounded frozen-ID detail batch through the source session", async () => {
+    const secondDetail = detail.replaceAll("55159", "55160");
+    const { subject, session } = adapter([
+      response(detail, "text/html"),
+      response("logo-1", "image/png"),
+      response(secondDetail, "text/html"),
+      response("logo-2", "image/png"),
+    ]);
+    const emitted = [];
+    for await (const item of subject.streamFullDetails({
+      sourceRecordIds: ["LA55159", "LA55160"],
+    })) {
+      emitted.push(item.id);
+    }
+    expect(emitted).toEqual(["LA55159", "LA55160"]);
+    expect(session.requests.map((request) => request.url)).toEqual([
+      LAOS_ORIGIN + "/wopublish-search/public/detail/trademarks?id=LA55159",
+      LAOS_ORIGIN + "/wopublish-search/service/trademarks/application/LA55159/logo?noLogo=true",
+      LAOS_ORIGIN + "/wopublish-search/public/detail/trademarks?id=LA55160",
+      LAOS_ORIGIN + "/wopublish-search/service/trademarks/application/LA55160/logo?noLogo=true",
+    ]);
+    await expect(async () => {
+      for await (const item of subject.streamFullDetails({
+        sourceRecordIds: ["LA55159", "LA55159"],
+      })) {
+        throw Error("Unexpected duplicate detail " + item.id);
+      }
+    }).rejects.toMatchObject({ code: "LA_DETAIL_BATCH_INVALID" });
+  });
   it("does not invent a legal registration number from the WoPublish record ID", () => {
     expect(parseLaosDetail(text(detail), "LA55159").registrationNumber).toBeNull();
     expect(() => parseLaosDetail(text(detail), "LA55160")).toThrowError(

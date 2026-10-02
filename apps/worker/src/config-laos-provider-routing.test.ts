@@ -17,6 +17,7 @@ describe("WoPublish worker provider activation", () => {
     });
     expect(pilot.collectionProvider).toBe("laos-wopublish");
     expect(pilot.laosFullIndexCollectionEnabled).toBe(false);
+    expect(pilot.laosFullDetailCollectionEnabled).toBe(false);
     expect(pilot.laosRequestIntervalMs).toBe(2_500);
     expect(pilot.dataEngineUrl).toBeUndefined();
     expect(pilot.dataEngineFactAdmissionKey).toBeUndefined();
@@ -68,9 +69,11 @@ describe("WoPublish worker provider activation", () => {
       ...env,
       MARKORBIT_COLLECTION_PROVIDER: "laos-wopublish",
       MARKORBIT_LA_FULL_INDEX_COLLECTION_ENABLED: "true",
+      MARKORBIT_LA_FULL_DETAIL_COLLECTION_ENABLED: "true",
       MARKORBIT_LA_MIN_REQUEST_INTERVAL_MS: "6000",
     });
     expect(fullSource.laosFullIndexCollectionEnabled).toBe(true);
+    expect(fullSource.laosFullDetailCollectionEnabled).toBe(true);
     expect(fullSource.laosRequestIntervalMs).toBe(6_000);
     expect(fullSource.globalTrademarkFullBaselinePublisherEnabled).toBe(false);
     expect(() =>
@@ -78,6 +81,13 @@ describe("WoPublish worker provider activation", () => {
         ...env,
         MARKORBIT_COLLECTION_PROVIDER: "crawl4ai",
         MARKORBIT_LA_FULL_INDEX_COLLECTION_ENABLED: "true",
+      }),
+    ).toThrowError(/laos-wopublish/);
+    expect(() =>
+      loadWorkerProcessConfig({
+        ...env,
+        MARKORBIT_COLLECTION_PROVIDER: "crawl4ai",
+        MARKORBIT_LA_FULL_DETAIL_COLLECTION_ENABLED: "true",
       }),
     ).toThrowError(/laos-wopublish/);
     expect(() =>

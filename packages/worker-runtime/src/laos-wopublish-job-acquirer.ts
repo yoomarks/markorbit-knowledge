@@ -21,6 +21,7 @@ import {
   buildLaosBaselineIndexPageCommit,
   type LaosBaselineIndexCheckpoint,
 } from "./laos-baseline-index-stream";
+import { buildLaosFullDetailArtifacts } from "./laos-wopublish-full-detail-artifacts";
 
 export const LAOS_JOB_EXECUTOR: ExecutionExecutor = {
   executorId: LAOS_CONNECTOR_ID,
@@ -41,7 +42,13 @@ type PilotConfig = {
 };
 type DetailConfig = { mode: "DETAIL_REFRESH"; sourceRecordId: string };
 type FullIndexConfig = { mode: "FULL_INDEX_BASELINE"; maxPages: number };
-export type LaosJobConfig = PilotConfig | DetailConfig | FullIndexConfig;
+type FullDetailBatchConfig = {
+  mode: "FULL_DETAIL_BATCH";
+  batchIndex: number;
+  sourceRecordIds: string[];
+  sourceRecordIdsSha256: string;
+};
+export type LaosJobConfig = PilotConfig | DetailConfig | FullIndexConfig | FullDetailBatchConfig;
 function jobConfig(context: ArtifactBackedExecutionContext): LaosJobConfig {
   const source = context.job.sourceSnapshot;
   if (
@@ -124,6 +131,41 @@ function jobConfig(context: ArtifactBackedExecutionContext): LaosJobConfig {
       );
     }
     return { mode: "FULL_INDEX_BASELINE", maxPages: input.maxPages as number };
+  }
+  if (input.mode === "FULL_DETAIL_BATCH") {
+    const plan = context.job.planSnapshot;
+    const ids = input.sourceRecordIds;
+    const digest = input.sourceRecordIdsSha256;
+    if (
+      Object.keys(input).some(
+        (key) => !["mode", "batchIndex", "sourceRecordIds", "sourceRecordIdsSha256"].includes(key),
+      ) ||
+      !Number.isSafeInteger(input.batchIndex) ||
+      (input.batchIndex as number) < 1 ||
+      (input.batchIndex as number) > 10_000 ||
+      !Array.isArray(ids) ||
+      ids.length < 1 ||
+      ids.length > 500 ||
+      ids.some((id) => typeof id !== "string" || !sourceIdPattern.test(id)) ||
+      new Set(ids).size !== ids.length ||
+      typeof digest !== "string" ||
+      !shaPattern.test(digest) ||
+      digest !== laosSha256(encoder.encode(ids.join("\n"))) ||
+      plan.policy?.respectRobots !== true ||
+      !Number.isSafeInteger(plan.policy?.rateLimitPerMinute) ||
+      plan.policy.rateLimitPerMinute < 1 ||
+      plan.policy.rateLimitPerMinute > 24
+    ) {
+      throw failure(
+        "Full detail batch requires 1..500 frozen IDs, their exact digest, and <=24/min policy",
+      );
+    }
+    return {
+      mode: "FULL_DETAIL_BATCH",
+      batchIndex: input.batchIndex as number,
+      sourceRecordIds: [...(ids as string[])],
+      sourceRecordIdsSha256: digest,
+    };
   }
   throw failure("Scheduled and unreviewed bulk collection modes are not admitted");
 }
@@ -277,6 +319,8 @@ function artifactsFor(observation: LaosObservation): AcquiredCollectionArtifact[
 export type LaosWopublishAcquirerOptions = {
   /** Separately approved source-work activation, independent of the publisher and DE flags. */
   fullIndexEnabled?: boolean;
+  /** Separately approved frozen-ID detail work; default false. */
+  fullDetailEnabled?: boolean;
   streamAdapter?: LaosWopublishSourceAdapter;
 };
 
@@ -289,21 +333,22 @@ export class LaosWopublishJobArtifactAcquirer implements CollectionArtifactAcqui
   ) {}
   isStreamingJob(context: ArtifactBackedExecutionContext): boolean {
     const config = context.job.sourceSnapshot.connectorConfig;
+    const mode =
+      config !== null && typeof config === "object" && !Array.isArray(config)
+        ? (config as Record<string, unknown>).mode
+        : undefined;
     return (
-      this.options.fullIndexEnabled === true &&
       Boolean(this.options.streamAdapter) &&
-      config !== null &&
-      typeof config === "object" &&
-      !Array.isArray(config) &&
-      (config as Record<string, unknown>).mode === "FULL_INDEX_BASELINE"
+      ((mode === "FULL_INDEX_BASELINE" && this.options.fullIndexEnabled === true) ||
+        (mode === "FULL_DETAIL_BATCH" && this.options.fullDetailEnabled === true))
     );
   }
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
     const config = jobConfig(context);
-    if (config.mode === "FULL_INDEX_BASELINE") {
+    if (config.mode === "FULL_INDEX_BASELINE" || config.mode === "FULL_DETAIL_BATCH") {
       throw new CollectionAcquisitionError(
-        "LA_FULL_INDEX_STREAMING_REQUIRED",
-        "Full Lao index cannot use the pilot bulk executor or bypass source activation",
+        "LA_FULL_BASELINE_STREAMING_REQUIRED",
+        "Full Lao baseline work cannot use the pilot bulk executor or bypass source activation",
         false,
       );
     }
@@ -353,17 +398,26 @@ export class LaosWopublishJobArtifactAcquirer implements CollectionArtifactAcqui
   ): AsyncIterable<readonly AcquiredCollectionArtifact[]> {
     const config = jobConfig(context);
     const adapter = this.options.streamAdapter;
-    if (
-      config.mode !== "FULL_INDEX_BASELINE" ||
-      this.options.fullIndexEnabled !== true ||
-      !adapter
-    ) {
-      throw failure("Full index requires an explicitly activated streaming source Worker");
-    }
+    if (!adapter) throw failure("Full baseline requires an explicitly activated source Worker");
     const rate = context.job.planSnapshot.policy.rateLimitPerMinute;
     const minimumIntervalMs = Math.max(2_500, Math.ceil(60_000 / rate));
     if (adapter.requestIntervalMs < minimumIntervalMs) {
       throw failure("Configured WoPublish rate exceeds the frozen CollectionPlan budget");
+    }
+    if (config.mode === "FULL_DETAIL_BATCH") {
+      if (this.options.fullDetailEnabled !== true) {
+        throw failure("Full detail requires an explicitly activated streaming source Worker");
+      }
+      requireOutput(context, ["HTML", "JSON", "IMAGE"]);
+      for await (const detail of adapter.streamFullDetails({
+        sourceRecordIds: config.sourceRecordIds,
+      })) {
+        yield buildLaosFullDetailArtifacts(detail);
+      }
+      return;
+    }
+    if (config.mode !== "FULL_INDEX_BASELINE" || this.options.fullIndexEnabled !== true) {
+      throw failure("Full index requires an explicitly activated streaming source Worker");
     }
     requireOutput(context, ["HTML", "XML", "JSON"]);
     let committed: string[] = [];

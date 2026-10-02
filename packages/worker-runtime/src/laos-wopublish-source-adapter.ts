@@ -673,6 +673,35 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
     }
   }
 
+  /**
+   * Fetch an exact frozen-ID detail batch through one bounded source session.
+   * The caller persists each yielded observation before this generator advances.
+   */
+  async *streamFullDetails(options: {
+    sourceRecordIds: readonly string[];
+  }): AsyncGenerator<LaosDetail, { completed: number }, void> {
+    const ids = options.sourceRecordIds;
+    if (
+      !Array.isArray(ids) ||
+      ids.length < 1 ||
+      ids.length > 500 ||
+      ids.some((id) => typeof id !== "string" || !idPattern.test(id)) ||
+      new Set(ids).size !== ids.length
+    ) {
+      throw failure(
+        "LA_DETAIL_BATCH_INVALID",
+        "Detail batch requires 1..500 unique explicit WoPublish source IDs",
+      );
+    }
+    const transport = this.factory();
+    try {
+      for (const id of ids) yield await this.detail(transport, id);
+      return { completed: ids.length };
+    } finally {
+      await transport.close?.();
+    }
+  }
+
   private async detail(transport: LaosHttpTransport, id: string): Promise<LaosDetail> {
     const uri = LAOS_ORIGIN + "/wopublish-search/public/detail/trademarks?id=" + id;
     const response = await this.get(transport, uri, {

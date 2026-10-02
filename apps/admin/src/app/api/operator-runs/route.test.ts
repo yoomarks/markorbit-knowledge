@@ -32,7 +32,9 @@ let temporaryRoot: string;
 let planAId: string;
 let planBId: string;
 let publisherPlanId: string;
+let publisherBatchPlanId: string;
 const PUBLISHER_REQUEST_ID = "art_01ARZ3NDEKTSV4RRFFQ69G5FAV";
+const PUBLISHER_REQUEST_ID_2 = "art_01ARZ3NDEKTSV4RRFFQ69G5FAW";
 
 function resetRegistry(): void {
   const registry = globalThis as GlobalRegistry;
@@ -216,6 +218,53 @@ beforeAll(() => {
     },
     output: { artifactKinds: ["JSON"] },
   }).plan.id;
+  const publisherBatchSource = sources.create({
+    workspaceId: workspaceA.id,
+    name: "Operator global trademark batch publisher",
+    slug: "operator-global-trademark-batch-publisher",
+    sourceType: "DATABASE",
+    category: "INTERNAL",
+    authorityLevel: "INTERNAL",
+    status: "ACTIVE",
+    jurisdictions: ["LA"],
+    languages: ["en-US"],
+    connector: { connectorId: "global-trademark-fact-admission-publisher", version: "1.0.0" },
+    connectorConfig: {
+      intent: "PUBLISH_DURABLE_REQUEST_BATCH",
+      requestArtifactRefs: [PUBLISHER_REQUEST_ID, PUBLISHER_REQUEST_ID_2].map(
+        (artifactId, index) => ({
+          artifactId,
+          canonicalUri: `la-dipo://wopublish/trademarks/list/page/${index + 1}/fact-admission-request`,
+          sha256: String(index + 1).repeat(64),
+          sizeBytes: 100,
+        }),
+      ),
+    },
+    canonicalUri: "markorbit://knowledge/global-trademark/fact-admission-requests",
+    entrypoints: [{ uri: "markorbit://knowledge/global-trademark/fact-admission-requests" }],
+  });
+  publisherBatchPlanId = plans.create({
+    workspaceId: workspaceA.id,
+    sourceId: publisherBatchSource.id,
+    name: "Operator publisher batch plan",
+    status: "ACTIVE",
+    schedule: { mode: "MANUAL" },
+    priority: "HIGH",
+    policy: {
+      includePatterns: [],
+      excludePatterns: [],
+      maxDepth: 0,
+      maxItems: 500,
+      renderJavascript: false,
+      fetchAttachments: false,
+      respectRobots: true,
+      rateLimitPerMinute: 10,
+      timeoutSeconds: 60,
+      retry: { maxAttempts: 2, backoffSeconds: 10 },
+      locale: "en-US",
+    },
+    output: { artifactKinds: ["JSON"] },
+  }).plan.id;
 });
 
 afterAll(() => {
@@ -313,6 +362,27 @@ describe.sequential("POST /api/operator-runs", () => {
       }),
     );
     expect(replay.status).toBe(200);
+  });
+
+  it("freezes every bounded publisher batch request as a cross-Source parent grant", async () => {
+    const response = await POST(
+      dispatchRequest({
+        planId: publisherBatchPlanId,
+        idempotencyKey: "operator-publisher-batch-001",
+      }),
+    );
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as {
+      record: {
+        run: { extensions?: Record<string, unknown> };
+        jobs: Array<{ extensions?: unknown }>;
+      };
+    };
+    const expected = {
+      [CROSS_SOURCE_PARENT_ARTIFACT_IDS_EXTENSION]: [PUBLISHER_REQUEST_ID, PUBLISHER_REQUEST_ID_2],
+    };
+    expect(body.record.run.extensions).toEqual(expected);
+    expect(body.record.jobs[0]?.extensions).toEqual(expected);
   });
 
   it("derives workspace authority from the persisted Plan", async () => {

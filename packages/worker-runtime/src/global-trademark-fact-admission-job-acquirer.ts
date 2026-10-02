@@ -82,9 +82,26 @@ function requiredText(value: unknown, label: string, max = 4096): string {
   }
   return value.trim();
 }
-function requestReference(
-  context: ArtifactBackedExecutionContext,
-): GlobalTrademarkDurableArtifactReference {
+function durableReference(value: unknown): GlobalTrademarkDurableArtifactReference {
+  const ref = record(value, "requestArtifactRef");
+  exactKeys(ref, ["artifactId", "canonicalUri", "sha256", "sizeBytes"], "requestArtifactRef");
+  const artifactId = requiredText(ref.artifactId, "requestArtifactRef.artifactId", 64);
+  const canonicalUri = requiredText(ref.canonicalUri, "requestArtifactRef.canonicalUri");
+  const sha256 = requiredText(ref.sha256, "requestArtifactRef.sha256", 64).toLowerCase();
+  if (!ARTIFACT_ID.test(artifactId)) throw invalid("requestArtifactRef.artifactId is invalid");
+  if (!SHA256.test(sha256)) throw invalid("requestArtifactRef.sha256 is invalid");
+  if (!Number.isSafeInteger(ref.sizeBytes) || (ref.sizeBytes as number) < 1) {
+    throw invalid("requestArtifactRef.sizeBytes must be a positive safe integer");
+  }
+  if (!canonicalUri.endsWith("/fact-admission-request")) {
+    throw invalid("requestArtifactRef.canonicalUri must identify a fact-admission request");
+  }
+  return { artifactId, canonicalUri, sha256, sizeBytes: ref.sizeBytes as number };
+}
+function requestReferences(context: ArtifactBackedExecutionContext): {
+  batch: boolean;
+  items: GlobalTrademarkDurableArtifactReference[];
+} {
   const source = context.job.sourceSnapshot;
   const connector = context.job.connector;
   if (
@@ -105,24 +122,26 @@ function requestReference(
     throw invalid("Publisher CollectionPlan must authorize JSON receipt artifacts");
   }
   const config = record(source.connectorConfig, "connectorConfig");
-  exactKeys(config, ["intent", "requestArtifactRef"], "connectorConfig");
-  if (config.intent !== "PUBLISH_DURABLE_REQUEST") {
-    throw invalid("connectorConfig.intent must be PUBLISH_DURABLE_REQUEST");
+  if (config.intent === "PUBLISH_DURABLE_REQUEST") {
+    exactKeys(config, ["intent", "requestArtifactRef"], "connectorConfig");
+    return { batch: false, items: [durableReference(config.requestArtifactRef)] };
   }
-  const ref = record(config.requestArtifactRef, "requestArtifactRef");
-  exactKeys(ref, ["artifactId", "canonicalUri", "sha256", "sizeBytes"], "requestArtifactRef");
-  const artifactId = requiredText(ref.artifactId, "requestArtifactRef.artifactId", 64);
-  const canonicalUri = requiredText(ref.canonicalUri, "requestArtifactRef.canonicalUri");
-  const sha256 = requiredText(ref.sha256, "requestArtifactRef.sha256", 64).toLowerCase();
-  if (!ARTIFACT_ID.test(artifactId)) throw invalid("requestArtifactRef.artifactId is invalid");
-  if (!SHA256.test(sha256)) throw invalid("requestArtifactRef.sha256 is invalid");
-  if (!Number.isSafeInteger(ref.sizeBytes) || (ref.sizeBytes as number) < 1) {
-    throw invalid("requestArtifactRef.sizeBytes must be a positive safe integer");
+  if (config.intent === "PUBLISH_DURABLE_REQUEST_BATCH") {
+    exactKeys(config, ["intent", "requestArtifactRefs"], "connectorConfig");
+    if (
+      !Array.isArray(config.requestArtifactRefs) ||
+      config.requestArtifactRefs.length < 1 ||
+      config.requestArtifactRefs.length > 500
+    ) {
+      throw invalid("requestArtifactRefs must contain 1..500 durable requests");
+    }
+    const items = config.requestArtifactRefs.map(durableReference);
+    if (new Set(items.map((item) => item.artifactId)).size !== items.length) {
+      throw invalid("requestArtifactRefs must contain unique RawArtifact ids");
+    }
+    return { batch: true, items };
   }
-  if (!canonicalUri.endsWith("/fact-admission-request")) {
-    throw invalid("requestArtifactRef.canonicalUri must identify a fact-admission request");
-  }
-  return { artifactId, canonicalUri, sha256, sizeBytes: ref.sizeBytes as number };
+  throw invalid("connectorConfig.intent must select one governed durable publish mode");
 }
 function verifyLoaded(
   reference: GlobalTrademarkDurableArtifactReference,
@@ -298,8 +317,47 @@ export class GlobalTrademarkFactAdmissionJobAcquirer implements CollectionArtifa
     this.clock = options.clock ?? (() => new Date().toISOString());
   }
 
+  isStreamingJob(context: ArtifactBackedExecutionContext): boolean {
+    return requestReferences(context).batch;
+  }
+
+  private async publish(
+    reference: GlobalTrademarkDurableArtifactReference,
+    context: ArtifactBackedExecutionContext,
+  ): Promise<AcquiredCollectionArtifact> {
+    const loaded = verifyLoaded(
+      reference,
+      await this.options.reader.read(reference.artifactId, context),
+    );
+    const payload = parsePreparedRequest(loaded, {
+      fullBaselineEnabled: this.options.fullBaselineEnabled === true,
+      manualJob: context.job.planSnapshot.schedule?.mode === "MANUAL",
+    });
+    if (payload.contract_version !== GLOBAL_TRADEMARK_FULL_BASELINE_CONTRACT) {
+      throw invalid("Durable request batches are restricted to the full-baseline V2 contract");
+    }
+    try {
+      const receipt = await this.options.client.post(GLOBAL_TRADEMARK_FACT_ADMISSION_PATH, payload);
+      return receiptArtifact({
+        request: reference,
+        payload,
+        admittedAt: observedAt(this.clock),
+        receipt,
+      });
+    } catch (error) {
+      if (error instanceof FactAdmissionHttpError) {
+        throw new CollectionAcquisitionError(error.code, error.message, error.retryable);
+      }
+      throw error;
+    }
+  }
+
   async acquire(context: ArtifactBackedExecutionContext): Promise<AcquiredCollectionArtifact[]> {
-    const reference = requestReference(context);
+    const references = requestReferences(context);
+    if (references.batch) {
+      throw invalid("Durable request batch requires the streaming publisher executor");
+    }
+    const reference = references.items[0]!;
     const loaded = verifyLoaded(
       reference,
       await this.options.reader.read(reference.artifactId, context),
@@ -323,6 +381,18 @@ export class GlobalTrademarkFactAdmissionJobAcquirer implements CollectionArtifa
         throw new CollectionAcquisitionError(error.code, error.message, error.retryable);
       }
       throw error;
+    }
+  }
+
+  async *acquireBatches(
+    context: ArtifactBackedExecutionContext,
+  ): AsyncIterable<readonly AcquiredCollectionArtifact[]> {
+    const references = requestReferences(context);
+    if (!references.batch) {
+      throw invalid("Single durable request cannot use the streaming publisher executor");
+    }
+    for (const reference of references.items) {
+      yield [await this.publish(reference, context)];
     }
   }
 }
