@@ -66,3 +66,11 @@ export function assertOperatorServiceWritablePrincipal(
     );
   }
 }
+
+export function rejectOperatorServiceAcquisitionGovernanceAccess(): never {
+  throw new CaseProducerAccessError(
+    "ACQUISITION_GOVERNANCE_PERMISSION_REQUIRED",
+    403,
+    "Workspace Principals do not have acquisition governance authority.",
+  );
+}
