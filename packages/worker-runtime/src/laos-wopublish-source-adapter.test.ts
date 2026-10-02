@@ -280,6 +280,70 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     expect(session.requests).toHaveLength(3);
     expect(session.requests.slice(1).every((r) => r.headers["wicket-ajax"] === "true")).toBe(true);
   });
+  it("re-fetches one transiently incomplete non-final index page before committing it", async () => {
+    const tinyFirst = first.replace("73531", "150");
+    const next3 =
+      "./trademarks?0-2.IBehaviorListener.0-body-searchResultPanel-resultWrapper-dataTable-topToolbars-toolbars-1-span-navigator-next";
+    const secondWithNext = second.replace(
+      "</ajax-response>",
+      '<evaluate><![CDATA[Wicket.Ajax.ajax({"u":"' +
+        next3 +
+        '","e":"click","c":"id15"});]]></evaluate></ajax-response>',
+    );
+    const incompleteSecond = second.replace(links(secondIds), links(secondIds.slice(0, 38)));
+    const finalIds = ids(54200);
+    const finalXml =
+      '<?xml version="1.0"?><ajax-response><component><![CDATA[' +
+      links(finalIds) +
+      "]]></component></ajax-response>";
+    const { subject, session } = adapter([
+      response(tinyFirst, "text/html"),
+      response(incompleteSecond, "text/xml"),
+      response(secondWithNext, "text/xml"),
+      response(finalXml, "text/xml"),
+    ]);
+    const collected: string[] = [];
+    for await (const page of subject.streamFullIndex({ maxPages: 3 })) collected.push(...page.ids);
+    expect(collected).toHaveLength(150);
+    expect(new Set(collected).size).toBe(150);
+    expect(session.requests).toHaveLength(4);
+    expect(session.requests[1]?.url).toBe(session.requests[2]?.url);
+    expect(session.requests[1]?.headers).toEqual(session.requests[2]?.headers);
+  });
+  it("fails closed after bounded incomplete-page retries or inconsistent totals", async () => {
+    const tinyFirst = first.replace("73531", "150");
+    const incompleteSecond = second.replace(links(secondIds), links(secondIds.slice(0, 38)));
+    const persistent = adapter([
+      response(tinyFirst, "text/html"),
+      response(incompleteSecond, "text/xml"),
+      response(incompleteSecond, "text/xml"),
+      response(incompleteSecond, "text/xml"),
+    ]);
+    await expect(async () => {
+      for await (const page of persistent.subject.streamFullIndex({ maxPages: 3 })) {
+        expect(page.page).toBe(1);
+      }
+    }).rejects.toMatchObject({ code: "LA_INDEX_PAGE_DRIFT" });
+    expect(persistent.session.requests).toHaveLength(4);
+    expect(new Set(persistent.session.requests.slice(1).map((request) => request.url))).toEqual(
+      new Set([persistent.session.requests[1]!.url]),
+    );
+
+    const inconsistentSecond = incompleteSecond.replace(
+      '<component id="table"><![CDATA[',
+      '<component id="table"><![CDATA[<li class="navigatorLabel results-display-text"><div>51 to 88 of 149</div></li>',
+    );
+    const inconsistent = adapter([
+      response(tinyFirst, "text/html"),
+      response(inconsistentSecond, "text/xml"),
+    ]);
+    await expect(async () => {
+      for await (const page of inconsistent.subject.streamFullIndex({ maxPages: 3 })) {
+        expect(page.page).toBe(1);
+      }
+    }).rejects.toMatchObject({ code: "LA_INDEX_PAGE_DRIFT" });
+    expect(inconsistent.session.requests).toHaveLength(2);
+  });
   it("replays every committed page digest before resuming after a failure", async () => {
     const tinyFirst = first.replace("73531", "100");
     const firstDigest = laosSha256(text(firstIds.join("\n")));
