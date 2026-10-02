@@ -449,7 +449,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
       "MARKORBIT_WORKER_MAX_COLLECTION_RUNTIME_MS",
       12 * 60_000,
       30_000,
-      14 * 60_000,
+      4 * 60 * 60_000,
     ),
     artifactIngestionConcurrency: integer(
       env,
