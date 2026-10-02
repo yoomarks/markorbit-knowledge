@@ -33,6 +33,17 @@ function page(index: number, total = 73531): LaosIndexPage {
 }
 
 describe("full index source page → Knowledge durable V2 admission intent", () => {
+  it("preserves an official Lao Madrid source identity", () => {
+    const value = page(1);
+    value.ids[0] = "LAM1764514";
+    value.firstPageIdsSha256 = digest(value.ids);
+    value.sourceRecordIdsSha256 = digest(value.ids);
+    const request = decode(buildLaosFullIndexPageArtifacts(value)[3]!.content);
+    const payload = request.payload as Record<string, unknown>;
+    expect((payload.records as Array<Record<string, unknown>>)[0]?.source_record_id).toBe(
+      "LAM1764514",
+    );
+  });
   it("produces page 1471 last 31 true source IDs with typed immutable lineage", () => {
     const artifacts = buildLaosFullIndexPageArtifacts(page(1471));
     expect(artifacts).toHaveLength(4);

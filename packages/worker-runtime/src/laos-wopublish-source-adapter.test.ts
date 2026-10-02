@@ -92,6 +92,14 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     expect(result.nextUrl).toContain("navigator-next");
     expect(result.nextUrl).toContain("jsessionid");
   });
+  it("accepts official Lao Madrid source identities without broadening the route", () => {
+    const madridList = first.replaceAll("LA54000", "LAM1764514");
+    const parsed = parseLaosList(text(madridList));
+    expect(parsed.ids).toHaveLength(50);
+    expect(parsed.ids).toContain("LAM1764514");
+    const madridDetail = detail.replaceAll("55159", "M1764514");
+    expect(parseLaosDetail(text(madridDetail), "LAM1764514").id).toBe("LAM1764514");
+  });
   it("reparses redacted session paths from persisted list evidence without reintroducing credentials", () => {
     const sessionHtml = first.replaceAll(
       "./detail/trademarks?id=",
@@ -196,6 +204,38 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     await expect(
       challenged.subject.fetch({ sourceId: LAOS_SOURCE_ID, params: { mode: "PAGE" } }),
     ).rejects.toMatchObject({ code: "LA_ACCESS_CHALLENGE" });
+  });
+  it("follows only the bounded official TLS-normalized session bootstrap", async () => {
+    const firstRedirect = response("", "text/html", 302);
+    firstRedirect.headers = {
+      location: "http://online.dip.gov.la/wopublish-search/public/trademarks",
+    };
+    const sessionRedirect = response("", "text/html", 302);
+    sessionRedirect.headers = {
+      location:
+        "http://online.dip.gov.la/wopublish-search/public/trademarks;jsessionid=TRANSIENTSESSION?0",
+    };
+    const { subject, session } = adapter([
+      firstRedirect,
+      sessionRedirect,
+      response(first, "text/html"),
+    ]);
+    const result = await subject.fetch({ sourceId: LAOS_SOURCE_ID, params: { mode: "PAGE" } });
+    expect(result.items).toHaveLength(1);
+    expect(session.requests.map((request) => request.url)).toEqual([
+      LAOS_LIST_URL,
+      "https://online.dip.gov.la/wopublish-search/public/trademarks",
+      "https://online.dip.gov.la/wopublish-search/public/trademarks;jsessionid=TRANSIENTSESSION?0",
+    ]);
+
+    const external = response("", "text/html", 302);
+    external.headers = { location: "https://example.com/wopublish-search/public/trademarks?0" };
+    await expect(
+      adapter([external, external]).subject.fetch({
+        sourceId: LAOS_SOURCE_ID,
+        params: { mode: "PAGE" },
+      }),
+    ).rejects.toMatchObject({ code: "LA_SESSION_EXPIRED" });
   });
   it("bounds transient retries and honors a capped Retry-After", async () => {
     const waits: number[] = [];

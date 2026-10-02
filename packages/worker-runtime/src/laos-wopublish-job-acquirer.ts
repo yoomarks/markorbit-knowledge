@@ -30,7 +30,7 @@ export const LAOS_JOB_EXECUTOR: ExecutionExecutor = {
 };
 const encoder = new TextEncoder();
 const shaPattern = /^[a-f0-9]{64}$/;
-const sourceIdPattern = /^LA\d{3,10}$/;
+const sourceIdPattern = /^LA(?:M)?\d{3,10}$/;
 const failure = (message: string) =>
   new CollectionAcquisitionError("LA_JOB_CONFIG_INVALID", message, false);
 

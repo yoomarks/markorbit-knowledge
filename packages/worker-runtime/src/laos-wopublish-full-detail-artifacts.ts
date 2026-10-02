@@ -17,7 +17,7 @@ import {
 export const LAOS_FULL_DETAIL_PROJECTION_SCHEMA = "LA_WOPUBLISH_FULL_DETAIL_PROJECTION_V1";
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
-const idPattern = /^LA\d{3,10}$/u;
+const idPattern = /^LA(?:M)?\d{3,10}$/u;
 const shaPattern = /^[a-f0-9]{64}$/u;
 
 function fail(message: string): never {

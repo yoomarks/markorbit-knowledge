@@ -27,7 +27,7 @@ export const LAOS_SOURCE_METADATA = {
   version: LAOS_CONNECTOR_VERSION,
   capabilities: ["WICKET_BOUNDED_PILOT", "SINGLE_DETAIL", "LOGO_EVIDENCE"],
 };
-const idPattern = /^LA\d{3,10}$/;
+const idPattern = /^LA(?:M)?\d{3,10}$/;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
 export const laosSha256 = (bytes: Uint8Array): string =>
@@ -86,7 +86,7 @@ export class LaosHttpSession implements LaosHttpTransport {
       url.username ||
       url.password ||
       url.hash ||
-      !/^\/wopublish-search\/(?:public\/(?:trademarks|detail\/trademarks)|service\/trademarks\/application\/LA\d{3,10}\/logo)(?:;jsessionid=[A-Za-z0-9]+)?$/.test(
+      !/^\/wopublish-search\/(?:public\/(?:trademarks|detail\/trademarks)|service\/trademarks\/application\/LA(?:M)?\d{3,10}\/logo)(?:;jsessionid=[A-Za-z0-9]+)?$/.test(
         url.pathname,
       )
     ) {
@@ -276,7 +276,7 @@ export function parseLaosDetail(
   );
   const actualId = text(header?.[1] ?? "")
     .replace(/\s+/g, "")
-    .match(/LA\d{3,10}/)?.[0];
+    .match(/LA(?:M)?\d{3,10}/)?.[0];
   if (actualId !== id)
     throw failure("LA_DETAIL_ID_MISMATCH", "Detail does not match source record ID");
   const values = new Map<string, string>();
@@ -413,17 +413,49 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
     headers: Record<string, string>,
     maxBytes = 2_000_000,
   ): Promise<LaosHttpResponse> {
+    let requestUrl = url;
+    let officialRedirects = 0;
     for (let attempt = 1; attempt <= 3; attempt++) {
       if (this.interval) await this.sleep(this.interval);
       let response: LaosHttpResponse;
       try {
-        response = await transport.get({ url, headers, maxBytes });
+        response = await transport.get({ url: requestUrl, headers, maxBytes });
       } catch (cause) {
         if (cause instanceof CollectionAcquisitionError && !cause.retryable) throw cause;
         if (attempt === 3)
           throw failure("LA_TRANSPORT_FAILED", "Bounded source transport failed", true);
         await this.sleep(attempt * 1_000);
         continue;
+      }
+      if ([301, 302, 303, 307, 308].includes(response.status) && officialRedirects < 2) {
+        const locationValue = response.headers?.location;
+        const location = Array.isArray(locationValue) ? locationValue[0] : locationValue;
+        let target: URL | undefined;
+        try {
+          target = location ? new URL(location, requestUrl) : undefined;
+        } catch {
+          target = undefined;
+        }
+        if (
+          target?.hostname === "online.dip.gov.la" &&
+          (target.protocol === "http:" || target.protocol === "https:") &&
+          !target.username &&
+          !target.password &&
+          !target.hash &&
+          /^\/wopublish-search\/public\/trademarks(?:;jsessionid=[A-Za-z0-9]+)?$/.test(
+            target.pathname,
+          ) &&
+          (target.search === "" || target.search === "?0")
+        ) {
+          // WoPublish currently emits an absolute HTTP session bootstrap even
+          // while serving HSTS over HTTPS. Keep the hop TLS-only and bounded;
+          // session identifiers remain inside the ephemeral transport.
+          target.protocol = "https:";
+          requestUrl = target.toString();
+          officialRedirects += 1;
+          attempt -= 1;
+          continue;
+        }
       }
       if ([301, 302, 303, 307, 308, 401, 419, 440].includes(response.status)) {
         throw failure("LA_SESSION_EXPIRED", "WoPublish session expired or redirected");
@@ -602,7 +634,7 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
         ) {
           throw failure(
             "LA_INDEX_PAGE_DRIFT",
-            "Index page count, total or true source IDs drifted",
+            `Index page ${page} drifted: count=${parsed.ids.length}, expected=${Math.min(50, total - seen.size)}, total=${String(parsed.total)}, initialTotal=${total}`,
           );
         }
         const pageHash = laosSha256(encoder.encode(parsed.ids.join("\n")));

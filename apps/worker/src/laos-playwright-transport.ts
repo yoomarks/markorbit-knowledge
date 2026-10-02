@@ -22,7 +22,7 @@ const target = (input: string): URL => {
     url.username ||
     url.password ||
     url.hash ||
-    !/^\/wopublish-search\/(?:public\/(?:trademarks|detail\/trademarks)|service\/trademarks\/application\/LA\d{3,10}\/logo)(?:;jsessionid=[A-Za-z0-9]+)?$/.test(
+    !/^\/wopublish-search\/(?:public\/(?:trademarks|detail\/trademarks)|service\/trademarks\/application\/LA(?:M)?\d{3,10}\/logo)(?:;jsessionid=[A-Za-z0-9]+)?$/.test(
       url.pathname,
     )
   ) {
