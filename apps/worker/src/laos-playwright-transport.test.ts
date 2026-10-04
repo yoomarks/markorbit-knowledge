@@ -71,6 +71,19 @@ describe("LaosPlaywrightTransport", () => {
     expect(mocks.evaluate).toHaveBeenCalledTimes(1);
   });
 
+  it("classifies an in-page AbortController timeout without replay", async () => {
+    mocks.evaluate.mockRejectedValue(
+      new Error("page.evaluate: AbortError: This operation was aborted"),
+    );
+
+    const transport = new LaosPlaywrightTransport("browser.exe");
+    await expect(transport.get(request)).rejects.toMatchObject({
+      code: "LA_BROWSER_RESPONSE_TIMEOUT",
+      retryable: false,
+    });
+    expect(mocks.evaluate).toHaveBeenCalledTimes(1);
+  });
+
   it("does not retry a non-timeout browser failure", async () => {
     mocks.evaluate.mockRejectedValue(new Error("browser closed"));
 
