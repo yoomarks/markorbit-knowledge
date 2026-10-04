@@ -1,6 +1,7 @@
 ﻿import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { CollectionAcquisitionError } from "./artifact-backed-collection-executor";
 import {
   LAOS_LIST_URL,
   LAOS_ORIGIN,
@@ -70,11 +71,12 @@ function response(body: string, mime: string, status = 200): LaosHttpResponse {
 }
 class Scripted implements LaosHttpTransport {
   readonly requests: LaosHttpRequest[] = [];
-  constructor(private readonly responses: LaosHttpResponse[]) {}
+  constructor(private readonly responses: Array<LaosHttpResponse | Error>) {}
   async get(request: LaosHttpRequest): Promise<LaosHttpResponse> {
     this.requests.push(request);
     const nextResponse = this.responses.shift();
     if (!nextResponse) throw Error("Unexpected extra request");
+    if (nextResponse instanceof Error) throw nextResponse;
     return nextResponse;
   }
 }
@@ -408,6 +410,53 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
       }
     }).rejects.toMatchObject({ code: "LA_INDEX_RESUME_DRIFT" });
     expect(drift.session.requests).toHaveLength(1);
+  });
+  it("resumes one browser timeout only through a fresh session and durable digest replay", async () => {
+    const tinyFirst = first.replace("73531", "100");
+    const timeout = new CollectionAcquisitionError(
+      "LA_BROWSER_RESPONSE_TIMEOUT",
+      "Official WoPublish AJAX response outcome is uncertain after timeout",
+      false,
+    );
+    const firstSession = new Scripted([response(tinyFirst, "text/html"), timeout]);
+    const resumedSession = new Scripted([
+      response(tinyFirst, "text/html"),
+      response(withRange(second, 51, 100, 100), "text/xml"),
+    ]);
+    const sessions = [firstSession, resumedSession];
+    const subject = new LaosWopublishSourceAdapter({
+      transportFactory: () => sessions.shift()!,
+      intervalMs: 0,
+    });
+    const emitted: number[] = [];
+    for await (const page of subject.streamFullIndex({ maxPages: 2 })) emitted.push(page.page);
+    expect(emitted).toEqual([1, 2]);
+    expect(firstSession.requests).toHaveLength(2);
+    expect(resumedSession.requests).toHaveLength(2);
+  });
+  it("fails closed after one fresh-session timeout resume", async () => {
+    const tinyFirst = first.replace("73531", "100");
+    const timeout = () =>
+      new CollectionAcquisitionError(
+        "LA_BROWSER_RESPONSE_TIMEOUT",
+        "Official WoPublish AJAX response outcome is uncertain after timeout",
+        false,
+      );
+    const firstSession = new Scripted([response(tinyFirst, "text/html"), timeout()]);
+    const resumedSession = new Scripted([response(tinyFirst, "text/html"), timeout()]);
+    const sessions = [firstSession, resumedSession];
+    const subject = new LaosWopublishSourceAdapter({
+      transportFactory: () => sessions.shift()!,
+      intervalMs: 0,
+    });
+    await expect(async () => {
+      for await (const page of subject.streamFullIndex({ maxPages: 2 })) {
+        expect(page.page).toBe(1);
+      }
+    }).rejects.toMatchObject({ code: "LA_BROWSER_RESPONSE_TIMEOUT" });
+    expect(firstSession.requests).toHaveLength(2);
+    expect(resumedSession.requests).toHaveLength(2);
+    expect(sessions).toHaveLength(0);
   });
   it("stops the full index before unapproved page budget or duplicate IDs", async () => {
     const over = adapter([response(first, "text/html")]);
