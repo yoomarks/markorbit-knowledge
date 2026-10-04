@@ -41,8 +41,16 @@ in an F:-only, SHA-256 content-addressed CAS rooted at
 F:\MarkOrbitData\visual-raw\assets\raw\gb\mark-images.
 An original file uses sha256/aa/bb/hash plus an image suffix derived from
 actual file magic. Shared images are stored once. Immutable source-grounded
-detail JSONL and a content-hashed manifest are written under
-D:\yoomarks\governed-plans\910\ukipo-journal.
+detail JSONL and a content-hashed manifest are written directly under
+E:\MarkOrbitData\structured-stage\gb\ukipo\journal-v1. This is the accepted
+`hot_global` structured-stage placement; D remains `hot_cn` only.
+
+New issues must be staged from F:\MarkOrbitData\raw\incoming\uk. After a
+separately governed Data Engine admission commits and verifies the issue, its
+exact raw ZIP may move to F:\MarkOrbitData\raw\archive\uk. Read-only replay
+and audit resolve an issue from exactly one of incoming or archive and fail
+closed if the same issue exists in both locations. Staging never mutates or
+restages an archived source.
 
 The F: writer refuses symlink/junction traversal, verifies any existing CAS
 object, writes new objects through same-directory temporary files and refuses

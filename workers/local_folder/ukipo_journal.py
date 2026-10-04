@@ -19,7 +19,8 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 
 RAW_ROOT = Path(r"F:\MarkOrbitData\raw\incoming\uk")
-STAGE_ROOT = Path(r"D:\yoomarks\governed-plans\910\ukipo-journal")
+ARCHIVE_ROOT = Path(r"F:\MarkOrbitData\raw\archive\uk")
+STAGE_ROOT = Path(r"E:\MarkOrbitData\structured-stage\gb\ukipo\journal-v1")
 ASSET_ROOT = Path(r"F:\MarkOrbitData\visual-raw\assets\raw\gb\mark-images")
 ISSUE_RE = re.compile(r"20\d{2}-\d{3}\Z")
 DETAIL_RE = re.compile(r"(UK|WO)\d+\.html\Z")
@@ -50,6 +51,30 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def resolve_issue_path(
+    issue: str,
+    *,
+    incoming_root: Path = RAW_ROOT,
+    archive_root: Path = ARCHIVE_ROOT,
+    require_incoming: bool = False,
+) -> Path:
+    """Resolve one exact raw journal without hiding lifecycle conflicts."""
+    require(ISSUE_RE.fullmatch(issue) is not None, "invalid issue")
+    incoming = incoming_root / f"{issue}.zip"
+    archived = archive_root / f"{issue}.zip"
+    incoming_exists = incoming.is_file() and not incoming.is_symlink()
+    archived_exists = archived.is_file() and not archived.is_symlink()
+    require(
+        not (incoming_exists and archived_exists),
+        "journal ZIP exists in both incoming and archive",
+    )
+    if require_incoming:
+        require(incoming_exists and not archived_exists, "journal staging requires incoming ZIP")
+        return incoming
+    require(incoming_exists or archived_exists, "journal ZIP absent")
+    return incoming if incoming_exists else archived
 
 
 def local_name(element: ET.Element) -> str:
@@ -455,8 +480,7 @@ def main() -> None:
     require(ISSUE_RE.fullmatch(args.issue) is not None, "invalid issue")
     require(bool(args.missing_media_audit) == bool(args.missing_media_audit_sha),
             "missing-image exception requires both audited path and exact SHA")
-    path = RAW_ROOT / f"{args.issue}.zip"
-    require(path.is_file(), "journal ZIP absent")
+    path = resolve_issue_path(args.issue, require_incoming=args.stage)
     approved = (
         approved_missing_images(args.missing_media_audit, args.missing_media_audit_sha,
                                 args.issue, path)
