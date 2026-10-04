@@ -18,6 +18,8 @@ const fail = (code: string, message: string) =>
 
 const isPlaywrightTimeout = (error: unknown): boolean =>
   error instanceof Error && error.name === "TimeoutError";
+const isBrowserAbortTimeout = (error: unknown): boolean =>
+  error instanceof Error && (error.name === "AbortError" || /\bAbortError\b/u.test(error.message));
 const target = (input: string): URL => {
   const url = new URL(input);
   if (
@@ -151,7 +153,7 @@ export class LaosPlaywrightTransport implements LaosHttpTransport {
         };
       } catch (error) {
         if (error instanceof CollectionAcquisitionError) throw error;
-        if (isPlaywrightTimeout(error)) {
+        if (isPlaywrightTimeout(error) || isBrowserAbortTimeout(error)) {
           throw new CollectionAcquisitionError(
             "LA_BROWSER_RESPONSE_TIMEOUT",
             "Official WoPublish AJAX response outcome is uncertain after timeout",
