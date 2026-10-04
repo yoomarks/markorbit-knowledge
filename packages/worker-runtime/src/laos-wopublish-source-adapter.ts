@@ -595,6 +595,44 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
     maxPages: number;
     resume?: LaosIndexResume;
   }): AsyncGenerator<LaosIndexPage, { sourceTotal: number; uniqueIds: number }, void> {
+    let resume = options.resume;
+    for (let sessionAttempt = 1; sessionAttempt <= 2; sessionAttempt++) {
+      const committed = [...(resume?.committedPageIdsSha256 ?? [])];
+      let sourceTotal = resume?.sourceTotal;
+      const stream = this.streamFullIndexSession({ ...options, ...(resume ? { resume } : {}) });
+      try {
+        while (true) {
+          const next = await stream.next();
+          if (next.done) return next.value;
+          sourceTotal = next.value.total;
+          yield next.value;
+          // The caller finalizes every yielded page before requesting the next
+          // one, so this digest is durable when control returns here.
+          committed.push(next.value.sourceRecordIdsSha256);
+        }
+      } catch (cause) {
+        if (
+          !(cause instanceof CollectionAcquisitionError) ||
+          cause.code !== "LA_BROWSER_RESPONSE_TIMEOUT" ||
+          sessionAttempt === 2 ||
+          sourceTotal === undefined ||
+          committed.length === 0
+        ) {
+          throw cause;
+        }
+        // Never replay the uncertain callback in its stateful browser session.
+        // A fresh official session must replay and verify every durable page
+        // digest before advancing beyond the checkpoint once.
+        resume = { sourceTotal, committedPageIdsSha256: committed };
+      }
+    }
+    throw failure("LA_INDEX_INCOMPLETE", "Index timeout resume did not complete");
+  }
+
+  private async *streamFullIndexSession(options: {
+    maxPages: number;
+    resume?: LaosIndexResume;
+  }): AsyncGenerator<LaosIndexPage, { sourceTotal: number; uniqueIds: number }, void> {
     if (
       !Number.isSafeInteger(options.maxPages) ||
       options.maxPages < 1 ||
