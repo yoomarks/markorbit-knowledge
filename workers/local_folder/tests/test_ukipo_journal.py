@@ -10,10 +10,13 @@ import zipfile
 from pathlib import Path
 
 from workers.local_folder.ukipo_journal import (
+    ARCHIVE_ROOT,
     ASSET_ROOT,
+    STAGE_ROOT,
     UKIPOInputError,
     approved_missing_images,
     parse_xhtml,
+    resolve_issue_path,
     scan_zip,
     sha256_file,
     stage_zip,
@@ -97,6 +100,35 @@ class UKIPOJournalPilotTests(unittest.TestCase):
             ASSET_ROOT,
             Path(r"F:\MarkOrbitData\visual-raw\assets\raw\gb\mark-images"),
         )
+
+    def test_production_structured_stage_is_e_and_archive_is_f(self) -> None:
+        self.assertEqual(
+            STAGE_ROOT,
+            Path(r"E:\MarkOrbitData\structured-stage\gb\ukipo\journal-v1"),
+        )
+        self.assertEqual(ARCHIVE_ROOT, Path(r"F:\MarkOrbitData\raw\archive\uk"))
+
+    def test_archive_aware_raw_resolution_fails_closed_on_duplicate(self) -> None:
+        incoming = self.root / "incoming"
+        archive = self.root / "archive"
+        incoming.mkdir()
+        archive.mkdir()
+        archived = archive / f"{ISSUE}.zip"
+        archived.write_bytes(b"accepted")
+        self.assertEqual(
+            resolve_issue_path(ISSUE, incoming_root=incoming, archive_root=archive),
+            archived,
+        )
+        with self.assertRaisesRegex(UKIPOInputError, "requires incoming"):
+            resolve_issue_path(
+                ISSUE,
+                incoming_root=incoming,
+                archive_root=archive,
+                require_incoming=True,
+            )
+        (incoming / f"{ISSUE}.zip").write_bytes(b"duplicate")
+        with self.assertRaisesRegex(UKIPOInputError, "both incoming and archive"):
+            resolve_issue_path(ISSUE, incoming_root=incoming, archive_root=archive)
 
     def test_named_html_entities_and_exact_indexes(self) -> None:
         root = parse_xhtml(xhtml("<p>A &Oacute;wner &amp; another</p>"))
