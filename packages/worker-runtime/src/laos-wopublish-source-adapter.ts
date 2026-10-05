@@ -613,7 +613,7 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
       } catch (cause) {
         if (
           !(cause instanceof CollectionAcquisitionError) ||
-          cause.code !== "LA_BROWSER_RESPONSE_TIMEOUT" ||
+          !["LA_BROWSER_RESPONSE_TIMEOUT", "LA_INDEX_REPLAY_ADVANCED"].includes(cause.code) ||
           sessionAttempt === 2 ||
           sourceTotal === undefined ||
           committed.length === 0
@@ -762,6 +762,17 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
           const nextPage = page + 1;
           const expectedNextStart = page * 50 + 1;
           const expectedNextEnd = Math.min(nextPage * 50, total);
+          if (
+            attempt > 1 &&
+            (parsed.total === undefined || parsed.total === total) &&
+            parsed.rangeStart === expectedNextStart + 50 &&
+            parsed.rangeEnd === Math.min(expectedNextEnd + 50, total)
+          ) {
+            throw failure(
+              "LA_INDEX_REPLAY_ADVANCED",
+              "Exact-page recovery advanced the official navigator; a fresh session is required",
+            );
+          }
           const exactStableNonFinalPage =
             remaining > 50 &&
             (parsed.total === undefined || parsed.total === total) &&

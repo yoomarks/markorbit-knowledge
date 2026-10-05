@@ -357,16 +357,53 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     expect(session.requests[1]?.url).toBe(session.requests[2]?.url);
     expect(session.requests[1]?.headers).toEqual(session.requests[2]?.headers);
   });
-  it("rejects a replayed Wicket callback that advances to a different official range", async () => {
+  it("resumes through one fresh session when exact-page recovery advances the navigator", async () => {
     const tinyFirst = first.replace("73531", "150");
+    const next3 =
+      "./trademarks?0-2.IBehaviorListener.0-body-searchResultPanel-resultWrapper-dataTable-topToolbars-toolbars-1-span-navigator-next";
+    const secondWithNext = withRange(second, 51, 100, 150).replace(
+      "</ajax-response>",
+      '<evaluate><![CDATA[Wicket.Ajax.ajax({"u":"' +
+        next3 +
+        '","e":"click","c":"id15"});]]></evaluate></ajax-response>',
+    );
     const incompleteSecond = withRange(second, 51, 100, 150).replace(
       links(secondIds),
       links(secondIds.slice(0, 38)),
     );
     const advanced = withRange(second.replace(links(secondIds), links(ids(54200))), 101, 150, 150);
-    const { subject, session } = adapter([
+    const finalXml =
+      '<?xml version="1.0"?><ajax-response><component><![CDATA[' +
+      '<li class="navigatorLabel results-display-text"><div>101 to 150 of 150</div></li>' +
+      links(ids(54200)) +
+      "]]></component></ajax-response>";
+    const firstSession = new Scripted([
       response(tinyFirst, "text/html"),
       response(incompleteSecond, "text/xml"),
+      response(advanced, "text/xml"),
+    ]);
+    const resumedSession = new Scripted([
+      response(tinyFirst, "text/html"),
+      response(secondWithNext, "text/xml"),
+      response(finalXml, "text/xml"),
+    ]);
+    const sessions = [firstSession, resumedSession];
+    const subject = new LaosWopublishSourceAdapter({
+      transportFactory: () => sessions.shift()!,
+      intervalMs: 0,
+    });
+    const emitted: number[] = [];
+    for await (const page of subject.streamFullIndex({ maxPages: 3 })) emitted.push(page.page);
+    expect(emitted).toEqual([1, 2, 3]);
+    expect(firstSession.requests).toHaveLength(3);
+    expect(resumedSession.requests).toHaveLength(3);
+    expect(sessions).toHaveLength(0);
+  });
+  it("does not restart when the first continuation response advances unexpectedly", async () => {
+    const tinyFirst = first.replace("73531", "150");
+    const advanced = withRange(second.replace(links(secondIds), links(ids(54200))), 101, 150, 150);
+    const { subject, session } = adapter([
+      response(tinyFirst, "text/html"),
       response(advanced, "text/xml"),
     ]);
     await expect(async () => {
@@ -374,7 +411,38 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
         expect(page.page).toBe(1);
       }
     }).rejects.toMatchObject({ code: "LA_INDEX_PAGE_DRIFT" });
-    expect(session.requests).toHaveLength(3);
+    expect(session.requests).toHaveLength(2);
+  });
+  it("fails closed after one fresh-session navigator-advance resume", async () => {
+    const tinyFirst = first.replace("73531", "150");
+    const incompleteSecond = withRange(second, 51, 100, 150).replace(
+      links(secondIds),
+      links(secondIds.slice(0, 38)),
+    );
+    const advanced = withRange(second.replace(links(secondIds), links(ids(54200))), 101, 150, 150);
+    const firstSession = new Scripted([
+      response(tinyFirst, "text/html"),
+      response(incompleteSecond, "text/xml"),
+      response(advanced, "text/xml"),
+    ]);
+    const resumedSession = new Scripted([
+      response(tinyFirst, "text/html"),
+      response(incompleteSecond, "text/xml"),
+      response(advanced, "text/xml"),
+    ]);
+    const sessions = [firstSession, resumedSession];
+    const subject = new LaosWopublishSourceAdapter({
+      transportFactory: () => sessions.shift()!,
+      intervalMs: 0,
+    });
+    await expect(async () => {
+      for await (const page of subject.streamFullIndex({ maxPages: 3 })) {
+        expect(page.page).toBe(1);
+      }
+    }).rejects.toMatchObject({ code: "LA_INDEX_REPLAY_ADVANCED" });
+    expect(firstSession.requests).toHaveLength(3);
+    expect(resumedSession.requests).toHaveLength(3);
+    expect(sessions).toHaveLength(0);
   });
   it("fails closed after bounded incomplete-page retries or inconsistent totals", async () => {
     const tinyFirst = first.replace("73531", "150");
