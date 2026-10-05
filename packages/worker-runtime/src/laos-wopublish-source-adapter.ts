@@ -27,7 +27,7 @@ export const LAOS_SOURCE_METADATA = {
   version: LAOS_CONNECTOR_VERSION,
   capabilities: ["WICKET_BOUNDED_PILOT", "SINGLE_DETAIL", "LOGO_EVIDENCE"],
 };
-const idPattern = /^LA(?:M)?\d{3,10}$/;
+const idPattern = /^LA(?:M)?\d{1,10}$/;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
 export const laosSha256 = (bytes: Uint8Array): string =>
@@ -293,7 +293,7 @@ export function parseLaosDetail(
   );
   const actualId = text(header?.[1] ?? "")
     .replace(/\s+/g, "")
-    .match(/LA(?:M)?\d{3,10}/)?.[0];
+    .match(/LA(?:M)?\d{1,10}/)?.[0];
   if (actualId !== id)
     throw failure("LA_DETAIL_ID_MISMATCH", "Detail does not match source record ID");
   const values = new Map<string, string>();
@@ -613,7 +613,7 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
       } catch (cause) {
         if (
           !(cause instanceof CollectionAcquisitionError) ||
-          cause.code !== "LA_BROWSER_RESPONSE_TIMEOUT" ||
+          !["LA_BROWSER_RESPONSE_TIMEOUT", "LA_INDEX_REPLAY_ADVANCED"].includes(cause.code) ||
           sessionAttempt === 2 ||
           sourceTotal === undefined ||
           committed.length === 0
@@ -762,14 +762,26 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
           const nextPage = page + 1;
           const expectedNextStart = page * 50 + 1;
           const expectedNextEnd = Math.min(nextPage * 50, total);
-          const incompleteNonFinalPage =
+          if (
+            attempt > 1 &&
+            (parsed.total === undefined || parsed.total === total) &&
+            parsed.rangeStart === expectedNextStart + 50 &&
+            parsed.rangeEnd === Math.min(expectedNextEnd + 50, total)
+          ) {
+            throw failure(
+              "LA_INDEX_REPLAY_ADVANCED",
+              "Exact-page recovery advanced the official navigator; a fresh session is required",
+            );
+          }
+          const exactStableNonFinalPage =
             remaining > 50 &&
-            parsed.ids.length < 50 &&
             (parsed.total === undefined || parsed.total === total) &&
             parsed.rangeStart === expectedNextStart &&
-            parsed.rangeEnd === expectedNextEnd &&
-            !parsed.ids.some((id) => seen.has(id));
-          if (!incompleteNonFinalPage || attempt === 3) break;
+            parsed.rangeEnd === expectedNextEnd;
+          const transientPageShape =
+            (parsed.ids.length < 50 && !parsed.ids.some((id) => seen.has(id))) ||
+            (parsed.ids.length === 50 && parsed.ids.some((id) => seen.has(id)));
+          if (!exactStableNonFinalPage || !transientPageShape || attempt === 3) break;
         }
         base = parsed.baseUrl ?? base;
       }
