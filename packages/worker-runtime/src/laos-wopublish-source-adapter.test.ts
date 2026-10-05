@@ -111,6 +111,18 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     const madridDetail = detail.replaceAll("55159", "M1764514");
     expect(parseLaosDetail(text(madridDetail), "LAM1764514").id).toBe("LAM1764514");
   });
+  it("accepts historical one- and two-digit Lao source identities", () => {
+    const historicalIds = ["LA7", "LA42"];
+    const historicalList = first.replace(
+      links(firstIds),
+      links([...historicalIds, ...firstIds.slice(2)]),
+    );
+    const parsed = parseLaosList(text(historicalList));
+    expect(parsed.ids).toHaveLength(50);
+    expect(parsed.ids.slice(0, 2)).toEqual(historicalIds);
+    const historicalDetail = detail.replaceAll("55159", "7");
+    expect(parseLaosDetail(text(historicalDetail), "LA7").id).toBe("LA7");
+  });
   it("reparses redacted session paths from persisted list evidence without reintroducing credentials", () => {
     const sessionHtml = first.replaceAll(
       "./detail/trademarks?id=",
