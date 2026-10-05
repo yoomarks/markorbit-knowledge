@@ -126,6 +126,41 @@ readiness. Future UKIPO original-logo writes target F: only. Existing E: CAS
 objects are retained until an independently verified F: relocation receipt is
 accepted; deletion of the E: copy requires separate authority.
 
+## Future official weekly acquisition
+
+Official source acquisition belongs to Knowledge. A Saturday monitor checks
+the UKIPO journal publication surface for a newer `YYYY-NNN` issue and uses a
+browser session because the official site may reject non-browser HTTP clients.
+The only accepted ZIP lineage URL is the canonical same-host HTTPS form
+`https://www.ipo.gov.uk/tm/t-journal/t-tmj/tm-journals/YYYY-NNN/jnl.zip`.
+
+The browser download remains outside the authoritative stores while
+`ukipo_journal_acquire.py` performs a read-only full ZIP replay and freezes an
+exact plan under governed Knowledge issue #910. The plan binds the official
+URL, downloaded byte size and SHA-256, internal issue identity, expected
+detail/image counts, clean Knowledge main and the exact storage topology.
+Freeze writes no F/E data.
+
+Apply requires the exact plan-specific token:
+
+`GO #910 GB-UKIPO-OFFICIAL-ACQUIRE-STAGE <plan-sha> ISSUE-YYYY-NNN-TO-F-E`
+
+Only that Apply admits a verified immutable copy to
+`F:\MarkOrbitData\raw\incoming\uk`, stages structured JSONL/manifest data to
+E/hot_global and original mark images to the F content-addressed store. It is
+idempotent and verifies any existing target bytes; it retains the browser
+download and does not authorize Data Engine writes, raw archival, deletion,
+serving cutover or a current-register claim.
+
+After this Knowledge receipt is accepted, the existing Data Engine weekly
+operator performs a separate read-only preflight and freezes the issue-atomic
+database plan. That database Apply still requires its own exact
+`GO #875 GB-JOURNAL-WEEKLY ... ISSUE-YYYY-NNN-ATOMIC-ARCHIVE` token. On success
+it commits the observation-only issue, verifies PostgreSQL poststate, then
+moves the exact raw ZIP within F from incoming to archive. Thus the scheduled
+check and browser download are automatic, while every durable F/E admission
+and production database mutation remains explicitly SHA-authorized.
+
 ## Governed E: to F: original-visual relocation
 
 The pre-correction E: CAS is migrated only by the reviewed
