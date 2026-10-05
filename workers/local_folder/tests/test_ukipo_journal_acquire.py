@@ -86,6 +86,9 @@ class UKIPOOfficialAcquisitionTests(unittest.TestCase):
         )
         self.assertTrue(plan["incoming_raw_path"].endswith(f"{ISSUE}.zip"))
         self.assertEqual(plan["raw_authority_drive"], "F")
+        self.assertEqual(
+            plan["raw_admission_mode"], "COPY_BROWSER_DOWNLOAD_TO_F_INCOMING"
+        )
         self.assertEqual(plan["structured_stage_drive"], "E")
         self.assertEqual(plan["structured_query_placement"], "hot_global")
         self.assertFalse(plan["data_engine_apply_authorized"])
@@ -124,6 +127,20 @@ class UKIPOOfficialAcquisitionTests(unittest.TestCase):
         self.assertEqual(replay["plan_sha256"], receipt["plan_sha256"])
         self.assertTrue(replay["browser_download_retained"])
 
+    def test_existing_exact_f_incoming_is_reconciled_before_stage(self) -> None:
+        incoming = self.incoming / f"{ISSUE}.zip"
+        incoming.parent.mkdir(parents=True)
+        self.download.replace(incoming)
+        self.download = incoming
+
+        plan = self._plan()
+        self.assertEqual(plan["raw_admission_mode"], "RECONCILE_EXISTING_F_INCOMING")
+        receipt = self._apply(plan)
+        self.assertTrue(receipt["raw_reconciled"])
+        self.assertEqual(receipt["raw_path"], str(incoming))
+        self.assertTrue(incoming.is_file())
+        self.assertTrue(Path(receipt["stage_manifest_path"]).is_file())
+
     def test_source_or_existing_raw_drift_fails_closed(self) -> None:
         plan = self._plan()
         self.download.write_bytes(b"changed")
@@ -135,7 +152,7 @@ class UKIPOOfficialAcquisitionTests(unittest.TestCase):
         make_fixture(self.download)
         self.incoming.mkdir(parents=True)
         (self.incoming / f"{ISSUE}.zip").write_bytes(b"different")
-        with self.assertRaisesRegex(journal.UKIPOInputError, "already exists"):
+        with self.assertRaisesRegex(journal.UKIPOInputError, "different source path"):
             self._plan()
 
     def test_plan_json_is_deterministic(self) -> None:
