@@ -762,14 +762,15 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
           const nextPage = page + 1;
           const expectedNextStart = page * 50 + 1;
           const expectedNextEnd = Math.min(nextPage * 50, total);
-          const incompleteNonFinalPage =
+          const exactStableNonFinalPage =
             remaining > 50 &&
-            parsed.ids.length < 50 &&
             (parsed.total === undefined || parsed.total === total) &&
             parsed.rangeStart === expectedNextStart &&
-            parsed.rangeEnd === expectedNextEnd &&
-            !parsed.ids.some((id) => seen.has(id));
-          if (!incompleteNonFinalPage || attempt === 3) break;
+            parsed.rangeEnd === expectedNextEnd;
+          const transientPageShape =
+            (parsed.ids.length < 50 && !parsed.ids.some((id) => seen.has(id))) ||
+            (parsed.ids.length === 50 && parsed.ids.some((id) => seen.has(id)));
+          if (!exactStableNonFinalPage || !transientPageShape || attempt === 3) break;
         }
         base = parsed.baseUrl ?? base;
       }
