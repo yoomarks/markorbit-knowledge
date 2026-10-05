@@ -134,12 +134,15 @@ browser session because the official site may reject non-browser HTTP clients.
 The only accepted ZIP lineage URL is the canonical same-host HTTPS form
 `https://www.ipo.gov.uk/tm/t-journal/t-tmj/tm-journals/YYYY-NNN/jnl.zip`.
 
-The browser download remains outside the authoritative stores while
+Normally the browser download remains outside the authoritative stores while
 `ukipo_journal_acquire.py` performs a read-only full ZIP replay and freezes an
-exact plan under governed Knowledge issue #910. The plan binds the official
-URL, downloaded byte size and SHA-256, internal issue identity, expected
-detail/image counts, clean Knowledge main and the exact storage topology.
-Freeze writes no F/E data.
+exact plan under governed Knowledge issue #910. If an operator has already
+downloaded the exact issue-named ZIP directly to F incoming, the same freeze
+may instead bind `RECONCILE_EXISTING_F_INCOMING`; it accepts only the exact
+canonical F path and never recopies or overwrites it. The plan binds the
+official URL, downloaded byte size and SHA-256, internal issue identity,
+expected detail/image counts, clean Knowledge main and the exact storage
+topology. Freeze writes no F/E data.
 
 Apply requires the exact plan-specific token:
 

@@ -140,8 +140,11 @@ def make_plan(
     require(candidate.name.lower().endswith(".zip"), "browser download must be a ZIP")
     incoming = incoming_root / f"{issue}.zip"
     archived = archive_root / f"{issue}.zip"
+    source_is_incoming = candidate == incoming.resolve()
+    require(not archived.exists(), "issue raw ZIP is already archived")
     require(
-        not incoming.exists() and not archived.exists(), "issue raw ZIP already exists"
+        not incoming.exists() or source_is_incoming,
+        "issue raw ZIP already exists at a different source path",
     )
 
     report, _, _ = journal.scan_zip(candidate)
@@ -169,6 +172,11 @@ def make_plan(
         "expected_manifest_path": str(manifest.resolve()),
         "original_visual_root": str(asset_root.resolve()),
         "raw_authority_drive": "F",
+        "raw_admission_mode": (
+            "RECONCILE_EXISTING_F_INCOMING"
+            if source_is_incoming
+            else "COPY_BROWSER_DOWNLOAD_TO_F_INCOMING"
+        ),
         "structured_stage_drive": "E",
         "structured_query_placement": "hot_global",
         "browser_download_retained": True,
@@ -200,6 +208,11 @@ def authorize(plan: dict, plan_sha: str, token: str) -> None:
         == plan.get("official_source_url")
         and plan.get("operator_sha256") == operator_sha256()
         and plan.get("raw_authority_drive") == "F"
+        and plan.get("raw_admission_mode")
+        in {
+            "COPY_BROWSER_DOWNLOAD_TO_F_INCOMING",
+            "RECONCILE_EXISTING_F_INCOMING",
+        }
         and plan.get("structured_stage_drive") == "E"
         and plan.get("structured_query_placement") == "hot_global"
         and plan.get("browser_download_retained") is True
@@ -252,6 +265,12 @@ def _admit_raw(plan: dict) -> tuple[Path, bool]:
     incoming = Path(plan["incoming_raw_path"])
     archived = Path(plan["archive_raw_path"])
     require(not archived.exists(), "issue already archived before acquisition apply")
+    mode = plan["raw_admission_mode"]
+    require(
+        (mode == "RECONCILE_EXISTING_F_INCOMING")
+        == (source.resolve() == incoming.resolve()),
+        "raw admission mode/source path mismatch",
+    )
     if incoming.exists():
         require(
             incoming.is_file()
