@@ -27,7 +27,7 @@ export const LAOS_SOURCE_METADATA = {
   version: LAOS_CONNECTOR_VERSION,
   capabilities: ["WICKET_BOUNDED_PILOT", "SINGLE_DETAIL", "LOGO_EVIDENCE"],
 };
-const idPattern = /^LA(?:M)?\d{3,10}$/;
+const idPattern = /^LA(?:M)?\d{1,10}$/;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
 export const laosSha256 = (bytes: Uint8Array): string =>
@@ -293,7 +293,7 @@ export function parseLaosDetail(
   );
   const actualId = text(header?.[1] ?? "")
     .replace(/\s+/g, "")
-    .match(/LA(?:M)?\d{3,10}/)?.[0];
+    .match(/LA(?:M)?\d{1,10}/)?.[0];
   if (actualId !== id)
     throw failure("LA_DETAIL_ID_MISMATCH", "Detail does not match source record ID");
   const values = new Map<string, string>();
