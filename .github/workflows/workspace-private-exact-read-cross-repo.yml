@@ -30,7 +30,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  CORE_REF: 22f251a54e0eedb4b2a5d100c279c9f7e5596fb0
+  CORE_REF: f00192929be95693e4d9ef63d4b9b42ce72ecfe1
   MO_INTERNAL_SERVICE_SECRET: ${{ format('workspace-private-exact-read-{0}-ephemeral-secret', github.run_id) }}
   MARKORBIT_CORE_INTERNAL_SECRET: ${{ format('workspace-private-exact-read-core-{0}-ephemeral-secret', github.run_id) }}
   MARKORBIT_CORE_URL: http://127.0.0.1:4106
