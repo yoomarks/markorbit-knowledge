@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 env:
-  CORE_REF: d82b360b496c2ec8a249f4c8ea3da6ff6811005c
+  CORE_REF: 876a54b2608cfcb5f3897be4872e549d41697ba3
   CORE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/markorbit_managed_communication_e2e
   CORE_INTERNAL_SECRET: markorbit-managed-communication-e2e-secret-32-bytes
   CORE_WORKSPACE_ID: workspace:knowledge-managed-communication-e2e
