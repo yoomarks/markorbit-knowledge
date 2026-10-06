@@ -148,6 +148,8 @@ export type LaosIndexResume = {
   sourceTotal: number;
   /** The exact digests of all previously committed pages, in page order. */
   committedPageIdsSha256: string[];
+  /** Exact IDs retained in memory for a bounded fresh-session set-integrity replay. */
+  committedSourceRecordIds?: string[];
 };
 export type LaosDetail = {
   kind: "DETAIL";
@@ -596,6 +598,7 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
     resume?: LaosIndexResume;
   }): AsyncGenerator<LaosIndexPage, { sourceTotal: number; uniqueIds: number }, void> {
     let resume = options.resume;
+    const committedSourceRecordIds = [...(resume?.committedSourceRecordIds ?? [])];
     for (let sessionAttempt = 1; sessionAttempt <= 2; sessionAttempt++) {
       const committed = [...(resume?.committedPageIdsSha256 ?? [])];
       let sourceTotal = resume?.sourceTotal;
@@ -609,6 +612,7 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
           // The caller finalizes every yielded page before requesting the next
           // one, so this digest is durable when control returns here.
           committed.push(next.value.sourceRecordIdsSha256);
+          committedSourceRecordIds.push(...next.value.ids);
         }
       } catch (cause) {
         if (
@@ -623,7 +627,11 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
         // Never replay the uncertain callback in its stateful browser session.
         // A fresh official session must replay and verify every durable page
         // digest before advancing beyond the checkpoint once.
-        resume = { sourceTotal, committedPageIdsSha256: committed };
+        resume = {
+          sourceTotal,
+          committedPageIdsSha256: committed,
+          committedSourceRecordIds,
+        };
       }
     }
     throw failure("LA_INDEX_INCOMPLETE", "Index timeout resume did not complete");
@@ -644,12 +652,17 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
       );
     }
     const prior = options.resume?.committedPageIdsSha256 ?? [];
+    const priorIds = options.resume?.committedSourceRecordIds;
     if (
       options.resume &&
       (!Number.isSafeInteger(options.resume.sourceTotal) ||
         options.resume.sourceTotal < 1 ||
         prior.length >= options.maxPages ||
-        prior.some((sha) => !/^[a-f0-9]{64}$/.test(sha)))
+        prior.some((sha) => !/^[a-f0-9]{64}$/.test(sha)) ||
+        (priorIds !== undefined &&
+          (priorIds.length !== Math.min(options.resume.sourceTotal, prior.length * 50) ||
+            new Set(priorIds).size !== priorIds.length ||
+            priorIds.some((id) => !/^(?:LA|LAM)\d{1,10}$/.test(id)))))
     ) {
       throw failure(
         "LA_INDEX_RESUME_INVALID",
@@ -679,6 +692,9 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
         throw failure("LA_INDEX_TOTAL_DRIFT", "Index source total or page budget is not stable");
       }
       const firstHash = laosSha256(encoder.encode(parsed.ids.join("\n")));
+      const priorIdsSha256 = priorIds
+        ? laosSha256(encoder.encode([...priorIds].sort().join("\n")))
+        : undefined;
       let base = parsed.baseUrl ?? "public/trademarks?0";
       const requiredPages = Math.ceil(total / 50);
       for (let page = 1; page <= requiredPages; page++) {
@@ -699,10 +715,20 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
         const pageHash = laosSha256(encoder.encode(parsed.ids.join("\n")));
         for (const id of parsed.ids) seen.add(id);
         if (page <= prior.length) {
-          if (prior[page - 1] !== pageHash) {
+          if (prior[page - 1] !== pageHash && priorIdsSha256 === undefined) {
             throw failure(
               "LA_INDEX_RESUME_DRIFT",
               "Committed source ID page changed during resume",
+            );
+          }
+          if (
+            page === prior.length &&
+            priorIdsSha256 !== undefined &&
+            laosSha256(encoder.encode([...seen].sort().join("\n"))) !== priorIdsSha256
+          ) {
+            throw failure(
+              "LA_INDEX_RESUME_DRIFT",
+              `Committed source ID set changed through resume page ${page}`,
             );
           }
         } else {
