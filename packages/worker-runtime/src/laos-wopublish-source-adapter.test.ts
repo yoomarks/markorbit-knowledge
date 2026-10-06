@@ -564,6 +564,94 @@ describe("Laos WoPublish bounded SourceAdapter", () => {
     expect(firstSession.requests).toHaveLength(2);
     expect(resumedSession.requests).toHaveLength(2);
   });
+  it("accepts reordered committed pages only when the fresh-session ID set is exact", async () => {
+    const tinyFirst = first.replace("73531", "150");
+    const next3 =
+      "./trademarks?0-2.IBehaviorListener.0-body-searchResultPanel-resultWrapper-dataTable-topToolbars-toolbars-1-span-navigator-next";
+    const secondWithNext = withRange(second, 51, 100, 150).replace(
+      "</ajax-response>",
+      '<evaluate><![CDATA[Wicket.Ajax.ajax({"u":"' +
+        next3 +
+        '","e":"click","c":"id15"});]]></evaluate></ajax-response>',
+    );
+    const finalIds = ids(54200);
+    const finalXml =
+      '<?xml version="1.0"?><ajax-response><component><![CDATA[' +
+      '<li class="navigatorLabel results-display-text"><div>101 to 150 of 150</div></li>' +
+      links(finalIds) +
+      "]]></component></ajax-response>";
+    const timeout = new CollectionAcquisitionError(
+      "LA_BROWSER_RESPONSE_TIMEOUT",
+      "Official WoPublish AJAX response outcome is uncertain after timeout",
+      false,
+    );
+    const firstSession = new Scripted([
+      response(tinyFirst, "text/html"),
+      response(secondWithNext, "text/xml"),
+      timeout,
+    ]);
+    const reorderedFirstIds = [...firstIds];
+    const reorderedSecondIds = [...secondIds];
+    [reorderedFirstIds[49], reorderedSecondIds[0]] = [
+      reorderedSecondIds[0]!,
+      reorderedFirstIds[49]!,
+    ];
+    const reorderedFirst = tinyFirst.replace(links(firstIds), links(reorderedFirstIds));
+    const reorderedSecond = secondWithNext.replace(links(secondIds), links(reorderedSecondIds));
+    const resumedSession = new Scripted([
+      response(reorderedFirst, "text/html"),
+      response(reorderedSecond, "text/xml"),
+      response(finalXml, "text/xml"),
+    ]);
+    const sessions = [firstSession, resumedSession];
+    const subject = new LaosWopublishSourceAdapter({
+      transportFactory: () => sessions.shift()!,
+      intervalMs: 0,
+    });
+    const emitted: number[] = [];
+    for await (const page of subject.streamFullIndex({ maxPages: 3 })) emitted.push(page.page);
+    expect(emitted).toEqual([1, 2, 3]);
+    expect(firstSession.requests).toHaveLength(3);
+    expect(resumedSession.requests).toHaveLength(3);
+  });
+  it("fails closed when a fresh-session committed ID set changes at a stable total", async () => {
+    const tinyFirst = first.replace("73531", "150");
+    const next3 =
+      "./trademarks?0-2.IBehaviorListener.0-body-searchResultPanel-resultWrapper-dataTable-topToolbars-toolbars-1-span-navigator-next";
+    const secondWithNext = withRange(second, 51, 100, 150).replace(
+      "</ajax-response>",
+      '<evaluate><![CDATA[Wicket.Ajax.ajax({"u":"' +
+        next3 +
+        '","e":"click","c":"id15"});]]></evaluate></ajax-response>',
+    );
+    const timeout = new CollectionAcquisitionError(
+      "LA_BROWSER_RESPONSE_TIMEOUT",
+      "Official WoPublish AJAX response outcome is uncertain after timeout",
+      false,
+    );
+    const firstSession = new Scripted([
+      response(tinyFirst, "text/html"),
+      response(secondWithNext, "text/xml"),
+      timeout,
+    ]);
+    const changedFirst = tinyFirst.replace(firstIds[49]!, "LA99999");
+    const resumedSession = new Scripted([
+      response(changedFirst, "text/html"),
+      response(secondWithNext, "text/xml"),
+    ]);
+    const sessions = [firstSession, resumedSession];
+    const subject = new LaosWopublishSourceAdapter({
+      transportFactory: () => sessions.shift()!,
+      intervalMs: 0,
+    });
+    await expect(async () => {
+      for await (const page of subject.streamFullIndex({ maxPages: 3 })) {
+        expect(page.page).toBeLessThan(3);
+      }
+    }).rejects.toMatchObject({ code: "LA_INDEX_RESUME_DRIFT" });
+    expect(firstSession.requests).toHaveLength(3);
+    expect(resumedSession.requests).toHaveLength(2);
+  });
   it("fails closed after one fresh-session timeout resume", async () => {
     const tinyFirst = first.replace("73531", "100");
     const timeout = () =>
