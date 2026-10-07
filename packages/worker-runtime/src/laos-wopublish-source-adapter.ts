@@ -789,14 +789,12 @@ export class LaosWopublishSourceAdapter implements SourceAdapter<LaosObservation
           const expectedNextStart = page * 50 + 1;
           const expectedNextEnd = Math.min(nextPage * 50, total);
           if (
-            attempt > 1 &&
-            (parsed.total === undefined || parsed.total === total) &&
             parsed.rangeStart === expectedNextStart + 50 &&
             parsed.rangeEnd === Math.min(expectedNextEnd + 50, total)
           ) {
             throw failure(
               "LA_INDEX_REPLAY_ADVANCED",
-              "Exact-page recovery advanced the official navigator; a fresh session is required",
+              "The official navigator advanced past the requested page; a fresh session is required",
             );
           }
           const exactStableNonFinalPage =
