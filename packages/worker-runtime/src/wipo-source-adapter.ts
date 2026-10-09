@@ -278,7 +278,9 @@ export function parseWipoMgsSnapshot(
 
   const anomalies: WipoMgsSnapshotAnomaly[] = [];
   const seen = new Set<string>();
-  const acceptedLanguages = new Set([input.requestLanguage, localeCode]);
+  const acceptedLanguages = new Set(
+    [input.requestLanguage, localeCode].map((value) => value.toLocaleLowerCase("en-US")),
+  );
   const records = parsed.map((value, index): WipoMgsLocalizedTerm => {
     const rawPayload = record(value);
     if (!rawPayload) {
@@ -309,10 +311,10 @@ export function parseWipoMgsSnapshot(
         `MGS record ${id} reports class ${rowClass}, expected ${niceClass}`,
       );
     }
-    if (!acceptedLanguages.has(language)) {
+    if (!acceptedLanguages.has(language.toLocaleLowerCase("en-US"))) {
       throw new WipoMgsValidationError(
         "MGS_LANGUAGE_MISMATCH",
-        `MGS record ${id} reports language ${language}, expected ${[...acceptedLanguages].join(" or ")}`,
+        `MGS record ${id} reports language ${language}, expected ${input.requestLanguage} or ${localeCode}`,
       );
     }
     if (seen.has(id)) {

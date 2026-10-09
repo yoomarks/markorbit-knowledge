@@ -94,7 +94,7 @@ describe("WipoMgsArtifactAcquirer", () => {
             {
               id: 768723,
               cls: 1,
-              lng: "en",
+              lng: "EN",
               seq: 15,
               src: "NICE",
               txt: "2-naphthol",
