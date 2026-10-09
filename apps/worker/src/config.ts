@@ -1,5 +1,6 @@
 import { CRAWL4AI_MAX_CONCURRENCY, type RuntimeConverterRef } from "@markorbit/contracts";
 import {
+  WIPO_MGS_AUTOMATED_ACCESS_APPROVAL_ENV,
   parseApiEndpointBindings,
   parseLocalFolderRoots,
   type LocalFolderRootMap,
@@ -22,7 +23,9 @@ export type WorkerCollectionProvider =
   | "local-folder"
   | "rss"
   | "uspto-tsdr"
-  | "uspto-tsdr-web";
+  | "uspto-tsdr-web"
+  | "wipo-mgs"
+  | "wipo-mgs-publisher";
 
 export type WorkerProcessConfig = {
   controlPlaneUrl: string;
@@ -165,12 +168,14 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     value === "local-folder" ||
     value === "rss" ||
     value === "uspto-tsdr" ||
-    value === "uspto-tsdr-web"
+    value === "uspto-tsdr-web" ||
+    value === "wipo-mgs" ||
+    value === "wipo-mgs-publisher"
   ) {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, global-trademark-publisher, ip-australia-manual, laos-wopublish, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, global-trademark-publisher, ip-australia-manual, laos-wopublish, local-folder, rss, uspto-tsdr, uspto-tsdr-web, wipo-mgs, or wipo-mgs-publisher",
   );
 }
 
@@ -289,6 +294,11 @@ export function loadCnipaBrowserSessionConfig(
 
 export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): WorkerProcessConfig {
   const provider = collectionProvider(env);
+  if (provider === "wipo-mgs" && !enabled(env, WIPO_MGS_AUTOMATED_ACCESS_APPROVAL_ENV, false)) {
+    throw new Error(
+      `MARKORBIT_COLLECTION_PROVIDER=wipo-mgs requires ${WIPO_MGS_AUTOMATED_ACCESS_APPROVAL_ENV}=true after documented authorization`,
+    );
+  }
   const requireEgressProxy = env.MARKORBIT_CRAWL4AI_REQUIRE_EGRESS_PROXY?.trim() !== "0";
   if (env.NODE_ENV === "production" && provider === "crawl4ai" && !requireEgressProxy) {
     throw new Error("Production Crawl4AI Worker cannot disable the egress-proxy requirement");
@@ -331,7 +341,9 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
   }
   const cnipaSession = provider === "cnipa" ? loadCnipaBrowserSessionConfig(env) : undefined;
   const factAdmissionPublisher =
-    provider === "cnipa-gazette-publisher" || provider === "global-trademark-publisher";
+    provider === "cnipa-gazette-publisher" ||
+    provider === "global-trademark-publisher" ||
+    provider === "wipo-mgs-publisher";
   const dataEngineUrl = factAdmissionPublisher
     ? normalizedDataEngineUrl(required(env, "MARKORBIT_DATA_ENGINE_URL"))
     : undefined;

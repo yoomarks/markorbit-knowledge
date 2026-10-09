@@ -3,6 +3,9 @@ import {
   GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_ID,
   GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_VERSION,
   GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_SOURCE,
+  WIPO_MGS_FACT_ADMISSION_JOB_CONNECTOR_ID,
+  WIPO_MGS_FACT_ADMISSION_JOB_CONNECTOR_VERSION,
+  WIPO_MGS_FACT_ADMISSION_JOB_SOURCE,
 } from "@markorbit/worker-runtime";
 import type { WorkerLeaseReadAuthorization } from "@markorbit/persistence/worker-execution";
 import type { RawArtifactView } from "@markorbit/persistence/raw-artifacts";
@@ -48,13 +51,31 @@ function authorization(valid = true, referenceSha = SHA): WorkerLeaseReadAuthori
     },
   } as unknown as WorkerLeaseReadAuthorization;
 }
-function view(id: string, workspaceId = WORKSPACE_ID): RawArtifactView {
+function wipoAuthorization(): WorkerLeaseReadAuthorization {
+  const connector = {
+    connectorId: WIPO_MGS_FACT_ADMISSION_JOB_CONNECTOR_ID,
+    version: WIPO_MGS_FACT_ADMISSION_JOB_CONNECTOR_VERSION,
+  };
+  const value = authorization();
+  value.job.connector = connector;
+  value.job.sourceSnapshot.connector = connector;
+  value.job.sourceSnapshot.canonicalUri = WIPO_MGS_FACT_ADMISSION_JOB_SOURCE;
+  const config = value.job.sourceSnapshot.connectorConfig as Record<string, unknown>;
+  const reference = config.requestArtifactRef as Record<string, unknown>;
+  reference.canonicalUri = "wipo-mgs://en/class/01/fact-admission-request";
+  return value;
+}
+function view(
+  id: string,
+  workspaceId = WORKSPACE_ID,
+  canonicalUri = "la-dipo://wopublish/trademarks/list/page/1/fact-admission-request",
+): RawArtifactView {
   return {
     artifact: {
       id,
       workspaceId,
       artifactKind: "JSON",
-      canonicalUri: "la-dipo://wopublish/trademarks/list/page/1/fact-admission-request",
+      canonicalUri,
       binaryHash: { algorithm: "SHA-256", value: SHA },
       sizeBytes: 12,
     },
@@ -101,6 +122,26 @@ describe("generic fact-admission Worker RawArtifact read authorization", () => {
     ).toThrowError(
       expect.objectContaining({ code: "FACT_ADMISSION_WORKER_ARTIFACT_READ_NOT_AUTHORIZED" }),
     );
+  });
+  it("allows the exact WIPO MGS durable request under its dedicated publisher boundary", () => {
+    const canonicalUri = "wipo-mgs://en/class/01/fact-admission-request";
+    const artifact = view(REQUEST_ID, WORKSPACE_ID, canonicalUri);
+    const dependencies: FactAdmissionWorkerArtifactReadDependencies = {
+      executions: { authorizeArtifactRead: () => wipoAuthorization() },
+      artifacts: {
+        getArtifact: () => artifact,
+        contentPath: () => ({
+          path: "C:\\fixture\\mgs-request.json",
+          mimeType: "application/json",
+          originalName: "mgs-request.json",
+          sizeBytes: 12,
+        }),
+      },
+    };
+    expect(
+      authorizeFactAdmissionWorkerArtifactRead(input(REQUEST_ID), dependencies).view.artifact
+        .canonicalUri,
+    ).toBe(canonicalUri);
   });
   it("rejects another workspace, another connector, or invalid artifact integrity", () => {
     expect(() =>

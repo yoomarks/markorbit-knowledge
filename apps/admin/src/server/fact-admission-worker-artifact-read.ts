@@ -2,6 +2,9 @@
   GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_ID,
   GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_VERSION,
   GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_SOURCE,
+  WIPO_MGS_FACT_ADMISSION_JOB_CONNECTOR_ID,
+  WIPO_MGS_FACT_ADMISSION_JOB_CONNECTOR_VERSION,
+  WIPO_MGS_FACT_ADMISSION_JOB_SOURCE,
 } from "@markorbit/worker-runtime";
 import { RegistryConflictError, RegistryValidationError } from "@markorbit/persistence";
 import type { WorkerExecutionRepository } from "@markorbit/persistence/worker-execution";
@@ -37,14 +40,26 @@ function allowedArtifactRef(
 ): { artifactId: string; canonicalUri: string; sha256: string; sizeBytes: number } {
   const connector = job.connector;
   const sourceConnector = job.sourceSnapshot.connector;
-  if (
-    job.sourceSnapshot.sourceType !== "DATABASE" ||
-    job.sourceSnapshot.canonicalUri !== GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_SOURCE ||
-    connector.connectorId !== GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_ID ||
-    connector.version !== GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_VERSION ||
-    sourceConnector.connectorId !== GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_ID ||
-    sourceConnector.version !== GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_VERSION
-  ) {
+  const governedPublisher = [
+    {
+      connectorId: GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_ID,
+      version: GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_CONNECTOR_VERSION,
+      source: GLOBAL_TRADEMARK_FACT_ADMISSION_JOB_SOURCE,
+    },
+    {
+      connectorId: WIPO_MGS_FACT_ADMISSION_JOB_CONNECTOR_ID,
+      version: WIPO_MGS_FACT_ADMISSION_JOB_CONNECTOR_VERSION,
+      source: WIPO_MGS_FACT_ADMISSION_JOB_SOURCE,
+    },
+  ].some(
+    (candidate) =>
+      job.sourceSnapshot.canonicalUri === candidate.source &&
+      connector.connectorId === candidate.connectorId &&
+      connector.version === candidate.version &&
+      sourceConnector.connectorId === candidate.connectorId &&
+      sourceConnector.version === candidate.version,
+  );
+  if (job.sourceSnapshot.sourceType !== "DATABASE" || !governedPublisher) {
     throw new RegistryConflictError(
       "FACT_ADMISSION_WORKER_ARTIFACT_READ_JOB_INVALID",
       "RawArtifact read is only available to governed fact-admission publisher Jobs",
