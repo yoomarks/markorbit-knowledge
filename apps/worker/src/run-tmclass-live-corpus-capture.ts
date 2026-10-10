@@ -53,6 +53,8 @@ type SearchBatchSummary = {
   totalResults: number;
   totalPages: number;
   termIds: string[];
+  termRowCount?: number;
+  unresolvedTermRowCount?: number;
   harSha256: string;
 };
 
@@ -95,9 +97,12 @@ function assertSearchPageCardinality(input: {
 }): void {
   const remaining = Math.max(0, input.result.totalResults - (input.page - 1) * input.pageSize);
   const expected = Math.min(input.pageSize, remaining);
-  if (input.result.termIds.length !== expected) {
+  if (
+    input.result.termRowCount !== expected ||
+    input.result.termIds.length + input.result.unresolvedTermRowCount !== expected
+  ) {
     throw new Error(
-      `TMCLASS_SEARCH_PAGE_CARDINALITY ${input.language} class ${input.niceClass} page ${input.page} expected ${expected} got ${input.result.termIds.length}`,
+      `TMCLASS_SEARCH_PAGE_CARDINALITY ${input.language} class ${input.niceClass} page ${input.page} expected ${expected} rows ${input.result.termRowCount} resolved ${input.result.termIds.length} unresolved ${input.result.unresolvedTermRowCount}`,
     );
   }
 }
@@ -712,6 +717,8 @@ async function ensureClassFirstPage(input: {
       totalResults: parsed.totalResults,
       totalPages: parsed.totalPages,
       termIds: parsed.termIds,
+      termRowCount: parsed.termRowCount,
+      unresolvedTermRowCount: parsed.unresolvedTermRowCount,
     },
   );
   const manifest: ClassManifest = {
@@ -820,6 +827,11 @@ async function collectLanguageIndex(
         totalResults: manifest.totalResults,
         totalPages: manifest.totalPages,
         termIds: [...new Set(parsed.flatMap((result) => result.termIds))].sort(),
+        termRowCount: parsed.reduce((total, result) => total + result.termRowCount, 0),
+        unresolvedTermRowCount: parsed.reduce(
+          (total, result) => total + result.unresolvedTermRowCount,
+          0,
+        ),
       });
       process.stdout.write(
         `${JSON.stringify({ phase: "INDEX", language, niceClass: manifest.niceClass, throughPage: pages.at(-1), totalPages: manifest.totalPages })}\n`,
@@ -911,17 +923,22 @@ async function filesRecursively(root: string, suffix: string): Promise<string[]>
   return result.sort();
 }
 
-async function indexedTermIds(outputRoot: string): Promise<Set<string>> {
-  const result = new Set<string>();
+async function indexedSearchState(outputRoot: string): Promise<{
+  termIds: Set<string>;
+  unresolvedTermRowCount: number;
+}> {
+  const termIds = new Set<string>();
+  let unresolvedTermRowCount = 0;
   for (const summaryPath of await filesRecursively(
     path.join(outputRoot, "index"),
     ".summary.json",
   )) {
     const summary = await readJson<SearchBatchSummary>(summaryPath);
     if (summary.kind !== "SEARCH") continue;
-    for (const id of summary.termIds) result.add(id);
+    for (const id of summary.termIds) termIds.add(id);
+    unresolvedTermRowCount += summary.unresolvedTermRowCount ?? 0;
   }
-  return result;
+  return { termIds, unresolvedTermRowCount };
 }
 
 async function detailState(outputRoot: string): Promise<{
@@ -929,8 +946,10 @@ async function detailState(outputRoot: string): Promise<{
   conceptIds: Set<string>;
   conceptLanguageRoutes: Set<string>;
   completedRoutes: Set<string>;
+  unresolvedSearchTermRowCount: number;
 }> {
-  const termIds = await indexedTermIds(outputRoot);
+  const index = await indexedSearchState(outputRoot);
+  const termIds = index.termIds;
   const conceptIds = new Set<string>();
   const conceptLanguageRoutes = new Set<string>();
   const completedRoutes = new Set<string>();
@@ -944,7 +963,13 @@ async function detailState(outputRoot: string): Promise<{
     for (const id of summary.conceptIds) conceptIds.add(id);
     for (const route of summary.conceptLanguageRoutes) conceptLanguageRoutes.add(route);
   }
-  return { termIds, conceptIds, conceptLanguageRoutes, completedRoutes };
+  return {
+    termIds,
+    conceptIds,
+    conceptLanguageRoutes,
+    completedRoutes,
+    unresolvedSearchTermRowCount: index.unresolvedTermRowCount,
+  };
 }
 
 function detailDirectory(kind: DetailBatchSummary["kind"]): string {
@@ -1056,6 +1081,7 @@ async function collectDetailClosure(
       conceptCount: state.conceptIds.size,
       conceptLanguageRouteCount: state.conceptLanguageRoutes.size,
       capturedDetailRouteCount: state.completedRoutes.size,
+      unresolvedSearchTermRowCount: state.unresolvedSearchTermRowCount,
     });
     return;
   }

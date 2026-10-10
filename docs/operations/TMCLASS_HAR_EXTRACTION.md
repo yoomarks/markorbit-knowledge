@@ -82,6 +82,9 @@ The verified public search surface accepts up to 1,000 results per page; the pag
 in every index manifest and completion marker so a resumed root cannot mix incompatible pagination.
 For pages larger than the site's default, each class also retains a 100-result metadata response;
 the collector uses its total to verify the exact cardinality of every larger result page.
+If TMclass itself renders an empty term row with no recoverable identifier, the raw row remains in
+the HAR and the batch summary records it as `unresolvedTermRowCount`; the collector still verifies
+that resolved identifiers plus explicit upstream empty rows equal the declared page cardinality.
 Every AJAX attempt uses the site's numeric cache-buster parameter and records the actual requested
 URI, preventing a transient partial template from being reused across validation retries.
 On Windows, `auto` uses the system Schannel `curl.exe` transport; other platforms retain native

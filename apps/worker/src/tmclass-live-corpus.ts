@@ -50,6 +50,8 @@ export type TmclassSearchResult = {
   totalResults: number;
   totalPages: number;
   termIds: string[];
+  termRowCount: number;
+  unresolvedTermRowCount: number;
   elasticMaxResults: boolean;
 };
 
@@ -119,13 +121,19 @@ export function parseTmclassSearchResult(
   if (expectedTotalResults !== undefined && totalResults !== expectedTotalResults) {
     throw new Error("TMCLASS_SEARCH_TOTAL_RESULTS_DRIFT");
   }
-  const termIds = uniqueSorted(
-    [
-      ...html.matchAll(
-        /(?:href=["'](?:https:\/\/euipo\.europa\.eu)?\/ec2)?\/term\/(\d+)(?:[?"'#<\s]|$)/giu,
-      ),
-    ].map((match) => match[1]!),
-  );
+  const termRows = [
+    ...html.matchAll(/<td\b[^>]*class=["'][^"']*\btermDetails\b[^"']*["'][^>]*>[\s\S]*?<\/td>/giu),
+  ].map((match) => match[0]);
+  const termLinkPattern =
+    /(?:href=["'](?:https:\/\/euipo\.europa\.eu)?\/ec2)?\/term\/(\d+)(?:[?"'#<\s]|$)/giu;
+  const rowTermIds =
+    termRows.length > 0
+      ? termRows.map((row) => row.match(new RegExp(termLinkPattern.source, "iu"))?.[1])
+      : [...html.matchAll(termLinkPattern)].map((match) => match[1]);
+  const termIds = uniqueSorted(rowTermIds.filter((id): id is string => id !== undefined));
+  const termRowCount = termRows.length > 0 ? termRows.length : termIds.length;
+  const unresolvedTermRowCount =
+    termRows.length > 0 ? rowTermIds.filter((id) => id === undefined).length : 0;
   const elasticRaw = inputValue(html, "elasticMaxResults");
   const elasticMaxResults =
     elasticRaw?.toLowerCase() === "true" || /[?&]elasticMaxResults=true(?:&|["'])/iu.test(html);
@@ -133,6 +141,8 @@ export function parseTmclassSearchResult(
     totalResults,
     totalPages: totalResults === 0 ? 0 : Math.ceil(totalResults / pageSize),
     termIds,
+    termRowCount,
+    unresolvedTermRowCount,
     elasticMaxResults,
   };
 }

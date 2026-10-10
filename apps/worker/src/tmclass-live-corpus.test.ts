@@ -33,7 +33,25 @@ describe("TMclass live corpus helpers", () => {
       totalResults: 201,
       totalPages: 3,
       termIds: ["10", "9"],
+      termRowCount: 2,
+      unresolvedTermRowCount: 0,
       elasticMaxResults: true,
+    });
+  });
+
+  it("accounts for an upstream blank term row without inventing an identifier", () => {
+    expect(
+      parseTmclassSearchResult(
+        `<input value="2" name="totalResults" type="hidden" />
+         <td class="termDetails"><a href="/ec2/term/42">Valid</a></td>
+         <td class="termDetails"><a href="/ec2/term/"></a></td>`,
+        1_000,
+      ),
+    ).toMatchObject({
+      totalResults: 2,
+      termIds: ["42"],
+      termRowCount: 2,
+      unresolvedTermRowCount: 1,
     });
   });
 
