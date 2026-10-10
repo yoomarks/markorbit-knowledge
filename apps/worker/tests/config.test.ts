@@ -95,6 +95,45 @@ describe("loadWorkerProcessConfig", () => {
     expect(config).not.toHaveProperty("apiEndpointBindings");
   });
 
+  it("keeps the WIPO MGS provider disabled until automated access is explicitly approved", () => {
+    expect(() =>
+      loadWorkerProcessConfig(
+        env({
+          MARKORBIT_COLLECTION_PROVIDER: "wipo-mgs",
+        }),
+      ),
+    ).toThrow(/AUTOMATED_ACCESS_APPROVED/);
+
+    const config = loadWorkerProcessConfig(
+      env({
+        MARKORBIT_COLLECTION_PROVIDER: "wipo-mgs",
+        MARKORBIT_WIPO_MGS_AUTOMATED_ACCESS_APPROVED: "true",
+      }),
+    );
+    expect(config.collectionProvider).toBe("wipo-mgs");
+    expect(config).not.toHaveProperty("wipoMgsAutomatedAccessApproved");
+  });
+
+  it("requires independent Data Engine credentials only for the WIPO MGS publisher", () => {
+    expect(() =>
+      loadWorkerProcessConfig(
+        env({
+          MARKORBIT_COLLECTION_PROVIDER: "wipo-mgs-publisher",
+        }),
+      ),
+    ).toThrowError(/MARKORBIT_DATA_ENGINE_URL/u);
+    const publisher = loadWorkerProcessConfig(
+      env({
+        MARKORBIT_COLLECTION_PROVIDER: "wipo-mgs-publisher",
+        MARKORBIT_DATA_ENGINE_URL: "https://data-engine.example.test",
+        MARKORBIT_DATA_ENGINE_FACT_ADMISSION_KEY: "m".repeat(64),
+      }),
+    );
+    expect(publisher.collectionProvider).toBe("wipo-mgs-publisher");
+    expect(publisher.dataEngineUrl).toBe("https://data-engine.example.test");
+    expect(publisher.dataEngineFactAdmissionKey).toBe("m".repeat(64));
+  });
+
   it("enables the IP Australia Manual provider without unrelated provider configuration", () => {
     const config = loadWorkerProcessConfig(
       env({

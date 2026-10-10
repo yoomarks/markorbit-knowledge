@@ -10,9 +10,9 @@ import {
 
 describe("WIPO source coverage catalog", () => {
   it("ships a unique curated WIPO trademark baseline", () => {
-    expect(WIPO_SOURCE_COVERAGE_TARGETS).toHaveLength(11);
-    expect(new Set(WIPO_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(11);
-    expect(new Set(WIPO_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size).toBe(11);
+    expect(WIPO_SOURCE_COVERAGE_TARGETS).toHaveLength(12);
+    expect(new Set(WIPO_SOURCE_COVERAGE_TARGETS.map((item) => item.id)).size).toBe(12);
+    expect(new Set(WIPO_SOURCE_COVERAGE_TARGETS.map((item) => item.canonicalUri)).size).toBe(12);
 
     for (const item of WIPO_SOURCE_COVERAGE_TARGETS) {
       expect(item.jurisdiction).toBe("WO");
@@ -34,16 +34,34 @@ describe("WIPO source coverage catalog", () => {
 
   it("filters and summarizes WIPO independently from the US map", () => {
     const targets = listSourceCoverageTargets({ jurisdiction: "wo" });
-    expect(targets).toHaveLength(11);
+    expect(targets).toHaveLength(12);
     expect(targets.every((item) => item.jurisdiction === "WO")).toBe(true);
 
     const summary = summarizeSourceCoverage(targets);
-    expect(summary.total).toBe(11);
-    expect(summary.byTier).toEqual({ FOUNDATIONAL: 8, SUPPORTING: 2, CHANGE_SIGNAL: 1 });
+    expect(summary.total).toBe(12);
+    expect(summary.byTier).toEqual({ FOUNDATIONAL: 9, SUPPORTING: 2, CHANGE_SIGNAL: 1 });
     expect(summary.byFamily.STATUS_AND_DOCUMENTS).toBe(1);
     expect(summary.byFamily.OFFICIAL_GAZETTE).toBe(1);
     expect(summary.byFamily.POLICY_NOTICES).toBe(2);
     expect(summary.byFamily.APPEALS_AND_CASELAW).toBe(1);
+    expect(summary.byFamily.GOODS_SERVICES_ID).toBe(2);
+  });
+
+  it("keeps MGS as WATCH coverage until automated access is authorized", () => {
+    const mgs = getSourceCoverageTarget("wo-wipo-madrid-goods-services-manager");
+
+    expect(mgs).toMatchObject({
+      sourceType: "API",
+      catalogState: "WATCH",
+      family: "GOODS_SERVICES_ID",
+      canonicalUri: "https://webaccess.wipo.int/mgs/",
+      acquisition: {
+        mode: "API_OR_STRUCTURED",
+        expectedArtifactKinds: ["JSON"],
+      },
+    });
+    expect(mgs?.languages).toContain("pt-BR");
+    expect(mgs?.notes).toMatch(/disabled until documented authorization/i);
   });
 
   it("exposes current WIPO legal-text and Madrid Monitor targets", () => {
