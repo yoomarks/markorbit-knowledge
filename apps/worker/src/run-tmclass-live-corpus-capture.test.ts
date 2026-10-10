@@ -18,6 +18,7 @@ function options(maxAttempts: number): Options {
     minStartIntervalMs: 100,
     timeoutMs: 5_000,
     maxAttempts,
+    httpTransport: "fetch",
   };
 }
 

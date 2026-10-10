@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
-import { access, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { access, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import {
   TMCLASS_DATA_LANGUAGES,
   assertTmclassRobotsAllowsPublicEc2,
@@ -21,6 +24,7 @@ const ROBOTS_URL = "https://euipo.europa.eu/robots.txt";
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MarkOrbitKnowledge/1.0";
+const execFileAsync = promisify(execFile);
 
 export type Options = {
   outputRoot: string;
@@ -34,6 +38,7 @@ export type Options = {
   minStartIntervalMs: number;
   timeoutMs: number;
   maxAttempts: number;
+  httpTransport: "auto" | "curl" | "fetch";
 };
 
 type SearchBatchSummary = {
@@ -134,6 +139,7 @@ function options(argv: string[]): Options {
     "--min-start-interval-ms",
     "--timeout-ms",
     "--max-attempts",
+    "--http-transport",
   ]);
   const unknown = [...values.keys()].filter((flag) => !allowed.has(flag));
   if (unknown.length > 0) throw new Error(`Unsupported argument ${unknown[0]}`);
@@ -167,6 +173,10 @@ function options(argv: string[]): Options {
   if (capture !== "index" && capture !== "details" && capture !== "all") {
     throw new Error("--capture must be 'index', 'details' or 'all'");
   }
+  const httpTransport = values.get("--http-transport")?.trim() || "auto";
+  if (httpTransport !== "auto" && httpTransport !== "curl" && httpTransport !== "fetch") {
+    throw new Error("--http-transport must be 'auto', 'curl' or 'fetch'");
+  }
   return {
     outputRoot: path.resolve(outputRoot),
     languages,
@@ -191,6 +201,7 @@ function options(argv: string[]): Options {
     ),
     timeoutMs: integer(values.get("--timeout-ms"), 45_000, "--timeout-ms", 5_000, 180_000),
     maxAttempts: integer(values.get("--max-attempts"), 4, "--max-attempts", 0, 1_000),
+    httpTransport,
   };
 }
 
@@ -235,11 +246,89 @@ function cacheBustedUri(sourceUri: string): string {
   return url.toString();
 }
 
+type HttpResult = {
+  status: number;
+  html: string;
+  retryAfter: string | null;
+};
+
+async function curlRequest(input: {
+  requestUri: string;
+  headers: Record<string, string>;
+  timeoutMs: number;
+}): Promise<HttpResult> {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "markorbit-tmclass-"));
+  const bodyPath = path.join(temporaryRoot, "body.html");
+  const headersPath = path.join(temporaryRoot, "headers.txt");
+  try {
+    const executable = process.platform === "win32" ? "curl.exe" : "curl";
+    const headerArguments = Object.entries(input.headers).flatMap(([name, value]) => [
+      "--header",
+      `${name}: ${value}`,
+    ]);
+    const { stdout } = await execFileAsync(
+      executable,
+      [
+        "--silent",
+        "--show-error",
+        "--location",
+        "--compressed",
+        "--max-time",
+        String(Math.ceil(input.timeoutMs / 1_000)),
+        "--output",
+        bodyPath,
+        "--dump-header",
+        headersPath,
+        "--write-out",
+        "%{http_code}",
+        ...headerArguments,
+        input.requestUri,
+      ],
+      {
+        encoding: "utf8",
+        timeout: input.timeoutMs + 10_000,
+        windowsHide: true,
+        maxBuffer: 1024 * 1024,
+      },
+    );
+    const html = await readFile(bodyPath, "utf8");
+    const responseHeaders = await readFile(headersPath, "utf8");
+    const retryAfter =
+      [...responseHeaders.matchAll(/^retry-after:\s*(.+?)\s*$/gimu)].at(-1)?.[1] ?? null;
+    return { status: Number(stdout.trim()), html, retryAfter };
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+}
+
 export class TmclassPublicClient {
   private readonly gate: RequestGate;
 
   constructor(private readonly configured: Options) {
     this.gate = new RequestGate(configured.minStartIntervalMs);
+  }
+
+  private async request(requestUri: string, headers: Record<string, string>): Promise<HttpResult> {
+    const transport =
+      this.configured.httpTransport === "auto"
+        ? process.platform === "win32"
+          ? "curl"
+          : "fetch"
+        : this.configured.httpTransport;
+    if (transport === "curl") {
+      return curlRequest({ requestUri, headers, timeoutMs: this.configured.timeoutMs });
+    }
+    const response = await fetch(requestUri, {
+      method: "GET",
+      headers,
+      redirect: "follow",
+      signal: AbortSignal.timeout(this.configured.timeoutMs),
+    });
+    return {
+      status: response.status,
+      html: await response.text(),
+      retryAfter: response.headers.get("retry-after"),
+    };
   }
 
   async capture(
@@ -264,13 +353,8 @@ export class TmclassPublicClient {
           "user-agent": USER_AGENT,
         };
         if (ajax) headers["x-requested-with"] = "XMLHttpRequest";
-        const response = await fetch(requestUri, {
-          method: "GET",
-          headers,
-          redirect: "follow",
-          signal: AbortSignal.timeout(this.configured.timeoutMs),
-        });
-        const html = await response.text();
+        const response = await this.request(requestUri, headers);
+        const html = response.html;
         if (response.status === 200 && html.trim()) {
           if (Buffer.byteLength(html, "utf8") > 10 * 1024 * 1024) {
             throw new NonRetryableTmclassError(`TMCLASS_RESPONSE_TOO_LARGE ${requestUri}`);
@@ -287,7 +371,7 @@ export class TmclassPublicClient {
         if (!retryable) throw new NonRetryableTmclassError(error.message);
         lastError = error;
         if (this.configured.maxAttempts !== 0 && attempt >= this.configured.maxAttempts) break;
-        const waitMs = retryDelayMs(attempt, response.headers.get("retry-after"));
+        const waitMs = retryDelayMs(attempt, response.retryAfter);
         process.stderr.write(
           `${JSON.stringify({ phase: "RETRY", sourceUri: requestUri, attempt, waitMs, error: errorMessage(error) })}\n`,
         );
@@ -917,6 +1001,7 @@ async function writeStatus(configured: Options, phase: string): Promise<void> {
     searchBatchSize: configured.searchBatchSize,
     searchPageSize: configured.searchPageSize,
     minStartIntervalMs: configured.minStartIntervalMs,
+    httpTransport: configured.httpTransport,
   });
 }
 

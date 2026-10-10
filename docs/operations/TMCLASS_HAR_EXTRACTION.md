@@ -67,7 +67,8 @@ pnpm --filter @markorbit/worker tmclass:capture-live-corpus -- `
   --search-page-size 1000 `
   --min-start-interval-ms 500 `
   --timeout-ms 120000 `
-  --max-attempts 0
+  --max-attempts 0 `
+  --http-transport auto
 ```
 
 Every search or detail batch is atomically written as HAR with a hash-bound summary. Re-running
@@ -81,6 +82,8 @@ For pages larger than the site's default, each class also retains a 100-result m
 the collector uses its total to verify the exact cardinality of every larger result page.
 Every AJAX attempt uses the site's numeric cache-buster parameter and records the actual requested
 URI, preventing a transient partial template from being reused across validation retries.
+On Windows, `auto` uses the system Schannel `curl.exe` transport; other platforms retain native
+fetch. Operators can select either transport explicitly without changing the captured contract.
 
 The continuous Knowledge admission operator watches completed detail HAR batches, imports them as
 immutable RawArtifacts, and emits one evidence bundle per batch:
