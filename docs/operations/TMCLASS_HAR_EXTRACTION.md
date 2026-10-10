@@ -75,7 +75,9 @@ Every search or detail batch is atomically written as HAR with a hash-bound summ
 the same command skips completed batches. `STATUS.json` records the active phase and
 `COMPLETE.json` is written only after no undiscovered Term, Concept or Concept-language route
 remains. `--max-attempts 0` keeps retrying transient timeouts, empty successful responses, HTTP
-429 responses and server errors with a capped backoff; other HTTP failures still stop immediately.
+429 responses and server errors with a quadratic backoff capped at 15 minutes; other HTTP failures
+still stop immediately. The longer cap gives a sustained upstream throttle a real cooldown window
+instead of keeping it alive with minute-by-minute probes.
 The verified public search surface accepts up to 1,000 results per page; the page size is recorded
 in every index manifest and completion marker so a resumed root cannot mix incompatible pagination.
 For pages larger than the site's default, each class also retains a 100-result metadata response;

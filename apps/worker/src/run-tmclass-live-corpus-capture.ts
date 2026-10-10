@@ -241,12 +241,14 @@ class RequestGate {
 
 class NonRetryableTmclassError extends Error {}
 
+const MAX_RETRY_DELAY_MS = 15 * 60_000;
+
 export function retryDelayMs(attempt: number, retryAfter: string | null = null): number {
   const seconds = retryAfter === null ? Number.NaN : Number(retryAfter);
   if (Number.isFinite(seconds) && seconds >= 0) {
-    return Math.min(seconds * 1_000, 60_000);
+    return Math.min(seconds * 1_000, MAX_RETRY_DELAY_MS);
   }
-  return Math.min(attempt * attempt * 1_000, 60_000);
+  return Math.min(attempt * attempt * 1_000, MAX_RETRY_DELAY_MS);
 }
 
 function errorMessage(error: unknown): string {

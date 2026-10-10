@@ -80,9 +80,10 @@ describe("TMclass live corpus request retry", () => {
     expect(fetchMock.mock.calls[0]![0]).not.toBe(fetchMock.mock.calls[1]![0]);
   });
 
-  it("caps exponential and Retry-After backoff at one minute", () => {
+  it("caps exponential and Retry-After backoff at fifteen minutes", () => {
     expect(retryDelayMs(2)).toBe(4_000);
-    expect(retryDelayMs(100)).toBe(60_000);
-    expect(retryDelayMs(1, "120")).toBe(60_000);
+    expect(retryDelayMs(100)).toBe(15 * 60_000);
+    expect(retryDelayMs(1, "120")).toBe(120_000);
+    expect(retryDelayMs(1, "3600")).toBe(15 * 60_000);
   });
 });
