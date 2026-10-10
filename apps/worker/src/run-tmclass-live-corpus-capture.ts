@@ -726,7 +726,14 @@ async function collectDetailClosure(
 }
 
 async function writeStatus(configured: Options, phase: string): Promise<void> {
-  await writeJson(path.join(configured.outputRoot, "STATUS.json"), {
+  const isPrimary =
+    configured.capture === "all" &&
+    configured.languages.length === TMCLASS_DATA_LANGUAGES.length &&
+    configured.languages.every((language, index) => language === TMCLASS_DATA_LANGUAGES[index]);
+  const statusName = isPrimary
+    ? "STATUS.json"
+    : `STATUS-${sha256(`${configured.capture}\n${configured.languages.join(",")}`).slice(0, 12)}.json`;
+  await writeJson(path.join(configured.outputRoot, statusName), {
     schemaVersion: SCHEMA_VERSION,
     phase,
     updatedAt: new Date().toISOString(),
