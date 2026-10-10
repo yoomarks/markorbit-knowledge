@@ -236,7 +236,11 @@ export class TmclassPublicClient {
     this.gate = new RequestGate(configured.minStartIntervalMs);
   }
 
-  async capture(sourceUri: string, ajax: boolean): Promise<TmclassHarEntry> {
+  async capture(
+    sourceUri: string,
+    ajax: boolean,
+    validate?: (entry: TmclassHarEntry) => void,
+  ): Promise<TmclassHarEntry> {
     let lastError: unknown;
     for (
       let attempt = 1;
@@ -264,7 +268,9 @@ export class TmclassPublicClient {
           if (Buffer.byteLength(html, "utf8") > 10 * 1024 * 1024) {
             throw new NonRetryableTmclassError(`TMCLASS_RESPONSE_TOO_LARGE ${sourceUri}`);
           }
-          return { sourceUri, observedAt, html };
+          const entry = { sourceUri, observedAt, html };
+          validate?.(entry);
+          return entry;
         }
         const retryable =
           response.status === 200 || response.status === 429 || response.status >= 500;
@@ -446,6 +452,7 @@ async function ensureClassFirstPage(input: {
     }
     return manifest;
   }
+  let metadata: TmclassSearchResult | undefined;
   const metadataEntry = await input.client.capture(
     tmclassSearchUrl({
       language: input.language,
@@ -455,8 +462,12 @@ async function ensureClassFirstPage(input: {
       pageSize: 100,
     }),
     true,
+    (candidate) => {
+      metadata = parseTmclassSearchResult(candidate.html, 100);
+    },
   );
-  const metadata = parseTmclassSearchResult(metadataEntry.html, 100);
+  if (!metadata) throw new Error("TMCLASS_SEARCH_METADATA_VALIDATION_MISSING");
+  let parsed: TmclassSearchResult | undefined;
   const entry =
     input.searchPageSize === 100
       ? metadataEntry
@@ -469,8 +480,29 @@ async function ensureClassFirstPage(input: {
             pageSize: input.searchPageSize,
           }),
           true,
+          (candidate) => {
+            const result = parseTmclassSearchResult(
+              candidate.html,
+              input.searchPageSize,
+              metadata!.totalResults,
+            );
+            if (result.elasticMaxResults) {
+              throw new NonRetryableTmclassError(
+                `TMCLASS_SEARCH_RESULT_CAP ${input.language} class ${input.niceClass}`,
+              );
+            }
+            assertSearchPageCardinality({
+              language: input.language,
+              niceClass: input.niceClass,
+              page: 1,
+              pageSize: input.searchPageSize,
+              result,
+            });
+            parsed = result;
+          },
         );
-  const parsed = parseTmclassSearchResult(entry.html, input.searchPageSize, metadata.totalResults);
+  if (input.searchPageSize === 100) parsed = metadata;
+  if (!parsed) throw new Error("TMCLASS_SEARCH_PAGE_VALIDATION_MISSING");
   if (parsed.elasticMaxResults) {
     throw new Error(`TMCLASS_SEARCH_RESULT_CAP ${input.language} class ${input.niceClass}`);
   }
@@ -546,8 +578,9 @@ async function collectLanguageIndex(
       );
       const summaryPath = harPath.replace(/\.har$/u, ".summary.json");
       if (await exists(summaryPath)) continue;
-      const entries = await mapConcurrent(pages, configured.concurrency, (page) =>
-        client.capture(
+      const captured = await mapConcurrent(pages, configured.concurrency, async (page) => {
+        let result: TmclassSearchResult | undefined;
+        const entry = await client.capture(
           tmclassSearchUrl({
             language,
             officeCodes: coverage.officeCodes,
@@ -556,11 +589,32 @@ async function collectLanguageIndex(
             pageSize: configured.searchPageSize,
           }),
           true,
-        ),
-      );
-      const parsed = entries.map((entry) =>
-        parseTmclassSearchResult(entry.html, configured.searchPageSize, manifest.totalResults),
-      );
+          (candidate) => {
+            const parsed = parseTmclassSearchResult(
+              candidate.html,
+              configured.searchPageSize,
+              manifest.totalResults,
+            );
+            if (parsed.elasticMaxResults) {
+              throw new NonRetryableTmclassError(
+                `TMCLASS_SEARCH_RESULT_CAP ${language} class ${manifest.niceClass}`,
+              );
+            }
+            assertSearchPageCardinality({
+              language,
+              niceClass: manifest.niceClass,
+              page,
+              pageSize: configured.searchPageSize,
+              result: parsed,
+            });
+            result = parsed;
+          },
+        );
+        if (!result) throw new Error("TMCLASS_SEARCH_PAGE_VALIDATION_MISSING");
+        return { entry, result };
+      });
+      const entries = captured.map((item) => item.entry);
+      const parsed = captured.map((item) => item.result);
       if (
         parsed.some(
           (result) =>
@@ -571,15 +625,6 @@ async function collectLanguageIndex(
       ) {
         throw new Error(`TMCLASS_SEARCH_PAGINATION_DRIFT ${language} class ${manifest.niceClass}`);
       }
-      parsed.forEach((result, index) =>
-        assertSearchPageCardinality({
-          language,
-          niceClass: manifest.niceClass,
-          page: pages[index]!,
-          pageSize: configured.searchPageSize,
-          result,
-        }),
-      );
       await writeHarWithSummary(harPath, entries, {
         schemaVersion: SCHEMA_VERSION,
         kind: "SEARCH",

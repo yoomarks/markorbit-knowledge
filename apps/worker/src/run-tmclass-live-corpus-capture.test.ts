@@ -56,6 +56,26 @@ describe("TMclass live corpus request retry", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("retries a successful response that fails content validation", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("<html>temporary block</html>", { status: 200 }))
+      .mockResolvedValueOnce(new Response("<html>valid result</html>", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    const captured = await new TmclassPublicClient(options(0)).capture(
+      "https://euipo.europa.eu/ec2/search/ajaxSearch",
+      true,
+      (entry) => {
+        if (!entry.html.includes("valid result")) throw new Error("invalid search response");
+      },
+    );
+
+    expect(captured.html).toContain("valid result");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("caps exponential and Retry-After backoff at one minute", () => {
     expect(retryDelayMs(2)).toBe(4_000);
     expect(retryDelayMs(100)).toBe(60_000);
