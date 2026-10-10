@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  isTmclassSourceProtectionPage,
   TmclassPublicClient,
   retryDelayMs,
   type Options,
@@ -85,5 +86,29 @@ describe("TMclass live corpus request retry", () => {
     expect(retryDelayMs(100)).toBe(15 * 60_000);
     expect(retryDelayMs(1, "120")).toBe(120_000);
     expect(retryDelayMs(1, "3600")).toBe(15 * 60_000);
+    expect(retryDelayMs(1, null, true)).toBe(15 * 60_000);
+  });
+
+  it("recognizes the upstream source-protection page and never admits it", async () => {
+    const protectedHtml = `
+      <!doctype html>
+      <html>
+        <head>
+          <link rel="stylesheet" href="css/online-interruption.css" />
+          <title>Problem detected</title>
+        </head>
+      </html>`;
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(protectedHtml));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    expect(isTmclassSourceProtectionPage(protectedHtml)).toBe(true);
+    await expect(
+      new TmclassPublicClient(options(1)).capture(
+        "https://euipo.europa.eu/ec2/search/ajaxSearch",
+        true,
+      ),
+    ).rejects.toThrow("TMCLASS_SOURCE_PROTECTION");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

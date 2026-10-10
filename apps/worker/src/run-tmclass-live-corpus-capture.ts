@@ -248,14 +248,27 @@ class RequestGate {
 
 class NonRetryableTmclassError extends Error {}
 
+class TmclassSourceProtectionError extends Error {}
+
 const MAX_RETRY_DELAY_MS = 15 * 60_000;
 
-export function retryDelayMs(attempt: number, retryAfter: string | null = null): number {
+export function retryDelayMs(
+  attempt: number,
+  retryAfter: string | null = null,
+  sourceProtection = false,
+): number {
+  if (sourceProtection) return MAX_RETRY_DELAY_MS;
   const seconds = retryAfter === null ? Number.NaN : Number(retryAfter);
   if (Number.isFinite(seconds) && seconds >= 0) {
     return Math.min(seconds * 1_000, MAX_RETRY_DELAY_MS);
   }
   return Math.min(attempt * attempt * 1_000, MAX_RETRY_DELAY_MS);
+}
+
+export function isTmclassSourceProtectionPage(html: string): boolean {
+  return (
+    /<title>\s*Problem detected\s*<\/title>/iu.test(html) && /online-interruption\.css/iu.test(html)
+  );
 }
 
 function errorMessage(error: unknown): string {
@@ -435,6 +448,9 @@ export class TmclassPublicClient {
         const response = await this.request(requestUri, headers);
         const html = response.html;
         if (response.status === 200 && html.trim()) {
+          if (isTmclassSourceProtectionPage(html)) {
+            throw new TmclassSourceProtectionError(`TMCLASS_SOURCE_PROTECTION ${requestUri}`);
+          }
           if (Buffer.byteLength(html, "utf8") > 10 * 1024 * 1024) {
             throw new NonRetryableTmclassError(`TMCLASS_RESPONSE_TOO_LARGE ${requestUri}`);
           }
@@ -461,7 +477,7 @@ export class TmclassPublicClient {
           cause: error,
         });
         if (this.configured.maxAttempts !== 0 && attempt >= this.configured.maxAttempts) break;
-        const waitMs = retryDelayMs(attempt);
+        const waitMs = retryDelayMs(attempt, null, error instanceof TmclassSourceProtectionError);
         process.stderr.write(
           `${JSON.stringify({ phase: "RETRY", sourceUri: requestUri, attempt, waitMs, error: errorMessage(error) })}\n`,
         );
