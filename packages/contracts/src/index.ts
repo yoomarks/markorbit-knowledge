@@ -116,3 +116,4 @@ export * from "./vault-import-intent-v1";
 export * from "./vault-import-execution-v1";
 export * from "./vault-origin-staging-verification-v1";
 export * from "./canonical-downstream-document-v1";
+export * from "./uspto-id-manual-snapshot-v1";

@@ -49,6 +49,7 @@ export * from "./http-controlled-collection-client";
 export * from "./http-acquisition-intelligence-client";
 export * from "./controlled-collection-worker-runtime";
 export * from "./local-folder-acquirer";
+export * from "./uspto-id-manual-snapshot";
 export * from "./local-file-connector";
 export * from "./source-connector-port";
 export * from "./http-source-connector";

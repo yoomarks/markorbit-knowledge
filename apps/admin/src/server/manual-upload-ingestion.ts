@@ -19,8 +19,12 @@ import {
   getWorkerRegistryRepository,
 } from "./source-registry";
 
-const MANUAL_CONNECTOR_ID = "builtin-manual-upload";
-const MANUAL_CONNECTOR_VERSION = "1.0.0";
+export const MANUAL_UPLOAD_INGRESS_CONNECTOR = {
+  connectorId: "builtin-manual-upload",
+  version: "1.0.0",
+} as const;
+const MANUAL_CONNECTOR_ID = MANUAL_UPLOAD_INGRESS_CONNECTOR.connectorId;
+const MANUAL_CONNECTOR_VERSION = MANUAL_UPLOAD_INGRESS_CONNECTOR.version;
 const MANUAL_SOURCE_TAG = "manual-file";
 const MANUAL_PLAN_MARKER = "manual-upload";
 const MANUAL_EXECUTOR = {
@@ -69,6 +73,7 @@ export type ManualUploadInput = {
   expectedSha256: string;
   idempotencyKey: string;
   chunks: AsyncIterable<Uint8Array>;
+  provenanceSourceUri?: string;
   sourceId?: string;
   sourceName?: string;
   jurisdictions?: string[];
@@ -195,7 +200,7 @@ async function* boundedChunks(
   }
 }
 
-function ensureManualConnector(): void {
+export function ensureManualUploadIngressConnector(): void {
   const connectors = getConnectorRepository();
   if (connectors.get(MANUAL_CONNECTOR_ID, MANUAL_CONNECTOR_VERSION)) return;
   try {
@@ -281,7 +286,7 @@ function ensureManualSource(
     "sourceId" | "sourceName" | "jurisdictions" | "languages" | "relatedSourceId"
   >,
 ): SourceDefinition {
-  ensureManualConnector();
+  ensureManualUploadIngressConnector();
   if (input.sourceId?.trim()) {
     return validateExistingManualSource(workspaceId, input.sourceId.trim());
   }
@@ -393,6 +398,7 @@ function assertReplayMatches(
     artifactKind: ArtifactKind;
     sizeBytes: number;
     sha256: string;
+    sourceUri?: string;
   },
 ): void {
   const matches =
@@ -401,7 +407,8 @@ function assertReplayMatches(
     artifact.mimeType === input.mimeType &&
     artifact.artifactKind === input.artifactKind &&
     artifact.sizeBytes === input.sizeBytes &&
-    artifact.binaryHash.value === input.sha256;
+    artifact.binaryHash.value === input.sha256 &&
+    (input.sourceUri === undefined || artifact.provenance.sourceUri === input.sourceUri);
   if (!matches) {
     throw new RegistryConflictError(
       "MANUAL_UPLOAD_IDEMPOTENCY_CONFLICT",
@@ -457,6 +464,14 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
   const artifactKind = artifactKindForManualUploadMime(mimeType);
   const expectedSizeBytes = normalizeExpectedSize(input.expectedSizeBytes);
   const expectedSha256 = normalizeExpectedSha256(input.expectedSha256);
+  const provenanceSourceUri = input.provenanceSourceUri?.trim();
+  if (provenanceSourceUri) {
+    try {
+      new URL(provenanceSourceUri);
+    } catch {
+      throw new RegistryValidationError("Manual Upload provenance Source URI must be absolute");
+    }
+  }
   const maximumBytes = manualUploadMaxBytes();
 
   const source = ensureManualSource(workspaceId, idempotencyKey, originalName, input);
@@ -482,6 +497,7 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
       artifactKind,
       sizeBytes: expectedSizeBytes,
       sha256: expectedSha256,
+      ...(provenanceSourceUri ? { sourceUri: provenanceSourceUri } : {}),
     });
     if (replayedArtifact) {
       return {
@@ -565,7 +581,9 @@ export async function ingestManualUpload(input: ManualUploadInput): Promise<Manu
         originalName,
         expectedSizeBytes,
         expectedSha256,
-        sourceUri: `manual-upload://${workspaceId}/${source.id}/${encodeURIComponent(originalName)}?sha256=${expectedSha256}`,
+        sourceUri:
+          provenanceSourceUri ??
+          `manual-upload://${workspaceId}/${source.id}/${encodeURIComponent(originalName)}?sha256=${expectedSha256}`,
       },
     });
     sessionId = session.record.session.id;

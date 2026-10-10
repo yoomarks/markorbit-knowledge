@@ -229,6 +229,44 @@ describe("governed Manual Upload ingestion", () => {
     expect(source?.extensions?.["x-markorbit-source-relationship"]).toBe("RELATED_PUBLICATION");
   });
 
+  it("preserves an explicit public provenance URI on the RawArtifact", async () => {
+    const body = Buffer.from("official bulk export", "utf8");
+    const result = await ingestManualUpload({
+      workspaceId: DEFAULT_WORKSPACE.id,
+      originalName: "idmanual.xls",
+      mimeType: "text/html",
+      expectedSizeBytes: body.byteLength,
+      expectedSha256: sha256(body),
+      idempotencyKey: "manual-upload-official-provenance-1",
+      provenanceSourceUri: "https://idm-tmng.uspto.gov/",
+      chunks: chunks(body),
+    });
+
+    expect(result.artifact.provenance.sourceUri).toBe("https://idm-tmng.uspto.gov/");
+  });
+
+  it("rejects replay when the explicit provenance URI changes", async () => {
+    const body = Buffer.from("same official export", "utf8");
+    const input = {
+      workspaceId: DEFAULT_WORKSPACE.id,
+      originalName: "idmanual-replay.xls",
+      mimeType: "text/html",
+      expectedSizeBytes: body.byteLength,
+      expectedSha256: sha256(body),
+      idempotencyKey: "manual-upload-official-provenance-replay-1",
+      provenanceSourceUri: "https://idm-tmng.uspto.gov/",
+    };
+    await ingestManualUpload({ ...input, chunks: chunks(body) });
+
+    await expect(
+      ingestManualUpload({
+        ...input,
+        provenanceSourceUri: "https://example.invalid/different-source",
+        chunks: chunks(body),
+      }),
+    ).rejects.toMatchObject({ code: "MANUAL_UPLOAD_IDEMPOTENCY_CONFLICT" });
+  });
+
   it("replays the same finalized upload without creating another Source or artifact", async () => {
     const body = Buffer.from("restart-safe evidence", "utf8");
     const input = {

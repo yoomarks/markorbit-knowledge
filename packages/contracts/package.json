@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schemas/case-candidate-v1.schema.json": "./schemas/case-candidate-v1.schema.json"
+    "./schemas/case-candidate-v1.schema.json": "./schemas/case-candidate-v1.schema.json",
+    "./schemas/uspto-id-manual-snapshot-v1.schema.json": "./schemas/uspto-id-manual-snapshot-v1.schema.json"
   },
   "scripts": {
     "build": "tsc --noEmit",
