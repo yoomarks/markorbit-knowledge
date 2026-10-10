@@ -15,6 +15,23 @@ pnpm --filter @markorbit/worker tmclass:extract-har -- \
 `MARKORBIT_TMCLASS_BROWSER_EXECUTABLE_PATH` may replace `--browser-executable`. Browser networking
 is disabled during extraction; the browser is used only as an HTML DOM parser.
 
+To finalize captured pages as immutable Knowledge RawArtifacts and emit exact
+`TMCLASS_SOURCE_EVIDENCE_V1` packages for Data Engine admission, run:
+
+```powershell
+pnpm --filter @markorbit/worker tmclass:import-har -- `
+  --input C:\evidence\euipo.europa.eu.har `
+  --database D:\yoomarks\markorbit-knowledge\.data\markorbit-knowledge.sqlite `
+  --artifact-root D:\yoomarks\markorbit-knowledge\.data\artifacts `
+  --workspace-id wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV `
+  --output C:\evidence\tmclass-source-evidence-bundle.json `
+  --browser-executable "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+```
+
+The import creates or reuses the governed `tmclass-har@1.0.0` Connector, EUIPO TMclass Source,
+and manual CollectionPlan. It completes a normal Worker execution and binds every evidence
+package to the exact finalized HTML RawArtifact. It does not write Data Engine directly.
+
 The bundle retains:
 
 - Term identity, text, Nice class, language, accepting offices, taxonomy, translations and Sources;

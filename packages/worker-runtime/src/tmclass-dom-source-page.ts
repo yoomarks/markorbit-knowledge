@@ -28,10 +28,12 @@ export type TmclassDomTable = {
 };
 
 export type TmclassDomProjection = {
+  documentLanguage?: string;
   heading: string;
   title: string;
   status: string;
   details: Record<string, string>;
+  detailValues?: string[];
   scopeTitle: string;
   taxonomyText: string;
   acceptedOfficeTexts: string[];
@@ -141,13 +143,30 @@ function detail(projection: TmclassDomProjection, name: string): string | undefi
   return entry ? text(entry[1]) : undefined;
 }
 
-function table(projection: TmclassDomProjection, headers: string[]): TmclassDomTable {
+function optionalTable(
+  projection: TmclassDomProjection,
+  headers: string[],
+  fallbackWidth: number,
+): TmclassDomTable | null {
   const wanted = headers.map(label);
   const found = projection.tables.find((candidate) => {
     const actual = candidate.headers.map(label);
     return wanted.every((header, index) => actual[index] === header);
   });
-  if (!found) throw new Error(`TMCLASS_DOM_TABLE_MISSING_${wanted.join("_")}`);
+  if (found) return found;
+  const structuralMatches = projection.tables.filter(
+    (candidate) => candidate.headers.length === fallbackWidth,
+  );
+  return structuralMatches.length === 1 ? structuralMatches[0] : null;
+}
+
+function table(
+  projection: TmclassDomProjection,
+  headers: string[],
+  fallbackWidth: number,
+): TmclassDomTable {
+  const found = optionalTable(projection, headers, fallbackWidth);
+  if (!found) throw new Error(`TMCLASS_DOM_TABLE_MISSING_${headers.map(label).join("_")}`);
   return found;
 }
 
@@ -171,20 +190,41 @@ function taxonomy(value: string, niceClass: number): TmclassTaxonomyNodeV1[] {
   return labels.map((nodeLabel) => ({ label: nodeLabel, sourceNodeId: null }));
 }
 
+function projectedNiceClass(projection: TmclassDomProjection): number {
+  const explicit = detail(projection, "Class");
+  if (explicit) return integer(explicit, "NICE_CLASS");
+  const taxonomyClass = /(?:^|>)\s*Class\s+(\d+)\b/iu.exec(text(projection.taxonomyText));
+  if (!taxonomyClass) throw new Error("TMCLASS_DOM_NICE_CLASS_MISSING");
+  return Number(taxonomyClass[1]);
+}
+
+function projectedDetail(
+  projection: TmclassDomProjection,
+  name: string,
+  structuralIndex: number,
+): string | undefined {
+  return detail(projection, name) ?? projection.detailValues?.[structuralIndex];
+}
+
 function conceptIdentity(
   projection: TmclassDomProjection,
   route: Exclude<TmclassRoute, { pageKind: "TERM" }>,
 ) {
-  const niceClass = integer(detail(projection, "Class"), "NICE_CLASS");
+  const niceClass = projectedNiceClass(projection);
   return {
     conceptId: route.conceptId,
     title: required(projection.title, "TITLE"),
     status: required(projection.status, "STATUS"),
     niceClass,
-    sourceName: required(detail(projection, "Source"), "SOURCE"),
+    sourceName: required(projectedDetail(projection, "Source", 1), "SOURCE"),
     sourceDateText:
-      text(detail(projection, "common.date") ?? detail(projection, "Date") ?? "") || null,
-    referenceId: required(detail(projection, "Reference ID"), "REFERENCE_ID"),
+      text(
+        detail(projection, "common.date") ??
+          detail(projection, "Date") ??
+          projection.detailValues?.[2] ??
+          "",
+      ) || null,
+    referenceId: required(projectedDetail(projection, "Reference ID", 3), "REFERENCE_ID"),
     scopeStatus: required(projection.scopeTitle || detail(projection, "Scope"), "SCOPE"),
     taxonomy: taxonomy(projection.taxonomyText, niceClass),
   };
@@ -202,12 +242,18 @@ function termPage(
   projection: TmclassDomProjection,
   route: Extract<TmclassRoute, { pageKind: "TERM" }>,
 ) {
-  const niceClass = integer(detail(projection, "Class"), "NICE_CLASS");
-  const languageLabel = required(detail(projection, "Language"), "LANGUAGE");
-  const languageCode = LANGUAGE_CODES[languageLabel.toLowerCase()];
+  const niceClass = projectedNiceClass(projection);
+  const languageLabel = required(projectedDetail(projection, "Language", 1), "LANGUAGE");
+  const documentLanguage = /^([a-z]{2,3})(?:-([a-z]{2}))?$/iu.exec(
+    text(projection.documentLanguage ?? ""),
+  );
+  const documentLanguageCode = documentLanguage
+    ? `${documentLanguage[1].toLowerCase()}${documentLanguage[2] ? `-${documentLanguage[2].toUpperCase()}` : ""}`
+    : undefined;
+  const languageCode = LANGUAGE_CODES[languageLabel.toLowerCase()] ?? documentLanguageCode;
   if (!languageCode) throw new Error(`TMCLASS_DOM_LANGUAGE_UNSUPPORTED:${languageLabel}`);
-  const translations = table(projection, ["Language", "Nice Class", "Text", "Quality"]);
-  const sources = table(projection, ["Source", "Concept reference"]);
+  const translations = optionalTable(projection, ["Language", "Nice Class", "Text", "Quality"], 4);
+  const sources = table(projection, ["Source", "Concept reference"], 2);
   return {
     pageKind: "TERM" as const,
     termId: route.termId,
@@ -217,7 +263,7 @@ function termPage(
     languageLabel,
     acceptedBy: projection.acceptedOfficeTexts.map(office),
     taxonomy: taxonomy(projection.taxonomyText, niceClass),
-    translationTargets: translations.rows.map((row) => ({
+    translationTargets: (translations?.rows ?? []).map((row) => ({
       termId: linkedId(row.cells[2]?.links[0], "term"),
       languageCode: required(row.cells[0]?.text, "TRANSLATION_LANGUAGE"),
       niceClass: integer(row.cells[1]?.text, "TRANSLATION_CLASS"),
@@ -236,28 +282,29 @@ function overviewPage(
   projection: TmclassDomProjection,
   route: Extract<TmclassRoute, { pageKind: "CONCEPT_OVERVIEW" }>,
 ) {
-  const languages = table(projection, [
-    "Language",
-    "Master term",
-    "No. of variants",
-    "No. of total terms",
-  ]);
+  const languages = table(
+    projection,
+    ["Language", "Master term", "No. of variants", "No. of total terms"],
+    5,
+  );
   const counts = /No\.\s*of\s*masters:\s*(\d+)\s*\|\s*No\.\s*of\s*variants:\s*(\d+)/iu.exec(
     text(projection.footerText),
   );
-  if (!counts) throw new Error("TMCLASS_DOM_CONCEPT_COUNTS_MISSING");
+  const normalizedLanguages = languages.rows.map((row) => ({
+    languageCode: required(row.cells[0]?.text, "CONCEPT_LANGUAGE"),
+    masterTermId: linkedId(row.cells[1]?.links[0], "term"),
+    masterTermText: required(row.cells[1]?.text, "MASTER_TERM"),
+    variantCount: integer(row.cells[2]?.text, "VARIANT_COUNT"),
+    totalTermCount: integer(row.cells[3]?.text, "TOTAL_TERM_COUNT"),
+  }));
   return {
     pageKind: "CONCEPT_OVERVIEW" as const,
     ...conceptIdentity(projection, route),
-    languages: languages.rows.map((row) => ({
-      languageCode: required(row.cells[0]?.text, "CONCEPT_LANGUAGE"),
-      masterTermId: linkedId(row.cells[1]?.links[0], "term"),
-      masterTermText: required(row.cells[1]?.text, "MASTER_TERM"),
-      variantCount: integer(row.cells[2]?.text, "VARIANT_COUNT"),
-      totalTermCount: integer(row.cells[3]?.text, "TOTAL_TERM_COUNT"),
-    })),
-    masterCount: Number(counts[1]),
-    variantCount: Number(counts[2]),
+    languages: normalizedLanguages,
+    masterCount: counts ? Number(counts[1]) : normalizedLanguages.length,
+    variantCount: counts
+      ? Number(counts[2])
+      : normalizedLanguages.reduce((sum, language) => sum + language.variantCount, 0),
   };
 }
 
@@ -265,7 +312,7 @@ function languagePage(
   projection: TmclassDomProjection,
   route: Extract<TmclassRoute, { pageKind: "CONCEPT_LANGUAGE" }>,
 ) {
-  const terms = table(projection, ["Term", "Master term", "Variant"]);
+  const terms = table(projection, ["Term", "Master term", "Variant"], 3);
   return {
     pageKind: "CONCEPT_LANGUAGE" as const,
     ...conceptIdentity(projection, route),

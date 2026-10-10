@@ -108,4 +108,8 @@ describe("TMclass HAR extraction", () => {
       tmclassHtmlEntriesFromHar(har(entry(sourceUri, "12345")), { maxResponseBytes: 4 }),
     ).toThrow("TMCLASS_HAR_RESPONSE_TOO_LARGE");
   });
+
+  it("ignores eligible HAR responses whose body was not captured", () => {
+    expect(tmclassHtmlEntriesFromHar(har(entry(sourceUri, "")))).toEqual([]);
+  });
 });

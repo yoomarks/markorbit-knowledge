@@ -98,6 +98,75 @@ describe("TMclass DOM source-page normalization", () => {
     });
   });
 
+  it("normalizes localized term labels from stable structure and document language", () => {
+    const projection: TmclassDomProjection = {
+      documentLanguage: "ja",
+      heading: "用語の詳細 (日本語)",
+      title: "エンジン冷却液の沸騰防止剤",
+      status: "",
+      details: { 分類: "1", 言語: "日本語", 以下により受け入れられています: "" },
+      detailValues: ["1", "日本語", "日本 (JPO)"],
+      scopeTitle: "",
+      taxonomyText: "Class 1 >",
+      acceptedOfficeTexts: ["日本 (JPO)"],
+      tables: [
+        table(
+          ["言語", "ニース分類", "本文", "質"],
+          [
+            row([
+              cell("en"),
+              cell("1"),
+              cell("Anti-boil preparations", "/ec2/term/1"),
+              cell("Pivot"),
+            ]),
+          ],
+        ),
+        table(
+          ["情報源", "概念のリファレンス"],
+          [row([cell("Nice (JPO)"), cell("010645", "/ec2/concept/17852621")])],
+        ),
+      ],
+      footerText: "",
+    };
+
+    expect(
+      tmclassSourcePageFromDomProjection("https://euipo.europa.eu/ec2/term/119617623", projection),
+    ).toMatchObject({
+      pageKind: "TERM",
+      termId: "119617623",
+      niceClass: 1,
+      languageCode: "ja",
+      languageLabel: "日本語",
+      acceptedBy: [{ name: "日本", code: "JPO" }],
+      sources: [{ conceptId: "17852621", sourceName: "Nice (JPO)", referenceId: "010645" }],
+    });
+  });
+
+  it("preserves a term with no available translation targets", () => {
+    const projection: TmclassDomProjection = {
+      documentLanguage: "ja",
+      heading: "用語の詳細 (日本語)",
+      title: "洗車用手袋",
+      status: "",
+      details: {},
+      detailValues: ["21", "日本語", "日本 (JPO)"],
+      scopeTitle: "",
+      taxonomyText: "Class 21 >",
+      acceptedOfficeTexts: ["日本 (JPO)"],
+      tables: [
+        table(
+          ["情報源", "概念のリファレンス"],
+          [row([cell("Nice (JPO)"), cell("210123", "/ec2/concept/17852622")])],
+        ),
+      ],
+      footerText: "",
+    };
+
+    expect(
+      tmclassSourcePageFromDomProjection("https://euipo.europa.eu/ec2/term/245938379", projection),
+    ).toMatchObject({ translationTargets: [] });
+  });
+
   it("retains concept status, source identity, scope, per-language master, and counts", () => {
     const projection = conceptProjection([
       table(

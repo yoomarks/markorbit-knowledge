@@ -49,8 +49,9 @@ function string(value: unknown, label: string): string {
   return value;
 }
 
-function responseText(content: JsonRecord): string {
-  const raw = string(content.text, "RESPONSE_TEXT");
+function responseText(content: JsonRecord): string | null {
+  if (typeof content.text !== "string" || !content.text.trim()) return null;
+  const raw = content.text;
   const bytes =
     content.encoding === "base64" ? Buffer.from(raw, "base64") : Buffer.from(raw, "utf8");
   return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
@@ -93,6 +94,7 @@ export function tmclassHtmlEntriesFromHar(
     const mimeType = typeof content.mimeType === "string" ? content.mimeType.toLowerCase() : "";
     if (!mimeType.includes("html")) continue;
     const html = responseText(content);
+    if (html === null || !html.trim()) continue;
     const bytes = Buffer.byteLength(html, "utf8");
     if (bytes > maxResponseBytes) throw new Error("TMCLASS_HAR_RESPONSE_TOO_LARGE");
     const responseSha256 = createHash("sha256").update(html).digest("hex");
