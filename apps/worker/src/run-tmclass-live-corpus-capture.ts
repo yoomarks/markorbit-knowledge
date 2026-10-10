@@ -24,7 +24,7 @@ type Options = {
   outputRoot: string;
   languages: string[];
   niceClasses: number[];
-  capture: "index" | "all";
+  capture: "index" | "details" | "all";
   concurrency: number;
   detailBatchSize: number;
   searchBatchSize: number;
@@ -142,8 +142,8 @@ function options(argv: string[]): Options {
     throw new Error("--nice-classes must be 'all' or a comma-separated subset of 1..45");
   }
   const capture = values.get("--capture")?.trim() || "all";
-  if (capture !== "index" && capture !== "all") {
-    throw new Error("--capture must be 'index' or 'all'");
+  if (capture !== "index" && capture !== "details" && capture !== "all") {
+    throw new Error("--capture must be 'index', 'details' or 'all'");
   }
   return {
     outputRoot: path.resolve(outputRoot),
@@ -727,7 +727,7 @@ async function collectDetailClosure(
 
 async function writeStatus(configured: Options, phase: string): Promise<void> {
   const isPrimary =
-    configured.capture === "all" &&
+    configured.capture !== "index" &&
     configured.languages.length === TMCLASS_DATA_LANGUAGES.length &&
     configured.languages.every((language, index) => language === TMCLASS_DATA_LANGUAGES[index]);
   const statusName = isPrimary
@@ -747,19 +747,48 @@ async function writeStatus(configured: Options, phase: string): Promise<void> {
   });
 }
 
+async function waitForIndex(configured: Options): Promise<void> {
+  for (;;) {
+    const missing: string[] = [];
+    for (const language of configured.languages) {
+      const completePath = path.join(configured.outputRoot, "index", language, "COMPLETE.json");
+      if (!(await exists(completePath))) {
+        missing.push(language);
+        continue;
+      }
+      const complete = await readJson<{ niceClasses?: unknown }>(completePath);
+      if (
+        !Array.isArray(complete.niceClasses) ||
+        complete.niceClasses.join(",") !== configured.niceClasses.join(",")
+      ) {
+        throw new Error(`TMCLASS_LANGUAGE_INDEX_SCOPE_MISMATCH ${language}`);
+      }
+    }
+    if (missing.length === 0) return;
+    process.stdout.write(
+      `${JSON.stringify({ phase: "WAITING_INDEX", missingLanguageCount: missing.length, missingLanguages: missing })}\n`,
+    );
+    await delay(30_000);
+  }
+}
+
 async function main(): Promise<void> {
   const configured = options(process.argv.slice(2));
   await mkdir(configured.outputRoot, { recursive: true });
   const client = new TmclassPublicClient(configured);
   await ensureRobots(configured.outputRoot, client);
-  await writeStatus(configured, "INDEX");
-  for (const language of configured.languages) {
-    await collectLockedLanguageIndex(configured, language, client);
+  if (configured.capture !== "details") {
+    await writeStatus(configured, "INDEX");
+    for (const language of configured.languages) {
+      await collectLockedLanguageIndex(configured, language, client);
+    }
   }
   if (configured.capture === "index") {
     await writeStatus(configured, "INDEX_COMPLETE");
     return;
   }
+  await writeStatus(configured, "WAITING_INDEX");
+  await waitForIndex(configured);
   await writeStatus(configured, "DETAILS");
   await collectDetailClosure(configured, client);
   await writeStatus(configured, "COMPLETE");
