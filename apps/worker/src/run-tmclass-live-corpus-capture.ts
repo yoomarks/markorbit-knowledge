@@ -29,6 +29,7 @@ export type Options = {
   concurrency: number;
   detailBatchSize: number;
   searchBatchSize: number;
+  searchPageSize: number;
   minStartIntervalMs: number;
   timeoutMs: number;
   maxAttempts: number;
@@ -39,6 +40,7 @@ type SearchBatchSummary = {
   kind: "SEARCH";
   language: string;
   niceClass: number;
+  searchPageSize: number;
   pages: number[];
   totalResults: number;
   totalPages: number;
@@ -71,6 +73,7 @@ type ClassManifest = {
   niceClass: number;
   totalResults: number;
   totalPages: number;
+  searchPageSize: number;
   officeCodes: string[];
   observedAt: string;
 };
@@ -110,6 +113,7 @@ function options(argv: string[]): Options {
     "--concurrency",
     "--detail-batch-size",
     "--search-batch-size",
+    "--search-page-size",
     "--min-start-interval-ms",
     "--timeout-ms",
     "--max-attempts",
@@ -160,6 +164,7 @@ function options(argv: string[]): Options {
       1_000,
     ),
     searchBatchSize: integer(values.get("--search-batch-size"), 20, "--search-batch-size", 1, 100),
+    searchPageSize: integer(values.get("--search-page-size"), 100, "--search-page-size", 1, 1_000),
     minStartIntervalMs: integer(
       values.get("--min-start-interval-ms"),
       250,
@@ -404,6 +409,7 @@ async function ensureClassFirstPage(input: {
   outputRoot: string;
   language: string;
   niceClass: number;
+  searchPageSize: number;
   officeCodes: string[];
   client: TmclassPublicClient;
 }): Promise<ClassManifest> {
@@ -414,17 +420,26 @@ async function ensureClassFirstPage(input: {
     `class-${pad(input.niceClass, 2)}`,
   );
   const manifestPath = path.join(directory, "manifest.json");
-  if (await exists(manifestPath)) return readJson<ClassManifest>(manifestPath);
+  if (await exists(manifestPath)) {
+    const manifest = await readJson<ClassManifest>(manifestPath);
+    if ((manifest.searchPageSize ?? 100) !== input.searchPageSize) {
+      throw new Error(
+        `TMCLASS_SEARCH_PAGE_SIZE_SCOPE_MISMATCH ${input.language} class ${input.niceClass}`,
+      );
+    }
+    return manifest;
+  }
   const entry = await input.client.capture(
     tmclassSearchUrl({
       language: input.language,
       officeCodes: input.officeCodes,
       page: 1,
       niceClass: String(input.niceClass),
+      pageSize: input.searchPageSize,
     }),
     true,
   );
-  const parsed = parseTmclassSearchResult(entry.html);
+  const parsed = parseTmclassSearchResult(entry.html, input.searchPageSize);
   if (parsed.elasticMaxResults) {
     throw new Error(`TMCLASS_SEARCH_RESULT_CAP ${input.language} class ${input.niceClass}`);
   }
@@ -434,6 +449,7 @@ async function ensureClassFirstPage(input: {
     kind: "SEARCH",
     language: input.language,
     niceClass: input.niceClass,
+    searchPageSize: input.searchPageSize,
     pages: [1],
     totalResults: parsed.totalResults,
     totalPages: parsed.totalPages,
@@ -445,6 +461,7 @@ async function ensureClassFirstPage(input: {
     niceClass: input.niceClass,
     totalResults: parsed.totalResults,
     totalPages: parsed.totalPages,
+    searchPageSize: input.searchPageSize,
     officeCodes: input.officeCodes,
     observedAt: entry.observedAt,
   };
@@ -464,6 +481,7 @@ async function collectLanguageIndex(
       outputRoot: configured.outputRoot,
       language,
       niceClass,
+      searchPageSize: configured.searchPageSize,
       officeCodes: coverage.officeCodes,
       client,
     }),
@@ -493,11 +511,14 @@ async function collectLanguageIndex(
             officeCodes: coverage.officeCodes,
             page,
             niceClass: String(manifest.niceClass),
+            pageSize: configured.searchPageSize,
           }),
           true,
         ),
       );
-      const parsed = entries.map((entry) => parseTmclassSearchResult(entry.html));
+      const parsed = entries.map((entry) =>
+        parseTmclassSearchResult(entry.html, configured.searchPageSize),
+      );
       if (
         parsed.some(
           (result) =>
@@ -513,6 +534,7 @@ async function collectLanguageIndex(
         kind: "SEARCH",
         language,
         niceClass: manifest.niceClass,
+        searchPageSize: configured.searchPageSize,
         pages,
         totalResults: manifest.totalResults,
         totalPages: manifest.totalPages,
@@ -588,6 +610,7 @@ async function collectLockedLanguageIndex(
       outcome: "TMCLASS_LANGUAGE_INDEX_COMPLETE",
       language,
       niceClasses: configured.niceClasses,
+      searchPageSize: configured.searchPageSize,
       completedAt: new Date().toISOString(),
     });
     process.stdout.write(`${JSON.stringify({ phase: "INDEX", language, state: "COMPLETED" })}\n`);
@@ -747,6 +770,7 @@ async function collectDetailClosure(
       outcome: "TMCLASS_LIVE_CORPUS_CAPTURE_COMPLETE",
       completedAt: new Date().toISOString(),
       languages: configured.languages,
+      searchPageSize: configured.searchPageSize,
       termCount: state.termIds.size,
       conceptCount: state.conceptIds.size,
       conceptLanguageRouteCount: state.conceptLanguageRoutes.size,
@@ -774,6 +798,7 @@ async function writeStatus(configured: Options, phase: string): Promise<void> {
     concurrency: configured.concurrency,
     detailBatchSize: configured.detailBatchSize,
     searchBatchSize: configured.searchBatchSize,
+    searchPageSize: configured.searchPageSize,
     minStartIntervalMs: configured.minStartIntervalMs,
   });
 }
@@ -787,10 +812,13 @@ async function waitForIndex(configured: Options): Promise<void> {
         missing.push(language);
         continue;
       }
-      const complete = await readJson<{ niceClasses?: unknown }>(completePath);
+      const complete = await readJson<{ niceClasses?: unknown; searchPageSize?: unknown }>(
+        completePath,
+      );
       if (
         !Array.isArray(complete.niceClasses) ||
-        complete.niceClasses.join(",") !== configured.niceClasses.join(",")
+        complete.niceClasses.join(",") !== configured.niceClasses.join(",") ||
+        (complete.searchPageSize ?? 100) !== configured.searchPageSize
       ) {
         throw new Error(`TMCLASS_LANGUAGE_INDEX_SCOPE_MISMATCH ${language}`);
       }

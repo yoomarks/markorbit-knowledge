@@ -154,15 +154,20 @@ export function tmclassSearchUrl(input: {
   officeCodes: readonly string[];
   page: number;
   niceClass?: string;
+  pageSize?: number;
 }): string {
   if (!Number.isSafeInteger(input.page) || input.page < 1) {
     throw new Error("TMCLASS_SEARCH_PAGE_INVALID");
+  }
+  const pageSize = input.pageSize ?? 100;
+  if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 1_000) {
+    throw new Error("TMCLASS_SEARCH_PAGE_SIZE_INVALID");
   }
   const query = new URLSearchParams({
     language: input.language,
     text: "",
     niceClass: input.niceClass ?? "1-45",
-    size: "100",
+    size: String(pageSize),
     page: String(input.page),
     harmonised: "true",
     searchMode: "WORDSPREFIX",

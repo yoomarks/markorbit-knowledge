@@ -64,6 +64,7 @@ pnpm --filter @markorbit/worker tmclass:capture-live-corpus -- `
   --concurrency 4 `
   --detail-batch-size 250 `
   --search-batch-size 20 `
+  --search-page-size 1000 `
   --min-start-interval-ms 500 `
   --timeout-ms 120000 `
   --max-attempts 0
@@ -74,6 +75,8 @@ the same command skips completed batches. `STATUS.json` records the active phase
 `COMPLETE.json` is written only after no undiscovered Term, Concept or Concept-language route
 remains. `--max-attempts 0` keeps retrying transient timeouts, empty successful responses, HTTP
 429 responses and server errors with a capped backoff; other HTTP failures still stop immediately.
+The verified public search surface accepts up to 1,000 results per page; the page size is recorded
+in every index manifest and completion marker so a resumed root cannot mix incompatible pagination.
 
 The continuous Knowledge admission operator watches completed detail HAR batches, imports them as
 immutable RawArtifacts, and emits one evidence bundle per batch:

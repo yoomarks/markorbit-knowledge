@@ -14,6 +14,7 @@ function options(maxAttempts: number): Options {
     concurrency: 1,
     detailBatchSize: 1,
     searchBatchSize: 1,
+    searchPageSize: 100,
     minStartIntervalMs: 100,
     timeoutMs: 5_000,
     maxAttempts,

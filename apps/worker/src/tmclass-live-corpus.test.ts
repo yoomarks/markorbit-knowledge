@@ -37,6 +37,13 @@ describe("TMclass live corpus helpers", () => {
     });
   });
 
+  it("computes pagination for a verified larger result page", () => {
+    expect(
+      parseTmclassSearchResult('<input value="7819" name="totalResults" type="hidden" />', 1_000)
+        .totalPages,
+    ).toBe(8);
+  });
+
   it("discovers the detail closure without treating variants as aliases", () => {
     expect(
       parseTmclassDetailLinks(`
@@ -53,10 +60,18 @@ describe("TMclass live corpus helpers", () => {
   });
 
   it("constructs a deterministic all-class search including HDB and offices", () => {
-    const url = new URL(tmclassSearchUrl({ language: "en", officeCodes: ["US", "EM"], page: 2 }));
+    const url = new URL(
+      tmclassSearchUrl({
+        language: "en",
+        officeCodes: ["US", "EM"],
+        page: 2,
+        pageSize: 1_000,
+      }),
+    );
     expect(url.pathname).toBe("/ec2/search/ajaxSearch");
     expect(url.searchParams.get("niceClass")).toBe("1-45");
     expect(url.searchParams.get("harmonised")).toBe("true");
+    expect(url.searchParams.get("size")).toBe("1000");
     expect(url.searchParams.getAll("officeList")).toEqual(["EM", "US"]);
   });
 
