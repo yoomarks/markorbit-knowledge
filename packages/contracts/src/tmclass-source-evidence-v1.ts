@@ -234,6 +234,17 @@ function validatePage(page: TmclassSourcePageV1, errors: string[]): void {
   }
 }
 
+export function validateTmclassSourcePageV1(page: TmclassSourcePageV1): string[] {
+  const errors: string[] = [];
+  validatePage(page, errors);
+  return [...new Set(errors)];
+}
+
+export function assertTmclassSourcePageV1(page: TmclassSourcePageV1): void {
+  const errors = validateTmclassSourcePageV1(page);
+  if (errors.length > 0) throw new Error(`Invalid TMclass source page: ${errors.join(", ")}`);
+}
+
 export function validateTmclassSourceEvidenceV1(value: TmclassSourceEvidenceV1): string[] {
   const errors: string[] = [];
   if (
