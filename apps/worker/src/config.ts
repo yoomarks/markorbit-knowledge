@@ -18,6 +18,7 @@ export type WorkerCollectionProvider =
   | "crawl4ai"
   | "github"
   | "global-trademark-publisher"
+  | "tmclass-publisher"
   | "ip-australia-manual"
   | "laos-wopublish"
   | "local-folder"
@@ -163,6 +164,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     value === "crawl4ai" ||
     value === "github" ||
     value === "global-trademark-publisher" ||
+    value === "tmclass-publisher" ||
     value === "ip-australia-manual" ||
     value === "laos-wopublish" ||
     value === "local-folder" ||
@@ -175,7 +177,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, global-trademark-publisher, ip-australia-manual, laos-wopublish, local-folder, rss, uspto-tsdr, uspto-tsdr-web, wipo-mgs, or wipo-mgs-publisher",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, global-trademark-publisher, tmclass-publisher, ip-australia-manual, laos-wopublish, local-folder, rss, uspto-tsdr, uspto-tsdr-web, wipo-mgs, or wipo-mgs-publisher",
   );
 }
 
@@ -343,6 +345,7 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
   const factAdmissionPublisher =
     provider === "cnipa-gazette-publisher" ||
     provider === "global-trademark-publisher" ||
+    provider === "tmclass-publisher" ||
     provider === "wipo-mgs-publisher";
   const dataEngineUrl = factAdmissionPublisher
     ? normalizedDataEngineUrl(required(env, "MARKORBIT_DATA_ENGINE_URL"))

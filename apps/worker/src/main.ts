@@ -25,6 +25,7 @@ import {
   ProductionConversionWorkerRuntime,
   RssArtifactAcquirer,
   SourceAdapterRegistry,
+  TmclassFactAdmissionJobAcquirer,
   registerLaosAdapter,
   UsptoTsdrEnvironmentSecretResolver,
   UsptoTsdrJobArtifactAcquirer,
@@ -134,6 +135,19 @@ async function main(): Promise<void> {
           fullBaselineEnabled: config.globalTrademarkFullBaselinePublisherEnabled,
         })
       : null;
+  const tmclassPublisher =
+    config.collectionProvider === "tmclass-publisher" &&
+    config.dataEngineUrl &&
+    config.dataEngineFactAdmissionKey
+      ? new TmclassFactAdmissionJobAcquirer(
+          new HttpGlobalTrademarkDurableArtifactReader(
+            config.controlPlaneUrl,
+            config.workerId,
+            config.workerCredential,
+          ),
+          new HttpFactAdmissionClient(config.dataEngineUrl, config.dataEngineFactAdmissionKey),
+        )
+      : null;
   const wipoMgsPublisher =
     config.collectionProvider === "wipo-mgs-publisher" &&
     config.dataEngineUrl &&
@@ -190,56 +204,60 @@ async function main(): Promise<void> {
     config.workerCredential,
   );
   const acquirer =
-    config.collectionProvider === "wipo-mgs-publisher" && wipoMgsPublisher
-      ? wipoMgsPublisher
-      : config.collectionProvider === "global-trademark-publisher" && globalTrademarkPublisher
-        ? globalTrademarkPublisher
-        : config.collectionProvider === "laos-wopublish" && laosAcquirer
-          ? laosAcquirer
-          : config.collectionProvider === "local-folder"
-            ? new LocalFolderArtifactAcquirer({
-                roots: config.localFolderRoots,
-                maxArtifactBytes: config.localFolderMaxArtifactBytes,
-                maxTotalBytes: config.localFolderMaxTotalBytes,
-                maxItems: config.localFolderMaxItems,
-                maxDepth: config.localFolderMaxDepth,
-              })
-            : config.collectionProvider === "api"
-              ? conditionalHttp.wrap(
-                  new ApiArtifactAcquirer({ transport: conditionalHttp.transport }),
-                )
-              : config.collectionProvider === "wipo-mgs"
-                ? new WipoMgsArtifactAcquirer()
-                : config.collectionProvider === "rss"
-                  ? conditionalHttp.wrap(
-                      new RssArtifactAcquirer({ transport: conditionalHttp.transport }),
-                    )
-                  : config.collectionProvider === "uspto-tsdr"
-                    ? new UsptoTsdrJobArtifactAcquirer({
-                        secretResolver: new UsptoTsdrEnvironmentSecretResolver(),
-                      })
-                    : config.collectionProvider === "uspto-tsdr-web"
-                      ? new UsptoTsdrWebArtifactAcquirer({ delegate: crawl4AiAcquirer })
-                      : config.collectionProvider === "github"
-                        ? new GitHubArtifactAcquirer({
-                            maxFileBytes: config.githubMaxFileBytes,
-                            maxTotalBytes: config.githubMaxTotalBytes,
-                            maxTreeEntries: config.githubMaxTreeEntries,
-                            maxItems: config.githubMaxItems,
-                            maxDepth: config.githubMaxDepth,
-                          })
-                        : config.collectionProvider === "cnipa-gazette-publisher" ||
-                            config.collectionProvider === "cnipa-gazette-finalize"
-                          ? (cnipaGazetteAcquirer ??
-                            (() => {
-                              throw new Error("CNIPA Gazette acquirer configuration is incomplete");
-                            })())
-                          : config.collectionProvider === "cnipa"
-                            ? (cnipaAcquirer ??
+    config.collectionProvider === "tmclass-publisher" && tmclassPublisher
+      ? tmclassPublisher
+      : config.collectionProvider === "wipo-mgs-publisher" && wipoMgsPublisher
+        ? wipoMgsPublisher
+        : config.collectionProvider === "global-trademark-publisher" && globalTrademarkPublisher
+          ? globalTrademarkPublisher
+          : config.collectionProvider === "laos-wopublish" && laosAcquirer
+            ? laosAcquirer
+            : config.collectionProvider === "local-folder"
+              ? new LocalFolderArtifactAcquirer({
+                  roots: config.localFolderRoots,
+                  maxArtifactBytes: config.localFolderMaxArtifactBytes,
+                  maxTotalBytes: config.localFolderMaxTotalBytes,
+                  maxItems: config.localFolderMaxItems,
+                  maxDepth: config.localFolderMaxDepth,
+                })
+              : config.collectionProvider === "api"
+                ? conditionalHttp.wrap(
+                    new ApiArtifactAcquirer({ transport: conditionalHttp.transport }),
+                  )
+                : config.collectionProvider === "wipo-mgs"
+                  ? new WipoMgsArtifactAcquirer()
+                  : config.collectionProvider === "rss"
+                    ? conditionalHttp.wrap(
+                        new RssArtifactAcquirer({ transport: conditionalHttp.transport }),
+                      )
+                    : config.collectionProvider === "uspto-tsdr"
+                      ? new UsptoTsdrJobArtifactAcquirer({
+                          secretResolver: new UsptoTsdrEnvironmentSecretResolver(),
+                        })
+                      : config.collectionProvider === "uspto-tsdr-web"
+                        ? new UsptoTsdrWebArtifactAcquirer({ delegate: crawl4AiAcquirer })
+                        : config.collectionProvider === "github"
+                          ? new GitHubArtifactAcquirer({
+                              maxFileBytes: config.githubMaxFileBytes,
+                              maxTotalBytes: config.githubMaxTotalBytes,
+                              maxTreeEntries: config.githubMaxTreeEntries,
+                              maxItems: config.githubMaxItems,
+                              maxDepth: config.githubMaxDepth,
+                            })
+                          : config.collectionProvider === "cnipa-gazette-publisher" ||
+                              config.collectionProvider === "cnipa-gazette-finalize"
+                            ? (cnipaGazetteAcquirer ??
                               (() => {
-                                throw new Error("CNIPA acquirer configuration is incomplete");
+                                throw new Error(
+                                  "CNIPA Gazette acquirer configuration is incomplete",
+                                );
                               })())
-                            : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
+                            : config.collectionProvider === "cnipa"
+                              ? (cnipaAcquirer ??
+                                (() => {
+                                  throw new Error("CNIPA acquirer configuration is incomplete");
+                                })())
+                              : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
   const learningProfileForJob = (job: Job) =>
     acquisitionLearningProfileForJob({
       job,

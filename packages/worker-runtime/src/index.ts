@@ -101,6 +101,8 @@ export * from "./laos-baseline-index-stream";
 export * from "./laos-wopublish-full-baseline-artifacts";
 export * from "./laos-wopublish-full-detail-artifacts";
 export * from "./global-trademark-fact-admission-job-acquirer";
+export * from "./tmclass-fact-admission-job-acquirer";
+export * from "./tmclass-dom-source-page";
 export * from "./http-global-trademark-durable-artifact-reader";
 export * from "./uspto-source-adapter";
 export * from "./wipo-source-adapter";

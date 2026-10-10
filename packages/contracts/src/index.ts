@@ -20,6 +20,7 @@ export * from "./wipo-mgs-v1";
 export * from "./collection-lifecycle-policy-v1";
 export * from "./global-reference-source-v1";
 export * from "./uspto-mark-format-reference-v1";
+export * from "./tmclass-source-evidence-v1";
 export * from "./source-supply-health-v1";
 export * from "./evidence-supply-health-v1";
 export * from "./evidence-set-v1";
