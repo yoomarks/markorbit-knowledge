@@ -392,8 +392,13 @@ async function ensureCoverage(
   const directory = path.join(outputRoot, "coverage");
   const harPath = path.join(directory, `${language}.har`);
   const summaryPath = path.join(directory, `${language}.summary.json`);
-  if (await exists(summaryPath)) return readJson<CoverageSummary>(summaryPath);
-  let entry: TmclassHarEntry;
+  if (await exists(summaryPath)) {
+    const stored = await readJson<CoverageSummary>(summaryPath);
+    if (Array.isArray(stored.officeCodes) && stored.officeCodes.length > 0) return stored;
+    await rm(summaryPath, { force: true });
+    await rm(harPath, { force: true });
+  }
+  let entry: TmclassHarEntry | undefined;
   if (await exists(harPath)) {
     const har = await readJson<{
       log: {
@@ -411,15 +416,24 @@ async function ensureCoverage(
       observedAt: stored.startedDateTime,
       html: stored.response.content.text,
     };
-  } else {
-    entry = await client.capture(tmclassOfficeConfigurationUrl(language), true);
+    if (parseTmclassOfficeCodes(entry.html).length === 0) {
+      await rm(harPath, { force: true });
+      entry = undefined;
+    }
   }
+  entry ??= await client.capture(tmclassOfficeConfigurationUrl(language), true, (candidate) => {
+    if (parseTmclassOfficeCodes(candidate.html).length === 0) {
+      throw new Error(`TMCLASS_OFFICE_CONFIGURATION_EMPTY ${language}`);
+    }
+  });
+  const officeCodes = parseTmclassOfficeCodes(entry.html);
+  if (officeCodes.length === 0) throw new Error(`TMCLASS_OFFICE_VALIDATION_MISSING ${language}`);
   const serialized = `${JSON.stringify(tmclassHar([entry]), null, 2)}\n`;
   if (!(await exists(harPath))) await atomicWrite(harPath, serialized);
   const summary: CoverageSummary = {
     schemaVersion: SCHEMA_VERSION,
     language,
-    officeCodes: parseTmclassOfficeCodes(entry.html),
+    officeCodes,
     sourceUri: entry.sourceUri,
     observedAt: entry.observedAt,
     harSha256: sha256(serialized),
