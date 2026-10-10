@@ -84,6 +84,9 @@ Every AJAX attempt uses the site's numeric cache-buster parameter and records th
 URI, preventing a transient partial template from being reused across validation retries.
 On Windows, `auto` uses the system Schannel `curl.exe` transport; other platforms retain native
 fetch. Operators can select either transport explicitly without changing the captured contract.
+If an upstream TLS throttle targets command-line clients, `--http-transport browser` with
+`--browser-executable` uses a shared headless Chromium/Edge context while retaining exact response
+bodies and status codes in the same evidence contract.
 
 The continuous Knowledge admission operator watches completed detail HAR batches, imports them as
 immutable RawArtifacts, and emits one evidence bundle per batch:

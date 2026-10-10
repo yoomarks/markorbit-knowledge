@@ -19,6 +19,7 @@ function options(maxAttempts: number): Options {
     timeoutMs: 5_000,
     maxAttempts,
     httpTransport: "fetch",
+    browserExecutable: undefined,
   };
 }
 

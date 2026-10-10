@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { chromium, type Browser, type BrowserContext } from "playwright-core";
 import {
   TMCLASS_DATA_LANGUAGES,
   assertTmclassRobotsAllowsPublicEc2,
@@ -38,7 +39,8 @@ export type Options = {
   minStartIntervalMs: number;
   timeoutMs: number;
   maxAttempts: number;
-  httpTransport: "auto" | "curl" | "fetch";
+  httpTransport: "auto" | "browser" | "curl" | "fetch";
+  browserExecutable?: string;
 };
 
 type SearchBatchSummary = {
@@ -140,6 +142,7 @@ function options(argv: string[]): Options {
     "--timeout-ms",
     "--max-attempts",
     "--http-transport",
+    "--browser-executable",
   ]);
   const unknown = [...values.keys()].filter((flag) => !allowed.has(flag));
   if (unknown.length > 0) throw new Error(`Unsupported argument ${unknown[0]}`);
@@ -174,8 +177,17 @@ function options(argv: string[]): Options {
     throw new Error("--capture must be 'index', 'details' or 'all'");
   }
   const httpTransport = values.get("--http-transport")?.trim() || "auto";
-  if (httpTransport !== "auto" && httpTransport !== "curl" && httpTransport !== "fetch") {
-    throw new Error("--http-transport must be 'auto', 'curl' or 'fetch'");
+  if (
+    httpTransport !== "auto" &&
+    httpTransport !== "browser" &&
+    httpTransport !== "curl" &&
+    httpTransport !== "fetch"
+  ) {
+    throw new Error("--http-transport must be 'auto', 'browser', 'curl' or 'fetch'");
+  }
+  const browserExecutable = values.get("--browser-executable")?.trim();
+  if (httpTransport === "browser" && !browserExecutable) {
+    throw new Error("--browser-executable is required with browser transport");
   }
   return {
     outputRoot: path.resolve(outputRoot),
@@ -202,6 +214,7 @@ function options(argv: string[]): Options {
     timeoutMs: integer(values.get("--timeout-ms"), 45_000, "--timeout-ms", 5_000, 180_000),
     maxAttempts: integer(values.get("--max-attempts"), 4, "--max-attempts", 0, 1_000),
     httpTransport,
+    browserExecutable: browserExecutable ? path.resolve(browserExecutable) : undefined,
   };
 }
 
@@ -303,9 +316,65 @@ async function curlRequest(input: {
 
 export class TmclassPublicClient {
   private readonly gate: RequestGate;
+  private browser?: Browser;
+  private browserContext?: BrowserContext;
+  private browserContextPromise?: Promise<BrowserContext>;
 
   constructor(private readonly configured: Options) {
     this.gate = new RequestGate(configured.minStartIntervalMs);
+  }
+
+  private async context(): Promise<BrowserContext> {
+    if (this.browser?.isConnected() && this.browserContext) return this.browserContext;
+    if (this.browser && !this.browser.isConnected()) {
+      this.browser = undefined;
+      this.browserContext = undefined;
+      this.browserContextPromise = undefined;
+    }
+    this.browserContextPromise ??= (async () => {
+      const browser = await chromium.launch({
+        executablePath: this.configured.browserExecutable,
+        headless: true,
+      });
+      const context = await browser.newContext({ locale: "en-US" });
+      this.browser = browser;
+      this.browserContext = context;
+      return context;
+    })();
+    try {
+      return await this.browserContextPromise;
+    } catch (error) {
+      this.browserContextPromise = undefined;
+      throw error;
+    }
+  }
+
+  private async browserRequest(
+    requestUri: string,
+    headers: Record<string, string>,
+  ): Promise<HttpResult> {
+    const context = await this.context();
+    const page = await context.newPage();
+    try {
+      const extraHeaders = Object.fromEntries(
+        Object.entries(headers).filter(([name]) => name !== "user-agent" && name !== "referer"),
+      );
+      await page.setExtraHTTPHeaders(extraHeaders);
+      const response = await page.goto(requestUri, {
+        referer: headers.referer,
+        timeout: this.configured.timeoutMs,
+        waitUntil: "domcontentloaded",
+      });
+      if (!response) throw new Error(`TMCLASS_BROWSER_RESPONSE_MISSING ${requestUri}`);
+      const responseHeaders = await response.allHeaders();
+      return {
+        status: response.status(),
+        html: (await response.body()).toString("utf8"),
+        retryAfter: responseHeaders["retry-after"] ?? null,
+      };
+    } finally {
+      await page.close();
+    }
   }
 
   private async request(requestUri: string, headers: Record<string, string>): Promise<HttpResult> {
@@ -318,6 +387,7 @@ export class TmclassPublicClient {
     if (transport === "curl") {
       return curlRequest({ requestUri, headers, timeoutMs: this.configured.timeoutMs });
     }
+    if (transport === "browser") return this.browserRequest(requestUri, headers);
     const response = await fetch(requestUri, {
       method: "GET",
       headers,
@@ -390,6 +460,14 @@ export class TmclassPublicClient {
       }
     }
     throw lastError instanceof Error ? lastError : new Error(`TMCLASS_FETCH_FAILED ${sourceUri}`);
+  }
+
+  async close(): Promise<void> {
+    await this.browserContext?.close();
+    await this.browser?.close();
+    this.browserContext = undefined;
+    this.browser = undefined;
+    this.browserContextPromise = undefined;
   }
 }
 
@@ -1037,22 +1115,26 @@ async function main(): Promise<void> {
   const configured = options(process.argv.slice(2));
   await mkdir(configured.outputRoot, { recursive: true });
   const client = new TmclassPublicClient(configured);
-  await ensureRobots(configured.outputRoot, client);
-  if (configured.capture !== "details") {
-    await writeStatus(configured, "INDEX");
-    for (const language of configured.languages) {
-      await collectLockedLanguageIndex(configured, language, client);
+  try {
+    await ensureRobots(configured.outputRoot, client);
+    if (configured.capture !== "details") {
+      await writeStatus(configured, "INDEX");
+      for (const language of configured.languages) {
+        await collectLockedLanguageIndex(configured, language, client);
+      }
     }
+    if (configured.capture === "index") {
+      await writeStatus(configured, "INDEX_COMPLETE");
+      return;
+    }
+    await writeStatus(configured, "WAITING_INDEX");
+    await waitForIndex(configured);
+    await writeStatus(configured, "DETAILS");
+    await collectDetailClosure(configured, client);
+    await writeStatus(configured, "COMPLETE");
+  } finally {
+    await client.close();
   }
-  if (configured.capture === "index") {
-    await writeStatus(configured, "INDEX_COMPLETE");
-    return;
-  }
-  await writeStatus(configured, "WAITING_INDEX");
-  await waitForIndex(configured);
-  await writeStatus(configured, "DETAILS");
-  await collectDetailClosure(configured, client);
-  await writeStatus(configured, "COMPLETE");
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
