@@ -25,6 +25,7 @@ import {
   ProductionConversionWorkerRuntime,
   RssArtifactAcquirer,
   SourceAdapterRegistry,
+  TmclassFactAdmissionJobAcquirer,
   registerLaosAdapter,
   UsptoTsdrEnvironmentSecretResolver,
   UsptoTsdrJobArtifactAcquirer,
@@ -132,6 +133,19 @@ async function main(): Promise<void> {
           fullBaselineEnabled: config.globalTrademarkFullBaselinePublisherEnabled,
         })
       : null;
+  const tmclassPublisher =
+    config.collectionProvider === "tmclass-publisher" &&
+    config.dataEngineUrl &&
+    config.dataEngineFactAdmissionKey
+      ? new TmclassFactAdmissionJobAcquirer(
+          new HttpGlobalTrademarkDurableArtifactReader(
+            config.controlPlaneUrl,
+            config.workerId,
+            config.workerCredential,
+          ),
+          new HttpFactAdmissionClient(config.dataEngineUrl, config.dataEngineFactAdmissionKey),
+        )
+      : null;
   const laosAcquirer =
     config.collectionProvider === "laos-wopublish"
       ? (() => {
@@ -171,7 +185,7 @@ async function main(): Promise<void> {
     config.workerId,
     config.workerCredential,
   );
-  const acquirer =
+  const standardAcquirer =
     config.collectionProvider === "global-trademark-publisher" && globalTrademarkPublisher
       ? globalTrademarkPublisher
       : config.collectionProvider === "laos-wopublish" && laosAcquirer
@@ -218,6 +232,10 @@ async function main(): Promise<void> {
                             throw new Error("CNIPA acquirer configuration is incomplete");
                           })())
                         : (ipAustraliaManualAcquirer ?? crawl4AiWithOptionalUnlock);
+  const acquirer =
+    config.collectionProvider === "tmclass-publisher" && tmclassPublisher
+      ? tmclassPublisher
+      : standardAcquirer;
   const learningProfileForJob = (job: Job) =>
     acquisitionLearningProfileForJob({
       job,

@@ -17,6 +17,7 @@ export type WorkerCollectionProvider =
   | "crawl4ai"
   | "github"
   | "global-trademark-publisher"
+  | "tmclass-publisher"
   | "ip-australia-manual"
   | "laos-wopublish"
   | "local-folder"
@@ -160,6 +161,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     value === "crawl4ai" ||
     value === "github" ||
     value === "global-trademark-publisher" ||
+    value === "tmclass-publisher" ||
     value === "ip-australia-manual" ||
     value === "laos-wopublish" ||
     value === "local-folder" ||
@@ -170,7 +172,7 @@ function collectionProvider(env: NodeJS.ProcessEnv): WorkerCollectionProvider {
     return value;
   }
   throw new Error(
-    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, global-trademark-publisher, ip-australia-manual, laos-wopublish, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
+    "MARKORBIT_COLLECTION_PROVIDER must be api, cnipa, cnipa-gazette-publisher, cnipa-gazette-finalize, crawl4ai, github, global-trademark-publisher, tmclass-publisher, ip-australia-manual, laos-wopublish, local-folder, rss, uspto-tsdr, or uspto-tsdr-web",
   );
 }
 
@@ -331,7 +333,9 @@ export function loadWorkerProcessConfig(env: NodeJS.ProcessEnv = process.env): W
   }
   const cnipaSession = provider === "cnipa" ? loadCnipaBrowserSessionConfig(env) : undefined;
   const factAdmissionPublisher =
-    provider === "cnipa-gazette-publisher" || provider === "global-trademark-publisher";
+    provider === "cnipa-gazette-publisher" ||
+    provider === "global-trademark-publisher" ||
+    provider === "tmclass-publisher";
   const dataEngineUrl = factAdmissionPublisher
     ? normalizedDataEngineUrl(required(env, "MARKORBIT_DATA_ENGINE_URL"))
     : undefined;
