@@ -96,15 +96,29 @@ function inputValue(html: string, name: string): string | undefined {
   return undefined;
 }
 
-export function parseTmclassSearchResult(html: string, pageSize = 100): TmclassSearchResult {
+export function parseTmclassSearchResult(
+  html: string,
+  pageSize = 100,
+  expectedTotalResults?: number,
+): TmclassSearchResult {
   if (!Number.isSafeInteger(pageSize) || pageSize < 1) {
     throw new Error("TMCLASS_SEARCH_PAGE_SIZE_INVALID");
   }
   const totalRaw = inputValue(html, "totalResults");
-  if (!totalRaw || !/^\d+$/u.test(totalRaw)) {
+  if (
+    expectedTotalResults !== undefined &&
+    (!Number.isSafeInteger(expectedTotalResults) || expectedTotalResults < 0)
+  ) {
+    throw new Error("TMCLASS_SEARCH_EXPECTED_TOTAL_INVALID");
+  }
+  if ((!totalRaw || !/^\d+$/u.test(totalRaw)) && expectedTotalResults === undefined) {
     throw new Error("TMCLASS_SEARCH_TOTAL_RESULTS_MISSING");
   }
-  const totalResults = Number(totalRaw);
+  const totalResults =
+    totalRaw && /^\d+$/u.test(totalRaw) ? Number(totalRaw) : expectedTotalResults!;
+  if (expectedTotalResults !== undefined && totalResults !== expectedTotalResults) {
+    throw new Error("TMCLASS_SEARCH_TOTAL_RESULTS_DRIFT");
+  }
   const termIds = uniqueSorted(
     [
       ...html.matchAll(

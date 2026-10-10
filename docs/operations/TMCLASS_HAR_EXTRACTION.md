@@ -77,6 +77,8 @@ remains. `--max-attempts 0` keeps retrying transient timeouts, empty successful 
 429 responses and server errors with a capped backoff; other HTTP failures still stop immediately.
 The verified public search surface accepts up to 1,000 results per page; the page size is recorded
 in every index manifest and completion marker so a resumed root cannot mix incompatible pagination.
+For pages larger than the site's default, each class also retains a 100-result metadata response;
+the collector uses its total to verify the exact cardinality of every larger result page.
 
 The continuous Knowledge admission operator watches completed detail HAR batches, imports them as
 immutable RawArtifacts, and emits one evidence bundle per batch:

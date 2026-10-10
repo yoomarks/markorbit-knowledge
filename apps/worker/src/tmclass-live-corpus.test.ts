@@ -42,6 +42,18 @@ describe("TMclass live corpus helpers", () => {
       parseTmclassSearchResult('<input value="7819" name="totalResults" type="hidden" />', 1_000)
         .totalPages,
     ).toBe(8);
+    expect(parseTmclassSearchResult('<a href="/ec2/term/1">one</a>', 1_000, 7_819)).toMatchObject({
+      totalResults: 7_819,
+      totalPages: 8,
+      termIds: ["1"],
+    });
+    expect(() =>
+      parseTmclassSearchResult(
+        '<input value="7820" name="totalResults" type="hidden" />',
+        1_000,
+        7_819,
+      ),
+    ).toThrow("TMCLASS_SEARCH_TOTAL_RESULTS_DRIFT");
   });
 
   it("discovers the detail closure without treating variants as aliases", () => {

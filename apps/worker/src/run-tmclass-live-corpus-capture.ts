@@ -13,6 +13,7 @@ import {
   tmclassRouteUrl,
   tmclassSearchUrl,
   type TmclassHarEntry,
+  type TmclassSearchResult,
 } from "./tmclass-live-corpus.js";
 
 const SCHEMA_VERSION = "TMCLASS_LIVE_CORPUS_CAPTURE_V1";
@@ -77,6 +78,22 @@ type ClassManifest = {
   officeCodes: string[];
   observedAt: string;
 };
+
+function assertSearchPageCardinality(input: {
+  language: string;
+  niceClass: number;
+  page: number;
+  pageSize: number;
+  result: TmclassSearchResult;
+}): void {
+  const remaining = Math.max(0, input.result.totalResults - (input.page - 1) * input.pageSize);
+  const expected = Math.min(input.pageSize, remaining);
+  if (input.result.termIds.length !== expected) {
+    throw new Error(
+      `TMCLASS_SEARCH_PAGE_CARDINALITY ${input.language} class ${input.niceClass} page ${input.page} expected ${expected} got ${input.result.termIds.length}`,
+    );
+  }
+}
 
 function integer(
   value: string | undefined,
@@ -429,32 +446,57 @@ async function ensureClassFirstPage(input: {
     }
     return manifest;
   }
-  const entry = await input.client.capture(
+  const metadataEntry = await input.client.capture(
     tmclassSearchUrl({
       language: input.language,
       officeCodes: input.officeCodes,
       page: 1,
       niceClass: String(input.niceClass),
-      pageSize: input.searchPageSize,
+      pageSize: 100,
     }),
     true,
   );
-  const parsed = parseTmclassSearchResult(entry.html, input.searchPageSize);
+  const metadata = parseTmclassSearchResult(metadataEntry.html, 100);
+  const entry =
+    input.searchPageSize === 100
+      ? metadataEntry
+      : await input.client.capture(
+          tmclassSearchUrl({
+            language: input.language,
+            officeCodes: input.officeCodes,
+            page: 1,
+            niceClass: String(input.niceClass),
+            pageSize: input.searchPageSize,
+          }),
+          true,
+        );
+  const parsed = parseTmclassSearchResult(entry.html, input.searchPageSize, metadata.totalResults);
   if (parsed.elasticMaxResults) {
     throw new Error(`TMCLASS_SEARCH_RESULT_CAP ${input.language} class ${input.niceClass}`);
   }
-  const harPath = path.join(directory, "pages-000001-000001.har");
-  await writeHarWithSummary(harPath, [entry], {
-    schemaVersion: SCHEMA_VERSION,
-    kind: "SEARCH",
+  assertSearchPageCardinality({
     language: input.language,
     niceClass: input.niceClass,
-    searchPageSize: input.searchPageSize,
-    pages: [1],
-    totalResults: parsed.totalResults,
-    totalPages: parsed.totalPages,
-    termIds: parsed.termIds,
+    page: 1,
+    pageSize: input.searchPageSize,
+    result: parsed,
   });
+  const harPath = path.join(directory, "pages-000001-000001.har");
+  await writeHarWithSummary(
+    harPath,
+    input.searchPageSize === 100 ? [entry] : [metadataEntry, entry],
+    {
+      schemaVersion: SCHEMA_VERSION,
+      kind: "SEARCH",
+      language: input.language,
+      niceClass: input.niceClass,
+      searchPageSize: input.searchPageSize,
+      pages: [1],
+      totalResults: parsed.totalResults,
+      totalPages: parsed.totalPages,
+      termIds: parsed.termIds,
+    },
+  );
   const manifest: ClassManifest = {
     schemaVersion: SCHEMA_VERSION,
     language: input.language,
@@ -517,7 +559,7 @@ async function collectLanguageIndex(
         ),
       );
       const parsed = entries.map((entry) =>
-        parseTmclassSearchResult(entry.html, configured.searchPageSize),
+        parseTmclassSearchResult(entry.html, configured.searchPageSize, manifest.totalResults),
       );
       if (
         parsed.some(
@@ -529,6 +571,15 @@ async function collectLanguageIndex(
       ) {
         throw new Error(`TMCLASS_SEARCH_PAGINATION_DRIFT ${language} class ${manifest.niceClass}`);
       }
+      parsed.forEach((result, index) =>
+        assertSearchPageCardinality({
+          language,
+          niceClass: manifest.niceClass,
+          page: pages[index]!,
+          pageSize: configured.searchPageSize,
+          result,
+        }),
+      );
       await writeHarWithSummary(harPath, entries, {
         schemaVersion: SCHEMA_VERSION,
         kind: "SEARCH",
