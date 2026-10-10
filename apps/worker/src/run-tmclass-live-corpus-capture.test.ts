@@ -1,0 +1,63 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  TmclassPublicClient,
+  retryDelayMs,
+  type Options,
+} from "./run-tmclass-live-corpus-capture.js";
+
+function options(maxAttempts: number): Options {
+  return {
+    outputRoot: "unused",
+    languages: ["en"],
+    niceClasses: [1],
+    capture: "index",
+    concurrency: 1,
+    detailBatchSize: 1,
+    searchBatchSize: 1,
+    minStartIntervalMs: 100,
+    timeoutMs: 5_000,
+    maxAttempts,
+  };
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+describe("TMclass live corpus request retry", () => {
+  it("treats zero max attempts as unlimited for transient failures", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new Error("temporary timeout"))
+      .mockResolvedValueOnce(new Response("<html>ok</html>", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    const captured = await new TmclassPublicClient(options(0)).capture(
+      "https://euipo.europa.eu/ec2/example",
+      true,
+    );
+
+    expect(captured.html).toBe("<html>ok</html>");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails immediately for non-retryable HTTP responses", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("missing", { status: 404 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      new TmclassPublicClient(options(0)).capture("https://euipo.europa.eu/ec2/missing", true),
+    ).rejects.toThrow("TMCLASS_HTTP_404");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("caps exponential and Retry-After backoff at one minute", () => {
+    expect(retryDelayMs(2)).toBe(4_000);
+    expect(retryDelayMs(100)).toBe(60_000);
+    expect(retryDelayMs(1, "120")).toBe(60_000);
+  });
+});

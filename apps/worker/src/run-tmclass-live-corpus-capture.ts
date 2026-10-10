@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { access, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   TMCLASS_DATA_LANGUAGES,
   assertTmclassRobotsAllowsPublicEc2,
@@ -20,7 +21,7 @@ const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MarkOrbitKnowledge/1.0";
 
-type Options = {
+export type Options = {
   outputRoot: string;
   languages: string[];
   niceClasses: number[];
@@ -167,7 +168,7 @@ function options(argv: string[]): Options {
       60_000,
     ),
     timeoutMs: integer(values.get("--timeout-ms"), 45_000, "--timeout-ms", 5_000, 180_000),
-    maxAttempts: integer(values.get("--max-attempts"), 4, "--max-attempts", 1, 8),
+    maxAttempts: integer(values.get("--max-attempts"), 4, "--max-attempts", 0, 1_000),
   };
 }
 
@@ -192,7 +193,21 @@ class RequestGate {
   }
 }
 
-class TmclassPublicClient {
+class NonRetryableTmclassError extends Error {}
+
+export function retryDelayMs(attempt: number, retryAfter: string | null = null): number {
+  const seconds = retryAfter === null ? Number.NaN : Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1_000, 60_000);
+  }
+  return Math.min(attempt * attempt * 1_000, 60_000);
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+}
+
+export class TmclassPublicClient {
   private readonly gate: RequestGate;
 
   constructor(private readonly configured: Options) {
@@ -201,7 +216,11 @@ class TmclassPublicClient {
 
   async capture(sourceUri: string, ajax: boolean): Promise<TmclassHarEntry> {
     let lastError: unknown;
-    for (let attempt = 1; attempt <= this.configured.maxAttempts; attempt += 1) {
+    for (
+      let attempt = 1;
+      this.configured.maxAttempts === 0 || attempt <= this.configured.maxAttempts;
+      attempt += 1
+    ) {
       await this.gate.wait();
       const observedAt = new Date().toISOString();
       try {
@@ -221,22 +240,34 @@ class TmclassPublicClient {
         const html = await response.text();
         if (response.status === 200 && html.trim()) {
           if (Buffer.byteLength(html, "utf8") > 10 * 1024 * 1024) {
-            throw new Error(`TMCLASS_RESPONSE_TOO_LARGE ${sourceUri}`);
+            throw new NonRetryableTmclassError(`TMCLASS_RESPONSE_TOO_LARGE ${sourceUri}`);
           }
           return { sourceUri, observedAt, html };
         }
-        const retryable = response.status === 429 || response.status >= 500;
+        const retryable =
+          response.status === 200 || response.status === 429 || response.status >= 500;
         const error = new Error(
           `TMCLASS_HTTP_${response.status} ${sourceUri}${html ? ` ${html.slice(0, 200)}` : ""}`,
         );
-        if (!retryable) throw error;
+        if (!retryable) throw new NonRetryableTmclassError(error.message);
         lastError = error;
-        const retryAfter = Number(response.headers.get("retry-after"));
-        await delay(Number.isFinite(retryAfter) ? retryAfter * 1_000 : attempt * attempt * 1_000);
+        if (this.configured.maxAttempts !== 0 && attempt >= this.configured.maxAttempts) break;
+        const waitMs = retryDelayMs(attempt, response.headers.get("retry-after"));
+        process.stderr.write(
+          `${JSON.stringify({ phase: "RETRY", sourceUri, attempt, waitMs, error: errorMessage(error) })}\n`,
+        );
+        await delay(waitMs);
       } catch (error) {
-        lastError = error;
-        if (attempt === this.configured.maxAttempts) break;
-        await delay(attempt * attempt * 1_000);
+        if (error instanceof NonRetryableTmclassError) throw error;
+        lastError = new Error(`TMCLASS_FETCH_ATTEMPT_FAILED ${sourceUri} ${errorMessage(error)}`, {
+          cause: error,
+        });
+        if (this.configured.maxAttempts !== 0 && attempt >= this.configured.maxAttempts) break;
+        const waitMs = retryDelayMs(attempt);
+        process.stderr.write(
+          `${JSON.stringify({ phase: "RETRY", sourceUri, attempt, waitMs, error: errorMessage(error) })}\n`,
+        );
+        await delay(waitMs);
       }
     }
     throw lastError instanceof Error ? lastError : new Error(`TMCLASS_FETCH_FAILED ${sourceUri}`);
@@ -794,4 +825,6 @@ async function main(): Promise<void> {
   await writeStatus(configured, "COMPLETE");
 }
 
-await main();
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  await main();
+}

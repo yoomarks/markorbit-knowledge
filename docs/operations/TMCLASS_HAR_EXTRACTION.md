@@ -64,13 +64,16 @@ pnpm --filter @markorbit/worker tmclass:capture-live-corpus -- `
   --concurrency 4 `
   --detail-batch-size 250 `
   --search-batch-size 20 `
-  --min-start-interval-ms 250
+  --min-start-interval-ms 500 `
+  --timeout-ms 120000 `
+  --max-attempts 0
 ```
 
 Every search or detail batch is atomically written as HAR with a hash-bound summary. Re-running
 the same command skips completed batches. `STATUS.json` records the active phase and
 `COMPLETE.json` is written only after no undiscovered Term, Concept or Concept-language route
-remains.
+remains. `--max-attempts 0` keeps retrying transient timeouts, empty successful responses, HTTP
+429 responses and server errors with a capped backoff; other HTTP failures still stop immediately.
 
 The continuous Knowledge admission operator watches completed detail HAR batches, imports them as
 immutable RawArtifacts, and emits one evidence bundle per batch:
