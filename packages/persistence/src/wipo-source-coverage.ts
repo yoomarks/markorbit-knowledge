@@ -27,6 +27,8 @@ function target(
     verificationEvidenceUri?: string;
     verifiedAt?: string;
     catalogState?: SourceCoverageCatalogState;
+    sourceType?: SourceCoverageTarget["sourceType"];
+    languages?: string[];
   },
 ): SourceCoverageTarget {
   return {
@@ -35,10 +37,10 @@ function target(
     jurisdiction: "WO",
     authorityName: WIPO,
     authorityBasis: "EXPLICIT_CURATED",
-    sourceType: "WEB",
+    sourceType: input.sourceType ?? "WEB",
     category: "OFFICIAL_AUTHORITY",
     authorityLevel: "PRIMARY_OFFICIAL",
-    languages: ["en"],
+    languages: input.languages ?? ["en"],
     catalogState: input.catalogState ?? "ACTIVE",
     verifiedAt: VERIFIED_AT,
     ...input,
@@ -130,6 +132,59 @@ export const WIPO_SOURCE_COVERAGE_TARGETS = [
       fetchAttachmentsHint: true,
       expectedArtifactKinds: ["HTML", "MARKDOWN", "PDF"],
     },
+  }),
+  target({
+    id: "wo-wipo-madrid-goods-services-manager",
+    family: "GOODS_SERVICES_ID",
+    displayName: "WIPO Madrid Goods & Services Manager",
+    canonicalUri: "https://webaccess.wipo.int/mgs/",
+    entrypoints: [
+      {
+        uri: "https://webaccess.wipo.int/mgs/",
+        label: "Madrid Goods & Services Manager",
+      },
+    ],
+    sourceType: "API",
+    languages: [
+      "en",
+      "es",
+      "fr",
+      "ar",
+      "bg",
+      "de",
+      "fa",
+      "he",
+      "id",
+      "it",
+      "ja",
+      "ka",
+      "km",
+      "ko",
+      "mn",
+      "nl",
+      "no",
+      "pt",
+      "pt-BR",
+      "ru",
+      "sr",
+      "tr",
+      "uk",
+      "vi",
+      "zh",
+    ],
+    coverageTier: "FOUNDATIONAL",
+    catalogState: "WATCH",
+    changeSensitivity: "HIGH",
+    acquisition: {
+      mode: "API_OR_STRUCTURED",
+      renderJavascriptHint: false,
+      fetchAttachmentsHint: false,
+      expectedArtifactKinds: ["JSON"],
+    },
+    verificationEvidenceUri: "https://webaccess.wipo.int/mgs/",
+    verifiedAt: "2026-10-09T00:00:00+08:00",
+    notes:
+      "The public application exposes languageOptions and an observed POST data path. Request codes differ for ja→jp, ko→kr, and pt-BR→br. WATCH records coverage intent only: bulk or automated access remains disabled until documented authorization is confirmed.",
   }),
   target({
     id: "wo-wipo-madrid-legal-texts",
