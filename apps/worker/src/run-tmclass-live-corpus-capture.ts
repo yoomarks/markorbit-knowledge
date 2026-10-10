@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   TMCLASS_DATA_LANGUAGES,
@@ -494,6 +494,77 @@ async function collectLanguageIndex(
   }
 }
 
+function processIsAlive(processId: number): boolean {
+  if (!Number.isSafeInteger(processId) || processId < 1) return false;
+  try {
+    process.kill(processId, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+async function acquireLanguageLock(
+  outputRoot: string,
+  language: string,
+): Promise<null | (() => Promise<void>)> {
+  const languageRoot = path.join(outputRoot, "index", language);
+  const completePath = path.join(languageRoot, "COMPLETE.json");
+  const lockRoot = path.join(languageRoot, ".capture-lock");
+  const ownerPath = path.join(lockRoot, "owner.json");
+  await mkdir(languageRoot, { recursive: true });
+  for (;;) {
+    if (await exists(completePath)) return null;
+    try {
+      await mkdir(lockRoot);
+      await writeJson(ownerPath, {
+        schemaVersion: SCHEMA_VERSION,
+        processId: process.pid,
+        acquiredAt: new Date().toISOString(),
+      });
+      return async () => rm(lockRoot, { recursive: true, force: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    }
+    try {
+      const owner = await readJson<{ processId?: unknown }>(ownerPath);
+      if (typeof owner.processId === "number" && !processIsAlive(owner.processId)) {
+        await rm(lockRoot, { recursive: true, force: true });
+        continue;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    await delay(10_000);
+  }
+}
+
+async function collectLockedLanguageIndex(
+  configured: Options,
+  language: string,
+  client: TmclassPublicClient,
+): Promise<void> {
+  const release = await acquireLanguageLock(configured.outputRoot, language);
+  if (release === null) {
+    process.stdout.write(`${JSON.stringify({ phase: "INDEX", language, state: "REUSED" })}\n`);
+    return;
+  }
+  try {
+    process.stdout.write(`${JSON.stringify({ phase: "INDEX", language, state: "STARTED" })}\n`);
+    await collectLanguageIndex(configured, language, client);
+    await writeJson(path.join(configured.outputRoot, "index", language, "COMPLETE.json"), {
+      schemaVersion: SCHEMA_VERSION,
+      outcome: "TMCLASS_LANGUAGE_INDEX_COMPLETE",
+      language,
+      niceClasses: configured.niceClasses,
+      completedAt: new Date().toISOString(),
+    });
+    process.stdout.write(`${JSON.stringify({ phase: "INDEX", language, state: "COMPLETED" })}\n`);
+  } finally {
+    await release();
+  }
+}
+
 async function filesRecursively(root: string, suffix: string): Promise<string[]> {
   if (!(await exists(root))) return [];
   const result: string[] = [];
@@ -676,9 +747,7 @@ async function main(): Promise<void> {
   await ensureRobots(configured.outputRoot, client);
   await writeStatus(configured, "INDEX");
   for (const language of configured.languages) {
-    process.stdout.write(`${JSON.stringify({ phase: "INDEX", language, state: "STARTED" })}\n`);
-    await collectLanguageIndex(configured, language, client);
-    process.stdout.write(`${JSON.stringify({ phase: "INDEX", language, state: "COMPLETED" })}\n`);
+    await collectLockedLanguageIndex(configured, language, client);
   }
   if (configured.capture === "index") {
     await writeStatus(configured, "INDEX_COMPLETE");
