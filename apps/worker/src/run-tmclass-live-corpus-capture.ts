@@ -229,6 +229,12 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 }
 
+function cacheBustedUri(sourceUri: string): string {
+  const url = new URL(sourceUri);
+  url.searchParams.set("_", String(Date.now()));
+  return url.toString();
+}
+
 export class TmclassPublicClient {
   private readonly gate: RequestGate;
 
@@ -249,6 +255,7 @@ export class TmclassPublicClient {
     ) {
       await this.gate.wait();
       const observedAt = new Date().toISOString();
+      const requestUri = ajax ? cacheBustedUri(sourceUri) : sourceUri;
       try {
         const headers: Record<string, string> = {
           accept: ajax ? "text/html, */*; q=0.01" : "text/html,application/xhtml+xml",
@@ -257,7 +264,7 @@ export class TmclassPublicClient {
           "user-agent": USER_AGENT,
         };
         if (ajax) headers["x-requested-with"] = "XMLHttpRequest";
-        const response = await fetch(sourceUri, {
+        const response = await fetch(requestUri, {
           method: "GET",
           headers,
           redirect: "follow",
@@ -266,23 +273,23 @@ export class TmclassPublicClient {
         const html = await response.text();
         if (response.status === 200 && html.trim()) {
           if (Buffer.byteLength(html, "utf8") > 10 * 1024 * 1024) {
-            throw new NonRetryableTmclassError(`TMCLASS_RESPONSE_TOO_LARGE ${sourceUri}`);
+            throw new NonRetryableTmclassError(`TMCLASS_RESPONSE_TOO_LARGE ${requestUri}`);
           }
-          const entry = { sourceUri, observedAt, html };
+          const entry = { sourceUri: requestUri, observedAt, html };
           validate?.(entry);
           return entry;
         }
         const retryable =
           response.status === 200 || response.status === 429 || response.status >= 500;
         const error = new Error(
-          `TMCLASS_HTTP_${response.status} ${sourceUri}${html ? ` ${html.slice(0, 200)}` : ""}`,
+          `TMCLASS_HTTP_${response.status} ${requestUri}${html ? ` ${html.slice(0, 200)}` : ""}`,
         );
         if (!retryable) throw new NonRetryableTmclassError(error.message);
         lastError = error;
         if (this.configured.maxAttempts !== 0 && attempt >= this.configured.maxAttempts) break;
         const waitMs = retryDelayMs(attempt, response.headers.get("retry-after"));
         process.stderr.write(
-          `${JSON.stringify({ phase: "RETRY", sourceUri, attempt, waitMs, error: errorMessage(error) })}\n`,
+          `${JSON.stringify({ phase: "RETRY", sourceUri: requestUri, attempt, waitMs, error: errorMessage(error) })}\n`,
         );
         await delay(waitMs);
       } catch (error) {
@@ -293,7 +300,7 @@ export class TmclassPublicClient {
         if (this.configured.maxAttempts !== 0 && attempt >= this.configured.maxAttempts) break;
         const waitMs = retryDelayMs(attempt);
         process.stderr.write(
-          `${JSON.stringify({ phase: "RETRY", sourceUri, attempt, waitMs, error: errorMessage(error) })}\n`,
+          `${JSON.stringify({ phase: "RETRY", sourceUri: requestUri, attempt, waitMs, error: errorMessage(error) })}\n`,
         );
         await delay(waitMs);
       }

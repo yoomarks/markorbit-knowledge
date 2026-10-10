@@ -79,6 +79,8 @@ The verified public search surface accepts up to 1,000 results per page; the pag
 in every index manifest and completion marker so a resumed root cannot mix incompatible pagination.
 For pages larger than the site's default, each class also retains a 100-result metadata response;
 the collector uses its total to verify the exact cardinality of every larger result page.
+Every AJAX attempt uses the site's numeric cache-buster parameter and records the actual requested
+URI, preventing a transient partial template from being reused across validation retries.
 
 The continuous Knowledge admission operator watches completed detail HAR batches, imports them as
 immutable RawArtifacts, and emits one evidence bundle per batch:

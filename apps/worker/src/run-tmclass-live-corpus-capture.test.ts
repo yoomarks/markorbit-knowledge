@@ -74,6 +74,8 @@ describe("TMclass live corpus request retry", () => {
 
     expect(captured.html).toContain("valid result");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0]![0])).toContain("_=");
+    expect(fetchMock.mock.calls[0]![0]).not.toBe(fetchMock.mock.calls[1]![0]);
   });
 
   it("caps exponential and Retry-After backoff at one minute", () => {
