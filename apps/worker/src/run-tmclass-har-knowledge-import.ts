@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import type { ArtifactIngestionReceipt, ExecutionExecutor } from "@markorbit/contracts";
 import { openRegistryDatabase, SqliteSourceRepository } from "@markorbit/persistence";
 import { SqliteCollectionPlanRepository } from "@markorbit/persistence/collection-plans";
@@ -34,7 +35,7 @@ const EXECUTOR: ExecutionExecutor = {
   mode: "PRODUCTION",
 };
 
-type Options = {
+export type TmclassHarKnowledgeImportOptions = {
   inputs: string[];
   output: string;
   browserExecutable: string;
@@ -43,7 +44,7 @@ type Options = {
   workspaceId: string;
 };
 
-function options(argv: string[]): Options {
+function options(argv: string[]): TmclassHarKnowledgeImportOptions {
   const inputs: string[] = [];
   const values = new Map<string, string>();
   for (let index = 0; index < argv.length; index += 1) {
@@ -82,7 +83,7 @@ function options(argv: string[]): Options {
 }
 
 async function loadCaptures(
-  configured: Options,
+  configured: TmclassHarKnowledgeImportOptions,
 ): Promise<Array<{ entry: TmclassHarHtmlEntry; capture: TmclassHarPageCapture }>> {
   const browser = await chromium.launch({
     executablePath: configured.browserExecutable,
@@ -141,8 +142,9 @@ function importFingerprint(captures: readonly TmclassHarPageCapture[]): string {
     .digest("hex");
 }
 
-async function main(): Promise<void> {
-  const configured = options(process.argv.slice(2));
+export async function importTmclassHarToKnowledge(
+  configured: TmclassHarKnowledgeImportOptions,
+): Promise<void> {
   const loaded = await loadCaptures(configured);
   if (loaded.length === 0) throw new Error("No TMclass detail pages were captured");
   const database = openRegistryDatabase(configured.databasePath);
@@ -349,8 +351,7 @@ async function main(): Promise<void> {
       }),
     );
     await mkdir(path.dirname(configured.output), { recursive: true });
-    await writeFile(
-      configured.output,
+    const serializedBundle =
       JSON.stringify(
         {
           contractVersion: "TMCLASS_SOURCE_EVIDENCE_BUNDLE_V1",
@@ -364,9 +365,10 @@ async function main(): Promise<void> {
         },
         null,
         2,
-      ) + "\n",
-      "utf8",
-    );
+      ) + "\n";
+    const temporaryOutput = `${configured.output}.tmp-${process.pid}`;
+    await writeFile(temporaryOutput, serializedBundle, "utf8");
+    await rename(temporaryOutput, configured.output);
     process.stdout.write(
       JSON.stringify({
         outcome: "TMCLASS_HAR_IMPORTED_TO_KNOWLEDGE",
@@ -381,4 +383,6 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  await importTmclassHarToKnowledge(options(process.argv.slice(2)));
+}

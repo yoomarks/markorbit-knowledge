@@ -1,0 +1,692 @@
+import { createHash } from "node:crypto";
+import { access, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import path from "node:path";
+import {
+  TMCLASS_DATA_LANGUAGES,
+  assertTmclassRobotsAllowsPublicEc2,
+  parseTmclassDetailLinks,
+  parseTmclassOfficeCodes,
+  parseTmclassSearchResult,
+  tmclassHar,
+  tmclassOfficeConfigurationUrl,
+  tmclassRouteUrl,
+  tmclassSearchUrl,
+  type TmclassHarEntry,
+} from "./tmclass-live-corpus.js";
+
+const SCHEMA_VERSION = "TMCLASS_LIVE_CORPUS_CAPTURE_V1";
+const ROBOTS_URL = "https://euipo.europa.eu/robots.txt";
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MarkOrbitKnowledge/1.0";
+
+type Options = {
+  outputRoot: string;
+  languages: string[];
+  niceClasses: number[];
+  capture: "index" | "all";
+  concurrency: number;
+  detailBatchSize: number;
+  searchBatchSize: number;
+  minStartIntervalMs: number;
+  timeoutMs: number;
+  maxAttempts: number;
+};
+
+type SearchBatchSummary = {
+  schemaVersion: typeof SCHEMA_VERSION;
+  kind: "SEARCH";
+  language: string;
+  niceClass: number;
+  pages: number[];
+  totalResults: number;
+  totalPages: number;
+  termIds: string[];
+  harSha256: string;
+};
+
+type DetailBatchSummary = {
+  schemaVersion: typeof SCHEMA_VERSION;
+  kind: "TERM" | "CONCEPT" | "CONCEPT_LANGUAGE";
+  routes: string[];
+  termIds: string[];
+  conceptIds: string[];
+  conceptLanguageRoutes: string[];
+  harSha256: string;
+};
+
+type CoverageSummary = {
+  schemaVersion: typeof SCHEMA_VERSION;
+  language: string;
+  officeCodes: string[];
+  sourceUri: string;
+  observedAt: string;
+  harSha256: string;
+};
+
+type ClassManifest = {
+  schemaVersion: typeof SCHEMA_VERSION;
+  language: string;
+  niceClass: number;
+  totalResults: number;
+  totalPages: number;
+  officeCodes: string[];
+  observedAt: string;
+};
+
+function integer(
+  value: string | undefined,
+  fallback: number,
+  label: string,
+  min: number,
+  max: number,
+) {
+  const parsed = value === undefined ? fallback : Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${label} must be an integer in ${min}..${max}`);
+  }
+  return parsed;
+}
+
+function options(argv: string[]): Options {
+  const values = new Map<string, string>();
+  for (let index = 0; index < argv.length; index += 1) {
+    const flag = argv[index];
+    if (flag === "--") continue;
+    const value = argv[index + 1];
+    if (!flag?.startsWith("--") || !value || value.startsWith("--")) {
+      throw new Error(`Missing value for ${flag ?? "argument"}`);
+    }
+    if (values.has(flag)) throw new Error(`Duplicate argument ${flag}`);
+    values.set(flag, value);
+    index += 1;
+  }
+  const allowed = new Set([
+    "--output-root",
+    "--languages",
+    "--nice-classes",
+    "--capture",
+    "--concurrency",
+    "--detail-batch-size",
+    "--search-batch-size",
+    "--min-start-interval-ms",
+    "--timeout-ms",
+    "--max-attempts",
+  ]);
+  const unknown = [...values.keys()].filter((flag) => !allowed.has(flag));
+  if (unknown.length > 0) throw new Error(`Unsupported argument ${unknown[0]}`);
+  const outputRoot = values.get("--output-root")?.trim();
+  if (!outputRoot) throw new Error("--output-root is required");
+  const supported = new Set<string>(TMCLASS_DATA_LANGUAGES);
+  const requested = values.get("--languages")?.trim() || "all";
+  const languages =
+    requested === "all"
+      ? [...TMCLASS_DATA_LANGUAGES]
+      : [...new Set(requested.split(",").map((value) => value.trim().toLowerCase()))];
+  if (languages.length === 0 || languages.some((language) => !supported.has(language))) {
+    throw new Error("--languages must be 'all' or a comma-separated subset of TMclass languages");
+  }
+  const requestedClasses = values.get("--nice-classes")?.trim() || "all";
+  const niceClasses =
+    requestedClasses === "all"
+      ? Array.from({ length: 45 }, (_, index) => index + 1)
+      : [...new Set(requestedClasses.split(",").map((value) => Number(value.trim())))].sort(
+          (left, right) => left - right,
+        );
+  if (
+    niceClasses.length === 0 ||
+    niceClasses.some(
+      (niceClass) => !Number.isSafeInteger(niceClass) || niceClass < 1 || niceClass > 45,
+    )
+  ) {
+    throw new Error("--nice-classes must be 'all' or a comma-separated subset of 1..45");
+  }
+  const capture = values.get("--capture")?.trim() || "all";
+  if (capture !== "index" && capture !== "all") {
+    throw new Error("--capture must be 'index' or 'all'");
+  }
+  return {
+    outputRoot: path.resolve(outputRoot),
+    languages,
+    niceClasses,
+    capture,
+    concurrency: integer(values.get("--concurrency"), 4, "--concurrency", 1, 12),
+    detailBatchSize: integer(
+      values.get("--detail-batch-size"),
+      250,
+      "--detail-batch-size",
+      1,
+      1_000,
+    ),
+    searchBatchSize: integer(values.get("--search-batch-size"), 20, "--search-batch-size", 1, 100),
+    minStartIntervalMs: integer(
+      values.get("--min-start-interval-ms"),
+      250,
+      "--min-start-interval-ms",
+      100,
+      60_000,
+    ),
+    timeoutMs: integer(values.get("--timeout-ms"), 45_000, "--timeout-ms", 5_000, 180_000),
+    maxAttempts: integer(values.get("--max-attempts"), 4, "--max-attempts", 1, 8),
+  };
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
+}
+
+class RequestGate {
+  private tail: Promise<void> = Promise.resolve();
+  private nextStart = 0;
+
+  constructor(private readonly minimumIntervalMs: number) {}
+
+  async wait(): Promise<void> {
+    const turn = this.tail.then(async () => {
+      const remaining = this.nextStart - Date.now();
+      if (remaining > 0) await delay(remaining);
+      this.nextStart = Date.now() + this.minimumIntervalMs;
+    });
+    this.tail = turn.catch(() => undefined);
+    await turn;
+  }
+}
+
+class TmclassPublicClient {
+  private readonly gate: RequestGate;
+
+  constructor(private readonly configured: Options) {
+    this.gate = new RequestGate(configured.minStartIntervalMs);
+  }
+
+  async capture(sourceUri: string, ajax: boolean): Promise<TmclassHarEntry> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= this.configured.maxAttempts; attempt += 1) {
+      await this.gate.wait();
+      const observedAt = new Date().toISOString();
+      try {
+        const headers: Record<string, string> = {
+          accept: ajax ? "text/html, */*; q=0.01" : "text/html,application/xhtml+xml",
+          "accept-language": "en-US,en;q=0.9",
+          referer: "https://euipo.europa.eu/ec2/",
+          "user-agent": USER_AGENT,
+        };
+        if (ajax) headers["x-requested-with"] = "XMLHttpRequest";
+        const response = await fetch(sourceUri, {
+          method: "GET",
+          headers,
+          redirect: "follow",
+          signal: AbortSignal.timeout(this.configured.timeoutMs),
+        });
+        const html = await response.text();
+        if (response.status === 200 && html.trim()) {
+          if (Buffer.byteLength(html, "utf8") > 10 * 1024 * 1024) {
+            throw new Error(`TMCLASS_RESPONSE_TOO_LARGE ${sourceUri}`);
+          }
+          return { sourceUri, observedAt, html };
+        }
+        const retryable = response.status === 429 || response.status >= 500;
+        const error = new Error(
+          `TMCLASS_HTTP_${response.status} ${sourceUri}${html ? ` ${html.slice(0, 200)}` : ""}`,
+        );
+        if (!retryable) throw error;
+        lastError = error;
+        const retryAfter = Number(response.headers.get("retry-after"));
+        await delay(Number.isFinite(retryAfter) ? retryAfter * 1_000 : attempt * attempt * 1_000);
+      } catch (error) {
+        lastError = error;
+        if (attempt === this.configured.maxAttempts) break;
+        await delay(attempt * attempt * 1_000);
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(`TMCLASS_FETCH_FAILED ${sourceUri}`);
+  }
+}
+
+async function exists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function atomicWrite(filePath: string, content: string | Uint8Array): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const temporary = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+  await writeFile(temporary, content);
+  await rename(temporary, filePath);
+}
+
+async function writeJson(filePath: string, value: unknown): Promise<void> {
+  await atomicWrite(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+async function readJson<T>(filePath: string): Promise<T> {
+  return JSON.parse(await readFile(filePath, "utf8")) as T;
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+async function writeHarWithSummary(
+  harPath: string,
+  entries: readonly TmclassHarEntry[],
+  summary: Omit<SearchBatchSummary, "harSha256"> | Omit<DetailBatchSummary, "harSha256">,
+): Promise<void> {
+  let serialized = `${JSON.stringify(tmclassHar(entries), null, 2)}\n`;
+  const summaryPath = harPath.replace(/\.har$/u, ".summary.json");
+  if (!(await exists(harPath))) await atomicWrite(harPath, serialized);
+  else serialized = await readFile(harPath, "utf8");
+  if (!(await exists(summaryPath))) {
+    await writeJson(summaryPath, { ...summary, harSha256: sha256(serialized) });
+  }
+}
+
+async function mapConcurrent<T, R>(
+  values: readonly T[],
+  concurrency: number,
+  operation: (value: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(values.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(concurrency, values.length) }, async () => {
+    for (;;) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= values.length) return;
+      results[index] = await operation(values[index]!);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+function chunks<T>(values: readonly T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size));
+  }
+  return result;
+}
+
+function pad(value: number, width = 3): string {
+  return String(value).padStart(width, "0");
+}
+
+async function ensureRobots(outputRoot: string, client: TmclassPublicClient): Promise<void> {
+  const robotsPath = path.join(outputRoot, "coverage", "robots.txt");
+  const robots = (await exists(robotsPath))
+    ? await readFile(robotsPath, "utf8")
+    : (await client.capture(ROBOTS_URL, false)).html;
+  assertTmclassRobotsAllowsPublicEc2(robots);
+  if (!(await exists(robotsPath))) await atomicWrite(robotsPath, robots);
+}
+
+async function ensureCoverage(
+  outputRoot: string,
+  language: string,
+  client: TmclassPublicClient,
+): Promise<CoverageSummary> {
+  const directory = path.join(outputRoot, "coverage");
+  const harPath = path.join(directory, `${language}.har`);
+  const summaryPath = path.join(directory, `${language}.summary.json`);
+  if (await exists(summaryPath)) return readJson<CoverageSummary>(summaryPath);
+  let entry: TmclassHarEntry;
+  if (await exists(harPath)) {
+    const har = await readJson<{
+      log: {
+        entries: Array<{
+          startedDateTime: string;
+          request: { url: string };
+          response: { content: { text: string } };
+        }>;
+      };
+    }>(harPath);
+    const stored = har.log.entries[0];
+    if (!stored) throw new Error(`TMCLASS_COVERAGE_HAR_EMPTY ${language}`);
+    entry = {
+      sourceUri: stored.request.url,
+      observedAt: stored.startedDateTime,
+      html: stored.response.content.text,
+    };
+  } else {
+    entry = await client.capture(tmclassOfficeConfigurationUrl(language), true);
+  }
+  const serialized = `${JSON.stringify(tmclassHar([entry]), null, 2)}\n`;
+  if (!(await exists(harPath))) await atomicWrite(harPath, serialized);
+  const summary: CoverageSummary = {
+    schemaVersion: SCHEMA_VERSION,
+    language,
+    officeCodes: parseTmclassOfficeCodes(entry.html),
+    sourceUri: entry.sourceUri,
+    observedAt: entry.observedAt,
+    harSha256: sha256(serialized),
+  };
+  await writeJson(summaryPath, summary);
+  return summary;
+}
+
+async function ensureClassFirstPage(input: {
+  outputRoot: string;
+  language: string;
+  niceClass: number;
+  officeCodes: string[];
+  client: TmclassPublicClient;
+}): Promise<ClassManifest> {
+  const directory = path.join(
+    input.outputRoot,
+    "index",
+    input.language,
+    `class-${pad(input.niceClass, 2)}`,
+  );
+  const manifestPath = path.join(directory, "manifest.json");
+  if (await exists(manifestPath)) return readJson<ClassManifest>(manifestPath);
+  const entry = await input.client.capture(
+    tmclassSearchUrl({
+      language: input.language,
+      officeCodes: input.officeCodes,
+      page: 1,
+      niceClass: String(input.niceClass),
+    }),
+    true,
+  );
+  const parsed = parseTmclassSearchResult(entry.html);
+  if (parsed.elasticMaxResults) {
+    throw new Error(`TMCLASS_SEARCH_RESULT_CAP ${input.language} class ${input.niceClass}`);
+  }
+  const harPath = path.join(directory, "pages-000001-000001.har");
+  await writeHarWithSummary(harPath, [entry], {
+    schemaVersion: SCHEMA_VERSION,
+    kind: "SEARCH",
+    language: input.language,
+    niceClass: input.niceClass,
+    pages: [1],
+    totalResults: parsed.totalResults,
+    totalPages: parsed.totalPages,
+    termIds: parsed.termIds,
+  });
+  const manifest: ClassManifest = {
+    schemaVersion: SCHEMA_VERSION,
+    language: input.language,
+    niceClass: input.niceClass,
+    totalResults: parsed.totalResults,
+    totalPages: parsed.totalPages,
+    officeCodes: input.officeCodes,
+    observedAt: entry.observedAt,
+  };
+  await writeJson(manifestPath, manifest);
+  return manifest;
+}
+
+async function collectLanguageIndex(
+  configured: Options,
+  language: string,
+  client: TmclassPublicClient,
+): Promise<void> {
+  const coverage = await ensureCoverage(configured.outputRoot, language, client);
+  const classes = configured.niceClasses;
+  const manifests = await mapConcurrent(classes, configured.concurrency, (niceClass) =>
+    ensureClassFirstPage({
+      outputRoot: configured.outputRoot,
+      language,
+      niceClass,
+      officeCodes: coverage.officeCodes,
+      client,
+    }),
+  );
+  for (const manifest of manifests) {
+    const directory = path.join(
+      configured.outputRoot,
+      "index",
+      language,
+      `class-${pad(manifest.niceClass, 2)}`,
+    );
+    const remaining = Array.from(
+      { length: Math.max(0, manifest.totalPages - 1) },
+      (_, index) => index + 2,
+    );
+    for (const pages of chunks(remaining, configured.searchBatchSize)) {
+      const harPath = path.join(
+        directory,
+        `pages-${pad(pages[0]!, 6)}-${pad(pages.at(-1)!, 6)}.har`,
+      );
+      const summaryPath = harPath.replace(/\.har$/u, ".summary.json");
+      if (await exists(summaryPath)) continue;
+      const entries = await mapConcurrent(pages, configured.concurrency, (page) =>
+        client.capture(
+          tmclassSearchUrl({
+            language,
+            officeCodes: coverage.officeCodes,
+            page,
+            niceClass: String(manifest.niceClass),
+          }),
+          true,
+        ),
+      );
+      const parsed = entries.map((entry) => parseTmclassSearchResult(entry.html));
+      if (
+        parsed.some(
+          (result) =>
+            result.elasticMaxResults ||
+            result.totalResults !== manifest.totalResults ||
+            result.totalPages !== manifest.totalPages,
+        )
+      ) {
+        throw new Error(`TMCLASS_SEARCH_PAGINATION_DRIFT ${language} class ${manifest.niceClass}`);
+      }
+      await writeHarWithSummary(harPath, entries, {
+        schemaVersion: SCHEMA_VERSION,
+        kind: "SEARCH",
+        language,
+        niceClass: manifest.niceClass,
+        pages,
+        totalResults: manifest.totalResults,
+        totalPages: manifest.totalPages,
+        termIds: [...new Set(parsed.flatMap((result) => result.termIds))].sort(),
+      });
+      process.stdout.write(
+        `${JSON.stringify({ phase: "INDEX", language, niceClass: manifest.niceClass, throughPage: pages.at(-1), totalPages: manifest.totalPages })}\n`,
+      );
+    }
+  }
+}
+
+async function filesRecursively(root: string, suffix: string): Promise<string[]> {
+  if (!(await exists(root))) return [];
+  const result: string[] = [];
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const child = path.join(root, entry.name);
+    if (entry.isDirectory()) result.push(...(await filesRecursively(child, suffix)));
+    else if (entry.isFile() && entry.name.endsWith(suffix)) result.push(child);
+  }
+  return result.sort();
+}
+
+async function indexedTermIds(outputRoot: string): Promise<Set<string>> {
+  const result = new Set<string>();
+  for (const summaryPath of await filesRecursively(
+    path.join(outputRoot, "index"),
+    ".summary.json",
+  )) {
+    const summary = await readJson<SearchBatchSummary>(summaryPath);
+    if (summary.kind !== "SEARCH") continue;
+    for (const id of summary.termIds) result.add(id);
+  }
+  return result;
+}
+
+async function detailState(outputRoot: string): Promise<{
+  termIds: Set<string>;
+  conceptIds: Set<string>;
+  conceptLanguageRoutes: Set<string>;
+  completedRoutes: Set<string>;
+}> {
+  const termIds = await indexedTermIds(outputRoot);
+  const conceptIds = new Set<string>();
+  const conceptLanguageRoutes = new Set<string>();
+  const completedRoutes = new Set<string>();
+  for (const summaryPath of await filesRecursively(
+    path.join(outputRoot, "details"),
+    ".summary.json",
+  )) {
+    const summary = await readJson<DetailBatchSummary>(summaryPath);
+    for (const route of summary.routes) completedRoutes.add(route);
+    for (const id of summary.termIds) termIds.add(id);
+    for (const id of summary.conceptIds) conceptIds.add(id);
+    for (const route of summary.conceptLanguageRoutes) conceptLanguageRoutes.add(route);
+  }
+  return { termIds, conceptIds, conceptLanguageRoutes, completedRoutes };
+}
+
+function detailDirectory(kind: DetailBatchSummary["kind"]): string {
+  if (kind === "TERM") return "term";
+  if (kind === "CONCEPT") return "concept";
+  return "concept-language";
+}
+
+async function captureDetailBatch(input: {
+  configured: Options;
+  client: TmclassPublicClient;
+  state: Awaited<ReturnType<typeof detailState>>;
+  kind: DetailBatchSummary["kind"];
+  routes: string[];
+}): Promise<void> {
+  const entries = await mapConcurrent(input.routes, input.configured.concurrency, (route) =>
+    input.client.capture(tmclassRouteUrl(route), false),
+  );
+  const links = entries.map((entry) => parseTmclassDetailLinks(entry.html));
+  const discoveredTermIds = [...new Set(links.flatMap((item) => item.termIds))].sort();
+  const discoveredConceptIds = [...new Set(links.flatMap((item) => item.conceptIds))].sort();
+  const discoveredConceptLanguageRoutes = [
+    ...new Set(links.flatMap((item) => item.conceptLanguageRoutes)),
+  ].sort();
+  const batch = sha256(input.routes.join("\n")).slice(0, 16);
+  const harPath = path.join(
+    input.configured.outputRoot,
+    "details",
+    detailDirectory(input.kind),
+    `batch-${batch}.har`,
+  );
+  await writeHarWithSummary(harPath, entries, {
+    schemaVersion: SCHEMA_VERSION,
+    kind: input.kind,
+    routes: input.routes,
+    termIds: discoveredTermIds,
+    conceptIds: discoveredConceptIds,
+    conceptLanguageRoutes: discoveredConceptLanguageRoutes,
+  });
+  for (const route of input.routes) input.state.completedRoutes.add(route);
+  for (const id of discoveredTermIds) input.state.termIds.add(id);
+  for (const id of discoveredConceptIds) input.state.conceptIds.add(id);
+  for (const route of discoveredConceptLanguageRoutes) {
+    input.state.conceptLanguageRoutes.add(route);
+  }
+  process.stdout.write(
+    `${JSON.stringify({ phase: "DETAILS", kind: input.kind, batch, captured: input.routes.length, knownTerms: input.state.termIds.size, knownConcepts: input.state.conceptIds.size })}\n`,
+  );
+}
+
+function numericRouteIds(ids: Set<string>, kind: "term" | "concept"): string[] {
+  return [...ids]
+    .sort((left, right) => Number(left) - Number(right))
+    .map((id) => `/ec2/${kind}/${id}`);
+}
+
+async function collectDetailClosure(
+  configured: Options,
+  client: TmclassPublicClient,
+): Promise<void> {
+  const state = await detailState(configured.outputRoot);
+  for (;;) {
+    const pendingTerms = numericRouteIds(state.termIds, "term").filter(
+      (route) => !state.completedRoutes.has(route),
+    );
+    if (pendingTerms.length > 0) {
+      await captureDetailBatch({
+        configured,
+        client,
+        state,
+        kind: "TERM",
+        routes: pendingTerms.slice(0, configured.detailBatchSize),
+      });
+      continue;
+    }
+    const pendingConcepts = numericRouteIds(state.conceptIds, "concept").filter(
+      (route) => !state.completedRoutes.has(route),
+    );
+    if (pendingConcepts.length > 0) {
+      await captureDetailBatch({
+        configured,
+        client,
+        state,
+        kind: "CONCEPT",
+        routes: pendingConcepts.slice(0, configured.detailBatchSize),
+      });
+      continue;
+    }
+    const pendingConceptLanguages = [...state.conceptLanguageRoutes]
+      .sort()
+      .filter((route) => !state.completedRoutes.has(route));
+    if (pendingConceptLanguages.length > 0) {
+      await captureDetailBatch({
+        configured,
+        client,
+        state,
+        kind: "CONCEPT_LANGUAGE",
+        routes: pendingConceptLanguages.slice(0, configured.detailBatchSize),
+      });
+      continue;
+    }
+    await writeJson(path.join(configured.outputRoot, "COMPLETE.json"), {
+      schemaVersion: SCHEMA_VERSION,
+      outcome: "TMCLASS_LIVE_CORPUS_CAPTURE_COMPLETE",
+      completedAt: new Date().toISOString(),
+      languages: configured.languages,
+      termCount: state.termIds.size,
+      conceptCount: state.conceptIds.size,
+      conceptLanguageRouteCount: state.conceptLanguageRoutes.size,
+      capturedDetailRouteCount: state.completedRoutes.size,
+    });
+    return;
+  }
+}
+
+async function writeStatus(configured: Options, phase: string): Promise<void> {
+  await writeJson(path.join(configured.outputRoot, "STATUS.json"), {
+    schemaVersion: SCHEMA_VERSION,
+    phase,
+    updatedAt: new Date().toISOString(),
+    languages: configured.languages,
+    niceClasses: configured.niceClasses,
+    capture: configured.capture,
+    concurrency: configured.concurrency,
+    detailBatchSize: configured.detailBatchSize,
+    searchBatchSize: configured.searchBatchSize,
+    minStartIntervalMs: configured.minStartIntervalMs,
+  });
+}
+
+async function main(): Promise<void> {
+  const configured = options(process.argv.slice(2));
+  await mkdir(configured.outputRoot, { recursive: true });
+  const client = new TmclassPublicClient(configured);
+  await ensureRobots(configured.outputRoot, client);
+  await writeStatus(configured, "INDEX");
+  for (const language of configured.languages) {
+    process.stdout.write(`${JSON.stringify({ phase: "INDEX", language, state: "STARTED" })}\n`);
+    await collectLanguageIndex(configured, language, client);
+    process.stdout.write(`${JSON.stringify({ phase: "INDEX", language, state: "COMPLETED" })}\n`);
+  }
+  if (configured.capture === "index") {
+    await writeStatus(configured, "INDEX_COMPLETE");
+    return;
+  }
+  await writeStatus(configured, "DETAILS");
+  await collectDetailClosure(configured, client);
+  await writeStatus(configured, "COMPLETE");
+}
+
+await main();

@@ -46,3 +46,42 @@ fragments, other origins, non-HTML responses and oversized pages are rejected or
 
 The extraction bundle is source evidence, not capability truth. It must be admitted through the
 governed durable-artifact and Data Engine fact-admission path before downstream use.
+
+## Resumable public corpus capture
+
+The live corpus operator captures the public TMclass search surface for all 41 data languages,
+all 45 Nice classes, HDB, and every office database exposed for each language at capture time. It
+checks `robots.txt`, retains exact search/configuration responses, fails closed on search-result
+caps or pagination drift, and then follows Term, Concept, translation and Concept-language links
+until the detail graph reaches closure.
+
+```powershell
+pnpm --filter @markorbit/worker tmclass:capture-live-corpus -- `
+  --output-root D:\evidence\tmclass-live `
+  --languages all `
+  --nice-classes all `
+  --capture all `
+  --concurrency 4 `
+  --detail-batch-size 250 `
+  --search-batch-size 20 `
+  --min-start-interval-ms 250
+```
+
+Every search or detail batch is atomically written as HAR with a hash-bound summary. Re-running
+the same command skips completed batches. `STATUS.json` records the active phase and
+`COMPLETE.json` is written only after no undiscovered Term, Concept or Concept-language route
+remains.
+
+The continuous Knowledge admission operator watches completed detail HAR batches, imports them as
+immutable RawArtifacts, and emits one evidence bundle per batch:
+
+```powershell
+pnpm --filter @markorbit/worker tmclass:import-live-corpus -- `
+  --capture-root D:\evidence\tmclass-live `
+  --output-root D:\evidence\tmclass-bundles `
+  --database D:\knowledge\.data\markorbit-knowledge.sqlite `
+  --artifact-root D:\knowledge\.data\artifacts `
+  --workspace-id wsp_01ARZ3NDEKTSV4RRFFQ69G5FAV `
+  --browser-executable "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" `
+  --continuous
+```

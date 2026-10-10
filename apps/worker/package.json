@@ -11,6 +11,8 @@
     "cnipa:evidence:assess-response-bundle": "tsx src/run-cnipa-offline-response-bundle.ts",
     "tmclass:extract-har": "tsx src/run-tmclass-har-extraction.ts",
     "tmclass:import-har": "tsx src/run-tmclass-har-knowledge-import.ts",
+    "tmclass:capture-live-corpus": "tsx src/run-tmclass-live-corpus-capture.ts",
+    "tmclass:import-live-corpus": "tsx src/run-tmclass-live-corpus-knowledge-import.ts",
     "adk:library:bootstrap": "tsx src/run-adk-assignment-library-bootstrap.ts",
     "adk:candidate:promote": "tsx src/run-adk-candidate-promotion.ts",
     "adk:grounded:prepare": "tsx src/prepare-adk-grounded-execution.ts",
