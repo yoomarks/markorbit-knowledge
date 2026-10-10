@@ -251,13 +251,14 @@ class NonRetryableTmclassError extends Error {}
 class TmclassSourceProtectionError extends Error {}
 
 const MAX_RETRY_DELAY_MS = 15 * 60_000;
+const SOURCE_PROTECTION_RETRY_DELAY_MS = 60 * 60_000;
 
 export function retryDelayMs(
   attempt: number,
   retryAfter: string | null = null,
   sourceProtection = false,
 ): number {
-  if (sourceProtection) return MAX_RETRY_DELAY_MS;
+  if (sourceProtection) return SOURCE_PROTECTION_RETRY_DELAY_MS;
   const seconds = retryAfter === null ? Number.NaN : Number(retryAfter);
   if (Number.isFinite(seconds) && seconds >= 0) {
     return Math.min(seconds * 1_000, MAX_RETRY_DELAY_MS);

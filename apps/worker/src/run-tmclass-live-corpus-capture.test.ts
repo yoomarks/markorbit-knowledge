@@ -86,7 +86,7 @@ describe("TMclass live corpus request retry", () => {
     expect(retryDelayMs(100)).toBe(15 * 60_000);
     expect(retryDelayMs(1, "120")).toBe(120_000);
     expect(retryDelayMs(1, "3600")).toBe(15 * 60_000);
-    expect(retryDelayMs(1, null, true)).toBe(15 * 60_000);
+    expect(retryDelayMs(1, null, true)).toBe(60 * 60_000);
   });
 
   it("recognizes the upstream source-protection page and never admits it", async () => {
