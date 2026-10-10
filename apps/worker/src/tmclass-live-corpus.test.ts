@@ -24,11 +24,33 @@ describe("TMclass live corpus helpers", () => {
   it("accepts a harmonised-only language coverage response without inventing an office code", () => {
     expect(
       parseTmclassCoverageConfiguration(`
-        <input checked="checked" value="true" name="harmonised" type="checkbox" />
-        <span>Bulgaria (BPO)</span>
-        <span>EM (EUIPO)</span>
+        <div id="classHeadingsofficeSourceRelationship">
+          <input checked="checked" value="true" name="harmonised" type="checkbox" />
+          <span>Bulgaria (BPO)</span>
+          <span>EM (EUIPO)</span>
+        </div>
       `),
-    ).toEqual({ harmonised: true, officeCodes: [] });
+    ).toEqual({
+      harmonised: true,
+      officeCodes: [],
+      recognized: true,
+      searchable: true,
+    });
+  });
+
+  it("recognizes an explicitly empty language coverage response as unavailable", () => {
+    expect(
+      parseTmclassCoverageConfiguration(`
+        <div id="classHeadingsofficeSourceRelationship">
+          <div id="advSearch_office"></div>
+        </div>
+      `),
+    ).toEqual({
+      harmonised: false,
+      officeCodes: [],
+      recognized: true,
+      searchable: false,
+    });
   });
 
   it("parses result totals, cap state and term identifiers", () => {

@@ -89,6 +89,9 @@ Every AJAX attempt uses the site's numeric cache-buster parameter and records th
 URI, preventing a transient partial template from being reused across validation retries.
 Language coverage may be HDB-only and therefore legitimately expose `harmonised=true` without any
 `officeList` inputs; that state is preserved explicitly instead of inventing an office code.
+The official configuration may also expose a recognized language with neither HDB nor office
+coverage. The collector preserves that response with `searchable=false` and completes the language
+index as source-unavailable instead of retrying a deterministic empty configuration forever.
 On Windows, `auto` uses the system Schannel `curl.exe` transport; other platforms retain native
 fetch. Operators can select either transport explicitly without changing the captured contract.
 If an upstream TLS throttle targets command-line clients, `--http-transport browser` with

@@ -70,6 +70,8 @@ export type TmclassHarEntry = {
 export type TmclassCoverageConfiguration = {
   harmonised: boolean;
   officeCodes: string[];
+  recognized: boolean;
+  searchable: boolean;
 };
 
 function attributes(tag: string): Map<string, string> {
@@ -97,7 +99,14 @@ export function parseTmclassCoverageConfiguration(html: string): TmclassCoverage
       if (code && /^[A-Z0-9]{2,8}$/u.test(code)) codes.push(code);
     }
   }
-  return { harmonised, officeCodes: uniqueSorted(codes) };
+  const officeCodes = uniqueSorted(codes);
+  const recognized = /\bid=["']classHeadingsofficeSourceRelationship["']/iu.test(html);
+  return {
+    harmonised,
+    officeCodes,
+    recognized,
+    searchable: harmonised || officeCodes.length > 0,
+  };
 }
 
 export function parseTmclassOfficeCodes(html: string): string[] {

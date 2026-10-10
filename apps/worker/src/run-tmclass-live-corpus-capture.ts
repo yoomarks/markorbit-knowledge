@@ -73,6 +73,7 @@ type CoverageSummary = {
   language: string;
   harmonised?: boolean;
   officeCodes: string[];
+  searchable?: boolean;
   sourceUri: string;
   observedAt: string;
   harSha256: string;
@@ -573,7 +574,7 @@ async function ensureCoverage(
     const stored = await readJson<CoverageSummary>(summaryPath);
     if (
       Array.isArray(stored.officeCodes) &&
-      (stored.officeCodes.length > 0 || stored.harmonised === true)
+      (stored.officeCodes.length > 0 || stored.harmonised === true || stored.searchable === false)
     ) {
       return stored;
     }
@@ -599,19 +600,19 @@ async function ensureCoverage(
       html: stored.response.content.text,
     };
     const storedCoverage = parseTmclassCoverageConfiguration(entry.html);
-    if (!storedCoverage.harmonised && storedCoverage.officeCodes.length === 0) {
+    if (!storedCoverage.recognized) {
       await rm(harPath, { force: true });
       entry = undefined;
     }
   }
   entry ??= await client.capture(tmclassOfficeConfigurationUrl(language), true, (candidate) => {
     const candidateCoverage = parseTmclassCoverageConfiguration(candidate.html);
-    if (!candidateCoverage.harmonised && candidateCoverage.officeCodes.length === 0) {
+    if (!candidateCoverage.recognized) {
       throw new Error(`TMCLASS_OFFICE_CONFIGURATION_EMPTY ${language}`);
     }
   });
   const coverage = parseTmclassCoverageConfiguration(entry.html);
-  if (!coverage.harmonised && coverage.officeCodes.length === 0) {
+  if (!coverage.recognized) {
     throw new Error(`TMCLASS_OFFICE_VALIDATION_MISSING ${language}`);
   }
   const serialized = `${JSON.stringify(tmclassHar([entry]), null, 2)}\n`;
@@ -621,6 +622,7 @@ async function ensureCoverage(
     language,
     harmonised: coverage.harmonised,
     officeCodes: coverage.officeCodes,
+    searchable: coverage.searchable,
     sourceUri: entry.sourceUri,
     observedAt: entry.observedAt,
     harSha256: sha256(serialized),
@@ -750,8 +752,16 @@ async function collectLanguageIndex(
   configured: Options,
   language: string,
   client: TmclassPublicClient,
-): Promise<void> {
+): Promise<CoverageSummary> {
   const coverage = await ensureCoverage(configured.outputRoot, language, client);
+  const searchable =
+    coverage.searchable ?? (coverage.harmonised === true || coverage.officeCodes.length > 0);
+  if (!searchable) {
+    process.stdout.write(
+      `${JSON.stringify({ phase: "INDEX", language, state: "SOURCE_UNAVAILABLE" })}\n`,
+    );
+    return coverage;
+  }
   const classes = configured.niceClasses;
   const manifests = await mapConcurrent(classes, configured.concurrency, (niceClass) =>
     ensureClassFirstPage({
@@ -849,6 +859,7 @@ async function collectLanguageIndex(
       );
     }
   }
+  return coverage;
 }
 
 function processIsAlive(processId: number): boolean {
@@ -908,13 +919,17 @@ async function collectLockedLanguageIndex(
   }
   try {
     process.stdout.write(`${JSON.stringify({ phase: "INDEX", language, state: "STARTED" })}\n`);
-    await collectLanguageIndex(configured, language, client);
+    const coverage = await collectLanguageIndex(configured, language, client);
     await writeJson(path.join(configured.outputRoot, "index", language, "COMPLETE.json"), {
       schemaVersion: SCHEMA_VERSION,
       outcome: "TMCLASS_LANGUAGE_INDEX_COMPLETE",
       language,
       niceClasses: configured.niceClasses,
       searchPageSize: configured.searchPageSize,
+      searchable:
+        coverage.searchable ?? (coverage.harmonised === true || coverage.officeCodes.length > 0),
+      harmonised: coverage.harmonised ?? false,
+      officeCodes: coverage.officeCodes,
       completedAt: new Date().toISOString(),
     });
     process.stdout.write(`${JSON.stringify({ phase: "INDEX", language, state: "COMPLETED" })}\n`);
