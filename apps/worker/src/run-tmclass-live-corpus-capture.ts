@@ -9,8 +9,8 @@ import { chromium, type Browser, type BrowserContext } from "playwright-core";
 import {
   TMCLASS_DATA_LANGUAGES,
   assertTmclassRobotsAllowsPublicEc2,
+  parseTmclassCoverageConfiguration,
   parseTmclassDetailLinks,
-  parseTmclassOfficeCodes,
   parseTmclassSearchResult,
   tmclassHar,
   tmclassOfficeConfigurationUrl,
@@ -71,6 +71,7 @@ type DetailBatchSummary = {
 type CoverageSummary = {
   schemaVersion: typeof SCHEMA_VERSION;
   language: string;
+  harmonised?: boolean;
   officeCodes: string[];
   sourceUri: string;
   observedAt: string;
@@ -570,7 +571,12 @@ async function ensureCoverage(
   const summaryPath = path.join(directory, `${language}.summary.json`);
   if (await exists(summaryPath)) {
     const stored = await readJson<CoverageSummary>(summaryPath);
-    if (Array.isArray(stored.officeCodes) && stored.officeCodes.length > 0) return stored;
+    if (
+      Array.isArray(stored.officeCodes) &&
+      (stored.officeCodes.length > 0 || stored.harmonised === true)
+    ) {
+      return stored;
+    }
     await rm(summaryPath, { force: true });
     await rm(harPath, { force: true });
   }
@@ -592,24 +598,29 @@ async function ensureCoverage(
       observedAt: stored.startedDateTime,
       html: stored.response.content.text,
     };
-    if (parseTmclassOfficeCodes(entry.html).length === 0) {
+    const storedCoverage = parseTmclassCoverageConfiguration(entry.html);
+    if (!storedCoverage.harmonised && storedCoverage.officeCodes.length === 0) {
       await rm(harPath, { force: true });
       entry = undefined;
     }
   }
   entry ??= await client.capture(tmclassOfficeConfigurationUrl(language), true, (candidate) => {
-    if (parseTmclassOfficeCodes(candidate.html).length === 0) {
+    const candidateCoverage = parseTmclassCoverageConfiguration(candidate.html);
+    if (!candidateCoverage.harmonised && candidateCoverage.officeCodes.length === 0) {
       throw new Error(`TMCLASS_OFFICE_CONFIGURATION_EMPTY ${language}`);
     }
   });
-  const officeCodes = parseTmclassOfficeCodes(entry.html);
-  if (officeCodes.length === 0) throw new Error(`TMCLASS_OFFICE_VALIDATION_MISSING ${language}`);
+  const coverage = parseTmclassCoverageConfiguration(entry.html);
+  if (!coverage.harmonised && coverage.officeCodes.length === 0) {
+    throw new Error(`TMCLASS_OFFICE_VALIDATION_MISSING ${language}`);
+  }
   const serialized = `${JSON.stringify(tmclassHar([entry]), null, 2)}\n`;
   if (!(await exists(harPath))) await atomicWrite(harPath, serialized);
   const summary: CoverageSummary = {
     schemaVersion: SCHEMA_VERSION,
     language,
-    officeCodes,
+    harmonised: coverage.harmonised,
+    officeCodes: coverage.officeCodes,
     sourceUri: entry.sourceUri,
     observedAt: entry.observedAt,
     harSha256: sha256(serialized),

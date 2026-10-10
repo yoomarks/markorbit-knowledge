@@ -87,6 +87,8 @@ the HAR and the batch summary records it as `unresolvedTermRowCount`; the collec
 that resolved identifiers plus explicit upstream empty rows equal the declared page cardinality.
 Every AJAX attempt uses the site's numeric cache-buster parameter and records the actual requested
 URI, preventing a transient partial template from being reused across validation retries.
+Language coverage may be HDB-only and therefore legitimately expose `harmonised=true` without any
+`officeList` inputs; that state is preserved explicitly instead of inventing an office code.
 On Windows, `auto` uses the system Schannel `curl.exe` transport; other platforms retain native
 fetch. Operators can select either transport explicitly without changing the captured contract.
 If an upstream TLS throttle targets command-line clients, `--http-transport browser` with

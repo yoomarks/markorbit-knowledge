@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertTmclassRobotsAllowsPublicEc2,
+  parseTmclassCoverageConfiguration,
   parseTmclassDetailLinks,
   parseTmclassOfficeCodes,
   parseTmclassSearchResult,
@@ -18,6 +19,16 @@ describe("TMclass live corpus helpers", () => {
         <input name="harmonised" value="true" type="checkbox" />
       `),
     ).toEqual(["EM", "US"]);
+  });
+
+  it("accepts a harmonised-only language coverage response without inventing an office code", () => {
+    expect(
+      parseTmclassCoverageConfiguration(`
+        <input checked="checked" value="true" name="harmonised" type="checkbox" />
+        <span>Bulgaria (BPO)</span>
+        <span>EM (EUIPO)</span>
+      `),
+    ).toEqual({ harmonised: true, officeCodes: [] });
   });
 
   it("parses result totals, cap state and term identifiers", () => {

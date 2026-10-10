@@ -67,6 +67,11 @@ export type TmclassHarEntry = {
   html: string;
 };
 
+export type TmclassCoverageConfiguration = {
+  harmonised: boolean;
+  officeCodes: string[];
+};
+
 function attributes(tag: string): Map<string, string> {
   const result = new Map<string, string>();
   for (const match of tag.matchAll(/([:\w-]+)\s*=\s*(["'])(.*?)\2/gu)) {
@@ -79,15 +84,24 @@ function uniqueSorted(values: Iterable<string>): string[] {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right, "en"));
 }
 
-export function parseTmclassOfficeCodes(html: string): string[] {
+export function parseTmclassCoverageConfiguration(html: string): TmclassCoverageConfiguration {
   const codes: string[] = [];
+  let harmonised = false;
   for (const match of html.matchAll(/<input\b[^>]*>/giu)) {
     const input = attributes(match[0]);
-    if (input.get("name") !== "officeList") continue;
-    const code = input.get("value")?.trim();
-    if (code && /^[A-Z0-9]{2,8}$/u.test(code)) codes.push(code);
+    if (input.get("name") === "harmonised" && input.get("value")?.toLowerCase() === "true") {
+      harmonised = true;
+    }
+    if (input.get("name") === "officeList") {
+      const code = input.get("value")?.trim();
+      if (code && /^[A-Z0-9]{2,8}$/u.test(code)) codes.push(code);
+    }
   }
-  return uniqueSorted(codes);
+  return { harmonised, officeCodes: uniqueSorted(codes) };
+}
+
+export function parseTmclassOfficeCodes(html: string): string[] {
+  return parseTmclassCoverageConfiguration(html).officeCodes;
 }
 
 function inputValue(html: string, name: string): string | undefined {
