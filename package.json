@@ -19,6 +19,7 @@
     "check:production-validation:wave1": "node scripts/production-validation-wave-check.mjs",
     "release:preflight": "node scripts/release-preflight.mjs",
     "release:backup-restore-drill": "node scripts/release-backup-restore-drill.mjs",
+    "import:uspto-id-manual": "tsx apps/admin/src/server/run-uspto-id-manual-import.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
@@ -30,6 +31,7 @@
     "eslint": "9.39.1",
     "eslint-config-next": "16.2.10",
     "prettier": "3.9.5",
+    "tsx": "4.20.6",
     "typescript": "5.9.3",
     "vitest": "4.1.10"
   }

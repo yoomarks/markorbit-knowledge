@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.markorbit.dev/knowledge/uspto-id-manual-snapshot-v1.schema.json",
+  "title": "USPTO ID Manual structured snapshot manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "dataset",
+    "jurisdiction",
+    "authority",
+    "artifact",
+    "parser",
+    "rows",
+    "validation",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "markorbit.uspto-id-manual.snapshot.v1" },
+    "dataset": { "const": "USPTO_ID_MANUAL" },
+    "jurisdiction": { "const": "US" },
+    "authority": { "const": "USPTO" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rawArtifactId",
+        "originalName",
+        "detectedMediaType",
+        "sizeBytes",
+        "binarySha256",
+        "sourceUri",
+        "storageUri",
+        "capturedAt"
+      ],
+      "properties": {
+        "rawArtifactId": { "type": "string", "pattern": "^art_[0-9A-HJKMNP-TV-Z]{26}$" },
+        "originalName": { "type": "string", "minLength": 1 },
+        "detectedMediaType": { "const": "text/html" },
+        "sizeBytes": { "type": "integer", "minimum": 1 },
+        "binarySha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "sourceUri": { "type": "string", "format": "uri" },
+        "storageUri": { "type": "string", "format": "uri" },
+        "capturedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "parser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "const": "markorbit-knowledge/uspto-id-manual-html" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      }
+    },
+    "rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "count",
+        "distinctTermIdCount",
+        "duplicateTermIdCount",
+        "columns",
+        "statusCounts",
+        "typeCounts"
+      ],
+      "properties": {
+        "path": { "const": "rows.ndjson" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "count": { "type": "integer", "minimum": 1 },
+        "distinctTermIdCount": { "type": "integer", "minimum": 1 },
+        "duplicateTermIdCount": { "type": "integer", "minimum": 0 },
+        "columns": {
+          "const": [
+            "Term ID",
+            "Class",
+            "Description",
+            "Status",
+            "Start Effective Date",
+            "Type",
+            "Notes",
+            "TM5",
+            "NCL Version"
+          ]
+        },
+        "statusCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["A", "M", "X", "D"],
+          "properties": {
+            "A": { "type": "integer", "minimum": 0 },
+            "M": { "type": "integer", "minimum": 0 },
+            "X": { "type": "integer", "minimum": 0 },
+            "D": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "typeCounts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "tableCount",
+        "nonEmptyTableCount",
+        "htmlRowCount",
+        "cellCount",
+        "requiredCellsPresent",
+        "datesValid"
+      ],
+      "properties": {
+        "status": { "const": "PASS" },
+        "tableCount": { "type": "integer", "minimum": 1 },
+        "nonEmptyTableCount": { "type": "integer", "minimum": 1 },
+        "htmlRowCount": { "type": "integer", "minimum": 1 },
+        "cellCount": { "type": "integer", "minimum": 9 },
+        "requiredCellsPresent": { "const": true },
+        "datesValid": { "const": true }
+      }
+    },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}
